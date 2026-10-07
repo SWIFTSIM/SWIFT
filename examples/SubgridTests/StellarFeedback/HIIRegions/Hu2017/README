@@ -1,0 +1,50 @@
+# Intro
+Reproduces the D-type expansion convergence test from Hu et al. (2017, MNRAS 471, 2151), Appendix A, which use a similar algorithm to our own. Four star particles co-located at the box center, each `Q_H = 2.5e48` photons/s (`star_mass=19.2 Msun`), `1e49` photons/s combined. Uniform pure-hydrogen medium, `n_H = 100 cm^-3`. Reuses `../ClumpSmith2021/`'s `makeIC_clump.py` with `clump_radius_pc=0` (degenerates to a uniform box, 0 clump particles).
+
+Use `../ClumpSmith2021/` (clump intact) to assess the uniform (`nside=0`) vs. angular (`nside=1`) budget-splitting schemes; this example is deliberately uniform so that question doesn't confound the validation here.
+
+## Reference curve
+Hu et al. (2017) and Smith et al. (2021, Fig. 1) both plot a late-time curve labeled "STARBENCH". This curve is Hosokawa & Inutsuka (2006)'s shell-inertia ODE (Raga-II, Eqn 11), not the full Bisbas et al. (2015) Eqn 28-29 blend (~20 pc vs. their ~25 pc by t=8 Myr for this configuration; the blend's time-dependent weight is calibrated for a single source and doesn't transfer to 4 co-located ones). `hu_smith_analytic_check.py` checks against Raga-II by default (`--reference raga2`) and does not plot the blend. `--reference {raga1,starbench}` selects the others.
+
+## Temperature
+`GEARChemistry:initial_metallicity=0` (pure hydrogen, matching both papers' medium). This code computes `T_i` from metallicity; at `Z=0` it gives `T_i~47500 K`, not the papers' flat `T_i=1e4 K`. To match their convention, build with the flag below. `SPH:minimal_temperature=1000` floors the neutral gas at `T_o` regardless of build (already set in `params.yml`).
+
+## Box size
+`boxsize=0.1` kpc (100 pc), `Stars:HII_max_search_radius=0.04` (40 pc) -- both give ~1.5-2x margin over Raga-II's own late-time prediction (~26 pc by t=8 Myr) for this configuration. At the plain build's natural `T_i~47500 K`, the equivalent radius exceeds even this box; `hu_smith_analytic_check.py` automatically limits its comparison window to when the analytic prediction is still box-valid.
+
+## Resolution
+Hu et al. tested four gas particle masses: 4, 0.5, 0.0625, 0.0078125 Msun (each 8x finer). `gas_mass=4.0` (default) is their coarsest, ~618k particles at this box size.
+
+## Gravity
+`--external-gravity` is passed but no `Potential:` block is set, so there is no gravitational force -- matching both papers' purely hydrodynamical test.
+
+## Cadence
+`HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
+a physical one, and may be changed freely at this value or finer.
+
+# Configure
+Configuration matching both papers' `T_i=1e4 K` convention:
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
+make -j
+```
+`grackle_1` prices the ionizing photon budget against the neutral
+hydrogen fraction from Grackle's own H/He species network rather than
+total hydrogen, which the convergence physics this example reproduces
+depends on. Dropping the `CFLAGS` forcing flag builds with this code's
+own natural, metallicity-dependent `T_i` instead, which does not
+reproduce the papers' `T_i=1e4 K` convention (see Temperature above).
+
+# Run
+```
+./run.sh
+```
+Override any parameter via the matching env var, e.g. `gas_mass=0.5 ./run.sh` -- see `run.sh` for the full list.
+
+# Checking
+```
+python3 hu_smith_analytic_check.py -s "snap/snapshot_*.hdf5"
+```
+T_i is measured from the run's own tagged gas, so the same command is
+correct with or without the CFLAGS forcing flag above; pass
+`--T-ionized-K` only to override the measurement (it warns on mismatch).

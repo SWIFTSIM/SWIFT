@@ -17,7 +17,9 @@ and run with the option ``--gear``. A few examples exist and can be found in ``e
    chemistry
    diffusion/index
    feedback
+   stellar_evolution_table
    supernova_feedback
+   radiation/index
    sinks/index
    black_holes
    output

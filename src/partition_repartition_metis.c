@@ -108,6 +108,7 @@ static void partition_gather_weights(void *map_data, int num_elements,
     /* Get the cell IDs. */
     int cid = ci - cells;
 
+    /* TODO: Should I add the HII ionization task? */
     /* Different weights for different tasks. */
     if (t->type == task_type_init_grav || t->type == task_type_ghost ||
         t->type == task_type_extra_ghost || t->type == task_type_drift_part ||

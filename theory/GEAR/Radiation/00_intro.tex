@@ -1,0 +1,62 @@
+\section{Context and goal}
+
+Branch \code{darwin/gear\_radiation} implements a Fire-2-style
+\citep{Hopkins2018} subgrid HII photoionization model for the GEAR
+feedback scheme: each active star sorts nearby gas particles by
+distance and spends a photon-rate budget on them, closest first, until
+the budget is exhausted, tagging the affordable particles as
+``ionized'' and holding their temperature at a floor value until the
+next rebuild. Throughout this document, ``rebuild'' alone means a
+star's own periodic HII candidate-search pass
+(\code{GEARFeedback:HII\_rebuild\_time\_Myr}, typically sub-Myr); this
+is a different, unrelated cadence from \swift's own tree rebuild,
+which is always spelled out explicitly (e.g.\
+``tree rebuild'') where it is meant. The model is validated against two
+published, closely related reference algorithms:
+\begin{itemize}
+  \item \citet{Hu2017}, Appendix A: the four-source D-type expansion
+    convergence test that our own ``spherical'' (\code{nside=0})
+    mode reproduces directly;
+  \item \citet{Smith2021}, Section 3.3.3--3.3.4 and Figs.~1--2: the
+    same D-type test, plus an angular (HealPix) budget-splitting
+    scheme designed to avoid ``mass-biasing'': a dense clump near a
+    source absorbing a disproportionate share of the photon budget
+    regardless of the small solid angle it subtends.
+
+  Both papers are the reference results for the validation of this
+  implementation; the example \code{examples/SubgridTests/\allowbreak
+  SubgridRadiation/ClumpSmith2021/} reproduces their
+  exact test geometry (four 19.2\,M$_\odot$ co-located sources,
+  $n=100\,\rm cm^{-3}$ background, a $10^4\,\rm cm^{-3}$ clump
+  20\,pc away).
+\end{itemize}
+
+\subsection{Scope of this document}
+\label{sec:scope}
+
+This is the \textbf{theory document}: it describes the current
+algorithm (Section~\ref{sec:algorithm}) and how it is wired into
+SWIFT's task graph (Section~\ref{sec:taskgraph}). It does not
+track bug history, validation results, or open work. Those change
+far more often than the algorithm itself, and outgrew what belongs
+alongside shipped source. That material lives in the \textbf{GEAR
+radiation logbook}, a separate document in the \code{swift-gear}
+repository (\code{theory/radiation/}), covering:
+\begin{itemize}
+  \item a dated log of bugs found and fixed;
+  \item the running validation campaign against Hu et al.\ (2017),
+    Smith et al.\ (2021), STARBENCH, and the Grackle rate-coupled
+    checks: tables, figures, and their interpretation;
+  \item what remains undecided or undone (open items).
+\end{itemize}
+The two documents cross-reference each other by name and section
+title rather than by automatic \code{\textbackslash ref}, since they
+compile separately in separate repositories: a pointer like ``the
+GEAR radiation logbook's Validation section'' is prose, not a live
+link; if this document's section titles change, check the logbook for
+stale pointers (and vice versa).
+
+Update \code{01\_algorithm.tex} only when the code's physics actually
+changes; update \code{02\_task\_graph.tex} only when the task-graph
+implementation itself changes. Neither should accumulate validation
+results or dated narrative; that belongs in the logbook.

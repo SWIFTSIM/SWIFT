@@ -19,24 +19,27 @@
 #ifndef SWIFT_FEEDBACK_GEAR_COMMON_H
 #define SWIFT_FEEDBACK_GEAR_COMMON_H
 
-/* We need to explicitely point to the src/ file to ensure the correct file is
+/* We need to explicitly point to the src/ file to ensure the correct file is
    included for each feedback */
 #include "../../feedback_properties.h"
+#include "cooling.h"
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
 
 /**
- * @file src/feebback/GEAR/feedback_common.h
+ * @file src/feedback/GEAR/feedback_common.h
  * @brief Header file with common functions for GEAR and GEAR-mechanical
  * feedback modules.
  */
 
-float feedback_compute_spart_timestep(
+void feedback_compute_spart_timestep(
     const struct spart *const sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
-    const integertime_t ti_current, const double time, const double time_base);
+    const integertime_t ti_current, const double time, const double time_base,
+    const timebin_t old_time_bin, float *dt_event_side,
+    float *dt_evolution_ssp);
 
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -44,6 +47,10 @@ void feedback_will_do_feedback(
     const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin);
+
+void feedback_will_do_HII_ionization(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const double star_age_beg_step, const double star_age_end_step);
 
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
@@ -62,6 +69,80 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const double time,
                                         const double dt_star);
 
+int feedback_is_HII_ionization_active(const struct spart *sp,
+                                      const struct engine *e);
+double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
+double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
+double feedback_get_star_ionization_budget_max(const struct spart *sp);
+double feedback_get_star_ionization_budget_total(const struct spart *sp);
+char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
+                                  const struct engine *e);
+void feedback_iact_HII_ionization(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling,
+    const struct feedback_props *feedback_props, const integertime_t ti_begin,
+    const double time, const double dt_back);
+
+double feedback_iact_HII_maintain_ionized_part(
+    struct spart *restrict si, struct part *restrict pj,
+    struct xpart *restrict xpj, float r2, int pixel,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const double time,
+    const double dt_back);
+
+int feedback_get_star_HII_pixel_count(const struct spart *sp);
+double feedback_get_star_HII_last_rebuild(const struct spart *sp);
+double feedback_get_star_HII_nominal_interval(
+    const struct feedback_props *feedback_props, const double dt_enrichment);
+void feedback_open_star_ionizing_photon_budget(struct spart *sp,
+                                               double dt_back);
+void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp);
+void feedback_set_star_HII_last_rebuild(struct spart *sp,
+                                        double star_age_beg_step);
+double feedback_get_star_HII_last_attempt(const struct spart *sp);
+void feedback_set_star_HII_last_attempt(struct spart *sp,
+                                        double star_age_beg_step);
+
+char feedback_is_part_tagged_as_ionized(const struct part *p,
+                                        const struct xpart *xp);
+long long feedback_get_part_ionized_star_id(const struct part *p,
+                                            const struct xpart *xp);
+float feedback_get_star_HII_mass(const struct spart *sp);
+double feedback_get_star_L_PE(const struct spart *sp);
+double feedback_get_star_L_LW(const struct spart *sp);
+float feedback_get_star_teff(const struct spart *sp);
+double feedback_get_part_u_PE(const struct part *p);
+double feedback_get_part_u_LW(const struct part *p);
+double feedback_get_part_u_LW_PHOTON(const struct part *p);
+float feedback_get_part_dissipation_alpha_PE(const struct part *p);
+float feedback_get_part_dissipation_alpha_LW(const struct part *p);
+float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p);
+float feedback_get_part_div_specific_flux_PE(const struct part *p);
+float feedback_get_part_div_specific_flux_LW(const struct part *p);
+float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p);
+void feedback_get_part_specific_flux_PE(const struct part *p, float *ret);
+void feedback_get_part_specific_flux_LW(const struct part *p, float *ret);
+void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
+                                               float *ret);
+struct engine;
+float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
+                                                const struct engine *e);
+float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
+                                                const struct engine *e);
+float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
+                                                       const struct engine *e);
+float feedback_get_part_cumulative_injected_PE(const struct part *p);
+float feedback_get_part_cumulative_injected_LW(const struct part *p);
+float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p);
+float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
+float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
+float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
+float feedback_get_part_c_hyp(const struct part *p);
+
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
     enum stellar_type star_type);
@@ -71,8 +152,18 @@ void feedback_first_init_spart(struct spart *sp,
 
 float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
 
+/*! Value of the ISRF flux-form marker block that feedback_struct_dump() writes
+ * ahead of the #feedback_props block: the tracked flux is the reduced flux
+ * `Ft = F_true/c_hyp` for every ISRF scheme. A restart file written by an
+ * earlier code version has no such block, and a restart that holds the true
+ * flux would otherwise be read back as reduced flux, silently wrong by a
+ * factor `c_hyp`. */
+#define FEEDBACK_RESTART_ISRF_FLUX_FORM_REDUCED 1
+
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
-void feedback_struct_restore(struct feedback_props *feedback, FILE *stream);
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
+                             const struct unit_system *us,
+                             const struct phys_const *phys_const);
 void feedback_clean(struct feedback_props *feedback);
 
 #endif /* SWIFT_FEEDBACK_GEAR_COMMON_H */

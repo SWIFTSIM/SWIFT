@@ -43,6 +43,7 @@
 #include "pressure_floor.h"
 #include "proxy.h"
 #include "rt.h"
+#include "runner_radiation_feedback.h"
 #include "star_formation.h"
 #include "star_formation_logger.h"
 #include "stars_io.h"
@@ -620,8 +621,10 @@ void engine_config(int restart, int fof, struct engine *e,
       if (e->nodeID == 0) gravity_props_print(e->gravity_properties);
 
     /* Print information about the stellar scheme */
-    if (e->policy & engine_policy_stars)
+    if (e->policy & engine_policy_stars) {
       if (e->nodeID == 0) stars_props_print(e->stars_properties);
+      feedback_radiation_startup_diagnostics(e);
+    }
 
     /* Print information about the RT scheme */
     if (e->policy & engine_policy_rt) {
@@ -1035,6 +1038,12 @@ void engine_config(int restart, int fof, struct engine *e,
     e->runners[k].cj_gravity_cache.count = 0;
     gravity_cache_init(&e->runners[k].ci_gravity_cache, space_splitsize);
     gravity_cache_init(&e->runners[k].cj_gravity_cache, space_splitsize);
+
+    /* HII maintenance scratch buffer (runner_radiation_feedback.c): grown
+       lazily on first use rather than sized here, since only GEAR-feedback
+       runs ever touch it. */
+    e->runners[k].hii_maintenance_buffer = NULL;
+    e->runners[k].hii_maintenance_buffer_size = 0;
 #ifdef WITH_VECTORIZATION
     e->runners[k].ci_cache.count = 0;
     e->runners[k].cj_cache.count = 0;

@@ -31,6 +31,59 @@
 #include <math.h>
 
 /**
+ * Compute the Hydrogen mass fraction.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Hydrogen mass fraction.
+ */
+__attribute__((always_inline)) INLINE static float
+cooling_get_hydrogen_mass_fraction(const struct cooling_function_data *cooling,
+                                   const struct part *p,
+                                   const struct xpart *xp) {
+
+#if COOLING_GRACKLE_MODE == 0
+  const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
+
+  /* Approximation that takes into account metals */
+  return cooling->HydrogenFractionByMass - Z;
+#else
+
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const float X_H = cool_data->HI_frac + cool_data->HII_frac;
+  return X_H;
+#endif
+}
+
+/**
+ * Compute the Helium mass fraction.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @return Hydrogen mass fraction.
+ */
+__attribute__((always_inline)) INLINE static float
+cooling_get_helium_mass_fraction(const struct cooling_function_data *cooling,
+                                 const struct part *p, const struct xpart *xp) {
+
+#if COOLING_GRACKLE_MODE == 0
+  const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
+
+  /* Approximation that takes into account metals */
+  const float X_H = cooling->HydrogenFractionByMass - Z;
+  return 1 - X_H;
+#else
+
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  const float X_He =
+      cool_data->HeI_frac + cool_data->HeII_frac + cool_data->HeIII_frac;
+  return X_He;
+#endif
+}
+
+/**
  * Compute gas mean molecular weight.
  *
  * @TODO: This function may be moved into a future improved Grackle version.

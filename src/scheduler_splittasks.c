@@ -44,6 +44,11 @@
  * @param s The #scheduler we are working in.
  */
 static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->subtype != task_subtype_density)
+    error("Found non hydro density task in scheduler_splittask_hydro!");
+#endif
+
   /* Are we considering both stars and hydro when splitting? */
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
@@ -286,6 +291,322 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
       }
     } /* pair interaction? */
   } /* iterate over the current task. */
+}
+
+/**
+ * @brief Split a radiation subgrid task if too large.
+ *
+ * @TODO: We may want to improve the logic for radiation subgrid.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void scheduler_splittask_radiation_subgrid(struct task *t,
+                                                  struct scheduler *s) {
+#ifdef IONIZATION_FEEDBACK_LOOP
+#ifdef SWIFT_DEBUG_CHECKS
+  if (t->subtype != task_subtype_stars_radiation_in)
+    error(
+        "Found non radiation_in task in "
+        "scheduler_splittask_radiation_subgrid!");
+#endif
+
+  /* Are we considering both stars and hydro when splitting? */
+  /* Note this is not very clean as the scheduler should not really
+     access the engine... */
+  const int with_feedback = (s->space->e->policy & engine_policy_feedback);
+  const int with_stars = (s->space->e->policy & engine_policy_stars);
+
+  /* Iterate on this task until we're done with it. */
+  int redo = 1;
+  while (redo) {
+    /* Reset the redo flag. */
+    redo = 0;
+
+    /* Is this a non-empty self-task? */
+    const int is_self =
+        (t->type == task_type_self) && (t->ci != NULL) &&
+        ((t->ci->hydro.count > 0) || (with_stars && t->ci->stars.count > 0));
+
+    /* Is this a non-empty pair-task? */
+    const int is_pair =
+        (t->type == task_type_pair) && (t->ci != NULL) && (t->cj != NULL) &&
+        ((t->ci->hydro.count > 0) ||
+         (with_feedback && t->ci->stars.count > 0)) &&
+        ((t->cj->hydro.count > 0) || (with_feedback && t->cj->stars.count > 0));
+
+    /* Empty task? */
+    if (!is_self && !is_pair) {
+      t->type = task_type_none;
+      t->subtype = task_subtype_none;
+      t->ci = NULL;
+      t->cj = NULL;
+      t->skip = 1;
+      break;
+    }
+
+    /* Self-interaction? */
+    if (t->type == task_type_self) {
+      /* Get a handle on the cell involved. */
+      struct cell *ci = t->ci;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Is this cell even split and the task does not violate h ? */
+      if (cell_can_split_self_radiation_subgrid_task(ci)) {
+        /* Radiation splits PURELY on the geometric criterion down to
+         * radiation_level -- no size-based (space_subsize) gate. Descend by
+         * recycling this self task into sub-self tasks over the progeny,
+         * AND create the intra-parent sibling pair tasks between them
+         * (mirroring hydro/stars): once this self splits, each progeny's
+         * own hii_ionization_feedback task only reaches gas within that
+         * progeny's own subtree (doself) plus whatever pair tasks connect
+         * it to the rest of the 27-neighbour stencil -- without sibling
+         * pairs, siblings within the same parent would be searched by
+         * neither a pair task nor doself, a permanent blind spot.
+         *
+         * Each sibling progeny's own cell_can_split_self/pair_radiation_
+         * subgrid_task() is evaluated independently one level down, tested
+         * against cell_flag_at_or_below_hydro_attach (see cell.h) rather
+         * than hydro.super directly, since hydro.super does not exist yet
+         * at split time. The stamp/propagate passes in engine_maketasks()
+         * set that flag identically on every progeny of a subtree that
+         * shares a hydro attach point, so all siblings under a splitting
+         * parent stop splitting together, by construction -- no separate
+         * synchronisation pass is needed. The SWIFT_DEBUG_CHECKS invariant
+         * in engine_make_extra_radiationloop_tasks_mapper
+         * (ci->stars.radiation_level == cj->stars.radiation_level) is kept
+         * as a regression tripwire for this. */
+        redo = 1;
+
+        int first_child = 0;
+        while (ci->progeny[first_child] == NULL) first_child++;
+
+        t->ci = ci->progeny[first_child];
+        cell_set_flag(t->ci, cell_flag_has_tasks);
+
+        for (int k = first_child + 1; k < 8; k++) {
+          /* Do we have a non-empty progenitor? */
+          if (ci->progeny[k] != NULL &&
+              (ci->progeny[k]->hydro.count ||
+               (with_stars && ci->progeny[k]->stars.count))) {
+            scheduler_splittask_radiation_subgrid(
+                scheduler_addtask(s, task_type_self, t->subtype, 0, 1,
+                                  ci->progeny[k], NULL),
+                s);
+          }
+        }
+
+        /* Make a pair task for each pair of non-empty progeny. */
+        for (int j = 0; j < 8; j++) {
+          if (ci->progeny[j] != NULL &&
+              (ci->progeny[j]->hydro.count ||
+               (with_stars && ci->progeny[j]->stars.count))) {
+            for (int k = j + 1; k < 8; k++) {
+              if (ci->progeny[k] != NULL &&
+                  (ci->progeny[k]->hydro.count ||
+                   (with_stars && ci->progeny[k]->stars.count))) {
+                scheduler_splittask_radiation_subgrid(
+                    scheduler_addtask(s, task_type_pair, t->subtype,
+                                      sub_sid_flag[j][k], 1, ci->progeny[j],
+                                      ci->progeny[k]),
+                    s);
+              }
+            }
+          }
+        }
+      }
+    } /* Self interaction */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_pair) {
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      /* Foreign task? */
+      if (ci->nodeID != s->nodeID && cj->nodeID != s->nodeID) {
+        t->skip = 1;
+        break;
+      }
+
+      /* Get the sort ID, use space_getsid_and_swap_cells and not t->flags
+         to make sure we get ci and cj swapped if needed. */
+      double shift[3];
+      const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      if (sid != t->flags)
+        error("Got pair task with incorrect flags: sid=%d flags=%lld", sid,
+              t->flags);
+#endif
+
+      /* Should this task be split-up? Radiation splits PURELY on the geometric
+       * criterion (cell_can_split_pair_radiation_subgrid_task, identical to the
+       * self criterion), so every radiation_in task -- self and pair alike --
+       * comes to rest at exactly the same level: radiation_level.
+       *
+       * We deliberately do NOT apply the size-based (do_sub / space_subsize)
+       * descent that hydro and stars use. The single hii_ionization_feedback
+       * task per radiation_level already walks the whole neighbour search, so
+       * task granularity BELOW radiation_level buys no parallelism -- and, more
+       * importantly, letting pairs descend below where the self task stops puts
+       * ci and cj under a shared, coarser radiation_level, which makes both
+       * sides wire the SAME hii_ionization_feedback / drift tasks -> duplicate
+       * unlocks (fatal under --enable-debugging-checks).
+       *
+       * We also do NOT force-split corner pairs (no !sort_is_corner(sid)):
+       * radiation's flat neighbour walk at radiation_level needs all 26
+       * neighbour pairs, corners included, to live AT radiation_level (dropping
+       * them below is the corner-miss bug). */
+      const int can_split_ci = cell_can_split_pair_radiation_subgrid_task(ci);
+      const int can_split_cj = cell_can_split_pair_radiation_subgrid_task(cj);
+
+      if (can_split_ci && can_split_cj) {
+
+        /* The cells are still coarse enough that we must descend one level to
+         * reach radiation_level. Take a step back (recycle the current
+         * task)... */
+        redo = 1;
+
+        /* Loop over the sub-cell pairs for the current sid and add new tasks
+         * for them. */
+        struct cell_split_pair *csp = &cell_split_pairs[sid];
+
+        t->ci = ci->progeny[csp->pairs[0].pid];
+        t->cj = cj->progeny[csp->pairs[0].pjd];
+        if (t->ci != NULL) cell_set_flag(t->ci, cell_flag_has_tasks);
+        if (t->cj != NULL) cell_set_flag(t->cj, cell_flag_has_tasks);
+
+        t->flags = csp->pairs[0].sid;
+        for (int k = 1; k < csp->count; k++) {
+          scheduler_splittask_radiation_subgrid(
+              scheduler_addtask(s, task_type_pair, t->subtype,
+                                csp->pairs[k].sid, 1,
+                                ci->progeny[csp->pairs[k].pid],
+                                cj->progeny[csp->pairs[k].pjd]),
+              s);
+        }
+
+        /* Exactly one side is still coarse enough to descend: the other has
+         * already reached its own radiation_level and must not move. This is
+         * the case cell_split_pairs/space_getsid cannot handle -- both are
+         * equal-size-only machinery (the pid tables enumerate a fixed 2 or 4
+         * progeny per sid, and space_getsid's corner-sign classification
+         * degrades a face into an "edge" once one side is finer -- either
+         * way silently dropping stencil links that no tripwire below this
+         * would catch). Enumerate the splitting side's facing progeny
+         * GEOMETRICALLY instead: exact for any size ratio, and the sid for
+         * each new (progeny, fixed) pair is computed fresh from that pair's
+         * own cells, never inherited from the parent (see
+         * cell_boxes_touch_under_shift()'s docstring in cell.h). */
+      } else if (can_split_ci != can_split_cj) {
+
+        struct cell *splitting = can_split_ci ? ci : cj;
+        struct cell *fixed = can_split_ci ? cj : ci;
+
+#ifdef SWIFT_DEBUG_CHECKS
+        int n_facing = 0; /* Geometrically facing, empty or not. */
+#endif
+        int n_created = 0; /* Facing AND non-empty -- these get a task. */
+
+        for (int k = 0; k < 8; k++) {
+          struct cell *p = splitting->progeny[k];
+          if (p == NULL) continue;
+
+          /* The splitting side plays ci's role in the shift convention
+           * (space_getsid_and_swap_cells() returns shift as "add to cj to
+           * reach ci"), so a progeny of ci needs no shift while a progeny
+           * of cj does. */
+          const int touches =
+              can_split_ci ? cell_boxes_touch_under_shift(p, fixed, shift)
+                           : cell_boxes_touch_under_shift(fixed, p, shift);
+          if (!touches) continue;
+#ifdef SWIFT_DEBUG_CHECKS
+          n_facing++;
+#endif
+
+          if (!(p->hydro.count > 0 || (with_stars && p->stars.count > 0)))
+            continue;
+
+          /* Compute the sid on the NEW pair's own cells, honouring
+           * whatever swap it performs -- the parent's sid/shift do not
+           * carry over to an unequal-size child (see comment above). */
+          struct cell *new_ci = p;
+          struct cell *new_cj = fixed;
+          double new_shift[3];
+          const int new_sid = space_getsid_and_swap_cells(s->space, &new_ci,
+                                                          &new_cj, new_shift);
+
+          if (n_created == 0) {
+            t->ci = new_ci;
+            t->cj = new_cj;
+            t->flags = new_sid;
+            cell_set_flag(t->ci, cell_flag_has_tasks);
+            cell_set_flag(t->cj, cell_flag_has_tasks);
+          } else {
+            scheduler_splittask_radiation_subgrid(
+                scheduler_addtask(s, task_type_pair, t->subtype, new_sid, 1,
+                                  new_ci, new_cj),
+                s);
+          }
+          n_created++;
+        }
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* The splitting side's progeny exactly partition its volume, so at
+         * least one must geometrically face a partner that was itself
+         * adjacent to the (now-split) parent. Zero facing progeny means the
+         * geometric test itself is broken. */
+        if (n_facing == 0)
+          error(
+              "Radiation asymmetric pair split found no facing progeny -- "
+              "cell_boxes_touch_under_shift() or the emptiness gate is "
+              "broken.");
+#endif
+
+        if (n_created == 0) {
+          /* All facing progeny were empty: the task genuinely vanishes,
+           * exactly like the empty-task check at the top of this
+           * function. */
+          t->type = task_type_none;
+          t->subtype = task_subtype_none;
+          t->ci = NULL;
+          t->cj = NULL;
+          t->skip = 1;
+          break;
+        }
+
+        redo = 1;
+
+        /* Otherwise, break it up if it is too large? */
+      } else if (scheduler_doforcesplit && ci->split && cj->split &&
+                 (ci->hydro.count > space_maxsize / cj->hydro.count)) {
+        // message( "force splitting pair with %i and %i parts." ,
+        // ci->hydro.count , cj->hydro.count );
+
+        /* Replace the current task. */
+        t->type = task_type_none;
+
+        for (int j = 0; j < 8; j++)
+          if (ci->progeny[j] != NULL && ci->progeny[j]->hydro.count)
+            for (int k = 0; k < 8; k++)
+              if (cj->progeny[k] != NULL && cj->progeny[k]->hydro.count) {
+                struct task *tl =
+                    scheduler_addtask(s, task_type_pair, t->subtype, 0, 1,
+                                      ci->progeny[j], cj->progeny[k]);
+                scheduler_splittask_radiation_subgrid(tl, s);
+                tl->flags = space_getsid_and_swap_cells(s->space, &t->ci,
+                                                        &t->cj, shift);
+              }
+      }
+    } /* pair interaction? */
+  } /* iterate over the current task. */
+#endif /* IONIZATION_FEEDBACK_LOOP */
 }
 
 /**
@@ -569,6 +890,8 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
     /* Invoke the correct splitting strategy */
     if (t->subtype == task_subtype_density) {
       scheduler_splittask_hydro(t, s);
+    } else if (t->subtype == task_subtype_stars_radiation_in) {
+      scheduler_splittask_radiation_subgrid(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
     } else if (t->subtype == task_subtype_grav) {
@@ -594,6 +917,7 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                           const int verbose) {
 
   if (verbose) {
+    /* TODO: Determine if we want to add some limits for radiation */
     message("space_subsize_self_hydro= %d", space_subsize_self_hydro);
     message("space_subsize_pair_hydro= %d", space_subsize_pair_hydro);
     message("space_subsize_self_stars= %d", space_subsize_self_stars);
@@ -614,4 +938,52 @@ void scheduler_splittasks(struct scheduler *s, const int fof_tasks,
                    s->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size,
                    s);
   }
+}
+
+/**
+ * @brief Mapper function to split the freshly-created radiation_in tasks.
+ *
+ * @param map_data the tasks to process (a sub-range of s->tasks).
+ * @param num_elements the number of tasks in that range.
+ * @param extra_data The #scheduler we are working in.
+ */
+static void scheduler_splittasks_radiation_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
+  struct scheduler *s = (struct scheduler *)extra_data;
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+#ifdef SWIFT_DEBUG_CHECKS
+    if (t->subtype != task_subtype_stars_radiation_in)
+      error("Unexpected task sub-type %s/%s in scheduler_splittasks_radiation",
+            taskID_names[t->type], subtaskID_names[t->subtype]);
+#endif
+    scheduler_splittask_radiation_subgrid(t, s);
+  }
+}
+
+/**
+ * @brief Split the radiation_in tasks created since @p first_task, i.e.
+ * s->tasks[first_task .. s->nr_tasks).
+ *
+ * A separate, dedicated pass from scheduler_splittasks(): radiation task
+ * creation (engine_make_radiationloop_tasks_mapper()) runs after the
+ * hydro/gravity split, once the hydro-attach flags it depends on
+ * (cell_flag_at_or_below_hydro_attach) are available, so its tasks are not
+ * present yet when scheduler_splittasks() runs. Children created during the
+ * split (via scheduler_addtask()) are handled recursively by
+ * scheduler_splittask_radiation_subgrid() itself, exactly as in
+ * scheduler_splittasks_mapper() above, so mapping only the initially-created
+ * range suffices.
+ *
+ * @param s The #scheduler.
+ * @param first_task Index of the first newly-created radiation task in
+ * s->tasks.
+ */
+void scheduler_splittasks_radiation(struct scheduler *s, const int first_task) {
+  threadpool_map(s->threadpool, scheduler_splittasks_radiation_mapper,
+                 &s->tasks[first_task], s->nr_tasks - first_task,
+                 sizeof(struct task), threadpool_auto_chunk_size, s);
 }

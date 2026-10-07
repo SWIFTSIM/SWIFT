@@ -1,0 +1,93 @@
+\documentclass[11pt, a4paper, parskip]{scrartcl}
+
+\usepackage[margin=2.7cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{comment}
+\usepackage[super]{nth}
+\usepackage{seqsplit}
+\usepackage{tikz}
+\usepackage{multirow}
+\usetikzlibrary{positioning}
+\usepackage[hidelinks]{hyperref}
+
+\usepackage[]{natbib}
+\bibliographystyle{apalike}
+
+% Dev-doc, not a journal article: single column (via scrartcl above).
+% \code{} is \texttt{} that may break mid-identifier/mid-path across
+% lines (long function names, file paths) instead of overflowing the
+% margin: used for long \texttt content in running text. Left as
+% plain \texttt{} inside captions/section titles, where \seqsplit's
+% \futurelet-based scanning cannot survive LaTeX's full expansion of
+% moving arguments.
+\newcommand{\code}[1]{\texttt{\seqsplit{#1}}}
+
+% KOMA-Script disables the classic \rm/\bf/\it/... font-switch commands
+% by default; the numbered sections use them freely for math-mode units
+% (${\rm K}$, ${\rm cm^{-3}}$, ...), matching the old mnras.cls setup, so
+% restore the standard LaTeX2e old-font-command behaviour here rather
+% than editing every occurrence.
+\makeatletter
+\DeclareOldFontCommand{\rm}{\normalfont\rmfamily}{\mathrm}
+\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
+\DeclareOldFontCommand{\tt}{\normalfont\ttfamily}{\mathtt}
+\DeclareOldFontCommand{\bf}{\normalfont\bfseries}{\mathbf}
+\DeclareOldFontCommand{\it}{\normalfont\itshape}{\mathit}
+\DeclareOldFontCommand{\sl}{\normalfont\slshape}{\@nomath\sl}
+\DeclareOldFontCommand{\sc}{\normalfont\scshape}{\@nomath\sc}
+\makeatother
+
+\setkomafont{title}{\rmfamily\bfseries\boldmath}
+\addtokomafont{section}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsection}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsubsection}{\rmfamily\bfseries\boldmath}
+
+\newcommand{\todo}[1]{{\textcolor{red}{TODO: #1}\\}}
+\newcommand{\swift}{{\sc Swift}\xspace}
+\newcommand{\D}[2]{\frac{d#1}{d#2}}
+\newcommand{\LL}{\left(}
+\newcommand{\RR}{\right)}
+
+\title{GEAR radiation feedback: radiation pressure and the FUV/ISRF}
+\subtitle{Theory document: momentum injection, photoelectric heating,
+and H$_2$ photodissociation propagation design}
+\author{Darwin Roduit}
+
+\begin{document}
+\maketitle
+
+This is the \textbf{theory document} for two radiation feedback
+channels beyond the subgrid HII photoionization model, split out from
+that model's own theory document (\code{radiation.tex}/\code{radiation.pdf},
+this same directory) since they are largely self-contained: the
+\textbf{radiation-pressure} momentum-injection channel
+(Section~\ref{sec:radiation-pressure}, branch
+\code{darwin/gear\_radiation}), and the
+\textbf{FUV/ISRF} channel for photoelectric heating and
+H$_2$ photodissociation (Section~\ref{sec:fuv-isrf}). It
+describes the current design and physics only;
+dated bug history and open-item tracking for both channels live in the
+\textbf{GEAR radiation logbook} (\code{swift-gear} repository,
+\code{theory/radiation/}), alongside the HII photoionization model's
+own logbook content. Where content here depends on the HII
+photoionization model itself (the blackbody luminosity fit, the
+task-graph algorithm, the validation targets) or on the logbook, it is
+cited by name and section rather than by automatic cross-reference,
+since the documents compile separately in separate repositories.
+Edit the numbered \code{.tex} files directly; each covers one topic and
+is short enough to update on its own.
+
+\textbf{In the code.} The radiation-pressure channel lives in
+\code{src/feedback/GEAR/radiation.c} and related files, and the FUV/ISRF
+channel in \code{src/feedback/GEAR/radiation\_isrf.c} and related files.
+
+\tableofcontents
+
+\input{01_radiation_pressure}
+\input{02_fuv_isrf}
+\input{03_isrf_equations_and_discretisation}
+
+\bibliography{bibliography}
+
+\end{document}

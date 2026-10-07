@@ -31,6 +31,7 @@
 
 /* Includes. */
 #include "hydro_space.h"
+#include "inline.h"
 #include "lock.h"
 #include "parser.h"
 #include "part.h"
@@ -72,6 +73,7 @@ struct sink_props;
 #define space_recurse_size_pair_sinks_default 100
 #define space_subdepth_diff_grav_default 4
 #define space_max_top_level_cells_default 12
+#define space_min_top_level_cells_default 3
 #define space_stretch 1.10f
 #define space_maxreldx 0.1f
 
@@ -154,8 +156,30 @@ struct space {
   /*! The minimum top-level cell width allowed. */
   double cell_min;
 
+  /*! The maximum top-level cell width allowed -- the complement of
+   * cell_min, derived from Scheduler:min_top_level_cells. Bounds how far
+   * any single coarsening event (ordinary h_max growth, or h_hii) can
+   * push the grid: once the effective cell width would exceed this, it
+   * is clamped here instead, so cdim never drops below
+   * Scheduler:min_top_level_cells. A periodic run whose search radius
+   * outgrows this width has no satisfiable grid left and is stopped by
+   * space_regrid(). */
+  double cell_max_width;
+
   /*! Space dimensions in number of top-cells. */
   int cdim[3];
+
+  /*! High-water mark of h_max from ordinary hydro/black-hole/sink
+   * smoothing lengths, plus a star's own smoothing length (stars.h_max,
+   * uncapped and unfactored, for cell_need_rebuild_for_stars_pair()) --
+   * excludes only h_hii and the separately capped/factored copy of
+   * stars.h_max routed into the star radiation term (for
+   * cell_need_rebuild_for_radiation_pair()). Used by space_regrid() to
+   * keep its one-way coarsening ratchet for those quantities while
+   * letting the star radiation term's own, separately-tracked
+   * contribution shrink the grid back down once no star's search radius
+   * needs it any more. */
+  float h_max_no_hii_hwm;
 
   /*! Maximal depth reached by the tree */
   int maxdepth;
@@ -387,6 +411,48 @@ struct space {
 #endif
 };
 
+/**
+ * @brief Does the top-level radiation stencil already wire every top-level
+ * cell pair, making h_hii coverage between two unsplit top-level cells
+ * complete regardless of reach?
+ *
+ * True only at the periodic minimum of 3 cells/axis, where the 27-cell
+ * stencil (with wraparound) connects every top-level cell to every other
+ * one. Computed from cdim/periodic directly rather than cached, so it is
+ * always consistent with whatever grid s currently describes.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+space_radiation_top_stencil_covers_box(const struct space *s) {
+
+  return s->periodic && s->cdim[0] == 3 && s->cdim[1] == 3 && s->cdim[2] == 3;
+}
+
+/**
+ * @brief Can this #space's grid ever coarsen far enough for
+ * #space_radiation_top_stencil_covers_box to hold?
+ *
+ * A star whose HII reach outgrows the top-level cell width has no coarser
+ * grid left to rebuild into, and then relies on that stencil-completeness
+ * fallback instead. Two configurations never reach it: a non-cubic box
+ * (cell widths are a single scalar, so only a cubic box sits at 3 cells
+ * along every axis at once) and Scheduler:min_top_level_cells > 3, which
+ * pins the grid finer than 3 cells/axis for the whole run.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+space_radiation_top_stencil_can_cover_box(const struct space *s) {
+
+  if (!s->periodic) return 0;
+  if (s->dim[0] != s->dim[1] || s->dim[1] != s->dim[2]) return 0;
+
+  /* cell_max_width is dim/Scheduler:min_top_level_cells, so this holds
+     exactly when that parameter is at most 3. */
+  return s->cell_max_width >= s->dim[0] / 3.;
+}
+
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_free_sort_indices(struct space *s);
@@ -433,6 +499,15 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct gravity_tensors *multipole_list_begin,
                         struct gravity_tensors *multipole_list_end);
 void space_regrid(struct space *s, int verbose);
+float space_regrid_radiation_cap_for(double cell_max_width);
+float space_regrid_star_radiation_term_for(float h_hii_max, float h_max,
+                                           double cell_max_width);
+float space_regrid_star_h_max_no_hii_term_for(float h_max_no_hii_so_far,
+                                              float h_max);
+double space_regrid_search_radius_for(float h_max_no_hii,
+                                      float h_max_radiation);
+double space_regrid_cell_width_for(float h_max_no_hii, float h_max_radiation,
+                                   double cell_min, double cell_max_width);
 void space_allocate_extras(struct space *s, int verbose);
 void space_split(struct space *s, int verbose);
 void space_reorder_extras(struct space *s, int verbose);

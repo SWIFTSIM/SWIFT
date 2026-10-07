@@ -33,6 +33,7 @@
 struct cell;
 struct engine;
 struct task;
+struct hii_neighbor;
 
 /* Unique identifier of loop types */
 #define TASK_LOOP_DENSITY 0
@@ -74,6 +75,17 @@ struct runner {
 
   /*! The particle gravity_cache of cell cj. */
   struct gravity_cache cj_gravity_cache;
+
+  /*! Per-runner scratch buffer for the HII maintenance pass's (r2, id)
+      ordered charging (runner_radiation_feedback.c): holds every
+      already-ionized candidate found by one star's Phase-1 traversal before
+      it is sorted and charged in ascending order. Grows on demand, like
+      ci_gravity_cache above; region membership can reach 1e4-1e5 particles
+      at level 7, too large for a stack buffer. Freed at engine shutdown. */
+  struct hii_neighbor *hii_maintenance_buffer;
+
+  /*! Current capacity (entries) of #hii_maintenance_buffer. */
+  int hii_maintenance_buffer_size;
 
   /*! Time this runner was active during the last engine_launch. */
   ticks active_time;
@@ -163,7 +175,6 @@ void runner_do_sinks_sink_swallow_self(struct runner *r, struct cell *c,
 void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
                                        struct cell *cj, int timer);
 void runner_do_stars_resort(struct runner *r, struct cell *c, const int timer);
-
 void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_recv_part(struct runner *r, struct cell *c, int clear_sorts,
                          int timer);

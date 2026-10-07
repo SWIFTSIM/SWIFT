@@ -1288,14 +1288,71 @@ void space_init(struct space *s, struct swift_params *params,
                                sink_formation_gas_loop_r_cut(sink_properties)));
   }
 
-  /* Check that it is big enough. */
+  /* Decide on the maximal top-level cell width -- the complement of the
+     above, bounding how coarse the grid is ever allowed to get regardless
+     of what is driving the coarsening (ordinary hydro/star/black-hole/sink
+     h_max, or a star's h_hii). space_regrid() clamps the effective cell
+     width at this value instead of coarsening past it, and stops a periodic
+     run whose search radius outgrows it. */
   const double dmin = min3(s->dim[0], s->dim[1], s->dim[2]);
-  int needtcells = 3 * dmax / dmin;
+  int mintcells =
+      parser_get_opt_param_int(params, "Scheduler:min_top_level_cells",
+                               space_min_top_level_cells_default);
+  if (mintcells < 1)
+    error("Scheduler:min_top_level_cells must be at least 1, got %d",
+          mintcells);
+  if (s->periodic && mintcells < 3)
+    error(
+        "Scheduler:min_top_level_cells is too small %d, needs to be at "
+        "least 3 when periodicity is switched on",
+        mintcells);
+  if (mintcells > maxtcells)
+    error(
+        "Scheduler:min_top_level_cells (%d) cannot exceed "
+        "Scheduler:max_top_level_cells (%d)",
+        mintcells, maxtcells);
+  s->cell_max_width = dmin / mintcells;
+
+  /* space_regrid() clamps the cell width at cell_max_width, which would
+     silently break the aperture floor set above. */
+  if (sink_formation_gas_loop_is_active(sink_properties) &&
+      space_stretch * sink_formation_gas_loop_r_cut(sink_properties) >
+          s->cell_max_width)
+    error(
+        "The sink-formation gas loop aperture (%e, with the space stretch "
+        "factor) is larger than the coarsest top-level cell allowed by "
+        "Scheduler:min_top_level_cells (%e). Lower "
+        "Scheduler:min_top_level_cells or the aperture.",
+        space_stretch * sink_formation_gas_loop_r_cut(sink_properties),
+        s->cell_max_width);
+
+  /* Check that max_top_level_cells is big enough for the grid that
+     min_top_level_cells actually forces along the longest axis.
+     space_regrid() clamps the cell width to cell_max_width whenever
+     cell_min > cell_max_width (see below), so needtcells must be derived
+     from cell_max_width itself rather than recomputed as
+     mintcells * dmax / dmin: the two expressions are not guaranteed to
+     agree bit-for-bit under -ffast-math. */
+  int needtcells = (int)floor(dmax / s->cell_max_width);
   if (maxtcells < needtcells)
     error(
         "Scheduler:max_top_level_cells is too small %d, needs to be at "
         "least %d",
         maxtcells, needtcells);
+
+  /* cell_min derives from dmax and cell_max_width from dmin, so the two
+     bounds can invert on a non-cubic box. space_regrid() then always clamps
+     to cell_max_width: min_top_level_cells silently wins and
+     max_top_level_cells is not honoured. Not fatal, but worth saying. */
+  if (engine_rank == 0 && s->cell_min > s->cell_max_width)
+    message(
+        "Scheduler:min_top_level_cells (%d) overrides "
+        "Scheduler:max_top_level_cells (%d) for this box (dim = [%g %g %g]): "
+        "it asks for a top-level cell width of at most %g, while "
+        "max_top_level_cells asks for no less than %g. The grid will use %g "
+        "and will need %d cells along the longest axis.",
+        mintcells, maxtcells, s->dim[0], s->dim[1], s->dim[2],
+        s->cell_max_width, s->cell_min, s->cell_max_width, needtcells);
 
   /* Get the constants for the scheduler */
   space_maxsize = parser_get_opt_param_int(params, "Scheduler:cell_max_size",
@@ -2952,14 +3009,19 @@ void space_write_cell(const struct space *s, FILE *f, const struct cell *c) {
   if (c->hydro.super != NULL)
     sprintf(hydro_superID, "%lld", c->hydro.super->cellID);
 
+  /* Get radiation level ID -- at or above (never below) hydro.super. */
+  char radiation_levelID[100] = "";
+  if (c->stars.radiation_level != NULL)
+    sprintf(radiation_levelID, "%lld", c->stars.radiation_level->cellID);
+
   /* Write line for current cell */
   fprintf(f, "%lld,%lld,%i,", c->cellID, parent, c->nodeID);
-  fprintf(f, "%i,%i,%i,%i,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
+  fprintf(f, "%i,%i,%i,%i,%s,%s,%s,%g,%g,%g,%g,%g,%g, ", c->hydro.count,
           c->stars.count, c->grav.count, c->sinks.count, superID, hydro_superID,
-          c->loc[0], c->loc[1], c->loc[2], c->width[0], c->width[1],
-          c->width[2]);
-  fprintf(f, "%g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max, c->depth,
-          c->maxdepth);
+          radiation_levelID, c->loc[0], c->loc[1], c->loc[2], c->width[0],
+          c->width[1], c->width[2]);
+  fprintf(f, "%g, %g, %g, %i, %i\n", c->hydro.h_max, c->stars.h_max,
+          c->stars.h_hii_max, c->depth, c->maxdepth);
 
   /* Write children */
   for (int i = 0; i < 8; i++) {
@@ -2990,14 +3052,14 @@ void space_write_cell_hierarchy(const struct space *s, int j) {
     fprintf(f, "name,parent,mpi_rank,");
     fprintf(f,
             "hydro_count,stars_count,gpart_count,sinks_count,super,hydro_super,"
-            "loc1,loc2,loc3,width1,width2,width3,");
-    fprintf(f, "hydro_h_max,stars_h_max,depth,maxdepth\n");
+            "radiation_level,loc1,loc2,loc3,width1,width2,width3,");
+    fprintf(f, "hydro_h_max,stars_h_max,stars_h_hii_max,depth,maxdepth\n");
 
     /* Write root data */
     fprintf(f, "%i, ,-1,", root_id);
-    fprintf(f, "%li,%li,%li, , , , , , , , ,", s->nr_parts, s->nr_sparts,
+    fprintf(f, "%li,%li,%li, , , , , , , , , ,", s->nr_parts, s->nr_sparts,
             s->nr_gparts);
-    fprintf(f, " , , ,\n");
+    fprintf(f, " , , , , ,\n");
   }
 
   /* Write all the top level cells (and their children) */

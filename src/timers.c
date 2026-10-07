@@ -131,6 +131,7 @@ const char *timers_names[timer_count] = {
     "csds",
     "do_stars_sort",
     "do_stars_resort",
+    "stars_hii_ionization_feedback",
     "fof_self",
     "fof_pair",
     "drift_sink",

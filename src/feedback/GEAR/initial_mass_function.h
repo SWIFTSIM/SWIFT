@@ -28,6 +28,8 @@ void initial_mass_function_print(const struct initial_mass_function *imf);
 float initial_mass_function_sample(const struct initial_mass_function *imf,
                                    float f);
 
+/* Mass-weighted (m*n(m)) IMF integral; SN-only (supernovae_ii.c) since
+ * radiation reads pychem's number-weighted Integrated_* datasets instead. */
 void initial_mass_function_integrate(const struct initial_mass_function *imf,
                                      float *data, size_t count,
                                      float log_mass_min, float step_size);

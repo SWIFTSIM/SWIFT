@@ -16,7 +16,7 @@ The feedback prescription is composed of a few different models:
   - The energy injection that defines how to inject the energy / metals into the particles.
   - The Stellar Winds (SW) defines the energy and mass continuously ejected by stars until their death. 
 
-Most of the parameters are defined inside a table (``GEARFeedback:yields_table``). To generate the table, we use `pychem <https://www.astro.unige.ch/~revazy/PyChem/>`_ python module. You can get a table by clicking on `this link <https://virgodb.cosma.dur.ac.uk/swift-webstorage/FeedbackTables/POPIIsw.h5>`_. Some examples in ``swiftsim/examples/`` use this table, e.g. ``swiftsim/examples/GEAR``, ``swiftsim/examples/IsolatedGalaxy/IsolatedGalaxy_multi_component/GEAR/``
+Most of the parameters are defined inside a table (``GEARFeedback:yields_table``), described on the :ref:`gear_stellar_evolution_table` page, including how to get one.
 
 
 Stellar evolution
@@ -140,27 +140,9 @@ Where :math:`Q(m)` is the desired quantity (either :math:`\dot{M}` or :math:`L`)
 Stellar evolution table
 ^^^^^^^^^^^^^^^^^^^^^^^
 
-To generate the table, we use `pychem <https://www.astro.unige.ch/~revazy/PyChem/>`_ python module. Below, we provide an overview of the structure of the table. Please refer to the pychem documentation for more information.
-
-.. graphviz:: feedback_table.dot
-
-where the solid (dashed) squares represent a group (a dataset) with the name of the object underlined and the attributes written below. Everything is in solar mass or without units (e.g. mass fraction or unitless constant).
-
-In ``Data``, the attribute ``elts`` is an array of string with the element names (the last should be ``Metals``, it corresponds to the sum of all the elements), ``MeanWDMass`` is the mass of the white dwarfs and ``SolarMassAbundances`` is an array of float containing the mass fraction of the different element in the sun.
-simply
-In ``IMF``, ``n + 1`` is the number of parts in the IMF, ``as`` are the exponent (``n+1`` elements), ``ms`` are the mass limits between each part (``n`` elements) and ``Mmin`` (``Mmax``) is the minimal (maximal) mass of a star.
-
-In ``LifeTimes``, the coefficients are given in the form of a single table (``coeff_z`` with a 3x3 shape).
-
-In ``SNIa``, ``a`` is the exponent of the distribution of binaries, ``bb1``  and ``bb2`` are the coefficients :math:`b_i` and the other attributes follow the same names as in the SNIa formulas.
-
-The ``Metals`` group from the ``SNIa`` contains the name of each element (``elts``) and the metal mass fraction ejected by each supernova (``data``) in the same order. They must contain the same elements as in ``Data``.
-
-Then, for the ``SNII``, the mass limits are given by ``Mmin`` and ``Mmax``. For the yields, the datasets required are ``Ej`` (mass fraction ejected [processed]), ``Ejnp`` (mass fraction ejected [non processed]) and one dataset for each element present in ``elts``. The datasets should all have the same size, be uniformly sampled in log and contain the attributes ``min`` (mass in log for the first element) and ``step`` (difference of mass in log between two elements).
-
-Finally, in the ``SW`` group, under the subgroup ``MetallicityDependent``, there are 4 2D datasets: ``Energy`` and ``Mass`` for the power and mass ejected by the stellar winds for a single star, and ``Integrated_Energy`` and ``Integrated_Mass_Loss`` for the ejected power and mass of either a Single stellar population (SSP) or a Continuous stars. Each of these datasets contains 8 attributes: ``label`` (the label of the dataset), ``dims`` (the dimensions of the grid), ``m0`` and ``z0`` (the mass and metallicity in log of the first element of the grid), ``dm`` and ``dz`` (the logarithmic spacing in mass and metallcity between two elements of the grid), and ``nm`` and ``nz`` (the number of elements in mass and metallicity in the grid).
-
 GEAR includes two types of tables, one for population II stars and one for population III. The tables are specified by ``GEARFeedback:yields_table`` and ``GEARFeedback:yields_table_first_stars``. The choice of the table depends on the metallicity [Fe/H] (``GEARFeedback:imf_transition_metallicity``). Below this metallicity, we use ``yields_table_first_stars`` ; above, we use ``yields_tables``. If we set ``imf_transition_metallicity`` to 0, we only use ``yields_tables``.
+
+See :ref:`gear_stellar_evolution_table` for the table's structure, how to get one and how to check it. That page also covers its ``Data/Radiation`` group, read by the photoionization, radiation pressure and interstellar radiation field channels described on the :ref:`gear_radiation_model` pages.
 
 .. _particle_types:
 
@@ -224,9 +206,14 @@ The first two parameters relate to the quantity of energy injected and are avail
 
 * ``GEARSupernovaeII:interpolation_size`` is the number of elements to keep in the interpolation of the data.
 
-* ``GEARStellar_wind:interpolation_size_mass``  Size of the mass array of the grid used in stellar winds yields.
+* ``GEARStellarWind:interpolation_size_mass``  Size of the mass array of the grid used in stellar winds yields.
 
-* ``GEARStellar_wind:interpolation_size_metallicity`` Size of the metallicity array of the grid used in stellar winds yields.
+* ``GEARStellarWind:interpolation_size_metallicity`` Size of the metallicity array of the grid used in stellar winds yields.
+
+Two further parameters bound a star's own timestep, parsed for every GEAR feedback build, not only for a star running a radiation channel:
+
+* ``dt_evolution_factor_max``: timestep refinement factor for a Single Stellar Population (SSP) or continuous-IMF star particle. Its timestep is tightened by up to this factor while the population is young, transitioning logistically down to a factor of 1 as it ages. Not used for an individual (``single_star``) particle, which instead takes an exact, zero-tuning-parameter step to its own death. Default: 300.
+* ``event_dt_floor_Myr``: floor, in Myr, on every star's event-anchored timestep terms: an individual star's exact death/supernova moment, and ``dt_HII_safe`` (the HII rebuild-cadence bound described on the :ref:`gear_radiation_hii` page) for every star type. Must stay above ``TimeIntegration:dt_min``, since it is the last guard against a star's timestep collapsing to zero at its death. Default: 1e-4.
 
 Here is the whole feedback section:
 
@@ -241,11 +228,13 @@ Here is the whole feedback section:
 	    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
 	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of elements should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 	    discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+	    dt_evolution_factor_max: 300                             # Timestep refinement factor for a young SSP/continuous-IMF star, easing to 1 as it ages. Every star, not only radiation ones. (Default: 300)
+	    event_dt_floor_Myr: 1e-4                                 # Floor (Myr) on every star's event-anchored timestep terms (death moment, dt_HII_safe). Must exceed TimeIntegration:dt_min. (Default: 1e-4)
 
 	  GEARSupernovaeII:
 	    interpolation_size:  200                                 # Number of elements to keep in the interpolation of the data. (Default: 200)
 
-    GEARStellar_wind:
+    GEARStellarWind:
       interpolation_size_mass:        200                      # Number of elements to keep in the mass interpolation of the data. (Default: 200)
       interpolation_size_metallicity: 110                      # Number of elements to keep in the metallicity interpolation of the data. (Default: 110)
 

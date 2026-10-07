@@ -1225,6 +1225,33 @@ int engine_estimate_nr_tasks(const struct engine *e) {
      */
     n1 += 37;
     n2 += 2;
+
+    const int with_feedback = (e->policy & engine_policy_feedback);
+    const int with_HII_ionization_feedback = with_feedback;
+    if (with_HII_ionization_feedback) {
+      /* radiation_in : 1 self + 13 pairs        | 14
+         radiation_out : 1 self + 13 pairs       | 14
+         hii_ionization: 1                       | 1
+      */
+      n1 += 27;
+
+      /* The radiation splitter (scheduler_splittasks.c) pushes real
+         per-cell tasks down to stars.radiation_level, which follows h_hii
+         and so can sit below the top level: those tasks are created at
+         every level in between and belong in n2. The depth is data
+         dependent, so this is a deliberate over-estimate -- an
+         under-estimate costs a run-time pool reallocation, an
+         over-estimate only a little memory.
+
+         Radiation splitting now actually reaches this level (previously a
+         dead gate kept every radiation task pinned to the top level, so
+         this term was never exercised). Scaled by 4x for headroom: a
+         denseblock stress config (64891 gas + 1 star particles) measured
+         24-38 actual tasks/cell against a 118-139 estimated max here
+         (~20-30% utilisation) with this margin. */
+      n2 += 4 * 27;
+    }
+
 #ifdef WITH_MPI
     n1 += 6;
 #endif
@@ -1589,8 +1616,26 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
 
   /* Run through the cells, and their tasks to mark as unskipped. */
+  e->rebuild_demand_criterion = NULL;
   engine_unskip(e);
-  if (e->forcerebuild) error("engine_unskip faled after a rebuild!");
+  if (e->forcerebuild) {
+    if (e->rebuild_demand_criterion != NULL)
+      error(
+          "engine_unskip failed after a rebuild! %s demanded another rebuild "
+          "for the cell at [%g %g %g] (width %g, depth %d), so that criterion "
+          "asks for a reach no grid this run can provide. Check the startup "
+          "warnings for a search radius exceeding the top-level cell width.",
+          e->rebuild_demand_criterion, e->rebuild_demand_loc[0],
+          e->rebuild_demand_loc[1], e->rebuild_demand_loc[2],
+          e->rebuild_demand_width, e->rebuild_demand_depth);
+    else
+      error(
+          "engine_unskip failed after a rebuild! A rebuild was demanded again "
+          "by the tree that was just built. No radiation criterion recorded "
+          "the demand, so it came from one of the uninstrumented criteria "
+          "(hydro, stars, black holes, sinks or RT) -- do not read this as a "
+          "radiation reach problem.");
+  }
 
   /* Print the status of the system */
   if (e->verbose) engine_print_task_counts(e);
@@ -1844,11 +1889,14 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_stars_in || t->type == task_type_stars_out ||
         t->type == task_type_star_formation ||
         t->type == task_type_star_formation_sink ||
+        t->type == task_type_stars_hii_ionization_feedback ||
         t->type == task_type_stars_resort || t->type == task_type_extra_ghost ||
         t->type == task_type_stars_ghost ||
         t->type == task_type_stars_ghost_in ||
-        t->type == task_type_stars_ghost_out || t->type == task_type_sink_in ||
-        t->type == task_type_sink_ghost1 || t->type == task_type_sink_ghost2 ||
+        t->type == task_type_stars_ghost_out ||
+        t->type == task_type_stars_feedback_ghost ||
+        t->type == task_type_sink_in || t->type == task_type_sink_ghost1 ||
+        t->type == task_type_sink_ghost2 ||
         t->type == task_type_sink_formation || t->type == task_type_sink_out ||
         t->type == task_type_sink_prep_ghost_in ||
         t->type == task_type_sink_prep_ghost_out ||
@@ -1898,7 +1946,9 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_sf_counts ||
         t->subtype == task_subtype_grav_counts ||
         t->subtype == task_subtype_rt_gradient ||
-        t->subtype == task_subtype_rt_transport)
+        t->subtype == task_subtype_rt_transport ||
+        t->subtype == task_subtype_stars_radiation_in ||
+        t->subtype == task_subtype_stars_radiation_out)
       t->skip = 1;
   }
 
@@ -1954,11 +2004,12 @@ void engine_launch(struct engine *e, const char *call) {
   /* Prepare the scheduler. */
   atomic_inc(&e->sched.waiting);
 
+  /* Load the tasks before releasing the runners, or pop order races the queue
+   * fill and runs are not reproducible. */
+  scheduler_start(&e->sched);
+
   /* Cry havoc and let loose the dogs of war. */
   swift_barrier_wait(&e->run_barrier);
-
-  /* Load the tasks. */
-  scheduler_start(&e->sched);
 
   /* Remove the safeguard. */
   pthread_mutex_lock(&e->sched.sleep_mutex);
@@ -2735,6 +2786,25 @@ int engine_step(struct engine *e) {
         e->step_props, dead_time);
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* A star's HII front hitting the reach clamp waits on the next rebuild
+     * to re-level its task instead of expanding further this step. A
+     * persistently growing count means the wired stencil's placement
+     * headroom (radiation_search_radius_factor, src/cell_stars.h -- a
+     * compile-time constant) is too small for this star's growth rate. */
+    if (e->radiation_reach_clamp_count > 0) {
+      warning(
+          "Radiation reach-clamp events: %lld cumulative (+%lld this step) "
+          "-- the wired stencil's placement headroom "
+          "(radiation_search_radius_factor) may be too small for this "
+          "star's growth rate.",
+          e->radiation_reach_clamp_count,
+          e->radiation_reach_clamp_count -
+              e->radiation_reach_clamp_count_last_step);
+      e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
+    }
 #endif
 
     /* Write the star formation information to the file */
@@ -4106,6 +4176,9 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
 #endif
     gravity_cache_clean(&e->runners[k].ci_gravity_cache);
     gravity_cache_clean(&e->runners[k].cj_gravity_cache);
+    if (e->runners[k].hii_maintenance_buffer != NULL)
+      swift_free("hii_maintenance_buffer",
+                 e->runners[k].hii_maintenance_buffer);
   }
   swift_free("runners", e->runners);
   free(e->snapshot_units);
@@ -4383,7 +4456,8 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
 
   struct feedback_props *feedback_properties =
       (struct feedback_props *)malloc(sizeof(struct feedback_props));
-  feedback_struct_restore(feedback_properties, stream);
+  feedback_struct_restore(feedback_properties, stream, e->internal_units,
+                          e->physical_constants);
   e->feedback_props = feedback_properties;
 
   struct pressure_floor_props *pressure_floor_properties =

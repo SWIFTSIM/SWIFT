@@ -33,6 +33,7 @@
 #define EXTRA_STAR_LOOPS_2
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR_thermal/feedback.h"
+#define IONIZATION_FEEDBACK_LOOP
 #elif defined(FEEDBACK_GEAR_MECHANICAL)
 #include "./feedback/GEAR_mechanical/feedback.h"
 #define EXTRA_STAR_LOOPS_2

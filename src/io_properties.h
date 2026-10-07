@@ -53,6 +53,9 @@ typedef void (*conversion_func_part_long_long)(const struct engine *,
                                                const struct part *,
                                                const struct xpart *,
                                                long long *);
+typedef void (*conversion_func_part_char)(const struct engine *,
+                                          const struct part *,
+                                          const struct xpart *, char *);
 typedef void (*conversion_func_gpart_float)(const struct engine *,
                                             const struct gpart *, float *);
 typedef void (*conversion_func_gpart_int)(const struct engine *,
@@ -168,6 +171,7 @@ struct io_props {
     conversion_func_part_int convert_part_i;
     conversion_func_part_double convert_part_d;
     conversion_func_part_long_long convert_part_l;
+    conversion_func_part_char convert_part_c;
 
     /* Conversion function for gpart */
     conversion_func_gpart_float convert_gpart_f;

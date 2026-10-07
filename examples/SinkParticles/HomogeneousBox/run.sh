@@ -7,9 +7,11 @@ n_ranks=${n_ranks:=0}      # Number of ranks to use
 n_threads=${n_threads:=8}  # Number of threads to use
 level=${level:=5}  # Number of particles = 2^(3*level)
 jeans_length=${jeans_length:=0.250} # Jeans wavelength in unit of the boxsize
+gas_particle_mass=${gas_mass:=50} # Mass of the gas particles in Msun
 debug=${debug:=0}
 run_name=${run_name:=""}
 with_star_formation=${with_star_formation=0}
+restart=${restart=0} # Shall we start from a restart file
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -17,6 +19,12 @@ scripts_location="../../GEAR_ICs_and_SCRIPTS"
 echo "========================================"
 echo "Preparing the simulation..."
 echo "========================================"
+
+# The yields table must carry a Data/Radiation group, and the band-edge
+# datasets the interstellar radiation field reads: the tables of the public
+# hosts (getChemistryTable.sh) carry neither.
+$scripts_location/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
+$scripts_location/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
 
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
@@ -34,7 +42,8 @@ fi
 if [ ! -e ICs_homogeneous_box.hdf5 ]
 then
     echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length
+    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length \
+	   --mass $gas_particle_mass
 fi
 
 # Get the Grackle cooling table
@@ -42,12 +51,6 @@ if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
     $scripts_location/getGrackleCoolingTable.sh
-fi
-
-if [ ! -e POPII.hdf5 ]
-then
-    echo "Fetching the chemistry tables..."
-    $scripts_location/getChemistryTable.sh --with-winds
 fi
 
 # Get the debugging ICs
@@ -65,12 +68,22 @@ else
     parameter_file="params.yml"
 fi
 
+if [[ "$restart" -eq 0 ]]; then
+    runtime_params="$runtime_params"
+else
+    runtime_params="--restart $runtime_params"
+fi
+
 # Create output directory
 DIR=snap #First test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+
+    # Don't remove the snap if we restart
+    if [[ "$restart" -eq 0 ]]; then
+	rm -r $DIR
+    fi
 else
     echo "$DIR directory does not exists. It will be created."
     mkdir $DIR
@@ -83,11 +96,12 @@ else
 fi
 
 if [[ "$with_star_formation" -eq 0 ]]; then
-    runtime_params="--sinks"
+    runtime_params="$runtime_params --sinks"
 else
-    runtime_params="--star-formation"
+    runtime_params="$runtime_params --star-formation"
 fi
 
+echo $runtime_params
 echo "========================================"
 echo "Running simulation..."
 echo "========================================"

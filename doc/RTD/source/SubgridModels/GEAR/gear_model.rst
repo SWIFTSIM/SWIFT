@@ -71,6 +71,9 @@ and set to a negative value, the stellar particle will provide no feedback.
 A similar behavior will be obtained if the parameter ``Stars:overwrite_birth_time`` is set to 1 and
 ``Stars:birth_time`` to -1.
 
+.. note::
+   ``Stars:HII_max_search_radius`` (comoving internal units) is a mandatory parameter for every GEAR feedback build, whether or not you use the HII photoionization channel: SWIFT stops at start-up if it is missing, and it has no default. See :ref:`gear_radiation_hii` for what it controls.
+
 
 .. _gear_grackle_cooling:
 
@@ -120,7 +123,7 @@ Parameters
 ++++++++++
 
 When starting a simulation without providing the different element fractions in the non equilibrium mode, the code supposes an equilibrium and computes them automatically.
-The code uses an iterative method in order to find the correct initial composition and this method can be tuned with two parameters. ``GrackleCooling:max_steps`` defines the maximal number of steps to reach the convergence and ``GrackleCooling:convergence_limit`` defines the tolerance in the relative error.
+``GrackleCooling:max_steps`` also caps the number of sub-cycle iterations Grackle is allowed per particle solve; a solve that exceeds it fails and is counted.
 
 In the parameters file, a few different parameters are available.
 
@@ -167,10 +170,9 @@ Here is the complete section in the parameter file:
     with_UV_background: 1                        # Enable or not the UV background
     redshift: 0                                  # Redshift to use (-1 means time based redshift)
     with_metal_cooling: 1                        # Enable or not the metal cooling
-    provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-    provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
-    max_steps: 10000                             # (optional) Max number of step when computing the initial composition
-    convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
+    volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
+    specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
+    max_steps: 10000                             # (optional) Maximal Grackle sub-cycle iterations per particle solve
     thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
     self_shielding_method: -1                    # (optional) Grackle (1->3 for Grackle's ones, 0 for none and -1 for GEAR)
     self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
@@ -183,6 +185,10 @@ Here is the complete section in the parameter file:
     RT_HeI_ionization_rate_cgs : 0               # HeI ionization  rate in cgs [1/s]
     RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
     RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+
+    H2_self_shielding: 0                         # H2 self-shielding from the Lyman-Werner field: 0 none, 2 kernel-based, 3 local Jeans length. The default is wrong for an ISRF run tracking H2, see below
+    H2_self_shielding_path: kernel_radius        # Mode 2 only: kernel_radius or kernel_diameter
+    photoelectric_heating_efficiency: constant   # constant, wolfire1995 or density_dependent, see below
 
     volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
     specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
@@ -203,6 +209,9 @@ Here is the complete section in the parameter file:
     initial_nH2I_to_nH_ratio:    -1              # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
     initial_nH2II_to_nH_ratio:   -1              # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
     initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+
+.. note::
+   ``H2_self_shielding``, ``H2_self_shielding_path`` and ``photoelectric_heating_efficiency`` above matter for the GEAR interstellar radiation field (ISRF) module: copying the block as-is leaves H2 unshielded from the Lyman-Werner field. See :ref:`gear_isrf` for what each value means and which one to pick.
 
 .. note::
    A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``. ``examples/Cooling/CoolingWithPrimordialElements/`` runs a uniform cosmological box with imposed abundances and let them evolve down to redshift 0.

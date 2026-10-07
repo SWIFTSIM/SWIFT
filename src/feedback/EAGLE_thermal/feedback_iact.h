@@ -38,16 +38,20 @@
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {
+runner_iact_nonsym_feedback_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, const struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct hydro_props *hydro_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
@@ -182,12 +186,16 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
- * @param constants The physical constants (in internal units).
+ * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param time_base The time base used to compute integer times.
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
@@ -195,7 +203,9 @@ runner_iact_nonsym_feedback_apply(
     const struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, const integertime_t ti_current) {
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current, const double time_base,
+    const int with_cosmology) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (si->count_since_last_enrichment != 0 && engine_current_step > 0)
@@ -436,5 +446,124 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 }
+
+/**
+ * @brief ISRF propagation (symmetric): no-op, this feedback model
+ * does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param us Unit system.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct unit_system *us) {}
+
+/**
+ * @brief ISRF propagation (non-symmetric): no-op, this feedback
+ * model does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param us Unit system.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct part *restrict pi,
+                                    const struct part *restrict pj,
+                                    const float a, const float H,
+                                    const struct unit_system *us) {}
+
+/**
+ * @brief `grad(u)` interaction (symmetric): no-op, this
+ * feedback model does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief `grad(u)` interaction (non-symmetric): no-op, this
+ * feedback model does not track the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
+                                 const float hi, const float hj,
+                                 struct part *restrict pi,
+                                 struct part *restrict pj, const float a,
+                                 const float H) {}
+
+/**
+ * @brief Negativity-triggered artificial-dissipation interaction (symmetric):
+ * no-op, this feedback model does not track
+ * the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+/**
+ * @brief Negativity-triggered artificial-dissipation interaction
+ * (non-symmetric): no-op, this feedback model does not track
+ * the ISRF band fields.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle (not updated).
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct part *restrict pi,
+                                    const struct part *restrict pj,
+                                    const float a, const float H) {}
 
 #endif /* SWIFT_EAGLE_FEEDBACK_IACT_THERMAL_H */

@@ -83,6 +83,14 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
   }
   bzero(cell->hydro.parts, count * sizeof(struct part));
 
+  /* The stars density loop forms a pointer into this array for every gas
+     neighbour, so it must exist even though nothing reads it here. */
+  if (posix_memalign((void **)&cell->hydro.xparts, xpart_align,
+                     count * sizeof(struct xpart)) != 0) {
+    error("couldn't allocate xparticles, no. of particles: %d", (int)count);
+  }
+  bzero(cell->hydro.xparts, count * sizeof(struct xpart));
+
   /* Construct the parts */
   struct part *part = cell->hydro.parts;
   for (size_t x = 0; x < n; ++x) {
@@ -152,6 +160,15 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 
         spart->time_bin = 1;
 
+#if defined(FEEDBACK_GEAR) || defined(FEEDBACK_AGORA)
+        /* These modules gate the stars density loop on this flag, and a
+           zeroed star never sets it, so both the loop and the brute-force
+           reference would skip every star. Flagging a deterministic half of
+           them keeps the gate discriminating: with every star flagged, a
+           loop that ignored the gate would still agree with the reference. */
+        spart->feedback_data.will_do_feedback = (spart->id % 2 == 0);
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
         spart->ti_drift = 8;
         spart->ti_kick = 8;
@@ -204,6 +221,7 @@ struct cell *make_cell(size_t n, size_t n_stars, double *offset, double size,
 
 void clean_up(struct cell *ci) {
   free(ci->hydro.parts);
+  free(ci->hydro.xparts);
   free(ci->stars.parts);
   free(ci->hydro.sort);
   free(ci->stars.sort);
@@ -216,6 +234,7 @@ void clean_up(struct cell *ci) {
 void zero_particle_fields(struct cell *c) {
   for (int pid = 0; pid < c->stars.count; pid++) {
     stars_init_spart(&c->stars.parts[pid]);
+    feedback_init_spart(&c->stars.parts[pid]);
   }
 }
 
@@ -233,6 +252,23 @@ void end_calculation(struct cell *c, const struct cosmology *cosmo) {
 }
 
 /**
+ * @brief Number of gas neighbours the feedback density loop counted for a star.
+ *
+ * Only the GEAR module keeps such a counter. Other modules report 0, so the
+ * column is present in every build and the tolerance files stay shared.
+ *
+ * @param sp The #spart to query.
+ */
+int star_feedback_ngb_count(const struct spart *sp) {
+#if defined(FEEDBACK_GEAR)
+  return sp->feedback_data.num_ngbs;
+#else
+  (void)sp;
+  return 0;
+#endif
+}
+
+/**
  * @brief Dump all the particles to a file
  */
 void dump_particle_fields(char *fileName, struct cell *main_cell,
@@ -240,18 +276,19 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
   FILE *file = fopen(fileName, "w");
 
   /* Write header */
-  fprintf(file, "# %4s %10s %10s %10s %13s %13s\n", "ID", "pos_x", "pos_y",
-          "pos_z", "wcount", "wcount_dh");
+  fprintf(file, "# %4s %10s %10s %10s %13s %13s %13s\n", "ID", "pos_x", "pos_y",
+          "pos_z", "wcount", "wcount_dh", "fb_ngb_count");
 
   fprintf(file, "# Main cell --------------------------------------------\n");
 
   /* Write main cell */
   for (int pid = 0; pid < main_cell->stars.count; pid++) {
-    fprintf(file, "%6llu %10f %10f %10f %13e %13e\n",
+    fprintf(file, "%6llu %10f %10f %10f %13e %13e %13d\n",
             main_cell->stars.parts[pid].id, main_cell->stars.parts[pid].x[0],
             main_cell->stars.parts[pid].x[1], main_cell->stars.parts[pid].x[2],
             main_cell->stars.parts[pid].density.wcount,
-            main_cell->stars.parts[pid].density.wcount_dh);
+            main_cell->stars.parts[pid].density.wcount_dh,
+            star_feedback_ngb_count(&main_cell->stars.parts[pid]));
   }
 
   /* Write all other cells */
@@ -266,11 +303,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
                 i - 1, j - 1, k - 1);
 
         for (int pjd = 0; pjd < cj->stars.count; pjd++) {
-          fprintf(file, "%6llu %10f %10f %10f %13e %13e\n",
+          fprintf(file, "%6llu %10f %10f %10f %13e %13e %13d\n",
                   cj->stars.parts[pjd].id, cj->stars.parts[pjd].x[0],
                   cj->stars.parts[pjd].x[1], cj->stars.parts[pjd].x[2],
                   cj->stars.parts[pjd].density.wcount,
-                  cj->stars.parts[pjd].density.wcount_dh);
+                  cj->stars.parts[pjd].density.wcount_dh,
+                  star_feedback_ngb_count(&cj->stars.parts[pjd]));
         }
       }
     }
@@ -402,7 +440,21 @@ int main(int argc, char *argv[]) {
   stars_p.h_tolerance = 1e0;
   stars_p.max_smoothing_iterations = 1;
 
+  /* Zeroed so that every engine member the interaction loops read is
+     defined, not stack garbage. The loops forward the feedback properties,
+     constants, units and cooling data to the feedback density
+     interaction. */
+  static struct feedback_props feedback_properties;
+  static struct phys_const physical_constants;
+  static struct unit_system internal_units;
+  static struct cooling_function_data cooling_function;
+
   struct engine engine;
+  bzero(&engine, sizeof(struct engine));
+  engine.feedback_props = &feedback_properties;
+  engine.physical_constants = &physical_constants;
+  engine.internal_units = &internal_units;
+  engine.cooling_func = &cooling_function;
   engine.s = &space;
   engine.time = 0.1f;
   engine.ti_current = 8;
@@ -464,8 +516,15 @@ int main(int argc, char *argv[]) {
     int scount = 0;
     if ((pid = (int *)malloc(sizeof(int) * main_cell->stars.count)) == NULL)
       error("Can't allocate memory for pid.");
+    /* Same predicate as the stars ghost (runner_do_stars_ghost), which is
+       the only producer of this index list in production. Selecting on
+       activity alone would feed the ungated subset loops stars that the
+       gated non-subset loops, and the brute force, both skip. */
+    const int with_rt = (engine.policy & engine_policy_rt);
     for (int k = 0; k < main_cell->stars.count; k++)
-      if (spart_is_active(&main_cell->stars.parts[k], &engine)) {
+      if (spart_is_active(&main_cell->stars.parts[k], &engine) &&
+          (feedback_is_active(&main_cell->stars.parts[k], &engine) ||
+           with_rt)) {
         pid[scount] = k;
         ++scount;
       }
@@ -516,6 +575,10 @@ int main(int argc, char *argv[]) {
               outputFileNameExtension);
       dump_particle_fields(outputFileName, main_cell, cells);
     }
+
+#if defined(TEST_DOSELF_SUBSET) || defined(TEST_DOPAIR_SUBSET)
+    free(pid);
+#endif
   }
 
   /* Output timing */
@@ -561,6 +624,20 @@ int main(int argc, char *argv[]) {
 
   /* Let's get physical ! */
   end_calculation(main_cell, &cosmo);
+
+  /* Refuse to report agreement between two sets of zeros. If every star in
+     the main cell was skipped, the comparison below is vacuous and would
+     pass whatever the loops did. */
+  int n_stars_with_neighbours = 0;
+  for (int pid = 0; pid < main_cell->stars.count; pid++)
+    if (main_cell->stars.parts[pid].density.wcount > 0.f)
+      ++n_stars_with_neighbours;
+  if (n_stars_with_neighbours == 0)
+    error(
+        "No star in the main cell found a neighbour in the brute-force pass: "
+        "the accuracy comparison would be vacuous.");
+  message("Brute force: %d of %d main-cell stars have neighbours.",
+          n_stars_with_neighbours, main_cell->stars.count);
 
   /* Dump */
   sprintf(outputFileName, "star_brute_force_27_%.150s.dat",

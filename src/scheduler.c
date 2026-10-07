@@ -553,6 +553,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * scount_i * count_i;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * scount_i * count_i;
+        } else if (t->subtype == task_subtype_stars_radiation_in ||
+                   t->subtype == task_subtype_stars_radiation_out) {
+          cost = 0.f;
         } else {
           error("Untreated sub-type for selfs: %s",
                 subtaskID_names[t->subtype]);
@@ -660,6 +663,9 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
+        } else if (t->subtype == task_subtype_stars_radiation_in ||
+                   t->subtype == task_subtype_stars_radiation_out) {
+          cost = 0.f;
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);
@@ -732,6 +738,26 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
       case task_type_sink_formation:
         cost = wscale * (count_i + sink_count_i);
         break;
+      case task_type_stars_hii_ionization_feedback: {
+        /* Charged over the gas this task actually visits, not just its own
+           cell: every active star walks its whole radiation_in link set
+           (runner_dosub_stars_hii_ionization_feedback), so pricing it on
+           ci alone under-weights it by the number of linked regions and
+           biases both queue ordering and the MPI repartition. */
+        float count_reachable = count_i;
+        if (t->ci != NULL && t->ci->stars.radiation_level != NULL) {
+          for (const struct link *l =
+                   t->ci->stars.radiation_level->stars.radiation_in;
+               l != NULL; l = l->next) {
+            const struct cell *cj = (l->t->cj == t->ci->stars.radiation_level)
+                                        ? l->t->ci
+                                        : l->t->cj;
+            if (cj != NULL) count_reachable += cj->hydro.count;
+          }
+        }
+        cost = wscale * scount_i * count_reachable;
+        break;
+      }
       case task_type_rt_ghost1:
         cost = wscale * count_i;
         break;
@@ -947,6 +973,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
             t->subtype == task_subtype_external_grav) {
           qid = t->ci->grav.super->owner;
           owner = &t->ci->grav.super->owner;
+        } else if (t->subtype == task_subtype_stars_radiation_in ||
+                   t->subtype == task_subtype_stars_radiation_out) {
+          qid = -1;
         } else {
           qid = t->ci->hydro.super->owner;
           owner = &t->ci->hydro.super->owner;
@@ -970,6 +999,10 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
       case task_type_timestep:
         qid = t->ci->super->owner;
         owner = &t->ci->super->owner;
+        break;
+      case task_type_stars_hii_ionization_feedback:
+        qid = t->ci->stars.radiation_level->owner;
+        owner = &t->ci->stars.radiation_level->owner;
         break;
       case task_type_pair:
         qid = t->ci->super->owner;
@@ -1464,7 +1497,17 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
       pthread_mutex_lock(&s->sleep_mutex);
       res = queue_gettask(&s->queues[qid], prev, 1);
       if (res == NULL && s->waiting > 0) {
-        pthread_cond_wait(&s->sleep_cond, &s->sleep_mutex);
+        struct timespec ts;
+        clock_gettime(scheduler_sleep_clock, &ts);
+        ts.tv_nsec += scheduler_sleep_timeout_ms * 1000000L;
+        ts.tv_sec += ts.tv_nsec / 1000000000L;
+        ts.tv_nsec %= 1000000000L;
+        /* Return value deliberately ignored: a timeout, a spurious wake and
+         * a real broadcast all fall through to the enclosing
+         * while (s->waiting > 0 && res == NULL) loop, which already retries
+         * unconditionally regardless of why the wait returned. Do not add a
+         * branch on ETIMEDOUT. */
+        (void)pthread_cond_timedwait(&s->sleep_cond, &s->sleep_mutex, &ts);
       }
       pthread_mutex_unlock(&s->sleep_mutex);
     }
@@ -1510,9 +1553,21 @@ void scheduler_init(struct scheduler *s, struct space *space, int nr_tasks,
   /* Initialize each queue. */
   for (int k = 0; k < nr_queues; k++) queue_init(&s->queues[k], NULL);
 
-  /* Init the sleep mutex and cond. */
-  if (pthread_cond_init(&s->sleep_cond, NULL) != 0 ||
-      pthread_mutex_init(&s->sleep_mutex, NULL) != 0)
+  /* Init the sleep mutex and cond, on scheduler_sleep_clock so the
+   * pthread_cond_timedwait() deadlines in scheduler_gettask() are immune to
+   * CLOCK_REALTIME steps (e.g. NTP). */
+#ifndef __APPLE__
+  pthread_condattr_t sleep_cond_attr;
+  if (pthread_condattr_init(&sleep_cond_attr) != 0 ||
+      pthread_condattr_setclock(&sleep_cond_attr, scheduler_sleep_clock) != 0 ||
+      pthread_cond_init(&s->sleep_cond, &sleep_cond_attr) != 0 ||
+      pthread_condattr_destroy(&sleep_cond_attr) != 0)
+    error("Failed to initialize sleep barrier.");
+#else
+  if (pthread_cond_init(&s->sleep_cond, NULL) != 0)
+    error("Failed to initialize sleep barrier.");
+#endif
+  if (pthread_mutex_init(&s->sleep_mutex, NULL) != 0)
     error("Failed to initialize sleep barrier.");
 
   /* Init the unlocks. */

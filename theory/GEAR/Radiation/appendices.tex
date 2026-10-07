@@ -1,0 +1,91 @@
+% theory/GEAR/Radiation/appendices.tex
+% Appendix material for the HII photoionization theory document. Input
+% from radiation.tex (the master document) after \appendix; not
+% standalone. Currently holds the ionizing-photon-rate blackbody fit,
+% moved out of 01_algorithm.tex's main line of argument since it is a
+% self-contained input (a star's mass -> ionizing photon rate mapping)
+% rather than part of the region-growth algorithm itself.
+
+\section{Ionizing photon rate: blackbody spectrum fit}
+\label{sec:blackbody}
+
+Every active star's ionizing photon rate $\dot N_{\rm ion}$ (the budget
+spent in Section~\ref{sec:photon-budget} of the algorithm document)
+comes from an interpolation of the
+$(M,Z)$-dependent \code{Data/Radiation} table of \code{pychem}. SWIFT does
+not evaluate the blackbody chain of this appendix. The chain gives the
+blackbody estimate of $\dot N_{\rm ion}$ from the stellar mass alone.
+Unlike a simple empirical
+$\dot N_{\rm ion}(M)$ fit, it derives $\dot N_{\rm ion}$ from the
+star's own blackbody spectrum, via a mass $\to$ radius $\to$
+luminosity $\to$ effective temperature chain:
+\begin{align}
+  R(M) &= R_\odot \times
+  \begin{cases}
+    (M/M_\odot)^{0.8} & M < 1\,M_\odot \\
+    (M/M_\odot)^{0.57} & 1 \le M/M_\odot < 8 \\
+    (M/M_\odot)^{0.5} & M/M_\odot \ge 8
+  \end{cases}
+  \label{eq:mass-radius} \\
+  L(M) &= L_\odot \times
+  \begin{cases}
+    0.185\,(M/M_\odot)^{2} & M/M_\odot < 0.43 \\
+    (M/M_\odot)^{4} & 0.43 \le M/M_\odot < 2 \\
+    1.5\,(M/M_\odot)^{3.5} & 2 \le M/M_\odot < 54 \\
+    32000\,(M/M_\odot) & M/M_\odot \ge 54
+  \end{cases}
+  \label{eq:mass-luminosity} \\
+  T_{\rm eff} &= 5780\,{\rm K} \times
+  \left(\frac{L/L_\odot}{(R/R_\odot)^2}\right)^{1/4},
+  \label{eq:stefan-boltzmann}
+\end{align}
+i.e.\ a piecewise power-law mass--radius and mass--luminosity relation,
+then $T_{\rm eff}$
+from the Stefan--Boltzmann law applied to $L$ and $R$ directly (not a
+separate mass--temperature fit: see the note at the end of this
+section). $\dot N_{\rm ion}$ is then the photon-number flux of a
+Planck spectrum of temperature $T_{\rm eff}$ above the H-ionizing edge
+$h\nu_0=13.6\,$eV:
+\begin{equation}
+  \dot N_{\rm ion} = \frac{L}{k_B T_{\rm eff}} \times
+  \frac{15}{\pi^4} \int_{x_0}^{\infty} \frac{x^2}{e^x-1}\,dx, \qquad
+  x_0 = \frac{h\nu_0}{k_B T_{\rm eff}},
+  \label{eq:planck-photon-rate}
+\end{equation}
+the standard Planck photon-number integral normalized so the
+$15/\pi^4$ prefactor makes the \emph{bolometric} photon rate exact in
+the $x_0\to0$ limit. The incomplete integral in
+Eq.~\ref{eq:planck-photon-rate} has no closed form, so it is
+evaluated via the standard series expansion
+\begin{equation}
+  \int_{x_0}^\infty \frac{x^2}{e^x-1}\,dx =
+  \sum_{n=1}^{\infty} \frac{e^{-nx_0}}{n}
+  \left(x_0^2 + \frac{2x_0}{n} + \frac{2}{n^2}\right),
+  \label{eq:planck-series}
+\end{equation}
+truncated at $n=5$ terms (or earlier once $e^{-nx_0}<10^{-10}$),
+sufficient given $x_0 \gtrsim 3$ for any star hot enough to ionize
+hydrogen at all, so the series converges geometrically fast. If
+$x_0 > 45$ (i.e.\ $e^{-x_0}<10^{-20}$, negligible ionizing output, as
+happens for any star with $T_{\rm eff}\lesssim3500\,$K), $\dot N_{\rm
+ion}=0$ follows without evaluating the series.
+
+\textbf{Note: the blackbody chain saturates at high mass.}
+The Stefan--Boltzmann path gives a fixed $T_{\rm eff}\approx77{,}300\,$K for
+every mass above $\approx54\,M_\odot$: a structural artifact of the
+mass--luminosity fit turning linear ($L\propto M$) at exactly the mass
+the mass--radius fit is already $R\propto M^{0.5}$, making $L/R^2$ (and
+hence $T_{\rm eff}$) mass-independent there by construction, not
+physical intent. Both fits are single-metallicity piecewise power laws
+with no $(M,Z)$ dependence. SWIFT therefore reads the luminosity, the
+effective temperature and the ionizing photon rate from the
+$(M,Z)$-dependent \code{pychem} stellar tables, and no empirical radius,
+luminosity or temperature fit remains in the code.
+
+\paragraph{Implementation.} The table reads are
+\code{radiation\_get\_star\_luminosity},
+\code{radiation\_get\_star\_ionization\_rate} and
+\code{radiation\_get\_star\_teff}, declared in
+\code{src/feedback/GEAR/radiation.h:313}, \code{:315} and \code{:324} and
+defined in \code{src/feedback/GEAR/radiation\_getters.c:503}, \code{:522} and
+\code{:684}.

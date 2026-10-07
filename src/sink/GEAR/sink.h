@@ -473,6 +473,12 @@ INLINE static int sink_is_forming(
   /* The particle is not elligible */
   if (!p->sink_data.can_form_sink || p->sink_data.N_neighbours < 1) return 0;
 
+  /* TODO: Update doc */
+  /* If you are tagged as ionized, you cannot be star-forming */
+  if (feedback_is_part_tagged_as_ionized(p, xp)) {
+    return 0;
+  }
+
   const struct sink_part_data *sink_data = &p->sink_data;
 
   const float temperature_threshold = sink_props->temperature_threshold;
@@ -1047,6 +1053,7 @@ INLINE static void sink_copy_properties_to_star(
 
   /* Sph smoothing length */
   sp->h = sink->h;
+  sp->h_hii = 0.0;
 
   /* Feedback related initialisation */
   /* ------------------------------- */

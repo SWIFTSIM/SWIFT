@@ -24,6 +24,9 @@
  * @brief Cooling using the GRACKLE 3.1.1 library.
  */
 
+/* Config parameters. */
+#include <config.h>
+
 /*! CMB temperature at redshift 0, in Kelvin (used by cooling_utils.h). */
 #define CMB_TEMPERATURE_AT_REDSHIFT_0_IN_KELVIN 2.725
 
@@ -32,6 +35,12 @@
 #include "cooling_utils.h"
 #include "error.h"
 #include "inline.h"
+
+#if defined(GEAR_COOLING)
+#include "cooling_gear_subgrid.h"
+#else
+#include "cooling_none_subgrid.h"
+#endif
 
 struct part;
 struct xpart;
@@ -47,6 +56,9 @@ struct swift_params;
 /* need to rework (and check) code if changed */
 #define GRACKLE_NPART 1
 #define GRACKLE_RANK 3
+
+void cooling_pop_grackle_solve_failure_counts(long long *failed,
+                                              long long *recovered);
 
 void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,
@@ -147,6 +159,14 @@ double cooling_get_ycompton(const struct phys_const *phys_const,
                             const struct cosmology *cosmo,
                             const struct cooling_function_data *cooling,
                             const struct part *p, const struct xpart *xp);
+
+gr_float cooling_get_dust_temperature(
+    const struct phys_const *restrict phys_const,
+    const struct unit_system *restrict us,
+    const struct hydro_props *hydro_properties,
+    const struct cosmology *restrict cosmo,
+    const struct cooling_function_data *restrict cooling,
+    const struct part *restrict p, const struct xpart *restrict xp);
 
 float cooling_timestep(const struct cooling_function_data *restrict cooling,
                        const struct phys_const *restrict phys_const,

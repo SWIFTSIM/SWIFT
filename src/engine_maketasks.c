@@ -23,6 +23,9 @@
  ******************************************************************************/
 
 /* Config parameters. */
+#include "scheduler.h"
+#include "task.h"
+
 #include <config.h>
 
 /* Some standard headers. */
@@ -55,6 +58,7 @@
 #include "proxy.h"
 #include "rt_properties.h"
 #include "sink_properties.h"
+#include "runner_radiation_feedback.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -2122,6 +2126,12 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
                               0, /* implicit = */ 1, c, NULL);
 #endif
 
+        c->stars.feedback_ghost = scheduler_addtask(
+            s, task_type_stars_feedback_ghost, task_subtype_none, 0,
+            /* implicit = */ 1, c, NULL);
+
+        scheduler_addunlock(s, c->stars.feedback_ghost, c->stars.stars_out);
+
 #ifdef WITH_CSDS
         if (with_csds) {
           scheduler_addunlock(s, c->super->csds, c->stars.stars_in);
@@ -2265,6 +2275,42 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   }
 }
 
+/**
+ * @brief Generate the subgrid radiation hierarchical tasks for a hierarchy of
+ * cells - i.e. all the O(Npart) tasks -- subgrid radiation version
+ *
+ * Tasks are only created here. The dependencies will be added later on.
+ *
+ * Note that there is no need to recurse below the super-cell. Note also
+ * that we only add tasks if the relevant particles are present in the cell.
+ *
+ * @param e The #engine.
+ * @param c The #cell.
+ */
+void engine_make_hierarchical_tasks_radiation_subgrid(struct engine *e,
+                                                      struct cell *c) {
+#ifdef IONIZATION_FEEDBACK_LOOP
+  struct scheduler *s = &e->sched;
+
+  /* Are we in a radiation level cell ? */
+  if (c->stars.radiation_level == c) {
+
+    /* Subgrid tasks: HII ionization feedback */
+    c->stars.hii_ionization_feedback =
+        scheduler_addtask(s, task_type_stars_hii_ionization_feedback,
+                          task_subtype_none, 0, 0, c, NULL);
+
+  } else { /* We are above the super-cell so need to go deeper */
+
+    /* Recurse. */
+    if (c->split)
+      for (int k = 0; k < 8; k++)
+        if (c->progeny[k] != NULL)
+          engine_make_hierarchical_tasks_radiation_subgrid(e, c->progeny[k]);
+  }
+#endif
+}
+
 void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
 
@@ -2272,6 +2318,10 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_self_gravity = (e->policy & engine_policy_self_gravity);
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_HII_ionization_feedback =
+      feedback_radiation_subgrid_needed(with_stars, with_feedback);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -2283,6 +2333,11 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
     /* And the gravity stuff */
     if (with_self_gravity || with_ext_gravity)
       engine_make_hierarchical_tasks_gravity(e, c);
+
+    /* Add the subgrid radiation stuff? */
+    if (with_HII_ionization_feedback) {
+      engine_make_hierarchical_tasks_radiation_subgrid(e, c);
+    }
   }
 }
 
@@ -2499,8 +2554,8 @@ void engine_make_external_gravity_tasks(struct engine *e) {
 /**
  * @brief Counts the tasks associated with one cell and constructs the links
  *
- * For each hydrodynamic and gravity task, construct the links with
- * the corresponding cell.  Similarly, construct the dependencies for
+ * For each hydrodynamic, radiation and gravity task, construct the links with
+ * the corresponding cell. Similarly, construct the dependencies for
  * all the sorting tasks.
  */
 void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
@@ -2540,6 +2595,8 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
 #endif
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
+      } else if (t_subtype == task_subtype_stars_radiation_in) {
+        engine_addlink(e, &ci->stars.radiation_in, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
       } else if (t_subtype == task_subtype_external_grav) {
@@ -2556,6 +2613,9 @@ void engine_count_and_link_tasks_mapper(void *map_data, int num_elements,
       if (t_subtype == task_subtype_density) {
         engine_addlink(e, &ci->hydro.density, t);
         engine_addlink(e, &cj->hydro.density, t);
+      } else if (t_subtype == task_subtype_stars_radiation_in) {
+        engine_addlink(e, &ci->stars.radiation_in, t);
+        engine_addlink(e, &cj->stars.radiation_in, t);
       } else if (t_subtype == task_subtype_grav) {
         engine_addlink(e, &ci->grav.grav, t);
         engine_addlink(e, &cj->grav.grav, t);
@@ -2867,7 +2927,8 @@ static INLINE void engine_make_feedback_loops_dependencies(
   scheduler_addunlock(sched, last_task, t_star_feedback);
 
   /* Close the feedback chain */
-  scheduler_addunlock(sched, t_star_feedback, ci->hydro.super->stars.stars_out);
+  scheduler_addunlock(sched, t_star_feedback,
+                      ci->hydro.super->stars.feedback_ghost);
 }
 
 /**
@@ -4030,6 +4091,242 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   }
 }
 
+#ifdef IONIZATION_FEEDBACK_LOOP
+/**
+ * @brief Wire the drift/sort/cooling/feedback dependencies of a radiation
+ * task to EVERY hydro.super cell beneath @p c.
+ *
+ * A radiation_in/out task lives at radiation_level, which may sit ABOVE
+ * hydro.super (radiation coarsens independently of hydro -- see
+ * cell_can_split_pair_radiation_subgrid_task). Its single
+ * hii_ionization_feedback task reads+writes gas across the whole subtree,
+ * so it must depend on the drift/sorts/cooling_out/stars.drift/
+ * feedback_ghost of every hydro.super it covers, and its radiation_out
+ * must unlock every covered stars_out. This recurses down until it hits a
+ * cell that is itself covered by a single hydro.super (c->hydro.super !=
+ * NULL, i.e. c is at or below that super -- its whole subtree shares it),
+ * or descends further when c is a strict ancestor of several supers
+ * (c->hydro.super == NULL). Each super is visited exactly once (disjoint
+ * subtrees), so no duplicate unlocks are produced.
+ *
+ * @param sched The #scheduler.
+ * @param c The cell whose covered hydro.supers to wire (ci or cj of the task).
+ * @param t_in The radiation_in task (gets unlocked by the super's tasks).
+ * @param t_out The radiation_out task (unlocks the super's stars_out).
+ * @param with_cooling Whether the cooling policy is active.
+ */
+static void engine_radiation_wire_super_deps(struct scheduler *sched,
+                                             struct cell *c, struct task *t_in,
+                                             struct task *t_out,
+                                             const int with_cooling) {
+  if (c->hydro.super != NULL) {
+    /* c is covered by a single hydro.super: wire it and stop. */
+    struct cell *super = c->hydro.super;
+    scheduler_addunlock(sched, super->hydro.drift, t_in);
+    scheduler_addunlock(sched, super->hydro.sorts, t_in);
+    if (with_cooling)
+      scheduler_addunlock(sched, super->hydro.cooling_out, t_in);
+    scheduler_addunlock(sched, super->stars.drift, t_in);
+    scheduler_addunlock(sched, super->stars.feedback_ghost, t_in);
+    scheduler_addunlock(sched, t_out, super->stars.stars_out);
+    return;
+  }
+  /* c is a strict ancestor of several supers: recurse to each. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_radiation_wire_super_deps(sched, c->progeny[k], t_in, t_out,
+                                       with_cooling);
+}
+
+/**
+ * @brief Sorts-only mirror of #engine_radiation_wire_super_deps, for the
+ * foreign side of a radiation_in pair (ci or cj not local to this rank; MPI
+ * not yet supported, exercised only once cross-rank radiation is enabled).
+ *
+ * The foreign owner is responsible for its own drift/cooling/feedback_ghost
+ * ordering; this rank only needs @p c's sorted gas current before @p t
+ * reads it, hence sorts-only rather than the full super-deps set.
+ *
+ * NULL-safe like #engine_radiation_wire_super_deps: @p c's hydro.super can
+ * be NULL when its radiation_level cell sits above its own hydro.super, in
+ * which case this recurses into progeny instead of dereferencing NULL.
+ *
+ * @param sched The #scheduler.
+ * @param c The cell whose covered hydro.supers to wire (ci or cj of the
+ * task).
+ * @param t The radiation_in task (gets unlocked by each super's sorts).
+ */
+static void engine_radiation_wire_super_sorts_only(struct scheduler *sched,
+                                                   struct cell *c,
+                                                   struct task *t) {
+  if (c->hydro.super != NULL) {
+    scheduler_addunlock(sched, c->hydro.super->stars.sorts, t);
+    return;
+  }
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_radiation_wire_super_sorts_only(sched, c->progeny[k], t);
+}
+#endif /* IONIZATION_FEEDBACK_LOOP */
+
+/**
+ * @brief Duplicates the first hydro loop and construct all the
+ * dependencies for the hydro part
+ *
+ * This is done by looping over all the previously constructed tasks
+ * and adding another task involving the same cells but this time
+ * corresponding to the second hydro loop over neighbours.
+ * With all the relevant tasks for a given cell available, we construct
+ * all the dependencies for that cell.
+ */
+void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
+                                                  int num_elements,
+                                                  void *extra_data) {
+#ifdef IONIZATION_FEEDBACK_LOOP
+  struct engine *e = (struct engine *)extra_data;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int with_cooling = (e->policy & engine_policy_cooling);
+  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+
+  struct task *t_star_radiation_out = NULL;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    struct task *t = &((struct task *)map_data)[ind];
+    const enum task_types t_type = t->type;
+    const enum task_subtypes t_subtype = t->subtype;
+    const long long flags = t->flags;
+    struct cell *const ci = t->ci;
+    struct cell *const cj = t->cj;
+
+    /* Escape early */
+    if (t->type == task_type_none) continue;
+    if (t->type == task_type_stars_resort) continue;
+    if (t->type == task_type_star_formation) continue;
+    if (t->type == task_type_star_formation_sink) continue;
+    if (t->type == task_type_sink_formation) continue;
+    if (t->subtype == task_subtype_density) continue;
+
+    /* Self interaction? */
+    if (t_type == task_type_self &&
+        t_subtype == task_subtype_stars_radiation_in) {
+
+      t_star_radiation_out = scheduler_addtask(sched, task_type_self,
+                                               task_subtype_stars_radiation_out,
+                                               flags, 1, ci, NULL);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
+
+      /* Wire drift/sorts/cooling_out/stars.drift/feedback_ghost -> t and
+       * t_out -> stars_out for EVERY hydro.super beneath ci (ci is the
+       * radiation_level cell, which may sit above hydro.super). */
+      engine_radiation_wire_super_deps(sched, ci, t, t_star_radiation_out,
+                                       with_cooling);
+
+      scheduler_addunlock(
+          sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
+
+      scheduler_addunlock(
+          sched, ci->stars.radiation_level->stars.hii_ionization_feedback,
+          t_star_radiation_out);
+
+      /* timestep_sync lives at ci->super (the main super, always an
+       * ancestor-or-self of radiation_level -> non-NULL), so it stays
+       * wired once here rather than per hydro.super. */
+      if (with_timestep_sync) {
+        scheduler_addunlock(sched, t_star_radiation_out,
+                            ci->super->timestep_sync);
+      }
+    }
+
+    /* Otherwise, pair interaction? */
+    else if (t_type == task_type_pair &&
+             t_subtype == task_subtype_stars_radiation_in) {
+
+      t_star_radiation_out =
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_stars_radiation_out, flags, 1, ci, cj);
+
+      /* Add the link between the new loop and the cell */
+      engine_addlink(e, &ci->stars.radiation_out, t_star_radiation_out);
+      engine_addlink(e, &cj->stars.radiation_out, t_star_radiation_out);
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* Invariant: a radiation_in PAIR must connect two DISTINCT
+       * radiation_level regions -- ci and cj may sit at DIFFERENT depths
+       * (asymmetric pair, scheduler_splittask_radiation_subgrid()), the
+       * check only requires the two cells themselves to differ. If ci and cj
+       * share a radiation_level, both sides below wire the SAME
+       * hii_ionization_feedback / drift tasks -> duplicate unlocks
+       * (otherwise only caught cryptically, and late, in
+       * scheduler_set_unlocks). This fires the moment a radiation pair is left
+       * below radiation_level -- e.g. an intra-cell sub-pair, or a neighbour
+       * pair split past where the self task stopped. */
+      if (ci->stars.radiation_level == cj->stars.radiation_level)
+        error(
+            "radiation_in pair shares radiation_level (depth %d): "
+            "ci depth=%d cj depth=%d",
+            ci->stars.radiation_level->depth, ci->depth, cj->depth);
+#endif
+
+      /* ci and cj are distinct radiation_level cells with disjoint
+       * subtrees, so the per-hydro.super wiring for each side never
+       * produces duplicate unlocks. Each side is wired only if local. */
+      if (ci->nodeID == nodeID) {
+
+        /* drift/sorts/cooling_out/stars.drift/feedback_ghost -> t and
+         * t_out -> stars_out, for every hydro.super beneath ci. */
+        engine_radiation_wire_super_deps(sched, ci, t, t_star_radiation_out,
+                                         with_cooling);
+
+        scheduler_addunlock(
+            sched, t, ci->stars.radiation_level->stars.hii_ionization_feedback);
+
+        scheduler_addunlock(
+            sched, ci->stars.radiation_level->stars.hii_ionization_feedback,
+            t_star_radiation_out);
+
+        if (with_timestep_sync) {
+          scheduler_addunlock(sched, t_star_radiation_out,
+                              ci->super->timestep_sync);
+        }
+
+      } else /* ci->nodeID != nodeID (MPI, not yet supported) */ {
+
+        engine_radiation_wire_super_sorts_only(sched, ci, t);
+      }
+
+      if (cj->nodeID == nodeID) {
+
+        engine_radiation_wire_super_deps(sched, cj, t, t_star_radiation_out,
+                                         with_cooling);
+
+        scheduler_addunlock(
+            sched, t, cj->stars.radiation_level->stars.hii_ionization_feedback);
+
+        scheduler_addunlock(
+            sched, cj->stars.radiation_level->stars.hii_ionization_feedback,
+            t_star_radiation_out);
+
+        if (ci->super != cj->super) {
+          if (with_timestep_sync) {
+            scheduler_addunlock(sched, t_star_radiation_out,
+                                cj->super->timestep_sync);
+          }
+        }
+      } else /* cj->nodeID != nodeID (MPI, not yet supported) */ {
+        if (with_feedback) {
+          engine_radiation_wire_super_sorts_only(sched, cj, t);
+        }
+      }
+    }
+  }
+#endif
+}
+
 /**
  * @brief Constructs the top-level pair tasks for the first hydro loop over
  * neighbours
@@ -4165,6 +4462,456 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
     }
   }
+}
+
+/**
+ * @brief Stamp cell_flag_hydro_task_attached on every cell a split hydro
+ * density self/pair task rests on directly.
+ *
+ * Runs after the hydro/gravity split (scheduler_splittasks()) but before
+ * cell_set_super_hydro() -- hydro.super does not exist yet at this point in
+ * engine_maketasks(), so the radiation split gate (cell_can_split_pair/self_
+ * radiation_subgrid_task(), cell.h) needs this ground-truth proxy instead:
+ * it is stamped from exactly the same population (self/pair density tasks)
+ * that cell_set_super_hydro() itself minimizes over.
+ *
+ * @param map_data The #task's to visit (sched->tasks).
+ * @param num_elements The number of tasks.
+ * @param extra_data Unused.
+ */
+static void engine_radiation_stamp_hydro_attach_mapper(void *map_data,
+                                                       int num_elements,
+                                                       void *extra_data) {
+#ifdef IONIZATION_FEEDBACK_LOOP
+  struct task *tasks = (struct task *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct task *t = &tasks[ind];
+
+    if (t->subtype != task_subtype_density) continue;
+    if (t->type != task_type_self && t->type != task_type_pair) continue;
+
+    cell_set_flag(t->ci, cell_flag_hydro_task_attached);
+    if (t->type == task_type_pair)
+      cell_set_flag(t->cj, cell_flag_hydro_task_attached);
+  }
+#endif
+}
+
+/**
+ * @brief Recursively propagate cell_flag_at_or_below_hydro_attach down a
+ * cell hierarchy: a cell carries it if it, or any ancestor, carries
+ * cell_flag_hydro_task_attached.
+ *
+ * @param c The #cell to visit.
+ * @param parent_attached Whether an ancestor of @p c already carries
+ * cell_flag_hydro_task_attached (or the propagated flag).
+ */
+static void engine_radiation_propagate_hydro_attach(struct cell *c,
+                                                    const int parent_attached) {
+  const int attached =
+      parent_attached || cell_get_flag(c, cell_flag_hydro_task_attached);
+
+  if (attached) cell_set_flag(c, cell_flag_at_or_below_hydro_attach);
+
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_radiation_propagate_hydro_attach(c->progeny[k], attached);
+}
+
+/**
+ * @brief Mapper wrapper for engine_radiation_propagate_hydro_attach(), one
+ * top-level cell (and its full subtree) per element.
+ *
+ * @param map_data The top-level #cell's to visit.
+ * @param num_elements The number of top-level cells.
+ * @param extra_data Unused.
+ */
+static void engine_radiation_propagate_hydro_attach_mapper(void *map_data,
+                                                           int num_elements,
+                                                           void *extra_data) {
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++)
+    engine_radiation_propagate_hydro_attach(&cells[ind], /*parent_attached=*/0);
+}
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Recursively check that cell_flag_hydro_task_attached's topmost
+ * cell in each branch coincides with the real hydro.super computed by
+ * cell_set_super_hydro().
+ *
+ * Stops descending as soon as the flag is found: no descendant of an
+ * attach point ever carries the flag itself (hydro splitting stops for
+ * self AND pair alike once a cell rests), so nothing further to check
+ * below it.
+ *
+ * @param c The #cell to visit.
+ */
+static void engine_radiation_check_hydro_attach_matches_super(struct cell *c) {
+  if (cell_get_flag(c, cell_flag_hydro_task_attached)) {
+    if (c->hydro.super != c)
+      error(
+          "cell_flag_hydro_task_attached ground-truth mismatch: cell %lld "
+          "carries the attach flag but hydro.super=%lld (expected self).",
+          c->cellID, c->hydro.super != NULL ? c->hydro.super->cellID : -1);
+    return;
+  }
+
+  if (c->hydro.super != NULL)
+    error(
+        "cell_flag_hydro_task_attached ground-truth mismatch: cell %lld has "
+        "hydro.super=%lld but no ancestor-or-self carries the attach flag.",
+        c->cellID, c->hydro.super->cellID);
+
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        engine_radiation_check_hydro_attach_matches_super(c->progeny[k]);
+}
+
+/**
+ * @brief Mapper wrapper for engine_radiation_check_hydro_attach_matches_
+ * super(), one top-level cell (and its full subtree) per element.
+ *
+ * @param map_data The top-level #cell's to visit.
+ * @param num_elements The number of top-level cells.
+ * @param extra_data Unused.
+ */
+static void engine_radiation_check_hydro_attach_matches_super_mapper(
+    void *map_data, int num_elements, void *extra_data) {
+  struct cell *cells = (struct cell *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++)
+    engine_radiation_check_hydro_attach_matches_super(&cells[ind]);
+}
+
+/**
+ * @brief Assert that two geometrically adjacent radiation_level cells share
+ * a radiation_in pair link, recursing box-pruned into whichever side has
+ * not yet reached its own radiation_level.
+ *
+ * This is the missing-link tripwire for asymmetric pairs
+ * (scheduler_splittask_radiation_subgrid()'s geometric facing-progeny
+ * enumeration, scheduler_splittasks.c): a wrong enumeration silently drops a
+ * stencil link, which neither cell.c's orphaned-link check nor the
+ * shared-radiation_level check in
+ * engine_make_extra_radiationloop_tasks_mapper() can see -- both only
+ * inspect links that DO exist. Box-pruning (cell_boxes_touch_under_shift())
+ * keeps the walk to exactly the cells the split actually produced, rather
+ * than an O(n^2) scan over every radiation_level cell in the run.
+ *
+ * @param a The first #cell.
+ * @param b The second #cell.
+ * @param shift Vector added to @p b's location to bring it into @p a's
+ * periodic image.
+ */
+static void engine_radiation_check_pair_linked(struct cell *a, struct cell *b,
+                                               const double shift[3]) {
+  if (!cell_boxes_touch_under_shift(a, b, shift)) return;
+
+  const int a_is_level = (a->stars.radiation_level == a);
+  const int b_is_level = (b->stars.radiation_level == b);
+
+  if (a_is_level && b_is_level) {
+    if (a == b) return;
+
+    int found = 0;
+    for (struct link *l = a->stars.radiation_in; l != NULL; l = l->next) {
+      struct cell *partner = (l->t->type == task_type_self) ? a
+                             : (l->t->ci == a)              ? l->t->cj
+                                                            : l->t->ci;
+      if (partner == b) {
+        found = 1;
+        break;
+      }
+    }
+    if (!found)
+      error(
+          "Missing radiation_in link: radiation_level cells %lld and %lld "
+          "are geometrically adjacent but share no radiation_in pair link "
+          "-- a stencil hole from the facing-progeny enumeration.",
+          a->cellID, b->cellID);
+    return;
+  }
+
+  /* Split whichever side has not yet reached its own radiation_level; if
+   * both still need it, pair up their current-depth progeny (mirrors the
+   * splitter's own both-can-split descent) rather than fully resolving one
+   * side before ever touching the other. */
+  if (!a_is_level && !b_is_level) {
+    if (a->split && b->split) {
+      for (int j = 0; j < 8; j++)
+        if (a->progeny[j] != NULL)
+          for (int k = 0; k < 8; k++)
+            if (b->progeny[k] != NULL)
+              engine_radiation_check_pair_linked(a->progeny[j], b->progeny[k],
+                                                 shift);
+    } else if (a->split) {
+      for (int k = 0; k < 8; k++)
+        if (a->progeny[k] != NULL)
+          engine_radiation_check_pair_linked(a->progeny[k], b, shift);
+    } else if (b->split) {
+      for (int k = 0; k < 8; k++)
+        if (b->progeny[k] != NULL)
+          engine_radiation_check_pair_linked(a, b->progeny[k], shift);
+    }
+    /* Else: both are leaves without a radiation task nearby -- nothing to
+     * check (e.g. an empty or gasless/starless branch). */
+    return;
+  }
+
+  if (!a_is_level) {
+    if (a->split)
+      for (int k = 0; k < 8; k++)
+        if (a->progeny[k] != NULL)
+          engine_radiation_check_pair_linked(a->progeny[k], b, shift);
+    return;
+  }
+
+  /* !b_is_level */
+  if (b->split)
+    for (int k = 0; k < 8; k++)
+      if (b->progeny[k] != NULL)
+        engine_radiation_check_pair_linked(a, b->progeny[k], shift);
+}
+
+/**
+ * @brief Assert every sibling pair within a cell's own subtree is
+ * radiation_in-linked, recursing into every branch that has not yet reached
+ * its own radiation_level.
+ *
+ * Mirrors the self-splitting recursion in
+ * scheduler_splittask_radiation_subgrid() (self branch): a self task that
+ * splits creates both self sub-tasks for its progeny AND intra-parent
+ * sibling pair tasks between every combination of non-empty progeny.
+ *
+ * @param c The #cell to visit.
+ */
+static void engine_radiation_check_self_linked(struct cell *c) {
+  if (c->stars.radiation_level == c) return; /* Atomic: nothing below. */
+  if (!c->split) return;                     /* Leaf, no progeny to pair. */
+
+  static const double zero_shift[3] = {0.0, 0.0, 0.0};
+  for (int j = 0; j < 8; j++) {
+    if (c->progeny[j] == NULL) continue;
+    engine_radiation_check_self_linked(c->progeny[j]);
+    for (int k = j + 1; k < 8; k++) {
+      if (c->progeny[k] == NULL) continue;
+      engine_radiation_check_pair_linked(c->progeny[j], c->progeny[k],
+                                         zero_shift);
+    }
+  }
+}
+
+/**
+ * @brief Mapper wrapper for the missing-link tripwire: one top-level cell
+ * and its 26 periodic neighbours per element, mirroring
+ * engine_make_radiationloop_tasks_mapper()'s own stencil.
+ *
+ * @param map_data Offset of the first cell index disguised as a pointer.
+ * @param num_elements Number of top-level cells to visit.
+ * @param extra_data The #engine.
+ */
+static void engine_radiation_check_missing_links_mapper(void *map_data,
+                                                        int num_elements,
+                                                        void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  const struct space *s = e->s;
+  const int periodic = s->periodic;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+  const int with_stars = (e->policy & engine_policy_stars);
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    const int cid = (size_t)(map_data) + ind;
+
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    struct cell *ci = &cells[cid];
+    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0))
+      continue;
+
+    /* Sibling/self adjacency within ci's own subtree. */
+    engine_radiation_check_self_linked(ci);
+
+    /* Neighbouring top-level cells, cid < cjd to avoid checking every pair
+     * twice. */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          if (cid >= cjd) continue;
+
+          struct cell *cj = &cells[cjd];
+          if ((cj->hydro.count == 0) && (!with_stars || cj->stars.count == 0))
+            continue;
+
+          double shift[3];
+          for (int d = 0; d < 3; d++) {
+            const double dx = cj->loc[d] - ci->loc[d];
+            if (periodic && dx < -s->dim[d] / 2)
+              shift[d] = s->dim[d];
+            else if (periodic && dx > s->dim[d] / 2)
+              shift[d] = -s->dim[d];
+            else
+              shift[d] = 0.0;
+          }
+
+          engine_radiation_check_pair_linked(ci, cj, shift);
+        }
+      }
+    }
+  }
+}
+#endif /* SWIFT_DEBUG_CHECKS */
+
+/**
+ * @brief Constructs the top-level pair tasks for the first radiation subgrid
+ * loop over neighbours
+ *
+ * Here we construct all the tasks for all possible neighbouring non-empty
+ * local cells in the hierarchy. No dependencies are being added thus far.
+ * Additional loop over neighbours can later be added by simply duplicating
+ * all the tasks created by this function.
+ *
+ * @param map_data Offset of first two indices disguised as a pointer.
+ * @param num_elements Number of cells to traverse.
+ * @param extra_data The #engine.
+ */
+void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
+                                            void *extra_data) {
+
+#ifdef IONIZATION_FEEDBACK_LOOP
+
+  /* Extract the engine pointer. */
+  struct engine *e = (struct engine *)extra_data;
+  const int periodic = e->s->periodic;
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_stars = (e->policy & engine_policy_stars);
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+  const int *cdim = s->cdim;
+  struct cell *cells = s->cells_top;
+
+  /* Loop through the elements, which are just byte offsets from NULL. */
+  for (int ind = 0; ind < num_elements; ind++) {
+
+    /* Get the cell index. */
+    const int cid = (size_t)(map_data) + ind;
+
+    /* Integer indices of the cell in the top-level grid */
+    const int i = cid / (cdim[1] * cdim[2]);
+    const int j = (cid / cdim[2]) % cdim[1];
+    const int k = cid % cdim[2];
+
+    /* Get the cell */
+    struct cell *ci = &cells[cid];
+
+    /* Skip cells without hydro or star particles */
+    if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0))
+      continue;
+
+    /* If the cell is local build a self-interaction */
+    if (ci->nodeID == nodeID) {
+      scheduler_addtask(sched, task_type_self, task_subtype_stars_radiation_in,
+                        0, 1, ci, NULL);
+    }
+
+    /* Now loop over all the neighbours of this cell */
+    for (int ii = -1; ii < 2; ii++) {
+      int iii = i + ii;
+      if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+      iii = (iii + cdim[0]) % cdim[0];
+      for (int jj = -1; jj < 2; jj++) {
+        int jjj = j + jj;
+        if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+        jjj = (jjj + cdim[1]) % cdim[1];
+        for (int kk = -1; kk < 2; kk++) {
+          int kkk = k + kk;
+          if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+          kkk = (kkk + cdim[2]) % cdim[2];
+
+          /* Get the neighbouring cell */
+          const int cjd = cell_getid(cdim, iii, jjj, kkk);
+          struct cell *cj = &cells[cjd];
+
+          /* Is that neighbour local and does it have gas or star particles ? */
+          if ((cid >= cjd) ||
+              ((cj->hydro.count == 0) &&
+               (!with_feedback || cj->stars.count == 0)) ||
+              (ci->nodeID != nodeID && cj->nodeID != nodeID))
+            continue;
+
+          /* Construct the pair task */
+          const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_stars_radiation_in, sid, 1, ci, cj);
+
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+
+          /* Let's cross-check that we had a proxy for that cell */
+          if (ci->nodeID == nodeID && cj->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[cj->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", cj->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == cj) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cjd);
+          } else if (cj->nodeID == nodeID && ci->nodeID != engine_rank) {
+
+            /* Find the proxy for this node */
+            const int proxy_id = e->proxy_ind[ci->nodeID];
+            if (proxy_id < 0)
+              error("No proxy exists for that foreign node %d!", ci->nodeID);
+
+            const struct proxy *p = &e->proxies[proxy_id];
+
+            /* Check whether the cell exists in the proxy */
+            int n = 0;
+            for (n = 0; n < p->nr_cells_in; n++)
+              if (p->cells_in[n] == ci) break;
+            if (n == p->nr_cells_in)
+              error(
+                  "Cell %d not found in the proxy but trying to construct "
+                  "hydro task!",
+                  cid);
+          }
+#endif /* WITH_MPI */
+#endif /* SWIFT_DEBUG_CHECKS */
+        }
+      }
+    }
+  }
+#endif /* IONIZATION_FEEDBACK_LOOP */
 }
 
 struct cell_type_pair {
@@ -4587,6 +5334,15 @@ void engine_maketasks(struct engine *e) {
         "runs yet.");
 #endif
 
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_subgrid_radiation_feedback =
+      feedback_radiation_subgrid_needed(with_stars, with_feedback);
+  /* Radiation tasks only need hydro + stars (feedback pulls in the extra
+   * radiation_out loop and wiring, handled separately below). */
+  const int with_radiation_tasks = feedback_radiation_gather_tasks_needed(
+      e->policy & engine_policy_hydro, with_stars);
+
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));
 
@@ -4629,12 +5385,51 @@ void engine_maketasks(struct engine *e) {
 
   tic2 = getticks();
 
-  /* Split the tasks. */
+  /* Split the hydro/gravity tasks (radiation tasks do not exist yet, see
+   * below). */
   scheduler_splittasks(sched, /*fof_tasks=*/0, e->verbose);
 
   if (e->verbose)
     message("Splitting tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  if (with_radiation_tasks) {
+    tic2 = getticks();
+
+    /* Stamp every cell that a density (hydro) self/pair task rests on
+     * directly -- this is the would-be hydro.super, computed from the
+     * now-final hydro split, before cell_set_super_hydro() has run. */
+    threadpool_map(&e->threadpool, engine_radiation_stamp_hydro_attach_mapper,
+                   sched->tasks, sched->nr_tasks, sizeof(struct task),
+                   threadpool_auto_chunk_size, e);
+
+    /* Propagate the stamp down: a cell is at-or-below a hydro attach point
+     * if it carries the stamp itself or an ancestor does. */
+    threadpool_map(
+        &e->threadpool, engine_radiation_propagate_hydro_attach_mapper, cells,
+        nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
+
+    if (e->verbose)
+      message("Stamping hydro-attach flags took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+    tic2 = getticks();
+
+    /* Now that the at-or-below-hydro-attach flag is available, create the
+     * subgrid radiation tasks and split them: cell_can_split_pair/self_
+     * radiation_subgrid_task() (cell.h) use that flag as their stop
+     * condition. */
+    const int nr_tasks_before_radiation = sched->nr_tasks;
+    threadpool_map(&e->threadpool, engine_make_radiationloop_tasks_mapper, NULL,
+                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+
+    if (sched->nr_tasks > nr_tasks_before_radiation)
+      scheduler_splittasks_radiation(sched, nr_tasks_before_radiation);
+
+    if (e->verbose)
+      message("Making and splitting radiation tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that we are not left with invalid tasks */
@@ -4688,6 +5483,25 @@ void engine_maketasks(struct engine *e) {
     message("Setting super-pointers took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ground-truth check: the topmost cell carrying cell_flag_hydro_task_
+   * attached in each branch must be exactly that branch's hydro.super,
+   * pinning the split-time proxy to the real thing set above. */
+  if (with_radiation_tasks) {
+    threadpool_map(&e->threadpool,
+                   engine_radiation_check_hydro_attach_matches_super_mapper,
+                   cells, nr_cells, sizeof(struct cell),
+                   threadpool_auto_chunk_size, e);
+
+    /* Missing-link tripwire (Phase 2.3b): every pair of geometrically
+     * adjacent radiation_level cells must share a radiation_in link. Catches
+     * the failure mode neither of the two checks above can see -- a link
+     * that should exist but does not. */
+    threadpool_map(&e->threadpool, engine_radiation_check_missing_links_mapper,
+                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+  }
+#endif
+
   /* Append hierarchical tasks to each cell. */
   threadpool_map(&e->threadpool, engine_make_hierarchical_tasks_mapper, cells,
                  nr_cells, sizeof(struct cell), threadpool_auto_chunk_size, e);
@@ -4711,6 +5525,26 @@ void engine_maketasks(struct engine *e) {
 
   if (e->verbose)
     message("Making extra hydroloop tasks took %.3f %s.",
+            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+
+  tic2 = getticks();
+
+  /* Run through the tasks and make force tasks for each radiation_in */
+  if (with_subgrid_radiation_feedback) {
+
+    /* Note that this does not scale well at all so we do not use the
+     * threadpool version here until the reason for this is found.
+     * We call the mapper function directly as if there was only 1 thread
+     * in the pool. */
+    engine_make_extra_radiationloop_tasks_mapper(sched->tasks, sched->nr_tasks,
+                                                 e);
+    /* threadpool_map(&e->threadpool,
+     * engine_make_extra_radiationloop_tasks_mapper, sched->tasks,
+     * sched->nr_tasks, sizeof(struct task), threadpool_auto_chunk_size, e); */
+  }
+
+  if (e->verbose)
+    message("Making extra radiation subgrid tasks took %.3f %s.",
             clocks_from_ticks(getticks() - tic2), clocks_getunit());
 
   tic2 = getticks();

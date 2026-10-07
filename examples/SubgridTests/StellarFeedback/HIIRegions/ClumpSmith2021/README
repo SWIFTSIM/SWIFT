@@ -1,0 +1,85 @@
+# Intro
+A reproduction of Smith et al. 2021 (MNRAS 506, 3882), Figure 2: four
+co-located ionizing sources in a uniform 100 cm^-3 background, with a
+10 pc-radius, 1e4 cm^-3 clump centered 20 pc away along +x (HEALPix
+nside=1 pixel 4's center direction). Each source is 19.2 Msun
+(Q_H ~ 2.5e48 s^-1), matching the paper's 4 sources totalling
+Q_H ~ 1e49 s^-1.
+
+## Metallicity
+`initial_metallicity=0` (pure hydrogen, matching the paper) is the
+default. This code's own ionized-gas temperature floor is
+metallicity-dependent, reaching ~47,500 K at Z=0, not the paper's flat
+1e4 K. So `r_HII` runs systematically larger than the paper's own
+numbers.
+
+Combine `initial_metallicity=0` with the
+`IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4` build flag
+(see Configure below) to match the paper's 1e4 K convention instead.
+`initial_metallicity=0.231 ./run.sh` (the Z/Zsun that gives
+T_collisional=1e4 K exactly) reaches the same T_i without the build flag.
+
+## Resolution
+Gas particle mass defaults to 20 Msun, matching Smith et al. 2021's own
+resolution (~175k particles total). Hu et al. 2017's convergence-test
+levels (4, 0.5, 0.0625, 0.0078125 Msun) are also available via
+`gas_mass=X ./run.sh`; particle count scales as 1/gas_mass.
+
+## Temperature IC
+The diffuse background and clump are set to different temperatures in
+pressure equilibrium (n*T equal on both sides) by `makeIC_clump.py`'s
+`--temperature` (background 1000 K by default). `SPH:initial_temperature: 0`
+in params.yml is required for this, otherwise it overwrites the
+per-particle IC values.
+
+# Configure
+Configuration matching the paper's `T_i=1e4 K` convention:
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix CFLAGS="-DIONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4"
+make -j
+```
+`grackle_1` prices the ionizing photon budget against the neutral
+hydrogen fraction from Grackle's own H/He species network rather than
+total hydrogen, which the erosion physics this example reproduces
+depends on. `--with-chealpix` is required for `nside=1`; `nside=0` works
+without it.
+
+# Run
+`nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh`
+/ `run_name=nside1 ./run.sh` to keep both outputs) run the geometry
+from Figure 2, reproducing the top (spherical) and bottom (HEALPix)
+panels respectively.
+
+`run.sh` runs `plot_temperature_hii.py` on the run's own final
+snapshot automatically (`run_analysis=1` by default; set
+`run_analysis=0` to skip). It prints `r_HII`/`r_physics` and writes
+`temperature_{projection,slice}_<snapshot>.png` next to the run's
+output.
+
+# Measuring clump erosion
+Identify clump-member particles once, by particle ID, at
+`snapshot_0000` (position within `clump_radius_pc` of the clump
+centre, density above the clump's own IC threshold), then track the
+same IDs to the final snapshot.
+```
+python3 clump_erosion_matrix.py            # total mass remaining, bar chart
+python3 clump_hemisphere_erosion.py        # near (star-facing) vs. far split + mass-conservation check
+python3 clump_hemisphere_density_change.py # near vs. far median n_H, final/t=0 (continuous, not threshold-based)
+```
+All three take `--gas-mass`/`--metallicity`/`--rebuild` to select a
+subset of a matrix of runs (see `--help`); run directories are expected
+to be named `gas${gas_mass}_${z_label}_nside${nside}_rebuild${rebuild}`,
+where `z_label` already includes the leading `z` (e.g. `z0231`, `z0`),
+`nside` is the literal string `nside0` or `nside1`, and `rebuild`
+replaces `.` with `p` (e.g. `0p01` for a 0.01 Myr cadence).
+
+To produce one matrix cell, set the matching env vars and `run_name` to
+the directory name the matrix scripts expect, e.g. gas_mass=20,
+Z/Zsun=0.231, uniform (`nside=0`) scheme, 0.01 Myr cadence:
+```
+gas_mass=20 initial_metallicity=0.231 nside=0 rebuild_time_myr=0.01 \
+    run_name=gas20_z0231_nside0_rebuild0p01 ./run.sh
+```
+Repeat for each `nside`/`initial_metallicity`/`rebuild_time_myr`/`gas_mass`
+combination needed, then run the three scripts above from this directory.
+

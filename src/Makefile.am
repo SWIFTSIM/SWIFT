@@ -67,7 +67,7 @@ include_HEADERS += star_formation_logger.h star_formation_logger_struct.h
 include_HEADERS += pressure_floor.h pressure_floor_struct.h pressure_floor_iact.h pressure_floor_debug.h
 include_HEADERS += velociraptor_struct.h velociraptor_io.h random.h memuse.h mpiuse.h memuse_rnodes.h
 include_HEADERS += black_holes.h black_holes_iact.h black_holes_io.h black_holes_properties.h black_holes_struct.h black_holes_debug.h
-include_HEADERS += feedback.h feedback_new_stars.h feedback_struct.h feedback_properties.h feedback_debug.h feedback_iact.h
+include_HEADERS += feedback.h feedback_new_stars.h feedback_struct.h feedback_properties.h feedback_debug.h feedback_iact.h feedback_io.h
 include_HEADERS += space_unique_id.h line_of_sight.h io_compression.h
 include_HEADERS += rays.h rays_struct.h
 include_HEADERS += sink.h sink_iact.h sink_struct.h sink_io.h sink_properties.h sink_debug.h
@@ -145,6 +145,10 @@ COMMON_GEAR_SOURCES = \
     feedback/GEAR/stellar_evolution.c feedback/GEAR/initial_mass_function.c \
     feedback/GEAR/supernovae_ia.c feedback/GEAR/supernovae_ii.c \
     feedback/GEAR/feedback_common.c feedback/GEAR/stellar_wind.c
+COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c feedback/GEAR/radiation_gas.c \
+    feedback/GEAR/radiation_pressure.c feedback/GEAR/radiation_isrf.c \
+    feedback/GEAR/radiation_getters.c feedback/GEAR/radiation_table_io.c
+COMMON_GEAR_SOURCES += runner_radiation_feedback.c runner_radiation_feedback.h
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
@@ -423,6 +427,7 @@ nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h
 nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h
 nobase_noinst_HEADERS += cooling/grackle/cooling_debug.h cooling/grackle/cooling_utils.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_gear_subgrid.h cooling/grackle/cooling_none_subgrid.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h
@@ -522,26 +527,29 @@ nobase_noinst_HEADERS += tracers/GEAR/tracers_io.h tracers/GEAR/tracers_debug.h
 nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h feedback/none/feedback.h
-nobase_noinst_HEADERS += feedback/none/feedback_debug.h
+nobase_noinst_HEADERS += feedback/none/feedback_debug.h feedback/none/feedback_io.h
 nobase_noinst_HEADERS += feedback/AGORA/feedback.h feedback/AGORA/feedback_struct.h feedback/AGORA/feedback_iact.h
 nobase_noinst_HEADERS += feedback/AGORA/feedback_properties.h feedback/AGORA/feedback.h
-nobase_noinst_HEADERS += feedback/AGORA/feedback_debug.h
+nobase_noinst_HEADERS += feedback/AGORA/feedback_debug.h feedback/AGORA/feedback_io.h
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback.h feedback/EAGLE_kinetic/feedback_struct.h
 nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_properties.h feedback/EAGLE_kinetic/feedback_iact.h
-nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_debug.h
+nobase_noinst_HEADERS += feedback/EAGLE_kinetic/feedback_debug.h feedback/EAGLE_kinetic/feedback_io.h
 nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback.h feedback/EAGLE_thermal/feedback_struct.h
 nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_properties.h feedback/EAGLE_thermal/feedback_iact.h
-nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_debug.h
+nobase_noinst_HEADERS += feedback/EAGLE_thermal/feedback_debug.h feedback/EAGLE_thermal/feedback_io.h
 nobase_noinst_HEADERS += feedback/EAGLE/yield_tables.h feedback/EAGLE/imf.h feedback/EAGLE/interpolate.h
 nobase_noinst_HEADERS += feedback/EAGLE/enrichment.h
 nobase_noinst_HEADERS += feedback/GEAR/stellar_evolution_struct.h feedback/GEAR/stellar_evolution.h
 nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/supernovae_ia.h feedback/GEAR/supernovae_ii.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation.h feedback/GEAR/radiation_iact.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation_isrf.h feedback/GEAR/radiation_propagation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_tracers_struct.h feedback/GEAR/feedback_tracers_common.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback.h feedback/GEAR_thermal/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_properties.h feedback/GEAR_thermal/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_debug.h feedback/GEAR_thermal/feedback_tracers.h
+nobase_noinst_HEADERS += feedback/GEAR_thermal/feedback_io.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback.h feedback/GEAR_mechanical/feedback_iact.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_properties.h feedback/GEAR_mechanical/feedback_struct.h
 nobase_noinst_HEADERS += feedback/GEAR_mechanical/feedback_debug.h feedback/GEAR_mechanical/mechanical_feedback_iact.h

@@ -62,6 +62,9 @@ struct spart {
   /*! Particle smoothing length. */
   float h;
 
+  /*! Particle ionization radius / gamma_k. */
+  float h_hii;
+
   struct {
 
     /* Number of neighbours. */
@@ -71,6 +74,29 @@ struct spart {
     float wcount_dh;
 
   } density;
+
+  /*! Gas properties gathered over the star's density-loop gas neighbours,
+   * mirroring struct sink's to_collect (src/sink/GEAR/sink_part.h) exactly.
+   * Feeds stars_compute_dt_cfl()'s CFL criterion; reset every density-loop
+   * init (stars_init_spart()) and normalized in stars_end_density(). */
+  struct {
+
+    /*! Mass-weighted kernel-smoothed gas density (internal units,
+     * comoving). */
+    float rho_gas;
+
+    /*! Mass-weighted kernel-smoothed gas sound speed (comoving; converted
+     * to physical units at the dt_cfl use site, not here). */
+    float sound_speed_gas;
+
+    /*! Mass-weighted kernel-smoothed gas velocity in the star's own frame
+     * (comoving; converted to physical units at the dt_cfl use site). */
+    float velocity_gas[3];
+
+    /*! Minimum smoothing length across the gas neighbours. */
+    float minimal_h_gas;
+
+  } to_collect_gas;
 
   /*! Union for the birth time and birth scale factor */
   union {
@@ -175,11 +201,46 @@ struct stars_props {
    * units) */
   double age_threshold_unlimited;
 
+  /*! Floor applied to the star's final time-step (after combining the
+   * age-based bound above with the feedback module's own criteria),
+   * guarding against a near-zero remainder violating dt_min (internal
+   * units). */
+  double min_star_timestep;
+
+  /*! CFL condition for stars_compute_dt_cfl(), mirroring
+   * sink_props->CFL_condition (src/sink/GEAR/sink_properties.h). */
+  float CFL_condition;
+
   /*! Are we overwriting the stars' birth time read from the ICs? */
   int overwrite_birth_time;
 
   /*! Value to set birth time of stars read from ICs */
   float spart_first_init_birth_time;
+
+  /*! Maximal search radius for the HII ionization */
+  float HII_max_search_radius;
+
+  /*! Maximal number of full-buffer retries (at a fixed search radius)
+   * before giving up on finding every gas particle within that radius for
+   * a single HII search pass. The buffer capacity itself
+   * (max_HII_ngbs, runner_radiation_feedback.h) is a compile-time
+   * constant; this retry count is the runtime knob for adapting to local
+   * gas mass resolution without recompiling (e.g. across regions of a
+   * cosmological zoom-in). */
+  int HII_max_retry_full_buffer;
+
+  /*! Maximal number of search-radius expansions per HII search pass. Once
+   * a pass finds every not-yet-ionized particle within the current radius
+   * (buffer not full) and photons still remain, the radius itself, not
+   * the buffer, is the bottleneck: growing it (up to this many times,
+   * see HII_radius_expansion_factor) lets the star claim its full reach
+   * within one pass, instead of waiting on the unrelated h_max term to
+   * drift the next rebuild's radius outward over many cycles. */
+  int HII_max_radius_expansion_tries;
+
+  /*! Growth factor applied to the search radius on each expansion above
+   * (e.g. 1.1 = 10% larger per try). Bounded by HII_max_search_radius. */
+  float HII_radius_expansion_factor;
 };
 
 #endif /* SWIFT_GEAR_STAR_PART_H */

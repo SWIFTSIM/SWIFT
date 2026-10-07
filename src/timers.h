@@ -131,6 +131,7 @@ enum {
   timer_csds,
   timer_do_stars_sort,
   timer_do_stars_resort,
+  timer_stars_hii_ionization_feedback,
   timer_fof_self,
   timer_fof_pair,
   timer_drift_sink,

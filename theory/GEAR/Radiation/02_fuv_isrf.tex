@@ -1,0 +1,2246 @@
+\section{The interstellar radiation field: photoelectric heating and
+H$_2$ photodissociation}
+\label{sec:fuv-isrf}
+
+\subsection{Purpose}
+\label{sec:fuv-purpose}
+
+Massive stars emit most of their light below the hydrogen ionization
+edge. That non-ionizing far-ultraviolet (FUV) radiation heats the gas by
+ejecting electrons from dust grains (photoelectric heating) and
+dissociates H$_2$ through the Lyman-Werner (LW) bands. Both processes
+depend on the \emph{local} radiation field, which varies by orders of
+magnitude between a star-forming region and the diffuse interstellar
+medium. This module, part of the GEAR subgrid model
+\citep{RevazJablonka2018} in \swift{} \citep{Schaller2024}, estimates that
+field for every gas particle and hands it to the chemistry and cooling
+solver \citep[Grackle,][]{Smith2017}.
+
+\textbf{What the module provides.} For each gas particle $i$ it carries
+two radiation energies per unit gas mass, $u_{{\rm FUV},i}$ for the
+$6$--$11.2$\,eV band (the PE band of \citealt{Kim2023}) and $u_{{\rm LW},i}$ for the $11.2$--$13.6$\,eV band, in
+${\rm erg\,g^{-1}}$, sourced by the stars in the simulation and
+attenuated by dust. The code stores the two bands under the internal
+moment identifiers \code{ISRF\_MOMENT\_PE} and \code{ISRF\_MOMENT\_LW}, and names the
+snapshot I/O fields to match (\code{PESpecificEnergy},
+\code{LWSpecificEnergy}); this document keeps writing the first band as
+FUV throughout, since $6$--$11.2$\,eV is the photoelectric part of the
+far-ultraviolet range.
+From them it derives, at every cooling call, the
+photoelectric heating strength $G_0$ in Habing units and the H$_2$
+photodissociation rate $k_{\rm diss}$, which Grackle consumes through two
+of its own per-cell input fields (Section~\ref{sec:fuv-coupling}).
+
+\textbf{Volumetric or per unit mass?} The transport is written in
+Lagrangian form on the gas particles, so the two evolved variables of each
+band are both per unit gas mass: the radiation energy $u_b$
+(${\rm erg\,g^{-1}}$) and the flux $\mathbf F_b = \mathbf F_{V,b}/\rho$,
+with $\rho$ the gas density. Those are the quantities the particles store
+and the quantities every update below advances. The volumetric energy
+density is recovered from them as $U_b = \rho\,u_b$
+(${\rm erg\,cm^{-3}}$), and it is the volumetric field, through the energy
+flux $c\,U_b$, that the chemistry reads to form $G_0$ and $k_{\rm diss}$.
+Both forms appear below, and which one is meant is always visible in the
+symbol: $u_b$ and $\mathbf F_b$ wherever the scheme evolves, stores or
+exchanges a field, $U_b$ and $\mathbf F_{V,b}$ wherever a continuum moment
+equation, an analytic profile or the chemistry coupling is written. The
+word \emph{specific} is used here only in the sense of per unit mass.
+
+\textbf{Two run modes.} With propagation off (the default), each star
+deposits its band luminosities on the gas inside its own smoothing
+kernel and nothing else happens: the field is an instantaneous snapshot
+of the illumination within one kernel radius of each star
+(Section~\ref{sec:fuv-instantaneous}). With propagation on, the deposit
+is the source term of a two-moment (energy and flux) radiation transport
+system, solved on the SPH particles with a reduced signal speed, so that
+the field reaches beyond the kernel, is smooth between sources, and decays
+over the dust absorption length (Sections~\ref{sec:fuv-equations} and
+\ref{sec:fuv-numerics}).
+
+\textbf{What the module deliberately does not do.} It is not a full
+radiative transfer solver: two angular moments only, no scattering, no
+frequency resolution inside a band, and a signal speed far below $c$.
+It carries no ionizing band (photoionization is the separate HII model)
+and exerts no momentum on the gas (radiation pressure is the separate
+channel of Section~\ref{sec:radiation-pressure}). It produces only the
+stellar-sourced local field. For H$_2$ dissociation this local rate is
+added to Grackle's own uniform, time-dependent metagalactic background
+rate and the sum is self-shielded together
+(Section~\ref{sec:fuv-coupling}). For photoelectric heating and the
+other dust channels there is no such addition: the per-particle field
+replaces Grackle's scalar background outright, so an unilluminated
+particle carries no residual background heating. H$_2$ self-shielding is
+not modelled here: Grackle attenuates the supplied dissociation rate
+with its own self-shielding prescription \citep{WolcottGreenHaiman2019},
+exactly as it attenuates the background rate.
+
+\subsection{The equations we solve}
+\label{sec:fuv-equations}
+
+\subsubsection{Fields, bands and units}
+\label{sec:fuv-fields}
+
+Each band $b\in\{{\rm FUV},{\rm LW}\}$ is described by its volumetric
+energy density $U_b$ (${\rm erg\,cm^{-3}}$) and its flux $\mathbf
+F_{V,b}$ (${\rm erg\,cm^{-2}\,s^{-1}}$), the first two angular moments of
+the specific intensity. The particles carry the mass-specific
+counterparts,
+\begin{equation}
+  u_b = \frac{U_b}{\rho}\ \ ({\rm erg\,g^{-1}}), \qquad
+  \mathbf F_b = \frac{\mathbf F_{V,b}}{\rho}\ \ ({\rm erg\,cm\,g^{-1}\,s^{-1}}),
+  \label{eq:fuv-specific-fields}
+\end{equation}
+with $\rho$ the gas density, in the same way SPH carries a specific
+rather than a volumetric internal energy. The band edges are the
+classical Habing range \citep{Habing1968}, split at the lower edge of the
+Lyman-Werner bands: photoelectric heating responds to the whole $6$--$13.6$\,eV range,
+H$_2$ photodissociation only to the harder $11.2$--$13.6$\,eV part. Both
+bands obey the same equations with band-specific opacities and sources;
+the band index is dropped below whenever no confusion is possible.
+
+\subsubsection{Sources: stellar band luminosities}
+\label{sec:fuv-sources}
+
+A star particle emits $L_{\rm FUV}$ and $L_{\rm LW}$ (${\rm erg\,s^{-1}}$),
+the integrals of its spectrum over the two bands of
+Section~\ref{sec:fuv-fields}, $6$--$11.2$\,eV and $11.2$--$13.6$\,eV. Both
+are tabulated per unit initial stellar mass, in the same stellar tables that
+supply the bolometric luminosity and the ionizing photon rate, and are read
+by interpolation on those tables' own axes.
+
+An individual star reads an entry indexed by its initial mass and its
+metallicity. The value is a main-sequence average and not a function of
+age, the same convention $L_{\rm bol}$ follows. A stellar-population
+particle reads an IMF-integrated band luminosity for its metallicity and
+its current age, the age entering through the surviving mass range of the
+integral, and multiplies it by the particle's initial mass; where the table
+carries a main-sequence lifetime, that range is capped at the mass leaving
+the main sequence at the current age, so stars past the main sequence
+contribute to neither band and the integrated band luminosities decline
+with age. A table that carries no band data at all is covered by a
+fallback, which splits the two bands off the bolometric luminosity using
+the star's tabulated effective temperature.
+
+Both luminosities are deposited on the gas particles inside the star's own
+kernel, kernel-weighted and attenuated by dust
+(Section~\ref{sec:fuv-injection}). A star that is no longer an active
+feedback source makes no further deposits in either band; that, rather than
+any change to the tabulated values, is how a source switches off
+(Section~\ref{sec:fuv-turnoff}). The tabulated band luminosities are
+deposited as they stand, with no Doppler correction for the star's motion
+relative to the gas it illuminates: that correction shifts each band edge
+by the fraction $v/c$, below $3\times10^{-4}$ for any peculiar velocity in
+these simulations, the same order as the band-edge term the transport drops
+(Section~\ref{sec:fuv-assumptions}).
+
+\subsubsection{Dust absorption}
+\label{sec:fuv-opacity}
+
+Dust is the only absorber. The band-specific dust mass opacity is
+\begin{equation}
+  \kappa_b(Z) = \frac{\sigma_{d,b}}{\mu_H m_H}\,\mathcal D(Z), \qquad
+  \mathcal D(Z) = \frac{Z}{Z_\odot}\,\frac{f_{\rm gr}}{f_{\rm gr,MW}},
+  \label{eq:fuv-kappa}
+\end{equation}
+with $\sigma_{d,{\rm FUV}} = 9\times10^{-22}\,{\rm cm^2}$ and
+$\sigma_{d,{\rm LW}} = 1.5\times10^{-21}\,{\rm cm^2}$ the dust
+absorption cross-sections per hydrogen nucleon in the two bands,
+band-averaged over a coeval, $\sim$50\,Myr, Kroupa-IMF stellar
+population for Milky-Way grains \citep{WeingartnerDraine2001},
+matching \citet[their PE and LW bands, Section~2.4]{Kim2023} exactly,
+$\mu_H = 1.4$ the mean mass per hydrogen nucleon in units of
+$m_H$, and $\mathcal D(Z)$ the dust-to-gas ratio relative to the Milky
+Way. $\mathcal D$ scales linearly with the gas metal mass fraction $Z$,
+normalised to Grackle's solar value $Z_\odot = 0.01295$ and to Grackle's
+default dust-to-gas ratio $f_{\rm gr,MW} = 0.009387$, so that this module
+and Grackle's dust chemistry assume the same dust abundance for the same
+gas. At solar metallicity $\kappa_{\rm FUV}\approx 380$ and $\kappa_{\rm
+LW}\approx 640\,{\rm cm^2\,g^{-1}}$. The absorption length and the
+absorption time at the true speed of light are
+\begin{equation}
+  \lambda_b = \frac{1}{\kappa_b\rho}, \qquad
+  \tau_{b,{\rm phys}} = \frac{\lambda_b}{c} .
+  \label{eq:fuv-lambda}
+\end{equation}
+$h/\lambda$, the ratio of the smoothing length to the absorption length,
+is the resolution parameter that controls the behaviour of every part of
+the scheme; it ranges from $\sim10^{-3}$ in diffuse, metal-poor gas to
+$\sim20$ in dense, metal-rich gas at production resolution.
+
+\subsubsection{Moment equations and closure}
+\label{sec:fuv-moments}
+
+The first two angular moments of the radiative transfer equation in a
+purely absorbing medium with an emissivity $S_V$ (${\rm
+erg\,cm^{-3}\,s^{-1}}$) are
+\begin{align}
+  \frac{\partial U}{\partial t} + \nabla\cdot\mathbf F_V
+    &= -c\,\kappa\rho\,U + S_V ,
+  \label{eq:fuv-moment-zero} \\
+  \frac{\partial \mathbf F_V}{\partial t} + c^2\,\nabla\cdot\mathbf P
+    &= -c\,\kappa\rho\,\mathbf F_V ,
+  \label{eq:fuv-moment-one}
+\end{align}
+where $\mathbf P$ is the radiation pressure tensor. The system is closed
+with the M1 closure \citep{Levermore1984,DubrocaFeugeas1999},
+\begin{equation}
+  \mathbf P = \mathbf D(f)\,U , \qquad
+  \mathbf D(f) = \frac{1-\chi}{2}\,\mathbf I + \frac{3\chi-1}{2}\,
+    \hat{\mathbf n}\otimes\hat{\mathbf n} , \qquad
+  \chi(f) = \frac{3+4f^2}{5+2\sqrt{4-3f^2}} ,
+  \label{eq:fuv-m1-closure}
+\end{equation}
+with $\hat{\mathbf n} = \mathbf F/|\mathbf F|$ the flux direction and $f
+= |\mathbf F_V|/(c\,U)\in[0,1]$ the reduced flux. At $f = 0$, $\mathbf D
+= \mathbf I/3$ (isotropic radiation, the Eddington or P1 closure); at $f
+= 1$, $\mathbf D = \hat{\mathbf n}\otimes\hat{\mathbf n}$ (free streaming
+along $\hat{\mathbf n}$). The reduced flux is the one quantity of the
+closure that does not care which of the two variable sets it is built from:
+$|\mathbf F_V|/(c\,U) = |\mathbf F|/(c\,u)$ identically, since the density
+cancels. The moment equations do not by themselves
+forbid $|\mathbf F_V| > cU$; the admissibility constraint
+\begin{equation}
+  |\mathbf F_V| \le c\,U
+  \label{eq:fuv-admissible}
+\end{equation}
+is imposed explicitly (Section~\ref{sec:fuv-limiter}).
+
+\textbf{Precision of the reduced flux.} The squared flux norm that $f$
+above, the flux limiter of Eq.~\ref{eq:fuv-flux-limiter} and the
+flux-relaxation-residual gate of Eq.~\ref{eq:fuv-diss-gate} all read
+from $\mathbf F$ is evaluated in double precision, not the particle's
+native float32. A well-attenuated far band routinely carries
+$|\mathbf F|$ below $\sqrt{\code{FLT\_MIN}}\approx1.08\times10^{-19}$ in
+the code's internal units, and squaring a value that small in float32
+underflows silently to exactly zero: the closure then reads $f=0$ and
+returns the isotropic $\mathbf D=\mathbf I/3$ even though the physical
+flux is merely small rather than zero, the limiter's clamp is skipped
+because it sees no flux to limit, and the gate's residual denominator
+vanishes with it. Only the squared norm, its reciprocal square root and
+the gate's residual ratio are widened; the closure coefficients,
+$\mathbf D$ itself and $u$ stay float32.
+
+\textbf{Reduced signal speed.} The characteristic speeds of
+Eqs.~\ref{eq:fuv-moment-zero}--\ref{eq:fuv-moment-one} lie in
+$[-c, c]$, which would impose a time step $\Delta t \lesssim h/c$, far
+below any hydrodynamical or cooling time step. The equations are
+therefore solved with the speed of light replaced by a reduced speed
+$c_{\rm hyp}\ll c$ everywhere it appears (absorption rate, pressure
+term, reduced flux, admissibility constraint), and with the source
+rescaled by $c_{\rm hyp}/c$ so that the steady-state field is unchanged:
+the reduced-speed-of-light approximation
+\citep{GnedinAbel2001,Rosdahl2013}. The moments are carried on the SPH
+particles themselves rather than on a grid, in the manner of the SPH M1
+scheme of \citet{Chan2021}.
+
+Eqs.~\ref{eq:fuv-moment-zero}--\ref{eq:fuv-moment-one} are already a
+reduced form, and the next section states what the reduction assumes.
+Two further changes then take them into the form the code integrates: the
+variables per unit gas mass of Eq.~\ref{eq:fuv-specific-fields}, and the
+expanding, gas-following frame (Section~\ref{sec:fuv-lagrangian}).
+
+\subsubsection{Assumptions and neglected terms}
+\label{sec:fuv-assumptions}
+
+Written in the frame of the gas, which is the frame in which the dust
+opacity of Section~\ref{sec:fuv-opacity} is the tabulated one, and kept to
+first order in $v/c$ for one grey band, the complete pair of moment
+equations is
+\begin{align}
+  \frac{\partial U}{\partial t}
+    &+ \underbrace{\nabla\cdot(U\mathbf v)}_{\text{advection}}
+    + \underbrace{\nabla\cdot\mathbf F_V}_{\text{transport}}
+    + \underbrace{\mathbf P\!:\!\nabla\mathbf v}_{\text{compression work}}
+  \nonumber \\
+  &= \underbrace{S_V}_{\text{sources}}
+    + \underbrace{4\pi\kappa_P\rho\,B}_{\text{thermal emission}}
+    - \underbrace{c\,\kappa_a\rho\,U}_{\text{absorption}}
+    + \underbrace{\Delta_{\rm edge}}_{\text{band-edge shift}}
+    - \underbrace{3HU}_{\text{volume}}
+    - \underbrace{HU}_{\text{redshift}} ,
+  \label{eq:fuv-full-moment-zero} \\
+  \frac{\partial \mathbf F_V}{\partial t}
+    &+ \underbrace{\nabla\cdot(\mathbf F_V\otimes\mathbf v)}_{\text{advection}}
+    + \underbrace{(\mathbf F_V\cdot\nabla)\mathbf v}_{\text{aberration}}
+    + \underbrace{c^2\,\nabla\cdot\mathbf P}_{\text{transport}}
+  \nonumber \\
+  &= -\underbrace{c\,(\kappa_a+\kappa_s)\rho\,\mathbf F_V}
+        _{\text{absorption, scattering}}
+    + \underbrace{\Delta_{\rm edge,F}}_{\text{band-edge shift}}
+    - \underbrace{3H\mathbf F_V}_{\text{volume}}
+    - \underbrace{H\mathbf F_V}_{\text{redshift}} .
+  \label{eq:fuv-full-moment-one}
+\end{align}
+Here $\kappa_a$ and $\kappa_s$ are the absorption and scattering parts of
+the dust opacity, $B$ the Planck function at the dust temperature with
+$\kappa_P$ its Planck mean, $\mathbf v$ the gas velocity, and $\Delta_{\rm
+edge}$ the net transfer of energy across the two edges of a band of finite
+width, which replaces the frequency-derivative term of the monochromatic
+equations: a band edge sits at a different frequency in the gas frame than
+in the frame of the source, by the fractional amount $v/c$, so energy
+crosses it. The exact coefficients of the $v/c$ terms in the first moment
+follow the standard comoving-frame reduction
+\citep{MihalasMihalas1984}, in the mixed-frame ordering of
+\citet{Lowrie1999}; the moment schemes this one follows make the same
+neglect \citep{Rosdahl2013,Chan2021}. Coherent isotropic scattering does not appear in the
+energy equation at leading order, because what it removes from a direction
+it returns from another; it removes flux at the total opacity, which is why
+$\kappa_a+\kappa_s$ appears in the first moment and $\kappa_a$ alone in the
+zeroth.
+
+The ordering that follows is done on the physical system, at the true speed
+of light. Every estimate compares a term of
+Eqs.~\ref{eq:fuv-full-moment-zero}--\ref{eq:fuv-full-moment-one} against a
+retained one, and the smallness of the dropped terms is a property of the
+photons themselves: of their real travel, over the real absorption length
+$\lambda$, in the real time $\lambda/c$. The reduced signal speed is
+introduced afterwards, in the transport and the source together, and leaves
+the steady state of what remains unchanged (Section~\ref{sec:fuv-steady}).
+Estimating the dropped terms against $c_{\rm hyp}$ instead would inflate
+them by $c/c_{\rm hyp}$ without any photon travelling differently.
+
+\textbf{What we drop, and why.}
+\begin{enumerate}
+  \item \textbf{Aberration of the flux}, $(\mathbf F_V\cdot\nabla)\mathbf
+    v$. The term tilts the flux direction by an angle of order $v/c$.
+    Peculiar velocities of $10$ to $100\,{\rm km\,s^{-1}}$ give $v/c =
+    3\times10^{-5}$ to $3\times10^{-4}$, so the tilt is at most a
+    thousandth of a radian, orders of magnitude below the directional
+    error a two-moment closure already makes when it merges two crossing
+    beams into one direction.
+  \item \textbf{The band-edge Doppler shift}, $\Delta_{\rm edge}$ and
+    $\Delta_{\rm edge,F}$. Each edge moves by the fractional amount
+    $v/c$, at most $3\times10^{-4}$ for the velocities above, and the
+    band-integrated energy changes by that same fraction: four orders of
+    magnitude below the accuracy of the dust cross-sections the band
+    itself is built on. This is why the transport carries no Doppler
+    correction anywhere, on the fields or on the sources
+    (Section~\ref{sec:fuv-sources}). Where the Doppler shift does matter
+    is one level down, inside the LW band: the H$_2$ absorption lines are
+    narrow, their widths set by the Doppler parameter $b$ of a few
+    ${\rm km\,s^{-1}}$ from thermal and turbulent motions, which is
+    comparable with the relative velocities themselves, so a shift of
+    that size moves a line on and off the part of the spectrum that
+    shields it. That physics is not transport and cannot be represented
+    by a band-integrated energy: it enters through the $b$ dependence of
+    the H$_2$ self-shielding function that the chemistry applies
+    \citep{WolcottGreenHaiman2019}, to the rate this module supplies
+    (Section~\ref{sec:fuv-coupling}). Splitting the band into lines is
+    the only way to do better, and it is outside a two-moment grey
+    scheme.
+  \item \textbf{The compression work term}, $\mathbf P\!:\!\nabla\mathbf
+    v$. Against the absorption term, its ratio is $|\mathbf
+    P\!:\!\nabla\mathbf v|/(c\kappa_a\rho\,U)\lesssim
+    |\nabla\mathbf v|\,\lambda/c$, the free-streaming contraction being at
+    most three times the isotropic value $U/3$. A velocity of
+    $10\,{\rm km\,s^{-1}}$ over $100$\,pc gives $|\nabla\mathbf v|\sim
+    3\times10^{-15}\,{\rm s^{-1}}$, and $\lambda$ runs from $\sim0.1$\,pc
+    in dense metal-rich gas to tens of kiloparsecs in diffuse metal-poor
+    gas, so the ratio is $10^{-8}$ at one end and at most $10^{-2}$ at the
+    other. The energy densities alone do not settle it: at $G_0 = 1$ the
+    band energy density is $5\times10^{-14}\,{\rm erg\,cm^{-3}}$, three
+    per cent of the thermal energy density of warm neutral gas at
+    $n_H = 1\,{\rm cm^{-3}}$ and $T = 8000$\,K, but comparable with that
+    of cold neutral gas at the same density and $T = 100$\,K, and larger
+    again inside a bright photodissociation region. What closes the item
+    is that this module applies no force and no work to the gas at all:
+    momentum coupling is the separate channel of
+    Section~\ref{sec:radiation-pressure}. The radiation therefore does no
+    $P\,{\rm d}V$ work on the gas and receives none from compression, and
+    the dropped term could only have acted on the radiation's own budget,
+    where the bound above holds.
+  \item \textbf{Dust scattering}, $\kappa_s$. The tabulated values of
+    Section~\ref{sec:fuv-opacity} are absorption cross-sections, so
+    $\kappa_a = \kappa$ and $\kappa_s = 0$, and the single opacity of
+    Eqs.~\ref{eq:fuv-moment-zero}--\ref{eq:fuv-moment-one} is the
+    consistent choice. Were extinction values used instead, with a
+    Milky-Way grain albedo of a few tenths in the FUV, the flux would have
+    to relax at the total opacity while the energy equation kept only the
+    absorbing part; using extinction as if it were absorption instead, as
+    a single opacity in both, destroys the energy that scattering returns
+    to the diffuse field, and the absorption length used would be shorter
+    than the true one by the factor $1-\text{albedo}$, between about
+    $1.4$ and $2$ times too short.
+    A missing scattering source also makes shadows behind dense clumps
+    emptier than reality, in the opposite direction to the softening a
+    two-moment closure produces.
+  \item \textbf{Spectral migration across the band edges from expansion.}
+    A photon lives, before absorption, for $\tau_{\rm phys} = \lambda/c$,
+    which is $10^3$ to $10^5$\,yr over the $\lambda \sim 300$\,pc to
+    $30$\,kpc of diffuse gas, against a Hubble time of order
+    $10^{10}$\,yr. Its frequency therefore migrates by
+    $H\tau_{\rm phys}\sim 10^{-7}$ to $10^{-5}$ of a band width before
+    that ONE photon is absorbed: no per-photon book-keeping is needed for
+    that. The RUN-INTEGRATED transfer this migration accumulates over
+    many e-folds of expansion IS modelled: each band's own lower-edge
+    loss (fixed in physical, not comoving, energy) is folded into its
+    relaxation depth via a table-borne coefficient
+    $\lambda_E(b) \geq 1$, and the two bands being contiguous means the
+    Lyman-Werner band's loss at 11.2\,eV is exactly the PE band's gain
+    there, transferred directly. Section~\ref{sec:fuv-lagrangian}'s
+    $-Hu$ term is the $\lambda_E(b) = 1$ (grey, comoving-edge) special
+    case of this; its Step~2 records the sense in which THAT term alone
+    bounds the loss from a narrow band, the gap this transfer closes.
+  \item \textbf{The true speed of light in the transport.} Replacing $c$
+    by $c_{\rm hyp}$ and rescaling the source by $c_{\rm hyp}/c$ leaves
+    every steady state of the system unchanged
+    (Section~\ref{sec:fuv-steady}) and changes only how long the transient
+    takes to settle: the standard argument for the approximation
+    \citep{GnedinAbel2001,Rosdahl2013}, valid as long as the light
+    crossing time of the region of interest stays short against the time
+    on which the sources and the absorbers change. It fails where a front
+    would move at a speed approaching $c_{\rm hyp}$, and for a uniform
+    background rather than local sources \citep{Gnedin2016}. Here the
+    cost is a transient longer than the lifetime of the star that drives
+    it in the most diffuse gas, quantified in
+    Section~\ref{sec:fuv-chyp}.
+  \item \textbf{Thermal dust emission}, $4\pi\kappa_P\rho\,B$. Dust
+    re-emits the FUV energy it absorbs in the infrared, far below the
+    $6$\,eV lower edge, so no emission term returns energy to either
+    band and the emissivity retains the stellar sources only. Both bands
+    are optically thin to their own re-emission because there is none.
+\end{enumerate}
+
+\textbf{What we keep.} Absorption by dust at the tabulated opacity, in
+both equations. The stellar sources of Section~\ref{sec:fuv-sources}. The
+advection of both fields by the gas, exactly and with no discrete
+operator, which is what moving the variables onto the gas particles buys
+(Section~\ref{sec:fuv-lagrangian}). Both expansion terms, the volume
+dilution and the redshift, one power of $H$ surviving in each equation
+once the fields are measured per unit gas mass. And the M1 closure with
+its admissibility constraint, which is what carries the directionality
+that two moments can carry.
+
+\subsubsection{From the Eulerian moments to the system we integrate}
+\label{sec:fuv-lagrangian}
+
+Eqs.~\ref{eq:fuv-moment-zero}--\ref{eq:fuv-moment-one} are volumetric,
+physical and Eulerian: they hold at a fixed point of a static space. The
+scheme integrates them per unit gas mass, on particles that move with the
+gas, in a box that may expand. The mechanism comes first, in a static box;
+five steps then restore the expansion terms.
+
+\textbf{What a particle carries, and which derivative advances it.} Each
+gas particle carries the two mass-specific fields of one band, $u$ and
+$\mathbf F$, and it moves with the gas. The rate of change it experiences
+is therefore not the rate at a fixed point of space but the rate along its
+own trajectory, the material derivative
+\begin{equation}
+  \frac{{\rm D}}{{\rm D}t} = \frac{\partial}{\partial t} +
+    \mathbf v\cdot\nabla ,
+  \label{eq:fuv-lagrangian-derivative}
+\end{equation}
+with $\mathbf v$ the gas velocity. Everything the rest of this paragraph
+does is turn the volumetric, fixed-point left-hand side of
+Eq.~\ref{eq:fuv-full-moment-zero} into that derivative. Substitute $U =
+\rho u$ and $\mathbf F_V = \rho\mathbf F$ into it, keeping absorption and
+the source and taking $H = 0$:
+\begin{equation}
+  \frac{\partial(\rho u)}{\partial t}
+  + \nabla\cdot\big(\rho\,u\,\mathbf v\big)
+  + \nabla\cdot\big(\rho\,\mathbf F\big)
+  = \rho\,\dot s - c\,\kappa\rho\,(\rho u) .
+  \label{eq:fuv-lagr-line1}
+\end{equation}
+The gas obeys mass conservation, $\partial\rho/\partial t +
+\nabla\cdot(\rho\mathbf v) = 0$, and for any quantity $\psi$ carried per
+unit gas mass that identity reads $\partial(\rho\psi)/\partial t +
+\nabla\cdot(\rho\psi\mathbf v) = \rho\,{\rm D}\psi/{\rm D}t$: the first
+two terms of Eq.~\ref{eq:fuv-lagr-line1} are exactly $\rho\,{\rm D}u/{\rm
+D}t$. Dividing by $\rho$,
+\begin{equation}
+  \frac{{\rm D}u}{{\rm D}t}
+  = -\frac{1}{\rho}\nabla\cdot\big(\rho\,\mathbf F\big)
+    - c\,\kappa\rho\,u + \dot s .
+  \label{eq:fuv-lagr-line2}
+\end{equation}
+The advection term has not been neglected: it is the term that turned
+$\partial/\partial t$ into ${\rm D}/{\rm D}t$, and the particle's own
+motion supplies it, at no cost and with no discrete operator. Starting
+instead from the fixed-point form
+Eq.~\ref{eq:fuv-moment-zero}, which carries no advection term, the same
+substitution would leave the residual
+$+(1/\rho)\nabla\cdot(U\mathbf v)$ on the right of
+Eq.~\ref{eq:fuv-lagr-line2}: the two forms differ by exactly that term, of
+order $v/c$ relative to the transport term, and moving with the gas is
+what makes the gas-frame form the one being solved rather than an
+approximation to it. The other $v/c$ terms stay dropped, item by item in
+Section~\ref{sec:fuv-assumptions}.
+
+The first moment goes the same way, on each component of the flux:
+\begin{equation}
+  \frac{\partial(\rho \mathbf F)}{\partial t}
+  + \nabla\cdot\big(\rho\,\mathbf F\otimes\mathbf v\big)
+  + c^2\,\nabla\cdot\big(\mathbf D(f)\,\rho u\big)
+  = -c\,\kappa\rho\,(\rho\mathbf F)
+  \quad\Longrightarrow\quad
+  \frac{{\rm D}\mathbf F}{{\rm D}t}
+  = -\frac{c^2}{\rho}\nabla\cdot\big(\mathbf D(f)\,\rho u\big)
+    - c\,\kappa\rho\,\mathbf F .
+  \label{eq:fuv-lagr-F}
+\end{equation}
+Two spatial operators survive, and they are the only two the scheme has to
+estimate: $(1/\rho)\nabla\cdot(\rho\mathbf F)$, the divergence of the
+volumetric flux per unit density, and
+$(c^2/\rho)\nabla\cdot(\mathbf D\,\rho u)$, the divergence of the
+volumetric pressure tensor per unit density. Note what sits inside each
+divergence: the density, because what crosses a surface is the volumetric
+flux $\rho\mathbf F$ and the volumetric pressure $\mathbf D\,\rho u$, not
+their mass-specific counterparts. Each is estimated by a sum over kernel
+neighbours built so that the pairwise contribution to one particle is the
+negative of the contribution to the other, weighted by their masses; the
+transport then moves energy between particles and creates none, conserving
+$\sum_i m_i u_i$ (Section~\ref{sec:fuv-operators}).
+
+\textbf{Conventions.} \swift{} stores particle positions as comoving
+coordinates $\mathbf x$, the physical position being $a\mathbf x$ with $a$
+the scale factor, and gas densities as comoving densities $\rho_c$. Time is
+proper time. The radiation variables are physical throughout. Hence
+\begin{equation}
+  \rho = a^{-3}\rho_c , \qquad
+  \nabla = a^{-1}\nabla_{\mathbf x} , \qquad
+  \frac{{\rm d}\ln a}{{\rm d}t} = H .
+  \label{eq:fuv-cosmo-conventions}
+\end{equation}
+
+\textbf{Step 1: what expansion does to the volumetric field.} Written at a
+fixed comoving position, the zeroth moment
+Eq.~\ref{eq:fuv-moment-zero} acquires two expansion terms,
+\begin{equation}
+  \left.\frac{\partial U}{\partial t}\right|_{\mathbf x}
+  + \underbrace{3HU}_{\text{volume}} + \underbrace{HU}_{\text{redshift}}
+  + \frac{1}{a}\nabla_{\mathbf x}\cdot\mathbf F_V
+  = -c\,\kappa\rho\,U + S_V ,
+  \label{eq:fuv-cosmo-U}
+\end{equation}
+of different origin: $3HU$ is the dilution of a fixed energy over a
+comoving volume growing as $a^3$, and $HU$ is the redshift of each photon
+in it, $E\propto a^{-1}$. Together they give the textbook free-streaming
+result, $U\propto a^{-4}$ with no source, no absorption and no net flux
+divergence.
+
+\textbf{Step 2: divide by the gas density.} The gas dilutes too, three
+powers of it, so at fixed comoving gas density
+\begin{equation}
+  \left.\frac{\partial u}{\partial t}\right|_{\mathbf x}
+  = \frac{1}{\rho}\left.\frac{\partial U}{\partial t}\right|_{\mathbf x}
+    + 3H\,u ,
+  \label{eq:fuv-cosmo-divide}
+\end{equation}
+and the three volume powers of Step 1 cancel against it exactly. One power
+survives, the redshift one:
+\begin{equation}
+  \left.\frac{\partial u}{\partial t}\right|_{\mathbf x}
+  + \frac{1}{a\,\rho}\nabla_{\mathbf x}\cdot\mathbf F_V
+  = -H\,u - c\,\kappa\rho\,u + \dot s .
+  \label{eq:fuv-cosmo-u}
+\end{equation}
+This is why the energy equation carries $-Hu$ and not $-4Hu$: dividing by
+a gas density that dilutes as $a^{-3}$ has already absorbed the volume
+part, and the field per unit gas mass loses only the redshift. Photons
+redshifting out of a band across its edges are a further loss that $-Hu$
+does not describe, so the term is a lower bound on the true loss from a
+narrow band, not an overestimate. In a non-cosmological run $H=0$ and every
+expansion term above vanishes.
+
+\textbf{Step 3: the flux equation picks up its own $H$.} The first moment
+carries the same four powers, most directly seen in the free-streaming
+limit where $\mathbf F_V = c\,U\,\hat{\mathbf n}$ and therefore
+$|\mathbf F_V|\propto a^{-4}$ as well; dividing by $\rho$ again removes
+three and leaves one,
+\begin{equation}
+  \left.\frac{\partial \mathbf F}{\partial t}\right|_{\mathbf x}
+  + \frac{c^2}{a\,\rho}\nabla_{\mathbf x}\cdot\big(\mathbf D\,U\big)
+  = -H\,\mathbf F - c\,\kappa\rho\,\mathbf F .
+  \label{eq:fuv-cosmo-F}
+\end{equation}
+Both equations therefore relax at the same rate, absorption plus
+expansion, which is what lets one relaxation depth serve both.
+
+\textbf{Step 4: follow the gas.} This is the substitution of
+Eqs.~\ref{eq:fuv-lagr-line1}--\ref{eq:fuv-lagr-line2} above, applied now to
+the two equations that carry the expansion terms: replace
+$\partial/\partial t|_{\mathbf x}$ by ${\rm D}/{\rm D}t$ in
+Eqs.~\ref{eq:fuv-cosmo-u} and \ref{eq:fuv-cosmo-F}, the advection of both
+fields by the gas being accounted for by the particles' own motion. The
+expansion terms are untouched by it: $H$ multiplies the local field, not a
+gradient of it.
+
+\textbf{Step 5: the transport operators the mass-specific form implies.}
+These are the two operators already identified above, written once more
+with the volumetric fields visible inside each divergence,
+\begin{equation}
+  \frac{1}{\rho}\nabla\cdot\mathbf F_V
+    = \frac{1}{\rho}\nabla\cdot\big(\rho\,\mathbf F\big) , \qquad
+  \frac{c^2}{\rho}\nabla\cdot\big(\mathbf D\,U\big)
+    = \frac{c^2}{\rho}\nabla\cdot\big(\mathbf D\,\rho u\big) ,
+  \label{eq:fuv-mass-specific-operators}
+\end{equation}
+and it is these two forms, rather than a bare divergence of $\mathbf F$ and
+a bare gradient of $u$, that Section~\ref{sec:fuv-operators} discretises.
+
+\textbf{The system integrated.} Collecting Steps 1 to 5 and rescaling by
+$c_{\rm hyp}/c$: the transport and pressure-tensor divergences already
+acquire that factor (once, respectively twice) from the plain
+$c\to c_{\rm hyp}$ replacement inside them, but the absorption-plus-expansion
+decay rate and the source term must be rescaled explicitly, as the whole
+true-speed rate $c/\lambda + H = c\,\kappa\rho + H$, because $H$ carries no
+factor of $c$ for the substitution to act on -- it is a property of the
+expanding background, not of the radiation transport, so unlike
+$\kappa$ it does not pick up the dilation "for free". Leaving $H$ out of
+that rescaling is the same
+class of error as leaving any other rate undilated:
+\begin{align}
+  \frac{{\rm D}u}{{\rm D}t}
+    &= -\frac{1}{\rho}\nabla\cdot(\rho\,\mathbf F)
+       - \frac{c_{\rm hyp}}{c}\left(\frac{c}{\lambda} + H\right) u
+       + \frac{c_{\rm hyp}}{c}\,\dot s ,
+  \label{eq:fuv-u-eq} \\
+  \frac{{\rm D}\mathbf F}{{\rm D}t}
+    &= -\frac{c_{\rm hyp}^2}{\rho}\nabla\cdot\big(\mathbf D(f)\,\rho u\big)
+       - \frac{c_{\rm hyp}}{c}\left(\frac{c}{\lambda} + H\right)\mathbf F ,
+  \qquad
+  f = \min\!\left(\frac{|\mathbf F|}{c_{\rm hyp}u},\,1\right) ,
+  \label{eq:fuv-F-eq}
+\end{align}
+with $\dot s = S_V/\rho$ the source rate per unit gas mass (${\rm
+erg\,g^{-1}\,s^{-1}}$), $H$ the Hubble rate, and $c/\lambda = c\,\kappa\rho$
+the true-speed absorption rate. This is the exact system the code
+integrates. The gradients in it are physical; the discrete operators are
+evaluated on comoving inputs and converted once, as
+Section~\ref{sec:fuv-cosmo} shows. Both equations carry the same single
+power of $H$, dilated by the same $c_{\rm hyp}/c$ factor as absorption
+and injection, inside the same relaxation rate
+$(c_{\rm hyp}/c)\big(c/\lambda + H\big)$, so absorption and expansion add
+as rates rather than as timescales, and $c_{\rm hyp}$ cancels out of the
+homogeneous equation's fixed point identically to every other term, for
+any per-particle speed field (Section~\ref{sec:fuv-time}).
+
+\textbf{Consequence of the undilated form.} Writing $H$ bare instead,
+$(c_{\rm hyp}/\lambda + H)$ suppresses the true-speed fixed
+point $u^\ast_{\rm true} = (\dot s/c)/(\kappa\rho + H/c)$ by the factor
+$x/(1+x)$, $x = c_{\rm hyp}\kappa\rho/H$: since $c_{\rm hyp}\ll c$,
+$H/c_{\rm hyp} \gg H/c$, so the bare-$H$ fixed point
+$(\dot s/c)/(\kappa\rho + H/c_{\rm hyp})$ undershoots the true one by
+exactly that ratio. This is a spurious sink, strongest exactly where
+$c_{\rm hyp}\kappa\rho$ is smallest relative to $H$, i.e.\ at low density
+and low metallicity -- the early ultra-faint-dwarf ISM this module is
+built for. Verified by a cosmological run of \code{ISRFCosmology}'s
+\code{free\_field} fixture, redshift $9$ to $a=0.125$: the corrected form
+passes (mass-weighted $u_{\rm FUV}/u_0-1$ and $u_{\rm LW}/u_0-1$ both
+$2.2\times10^{-8}$, $900\times$ below their bar), while the bare-$H$
+form's own prediction for that run, a decay of order $20\%$, would have
+failed catastrophically against it.
+
+The relaxation time is $\tau = \lambda/c_{\rm hyp}$, and the flux equation
+is a Cattaneo-type relaxation equation \citep{Cattaneo1958}: in the
+isotropic limit its steady state is Fick's law $\mathbf F = -(c_{\rm
+hyp}\lambda/3)\,\nabla u$, with an effective diffusion coefficient $D =
+c_{\rm hyp}\lambda/3$ that follows from $\lambda$ and $c_{\rm hyp}$
+rather than being a free parameter. The reduced flux $f$ and the
+constraint $|\mathbf F|\le c_{\rm hyp}u$ are built with $c_{\rm hyp}$, not
+$c$: built with $c$, $f$ would be tiny everywhere and the closure would
+silently collapse to the isotropic one.
+
+The gas frame is also the only frame in which the scheme is Galilean
+invariant. With $c_{\rm hyp}$ no larger than a few times the sound speed,
+a box-frame advection term would not be small against the reduced signal
+speed, whereas in the gas frame the velocity that remains is the
+\emph{relative} one between a source and the gas that absorbs its light,
+small for a star moving with its natal cloud. The price is a source moving
+at $v_{\rm rel}$ through the gas: it trails a steady field whose centroid
+lags it by $v_{\rm rel}\tau$.
+
+\subsubsection{Steady states}
+\label{sec:fuv-steady}
+
+Two exact steady states of Eqs.~\ref{eq:fuv-u-eq}--\ref{eq:fuv-F-eq}
+for a point source of band luminosity $L$ in a static, uniform medium
+of absorption length $\lambda$ ($H=0$) fix what the scheme must
+reproduce. In both, $c_{\rm hyp}$ cancels: the reduced speed changes how
+long the field takes to settle, not where it settles. In the
+free-streaming branch ($f=1$, $\mathbf F_V = c_{\rm hyp} U\,\hat{\mathbf
+r}$),
+\begin{equation}
+  U(r) = \frac{L}{4\pi c\,r^2}\,e^{-r/\lambda} ,
+  \label{eq:fuv-steady-freestream}
+\end{equation}
+the inverse-square law times dust extinction over the physical
+absorption length, the exact answer for a point source in a purely
+absorbing medium. In the isotropic branch ($f\to0$, $\mathbf D = \mathbf
+I/3$), Fick's law turns Eq.~\ref{eq:fuv-u-eq} into a screened Poisson
+equation, $\nabla^2 U - (3/\lambda^2)U = -(3L/\lambda c)\,\delta^3(\mathbf
+r)$, whose solution is
+\begin{equation}
+  U(r) = \frac{3L}{4\pi c\,\lambda\,r}\,e^{-\sqrt3\,r/\lambda} ,
+  \label{eq:fuv-steady-diffusion}
+\end{equation}
+with the textbook diffusion screening length $\lambda/\sqrt3$. A
+single point source in an absorbing medium never isotropizes (there is
+no scattering): the M1 system is solved exactly by the free-streaming
+solution, $\mathbf F_V = c_{\rm hyp}\,U\,\hat{\mathbf r}$ ($f=1$), so the closure
+selects Eq.~\ref{eq:fuv-steady-freestream} around one star. The
+isotropic branch is not a self-consistent steady state that close to a
+source: its own reduced flux, obtained from Eq.~\ref{eq:fuv-steady-diffusion}
+through Fick's law, exceeds $1$ for $r\lesssim0.79\,\lambda$, so the
+admissibility constraint of Eq.~\ref{eq:fuv-admissible} and the flux
+limiter of Section~\ref{sec:fuv-limiter} clip it there. It becomes an
+available closure only in the outer envelope, and it is the relevant
+limit for a diffuse background built from many sources in many
+directions, the production use of this module. Consistent with this, the
+discrete scheme's own single-source steady state sits on the flux
+limiter's boundary, $|\mathbf F_i^\ast| = c_{{\rm hyp},i}u_i$, rather than
+in the interior of the admissible set. Integrating Eq.~\ref{eq:fuv-u-eq}
+over a periodic domain removes the transport term for any closure and
+gives a closure-independent amplitude identity for a steady source,
+\begin{equation}
+  \sum_i \frac{m_i u_i}{\lambda_i} = \frac{1}{c}\sum_i m_i \dot s_i ,
+  \label{eq:fuv-amplitude-identity}
+\end{equation}
+which the discrete scheme satisfies exactly when every particle shares
+the same $h_i$ and $\Delta t_i$, and hence the same $c_{{\rm hyp},i}$ and
+relaxation depth $a_i$: only then does the transport operator conserve
+$\sum_i m_i u_i$ exactly across the applied update
+(Section~\ref{sec:fuv-operators}); under mixed time bins or a
+non-uniform $c_{\rm hyp}\kappa\rho$ the identity holds up to the same
+residual described there.
+
+\subsubsection{Coupling to the chemistry and cooling solver}
+\label{sec:fuv-coupling}
+
+At every cooling call, the two fields are converted to the quantities
+Grackle expects. The photoelectric heating strength is the band-summed
+energy flux of a quasi-isotropic field, $c\,U$, in Habing units
+\citep{Habing1968}, with each band clamped to non-negative before the
+sum, not the sum clamped afterwards,
+\begin{equation}
+  G_{0,i} = \frac{c\,\rho_i\,\big(\max(u_{{\rm FUV},i},0) +
+                 \max(u_{{\rm LW},i},0)\big)}
+                 {1.6\times10^{-3}\,{\rm erg\,s^{-1}\,cm^{-2}}} .
+  \label{eq:fuv-g0}
+\end{equation}
+Clamping the sum instead would let a negative band, a propagation
+undershoot (Section~\ref{sec:fuv-dissipation}), subtract from the other
+band rather than contribute nothing: on a fixture with one band negative
+and the other positive this delivered $1.50432$ against the unbiased
+$2.00576$, both in Habing units, a $25\%$ suppression that raised no
+warning because the sum itself stayed positive throughout. Mixed sign
+between the two bands is ordinary at source turn-on, not a rare corner
+case, so the two clamps cannot be merged into one on the sum.
+Grackle \citep{Smith2017} applies it as the heating rate of
+\citet[their Eq.~1]{Wolfire1995}, built on the grain photoelectric
+mechanism of \citet{BakesTielens1994}, scaled by the
+same gas metallicity relative to solar as the dust-to-gas ratio of
+Section~\ref{sec:fuv-opacity},
+\begin{equation}
+  \Gamma_{\rm PE} = A\,\epsilon_{\rm PE}\,G_0\,n_H\,
+    \frac{Z}{Z_\odot}
+  \qquad (T < 2\times10^4\,{\rm K}) ,
+  \label{eq:fuv-pe-heating}
+\end{equation}
+per unit volume, with $n_H$ the hydrogen nuclei number density
+(including H$_2$ nuclei), and scales its dust recombination cooling by
+the same $G_0$; H$_2$ formation on dust also responds to $G_0$, but only
+indirectly, through the dust temperature $G_0$ helps set, not a direct
+scaling like the two terms above.
+\code{GrackleCooling:photoelectric\_heating\_efficiency}
+selects $A$ and $\epsilon_{\rm PE}$. With \code{constant} (the default)
+the efficiency is constant, $A = 10^{-24}\,{\rm erg\,s^{-1}}$ and
+$\epsilon_{\rm PE} = 0.05$. With \code{wolfire1995}, $A$ is the same and
+$\epsilon_{\rm PE}$ follows \citet[their Eq.~2]{Wolfire1995}, a function
+of the grain charging parameter $G_0 T^{1/2}/n_e$, with Grackle's own
+electron density. With \code{density\_dependent} (a Grackle build that
+provides it) the efficiency is the density-only fit of
+\citet[their Eqs.~A1--A2]{Smith2026} to the solar-neighbourhood
+predictions of \citet{Wolfire2003},
+\begin{equation}
+  A = 1.3\times10^{-24}\,{\rm erg\,s^{-1}}, \qquad
+  \epsilon_{\rm PE} = \min\!\left[0.07,\;
+    0.0149\,\left(\frac{n_H}{{\rm cm^{-3}}}\right)^{0.235}\right] .
+  \label{eq:fuv-pe-efficiency-density}
+\end{equation}
+\citet{Smith2026} write $n$ for the gas number density and normalise the
+dust-to-gas ratio to $0.0081$; Grackle uses $n_H$ in both places and
+$Z/Z_\odot$, i.e. a dust-to-gas ratio normalised to its own $0.009387$.
+Relative to \code{constant}, \code{density\_dependent} heats by a factor
+$0.23$, $0.39$, $0.67$, $1.14$ and $1.82$ at $n_H = 0.1$, $1$, $10$, $100$
+and $\ge 725\,{\rm cm^{-3}}$. Grackle's documentation flags its electron
+density as unreliable in dense, cold gas, which affects
+\code{wolfire1995} only.
+The H$_2$ photodissociation
+rate is a cross-section times the LW photon flux,
+\begin{equation}
+  k_{{\rm diss},i} = \sigma_{\rm H_2}\,
+    \frac{c\,\rho_i\,u_{{\rm LW},i}}{E_{\rm LW}} , \qquad
+  \sigma_{\rm H_2} = 2.47\times10^{-18}\,{\rm cm^2}, \qquad
+  E_{\rm LW} = 12\,{\rm eV} ,
+  \label{eq:fuv-kdiss}
+\end{equation}
+with $\sigma_{\rm H_2}$ an effective, spectrum-averaged band cross-section,
+not an atomic-physics constant. H$_2$ absorbs in the Lyman and Werner
+line systems, so the true dissociation rate is a sum over discrete lines
+weighted by the radiation field's own shape across $11.2$--$13.6$\,eV;
+$\sigma_{\rm H_2}$ is the single number that reproduces that sum for one
+assumed shape. It is a compile-time constant,
+not a run-time parameter, since it is a property of the assumed spectrum
+rather than a knob to tune per run.
+
+The assumed shape is the \citet{Draine1978} interstellar field. Both
+$\sigma_{\rm H_2}$ and $E_{\rm LW}$ are fixed under that assumption, and
+since $k_{\rm diss}\propto\sigma_{\rm H_2}/E_{\rm LW}$ only their ratio is
+constrained: the two are calibrated jointly, not independently.
+$E_{\rm LW} = 12$\,eV is itself a band-midpoint stand-in, used because a
+gas particle carries the LW band's energy flux $u_{{\rm LW},i}$ while
+\eqref{eq:fuv-kdiss} needs a photon flux, and the table carries no per-mass
+mean LW photon energy to convert with, unlike the ionizing band, whose
+mean excess photon energy above $13.6$\,eV is tabulated. A stellar population whose LW
+spectrum is much harder or softer than Draine's is therefore represented
+only approximately.
+
+The ratio is checked against the free-space photodissociation rate of
+\citet[their Eq.~5]{Sternberg2014},
+$D_0 = 5.8\times10^{-11}\,I_{\rm UV}\,{\rm s^{-1}}$, where $I_{\rm UV}$
+normalises the Draine field integrated over $912$--$1108$\,\AA\ alone.
+$D_0$ is the full-$4\pi$ free-space rate, not their slab-surface
+$D(0) = D_0/2$, whose geometric factor does not apply here. Converting
+conventions with $I_{\rm UV} = G_0/1.7$ on that band, and taking the LW
+band to carry a fraction $0.149$ of the combined $6$--$13.6$\,eV Habing
+flux that \code{RADIATION\_HABING\_FLUX\_CGS} normalises,
+\eqref{eq:fuv-kdiss} gives $k_{\rm diss}/D_0 = 0.898$, within the $\sim
+10\%$ uncertainty of the band integrations entering that comparison. Both
+expressions are linear in the field strength, so agreement is a fixed
+multiplicative offset: the comparison bounds the normalisation and says
+nothing about how either behaves under a different spectral shape. Grackle adds
+$k_{\rm diss}$ to its background dissociation rate and applies its own
+self-shielding factor \citep{WolcottGreenHaiman2019} to the sum. Grackle
+adds no heating for these dissociations by default. The optional switch
+\code{GrackleCooling:H2\_photodissociation\_heating} (off by default,
+a Grackle build that provides it) adds, following
+\citet[their Eqs.~37--38]{Kim2023},
+\begin{equation}
+  \Gamma_{\rm H_2,diss} = \left[0.4 + \frac{2 f_{\rm pump}}
+    {1 + n_{\rm crit}/n}\right]{\rm eV}\;k_{\rm diss,shield}\,n_{\rm H_2},
+  \qquad f_{\rm pump} = 8 ,
+  \label{eq:fuv-h2-diss-heating}
+\end{equation}
+per unit volume, the sum of their Eq.~37 (UV pumping) and Eq.~38
+(dissociation): $0.4$\,eV from the dissociation itself and the
+collisionally thermalised part of the UV-pumping energy.
+$k_{\rm diss,shield}$ is the shielded total rate (UV background plus
+$k_{\rm diss}$). The thermalised fraction $1/(1 + n_{\rm crit}/n)$ uses
+the critical density of \citet[their Eq.~23]{Omukai2000} that Grackle
+already applies to H$_2$ formation heating,
+$n_{\rm crit}/n = n_{\rm cr,n}/(n_{\rm HI}\,n_{\rm cr,d1} + n_{\rm H_2}\,n_{\rm cr,d2})$.
+It differs from the critical density of \citet[their Eq.~39]{Kim2023},
+$(A_{\rm eff} + k_{\rm diss,shield})/(x_{\rm H}k_{\rm H_2\mbox{-}H} + x_{\rm H_2}k_{\rm H_2\mbox{-}H_2})$
+with $A_{\rm eff} = 2\times10^{-7}\,{\rm s^{-1}}$ \citep{Burton1990} and
+the de-excitation rates of \citet[their Eq.~A.1]{Visser2018}, by factors
+of $0.2$ to $10^5$ over $10$--$10^4$\,K and $0 < x_{\rm H_2} \le 0.5$
+(Omukai larger below about $200$\,K, smaller above).
+\citet[their Appendix~A]{Smith2026}, which adopts this heating, prints
+the reciprocal factor $1/(1 + n/n_{\rm crit})$. Both quantities are clamped to be
+non-negative before they reach Grackle; a negative value is an
+undershoot of the numerical scheme (Section~\ref{sec:fuv-dissipation})
+and is reported. Grackle applies $k_{\rm diss}$ only to the H$_2$
+reaction network itself: it adds no heating for the photodissociation
+event or the UV pumping that precedes it, unlike the photoelectric and
+dust-recombination channels above.
+
+Enabling the module (\code{GEARFeedback:with\_interstellar\_radiation\_field})
+configures Grackle for it: dust chemistry on, which selects the
+constant-efficiency photoelectric heating and dust recombination cooling
+together, and forces H$_2$ formation on dust grains
+(\code{h2\_on\_dust}) on in the cooling modes that track H$_2$
+(modes 2 and 3); the per-particle ISRF field
+instead of the scalar one, for every dust channel; and, in those same
+H$_2$-tracking modes, the radiative-transfer rate coupling that carries
+$k_{\rm diss}$. Photoelectric heating and dust recombination cooling
+work in every Grackle mode; H$_2$ formation on dust and H$_2$
+dissociation only where H$_2$ is a tracked species.
+
+\paragraph{Implementation.} $\sigma_{\rm H_2}$ is the macro
+\code{RADIATION\_SIGMA\_H2\_LW\_CGS} (\code{src/feedback/GEAR/radiation.h:102}).
+
+\subsection{How we solve them numerically}
+\label{sec:fuv-numerics}
+
+\subsubsection{One time step, in order}
+\label{sec:fuv-sequence}
+
+Every active gas particle $i$ advances both bands on its own
+hydrodynamical time step $\Delta t_i$; there is no sub-cycling and no
+separate radiation time step. In order:
+\begin{enumerate}
+  \item Set this step's signal speed $c_{{\rm hyp},i}$ and absorption
+    rates $\kappa_{b}\rho_i$; draw this step's source rate $\dot s_i$
+    from the particle's dose reservoir (Section~\ref{sec:fuv-injection}).
+  \item Density loop: accumulate the neighbour reference field for the
+    dissipation trigger.
+  \item Gradient loop: build the closure tensor from $(u^n,\mathbf F^n)$
+    and accumulate the pressure-tensor divergence of $u^n$
+    (Eq.~\ref{eq:fuv-grad-op}).
+  \item Update $\mathbf F_i$ by exact relaxation
+    (Eq.~\ref{eq:fuv-F-update}), apply the flux limiter against $u_i^n$
+    (Eq.~\ref{eq:fuv-flux-limiter}), and update the dissipation
+    coefficients from $u^n$ (Section~\ref{sec:fuv-dissipation}).
+  \item Force loop: accumulate the divergence of the new flux
+    (Eq.~\ref{eq:fuv-div-op}) and the artificial-dissipation exchange of
+    $u^n$ (Eq.~\ref{eq:fuv-diss-formula}).
+  \item Update $u_i$ by exact relaxation with the dissipation folded in
+    (Eq.~\ref{eq:fuv-u-update}). This is the state cooling reads.
+  \item Stars active this step deposit their band luminosities into
+    the dose reservoirs of their kernel neighbours
+    (Eq.~\ref{eq:fuv-inject}, Section~\ref{sec:fuv-injection}).
+\end{enumerate}
+Steps 2 to 7 run inside the existing SPH density, gradient and force
+loops; the scheme adds pairwise operators to those loops and no new
+tasks.
+
+\subsubsection{Injection: kernel deposit, extinction and dose reservoir}
+\label{sec:fuv-injection}
+
+A star $\star$ active on a step of length $\Delta t_\star$ deposits, on
+each gas particle $j$ inside its kernel, the band energy
+\begin{equation}
+  \Delta E_{b,j} = \Delta t_\star\, w_{j\star}\, L_{b,\star}\,
+    \zeta_{b,j\star} , \qquad
+  w_{j\star} = \frac{m_j\,W(r_{j\star}, h_\star)}
+                    {\sum_k m_k\,W(r_{k\star}, h_\star)} ,
+  \label{eq:fuv-inject}
+\end{equation}
+with weights that sum to one over the kernel. $\Delta t_\star$ is the
+star's proper-time feedback window; under cosmology it is not the
+star's integer time-bin width, which is in $\ln a$
+(Section~\ref{sec:fuv-cosmo} states the size of the error).
+$\zeta_{b,j\star}\in(0,1]$ is
+a dust extinction that attenuates the deposit,
+\begin{equation}
+  \zeta_{b,j\star} = \exp\!\big(-\kappa_b(Z_j)\,\Sigma_{j\star}\big) , \qquad
+  \Sigma_{j\star} = \rho_j\,\ell_{j\star} ,
+  \label{eq:fuv-extinction}
+\end{equation}
+the column formed once, from the receiver's own density and a path
+length $\ell_{j\star}$, with no knowledge of which mechanism built the
+length.
+It represents dust local to the illuminating star-receiver pair and is
+distinct from the absorption along the path at large, which the
+propagation handles. Extinction applies in both run modes; under
+cosmology both $\rho_j$ and $\ell_{j\star}$ above are comoving
+(Section~\ref{sec:fuv-cosmo}).
+
+\texttt{GEARFeedback:ISRF\_extinction\_path} selects the mechanism that
+builds $\ell_{j\star}$, dispatched once per star-gas pair:
+\begin{itemize}
+  \item \texttt{pair\_separation} (\textbf{the shipped default}):
+    $\ell_{j\star} = r_{j\star}$, the star-gas separation itself. The only
+    mechanism derived rather than calibrated: in the uniform,
+    optically-thin limit its own kernel-weighted mean equals exactly
+    $5/12\,\gamma_K h_\star$, the value \texttt{constant\_kernel\_path}
+    below needs a free parameter to reach, and away from that limit it is
+    also the only mechanism that reproduces the exponential's own
+    variation, $\exp(-\kappa\rho r)$, across the star's kernel, rather
+    than applying one flat factor to every neighbour a star illuminates.
+  \item \texttt{constant\_kernel\_path}: $\ell_j = R\,H_j$, with $H_j =
+    \gamma_K h_j$ the receiver's own kernel support radius and $R$ =
+    \texttt{ISRF\_extinction\_path\_in\_kernel\_radii} (default $1$, the
+    largest path the geometry admits since the receiver sits inside the
+    illuminating star's kernel). $R=5/12$ recovers, in the uniform
+    optically-thin limit only, the injection-kernel-weighted mean of
+    \texttt{pair\_separation}'s own path; away from that limit the two
+    mechanisms diverge, since \texttt{pair\_separation} varies per pair
+    while $R$ is fixed.
+  \item \texttt{temperature\_capped\_jeans}: $\ell_j = \min\!\big(
+    \lambda_J(\min(T_j, T_{\rm cap})),\, H_j\big)$, the Jeans length at a
+    temperature capped at $T_{\rm cap}$ =
+    \texttt{ISRF\_extinction\_jeans\_temperature\_cap\_K} (default
+    $40$\,K), itself capped at one support radius since the receiver sits
+    inside the illuminating star's kernel. \citet[their
+    Section~3.4]{SafranekShrader2017} rank the temperature-capped Jeans
+    length best of five local column estimators against a multi-angle ray
+    trace, at the same $40$\,K cap.
+\end{itemize}
+Only \texttt{pair\_separation}'s length depends on the illuminating star
+as well as the receiver; the other two mechanisms are receiver-only. All
+three are nonetheless evaluated inside the star-gas pair loop, since
+hoisting the call out of it would fork the code path for
+\texttt{pair\_separation} alone. An unrecognised
+value of \texttt{ISRF\_extinction\_path} is a fatal error, not a silent
+fallback (Section~\ref{sec:fuv-parameters} gives the parameters each
+mechanism reads).
+
+At \texttt{COOLING\_GRACKLE\_MODE} $>1$, Grackle's own H2
+self-shielding needs a separate column length, set independently via
+\texttt{GrackleCooling:H2\_self\_shielding\_path}. At mode 2
+(\texttt{H2\_self\_shielding} = 2, kernel support radius), Grackle forms
+$N_{\rm H2} = 2 n_{\rm H2} l$, so the length passed is
+$l = {\rm path}/2$ with ${\rm path} = {\rm path\_in\_kernel\_radii}\,
+\gamma_K h$ (physical), with ${\rm path\_in\_kernel\_radii} = 1$ for the default
+\texttt{kernel\_radius} and $2$ for \texttt{kernel\_diameter}; at mode 3 the length is Grackle's own local
+Jeans length instead. Dust extinction and H2 self-shielding use
+different lengths on purpose: the dust column reflects the illuminating
+pair's own local geometry, while H2 self-shielding needs the scale over
+which the H2 column actually forms (the Jeans length at mode 3);
+collapsing both onto one common length would cost accuracy in whichever
+regime it is not tuned for.
+
+\textbf{Dose reservoir.} A gas particle usually sits on a finer time
+bin than its star. Depositing the whole star-step energy in one lump
+would produce a sawtooth in $u_j$ between star visits, with cooling
+reading the trough. Instead the deposit goes into a per-particle,
+per-band reservoir $R_{b,j}$ (an energy per unit gas mass), and the star's visit
+extends the reservoir's drain horizon $t_{{\rm end},j}$ to at least one
+star step past the visit:
+\begin{equation}
+  R_{b,j} \mathrel{+}= \frac{\Delta E_{b,j}}{m_j} , \qquad
+  t_{{\rm end},j} \leftarrow \max\!\big(t_{{\rm end},j},\; t + \Delta t_\star\big) .
+  \label{eq:fuv-reservoir}
+\end{equation}
+Any number of stars on any time bins add into the same reservoir. At
+the start of each of its own steps the particle drains a fraction of
+the reservoir into a source rate that is constant over the step,
+\begin{equation}
+  \phi_j = \min\!\left(1,\;\frac{\Delta t_j}{t_{{\rm end},j} - t}\right) ,
+  \qquad
+  \dot s_{b,j} = \frac{\phi_j\,R_{b,j}}{\Delta t_j} , \qquad
+  R_{b,j} \leftarrow (1-\phi_j)\,R_{b,j} ,
+  \label{eq:fuv-drain}
+\end{equation}
+which empties the reservoir exactly at the horizon and keeps the rate
+constant across the particle's sub-steps between visits. The rate
+enters the relaxation update of $u$ as a frozen source, rescaled by
+$c_{\rm hyp}/c$ there (Eq.~\ref{eq:fuv-u-update}); the reservoir itself
+holds the unrescaled physical dose. If a particle's neighbour search
+fails on a step, the drawn amount is returned to the reservoir. The
+reservoir is specific to the particle mass at deposit time and is not
+rescaled if that mass later changes. Both $t$ and $t_{{\rm end},j}$ here
+are proper time; Section~\ref{sec:fuv-cosmo} gives how their
+difference is formed under cosmology and why it must be.
+
+\textbf{Illumination window.} A visit also marks the particle as
+illuminated for two star steps and, on the first visit only,
+synchronises the particle's time step so that it integrates the deposit
+promptly. The mark expires once no star has renewed it for two star
+steps; with propagation on the expiry has no effect on the field, which
+decays through its own equations.
+
+\paragraph{Implementation.} The column is formed by
+\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
+(\code{src/feedback/GEAR/radiation\_isrf.c:908}), and the path mechanism is
+dispatched by \code{radiation\_get\_comoving\_extinction\_path}
+(\code{radiation\_isrf.c:853}), called inside the star-gas pair loop.
+
+\subsubsection{The signal speed and the stability bound}
+\label{sec:fuv-chyp}
+
+The hyperbolic Courant condition for
+Eqs.~\ref{eq:fuv-u-eq}--\ref{eq:fuv-F-eq} is $\Delta t \le C\,h/c_{\rm
+hyp}$, linear in $h$ like the hydrodynamical one. Rather than derive a
+time step from a chosen speed, the scheme keeps the particle's own,
+already-decided time step and derives the speed from it,
+\begin{equation}
+  c_{{\rm hyp},i} = \min\!\left(C_{\rm hyp}\,\frac{h_i}{\Delta t_i},\; c\right) ,
+  \label{eq:fuv-chyp}
+\end{equation}
+so that the Courant condition holds as an equality by construction, per
+particle and per step, before the clamp at $c$. The clamp can only make
+a step more conservative. $C_{\rm hyp}$ (default $0.5$) is the one
+dimensionless dial of the propagation. Its consequence is a transient
+that is slow in diffuse gas: at $h\sim10$\,pc and $\Delta t\sim10^5$\,yr,
+$c_{\rm hyp}\sim 50\,{\rm km\,s^{-1}}$, and with $\lambda$ of tens of
+kiloparsecs at $n_H\sim1\,{\rm cm^{-3}}$ and $Z\sim10^{-2}Z_\odot$, the
+relaxation time $\tau = \lambda/c_{\rm hyp}$ exceeds an OB star's
+lifetime by a large factor, so such a star's field never reaches its
+steady state. This is the cost of the reduced speed, not a defect: at
+the true $c$ the same $\tau$ is of order $10^5$\,yr.
+
+The explicit, staggered integrator below is stable only if the
+per-step transport number and the per-step dissipation number together
+satisfy
+\begin{equation}
+  6.2\,\alpha\,C_{\rm hyp} + 0.70\,C_{\rm hyp}^2 \le 2 , \qquad
+  \alpha = \max(\alpha_{\max}, \alpha_{\rm floor}) ,
+  \label{eq:fuv-stability-bound}
+\end{equation}
+where $\alpha_{\max}$ and $\alpha_{\rm floor}$ are the two ceilings of
+the artificial-dissipation coefficient
+(Section~\ref{sec:fuv-dissipation}). The two constants are lattice sums
+of the Wendland-C2 kernel \citep{Wendland1995,DehnenAly2012} at the
+project's neighbour number: $6.2 = 2
+I_W$ with $I_W = 3.10$ the dimensionless self-damping sum of the
+dissipation operator, and $0.70 = \nu_{\max}^2/2$ with $\nu_{\max} =
+1.18\,C_{\rm hyp}$ the largest transport eigenvalue per step. The bound
+is checked at start-up. With dissipation off it gives $C_{\rm hyp}\le
+1.69$; at the shipped $\alpha = 0.5$ it gives $C_{\rm hyp}\le 0.571$.
+
+\subsubsection{Speed heterogeneity: two failure pathways, an open
+residual, and what is settled about each}
+\label{sec:fuv-chyp-heterogeneity}
+
+Eq.~\ref{eq:fuv-chyp} is evaluated independently for every particle, so
+$c_{{\rm hyp},i}$ generally differs from $c_{{\rm hyp},j}$ for any pair
+$(i,j)$ that sits on different time bins or has different $h$ -- a
+``seam'' the pairwise transport and injection operators cross on every
+step. This heterogeneity has two distinct consequences, each
+quantified on the example fixtures of the shipped scheme
+(\code{examples/SubgridTests/StellarFeedback/ISRF/}). Both are
+established. A further mechanism beyond them is not, and no fix beyond the
+default speed rule below is adopted. \textbf{This section documents an
+open question, not a resolved design.}
+
+\paragraph{Pathway 1: negative energy at a speed seam.} A receiver
+particle's own Courant number is set by its neighbours' $c_{\rm hyp}$,
+not only its own; a fast-stepping neighbour with a large $c_{\rm hyp}$
+can drive the shared pairwise flux term past what the slower receiver's
+own step can absorb, undershooting $u$ past zero. This is established
+as a real cause, three independent ways, on
+\code{ISRFDissipationExtreme} and \code{ISRFCausalReach}: giving every
+particle one uniform $c_{\rm hyp}$ removes the sign violation
+entirely (a fixture-specific sign-closure gate goes from $0.57\%$/$0.85\%$
+FUV/LW to exactly $0.0000\%$); lowering $C_{\rm hyp}$ alone, with no code
+change, removes every negative on a fixture where the artificial
+dissipation cannot repair one; and two independently implemented
+neighbour-dependent pair weights, expected to trade this
+pathway for a different SPH-consistency violation, both do exactly that,
+regressing the same fixture's sign closure by a factor of $10$--$13$. See
+the \code{swift-gear} logbook, \code{theory/radiation/}, for the full
+numbers; this document states the mechanism, not the
+validation record.
+
+\paragraph{Pathway 2: an amplitude error from coupling the source to
+$c_{\rm hyp}$.} The source term in Eq.~\ref{eq:fuv-u-eq} is rescaled by
+$c_{\rm hyp}/c$ at the injecting particle's own value, so an identical
+star deposits a physically different amount of energy depending on the
+local gas's own time-stepping: a particle pinned to a short step (large
+$c_{\rm hyp}$) receives more of the true source than one on a long step,
+independent of the pathway-1 sign question above. At a uniform
+$c_{\rm hyp}$ this construction is exactly self-consistent: the source
+rescale and the rate getters (which read the
+true $c$, never $c_{\rm hyp}$) form a matched pair whose propagation
+fixed point cancels the speed identically, with or without transport.
+The defect is specific to $c_{\rm hyp}$
+\emph{varying between neighbours}: a particle's divergence sums fluxes
+carrying each sender's own $c_{{\rm hyp},j}$ while its own terms carry
+$c_{{\rm hyp},i}$, an interface (neighbour-ratio) effect in the sense of
+\citet{Katz2017}'s problem class (Section~\ref{sec:fuv-chyp-literature}),
+not a general source-normalisation one. At a \emph{uniform} $c_{\rm hyp}$
+the cancellation holds under cosmology too, since $H$ is dilated by
+the same $c_{\rm hyp}/c$ factor as every other rate
+(Section~\ref{sec:fuv-lagrangian}). Whether the cancellation still holds when
+$c_{{\rm hyp},i}$ varies \emph{between neighbours}, the actual subject of
+this pathway, is unmeasured under cosmology. A cosmological run with heterogeneous
+speeds therefore cannot yet be trusted on this point.
+
+What is measured: forcing a uniform speed by a lowered $C_{\rm hyp}$ changes the final FUV band energy on
+\code{ISRFCausalReach} relative to the shipped, heterogeneous-speed run;
+the fixture is still rising at $t_{\rm end}$ under every speed tested, and
+the ratio between the runs on this fixture has not
+settled by that point (it is still declining across snapshots), so no number
+from it is quoted here. Part of any gap measured this way is a slower
+relaxation clock (Section~\ref{sec:fuv-chyp}'s own discussion of the
+transient), not a pure injection bias, and the two effects are not
+separated on the fixtures tested.
+
+\paragraph{Implementation.} The rate getters are
+\code{radiation\_get\_part\_isrf\_habing} and
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal}
+(\code{src/feedback/GEAR/radiation\_gas.c:653} and \code{:690}); they read the
+true $c$ at lines 661 and 696.
+
+\paragraph{Speed definitions tested, and the default chosen among them.}
+Four alternative definitions of $c_{{\rm hyp},i}$ and/or the pairwise
+operators were compared as selectable runtime schemes
+(\texttt{GEARFeedback:ISRF\_c\_hyp\_scheme}), against scheme $0$
+(the formula above, unmodified operators) as baseline. The code now implements
+only scheme $2$ (\texttt{fixed\_fraction}) and scheme $4$
+(\texttt{kernel\_local}); any other value of the parameter stops the run. The
+comparison explains why \texttt{kernel\_local} is the default. In the
+comparison, scheme $2$ stored the true flux. Both implemented schemes now
+store the reduced flux. At its uniform speed, \texttt{fixed\_fraction} with
+the reduced flux is the same equation as the true-flux form divided by one
+constant, so the comparison's conclusions about its speed rule still hold. The
+candidates: a kernel-local speed
+rule that takes the slowest step among a particle and every neighbour in
+its kernel (scheme $1$); a fixed global fraction of $c$, independent of
+$h$ or the time step (scheme $2$); a ``consistent variable-$c$''
+reformulation that changes which variable the pairwise operators carry so
+that every operator becomes the per-particle-speed generalisation of the
+reduced-speed-of-light method, reducing (in the code of that comparison) bit-for-bit to scheme $0$
+under a uniform speed (scheme $3$,
+Section~\ref{sec:fuv-variable-c-operators}); and the combination of the
+kernel-local speed with that operator rewrite (scheme $4$). All four
+measurably reduce pathway 1 relative to scheme $0$ on every fixture tested;
+scheme $4$ additionally clears most of Pathway 2's amplitude defect,
+which schemes $1$ and $2$ alone do not touch. None of $1$, $2$, $3$ alone
+meets its acceptance bar: each fails at least one
+fixture's exact sign-closure or accuracy criterion; the fixed-fraction
+scheme costs nothing extra at a fraction low enough to be free, but only
+because that fraction is below the bulk sound speed, making the
+radiation non-causal, while at a physically defensible fraction it carries a
+particle-update cost of $+21$ to $+29\%$ (a low fraction can never bind
+the timestep term this scheme adds, so the cost at a low fraction says
+nothing about the cost at a defensible one); and the
+kernel-local scheme's own neighbour-maximum accumulates only over
+neighbours within $i$'s own kernel, so at an asymmetric pair
+$H_j \le r_{ij} < H_i$ only the larger-$h$ particle $i$ records the
+smaller-$h$ particle $j$'s bin: $j$ never sees $i$'s bin in its own
+maximum, yet still receives $i$'s flux, since the force loop dispatches
+both sides of a pair whenever either kernel reaches
+(Section~\ref{sec:fuv-operators}). The maximum selects the longest
+neighbour step, so the direction that is kept adds a shorter step and
+cannot lower $i$'s speed, while the direction that is dropped is the one
+that would have lowered $j$'s. The rule therefore misses exactly the
+dense short-step particle beside diffuse long-step gas that it exists to
+slow, a configuration a uniform-resolution test fixture cannot exercise
+but a real galaxy's density contrast can, so it reduces pathway 1
+without removing it ``by construction''.
+
+\textbf{Scheme $4$ is the default}: of
+the five, it has the lowest negativity in $7$ of $8$ fixture-band pairs
+measured (two of them exact zeros) and the best amplitude,
+$1.088\times$ the uniform-speed reference against scheme $0$'s
+$3.06\times$, at bit-identical particle-update cost (neither the
+kernel-local speed formula nor the operator rewrite alone changes what
+work is done per particle). That reference is not an analytic solution.
+It is \code{ISRFDissipationExtreme}'s own settled FUV band energy
+$E_{\rm end} = \sum_i m_i u_i$ at $t_{\rm end}$, measured in a scheme
+$2$ run at the uniform $c_{\rm hyp} = 16.494\,{\rm km\,s^{-1}}$,
+$3.7226\times10^{-8}$, and both ratios are that same fixture's FUV
+$E_{\rm end}$ against it. It stands in for the discrete fixed point
+because, as noted above, that fixed point is independent of a
+\emph{uniform} $c_{\rm hyp}$ exactly, in scheme $0$ as much as in scheme
+$4$: the divergence operator inherits one power of $c_{\rm hyp}$ through
+the flux's own fixed point, cancelling the $c_{\rm hyp}$ that the energy
+denominator carries. The only residue is the single $\exp(-a)$ factor
+weighting the dissipation term, with
+$a = C_{\rm hyp}\,h/\lambda \approx 0.24$ in the FUV band on this
+fixture. What the two ratios measure is therefore the heterogeneity of
+the speed field: an error of zeroth order in the neighbour ratio
+$c_{{\rm hyp},j}/c_{{\rm hyp},i}$, not in $c_{\rm hyp}$ itself, so
+lowering a uniform $c_{\rm hyp}$ would not reduce it. Both runs have
+settled by $t_{\rm end}$ on this fixture, so neither ratio is a
+transient. \textbf{This ranking rests on
+three fixtures only}, which is not by itself sufficient to fix a
+default. \textbf{The default may yet be reconsidered}; this
+section reports the current choice and its
+measured justification, not a closed validation.
+
+\paragraph{Open question: is pathway 1 the whole story?} One
+hypothesis, not yet tested independently, is that the
+scheme's central-SPH-divergence-plus-pairwise-dissipation structure is
+positive only in the diffusive regime and is \emph{not} positive for a
+free-streaming neighbour (M1 flux ratio $f\to1$) at any choice of
+$c_{\rm hyp}$, uniform or not, once the required dissipation coefficient
+exceeds what the shipped stability bound (Eq.~\ref{eq:fuv-stability-bound})
+allows -- which would mean the speed-seam heterogeneity mainly amplifies
+a pre-existing structural gap rather than being its root cause. This is
+a working hypothesis, not an established result. It is stated here to make
+the open question precise. It must not be read as
+a second candidate fix alongside the three above.
+
+\subsubsection{Literature position on a variable propagation speed}
+\label{sec:fuv-chyp-literature}
+
+This section asks whether any published radiation-transport scheme varies its
+reduced speed of light the way Eq.~\ref{eq:fuv-chyp} does. Citations
+below are separated by how they were checked: \textbf{verified}
+means the source's full text was read directly (or, for the two SWIFT
+modules, the source code); \textbf{secondary} means only a search
+summary or a citing paper's own reference list was checked, and no
+number from such a source should be trusted without re-reading it.
+
+\textbf{No published scheme ties the reduced speed of light to a
+per-element time step (verified).} Where the literature does vary the
+speed spatially, it is tied to a static hierarchy -- the AMR refinement
+level -- with an exact, fixed ratio (a factor $2$) between any two
+adjacent levels, not to an independently adaptive per-element quantity
+\citep{Katz2017,Rosdahl2018}. \citet{Katz2017} give an exact interface
+treatment for this case (their Appendix A): the neighbour's photon
+density is rescaled by the ratio of the two levels' speeds before
+entering a shared Lax-Friedrichs flux, which both sides of the interface
+compute identically, giving flux-exact conservation for a single common
+time step across all levels. This construction does not port to GEAR's
+SPH scheme: it relies on exactly two well-defined neighbour states per
+face and one shared flux value both sides agree on, whereas SPH's
+pairwise transport has each particle accumulate its own side of an
+interaction independently, with no shared face. Even in its native
+finite-volume setting, the exact proof degrades to an admitted
+few-percent, not sign-violating, leak once per-level time steps are
+allowed to desynchronise \citep{Katz2017,Rosdahl2018}. A citation inside
+\citet{Katz2017} (Commer\c{c}on, Debout \& Teyssier 2014, A\&A 563, A11)
+is the one lead that addresses this
+asynchronous-time-step case directly; it was not independently read and
+its content is not asserted here.
+
+\textbf{SWIFT's own two RT modules both use a single, global, run-constant
+value (verified, read directly from the source).} GEAR-RT
+sets its reduced speed of light
+once at start-up from the parameter \code{GEARRT:f\_reduce\_c} and every
+particle reads the same global value. SPHM1RT does the same with
+\code{SPHM1RT:cred}, copied unchanged into every particle at start-up. A
+single uniform speed is not a deviation from how this feature is
+normally used elsewhere in this codebase; every other user of a reduced
+speed of light in \swift{} uses exactly one number for the whole run.
+
+\textbf{The source/injection amplitude must not be coupled to the
+reduced speed at all (verified).} \citet{Gnedin2026} states this
+directly: ``this is the \emph{only} place where the speed of light
+should be reduced[;] \dots the speed of light should \emph{not} be
+reduced in the equation for the cosmic background\dots [n]or should $c$
+that enters the definition of $\psi_\nu$ \dots be reduced, as it would
+result in the incorrect photon production rate.'' \citet{Ocvirk2019}
+confirm this numerically in an independent code (RAMSES-CUDATON):
+reducing $c$ by a factor $f$ inflates the post-reionisation neutral
+fraction by the same factor $f$ when the reduced speed leaks into the
+chemistry coupling, and the error disappears when the true $c$ is used
+there instead. Both papers warn against exactly this operation when the
+reduction is \emph{unmatched}: a source rescaled by $c_{\rm hyp}/c$ whose
+rate is then read back at the reduced speed. GEAR's convention pairs the
+source rescale with a rate getter that reads the true $c$
+(Section~\ref{sec:fuv-chyp}, Pathway 2), which cancels exactly at a uniform speed; the residual defect these citations
+bound is therefore the per-neighbour interface case (heterogeneous
+$c_{\rm hyp}$, Pathway 2 above), not a general defect at any single
+global speed.
+
+\textbf{The RSLA validity criterion in the literature is derived for an
+ionizing, recombination-bounded front and does not transfer directly to
+GEAR's non-ionizing bands (verified for the cited numbers, non-transfer
+is our own reading).} \citet{Rosdahl2013}'s criterion
+($f_c\gtrsim10\,t_{\rm cross}/\tau_{\rm sim}$) and the values people
+actually run at (STARFORGE, \citealt{Grudic2021}, single global
+$\tilde c=5$--$300\,{\rm km\,s^{-1}}$, fiducial $90\,{\rm km\,s^{-1}}$)
+are both set from ionizing-front or recombination timescales that have
+no analogue for photoelectric heating or H$_2$ photodissociation. No
+source found gives a validity criterion or a value
+specific to non-ionizing ISM radiation transport; the general form that
+does transfer is simply that $c_{\rm hyp}$ must exceed every physical
+signal speed the transport is meant to resolve, evaluated against the
+shortest timescale of interest.
+
+\textbf{No prior report of negative radiation energy at a variable-speed
+interface was found (verified absence, not a positive claim).} We read directly every source marked verified in this section, including
+the paper most focused on RSLA conservation failures generally
+\citep{Gnedin2026}, for any mention of a sign-violating failure at a
+speed boundary. None was found. This may mean the failure is rare in
+schemes that never couple a per-element time step to the propagation
+speed the way this scheme does, or it may mean it is undocumented; we
+cannot distinguish the two, and the unread Commer\c{c}on et
+al. (2014) source above is the most promising remaining lead.
+
+\paragraph{Implementation.} GEAR-RT sets \code{reduced\_speed\_of\_light} in
+\code{src/rt/GEAR/rt\_properties.h:299-302}. SPHM1RT reads
+\code{SPHM1RT:cred} into \code{cred\_phys} in
+\code{src/rt/SPHM1RT/rt\_properties.h:221-224}.
+
+\subsubsection{Spatial operators}
+\label{sec:fuv-operators}
+
+Both transport operators are plain pairwise SPH kernel-gradient
+estimators on the particle positions, with no matrix correction, no
+face reconstruction and no Riemann solver. Write $\mathbf x_{ij} =
+\mathbf x_i - \mathbf x_j$, $r_{ij} = |\mathbf x_{ij}|$, and
+$\nabla_i W_{ij}^{(i)} = W'(r_{ij}/h_i)\,h_i^{-4}\,\mathbf x_{ij}/r_{ij}$
+for particle $i$'s own kernel gradient at its own smoothing length
+(likewise $\nabla_i W_{ij}^{(j)}$ at $h_j$). All densities below are the
+step's frozen values.
+
+\textbf{Flux divergence.} A single shared pair coefficient, built from
+both particles' own terms, credited to one side and debited from the
+other:
+\begin{equation}
+  \Phi_{ij} = \frac{\mathbf F_i\cdot\nabla_i W_{ij}^{(i)}}{\rho_i}
+            + \frac{\mathbf F_j\cdot\nabla_i W_{ij}^{(j)}}{\rho_j} ,
+  \qquad
+  \Big(\tfrac{1}{\rho}\nabla\cdot(\rho\mathbf F)\Big)_i
+    = \sum_j m_j\,\Phi_{ij} ,
+  \label{eq:fuv-div-op}
+\end{equation}
+with the mirrored contribution $-m_i\,\Phi_{ij}$ added to particle
+$j$'s own sum. The mirrored credit and debit make $\sum_i m_i\,(\nabla\cdot)_i = 0$
+identically for any $h_i\ne h_j$, $\rho_i\ne\rho_j$, provided both sides
+of every pair are visited. The density and gradient loops reach particle
+$i$ only for $r_{ij} < H_i$, so a pair with $H_i \le r_{ij} < H_j$ would
+credit $j$ and never debit $i$; the divergence is therefore accumulated
+in the force loop, which visits a pair whenever either kernel reaches.
+The gradient operator below needs no such care: $i$'s own term carries
+$\nabla_i W_{ij}^{(i)}$, which vanishes for $r_{ij}\ge H_i$. What
+each particle applies, however, is that divergence scaled by its own
+$\Delta t_i\,\varphi(a_i)$ in Eq.~\ref{eq:fuv-u-update}, and $a_i$
+differs between particles whose time bin or $c_{\rm hyp}\kappa\rho$
+differ. $\sum_i m_i u_i$ is therefore conserved exactly only when both
+particles of a pair share the time bin and the same $c_{\rm
+hyp}\kappa\rho$; otherwise a residual of order the difference between
+the two particles' $\Delta t\,\varphi(a)$ remains, the price of applying
+an exact exponential integrator per particle rather than one global
+step. An active/inactive pair, which leaves one side undebited until
+that particle's own next step, is a special case of the same effect.
+
+\textbf{Pressure-tensor divergence.} A difference estimator on the
+volumetric field $U = \rho u$ contracted with each particle's own
+closure tensor, with each particle's own kernel derivative and a
+$1/\rho^2$ normalisation:
+\begin{equation}
+  \mathbf T_{ij} = U_i\,\mathbf D_i\cdot\hat{\mathbf x}_{ij}
+                 - U_j\,\mathbf D_j\cdot\hat{\mathbf x}_{ij} , \qquad
+  \mathbf G_i \equiv
+  \Big(\tfrac{1}{\rho}\nabla\cdot(\mathbf D\,\rho u)\Big)_i
+    = \sum_j \frac{m_j}{\rho_i^2}\,
+      \mathbf T_{ij}\,\big|\nabla_i W_{ij}^{(i)}\big| ,
+  \label{eq:fuv-grad-op}
+\end{equation}
+with $\hat{\mathbf x}_{ij} = \mathbf x_{ij}/r_{ij}$ and the mirrored
+term for $j$ using $\rho_j$ and $\nabla_i W_{ij}^{(j)}$. $\mathbf D_i$ is
+recomputed from the particle's own $(u_i^n, \mathbf F_i^n, c_{{\rm
+hyp},i})$ through Eq.~\ref{eq:fuv-m1-closure} in every pair interaction
+that needs it, rather than cached once per particle; it is never stored,
+and every recomputation over one step draws on the same frozen inputs.
+The reduced flux is clamped at $1$ because $\mathbf F_i$
+was limited against the previous step's $u_i$ (Section~\ref{sec:fuv-limiter}),
+and $f = 0$, $\hat{\mathbf n} = \mathbf 0$ are used where $u_i\le0$ or
+$\mathbf F_i = \mathbf 0$. At $\mathbf D = \mathbf I/3$ the operator
+reduces to $\tfrac13$ of the ordinary SPH estimate of
+$\rho^{-1}\nabla(\rho u)$.
+
+The two operators are chosen as a pair. With the shared-coefficient
+divergence and the own-derivative, $1/\rho^2$ gradient, the discrete
+transport is exactly skew-adjoint in the inner product $\langle a, b
+\rangle = \sum_i m_i\rho_i\,a_i b_i$ weighted by $\mathbf D^{-1}$
+whenever neighbouring tensors agree ($\mathbf D_i = \mathbf D_j$, which
+includes the $\mathbf F = \mathbf 0$ far field). This is the discrete
+image of the quadratic invariant $\int (U^2 + \mathbf F_V\cdot\mathbf
+D^{-1}\mathbf F_V/c_{\rm hyp}^2)$ that the continuum M1 transport
+conserves for frozen $\mathbf D$; where $\mathbf D$ varies between
+neighbours an $O(h|\nabla\mathbf D|)$ consistency error remains, and in
+the free-streaming limit the metric degenerates ($\mathbf D$'s
+transverse eigenvalue vanishes), so stability there rests on the Courant
+bound and on the artificial dissipation, not on this property. Whether
+the staggered integrator's stability (Section~\ref{sec:fuv-time}) needs
+more than this weaker, $\mathbf D_i=\mathbf D_j$-only adjointness is not
+resolved here.
+
+\subsubsection{The consistent variable-speed operators}
+\label{sec:fuv-variable-c-operators}
+
+Eqs.~\ref{eq:fuv-div-op} and \ref{eq:fuv-diss-formula} are exact only for
+a single, uniform $c_{\rm hyp}$: the reduced-speed-of-light method is a
+rescaling of every rate in
+Eqs.~\ref{eq:fuv-u-eq}--\ref{eq:fuv-F-eq} by $c_{\rm hyp}/c$, and that
+rescaling commutes with the pairwise sum only when the same $c_{\rm hyp}$
+multiplies every term. Its correct generalisation to a per-particle
+$c_{{\rm hyp},i}$ (Section~\ref{sec:fuv-chyp-heterogeneity}) is a change
+of variable, not a new pair weight, so it leaves the SPH kernel-sum
+identity untouched -- unlike the neighbour-dependent pair weights tried
+and rejected in that section. Writing the reduced flux
+$\tilde{\mathbf F}_i = \mathbf F_i/c_{{\rm hyp},i}$ (so the admissibility
+constraint, Eq.~\ref{eq:fuv-admissible}, becomes $|\tilde{\mathbf
+F}_i|\le u_i$),
+\begin{equation}
+  \frac{du_i}{dt} = c_{{\rm hyp},i}\left(-\kappa\rho_i u_i
+    - \big(\nabla\cdot\tilde{\mathbf F}\big)_i + \frac{\dot s_i}{c}\right) ,
+  \qquad
+  \frac{d\tilde{\mathbf F}_i}{dt} = c_{{\rm hyp},i}\Big(-\kappa\rho_i
+    \tilde{\mathbf F}_i - \mathbf G_i[u]\Big) .
+  \label{eq:fuv-variable-c-eqs}
+\end{equation}
+Three things change relative to Section~\ref{sec:fuv-operators}.
+\textbf{(1)} \code{specific\_flux} stores $\tilde{\mathbf F}$ rather than
+$\mathbf F$, for every $c_{\rm hyp}$ scheme (the code has no other form), so
+a time-bin change rescales nothing and the
+temporal-impedance jump at a speed seam (Pathway 1,
+Section~\ref{sec:fuv-chyp-heterogeneity}) disappears. \textbf{(2)} The
+divergence's shared coefficient $\Phi_{ij}$ of Eq.~\ref{eq:fuv-div-op},
+already owner-normalised once $\tilde{\mathbf F}$ is the stored state, is
+multiplied by the \emph{receiver's} own speed rather than the sender's:
+particle $i$ receives $c_{{\rm hyp},i}\,m_j\,\Phi_{ij}$, particle $j$
+receives $-c_{{\rm hyp},j}\,m_i\,\Phi_{ij}$. \textbf{(3)} The
+dissipation's signal speed of Eq.~\ref{eq:fuv-diss-formula} becomes two
+receiver-side speeds, $\alpha_{ij}c_{{\rm hyp},i}$ and $\alpha_{ij}c_{{\rm
+hyp},j}$, rather than the shared $\alpha_{ij}\min(c_{{\rm hyp},i},c_{{\rm
+hyp},j})$.
+
+Both changes make the pair's two sides carry different scalars, so the
+plain mass-weighted sum $m_i X_i + m_j X_j$ that
+Eqs.~\ref{eq:fuv-div-op} and \ref{eq:fuv-diss-formula} conserve exactly
+under a uniform speed is no longer conserved. Dividing each side by its
+own $c_{\rm hyp}$ restores it,
+\begin{equation}
+  \frac{m_i X_i}{c_{{\rm hyp},i}} + \frac{m_j X_j}{c_{{\rm hyp},j}} = 0 ,
+  \label{eq:fuv-variable-c-conservation}
+\end{equation}
+because both changes above reduce to ``multiply by the receiver's own
+$c_{\rm hyp}$'' applied to what was otherwise the same shared,
+antisymmetric-under-$i\leftrightarrow j$ coefficient; checked directly by
+\code{testRadiationISRFForceDispatchConservation} (swift-gear's GEAR test
+suite). The M1 closure
+tensor (Eq.~\ref{eq:fuv-m1-closure}) is built with $c_M=1$, since
+$|\tilde{\mathbf F}_i|/u_i = |\mathbf F_i|/(c_{{\rm hyp},i}u_i)$ identically,
+the same physical reduced flux $f$ that the true-flux form computes from
+$(\mathbf F_i, c_{{\rm hyp},i})$ directly. At a spatially uniform
+$c_{{\rm hyp},i}$ every rewritten operator, which carries the receiver's
+$c_{{\rm hyp},i}$ as a factor (items \textbf{(2)} and \textbf{(3)} above), is
+its true-flux counterpart evaluated on
+$\mathbf F = c_{\rm hyp}\tilde{\mathbf F}$.
+The stored flux is rounded once when it is formed, and the compiler may
+associate the two evaluations differently, so the two agree to a few units of
+the float32 round-off at any uniform $c_{\rm hyp}$, not bit for bit.
+\code{testRadiationISRFForceDispatchConservation}
+(swift-gear's GEAR test suite) asserts this against a frozen copy of the
+true-flux formulas kept inside the test, to a derived tolerance at every
+$c_{\rm hyp}$ tried (a power of two included). The operators carry
+no floating-point annotation, so the compiler may reassociate them under
+\code{-ffast-math}: a change of compiler or flags can move the last bits of an
+accumulator, which changes neither the discrete scheme nor the conservation
+identity, holding to $10^{-8}$ or better against its own $10^{-5}$ bar.
+
+Both schemes use this operator form. Scheme $4$ pairs it with the kernel-local
+speed of Section~\ref{sec:fuv-chyp-heterogeneity}; it is the default. Scheme $2$ (a fixed fraction of $c$) pairs it with a uniform
+speed, where it reduces to the unmodified operators
+(Eqs.~\ref{eq:fuv-div-op}--\ref{eq:fuv-diss-formula}) acting on
+$\tilde{\mathbf F}$ and multiplied by the one receiver factor $c_{\rm hyp}$
+(Section~\ref{sec:fuv-chyp-heterogeneity} gives the full ranking and the
+default's caveats).
+
+\subsubsection{Time integration: exact relaxation, staggered}
+\label{sec:fuv-time}
+
+Both moment equations are linear decays with the same rate plus a
+transport term that is frozen over the step. Each is integrated exactly
+for frozen right-hand side. With the relaxation depth and integrating
+factor
+\begin{equation}
+  a_i = c_{{\rm hyp},i}\left(\kappa\rho_i + \frac{H}{c}\right)\Delta t_i , \qquad
+  \varphi(a) = \frac{1-e^{-a}}{a}
+  \quad (\varphi\to1 \text{ as } a\to0,\ \ \varphi\to1/a \text{ as } a\to\infty),
+  \label{eq:fuv-phi}
+\end{equation}
+$H$ entering divided by the true speed of light $c$, not
+$c_{{\rm hyp},i}$ (dilated by the same $c_{\rm hyp}/c$ factor as
+absorption, as Section~\ref{sec:fuv-lagrangian} derives), the flux
+update, from the pressure-tensor divergence of $u^n$, reads
+\begin{equation}
+  \mathbf F_i^{\,n+1} = e^{-a_i}\,\mathbf F_i^{\,n}
+    - c_{{\rm hyp},i}^2\,\Delta t_i\,\varphi(a_i)\,\mathbf G_i[u^n] ,
+  \label{eq:fuv-F-update}
+\end{equation}
+and the energy update, from the divergence of the \emph{newly} updated
+fluxes,
+\begin{equation}
+  u_i^{\,n+1} = e^{-a_i}\Big[u_i^{\,n}
+      + \Delta t_i\,\varphi(a_i)\,\dot u_i\big|_{\rm diss}\Big]
+    + \Delta t_i\,\varphi(a_i)\left[\frac{c_{{\rm hyp},i}}{c}\,\dot s_i
+      - \Big(\tfrac{1}{\rho}\nabla\cdot(\rho\mathbf F^{\,n+1})\Big)_i\right] ,
+  \label{eq:fuv-u-update}
+\end{equation}
+with the artificial dissipation of Section~\ref{sec:fuv-dissipation}
+evaluated on $u^n$. This is a staggered, leapfrog-like scheme: $\mathbf F$
+first from the old $u$, then $u$ from the new $\mathbf F$. Its
+amplification matrix has the same trace and determinant as the opposite
+order ($u$ first), so the stability condition below is unchanged. The order is
+forced by conservation: only the force loop visits both sides of every
+pair, and it runs after the flux update. The exponential
+integrator is unconditionally stable in the relaxation for any $\Delta
+t/\tau$, which matters because $\tau$ is far shorter than the hydro
+step in dense gas ($\tau\sim700$\,yr at $c_{\rm hyp}\sim50\,{\rm
+km\,s^{-1}}$ in a $10^4\,{\rm cm^{-3}}$ clump at solar metallicity) and
+far longer in diffuse gas; a forward-Euler treatment would need
+sub-cycling wherever $\Delta t >
+\tau$. The
+exact solution of the inhomogeneous decay, $u(\Delta t) = u_0 e^{-a} +
+\dot s\,\tau\,(1-e^{-a})$, is what Eq.~\ref{eq:fuv-u-update} realises
+for the source, which is why injection is folded into the same update
+rather than added afterwards.
+
+The flux update has an exact fixed point for a frozen gradient,
+\begin{equation}
+  \mathbf F_i^\ast = -\,\mathcal C_i\,\mathbf G_i , \qquad
+  \mathcal C_i = \frac{c_{{\rm hyp},i}}{\kappa\rho_i + H/c} ,
+  \label{eq:fuv-fixed-point}
+\end{equation}
+which is the discrete form of Fick's law with $D = c_{\rm hyp}\lambda$
+in front of the tensor-weighted gradient at $H=0$ (the $1/3$ sits inside
+$\mathbf D$); $H/c$ is the same dilated Hubble contribution as in $a_i$
+above. The dissipation floor gate of
+Section~\ref{sec:fuv-dissipation} measures each particle's distance
+from this fixed point.
+
+\subsubsection{The flux limiter}
+\label{sec:fuv-limiter}
+
+Once per step, right after the flux update, the flux is rescaled onto
+the admissible set against $u_i^n$, the field its closure tensor was
+built from:
+\begin{equation}
+  \mathbf F_i \leftarrow \mathbf F_i\,
+    \min\!\left(1,\ \frac{c_{{\rm hyp},i}\,u_i}{|\mathbf F_i|}\right)
+    \quad (u_i>0) , \qquad
+  \mathbf F_i \leftarrow \mathbf 0 \quad (u_i\le0) .
+  \label{eq:fuv-flux-limiter}
+\end{equation}
+The limiter belongs to the M1 closure, not to the artificial dissipation
+of Section~\ref{sec:fuv-dissipation}. The Eddington factor of
+Eq.~\ref{eq:fuv-m1-closure} contains $\sqrt{4-3f^2}$ and is derived for,
+and physically meaningful on, the admissible range $f\in[0,1]$ alone;
+beyond $f = 1$ it describes nothing, and the radical itself turns negative
+at $f = 2/\sqrt3$. The flux update of Eq.~\ref{eq:fuv-F-update} is
+explicit in the pressure-tensor divergence and can therefore overshoot
+$|\mathbf F| = c_{\rm hyp}u$ wherever $u$ is small while $\mathbf F$ is
+not, which is exactly the situation at a front. The limiter restores
+admissibility once per step, so that the state the next step's closure is
+built from satisfies Eq.~\ref{eq:fuv-admissible} by construction; the
+$\min(f,1)$ inside the closure tensor (Eq.~\ref{eq:fuv-grad-op}) is a
+guard behind it, which with the limiter in place rarely binds. The limiter
+touches only $\mathbf F$ and conserves $\sum_i m_i u_i$.
+
+\subsubsection{Artificial dissipation}
+\label{sec:fuv-dissipation}
+
+The pairwise kernel-gradient transport has no built-in numerical
+dissipation, unlike a Riemann-solver flux, so a steep gradient next to
+a strong source or a sharp density contrast can drive $u$ negative.
+The remedy is the same as artificial viscosity in SPH hydrodynamics: a
+numerical conductivity that acts on the field
+\citep{ClearyMonaghan1999,Price2008}, is switched on where it is needed,
+and represents no physical process. It must not be confused
+with the physical absorption term of Eq.~\ref{eq:fuv-u-eq}.
+
+\textbf{The term.} Per pair and per band, with $U = \rho u^n$ the
+volumetric form of the step's starting field and $\bar W'_{ij} =
+\tfrac12\big(|\nabla_i W_{ij}^{(i)}| + |\nabla_i W_{ij}^{(j)}|\big)$
+the symmetrised radial kernel derivative,
+\begin{equation}
+\begin{aligned}
+  v_{{\rm sig},ij} &= \alpha_{ij}\,\min\!\big(c_{{\rm hyp},i},\,c_{{\rm hyp},j}\big) ,
+  \qquad
+  \Psi_{ij} = -\,v_{{\rm sig},ij}\,\frac{U_i - U_j}{\rho_i\rho_j}\,\bar W'_{ij} , \\
+  \dot u_i\big|_{\rm diss} &= \sum_j m_j\,\Psi_{ij} ,
+\end{aligned}
+  \label{eq:fuv-diss-formula}
+\end{equation}
+with the mirrored contribution $-m_i\,\Psi_{ij}$ added to particle
+$j$'s own sum. The exchange itself is antisymmetric between the pair,
+but it is applied through the same $e^{-a_i}\Delta t_i\,\varphi(a_i)$
+factor inside the relaxation update (Eq.~\ref{eq:fuv-u-update}), so $\sum_i m_i u_i$
+is conserved exactly over a pair only when both particles share the time
+bin and $c_{\rm hyp}\kappa\rho$, for the same reason as the flux
+divergence operator above. In the continuum
+limit it is a diffusion of $U$ with coefficient of order $\alpha\,v_{\rm
+sig}\,h$. The signal speed uses the smaller of the two particles'
+$c_{\rm hyp}$: because $c_{{\rm hyp},i}\propto h_i/\Delta t_i$, a
+particle pinned to a short time step has a $c_{\rm hyp}$ far above its
+neighbours' for numerical rather than physical reasons, and $\min$ is
+the combination that keeps the per-step dissipation number bounded
+independently of the time-bin ratio across the pair.
+
+\textbf{The pair coefficient} combines two per-particle, per-band
+components, a reactive trigger and an anticipatory floor,
+\begin{equation}
+  \alpha_{ij} = \max\!\big(\alpha_{{\rm trig},i},\ \alpha_{{\rm trig},j},\
+                            \alpha_{{\rm floor},i},\ \alpha_{{\rm floor},j}\big) ,
+  \label{eq:fuv-diss-alpha-pair}
+\end{equation}
+so whichever particle needs dissipation gets it at full strength with
+every neighbour.
+
+\textbf{The negativity trigger.} The reactive component rises only
+when a particle's own field has gone negative relative to its
+neighbours' field scale:
+\begin{equation}
+  \varepsilon_i = \frac{\max(-U_i, 0)}{\max\!\big(\langle|U|\rangle_i,\,-U_i\big)}
+  \in[0,1], \qquad
+  x_i = \min\!\Big(\frac{\varepsilon_i}{\varepsilon_1}, 1\Big), \qquad
+  \alpha_{{\rm aim},i} = \alpha_{\max}\,x_i^2\,(3-2x_i) ,
+  \label{eq:fuv-diss-trigger}
+\end{equation}
+with $\langle|U|\rangle_i = \sum_j (m_j/\rho_j)\,W_{ij}\,|U_j|$ the
+kernel mean of the neighbours' previous-step field and $\varepsilon_1$
+(default $0.01$) the relative undershoot at which the smooth ramp
+saturates at $\alpha_{\max}$ (default $0.5$). The coefficient jumps to
+$\alpha_{\rm aim}$ when that is higher than its current value and
+otherwise decays towards it, the switch form of \citet{CullenDehnen2010}
+rather than the source-and-decay equation of \citet{MorrisMonaghan1997},
+\begin{equation}
+  \alpha_{{\rm trig},i} \leftarrow \alpha_{{\rm aim},i}
+    + \big(\alpha_{{\rm trig},i} - \alpha_{{\rm aim},i}\big)
+      \exp\!\left(-\frac{c_{{\rm hyp},i}\,\Delta t_i}{5\,h_i}
+                  - c_{{\rm hyp},i}\,\kappa\rho_i\,\Delta t_i\right) ,
+  \label{eq:fuv-diss-decay}
+\end{equation}
+an $e$-folding over five smoothing lengths of signal travel, faster in
+optically thick gas. There is no velocity-divergence switch because the
+field carries no bulk velocity; the switch is built from the field's own
+sign. The two bands carry independent coefficients.
+
+\textbf{The floor.} The trigger is exactly zero on the positive front
+of a pulse and therefore cannot damp the dispersive wake that the front
+sheds behind it in the optically thin regime ($h/\lambda\ll1$), where
+the wake regenerates every step. An unconditional floor supplies
+dissipation there, rolling off where the absorption length is resolved
+so that its steady-state cost stays bounded:
+\begin{equation}
+  \alpha_{{\rm floor},i} = s_i\,
+    \frac{\alpha_{\rm floor}}{1 + \big(h_i\,\kappa\rho_i/\varepsilon_\lambda\big)^4} ,
+  \label{eq:fuv-diss-floor}
+\end{equation}
+with $\alpha_{\rm floor}$ (default $0.5$) its ceiling,
+$\varepsilon_\lambda$ (default $0.5$) the value of $h/\lambda$ at which
+the roll-off sets in, and $s_i\in[0,1]$ the relaxation-residual gate
+below. At the default $\alpha_{\rm floor}$ and $\varepsilon_\lambda$,
+the quartic tail leaves a coefficient of $3.1\times10^{-6}$ at
+$h/\lambda\sim10$. $\alpha_{\rm floor} = 0$ recovers the trigger-only
+scheme exactly.
+
+\textbf{The flux-relaxation-residual gate.} Even with the roll-off, the
+floor costs accuracy on a resolved, settled profile in the band
+$0.25\lesssim h/\lambda\lesssim0.85$, where the physical absorption is
+too weak to damp it and the front it protects has long passed. A settled
+particle is recognisable: its flux sits at the fixed point of
+Eq.~\ref{eq:fuv-fixed-point}. With $w_i = \kappa\rho_i + H/c$ -- the
+\emph{true} speed of light, not $c_{{\rm hyp},i}$: $w_i$ is
+$a_i/(c_{{\rm hyp},i}\Delta t_i)$ by construction, so $c_{{\rm hyp},i}$
+cancels out of $w_i$ itself, unlike $a_i$ -- the residual
+\begin{equation}
+  R_i = \frac{\big|\,w_i\,\mathbf F_i + c_{{\rm hyp},i}\,\mathbf G_i\,\big|}
+             {w_i\,|\mathbf F_i| + c_{{\rm hyp},i}\,|\mathbf G_i|}
+  \in[0,1] , \qquad
+  s_i = \min\!\left(1,\ \Big(\frac{R_i}{\varepsilon_R}\Big)^2\right) ,
+  \label{eq:fuv-diss-gate}
+\end{equation}
+is zero exactly at the fixed point ($\mathbf F_i = -\mathcal C_i\mathbf
+G_i$, the form above being that relation multiplied through by $w_i$ so
+that no intermediate overflows at small $\kappa$), and close to one on
+a fresh front, wherever only one of $\mathbf F_i$, $\mathbf G_i$ is
+nonzero, or where $\tau\gg\Delta t$ so that the flux has not relaxed
+yet. $\mathbf F_i$ here is the flux that produced $u^n$, i.e.\ the
+previous step's limited flux. $\varepsilon_R$ (default
+$0.40$) is the residual below which the floor is reduced; the gate can
+only lower the floor, never raise it. Three rules cover the degenerate
+inputs: a quiescent particle with $\mathbf F_i = \mathbf G_i = \mathbf 0$
+has a zero denominator and gets $s_i = 0$ (it is trivially at the fixed
+point and has nothing to damp); $w_i = 0$ (no absorption and no
+expansion, hence no relaxation timescale) or $c_{\rm hyp} = 0$ gives
+$s_i = 1$; $\varepsilon_R = 0$ disables the gate ($s_i = 1$
+everywhere). A particle whose flux is pinned by the limiter ($f\approx1$)
+never reaches the unlimited fixed point, so the gate keeps part of the
+floor there: a conservative false positive (Section~\ref{sec:fuv-limits}).
+
+\textbf{Application.} The exchange of Eq.~\ref{eq:fuv-diss-formula} is
+accumulated in the force loop, with this step's coefficients, on $u^n$,
+and decays with $u^n$ inside the energy update
+(Eq.~\ref{eq:fuv-u-update}). The trigger reads $u^n$ against the kernel
+mean of the neighbours' $u^n$, so an undershoot created by one step's
+update is corrected by the next step's; cooling sees it for one step,
+through its non-negative clamp. Folding the exchange in with the decay
+factor $e^{-a_i}$, rather than adding it undamped, keeps the per-step
+amplification matrix with the same eigenvalues as a correction applied
+to an already relaxed field, which has the larger stability margin. The discrete steady
+state is then
+\begin{equation}
+  \big(1 - e^{-a_i}\big)\,u_i = \Delta t_i\,\varphi(a_i)
+    \left[\frac{c_{{\rm hyp},i}}{c}\,\dot s_i
+      - \Big(\tfrac{1}{\rho}\nabla\cdot(\rho\mathbf F)\Big)_i
+      + e^{-a_i}\,\dot u_i\big|_{\rm diss}\right] .
+  \label{eq:fuv-diss-apply}
+\end{equation}
+The transient amplification is $\max_{n\le200}\|G^n\|_2$, where $G$ is the
+per-step $2\times2$ amplification matrix of one Fourier mode on a uniform
+lattice, maximised over $h/\lambda$ with $c_{\rm hyp} = C_{\rm hyp}h/\Delta t$.
+The reference is the same quantity for an update in which the exchange acts on
+the transported energy instead of on $u^n$ as above. The reference does not
+depend on $\alpha$ and equals the value with the dissipation off. At
+$C_{\rm hyp} = 0.5$ the amplification of the update above equals the reference,
+$1.35$, for $\alpha\lesssim0.323$, reaches $1.54$ at the shipped
+$\alpha_{\max} = 0.5$, and $1.68$ at $\alpha = 0.5887$, the largest value that
+the start-up check of Eq.~\ref{eq:fuv-stability-bound} admits. At that largest
+admitted $\alpha$ the amplification divided by the reference grows with
+$C_{\rm hyp}$: $1.14$ at $C_{\rm hyp} = 0.25$ ($1.32$ against $1.16$), $1.25$ at
+$C_{\rm hyp} = 0.5$ ($1.68$ against $1.35$) and $1.35$ at $C_{\rm hyp} = 1.0$
+($2.57$ against $1.91$).
+It is bounded within the stability bound of
+Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
+one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
+for pairs of active particles in the same time bin (Section~\ref{sec:fuv-operators});
+it does not conserve the first spatial moment: behind a source moving through the
+gas the trigger fires preferentially on the depleted trailing side, and
+the field's centroid lags the source by a small additional amount,
+measured at $0.2$--$1.8\%$ of $\lambda$ at the shipped ceiling. Because
+the floor can act where the trigger never fires, the stability bound of
+Eq.~\ref{eq:fuv-stability-bound} is checked on the larger of the two
+ceilings.
+
+\subsubsection{Source turn-off}
+\label{sec:fuv-turnoff}
+
+Once a star is no longer processed as an active feedback source it makes
+no further deposits in either band (Section~\ref{sec:fuv-sources}).
+With propagation on, each illuminated particle's reservoir drains to
+zero by its horizon, at most one star step after the last visit, and
+the field then obeys Eqs.~\ref{eq:fuv-u-eq}--\ref{eq:fuv-F-eq} with no
+source: it spreads at $c_{\rm hyp}$ and decays with the $e$-folding time
+$\tau = 1/\!\left[c_{\rm hyp}\big(\kappa\rho + H/c\big)\right]$, the two
+decay rates (absorption and the $c_{\rm hyp}/c$-dilated expansion term)
+adding directly (not their two $e$-folding times), so $\tau$ is shorter
+than $1/(c_{\rm hyp}\kappa\rho)$ alone in a cosmological run -- but, with
+$H$ correctly dilated, only by an amount suppressed by $c_{\rm hyp}/c$:
+for any $\kappa\rho$ not itself many orders of magnitude below $H/c$,
+the Hubble term's contribution to $\tau$ is negligible next to
+absorption (Section~\ref{sec:fuv-lagrangian}).
+The one-step drop of the source at a particle is the sharpest transient
+the scheme sees, and the trigger may fire on the innermost particles for
+a step or two before the field settles.
+
+\subsubsection{Propagation off: the instantaneous field}
+\label{sec:fuv-instantaneous}
+
+With propagation off (the default), none of
+Sections~\ref{sec:fuv-chyp}--\ref{sec:fuv-turnoff} runs. A star's
+visit resets $u_{b,j}$ to zero on the first visit of the step and every
+visit that step adds $\Delta E_{b,j}/m_j$ from Eq.~\ref{eq:fuv-inject};
+the field is the energy deposited during the star's own step, confined
+to the kernels of the stars active that step, and is zeroed when a
+particle's illumination window lapses. Extinction still applies. This
+mode is a diagnostic baseline that isolates injection, extinction and
+the Grackle coupling. It is not an approximation to the propagated
+field: it reaches no particle outside a kernel, and its magnitude is
+proportional to the star's time step $\Delta t_\star$ rather than to the
+absorption time that sets a physical energy density.
+
+\subsubsection{Cosmological runs}
+\label{sec:fuv-cosmo}
+
+The fields, $c_{\rm hyp}$ and $\kappa\rho$ are physical; the positions,
+separations, smoothing lengths and densities the loops read are comoving.
+A comoving length is the physical one divided by $a$, a comoving density
+the physical one multiplied by $a^3$, and a kernel derivative in three
+dimensions carries $h^{-4}$, hence $a^{+4}$ on comoving input. Counting
+term by term, each of the three pairwise operators returns exactly $a^{1}$
+times the physical value it estimates:
+\begin{itemize}
+  \item \textbf{Flux divergence} (Eq.~\ref{eq:fuv-div-op}). The separation
+    vector in $\mathbf F\cdot\nabla W$ gives $a^{-1}$ and the inverse
+    separation inside the kernel gradient gives $a^{+1}$, which cancel;
+    $1/\rho$ gives $a^{-3}$; the kernel derivative gives $a^{+4}$. Net
+    $a^{1}$.
+  \item \textbf{Pressure-tensor divergence} (Eq.~\ref{eq:fuv-grad-op}).
+    The volumetric field $U = \rho u$ gives $a^{+3}$, the $m_j/\rho_i^2$
+    normalisation $a^{-6}$, the kernel derivative $a^{+4}$. Net $a^{1}$.
+  \item \textbf{Artificial dissipation} (Eq.~\ref{eq:fuv-diss-formula}).
+    The jump $U_i - U_j$ gives $a^{+3}$, the $1/(\rho_i\rho_j)$ prefactor
+    $a^{-6}$, the symmetrised kernel derivative $a^{+4}$. Net $a^{1}$.
+\end{itemize}
+Each is therefore closed by one division by $a$, applied where the
+comoving estimate is written into its physical accumulator, and nothing
+else inside the operators needs a conversion. The exception is the
+neighbour reference field $\langle|U|\rangle_i$ of the dissipation
+trigger, which takes no conversion at all: it is read only as a ratio
+against $U_i$, which carries the same weight, so converting it would
+introduce a bias rather than remove one.
+
+The smoothing length in Eq.~\ref{eq:fuv-chyp} and in the dissipation
+formulas is the physical one, $a\,h$; $\Delta t$ is proper time.
+
+\textbf{The star's feedback window.} $\Delta t_\star$ in
+Eq.~\ref{eq:fuv-inject} is proper time, but a star's own integer
+timestep is stored as a time-bin width in $\ln a$ under cosmology, not
+in $t$. The window is therefore formed as the proper-time difference over
+the star's own
+$[t_{\rm begin}, t_{\rm begin}+\delta t)$ interval, the same
+branch every other star-feedback channel this module shares a time step
+with takes.
+Over one step $d(\ln a)/dt = H$, so using $\Delta(\ln a)$ in place of
+$\Delta t_\star$ would scale every deposited dose (Eq.~\ref{eq:fuv-inject})
+by
+\begin{equation}
+  \frac{\Delta(\ln a)}{\Delta t_\star} \to H(a) \quad (\Delta t_\star\to0) ,
+  \label{eq:fuv-cosmo-window}
+\end{equation}
+instead of leaving it at $1$: at $z=9$ ($a=0.1$), $H(z=9) = 1.18872$ in
+the code's internal unit system, an order-unity bias on every deposit
+over the redshift range this module targets, not a rounding error.
+
+\textbf{The dose reservoir.} Both the particle's own step, $\Delta t_j$
+in Eq.~\ref{eq:fuv-drain}, and the reservoir's remaining drain horizon,
+$t_{{\rm end},j}-t$ in Eqs.~\ref{eq:fuv-reservoir}--\ref{eq:fuv-drain},
+are proper-time differences under cosmology and plain code-time
+differences otherwise; both are formed at the drift, $\Delta t_j$ as the
+proper-time difference over the particle's own step and the
+drain horizon's remaining time the same way, from the step's start to
+the reservoir's end time. A drain horizon has to be proper time
+because it marks a physical duration: the reservoir must empty over the
+same number of seconds the deposited energy represents, so that
+$\dot s_{b,j} = \phi_j R_{b,j}/\Delta t_j$ (Eq.~\ref{eq:fuv-drain}) stays
+an energy per unit proper time, the quantity the relaxation update
+(Eq.~\ref{eq:fuv-u-update}) integrates against. A $\ln a$ interval used
+for either difference would silently change how fast the reservoir
+drains without changing how much energy it holds, over- or
+under-draining it relative to the number of physical star and gas steps
+that actually elapsed.
+
+\textbf{The extinction path is comoving.} $\ell_{j\star}$
+(Section~\ref{sec:fuv-injection}) is returned comoving by every branch
+of the path dispatch: a kernel support
+radius, a pair separation or a temperature-capped Jeans length, all
+built from comoving inputs.
+The column step forms
+the comoving product $\ell_{j\star}\,\rho_j$ from this length and the
+comoving density with no conversion of either;
+the extinction-factor step then converts
+that product to the physical column density Eq.~\ref{eq:fuv-extinction}
+needs,
+\begin{equation}
+  \Sigma_{j\star} = a^{-2}\,\big(\ell_{j\star}\,\rho_j\big)_{\rm comoving} ,
+  \label{eq:fuv-cosmo-extinction}
+\end{equation}
+one power of $a$ from the comoving-to-physical length and $a^{-3}$ from
+the comoving-to-physical density
+(Eq.~\ref{eq:fuv-cosmo-conventions}), applied once, to the product,
+rather than to each factor separately.
+
+\textbf{Expansion enters the transport, not the injection.} The single
+power of $H$ derived in Section~\ref{sec:fuv-lagrangian} is dilated by
+$c_{\rm hyp}/c$ and folded into the relaxation depth,
+\begin{equation}
+  a_i = \big(c_{{\rm hyp},i}\,\kappa\rho_i
+        + \lambda(m)\,H_{\rm dilated}\big)\,\Delta t_i ,
+  \qquad H_{\rm dilated} = \frac{c_{{\rm hyp},i}}{c}\,H ,
+  \label{eq:fuv-cosmo-relax-depth}
+\end{equation}
+$\lambda(m)$ is the transported moment $m$'s own band-edge weight
+(the PE and LW energy moments' $\lambda_E({\rm PE})$/$\lambda_E({\rm LW})$,
+the LW photon-number moment's $\lambda_N({\rm LW})$); $\lambda(m) = 1$
+recovers the grey, comoving-band-edge result the "band-edge transfer"
+paragraph below replaces.
+
+Here $a_i$ is the same $a_i$ of Eq.~\ref{eq:fuv-phi}, formed identically by
+the flux update (Eq.~\ref{eq:fuv-F-update}) and the energy update
+(Eq.~\ref{eq:fuv-u-update}). $H$ enters
+\emph{only} through $a_i$: it changes the decay $e^{-a_i}$ and the
+weight $\varphi(a_i) = (1-e^{-a_i})/a_i$ that both the transport
+divergence and the rescaled source rate are multiplied by in
+Eq.~\ref{eq:fuv-u-update}, and it changes nothing else: the deposited
+dose (Eq.~\ref{eq:fuv-inject}) and the reservoir drawdown
+(Eq.~\ref{eq:fuv-drain}) carry no $H$ anywhere in their own definitions.
+This is the only place expansion touches the band energy, so injection
+cannot test it: with propagation off (Section~\ref{sec:fuv-instantaneous})
+$a_i$ is never formed at all, and with propagation on but
+$\kappa\rho \gg (c_{\rm hyp}/c)H$ -- true for any gas above the most
+diffuse, metal-poor tail this module targets -- the $H$ term is a small
+correction to an absorption rate that already dominates $a_i$; isolating
+it needs the opposite limit, $\kappa\to0$, specifically (the
+"Consequence of the undilated form" paragraph of
+Section~\ref{sec:fuv-lagrangian} uses exactly that limit).
+
+\textbf{The band-edge transfer.} The pre-transfer form of
+Eq.~\ref{eq:fuv-cosmo-relax-depth} applied one expansion term, $H$, to
+the whole $6$--$11.2$\,eV PE band and the whole $11.2$--$13.6$\,eV LW
+band alike: the transport a comoving-frequency treatment would give if
+each band's edges redshifted along with the photons inside it. The rest
+of the model assumes physical, fixed band edges instead: the PE and LW
+dust cross-sections of Section~\ref{sec:fuv-opacity}, the split at
+$11.2$\,eV, and the fixed reference photon energy $E_{\rm LW}=12$\,eV of
+Eq.~\ref{eq:fuv-kdiss} are all evaluated at fixed physical photon
+energies, not comoving ones. Photons redshifting DOWNWARD through a
+fixed physical edge is a different regime from the single-photon-lifetime
+migration bounded and neglected in Section~\ref{sec:fuv-assumptions}
+("Spectral migration across the band edges from expansion"): that bound
+covers one photon's frequency drift before its own absorption, short
+against a Hubble time; here the relevant interval is the whole run.
+
+$\lambda(m)$ in Eq.~\ref{eq:fuv-cosmo-relax-depth} closes that
+inconsistency. Each band's own lower-edge loss rate is
+$(\lambda_E(b)-1)\,H_{\rm dilated}\,u_b$, with $\lambda_E(b)\geq1$ a
+table-borne coefficient (the ratio of the band's lower-edge spectral
+photon rate to its own luminosity, both IMF-integrated over the stellar
+population's own mass range, evaluated once per run); $\lambda_E=1$
+recovers the grey result above. Because the PE and LW bands are
+CONTIGUOUS at $11.2$\,eV, the LW band's lower-edge loss is EXACTLY the
+PE band's upper-edge gain: that energy is transferred from the LW
+moment's relaxation depth directly into the PE moment's $u$ every step,
+conserving it between the two bands to float precision. The PE band's
+own lower-edge loss at $6$\,eV has no compensating gain and is a genuine
+sink: a photon below $6$\,eV no longer does photoelectric work, and the
+Habing normalisation $G_0$ (Eq.~\ref{eq:fuv-kdiss}'s sibling) is defined
+over exactly $6$--$13.6$\,eV. The LW photon-number moment (the
+photon-count analogue of the LW energy moment above, transported
+alongside it) loses at its own lower edge with its OWN coefficient
+$\lambda_N({\rm LW})=\Lambda_{\rm LW}$,
+the band's lower-edge photon-number weight, distinct from
+$\lambda_E({\rm LW})$: applying the energy coefficient to the photon
+count would flatten the diagnostic identity that moment exists to
+expose.
+
+\paragraph{Implementation.} The star's proper-time window is formed by
+\code{compute\_time} (\code{src/feedback/GEAR/feedback\_common.c:539}), whose
+cosmology branch calls \code{cosmology\_get\_delta\_time} at lines 549-551,
+because \code{get\_timestep()} returns $\Delta(\ln a)$ under cosmology. The
+window is cached once per star and step by \code{feedback\_star\_store\_timestep}
+(\code{src/feedback/GEAR/radiation\_iact.h:111}, called at line 164), and
+\code{radiation\_iact\_nonsym\_feedback\_apply} reads the cached value
+(\code{radiation\_iact.h:218}). The particle's step and the drain horizon are
+formed in \code{radiation\_snapshot\_part\_propagation}
+(\code{src/feedback/GEAR/radiation\_isrf.c:129}), at lines 176-182 and 206-214,
+the horizon ending at \code{ISRF\_reservoir\_end\_ti}. The depth $a_i$ is formed
+in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:730},
+line 768) and \code{radiation\_end\_force\_propagation}
+(\code{radiation\_isrf.c:462}, line 530), and $\varphi$ is
+\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:350}) and
+its double twin (\code{radiation\_isrf.c:363}). The comoving path is returned
+by \code{radiation\_get\_comoving\_extinction\_path}
+(\code{radiation\_isrf.c:853}), the comoving product is formed by
+\code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
+(\code{radiation\_isrf.c:908}), and the $a^{-2}$ is applied in
+\code{radiation\_get\_part\_ISRF\_extinction\_factors}
+(\code{radiation\_isrf.c:1022}, lines 1028-1030).
+
+\subsubsection{Runtime parameters}
+\label{sec:fuv-parameters}
+
+All keys live in the \code{GEARFeedback} block. The photoelectric
+switch is the master switch; the rest are read only when it is on and
+are meaningful only with propagation on.
+
+\begin{center}
+\small
+\begin{tabular}{|p{4.2cm}|p{1.3cm}|p{1.3cm}|p{1.9cm}|p{4.6cm}|}
+\hline
+\textbf{Key} & \textbf{Symbol} & \textbf{Default} & \textbf{Range} &
+  \textbf{Meaning} \\
+\hline
+\code{with\_interstellar\_radiation\_field} & & 0 & 0 or 1 &
+  Master switch: compute $L_{\rm FUV}$, $L_{\rm LW}$, inject, and couple
+  $G_0$ and $k_{\rm diss}$ into Grackle. \\
+\hline
+\code{photoelectric\_heating\_efficiency} (\code{GrackleCooling}) & &
+  \code{constant} & \code{constant}, \code{wolfire1995},
+  \code{density\_dependent} &
+  Grackle photoelectric efficiency (Eq.~\ref{eq:fuv-pe-heating} and
+  Eq.~\ref{eq:fuv-pe-efficiency-density}). \\
+\hline
+\code{ISRF\_propagation} & & 0 & 0 or 1 &
+  0: instantaneous field (Section~\ref{sec:fuv-instantaneous}); 1:
+  two-moment propagation with reservoir, transport and dissipation. \\
+\hline
+\code{ISRF\_c\_hyp\_margin} & $C_{\rm hyp}$ & 0.5 &
+  $(0, 1.69]$, and Eq.~\ref{eq:fuv-stability-bound} &
+  Courant number of the propagation, $c_{\rm hyp} = \min(C_{\rm hyp}
+  h/\Delta t, c)$. \\
+\hline
+\code{ISRF\_dissipation\_alpha\_max} & $\alpha_{\max}$ & 0.5 &
+  $\ge0$, Eq.~\ref{eq:fuv-stability-bound} &
+  Ceiling of the negativity-triggered coefficient. 0 disables the
+  trigger. \\
+\hline
+\code{ISRF\_dissipation\_negativity\_threshold} & $\varepsilon_1$ & 0.01 &
+  $(0, 1]$ &
+  Relative undershoot at which the trigger saturates. \\
+\hline
+\code{ISRF\_dissipation\_alpha\_floor} & $\alpha_{\rm floor}$ & 0.5 &
+  $\ge0$, Eq.~\ref{eq:fuv-stability-bound} &
+  Ceiling of the unconditional floor. 0 disables the floor. \\
+\hline
+\code{ISRF\_dissipation\_floor\_h\_over\_lambda} & $\varepsilon_\lambda$ &
+  0.5 & $>0$ &
+  $h/\lambda$ at which the floor's quartic roll-off sets in. \\
+\hline
+\code{ISRF\_dissipation\_floor\_relaxation\_residual} & $\varepsilon_R$ &
+  0.40 & $[0, 1]$ &
+  Residual below which the floor is reduced by $(R/\varepsilon_R)^2$.
+  0 disables the gate. \\
+\hline
+\code{ISRF\_dissipation\_alpha\_pin\_for\_debugging} & & 0 & $\ge0$ &
+  Test only: hold every particle's coefficient at this value, bypassing
+  trigger and floor. Never in production. \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Validation summary}
+\label{sec:fuv-validation}
+
+The scheme is exercised by a battery of single-star and seeded-pulse
+tests in periodic glass boxes, each isolating one regime, plus unit
+tests of the operators. The regimes, the pass criteria and the outcome
+at the shipped defaults are summarised here; the full record, with the
+fixtures, the numbers and their history, is in the GEAR radiation
+logbook.
+
+\begin{itemize}
+  \item \textbf{Injection normalisation.} Propagation off, $Z=0$ so
+    that $\zeta = 1$: the energy summed over the star's kernel must
+    equal $\Delta t_\star L_b$ to floating-point precision, per band.
+  \item \textbf{Time-bin seam conservation.} A fixture straddling a
+    time-bin boundary, dissipation off, $Z=0$, checked per band against
+    a uniform-glass control carrying the same dose in flight:
+    $E(t) = (c/c_{\rm hyp})\sum_i m_i u_i/L - t$. Criterion:
+    $|E_{\rm seam}(t) - E_{\rm uniform}(t)|/t \le 10^{-5}$ at every
+    snapshot $t>0$. Outcome: $9.3\times10^{-8}$ (FUV), $6.6\times10^{-8}$
+    (LW), down from $5.0\times10^{-2}$ before the pair with
+    $H_i \le r_{ij} < H_j$ was dispatched from the force loop
+    (Section~\ref{sec:fuv-operators}).
+  \item \textbf{Screened steady state}, $h/\lambda$ from $0.6$ to $20$
+    (production particle masses $0.1$--$760\,M_\odot$ at solar $Z$,
+    $n_H = 10^3\,{\rm cm^{-3}}$). Criterion: the settled radial profile
+    $u(r)$, binned and compared bin by bin against the scheme's own
+    discrete fixed point (computed on the run's particle positions, in
+    both bands), median relative error below $15\%$ over every radial
+    bin whose predicted value clears a float32-noise floor
+    ($10^3\times$ the smallest normal float32); a bin below that floor,
+    or a band with fewer than three such bins, is reported unmeasurable
+    rather than counted as a pass or a fail; the amplitude identity
+    Eq.~\ref{eq:fuv-amplitude-identity} reported alongside. Outcome:
+    pass at every corner, with amplitude agreement to $0.2\%$ or
+    better; the LW profile at $h/\lambda = 20$ is unmeasurable because
+    the field is zero on all but a few dozen particles. The
+    $95\,M_\odot$ (LW) and $760\,M_\odot$ (FUV) corners exercise the
+    float32 underflow of Section~\ref{sec:fuv-moments} directly: median
+    relative error $0.5014$ and $0.5551$ before evaluating the flux norm
+    in double, $0.0074$ and $0.0104$ after, on the same check.
+  \item \textbf{Causal reach.} The field's edge at $10^{-3}$ of the peak
+    must stay inside $r = c_{\rm hyp}(t - t_0)$ at every snapshot, in a
+    uniform box and with one neighbour pinned to a $c_{\rm hyp}$ up to
+    $46\times$ its neighbours'. Outcome: pass in every case.
+  \item \textbf{Optically thin corner}, $h/\lambda\sim6\times10^{-3}$,
+    and the \textbf{transient ladder}, $h/\lambda$ from $0.0028$ to
+    $0.42$ with the front still inside the box. Criterion: the worst
+    radial bin's negative-mass fraction at or below $0.05\%$ at the end
+    of the run. Outcome: pass at every rung; without the floor the
+    fraction rises to $\sim30\%$ at the thinnest rungs, and without any
+    dissipation to $\sim60$--$80\%$.
+  \item \textbf{Transient fronts in the band} $h/\lambda = 0.15$,
+    $0.25$, $0.35$, both bands. Same criterion, plus agreement within
+    $0.02$ percentage points with the ungated floor. Outcome: $0.0000\%$
+    at all three rungs.
+  \item \textbf{Settled profiles in the band} $h/\lambda = 0.25$ to
+    $0.85$. Criterion: median relative error of $u(r)$ against the
+    discrete fixed point at or below $0.15$. Outcome: $0.12$, $0.12$,
+    $0.12$, $0.085$, $0.030$ at $h/\lambda = 0.25$, $0.35$, $0.45$,
+    $0.61$, $0.85$; the ungated floor fails this criterion at the first
+    four points (up to $0.42$). Transient negativity peaks of at most
+    $0.12\%$ during front passage settle to exactly zero.
+  \item \textbf{Production point}, $95\,M_\odot$ particles, $n_H =
+    1\,{\rm cm^{-3}}$, $Z = 10^{-2}Z_\odot$ ($h/\lambda = 6\times10^{-4}$).
+    Outcome: worst-bin negative-mass fraction $0.007\%$ late in the run,
+    $0.027\%$ at the single worst snapshot, against $17\%$ with the
+    trigger alone.
+  \item \textbf{Source turn-off.} A $70\,M_\odot$ star at solar $Z$
+    dying at $3.97$\,Myr. Criterion: the post-death $e$-folding time of
+    the box-total field equals $1/(c_{\rm hyp}\kappa\rho)$, and no
+    post-death snapshot carries a negative field. Outcome: ratio $1.000$
+    (FUV) and $0.999$ (LW), $0$ negative snapshots of $67$ in either
+    band.
+  \item \textbf{Unit tests.} Conservation of the dissipation exchange
+    across a smoothing-length ratio, scale-factor independence of the
+    three spatial operators, and the sign and magnitude of the expansion
+    term. All pass.
+  \item \textbf{End-to-end heating.} A heating-on versus heating-off
+    pair through Grackle checks the sign and magnitude of the thermal
+    response; no quantitative accuracy target is defined for the $G_0$
+    path beyond that.
+\end{itemize}
+Restart from a mid-run dump reproduces an uninterrupted control run;
+the per-particle state is covered by the existing whole-struct restart
+path.
+
+\subsection{Limitations and open items}
+\label{sec:fuv-limits}
+
+\begin{itemize}
+  \item \textbf{Limiter-bound residual on settled profiles.} Particles
+    whose flux is pinned by the limiter ($f\approx1$, most of the shell
+    $0.5\lesssim r/\lambda\lesssim1$ around a single source) never reach
+    the unlimited fixed point of Eq.~\ref{eq:fuv-fixed-point}, so the
+    gate retains $\sim40\%$ of the floor there in a fully settled
+    state. The shape error in the $0.25$--$0.85$ band passes its
+    criterion but stays $\sim6\times$ above what a uniform, tiny floor
+    would give at the same point. Measuring $R$ against the limited
+    recurrence's own fixed point is the candidate improvement.
+  \item \textbf{Untested branches.} The gate and the $H$ terms have
+    been unit-tested for scale-factor independence but not exercised in
+    a cosmological run with $a\ne1$ and $H\ne0$. The many-source,
+    near-isotropic branch (Eq.~\ref{eq:fuv-steady-diffusion}), which is
+    the production use, has not been validated directly; every
+    propagation test above uses one source or one seeded pulse.
+    Production resolution has been tested at one point only.
+  \item \textbf{Symmetric divergence dispatch: a positivity cost.}
+    Reaching every pair with $H_i \le r_{ij} < H_j$ from the force loop
+    (Section~\ref{sec:fuv-operators}) fixed the time-bin seam's
+    energy-conservation error above, but is not free. In a strong
+    hot/cold density-contrast fixture (a $10^6$\,K neighbour against a
+    cold background) the early-transient negative-$u$ population grows
+    to $323$ particles (FUV) and $456$ (LW) at snapshots $3$ to $8$,
+    against at most $1$ before the dispatch moved; a smaller, standing
+    negative population also appears at time-bin boundaries, where
+    particles that do not share a time bin or the same $c_{\rm
+    hyp}\kappa\rho$ leave a residual by construction
+    (Section~\ref{sec:fuv-operators}). Both are clamped to zero before
+    Grackle sees them (Section~\ref{sec:fuv-coupling}); improving
+    positivity at time-bin boundaries and in strongly contrasted gas,
+    without changing transport in smooth fields, is open. This is a
+    different mechanism from the $c_{\rm hyp}$-heterogeneity pathway of
+    Section~\ref{sec:fuv-chyp-heterogeneity} (a dispatch-coverage gap
+    versus a receiver-side Courant violation), and the two should not be
+    conflated: fixing one does not address the other.
+  \item \textbf{Dissipation coefficients.} The amplification matrix of
+    the flux-first update (Eq.~\ref{eq:fuv-u-update}) has the same
+    characteristic polynomial as a dissipation applied to the transported
+    field, and the thin limit $e^{-a}\to1$ binds, so
+    Eq.~\ref{eq:fuv-stability-bound} is the stability condition of the
+    shipped order: at $C_{\rm hyp} = 0.5$ it admits $\alpha\le0.589$,
+    $1.18$ times $\alpha_{\max} = 0.5$. The bound uses $2I_W = 6.2$; the
+    lattice maximum of the dissipation symbol is $3.31$, so on a uniform
+    lattice the bound is about twice conservative in $\alpha$. A direct
+    grid scan of the discrete recurrence's instability onset in
+    $C_{\rm hyp}$, at fixed $\alpha \in \{0.25, 0.5, 0.75\}$, places it
+    at $1.97$--$2.58$ times the analytic root of
+    Eq.~\ref{eq:fuv-stability-bound}, consistent with that same margin
+    rather than with any unmodelled effect. The transient
+    amplification of the shipped update (defined in
+    Section~\ref{sec:fuv-dissipation}) stays at its dissipation-off value,
+    $1.35$, for $\alpha\lesssim0.32$ and grows above it: $1.54$ at $0.5$ and
+    $1.68$ at the bound. The
+    negativity threshold $\varepsilon_1 = 0.01$ only sets where the
+    trigger saturates and does not enter the stability analysis; it was
+    measured under the isotropic closure and not re-measured with the
+    limiter and floor. $\varepsilon_\lambda = 0.5$ is the least
+    constrained of the dissipation parameters.
+  \item \textbf{Moment-closure physics.} Shadows behind dense clumps are
+    softer than reality, and two beams crossing at a particle are merged
+    into one direction; both are intrinsic to a two-moment closure. A
+    source moving relative to its gas trails a field lagging by
+    $v_{\rm rel}\lambda/c_{\rm hyp}$, $c/c_{\rm hyp}$ times the physical
+    lag.
+  \item \textbf{Instantaneous mode.} The propagation-off field scales
+    with the star's time step and reaches only kernel neighbours; it is
+    a baseline, not a physical field.
+  \item \textbf{Grackle path.} The photoelectric efficiency is constant,
+    follows the grain charging parameter with Grackle's electron density
+    \citep[their Eq.~2]{Wolfire1995}, or is a function of density alone
+    (Eq.~\ref{eq:fuv-pe-efficiency-density}). The density-only form
+    assumes gas on the solar-neighbourhood thermal equilibrium curve and
+    overestimates the efficiency at low metallicity \citep{Smith2026}.
+    The default is not yet chosen on evidence. The H$_2$ cross-section is an effective
+    band average with an implicit spectral shape; no quantitative
+    accuracy target exists yet for the $G_0$ path.
+  \item \textbf{Multi-source excess noise at high resolution, open.} A
+    lattice of many co-located sources (\texttt{ISRFMultiSourceSuperposition}),
+    checked outside every star's own kernel to probe the many-source
+    branch flagged untested above, agrees with the continuum
+    free-streaming prediction at a coarser gas resolution and does not at
+    a finer one: the second moment of $u$ runs $0.349$/$0.360$
+    (root-mean-square of $u/\langle u\rangle-1$, FUV/LW) against a
+    continuum prediction of $0.028$/$0.047$, about $12\times$ high in FUV
+    and $8\times$ in LW, and keeps changing from snapshot to snapshot
+    rather than settling, while the first moment $\langle u\rangle$
+    agrees with the prior implementation to four to six significant
+    figures. At the finer resolution the flux is pinned by the limiter
+    for essentially all of that outside-kernel gas ($99.75\%$ FUV,
+    $98.84\%$ LW), so the flux-relaxation-residual gate of
+    Eq.~\ref{eq:fuv-diss-gate} saturates at $s=1$ there, for the reason
+    already given in Section~\ref{sec:fuv-dissipation}: a limiter-pinned
+    flux never reaches the unlimited fixed point. That saturation is neither
+    necessary nor sufficient for the excess noise: removing the floor,
+    and removing the floor and the trigger together, both still fail the
+    fixture and make every other diagnostic worse (the second moment,
+    the step-to-step variation of $u$, and positivity all degrade
+    further), while forcing the same saturated coefficient onto the
+    coarser resolution leaves it passing and improves every diagnostic
+    there. The excess noise's own cause remains under investigation.
+\end{itemize}

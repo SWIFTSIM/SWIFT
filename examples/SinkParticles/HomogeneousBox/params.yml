@@ -61,26 +61,61 @@ SPH:
 
 # Cooling with Grackle 3.0
 GrackleCooling:
-  cloudy_table: CloudyData_UVB=HM2012_high_density.h5         # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  with_UV_background: 0                          # Enable or not the UV background
-  redshift: -1                                   # Redshift to use (-1 means time based redshift)
-  with_metal_cooling: 1                          # Enable or not the metal cooling
-  self_shielding_method: -1                      # Grackle (<= 3) or Gear self shielding method
-  self_shielding_threshold_atom_per_cm3: 0.007   # Required only with GEAR's self shielding. Density threshold of the self shielding
-  max_steps: 1000
-  convergence_limit: 1e-2
-  thermal_time_myr: 5
-  initial_nHII_to_nH_ratio:   2.393761E-004      # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeI_to_nH_ratio:   7.900000E-002      # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeII_to_nH_ratio:  5.692753E-020      # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHeIII_to_nH_ratio: 0                  # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nDI_to_nH_ratio:    2.529538E-005      # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nDII_to_nH_ratio:   4.284496E-009      # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHM_to_nH_ratio:    6.509693E-012      # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nH2I_to_nH_ratio:   1.891128E-005      # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nH2II_to_nH_ratio:  4.153181E-005      # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
-  initial_nHDI_to_nH_ratio:   3.356904E-006      # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
-  maximal_density_Hpcm3: -1                      # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  # Core Grackle settings. Each optional key states its parser default.
+  # primordial_chemistry is not set: it defaults to the compiled grackle_N mode.
+  cloudy_table: CloudyData_UVB=HM2012_high_density.h5  # Cloudy table file (required)
+  with_UV_background: 0                                # Metagalactic UV background on or off (required)
+  redshift: -1                                         # Redshift of the UV background, -1 follows the simulation time (required)
+  with_metal_cooling: 1                                # Metal cooling on or off (required)
+  thermal_time_myr: 5                                  # Adiabatic-cooling time in Myr after a feedback event (required)
+  maximal_density_Hpcm3: -1                            # Cooling density ceiling in H atoms/cm^3, a value < 0 disables it (required)
+  max_steps: 10000                                     # Maximal Grackle sub-cycle iterations per particle solve (Default: 10000)
+  subcycle_on_failure: 2                               # Retries of a failed solve, each halving the sub-step, in [0, 20] (Default: 2)
+  cmb_temperature_floor: 1                             # Grackle's internal CMB temperature floor on or off (Default: 1)
+  agora_cmb_temperature_floor: 0                       # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
+  HydrogenFractionByMass: 0.76                         # Hydrogen mass fraction (Default: 0.76)
+
+  # H2 and self-shielding. The ISRF needs H2_self_shielding 2 or 3 with primordial_chemistry >= 2,
+  # otherwise the Lyman-Werner field reaches Grackle unshielded.
+  H2_self_shielding: 0                                 # 0 off, 2 column set by H2_self_shielding_path, 3 local Jeans length (1 is rejected) (Default: 0)
+  H2_self_shielding_path: kernel_radius                # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
+  H2_on_dust: 0                                        # H2 formation on dust grains (Default: 0)
+  H2_photodissociation_heating: 0                      # Heating per H2 photodissociation, needs mode >= 2 and a Grackle that provides it (Default: 0)
+  H2_three_body_rate: 0                                # H2 three-body formation rate model, 0 to 5 (Grackle documentation) (Default: 0)
+  H2_cie_cooling: 0                                    # H2 collision-induced emission cooling (Ripamonti & Abel 2004) (Default: 0)
+  self_shielding_method: -1                            # Continuum self-shielding: -1 GEAR, 0 none, 1 to 3 Grackle (Default: 0)
+  self_shielding_threshold_atom_per_cm3: 0.007         # Density threshold in H atoms/cm^3, required with self_shielding_method -1
+
+  # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
+  photoelectric_heating_efficiency: constant           # constant, wolfire1995 or density_dependent (Default: constant)
+  local_dust_to_gas_ratio: -1                          # Dust-to-gas mass ratio, -1 keeps Grackle's own default (Default: -1)
+
+  # Chemistry network: initial abundances as number ratios to nH, -1 keeps the default.
+  initial_nHII_to_nH_ratio: 2.393761E-004              # nHII / nH (Default: -1)
+  initial_nHeI_to_nH_ratio: 7.900000E-002              # nHeI / nH (Default: -1)
+  initial_nHeII_to_nH_ratio: 5.692753E-020             # nHeII / nH (Default: -1)
+  initial_nHeIII_to_nH_ratio: 0                        # nHeIII / nH (Default: -1)
+  initial_nHM_to_nH_ratio: 6.509693E-012               # nHM / nH (Default: -1)
+  initial_nH2I_to_nH_ratio: 1.891128E-005              # nH2I / nH (Default: -1)
+  initial_nH2II_to_nH_ratio: 4.153181E-005             # nH2II / nH (Default: -1)
+  initial_nDI_to_nH_ratio: 2.529538E-005               # nDI / nH (Default: -1)
+  initial_nDII_to_nH_ratio: 4.284496E-009              # nDII / nH (Default: -1)
+  initial_nHDI_to_nH_ratio: 3.356904E-006              # nHDI / nH (Default: -1)
+
+  # Radiation field and RT rates (cgs).
+  use_radiative_transfer: 0                            # Ionization and heating rates are provided; forced on by HII_couple_ionization_rate, and by the ISRF in grackle_2 and grackle_3 builds (Default: 0)
+  RT_heating_rate_cgs: 0                               # Heating rate per nHI, cgs (Default: 0)
+  RT_HI_ionization_rate_cgs: 0                         # HI ionization rate [1/s] (Default: 0)
+  RT_HeI_ionization_rate_cgs: 0                        # HeI ionization rate [1/s] (Default: 0)
+  RT_HeII_ionization_rate_cgs: 0                       # HeII ionization rate [1/s] (Default: 0)
+  RT_H2_dissociation_rate_cgs: 0                       # H2 dissociation rate [1/s], keep 0 when the ISRF supplies it (Default: 0)
+
+  # Constant heating rates.
+  volumetric_heating_rates_cgs: 0                      # Constant volumetric heating rate [erg/s/cm3] (Default: 0)
+  specific_heating_rates_cgs: 0                        # Constant specific heating rate [erg/s/g] (Default: 0)
+
+  # Debug.
+  disable_cooling_for_debugging: 0                     # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
 GEARChemistry:
   initial_metallicity: 1e-6
@@ -89,19 +124,43 @@ GEARFeedback:
   supernovae_Ia_energy_erg: 1e51                 # Energy released by a single supernova.
   supernovae_efficiency: 0.1                     # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
   with_stellar_wind_feedback: 0                  # Activate the stellar wind feedback
-  yields_table: POPII.hdf5                       # Table containing the yields of the first stars.
+  yields_table: PopII_parsec_spectral.hdf5       # Table containing the yields of the Pop II stars.
   discrete_yields: 1                             # Should we use discrete yields or the IMF integrated one?
   imf_transition_metallicity: 0                  # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]   # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
+  # Radiation parameters
+  with_radiation_pressure: 0                               # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
+  radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
+  with_interstellar_radiation_field: 0                     # ISRF master switch: photoelectric heating + dust chemistry (any Grackle mode); H2 photodissociation additionally needs COOLING_GRACKLE_MODE > 1 (grackle_2 or grackle_3). 1: on, 0: off. (Default: 0)
+  ISRF_propagation: 0                                       # Run the hyperbolic M1 propagation update on top of injection + receiver-side extinction. Only meaningful when with_interstellar_radiation_field is on. (Default: 0)
+  ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
+  ISRF_extinction_path_in_kernel_radii: 1.0                 # Extinction path length, in kernel support radii. Read only when ISRF_extinction_path is constant_kernel_path. (Default: 1.0)
+  ISRF_c_hyp_scheme: kernel_local                           # ISRF hyperbolic propagation scheme: fixed_fraction (fixed fraction of c) or kernel_local (kernel-local speed); see parameter_example.yml. Only meaningful when ISRF_propagation is on. (Default: kernel_local)
+  ISRF_c_hyp_margin: 0.5                                    # Stability-margin coefficient C_hyp in the ISRF_c_hyp_scheme closure. Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_c_hyp_fixed_fraction_of_c: 0                         # Uniform c_hyp = f*c, only used when ISRF_c_hyp_scheme is fixed_fraction. (Default: 0)
+  ISRF_c_hyp_timestep_term_off_for_debugging: 0             # Debug/test only: skip the CFL timestep term for the fixed-fraction speed. Never set in a production run. (Default: 0)
+  ISRF_dissipation_alpha_max: 0.5                           # Ceiling of the negativity-triggered artificial-conductivity coefficient. Only meaningful when ISRF_propagation is on. (Default: 0.5)
+  ISRF_dissipation_negativity_threshold: 0.01                # Relative undershoot at which the negativity trigger reaches ISRF_dissipation_alpha_max. (Default: 0.01)
+  ISRF_dissipation_alpha_floor: 0.5                          # Floor under the negativity trigger, for the front the trigger structurally cannot see. 0 disables it. (Default: 0.5)
+  ISRF_dissipation_floor_h_over_lambda: 0.5                  # Screening-length error budget gating the floor's roll-off. (Default: 0.5)
+  ISRF_dissipation_floor_relaxation_residual: 0.4            # Flux-relaxation residual gating the floor. 0 disables the gate. (Default: 0.40)
+  ISRF_dissipation_alpha_pin_for_debugging: 0                # Debug/test only: bypass the negativity trigger and hold the dissipation coefficient fixed. Never set in a production run. (Default: 0)
+  with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
+  HII_min_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
+  HII_rebuild_time_Myr:   0.5                       # Time between rebuilding the HII region (in Myr). This values also enforce a timestep constraint on the stars. Negative values will not impose any specific rebuild time. (Default: 0.5)
+
 Stars:
+  HII_max_search_radius: 0.1  # Max HII search radius (internal units).
   timestep_age_threshold_unlimited_Myr: 30.      # (Optional) Age above which sinks have no time-step restriction any more (in Mega-years). Defaults to 0.
   timestep_age_threshold_Myr:           10.      # (Optional) Age at which sink switch from young to old for time-stepping purposes (in Mega-years). Defaults to FLT_MAX.
   max_timestep_young_Myr:               1        # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 5        # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
 
 GEARSink:
-  use_fixed_cut_off_radius: 1                    # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
+  use_fixed_cut_off_radius: 1                    # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the
+                                                 # cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.
   cut_off_radius: 5e-3                           # Cut off radius of all the sinks in internal units. Ignored if use_fixed_cut_off_radius is 0.
   f_acc: 1e-2
   temperature_threshold_K: 1000                  # Max temperature (in K) for forming a sink when density_threshold_Hpcm3 <= density <= maximal_density_threshold_Hpcm3.

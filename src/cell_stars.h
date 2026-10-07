@@ -29,6 +29,13 @@
 #include "star_formation_logger_struct.h"
 #include "timeline.h"
 
+/*! Safety factor applied to a star's h_hii/h search radius: both the
+ * radiation runner (when gathering ionization candidates) and the
+ * rebuild/split predicates that must stay conservative relative to it use
+ * this same value, so it lives here rather than in a feedback-scheme
+ * header that cell.h cannot depend on. */
+#define radiation_search_radius_factor 1.2f
+
 /**
  * @brief Stars-related cell variables.
  */
@@ -39,6 +46,9 @@ struct cell_stars {
 #ifdef STARS_NONE
   union {
 #endif
+    /*! Radiation cell, i.e. the highest-level parent cell that has a radiation
+     * pair/self tasks */
+    struct cell *radiation_level;
 
     /*! Pointer to the #spart data. */
     struct spart *parts;
@@ -67,6 +77,9 @@ struct cell_stars {
     /*! The second star ghost task related to mechanical feedback */
     struct task *prep4_ghost;
 
+    /*! The feedback star ghost task after feedback */
+    struct task *feedback_ghost;
+
     /*! Linked list of the tasks computing this cell's star density. */
     struct link *density;
 
@@ -89,8 +102,19 @@ struct cell_stars {
     /*! Linked list of the tasks computing this cell's star feedback. */
     struct link *feedback;
 
+    /*! Linked list of tasks gathering incoming dependencies for radiation
+        subgrid model */
+    struct link *radiation_in;
+
+    /*! Linked list of tasks gathering outgoing dependencies for radiation
+        subgrid model */
+    struct link *radiation_out;
+
     /*! The task computing this cell's sorts before the density. */
     struct task *sorts;
+
+    /*! The task for subgrid HII ionization */
+    struct task *hii_ionization_feedback;
 
     /*! The drift task for sparts */
     struct task *drift;
@@ -119,6 +143,12 @@ struct cell_stars {
 
     /*! Values of h_max before the drifts, used for sub-cell tasks. */
     float h_max_old;
+
+    /*! Max HII radius / gamma_k of active particles in this cell. */
+    float h_hii_max_active;
+
+    /*! Values of h_hii_max before the drifts, used for sub-cell tasks. */
+    float h_hii_max_old;
 
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
@@ -168,6 +198,9 @@ struct cell_stars {
 
   /*! Max smoothing length in this cell. */
   float h_max;
+
+  /*! Max HII radius / gamma_k in this cell. */
+  float h_hii_max;
 
   /*! Number of #spart updated in this cell. */
   int updated;
