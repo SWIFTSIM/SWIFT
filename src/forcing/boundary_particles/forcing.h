@@ -93,6 +93,15 @@ __attribute__((always_inline)) INLINE static void forcing_hydro_terms_apply(
                         /*dt_alpha=*/0, /*dt_therm=*/0);
     rt_prepare_force(p);
 #endif
+    /* TODO: Do we want to add these? */
+    /* #if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \ */
+    /*     defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION) */
+
+    /*           /\* Some values need to be reset in the Gizmo case. *\/ */
+    /*           chemistry_prepare_force(p, xp, cosmo, /\*dt_alpha=*\/0,
+     * /\*dt_therm=*\/0, */
+    /*                                   e->chemistry); */
+    /* #endif     */
 
     if (terms->enable_fixed_position) {
       /* Set velocity of fixed boundary particle to zero. */

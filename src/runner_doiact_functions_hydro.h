@@ -51,6 +51,8 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct chemistry_global_data *chemistry_properties = e->chemistry;
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
 #endif
 
   TIMER_TIC;
@@ -171,6 +173,10 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+            /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
+            t_current, cosmo, with_cosmology, chemistry_properties);
 #endif
       }
       if (doj) {
@@ -205,6 +211,10 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+            /*local_first=*/local_j, /*local_second=*/local_i, a, H, time_base,
+            t_current, cosmo, with_cosmology, chemistry_properties);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -238,6 +248,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct chemistry_global_data *chemistry_properties = e->chemistry;
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
 #endif
 
   TIMER_TIC;
@@ -325,6 +337,15 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
       const int doj = pj_active && (depth_j >= min_depth) &&
                       (depth_j <= max_depth) && ((r2 < hjg2) || (r2 < hig2));
 
+      /* Keep the original (pi - pj) vector: the doj block below negates dx
+         in place, and the chemistry flux-exchange extension (added after
+         both blocks so it never double-fires when doi && doj) needs the
+         un-negated form. Additive only: the doi/doj blocks and their
+         existing runner_iact_(nonsym_)diffusion calls are untouched. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+      const float dx0[3] = {dx[0], dx[1], dx[2]};
+#endif
+
       /* Hit or miss? */
       if (doi) {
 
@@ -390,6 +411,31 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
 #endif
       }
+
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+      /* Chemistry flux-exchange extension (additive, alongside the original
+         diffusion hooks above): exclusive dispatch so a both-active pair
+         (doi && doj) gets its ONE symmetric evaluation, never two (unlike
+         the hydro/MHD/timebin/diffusion calls above, which are one-sided
+         per-particle updates meant to fire from both blocks). */
+      if (doi && doj) {
+        runner_iact_chemistry_flux_exchange(
+            r2, dx0, hi, hj, pi, pj, /*both_updatable_here=*/1,
+            /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
+            t_current, cosmo, with_cosmology, chemistry_properties);
+      } else if (doi) {
+        runner_iact_chemistry_flux_exchange(
+            r2, dx0, hi, hj, pi, pj, /*both_updatable_here=*/0,
+            /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
+            t_current, cosmo, with_cosmology, chemistry_properties);
+      } else if (doj) {
+        const float mdx0[3] = {-dx0[0], -dx0[1], -dx0[2]};
+        runner_iact_chemistry_flux_exchange(
+            r2, mdx0, hj, hi, pj, pi, /*both_updatable_here=*/0,
+            /*local_first=*/local_j, /*local_second=*/local_i, a, H, time_base,
+            t_current, cosmo, with_cosmology, chemistry_properties);
+      }
+#endif
     } /* loop over the parts in cj. */
   } /* loop over the parts in ci. */
 
@@ -525,6 +571,10 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
                               t_current, cosmo, with_cosmology,
                               chemistry_properties);
         runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       } else if (doi) {
 
@@ -554,6 +604,10 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       } else if (doj) {
 
@@ -587,6 +641,10 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -724,6 +782,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                               t_current, cosmo, with_cosmology,
                               chemistry_properties);
         runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       } else if (doi) {
 
@@ -753,6 +815,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       } else if (doj) {
 
@@ -786,6 +852,10 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -823,6 +893,8 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct chemistry_global_data *chemistry_properties = e->chemistry;
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
 #endif
 
   TIMER_TIC;
@@ -900,6 +972,10 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hi, pj->h, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, pj->h, pi, pj, /*both_updatable_here=*/0,
+            /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
+            t_current, cosmo, with_cosmology, chemistry_properties);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -937,6 +1013,8 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct chemistry_global_data *chemistry_properties = e->chemistry;
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
 #endif
 
   TIMER_TIC;
@@ -1021,6 +1099,11 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+              /*local_first=*/local_i, /*local_second=*/local_j, a, H,
+              time_base, t_current, cosmo, with_cosmology,
+              chemistry_properties);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1095,6 +1178,11 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+              /*local_first=*/local_i, /*local_second=*/local_j, a, H,
+              time_base, t_current, cosmo, with_cosmology,
+              chemistry_properties);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1288,6 +1376,10 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
         runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+        runner_iact_chemistry_flux_exchange(
+            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+            cosmo, with_cosmology, chemistry_properties);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -1342,6 +1434,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
   const integertime_t t_current = e->ti_current;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const struct chemistry_global_data *chemistry_properties = e->chemistry;
+  const int local_i = ci->nodeID == e->nodeID;
+  const int local_j = cj->nodeID == e->nodeID;
 #endif
 
   TIMER_TIC;
@@ -1512,6 +1606,11 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+              /*local_first=*/local_i, /*local_second=*/local_j, a, H,
+              time_base, t_current, cosmo, with_cosmology,
+              chemistry_properties);
 #endif
         }
       } /* loop over the parts in cj. */
@@ -1636,6 +1735,11 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+              /*local_first=*/local_j, /*local_second=*/local_i, a, H,
+              time_base, t_current, cosmo, with_cosmology,
+              chemistry_properties);
 #endif
         }
       } /* loop over the parts in ci. */
@@ -1962,6 +2066,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+              /*local_first=*/local_j, /*local_second=*/local_i, a, H,
+              time_base, t_current, cosmo, with_cosmology,
+              chemistry_properties);
 #endif
         }
       } /* loop over the active parts in cj. */
@@ -2067,6 +2176,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   t_current, cosmo, with_cosmology,
                                   chemistry_properties);
             runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+            runner_iact_chemistry_flux_exchange(
+                r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+                /*local_first=*/local_i, /*local_second=*/local_j, a, H,
+                time_base, t_current, cosmo, with_cosmology,
+                chemistry_properties);
 #endif
           } else {
 
@@ -2097,6 +2211,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                          time_base, t_current, cosmo,
                                          with_cosmology, chemistry_properties);
             runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+            runner_iact_chemistry_flux_exchange(
+                r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                /*local_first=*/local_i, /*local_second=*/local_j, a, H,
+                time_base, t_current, cosmo, with_cosmology,
+                chemistry_properties);
 #endif
           }
         }
@@ -2230,6 +2349,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+              /*local_first=*/local_i, /*local_second=*/local_j, a, H,
+              time_base, t_current, cosmo, with_cosmology,
+              chemistry_properties);
 #endif
         }
       } /* loop over the active parts in ci. */
@@ -2335,6 +2459,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   t_current, cosmo, with_cosmology,
                                   chemistry_properties);
             runner_iact_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+            runner_iact_chemistry_flux_exchange(
+                r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/1,
+                /*local_first=*/local_j, /*local_second=*/local_i, a, H,
+                time_base, t_current, cosmo, with_cosmology,
+                chemistry_properties);
 #endif
           } else {
 
@@ -2366,6 +2495,11 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                          time_base, t_current, cosmo,
                                          with_cosmology, chemistry_properties);
             runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+            runner_iact_chemistry_flux_exchange(
+                r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                /*local_first=*/local_j, /*local_second=*/local_i, a, H,
+                time_base, t_current, cosmo, with_cosmology,
+                chemistry_properties);
 #endif
           }
         }
@@ -2570,6 +2704,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         }
       } /* loop over all the particles we want to update. */
@@ -2659,6 +2797,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
                                 t_current, cosmo, with_cosmology,
                                 chemistry_properties);
           runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         } else if (doi) {
 
@@ -2690,6 +2832,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         } else if (doj) {
 
@@ -2725,6 +2871,10 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         } /* Hit or miss */
       } /* loop over all other particles. */
@@ -2918,6 +3068,10 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         }
       } /* loop over all other particles. */
@@ -3008,6 +3162,10 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                 t_current, cosmo, with_cosmology,
                                 chemistry_properties);
           runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         } else if (doi) {
 
@@ -3040,6 +3198,10 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
           runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
+          runner_iact_chemistry_flux_exchange(
+              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
+              cosmo, with_cosmology, chemistry_properties);
 #endif
         } else if (doj) {
 
