@@ -707,7 +707,7 @@ void stellar_evolution_compute_preSN_properties(
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
-        "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
+        "Star_type=single init_mass[M_odot]=%g metallicity[mass_fraction]=%g "
         "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
         m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
@@ -756,7 +756,8 @@ void stellar_evolution_compute_preSN_properties(
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
-        "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
+        "Star_type=continuous init_mass[M_odot]=%g "
+        "metallicity[mass_fraction]=%g "
         "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
         "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
         m_init, exp10(log_metallicity),
