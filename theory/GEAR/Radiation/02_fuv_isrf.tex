@@ -1374,11 +1374,15 @@ exponential integrator per particle rather than one global step. A pair
 across time bins is booked once, over the finer member's step, on one
 rank: the coarser member receives the exact opposite of the finer
 member's booking, its dissipation weighted by the finer member's
-$\varphi$, and adds it at its own next step. That keeps the
-$c_{\rm hyp}$-weighted ledger exact across bins, up to the Hubble term
-left out of the finer member's $\varphi$ under cosmology. On several MPI
-ranks each member integrates the pair with its own $\Delta t$, and the
-residual includes the step mismatch.
+$\varphi$, and adds it at its own next step, split between $u$ and
+absorbed energy by its own depth. That removes the step mismatch from
+the $c_{\rm hyp}$-weighted ledger. What remains is the residual of
+unequal $\varphi(a)$ above and the Hubble term left out of the finer
+member's $\varphi$ under cosmology. On a multi-bin fixture with dust the
+ledger residual falls from about $10^{-1}$ of the injected energy to
+about $3\times10^{-4}$. On several MPI ranks the booking is off: each
+member integrates the pair with its own $\Delta t$, and the residual
+includes the step mismatch.
 
 \textbf{Pressure-tensor divergence.} A difference estimator on the
 volumetric field $U = \rho u$ contracted with each particle's own

@@ -254,8 +254,12 @@ dissipation residual, which the SPH divergence's kernel-sum identity and the
 dissipation's pairwise antisymmetry drive to about zero when summed over all
 particles. Both totals are never reset, so the identity holds at every snapshot.
 The PE moment's share of the LW-to-PE transfer is booked into PE's injected total,
-since LW's absorbed total already contains it. The ledger is updated at
-\code{radiation\_isrf.c:611-626}.
+since LW's absorbed total already contains it. Energy that a pair across time
+bins still owes a coarser particle sits in its pending amounts
+(Section~\ref{sec:isrf-eqdisc-pairwise}), so $E$ includes them, and the
+pending add books its absorbed share. The ledger is updated at
+\code{radiation\_isrf.c:611-626} and, for the pending add, at
+\code{radiation\_isrf.c:500-501}.
 
 \textbf{\code{grad\_u} is not the gradient of $u$.} The code accumulates the
 anisotropic M1 pressure-tensor divergence
@@ -623,16 +627,8 @@ a property of the accumulator, not of the applied update: $u$ is advanced by
 $dt_i\,\varphi_i\,X_i$ per particle, so the
 pairwise cancellation survives into $u$ only where $dt_i = dt_j$ and
 $\varphi_i = \varphi_j$, i.e.\ same time bin and same relaxation depth. On one
-rank, a pair across time bins is booked once, over the finer member's step.
-The coarser member receives the opposite of the finer member's change of $u$
-plus absorbed energy, in $c_{\rm hyp}$-weighted units. That is $-dt\,X$ for
-transport, with no $\varphi$, and $-dt\,\varphi\,D$ for dissipation, where $D$
-is the dissipation accumulator. The amount is held until the coarser member's
-own update and added there with weight one. The finer member's $\varphi$ in
-the dissipation share leaves out the Hubble term of its depth, which is first
-order in $\lambda (c_{\rm hyp}/c) H\, dt$. On several MPI ranks each member
-integrates the pair with its own $dt$, and the cancellation fails across time
-bins.
+rank, a pair across time bins is booked once instead; see the paragraph on
+pairs across time bins below.
 
 The divergence sits in the \emph{force} loop, not a type-1 loop, because it needs
 both sides of every pair credited and only the type-2 dispatch fires both sides
@@ -709,6 +705,78 @@ floating-point annotation: the compiler may reassociate them under
 \code{-ffast-math}, so a rerun after a compiler or flag change can move the last
 bits of the accumulators without changing the discrete scheme.
 
+\paragraph{Pairs across time bins.} On one rank, a force pair whose members
+have unequal steps is booked once, over the finer member's step $dt_f$. The
+finer member $f$ takes its rate from the pair as above. The coarser member $c$
+takes no rate from the pair. It accumulates two pending amounts per moment,
+formed with $c_{\rm hyp} = 1$ on its side:
+\begin{equation}
+  P^{\rm tr}_c \mathrel{+}= -X^{(1)}_c\, dt_f,
+  \qquad
+  P^{\rm d}_c \mathrel{+}= \code{dissipation\_u}^{(1)}_c\, dt_f\, \varphi_f,
+  \label{eq:isrfd-pending}
+\end{equation}
+where the superscript $(1)$ marks the pair's contribution at unit speed and
+$\varphi_f = \varphi(c_{{\rm hyp},f}\,\kappa_f\, dt_f)$ is the finer member's
+integrating factor. By the accumulator identity, this is the exact opposite of
+the finer member's change of $u$ plus absorbed energy, in
+$c_{\rm hyp}$-weighted units: transport enters with no $\varphi$, dissipation
+with the finer member's $\varphi$. At its own next update, after
+Equation~(\ref{eq:isrfd-u-update}), the coarser member adds
+\begin{equation}
+  \Delta u_c = c_{{\rm hyp},c}\big(\mathcal{E}_c\, P^{\rm d}_c
+    + \varphi_c\, P^{\rm tr}_c\big),
+  \label{eq:isrfd-pending-add}
+\end{equation}
+books the rest of $c_{{\rm hyp},c}(P^{\rm d}_c + P^{\rm tr}_c)$ as absorbed,
+and zeroes both amounts. Each amount thus enters $u$ plus absorbed energy with
+weight one, split by the coarser member's own depth as its own terms are. The
+LW absorbed share of the pending amount feeds the band-edge transfer, as in the
+update. With this booking the $c_{\rm hyp}$-weighted energy ledger is exact
+across time bins, up to two terms. The first is the same-step term above:
+members of one bin with unequal $\varphi$ or $c_{\rm hyp}$. The second is the
+Hubble term, which $\varphi_f$ leaves out of the finer member's depth. It is
+first order in $\lambda\,(c_{\rm hyp}/c)\,H\,dt$, and since
+$c_{\rm hyp}\,dt \le C_{\rm hyp} h_{\rm phys}$ its relative size is at most
+$\lambda\, C_{\rm hyp} h_{\rm phys} H / (2c)$, negligible for any $h$ much
+smaller than the Hubble length.
+
+The booking needs the extra ghost, which marks each member's active step, and
+one rank. On several MPI ranks it is off: each member integrates the pair with
+its own $dt$, and the cancellation fails across time bins. The pending amounts
+live on the particle, so they are written to restart files; the restart
+layout marker is 3 for this layout (Section~\ref{sec:isrf-eqdisc-chyp}). A
+snapshot writes $c_{\rm hyp}(P^{\rm tr} + P^{\rm d})$ per band as
+\code{PEPendingSpecificEnergies}, \code{LWPendingSpecificEnergies} and
+\code{LWPhotonPendingSpecificEnergies}. An energy sum taken while not all
+particles are synchronised must add them to $u$.
+
+\textbf{Measured effect.} The check is the $c_{\rm hyp}$-weighted energy
+ledger residual: $E + \mathrm{Abs} - \mathrm{Inj}$ over the injected energy,
+with each term divided by its particle's $c_{\rm hyp}$ and the pending amounts
+included (0 is exact conservation). Final values, one rank, 8
+threads, per-owner booking against the cross-bin booking:
+\begin{center}
+\begin{tabular}{p{5.0cm}llll}
+\hline
+fixture (several time bins) & \multicolumn{2}{l}{per-owner, PE / LW} & \multicolumn{2}{l}{cross-bin, PE / LW} \\
+\hline
+\code{ISRFDissipationExtreme}, fixed speed, $Z = 1$ & $-1.6\times10^{-2}$ & $-4.5\times10^{-2}$ & $-1.6\times10^{-3}$ & $-1.2\times10^{-3}$ \\
+\code{ISRFMultiBinDissipation}, level 5, scheme 4, $Z = 1$ & $+1.3\times10^{-1}$ & $+5.2\times10^{-2}$ & $+3.5\times10^{-4}$ & $+2.1\times10^{-4}$ \\
+box at redshift 9, level 5, scheme 4, $Z = 1$ & $+8.0\times10^{-1}$ & $+7.0\times10^{-1}$ & $-2.0\times10^{-4}$ & $+6.6\times10^{-6}$ \\
+\hline
+\end{tabular}
+\end{center}
+The same \code{ISRFDissipationExtreme} fixture on one time bin, at scheme 4
+with margin $0.0156$, reads $-4.7\times10^{-4}$ / $-6.6\times10^{-4}$: the
+same order as the cross-bin residual, which is the same-step term. On a uniform box on two time bins
+(\code{ISRFCosmology}, free field, $z = 0$, level 5), the worst drift of
+$\ln \sum m\,(u + {\rm pending})$ over 41 snapshots is $3.4\times10^{-4}$
+with the per-owner booking and $5.5\times10^{-11}$ with the cross-bin booking,
+against a float floor of $1.3\times10^{-7}$. On runs that stay on one time
+bin the booking never fires: the output is bit-identical to the per-owner
+booking at one thread, and the pending amounts are zero.
+
 \paragraph{Implementation.} All four operators are in
 \code{radiation\_propagation\_iact.h}. The file comment at
 \code{radiation\_propagation\_iact.h:24-33} states why the divergence is in the
@@ -720,8 +788,8 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     Equation~(\ref{eq:isrfd-div-phi}) is at \code{:74-76} and
     Equation~(\ref{eq:isrfd-div-apply}) at \code{:78-79}; the shared
     $\Phi_{ij}$ that gives the exact accumulator identity is used at
-    \code{:78}. The applied update that breaks it across time bins is
-    \code{radiation\_isrf.c:628-632}.
+    \code{:78}. The applied update that breaks it between members of unequal
+    depth is \code{radiation\_isrf.c:628-632}.
   \item Gradient: \code{radiation\_gradient\_accumulate\_band}
     (\code{radiation\_propagation\_iact.h:298-327}).
     Equations~(\ref{eq:isrfd-grad-temp}), (\ref{eq:isrfd-grad-fac}) and
@@ -743,6 +811,20 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     \code{:149}, \code{:153-155}, \code{:157}, \code{:159-160} and
     \code{:162-163}. The ungated application follows from the force-loop
     dispatch documented at \code{:27-33}.
+  \item Pairs across time bins: Equation~(\ref{eq:isrfd-pending}) is
+    \code{radiation\_cross\_bin\_pair\_band}
+    (\code{radiation\_propagation\_iact.h:590-633}), with $\varphi_f$ at
+    \code{:603-605} and the two pending sums at \code{:630-632}. The symmetric
+    and non-symmetric force pairs route an unequal-step pair there at
+    \code{:716-726} and \code{:798-814}. The active step is marked in
+    \code{dt\_active}: reset at the drift (\code{radiation\_isrf.c:168}) and set
+    by the extra ghost (\code{radiation\_isrf.c:825}), only while
+    \code{radiation\_cross\_bin\_booking\_on} (\code{radiation\_isrf.c:129-135})
+    reports one rank and an extra ghost.
+    Equation~(\ref{eq:isrfd-pending-add}) is
+    \code{radiation\_add\_pending\_part} (\code{radiation\_isrf.c:456-504}), called at
+    the end of the update at \code{radiation\_isrf.c:639-645}. The snapshot fields
+    are registered at \code{feedback\_io.h:550-567}.
 \end{itemize}
 
 \subsubsection{The exact-exponential relaxation update of $u$ (end-force ghost)}
@@ -812,7 +894,8 @@ $u$ is advanced in \textbf{double} throughout; the double
 $\varphi$ exists specifically because the $u$-path depth can be a few $10^{-8}$.
 The update is \emph{idempotent}: $u$ is
 rebuilt from $u_{\rm prev}$ plus this step's accumulators, never incremented.
-The two debug ledger counters are the exception. No flux limiter is applied
+The exceptions are the two debug ledger counters and the pending add of
+Equation~(\ref{eq:isrfd-pending-add}), which follows the rebuild. No flux limiter is applied
 here: the extra ghost already limited this step's flux against $u^n$.
 
 \paragraph{Implementation.} \code{radiation\_end\_force\_propagation},
@@ -833,8 +916,10 @@ is at \code{radiation\_isrf.c:373-374} and
 \code{radiation\_isrf.c:544-550}, \code{:607} and \code{:628-632}, and the
 reason for the double $\varphi$ is the comment at
 \code{radiation\_propagation\_iact.h:551-552}. The debug ledger counters are at
-\code{radiation\_isrf.c:611-626}. The limiter that already ran is applied at
-\code{radiation\_isrf.c:916-920}.
+\code{radiation\_isrf.c:611-626}. The pending add follows at
+\code{radiation\_isrf.c:639-645}, and the debug minimum since the last snapshot
+is recorded after it, at \code{radiation\_isrf.c:647-654}. The limiter that
+already ran is applied at \code{radiation\_isrf.c:916-920}.
 
 \subsubsection{The exact-exponential relaxation update of $\boldsymbol{F}$ (extra ghost)}
 \label{sec:isrf-eqdisc-F-update}
@@ -1101,8 +1186,12 @@ restart written with a removed scheme cannot be resumed. A restart that stores
 the true flux
 cannot be resumed either, because this code would read it as the reduced flux,
 wrong by a factor $c_{\rm hyp}$. The restart stream therefore starts with a
-marker block naming the stored flux form, and a file without it, or with
-another value, stops the run. A restart file
+marker block naming the stored particle layout, and a file without it, or with
+another value, stops the run. The current layout is 3: the reduced flux plus
+the pending amounts of pairs across time bins, with $\varphi$-weighted
+dissipation (Section~\ref{sec:isrf-eqdisc-pairwise}). Layout 1 (reduced flux,
+no pending amounts) and layout 2 (pending amounts without the $\varphi$
+weight) stop the run. A restart file
 written by an older code, which stores the true flux and has no marker, stops
 the run, so such a run is rerun, never resumed.
 
@@ -1146,8 +1235,9 @@ effect, and the user must remove it from the parameter file by hand.
 (\code{feedback\_properties.h:65-72}). An invalid value stops the run at parse
 time (\code{feedback\_properties.h:751-757}), at the drift and density-ghost
 dispatch (\code{radiation\_isrf.c:213-218}, \code{:324-328}) and on a restart
-(\code{feedback\_common.c:1719-1729}). The flux-form marker is written at
-\code{feedback\_common.c:1661-1667} and checked at \code{:1693-1703}. The speed of
+(\code{feedback\_common.c:1719-1729}). The layout marker is the macro
+\code{FEEDBACK\_RESTART\_ISRF\_PART\_LAYOUT} (\code{feedback\_common.h:153-155}),
+written at \code{feedback\_common.c:1661-1667} and checked at \code{:1693-1703}. The speed of
 scheme 2 is set at \code{radiation\_isrf.c:211-212} and that of scheme 4 at
 \code{radiation\_isrf.c:356-357}. The default scheme is parsed at
 \code{feedback\_properties.h:747-749} and $C_{\rm hyp}$ at
@@ -1825,13 +1915,29 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
   \item $c_{\rm hyp}$ uses $a\, h$, not $\gamma_K h$, while the
     extinction path uses $\gamma_K h$.
   \item Transport conservation is exact per pair at the \emph{accumulator}
-    level, and in the applied update within one time bin, or across time bins
-    on one rank; see Section~\ref{sec:isrf-eqdisc-pairwise}.
+    level. In the applied update it holds between members of one time bin with
+    equal depth, and across time bins on one rank up to the same-step and
+    Hubble terms; see Section~\ref{sec:isrf-eqdisc-pairwise}. The cross-bin
+    booking does not preserve positivity, and neither does the per-owner one.
+    The metric is the count of particle-snapshots whose lowest PE or LW value
+    at the end of an update, since the previous snapshot, is negative (debug
+    builds only). On \code{ISRFMultiBinDissipation} (level 5, scheme 4, one
+    thread), per-owner against cross-bin: 538 / 547 at $Z = 1$ and margin 0.5,
+    58 / 64 at $Z = 0$ and margin 0.5, 99 / 101 at $Z = 1$ and margin 0.25,
+    and 28 / 26 at $Z = 1$ and margin 0.125. Values negative at the snapshot
+    instants, $Z = 1$ and margin 0.5: 54 / 67. On
+    \code{ISRFDissipationExtreme} (6 threads), one particle ends at $-2.07$
+    against $-0.067$ with the per-owner booking, after its coarse step
+    receives a drain larger than its $u$. The mechanism of the excess is not
+    established. No limiter is applied, because a limiter would break the
+    ledger.
   \item The $u$-path and $\boldsymbol{F}$-path relax at different precision; see
     Section~\ref{sec:isrf-eqdisc-F-update}.
-  \item MPI and restart: operator and moment state lives on
-    \code{struct part}, so it rides the
-    normal exchange and dump; the HII owner-computed payload does not. The flux
+  \item MPI and restart: operator and moment state, the pending amounts
+    included, lives on \code{struct part}, so it rides the
+    normal exchange and dump; the HII owner-computed payload does not. On
+    several ranks the cross-bin booking is off and the pending amounts stay
+    zero. The flux
     read order is safe across ranks:
     the gradient loop reads the old flux (before this cell's extra ghost), the
     force loop the new one, every force task runs after the extra ghosts of both
@@ -1851,8 +1957,12 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
 \code{radiation\_isrf.c:513-514}. Item 20: \code{radiation\_isrf.c:708-713} and
 \code{:628-632}. Item 21: \code{radiation\_isrf.c:628-629}. Item 22:
 $a\,h$ at \code{radiation\_isrf.c:349} and \code{:282}, $\gamma_K h$ at
-\code{radiation\_isrf.c:951}. Item 25: the state arrays are
-\code{feedback\_struct.h:198-203}, and the HII payload is
+\code{radiation\_isrf.c:951}. Item 23: the debug minimum is the snapshot field
+\code{PEMinimumSpecificEnergies} (and its LW twins), recorded at
+\code{radiation\_isrf.c:647-654}. Item 25: the state arrays are
+\code{feedback\_struct.h:198-203}, the pending amounts
+\code{feedback\_struct.h:121-127}, the active-step mark
+\code{feedback\_struct.h:238-240}, and the HII payload is
 \code{feedback\_struct.h:274-287}. Item 26: the skew-adjointness claim is the
 comment at \code{radiation\_propagation\_iact.h:275-278}.
 
