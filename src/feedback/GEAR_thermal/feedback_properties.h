@@ -494,11 +494,11 @@ feedback_props_restore_radiation(const struct feedback_props *feedback) {
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
 
-  /* The flat block read above bypasses feedback_props_init()'s parse-time
-   * check of the scheme, so a restart written by a run that used a removed
-   * scheme would otherwise resume with a speed rule nothing sets. The field
-   * is only meaningful, and only validated at parse time, when the
-   * interstellar radiation field is on. */
+  /* The flat block read of feedback_struct_restore() bypasses
+   * feedback_props_init()'s parse-time check of the scheme, so a restart
+   * written by a run that used a removed scheme would otherwise resume with a
+   * speed rule nothing sets. The field is only meaningful, and only validated
+   * at parse time, when the interstellar radiation field is on. */
   if ((feedback->radiation_policy & radiation_policy_isrf) &&
       feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
       feedback->ISRF_c_hyp_scheme !=
@@ -511,10 +511,10 @@ feedback_props_restore_radiation(const struct feedback_props *feedback) {
         "kernel_local.",
         feedback->ISRF_c_hyp_scheme);
 
-  /* feedback->band_edge_weight_pe/lw/photon_weight_lw need NO re-derivation
-     here, unlike radiation_lw_photon_energy_cgs above: they are plain
-     fields of *feedback, already restored verbatim by the flat
-     restart_read_blocks() call at the top of this function. Announcing the
+  /* feedback->band_edge_weight_pe/lw/photon_weight_lw need no re-derivation,
+     unlike radiation_lw_photon_energy_cgs: they are plain fields of
+     *feedback, already restored verbatim by the flat restart_read_blocks()
+     call of feedback_struct_restore(). Announcing the
      restored value (not re-deriving it) still lets a restarted run's log be
      checked against its own start-up announcement, confirming the restart
      path preserves this value across a change to the radiation sub-struct. */

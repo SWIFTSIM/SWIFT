@@ -907,14 +907,14 @@ GEARFeedback:
   ISRF_dissipation_floor_relaxation_residual: 0.40         # (optional) Threshold eps_R, in [0, 1], of the gate that lowers the floor where the flux is already settled. 0 disables the gate. Needs ISRF_propagation. (Default: 0.40)
   ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug only) When positive, hold the dissipation coefficient at this value and bypass the trigger. Never set in a production run. (Default: 0)
 
-GEARRadiation:
-  interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)
-
   # Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
   enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN or winds affect a gas particle during one timestep. This restores the energy conservation. (Default: 0)
   f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
   terminal_momentum_normalisation_Msun_km_per_s: 2.5e5     # Normalisation factor for the terminal momentum relation, in Msun*km/s. (Default: 2.5e5)
+
+GEARRadiation:
+  interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)
 
 GEARSupernovaeII:
     interpolation_size:  200                               # Number of elements to keep in the interpolation of the data. (Default: 200)
