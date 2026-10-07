@@ -235,8 +235,8 @@ Here is the whole feedback section:
 	  GEARFeedback:
 	    supernovae_Ia_energy_erg: 1e51                           # Energy released by a single supernova.
 	    supernovae_efficiency: 0.1                               # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
-	    yields_table: chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5  # Table containing the yields.
-	    yields_table_first_stars: chemistry-PopIII.hdf5          # Table containing the yields of the first stars (population III).
+	    yields_table: POPII.hdf5                                 # Table containing the yields.
+	    yields_table_first_stars: POPIII_PISNe.hdf5               # Table containing the yields of the first stars (population III).
 	    imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
 	    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
 	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of elements should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
