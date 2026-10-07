@@ -144,15 +144,17 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
       /*can convert to comoving=*/0,
       "Cumulative specific internal energy received from stellar winds. "
-      "A conservation residual, not strictly positive: can go negative "
-      "when the gas was already moving towards the star before the kick.");
+      "Not negative: each event gives the kinetic energy dissipated when the "
+      "ejecta merge with the gas (the wind energy itself if no mass is "
+      "ejected).");
 
   list[5] = io_make_physical_output_field(
       "MaxKickVelocityFromSupernovae", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
       /*can convert to comoving=*/0,
-      "Largest single-event kick velocity this particle received from "
-      "supernovae (outflow diagnostic).");
+      "Largest kick velocity of one supernova event this particle received "
+      "(its momentum over the mass of the particle at the end of the step; "
+      "outflow diagnostic).");
 
   list[6] = io_make_physical_output_field(
       "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
@@ -255,10 +257,11 @@ __attribute__((always_inline)) INLINE static int tracers_write_sparticles(
       sparts, tracers_data.winds.momentum_ejected,
       /*can convert to comoving=*/0,
       "Sum over injection steps of the wind momentum budget sqrt(2 m_ej E_ej), "
-      "in the star's rest frame (scalar sum, not vector: isotropic ejecta "
-      "would else cancel). Excludes the m_ej v_star term that the gas "
-      "CumulativeMomentumFromWinds includes, which is why the received/ejected "
-      "ratio is not 1 for a moving star.");
+      "in the rest frame of the star (scalar sum, not vector: isotropic "
+      "ejecta would else cancel). The gas CumulativeMomentumFromWinds is the "
+      "sum over gas particles of the momentum applied to each, which equals "
+      "this budget when the star and the gas move with the same velocity and "
+      "differs from it otherwise.");
 
   return num;
 }

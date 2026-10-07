@@ -31,6 +31,7 @@
 #include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
+#include "feedback_tracers.h"
 #include "hydro.h"
 #include "hydro_properties.h"
 #include "minmax.h"
@@ -85,25 +86,32 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Update the density */
   p->rho *= new_mass / old_mass;
 
-  /* Update internal energy */
-  const float u =
-      hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass / new_mass;
-  const float u_new = u + xp->feedback_data.delta_u;
+  /* Update internal energy (the final mass shares the energy of all events) */
+  const float new_mass_inv = 1.0f / new_mass;
+  const float u = hydro_get_physical_internal_energy(p, xp, cosmo) * old_mass *
+                  new_mass_inv;
+  const float u_new = u + xp->feedback_data.delta_E_th * new_mass_inv;
 
   hydro_set_physical_internal_energy(p, xp, cosmo, u_new);
   hydro_set_drifted_physical_internal_energy(p, cosmo, pressure_floor, u_new);
 
-  xp->feedback_data.delta_u = 0.;
+  xp->feedback_data.delta_E_th = 0.0f;
 
   /* Update the velocities */
   for (int i = 0; i < 3; i++) {
-    const float dv = xp->feedback_data.delta_p[i] / new_mass;
+    const float dv = xp->feedback_data.delta_p[i] * new_mass_inv;
 
     xp->v_full[i] += dv;
     p->v[i] += dv;
 
     xp->feedback_data.delta_p[i] = 0;
   }
+
+  /* The tracers get what the particle received, with the final mass */
+  feedback_tracers_pending_update(xp, xp->feedback_data.hit_by_SN,
+                                  xp->feedback_data.hit_by_winds, 1.0f, 0.0f,
+                                  new_mass_inv);
+  feedback_tracers_pending_reset(xp);
 
   /*----------------------------------------*/
   /* Update the radiation fields */

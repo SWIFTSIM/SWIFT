@@ -266,12 +266,12 @@ static INLINE void tracers_first_init_xpart(
  * @brief Accumulate one channel's contribution to a gas particle's
  * lifetime-cumulative feedback tracers.
  *
- * Called once per channel per feedback event, from inside that channel's
- * own branch in the SN/winds/radiation-pressure interaction code, using
- * that branch's own locally-computed momentum/energy, not read back from
- * the shared feedback_xpart_data.delta_p/delta_u afterwards, since SN and
- * winds can both fire on the same gas particle in the same step and would
- * otherwise be inseparable.
+ * With the GEAR feedback, supernovae and winds call it once per channel per
+ * step from feedback_update_part(), with the sums over the events of the step
+ * and the final mass; radiation pressure calls it once per event from its own
+ * branch. Each channel passes its own momentum and energy, not the shared
+ * feedback_xpart_data.delta_p/delta_E_th, since SN and winds can both act on
+ * the same gas particle in the same step.
  *
  * @param momentum_channel Pointer to this channel's cumulative-momentum
  * field (feedback_cumulative.momentum_supernovae/winds/radiation).
@@ -279,12 +279,12 @@ static INLINE void tracers_first_init_xpart(
  * or NULL if this channel has no separate thermal contribution to track.
  * @param max_kick_velocity_channel Pointer to this channel's maximal kick
  * velocity field.
- * @param delta_p Momentum received this event (physical internal units):
- * a norm for supernovae and winds, signed for radiation pressure.
- * @param delta_u Specific internal energy received this event
- * (physical internal units), ignored if energy_channel is NULL.
- * @param kick_velocity Velocity magnitude of this event's kick (same
- * frame as delta_p).
+ * @param delta_p Momentum received (physical internal units): a sum of
+ * norms for supernovae and winds, signed for radiation pressure.
+ * @param delta_u Specific internal energy received (physical internal units),
+ * ignored if energy_channel is NULL.
+ * @param kick_velocity Largest kick velocity of one event (same frame as
+ * delta_p).
  */
 static INLINE void tracers_gear_accumulate_feedback_part(
     float *momentum_channel, float *energy_channel,
@@ -328,12 +328,14 @@ static INLINE void tracers_first_init_spart(struct spart *sp,
  * neighbours. The energy must already include the winds efficiency factor;
  * the mass is not scaled by it.
  *
- * The momentum is the star-frame ejecta budget sqrt(2 m_ej E_ej), the same
- * p_ej the gas-side injection distributes. It excludes the change-of-frame
- * term m_ej v_star that the gas-side CumulativeMomentumFromWinds includes, so
- * the two agree exactly only for a star at rest. The gas receives the budget
- * in the step after this call, so a snapshot can see the star-side totals
- * lead the gas-side totals by one step.
+ * The momentum is the ejecta budget sqrt(2 m_ej E_ej) in the rest frame of the
+ * star, the same p_ej the gas-side injection distributes. The star cannot know
+ * the velocity of the gas, so it records no other frame. The gas-side
+ * CumulativeMomentumFromWinds is a sum over the gas particles of the momentum
+ * applied to each one, which equals this budget when the star and the gas move
+ * with the same velocity. The gas receives the budget in the step after this
+ * call, so a snapshot can see the star-side totals lead the gas-side totals by
+ * one step.
  *
  * @param w The star's #tracers_winds_data to update.
  * @param mass_ejected Wind mass ejected this step (internal units).
