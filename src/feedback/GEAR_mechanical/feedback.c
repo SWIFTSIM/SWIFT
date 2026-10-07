@@ -144,9 +144,10 @@ void feedback_update_part(struct part *p, struct xpart *xp,
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
+ * @param e The #engine.
  */
 __attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part *p, struct xpart *xp) {
+    struct part *p, struct xpart *xp, const struct engine *e) {
   p->feedback_data.density.wcount = p->density.wcount;
 }
 
@@ -158,8 +159,10 @@ __attribute__((always_inline)) INLINE void feedback_end_density(
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
-void feedback_reset_part(struct part *p, struct xpart *xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e) {}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?

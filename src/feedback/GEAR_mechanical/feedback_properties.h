@@ -19,10 +19,13 @@
 #ifndef SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 #define SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 
+#include "../GEAR/radiation_struct.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
 #include "hydro_properties.h"
+
+#include <strings.h>
 
 /* Default value for the terminal momentum normalisation factor. */
 #define DEFAULT_P_TERMINAL_0_MSUN_KM_PER_S 2.5e5
@@ -30,10 +33,16 @@
 /* Idealized Sedov solution in a homogenous background*/
 #define DEFAULT_F_KIN_0 0.28
 
+#define default_dt_evolution_factor_max 300.0
+#define default_event_dt_floor_Myr 1e-4
+
 /**
  * @brief Properties of the GEAR feedback model.
  */
 struct feedback_props {
+
+  /*! Whether sinks are configured; set by sink_props_init(), 0 otherwise. */
+  int with_sinks;
 
   /*! Supernovae energy effectively deposited */
   float supernovae_efficiency;
@@ -72,7 +81,58 @@ struct feedback_props {
 
   /*! Do stellar wind feedback? */
   char with_stellar_wind_feedback;
+
+  /* ------------- Star evolution timestep properties ------------- */
+
+  /*! Timestep refinement factor of SSP stars as lifetime_myr -> 0. */
+  float dt_evolution_factor_max;
+
+  /*! Floor on the event-anchored star timestep terms, in internal units after
+   * init. Never zero. */
+  float event_dt_floor_Myr;
+
+  /* ------------- Subgrid radiation properties ------------- */
+
+  /* This module has no subgrid radiation. The shared GEAR code reads these
+     fields, so they hold values that switch it off. */
+
+  /*! The radiation processes enabled: always radiation_policy_none. */
+  int radiation_policy;
+
+  /*! Radiation pressure momentum effectively injected: always 0. */
+  float radiation_pressure_efficiency;
+
+  /*! HII region rebuild frequency: always 0 (no HII timestep constraint). */
+  float HII_rebuild_time;
+
+  /*! Maximal age of a star for the HII region algorithm: always 0. */
+  float HII_max_age;
+
+  /*! Floor on the HII photon budget interval: always 0. */
+  float HII_rebuild_floor_Myr;
 };
+
+/**
+ * @brief Does this run need Grackle's chemistry_data resolved for a local
+ * Lyman-Werner/PE channel? Never: this module has no subgrid radiation.
+ *
+ * @param feedback_props The #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_needs_cooling_initialized(
+    const struct feedback_props *feedback_props) {
+  return 0;
+}
+
+/**
+ * @brief Check and announce the subgrid radiation part of a #feedback_props
+ * just read from a restart file. Nothing to do here: this module has no
+ * subgrid radiation.
+ *
+ * @param feedback The restored #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_props_restore_radiation(const struct feedback_props *feedback) {}
 
 /**
  * @brief Print the feedback model.
@@ -108,6 +168,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Stellar winds efficiency = %.2g", feedback_props->winds_efficiency);
   message("Yields table = %s", feedback_props->stellar_model.yields_table);
+  message("Star evolution dt_evolution_factor_max = %g",
+          feedback_props->dt_evolution_factor_max);
+  message("Star evolution event_dt_floor (internal units) = %g",
+          feedback_props->event_dt_floor_Myr);
 
   /* Print the stellar model */
   stellar_model_print(&feedback_props->stellar_model);
@@ -139,6 +203,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     const struct unit_system *us, struct swift_params *params,
     const struct hydro_props *hydro_props, const struct cosmology *cosmo) {
 
+  /* sink_props_init() writes with_sinks after this function returns, and the
+     radiation fields stay at the zero that switches the radiation off. */
+  bzero(fp, sizeof(struct feedback_props));
+  fp->radiation_policy = radiation_policy_none;
+
   /* Supernovae energy efficiency */
   fp->supernovae_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
@@ -162,7 +231,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Initialize the stellar models. */
   stellar_evolution_props_init(&fp->stellar_model, phys_const, us, params,
-                               cosmo, fp->with_stellar_wind_feedback);
+                               cosmo, fp->with_stellar_wind_feedback,
+                               /*with_radiation=*/0);
 
   /* Read the metallicity threshold */
   fp->imf_transition_metallicity = parser_get_opt_param_float(
@@ -195,8 +265,38 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     parser_get_param_string(params, "GEARFeedback:yields_table_first_stars",
                             fp->stellar_model_first_stars.yields_table);
     stellar_evolution_props_init(&fp->stellar_model_first_stars, phys_const, us,
-                                 params, cosmo, fp->with_stellar_wind_feedback);
+                                 params, cosmo, fp->with_stellar_wind_feedback,
+                                 /*with_radiation=*/0);
   }
+
+  /* ------------- Star evolution timestep properties ------------- */
+  const double Myr_internal_units = 1e6 * phys_const->const_year;
+
+  fp->dt_evolution_factor_max =
+      parser_get_opt_param_float(params, "GEARFeedback:dt_evolution_factor_max",
+                                 default_dt_evolution_factor_max);
+
+  if (fp->dt_evolution_factor_max < 1.f)
+    error("GEARFeedback:dt_evolution_factor_max must be >= 1 (got %g).",
+          fp->dt_evolution_factor_max);
+
+  fp->event_dt_floor_Myr = parser_get_opt_param_float(
+      params, "GEARFeedback:event_dt_floor_Myr", default_event_dt_floor_Myr);
+
+  if (fp->event_dt_floor_Myr <= 0.f)
+    error("GEARFeedback:event_dt_floor_Myr must be > 0 (got %g).",
+          fp->event_dt_floor_Myr);
+
+  fp->event_dt_floor_Myr *= Myr_internal_units;
+
+  /* The floor must exceed dt_min to avoid get_spart_timestep()'s error. */
+  const double dt_min =
+      parser_get_param_double(params, "TimeIntegration:dt_min");
+  if (fp->event_dt_floor_Myr <= dt_min)
+    error(
+        "GEARFeedback:event_dt_floor_Myr (%g, internal units) must exceed "
+        "TimeIntegration:dt_min (%g, internal units).",
+        fp->event_dt_floor_Myr, dt_min);
 
   /*****************************************/
   /* Mechanical feedback properties */

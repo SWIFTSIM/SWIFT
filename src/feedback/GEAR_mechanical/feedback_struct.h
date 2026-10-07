@@ -25,6 +25,7 @@
 
 /* Local includes */
 #include "../GEAR/feedback_tracers_struct.h"
+#include "../GEAR/radiation_struct.h"
 #include "chemistry_struct.h"
 
 /**
@@ -101,6 +102,10 @@ struct feedback_spart_data {
 
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
+
+  /*! Does the particle needs the HII ionization loop? Always 0: this module
+      has no subgrid radiation. */
+  char will_do_HII_ionization;
 
   /*! Parameters to be accumulated in the feedback loops. Used to compute the
      vector weights (isotropic distribution) */
@@ -179,6 +184,10 @@ struct feedback_spart_data {
     double delta_p[3];
   } fluxes_conservation_check;
 #endif /* SWIFT_FEEDBACK_DEBUG_CHECKS */
+
+  /*! Radiation state read by the shared GEAR stellar evolution. Stays zero:
+      this module has no subgrid radiation. */
+  struct feedback_spart_radiation_data radiation;
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_MECHANICAL_H */
