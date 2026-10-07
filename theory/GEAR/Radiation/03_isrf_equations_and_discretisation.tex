@@ -87,38 +87,38 @@ The steps of the list above are:
   \item drift: \code{feedback\_reset\_part} (\code{src/cell\_drift.c:357}
     into \code{feedback.c:202-208}) calls
     \code{radiation\_snapshot\_part\_propagation}
-    (\code{radiation\_isrf.c:129}), then
+    (\code{radiation\_isrf.c:147}), then
     \code{radiation\_reset\_part\_ISRF\_illumination\_tag}
     (\code{radiation\_gas.c:480}), then
     \code{radiation\_cache\_m1\_closure\_part}
     (\code{radiation\_propagation\_iact.h:259});
   \item density $h$-iteration: \code{radiation\_init\_part\_propagation}
-    (\code{radiation\_isrf.c:278-282});
+    (\code{radiation\_isrf.c:300-304});
   \item density loop: \code{runner\_iact\_isrf\_propagation} and its
     non-symmetric twin (\code{radiation\_propagation\_iact.h:343},
     \code{:396});
   \item density ghost: \code{radiation\_end\_density\_propagation}
-    (\code{radiation\_isrf.c:297}), which rebuilds the closure cache at
-    \code{radiation\_isrf.c:339}; the no-neighbour path is
-    \code{radiation\_part\_has\_no\_neighbours} (\code{radiation\_isrf.c:577});
+    (\code{radiation\_isrf.c:319}), which rebuilds the closure cache at
+    \code{radiation\_isrf.c:361}; the no-neighbour path is
+    \code{radiation\_part\_has\_no\_neighbours} (\code{radiation\_isrf.c:666});
   \item gradient loop: \code{runner\_iact\_isrf\_gradient}
     (\code{radiation\_propagation\_iact.h:451}, \code{:505});
   \item extra ghost: \code{radiation\_end\_gradient\_propagation}
-    (\code{radiation\_isrf.c:730});
+    (\code{radiation\_isrf.c:819});
   \item force loop: \code{runner\_iact\_isrf\_dissipation}
-    (\code{radiation\_propagation\_iact.h:566}, \code{:630});
+    (\code{radiation\_propagation\_iact.h:686}, \code{:766});
   \item end-force: \code{radiation\_end\_force\_propagation}
-    (\code{radiation\_isrf.c:462}), called by \code{feedback\_end\_force}
+    (\code{radiation\_isrf.c:531}), called by \code{feedback\_end\_force}
     (\code{feedback.c:161-162}) from \code{src/runner\_others.c:863};
   \item injection: \code{radiation\_iact\_nonsym\_feedback\_apply}
     (\code{radiation\_iact.h:189}).
 \end{itemize}
 
 The transport default is parsed at \code{feedback\_properties.h:741-742}. With
-the transport off, the three ghosts return early (\code{radiation\_isrf.c:299},
-\code{:464}, \code{:733}), both $\kappa$ are set to zero at
-\code{radiation\_isrf.c:148-150}, and \code{rho\_prev} is still cached for the
-pairwise loops (\code{radiation\_isrf.c:143-146}).
+the transport off, the three ghosts return early (\code{radiation\_isrf.c:321},
+\code{:533}, \code{:822}), both $\kappa$ are set to zero at
+\code{radiation\_isrf.c:170-172}, and \code{rho\_prev} is still cached for the
+pairwise loops (\code{radiation\_isrf.c:161-164}).
 
 \subsection{Symbols (reading aid)}
 \label{sec:isrf-eqdisc-symbols}
@@ -214,19 +214,19 @@ Equations~(\ref{eq:isrfd-moment-to-op}) and (\ref{eq:isrfd-op-owner}) are at
 \code{:1674-1675} for the IMF-population path. The first-init equalisation is
 in \code{radiation\_first\_init\_part} (\code{radiation\_isrf.c:60}, lines
 81-93). The per-moment weight array that holds $\lambda_N(\mathrm{LW})$ is at
-\code{radiation\_isrf.c:483-488}.
+\code{radiation\_isrf.c:560-565}.
 
 \subsubsection{Implementation: per-moment, per-operator and per-particle state}
 
 Per moment, \code{struct feedback\_isrf\_moment\_data}
-(\code{feedback\_struct.h:92-133}): $u$ (\textbf{double},
+(\code{feedback\_struct.h:92-142}): $u$ (\textbf{double},
 \code{feedback\_struct.h:97}), $u_{\rm prev}$ (\textbf{double}, \code{:100}),
 \code{specific\_flux[3]} (float, \code{:103}), \code{div\_specific\_flux} (float,
 \code{:106}), \code{dissipation\_u} (float, \code{:109}), \code{grad\_u[3]}
 (float, \code{:113}), \code{u\_dose\_reservoir} (float, \code{:116}),
 \code{u\_source\_rate} (float, \code{:119}), plus the debug-only
-\code{u\_min\_since\_snapshot} (\code{:123}), \code{cumulative\_injected}
-(\code{:127}) and \code{cumulative\_absorbed} (\code{:131}).
+\code{u\_min\_since\_snapshot} (\code{:132}), \code{cumulative\_injected}
+(\code{:136}) and \code{cumulative\_absorbed} (\code{:140}).
 
 The double width of $u$ and $u_{\rm prev}$ is load-bearing, as its comment explains
 (\code{feedback\_struct.h:94-96}): the per-step relaxation depth
@@ -248,53 +248,59 @@ $\varphi$, $\mathcal{A}$ as in Equation~(\ref{eq:isrfd-depth-u}). It is
 \textbf{not} the dust-extinction loss alone: the transport divergence and the
 dissipation source are folded in too, because the exact-relaxation update mixes
 all three under one $\varphi$. At a snapshot, $E + \mathrm{Abs} - \mathrm{Inj}$,
-with $E = \sum m\,u$, isolates the part of the update that this closed-form split
+with $E = \sum m\,u$ (plus the pending amounts below), isolates the part of the update that this closed-form split
 attributes neither to injection nor to the surviving field: the transport and
 dissipation residual, which the SPH divergence's kernel-sum identity and the
 dissipation's pairwise antisymmetry drive to about zero when summed over all
 particles. Both totals are never reset, so the identity holds at every snapshot.
 The PE moment's share of the LW-to-PE transfer is booked into PE's injected total,
-since LW's absorbed total already contains it. The ledger is updated at
-\code{radiation\_isrf.c:534-549}.
+since LW's absorbed total already contains it. Energy that a pair across time
+bins still owes a coarser particle sits in its pending amounts
+(Section~\ref{sec:isrf-eqdisc-pairwise}), so
+$E = \sum m\,\big(u + c_{\rm hyp}(P^{\rm tr} + P^{\rm d})\big)$, and the
+pending add books its absorbed share. Across time bins the identity is exact
+in its $c_{\rm hyp}$-weighted form. The ledger is updated at
+\code{radiation\_isrf.c:611-626} and, for the pending add, at
+\code{radiation\_isrf.c:500-501}.
 
 \textbf{\code{grad\_u} is not the gradient of $u$.} The code accumulates the
 anisotropic M1 pressure-tensor divergence
 $\rho^{-1}\nabla\!\cdot\!(\mathsf{D}(\hat f)\,\rho\, u)$ into it
 (\code{radiation\_propagation\_iact.h:305-326}, header comment \code{:272-273}).
 The field name, and the ``$\nabla u$'' wording at
-\code{radiation\_isrf.c:718-719}, are a misnomer; the code is the truth. It is
+\code{radiation\_isrf.c:807-808}, are a misnomer; the code is the truth. It is
 written $\boldsymbol{G}_m$ here.
 
 For every scheme, \code{specific\_flux} stores the \textbf{reduced} flux
 $\tilde{\boldsymbol{F}} = \boldsymbol{F}/c_{\rm hyp}$, not the true flux
-(\code{radiation\_isrf.c:781}, \code{radiation\_propagation\_iact.h:27-33},
+(\code{radiation\_isrf.c:871}, \code{radiation\_propagation\_iact.h:27-33},
 \code{feedback\_struct.h:102-103}). The snapshot getters multiply it by the
 particle's current $c_{\rm hyp}$ before writing it, so the output fields hold the
 true flux.
 
 Per operator, \code{struct feedback\_isrf\_operator\_data}
-(\code{feedback\_struct.h:138-159}): $\kappa$ (float, \code{:143}),
-\code{m1\_closure\_D[3][3]} (float, \code{:146}), \code{ngb\_mean\_abs\_u\_V}
-(float, \code{:150}), \code{dissipation\_alpha\_trigger} (float, \code{:154}) and
-\code{dissipation\_alpha\_floor} (float, \code{:158}).
+(\code{feedback\_struct.h:147-168}): $\kappa$ (float, \code{:152}),
+\code{m1\_closure\_D[3][3]} (float, \code{:155}), \code{ngb\_mean\_abs\_u\_V}
+(float, \code{:159}), \code{dissipation\_alpha\_trigger} (float, \code{:163}) and
+\code{dissipation\_alpha\_floor} (float, \code{:167}).
 
 Per particle, in \code{struct feedback\_part\_data}: \code{max\_ngb\_time\_bin}
-(\code{feedback\_struct.h:175}), the largest \code{time\_bin} seen in this
-$h$-iteration's kernel; \code{rho\_prev} (float, \code{:199}), a
+(\code{feedback\_struct.h:184}), the largest \code{time\_bin} seen in this
+$h$-iteration's kernel; \code{rho\_prev} (float, \code{:208}), a
 \textbf{comoving} density snapshot seeded to $1.0$ at first init and never left
-at zero (\code{radiation\_isrf.c:111}, \code{:146}); \code{c\_hyp} (float,
-\code{feedback\_struct.h:206}), physical; \code{dt\_prev} (float,
-\code{feedback\_struct.h:210}), this particle's own
+at zero (\code{radiation\_isrf.c:113}, \code{:164}); \code{c\_hyp} (float,
+\code{feedback\_struct.h:215}), physical; \code{dt\_prev} (float,
+\code{feedback\_struct.h:219}), this particle's own
 \textbf{physical} timestep, cached raw and unfloored
-(\code{radiation\_isrf.c:197}); and the four tag fields
+(\code{radiation\_isrf.c:219}); and the four tag fields
 \code{ISRF\_last\_touch\_ti}, \code{is\_illuminated\_ISRF},
 \code{ISRF\_illumination\_end\_ti}, \code{ISRF\_reservoir\_end\_ti}
-(\code{feedback\_struct.h:222}, \code{:227}, \code{:233}, \code{:238}).
+(\code{feedback\_struct.h:231}, \code{:236}, \code{:246}, \code{:251}).
 
 On the star side, \code{struct feedback\_spart\_data.radiation} carries
 \code{L\_band[ISRF\_MOMENT\_COUNT]} as \textbf{double} physical power in internal
-units (\code{feedback\_struct.h:393}) and \code{Delta\_t} as float proper time
-(\code{:402}).
+units (\code{feedback\_struct.h:406}) and \code{Delta\_t} as float proper time
+(\code{:415}).
 
 \subsubsection{Band definitions and cross sections}
 \label{sec:isrf-eqdisc-bands}
@@ -421,7 +427,7 @@ $\lambda_E(\mathrm{PE}) = 2.154$, $\lambda_E(\mathrm{LW}) = 6.508$,
 $\lambda_N(\mathrm{LW}) = 6.0$.
 
 \paragraph{Implementation.} The weights enter the depths at
-\code{radiation\_isrf.c:530} (double) and \code{:768} (float).
+\code{radiation\_isrf.c:607} (double) and \code{:858} (float).
 Equation~(\ref{eq:isrfd-lambda-E}) is stated in the comments at
 \code{radiation.h:125} and \code{radiation.c:47}, and
 Equation~(\ref{eq:isrfd-lambda-N}) is computed at \code{radiation.c:149-151};
@@ -555,13 +561,13 @@ accumulators are physical, and each spatial operator carries one net inverse
 length, so each closes with one factor $1/a$.
 
 \paragraph{Implementation.} $H_{\rm dil}$ of Equation~(\ref{eq:isrfd-Hdil}) is
-the variable \code{H\_dilated}, computed in double at \code{radiation\_isrf.c:473}
+the variable \code{H\_dilated}, computed in double at \code{radiation\_isrf.c:550}
 in \code{radiation\_end\_force\_propagation} and in float at
-\code{radiation\_isrf.c:740} in \code{radiation\_end\_gradient\_propagation}. The
-one-step updates are at \code{radiation\_isrf.c:551-555} and \code{:781-782},
-and the depths at \code{radiation\_isrf.c:530} and \code{:768}; the depth
+\code{radiation\_isrf.c:830} in \code{radiation\_end\_gradient\_propagation}. The
+one-step updates are at \code{radiation\_isrf.c:628-632} and \code{:871-872},
+and the depths at \code{radiation\_isrf.c:607} and \code{:858}; the depth
 variable is \code{a}. The decay of the dissipation together with $u_{\rm prev}$
-is at \code{radiation\_isrf.c:551-552}. The closure tensor is built by
+is at \code{radiation\_isrf.c:628-629}. The closure tensor is built by
 \code{radiation\_build\_m1\_closure\_tensor}
 (\code{radiation\_propagation\_iact.h:218-227}), with coefficients from
 \code{radiation\_get\_m1\_closure\_coefficients\_band}
@@ -569,11 +575,11 @@ is at \code{radiation\_isrf.c:551-552}. The closure tensor is built by
 \code{radiation\_cache\_m1\_closure\_part}
 (\code{radiation\_propagation\_iact.h:258-269}). $\kappa_o$ is
 \code{radiation\_get\_part\_linear\_absorption\_rate}
-(\code{radiation\_isrf.c:996}, lines 1001-1003), and the comment at
-\code{feedback\_struct.h:140-143} keeps it apart from the extinction opacity. The
+(\code{radiation\_isrf.c:1086}, lines 1091-1093), and the comment at
+\code{feedback\_struct.h:149-152} keeps it apart from the extinction opacity. The
 factor $1/a$ is the variable \code{a\_factor\_comoving\_to\_physical}, documented
 at \code{radiation\_propagation\_iact.h:27-34} and set at \code{:476},
-\code{:532}, \code{:594} and \code{:659}.
+\code{:532}, \code{:714} and \code{:795}.
 
 \subsection{The discretisation}
 \label{sec:isrf-eqdisc-disc}
@@ -622,8 +628,9 @@ $c_{\rm hyp}$ this is proportional to $m_i X_i + m_j X_j = 0$. The exactness is
 a property of the accumulator, not of the applied update: $u$ is advanced by
 $dt_i\,\varphi_i\,X_i$ per particle, so the
 pairwise cancellation survives into $u$ only where $dt_i = dt_j$ and
-$\varphi_i = \varphi_j$, i.e.\ same time bin and same relaxation depth. Across
-time bins it does not.
+$\varphi_i = \varphi_j$, i.e.\ same time bin and same relaxation depth. On one
+rank, a pair across time bins is booked once instead; see the paragraph on
+pairs across time bins below.
 
 The divergence sits in the \emph{force} loop, not a type-1 loop, because it needs
 both sides of every pair credited and only the type-2 dispatch fires both sides
@@ -700,6 +707,79 @@ floating-point annotation: the compiler may reassociate them under
 \code{-ffast-math}, so a rerun after a compiler or flag change can move the last
 bits of the accumulators without changing the discrete scheme.
 
+\paragraph{Pairs across time bins.} On one rank, a force pair whose members
+have unequal steps is booked once, over the finer member's step $dt_f$. The
+finer member $f$ takes its rate from the pair as above. The coarser member $c$
+takes no rate from the pair. It accumulates two pending amounts per moment,
+formed with $c_{\rm hyp} = 1$ on its side:
+\begin{equation}
+  P^{\rm tr}_c \mathrel{+}= -X^{(1)}_c\, dt_f,
+  \qquad
+  P^{\rm d}_c \mathrel{+}= \code{dissipation\_u}^{(1)}_c\, dt_f\, \varphi_f,
+  \label{eq:isrfd-pending}
+\end{equation}
+where the superscript $(1)$ marks the pair's contribution at unit speed and
+$\varphi_f = \varphi(c_{{\rm hyp},f}\,\kappa_f\, dt_f)$ is the finer member's
+integrating factor. By the accumulator identity, this is the exact opposite of
+the finer member's change of $u$ plus absorbed energy, in
+$c_{\rm hyp}$-weighted units: transport enters with no $\varphi$, dissipation
+with the finer member's $\varphi$. At its own next update, after
+Equation~(\ref{eq:isrfd-u-update}), the coarser member adds
+\begin{equation}
+  \Delta u_c = c_{{\rm hyp},c}\big(\mathcal{E}_c\, P^{\rm d}_c
+    + \varphi_c\, P^{\rm tr}_c\big),
+  \label{eq:isrfd-pending-add}
+\end{equation}
+books the rest of $c_{{\rm hyp},c}(P^{\rm d}_c + P^{\rm tr}_c)$ as absorbed,
+and zeroes both amounts. Each amount thus enters $u$ plus absorbed energy with
+weight one, split by the coarser member's own depth as its own terms are. The
+LW absorbed share of the pending amount feeds the band-edge transfer, as in the
+update. With this booking the $c_{\rm hyp}$-weighted energy ledger is exact
+across time bins, up to two terms. The first is the same-step term above:
+members of one bin with unequal $\varphi$ or $c_{\rm hyp}$. The second is the
+Hubble term, which $\varphi_f$ leaves out of the finer member's depth. It is
+first order in $\lambda\,(c_{\rm hyp}/c)\,H\,dt$, and since
+$c_{\rm hyp}\,dt \le C_{\rm hyp} h_{\rm phys}$ its relative size is at most
+$\lambda\, C_{\rm hyp} h_{\rm phys} H / (2c)$, negligible for any $h$ much
+smaller than the Hubble length.
+
+The booking needs the extra ghost, which marks each member's active step, and
+one rank. On several MPI ranks it is off: each member integrates the pair with
+its own $dt$, and the cancellation fails across time bins. The pending amounts
+live on the particle, so they are written to restart files; the restart
+layout marker is 3 for this layout (Section~\ref{sec:isrf-eqdisc-chyp}). A
+snapshot writes $c_{\rm hyp}(P^{\rm tr} + P^{\rm d})$ per band as
+\code{PEPendingSpecificEnergies}, \code{LWPendingSpecificEnergies} and
+\code{LWPhotonPendingSpecificEnergies}. An energy sum taken while not all
+particles are synchronised must add them to $u$.
+
+\textbf{Measured effect.} The check is the $c_{\rm hyp}$-weighted energy
+ledger residual: $E + \mathrm{Abs} - \mathrm{Inj}$ over the injected energy,
+with each term divided by its particle's $c_{\rm hyp}$ and the pending amounts
+included (0 is exact conservation). Final values, one rank, 8
+threads, per-owner booking (each member books the pair over its own step, as
+on several ranks) against the cross-bin booking:
+\begin{center}
+\begin{tabular}{p{5.0cm}llll}
+\hline
+fixture (several time bins) & \multicolumn{2}{l}{per-owner, PE / LW} & \multicolumn{2}{l}{cross-bin, PE / LW} \\
+\hline
+\code{ISRFDissipationExtreme}, fixed speed, $Z = 1$ & $-1.6\times10^{-2}$ & $-4.5\times10^{-2}$ & $-1.6\times10^{-3}$ & $-1.2\times10^{-3}$ \\
+\code{ISRFMultiBinDissipation}, level 5, scheme 4, $Z = 1$ & $+1.3\times10^{-1}$ & $+5.2\times10^{-2}$ & $+3.5\times10^{-4}$ & $+2.1\times10^{-4}$ \\
+test box at redshift 9, level 5, scheme 4, $Z = 1$, young-star step cap $10^{-3}$\,Myr & $+8.0\times10^{-1}$ & $+7.0\times10^{-1}$ & $-2.0\times10^{-4}$ & $+6.6\times10^{-6}$ \\
+\hline
+\end{tabular}
+\end{center}
+The same \code{ISRFDissipationExtreme} fixture on one time bin, at scheme 4
+with margin $0.0156$, reads $-4.7\times10^{-4}$ / $-6.6\times10^{-4}$: the
+same order as the cross-bin residual, which is the same-step term. On a uniform box on two time bins
+(\code{ISRFCosmology}, free field, $z = 0$, level 5), the worst drift of
+$\ln \sum m\,(u + {\rm pending})$ over 41 snapshots is $3.4\times10^{-4}$
+with the per-owner booking and $5.5\times10^{-11}$ with the cross-bin booking,
+against a float floor of $1.3\times10^{-7}$. On runs that stay on one time
+bin the booking never fires: the output is bit-identical to the per-owner
+booking at one thread, and the pending amounts are zero.
+
 \paragraph{Implementation.} All four operators are in
 \code{radiation\_propagation\_iact.h}. The file comment at
 \code{radiation\_propagation\_iact.h:24-33} states why the divergence is in the
@@ -711,18 +791,18 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     Equation~(\ref{eq:isrfd-div-phi}) is at \code{:74-76} and
     Equation~(\ref{eq:isrfd-div-apply}) at \code{:78-79}; the shared
     $\Phi_{ij}$ that gives the exact accumulator identity is used at
-    \code{:78}. The applied update that breaks it across time bins is
-    \code{radiation\_isrf.c:551-555}.
+    \code{:78}. The applied update that breaks it between members of unequal
+    depth is \code{radiation\_isrf.c:628-632}.
   \item Gradient: \code{radiation\_gradient\_accumulate\_band}
     (\code{radiation\_propagation\_iact.h:298-327}).
     Equations~(\ref{eq:isrfd-grad-temp}), (\ref{eq:isrfd-grad-fac}) and
     (\ref{eq:isrfd-grad-apply}) are at \code{:314-315}, \code{:318-321} and
     \code{:324-325}. The skew-adjointness claim is the comment at
     \code{radiation\_propagation\_iact.h:275-278} and
-    \code{feedback\_struct.h:196-198}.
+    \code{feedback\_struct.h:205-207}.
   \item The reads of \code{rho\_prev} are at
     \code{radiation\_propagation\_iact.h:360-361}, \code{:471-472} and
-    \code{:586-587}, documented at \code{:27-34}.
+    \code{:706-707}, documented at \code{:27-34}.
   \item Dissipation reference:
     \code{radiation\_dissipation\_reference\_accumulate\_band}
     (\code{radiation\_propagation\_iact.h:102}); the missing $1/a$ is explained
@@ -734,6 +814,20 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     \code{:149}, \code{:153-155}, \code{:157}, \code{:159-160} and
     \code{:162-163}. The ungated application follows from the force-loop
     dispatch documented at \code{:27-33}.
+  \item Pairs across time bins: Equation~(\ref{eq:isrfd-pending}) is
+    \code{radiation\_cross\_bin\_pair\_band}
+    (\code{radiation\_propagation\_iact.h:590-633}), with $\varphi_f$ at
+    \code{:603-605} and the two pending sums at \code{:630-632}. The symmetric
+    and non-symmetric force pairs route an unequal-step pair there at
+    \code{:716-726} and \code{:798-814}. The active step is marked in
+    \code{dt\_active}: reset at the drift (\code{radiation\_isrf.c:168}) and set
+    by the extra ghost (\code{radiation\_isrf.c:825}), only while
+    \code{radiation\_cross\_bin\_booking\_on} (\code{radiation\_isrf.c:129-135})
+    reports one rank and an extra ghost.
+    Equation~(\ref{eq:isrfd-pending-add}) is
+    \code{radiation\_add\_pending\_part} (\code{radiation\_isrf.c:456-504}), called at
+    the end of the update at \code{radiation\_isrf.c:639-645}. The snapshot fields
+    are registered at \code{feedback\_io.h:550-567}.
 \end{itemize}
 
 \subsubsection{The exact-exponential relaxation update of $u$ (end-force ghost)}
@@ -803,27 +897,32 @@ $u$ is advanced in \textbf{double} throughout; the double
 $\varphi$ exists specifically because the $u$-path depth can be a few $10^{-8}$.
 The update is \emph{idempotent}: $u$ is
 rebuilt from $u_{\rm prev}$ plus this step's accumulators, never incremented.
-The two debug ledger counters are the exception. No flux limiter is applied
+The exceptions are the two debug ledger counters and the pending add of
+Equation~(\ref{eq:isrfd-pending-add}), which follows the rebuild. No flux limiter is applied
 here: the extra ghost already limited this step's flux against $u^n$.
 
 \paragraph{Implementation.} \code{radiation\_end\_force\_propagation},
-\code{radiation\_isrf.c:462-566}; it takes no $dt$ argument (line 462).
+\code{radiation\_isrf.c:531-655}; it takes no $dt$ argument (line 531).
 Equations~(\ref{eq:isrfd-rescale}) to (\ref{eq:isrfd-decay-u}) are at
-\code{radiation\_isrf.c:467} ($dt$), \code{:469} ($\mathcal{R}$, the variable
-\code{rescale}), \code{:473} ($H_{\rm dil}$), \code{:530} ($\mathcal{A}$),
-\code{:531} ($\mathcal{E}$) and \code{:532} ($\varphi$).
-Equation~(\ref{eq:isrfd-u-update}) is at \code{radiation\_isrf.c:551-555} and
+\code{radiation\_isrf.c:544} ($dt$), \code{:546} ($\mathcal{R}$, the variable
+\code{rescale}), \code{:550} ($H_{\rm dil}$), \code{:607} ($\mathcal{A}$),
+\code{:608} ($\mathcal{E}$) and \code{:609} ($\varphi$).
+Equation~(\ref{eq:isrfd-u-update}) is at \code{radiation\_isrf.c:628-632} and
 Equation~(\ref{eq:isrfd-u-transfer-add}) is the separate statement at
-\code{radiation\_isrf.c:559}. The integrating factor is
-\code{radiation\_relaxation\_phi\_factor} (float, \code{radiation\_isrf.c:350})
+\code{radiation\_isrf.c:636}. The integrating factor is
+\code{radiation\_relaxation\_phi\_factor} (float, \code{radiation\_isrf.c:372})
 and \code{radiation\_relaxation\_phi\_factor\_double}
-(\code{radiation\_isrf.c:363}); Equation~(\ref{eq:isrfd-phi}) is at
-\code{radiation\_isrf.c:351-352} and \code{:364-365}, the Taylor branch at
-\code{:351}. The double-precision path is \code{radiation\_isrf.c:467-473},
-\code{:530} and \code{:551-555}, and the reason for the double $\varphi$ is the
-comment at \code{radiation\_isrf.c:356-357}. The debug ledger counters are at
-\code{radiation\_isrf.c:534-549}. The limiter that already ran is applied at
-\code{radiation\_isrf.c:826-830}.
+(\code{radiation\_propagation\_iact.h:558-562}); Equation~(\ref{eq:isrfd-phi})
+is at \code{radiation\_isrf.c:373-374} and
+\code{radiation\_propagation\_iact.h:560-561}, the Taylor branch at
+\code{radiation\_isrf.c:373}. The double-precision path is
+\code{radiation\_isrf.c:544-550}, \code{:607} and \code{:628-632}, and the
+reason for the double $\varphi$ is the comment at
+\code{radiation\_propagation\_iact.h:552-553}. The debug ledger counters are at
+\code{radiation\_isrf.c:611-626}. The pending add follows at
+\code{radiation\_isrf.c:639-645}, and the debug minimum since the last snapshot
+is recorded after it, at \code{radiation\_isrf.c:647-654}. The limiter that
+already ran is applied at \code{radiation\_isrf.c:916-920}.
 
 \subsubsection{The exact-exponential relaxation update of $\boldsymbol{F}$ (extra ghost)}
 \label{sec:isrf-eqdisc-F-update}
@@ -893,24 +992,24 @@ all under \code{-ffast-math}.
 the last step's value.
 
 \paragraph{Implementation.} \code{radiation\_end\_gradient\_propagation},
-\code{radiation\_isrf.c:730-831}. Equations~(\ref{eq:isrfd-Hdil-float}) to
-(\ref{eq:isrfd-F-update}) are at \code{radiation\_isrf.c:740} ($H_{\rm dil}$),
-\code{:768} ($\mathcal{A}$), \code{:769} ($\mathcal{E}$), \code{:770}
-($\varphi$), \code{:771} ($\mathcal{C}$) and \code{:781-782} (the update). The
-function comment states the same substitution (\code{radiation\_isrf.c:723-724}).
-The double $u$ depth is at \code{radiation\_isrf.c:530} and the float flux depth
-at \code{radiation\_isrf.c:768}; the few-$10^{-8}$ bound is the comment at
-\code{radiation\_isrf.c:356-357}, and the same-rate requirement is the comment at
-\code{radiation\_isrf.c:753-754}. The limiter decision is
+\code{radiation\_isrf.c:819-921}. Equations~(\ref{eq:isrfd-Hdil-float}) to
+(\ref{eq:isrfd-F-update}) are at \code{radiation\_isrf.c:830} ($H_{\rm dil}$),
+\code{:858} ($\mathcal{A}$), \code{:859} ($\mathcal{E}$), \code{:860}
+($\varphi$), \code{:861} ($\mathcal{C}$) and \code{:871-872} (the update). The
+function comment states the same substitution (\code{radiation\_isrf.c:812-813}).
+The double $u$ depth is at \code{radiation\_isrf.c:607} and the float flux depth
+at \code{radiation\_isrf.c:858}; the few-$10^{-8}$ bound is the comment at
+\code{radiation\_propagation\_iact.h:552-553}, and the same-rate requirement is the comment at
+\code{radiation\_isrf.c:843-844}. The limiter decision is
 \code{radiation\_compute\_flux\_limiter\_scale\_band}
-(\code{radiation\_isrf.c:396}), called once per operator at
-\code{radiation\_isrf.c:796-801}; its three outcomes of
-Equation~(\ref{eq:isrfd-limiter}) are at \code{radiation\_isrf.c:399}, \code{:403}
-and \code{:405-406}, and the double-precision $\boldsymbol{F}\!\cdot\!\boldsymbol{F}$
-at \code{:401-403}. The application is \code{radiation\_apply\_flux\_limiter\_band}
-(\code{radiation\_isrf.c:418}), whose \code{switch} is at \code{:421-434}, called
-for every moment at \code{radiation\_isrf.c:825-830}. \code{div\_specific\_flux}
-is zeroed at \code{radiation\_isrf.c:786}.
+(\code{radiation\_isrf.c:405}), called once per operator at
+\code{radiation\_isrf.c:886-891}; its three outcomes of
+Equation~(\ref{eq:isrfd-limiter}) are at \code{radiation\_isrf.c:408}, \code{:412}
+and \code{:414-415}, and the double-precision $\boldsymbol{F}\!\cdot\!\boldsymbol{F}$
+at \code{:410-412}. The application is \code{radiation\_apply\_flux\_limiter\_band}
+(\code{radiation\_isrf.c:427}), whose \code{switch} is at \code{:430-443}, called
+for every moment at \code{radiation\_isrf.c:915-920}. \code{div\_specific\_flux}
+is zeroed at \code{radiation\_isrf.c:876}.
 
 \subsubsection{Implementation: closure cache}
 
@@ -923,9 +1022,9 @@ $|\tilde{\boldsymbol{F}}|$, $c_M u$ and $\hat f$ are formed in double for the sa
 underflow reason (\code{radiation\_propagation\_iact.h:190-199}), and zero guards
 keep $\boldsymbol{F} = 0$ at $n=0$ giving $\hat f = 0$ rather than a NaN
 (\code{radiation\_propagation\_iact.h:192}). Three call sites: first init
-(\code{radiation\_isrf.c:116}), the drift reset (\code{feedback.c:207}, after the
+(\code{radiation\_isrf.c:119}), the drift reset (\code{feedback.c:207}, after the
 tag expiry, which can zero $u$), and the density ghost
-(\code{radiation\_isrf.c:339}).
+(\code{radiation\_isrf.c:361}).
 
 \subsubsection{Artificial dissipation: trigger, floor, gate}
 \label{sec:isrf-eqdisc-dissipation}
@@ -1050,32 +1149,32 @@ at \code{:823-824}, $\epsilon_R$ at \code{:839-841}, the debug pin at
 ($\epsilon_\lambda$) and \code{:843-851} ($\epsilon_R$).
 \begin{itemize}
   \item Trigger: \code{radiation\_update\_dissipation\_alpha\_band}
-    (\code{radiation\_isrf.c:611-631}), called once per operator in the extra
-    ghost at \code{radiation\_isrf.c:811-813}, with $u_V$ formed at
-    \code{radiation\_isrf.c:803}. Equations~(\ref{eq:isrfd-trig-ref}) to
-    (\ref{eq:isrfd-trig-decay}) are at \code{radiation\_isrf.c:619}
-    ($u_V^{\rm ref}$), \code{:620} ($\epsilon$), \code{:621-622} ($x$ and
-    $\alpha^{\rm aim}$), \code{:624} and \code{:630} ($\alpha^{\rm trig}$) and
-    \code{:626-629} ($\mathcal{E}_\alpha$). The decay length $5.0$ is
+    (\code{radiation\_isrf.c:700-720}), called once per operator in the extra
+    ghost at \code{radiation\_isrf.c:901-903}, with $u_V$ formed at
+    \code{radiation\_isrf.c:893}. Equations~(\ref{eq:isrfd-trig-ref}) to
+    (\ref{eq:isrfd-trig-decay}) are at \code{radiation\_isrf.c:708}
+    ($u_V^{\rm ref}$), \code{:709} ($\epsilon$), \code{:710-711} ($x$ and
+    $\alpha^{\rm aim}$), \code{:713} and \code{:719} ($\alpha^{\rm trig}$) and
+    \code{:715-718} ($\mathcal{E}_\alpha$). The decay length $5.0$ is
     \code{RADIATION\_ISRF\_DISSIPATION\_DECAY\_LENGTH} (\code{radiation.h:54}).
-    The trigger's own previous value is passed at \code{radiation\_isrf.c:811-813};
-    the negativity-only response is \code{radiation\_isrf.c:619-624}, and the
-    exact test with its comment is \code{radiation\_isrf.c:616-620}.
+    The trigger's own previous value is passed at \code{radiation\_isrf.c:901-903};
+    the negativity-only response is \code{radiation\_isrf.c:708-713}, and the
+    exact test with its comment is \code{radiation\_isrf.c:705-709}.
   \item Floor: \code{radiation\_dissipation\_alpha\_floor\_band}
-    (\code{radiation\_isrf.c:645}); the quartic roll-off is at
-    \code{radiation\_isrf.c:648-650}, and the floor and gate are combined at
-    \code{radiation\_isrf.c:816-821}.
+    (\code{radiation\_isrf.c:734}); the quartic roll-off is at
+    \code{radiation\_isrf.c:737-739}, and the floor and gate are combined at
+    \code{radiation\_isrf.c:906-911}.
   \item Gate: \code{radiation\_dissipation\_floor\_relaxation\_gate}
-    (\code{radiation\_isrf.c:677-715}), applied at
-    \code{radiation\_isrf.c:816-821}. The pre-update flux is stashed at
-    \code{radiation\_isrf.c:761} and \code{:774-778}.
+    (\code{radiation\_isrf.c:766-804}), applied at
+    \code{radiation\_isrf.c:906-911}. The pre-update flux is stashed at
+    \code{radiation\_isrf.c:851} and \code{:864-868}.
     Equations~(\ref{eq:isrfd-gate-early}) to (\ref{eq:isrfd-gate-s}) are at
-    \code{radiation\_isrf.c:682-683} (early exits), \code{:687} ($w$),
-    \code{:691} ($w \le 0$), \code{:698-706} ($N_R$ and $D_R$), \code{:710}
-    ($D_R \le 0$) and \code{:712-714} ($R$ and $s$). The doxygen of the function
+    \code{radiation\_isrf.c:771-772} (early exits), \code{:776} ($w$),
+    \code{:780} ($w \le 0$), \code{:787-795} ($N_R$ and $D_R$), \code{:799}
+    ($D_R \le 0$) and \code{:801-803} ($R$ and $s$). The doxygen of the function
     states the $c_{\rm hyp}$-independent fixed point
-    (\code{radiation\_isrf.c:654-663}). The double precision and the branch are
-    explained at \code{radiation\_isrf.c:693-697} and \code{:708-710}.
+    (\code{radiation\_isrf.c:743-752}). The double precision and the branch are
+    explained at \code{radiation\_isrf.c:782-786} and \code{:797-799}.
 \end{itemize}
 
 \subsubsection{The $c_{\rm hyp}$ schemes}
@@ -1090,8 +1189,11 @@ restart written with a removed scheme cannot be resumed. A restart that stores
 the true flux
 cannot be resumed either, because this code would read it as the reduced flux,
 wrong by a factor $c_{\rm hyp}$. The restart stream therefore starts with a
-marker block naming the stored flux form, and a file without it, or with
-another value, stops the run. A restart file
+marker block naming the stored particle layout, and a file without it, or with
+another value, stops the run. The current layout is 3: the reduced flux plus
+the pending amounts of pairs across time bins, with $\varphi$-weighted
+dissipation (Section~\ref{sec:isrf-eqdisc-pairwise}). Layout 1 (reduced flux,
+no pending amounts) and layout 2 stop the run. A restart file
 written by an older code, which stores the true flux and has no marker, stops
 the run, so such a run is rerun, never resumed.
 
@@ -1134,21 +1236,22 @@ effect, and the user must remove it from the parameter file by hand.
 \paragraph{Implementation.} The schemes are the enum \code{isrf\_c\_hyp\_scheme}
 (\code{feedback\_properties.h:65-72}). An invalid value stops the run at parse
 time (\code{feedback\_properties.h:751-757}), at the drift and density-ghost
-dispatch (\code{radiation\_isrf.c:191-196}, \code{:302-306}) and on a restart
-(\code{feedback\_common.c:1705-1715}). The flux-form marker is written at
-\code{feedback\_common.c:1647-1653} and checked at \code{:1679-1689}. The speed of
-scheme 2 is set at \code{radiation\_isrf.c:189-190} and that of scheme 4 at
-\code{radiation\_isrf.c:334-335}. The default scheme is parsed at
+dispatch (\code{radiation\_isrf.c:213-218}, \code{:324-328}) and on a restart
+(\code{feedback\_common.c:1719-1729}). The layout marker is the macro
+\code{FEEDBACK\_RESTART\_ISRF\_PART\_LAYOUT} (\code{feedback\_common.h:154-156}),
+written at \code{feedback\_common.c:1661-1667} and checked at \code{:1693-1703}. The speed of
+scheme 2 is set at \code{radiation\_isrf.c:211-212} and that of scheme 4 at
+\code{radiation\_isrf.c:356-357}. The default scheme is parsed at
 \code{feedback\_properties.h:747-749} and $C_{\rm hyp}$ at
 \code{feedback\_properties.h:782-783}. The drift decision is
-\code{radiation\_isrf.c:186-190}; the density-ghost decision is
-\code{radiation\_end\_density\_propagation} (\code{radiation\_isrf.c:297-340});
-the drift caches $dt_i$ at \code{radiation\_isrf.c:197}.
+\code{radiation\_isrf.c:208-212}; the density-ghost decision is
+\code{radiation\_end\_density\_propagation} (\code{radiation\_isrf.c:319-362});
+the drift caches $dt_i$ at \code{radiation\_isrf.c:219}.
 \code{max\_ngb\_time\_bin} is accumulated at
 \code{radiation\_propagation\_iact.h:366-367} and \code{:421}, and reset at
-\code{radiation\_isrf.c:279}. The $dt_{\max} \le 0$ guard is
-\code{radiation\_isrf.c:329-332}, and the same-bin reuse is
-\code{radiation\_isrf.c:311-312}. The parse-time agreement is
+\code{radiation\_isrf.c:301}. The $dt_{\max} \le 0$ guard is
+\code{radiation\_isrf.c:351-354}, and the same-bin reuse is
+\code{radiation\_isrf.c:333-334}. The parse-time agreement is
 \code{feedback\_props\_check\_c\_hyp\_scheme}
 (\code{feedback\_properties.h:420-434}).
 
@@ -1188,16 +1291,16 @@ Absorption imposes no timestep limit by construction: the exponential relaxation
 is exact at any $\kappa\, dt$.
 
 \paragraph{Implementation.} \code{radiation\_isrf\_part\_timestep}
-(\code{radiation\_isrf.c:240-266}); Equation~(\ref{eq:isrfd-dt-rad}) is at
-\code{radiation\_isrf.c:264-265}. The \code{FLT\_MAX} returns are at
-\code{radiation\_isrf.c:245} ($f_c \le 0$), \code{:246} (propagation off),
-\code{:247-248} (debug off-switch), \code{:253-258} (not near-field) and
-\code{:262} ($h_{\rm phys} \le 0$). The near-field set is
-\code{radiation\_isrf.c:253-257}, and the comment on the omitted photon moment is
-\code{radiation\_isrf.c:251-252}. The abort below \code{dt\_min} is in
+(\code{radiation\_isrf.c:262-288}); Equation~(\ref{eq:isrfd-dt-rad}) is at
+\code{radiation\_isrf.c:286-287}. The \code{FLT\_MAX} returns are at
+\code{radiation\_isrf.c:267} ($f_c \le 0$), \code{:268} (propagation off),
+\code{:269-270} (debug off-switch), \code{:275-280} (not near-field) and
+\code{:284} ($h_{\rm phys} \le 0$). The near-field set is
+\code{radiation\_isrf.c:275-279}, and the comment on the omitted photon moment is
+\code{radiation\_isrf.c:273-274}. The abort below \code{dt\_min} is in
 \code{feedback\_compute\_part\_timestep} (\code{feedback.c:176}, lines 178-192).
-The scheme-4 speed is \code{radiation\_isrf.c:334-335}, and the receiver bound and
-its uncovered pair class are documented at \code{feedback\_struct.h:201-205}.
+The scheme-4 speed is \code{radiation\_isrf.c:356-357}, and the receiver bound and
+its uncovered pair class are documented at \code{feedback\_struct.h:210-214}.
 
 \subsubsection{The dose reservoir and its drawdown}
 \label{sec:isrfd-reservoir}
@@ -1241,20 +1344,20 @@ $\code{u\_dose\_reservoir} \mathrel{+}= S_m\, \code{dt\_prev}$ with
 $S_m \leftarrow 0$.
 
 \paragraph{Implementation.} The drawdown is in
-\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:129}),
-lines 199-225. Equations~(\ref{eq:isrfd-trem}), (\ref{eq:isrfd-fdraw}) and
-(\ref{eq:isrfd-drawdown}) are at \code{radiation\_isrf.c:206-214},
-\code{:215-216} and \code{:219-220}. In Equation~(\ref{eq:isrfd-trem}),
+\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:147}),
+lines 221-247. Equations~(\ref{eq:isrfd-trem}), (\ref{eq:isrfd-fdraw}) and
+(\ref{eq:isrfd-drawdown}) are at \code{radiation\_isrf.c:228-236},
+\code{:237-238} and \code{:241-242}. In Equation~(\ref{eq:isrfd-trem}),
 $t_{\rm begin}$ is \code{ti\_begin} $=$
 \code{get\_integer\_time\_begin}(\code{ti\_current}, \code{time\_bin})
-(\code{radiation\_isrf.c:174-175}), $t_{\rm end}$ is the field
+(\code{radiation\_isrf.c:196-197}), $t_{\rm end}$ is the field
 \code{ISRF\_reservoir\_end\_ti}, $\Delta t_{\rm prop}$ is
-\code{cosmology\_get\_delta\_time} (\code{radiation\_isrf.c:210-211}) and
+\code{cosmology\_get\_delta\_time} (\code{radiation\_isrf.c:232-233}) and
 $\tau_{\rm base}$ is \code{time\_base}. The choice of \code{ti\_begin} is
-commented at \code{radiation\_isrf.c:172-175}, and the $dt_{\rm phys} > 0$ requirement at
-\code{radiation\_isrf.c:199-203}. The refund is in
-\code{radiation\_part\_has\_no\_neighbours} (\code{radiation\_isrf.c:577}),
-lines 584-585.
+commented at \code{radiation\_isrf.c:194-197}, and the $dt_{\rm phys} > 0$ requirement at
+\code{radiation\_isrf.c:221-225}. The refund is in
+\code{radiation\_part\_has\_no\_neighbours} (\code{radiation\_isrf.c:666}),
+lines 673-674.
 
 \subsection{Injection}
 \label{sec:isrf-eqdisc-injection}
@@ -1370,21 +1473,21 @@ factor is band-specific and computed per operator.
 
 \paragraph{Implementation.} Equation~(\ref{eq:isrfd-dust-ratio}) is
 \code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW}
-(\code{radiation\_isrf.c:925}, lines 927-930);
+(\code{radiation\_isrf.c:1015}, lines 1017-1020);
 Equation~(\ref{eq:isrfd-kappa-eff}) is \code{radiation\_get\_dust\_mass\_opacity}
-(\code{radiation\_isrf.c:946}, lines 953-955);
+(\code{radiation\_isrf.c:1036}, lines 1043-1045);
 Equation~(\ref{eq:isrfd-extinction}) is
-\code{radiation\_get\_dust\_extinction\_factor} (\code{radiation\_isrf.c:971},
-line 979); Equation~(\ref{eq:isrfd-column}) is
+\code{radiation\_get\_dust\_extinction\_factor} (\code{radiation\_isrf.c:1061},
+line 1069); Equation~(\ref{eq:isrfd-column}) is
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
-(\code{radiation\_isrf.c:908}, line 910, before the $a^{-2}$), with the $a^{-2}$
-applied at \code{radiation\_isrf.c:1028-1030} in
+(\code{radiation\_isrf.c:998}, line 1000, before the $a^{-2}$), with the $a^{-2}$
+applied at \code{radiation\_isrf.c:1118-1120} in
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{radiation\_isrf.c:1022}). The linear rate $\kappa$ is
-\code{radiation\_isrf.c:1001-1003}, and the comment that keeps the two apart is
-\code{feedback\_struct.h:140-143}. The resolved $f_{\rm gr}$ is read at
-\code{radiation\_isrf.c:1031-1033} and \code{:156-158}. The per-operator factors
-are formed at \code{radiation\_isrf.c:1035-1040}.
+(\code{radiation\_isrf.c:1112}). The linear rate $\kappa$ is
+\code{radiation\_isrf.c:1091-1093}, and the comment that keeps the two apart is
+\code{feedback\_struct.h:149-152}. The resolved $f_{\rm gr}$ is read at
+\code{radiation\_isrf.c:1121-1123} and \code{:178-180}. The per-operator factors
+are formed at \code{radiation\_isrf.c:1125-1130}.
 
 \subsubsection{Extinction path: three mechanisms}
 
@@ -1433,14 +1536,14 @@ value $R_{\rm ext} = 5/12$ is exact in the uniform optically thin limit, as
 stated for \code{pair\_separation} above.
 
 \paragraph{Implementation.} \code{radiation\_get\_comoving\_extinction\_path}
-(\code{radiation\_isrf.c:853-896}); $h_{\rm gas}$ is set at
-\code{radiation\_isrf.c:861}. Equations~(\ref{eq:isrfd-path-constant}),
+(\code{radiation\_isrf.c:943-986}); $h_{\rm gas}$ is set at
+\code{radiation\_isrf.c:951}. Equations~(\ref{eq:isrfd-path-constant}),
 (\ref{eq:isrfd-path-pair}) and (\ref{eq:isrfd-path-jeans}) are at
-\code{radiation\_isrf.c:867}, \code{:870} and \code{:889}.
-Equation~(\ref{eq:isrfd-jeans}) is at \code{radiation\_isrf.c:873-875} ($T$
-and $\rho$), \code{:882-884} ($\theta$ and $c_s^2|_{\rm capped}$) and
-\code{:887-888} ($\lambda_{\rm J}$). The guard is \code{radiation\_isrf.c:877-878}
-and the unknown-enum error \code{radiation\_isrf.c:893-894}. In
+\code{radiation\_isrf.c:957}, \code{:960} and \code{:979}.
+Equation~(\ref{eq:isrfd-jeans}) is at \code{radiation\_isrf.c:963-965} ($T$
+and $\rho$), \code{:972-974} ($\theta$ and $c_s^2|_{\rm capped}$) and
+\code{:977-978} ($\lambda_{\rm J}$). The guard is \code{radiation\_isrf.c:967-968}
+and the unknown-enum error \code{radiation\_isrf.c:983-984}. In
 \code{feedback\_properties.h}: the default mechanism is parsed at
 \code{feedback\_properties.h:697-699}, the $R_{\rm ext}$ default at \code{:41} and \code{:704-706},
 the $T_{\rm cap}$ default at \code{:45}, the unrecognised-string error at
@@ -1482,15 +1585,15 @@ exceptions:
 The injection applies no $\varphi$.
 
 \paragraph{Implementation.} The zero ratio follows from
-\code{radiation\_isrf.c:927-928}. The kernel sum is \code{feedback\_iact.h:71}
+\code{radiation\_isrf.c:1017-1018}. The kernel sum is \code{feedback\_iact.h:71}
 with \code{feedback.c:334}. The floored apply loop is
 \code{radiation\_iact.h:199-200}; the unfloored density loop is
 \code{feedback\_iact.h:58}. The float reservoir is \code{radiation\_iact.h:277}.
 The rescale is applied only in the end-force update
-(\code{radiation\_isrf.c:551-555}), as the variable \code{rescale} at
-\code{radiation\_isrf.c:469}. The doxygen of
+(\code{radiation\_isrf.c:628-632}), as the variable \code{rescale} at
+\code{radiation\_isrf.c:546}. The doxygen of
 \code{radiation\_relaxation\_phi\_factor} names an ``injection-site equivalent,
-$c_{\rm hyp}\kappa\Delta t_\star$'' (\code{radiation\_isrf.c:346-347}). No such
+$c_{\rm hyp}\kappa\Delta t_\star$'' (\code{radiation\_isrf.c:368-369}). No such
 caller exists: the only callers are the two ghosts inside
 \code{radiation\_isrf.c}.
 
@@ -1568,20 +1671,20 @@ $\lambda_E(\mathrm{LW}) = 1$, gives $\mathcal{T} = 0$ exactly.
 \end{itemize}
 
 \paragraph{Implementation.} The transfer block is in
-\code{radiation\_end\_force\_propagation} at \code{radiation\_isrf.c:490-524},
-gated at \code{radiation\_isrf.c:496}. Equations~(\ref{eq:isrfd-transfer-depth})
-to (\ref{eq:isrfd-transfer}) are at \code{radiation\_isrf.c:501-503}
-($\mathcal{A}_{\rm LW}$), \code{:505-506} ($1-\mathcal{E}_{\rm LW}$ and
-$\varphi_{\rm LW}$), \code{:509-514} ($\mathcal{L}_{\rm LW}$), \code{:518-519}
-($f_{\rm edge}$) and \code{:522} ($\mathcal{T}$). The add to PE is
-\code{radiation\_isrf.c:559}, so the cancellation is between \code{:522} and
-\code{:559}. The reuse of $\mathcal{A}_{\rm LW}$ is commented at
-\code{radiation\_isrf.c:490-494}. For the list above: the raw add is
-\code{radiation\_isrf.c:557-559}; the signed transfer is \code{:520-522}; the
+\code{radiation\_end\_force\_propagation} at \code{radiation\_isrf.c:567-601},
+gated at \code{radiation\_isrf.c:573}. Equations~(\ref{eq:isrfd-transfer-depth})
+to (\ref{eq:isrfd-transfer}) are at \code{radiation\_isrf.c:578-580}
+($\mathcal{A}_{\rm LW}$), \code{:582-583} ($1-\mathcal{E}_{\rm LW}$ and
+$\varphi_{\rm LW}$), \code{:586-591} ($\mathcal{L}_{\rm LW}$), \code{:595-596}
+($f_{\rm edge}$) and \code{:599} ($\mathcal{T}$). The add to PE is
+\code{radiation\_isrf.c:636}, so the cancellation is between \code{:599} and
+\code{:636}. The reuse of $\mathcal{A}_{\rm LW}$ is commented at
+\code{radiation\_isrf.c:567-571}. For the list above: the raw add is
+\code{radiation\_isrf.c:634-636}; the signed transfer is \code{:597-599}; the
 per-moment weights that leave the photon-moment loss and the PE lower-edge loss
-uncompensated are \code{radiation\_isrf.c:485-488} with the depth at \code{:530};
-the $\mathcal{A}_{\rm LW} > 0$ test is \code{:515-519}; the $H_{\rm dil} \ne 0$
-gate is \code{:496}.
+uncompensated are \code{radiation\_isrf.c:562-565} with the depth at \code{:607};
+the $\mathcal{A}_{\rm LW} > 0$ test is \code{:592-596}; the $H_{\rm dil} \ne 0$
+gate is \code{:573}.
 
 \subsection{Couplings out to the gas}
 \label{sec:isrf-eqdisc-couplings}
@@ -1723,14 +1826,14 @@ is \code{cooling.c:905-916}; the warning for setting both is
 \end{enumerate}
 
 \paragraph{Implementation.} Item 1: the source rescale is
-\code{radiation\_isrf.c:554}, and the dilated Hubble term is
-\code{radiation\_isrf.c:473} and \code{:530}. Item 2: the cross sections are
+\code{radiation\_isrf.c:631}, and the dilated Hubble term is
+\code{radiation\_isrf.c:550} and \code{:607}. Item 2: the cross sections are
 \code{radiation.h:73-74} and the quotient \code{radiation.h:92}; the comment at
 \code{radiation.h:98-101} records that the rate reads only the quotient. Item 3:
 the reference metallicity is applied at \code{radiation.c:68-73}, and the
 unsized bias and the aged-population value are stated at
 \code{radiation.h:125-132}. Item 4: \code{radiation.h:66-69} and \code{:76-78}.
-Item 5: the column is \code{radiation\_isrf.c:910}. Item 6: the rate ignores the
+Item 5: the column is \code{radiation\_isrf.c:1000}. Item 6: the rate ignores the
 spectrum's own photon energy, \code{radiation\_gas.c:678-682}.
 
 \subsubsection{Clamps, floors and epsilon guards}
@@ -1766,8 +1869,8 @@ Each item below is a place where the scheme departs from its own ideal form.
     undershoot is hidden from Grackle but visible in the snapshot.
 \end{enumerate}
 
-\paragraph{Implementation.} Item 8: \code{radiation\_isrf.c:927-928}. Item 11:
-\code{radiation\_isrf.c:146} and \code{:111}. Item 12: in
+\paragraph{Implementation.} Item 8: \code{radiation\_isrf.c:1017-1018}. Item 11:
+\code{radiation\_isrf.c:164} and \code{:113}. Item 12: in
 \code{radiation\_iact\_nonsym\_feedback\_apply} at \code{radiation\_iact.h:199-200},
 and in \code{radiation\_iact\_nonsym\_feedback\_density} at
 \code{radiation\_iact.h:72-73}. Item 15: \code{radiation\_clamp\_nonnegative\_for\_grackle}
@@ -1814,13 +1917,29 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
   \item $c_{\rm hyp}$ uses $a\, h$, not $\gamma_K h$, while the
     extinction path uses $\gamma_K h$.
   \item Transport conservation is exact per pair at the \emph{accumulator}
-    level only, and only within one time bin and at $\varphi = 1$; see
-    Section~\ref{sec:isrf-eqdisc-pairwise}.
+    level. In the applied update it holds between members of one time bin with
+    equal depth, and across time bins on one rank up to the same-step and
+    Hubble terms; see Section~\ref{sec:isrf-eqdisc-pairwise}. The cross-bin
+    booking does not preserve positivity, and neither does the per-owner one.
+    The metric counts the particle-snapshots whose lowest value at the end of
+    an update, since the previous snapshot, is negative, summed over the PE
+    and LW bands (debug builds only). On \code{ISRFMultiBinDissipation} (level 5, scheme 4, one
+    thread), per-owner against cross-bin: 538 / 547 at $Z = 1$ and margin 0.5,
+    58 / 64 at $Z = 0$ and margin 0.5, 99 / 101 at $Z = 1$ and margin 0.25,
+    and 28 / 26 at $Z = 1$ and margin 0.125. Values negative at the snapshot
+    instants, $Z = 1$ and margin 0.5: 54 / 67. On
+    \code{ISRFDissipationExtreme} (scheme 4, 6 threads), one particle holds
+    $-2.07$ at a snapshot against $-0.067$ with the per-owner booking, after its coarse step
+    receives a drain larger than its $u$. The mechanism of the excess is not
+    established. No limiter is applied, because a limiter would break the
+    ledger.
   \item The $u$-path and $\boldsymbol{F}$-path relax at different precision; see
     Section~\ref{sec:isrf-eqdisc-F-update}.
-  \item MPI and restart: operator and moment state lives on
-    \code{struct part}, so it rides the
-    normal exchange and dump; the HII owner-computed payload does not. The flux
+  \item MPI and restart: operator and moment state, the pending amounts
+    included, lives on \code{struct part}, so it rides the
+    normal exchange and dump; the HII owner-computed payload does not. On
+    several ranks the cross-bin booking is off and the pending amounts stay
+    zero. The flux
     read order is safe across ranks:
     the gradient loop reads the old flux (before this cell's extra ghost), the
     force loop the new one, every force task runs after the extra ghosts of both
@@ -1834,15 +1953,19 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
 \end{enumerate}
 
 \paragraph{Implementation.} Item 17: the comment on \code{c\_hyp} at
-\code{feedback\_struct.h:201-205}. Item 18: the bound is checked at parse time at
+\code{feedback\_struct.h:210-214}. Item 18: the bound is checked at parse time at
 \code{feedback\_properties.h:853-870}, and the absolute ceiling at
 \code{feedback\_properties.h:785-787}. Item 19: the comment at
-\code{radiation\_isrf.c:444-445}. Item 20: \code{radiation\_isrf.c:619-624} and
-\code{:551-555}. Item 21: \code{radiation\_isrf.c:551-552}. Item 22:
-$a\,h$ at \code{radiation\_isrf.c:327} and \code{:260}, $\gamma_K h$ at
-\code{radiation\_isrf.c:861}. Item 25: the state arrays are
-\code{feedback\_struct.h:189-194}, and the HII payload is
-\code{feedback\_struct.h:261-274}. Item 26: the skew-adjointness claim is the
+\code{radiation\_isrf.c:513-514}. Item 20: \code{radiation\_isrf.c:708-713} and
+\code{:628-632}. Item 21: \code{radiation\_isrf.c:628-629}. Item 22:
+$a\,h$ at \code{radiation\_isrf.c:349} and \code{:282}, $\gamma_K h$ at
+\code{radiation\_isrf.c:951}. Item 23: the debug minimum is the snapshot field
+\code{PEMinimumSpecificEnergies} (and its LW twins), recorded at
+\code{radiation\_isrf.c:647-654}. Item 25: the state arrays are
+\code{feedback\_struct.h:198-203}, the pending amounts
+\code{feedback\_struct.h:121-127}, the active-step mark
+\code{feedback\_struct.h:238-240}, and the HII payload is
+\code{feedback\_struct.h:274-287}. Item 26: the skew-adjointness claim is the
 comment at \code{radiation\_propagation\_iact.h:275-278}.
 
 \subsubsection{Implementation: comment and code disagreements}
@@ -1853,12 +1976,12 @@ something the code does not do. The equations in this section follow the code.
 \begin{enumerate}
   \setcounter{enumi}{26}
   \item \code{grad\_u} and the ``$\nabla u$'' wording at
-    \code{radiation\_isrf.c:719} name a gradient of $u$; the accumulator is the
+    \code{radiation\_isrf.c:808} name a gradient of $u$; the accumulator is the
     M1 pressure-tensor divergence, Equation~(\ref{eq:isrfd-grad-apply}).
-  \item \code{radiation\_isrf.c:346-347} names an ``injection-site equivalent''
+  \item \code{radiation\_isrf.c:368-369} names an ``injection-site equivalent''
     relaxation depth $c_{\rm hyp}\kappa\Delta t_\star$. No such caller exists:
-    the only callers of $\varphi$ are \code{radiation\_isrf.c:506},
-    \code{:532} and \code{:770}. The same doxygen gives
+    the only callers of $\varphi$ are \code{radiation\_isrf.c:583},
+    \code{:609} and \code{:860}. The same doxygen gives
     $\mathcal{A} = c_{\rm hyp}(\kappa + H/c)dt$, omitting $\lambda_m$; the code
     is Equation~(\ref{eq:isrfd-depth-u}).
 \end{enumerate}

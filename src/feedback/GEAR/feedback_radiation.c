@@ -712,3 +712,17 @@ float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
 float feedback_get_part_c_hyp(const struct part *p) {
   return p->feedback_data.c_hyp;
 }
+
+/**
+ * @brief Specific energy owed to a moment by finer neighbours, added by the
+ * particle's next update: `c_hyp` times the two pending amounts.
+ *
+ * @param p The #part to query.
+ * @param m The #radiation_isrf_moment.
+ * @return The pending specific energy.
+ */
+float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
+  const struct feedback_isrf_moment_data *mo = &p->feedback_data.isrf_moment[m];
+  return p->feedback_data.c_hyp *
+         (mo->pending_transport_u + mo->pending_dissipation_u);
+}

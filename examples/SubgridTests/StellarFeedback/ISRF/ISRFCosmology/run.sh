@@ -43,8 +43,8 @@ case "$config" in
 	    c_hyp_fraction_default=2.001384571e-04  # 60 km/s
 	elif [ "$config" = "free_field_two_bin_witness" ]; then
 	    # A speed whose Courant step straddles a time-bin boundary: the
-	    # particles split over two bins, so pair exchanges across bins are
-	    # not conservative. Check it with --two-bin-witness.
+	    # particles split over two bins and pairs cross them. Check it with
+	    # --two-bin-witness.
 	    c_hyp_scheme_default=fixed_fraction
 	    c_hyp_fraction_default=1.293902537e-04  # 38.79 km/s
 	fi

@@ -701,9 +701,9 @@ which the discrete scheme satisfies exactly when every particle shares
 the same $h_i$ and $\Delta t_i$, and hence the same $c_{{\rm hyp},i}$ and
 relaxation depth $a_i$: only then does the transport operator conserve
 $\sum_i m_i u_i$ exactly across the applied update
-(Section~\ref{sec:fuv-operators}); under mixed time bins or a
-non-uniform $c_{\rm hyp}\kappa\rho$ the identity holds up to the same
-residual described there.
+(Section~\ref{sec:fuv-operators}); under a non-uniform
+$c_{\rm hyp}\kappa\rho$, or under mixed time bins on several MPI ranks,
+the identity holds up to the same residual described there.
 
 \subsubsection{Coupling to the chemistry and cooling solver}
 \label{sec:fuv-coupling}
@@ -1025,9 +1025,9 @@ decays through its own equations.
 
 \paragraph{Implementation.} The column is formed by
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
-(\code{src/feedback/GEAR/radiation\_isrf.c:908}), and the path mechanism is
+(\code{src/feedback/GEAR/radiation\_isrf.c:998}), and the path mechanism is
 dispatched by \code{radiation\_get\_comoving\_extinction\_path}
-(\code{radiation\_isrf.c:853}), called inside the star-gas pair loop.
+(\code{radiation\_isrf.c:943}), called inside the star-gas pair loop.
 
 \subsubsection{The signal speed and the stability bound}
 \label{sec:fuv-chyp}
@@ -1367,12 +1367,22 @@ each particle applies, however, is that divergence scaled by its own
 $\Delta t_i\,\varphi(a_i)$ in Eq.~\ref{eq:fuv-u-update}, and $a_i$
 differs between particles whose time bin or $c_{\rm hyp}\kappa\rho$
 differ. $\sum_i m_i u_i$ is therefore conserved exactly only when both
-particles of a pair share the time bin and the same $c_{\rm
-hyp}\kappa\rho$; otherwise a residual of order the difference between
-the two particles' $\Delta t\,\varphi(a)$ remains, the price of applying
-an exact exponential integrator per particle rather than one global
-step. An active/inactive pair, which leaves one side undebited until
-that particle's own next step, is a special case of the same effect.
+particles of a pair share the same $c_{\rm hyp}\kappa\rho$, and the
+time bin unless the pair is booked across bins as below; otherwise a residual of order the difference between
+the two particles' $\varphi(a)$ remains, the price of applying an exact
+exponential integrator per particle rather than one global step. A pair
+across time bins is booked once, over the finer member's step, on one
+rank: the coarser member receives the exact opposite of the finer
+member's booking, its dissipation weighted by the finer member's
+$\varphi$, and adds it at its own next step, split between $u$ and
+absorbed energy by its own depth. That removes the step mismatch from
+the $c_{\rm hyp}$-weighted ledger. What remains is the residual of
+unequal $\varphi(a)$ above and the Hubble term left out of the finer
+member's $\varphi$ under cosmology. On a multi-bin fixture with dust the
+ledger residual falls from about $10^{-1}$ of the injected energy to
+about $3\times10^{-4}$. On several MPI ranks the booking is off: each
+member integrates the pair with its own $\Delta t$, and the residual
+includes the step mismatch.
 
 \textbf{Pressure-tensor divergence.} A difference estimator on the
 volumetric field $U = \rho u$ contracted with each particle's own
@@ -1757,7 +1767,8 @@ $C_{\rm hyp} = 0.5$ ($1.68$ against $1.35$) and $1.35$ at $C_{\rm hyp} = 1.0$
 It is bounded within the stability bound of
 Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
 one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
-for pairs of active particles in the same time bin (Section~\ref{sec:fuv-operators});
+for pairs of active particles in the same time bin, and across time bins on one rank
+(Section~\ref{sec:fuv-operators});
 it does not conserve the first spatial moment: behind a source moving through the
 gas the trigger fires preferentially on the depleted trailing side, and
 the field's centroid lags the source by a small additional amount,
@@ -1976,19 +1987,19 @@ window is cached once per star and step by \code{feedback\_star\_store\_timestep
 \code{radiation\_iact\_nonsym\_feedback\_apply} reads the cached value
 (\code{radiation\_iact.h:218}). The particle's step and the drain horizon are
 formed in \code{radiation\_snapshot\_part\_propagation}
-(\code{src/feedback/GEAR/radiation\_isrf.c:129}), at lines 176-182 and 206-214,
+(\code{src/feedback/GEAR/radiation\_isrf.c:147}), at lines 198-204 and 228-236,
 the horizon ending at \code{ISRF\_reservoir\_end\_ti}. The depth $a_i$ is formed
-in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:730},
-line 768) and \code{radiation\_end\_force\_propagation}
-(\code{radiation\_isrf.c:462}, line 530), and $\varphi$ is
-\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:350}) and
-its double twin (\code{radiation\_isrf.c:363}). The comoving path is returned
+in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:819},
+line 858) and \code{radiation\_end\_force\_propagation}
+(\code{radiation\_isrf.c:531}, line 607), and $\varphi$ is
+\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:372}) and
+its double twin (\code{radiation\_propagation\_iact.h:558-559}). The comoving path is returned
 by \code{radiation\_get\_comoving\_extinction\_path}
-(\code{radiation\_isrf.c:853}), the comoving product is formed by
+(\code{radiation\_isrf.c:943}), the comoving product is formed by
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
-(\code{radiation\_isrf.c:908}), and the $a^{-2}$ is applied in
+(\code{radiation\_isrf.c:998}), and the $a^{-2}$ is applied in
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{radiation\_isrf.c:1022}, lines 1028-1030).
+(\code{radiation\_isrf.c:1112}, lines 1118-1120).
 
 \subsubsection{Runtime parameters}
 \label{sec:fuv-parameters}
@@ -2168,8 +2179,8 @@ path.
     to $323$ particles (FUV) and $456$ (LW) at snapshots $3$ to $8$,
     against at most $1$ before the dispatch moved; a smaller, standing
     negative population also appears at time-bin boundaries, where
-    particles that do not share a time bin or the same $c_{\rm
-    hyp}\kappa\rho$ leave a residual by construction
+    particles that do not share the same $c_{\rm hyp}\kappa\rho$, or a
+    time bin on several MPI ranks, leave a residual by construction
     (Section~\ref{sec:fuv-operators}). Both are clamped to zero before
     Grackle sees them (Section~\ref{sec:fuv-coupling}); improving
     positivity at time-bin boundaries and in strongly contrasted gas,

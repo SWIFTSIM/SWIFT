@@ -84,5 +84,6 @@ float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
 float feedback_get_part_c_hyp(const struct part *p);
+float feedback_get_part_pending_specific_energy(const struct part *p, int m);
 
 #endif /* SWIFT_FEEDBACK_GEAR_RADIATION_H */

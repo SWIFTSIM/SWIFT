@@ -274,7 +274,7 @@ __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
                                     const float hi, const float hj,
                                     struct part *restrict pi,
-                                    const struct part *restrict pj,
-                                    const float a, const float H) {}
+                                    struct part *restrict pj, const float a,
+                                    const float H) {}
 
 #endif /* SWIFT_AGORA_FEEDBACK_IACT_H */
