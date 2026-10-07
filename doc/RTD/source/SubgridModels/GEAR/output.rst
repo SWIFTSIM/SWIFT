@@ -445,7 +445,7 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - [U_L^2 U_T^{-2}]
      - Same as ``PEPendingSpecificEnergies``.
    * - ``PEMinimumSpecificEnergies``
-     - Most negative ``PESpecificEnergies`` value written since the previous snapshot, 0 if none was negative
+     - Most negative ``PESpecificEnergies`` value at the end of an update since the previous snapshot, 0 if none was negative
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``LWMinimumSpecificEnergies``
@@ -453,7 +453,7 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``LWPhotonMinimumSpecificEnergies``
-     - Most negative ``LWPhotonSpecificEnergies`` value written since the previous snapshot, 0 if none was negative
+     - Most negative ``LWPhotonSpecificEnergies`` value at the end of an update since the previous snapshot, 0 if none was negative
      - [U_L^2 U_T^{-2}]
      - Value only with ``--enable-debugging-checks``, else always 0.
    * - ``PECumulativeInjectedSpecificEnergies``

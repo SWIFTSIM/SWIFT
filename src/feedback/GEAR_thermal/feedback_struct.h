@@ -127,7 +127,8 @@ struct feedback_isrf_moment_data {
   float pending_dissipation_u;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! Most negative #u written since the previous snapshot, 0 if none. */
+  /*! Most negative #u at the end of an update since the previous snapshot,
+      0 if none. */
   float u_min_since_snapshot;
 
   /*! Cumulative dose handed to #u by the reservoir, rescaled by `c_hyp/c`

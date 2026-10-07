@@ -499,8 +499,6 @@ __attribute__((noinline)) static void radiation_add_pending_part(
 #ifdef SWIFT_DEBUG_CHECKS
     mo->cumulative_absorbed += (float)absorbed[m];
     if (m == ISRF_MOMENT_PE) mo->cumulative_injected += (float)transfer;
-    if (mo->u < (double)mo->u_min_since_snapshot)
-      mo->u_min_since_snapshot = (float)mo->u;
 #endif
   }
 }
@@ -636,11 +634,6 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     /* Raw add, not subject to PE's absorption this step. A separate statement
      * so -ffast-math cannot merge it into a form that is not 0 at H = 0. */
     if (m == ISRF_MOMENT_PE) moment->u += transfer;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    if (moment->u < (double)moment->u_min_since_snapshot)
-      moment->u_min_since_snapshot = (float)moment->u;
-#endif
   }
 
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
@@ -650,6 +643,15 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
       break;
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* After the pending add: no other code reads the value before it. */
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+    if (moment->u < (double)moment->u_min_since_snapshot)
+      moment->u_min_since_snapshot = (float)moment->u;
+  }
+#endif
 }
 
 /**
