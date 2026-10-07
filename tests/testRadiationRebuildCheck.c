@@ -299,12 +299,12 @@ int main(int argc, char *argv[]) {
   c.stars.h_hii_max = 0.01f;
   c.sinks.h_max = 0.01f;
   c.black_holes.h_max = 0.01f;
-  if (!cell_can_split_pair_hydro_task(&c))
+  if (!cell_can_split_pair_hydro_task(&c, /*r_cut=*/0.f))
     error(
         "Expected cell_can_split_pair_hydro_task to allow splitting for "
         "a small configuration.");
   c.stars.h_hii_max = 2.0f;
-  if (!cell_can_split_pair_hydro_task(&c))
+  if (!cell_can_split_pair_hydro_task(&c, /*r_cut=*/0.f))
     error(
         "cell_can_split_pair_hydro_task must stay decoupled from "
         "h_hii_max -- it should still allow splitting after h_hii_max "
