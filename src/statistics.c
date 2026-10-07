@@ -898,14 +898,15 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
     fprintf(file, "#       Unit = %e Msun\n",
             1. / phys_const->const_solar_mass);
   }
-  fprintf(file, "#\n"); /* Add final newline */
 #endif
+
+  fprintf(file, "#\n");
 
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s  %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s  %14s ",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
@@ -922,14 +923,14 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
     snprintf(index_str, 15, "(%d)", index);
     fprintf(file, " %14s", index_str);
   }
-  fprintf(file, " \n"); /* Add final newline */
 #endif
+  fprintf(file, "\n");
 
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s %14s ",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
@@ -948,8 +949,8 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
     snprintf(name_str, 15, "Z_Idx_%d", l);
     fprintf(file, " %14s", name_str);
   }
-  fprintf(file, " \n"); /* Add final newline */
 #endif
+  fprintf(file, "\n");
 
   fflush(file);
 }
@@ -976,7 +977,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
       stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
@@ -995,8 +996,8 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
   for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
     fprintf(file, " %14e", stats->gas_metal_mass[l]);
   }
-  fprintf(file, "\n"); /* Add the final newline */
 #endif
+  fprintf(file, "\n");
 
   fflush(file);
 }
