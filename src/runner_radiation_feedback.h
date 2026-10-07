@@ -51,20 +51,25 @@ struct engine;
  * @brief Does this engine policy need the radiation subgrid task layer
  * (the per-region hii_ionization_feedback task and its super pointer)?
  *
- * True only when GEAR ionization feedback is compiled in and both the
- * stars and feedback policies are active.
+ * True only when GEAR ionization feedback is compiled in, both the stars
+ * and feedback policies are active, and the feedback module asks for it
+ * (#feedback_props_radiation_tasks_needed).
  *
  * @param with_stars Is engine_policy_stars set?
  * @param with_feedback Is engine_policy_feedback set?
+ * @param fp The #feedback_props.
  */
 #ifdef IONIZATION_FEEDBACK_LOOP
 __attribute__((always_inline)) INLINE static int
-feedback_radiation_subgrid_needed(int with_stars, int with_feedback) {
-  return with_stars && with_feedback;
+feedback_radiation_subgrid_needed(int with_stars, int with_feedback,
+                                  const struct feedback_props *fp) {
+  return with_stars && with_feedback &&
+         feedback_props_radiation_tasks_needed(fp);
 }
 #else
 __attribute__((always_inline)) INLINE static int
-feedback_radiation_subgrid_needed(int with_stars, int with_feedback) {
+feedback_radiation_subgrid_needed(int with_stars, int with_feedback,
+                                  const struct feedback_props *fp) {
   return 0;
 }
 #endif
@@ -77,19 +82,23 @@ feedback_radiation_subgrid_needed(int with_stars, int with_feedback) {
  * hydro and stars policies are active. Unlike
  * #feedback_radiation_subgrid_needed, the feedback policy is not required:
  * the geometric gather task graph is built from hydro + stars alone, with
- * the ionization task itself gated separately.
+ * the ionization task itself gated separately. The feedback module must
+ * also ask for it (#feedback_props_radiation_tasks_needed).
  *
  * @param with_hydro Is engine_policy_hydro set?
  * @param with_stars Is engine_policy_stars set?
+ * @param fp The #feedback_props.
  */
 #ifdef IONIZATION_FEEDBACK_LOOP
 __attribute__((always_inline)) INLINE static int
-feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars) {
-  return with_hydro && with_stars;
+feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars,
+                                       const struct feedback_props *fp) {
+  return with_hydro && with_stars && feedback_props_radiation_tasks_needed(fp);
 }
 #else
 __attribute__((always_inline)) INLINE static int
-feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars) {
+feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars,
+                                       const struct feedback_props *fp) {
   return 0;
 }
 #endif

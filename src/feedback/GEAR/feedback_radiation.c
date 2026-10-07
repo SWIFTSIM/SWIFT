@@ -32,6 +32,8 @@
 #include "timestep_sync_part.h"
 #include "units.h"
 
+#include <float.h>
+
 /**
  * @brief Determines whether a gas #part can be ionized.
  *
@@ -742,6 +744,8 @@ float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
 float feedback_radiation_compute_part_timestep(const struct part *restrict p,
                                                const struct engine *e) {
   const float dt_isrf = radiation_isrf_part_timestep(p, e);
+  /* No bound: FLT_MAX times the cosmology factor must not overflow. */
+  if (dt_isrf == FLT_MAX) return dt_isrf;
   /* Compared to dt_min after the cosmology factor, like the other
    * candidates in get_part_timestep(). */
   const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;

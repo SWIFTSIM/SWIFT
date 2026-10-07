@@ -1447,8 +1447,8 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
                         (e->policy & engine_policy_external_gravity);
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_radiation_subgrid =
-      feedback_radiation_subgrid_needed(with_stars, with_feedback);
+  const int with_radiation_subgrid = feedback_radiation_subgrid_needed(
+      with_stars, with_feedback, e->feedback_props);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];

@@ -212,6 +212,10 @@ runner_hii_part_passes_gather_filter(const struct part *pj,
  */
 void feedback_radiation_startup_diagnostics(const struct engine *e) {
 
+  /* Both warnings concern the HII search only */
+  if (!(e->feedback_props->radiation_policy & radiation_policy_photoionization))
+    return;
+
   /* Stars:HII_max_search_radius exceeding the periodic box's half-width is
      not itself fatal -- the search radius just never gets to expand that
      far, which is indistinguishable from a genuinely converged result

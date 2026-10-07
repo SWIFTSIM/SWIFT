@@ -406,9 +406,15 @@ INLINE static void stars_props_init(struct stars_props *sp,
 
 #ifdef IONIZATION_FEEDBACK_LOOP
   /* Read the maximal search radius. Comoving: the physical reach grows with
-   * the box, i.e. physical_reach = a * HII_max_search_radius. */
-  sp->HII_max_search_radius =
-      parser_get_param_float(params, "Stars:HII_max_search_radius");
+   * the box, i.e. physical_reach = a * HII_max_search_radius. Required only
+   * when the HII regions are on, so that a run without them needs no HII
+   * key. */
+  if (parser_get_opt_param_int(params, "GEARFeedback:with_photoionization", 0))
+    sp->HII_max_search_radius =
+        parser_get_param_float(params, "Stars:HII_max_search_radius");
+  else
+    sp->HII_max_search_radius =
+        parser_get_opt_param_float(params, "Stars:HII_max_search_radius", 0.f);
 
   /* Read the HII full-buffer retry count. Default matches the value this
    * used to be hardcoded to, so existing parameter files keep working

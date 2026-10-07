@@ -322,8 +322,11 @@ int feedback_should_inject_feedback(const struct spart *sp) {
  * @brief Should this particle deliver supernova ejecta without energy?
  *
  * The stellar evolution has already removed the ejected mass from the star,
- * so the mass and the metals must reach the gas even when an efficiency
- * factor has zeroed the energy.
+ * so the mass and the metals must reach the gas without energy: when an
+ * efficiency factor has zeroed it, and on the steps where continuous yields
+ * eject mass but no whole supernova. These ejecta are not an event of the
+ * multiple-event correction; their kinetic energy still enters its balance
+ * when that correction runs.
  *
  * @param sp The #spart.
  */
@@ -501,6 +504,17 @@ __attribute__((always_inline)) INLINE void feedback_compute_scalar_weight(
     const float r2, const float *dx, const float hi, const float hj,
     const struct spart *restrict si, const struct part *restrict pj,
     double dx_ij_plus[3], double dx_ij_minus[3], double *scalar_weight_j) {
+
+  /* A gas particle on the star has no direction: it gets no weight, which
+     also keeps 0 * inf out of the sums of every other neighbour. */
+  if (r2 <= 0.f) {
+    for (int i = 0; i < 3; i++) {
+      dx_ij_plus[i] = 0.0;
+      dx_ij_minus[i] = 0.0;
+    }
+    *scalar_weight_j = 0.0;
+    return;
+  }
 
   const float r = sqrtf(r2);
   const float r_inv = 1.0 / r;

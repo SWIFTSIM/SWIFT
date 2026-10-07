@@ -397,6 +397,8 @@ feedback_props_init_radiation_switches(struct feedback_props *fp,
 
   fp->radiation_policy = 0;
 
+  /* TODO: For the future, enforce these to have a non-zero value */
+
   /* Radiation pressure. The policy bit gates the injection. */
   fp->radiation_pressure_efficiency = radiation_pressure_efficiency;
   if (with_radiation_pressure)
@@ -426,8 +428,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init_radiation(
     const struct unit_system *us, struct swift_params *params) {
 
   const double Myr_internal_units = 1e6 * phys_const->const_year;
-
-  /* TODO: For the future, enforce these to have a non-zero value */
 
   /* The magnitude keys are parsed only by the mechanism that reads them. */
   fp->ISRF_extinction_path_in_kernel_radii = 0.f;

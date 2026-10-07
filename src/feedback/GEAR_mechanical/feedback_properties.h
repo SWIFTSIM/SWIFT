@@ -184,6 +184,18 @@ struct feedback_props {
 #include "../GEAR/radiation_properties.h"
 
 /**
+ * @brief Does this run need the radiation task layer (HII gather and
+ * ionization tasks)? Only with the HII regions, so that a run without them
+ * builds no radiation task.
+ *
+ * @param fp The #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_radiation_tasks_needed(const struct feedback_props *fp) {
+  return (fp->radiation_policy & radiation_policy_photoionization) != 0;
+}
+
+/**
  * @brief Print the feedback model.
  *
  * @param feedback_props The #feedback_props

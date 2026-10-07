@@ -92,7 +92,7 @@ radiation_iact_nonsym_feedback_density(
     si->feedback_data.grad_rho_star[k] += mj * gradW[k];
   }
 
-  /* Same weighting as enrichment_weight, so both share one normalization. */
+  /* Same weighting as the gas density at the star, which normalizes it. */
   si->feedback_data.Z_star +=
       chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
@@ -101,8 +101,8 @@ radiation_iact_nonsym_feedback_density(
  * @brief Store the star's feedback time-step for this step.
  *
  * Cached so the per-pair loop avoids the cosmological lookup. @p dt must be
- * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns.
- * Under cosmology it is d(ln a), as in compute_time() of feedback_common.c.
+ * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns,
+ * in physical time also under cosmology.
  *
  * @param sp The #spart to update.
  * @param dt Length of the star's feedback step, in internal units.
@@ -176,7 +176,8 @@ feedback_prepare_radiation_feedback(
  *
  * @param r Comoving distance between the two particles, floored above 0.
  * @param weight Share of the star's emission given to pj.
- * @param dir Comoving vector pointing from pj towards the star.
+ * @param dir Vector pointing from pj towards the star (comoving separation
+ * or dimensionless weight).
  * @param dir_norm Norm of @p dir, > 0.
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
@@ -356,18 +357,17 @@ radiation_iact_nonsym_feedback_apply(
  * @param p The #part to consider.
  * @param xp The #xpart to consider.
  * @param e The #engine.
- * @param initial_mass Mass of the gas the momentum is divided by (GEAR
- * thermal: before any winds or SN).
+ * @param mass Mass of the gas the momentum is divided by (GEAR thermal: the
+ * mass before any winds or SN).
  */
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
-                               const struct engine *e,
-                               const float initial_mass) {
+                               const struct engine *e, const float mass) {
 
   /* Momentum only; internal energy is handled elsewhere, before cooling. */
   if (xp->feedback_data.hit_by_radiation) {
     for (int i = 0; i < 3; i++) {
-      const float dv = xp->feedback_data.radiation.delta_p[i] / initial_mass;
+      const float dv = xp->feedback_data.radiation.delta_p[i] / mass;
       xp->v_full[i] += dv;
       p->v[i] += dv;
 

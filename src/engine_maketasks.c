@@ -57,8 +57,8 @@
 #include "neutrino_properties.h"
 #include "proxy.h"
 #include "rt_properties.h"
-#include "sink_properties.h"
 #include "runner_radiation_feedback.h"
+#include "sink_properties.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -2320,8 +2320,8 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   const int with_ext_gravity = (e->policy & engine_policy_external_gravity);
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_feedback = (e->policy & engine_policy_feedback);
-  const int with_HII_ionization_feedback =
-      feedback_radiation_subgrid_needed(with_stars, with_feedback);
+  const int with_HII_ionization_feedback = feedback_radiation_subgrid_needed(
+      with_stars, with_feedback, e->feedback_props);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -5336,12 +5336,12 @@ void engine_maketasks(struct engine *e) {
 
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
-  const int with_subgrid_radiation_feedback =
-      feedback_radiation_subgrid_needed(with_stars, with_feedback);
+  const int with_subgrid_radiation_feedback = feedback_radiation_subgrid_needed(
+      with_stars, with_feedback, e->feedback_props);
   /* Radiation tasks only need hydro + stars (feedback pulls in the extra
    * radiation_out loop and wiring, handled separately below). */
   const int with_radiation_tasks = feedback_radiation_gather_tasks_needed(
-      e->policy & engine_policy_hydro, with_stars);
+      e->policy & engine_policy_hydro, with_stars, e->feedback_props);
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));

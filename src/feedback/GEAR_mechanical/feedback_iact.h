@@ -412,18 +412,26 @@ runner_iact_nonsym_feedback_apply(
 
   /*****************************************/
   /* Radiation: the fraction |w_j_bar| of the star's emission, the
-     radiation momentum along w_j_bar. Sum_j w_j_bar = 0 and
-     sum_j |w_j_bar| = 1, so the radiation momentum given to the gas sums to
-     zero and its norms sum to the star's momentum. */
+     radiation momentum along w_j_bar. Sum_j |w_j_bar| = 1, so the norms of
+     the momenta sum to the star's momentum. Sum_j w_j_bar = 0, so the
+     momenta sum to zero, only if every axis has gas on both sides of the
+     star. */
   if (feedback_should_inject_radiation_feedback(si, fb_props)) {
     const float r2_min = 1e-6f * hi * hi;
     const float r_rad = sqrtf(max(r2, r2_min));
     /* The shared body pushes along -dir */
-    const float dir[3] = {-(float)w_j_bar[0], -(float)w_j_bar[1],
-                          -(float)w_j_bar[2]};
+    const double w_j_bar_norm_inv = 1.0 / w_j_bar_norm;
+    const float dir[3] = {(float)(-w_j_bar[0] * w_j_bar_norm_inv),
+                          (float)(-w_j_bar[1] * w_j_bar_norm_inv),
+                          (float)(-w_j_bar[2] * w_j_bar_norm_inv)};
     radiation_iact_nonsym_feedback_apply_weighted(
-        r_rad, w_j_bar_norm, dir, (float)w_j_bar_norm, si, pj, xpj, cosmo,
+        r_rad, w_j_bar_norm, dir, /*dir_norm=*/1.f, si, pj, xpj, cosmo,
         hydro_props, fb_props, phys_const, us, cooling, ti_current);
+
+    /* A radiation kick puts the gas on a step that resolves it */
+    if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
+        si->feedback_data.radiation.L_bol > 0.0)
+      timestep_sync_part(pj);
   }
 
   const float mj = hydro_get_mass(pj);

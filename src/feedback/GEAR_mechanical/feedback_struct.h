@@ -43,8 +43,7 @@ struct feedback_part_data {
   char is_ionized;
 
   /*! Largest #part.time_bin among this particle and its neighbours in the
-      ISRF density loop of this h-iteration. Drives #c_hyp. Sits in the
-      padding after #is_ionized, so #part does not grow. */
+      ISRF density loop of this h-iteration. Drives #c_hyp. */
   timebin_t max_ngb_time_bin;
 
   /*! Id of the star that ionized this particle. */

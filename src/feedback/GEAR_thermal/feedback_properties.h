@@ -163,6 +163,17 @@ struct feedback_props {
 #include "../GEAR/radiation_properties.h"
 
 /**
+ * @brief Does this run need the radiation task layer (HII gather and
+ * ionization tasks)? Always: this module builds it in every run.
+ *
+ * @param fp The #feedback_props.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_props_radiation_tasks_needed(const struct feedback_props *fp) {
+  return 1;
+}
+
+/**
  * @brief Print the feedback model.
  *
  * @param feedback_props The #feedback_props
