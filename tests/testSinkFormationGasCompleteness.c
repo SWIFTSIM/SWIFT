@@ -53,6 +53,10 @@
 #include "sink_properties.h"
 #include "space.h"
 
+/* The aperture loop exists only for a sink model with a fixed cut-off radius
+   (GEAR). */
+#ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
+
 /* ============================================================
  * (a) Fix A -- grid floor via space_init(dry_run=1)
  * ============================================================ */
@@ -244,3 +248,12 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+#else
+
+int main(int argc, char *argv[]) {
+  message("Skipped: this test needs a sink model with a fixed cut-off radius.");
+  return 0;
+}
+
+#endif /* SINKS_WITH_FIXED_CUTOFF_RADIUS */
