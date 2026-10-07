@@ -155,6 +155,10 @@ feedback_tracers_pending_update(struct xpart *xp, const int hit_by_SN,
   const struct feedback_tracers_pending *pending =
       &xp->feedback_data.tracers_pending;
 
+  /* Supernova ejecta can arrive without energy (zero efficiency) and without
+     the hit flag; their momentum is still recorded. */
+  const int SN_received = hit_by_SN || pending->p_sum_SN > 0.0f;
+
   const float E_th_SN_pos = max(pending->E_th_SN, 0.0f);
   const float E_th_SW_pos = max(pending->E_th_SW, 0.0f);
   const float E_th_pos = E_th_SN_pos + E_th_SW_pos;
@@ -165,13 +169,13 @@ feedback_tracers_pending_update(struct xpart *xp, const int hit_by_SN,
   if (E_th_pos > 0.0f) {
     share_SN = E_th_SN_pos / E_th_pos;
     share_SW = 1.0f - share_SN;
-  } else if (hit_by_SN) {
+  } else if (SN_received) {
     share_SN = 1.0f;
   } else {
     share_SW = 1.0f;
   }
 
-  if (hit_by_SN) {
+  if (SN_received) {
     tracers_after_supernovae_feedback_part(
         xp, f_corr * pending->p_sum_SN,
         pending->E_th_SN * new_mass_inv + share_SN * u_residual,
