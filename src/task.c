@@ -128,6 +128,7 @@ const char *taskID_names[task_type_count] = {
     "rt_advance_cell_time",
     "rt_sorts",
     "rt_collect_times",
+    "chemistry_fct_ghost",
 };
 
 /* Sub-task type names. */
@@ -168,7 +169,8 @@ const char *subtaskID_names[task_subtype_count] = {"none",
                                                    "rt_gradient",
                                                    "rt_transport",
                                                    "stars_radiation_in",
-                                                   "stars_radiation_out"};
+                                                   "stars_radiation_out",
+                                                   "chemistry_fct_prep"};
 
 const char *task_category_names[task_category_count] = {
     "drift",       "sorts",    "resort",
@@ -266,6 +268,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_rt_ghost2:
     case task_type_rt_tchem:
     case task_type_rt_sort:
+    case task_type_chemistry_fct_ghost:
       return task_action_part;
       break;
 
@@ -306,6 +309,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_rt_transport:
         case task_subtype_rt_gradient:
+        case task_subtype_chemistry_fct_prep:
           return task_action_part;
           break;
 
@@ -557,6 +561,7 @@ void task_unlock(struct task *t) {
     case task_type_rt_tchem:
     case task_type_rt_sort:
     case task_type_rt_advance_cell_time:
+    case task_type_chemistry_fct_ghost:
       cell_unlocktree(ci);
       break;
 
@@ -795,6 +800,7 @@ int task_lock(struct task *t) {
     case task_type_rt_tchem:
     case task_type_rt_sort:
     case task_type_rt_advance_cell_time:
+    case task_type_chemistry_fct_ghost:
       if (ci->hydro.hold) return 0;
       if (cell_locktree(ci) != 0) return 0;
       break;
@@ -1305,6 +1311,9 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       } else {
         strcpy(cluster, "RTtransport");
       }
+      break;
+    case task_subtype_chemistry_fct_prep:
+      strcpy(cluster, "ChemistryFCTPrep");
       break;
     case task_subtype_sink_density:
       strcpy(cluster, "SinkDensity");
@@ -1836,6 +1845,7 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_ghost:
     case task_type_extra_ghost:
     case task_type_end_hydro_force:
+    case task_type_chemistry_fct_ghost:
       return task_category_hydro;
 
     case task_type_stars_ghost:
@@ -1881,6 +1891,7 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+        case task_subtype_chemistry_fct_prep:
           return task_category_hydro;
 
         case task_subtype_limiter:

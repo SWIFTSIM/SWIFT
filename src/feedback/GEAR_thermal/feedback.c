@@ -105,6 +105,12 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     xp->feedback_data.delta_p[i] = 0;
   }
 
+  /* Update chemistry metal mass and reset feedback variable */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
+    xp->feedback_data.delta_metal_mass[i] = 0.0;
+  }
+
   /*----------------------------------------*/
   /* Update the radiation fields */
   feedback_update_part_radiation(p, xp, e, old_mass);

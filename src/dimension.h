@@ -33,6 +33,22 @@
 #include "vector.h"
 
 #include <math.h>
+#include <stdint.h>
+
+/**
+ * @brief Checks whether a float is finite (not NaN or +/-Inf).
+ *
+ * Uses the raw IEEE-754 bit pattern (NaN/Inf have an all-ones exponent
+ * field) rather than isnan()/isinf(), which Clang flags as UB under
+ * -ffast-math since it may assume such a check is always false.
+ */
+__attribute__((always_inline)) INLINE static int float_is_finite(float x) {
+  union {
+    float f;
+    uint32_t u;
+  } caster = {.f = x};
+  return ((caster.u >> 23) & 0xFF) != 0xFF;
+}
 
 /* First define some constants */
 #if defined(HYDRO_DIMENSION_3D)
@@ -357,7 +373,7 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  if (A[0][0] == 0.0f || isnan(A[0][0]) || isinf(A[0][0])) {
+  if (A[0][0] == 0.0f || !float_is_finite(A[0][0])) {
     A[0][0] = 0.0f;
     return 1;
   }

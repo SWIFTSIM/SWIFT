@@ -98,6 +98,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.gradient = NULL;
     c->hydro.force = NULL;
     c->hydro.limiter = NULL;
+    c->hydro.chemistry_fct_prep = NULL;
     c->grav.grav = NULL;
     c->grav.mm = NULL;
     c->hydro.dx_max_part = 0.0f;
@@ -125,6 +126,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->grav.init = NULL;
     c->grav.init_out = NULL;
     c->hydro.extra_ghost = NULL;
+    c->hydro.chemistry_fct_ghost = NULL;
     c->hydro.ghost_in = NULL;
     c->hydro.ghost_out = NULL;
     for (int i = 0; i < HYDRO_GHOST_NTASK; i++) {

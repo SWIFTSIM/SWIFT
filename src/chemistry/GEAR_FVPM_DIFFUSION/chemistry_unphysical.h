@@ -1,0 +1,279 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Darwin Roduit (darwin.roduit@alumni.epfl.ch)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_UNPHYSICAL_H
+#define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_UNPHYSICAL_H
+
+#include "chemistry_properties.h"
+#include "error.h"
+#include "inline.h"
+#include "part.h"
+
+/**
+ * @file src/chemistry/GEAR/chemistry_unphysical.h
+ * @brief Routines for checking for and correcting unphysical scenarios
+ */
+
+/**
+ * @brief Check for, and correct, if needed, unphysical values for a diffusion
+ * state (metal mass).
+ *
+ * @param metal_mass Pointer to the metal mass.
+ * @param mZ_old Metal density before change to check. Set = 0 if not
+ * available.
+ * @param gas_mass #part mass.
+ * @param callloc Integer indentifier where this function was called from
+ *
+ * 0: after density compuations (chemistry_end_density()),
+ * 1: during gradients extrapolation (chemistry_gradients_predict()),
+ * 2: after diffusion computations (chemistry_end_force()),
+ *
+ * @param element Integer identifier for the metal specie to correct.
+ * @param id Particle id.
+ * @param negativity_counter Counts the successive number of time the particle
+ * was negative.
+ */
+__attribute__((always_inline)) INLINE static char
+chemistry_check_unphysical_state(double *metal_mass, const double mZ_old,
+                                 const double gas_mass, int callloc,
+                                 const int element, const long long id,
+                                 unsigned int *negativity_counter) {
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (isinf(*metal_mass) || isnan(*metal_mass))
+    error("[%lld, %d] Got inf/nan metal density/mass diffusion case %d | %.6e ",
+          id, element, callloc, *metal_mass);
+#endif
+
+  /* Flag to track corrections */
+  char corrected = 0;
+
+  /* Fix negative masses */
+  const double metal_mass_fraction = *metal_mass / gas_mass;
+  const double Z_old = mZ_old / gas_mass;
+  if (metal_mass_fraction < 0.0) {
+    if (callloc == 0) {
+      if (*negativity_counter == 0) {
+        error(
+            "[%lld, %d] Negative metal mass case %d (outside diffusion) | %e "
+            "%e | %e %e | %e",
+            id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+            Z_old, gas_mass);
+      }
+    } else if (callloc == 1) {
+      /* Do not extrapolate, use 0th order reconstruction. */
+      *metal_mass = (Z_old >= 0.0) ? mZ_old : 0.0;
+      corrected = 1;
+    } else /* callloc == 2 */ {
+      /* First, be verbose */
+      if ((*negativity_counter %
+               GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT ==
+           0) &&
+          (*negativity_counter > 0)) {
+        warning("[%lld, %d] Negative metal mass case %d | %e %e | %e %e | %u",
+                id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+                Z_old, *negativity_counter);
+      }
+      /* Now increment the counter */
+      (*negativity_counter)++;
+
+      if (*negativity_counter > 1 && *metal_mass < mZ_old) {
+        warning(
+            "[%lld, %d] Metal mass is becoming more negative!!! Something went "
+            "wrong! case %d | %e %e | %e %e | %u",
+            id, element, callloc, *metal_mass, metal_mass_fraction, mZ_old,
+            Z_old, *negativity_counter);
+      }
+    }
+
+    if ((callloc != 1) && (fabs(*metal_mass) > gas_mass)) {
+      error(
+          "[%lld, %d] Unphysical: metal mass (%e) is more negative than gas "
+          "mass (%e) is positive! (case %d, old mass = %e, neg_counter = %u)",
+          id, element, *metal_mass, gas_mass, callloc, mZ_old,
+          *negativity_counter);
+    }
+  }
+
+  if (*metal_mass > gas_mass) {
+    if (callloc == 1) {
+      /* Do not extrapolate, use 0th order reconstruction. */
+      if (mZ_old <= gas_mass) {
+        *metal_mass = mZ_old;
+      } else {
+        /* Something went very wrong somewhere! Set the metal mass to the
+         * the particle's mass */
+        *metal_mass = gas_mass;
+      }
+      corrected = 1;
+    } else {
+      /* DO NOT do this unless strictly necessary. This breaks metal mass
+         conservation */
+      /* We should check this after extrapolating all metal masses and rescale
+         the extrapolated values. For now, I only encountered metal mass bigger
+         than gas mass when I messed up with diffusion or enrichment. */
+      /* *metal_mass /= 1.1 * mZ_old / gas_mass; */
+      error(
+          "[%lld, %d] Metal mass bigger than gas mass ! case %d | %e | %e | %e",
+          id, element, callloc, *metal_mass, mZ_old, gas_mass);
+    }
+  }
+  return corrected;
+}
+
+/**
+ * @brief Check for and correct if needed unphysical values for a diffusion 3D
+ * flux.
+ *
+ * @param flux flux: 3 components diffusion flux
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_diffusion_flux(double flux[3]) {
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  int nans = 0;
+  for (int i = 0; i < 3; i++) {
+    if (isnan(flux[i])) {
+      nans += 1;
+      break;
+    }
+  }
+
+  if (nans) {
+    message(
+        "Fixing unphysical diffusion flux:"
+        " %.3e %.3e %.3e",
+        flux[0], flux[1], flux[2]);
+  }
+
+  for (int i = 0; i < 3; i++) {
+    if (isnan(flux[i])) {
+      flux[i] = 0.f;
+    }
+  }
+#endif
+}
+
+/**
+ * @brief Check for, and correct if needed, unphysical total metal mass.
+ *
+ * @param p The #part to check.
+ * @param callloc integer indentifier where this function was called from
+ *
+ * 0: after density compuations (chemistry_end_density()).
+ * 2: after diffusion computations (chemistry_end_force()).
+ * 3: during drift (chemistry_predict_extra()).
+ *
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_total_metal_mass(struct part *restrict p,
+                                            int callloc) {
+  struct chemistry_part_data *chd = &p->chemistry_data;
+
+  /* Verify that the total metal mass does not exceed the part's mass */
+  const float gas_mass = hydro_get_mass(p);
+  const double m_Z_tot = chemistry_get_total_metal_mass_fraction(p) * gas_mass;
+
+  if (m_Z_tot > gas_mass) {
+    /* Rescale the elements */
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      chd->metal_mass[i] /= 1e1 * m_Z_tot / gas_mass;
+    }
+    warning(
+        "[%lld, %i] Total metal mass grew larger than the particle mass! "
+        "Rescaling the element masses. m_Z_tot = %e, m = %e"
+        " m_z_0 = %e, m_z_1 = %e, m_z_2 = %e, m_z_3 = %e, m_z_4 = %e, "
+        "m_z_5 = %e, m_z_6 = %e, m_z_7 = %e, m_z_8 = %e, m_z_9 = %e",
+        p->id, callloc, m_Z_tot, gas_mass, chd->metal_mass[0],
+        chd->metal_mass[1], chd->metal_mass[2], chd->metal_mass[3],
+        chd->metal_mass[4], chd->metal_mass[5], chd->metal_mass[6],
+        chd->metal_mass[7], chd->metal_mass[8], chd->metal_mass[9]);
+  }
+}
+
+/**
+ * @brief Check for, and correct, if needed, unphysical values for a metallicity
+ *
+ * @param Z Pointer to the metallicity
+ * @param callloc Integer indentifier where this function was called from
+ *
+ * 0: in gradient extraplation (Riemann solver for parabolic scheme, hyperblic
+ * fluxes for the hyperbolic scheme).
+ *
+ * @param metal Integer identifier for the metal specie to correct.
+ * @param id Particle id.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_metallicity(double *Z, int callloc, const int metal,
+                                       const long long id) {
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (isinf(*Z) || isnan(*Z))
+    error("[%lld, %d] Got inf/nan metallicity, case %d | %.6e ", id, metal,
+          callloc, *Z);
+#endif
+
+  /* Check that we do not have unphysical values */
+  if (*Z > 1.0) {
+    *Z = 1.0;
+  } else if (*Z < 0.0) {
+    *Z = 0.0;
+  }
+}
+
+/**
+ * @brief Check for and correct if needed unphysical values for a flux in the
+ * sense of hyperbolic conservation laws.
+ *
+ * @param flux Hyperbolic flux: 4 components (metal density +
+ *        metal flux) x 3 dimensions each.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_check_unphysical_hyperbolic_flux(double flux[4][3]) {
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  int nans = 0;
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (isnan(flux[i][j])) {
+        nans += 1;
+        break;
+      }
+    }
+  }
+
+  if (nans) {
+    message(
+        "Fixing unphysical hyperbolic flux:"
+        " %.3e %.3e %.3e | %.3e %.3e %.3e |"
+        " %.3e %.3e %.3e | %.3e %.3e %.3e",
+        flux[0][0], flux[0][1], flux[0][2], flux[1][0], flux[1][1], flux[1][2],
+        flux[2][0], flux[2][1], flux[2][2], flux[3][0], flux[3][1], flux[3][2]);
+  }
+
+  for (int i = 0; i < 4; i++) {
+    for (int j = 0; j < 3; j++) {
+      if (isnan(flux[i][j])) {
+        flux[i][j] = 0.f;
+      }
+    }
+  }
+#endif
+}
+
+#endif /* SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_UNPHYSICAL_H */

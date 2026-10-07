@@ -320,8 +320,13 @@ runner_iact_nonsym_feedback_apply(
 
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-      pj->chemistry_data.metal_mass[i] +=
+      xpj->feedback_data.delta_metal_mass[i] +=
           weight * si->feedback_data.metal_mass_ejected[i];
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      pj->feedback_data.metal_mass[i] +=
+          weight * si->feedback_data.metal_mass_ejected[i];
+#endif
     }
 
     /* delta_p_supernovae is comoving; a_inv gives the physical momentum
