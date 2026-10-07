@@ -36,6 +36,8 @@
 #include "radiation.h"
 #include "units.h"
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+
 /**
  * @brief Total hydrogen mass fraction of this #part, from its composition.
  *
@@ -343,30 +345,6 @@ radiation_get_part_ionized_end_time(const struct part *p,
 }
 
 /**
- * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
- * window has lapsed. Called once per step per particle (feedback_reset_part).
- *
- * With LW/PE propagation off, the band u values are also zeroed: nothing else
- * decays them. With propagation on, its own per-step update does.
- *
- * @param p The particle.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE void
-radiation_reset_part_ISRF_illumination_tag(struct part *p,
-                                           const struct engine *e) {
-  if (!p->feedback_data.is_illuminated_ISRF) return;
-  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
-
-  p->feedback_data.is_illuminated_ISRF = 0;
-
-  if (!e->feedback_props->ISRF_propagation) {
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-      p->feedback_data.isrf_moment[m].u = 0.f;
-  }
-}
-
-/**
  * @brief Id of the star that ionized this #part. Valid only while tagged
  * ionized.
  *
@@ -429,6 +407,34 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
       sigma_HI_cgs / units_general_cgs_conversion_factor(us, dimension_area);
 
   return sigma_HI * ionizing_flux_HI;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+
+/**
+ * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
+ * window has lapsed. Called once per step per particle (feedback_reset_part).
+ *
+ * With LW/PE propagation off, the band u values are also zeroed: nothing else
+ * decays them. With propagation on, its own per-step update does.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                           const struct engine *e) {
+  if (!p->feedback_data.is_illuminated_ISRF) return;
+  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
+
+  p->feedback_data.is_illuminated_ISRF = 0;
+
+  if (!e->feedback_props->ISRF_propagation) {
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      p->feedback_data.isrf_moment[m].u = 0.f;
+  }
 }
 
 /* Warning throttle: the first N clamp events are reported, then one summary
@@ -585,3 +591,5 @@ double radiation_get_part_LW_dissociation_rate_internal(
       "LW photodissociation rate", k_diss, &lw_dissociation_clamp_count,
       &lw_dissociation_clamp_worst);
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */

@@ -28,6 +28,7 @@
 #include "feedback.h"
 #include "io_properties.h"
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
 /**
  * @brief Snapshot converter for #IsIonizedFlags, see
  * #feedback_write_particles.
@@ -47,7 +48,9 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
                                             long long *ret) {
   ret[0] = feedback_get_part_ionized_star_id(p, xp);
 }
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 /**
  * @brief Snapshot converter for #PESpecificEnergy, see
  * #feedback_write_particles.
@@ -314,6 +317,7 @@ INLINE static void convert_part_pending_LW_PHOTON(const struct engine *e,
                                                   float *ret) {
   ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_LW_PHOTON);
 }
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**
  * @brief Specifies which particle fields to read from the ICs.
@@ -326,6 +330,7 @@ INLINE static void convert_part_pending_LW_PHOTON(const struct engine *e,
 INLINE static int feedback_read_particles(struct part *parts,
                                           struct io_props *list) {
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /* Physical, mass-specific quantities: an IC value is taken verbatim. */
 
   list[0] = io_make_input_field("PESpecificEnergy", DOUBLE, 1, OPTIONAL,
@@ -343,6 +348,9 @@ INLINE static int feedback_read_particles(struct part *parts,
                           feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u);
 
   return 3;
+#else
+  return 0;
+#endif
 }
 
 /**
@@ -359,8 +367,9 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 27;
+  int num = 0;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   list[0] = io_make_output_field_convert_part(
       "IsIonizedFlags", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
       convert_part_is_ionized,
@@ -371,21 +380,26 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       convert_part_HII_star_id,
       "Star particle IDs that ionized these gas particles due to HII ionzation "
       "subgrid model?");
+  num += 2;
+#endif
 
-  list[2] = io_make_output_field_convert_part(
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  struct io_props *isrf_list = list + num;
+
+  isrf_list[0] = io_make_output_field_convert_part(
       "PESpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_PE,
       "Local specific PE-band (6-11.2 eV) interstellar radiation field. "
       "Physical, mass-specific: no scale-factor exponent of its own. "
       "DOUBLE: see feedback_isrf_moment_data.u's own doxygen.");
 
-  list[3] = io_make_output_field_convert_part(
+  isrf_list[1] = io_make_output_field_convert_part(
       "LWSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_LW,
       "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
       "radiation field. DOUBLE: see PESpecificEnergies.");
 
-  list[4] = io_make_output_field_convert_part(
+  isrf_list[2] = io_make_output_field_convert_part(
       "PEArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
       parts, xparts, convert_part_dissipation_alpha_PE,
       "Negativity-triggered artificial-dissipation coefficient of the "
@@ -393,12 +407,12 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
       "Only meaningful when ISRF_propagation is on.");
 
-  list[5] = io_make_output_field_convert_part(
+  isrf_list[3] = io_make_output_field_convert_part(
       "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
       parts, xparts, convert_part_dissipation_alpha_LW,
       "Same as PEArtificialDissipationCoefficients, Lyman-Werner band.");
 
-  list[6] = io_make_output_field_convert_part(
+  isrf_list[4] = io_make_output_field_convert_part(
       "PESpecificFluxDivergences", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_PE,
@@ -408,25 +422,25 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "specific energy it is a rate of change of. Only meaningful when "
       "ISRF_propagation is on.");
 
-  list[7] = io_make_output_field_convert_part(
+  isrf_list[5] = io_make_output_field_convert_part(
       "LWSpecificFluxDivergences", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_LW,
       "Same as PESpecificFluxDivergences, Lyman-Werner band.");
 
-  list[8] = io_make_output_field_convert_part(
+  isrf_list[6] = io_make_output_field_convert_part(
       "PESpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
       0.f, parts, xparts, convert_part_specific_flux_PE,
       "Tracked specific flux moment of the PE-band hyperbolic propagation, "
       "mass-specific like PESpecificEnergies. Physical: no scale-factor "
       "exponent of its own. Only meaningful when ISRF_propagation is on.");
 
-  list[9] = io_make_output_field_convert_part(
+  isrf_list[7] = io_make_output_field_convert_part(
       "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
       0.f, parts, xparts, convert_part_specific_flux_LW,
       "Same as PESpecificFluxes, Lyman-Werner band.");
 
-  list[10] = io_make_output_field_convert_part(
+  isrf_list[8] = io_make_output_field_convert_part(
       "PEMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_u_min_since_snapshot_PE,
       "Most negative PESpecificEnergies value the propagation update wrote "
@@ -437,12 +451,12 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "(FOF:dump_catalogue_when_seeding), not only at a real snapshot. "
       "Always 0 unless the code is configured with --enable-debugging-checks.");
 
-  list[11] = io_make_output_field_convert_part(
+  isrf_list[9] = io_make_output_field_convert_part(
       "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_u_min_since_snapshot_LW,
       "Same as PEMinimumSpecificEnergies, Lyman-Werner band.");
 
-  list[12] = io_make_output_field_convert_part(
+  isrf_list[10] = io_make_output_field_convert_part(
       "PECumulativeInjectedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_injected_PE,
@@ -455,13 +469,13 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "always 0 unless the code is configured with "
       "--enable-debugging-checks.");
 
-  list[13] = io_make_output_field_convert_part(
+  isrf_list[11] = io_make_output_field_convert_part(
       "LWCumulativeInjectedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_injected_LW,
       "Same as PECumulativeInjectedSpecificEnergies, Lyman-Werner band.");
 
-  list[14] = io_make_output_field_convert_part(
+  isrf_list[12] = io_make_output_field_convert_part(
       "PECumulativeAbsorbedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_absorbed_PE,
@@ -478,13 +492,13 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "0 when summed over every particle. Always 0 unless the code is "
       "configured with --enable-debugging-checks.");
 
-  list[15] = io_make_output_field_convert_part(
+  isrf_list[13] = io_make_output_field_convert_part(
       "LWCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_absorbed_LW,
       "Same as PECumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
 
-  list[16] = io_make_output_field_convert_part(
+  isrf_list[14] = io_make_output_field_convert_part(
       "HyperbolicPropagationSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, parts,
       xparts, convert_part_c_hyp,
       "Hyperbolic propagation speed the band updates and the "
@@ -499,7 +513,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "meaningful when "
       "ISRF_propagation is on.");
 
-  list[17] = io_make_output_field_convert_part(
+  isrf_list[15] = io_make_output_field_convert_part(
       "LWPhotonSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_u_LW_PHOTON,
       "Lyman-Werner-band photon-number moment, energy-equivalent at a fixed "
@@ -507,21 +521,21 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "RT schemes' PhotonEnergies, which are raw per-group energies, not "
       "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
 
-  list[18] = io_make_output_field_convert_part(
+  isrf_list[16] = io_make_output_field_convert_part(
       "LWPhotonArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS,
       0.f, parts, xparts, convert_part_dissipation_alpha_LW_PHOTON,
       "Same as LWArtificialDissipationCoefficients: the photon-number "
       "moment shares the Lyman-Werner operator, so these two fields always "
       "read numerically identical.");
 
-  list[19] = io_make_output_field_convert_part(
+  isrf_list[17] = io_make_output_field_convert_part(
       "LWPhotonSpecificFluxDivergences", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
       convert_part_div_specific_flux_LW_PHOTON,
       "Same as LWSpecificFluxDivergences, Lyman-Werner-band photon-number "
       "moment.");
 
-  list[20] = io_make_output_field_convert_part(
+  isrf_list[18] = io_make_output_field_convert_part(
       "LWPhotonSpecificFluxes", FLOAT, 3,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
       convert_part_specific_flux_LW_PHOTON,
@@ -529,7 +543,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Distinct from the RT schemes' PhotonFluxes, which are raw per-group "
       "fluxes, not mass-specific and not band-prefixed.");
 
-  list[21] = io_make_output_field_convert_part(
+  isrf_list[19] = io_make_output_field_convert_part(
       "LWPhotonMinimumSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_u_min_since_snapshot_LW_PHOTON,
@@ -537,7 +551,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "moment. Always 0 unless the code is configured with "
       "--enable-debugging-checks.");
 
-  list[22] = io_make_output_field_convert_part(
+  isrf_list[20] = io_make_output_field_convert_part(
       "LWPhotonCumulativeInjectedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_injected_LW_PHOTON,
@@ -545,7 +559,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "photon-number moment. Always 0 unless the code is configured with "
       "--enable-debugging-checks.");
 
-  list[23] = io_make_output_field_convert_part(
+  isrf_list[21] = io_make_output_field_convert_part(
       "LWPhotonCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_cumulative_absorbed_LW_PHOTON,
@@ -553,24 +567,26 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "photon-number moment. Always 0 unless the code is configured with "
       "--enable-debugging-checks.");
 
-  list[24] = io_make_output_field_convert_part(
+  isrf_list[22] = io_make_output_field_convert_part(
       "PEPendingSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_pending_PE,
       "PE-band specific energy owed by neighbours on shorter time steps, "
       "added by the particle's next update. Add it to PESpecificEnergies "
       "for an energy sum at a time when not all particles are synchronised.");
 
-  list[25] = io_make_output_field_convert_part(
+  isrf_list[23] = io_make_output_field_convert_part(
       "LWPendingSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, parts, xparts, convert_part_pending_LW,
       "Same as PEPendingSpecificEnergies, Lyman-Werner band.");
 
-  list[26] = io_make_output_field_convert_part(
+  isrf_list[24] = io_make_output_field_convert_part(
       "LWPhotonPendingSpecificEnergies", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_pending_LW_PHOTON,
       "Same as PEPendingSpecificEnergies, Lyman-Werner-band photon-number "
       "moment.");
+  num += 25;
+#endif
 
   return num;
 }
@@ -588,8 +604,9 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
     const struct spart *sparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 2;
+  int num = 0;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   list[0] = io_make_output_field(
       "FinalHIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
       feedback_data.radiation.final_HII_radius,
@@ -603,6 +620,8 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
       "Ionized gas mass of the star particles' HII region before they die or "
       "were not eligible to form HII regions anymore. Same algorithm's "
       "bookkeeping caveat as the live HIIRegionMasses it is retired from.");
+  num += 2;
+#endif
 
   return num;
 }

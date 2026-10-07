@@ -58,7 +58,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
      applied. */
   /* TODO: Remove the ionization part from here and move it to cooling */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
-      !xp->feedback_data.hit_by_radiation &&
+      !radiation_is_part_kicked_by_pressure(xp) &&
       xp->feedback_data.delta_mass == 0.f &&
       !radiation_is_part_tagged_as_ionized(p, xp))
     return;
@@ -280,16 +280,14 @@ int feedback_is_star_dead(const struct spart *sp) {
 void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
+#ifdef GEAR_SUBGRID_RADIATION_HII
   sp->feedback_data.num_ngbs = 0;
+#endif
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
      rebuild step. It is reset in feedback_will_do_feedback(). */
 
-  sp->feedback_data.grad_rho_star[0] = 0.0;
-  sp->feedback_data.grad_rho_star[1] = 0.0;
-  sp->feedback_data.grad_rho_star[2] = 0.0;
-
-  sp->feedback_data.Z_star = 0.0;
+  radiation_reset_star_pressure_inputs(sp);
 }
 
 /**

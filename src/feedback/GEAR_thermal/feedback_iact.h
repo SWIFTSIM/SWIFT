@@ -71,8 +71,10 @@ runner_iact_nonsym_feedback_density(
   /* The normalization by 1 / h^d is done in feedback.h */
   si->feedback_data.enrichment_weight += mj * wi;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /* Contribution to the number of neighbours */
   si->feedback_data.num_ngbs += 1;
+#endif
 
   /*****************************************/
   /* Radiation */

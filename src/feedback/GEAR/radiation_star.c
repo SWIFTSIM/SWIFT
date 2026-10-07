@@ -31,6 +31,7 @@
 #include "minmax.h"
 #include "radiation.h"
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
 /**
  * @brief Set the #spart's ionizing photon rate, split evenly across the active
  * angular pixels.
@@ -50,6 +51,7 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
     sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
   }
 }
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 /**
  * @brief Zero a #spart's radiation output, for when no radiation table is
@@ -62,14 +64,15 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
  */
 __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
-  sp->feedback_data.radiation.L_bol = 0.f;
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+  radiation_set_star_bolometric_luminosity(sp, 0.f);
+  radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    sp->feedback_data.radiation.L_band[m] = 0.;
-  sp->feedback_data.radiation.teff = 0.f;
+    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)m, 0.);
+  radiation_set_star_teff(sp, 0.f);
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
  * photons emitted over dt_back plus any overdraft carried from the last pass.
@@ -154,3 +157,4 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
   sp->feedback_data.radiation.N_ion_budget_pix[pixel] -= Delta_N_ion;
   return;
 }
+#endif /* GEAR_SUBGRID_RADIATION_HII */

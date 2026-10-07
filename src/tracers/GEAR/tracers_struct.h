@@ -37,12 +37,14 @@ struct tracers_xpart_data {
     float momentum_supernovae;
     float momentum_winds;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
     /*! Cumulative radiation-pressure delta_p per event (scalar sum, not
         vector, same reason as above). Signed on purpose, not |delta_p|:
         max_kick_velocity_radiation below is a magnitude and cannot show a
         sign inversion, so this running sum going negative is the only
         diagnostic that still can. */
     float momentum_radiation;
+#endif
 
     /*! Cumulative thermal energy per unit mass given by the events. It is not
         the change of the specific internal energy (dilution is not counted),
@@ -55,11 +57,13 @@ struct tracers_xpart_data {
     float max_kick_velocity_supernovae;
     float max_kick_velocity_winds;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
     /*! Largest single-event radiation-pressure kick velocity magnitude
         (outflow diagnostic): fabsf of the signed value, so it cannot
         reveal a sign-inverted kick; see momentum_radiation above for
         that. */
     float max_kick_velocity_radiation;
+#endif
 
   } feedback_cumulative;
 };

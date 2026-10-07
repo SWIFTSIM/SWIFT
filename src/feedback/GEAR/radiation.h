@@ -32,6 +32,7 @@
 #include "part.h"
 #include "physical_constants.h"
 #include "radiation_isrf.h"
+#include "radiation_selection.h"
 #include "stellar_evolution_struct.h"
 #include "units.h"
 
@@ -184,6 +185,12 @@ struct radiation_grid_metadata {
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
+/*----------------------------------------------------------------------------*/
+/* HII regions (--with-subgrid-radiation part hii)                            */
+/*----------------------------------------------------------------------------*/
+
+#ifdef GEAR_SUBGRID_RADIATION_HII
+
 double radiation_get_part_number_hydrogen_atoms(
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
@@ -221,8 +228,6 @@ char radiation_is_part_tagged_as_ionized(const struct part *p,
                                          const struct xpart *xpj);
 double radiation_get_part_ionized_end_time(const struct part *p,
                                            const struct xpart *xpj);
-void radiation_reset_part_ISRF_illumination_tag(struct part *p,
-                                                const struct engine *e);
 long long radiation_get_part_ionized_star_id(const struct part *p,
                                              const struct xpart *xpj);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,
@@ -231,6 +236,91 @@ float radiation_get_part_photoionization_rate_coefficient(
     const struct part *p, const struct xpart *xpj);
 double radiation_get_photoionization_rate_coefficient_from_flux_HI(
     const struct unit_system *us, const double ionizing_flux_HI);
+void radiation_set_ionizing_photon_rate(struct spart *sp,
+                                        double dot_N_ion_total,
+                                        int n_HII_pixels);
+void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
+void radiation_resync_ionizing_photon_rate_cache(struct spart *sp);
+void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
+                                        double Delta_N_ion);
+
+/**
+ * @brief Set the mean photon energy above 13.6 eV of a star, in erg.
+ *
+ * @param sp The #spart.
+ * @param E The energy.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_mean_excess_photon_energy_HI(struct spart *sp,
+                                                const float E) {
+  sp->feedback_data.radiation.mean_excess_photon_energy_HI = E;
+}
+
+/**
+ * @brief Mark whether a star runs the HII ionization loop this step.
+ *
+ * @param sp The #spart.
+ * @param flag 1 to run it, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_will_do_HII_ionization(struct spart *sp, const char flag) {
+  sp->feedback_data.will_do_HII_ionization = flag;
+}
+
+#else /* GEAR_SUBGRID_RADIATION_HII */
+
+/* Without the part: no gas is ever tagged, and the star carries no HII
+   state. */
+
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_ionized_internal_energy(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static void
+radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj) {}
+__attribute__((always_inline)) INLINE static char
+radiation_is_part_tagged_as_ionized(const struct part *p,
+                                    const struct xpart *xpj) {
+  return 0;
+}
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_ionized_end_time(const struct part *p,
+                                    const struct xpart *xpj) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static float
+radiation_get_part_excess_photon_energy_HI(const struct part *p,
+                                           const struct xpart *xpj) {
+  return 0.f;
+}
+__attribute__((always_inline)) INLINE static float
+radiation_get_part_photoionization_rate_coefficient(const struct part *p,
+                                                    const struct xpart *xpj) {
+  return 0.f;
+}
+__attribute__((always_inline)) INLINE static void
+radiation_set_ionizing_photon_rate(struct spart *sp, double dot_N_ion_total,
+                                   int n_HII_pixels) {}
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_mean_excess_photon_energy_HI(struct spart *sp,
+                                                const float E) {}
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_will_do_HII_ionization(struct spart *sp, const char flag) {}
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+/*----------------------------------------------------------------------------*/
+/* Local LW/PE radiation field (--with-subgrid-radiation part isrf)           */
+/*----------------------------------------------------------------------------*/
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+
+void radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                                const struct engine *e);
 double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
                                       const struct unit_system *us,
                                       const struct cosmology *cosmo,
@@ -238,20 +328,156 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 double radiation_get_part_LW_dissociation_rate_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p);
-void radiation_set_ionizing_photon_rate(struct spart *sp,
-                                        double dot_N_ion_total,
-                                        int n_HII_pixels);
-void radiation_zero_spart_output(struct spart *sp);
-void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
-void radiation_resync_ionizing_photon_rate_cache(struct spart *sp);
-void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
-                                        double Delta_N_ion);
+
+/**
+ * @brief Set the luminosity of a star in one ISRF moment.
+ *
+ * @param sp The #spart.
+ * @param m The #radiation_isrf_moment.
+ * @param L The luminosity (physical units).
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_band_luminosity(struct spart *sp,
+                                   const enum radiation_isrf_moment m,
+                                   const double L) {
+  sp->feedback_data.radiation.L_band[m] = L;
+}
+
+/**
+ * @brief Luminosity of a star in one ISRF moment (physical units).
+ *
+ * @param sp The #spart.
+ * @param m The #radiation_isrf_moment.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_get_star_band_luminosity(const struct spart *sp,
+                                   const enum radiation_isrf_moment m) {
+  return sp->feedback_data.radiation.L_band[m];
+}
+
+#else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+__attribute__((always_inline)) INLINE static void
+radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                           const struct engine *e) {}
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_isrf_habing(const struct phys_const *phys_const,
+                               const struct unit_system *us,
+                               const struct cosmology *cosmo,
+                               const struct part *p) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_LW_dissociation_rate_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_band_luminosity(struct spart *sp,
+                                   const enum radiation_isrf_moment m,
+                                   const double L) {}
+__attribute__((always_inline)) INLINE static double
+radiation_get_star_band_luminosity(const struct spart *sp,
+                                   const enum radiation_isrf_moment m) {
+  return 0.;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
+
+/*----------------------------------------------------------------------------*/
+/* Radiation pressure (--with-subgrid-radiation part rp)                      */
+/*----------------------------------------------------------------------------*/
+
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
+
 float radiation_get_comoving_gas_column_density_at_star(const struct spart *sp);
 
 float radiation_get_star_physical_radiation_pressure(
     const struct spart *sp, const float Delta_t,
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo);
+
+/**
+ * @brief Set the bolometric luminosity of a star (physical units).
+ *
+ * @param sp The #spart.
+ * @param L The luminosity.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_bolometric_luminosity(struct spart *sp, const double L) {
+  sp->feedback_data.radiation.L_bol = L;
+}
+
+/**
+ * @brief Bolometric luminosity of a star (physical units).
+ *
+ * @param sp The #spart.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_get_star_bolometric_luminosity(const struct spart *sp) {
+  return sp->feedback_data.radiation.L_bol;
+}
+
+/**
+ * @brief Did a gas particle receive radiation pressure momentum this step?
+ *
+ * @param xp The #xpart.
+ */
+__attribute__((always_inline)) INLINE static char
+radiation_is_part_kicked_by_pressure(const struct xpart *xp) {
+  return xp->feedback_data.hit_by_radiation;
+}
+
+/**
+ * @brief Zero the gas density gradient and metallicity a star accumulates in
+ * its density loop for the radiation pressure.
+ *
+ * @param sp The #spart.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_reset_star_pressure_inputs(struct spart *sp) {
+  sp->feedback_data.grad_rho_star[0] = 0.0;
+  sp->feedback_data.grad_rho_star[1] = 0.0;
+  sp->feedback_data.grad_rho_star[2] = 0.0;
+  sp->feedback_data.Z_star = 0.0;
+}
+
+#else /* GEAR_SUBGRID_RADIATION_PRESSURE */
+
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_bolometric_luminosity(struct spart *sp, const double L) {}
+__attribute__((always_inline)) INLINE static double
+radiation_get_star_bolometric_luminosity(const struct spart *sp) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static char
+radiation_is_part_kicked_by_pressure(const struct xpart *xp) {
+  return 0;
+}
+__attribute__((always_inline)) INLINE static void
+radiation_reset_star_pressure_inputs(struct spart *sp) {}
+
+#endif /* GEAR_SUBGRID_RADIATION_PRESSURE */
+
+/*----------------------------------------------------------------------------*/
+/* Star state shared by the parts                                             */
+/*----------------------------------------------------------------------------*/
+
+void radiation_zero_spart_output(struct spart *sp);
+
+/**
+ * @brief Set the photospheric effective temperature of a star (diagnostic).
+ *
+ * @param sp The #spart.
+ * @param teff The temperature (internal units).
+ */
+__attribute__((always_inline)) INLINE static void radiation_set_star_teff(
+    struct spart *sp, const float teff) {
+#ifdef GEAR_SUBGRID_RADIATION
+  sp->feedback_data.radiation.teff = teff;
+#endif
+}
 
 /******************************************************************************/
 /* Functions to deal with integrated data over an IMF. These functions read,

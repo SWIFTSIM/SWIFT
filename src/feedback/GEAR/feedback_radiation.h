@@ -33,6 +33,8 @@
 
 struct engine;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
 void feedback_iact_HII_ionization(
@@ -56,6 +58,19 @@ char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp);
 long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp);
+
+#else /* GEAR_SUBGRID_RADIATION_HII */
+
+/* Without the part: no gas is ever tagged as ionized. */
+__attribute__((always_inline)) INLINE static char
+feedback_is_part_tagged_as_ionized(const struct part *p,
+                                   const struct xpart *xp) {
+  return 0;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 double feedback_get_part_u_PE(const struct part *p);
 double feedback_get_part_u_LW(const struct part *p);
@@ -86,5 +101,18 @@ float feedback_get_part_c_hyp(const struct part *p);
 float feedback_get_part_pending_specific_energy(const struct part *p, int m);
 float feedback_radiation_compute_part_timestep(const struct part *restrict p,
                                                const struct engine *e);
+
+#else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+#include <float.h>
+
+/* Without the part: no ISRF time-step bound. */
+__attribute__((always_inline)) INLINE static float
+feedback_radiation_compute_part_timestep(const struct part *restrict p,
+                                         const struct engine *e) {
+  return FLT_MAX;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 #endif /* SWIFT_FEEDBACK_GEAR_RADIATION_H */

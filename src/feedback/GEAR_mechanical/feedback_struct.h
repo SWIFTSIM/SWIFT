@@ -39,24 +39,33 @@
  */
 struct feedback_part_data {
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Tag to mark the particle as ionized. */
   char is_ionized;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Largest #part.time_bin among this particle and its neighbours in the
       ISRF density loop of this h-iteration. Drives #c_hyp. */
   timebin_t max_ngb_time_bin;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */
   long long star_id;
 
   /*! Simulation time until which this particle stays flagged as ionized. */
   double end_time;
+#endif
 
+#ifdef GEAR_COOLING
   /*! Neutral hydrogen mass fraction cached by the cooling step (grackle_0:
       1.0f). Not read by anything yet: an MPI-consistent consumer must read
       the PREVIOUS pass's value. 0 until first written, not "fully ionized". */
   float neutral_H_frac;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */
   struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
 
@@ -112,6 +121,7 @@ struct feedback_part_data {
       #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
       every star touch. Set to -1 at first init. */
   integertime_t ISRF_reservoir_end_ti;
+#endif
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   /* Trace the metals received from feedback events. This is similar to not
@@ -165,15 +175,21 @@ struct feedback_xpart_data {
   /*! Number of stellar wind events affecting this particle */
   unsigned int number_winds;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Radiation pressure momentum received this step */
   struct feedback_xpart_radiation_data radiation;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! HII ionization payload computed by the owner, local to its rank. The tag
       itself lives in #feedback_part_data. */
   struct feedback_xpart_HII_region_data HII_region;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Indicator if the particle receives momentum from radiation pressure */
   char hit_by_radiation;
+#endif
 };
 
 /**
@@ -194,14 +210,18 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Does the particle needs the HII ionization loop? */
   char will_do_HII_ionization;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Gas density gradient at the star location */
   float grad_rho_star[3];
 
   /*! Gas metallicity at the star location, weighted like #gas_density */
   float Z_star;
+#endif
 
   /*! Parameters to be accumulated in the feedback loops. Used to compute the
      vector weights (isotropic distribution) */

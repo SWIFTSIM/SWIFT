@@ -148,9 +148,19 @@ COMMON_GEAR_SOURCES = \
 COMMON_GEAR_SOURCES += feedback/GEAR/radiation.c feedback/GEAR/radiation_star.c \
     feedback/GEAR/radiation_getters.c feedback/GEAR/radiation_table_io.c
 COMMON_GEAR_SOURCES += feedback/GEAR/feedback_radiation.c \
-    feedback/GEAR/radiation_gas.c feedback/GEAR/radiation_pressure.c \
-    feedback/GEAR/radiation_isrf.c
-COMMON_GEAR_SOURCES += runner_radiation_feedback.c runner_radiation_feedback.h
+    feedback/GEAR/radiation_gas.c
+COMMON_GEAR_SOURCES += runner_radiation_feedback.h
+
+# Parts of the subgrid radiation selected by --with-subgrid-radiation
+if HAVEGEARRADIATIONPRESSURE
+COMMON_GEAR_SOURCES += feedback/GEAR/radiation_pressure.c
+endif
+if HAVEGEARRADIATIONHII
+COMMON_GEAR_SOURCES += runner_radiation_feedback.c
+endif
+if HAVEGEARRADIATIONISRF
+COMMON_GEAR_SOURCES += feedback/GEAR/radiation_isrf.c
+endif
 
 GEAR_FEEDBACK_SOURCES += $(COMMON_GEAR_SOURCES)
 endif
@@ -547,6 +557,7 @@ nobase_noinst_HEADERS += feedback/GEAR/radiation.h feedback/GEAR/radiation_iact.
 nobase_noinst_HEADERS += feedback/GEAR/radiation_struct.h feedback/GEAR/feedback_radiation.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_isrf.h feedback/GEAR/radiation_propagation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_properties.h feedback/GEAR/feedback_radiation_io.h
+nobase_noinst_HEADERS += feedback/GEAR/radiation_selection.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_tracers_struct.h feedback/GEAR/feedback_tracers_common.h
