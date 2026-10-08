@@ -144,6 +144,40 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
 }
 
 /**
+ * @brief Should this particle inject anything as supernovae feedback?
+ *
+ * The supernova branch of runner_iact_nonsym_feedback_apply() runs when the
+ * star has supernova energy to give.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_feedback(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar wind feedback?
+ *
+ * The wind branch of runner_iact_nonsym_feedback_apply() runs when the star
+ * has wind energy to give.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_wind_feedback(const struct spart *sp) {
+  return sp->feedback_data.winds.energy_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar feedback?
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_feedback(const struct spart *sp) {
+  return feedback_should_inject_SN_feedback(sp) ||
+         feedback_should_inject_wind_feedback(sp);
+}
+
+/**
  * @brief Get the comoving SPH gas density at the star position.
  *
  * Only valid after feedback_prepare_feedback() has been called for this step.

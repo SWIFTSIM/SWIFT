@@ -122,7 +122,7 @@ runner_iact_nonsym_feedback_apply(
   double dm_SN = 0.0;
 
   /* Distribute pre-SN */
-  if (e_winds != 0.0 && weight > 0.0) {
+  if (feedback_should_inject_wind_feedback(si) && weight > 0.0) {
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -235,7 +235,7 @@ runner_iact_nonsym_feedback_apply(
   }
 
   /* Distribute SN */
-  if (e_sn != 0.0) {
+  if (feedback_should_inject_SN_feedback(si)) {
 
     /* Mass received by SN */
     /* For the conservation of mass and energy, we perform the calculation only
