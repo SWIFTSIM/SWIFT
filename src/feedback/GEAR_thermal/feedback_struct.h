@@ -56,6 +56,29 @@ struct feedback_xpart_data {
   /*! Momemtum received from a supernovae */
   float delta_p[3];
 
+  /*! Part of delta_p that the winds direct away from the stars, the part that
+     the multiple-event correction rescales (comoving) */
+  float delta_p_directed[3];
+
+  /*! Sum over the events of the squared physical directed momentum */
+  float delta_p_norm_2_sum;
+
+  /*! Sum over the events of the physical kinetic energy that each event would
+     give to the particle alone */
+  float delta_E_kin_events;
+
+  /*! Physical work of the directed momentum against the Hubble flow around
+     each star */
+  float delta_p_hubble_work;
+
+  /*! Number of supernova events received in this timestep (counted only with
+     the multiple-event correction) */
+  unsigned int number_SN;
+
+  /*! Number of stellar wind events received in this timestep (counted only
+     with the multiple-event correction) */
+  unsigned int number_winds;
+
   /*! Indicator if the particle receives energy from SN specifically */
   char hit_by_SN;
 

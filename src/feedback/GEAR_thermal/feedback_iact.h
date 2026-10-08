@@ -122,7 +122,7 @@ runner_iact_nonsym_feedback_apply(
   double dm_SN = 0.0;
 
   /* Distribute pre-SN */
-  if (e_winds != 0.0 && weight > 0.0) {
+  if (feedback_should_inject_wind_feedback(si) && weight > 0.0) {
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -230,12 +230,17 @@ runner_iact_nonsym_feedback_apply(
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_gas_frame);
       feedback_tracers_event_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
 
+      /* Inputs of the multiple-event correction */
+      if (fb_props->enable_multiple_SN_momentum_correction_factor)
+        feedback_accumulate_wind_for_multiple_sn_events(
+            xpj, si, dx, r2, weight, mj, dm_SW, new_mass, cosmo);
+
       xpj->feedback_data.hit_by_winds = 1;
     }
   }
 
   /* Distribute SN */
-  if (e_sn != 0.0) {
+  if (feedback_should_inject_SN_feedback(si)) {
 
     /* Mass received by SN */
     /* For the conservation of mass and energy, we perform the calculation only
@@ -261,6 +266,11 @@ runner_iact_nonsym_feedback_apply(
       delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
       xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
+
+    /* Inputs of the multiple-event correction */
+    if (fb_props->enable_multiple_SN_momentum_correction_factor)
+      feedback_accumulate_SN_for_multiple_sn_events(xpj, si, mj, dm_SN,
+                                                    mj + dm_SN, cosmo, 1);
 
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {

@@ -35,6 +35,26 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 void feedback_end_density(struct part *p, struct xpart *xp);
 void feedback_reset_part(struct part *p, struct xpart *xp);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
+int feedback_should_inject_SN_feedback(const struct spart *sp);
+int feedback_should_inject_wind_feedback(const struct spart *sp);
+int feedback_should_inject_feedback(const struct spart *sp);
+float feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo);
+void feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+    struct xpart *xp, const float mj, const float new_mass,
+    const float v_pec[3], const float v_hubble[3], const double dp[3],
+    const double dp_ejecta[3]);
+void feedback_accumulate_wind_for_multiple_sn_events(
+    struct xpart *xp, const struct spart *si, const float dx[3], const float r2,
+    const double weight, const float mj, const double dm_SW,
+    const double new_mass, const struct cosmology *cosmo);
+void feedback_accumulate_SN_for_multiple_sn_events(
+    struct xpart *xp, const struct spart *si, const float mj,
+    const double dm_SN, const double new_mass, const struct cosmology *cosmo,
+    const int is_event);
+float feedback_compute_residual_internal_energy_for_multiple_sn_events(
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float old_mass, const float new_mass, const float f_corr);
 void feedback_init_spart(struct spart *sp);
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props);
