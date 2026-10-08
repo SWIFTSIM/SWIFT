@@ -38,6 +38,15 @@ int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
 int feedback_should_inject_wind_feedback(const struct spart *sp);
 int feedback_should_inject_feedback(const struct spart *sp);
+float feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo);
+void feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+    struct xpart *xp, const float mj, const float new_mass,
+    const float v_pec[3], const float v_hubble[3], const double dp[3],
+    const double dp_ejecta[3]);
+float feedback_compute_residual_internal_energy_for_multiple_sn_events(
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float old_mass, const float new_mass, const float f_corr);
 void feedback_init_spart(struct spart *sp);
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props);

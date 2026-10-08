@@ -230,6 +230,25 @@ runner_iact_nonsym_feedback_apply(
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_gas_frame);
       feedback_tracers_event_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
 
+      /* Inputs of the multiple-event correction: only the momentum directed
+         away from the star is rescaled, the ejecta keep their momentum */
+      if (fb_props->enable_multiple_SN_momentum_correction_factor) {
+        const float v_j_hubble[3] = {-a_dot * dx[0], -a_dot * dx[1],
+                                     -a_dot * dx[2]};
+        double dp_ejecta[3];
+        double norm2_dp = 0.0;
+        for (int i = 0; i < 3; i++) {
+          dp_ejecta[i] = dm_SW * v_i_p[i];
+          norm2_dp += delta_p_star_frame[i] * delta_p_star_frame[i];
+          xpj->feedback_data.delta_p_directed[i] += delta_p_star_frame[i] * a;
+        }
+        feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+            xpj, mj, new_mass, v_j_pec, v_j_hubble, delta_p_star_frame,
+            dp_ejecta);
+        xpj->feedback_data.delta_p_norm_2_sum += norm2_dp;
+        xpj->feedback_data.number_winds += 1;
+      }
+
       xpj->feedback_data.hit_by_winds = 1;
     }
   }
@@ -260,6 +279,22 @@ runner_iact_nonsym_feedback_apply(
     for (int i = 0; i < 3; i++) {
       delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
       xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
+    }
+
+    /* Inputs of the multiple-event correction: the ejecta carry no directed
+       momentum here */
+    if (fb_props->enable_multiple_SN_momentum_correction_factor) {
+      const float a_inv = cosmo->a_inv;
+      const float v_j_pec[3] = {xpj->v_full[0] * a_inv, xpj->v_full[1] * a_inv,
+                                xpj->v_full[2] * a_inv};
+      const float v_zero[3] = {0.f, 0.f, 0.f};
+      const double dp_zero[3] = {0.0, 0.0, 0.0};
+      const double dp_ejecta[3] = {dm_SN * si->v[0] * a_inv,
+                                   dm_SN * si->v[1] * a_inv,
+                                   dm_SN * si->v[2] * a_inv};
+      feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+          xpj, mj, new_mass, v_j_pec, v_zero, dp_zero, dp_ejecta);
+      xpj->feedback_data.number_SN += 1;
     }
 
     /* Add the metals */
