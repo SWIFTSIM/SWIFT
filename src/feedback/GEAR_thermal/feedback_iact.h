@@ -141,7 +141,7 @@ runner_iact_nonsym_feedback_apply(
                                        cooling, ti_current);
 
   /* Distribute pre-SN */
-  if (e_winds != 0.0 && weight > 0.0) {
+  if (feedback_should_inject_wind_feedback(si) && weight > 0.0) {
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -255,7 +255,8 @@ runner_iact_nonsym_feedback_apply(
   /* Distribute SN. The mass is a condition in its own right: with zero SN
      energy the ejected mass, already removed from the star, must still reach
      the gas. */
-  if (e_sn != 0.0 || si->feedback_data.supernovae.mass_ejected != 0.0) {
+  if (feedback_should_inject_SN_feedback(si) ||
+      feedback_should_inject_SN_mass_only(si)) {
 
     /* Mass received by SN */
     /* For the conservation of mass and energy, we perform the calculation only
@@ -305,7 +306,8 @@ runner_iact_nonsym_feedback_apply(
 
     /* Flag the thermal event for cooling: it tracks the injected energy,
        not the mass. */
-    if (e_sn != 0.0) xpj->feedback_data.hit_by_SN = 1;
+    if (feedback_should_inject_SN_feedback(si))
+      xpj->feedback_data.hit_by_SN = 1;
   }
 
   /* Must not depend on hit_by_SN: mass can arrive with no energy. */
