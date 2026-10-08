@@ -63,6 +63,18 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
 
   if (syncredist) {
 
+    /* Our tags are the index of the chunk being sent. We send at most
+     * INT_MAX / sizeofparts particles per chunk and counts are ints, so we
+     * can never need more than sizeofparts + 1 chunks. Note that this is
+     * essentially never going to trigger but its covered by this check anyway.
+     */
+    if ((int)sizeofparts + 1 > cell_max_tag) {
+      error(
+          "Particles are too large (%zu bytes) to tag the synchronous "
+          "redistribute by chunk: the largest usable tag is %d.",
+          sizeofparts, cell_max_tag);
+    }
+
     /* Slow synchronous redistribute,. */
     size_t offset_send = 0, offset_recv = 0;
 
@@ -560,6 +572,15 @@ void engine_redistribute_relink_mapper(void *map_data, int num_elements,
 void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
+  /* Our tags are the rank of the sender. Probably always safe but checking
+   * costs us nothing. */
+  if (e->nr_nodes - 1 > cell_max_tag) {
+    error(
+        "Too many ranks (%d) to tag the redistribute by sender: the largest "
+        "usable tag is %d.",
+        e->nr_nodes, cell_max_tag);
+  }
+
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
