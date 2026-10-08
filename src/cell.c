@@ -51,6 +51,7 @@
 #include "error.h"
 #include "multipole.h"
 #include "multipole_accept.h"
+#include "runner_radiation_feedback.h"
 #include "space.h"
 #include "tools.h"
 
@@ -643,6 +644,8 @@ void cell_sanitize(struct cell *c, int treated) {
   float h_max_active = 0.f;
   float stars_h_max = 0.f;
   float stars_h_max_active = 0.f;
+  float stars_h_hii_max = 0.f;
+  float stars_h_hii_max_active = 0.f;
 
   /* Treat cells will <1000 particles */
   if (count < 1000 && !treated) {
@@ -661,6 +664,8 @@ void cell_sanitize(struct cell *c, int treated) {
         sparts[i].h = upper_h_max;
         sparts[i].depth_h = c->depth;
       }
+      if (sparts[i].h_hii == 0.f || sparts[i].h_hii > upper_h_max)
+        sparts[i].h_hii = upper_h_max;
     }
   }
 
@@ -677,6 +682,9 @@ void cell_sanitize(struct cell *c, int treated) {
         stars_h_max = max(stars_h_max, c->progeny[k]->stars.h_max);
         stars_h_max_active =
             max(stars_h_max_active, c->progeny[k]->stars.h_max_active);
+        stars_h_hii_max = max(stars_h_hii_max, c->progeny[k]->stars.h_hii_max);
+        stars_h_hii_max_active =
+            max(stars_h_hii_max_active, c->progeny[k]->stars.h_hii_max_active);
       }
     }
   } else {
@@ -688,6 +696,10 @@ void cell_sanitize(struct cell *c, int treated) {
       stars_h_max = max(stars_h_max, sparts[i].h);
     for (int i = 0; i < scount; ++i)
       stars_h_max_active = max(stars_h_max_active, sparts[i].h);
+    for (int i = 0; i < scount; ++i)
+      stars_h_hii_max = max(stars_h_hii_max, sparts[i].h_hii);
+    for (int i = 0; i < scount; ++i)
+      stars_h_hii_max_active = max(stars_h_hii_max_active, sparts[i].h_hii);
   }
 
   /* Record the change */
@@ -695,6 +707,8 @@ void cell_sanitize(struct cell *c, int treated) {
   c->hydro.h_max_active = h_max_active;
   c->stars.h_max = stars_h_max;
   c->stars.h_max_active = stars_h_max_active;
+  c->stars.h_hii_max = stars_h_hii_max;
+  c->stars.h_hii_max_active = stars_h_hii_max_active;
 }
 
 /**
@@ -719,6 +733,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->stars.prepare3 = NULL;
   c->stars.prepare4 = NULL;
   c->stars.feedback = NULL;
+  c->stars.radiation_in = NULL;
+  c->stars.radiation_out = NULL;
   c->sinks.swallow = NULL;
   c->sinks.density = NULL;
   c->sinks.do_sink_swallow = NULL;
@@ -1303,12 +1319,15 @@ void cell_clear_limiter_flags(struct cell *c, void *data) {
  * tree.
  * @param with_hydro Are we running with hydrodynamics on?
  * @param with_grav Are we running with gravity on?
+ * @param with_radiation_subgrid Are we running with subgrid radiation on?
  */
 void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
-                    const int with_grav) {
+                    const int with_grav, const int with_radiation_subgrid) {
   /* Are we in a cell which is either the hydro or gravity super? */
-  if (super == NULL && ((with_hydro && c->hydro.super != NULL) ||
-                        (with_grav && c->grav.super != NULL)))
+  if (super == NULL &&
+      ((with_hydro && c->hydro.super != NULL) ||
+       (with_grav && c->grav.super != NULL) ||
+       (with_radiation_subgrid && c->stars.radiation_level != NULL)))
     super = c;
 
   /* Set the super-cell */
@@ -1318,7 +1337,8 @@ void cell_set_super(struct cell *c, struct cell *super, const int with_hydro,
   if (c->split)
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        cell_set_super(c->progeny[k], super, with_hydro, with_grav);
+        cell_set_super(c->progeny[k], super, with_hydro, with_grav,
+                       with_radiation_subgrid);
 }
 
 /**
@@ -1340,6 +1360,54 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
         cell_set_super_hydro(c->progeny[k], super_hydro);
+}
+
+/**
+ * @brief Set the radiation subgrid super-cell pointers for all cells in a
+ * hierarchy.
+ *
+ * @param c The top-level #cell to play with.
+ * @param super_hydro Pointer to the deepest cell with tasks in this part of
+ * the tree.
+ */
+void cell_set_super_radiation_subgrid(struct cell *c,
+                                      struct cell *super_radiation) {
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_radiation == NULL && c->stars.radiation_in != NULL)
+    super_radiation = c;
+
+  /* Set the super-cell */
+  c->stars.radiation_level = super_radiation;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The flat radiation_in walk in runner_dosub_stars_hii_ionization_feedback
+   * only ever reads radiation_level's OWN link list -- it never descends
+   * into radiation_level's children to pick up links attached deeper. So
+   * every cell that holds a radiation_in link must BE its own
+   * radiation_level; if some ANCESTOR of c was found first (has a link of
+   * its own, e.g. an unsplit pair with a neighbour whose hydro.super sits
+   * at a coarser depth than c's) while c ALSO holds a link (e.g. from c's
+   * own self-splitting or a matching-depth neighbour pair), that ancestor
+   * wins by the "topmost found, propagated down" rule above -- and c's link
+   * becomes permanently invisible to the flat walk. This is a silent,
+   * directional search-completeness bug, not a crash. Asymmetric radiation
+   * pairs (scheduler_splittask_radiation_subgrid()) are the actual fix: each
+   * side of a pair now rests at its OWN radiation_level instead of being
+   * forced to match a coarser neighbour, which removes the trigger for this
+   * mismatch by construction. Kept as a live regression tripwire. */
+  if (c->stars.radiation_in != NULL && c->stars.radiation_level != c)
+    error(
+        "orphaned radiation_in link: cell %lld has its own radiation_in "
+        "link but radiation_level=%lld (a coarser ancestor) -- this link "
+        "is invisible to the flat radiation_in walk from radiation_level.",
+        c->cellID, c->stars.radiation_level->cellID);
+#endif
+
+  /* Recurse */
+  if (c->split)
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL)
+        cell_set_super_radiation_subgrid(c->progeny[k], super_radiation);
 }
 
 /**
@@ -1377,6 +1445,10 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
   const int with_hydro = (e->policy & engine_policy_hydro);
   const int with_grav = (e->policy & engine_policy_self_gravity) ||
                         (e->policy & engine_policy_external_gravity);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_feedback = (e->policy & engine_policy_feedback);
+  const int with_radiation_subgrid = feedback_radiation_subgrid_needed(
+      with_stars, with_feedback, e->feedback_props);
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
@@ -1389,11 +1461,14 @@ void cell_set_super_mapper(void *map_data, int num_elements, void *extra_data) {
     /* Super-pointer for hydro */
     if (with_hydro) cell_set_super_hydro(c, NULL);
 
+    /* Super-pointer for radiation subgrid */
+    if (with_radiation_subgrid) cell_set_super_radiation_subgrid(c, NULL);
+
     /* Super-pointer for gravity */
     if (with_grav) cell_set_super_gravity(c, NULL);
 
     /* Super-pointer for common operations */
-    cell_set_super(c, NULL, with_hydro, with_grav);
+    cell_set_super(c, NULL, with_hydro, with_grav, with_radiation_subgrid);
   }
 }
 

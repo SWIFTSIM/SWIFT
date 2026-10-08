@@ -1,0 +1,102 @@
+# Intro
+One fixed star in a static, periodic glass box of gas in two phases in
+pressure balance: `x < L/2` cold (500 K, `n`, particle mass `m`), `x >= L/2`
+hot (8000 K, `n/16`, `m/16`). Both phases share the glass positions and
+hence the smoothing length; the sound speed differs by 4, so the CFL time
+steps of the two phases sit two time bins apart. The star sits two
+interparticle spacings inside the hot phase, its kernel reaching both
+phases, on a step longer than its hot neighbours' step.
+
+The fixture exercises the ISRF dose reservoir and the hyperbolic
+propagation across a real time-bin hierarchy. With no dust (`Z = 0`) and one
+fixed `c_hyp`, the stored energy grows as `(c_hyp/c) L t`, so
+`(c/c_hyp) sum m u` tracks `L t` up to the dose still held in the
+reservoirs and in the gas steps in flight.
+
+The gated quantity is that lag itself. It is bounded by the dose the three
+hand-off stages between the star and the gas can hold, one cadence each, so
+the window follows from the cadences the run actually ran at, not from a
+chosen number; `lag_window` in the check states the derivation. The lag is
+quantised in whole particle steps, which a fitted slope reads as a drift
+and reports as a spurious violation even on a single-bin control, so the
+slope is printed as a diagnostic and compared against nothing.
+
+The single-bin control attains that upper edge exactly, by construction.
+Every cadence in it is equal, so each of the three hand-off stages is
+always either exactly full or exactly empty, and the measured lag sits on
+the window's upper edge to within the float32 rounding of the energy sum.
+The window is therefore not widened to leave the control any headroom: a
+failure on the single-bin leg reports that the step alignment changed, not
+that energy conservation broke. The hierarchy run, whose cadences differ
+between the stages, sits well inside the same window.
+
+**There is no steady-state comparison, by design.** The box is not
+hydrostatic: the hot phase densifies over the run in any time-step
+configuration, so comparing radiation fields between a hierarchy run and a
+single-bin run measures hydrodynamic drift, not the radiation field. Such a
+comparison needs a hydrostatic fixture.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+
+The same fixture also carries a cadence sweep,
+`runs="cadence_base cadence_half cadence_quarter"`. The three share an end
+time and differ only in `dt_max`, which halves twice, so every gas
+particle and the star sit on one shared bin of `dt`, `dt/2` and `dt/4` and
+the number of injection events over the run changes by a factor four while
+nothing else does. The lag is then read in units of the run's own step.
+The hand-off pipeline is a fixed number of steps deep, so that number must
+come out the same at every cadence; a dose lost per lump or per event
+would not.
+
+# Run
+```
+./run.sh
+```
+`run.sh` runs `conservation_hierarchy` and `conservation_single_bin` into
+their own directories. Both set `Z = 0` and run `ISRF_c_hyp_scheme: fixed_fraction` at
+5 km/s, so that `c/c_hyp` is one number for the whole box.
+The single-bin run sets `dt_max` below every CFL step of the box, so all gas
+and the star share one bin.
+
+Environment overrides: `n_threads`, `swift` (binary path), `level`
+(`N = (2**level)**3`), `gas_density` (cold phase, atom/cm^3), `gas_mass`
+(cold phase, Msun), `T_cold` (K, below 625 K so that the hot phase stays
+under 1e4 K), `star_mass`, `c_hyp_fraction` (`c_hyp` over `c`), `dt_fine`
+(`dt_max` of the single-bin run, slightly above the wanted power-of-two bin,
+which SWIFT floors a step to), and `runs`. At a finer `level`, divide `gas_mass` by 8
+and `dt_fine` by 2 per level.
+
+# Checking
+```
+python3 isrf_timestep_hierarchy_injection_check.py [--dir runs_directory]
+```
+`run.sh` runs it at the end of a `conservation_*` sweep. Both checks exit
+nonzero if any gate fails, and a non-finite value fails its gate. Gated,
+per run: partial and all-gas update steps in the hierarchy run with the
+cold phase on at least twice the hot phase's step, all-gas updates on
+every step in the single-bin run, the star step longer than the shortest
+gas step in the hierarchy run, fixed `c_hyp dt/h` at most
+`ISRF_c_hyp_margin` in each phase, and zero metallicity. Gated per run and
+per band: a finite, positive and constant stellar luminosity, and the lag
+`L t - (c/c_hyp) sum m u` inside its derived window at every snapshot
+after the first. Reported without a bar: the fitted slope of
+`(c/c_hyp) sum m u / L` against time with its standard error, and the lag
+as a fraction of the window and of the run's longest all-gas update
+interval.
+
+```
+python3 isrf_injection_cadence_independence_check.py [--dir runs_directory]
+```
+`run.sh` runs it at the end of a `cadence_*` sweep. Gated, per run: one
+shared time bin on every step, zero metallicity, a finite positive and
+constant stellar luminosity, a `used_parameters.yml` matching the
+reference run outside `dt_max`, and the lag inside `[-1, 3]` of the run's
+own steps. Gated across the sweep: each run's lag floor and ceiling
+against the coarsest run's, within the two runs' float32 allowances.
+Reported without a bar: the budget still in flight when the run stops, and
+the bounds the sweep puts on a dropped fraction per lump and on a fixed
+loss per event.

@@ -43,6 +43,7 @@
 #include "dimension.h"
 #include "engine.h"
 #include "error.h"
+#include "feedback_io.h"
 #include "gravity_io.h"
 #include "gravity_properties.h"
 #include "hydro_io.h"
@@ -104,9 +105,18 @@ void read_array_serial(hid_t grp, const struct io_props props, size_t N,
       error("Compulsory data set '%s' not present in the file.", props.name);
     } else {
 
-      /* Create a single instance of the default value */
-      float *temp = (float *)malloc(copySize);
-      for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
+      /* Create a single instance of the default value, at the field's own
+       * width. */
+      void *temp = malloc(copySize);
+      if (props.type == DOUBLE) {
+        double *temp_d = (double *)temp;
+        for (int i = 0; i < props.dimension; ++i)
+          temp_d[i] = props.default_value;
+      } else {
+        float *temp_f = (float *)temp;
+        for (int i = 0; i < props.dimension; ++i)
+          temp_f[i] = props.default_value;
+      }
 
       /* Copy it everywhere in the particle array */
       for (size_t i = 0; i < N; ++i)
@@ -840,6 +850,7 @@ void read_ic_serial(char *fileName, const struct unit_system *internal_units,
               num_fields += mhd_read_particles(*parts, list + num_fields);
               num_fields += chemistry_read_particles(*parts, list + num_fields);
               num_fields += rt_read_particles(*parts, list + num_fields);
+              num_fields += feedback_read_particles(*parts, list + num_fields);
             }
             break;
 
@@ -876,6 +887,8 @@ void read_ic_serial(char *fileName, const struct unit_system *internal_units,
             if (with_stars) {
               Nparticles = *Nstars;
               stars_read_particles(*sparts, list, &num_fields);
+              num_fields +=
+                  feedback_read_sparticles(*sparts, list + num_fields);
               num_fields +=
                   star_formation_read_particles(*sparts, list + num_fields);
               num_fields += rt_read_stars(*sparts, list + num_fields);

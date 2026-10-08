@@ -20,6 +20,8 @@
 #define SWIFT_GEAR_FEEDBACK_IACT_H
 
 /* Local includes */
+#include "../GEAR/radiation_iact.h"
+#include "../GEAR/radiation_propagation_iact.h"
 #include "feedback.h"
 #include "feedback_tracers.h"
 #include "hydro.h"
@@ -42,13 +44,13 @@
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {
+runner_iact_nonsym_feedback_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, const struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct hydro_props *hydro_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
 
   /* Get the gas mass. */
   const float mj = hydro_get_mass(pj);
@@ -68,6 +70,15 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 
   /* The normalization by 1 / h^d is done in feedback.h */
   si->feedback_data.enrichment_weight += mj * wi;
+
+  /* Contribution to the number of neighbours */
+  si->feedback_data.num_ngbs += 1;
+
+  /*****************************************/
+  /* Radiation */
+  radiation_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                         fb_props, hydro_props, phys_const, us,
+                                         cooling, ti_current);
 }
 
 /**
@@ -81,12 +92,16 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
  * @param si First (star) particle (not updated).
  * @param pj Second (gas) particle.
  * @param xpj Extra particle data
+ * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
- * @param constants The physical constants (in internal units).
+ * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param time_base The time base used to compute integer times.
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
@@ -94,7 +109,9 @@ runner_iact_nonsym_feedback_apply(
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, const integertime_t ti_current) {
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current, const double time_base,
+    const int with_cosmology) {
 
   const double e_sn = si->feedback_data.supernovae.energy_ejected;
   const double e_winds = si->feedback_data.winds.energy_ejected;
@@ -120,6 +137,13 @@ runner_iact_nonsym_feedback_apply(
   double new_mass = mj;
   double dm_SW = 0.0;
   double dm_SN = 0.0;
+
+  /*****************************************/
+  /* Radiation */
+  /* TODO: Add hit by radiation */
+  radiation_iact_nonsym_feedback_apply(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                       hydro_props, fb_props, phys_const, us,
+                                       cooling, ti_current);
 
   /* Distribute pre-SN */
   if (feedback_should_inject_wind_feedback(si) && weight > 0.0) {
@@ -239,8 +263,11 @@ runner_iact_nonsym_feedback_apply(
     }
   }
 
-  /* Distribute SN */
-  if (feedback_should_inject_SN_feedback(si)) {
+  /* Distribute SN. The mass is a condition in its own right: with zero SN
+     energy the ejected mass, already removed from the star, must still reach
+     the gas. */
+  if (feedback_should_inject_SN_feedback(si) ||
+      feedback_should_inject_SN_mass_only(si)) {
 
     /* Mass received by SN */
     /* For the conservation of mass and energy, we perform the calculation only
@@ -269,8 +296,9 @@ runner_iact_nonsym_feedback_apply(
 
     /* Inputs of the multiple-event correction */
     if (fb_props->enable_multiple_SN_momentum_correction_factor)
-      feedback_accumulate_SN_for_multiple_sn_events(xpj, si, mj, dm_SN,
-                                                    mj + dm_SN, cosmo, 1);
+      feedback_accumulate_SN_for_multiple_sn_events(
+          xpj, si, mj, dm_SN, mj + dm_SN, cosmo,
+          feedback_should_inject_SN_feedback(si));
 
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
@@ -293,14 +321,14 @@ runner_iact_nonsym_feedback_apply(
         delta_p_mag_supernovae_comoving * cosmo->a_inv;
     feedback_tracers_event_SN(xpj, delta_p_mag_supernovae, dE_th, new_mass);
 
-    /* Set the indication of SN event for cooling*/
-    xpj->feedback_data.hit_by_SN = 1;
+    /* Flag the thermal event for cooling: it tracks the injected energy,
+       not the mass. */
+    if (feedback_should_inject_SN_feedback(si))
+      xpj->feedback_data.hit_by_SN = 1;
   }
 
-  if (xpj->feedback_data.hit_by_winds || xpj->feedback_data.hit_by_SN) {
-    /* Update the mass of the gas particle */
-    xpj->feedback_data.delta_mass += dm_SW + dm_SN;
-  }
+  /* Must not depend on hit_by_SN: mass can arrive with no energy. */
+  xpj->feedback_data.delta_mass += dm_SW + dm_SN;
 
   /* Impose maximal viscosity (only for SN) */
   if (xpj->feedback_data.hit_by_SN) {

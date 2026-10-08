@@ -1,6 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
  * Copyright (c) 2019 Loic Hausammann (loic.hausammann@epfl.ch)
+ * Copyright (c) 2026 Darwin Roduit (darwin.roduit@epfl.ch)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -24,9 +25,12 @@
 #include "../../feedback_struct.h"
 #include "exp10.h"
 #include "feedback_common.h"
+#include "feedback_struct.h"
 #include "hdf5_functions.h"
 #include "initial_mass_function.h"
 #include "lifetime.h"
+#include "minmax.h"
+#include "radiation.h"
 #include "random.h"
 #include "stellar_evolution_struct.h"
 #include "stellar_wind.h"
@@ -47,13 +51,18 @@
  * @param us The internal unit system.
  * @param params The parsed parameters.
  * @param cosmo The cosmological model.
+ * @param with_stellar_wind_feedback Are we running with stellar wind
+ * feedback?
+ * @param with_radiation Are we running with photoionization and/or
+ * radiation pressure?
  */
 void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct phys_const *phys_const,
                                   const struct unit_system *us,
                                   struct swift_params *params,
                                   const struct cosmology *cosmo,
-                                  const char with_stellar_wind_feedback) {
+                                  const char with_stellar_wind_feedback,
+                                  const char with_radiation) {
 
   /* Read the list of elements */
   stellar_evolution_read_elements(sm, params);
@@ -78,6 +87,17 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   /* Initialize the supernovae II model */
   supernovae_ii_init(&sm->snii, params, sm, us);
 
+  /* Initialize the radiation model if needed. The radiation table is
+   * scheme-specific and not guaranteed to exist for a non-radiation run
+   * (e.g. StellarWindInjection, StellarWindBubble), so skip opening it
+   * entirely when neither photoionization nor radiation pressure is
+   * enabled. */
+  if (with_radiation) {
+    radiation_init(&sm->rad, params, sm, us, phys_const);
+  } else {
+    radiation_zero_pointers(&sm->rad);
+  }
+
   /* Initialize the stellar wind model if needed */
   if (with_stellar_wind_feedback) {
     stellar_wind_init(&sm->sw, params, sm, us);
@@ -86,7 +106,6 @@ void stellar_evolution_props_init(struct stellar_model *sm,
   }
 
   /* Initialize the minimal gravity mass for the stars */
-  /* const float default_star_minimal_gravity_mass_Msun = 1e-1; */
   sm->discrete_star_minimal_gravity_mass = parser_get_opt_param_float(
       params, "GEARFeedback:discrete_star_minimal_gravity_mass_Msun",
       DEFAULT_STAR_MINIMAL_GRAVITY_MASS_MSUN);
@@ -120,6 +139,7 @@ void stellar_model_print(const struct stellar_model *sm) {
   lifetime_print(&sm->lifetime);
   supernovae_ia_print(&sm->snia);
   supernovae_ii_print(&sm->snii);
+  radiation_print(&sm->rad);
 }
 
 /**
@@ -222,8 +242,8 @@ void stellar_evolution_read_elements(struct stellar_model *sm,
 /**
  * @brief Read the solar abundances.
  *
- * @param parameter_file The parsed parameter file.
- * @param data The properties to initialise.
+ * @param sm The #stellar_model.
+ * @param params The #swift_params.
  */
 void stellar_evolution_read_solar_abundances(struct stellar_model *sm,
                                              struct swift_params *params) {
@@ -309,13 +329,10 @@ void stellar_evolution_sn_apply_ejected_mass(struct spart *restrict sp,
     if (null_mass) {
       message("Star %lld (m_star = %e, m_ej = %e) completely exploded!", sp->id,
               sp->mass, sp->feedback_data.supernovae.mass_ejected);
-      /* If the star ejects all its mass (for very massive stars), give it a
-         zero mass so that we know it has exploded.
-         We do not remove the star from the simulation to keep track of its
-         properties, e.g. to check the IMF sampling (with sinks).
-
-         Bug fix (28.04.2024): The mass of the star should not be set to
-         0 because of gravity. So, we give some minimal value. */
+      /* The star ejected all its mass. Keep it in the simulation (not
+         removed) to preserve its properties, e.g. for IMF sampling checks
+         with sinks, but give it a small nonzero mass: the gravity solver
+         cannot handle exactly 0. */
       sp->mass = sm->discrete_star_minimal_gravity_mass;
 
       /* If somehow the star has a negative mass, we have a problem. */
@@ -612,7 +629,7 @@ void stellar_evolution_compute_discrete_feedback_properties(
  * today's validated default). The other schemes are point-estimate
  * compromises between the two. All schemes agree when the window has zero
  * width (single stars, or a continuous-IMF particle clamped at the
- * discrete-mass split, see f493e9158).
+ * discrete-mass split).
  *
  * @param sm The #stellar_model (only used for the IMF, needed by
  * mass_sup_scheme_imf_weighted).
@@ -687,11 +704,13 @@ void stellar_evolution_compute_preSN_properties(
   const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
       sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
-  /* Get the log of the metallicity normalised by solar metallicity */
+  /* Data/SW is now indexed by absolute Z, not Z/Zsun; floor as
+   * radiation_get_log_metallicity() does to avoid log10(0). */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  const float log_metallicity =
-      log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
+  const double metallicity_floored =
+      max((double)metallicity, RADIATION_LOG_FLOOR_CGS);
+  const float log_metallicity = (float)log10(metallicity_floored);
   const float log_m = log10(m_sup);
 
   /* If the star particle is single_star the calculation is straight forward */
@@ -796,16 +815,18 @@ void stellar_evolution_compute_preSN_properties(
  * @brief Evolve an individual star represented by a #spart, with pre-supernovae
  * and supernovae feedback.
  *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * Uses Myr/solar-mass units internally to avoid numerical errors.
  *
  * Note: This function treats the case of single/individual stars.
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_wind_feedback Enable stellar wind feedback?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -852,11 +873,15 @@ void stellar_evolution_evolve_individual_star(
     return;
   }
 
-  /* Pre-SN feedback */
-  if (with_stellar_wind_feedback) {
-    stellar_evolution_compute_preSN_feedback_individual_star(
-        sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
-  }
+  /* Pre-SN feedback (radiation unconditionally, stellar winds gated on
+     with_stellar_wind_feedback). TODO: this function's name still says
+     "preSN feedback" even though it now computes radiation too; consider
+     renaming to stellar_evolution_compute_continuous_feedback_individual_
+     star (operator ruling needed). */
+  stellar_evolution_compute_preSN_feedback_individual_star(
+      sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
+      star_age_beg_step, dt);
+
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
       sp, sm, with_cosmology, cosmo, time, us, phys_const, ti_begin,
@@ -873,9 +898,12 @@ void stellar_evolution_evolve_individual_star(
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_wind_feedback Enable stellar wind feedback?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -905,11 +933,11 @@ void stellar_evolution_evolve_spart(
     return;
   }
 
-  /* Pre-SN feedback */
-  if (with_stellar_wind_feedback) {
-    stellar_evolution_compute_preSN_feedback_spart(
-        sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
-  }
+  /* Pre-SN feedback (radiation unconditionally, stellar winds gated on
+     with_stellar_wind_feedback) */
+  stellar_evolution_compute_preSN_feedback_spart(
+      sp, sm, cosmo, us, phys_const, with_stellar_wind_feedback, ti_begin,
+      star_age_beg_step, dt);
 
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_spart(sp, sm, with_cosmology, cosmo,
@@ -925,7 +953,7 @@ void stellar_evolution_evolve_spart(
  * @param sp The particle for which we compute the initial mass.
  * @param sm The #stellar_model structure.
  * @param phys_const the physical constants in internal units.
- * @param (return) m_init Initial mass of the star particle (in M_sun).
+ * @return Initial mass of the star particle (in M_sun).
  */
 float stellar_evolution_compute_initial_mass(
     const struct spart *restrict sp, const struct stellar_model *sm,
@@ -955,18 +983,19 @@ float stellar_evolution_compute_initial_mass(
 /**
  * @brief Compute the supernova feedback for an individual #spart.
  *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank. It also compute the supernovae
- * energy to be released by the star.
+ * Computes the SN rate and yields, and the supernovae energy to be
+ * released by the star, ahead of sending this information to a
+ * different MPI rank.
  *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * Uses Myr/solar-mass units internally to avoid numerical errors.
  *
  * Note: This function treats the case of single/individual stars.
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
  * @param ti_begin The #integertime_t at the begining of the step.
@@ -981,7 +1010,7 @@ void stellar_evolution_compute_SN_feedback_individual_star(
     const integertime_t ti_begin, const double star_age_beg_step,
     const double dt) {
 
-  /* Check that this function is called for individual starsv*/
+  /* Check that this function is called for individual stars */
   if (sp->star_type != single_star) {
     error("This function can only be called for single/individual star!");
   }
@@ -1076,12 +1105,11 @@ void stellar_evolution_compute_SN_feedback_individual_star(
 /**
  * @brief Compute the supernova feedback for a SSP/continuous-IMF #spart.
  *
- * This function compute the SN rate and yields before sending
- * this information to a different MPI rank. It also compute the supernovae
- * energy to be released by the star.
+ * Computes the SN rate and yields, and the supernovae energy to be
+ * released by the star, ahead of sending this information to a
+ * different MPI rank.
  *
- * Here I am using Myr-solar mass units internally in order to
- * avoid numerical errors.
+ * Uses Myr/solar-mass units internally to avoid numerical errors.
  *
  * Note: This function treats the case of particles representing the whole IMF
  * (star_type = star_population) and the particles representing only the
@@ -1089,7 +1117,9 @@ void stellar_evolution_compute_SN_feedback_individual_star(
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
+ * @param with_cosmology Are we running with cosmology?
  * @param cosmo The current cosmological model.
+ * @param time The current simulation time.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
  * @param ti_begin The #integertime_t at the begining of the step.
@@ -1286,6 +1316,7 @@ void stellar_evolution_compute_SN_feedback_spart(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -1294,22 +1325,123 @@ void stellar_evolution_compute_SN_feedback_spart(
 void stellar_evolution_compute_preSN_feedback_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for individual stars */
   if (sp->star_type != single_star) {
-    error("This function can only be called for single/individual star!");
+    error("This function can only be called for single/individual stars!");
   }
 
-  /* Convert the inputs */
-  const double conversion_to_myr = phys_const->const_year * 1e6;
-  double star_age_end_step_myr = (star_age_beg_step + dt) / conversion_to_myr;
-  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+  /*****************************************/
+  /* Subgrid radiation */
 
-  /* Get the metallicity */
+  /* Needed by the 2D radiation getters below and by the stellar-winds block
+     further down; hoisted here since it is a pure read of sp's own state,
+     independent of anything computed in between. */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  /* Needed by both the radiation and stellar-winds blocks below. */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+
+  if (sm->rad.is_active) {
+    const float mass_msun = sp->mass / phys_const->const_solar_mass;
+    const float log_m = log10f(mass_msun);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* 1D and 2D tables share the same mass-axis range [sm->imf.mass_min,
+       sm->imf.mass_max] (radiation_build_tables(), radiation.c): a star
+       above the table's own IMF mass_max silently gets its mass-axis
+       boundary condition applied (always clamped to the mass_max edge
+       value for a 1D table; clamped or zeroed, depending on the table's
+       own edge_policy_* attributes, for a 2D one) instead of its own
+       value, where the code used to abort ("Cannot extrapolate") before
+       this migration. */
+    if (mass_msun > sm->imf.mass_max) {
+      message(
+          "WARNING: [id=%lld] star mass %g Msun exceeds the radiation "
+          "table's IMF mass_max=%g Msun; L_bol/dot_N_ion/mean_excess_photon_"
+          "energy_HI will be clamped or zeroed at the mass_max edge instead "
+          "of using this star's own mass.",
+          sp->id, mass_msun, sm->imf.mass_max);
+    }
+#endif
+
+    /* Only used by the 2D getters below (harmless, if unused, for a 1D
+       table); star_age_beg_step_myr is already ZAMS-anchored: GEAR's star
+       particles have no modeled pre-main-sequence phase.
+       lifetime_get_log_lifetime_from_mass() computes the Poirier main-sequence
+       lifetime directly from a star's spawn mass/metallicity, and
+       star_formation_set_spart_birth_time_or_scale_factor() stamps birth_time
+       at the spawning event itself. So no ZAMS offset is needed here to match
+       MainSequenceLifetime's own ZAMS-to-TAMS definition. */
+    const float log_z = radiation_get_log_metallicity(metallicity);
+    const float star_age_myr = (float)star_age_beg_step_myr;
+
+    /* Get the bolometric luminosity */
+    sp->feedback_data.radiation.L_bol =
+        radiation_get_star_luminosity(&sm->rad, log_m, log_z);
+
+    /* Split off the non-ionizing PE/Lyman-Werner bands, table-direct via
+       L_PE/L_LW: radiation_read_data() requires these whenever with_ISRF
+       is on, so no fallback branch is needed here. */
+    if (sm->rad.with_ISRF) {
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
+          radiation_get_star_luminosity_pe(&sm->rad, log_m, log_z);
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
+          radiation_get_star_luminosity_lw(&sm->rad, log_m, log_z);
+      /* Direct assignment, no multiply: the mean photon energy is forced to
+         the reference energy at this stage, so a computed ratio of 1 is not
+         trusted to compile to exactly 1.0f under -ffast-math. */
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW_PHOTON] =
+          sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
+    }
+
+    /* Photospheric effective temperature, a diagnostic of the star's
+       evolutionary state. Written to the snapshot only; no feedback
+       channel reads it. */
+    if (sm->rad.has_teff) {
+      sp->feedback_data.radiation.teff =
+          radiation_get_star_teff(&sm->rad, log_m, log_z);
+    }
+
+    /* For the ionizing band, get the number of photons produced and split
+       it across the active angular pixels. Zeroed past the table's own
+       MainSequenceLifetime(Z, M) for a 2D table. */
+    const double dot_N_ion_total = radiation_get_star_ionization_rate(
+        &sm->rad, log_m, log_z, star_age_myr);
+    radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                       sm->rad.n_HII_pixels);
+
+    /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
+       Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate.
+     */
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+        (float)radiation_get_star_mean_excess_photon_energy_HI(
+            &sm->rad, log_m, log_z, star_age_myr);
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    message(
+        "[id=%lld, type=%d] mass = %e Msun, N_dot_ion = %e /s, L_bol = %e "
+        "internal",
+        sp->id, sp->star_type, mass_msun,
+        dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
+        sp->feedback_data.radiation.L_bol);
+#endif
+  } else {
+    radiation_zero_spart_output(sp);
+  }
+
+  /*****************************************/
+  /* Stellar winds */
+
+  if (!with_stellar_winds) return;
+
+  /* Convert the inputs */
+  double star_age_end_step_myr = (star_age_beg_step + dt) / conversion_to_myr;
 
   const float log_mass =
       log10(sp->sf_data.birth_mass / phys_const->const_solar_mass);
@@ -1327,7 +1459,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   const float m_end_step = sp->mass / phys_const->const_solar_mass;
 
   /* This is needed by stellar_evolution_compute_preSN_feedback_properties(),
-      but this is used only for the StellarWindInjection example. */
+     but this is used only for the StellarWindInjection example. */
   const float m_init =
       stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
@@ -1360,6 +1492,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
  * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
  * @param ti_begin The #integertime_t at the begining of the step.
  * @param star_age_beg_step The age of the star at the star of the time-step in
  * internal units.
@@ -1368,8 +1501,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 void stellar_evolution_compute_preSN_feedback_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
@@ -1379,10 +1513,20 @@ void stellar_evolution_compute_preSN_feedback_spart(
         "populations!");
   }
 
+  /* What masses do contribute as feedback? All stars that did not explode,
+     i.e. all masses [M_min_IMF, M_not_exploded_yet]. Note that after a star
+     explode as a SN, it is considered as dead and do not produce any feedback
+     at all. This includes failed SN (that end up as black holes or neutron
+     stars). So, the mass range is [M_min_IMF, M_not_dead_yet]. */
+
+  /* The minimal mass fixed for SSP and continuous stars, in Msun (matching
+     m_end_step's own convention below, not internal mass units). */
+  const float m_min = sm->imf.mass_min;
+
   /* Convert the inputs */
   const double conversion_to_myr = phys_const->const_year * 1e6;
   const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
-  const float dt_myr = (float)(dt / conversion_to_myr);
+  const double dt_myr = dt / conversion_to_myr;
 
   /* Get the metallicity */
   const float metallicity =
@@ -1425,11 +1569,162 @@ void stellar_evolution_compute_preSN_feedback_spart(
     m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);
   }
 
+  /*****************************************/
+  /* Radiation */
+  const float m_init =
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+
+  if (sm->rad.is_active) {
+    /* Upper mass bound for this continuous-emission channel this step; see
+       stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen for the
+       overestimate/underestimate tradeoff. */
+    const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
+        sm, m_end_step, m_beg_step,
+        STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
+
+    float L_bol;
+    double dot_N_ion;
+    float mean_excess_photon_energy_HI;
+    /* Upper mass bound for the L_PE/L_LW table-direct read below: the
+       same MS-lifetime-capped value dot_N_ion uses for a 2D
+       table (a star past its own main-sequence lifetime emits nothing,
+       ionizing or not, so L_PE/L_LW stop the same way Q_H already does),
+       or the uncapped m_sup for a 1D table,
+       which has no MS-lifetime concept at all (matching dot_N_ion's own
+       uncapped 1D read below). */
+    float m_sup_capped = m_sup;
+
+    if (sm->rad.is_2d) {
+      const float log_z = radiation_get_log_metallicity(metallicity);
+
+      /* Luminosity is never MS-lifetime capped, matching the individual-
+         star asymmetry (radiation_get_luminosities_from_raw_2d()'s own
+         doxygen). */
+      L_bol = radiation_get_luminosities_from_integral_2d(
+          &sm->rad, log_z, log10f(m_min), log10f(m_sup));
+
+      /* Population-level MS-lifetime cap for Q_H/DotEExcess only: which
+         mass is leaving PARSEC's own main sequence at this step's END-of-
+         step age, matching the reference time m_end_step (and hence m_sup,
+         under the default mass_sup_scheme_end_step) is itself derived from
+         via GEAR's own Poirier lifetime above: both caps then describe
+         the same point in time. Floored at m_min like every other mass
+         bound in this function; the table's own age_max_myr/min()-gate can
+         only push m_ms_end_step down to m_min, never below it, but the
+         floor is kept explicit rather than relied upon implicitly. */
+      const float star_age_end_step_myr =
+          (float)(star_age_beg_step_myr + dt_myr);
+      const float m_ms_end_step =
+          radiation_get_main_sequence_lifetime_inverse_mass_2d(
+              &sm->rad, log_z, star_age_end_step_myr, m_min);
+      const float m_sup_or_ms_end_step = min(m_sup, m_ms_end_step);
+      m_sup_capped = max(m_min, m_sup_or_ms_end_step);
+
+      dot_N_ion = radiation_get_ionization_rate_from_integral_2d(
+          &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+      mean_excess_photon_energy_HI =
+          (float)radiation_get_mean_excess_photon_energy_HI_from_integral_2d(
+              &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+    } else {
+      /* Now get the IMF averaged quantities per unit mass _in M_sun_ */
+      L_bol = radiation_get_luminosities_from_integral(&sm->rad, log10f(m_min),
+                                                       log10f(m_sup));
+      dot_N_ion = radiation_get_ionization_rate_from_integral(
+          &sm->rad, log10f(m_min), log10f(m_sup));
+      mean_excess_photon_energy_HI =
+          (float)radiation_get_mean_excess_photon_energy_HI_from_integral(
+              &sm->rad, log10f(m_min), log10f(m_sup));
+    }
+
+    /* Convert to total luminosities */
+    sp->feedback_data.radiation.L_bol = L_bol * m_init;
+
+    /* Split off the non-ionizing PE/Lyman-Werner bands, table-direct via
+       Integrated_L_PE/Integrated_L_LW: radiation_read_data() requires
+       these whenever with_ISRF is on, so no fallback branch is needed
+       here. Bounded by the same m_sup_capped dot_N_ion uses above: a star
+       past its own main-sequence lifetime emits nothing, ionizing or
+       not. */
+    if (sm->rad.with_ISRF) {
+      float L_PE_per_msun, L_LW_per_msun;
+      if (sm->rad.is_2d) {
+        const float log_z = radiation_get_log_metallicity(metallicity);
+        L_PE_per_msun = radiation_get_luminosity_pe_from_integral_2d(
+            &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+        L_LW_per_msun = radiation_get_luminosity_lw_from_integral_2d(
+            &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
+      } else {
+        L_PE_per_msun = radiation_get_luminosity_pe_from_integral(
+            &sm->rad, log10f(m_min), log10f(m_sup_capped));
+        L_LW_per_msun = radiation_get_luminosity_lw_from_integral(
+            &sm->rad, log10f(m_min), log10f(m_sup_capped));
+      }
+      /* Convert per-Msun-of-stars-formed to total, exactly like L_bol/
+         dot_N_ion above: FATAL if omitted (a missing *m_init factor is
+         1e2-1e4x too large across GEAR's stated production mass range and
+         would still run to completion with finite, positive,
+         plausible-looking numbers). */
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
+          L_PE_per_msun * m_init;
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
+          L_LW_per_msun * m_init;
+      /* Direct assignment from the just-set LW entry, not a recomputed
+         L_LW_per_msun * m_init: same reasoning as the discrete path above. */
+      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW_PHOTON] =
+          sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
+    }
+
+    /* Population counterpart of the individual-star effective temperature
+       above. Teff has no IMF-integrated table analogue (an IMF average of
+       a photospheric temperature describes no star), so this reports the
+       raw value at m_sup, the upper mass bound of the stars still alive:
+       the hottest surviving star of the population. Diagnostic only. */
+    if (sm->rad.has_teff) {
+      const float log_m_sup = log10f(m_sup);
+      sp->feedback_data.radiation.teff =
+          sm->rad.is_2d
+              ? radiation_get_teff_from_raw_2d(
+                    &sm->rad, radiation_get_log_metallicity(metallicity),
+                    log_m_sup)
+              : radiation_get_teff_from_raw(&sm->rad, log_m_sup);
+    }
+
+    /* Convert to total ionizing emission rate and split it across the
+       active angular pixels. */
+    const double dot_N_ion_total = dot_N_ion * m_init;
+    radiation_set_ionizing_photon_rate(sp, dot_N_ion_total,
+                                       sm->rad.n_HII_pixels);
+
+    /* Q-weighted mean excess photon energy above the 13.6 eV HI threshold,
+       over the same mass window as dot_N_ion above. A ratio of per-unit-mass
+       integrals, so unlike L_bol/dot_N_ion it is NOT rescaled by birth_mass:
+       the mean photon energy of a population does not depend on how many
+       stars it has, only on which masses are still alive. */
+    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
+        mean_excess_photon_energy_HI;
+
+#ifdef SWIFT_DEBUG_CHECKS_VERBOSE
+    /* Population equivalent of the individual-star print above. */
+    message(
+        "[id=%lld, type=%d] m_init = %e Msun, m_sup = %e Msun, N_dot_ion "
+        "= %e /s, L_bol = %e internal, mean_excess_photon_energy_HI = %e",
+        sp->id, sp->star_type, m_init, m_sup,
+        dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
+        sp->feedback_data.radiation.L_bol,
+        sp->feedback_data.radiation.mean_excess_photon_energy_HI);
+#endif
+  } else {
+    radiation_zero_spart_output(sp);
+  }
+
+  /*****************************************/
+  /* Stellar winds */
+
+  if (!with_stellar_winds) return;
+
   /* Compute the initial mass. The initial mass is different if the star
      particle is of type 'star_population' or
      'star_population_continuous_IMF'. The function call treats both cases. */
-  const float m_init =
-      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
 
   /* initialize */
   sp->feedback_data.winds.energy_ejected = 0.0;
@@ -1457,6 +1752,12 @@ void stellar_evolution_zero_pointers(struct stellar_model sm) {
   supernovae_ii_zero_pointers(&sm.snii);
   supernovae_ia_zero_pointers(&sm.snia);
   stellar_wind_zero_pointers(&sm.sw);
+  /* NOTE: radiation_zero_pointers() here would be a no-op: sm is passed by
+     value, so every call above and this one mutate a discarded stack
+     copy, not the caller's own struct. Left unfixed: changing this
+     function's signature to take a pointer would make these zeroing
+     calls live on the restart-dump path, which needs a full restart-
+     safety re-verification before landing. */
 }
 
 /**
@@ -1485,6 +1786,9 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
 
   /* Dump the stellar wind model */
   stellar_wind_dump(&sm->sw, stream, sm);
+
+  /* Dump the radiation model */
+  radiation_dump(&sm->rad, stream, sm);
 }
 
 /**
@@ -1498,9 +1802,16 @@ void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream) {
  * @param stream the file stream
  * @param with_stellar_wind_feedback Are we restoring with stellar wind
  * feedback?
+ * @param with_radiation Are we restoring with photoionization and/or
+ * radiation pressure?
+ * @param us The unit system.
+ * @param phys_const The physical constants in internal units.
  */
 void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
-                               const char with_stellar_wind_feedback) {
+                               const char with_stellar_wind_feedback,
+                               const char with_radiation,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const) {
 
   /* Restore the initial mass function */
   initial_mass_function_restore(&sm->imf, stream, sm);
@@ -1520,6 +1831,13 @@ void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
   } else {
     stellar_wind_zero_pointers(&sm->sw);
   }
+
+  /* Restore the radiation model. Unlike the stellar wind branch above,
+   * radiation_dump() is never a no-op (it always writes sizeof(struct
+   * radiation) bytes), so radiation_restore() must always be called to keep
+   * the stream in sync; it is the one that internally skips re-deriving the
+   * tables when radiation is disabled. */
+  radiation_restore(&sm->rad, stream, sm, us, phys_const, with_radiation);
 }
 
 /**
@@ -1534,4 +1852,5 @@ void stellar_evolution_clean(struct stellar_model *sm) {
   supernovae_ia_clean(&sm->snia);
   supernovae_ii_clean(&sm->snii);
   stellar_wind_clean(&sm->sw);
+  radiation_clean(&sm->rad);
 }

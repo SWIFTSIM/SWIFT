@@ -19,24 +19,27 @@
 #ifndef SWIFT_FEEDBACK_GEAR_COMMON_H
 #define SWIFT_FEEDBACK_GEAR_COMMON_H
 
-/* We need to explicitely point to the src/ file to ensure the correct file is
+/* We need to explicitly point to the src/ file to ensure the correct file is
    included for each feedback */
 #include "../../feedback_properties.h"
+#include "cooling.h"
 #include "hydro_properties.h"
 #include "part.h"
 #include "units.h"
 
 /**
- * @file src/feebback/GEAR/feedback_common.h
+ * @file src/feedback/GEAR/feedback_common.h
  * @brief Header file with common functions for GEAR and GEAR-mechanical
  * feedback modules.
  */
 
-float feedback_compute_spart_timestep(
+void feedback_compute_spart_timestep(
     const struct spart *const sp, const struct feedback_props *feedback_props,
     const struct phys_const *phys_const, const struct unit_system *us,
     const int with_cosmology, const struct cosmology *cosmo,
-    const integertime_t ti_current, const double time, const double time_base);
+    const integertime_t ti_current, const double time, const double time_base,
+    const timebin_t old_time_bin, float *dt_event_side,
+    float *dt_evolution_ssp);
 
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -44,6 +47,10 @@ void feedback_will_do_feedback(
     const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin);
+
+void feedback_will_do_HII_ionization(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const double star_age_beg_step, const double star_age_end_step);
 
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
@@ -62,6 +69,30 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const double time,
                                         const double dt_star);
 
+int feedback_is_HII_ionization_active(const struct spart *sp,
+                                      const struct engine *e);
+double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
+double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
+double feedback_get_star_ionization_budget_max(const struct spart *sp);
+double feedback_get_star_ionization_budget_total(const struct spart *sp);
+int feedback_get_star_HII_pixel_count(const struct spart *sp);
+double feedback_get_star_HII_last_rebuild(const struct spart *sp);
+double feedback_get_star_HII_nominal_interval(
+    const struct feedback_props *feedback_props, const double dt_enrichment);
+void feedback_open_star_ionizing_photon_budget(struct spart *sp,
+                                               double dt_back);
+void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp);
+void feedback_set_star_HII_last_rebuild(struct spart *sp,
+                                        double star_age_beg_step);
+double feedback_get_star_HII_last_attempt(const struct spart *sp);
+void feedback_set_star_HII_last_attempt(struct spart *sp,
+                                        double star_age_beg_step);
+
+float feedback_get_star_HII_mass(const struct spart *sp);
+double feedback_get_star_L_PE(const struct spart *sp);
+double feedback_get_star_L_LW(const struct spart *sp);
+float feedback_get_star_teff(const struct spart *sp);
+
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
     enum stellar_type star_type);
@@ -71,8 +102,14 @@ void feedback_first_init_spart(struct spart *sp,
 
 float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
 
+/*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
+ * pending fields at a = 0 only, 3 phi-weighted pending at any a. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 3
+
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
-void feedback_struct_restore(struct feedback_props *feedback, FILE *stream);
+void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
+                             const struct unit_system *us,
+                             const struct phys_const *phys_const);
 void feedback_clean(struct feedback_props *feedback);
 
 #endif /* SWIFT_FEEDBACK_GEAR_COMMON_H */

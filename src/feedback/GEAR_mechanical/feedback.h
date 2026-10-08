@@ -20,6 +20,8 @@
 #define SWIFT_FEEDBACK_GEAR_MECHANICAL_H
 
 #include "../GEAR/feedback_common.h"
+#include "../GEAR/feedback_radiation.h"
+#include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
 #include "feedback_properties.h"
@@ -27,16 +29,30 @@
 #include "part.h"
 #include "units.h"
 
+#include <float.h>
 #include <strings.h>
 
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
-void feedback_end_density(struct part *p, struct xpart *xp);
-void feedback_reset_part(struct part *p, struct xpart *xp);
+void feedback_end_density(struct part *p, struct xpart *xp,
+                          const struct engine *e);
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e);
+void feedback_end_gradient(struct part *p, const struct engine *e);
+void feedback_end_force(struct part *p, const struct engine *e);
+float feedback_compute_part_timestep(const struct part *restrict p,
+                                     const struct engine *e);
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e);
+void feedback_init_part(struct part *p, const struct engine *e);
+void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
 int feedback_should_inject_wind_feedback(const struct spart *sp);
+int feedback_should_inject_SN_mass_only(const struct spart *sp);
 int feedback_should_inject_feedback(const struct spart *sp);
+int feedback_should_inject_radiation_feedback(
+    const struct spart *sp, const struct feedback_props *feedback_props);
 void feedback_init_spart(struct spart *sp);
 void feedback_reset_feedback(struct spart *sp,
                              const struct feedback_props *feedback_props);
@@ -50,6 +66,19 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                const double star_age_beg_step, const double dt,
                                const double time, const integertime_t ti_begin,
                                const int with_cosmology);
+
+/**
+ * @brief Is this star particle done evolving, i.e. finished with its
+ * feedback-relevant lifetime?
+ *
+ * @param sp The #spart to query.
+ * @return sp->feedback_data.is_dead.
+ */
+__attribute__((always_inline)) INLINE static int feedback_is_star_dead(
+    const struct spart *sp) {
+
+  return sp->feedback_data.is_dead;
+}
 
 /**
  * @brief Get the comoving gas density around the star, averaged with the

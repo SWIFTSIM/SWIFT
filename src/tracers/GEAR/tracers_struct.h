@@ -37,15 +37,29 @@ struct tracers_xpart_data {
     float momentum_supernovae;
     float momentum_winds;
 
+    /*! Cumulative radiation-pressure delta_p per event (scalar sum, not
+        vector, same reason as above). Signed on purpose, not |delta_p|:
+        max_kick_velocity_radiation below is a magnitude and cannot show a
+        sign inversion, so this running sum going negative is the only
+        diagnostic that still can. */
+    float momentum_radiation;
+
     /*! Cumulative thermal energy per unit mass given by the events. It is not
         the change of the specific internal energy (dilution is not counted),
-        and the kinetic energy given is not included. */
+        and the kinetic energy given is not included. Radiation pressure has
+        no thermal channel. */
     float energy_supernovae;
     float energy_winds;
 
     /*! Largest single-event kick velocity received (outflow diagnostic). */
     float max_kick_velocity_supernovae;
     float max_kick_velocity_winds;
+
+    /*! Largest single-event radiation-pressure kick velocity magnitude
+        (outflow diagnostic): fabsf of the signed value, so it cannot
+        reveal a sign-inverted kick; see momentum_radiation above for
+        that. */
+    float max_kick_velocity_radiation;
 
   } feedback_cumulative;
 };
@@ -102,13 +116,19 @@ struct tracers_winds_data {
  *
  */
 struct tracers_spart_data {
-
   /*! SN event tracers, one per channel */
   struct tracers_sn_event_data snii_events;
   struct tracers_sn_event_data snia_events;
 
   /*! Stellar-wind ejecta budget */
   struct tracers_winds_data winds;
+
+  /* Two of the three radiation channels have a tracer elsewhere, so only
+     ISRF (photoelectric heating/LW dissociation) is untracked here: HII's
+     final extent lives in feedback_spart_data.radiation (star-side);
+     radiation pressure has feedback_cumulative.momentum_radiation/
+     max_kick_velocity_radiation in tracers_xpart_data above (gas-side, via
+     tracers_after_radiation_pressure_feedback_part()). */
 };
 
 /**

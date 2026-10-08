@@ -21,6 +21,8 @@
 
 /* Local includes */
 #include "../GEAR/feedback_tracers_common.h"
+#include "../GEAR/radiation_iact.h"
+#include "../GEAR/radiation_propagation_iact.h"
 #include "feedback.h"
 #include "hydro.h"
 #include "mechanical_feedback_iact.h"
@@ -44,22 +46,31 @@
  * @param xpj Extra particle data (not updated).
  * @param cosmo The cosmological model.
  * @param fb_props Properties of the feedback scheme.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time value
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
-                                    const float hi, const float hj,
-                                    struct spart *si, const struct part *pj,
-                                    const struct xpart *xpj,
-                                    const struct cosmology *cosmo,
-                                    const struct feedback_props *fb_props,
-                                    const integertime_t ti_current) {
+runner_iact_nonsym_feedback_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, const struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct hydro_props *hydro_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {
 
   const float mj = hydro_get_mass(pj);
   const float ui = sqrtf(r2) / hi;
   float wi;
   kernel_eval(ui, &wi);
   si->feedback_data.gas_density += mj * wi;
+
+  /* Radiation: density gradient and metallicity at the star */
+  radiation_iact_nonsym_feedback_density(r2, dx, hi, hj, si, pj, xpj, cosmo,
+                                         fb_props, hydro_props, phys_const, us,
+                                         cooling, ti_current);
 }
 
 /**
@@ -135,8 +146,9 @@ runner_iact_nonsym_feedback_prep2(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have SN or winds? */
-  if (!feedback_should_inject_feedback(si)) {
+  /* Do we have SN, winds or radiation to distribute with the weights? */
+  if (!feedback_should_inject_feedback(si) &&
+      !feedback_should_inject_radiation_feedback(si, fb_props)) {
     return;
   }
 
@@ -192,8 +204,9 @@ runner_iact_nonsym_feedback_prep3(const float r2, const float dx[3],
     return;
   }
 
-  /* Do we have SN or winds? */
-  if (!feedback_should_inject_feedback(si)) {
+  /* Do we have SN, winds or radiation to distribute with the weights? */
+  if (!feedback_should_inject_feedback(si) &&
+      !feedback_should_inject_radiation_feedback(si, fb_props)) {
     return;
   }
 
@@ -347,10 +360,13 @@ runner_iact_nonsym_feedback_prep4(const float r2, const float dx[3],
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.
- * @param constants The physical constants (in internal units).
+ * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
+ * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time used value for seeding random number
  * generator
+ * @param time_base The time base used to compute integer times.
+ * @param with_cosmology Are we running with cosmology on?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_feedback_apply(
@@ -358,7 +374,9 @@ runner_iact_nonsym_feedback_apply(
     struct spart *si, struct part *pj, struct xpart *xpj,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
-    const struct unit_system *us, const integertime_t ti_current) {
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current, const double time_base,
+    const int with_cosmology) {
 
   const float r_max_2 = fb_props->r_max * fb_props->r_max;
 
@@ -371,6 +389,18 @@ runner_iact_nonsym_feedback_apply(
         "receive feedback!",
         pj->id, sqrt(r2), fb_props->r_max);
 #endif
+    if (feedback_should_inject_radiation_feedback(si, fb_props))
+      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
+                                                      ti_current);
+    return;
+  }
+
+  /* The weights were not accumulated (nothing to distribute), or no
+     neighbour contributes: the normalization below would divide by 0. */
+  if (si->feedback_data.enrichment_weight <= 0.f) {
+    if (feedback_should_inject_radiation_feedback(si, fb_props))
+      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
+                                                      ti_current);
     return;
   }
 
@@ -385,7 +415,34 @@ runner_iact_nonsym_feedback_apply(
   /* If the particle does not contribute, skip the computations. This
    * avoids 1./0. */
   if (w_j_bar_norm == 0) {
+    if (feedback_should_inject_radiation_feedback(si, fb_props))
+      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
+                                                      ti_current);
     return;
+  }
+
+  /*****************************************/
+  /* Radiation: the fraction |w_j_bar| of the star's emission, the
+     radiation momentum along w_j_bar. Sum_j |w_j_bar| = 1, so the norms of
+     the momenta sum to the star's momentum. Sum_j w_j_bar = 0, so the
+     momenta sum to zero, only if every axis has gas on both sides of the
+     star. */
+  if (feedback_should_inject_radiation_feedback(si, fb_props)) {
+    const float r2_min = 1e-6f * hi * hi;
+    const float r_rad = sqrtf(max(r2, r2_min));
+    /* The shared body pushes along -dir */
+    const double w_j_bar_norm_inv = 1.0 / w_j_bar_norm;
+    const float dir[3] = {(float)(-w_j_bar[0] * w_j_bar_norm_inv),
+                          (float)(-w_j_bar[1] * w_j_bar_norm_inv),
+                          (float)(-w_j_bar[2] * w_j_bar_norm_inv)};
+    radiation_iact_nonsym_feedback_apply_weighted(
+        r_rad, w_j_bar_norm, dir, /*dir_norm=*/1.f, si, pj, xpj, cosmo,
+        hydro_props, fb_props, phys_const, us, cooling, ti_current);
+
+    /* A radiation kick puts the gas on a step that resolves it */
+    if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
+        si->feedback_data.radiation.L_bol > 0.0)
+      timestep_sync_part(pj);
   }
 
   const float mj = hydro_get_mass(pj);
@@ -613,6 +670,50 @@ runner_iact_nonsym_feedback_apply(
       total_momentum_kick_p[i] += dp[i] + dm_SN * (v_i_without_Hubble_flow[i] -
                                                    v_j_without_Hubble_flow[i]);
     }
+  }
+
+  /*****************************************/
+  /* Supernova ejecta without energy: the mass, the metals and the momentum
+     the ejecta carry with the star velocity. No blastwave. */
+  if (feedback_should_inject_SN_mass_only(si)) {
+    m_ej = si->feedback_data.supernovae.mass_ejected;
+    dm_SN = w_j_bar_norm * m_ej;
+    xpj->feedback_data.delta_mass += dm_SN;
+    new_mass += dm_SN;
+
+    for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+      pj->chemistry_data.metal_mass[i] +=
+          w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      pj->feedback_data.metal_mass[i] +=
+          w_j_bar_norm * si->feedback_data.metal_mass_ejected[i];
+#endif
+    }
+
+    float delta_p_mag_ejecta = 0.f;
+#if !defined(SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK)
+    const double dp_zero[3] = {0.0, 0.0, 0.0};
+    const double dp_ejecta_SN[3] = {dm_SN * v_i_p[0], dm_SN * v_i_p[1],
+                                    dm_SN * v_i_p[2]};
+    for (int i = 0; i < 3; i++)
+      xpj->feedback_data.delta_p_ejecta[i] += dp_ejecta_SN[i] * a;
+
+    if (fb_props->enable_multiple_SN_momentum_correction_factor) {
+      feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+          xpj, mj, new_mass, vj_pec, vj_hubble, dp_zero, dp_ejecta_SN);
+    }
+
+    /* Physical momentum given to pj in its own frame, as for the energetic
+       supernovae */
+    const double dp_rel[3] = {dm_SN * (v_i_p[0] - vj_pec[0]),
+                              dm_SN * (v_i_p[1] - vj_pec[1]),
+                              dm_SN * (v_i_p[2] - vj_pec[2])};
+    delta_p_mag_ejecta = (float)sqrt(
+        dp_rel[0] * dp_rel[0] + dp_rel[1] * dp_rel[1] + dp_rel[2] * dp_rel[2]);
+#endif /* !defined SWIFT_TEST_FEEDBACK_ISOTROPY_CHECK */
+    feedback_tracers_pending_add_SN(xpj, delta_p_mag_ejecta, 0.0);
+
+    timestep_sync_part(pj);
   }
 
   /*-------------------------------------------------------------------------*/

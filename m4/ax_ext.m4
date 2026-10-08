@@ -44,9 +44,12 @@
 #   and this notice are preserved. This file is offered as-is, without any
 #   warranty.
 
-#   SWIFT modifications. Intel compilers accept these flags, but warn about
-#   the order of the flags when more than one is used. Given that we just
-#   set SIMD_FLAGS to the most specific value, rather than all accepted ones.
+#   SWIFT modifications: none beyond upstream. SIMD_FLAGS and CPUEXT_FLAGS
+#   must accumulate every accepted flag: AVX2 does not imply FMA3, and both
+#   are enumerated in the same detection loop, so assigning instead of
+#   appending would drop whichever flag was found first. A dropped flag
+#   leaves config.h defining a feature the compiler was never told to
+#   enable.
 
 #serial 18
 
@@ -277,7 +280,7 @@ AC_DEFUN([AX_EXT],
              AX_CHECK_COMPILE_FLAG(${ac_instr_compiler_flags}, eval ax_cv_support_${ac_instr_acvar}_ext=yes,
                                                                eval ax_cv_support_${ac_instr_acvar}_ext=no)
              if test x"$(eval echo \$ax_cv_support_${ac_instr_acvar}_ext)" = x"yes"; then
-               eval ${ac_instr_flag_type}=\"${ac_instr_compiler_flags}\"
+               eval ${ac_instr_flag_type}=\"\$${ac_instr_flag_type}\ ${ac_instr_compiler_flags}\"
                AC_DEFINE_UNQUOTED([${ac_instr_have_define}])
              else
                AC_MSG_WARN([Your processor and OS supports ${ac_instr_shortname} instructions but not your compiler, can you try another compiler?])

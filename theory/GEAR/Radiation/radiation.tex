@@ -1,0 +1,83 @@
+\documentclass[11pt, a4paper, parskip]{scrartcl}
+
+\usepackage[margin=2.7cm]{geometry}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{amsmath,paralist,xcolor,xspace,amssymb}
+\usepackage{comment}
+\usepackage[super]{nth}
+\usepackage{seqsplit}
+\usepackage{tikz}
+\usepackage{multirow}
+\usetikzlibrary{positioning}
+\usepackage[hidelinks]{hyperref}
+
+\usepackage[]{natbib}
+\bibliographystyle{apalike}
+
+% Dev-doc, not a journal article: single column (via scrartcl above).
+% \code{} is \texttt{} that may break mid-identifier/mid-path across
+% lines (long function names, file paths) instead of overflowing the
+% margin: used for long \texttt content in running text. Left as
+% plain \texttt{} inside captions/section titles, where \seqsplit's
+% \futurelet-based scanning cannot survive LaTeX's full expansion of
+% moving arguments.
+\newcommand{\code}[1]{\texttt{\seqsplit{#1}}}
+
+% KOMA-Script disables the classic \rm/\bf/\it/... font-switch commands
+% by default; the numbered sections use them freely for math-mode units
+% (${\rm K}$, ${\rm cm^{-3}}$, ...), matching the old mnras.cls setup, so
+% restore the standard LaTeX2e old-font-command behaviour here rather
+% than editing every occurrence.
+\makeatletter
+\DeclareOldFontCommand{\rm}{\normalfont\rmfamily}{\mathrm}
+\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
+\DeclareOldFontCommand{\tt}{\normalfont\ttfamily}{\mathtt}
+\DeclareOldFontCommand{\bf}{\normalfont\bfseries}{\mathbf}
+\DeclareOldFontCommand{\it}{\normalfont\itshape}{\mathit}
+\DeclareOldFontCommand{\sl}{\normalfont\slshape}{\@nomath\sl}
+\DeclareOldFontCommand{\sc}{\normalfont\scshape}{\@nomath\sc}
+\makeatother
+
+\setkomafont{title}{\rmfamily\bfseries\boldmath}
+\addtokomafont{section}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsection}{\rmfamily\bfseries\boldmath}
+\addtokomafont{subsubsection}{\rmfamily\bfseries\boldmath}
+
+\newcommand{\todo}[1]{{\textcolor{red}{TODO: #1}\\}}
+\newcommand{\swift}{{\sc Swift}\xspace}
+\newcommand{\D}[2]{\frac{d#1}{d#2}}
+\newcommand{\LL}{\left(}
+\newcommand{\RR}{\right)}
+
+\title{GEAR subgrid HII photoionization}
+\subtitle{Theory document: algorithm and task-graph implementation}
+\author{Darwin Roduit}
+
+\begin{document}
+\maketitle
+
+This is the theory document for the GEAR subgrid HII photoionization
+model, branch
+\code{darwin/gear\_radiation}. It describes the algorithm as
+implemented (Section~\ref{sec:algorithm}) and how it is wired into
+\swift's task graph (Section~\ref{sec:taskgraph}). The radiation-pressure
+feedback channel and the FUV/ISRF propagation design are covered in a
+separate, dedicated document in this same directory,
+\code{radiation\_pressure\_isrf.tex}.
+
+\textbf{In the code.} The model lives in \code{src/feedback/GEAR/radiation.c}
+and related files.
+
+\tableofcontents
+
+\input{00_intro}
+\input{01_algorithm}
+\input{02_task_graph}
+
+\appendix
+\input{appendices}
+
+\bibliography{bibliography}
+
+\end{document}

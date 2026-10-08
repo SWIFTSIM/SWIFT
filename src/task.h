@@ -87,14 +87,16 @@ enum task_types {
   task_type_stars_out,      /* Implicit */
   task_type_stars_ghost_in, /* Implicit */
   task_type_stars_ghost,
-  task_type_stars_ghost_out,   /* Implicit */
-  task_type_stars_prep_ghost1, /* Implicit */
-  task_type_hydro_prep_ghost1, /* Implicit */
-  task_type_stars_prep_ghost2, /* Implicit */
-  task_type_stars_prep_ghost3, /* Implicit */
-  task_type_stars_prep_ghost4, /* Implicit */
+  task_type_stars_ghost_out,      /* Implicit */
+  task_type_stars_prep_ghost1,    /* Implicit */
+  task_type_hydro_prep_ghost1,    /* Implicit */
+  task_type_stars_prep_ghost2,    /* Implicit */
+  task_type_stars_prep_ghost3,    /* Implicit */
+  task_type_stars_prep_ghost4,    /* Implicit */
+  task_type_stars_feedback_ghost, /* Implicit */
   task_type_stars_sort,
   task_type_stars_resort,
+  task_type_stars_hii_ionization_feedback,
   task_type_bh_in,  /* Implicit */
   task_type_bh_out, /* Implicit */
   task_type_bh_density_ghost,
@@ -180,6 +182,8 @@ enum task_subtypes {
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
   task_subtype_chemistry_fct_prep,
+  task_subtype_stars_radiation_in,  /* Implicit */
+  task_subtype_stars_radiation_out, /* Implicit */
   task_subtype_count
 } __attribute__((packed));
 

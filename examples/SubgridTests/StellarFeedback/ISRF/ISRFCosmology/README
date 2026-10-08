@@ -1,0 +1,243 @@
+# Intro
+Tests the ISRF module and its Grackle coupling in an expanding box. Each
+configuration is run without cosmology (`redshift=0`) and with cosmology from
+`redshift=9`, from the same physical initial state, and the same check is
+applied to both. Where a closed form exists, the check compares against it:
+
+- `free_field`: a uniform seeded field in dust-free gas, no star. The module
+  dilates the field's Hubble term by the same `c_hyp/c` factor as every other
+  rate, so each band's box mean follows
+  `ln u/u_ref = coeff int (c_hyp/c) d ln a`, with `coeff = -lambda_E(LW)` for
+  LW and `[lambda_E(LW) - 1] r - lambda_E(PE)` for PE, `r` the box-mean
+  `u_LW/u_PE`: PE also gains the LW-to-PE band-edge transfer, and on this
+  fixture's table weights its box mean rises. The check compares the measured
+  drift against that prediction, built from the run's own recorded
+  `HyperbolicPropagationSpeeds`. `c_hyp/c` is of order 1e-4 here, so the whole
+  drift is ~1e-4 over the run and the H2 abundance follows
+  `ln x_H2 = -k0 int (a0/a)^3 dt` (the density alone) with the rate the module
+  hands to Grackle, `k = sigma_H2 c rho u_LW / E_LW`.
+- `dust_absorption`: the same at solar metallicity, with one fixed propagation
+  speed `c_pin` for the whole box (`ISRF_c_hyp_scheme: fixed_fraction`, 4 km/s by default),
+  so the absorption rate is known:
+  `ln u/u0 = -c_pin kappa0 int (a0/a)^3 dt - (c_pin/c) ln(a/a0)`, both terms
+  carrying the same `c_pin/c` dilation.
+- `photoelectric` and `photoelectric_dark`: a seeded field of `G0 ~ 1` and the
+  same box without it. The difference of their internal energies must equal
+  the integral of Grackle's heating rate
+  `1e-24 * 0.05 * G0 * n_H * Z/0.01295 erg cm^-3 s^-1`.
+- `injection`: a star with propagation off, at zero metallicity, so the dust
+  extinction factor is 1 everywhere. The injected energy `sum m u` equals
+  `Delta_t L` in each band.
+- `injection_dusty`: the same star at `Z = 0.01295`, where extinction is not
+  1 and that identity no longer holds. Two exact statements replace it: the
+  per-particle ratio of the two bands, in which the kernel weight, `Delta_t`
+  and the particle mass cancel, and a bracket on the weighted mean of
+  `exp(-tau)` between its smallest and largest per-particle value. It gates
+  the receiver-side extinction wiring, including the comoving-to-physical
+  scaling of the column, which the `Z = 0` leg cannot see. Unlike `injection`
+  it holds the gas state fixed (`disable_cooling`, on by default for this
+  config): metal cooling would otherwise drive the gas onto time-bins below
+  the star's, and the check reads the star's `Delta_t` from the step table,
+  which reports the step's `dt` instead. Override it with `disable_cooling=0`
+  only if the star is known to stay on the shortest bin.
+
+`h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
+self-shielding) has no closed form. It is compared between `redshift=0` and
+high redshift over 25 yr, where expansion does not change the physical state.
+The check equations, and the bars each one derives from the run's own
+discretisation, are in the docstrings of `isrf_cosmology_check.py` and
+`isrf_cosmology_h2_identity_check.py`. The `injection` bar is derived the same
+way, from the run's own step size, illuminated-neighbour count and float32
+widths, and the check prints each of its terms. The `injection_dusty` leg's
+band-ratio bar is derived the same way, from the run's own signal and the six
+float32 roundings of the reconstruction, and is also printed; `--dust-tol`
+overrides it with a fixed value and a negative value reports without gating. One
+fixed tolerance remains in that leg: a hard-coded 1e-5 on the bracket around the
+weighted mean of `exp(-tau)`, set in `isrf_cosmology_check.py` itself.
+
+## Initial conditions
+`makeIC.py` takes physical values at the starting redshift and writes the
+comoving box and density SWIFT expects; the internal energy stays physical,
+as SWIFT converts it at start-up. SWIFT stores the star's birth scale factor in
+single precision, so `makeIC.py` rounds it down: otherwise the star would be
+born after the start of the 25 yr runs. `GrackleCooling:cmb_temperature_floor`
+is 0 because the floor, `2.73(1+z)` K, differs between the two runs by more
+than the gas temperature. `cosmo_timeline.py` converts the proper-time
+duration of each configuration into `a_end`, a `dt_max` in `ln a` and the
+snapshot ratio.
+The star starts with the same age in both runs (`star_age`, internal units):
+a star of age 0 skips its first injection. Without cosmology the run starts at
+that time, because GEAR gives no feedback for a negative birth time.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+make -j
+```
+`grackle_2` also works. H2 is only tracked in these two modes.
+
+# Run
+```
+config=free_field redshift=0 run_name=free_field_z0 ./run.sh
+config=free_field redshift=9 run_name=free_field_z9 ./run.sh
+```
+and likewise for the other configurations. `h2_shielded` also needs a
+reference rerun with another thread count, which sets its pass bar, and
+optionally a second redshift:
+```
+config=h2_shielded redshift=0 run_name=h2_z0 ./run.sh
+config=h2_shielded redshift=0 n_threads=3 run_name=h2_z0_replicate ./run.sh
+config=h2_shielded redshift=9 run_name=h2_z9 ./run.sh
+config=h2_shielded redshift=4 run_name=h2_z4 ./run.sh
+```
+Add `h2_self_shielding=2` for the kernel-length column, and pass the matching
+`--h2-self-shielding 2` to the identity check below (it defaults to 3). See
+`run.sh` for the other overrides (`level`, `gas_density`, `gas_mass`, `duration`, `steps`, ...).
+At level 5 each run takes a few minutes on 8 threads.
+
+# Checking
+```
+python3 isrf_cosmology_check.py --config free_field -s "free_field_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "free_field_z9/snap/snapshot_*.hdf5" \
+    --reference "free_field_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config dust_absorption -s "da_z9/snap/snapshot_*.hdf5" \
+    --log da_z9/output.log
+python3 isrf_cosmology_check.py --config photoelectric -s "pe_z9/snap/snapshot_*.hdf5" \
+    --dark "pe_dark_z9/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config injection -s "inj_z9/snap/snapshot_*.hdf5" \
+    --log inj_z9/output.log
+python3 isrf_cosmology_check.py --config injection_dusty \
+    -s "inj_dusty_z9/snap/snapshot_*.hdf5" --log inj_dusty_z9/output.log
+python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.hdf5" \
+    --replicate "h2_z0_replicate/snap/snapshot_*.hdf5" \
+    --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"
+```
+
+Several of these bars are set by the SNAPSHOT CADENCE rather than by
+round-off, so `snapshots` (and the `delta_time` it sets) changes them. The
+dominant term in the `dust_absorption` and `injection` bars is a one-step lag:
+the check compares a quantity integrated continuously by the code against a
+closed form evaluated at the times the run happened to write, so halving the
+cadence roughly halves that term and tightens the bar. If you change
+`snapshots`, expect the bars to move with it, and do not read a bar shift as a
+physics change. The float32 contributions are orders of magnitude smaller, so a
+compiler or library change cannot move these bars appreciably.
+Each check prints its bars and ends with `RESULT: PASS` or `RESULT: FAIL`
+(exit code 0 or 1). `--reference` takes the non-cosmological run of the same
+configuration: its own measured drift, doubled, then replaces the derived
+bound on the part of the bar that does not depend on `a`, wherever it is
+larger.
+With `--config photoelectric` it also needs `--reference-dark`, the
+non-cosmological `photoelectric_dark` run.
+Without cosmology the kernel_local `free_field` band drift has no expansion term
+to be compared against, so the check prints it and does not gate it; the H2
+abundance is gated in both runs. That run's own role here is to be the
+`--reference` of the cosmological one, where its drift enters the bar.
+
+## The uniform-speed free_field pair
+The ledger the band drift is measured on weights each particle by
+`1/c_hyp`, and a varying `c_hyp` is `margin*h/dt`, so it carries the
+glass's own `h` spread. That makes the ledger mean move for a reason
+unrelated to conservation, which is why the run above is reported rather
+than gated. One propagation speed across the whole box makes the weight
+cancel, and the check then gates the band drift against its own float
+floor.
+
+One speed for the whole box is `ISRF_c_hyp_scheme: fixed_fraction` with
+`ISRF_c_hyp_fixed_fraction_of_c = v/c` (`c = 299792.458 km/s`). It also limits
+the time step of every particle carrying or near the field to
+`ISRF_c_hyp_margin*h/c_hyp`. The `free_field_uniform` config of `run.sh` sets
+it to 60 km/s (`c_hyp_fraction=2.001384571e-04`):
+```
+config=free_field_uniform redshift=0 run_name=ff_u60_z0 ./run.sh
+config=free_field_uniform redshift=9 run_name=ff_u60_z9 ./run.sh
+python3 isrf_cosmology_check.py --config free_field -s "ff_u60_z0/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_check.py --config free_field -s "ff_u60_z9/snap/snapshot_*.hdf5" \
+    --reference "ff_u60_z0/snap/snapshot_*.hdf5"
+```
+The check reads the uniformity from the recorded `HyperbolicPropagationSpeeds`.
+A uniform speed says nothing about a propagation speed that varies between
+neighbours, so run this pair in addition to the kernel_local one, not instead
+of it.
+
+The float-floor bar holds only if every particle takes the same time step, so
+the check also reads the `timesteps.txt` beside `snap/` and requires the
+`Updates` column to equal the gas particle count on every step. A leg that
+fails this prints `PREMISE VIOLATED: multi-bin fixture, the float-floor bar
+does not apply` and exits with code 1.
+
+### Choosing the speed
+Each particle's Courant step is `0.5*h/(f*c)`, where `0.5` is
+`ISRF_c_hyp_margin`, `f = v/c` and `h` is the physical smoothing length. The
+leg stays on one time bin while that step falls inside the bin
+`[dt_down, dt_up)`, with `dt_up = 2*dt_down` the length of the next bin up. The
+window is
+
+    0.5*h_max/dt_up < f*c <= 0.5*h_min/dt_down
+
+with `h_min` and `h_max` the smallest and largest smoothing length of the gas
+at one output time. Evaluate it at every output time of the run and keep the
+speeds that lie inside all of them: the largest lower edge to the smallest upper
+edge. The physical `h` is `a*SmoothingLengths`, since the snapshot stores it
+comoving. `dt_down` is the `Time-step` column of `timesteps.txt`, a proper
+time. With cosmology the bins are fixed in `ln a`, so their proper-time length
+grows over the run together with `a*h`.
+
+At the defaults (`level=5`, `gas_density=1`) the window is 39.2 to 77.2 km/s at
+`redshift=0` and 46.6 to 82.3 km/s at `redshift=9`, so 60 km/s sits inside
+both. It depends on `level`, `gas_density`, `gas_mass` and `duration`:
+re-derive the speed whenever one of them changes. The check confirms the choice
+after the run.
+
+### Two-bin witness
+```
+config=free_field_two_bin_witness redshift=0 run_name=ff_witness_z0 ./run.sh
+python3 isrf_cosmology_check.py --config free_field \
+    -s "ff_witness_z0/snap/snapshot_*.hdf5" --two-bin-witness
+```
+This leg runs at 38.79 km/s, where the Courant step straddles a time-bin
+boundary at the median `h`. On one rank, a pair of particles on different time
+bins is booked once, from the finer particle's step; the coarser particle's
+share is held in the `*PendingSpecificEnergies` fields until its own update. The
+check adds those fields to the energy sum. At `redshift=0` the (A1) drift of
+this leg stays at the float floor. With cosmology, the coarser particle's
+dissipation share leaves out the Hubble term of the finer particle's relaxation
+depth, a relative error of about `lambda (c_hyp/c) H dt / 2`. On several MPI
+ranks each particle integrates the pair with its own time step, which is not
+conservative across bins. The check prints the (A1) drift as `two-bin witness,
+not gated` and never counts it as a failure.
+
+# Regression-testing the receiver-side extinction path
+`GEARFeedback:ISRF_extinction_path` selects the length that builds the dust
+column attenuating the injected LW and PE bands. The `injection_dusty` box is
+uniform and its gas state is held fixed, so the attenuation of a particle at
+separation `r` from the star is exactly `exp(-kappa_eff rho r)`, and each
+mechanism's own column can be compared against that with no free parameter.
+Run one leg with a negligible path as the unattenuated reference, then one per
+candidate, all at the same metallicity:
+```
+config=injection_dusty extinction_path=constant_kernel_path \
+    extinction_path_in_kernel_radii=1e-8 run_name=thin ./run.sh
+config=injection_dusty extinction_path=constant_kernel_path \
+    extinction_path_in_kernel_radii=1.0 run_name=R1 ./run.sh
+config=injection_dusty extinction_path=pair_separation run_name=pairsep ./run.sh
+config=injection_dusty extinction_path=temperature_capped_jeans \
+    extinction_jeans_temperature_cap_K=40 run_name=jeans ./run.sh
+python3 isrf_extinction_path_check.py thin R1 pairsep jeans
+```
+The check prints each leg's injection-weighted optical depth and its distance
+in dex from the exact one. A `Z = 0` run is not a valid reference here: the
+star's band luminosity depends on metallicity.
+
+Read the per-candidate scores, not the overall verdict. The `pair_separation`
+row scores zero by construction: that mechanism attenuates each pair over its
+own separation and the reference is the same expression on the same
+per-particle density, so the two agree to float noise whatever the physics.
+The verdict is the best candidate's score, so it cannot fail while
+`pair_separation` is in the list. What the check therefore tests is the
+opacity chain, the units and the SPH density estimate, as a regression. It is
+not a ranking gate and it is not evidence for the shipped default. The
+`constant_kernel_path` and `temperature_capped_jeans` rows are genuine
+measurements against the uniform-geometry answer, because their lengths come
+from the smoothing length and from the gas state, which the reference does not
+use.

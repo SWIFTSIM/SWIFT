@@ -33,6 +33,7 @@
 
 /* Local includes. */
 #include "align.h"
+#include "atomic.h"
 #include "cell_black_holes.h"
 #include "cell_grav.h"
 #include "cell_grid.h"
@@ -172,6 +173,9 @@ struct pcell {
 
     /*! Maximal smoothing length. */
     float h_max;
+
+    /*! Maximal HII ionization radius / gamma_k. */
+    float h_hii_max;
 
     /*! Minimal integer end-of-timestep in this cell for stars tasks */
     integertime_t ti_end_min;
@@ -359,9 +363,11 @@ enum cell_flags {
   cell_flag_do_hydro_sub_sync = (1UL << 18),
   cell_flag_unskip_self_grav_processed = (1UL << 19),
   cell_flag_unskip_pair_grav_processed = (1UL << 20),
-  cell_flag_skip_rt_sort = (1UL << 21),    /* skip rt_sort after a RT recv? */
-  cell_flag_do_rt_sub_sort = (1UL << 22),  /* same as hydro_sub_sort for RT */
-  cell_flag_rt_requests_sort = (1UL << 23) /* was this sort requested by RT? */
+  cell_flag_skip_rt_sort = (1UL << 21),     /* skip rt_sort after a RT recv? */
+  cell_flag_do_rt_sub_sort = (1UL << 22),   /* same as hydro_sub_sort for RT */
+  cell_flag_rt_requests_sort = (1UL << 23), /* was this sort requested by RT? */
+  cell_flag_hydro_task_attached = (1UL << 24), /* a density task rests here */
+  cell_flag_at_or_below_hydro_attach = (1UL << 25) /* self/ancestor attached */
 };
 
 /**
@@ -532,6 +538,30 @@ struct cell {
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
 
+/**
+ * @brief Set the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_set_flag(
+    struct cell *c, const uint32_t flag) {
+  atomic_or(&c->flags, flag);
+}
+
+/**
+ * @brief Clear the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static void cell_clear_flag(
+    struct cell *c, const uint32_t flag) {
+  atomic_and(&c->flags, ~flag);
+}
+
+/**
+ * @brief  Get the given flag for the given cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_get_flag(
+    const struct cell *c, const uint32_t flag) {
+  return (c->flags & flag) > 0;
+}
+
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 ptrdiff_t bparts_offset, ptrdiff_t sinks_offset,
@@ -612,6 +642,9 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation,
                             const int with_star_formation_sink);
+int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
+                                const int with_star_formation,
+                                const int with_star_formation_sink);
 int cell_unskip_sinks_tasks(struct cell *c, struct scheduler *s);
 int cell_unskip_rt_tasks(struct cell *c, struct scheduler *s,
                          const int sub_cycle);
@@ -926,6 +959,47 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
   }
 }
 
+/**
+ * @brief Do the axis-aligned boxes of two cells of any size touch or
+ * overlap, once @p b is translated by @p shift into @p a's periodic image?
+ *
+ * Exact for cells of any size ratio, unlike the equal-size assumptions
+ * baked into cell_split_pairs / space_getsid's sid classification. Used to
+ * geometrically enumerate facing progeny when only one side of a radiation
+ * pair descends (asymmetric pair split, scheduler_splittasks.c) and by the
+ * corresponding missing-link SWIFT_DEBUG_CHECKS tripwire
+ * (engine_maketasks.c).
+ *
+ * The per-axis test is inclusive of touching (abutting) boundaries: an
+ * overlap-or-abut result of true also covers exact face/edge/corner
+ * adjacency, not just volume overlap. Erring towards "touching" is the safe
+ * direction here -- a false positive costs one redundant pair task, a false
+ * negative would be a silent stencil hole.
+ *
+ * @param a The first #cell (its own coordinates, unshifted).
+ * @param b The second #cell.
+ * @param shift Vector added to @p b's location to bring it into @p a's
+ * periodic image, e.g. as returned by space_getsid_and_swap_cells() for the
+ * pair (a, b).
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_boxes_touch_under_shift(const struct cell *a, const struct cell *b,
+                             const double shift[3]) {
+  for (int k = 0; k < 3; k++) {
+    const double a0 = a->loc[k];
+    const double a1 = a->loc[k] + a->width[k];
+    const double b0 = b->loc[k] + shift[k];
+    const double b1 = b->loc[k] + b->width[k] + shift[k];
+
+    /* Tolerance for floating-point round-off in accumulated loc/width
+     * sums; cells that are not actually adjacent are separated by at least
+     * a full cell width, far larger than this. */
+    const double tol = 1.0e-6 * min(a->width[k], b->width[k]);
+    if (a1 + tol < b0 || b1 + tol < a0) return 0;
+  }
+  return 1;
+}
+
 /* Inlined functions (for speed). */
 
 /**
@@ -1206,6 +1280,11 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
   /* the sub-cell sizes ? */
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
+  /* Note: hydro splitting is a PURE hydro concept -- h_hii_max is
+   * deliberately NOT here. Radiation decouples via its own criterion
+   * (cell_can_split_pair_radiation_subgrid_task) so that radiation_level
+   * may sit at or ABOVE hydro.super without coupling hydro's own task
+   * granularity to the fast/jumpy h_hii. */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
@@ -1231,11 +1310,94 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
   /* the sub-cell sizes ? */
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
+  /* Note: h_hii_max deliberately NOT here -- hydro splitting is pure
+   * hydro; radiation decouples (see cell_can_split_pair_hydro_task()). */
   return c->split &&
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
          (space_stretch * max(kernel_gamma * c->sinks.h_max, r_cut) <
           0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a pair radiation subgrid task associated with a cell be split
+ * into smaller sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
+
+  /* Radiation's OWN split criterion, decoupled from hydro. Same hydro
+   * terms PLUS h_hii_max: radiation stops splitting (stays coarse) as soon
+   * as the cell is too small to contain the h_hii search radius, so
+   * radiation_level lands at or ABOVE hydro.super (coarser-or-equal, never
+   * finer). When h_hii is small the h_hii term is inert and this matches
+   * hydro (radiation_level == hydro.super); when h_hii grows large,
+   * radiation_level rises toward the top level so the 27-neighbour stencil
+   * at that level still covers the search radius.
+   *
+   * Splitting also stops once the cell is at or below a hydro.super, tested
+   * via cell_flag_at_or_below_hydro_attach rather than c->hydro.super itself:
+   * this predicate runs during task splitting, before cell_set_super_hydro()
+   * has populated hydro.super for the rebuild. The flag is a ground-truth
+   * proxy, stamped directly from the split density tasks (see the stamp/
+   * propagate passes in engine_maketasks()) -- it is exactly where
+   * hydro.super will end up, computed early. Once a cell IS (or lies below)
+   * a hydro.super, every one of its progeny would end up sharing that same
+   * hydro.super, so splitting further would only produce sibling radiation
+   * tasks that all wire dependencies to the identical hydro.super -- a
+   * duplicate-unlock crash. Stopping AT the attach point keeps self/pair
+   * radiation_in tasks landing on a common level by construction, and gives
+   * radiation_level == hydro.super for free when h_hii is small; the h_hii
+   * terms below still force an EARLIER stop (coarser radiation_level, above
+   * hydro.super) when the search radius demands it.
+   *
+   * c->hydro.count > 0 additionally guards a cell with sparts but no gas
+   * anywhere in its subtree: such a branch never gets a hydro-attach stamp
+   * (there is no density task to stamp from), so without this term the
+   * geometric criterion alone would keep splitting all the way to a leaf for
+   * no benefit -- there is no gas at any depth to gain resolution on. This
+   * is a no-op wherever hydro.count > 0 (every non-degenerate branch), and
+   * for a gasless one it stops splitting immediately, leaving the task
+   * coarse (see engine_make_hierarchical_tasks_radiation_subgrid() for how
+   * such a cell's own star drift still gets wired). */
+  return c->split && !cell_get_flag(c, cell_flag_at_or_below_hydro_attach) &&
+         c->hydro.count > 0 &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_max <
+          0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_hii_max <
+          0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can a self radiation_subgrid task associated with a cell be split
+ * into smaller sub-tasks.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
+
+  /* Radiation's own criterion -- see
+   * cell_can_split_pair_radiation_subgrid_task() above (including the
+   * hydro.count > 0 term guarding a gasless star-only branch). */
+  return c->split && !cell_get_flag(c, cell_flag_at_or_below_hydro_attach) &&
+         c->hydro.count > 0 &&
+         (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_max <
+          0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              c->stars.h_hii_max <
+          0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
 
@@ -1356,6 +1518,46 @@ cell_need_rebuild_for_stars_pair(const struct cell *ci, const struct cell *cj) {
   if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) +
           ci->stars.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * @brief Have star particles in a pair of cells moved too much, or has
+ * h_hii grown too much, to invalidate the radiation_in pair task's pruning
+ * and require a rebuild?
+ *
+ * Separate from cell_need_rebuild_for_stars_pair() because h_hii can grow
+ * far larger than the ordinary stellar smoothing length h, and that
+ * function is also used by non-radiation stars logic that should not pick
+ * up h_hii semantics.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+cell_need_rebuild_for_radiation_pair(const struct cell *ci,
+                                     const struct cell *cj) {
+
+  /* Unlike the equal-size pairs elsewhere in this file, ci->dmin != cj->dmin
+   * in general once radiation pairs can be asymmetric: one side may rest at
+   * a finer radiation_level than the other. Scale against the SMALLER of
+   * the two -- the fine side's coverage margin is the one that binds, since
+   * it has less room to spare before drift or h_hii growth outruns its own
+   * cell size. The runner searches out to radiation_search_radius_factor *
+   * kernel_gamma * max(h_hii_max, h_max)
+   * (runner_do_stars_hii_ionization_feedback()); match that here so the
+   * criterion bounds the radius actually used, not a narrower one. Split
+   * into two steps (rather than nesting max() calls) since the max() macro
+   * declares locals that would otherwise shadow across the nested
+   * expansion. */
+  const float pair_dmin = min(ci->dmin, cj->dmin);
+  const float star_reach = radiation_search_radius_factor *
+                           max(ci->stars.h_hii_max, ci->stars.h_max);
+  if (kernel_gamma * max(star_reach, cj->hydro.h_max) + ci->stars.dx_max_part +
+          cj->hydro.dx_max_part >
+      pair_dmin) {
     return 1;
   }
   return 0;
@@ -1712,30 +1914,6 @@ __attribute__((always_inline)) INLINE static void cell_free_grid(
 }
 
 void cell_free_grid_rec(struct cell *c);
-
-/**
- * @brief Set the given flag for the given cell.
- */
-__attribute__((always_inline)) INLINE static void cell_set_flag(
-    struct cell *c, const uint32_t flag) {
-  atomic_or(&c->flags, flag);
-}
-
-/**
- * @brief Clear the given flag for the given cell.
- */
-__attribute__((always_inline)) INLINE static void cell_clear_flag(
-    struct cell *c, const uint32_t flag) {
-  atomic_and(&c->flags, ~flag);
-}
-
-/**
- * @brief  Get the given flag for the given cell.
- */
-__attribute__((always_inline)) INLINE static int cell_get_flag(
-    const struct cell *c, const uint32_t flag) {
-  return (c->flags & flag) > 0;
-}
 
 /**
  * @brief Check if a cell has a recv task of the given subtype.

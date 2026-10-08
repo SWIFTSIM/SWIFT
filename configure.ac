@@ -1720,6 +1720,20 @@ if test "$enable_velociraptor_orphans" = "yes"; then
    AC_DEFINE([HAVE_VELOCIRAPTOR_ORPHANS], 1, [Orphan particles should be written out])
 fi
 
+# Check for healpix (may require cfitsio), independently of lightcone: the
+# GEAR subgrid radiation angular (HEALPix) HII splitting also needs it
+# (Stars:HII_angular_nside), and lightcone maps already needed it before.
+# This sets CHEALPIX_LIBS and CHEALPIX_CFLAGS and #defines HAVE_CHEALPIX.
+# It also adds --with-cfitsio/--with-chealpix flags in case either is
+# installed in a non-standard location.
+GV_FIND_LIBRARY([cfitsio], [CFITSIO], [cfitsio], [cfitsio], [ffclos])
+TMP_LIBS=${LIBS}
+LIBS="${CFITSIO_LIBS} ${LIBS}"
+GV_FIND_LIBRARY([chealpix], [CHEALPIX], [chealpix], [chealpix], [ang2vec])
+LIBS=${TMP_LIBS}
+have_chealpix=${USE_CHEALPIX}
+CHEALPIX_LIBS="${CHEALPIX_LIBS} ${CFITSIO_LIBS}"
+
 # Check if lightcone output is on.
 AC_ARG_ENABLE([lightcone],
    [AS_HELP_STRING([--enable-lightcone],
@@ -1729,17 +1743,6 @@ AC_ARG_ENABLE([lightcone],
    [enable_lightcone="no"]
 )
 if test "$enable_lightcone" = "yes"; then
-   # Check for healpix for lightcone maps. May require cfitsio
-   # This sets CHEALPIX_LIBS and CHEALPIX_CFLAGS and #defines HAVE_CHEALPIX.
-   # It also adds a --with-cfitsio flag in case cfitsio is installed in a
-   # different location from healpix.
-   GV_FIND_LIBRARY([cfitsio], [CFITSIO], [cfitsio], [cfitsio], [ffclos])
-   TMP_LIBS=${LIBS}
-   LIBS="${CFITSIO_LIBS} ${LIBS}"
-   GV_FIND_LIBRARY([chealpix], [CHEALPIX], [chealpix], [chealpix], [ang2vec])
-   LIBS=${TMP_LIBS}
-   have_chealpix=${USE_CHEALPIX}
-   CHEALPIX_LIBS="${CHEALPIX_LIBS} ${CFITSIO_LIBS}"
    AC_DEFINE([WITH_LIGHTCONE], 1, [Enable lightcone outputs])
    if test "$have_chealpix" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires the HEALPix C API. Please configure with --with-chealpix.])
@@ -1748,8 +1751,6 @@ if test "$enable_lightcone" = "yes"; then
    if test "$have_gsl" != "yes"; then
       AC_MSG_ERROR([Lightcone output requires GSL. Please configure with --with-gsl.])
    fi
-else
-   have_chealpix="no"
 fi
 
 # Check for floating-point exception trapping support.
@@ -3063,6 +3064,18 @@ AC_ARG_WITH([number-of-AGN-rays],
 	    [with_number_of_AGN_rays="50"])
 AC_DEFINE_UNQUOTED([FEEDBACK_NR_RAYS_AGN], [$with_number_of_AGN_rays], [Number of rays to use for the AGN feedback])
 
+# GEAR's subgrid HII photoionization can split a star's ionizing photon
+# budget across HealPix angular pixels (GEARFeedback:HII_angular_nside at
+# runtime); each star carries a fixed-size array sized for the worst case
+# nside a build can support, so let users pick that bound instead of
+# paying for pixels they'll never request. 12 matches nside=1 (Smith et
+# al. 2021's own tessellation), the default before this option existed.
+AC_ARG_WITH([number-of-hii-angular-pixels],
+	    [AS_HELP_STRING([--with-number-of-hii-angular-pixels], [Maximum number of HealPix angular pixels (12*nside^2) the GEAR subgrid HII photoionization budget can be split across; bounds GEARFeedback:HII_angular_nside at runtime (default: 12, i.e. nside<=1)])],
+	    [with_number_of_hii_angular_pixels="$withval"],
+	    [with_number_of_hii_angular_pixels="12"])
+AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels], [Maximum number of HealPix angular pixels the GEAR subgrid HII photoionization budget can be split across])
+
 
 # Black hole model.
 AC_ARG_WITH([black-holes],
@@ -3125,6 +3138,12 @@ case "$with_sink" in
     AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
     ;;
    GEAR)
+    if test "$with_feedback" != "GEAR" -a "$with_feedback" != "GEAR-mechanical"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR or GEAR-mechanical_*: the GEAR sink model reads the GEAR feedback module's stellar model (initial mass function) to sample star masses, so it cannot be built against any other feedback module])
+    fi
+    if test "$with_cooling" != "grackle"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from Grackle's equilibrium mean molecular weight])
+    fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
    defines a fixed cutoff radius `cut_off_radius`?])
@@ -3515,6 +3534,12 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
+
+# Define GEAR_COOLING if a GEAR feedback module and grackle cooling are
+# selected: the subgrid radiation of both modules acts through it
+AS_IF([test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical" && test "$with_cooling" = "grackle"],
+  [AC_DEFINE([GEAR_COOLING], [1], [Use GEAR cooling subgrid logic])]
+)
 
 # check if using EAGLE floor
 AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])

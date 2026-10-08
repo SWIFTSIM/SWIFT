@@ -25,6 +25,7 @@
 /* Local headers. */
 #include "cooling.h"
 #include "debug.h"
+#include "feedback.h"
 #include "forcing.h"
 #include "potential.h"
 #include "rt.h"
@@ -183,9 +184,17 @@ __attribute__((always_inline)) INLINE static integertime_t get_part_timestep(
       chemistry_timestep(e->physical_constants, e->cosmology, e->internal_units,
                          e->hydro_properties, e->chemistry, p);
 
+  /* Compute the next timestep (radiation condition, e.g. a receiver-side
+   * CFL term on a reduced light-speed). FLT_MAX unless the active
+   * feedback model imposes one. The generic dt_min check below aborts a
+   * run whose radiation bound is too small either way; a model may also
+   * check it directly for a more specific error message. */
+  const float new_dt_isrf = feedback_compute_part_timestep(p, e);
+
   /* Take the minimum of all */
   float new_dt = min3(new_dt_hydro, new_dt_cooling, new_dt_grav);
   new_dt = min4(new_dt, new_dt_mhd, new_dt_chemistry, new_dt_forcing);
+  new_dt = min(new_dt, new_dt_isrf);
 
   /* Limit change in smoothing length */
   const float dt_h_change =

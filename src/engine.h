@@ -485,6 +485,29 @@ struct engine {
   /* Force the engine to rebuild? */
   int forcerebuild;
 
+  /*! Criterion and cell that last demanded a rebuild during engine_unskip(),
+   * reported if that demand survives the rebuild it asked for. Written
+   * without synchronisation from the unskip threadpool: the demand is only
+   * read on an already-fatal path, where any one of the demanding cells is
+   * equally diagnostic. NULL when no instrumented criterion recorded one. */
+  const char *rebuild_demand_criterion;
+  double rebuild_demand_loc[3];
+  double rebuild_demand_width;
+  int rebuild_demand_depth;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Cumulative HII search-radius expansions clamped at the reachable
+   * radiation_in stencil bound. A persistently growing count means a star's
+   * physical front is waiting on the next rebuild instead of being
+   * reach-limited by configuration; reported as a warning in
+   * engine_step(). */
+  long long radiation_reach_clamp_count;
+
+  /*! radiation_reach_clamp_count at the last per-step report, for printing the
+   * per-step delta. */
+  long long radiation_reach_clamp_count_last_step;
+#endif
+
   /* Force the engine to repartition ? */
   int forcerepart;
   struct repartition *reparttype;
@@ -719,6 +742,9 @@ void engine_io(struct engine *e);
 void engine_io_check_snapshot_triggers(struct engine *e);
 void engine_collect_end_of_step(struct engine *e, int apply);
 void engine_collect_end_of_sub_cycle(struct engine *e);
+#ifdef DEBUG_INTERACTIONS_STARS
+void engine_collect_stars_counter(struct engine *e);
+#endif
 void engine_dump_snapshot(struct engine *e, const int fof);
 void engine_run_on_dump(struct engine *e);
 void engine_init_output_lists(struct engine *e, struct swift_params *params,

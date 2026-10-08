@@ -19,6 +19,7 @@
 #ifndef SWIFT_GEAR_STARS_IO_H
 #define SWIFT_GEAR_STARS_IO_H
 
+#include "feedback.h"
 #include "io_properties.h"
 #include "kick.h"
 #include "stars/GEAR/stars_stellar_type.h"
@@ -123,6 +124,40 @@ INLINE static void convert_spart_potential(const struct engine *e,
     ret[0] = 0.f;
 }
 
+INLINE static void convert_spart_HII_radius(const struct engine *e,
+                                            const struct spart *sp,
+                                            float *ret) {
+  ret[0] = sp->h_hii * kernel_gamma;
+}
+
+INLINE static void convert_spart_HII_mass(const struct engine *e,
+                                          const struct spart *sp, float *ret) {
+  ret[0] = feedback_get_star_HII_mass(sp);
+}
+
+INLINE static void convert_spart_L_PE(const struct engine *e,
+                                      const struct spart *sp, double *ret) {
+  ret[0] = feedback_get_star_L_PE(sp);
+}
+
+INLINE static void convert_spart_L_LW(const struct engine *e,
+                                      const struct spart *sp, double *ret) {
+  ret[0] = feedback_get_star_L_LW(sp);
+}
+
+INLINE static void convert_spart_teff(const struct engine *e,
+                                      const struct spart *sp, float *ret) {
+  ret[0] = feedback_get_star_teff(sp);
+}
+
+#ifdef DEBUG_INTERACTIONS_STARS
+INLINE static void convert_spart_gas_density_at_star(const struct engine *e,
+                                                     const struct spart *sp,
+                                                     float *ret) {
+  ret[0] = feedback_get_comoving_gas_density_at_star(sp);
+}
+#endif
+
 /**
  * @brief Specifies which s-particle fields to write to a dataset
  *
@@ -136,7 +171,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 8;
+  *num_fields = 13;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -180,21 +215,89 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            "Type of stellar particle: 0=single star ; 1=stellar"
                            " cont. IMF part.  ; 2=normal");
 
+  list[8] = io_make_output_field_convert_spart(
+      "HIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
+      convert_spart_HII_radius,
+      "Co-moving HII region radius of the star particles when the HII was last "
+      "rebuilt. This is the search/tagging algorithm's own bookkeeping (how "
+      "far the star has claimed gas as ionized), not a measurement of the "
+      "gas's actual physical state. Previously-tagged gas can stay warm "
+      "well past its tag's expiry without being re-tagged, so the true "
+      "thermally-affected extent can be larger than this radius.");
+
+  list[9] = io_make_output_field_convert_spart(
+      "HIIRegionMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
+      convert_spart_HII_mass,
+      "Gas mass the star particle is currently holding ionized, as of its "
+      "last HII region rebuild. Same caveat as HIIRegionRadii: this is the "
+      "algorithm's bookkeeping, not a direct measurement of the gas's "
+      "physical state. Under IONIZATION_FEEDBACK_DEBUG_NO_COOLING, tags "
+      "never lapse and the maintenance pass that re-adds already-held mass "
+      "is compiled out, so this field counts only each pass's newly-tagged "
+      "mass rather than the region's true total.");
+
+  list[10] = io_make_output_field_convert_spart(
+      "PELuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      convert_spart_L_PE,
+      "Star's current non-ionizing PE-band (6-11.2 eV) luminosity, "
+      "physical units. Feeds the ISRF injection term; 0 unless "
+      "GEARFeedback:with_interstellar_radiation_field is on.");
+
+  list[11] = io_make_output_field_convert_spart(
+      "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
+      convert_spart_L_LW,
+      "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
+      "physical units. See #PELuminosities.");
+
+  list[12] = io_make_output_field_convert_spart(
+      "EffectiveTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,
+      convert_spart_teff,
+      "Photospheric effective temperature of the star, from the radiation "
+      "table. For a particle representing a whole IMF population, this is "
+      "the value at the upper mass bound of the stars still alive, i.e. "
+      "the hottest surviving star, not an IMF average. A diagnostic of "
+      "stellar evolution only: no feedback channel uses it. 0 when no "
+      "radiation table is loaded or the table carries no Teff dataset.");
+
 #ifdef DEBUG_INTERACTIONS_STARS
 
   list += *num_fields;
-  *num_fields += 4;
+  *num_fields += 7;
 
-  list[0] = io_make_output_field("Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, num_ngb_density);
-  list[1] = io_make_output_field("Num_ngb_force", INT, 1, UNIT_CONV_NO_UNITS,
-                                 sparts, num_ngb_force);
-  list[2] = io_make_output_field("Ids_ngb_density", LONGLONG,
-                                 MAX_NUM_OF_NEIGHBOURS_STARS,
-                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_density);
-  list[3] = io_make_output_field("Ids_ngb_force", LONGLONG,
-                                 MAX_NUM_OF_NEIGHBOURS_STARS,
-                                 UNIT_CONV_NO_UNITS, sparts, ids_ngbs_force);
+  list[0] = io_make_output_field(
+      "Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      num_ngb_density, "Number of interactions in the density SELF and PAIR");
+  list[1] = io_make_output_field(
+      "Num_ngb_feedback", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      num_ngb_feedback, "Number of interactions in the feedback SELF and PAIR");
+  list[2] = io_make_output_field(
+      "Ids_ngb_density", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_density,
+      "List of interacting particles in the density SELF and PAIR");
+  list[3] = io_make_output_field(
+      "Ids_ngb_feedback", LONGLONG, MAX_NUM_OF_NEIGHBOURS_STARS,
+      UNIT_CONV_NO_UNITS, 0.f, sparts, ids_ngbs_feedback,
+      "List of interacting particles in the feedback SELF and PAIR");
+
+  list[4] = io_make_output_field_convert_spart(
+      "EnrichmentWeight", FLOAT, 1, UNIT_CONV_DENSITY, 0.f, sparts,
+      convert_spart_gas_density_at_star,
+      "Star's SPH-kernel-weighted local gas density, as used by the "
+      "radiation-pressure Sobolev column-density estimate "
+      "(radiation_get_comoving_gas_column_density_at_star). Debug-only "
+      "diagnostic, not meant for physics analysis outside this build.");
+
+  list[5] = io_make_output_field(
+      "GradRhoStar", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, sparts,
+      feedback_data.grad_rho_star,
+      "Star's SPH-kernel gas density gradient (internal density/length "
+      "units), feeding the Sobolev length in the radiation-pressure column "
+      "density. Debug-only diagnostic.");
+
+  list[6] = io_make_output_field(
+      "ZStar", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, feedback_data.Z_star,
+      "Star's SPH-kernel-weighted local gas metallicity mass fraction, used "
+      "by the radiation-pressure opacity. Debug-only diagnostic.");
 #endif
 }
 
@@ -254,6 +357,16 @@ INLINE static void stars_props_init(struct stars_props *sp,
   const double age_threshold_unlimited_Myr = parser_get_opt_param_float(
       params, "Stars:timestep_age_threshold_unlimited_Myr", 0.);
 
+  /* Floor applied to the star's final time-step, after combining the
+     age-based bound above with the feedback module's own criteria
+     (stellar-evolution stage, HII rebuild cadence, ...). Guards against a
+     near-zero remainder violating dt_min. Not a physics floor: see
+     GEARFeedback:HII_rebuild_floor_Myr for the floor on the photon-budget
+     rebuild interval itself, a different quantity kept separate from this
+     one. */
+  const double min_star_timestep_Myr =
+      parser_get_opt_param_float(params, "Stars:min_star_timestep_Myr", 1e-4);
+
   /* Check for consistency */
   if (age_threshold_unlimited_Myr != 0. && age_threshold_Myr != FLT_MAX) {
     if (age_threshold_unlimited_Myr < age_threshold_Myr)
@@ -271,6 +384,15 @@ INLINE static void stars_props_init(struct stars_props *sp,
   sp->age_threshold = age_threshold_Myr * Myr_internal_units;
   sp->age_threshold_unlimited =
       age_threshold_unlimited_Myr * Myr_internal_units;
+  sp->min_star_timestep = min_star_timestep_Myr * Myr_internal_units;
+
+  /* CFL condition for stars_compute_dt_cfl() (dt_cfl), mirroring
+     GEARSink:CFL_condition. Not radiation-gated: dt_cfl applies to every
+     star type regardless of feedback/radiation configuration. */
+  sp->CFL_condition =
+      parser_get_opt_param_float(params, "Stars:CFL_condition", 0.1f);
+  if (sp->CFL_condition <= 0.f)
+    error("Stars:CFL_condition must be > 0 (got %g).", sp->CFL_condition);
 
   /* Do we want to overwrite the stars' birth properties? */
   sp->overwrite_birth_time =
@@ -281,6 +403,38 @@ INLINE static void stars_props_init(struct stars_props *sp,
     sp->spart_first_init_birth_time =
         parser_get_param_float(params, "Stars:birth_time");
   }
+
+#ifdef IONIZATION_FEEDBACK_LOOP
+  /* Read the maximal search radius. Comoving: the physical reach grows with
+   * the box, i.e. physical_reach = a * HII_max_search_radius. Required only
+   * when the HII regions are on, so that a run without them needs no HII
+   * key. */
+  if (parser_get_opt_param_int(params, "GEARFeedback:with_photoionization", 0))
+    sp->HII_max_search_radius =
+        parser_get_param_float(params, "Stars:HII_max_search_radius");
+  else
+    sp->HII_max_search_radius =
+        parser_get_opt_param_float(params, "Stars:HII_max_search_radius", 0.f);
+
+  /* Read the HII full-buffer retry count. Default matches the value this
+   * used to be hardcoded to, so existing parameter files keep working
+   * unchanged. Tune this up for higher gas mass resolution or denser
+   * regions (e.g. cosmological zoom-ins) where a single HII search pass
+   * may need several passes to cover all gas within the search radius
+   * (the per-pass buffer capacity, max_HII_ngbs, is a compile-time
+   * constant, see runner_radiation_feedback.h). */
+  sp->HII_max_retry_full_buffer =
+      parser_get_opt_param_int(params, "Stars:HII_max_retry_full_buffer", 10);
+
+  /* Read the search-radius expansion knobs. Defaults: 5 tries at 10%
+   * growth each (~1.1^5 =~ 1.61x total reach) matches a full pass of
+   * same-radius buffer retries in cost order of magnitude, while still
+   * bounded by HII_max_search_radius. */
+  sp->HII_max_radius_expansion_tries = parser_get_opt_param_int(
+      params, "Stars:HII_max_radius_expansion_tries", 5);
+  sp->HII_radius_expansion_factor = parser_get_opt_param_float(
+      params, "Stars:HII_radius_expansion_factor", 1.1f);
+#endif
 }
 
 /**
@@ -305,9 +459,18 @@ INLINE static void stars_props_print(const struct stars_props *sp) {
   message("Maximal iterations in ghost task set to %d",
           sp->max_smoothing_iterations);
 
+  message("Stars CFL condition: %g", sp->CFL_condition);
+
   if (sp->overwrite_birth_time)
     message("Stars' birth time read from the ICs will be overwritten to %f",
             sp->spart_first_init_birth_time);
+
+#ifdef IONIZATION_FEEDBACK_LOOP
+  message("Maximal search radius for HII ionization: %e (U_L, comoving)",
+          sp->HII_max_search_radius);
+  message("HII search-radius expansion: up to %d tries, %.2fx per try",
+          sp->HII_max_radius_expansion_tries, sp->HII_radius_expansion_factor);
+#endif
 }
 
 #if defined(HAVE_HDF5)

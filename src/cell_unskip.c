@@ -30,6 +30,7 @@
 #include "engine.h"
 #include "feedback.h"
 #include "sink_properties.h"
+#include "scheduler.h"
 #include "space_getsid.h"
 
 extern int engine_star_resort_task_depth;
@@ -992,12 +993,14 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
   /* Store the current dx_max and h_max values. */
   ci->stars.dx_max_part_old = ci->stars.dx_max_part;
   ci->stars.h_max_old = ci->stars.h_max;
+  ci->stars.h_hii_max_old = ci->stars.h_hii_max;
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
   ci->hydro.h_max_old = ci->hydro.h_max;
 
   if (cj != NULL) {
     cj->stars.dx_max_part_old = cj->stars.dx_max_part;
     cj->stars.h_max_old = cj->stars.h_max;
+    cj->stars.h_hii_max_old = cj->stars.h_hii_max;
     cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
     cj->hydro.h_max_old = cj->hydro.h_max;
   }
@@ -2209,6 +2212,337 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  *
  * @return 1 If the space needs rebuilding. 0 otherwise.
  */
+/**
+ * @brief Activate drift/sync + stars_in + hydro sorts over every hydro.super
+ * beneath a (possibly coarse) radiation cell.
+ *
+ * The subgrid HII ionization search reads and writes gas across the whole
+ * subtree of a radiation_level cell and each of its neighbours. When
+ * radiation_level sits ABOVE its hydro.super(s) (c->hydro.super == NULL),
+ * several hydro.super cells lie beneath @p c, each with its own drift /
+ * stars_in tasks; every one must be activated (this is the unskip mirror of
+ * engine_radiation_wire_super_deps, which wires the matching dependencies).
+ * Activating drift on the coarse cell itself would drift nothing (it has no
+ * hydro.drift task) and dereferencing its NULL hydro.super would crash.
+ *
+ * Also requests a hydro sort at each covered super. This replaces the old
+ * cell_activate_subcell_stars_tasks() walk (which recursed via the
+ * equal-size cell_split_pairs tables and is therefore wrong for asymmetric
+ * radiation pairs -- see the removed calls in cell_unskip_radiation_tasks()):
+ * the gather's sorted dopair (runner_radiation_feedback.c) accepts a sort
+ * along ANY of the 13 sids as a conservative pre-filter, so requesting one
+ * canonical direction here is enough to make the sorted path available at
+ * every leaf beneath the super; the naive dopair remains correct if no sort
+ * is available at all (e.g. the request hasn't propagated down yet).
+ *
+ * Also activates the super's stars.feedback_ghost. radiation_in's barrier
+ * waits on it (engine_radiation_wire_super_deps, engine_maketasks.c:3586) so
+ * SN feedback writes happen-before the HII gather reads. On a star-inactive
+ * super, engine_do_unskip_stars() never visits the cell, so without this
+ * call feedback_ghost stays skipped and that wait silently has no effect.
+ * Activating it here is safe: on such a super feedback_ghost is Implicit
+ * with no active upstream, so it clears immediately and cascades to
+ * stars_out (already activated below).
+ */
+static void cell_radiation_activate_supers_in(struct cell *c,
+                                              struct scheduler *s,
+                                              const int with_timestep_sync) {
+  if (c->hydro.super != NULL) {
+    struct cell *super = c->hydro.super;
+    cell_activate_drift_part(super, s);
+    cell_activate_drift_spart(super, s);
+    if (with_timestep_sync) cell_activate_sync_part(super, s);
+#ifdef SWIFT_DEBUG_CHECKS
+    if (super->stars.stars_in == NULL)
+      error("Radiation search touches a hydro.super with no stars_in task.");
+    if (super->stars.feedback_ghost == NULL)
+      error(
+          "Radiation search touches a hydro.super with no feedback_ghost "
+          "task.");
+#endif
+    scheduler_activate(s, super->stars.stars_in);
+    scheduler_activate(s, super->stars.feedback_ghost);
+
+    /* Request a sort along one canonical direction; see the docstring. */
+    const int sid = 0;
+    atomic_or(&super->hydro.requires_sorts, 1 << sid);
+    super->hydro.dx_max_sort_old = super->hydro.dx_max_sort;
+    cell_activate_hydro_sorts(super, sid, s);
+    return;
+  }
+  /* c is a strict ancestor of several supers: recurse to each. */
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      cell_radiation_activate_supers_in(c->progeny[k], s, with_timestep_sync);
+}
+
+/**
+ * @brief Activate stars_out over every hydro.super beneath a (possibly coarse)
+ * radiation cell. Counterpart of cell_radiation_activate_supers_in for the
+ * radiation_out barrier.
+ */
+static void cell_radiation_activate_supers_out(struct cell *c,
+                                               struct scheduler *s) {
+  if (c->hydro.super != NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    if (c->hydro.super->stars.stars_out == NULL)
+      error("Radiation search touches a hydro.super with no stars_out task.");
+#endif
+    scheduler_activate(s, c->hydro.super->stars.stars_out);
+    return;
+  }
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      cell_radiation_activate_supers_out(c->progeny[k], s);
+}
+
+/**
+ * @brief Activate the HII ionization feedback task owned by @p c's
+ * radiation_level region, if it exists.
+ *
+ * Must track the region's radiation_in activation, not its own
+ * cell_need_activating_stars(): a starless neighbour region searched into by
+ * another region's active star otherwise never joins the active-task list,
+ * so its wait, bumped as an unlock target by scheduler_rewait_mapper() but
+ * never drained (scheduler_done() skips wait-decrements on skipped tasks),
+ * leaves it and every stars_radiation_out depending on it stuck forever.
+ *
+ * @param s The #scheduler.
+ * @param c The #cell whose radiation_level's HII task to activate.
+ */
+static void cell_radiation_activate_hii(struct scheduler *s, struct cell *c) {
+  struct task *t_hii = c->stars.radiation_level->stars.hii_ionization_feedback;
+  if (t_hii != NULL) scheduler_activate(s, t_hii);
+}
+
+/**
+ * @brief Record which cell's radiation criterion demanded a rebuild.
+ *
+ * Read only by engine_rebuild() when a demand survives the rebuild it asked
+ * for, which is fatal; the unsynchronised write is safe there because any
+ * one of the demanding cells identifies the problem equally well.
+ *
+ * @param e The #engine.
+ * @param c The #cell whose criterion fired.
+ */
+static void cell_record_radiation_rebuild_demand(struct engine *e,
+                                                 const struct cell *c) {
+  e->rebuild_demand_criterion = "cell_need_rebuild_for_radiation_pair";
+  e->rebuild_demand_loc[0] = c->loc[0];
+  e->rebuild_demand_loc[1] = c->loc[1];
+  e->rebuild_demand_loc[2] = c->loc[2];
+  e->rebuild_demand_width = c->width[0];
+  e->rebuild_demand_depth = c->depth;
+}
+
+/**
+ * @brief Un-skip the subgrid radiation (HII ionization) tasks for a cell.
+ *
+ * @param c The #cell.
+ * @param s The #scheduler.
+ * @param with_star_formation Are we running with star formation?
+ * @param with_star_formation_sink Are we running with sink star formation?
+ * @return 1 if a tree rebuild is required, 0 otherwise.
+ */
+int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
+                                const int with_star_formation,
+                                const int with_star_formation_sink) {
+
+  struct engine *e = s->space->e;
+  const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
+  const int nodeID = e->nodeID;
+  int rebuild = 0;
+
+  /* Un-skip the radiation_in tasks involved with this cell. */
+  for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    /* Only activate tasks that involve a local active cell. */
+    if ((ci_active || cj_active) &&
+        (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
+      scheduler_activate(s, t);
+
+      /* Match engine_make_extra_radiationloop_tasks_mapper(): every local
+       * side got its own hii_ionization_feedback unlock edge from t, so
+       * every local side's HII task must join this step's active set too. */
+      if (ci_nodeID == nodeID) cell_radiation_activate_hii(s, ci);
+      if (cj != NULL && cj_nodeID == nodeID) cell_radiation_activate_hii(s, cj);
+
+      if (t->type == task_type_self) {
+        /* Drift/sync + stars_in + sorts over every hydro.super beneath ci.
+         * No subcell walk here: cell_activate_subcell_stars_tasks() recurses
+         * via the equal-size cell_split_pairs tables and calls
+         * cell_activate_drift_part() on the coarse cell, which walks UP to
+         * hydro.super -- below a coarse radiation cell that search finds
+         * nothing, silently skipping the drift. cell_radiation_activate_
+         * supers_in() is depth-agnostic and covers the same ground. */
+        cell_radiation_activate_supers_in(ci, s, with_timestep_sync);
+      }
+
+      else if (t->type == task_type_pair) {
+        /* Drift/sync + stars_in + sorts over every hydro.super beneath ci
+         * and cj. This covers the full search footprint (all progeny of
+         * both cells) and is robust to radiation_level sitting above
+         * hydro.super or ci/cj resting at different depths (asymmetric
+         * pairs) -- see the self-branch comment above for why the subcell
+         * walk it replaces cannot handle either case. */
+        if (ci_nodeID == nodeID)
+          cell_radiation_activate_supers_in(ci, s, with_timestep_sync);
+        if (cj_nodeID == nodeID)
+          cell_radiation_activate_supers_in(cj, s, with_timestep_sync);
+
+#ifdef SWIFT_DEBUG_CHECKS
+        /* Precondition probe for the feedback_ghost activation fix above:
+         * fires when an asymmetric radiation pair's inactive side has a
+         * locally-pending active stars.feedback task on its covered super,
+         * the exact case the fix targets. */
+        if (ci_active != cj_active) {
+          struct cell *inactive_side = ci_active ? cj : ci;
+
+          if ((inactive_side->nodeID == nodeID) &&
+              (inactive_side->hydro.super != NULL)) {
+            struct cell *super = inactive_side->hydro.super;
+
+            for (struct link *fl = super->stars.feedback; fl != NULL;
+                 fl = fl->next) {
+              if (!fl->t->skip) {
+                message(
+                    "RADIATION/FEEDBACK_GHOST PRECONDITION PROBE: "
+                    "radiation pair (ci=%lld active=%d, cj=%lld active=%d) "
+                    "activates supers_in on inactive-side super %lld which "
+                    "has an ACTIVE stars.feedback task (type=%s/%s) "
+                    "pending -- feedback_ghost's activation is exercised.",
+                    ci->cellID, ci_active, cj->cellID, cj_active, super->cellID,
+                    taskID_names[fl->t->type], subtaskID_names[fl->t->subtype]);
+                break;
+              }
+            }
+          }
+        }
+#endif
+      }
+    }
+
+    else if (t->type == task_type_pair) {
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+        cell_radiation_activate_hii(s, ci);
+        cell_radiation_activate_hii(s, cj);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+        scheduler_activate(s, t);
+        cell_radiation_activate_hii(s, ci);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+        scheduler_activate(s, t);
+        cell_radiation_activate_hii(s, cj);
+      }
+#ifdef WITH_MPI
+      /* TODO: We need to activate the send and recv parts */
+      if (e->nr_nodes > 1) error("MPI is not yet implemented");
+#endif
+    }
+
+    /* h_hii-aware rebuild check, exempted per direction: cell_need_rebuild_
+       for_radiation_pair(ci, cj) reads only ci's own reach, so it is skipped
+       only when ci itself is pinned at its own top level and the top-level
+       grid is at the periodic floor of 3 cells/axis -- there ci is wired to
+       every top-level neighbour's full subtree regardless of cj's depth, so
+       ci's coverage is already complete and permanently unsplittable, and
+       re-testing it would demand a rebuild no future rebuild can satisfy.
+       Requiring BOTH sides at top (the pre-asymmetric-pairs invariant) is
+       too strict under G3: a top-pinned ci can legitimately pair against a
+       cj that split deeper for its own, unrelated reasons. A split ci
+       (ci->top != ci) has no such fallback and must keep being watched. */
+    if (t->type == task_type_pair) {
+      const int top_stencil_ok = space_radiation_top_stencil_covers_box(e->s);
+      if (!(top_stencil_ok && ci->top == ci) &&
+          cell_need_rebuild_for_radiation_pair(ci, cj)) {
+        rebuild = 1;
+        cell_record_radiation_rebuild_demand(e, ci);
+      }
+      if (!(top_stencil_ok && cj->top == cj) &&
+          cell_need_rebuild_for_radiation_pair(cj, ci)) {
+        rebuild = 1;
+        cell_record_radiation_rebuild_demand(e, cj);
+      }
+    }
+    /* Nothing more to do here, all drifts and sorts activated above */
+  }
+
+  /* Un-skip the radiation_out tasks involved with this cell. */
+  for (struct link *l = c->stars.radiation_out; l != NULL; l = l->next) {
+    struct task *t = l->t;
+    struct cell *ci = t->ci;
+    struct cell *cj = t->cj;
+#ifdef WITH_MPI
+    const int ci_nodeID = ci->nodeID;
+    const int cj_nodeID = (cj != NULL) ? cj->nodeID : -1;
+#else
+    const int ci_nodeID = nodeID;
+    const int cj_nodeID = nodeID;
+#endif
+
+    const int ci_active = cell_need_activating_stars(ci, e, with_star_formation,
+                                                     with_star_formation_sink);
+
+    const int cj_active =
+        (cj != NULL) && cell_need_activating_stars(cj, e, with_star_formation,
+                                                   with_star_formation_sink);
+
+    if (t->type == task_type_self && ci_active) {
+      scheduler_activate(s, t);
+
+      /* stars_out over every hydro.super beneath ci. */
+      if (ci_nodeID == nodeID) cell_radiation_activate_supers_out(ci, s);
+    }
+
+    else if (t->type == task_type_pair) {
+
+      if (ci_active || cj_active) {
+        /* stars_out over every hydro.super beneath ci and cj. */
+        if (ci_nodeID == nodeID) cell_radiation_activate_supers_out(ci, s);
+        if (cj_nodeID == nodeID) cell_radiation_activate_supers_out(cj, s);
+      }
+
+      /* We only want to activate the task if the cell is active and is
+         going to update some gas on the *local* node */
+      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
+          (ci_active || cj_active)) {
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
+        scheduler_activate(s, t);
+
+      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+        scheduler_activate(s, t);
+      }
+    }
+    /* Nothing more to do here, all drifts and sorts activated above */
+  }
+
+  return rebuild;
+}
+
 int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
                             const int with_star_formation,
                             const int with_star_formation_sink) {
@@ -2606,15 +2940,6 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
     else if (t->type == task_type_pair) {
 
-      if (ci_active || cj_active) {
-        /* Activate stars_out for each cell that is part of
-         * a pair task as to not miss any dependencies */
-        if (ci_nodeID == nodeID)
-          scheduler_activate(s, ci->hydro.super->stars.stars_out);
-        if (cj_nodeID == nodeID)
-          scheduler_activate(s, cj->hydro.super->stars.stars_out);
-      }
-
       /* We only want to activate the task if the cell is active and is
          going to update some gas on the *local* node */
       if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
@@ -2631,6 +2956,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
 
     /* Nothing more to do here, all drifts and sorts activated above */
   }
+
+  /* Un-skip the subgrid radiation (HII ionization) tasks. Factored into its
+   * own routine: unlike the stars density loop above, radiation_level can sit
+   * ABOVE hydro.super, so the drift/sort/sync/stars_in activation must walk
+   * down to every covered hydro.super rather than dereference a single (and
+   * possibly NULL) c->hydro.super. */
+  if (cell_unskip_radiation_tasks(c, s, with_star_formation,
+                                  with_star_formation_sink))
+    rebuild = 1;
 
   /* Unskip all the other task types. */
   if (c->nodeID == nodeID) {
@@ -2650,6 +2984,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
         scheduler_activate(s, c->stars.prep3_ghost);
       if (c->stars.prep4_ghost != NULL)
         scheduler_activate(s, c->stars.prep4_ghost);
+      if (c->stars.feedback_ghost != NULL)
+        scheduler_activate(s, c->stars.feedback_ghost);
       /* If we don't have pair tasks, then the stars_in and stars_out still
        * need reactivation. */
       if (c->stars.stars_in != NULL) scheduler_activate(s, c->stars.stars_in);
@@ -2659,6 +2995,11 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
       if (c->timestep != NULL) scheduler_activate(s, c->timestep);
       if (c->top->timestep_collect != NULL)
         scheduler_activate(s, c->top->timestep_collect);
+      /* hii_ionization_feedback is activated in cell_unskip_radiation_tasks()
+       * alongside the radiation_in task(s) that unlock it, not here: gating
+       * it on this cell's own star/gas activity misses a starless region
+       * searched into by a neighbour's active star. See
+       * cell_radiation_activate_hii()'s docstring. */
 #ifdef WITH_CSDS
       if (c->csds != NULL) scheduler_activate(s, c->csds);
 #endif

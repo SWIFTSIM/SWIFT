@@ -21,17 +21,26 @@
 #include "feedback.h"
 
 /* Local includes */
+#include "../GEAR/radiation.h"
+#include "../GEAR/radiation_iact.h"
+#include "../GEAR/radiation_propagation_iact.h"
+#include "../GEAR/stellar_evolution.h"
+#include "chemistry.h"
 #include "cooling.h"
 #include "cosmology.h"
 #include "engine.h"
 #include "error.h"
 #include "feedback_properties.h"
 #include "feedback_tracers.h"
+#include "hydro.h"
 #include "hydro_properties.h"
 #include "minmax.h"
 #include "part.h"
+#include "physical_constants.h"
 #include "units.h"
 
+#include <float.h>
+#include <math.h>
 #include <strings.h>
 
 /**
@@ -44,8 +53,15 @@
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e) {
 
-  /* Did the particle receive a supernovae */
-  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds) return;
+  /* Did the particle receive an event? delta_mass is tested on its own:
+     ejecta can arrive with no hit flag set, and the mass must still be
+     applied. */
+  /* TODO: Remove the ionization part from here and move it to cooling */
+  if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
+      !xp->feedback_data.hit_by_radiation &&
+      xp->feedback_data.delta_mass == 0.f &&
+      !radiation_is_part_tagged_as_ionized(p, xp))
+    return;
 
   const struct cosmology *cosmo = e->cosmology;
   const struct pressure_floor_props *pressure_floor = e->pressure_floor_props;
@@ -130,6 +146,11 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   xp->feedback_data.number_SN = 0;
   xp->feedback_data.number_winds = 0;
 
+  /*----------------------------------------*/
+  /* Update the radiation fields */
+  feedback_update_part_radiation(p, xp, e, old_mass);
+
+  /* Update the wind fields */
   xp->feedback_data.hit_by_SN = 0;
   xp->feedback_data.hit_by_winds = 0;
 }
@@ -341,26 +362,105 @@ float feedback_compute_residual_internal_energy_for_multiple_sn_events(
 }
 
 /**
- * @brief Finishes the #part density calculation.
- *
- * Nothing to do here.
+ * @brief Finishes the #part density calculation: caches the LW/PE
+ * propagation speed, see #radiation_end_density_propagation.
  *
  * @param p The particle to act upon
  * @param xp The extra particle to act upon
+ * @param e The #engine.
  */
-__attribute__((always_inline)) INLINE void feedback_end_density(
-    struct part *p, struct xpart *xp) {}
+void feedback_end_density(struct part *p, struct xpart *xp,
+                          const struct engine *e) {
+  radiation_end_density_propagation(p, e);
+}
 
 /**
- * @brief Reset the gas particle-carried fields related to feedback at the
- * start of a step.
+ * @brief Sets all particle fields to sensible values when the #part has 0
+ * neighbours, see #radiation_part_has_no_neighbours.
  *
- * Nothing to do here in the GEAR model.
+ * @param p The particle to act upon.
+ * @param xp The extra particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e) {
+  radiation_part_has_no_neighbours(p, e);
+}
+
+/**
+ * @brief Finishes the #part gradient calculation, see
+ * #radiation_end_gradient_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_gradient(struct part *p, const struct engine *e) {
+  radiation_end_gradient_propagation(p, e);
+}
+
+/**
+ * @brief Finishes the #part force calculation, see
+ * #radiation_end_force_propagation.
+ *
+ * @param p The particle to act upon.
+ * @param e The #engine.
+ */
+void feedback_end_force(struct part *p, const struct engine *e) {
+  radiation_end_force_propagation(p, e);
+}
+
+/**
+ * @brief Radiation timestep bound of a particle, see
+ * #radiation_isrf_part_timestep.
+ *
+ * Stops the run if the bound is below TimeIntegration:dt_min.
+ *
+ * @param p The particle to consider.
+ * @param e The #engine.
+ * @return The radiation timestep bound (before the cosmology factor), or
+ *     FLT_MAX if none applies.
+ */
+float feedback_compute_part_timestep(const struct part *restrict p,
+                                     const struct engine *e) {
+  return feedback_radiation_compute_part_timestep(p, e);
+}
+
+/**
+ * @brief Reset the feedback fields of a gas particle once per step, before
+ * the density loop's h-iterations.
  *
  * @param p The particle.
  * @param xp The extended data of the particle.
+ * @param e The #engine.
  */
-void feedback_reset_part(struct part *p, struct xpart *xp) {}
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e) {
+  radiation_snapshot_part_propagation(p, e);
+  radiation_reset_part_ISRF_illumination_tag(p, e);
+  /* Must stay after the tag reset: an expired tag can zero `u`. */
+  radiation_cache_m1_closure_part(p);
+}
+
+/**
+ * @brief Re-initialise the feedback fields of a gas particle at the start of
+ * each density h-iteration.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+void feedback_init_part(struct part *p, const struct engine *e) {
+  radiation_init_part_propagation(p);
+}
+
+/**
+ * @brief First-init of a #part's feedback state, see
+ * #radiation_first_init_part.
+ *
+ * @param p The #part to initialise.
+ */
+void feedback_first_init_part(struct part *restrict p) {
+  radiation_first_init_part(p);
+}
 
 /**
  * @brief Should this particle be doing any feedback-related operation?
@@ -372,6 +472,8 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
 
   /* the particle is inactive if its birth_scale_factor or birth_time is
    * negative */
+
+  /* If the spart is dead, don't do anything */
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
@@ -402,13 +504,28 @@ int feedback_should_inject_wind_feedback(const struct spart *sp) {
 }
 
 /**
+ * @brief Should this particle deliver supernova ejecta without energy?
+ *
+ * The stellar evolution has already removed the ejected mass from the star, so
+ * the mass and the metals must reach the gas when an efficiency factor has
+ * zeroed the energy. These ejecta set no supernova flag.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_mass_only(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected == 0.f &&
+         sp->feedback_data.supernovae.mass_ejected != 0.f;
+}
+
+/**
  * @brief Should this particle inject anything as stellar feedback?
  *
  * @param sp The #spart.
  */
 int feedback_should_inject_feedback(const struct spart *sp) {
   return feedback_should_inject_SN_feedback(sp) ||
-         feedback_should_inject_wind_feedback(sp);
+         feedback_should_inject_wind_feedback(sp) ||
+         feedback_should_inject_SN_mass_only(sp);
 }
 
 /**
@@ -423,13 +540,38 @@ float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
 }
 
 /**
+ * @brief Is this star particle done evolving, i.e. finished with its
+ * feedback-relevant lifetime?
+ *
+ * @param sp The #spart to query.
+ * @return sp->feedback_data.is_dead.
+ */
+int feedback_is_star_dead(const struct spart *sp) {
+
+  return sp->feedback_data.is_dead;
+}
+
+/**
  * @brief Prepares a s-particle for its feedback interactions
+ *
+ * Note: In GEAR, this function must not reset the data as the are computed
+ * at the end of the tasks by the stellar_evolution functions.
  *
  * @param sp The particle to act upon
  */
 void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
+  sp->feedback_data.num_ngbs = 0;
+
+  /* mass_HII_region is not reset here: the HII search only reruns on a
+     rebuild step. It is reset in feedback_will_do_feedback(). */
+
+  sp->feedback_data.grad_rho_star[0] = 0.0;
+  sp->feedback_data.grad_rho_star[1] = 0.0;
+  sp->feedback_data.grad_rho_star[2] = 0.0;
+
+  sp->feedback_data.Z_star = 0.0;
 }
 
 /**
@@ -487,4 +629,9 @@ void feedback_prepare_feedback(struct spart *restrict sp,
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv); /* 1/h^d */
   sp->feedback_data.enrichment_weight *= hi_inv_dim;
+
+  /* Do radiation feedback */
+  feedback_prepare_radiation_feedback(sp, feedback_props, cosmo, us, phys_const,
+                                      star_age_beg_step, dt, time, ti_begin,
+                                      with_cosmology);
 }

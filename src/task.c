@@ -100,8 +100,10 @@ const char *taskID_names[task_type_count] = {
     "stars_prep_ghost2",
     "stars_prep_ghost3",
     "stars_prep_ghost4",
+    "stars_feedback_ghost",
     "stars_sort",
     "stars_resort",
+    "stars_hii_ionization_feedback",
     "bh_in",
     "bh_out",
     "bh_density_ghost",
@@ -180,6 +182,8 @@ const char *subtaskID_names[task_subtype_count] = {
     "rt_gradient",
     "rt_transport",
     "chemistry_fct_prep",
+    "stars_radiation_in",
+    "stars_radiation_out",
 };
 
 const char *task_category_names[task_category_count] = {
@@ -253,6 +257,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
     case task_type_star_formation:
     case task_type_star_formation_sink:
     case task_type_sink_formation:
+    case task_type_stars_hii_ionization_feedback:
       return task_action_all;
 
     case task_type_drift_spart:
@@ -298,6 +303,8 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
 
         case task_subtype_stars_density:
         case task_subtype_stars_feedback:
+        case task_subtype_stars_radiation_in:
+        case task_subtype_stars_radiation_out:
           return task_action_all;
           break;
 
@@ -595,6 +602,24 @@ void task_unlock(struct task *t) {
       cell_sunlocktree(ci, /*split_task=*/0);
       break;
 
+    case task_type_stars_hii_ionization_feedback:
+      /* Mirror task_lock's early-out: a starless ci took no lock, so there
+       * is nothing to unlock (see task_lock's case for the safety
+       * argument). */
+      if (ci->stars.count == 0) break;
+      /* Mirror task_lock: re-walk the same (stable, unchanged between lock
+       * and unlock) radiation_in list to unlock every neighbouring
+       * region's hydro tree, then ci's own hydro and star trees. */
+      for (struct link *l = ci->stars.radiation_in; l != NULL; l = l->next) {
+        struct task *t2 = l->t;
+        if (t2->type != task_type_pair) continue; /* self entry is ci. */
+        struct cell *other = (t2->ci == ci) ? t2->cj : t2->ci;
+        cell_unlocktree(other);
+      }
+      cell_unlocktree(ci);
+      cell_sunlocktree(ci, /*split_task=*/0);
+      break;
+
     case task_type_self:
       if (subtype == task_subtype_grav) {
 #ifdef SWIFT_TASKS_WITHOUT_ATOMICS
@@ -818,6 +843,86 @@ int task_lock(struct task *t) {
     case task_type_stars_resort:
       if (ci->stars.hold) return 0;
       if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
+      break;
+
+    case task_type_stars_hii_ionization_feedback:
+      /* A starless ci is a guaranteed no-op:
+       * runner_do_stars_hii_ionization_feedback() early-returns on the same
+       * ci->stars.count field before touching any gas. Reading the count
+       * here without a lock is safe because the task-graph closure between
+       * unskip and this task's own run window holds ci->stars.count fixed
+       * for the whole step (see the personal wiki page "SWIFT task graph
+       * invariants: link resets and rebuild criteria" for the full
+       * argument; not re-derived here). One specific writer worth calling
+       * out: cell_recursively_shift_sparts() (star formation / sink-to-star
+       * conversion) mutates stars.count on ancestor cells mid-step, not
+       * just at rebuild. It cannot race this read: engine_maketasks.c wires
+       * star_formation to start only after kick2 completes for the
+       * top-level cell, and kick2 itself cannot run until this task has
+       * already finished (via the radiation_out/timestep_sync chain), so by
+       * the time star_formation could mutate stars.count, this task's own
+       * lock/run/unlock window for the current step has already closed.
+       * This also leans on a current MPI boundary: radiation activation is
+       * single-node only (cell_unskip.c hard-errors above one rank under
+       * WITH_MPI) and every cell_radiation_activate_hii() call site passes
+       * a local cell, so ci is guaranteed local -- an activation-side
+       * invariant, not a structural one, so it needs re-verification the
+       * day cross-rank radiation activation is wired (see the
+       * SWIFT_DEBUG_CHECKS trip-wire below). */
+      if (ci->stars.count == 0) {
+#ifdef SWIFT_DEBUG_CHECKS
+        if (ci->nodeID != engine_rank)
+          error(
+              "Skipping the lock for a starless stars_hii_ionization_feedback "
+              "task on a foreign cell (ci->nodeID=%d, engine_rank=%d): the "
+              "single-node MPI boundary this early-out leans on no longer "
+              "holds.",
+              ci->nodeID, engine_rank);
+#endif
+        break;
+      }
+      /* The search reads and writes gas across ci's own subtree plus every
+       * neighbouring radiation_level region reachable through ci's
+       * radiation_in link list (see
+       * runner_dosub_stars_hii_ionization_feedback): each linked pair
+       * task's "other" cell is itself a radiation_level cell, and locking
+       * its hydro tree also blocks any task on its descendants or
+       * ancestors (cell_locktree's hold-counter climb), so one lock per
+       * region is enough to cover its whole subtree -- no per-hydro.super
+       * enumeration needed. Lock order follows radiation_in's link order,
+       * which is fixed per cell but not globally consistent across two
+       * neighbouring regions locking each other in opposite order; that is
+       * the same contention pattern (and the same queue reweight-based
+       * mitigation, see queue_gettask) as any other two-cell pair lock in
+       * this function, not a new risk. */
+      if (ci->stars.hold) return 0;
+      if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
+      if (ci->hydro.hold) {
+        cell_sunlocktree(ci, /*split_task=*/0);
+        return 0;
+      }
+      if (cell_locktree(ci) != 0) {
+        cell_sunlocktree(ci, /*split_task=*/0);
+        return 0;
+      }
+      for (struct link *l = ci->stars.radiation_in; l != NULL; l = l->next) {
+        struct task *t2 = l->t;
+        if (t2->type != task_type_pair) continue; /* self entry is ci. */
+        struct cell *other = (t2->ci == ci) ? t2->cj : t2->ci;
+        if (other->hydro.hold || cell_locktree(other) != 0) {
+          /* Roll back every neighbour region locked before this one. */
+          for (struct link *l2 = ci->stars.radiation_in; l2 != l;
+               l2 = l2->next) {
+            struct task *t3 = l2->t;
+            if (t3->type != task_type_pair) continue;
+            struct cell *other2 = (t3->ci == ci) ? t3->cj : t3->ci;
+            cell_unlocktree(other2);
+          }
+          cell_unlocktree(ci);
+          cell_sunlocktree(ci, /*split_task=*/0);
+          return 0;
+        }
+      }
       break;
 
     case task_type_drift_gpart:
@@ -1186,6 +1291,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     return;
   }
 
+  if (type == task_type_stars_hii_ionization_feedback) {
+
+    strcpy(cluster, "RadiationHII");
+    return;
+  }
+
   switch (subtype) {
     case task_subtype_density:
       strcpy(cluster, "Density");
@@ -1277,6 +1388,12 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       break;
     case task_subtype_sink_formation_sink:
       strcpy(cluster, "SinkFormationSink");
+      break;
+    case task_subtype_stars_radiation_in:
+      strcpy(cluster, "RadiationIn");
+      break;
+    case task_subtype_stars_radiation_out:
+      strcpy(cluster, "RadiationOut");
       break;
     default:
       strcpy(cluster, "None");
@@ -1768,6 +1885,9 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_stars_resort:
       return task_category_resort;
 
+    case task_type_stars_hii_ionization_feedback:
+      return task_category_feedback;
+
     case task_type_send:
     case task_type_recv:
       return task_category_mpi;
@@ -1855,6 +1975,8 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_stars_prep3:
         case task_subtype_stars_prep4:
         case task_subtype_stars_feedback:
+        case task_subtype_stars_radiation_in:
+        case task_subtype_stars_radiation_out:
           return task_category_feedback;
 
         case task_subtype_bh_density:

@@ -51,14 +51,14 @@ enum stellar_evolution_mass_sup_scheme {
 };
 
 /**
- * @brief Compile-time default scheme for
- * stellar_evolution_get_continuous_feedback_mass_sup().
+ * Compile-time default scheme for
+ * stellar_evolution_get_continuous_feedback_mass_sup(), overridable at
+ * configure time, e.g.
+ * CFLAGS+="-DSTELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME=mass_sup_scheme_midpoint"
+ * ./configure
  *
- * Override at configure time, e.g.
- * `CFLAGS+="-DSTELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME=mass_sup_scheme_midpoint"
- * ./configure`. mass_sup_scheme_end_step is the default: it reproduces today's
- * validated behaviour exactly. The other schemes are for a future
- * bias-quantification study (HomogeneousBox), not production use yet.
+ * mass_sup_scheme_end_step is the default: it matches this branch's
+ * validated behaviour. The other schemes are not yet used in production.
  */
 #ifndef STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME
 #define STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME mass_sup_scheme_end_step
@@ -80,7 +80,7 @@ void stellar_evolution_compute_continuous_feedback_properties(
     const float m_init, const float number_snia_f, const float number_snii_f);
 void stellar_evolution_compute_discrete_feedback_properties(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct phys_const *phys_const, const float log_m_beg_step,
+    const struct phys_const *phys_const, const float m_beg_step,
     const float m_end_step, const float m_init, const int number_snia,
     const int number_snii);
 
@@ -113,7 +113,8 @@ void stellar_evolution_props_init(struct stellar_model *sm,
                                   const struct unit_system *us,
                                   struct swift_params *params,
                                   const struct cosmology *cosmo,
-                                  const char with_stellar_wind_feedback);
+                                  const char with_stellar_wind_feedback,
+                                  const char with_radiation);
 
 float stellar_evolution_compute_initial_mass(
     const struct spart *restrict sp, const struct stellar_model *sm,
@@ -136,14 +137,16 @@ void stellar_evolution_compute_SN_feedback_spart(
 void stellar_evolution_compute_preSN_feedback_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt);
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt);
 
 void stellar_evolution_compute_preSN_feedback_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt);
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt);
 
 void stellar_evolution_compute_preSN_properties(
     struct spart *restrict sp, const struct stellar_model *sm,
@@ -153,7 +156,10 @@ void stellar_evolution_compute_preSN_properties(
 void stellar_evolution_zero_pointers(struct stellar_model sm);
 void stellar_evolution_dump(const struct stellar_model *sm, FILE *stream);
 void stellar_evolution_restore(struct stellar_model *sm, FILE *stream,
-                               const char with_stellar_wind_feedback);
+                               const char with_stellar_wind_feedback,
+                               const char with_radiation,
+                               const struct unit_system *us,
+                               const struct phys_const *phys_const);
 void stellar_evolution_clean(struct stellar_model *sm);
 
 #endif  // SWIFT_STELLAR_EVOLUTION_GEAR_H

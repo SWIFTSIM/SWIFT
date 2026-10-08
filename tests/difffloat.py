@@ -94,6 +94,19 @@ error = False
 for i in range(n_lines_to_check):
     for j in range(n_columns):
 
+        # A non-finite value compares False against every bound below, so it
+        # would pass every tolerance silently. Reject it before comparing.
+        if not (np.isfinite(data1[i, j]) and np.isfinite(data2[i, j])):
+            print(
+                "Non-finite value for particle %d, column %s:"
+                % (data1[i, 0], part_props[j])
+            )
+            print("%10s:           a = %e" % ("File 1", data1[i, j]))
+            print("%10s:           b = %e" % ("File 2", data2[i, j]))
+            print("")
+            error = True
+            continue
+
         abs_diff = abs(data1[i, j] - data2[i, j])
 
         sum = abs(data1[i, j] + data2[i, j])

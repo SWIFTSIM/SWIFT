@@ -97,10 +97,13 @@ def get_gas_mu(data: sw.SWIFTDataset) -> np.array:
         u = u.to_physical()
         u = u.to(unyt.erg / unyt.g)
 
-        # Get hydrigen fraction
-        H_frac = float(
-            data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"]
-        )
+        # Get hydrogen fraction
+        try:
+            H_frac = float(
+                data.metadata.parameters["GrackleCooling:HydrogenFractionByMass"]
+            )
+        except KeyError:  # Happend when running without cooling
+            H_frac = 1.0
 
         # Compute T/mu
         T_over_mu = (gamma - 1.0) * u.value * mH_in_g.value / k_B_cgs.value
@@ -173,6 +176,7 @@ def make_hist(filename, density_bounds, temperature_bounds, bins):
     Also returns the edges for pcolormesh to use.
     """
 
+    # Create log-spaced values
     density_bins = np.logspace(
         np.log10(density_bounds[0]), np.log10(density_bounds[1]), bins
     )
@@ -180,12 +184,12 @@ def make_hist(filename, density_bounds, temperature_bounds, bins):
         np.log10(temperature_bounds[0]), np.log10(temperature_bounds[1]), bins
     )
 
-    # print(density_bins, temperature_bins)
-
-    density, temperature = get_data(filename)
+    # Attache units
+    density_bins = density_bins * (mh / (cm**3))
+    temperature_bins = temperature_bins * unyt.kelvin
 
     H, density_edges, temperature_edges = np.histogram2d(
-        density.value, temperature.value, bins=[density_bins, temperature_bins]
+        *get_data(filename), bins=[density_bins, temperature_bins]
     )
 
     return H.T, density_edges, temperature_edges
@@ -208,8 +212,6 @@ def setup_axes():
 def make_single_image(filename, density_bounds, temperature_bounds, bins):
     """
     Makes a single image and saves it to rhoTPlot_{filename}.png.
-
-    Filename should be given _without_ hdf5 extension.
     """
 
     fig, ax = setup_axes()

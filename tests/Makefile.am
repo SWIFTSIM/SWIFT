@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS) $(GRACKLE_INCS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS) $(GRACKLE_INCS) $(SUNDIALS_INCS) $(LUSTREAPI_INCS)
 
 # Libraries every test needs on top of the SWIFT library itself
 COMMON_LIBS = $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
@@ -37,7 +37,10 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
         testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
-        testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
+        testAtomic testGravitySpeed testMeshGravityRebuildCheck \
+        testRadiationRebuildCheck \
+        testIOOptionalFieldDefaultWidth \
+        testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
 	    testLog testDistance testTimeline \
 	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
@@ -54,6 +57,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
+		 testRadiationRebuildCheck \
+		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
 		 testChemistryFluxAntisymmetry
@@ -67,6 +72,10 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
+
+testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
+
+testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 
 testAtomic_SOURCES = testAtomic.c
 

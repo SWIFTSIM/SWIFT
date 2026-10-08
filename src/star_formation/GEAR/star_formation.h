@@ -160,6 +160,12 @@ INLINE static int star_formation_should_convert_to_star(
     return 0;
   }
 
+  /* TODO: Update doc */
+  /* If you are tagged as ionized, you cannot be star-forming */
+  if (feedback_is_part_tagged_as_ionized(p, xp)) {
+    return 0;
+  }
+
   /* Get a few variables */
   const float G = phys_const->const_newton_G;
   const float density = hydro_get_physical_density(p, cosmo);
@@ -395,6 +401,8 @@ INLINE static void star_formation_copy_properties(
 
   /* Move over the splitting data */
   sp->split_data = xp->split_data;
+
+  sp->h_hii = 0.0;
 
   /* Store the birth density and temperature in the star particle */
   const float birth_density = hydro_get_physical_density(p, cosmo);

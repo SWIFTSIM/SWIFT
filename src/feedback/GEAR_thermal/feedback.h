@@ -20,6 +20,7 @@
 #define SWIFT_FEEDBACK_GEAR_H
 
 #include "../GEAR/feedback_common.h"
+#include "../GEAR/feedback_radiation.h"
 #include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
@@ -32,11 +33,23 @@
 
 void feedback_update_part(struct part *p, struct xpart *xp,
                           const struct engine *e);
-void feedback_end_density(struct part *p, struct xpart *xp);
-void feedback_reset_part(struct part *p, struct xpart *xp);
+void feedback_end_density(struct part *p, struct xpart *xp,
+                          const struct engine *e);
+void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
+                                     const struct engine *e);
+void feedback_end_gradient(struct part *p, const struct engine *e);
+void feedback_end_force(struct part *p, const struct engine *e);
+float feedback_compute_part_timestep(const struct part *restrict p,
+                                     const struct engine *e);
+void feedback_reset_part(struct part *p, struct xpart *xp,
+                         const struct engine *e);
+void feedback_init_part(struct part *p, const struct engine *e);
+void feedback_first_init_part(struct part *restrict p);
 int feedback_is_active(const struct spart *sp, const struct engine *e);
+int feedback_is_star_dead(const struct spart *sp);
 int feedback_should_inject_SN_feedback(const struct spart *sp);
 int feedback_should_inject_wind_feedback(const struct spart *sp);
+int feedback_should_inject_SN_mass_only(const struct spart *sp);
 int feedback_should_inject_feedback(const struct spart *sp);
 float feedback_compute_momentum_correction_factor_for_multiple_sn_events(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo);
