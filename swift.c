@@ -1031,6 +1031,21 @@ int main(int argc, char *argv[]) {
     /* Now read it. */
     restart_read(&e, restart_file);
 
+    /* The cooling data in the restart files were set up by the run that wrote
+     * them, so the cooling flags cannot change at a restart. */
+    if (!(e.policy & engine_policy_cooling) != !with_cooling)
+      error(
+          "The restart files were written by a run %s --cooling. Restart it "
+          "%s --cooling.",
+          (e.policy & engine_policy_cooling) ? "with" : "without",
+          (e.policy & engine_policy_cooling) ? "with" : "without");
+    if (!(e.policy & engine_policy_temperature) != !with_temperature)
+      error(
+          "The restart files were written by a run %s --temperature. Restart "
+          "it %s --temperature.",
+          (e.policy & engine_policy_temperature) ? "with" : "without",
+          (e.policy & engine_policy_temperature) ? "with" : "without");
+
 #ifdef WITH_MPI
     integertime_t min_ti_current = e.ti_current;
     integertime_t max_ti_current = e.ti_current;
