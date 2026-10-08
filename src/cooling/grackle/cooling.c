@@ -1458,6 +1458,10 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
   restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
 
+  /* A run without cooling dumps a zeroed struct: there is no Grackle to set
+   * up. */
+  if (cooling->cloudy_table[0] == '\0') return;
+
   /* Set up grackle */
   cooling_init_grackle(cooling);
 }
