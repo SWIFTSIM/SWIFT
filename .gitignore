@@ -117,6 +117,8 @@ examples/SinkParticles/HomogeneousBox/snapshot_0003restart.hdf5
 
 tests/testActivePair
 tests/testActivePair.sh
+tests/testCustomMPI
+tests/testCustomMPI.sh
 tests/brute_force_periodic_BC_standard.dat
 tests/swift_periodic_BC_standard.dat
 tests/brute_force_periodic_BC_pertrubed.dat
@@ -127,6 +129,10 @@ tests/brute_force_perturbed.dat
 tests/swift_dopair_perturbed.dat
 tests/test27cells
 tests/test27cells_subset
+tests/test27cellsHydroSinks
+tests/testSinkApertureRebuild
+tests/testSinkFormationGasCompleteness
+tests/testSinkOverlapCriteria
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
 tests/testIOOptionalFieldDefaultWidth

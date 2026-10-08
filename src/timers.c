@@ -150,6 +150,19 @@ const char *timers_names[timer_count] = {
     "rt_collect_times",
     "do_sync",
     "neutrino_weighting",
+    "doself_hydro_aperture_prep_sink_formation",
+    "dopair_hydro_aperture_prep_sink_formation",
+    "dosub_self_hydro_aperture_prep_sink_formation",
+    "dosub_pair_hydro_aperture_prep_sink_formation",
+    "doself_hydro_sink_aperture_prep_sink_formation_sink",
+    "dopair_hydro_sink_aperture_prep_sink_formation_sink",
+    "dosub_self_hydro_sink_aperture_prep_sink_formation_sink",
+    "dosub_pair_hydro_sink_aperture_prep_sink_formation_sink",
+    "doself_chemistry_fct_prep",
+    "dopair_chemistry_fct_prep",
+    "dosub_self_chemistry_fct_prep",
+    "dosub_pair_chemistry_fct_prep",
+    "do_chemistry_fct_ghost",
 };
 
 /* File to store the timers */

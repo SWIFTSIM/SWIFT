@@ -30,6 +30,7 @@
 #include "engine.h"
 #include "sink.h"
 #include "sink_iact.h"
+#include "sink_properties.h"
 #include "space_getsid.h"
 #include "timers.h"
 
@@ -457,6 +458,85 @@ void runner_do_sinks_sink_swallow_pair(struct runner *r, struct cell *ci,
  * @param p The #part.
  * @param xp The #xpart data of the particle p.
  */
+#ifdef SWIFT_SINK_FORMATION_OVERLAP_CHECKS
+/**
+ * @brief Compare the overlap flag from the gas-sink loop with a scan over all
+ * the sinks of the space. Print a warning if they differ.
+ *
+ * Sinks formed in this step are not in the loop, so the scan ignores them.
+ * Their age is not exactly 0, because the birth time is stored as a float. We
+ * ignore all sinks that are younger than 1e-6 of the current time.
+ *
+ * @param e The #engine.
+ * @param c The #cell of the gas particle.
+ * @param pi The gas particle.
+ * @param xpi Its #xpart.
+ */
+static void runner_check_sink_overlap_brute_force(struct engine *e,
+                                                  const struct cell *c,
+                                                  struct part *restrict pi,
+                                                  struct xpart *restrict xpi) {
+  static int n_checked = 0;
+  static int n_missed = 0;
+  static int n_extra = 0;
+
+  const struct space *s = e->s;
+  const struct cosmology *cosmo = e->cosmology;
+  const int with_cosmology = e->policy & engine_policy_cosmology;
+  const struct sink_props *sink_props = e->sink_properties;
+
+  const float r_acc_p = sink_props->cut_off_radius * cosmo->a;
+  const double dim[3] = {s->periodic ? s->dim[0] : 0.,
+                         s->periodic ? s->dim[1] : 0.,
+                         s->periodic ? s->dim[2] : 0.};
+
+  /* Keep the result of the loop and scan again with a clean flag */
+  const char loop_flag = pi->sink_data.is_overlapping_sink;
+  pi->sink_data.is_overlapping_sink = 0;
+
+  /* The first sink that makes the scan report an overlap */
+  const struct sink *culprit = NULL;
+
+  for (size_t j = 0; j < s->nr_sinks; j++) {
+    struct sink *restrict sj = &s->sinks[j];
+    if (sink_is_inhibited(sj, e) || sj->time_bin == time_bin_not_created)
+      continue;
+    if (sink_get_sink_age(sj, with_cosmology, cosmo, e->time) < 1e-6 * e->time)
+      continue;
+    sink_prepare_part_sink_formation_sink_criteria(
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p,
+        dim);
+    if (culprit == NULL && pi->sink_data.is_overlapping_sink) culprit = sj;
+  }
+
+  const char scan_flag = pi->sink_data.is_overlapping_sink;
+  pi->sink_data.is_overlapping_sink = loop_flag;
+
+  const int checked = atomic_inc(&n_checked) + 1;
+  if (scan_flag && !loop_flag) {
+    const int missed = atomic_inc(&n_missed) + 1;
+    double dx[3] = {pi->x[0] - culprit->x[0], pi->x[1] - culprit->x[1],
+                    pi->x[2] - culprit->x[2]};
+    for (int k = 0; k < 3; k++)
+      if (dim[k] > 0.) dx[k] = nearest(dx[k], dim[k]);
+    const double dist = sqrt(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
+    warning(
+        "Gas-sink loop missed an overlapping sink for gas particle %lld "
+        "(%d missed in %d checked). Distance to the sink: %e = %.3f r_cut. "
+        "Gas cell: depth %d, dmin %e, dx_max_part_old %e. Sink dx_max_part_old "
+        "of that cell: %e.",
+        pi->id, missed, checked, dist, dist / sink_props->cut_off_radius,
+        c->depth, c->dmin, c->hydro.dx_max_part_old, c->sinks.dx_max_part_old);
+  } else if (!scan_flag && loop_flag) {
+    const int extra = atomic_inc(&n_extra) + 1;
+    warning(
+        "Gas-sink loop found an overlap that the scan does not find for gas "
+        "particle %lld (%d in %d checked).",
+        pi->id, extra, checked);
+  }
+}
+#endif /* SWIFT_SINK_FORMATION_OVERLAP_CHECKS */
+
 void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
                                            struct part *restrict pi,
                                            struct xpart *restrict xpi) {
@@ -466,55 +546,71 @@ void runner_do_prepare_part_sink_formation(struct runner *r, struct cell *c,
   const struct cosmology *cosmo = e->cosmology;
   const int with_cosmology = e->policy & engine_policy_cosmology;
   const struct sink_props *sink_props = e->sink_properties;
+  const int with_self_gravity = (e->policy & engine_policy_self_gravity);
 
-  /* Loop over gas particles in this cell. Note that it means we are missing
-   *gas particles in other cells.
-   *
-   * TODO (Darwin): This will be improved in the future with a proper self/pair
-   *task search.
-   */
-  const int count = c->hydro.count;
-  struct part *restrict parts = c->hydro.parts;
-  struct xpart *restrict xparts = c->hydro.xparts;
-
-  /* Loop over all particles to find the neighbours within r_acc. Then,
-     compute all quantities you need.  */
-  for (int j = 0; j < count; j++) {
-
-    /* Get a handle on the part */
-    struct part *restrict pj = &parts[j];
-    struct xpart *restrict xpj = &xparts[j];
-
-    /* Ignore inhibited particles */
-    if (part_is_inhibited(pj, e)) continue;
-
-    /* Compute the quantities required to later decide to form a sink or not. */
-    sink_prepare_part_sink_formation_gas_criteria(e, pi, xpi, pj, xpj, cosmo,
-                                                  sink_props);
-  } /* End of gas neighbour loop */
+  /* The neighbouring gas particles within r_acc have already been
+     accumulated onto pi->sink_data by the fixed-aperture sink-formation gas
+     loop (runner_do{self,pair}1_hydro_aperture_prep_sink_formation), which
+     runs earlier in the task graph and correctly searches across cell
+     boundaries. That loop only visits genuine neighbour pairs, so it never
+     folds in pi's own mass, internal energy and self-potential. Do that
+     here. */
+  sink_prepare_part_sink_formation(with_self_gravity, pi, cosmo);
 
   /* Check that we are not forming a sink in the accretion radius of another
      one. The new sink may be swallowed by the older one.) */
+
+  /* The fixed-aperture gas-vs-existing-sink loop (task subtype
+     sink_formation_sink, runner_do{self,pair}1_hydro_sink_aperture_prep_
+     sink_formation_sink) is the sole authority for pi->sink_data.
+     is_overlapping_sink when it is active, mirroring runner_iact_sink()'s
+     own use_fixed_r_cut guard. */
+  if (sink_formation_gas_loop_is_active(sink_props)) {
+#ifdef SWIFT_SINK_FORMATION_OVERLAP_CHECKS
+    if (pi->id % SWIFT_SINK_FORMATION_OVERLAP_CHECKS == 0)
+      runner_check_sink_overlap_brute_force(e, c, pi, xpi);
+#endif
+    return;
+  }
 
   /* For the sinks, we can loop over all sinks in the space. This is an
      O(N_part_eligible*N_sink) search. We assume that N_sink < N_part, which
      make this brute force search feasible.
    *
    * TODO: In the future, we can optimise by adding a self/pair tasks */
+
+  /* s->nr_sinks also counts inhibited and reserved-but-unformed slots, so
+     skip the O(N) scan below when no real sink exists yet anywhere, using
+     the same real-sink-count formula the I/O backends already rely on. */
+  const size_t real_sink_count =
+      s->nr_sinks - s->nr_inhibited_sinks - s->nr_extra_sinks;
+  if (real_sink_count == 0) return;
+
   const int scount = s->nr_sinks;
   struct sink *restrict sinks = s->sinks;
+
+  /* Accretion radius of pi if it forms a sink. It does not depend on sj,
+     so compute it once here and not for each sj. */
+  const float r_acc_p = kernel_gamma * pi->h * cosmo->a;
+
+  /* Box size, or 0 if the box is not periodic */
+  const double dim[3] = {s->periodic ? s->dim[0] : 0.,
+                         s->periodic ? s->dim[1] : 0.,
+                         s->periodic ? s->dim[2] : 0.};
 
   for (int j = 0; j < scount; j++) {
 
     /* Get a hold of the ith sinks in ci. */
     struct sink *restrict sj = &sinks[j];
 
-    /* Ignore inhibited particles */
-    if (sink_is_inhibited(sj, e)) continue;
+    /* Ignore inhibited and reserved-but-unformed particles */
+    if (sink_is_inhibited(sj, e) || sj->time_bin == time_bin_not_created)
+      continue;
 
     /* Compute the quantities required to later decide to form a sink or not. */
     sink_prepare_part_sink_formation_sink_criteria(
-        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time);
+        e, pi, xpi, sj, with_cosmology, cosmo, sink_props, e->time, r_acc_p,
+        dim);
 
   } /* End of sink neighbour loop */
 }

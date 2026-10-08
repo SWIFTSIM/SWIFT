@@ -1187,6 +1187,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 2;
 #endif
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+    /* chemistry FCT prep: 1 self + 26/2 pairs, 1 fct ghost | 15 */
+    n1 += 15;
+#endif
 #endif
   }
   if (e->policy & engine_policy_timestep_limiter) {
@@ -1253,14 +1258,19 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
   if (e->policy & engine_policy_sinks) {
     /* 1 drift, 2 kicks, 1 time-step, 1 sink formation     | 5
+       formation_gas: 1 self + 13 pairs                    | 14
+       formation_sink: 1 self + 13 pairs                   | 14
        density: 1 self + 13 pairs                          | 14
        swallow: 1 self + 13 pairs                          | 14
        do_gas_swallow: 1 self + 13 pairs                   | 14
        do_sink_swallow: 1 self + 13 pairs                  | 14
        ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
-       implicit: sink_in,  sink_out                        | 2 */
-    n1 += 66;
-    n2 += 3;
+       implicit: prep_ghost_in/out, prep_ghost_in/out_sink,
+                 sink_in, sink_out                         | 6
+       All above are super-cell tasks; n2 covers sub-cells. The formation_sink
+       tasks add 1 to n2. */
+    n1 += 98;
+    n2 += 4;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
       n1 += 1;
@@ -1855,6 +1865,10 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_sink_in || t->type == task_type_sink_ghost1 ||
         t->type == task_type_sink_ghost2 ||
         t->type == task_type_sink_formation || t->type == task_type_sink_out ||
+        t->type == task_type_sink_prep_ghost_in ||
+        t->type == task_type_sink_prep_ghost_out ||
+        t->type == task_type_sink_prep_ghost_in_sink ||
+        t->type == task_type_sink_prep_ghost_out_sink ||
         t->type == task_type_stars_prep_ghost1 ||
         t->type == task_type_hydro_prep_ghost1 ||
         t->type == task_type_stars_prep_ghost2 ||
@@ -1865,6 +1879,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
+        t->type == task_type_chemistry_fct_ghost ||
+        t->subtype == task_subtype_chemistry_fct_prep ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||
@@ -1879,6 +1895,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_part_swallow ||
         t->subtype == task_subtype_bpart_merger ||
         t->subtype == task_subtype_bpart_feedback ||
+        t->subtype == task_subtype_sink_formation_gas ||
+        t->subtype == task_subtype_sink_formation_sink ||
         t->subtype == task_subtype_sink_swallow ||
         t->subtype == task_subtype_sink_do_sink_swallow ||
         t->subtype == task_subtype_sink_do_gas_swallow ||
@@ -2516,6 +2534,21 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     sink_exact_density_check(e->s, e, /*rel_tol=*/1e-3);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  /* Run the brute-force gas-gas formation neighbor count for some particles.
+     Only meaningful when the fixed-aperture gas-gas preparation loop is
+     actually active -- otherwise there is no "optimised" count to compare
+     against. */
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
+    sink_exact_formation_count_compute(e->s, e);
+
+  /* Check the accuracy of the formation neighbor count */
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
+    sink_exact_formation_count_check(e->s, e);
+#endif
+
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
   /* Check the accuracy of the gravity calculation */
   if (e->policy & engine_policy_self_gravity)
@@ -3098,6 +3131,21 @@ int engine_step(struct engine *e) {
   /* Check the accuracy of the sink calculation */
   if (e->policy & engine_policy_sinks)
     sink_exact_density_check(e->s, e, /*rel_tol=*/1e-2);
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS
+  /* Run the brute-force gas-gas formation neighbor count for some particles.
+     Only meaningful when the fixed-aperture gas-gas preparation loop is
+     actually active -- otherwise there is no "optimised" count to compare
+     against. */
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
+    sink_exact_formation_count_compute(e->s, e);
+
+  /* Check the accuracy of the formation neighbor count */
+  if ((e->policy & engine_policy_sinks) &&
+      sink_formation_gas_loop_is_active(e->sink_properties))
+    sink_exact_formation_count_check(e->s, e);
 #endif
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS

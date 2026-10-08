@@ -17,11 +17,14 @@
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS) $(GRACKLE_INCS) $(SUNDIALS_INCS) $(LUSTREAPI_INCS)
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
+# Libraries every test needs on top of the SWIFT library itself
+COMMON_LIBS = $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
 
 if HAVECSDS
-AM_LDFLAGS += ../csds/src/.libs/libcsds_writer.a
+COMMON_LIBS += ../csds/src/.libs/libcsds_writer.a
 endif
+
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(COMMON_LIBS)
 
 # List of programs and scripts to run in the test suite
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
@@ -32,13 +35,15 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
-        test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
+        test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
+        testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline  # testMatrixInversion
+	    testLog testDistance testTimeline \
+	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -49,12 +54,14 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
-		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
+		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline
+		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
+		 testChemistryFluxAntisymmetry
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -95,6 +102,8 @@ testSymmetry_SOURCES = testSymmetry.c
 # Added because of issues using memcmp on clang 4.x
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
 
+testChemistryFluxAntisymmetry_SOURCES = testChemistryFluxAntisymmetry.c
+
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 
 testNeutrinoFermiDirac_SOURCES = testNeutrinoFermiDirac.c
@@ -114,6 +123,14 @@ test27cellsStars_SOURCES = test27cellsStars.c
 test27cellsStars_subset_SOURCES = test27cellsStars.c
 
 test27cellsStars_subset_CFLAGS = $(AM_CFLAGS) -DTEST_DOSELF_SUBSET -DTEST_DOPAIR_SUBSET
+
+test27cellsHydroSinks_SOURCES = test27cellsHydroSinks.c
+
+testSinkApertureRebuild_SOURCES = testSinkApertureRebuild.c
+
+testSinkFormationGasCompleteness_SOURCES = testSinkFormationGasCompleteness.c
+
+testSinkOverlapCriteria_SOURCES = testSinkOverlapCriteria.c
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -173,7 +190,21 @@ testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
 
-testHydroMPIrules = testHydroMPIrules.c
+testHydroMPIrules_SOURCES = testHydroMPIrules.c
+
+# Tests that need an MPI launcher. Built with the MPI library and run through
+# the wrapper script (which skips them when no mpirun is available).
+if HAVEMPI
+TESTS += testCustomMPI.sh
+check_PROGRAMS += testCustomMPI
+testCustomMPI_SOURCES = testCustomMPI.c
+testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+# The MPI library pulls in the same extra dependencies as the swift_mpi binary
+testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
+EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
+endif
+
+testSymmetricMatrixDiagonalisation_SOURCES = testSymmetricMatrixDiagonalisation.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
@@ -188,4 +219,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh
+             test27cellsHydroSinks.sh hydro_sinks_tolerance_27_normal.dat \
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh

@@ -105,6 +105,13 @@ void stats_add(struct statistics *a, const struct statistics *b) {
   a->divB_error += b->divB_error;
   a->H_cross += b->H_cross;
   a->H_mag += b->H_mag;
+
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+    a->gas_metal_mass[l] += b->gas_metal_mass[l];
+  }
+#endif /* GEAR Chemistry modules */
 }
 
 /**
@@ -213,6 +220,14 @@ void stats_collect_part_mapper(void *map_data, int nr_parts, void *extra_data) {
 
 #endif
 #endif
+
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+    /* Collect metal masses for each species */
+    for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+      stats.gas_metal_mass[l] += p->chemistry_data.metal_mass[l];
+    }
+#endif /* GEAR Chemistry modules */
 
     /* Collect centre of mass */
     stats.centre_of_mass[0] += m * x[0];
@@ -868,22 +883,54 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
   fprintf(file, "#      Unit = %e erg * s**-1\n",
           units_cgs_conversion_factor(us, UNIT_CONV_POWER));
 
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  const int num_fields = 40;
+
+  /* Print the dynamic species indices */
+  for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+    int index = num_fields + l;
+    fprintf(
+        file,
+        "# (%d) Total mass of metal species with index %d in the gas phase. \n",
+        index, l);
+    fprintf(file, "#       Unit = %e gram\n", us->UnitMass_in_cgs);
+    fprintf(file, "#       Unit = %e Msun\n",
+            1. / phys_const->const_solar_mass);
+  }
+#endif
+
   fprintf(file, "#\n");
+
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s  %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s  %14s ",
       "(0)", "(1)", "(2)", "(3)", "(4)", "(5)", "(6)", "(7)", "(8)", "(9)",
       "(10)", "(11)", "(12)", "(13)", "(14)", "(15)", "(16)", "(17)", "(18)",
       "(19)", "(20)", "(21)", "(22)", "(23)", "(24)", "(25)", "(26)", "(27)",
       "(28)", "(29)", "(30)", "(31)", "(32)", "(33)", "(34)", "(35)", "(36)",
       "(37)", "(38)", "(39)");
+
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* Print the dynamic species indices */
+  for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+    int index = num_fields + l;
+    char index_str[15];
+    // Create the string representation, e.g., "(40)"
+    snprintf(index_str, 15, "(%d)", index);
+    fprintf(file, " %14s", index_str);
+  }
+#endif
+  fprintf(file, "\n");
+
   fprintf(
       file,
       "#%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
       "%14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s %14s "
-      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s %14s \n",
+      "%14s %14s %14s %14s %14s %14s %14s  %14s  %14s  %14s %14s %14s ",
       "Step", "Time", "a", "z", "Total mass", "Gas mass", "DM mass",
       "Sink mass", "Star mass", "BH mass", "Gas Z mass", "Star Z mass",
       "BH Z mass", "Kin. Energy", "Int. Energy", "Pot. energy", "Rad. energy",
@@ -892,6 +939,18 @@ void stats_write_file_header(FILE *file, const struct unit_system *restrict us,
       "BH acc. mass", "BH sub. mass", "Gas H mass", "Gas H2 mass",
       "Gas HI mass", "Gas He mass", "Mag. Energy", "DivB err", "Cr. Helicity",
       "Mag. Helicity", "BH bol. lum.", "BH jet power");
+
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* Print the dynamic species names (just the index) */
+  for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+    char name_str[15];
+    /* Create the string representation, e.g., "Z_Idx_0" */
+    snprintf(name_str, 15, "Z_Idx_%d", l);
+    fprintf(file, " %14s", name_str);
+  }
+#endif
+  fprintf(file, "\n");
 
   fflush(file);
 }
@@ -918,7 +977,7 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       file,
       " %14d %14e %14.7f %14.7f %14e %14e %14e %14e %14e %14e %14e %14e %14e "
       "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e "
-      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e\n",
+      "%14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e %14e",
       step, time, a, z, stats->total_mass, stats->gas_mass, stats->dm_mass,
       stats->sink_mass, stats->star_mass, stats->bh_mass, stats->gas_Z_mass,
       stats->star_Z_mass, stats->bh_Z_mass, stats->E_kin, stats->E_int, E_pot,
@@ -930,6 +989,15 @@ void stats_write_to_file(FILE *file, const struct statistics *stats,
       stats->gas_HI_mass, stats->gas_He_mass, stats->E_mag, stats->divB_error,
       stats->H_cross, stats->H_mag, stats->bh_bolometric_luminosity,
       stats->bh_jet_power);
+
+#if defined(CHEMISTRY_GEAR) || defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* Loop and print the dynamic species masses (40) onwards */
+  for (int l = 0; l < GEAR_CHEMISTRY_ELEMENT_COUNT; l++) {
+    fprintf(file, " %14e", stats->gas_metal_mass[l]);
+  }
+#endif
+  fprintf(file, "\n");
 
   fflush(file);
 }

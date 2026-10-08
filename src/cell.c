@@ -722,6 +722,7 @@ void cell_clean_links(struct cell *c, void *data) {
   c->hydro.gradient = NULL;
   c->hydro.force = NULL;
   c->hydro.limiter = NULL;
+  c->hydro.chemistry_fct_prep = NULL;
   c->rt.rt_gradient = NULL;
   c->rt.rt_transport = NULL;
   c->grav.grav = NULL;
@@ -736,6 +737,8 @@ void cell_clean_links(struct cell *c, void *data) {
   c->sinks.density = NULL;
   c->sinks.do_sink_swallow = NULL;
   c->sinks.do_gas_swallow = NULL;
+  c->sinks.formation_gas = NULL;
+  c->sinks.formation_sink = NULL;
   c->black_holes.density = NULL;
   c->black_holes.swallow = NULL;
   c->black_holes.do_gas_swallow = NULL;

@@ -34,6 +34,7 @@
 #include "engine.h"
 #include "feedback.h"
 #include "scheduler.h"
+#include "sink_properties.h"
 #include "space_getsid.h"
 #include "timers.h"
 
@@ -64,6 +65,15 @@
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
 #include "runner_doiact_hydro.h"
 #include "runner_doiact_undef.h"
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+/* Import the chemistry FCT prep loop functions. */
+#define FUNCTION chemistry_fct_prep
+#define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
+#include "runner_doiact_hydro.h"
+#include "runner_doiact_undef.h"
+#endif
 
 /* Import the limiter loop functions. */
 #define FUNCTION limiter
@@ -129,6 +139,15 @@
 #include "runner_doiact_sinks.h"
 #include "runner_doiact_undef.h"
 
+/* Import the sink formation gas loop function declarations. */
+#define FUNCTION prep_sink_formation
+#define FUNCTION_TASK_LOOP TASK_LOOP_PREP_SINK_FORMATION
+#include "runner_doiact_hydro_aperture.h"
+#include "runner_doiact_undef.h"
+
+/* Import the sink formation sink (overlap) loop function declarations. */
+#include "runner_doiact_hydro_sink_aperture.h"
+
 /* Import the RT gradient loop functions */
 #define FUNCTION rt_gradient
 #define FUNCTION_TASK_LOOP TASK_LOOP_RT_GRADIENT
@@ -156,6 +175,16 @@ void *runner_main(void *data) {
   struct runner *r = (struct runner *)data;
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
+
+  /* Note: this selects r_cut purely at compile time (SINKS_WITH_FIXED_
+     CUTOFF_RADIUS), unlike task creation which additionally gates on the
+     runtime flag (sink_formation_gas_loop_is_active(), see
+     sink_properties.h). This asymmetry is harmless: when the runtime gate
+     is off, no sink_formation_gas task is ever created, so this dispatch
+     value is never read. */
+  const struct sink_props *sink_properties = e->sink_properties;
+  const float sink_cut_off_radius =
+      sink_formation_gas_loop_r_cut(sink_properties);
 
 #ifdef WITH_LIKWID
   swift_likwid_marker_start_region("runner_main");
@@ -223,8 +252,9 @@ void *runner_main(void *data) {
             runner_doself_recursive_grav(r, ci, 1);
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
-          else if (t->subtype == task_subtype_density)
+          else if (t->subtype == task_subtype_density) {
             runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
@@ -235,6 +265,11 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+          else if (t->subtype == task_subtype_chemistry_fct_prep)
+            runner_dosub_self2_chemistry_fct_prep(r, ci, /*below_h_max=*/0, 1);
+#endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -274,6 +309,12 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
+          else if (t->subtype == task_subtype_sink_formation_gas)
+            runner_dosub_self1_hydro_aperture_prep_sink_formation(
+                r, ci, sink_cut_off_radius, /*gettimer=*/1);
+          else if (t->subtype == task_subtype_sink_formation_sink)
+            runner_dosub_self1_hydro_sink_aperture_prep_sink_formation_sink(
+                r, ci, sink_cut_off_radius, /*gettimer=*/1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -282,8 +323,9 @@ void *runner_main(void *data) {
         case task_type_pair:
           if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
-          else if (t->subtype == task_subtype_density)
+          else if (t->subtype == task_subtype_density) {
             runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
+          }
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
@@ -294,6 +336,12 @@ void *runner_main(void *data) {
 #endif
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+          else if (t->subtype == task_subtype_chemistry_fct_prep)
+            runner_dosub_pair2_chemistry_fct_prep(r, ci, cj, /*below_h_max=*/0,
+                                                  1);
+#endif
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -332,6 +380,12 @@ void *runner_main(void *data) {
             runner_do_sinks_gas_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
+          else if (t->subtype == task_subtype_sink_formation_gas)
+            runner_dosub_pair1_hydro_aperture_prep_sink_formation(
+                r, ci, cj, sink_cut_off_radius, /*gettimer=*/1);
+          else if (t->subtype == task_subtype_sink_formation_sink)
+            runner_dosub_pair1_hydro_sink_aperture_prep_sink_formation_sink(
+                r, ci, cj, sink_cut_off_radius, /*gettimer=*/1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -376,6 +430,12 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
         case task_type_extra_ghost:
           runner_do_extra_ghost(r, ci, 1);
+          break;
+#endif
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+        case task_type_chemistry_fct_ghost:
+          runner_do_chemistry_fct_ghost(r, ci, 1);
           break;
 #endif
         case task_type_stars_ghost:

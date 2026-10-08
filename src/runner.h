@@ -49,6 +49,7 @@ struct hii_neighbor;
 #define TASK_LOOP_STARS_PREP2 10
 #define TASK_LOOP_RT_GRADIENT 11
 #define TASK_LOOP_RT_TRANSPORT 12
+#define TASK_LOOP_PREP_SINK_FORMATION 13
 
 /**
  * @brief A struct representing a runner's thread and its data.
@@ -106,6 +107,7 @@ struct runner {
 void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
                      const int ntasks, const int timer);
 void runner_do_extra_ghost(struct runner *r, struct cell *c, int timer);
+void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c, int timer);
 void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
                            const int ntasks, const int timer);
 void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,

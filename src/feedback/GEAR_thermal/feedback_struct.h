@@ -19,6 +19,11 @@
 #ifndef SWIFT_FEEDBACK_STRUCT_GEAR_H
 #define SWIFT_FEEDBACK_STRUCT_GEAR_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Local includes */
+#include "../GEAR/feedback_tracers_struct.h"
 #include "chemistry_struct.h"
 #include "timeline.h"
 
@@ -249,6 +254,12 @@ struct feedback_part_data {
       #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
       every star touch. Set to -1 at first init. */
   integertime_t ISRF_reservoir_end_ti;
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /* Trace the metals received from feedback events. This is similar to not
+     diffusing metals */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+#endif
 };
 
 /**
@@ -258,8 +269,14 @@ struct feedback_xpart_data {
   /*! mass received from supernovae */
   float delta_mass;
 
-  /*! specific energy received from supernovae */
-  float delta_u;
+  /*! Metal mass received from supernovae */
+  double delta_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Values of the events for the tracers, given at the update */
+  struct feedback_tracers_pending tracers_pending;
+
+  /*! Thermal energy (not specific) received from supernovae and winds */
+  float delta_E_th;
 
   /*! Momentum received from a supernova */
   float delta_p[3];

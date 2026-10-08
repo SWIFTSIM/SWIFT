@@ -58,6 +58,7 @@
 #include "proxy.h"
 #include "rt_properties.h"
 #include "runner_radiation_feedback.h"
+#include "sink_properties.h"
 #include "timers.h"
 
 extern int engine_max_parts_per_ghost;
@@ -1389,6 +1390,11 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
       (e->policy & engine_policy_timestep_limiter);
   const int with_timestep_sync = (e->policy & engine_policy_timestep_sync);
   const int with_rt = (e->policy & engine_policy_rt);
+  /* Is the fixed-aperture gas-gas sink-formation preparation loop active?
+     When it is, sink_formation is unlocked via prep_ghost_out instead (see
+     engine_make_hierarchical_tasks_hydro), not directly from kick2. */
+  const int with_sink_formation_gas =
+      with_sinks && sink_formation_gas_loop_is_active(e->sink_properties);
 #ifdef WITH_CSDS
   const int with_csds = e->policy & engine_policy_csds;
 #endif
@@ -1487,8 +1493,10 @@ void engine_make_hierarchical_tasks_common(struct engine *e, struct cell *c) {
         scheduler_addunlock(s, c->top->sinks.star_formation_sink, c->timestep);
       }
 
-      /* Subgrid tasks: sinks formation */
-      if (with_sinks) {
+      /* Subgrid tasks: sinks formation. When the fixed-aperture gas-gas
+         preparation loop is active, sink_formation is unlocked via
+         prep_ghost_out instead (see engine_make_hierarchical_tasks_hydro). */
+      if (with_sinks && !with_sink_formation_gas) {
         scheduler_addunlock(s, c->kick2, c->top->sinks.sink_formation);
       }
 
@@ -1763,6 +1771,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
   const int with_cooling = (e->policy & engine_policy_cooling);
   const int with_star_formation = (e->policy & engine_policy_star_formation);
   const int with_star_formation_sink = (with_sinks && with_stars);
+  /* Is the fixed-aperture gas-gas sink-formation preparation loop active? */
+  const int with_sink_formation_gas =
+      with_sinks && sink_formation_gas_loop_is_active(e->sink_properties);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
 #ifdef WITH_CSDS
@@ -1845,6 +1856,14 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
 #ifdef EXTRA_HYDRO_LOOP
       c->hydro.extra_ghost = scheduler_addtask(
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+      /* Ghost of the chemistry FCT positivity limiter: computes theta between
+         the fct_prep loop and the (flux-applying) force loop. */
+      c->hydro.chemistry_fct_ghost = scheduler_addtask(
+          s, task_type_chemistry_fct_ghost, task_subtype_none, 0, 0, c, NULL);
+#endif
 #endif
 
       /* Stars */
@@ -1882,8 +1901,46 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
             scheduler_addtask(s, task_type_sink_out, task_subtype_none, 0,
                               /* implicit = */ 1, c, NULL);
 
-        /* Link to the main tasks */
-        scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
+        if (with_sink_formation_gas) {
+          c->sinks.prep_ghost_in = scheduler_addtask(
+              s, task_type_sink_prep_ghost_in, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+          c->sinks.prep_ghost_out = scheduler_addtask(
+              s, task_type_sink_prep_ghost_out, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+
+          /* The gas-vs-existing-sink overlap loop gets its own dedicated
+             barrier pair rather than sharing prep_ghost_in/out: it is a
+             structurally different (mixed-type) search, so its window is
+             bracketed independently instead of relying on it being safe to
+             interleave with the gas-gas loop's tasks. */
+          c->sinks.prep_ghost_in_sink = scheduler_addtask(
+              s, task_type_sink_prep_ghost_in_sink, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+          c->sinks.prep_ghost_out_sink = scheduler_addtask(
+              s, task_type_sink_prep_ghost_out_sink, task_subtype_none, 0,
+              /* implicit = */ 1, c, NULL);
+        }
+
+        /* Link to the main tasks. When the fixed-aperture gas-gas loop is
+           active, kick2 unlocks prep_ghost_in and prep_ghost_in_sink. The two
+           loops run in separate windows. sink_formation waits for both
+           prep_ghost_out and prep_ghost_out_sink. Otherwise, we keep the
+           direct kick2 -> sink_in edge.
+           Note: there is no edge from prep_ghost_in_sink to
+           prep_ghost_out_sink. If a super cell has no active gas-sink task,
+           prep_ghost_out_sink can run early. Then only prep_ghost_out keeps
+           sink_formation after kick2. */
+        if (with_sink_formation_gas) {
+          scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in);
+          scheduler_addunlock(s, c->super->kick2, c->sinks.prep_ghost_in_sink);
+          scheduler_addunlock(s, c->sinks.prep_ghost_out,
+                              c->top->sinks.sink_formation);
+          scheduler_addunlock(s, c->sinks.prep_ghost_out_sink,
+                              c->top->sinks.sink_formation);
+        } else {
+          scheduler_addunlock(s, c->super->kick2, c->sinks.sink_in);
+        }
         scheduler_addunlock(s, c->sinks.sink_out, c->super->timestep);
         scheduler_addunlock(s, c->top->sinks.sink_formation, c->sinks.sink_in);
 
@@ -2712,8 +2769,16 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_black_holes = (e->policy & engine_policy_black_holes);
   const int with_rt = (e->policy & engine_policy_rt);
   const int with_sink = (e->policy & engine_policy_sinks);
+  /* Is the fixed-aperture gas-gas sink-formation preparation loop active for
+     this run? Gates every formation_gas-related task/dependency below. */
+  const int with_sink_formation_gas =
+      with_sink && sink_formation_gas_loop_is_active(e->sink_properties);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  struct task *t_chemistry_fct_prep = NULL;
+#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS
   struct task *t_star_prep1 = NULL;
@@ -2731,6 +2796,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   struct task *t_bh_feedback = NULL;
   struct task *t_sink_density = NULL;
   struct task *t_sink_swallow = NULL;
+  struct task *t_sink_formation_gas = NULL;
+  struct task *t_sink_formation_sink = NULL;
   struct task *t_rt_gradient = NULL;
   struct task *t_rt_transport = NULL;
   struct task *t_sink_do_sink_swallow = NULL;
@@ -2818,6 +2885,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_gas_swallow = scheduler_addtask(
             sched, task_type_self, task_subtype_sink_do_gas_swallow, flags, 0,
             ci, NULL);
+        if (with_sink_formation_gas) {
+          t_sink_formation_gas = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_formation_gas, flags, 0,
+              ci, NULL);
+          t_sink_formation_sink = scheduler_addtask(
+              sched, task_type_self, task_subtype_sink_formation_sink, flags, 0,
+              ci, NULL);
+        }
       }
 
       /* The black hole feedback tasks */
@@ -2869,6 +2944,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &ci->sinks.swallow, t_sink_swallow);
         engine_addlink(e, &ci->sinks.do_sink_swallow, t_sink_do_sink_swallow);
         engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        if (with_sink_formation_gas) {
+          engine_addlink(e, &ci->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &ci->sinks.formation_sink, t_sink_formation_sink);
+        }
       }
       if (with_black_holes && bcount_i > 0) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -2896,6 +2975,22 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+      /* Chemistry FCT positivity limiter prep loop:
+         extra_ghost --> fct_prep --> fct_ghost --> force loop */
+      t_chemistry_fct_prep = scheduler_addtask(sched, task_type_self,
+                                               task_subtype_chemistry_fct_prep,
+                                               flags, 0, ci, NULL);
+      engine_addlink(e, &ci->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                          t_chemistry_fct_prep);
+      scheduler_addunlock(sched, t_chemistry_fct_prep,
+                          ci->hydro.super->hydro.chemistry_fct_ghost);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.chemistry_fct_ghost,
+                          t_force);
+#endif
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -2982,6 +3077,36 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_sink_do_sink_swallow);
         scheduler_addunlock(sched, t_sink_do_sink_swallow,
                             ci->hydro.super->sinks.sink_out);
+
+        /* Sink formation gas preparation (gas-gas loop) */
+        if (with_sink_formation_gas) {
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation_gas);
+          /* Self recursion produces sub-pairs (cross-progeny) that use the
+             sorted pair branch, exactly like the density self task. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_sink_formation_gas);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in,
+                              t_sink_formation_gas);
+          scheduler_addunlock(sched, t_sink_formation_gas,
+                              ci->hydro.super->sinks.prep_ghost_out);
+
+          /* Gas-sink overlap loop for sink formation. It has its own ghost
+             tasks (prep_ghost_in_sink and prep_ghost_out_sink), so it does not
+             wait for the gas-gas loop. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                              t_sink_formation_sink);
+          /* This loop does not use the sorted indices yet. We keep the
+             dependency for a later version that will. */
+          scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in_sink,
+                              t_sink_formation_sink);
+          scheduler_addunlock(sched, t_sink_formation_sink,
+                              ci->hydro.super->sinks.prep_ghost_out_sink);
+        }
       }
 
       if (with_black_holes && bcount_i > 0) {
@@ -3127,6 +3252,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         t_sink_do_gas_swallow = scheduler_addtask(
             sched, task_type_pair, task_subtype_sink_do_gas_swallow, flags, 0,
             ci, cj);
+        if (with_sink_formation_gas) {
+          t_sink_formation_gas = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_formation_gas, flags, 0,
+              ci, cj);
+          t_sink_formation_sink = scheduler_addtask(
+              sched, task_type_pair, task_subtype_sink_formation_sink, flags, 0,
+              ci, cj);
+        }
       }
 
       /* The black hole feedback tasks */
@@ -3205,6 +3338,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         engine_addlink(e, &cj->sinks.do_sink_swallow, t_sink_do_sink_swallow);
         engine_addlink(e, &ci->sinks.do_gas_swallow, t_sink_do_gas_swallow);
         engine_addlink(e, &cj->sinks.do_gas_swallow, t_sink_do_gas_swallow);
+        if (with_sink_formation_gas) {
+          engine_addlink(e, &ci->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &cj->sinks.formation_gas, t_sink_formation_gas);
+          engine_addlink(e, &ci->sinks.formation_sink, t_sink_formation_sink);
+          engine_addlink(e, &cj->sinks.formation_sink, t_sink_formation_sink);
+        }
       }
       if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
         engine_addlink(e, &ci->black_holes.density, t_bh_density);
@@ -3247,6 +3386,39 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              t_limiter, cj, with_cooling,
                                              with_timestep_limiter);
       }
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+      /* Chemistry FCT positivity limiter prep loop:
+         extra_ghost --> fct_prep --> fct_ghost --> force loop.
+         The prep pair task feeds the fct_ghost of BOTH supers, and the force
+         pair waits for both fct_ghosts, so an inactive neighbour's theta is
+         also current-step when the flux exchange runs. */
+      t_chemistry_fct_prep =
+          scheduler_addtask(sched, task_type_pair,
+                            task_subtype_chemistry_fct_prep, flags, 0, ci, cj);
+      engine_addlink(e, &ci->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
+      engine_addlink(e, &cj->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
+      if (ci->nodeID == nodeID) {
+        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
+                            t_chemistry_fct_prep);
+        scheduler_addunlock(sched, t_chemistry_fct_prep,
+                            ci->hydro.super->hydro.chemistry_fct_ghost);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.chemistry_fct_ghost,
+                            t_force);
+      }
+      if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
+        scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
+                            t_chemistry_fct_prep);
+        scheduler_addunlock(sched, t_chemistry_fct_prep,
+                            cj->hydro.super->hydro.chemistry_fct_ghost);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.chemistry_fct_ghost,
+                            t_force);
+      }
+      /* TODO(MPI): a foreign ci/cj side needs send/recv wiring for the
+         donor-side outflow sums and theta before this limiter can run
+         multi-node. engine_maketasks() errors out for such runs today. */
+#endif
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -3351,6 +3523,33 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_sink_do_sink_swallow);
           scheduler_addunlock(sched, t_sink_do_sink_swallow,
                               ci->hydro.super->sinks.sink_out);
+
+          /* Sink formation gas preparation (gas-gas loop), ci side. */
+          if (with_sink_formation_gas) {
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_formation_gas);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_formation_gas);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.prep_ghost_in,
+                                t_sink_formation_gas);
+            scheduler_addunlock(sched, t_sink_formation_gas,
+                                ci->hydro.super->sinks.prep_ghost_out);
+
+            /* Gas-sink overlap loop, ci side. Own ghost tasks, see the self
+               task above. The sort dependency is not needed by this loop
+               for now. */
+            scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, ci->hydro.super->hydro.sorts,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched,
+                                ci->hydro.super->sinks.prep_ghost_in_sink,
+                                t_sink_formation_sink);
+            scheduler_addunlock(sched, t_sink_formation_sink,
+                                ci->hydro.super->sinks.prep_ghost_out_sink);
+          }
         }
 
         if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -3518,6 +3717,33 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_sink_do_sink_swallow);
             scheduler_addunlock(sched, t_sink_do_sink_swallow,
                                 cj->hydro.super->sinks.sink_out);
+
+            /* Sink formation gas preparation (gas-gas loop), cj side. */
+            if (with_sink_formation_gas) {
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_formation_gas);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_formation_gas);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.prep_ghost_in,
+                                  t_sink_formation_gas);
+              scheduler_addunlock(sched, t_sink_formation_gas,
+                                  cj->hydro.super->sinks.prep_ghost_out);
+
+              /* Gas-sink overlap loop, cj side. Own ghost tasks, see the self
+                 task above. The sort dependency is not needed by this loop
+                 for now. */
+              scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, cj->hydro.super->hydro.sorts,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched,
+                                  cj->hydro.super->sinks.prep_ghost_in_sink,
+                                  t_sink_formation_sink);
+              scheduler_addunlock(sched, t_sink_formation_sink,
+                                  cj->hydro.super->sinks.prep_ghost_out_sink);
+            }
           }
 
           if (with_black_holes && (bcount_i > 0 || bcount_j > 0)) {
@@ -4861,6 +5087,17 @@ void engine_maketasks(struct engine *e) {
    * radiation_out loop and wiring, handled separately below). */
   const int with_radiation_tasks = feedback_radiation_gather_tasks_needed(
       e->policy & engine_policy_hydro, with_stars);
+
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
+    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  /* The chemistry FCT positivity limiter has no MPI exchange of the
+     donor-side outflow sums/theta yet, so foreign copies of a particle would
+     limit fluxes inconsistently across ranks. */
+  if (e->nr_nodes > 1)
+    error(
+        "The GEAR FVPM chemistry FCT positivity limiter does not support MPI "
+        "runs yet.");
+#endif
 
   /* Re-set the scheduler. */
   scheduler_reset(sched, engine_estimate_nr_tasks(e));

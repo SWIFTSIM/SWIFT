@@ -27,8 +27,8 @@ The gas particles record the stellar feedback they receive over their lifetime, 
 | ``CumulativeEnergyFromSupernovae``    | | Specific internal energy received from    | [U_L^2 U_T^{-2}]            | | Physical.                                       |
 |                                       | | supernovae, summed over events            |                             |                                                   |
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
-| ``CumulativeEnergyFromWinds``         | | Specific internal energy received from    | [U_L^2 U_T^{-2}]            | | Physical. Can be negative if the gas            |
-|                                       | | stellar winds, summed over events         |                             | | moved towards the star before the kick.         |
+| ``CumulativeEnergyFromWinds``         | | Specific internal energy received from    | [U_L^2 U_T^{-2}]            | | Physical. Not negative: the energy              |
+|                                       | | stellar winds, summed over events         |                             | | dissipated as the ejecta merge with the gas.    |
 +---------------------------------------+---------------------------------------------+-----------------------------+---------------------------------------------------+
 | ``MaxKickVelocityFromSupernovae``     | | Largest velocity kick received from a     | [U_L U_T^{-1}]              | | Physical.                                       |
 |                                       | | single supernova event                    |                             |                                                   |

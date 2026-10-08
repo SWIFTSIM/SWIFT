@@ -83,6 +83,10 @@ TASKTYPES = [
     "sink_ghost1",
     "sink_ghost2",
     "sink_out",
+    "sink_prep_ghost_in",
+    "sink_prep_ghost_out",
+    "sink_prep_ghost_in_sink",
+    "sink_prep_ghost_out_sink",
     "rt_in",
     "rt_out",
     "sink_formation",
@@ -91,8 +95,9 @@ TASKTYPES = [
     "rt_transport_out",
     "rt_tchem",
     "rt_advance_cell_time",
-    "rt_sort",
+    "rt_sorts",
     "rt_collect_times",
+    "chemistry_fct_ghost",
     #  "count",
 ]
 
@@ -131,10 +136,13 @@ SUBTYPES = [
     "sink_do_sink_swallow",
     "sink_swallow",
     "sink_do_gas_swallow",
+    "sink_formation_gas",
+    "sink_formation_sink",
     "rt_gradient",
     "rt_transport",
     "stars_radiation_in",
     "stars_radiation_out",
+    "chemistry_fct_prep",
     #  "count",
 ]
 

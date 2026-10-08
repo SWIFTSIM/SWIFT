@@ -459,6 +459,36 @@ elif test "$sink_density_checks" != "no"; then
    AC_DEFINE_UNQUOTED([SWIFT_SINK_DENSITY_CHECKS], [$enableval] ,[Enable sink density brute-force checks])
 fi
 
+# Check if sink formation neighbour-count checks are enabled.
+AC_ARG_ENABLE([sink-formation-checks],
+   [AS_HELP_STRING([--enable-sink-formation-checks],
+     [Activate brute-force sink formation neighbour-count checks for a fraction 1/N of all particles @<:@N@:>@]
+   )],
+   [sink_formation_checks="$enableval"],
+   [sink_formation_checks="no"]
+)
+if test "$sink_formation_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-formation-checks!)
+elif test "$sink_formation_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_DEBUG_CHECKS_HYDRO_SINKS_FORMATION_COUNT_CHECKS], [$enableval],
+                      [Enable brute-force sink formation neighbour-count checks])
+fi
+
+# Check if sink formation overlap checks are enabled.
+AC_ARG_ENABLE([sink-formation-overlap-checks],
+   [AS_HELP_STRING([--enable-sink-formation-overlap-checks],
+     [Activate brute-force checks of the gas-sink overlap loop of sink formation for a fraction 1/N of all gas particles @<:@N@:>@]
+   )],
+   [sink_formation_overlap_checks="$enableval"],
+   [sink_formation_overlap_checks="no"]
+)
+if test "$sink_formation_overlap_checks" = "yes"; then
+   AC_MSG_ERROR(Need to specify the fraction of particles to check when using --enable-sink-formation-overlap-checks!)
+elif test "$sink_formation_overlap_checks" != "no"; then
+   AC_DEFINE_UNQUOTED([SWIFT_SINK_FORMATION_OVERLAP_CHECKS], [$enableval],
+                      [Enable brute-force checks of the sink formation overlap loop])
+fi
+
 # Check if ghost statistics are enabled
 AC_ARG_ENABLE([ghost-statistics],
    [AS_HELP_STRING([--enable-ghost-statistics],
@@ -2678,8 +2708,9 @@ fi
 #  chemistry function
 AC_ARG_WITH([chemistry],
    [AS_HELP_STRING([--with-chemistry=<function>],
-      [chemistry function @<:@none, GEAR_*, AGORA, QLA, EAGLE default: none@:>@
-      For GEAR, you need to provide the number of elements (e.g. GEAR_10)]
+      [chemistry function @<:@none, GEAR_*, GEAR-FVPM-DIFFUSION_*,
+      GEAR-FVPM-HYPERBOLIC-DIFFUSION_*, AGORA, QLA, EAGLE default: none@:>@
+      For GEAR chemistries, you need to provide the number of elements (e.g. GEAR_10)]
    )],
    [with_chemistry="$withval"],
    [with_chemistry="none"]
@@ -2704,6 +2735,25 @@ case "$with_chemistry" in
       AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
       with_chemistry_name="GEAR (with $number_element elements)"
       with_chemistry="GEAR"
+   ;;
+   GEAR-FVPM-DIFFUSION_*)
+      AC_DEFINE([CHEMISTRY_GEAR_FVPM_DIFFUSION], [1], [Chemistry taken from the
+      GEAR model with meshless finite particle method to solve the parabolic
+      diffusion equation])
+      number_element=${with_chemistry#*_}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element], [Number of element to follow])
+      with_chemistry_name="GEAR FVPM diffusion (with $number_element elements)"
+      with_chemistry="GEAR FVPM DIFFUSION"
+   ;;
+   GEAR-FVPM-HYPERBOLIC-DIFFUSION_*)
+      AC_DEFINE([CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION], [1], [Chemistry taken from the
+      GEAR model with meshless finite particle method to solve the *hyperbolic*
+      diffusion equation])
+      number_element=${with_chemistry#*_}
+      AC_DEFINE_UNQUOTED([GEAR_CHEMISTRY_ELEMENT_COUNT], [$number_element],
+      [Number of element to follow])
+      with_chemistry_name="GEAR FVPM hyperbolic diffusion (with $number_element elements)"
+      with_chemistry="GEAR FVPM HYPERBOLIC DIFFUSION"
    ;;
    AGORA)
       AC_DEFINE([CHEMISTRY_AGORA], [1], [Chemistry taken from the AGORA model])
@@ -2735,7 +2785,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, TREECOOL, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2794,6 +2844,10 @@ case "$with_cooling" in
    PS2020)
       AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
       with_cooling_name="PS2020 (Ploeckinger+20 tables)"
+   ;;
+   TREECOOL)
+      AC_DEFINE([COOLING_TREECOOL], [1], [Cooling following the Katz, Weinberg & Hernquist (1996) primordial model])
+      with_cooling_name="TREECOOL (Katz+96 primordial H/He, tabulated UV background)"
    ;;
    COLIBRE)
       AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
@@ -3056,6 +3110,8 @@ case "$with_sink" in
        AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from Grackle's equilibrium mean molecular weight])
     fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
+    AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
+   defines a fixed cutoff radius `cut_off_radius`?])
     ;;
     *)
       AC_MSG_ERROR([Unknown sink particle model model: $with_sink])
@@ -3475,7 +3531,9 @@ AM_CONDITIONAL([HAVE_GADGET2], [test "$with_hydro" = "gadget2"])
 AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
-AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "$with_chemistry" = "GEAR_DIFFUSION"])
+AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test
+"$with_chemistry" = "GEAR_DIFFUSION" || test "$with_chemistry" =
+"GEAR_FVPM_DIFFUSION" || test "$with_chemistry" = "CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION"])
 
 # check if using AGORA chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])
@@ -3525,6 +3583,7 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
+AC_CONFIG_FILES([tests/testCustomMPI.sh], [chmod +x tests/testCustomMPI.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 AC_CONFIG_FILES([tests/selectOutputParameters.yml])
 
