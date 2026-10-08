@@ -34,6 +34,8 @@
 
 #include <float.h>
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+
 /**
  * @brief Determines whether a gas #part can be ionized.
  *
@@ -362,6 +364,10 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp) {
   return radiation_get_part_ionized_star_id(p, xp);
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /**
  * @brief Local specific PE-band radiation field, see
@@ -760,3 +766,5 @@ float feedback_radiation_compute_part_timestep(const struct part *restrict p,
         e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
   return dt_isrf;
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */

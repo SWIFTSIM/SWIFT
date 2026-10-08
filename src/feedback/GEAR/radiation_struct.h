@@ -222,9 +222,12 @@ struct feedback_xpart_HII_region_data {
  */
 struct feedback_spart_radiation_data {
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Bolometric luminosity (physical units) from the stellar evolution */
   double L_bol;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Ionizing photon rate of each active pixel (physical units): the star's
       total, split evenly. Double, since the value is huge. A pure rate,
       never debited. */
@@ -264,11 +267,15 @@ struct feedback_spart_radiation_data {
   /*! Mean photon energy above 13.6 eV, cached once per HII rebuild pass, in
       erg. Only set with GEARFeedback:HII_couple_ionization_rate. */
   float mean_excess_photon_energy_HI;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Moment luminosity (physical units) by #radiation_isrf_moment, from the
       radiation table. 0 unless the interstellar radiation field is on. */
   double L_band[ISRF_MOMENT_COUNT];
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION
   /*! Photospheric effective temperature (internal units), a diagnostic no
       feedback channel uses. For a population particle, the hottest
       surviving star. 0 without a "Teff" table dataset. */
@@ -281,6 +288,7 @@ struct feedback_spart_radiation_data {
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Integer time at the start of the step #Delta_t was cached for. */
   integertime_t Delta_t_cached_ti_begin;
+#endif
 #endif
 };
 

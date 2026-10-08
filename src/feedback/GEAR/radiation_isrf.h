@@ -26,6 +26,7 @@
  */
 
 #include "feedback_struct.h"
+#include "inline.h"
 
 struct part;
 struct xpart;
@@ -47,6 +48,15 @@ extern double radiation_lw_photon_energy_cgs;
 
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                                         const struct stellar_model *sm);
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+
+/* The ISRF gradient pass runs in the extra hydro loop. Configure refuses a
+   hydro scheme without it; this is the backstop. */
+#include "part.h"
+#ifndef EXTRA_HYDRO_LOOP
+#error "The GEAR subgrid ISRF needs a hydro scheme with EXTRA_HYDRO_LOOP."
+#endif
 
 /**
  * @brief Set the band-edge weights of @p fb_props from the radiation table.
@@ -85,5 +95,36 @@ float radiation_get_part_linear_absorption_rate(
     const struct unit_system *us, const struct phys_const *phys_const, float Z,
     float rho_p, float sigma_d_band_cgs, float local_dust_to_gas_ratio);
 float radiation_relaxation_phi_factor(float a);
+
+#else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+#include <float.h>
+
+/* Without the part: no ISRF state, so every hook does nothing. */
+
+__attribute__((always_inline)) INLINE static void
+radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
+                                     const struct radiation *rad,
+                                     const struct stellar_model *sm) {}
+__attribute__((always_inline)) INLINE static void radiation_first_init_part(
+    struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void
+radiation_snapshot_part_propagation(struct part *p, const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_init_part_propagation(struct part *p) {}
+__attribute__((always_inline)) INLINE static void
+radiation_end_density_propagation(struct part *p, const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_end_gradient_propagation(struct part *p, const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_end_force_propagation(struct part *p, const struct engine *e) {}
+__attribute__((always_inline)) INLINE static float radiation_isrf_part_timestep(
+    const struct part *restrict p, const struct engine *e) {
+  return FLT_MAX;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 #endif /* SWIFT_RADIATION_ISRF_GEAR_H */

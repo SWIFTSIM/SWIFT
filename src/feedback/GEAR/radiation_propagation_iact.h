@@ -39,6 +39,8 @@
 
 #include <math.h>
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+
 /**
  * @brief Band contribution to particle i's `div(F)` accumulator, and the
  * mirrored, mass-weighted, opposite-sign contribution to j's.
@@ -837,5 +839,51 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
         &moment_i->dissipation_u, &unused_dissipation_u);
   }
 }
+
+#else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+/* Without the part: the hydro loops keep their calls, which do nothing. */
+
+__attribute__((always_inline)) INLINE static void
+radiation_cache_m1_closure_part(struct part *p) {}
+
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_propagation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct unit_system *us) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_propagation(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct part *restrict pi,
+                                    const struct part *restrict pj,
+                                    const float a, const float H,
+                                    const struct unit_system *us) {}
+
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
+                                 const float hi, const float hj,
+                                 struct part *restrict pi,
+                                 struct part *restrict pj, const float a,
+                                 const float H) {}
+
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
+                                    const float hi, const float hj,
+                                    struct part *restrict pi,
+                                    struct part *restrict pj, const float a,
+                                    const float H) {}
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 #endif /* SWIFT_RADIATION_PROPAGATION_IACT_GEAR_H */

@@ -168,7 +168,8 @@ struct feedback_props {
 
 /**
  * @brief Does this run need the radiation task layer (HII gather and
- * ionization tasks)? Always: this module builds it in every run.
+ * ionization tasks)? Always in a build with the HII regions: this module
+ * builds it in every run.
  *
  * @param fp The #feedback_props.
  */

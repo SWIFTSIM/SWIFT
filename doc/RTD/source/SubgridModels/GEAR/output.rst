@@ -310,6 +310,8 @@ See :ref:`gear_black_holes` for the physics behind these fields. The averaged ac
 HII photoionization
 ~~~~~~~~~~~~~~~~~~~~
 
+The fields of this and the next two sections exist only in a build that compiles their channel (``./configure --with-subgrid-radiation``, see :ref:`gear_radiation_model`); ``EffectiveTemperatures`` exists whenever any channel is compiled.
+
 See :ref:`gear_radiation_hii` for the physics. None of the six fields below are tracers-module fields, so none need ``--with-tracers=GEAR``:
 
 .. list-table::
@@ -374,7 +376,7 @@ See :ref:`gear_radiation_pressure` for the physics. These gas fields need ``--wi
 Interstellar radiation field
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See :ref:`gear_isrf` for the physics. ``PELuminosities``, ``LWLuminosities`` and ``EffectiveTemperatures`` are always written for a GEAR run with feedback, whether or not the ISRF module or ``--with-tracers=GEAR`` are used; the first two read 0 unless ``with_interstellar_radiation_field`` is on.
+See :ref:`gear_isrf` for the physics. In a build that compiles the ISRF, ``PELuminosities`` and ``LWLuminosities`` are written for every GEAR run with feedback, whether or not the ISRF module or ``--with-tracers=GEAR`` are used; both read 0 unless ``with_interstellar_radiation_field`` is on.
 
 .. list-table::
    :header-rows: 1

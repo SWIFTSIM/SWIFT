@@ -350,9 +350,9 @@ int feedback_should_inject_radiation_feedback(
   if (feedback_props->radiation_policy == radiation_policy_none) return 0;
   return ((feedback_props->radiation_policy &
            radiation_policy_radiation_pressure) &&
-          sp->feedback_data.radiation.L_bol > 0.0) ||
-         sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
-         sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0;
+          radiation_get_star_bolometric_luminosity(sp) > 0.0) ||
+         radiation_get_star_band_luminosity(sp, ISRF_MOMENT_PE) != 0.0 ||
+         radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW) != 0.0;
 }
 
 /**
@@ -376,10 +376,7 @@ void feedback_init_spart(struct spart *sp) {
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
      rebuild step. It is reset in feedback_will_do_feedback(). */
-  sp->feedback_data.grad_rho_star[0] = 0.0;
-  sp->feedback_data.grad_rho_star[1] = 0.0;
-  sp->feedback_data.grad_rho_star[2] = 0.0;
-  sp->feedback_data.Z_star = 0.0;
+  radiation_reset_star_pressure_inputs(sp);
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   sp->feedback_data.accumulator_sn.E_total = 0.0;
