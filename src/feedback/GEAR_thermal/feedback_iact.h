@@ -254,6 +254,11 @@ runner_iact_nonsym_feedback_apply(
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_gas_frame);
       feedback_tracers_event_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
 
+      /* Inputs of the multiple-event correction */
+      if (fb_props->enable_multiple_SN_momentum_correction_factor)
+        feedback_accumulate_wind_for_multiple_sn_events(
+            xpj, si, dx, r2, weight, mj, dm_SW, new_mass, cosmo);
+
       xpj->feedback_data.hit_by_winds = 1;
     }
   }
@@ -288,6 +293,12 @@ runner_iact_nonsym_feedback_apply(
       delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
       xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
+
+    /* Inputs of the multiple-event correction */
+    if (fb_props->enable_multiple_SN_momentum_correction_factor)
+      feedback_accumulate_SN_for_multiple_sn_events(
+          xpj, si, mj, dm_SN, new_mass, cosmo,
+          feedback_should_inject_SN_feedback(si));
 
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {

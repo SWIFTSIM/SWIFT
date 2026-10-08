@@ -875,6 +875,7 @@ GEARFeedback:
   # Stellar winds
   with_stellar_wind_feedback: 1                            # activate the stellar wind feedback
   stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
+  enable_multiple_SN_momentum_correction_factor: 0         # Correct the momentum and the thermal energy of a gas particle that several supernovae or winds reach in one timestep, so that the energy is conserved. GEAR thermal rescales only the momentum that the winds direct away from the stars. (Default: 0)
 
   # Radiation pressure
   with_radiation_pressure:      0                         # 1: run the radiation-pressure momentum channel, 0: do not. (Default: 0)
@@ -909,7 +910,6 @@ GEARFeedback:
 
   # Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
-  enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN or winds affect a gas particle during one timestep. This restores the energy conservation. (Default: 0)
   f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
   terminal_momentum_normalisation_Msun_km_per_s: 2.5e5     # Normalisation factor for the terminal momentum relation, in Msun*km/s. (Default: 2.5e5)
 

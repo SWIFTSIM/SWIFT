@@ -157,6 +157,10 @@ struct feedback_props {
 
   /*! Do stellar wind feedback? */
   char with_stellar_wind_feedback;
+
+  /*! Correct the momentum and the thermal energy of a gas particle that
+     several events reach in one timestep, so that the energy is conserved */
+  char enable_multiple_SN_momentum_correction_factor;
 };
 
 /* The shared radiation parameters read the fields above. */
@@ -233,6 +237,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Stellar winds efficiency                                   = %.2g",
           feedback_props->winds_efficiency);
+  message("Multiple-event correction                                  = %s",
+          feedback_props->enable_multiple_SN_momentum_correction_factor
+              ? "ON"
+              : "OFF");
 
   feedback_props_print_radiation(feedback_props);
 }
@@ -306,6 +314,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         w_efficiency);
 
   fp->winds_efficiency = w_efficiency;
+
+  /* Correct the gas particles that several events reach in one timestep? */
+  fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
+      params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
