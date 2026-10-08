@@ -44,6 +44,14 @@ void feedback_accumulate_kinetic_energy_for_multiple_sn_events(
     struct xpart *xp, const float mj, const float new_mass,
     const float v_pec[3], const float v_hubble[3], const double dp[3],
     const double dp_ejecta[3]);
+void feedback_accumulate_wind_for_multiple_sn_events(
+    struct xpart *xp, const struct spart *si, const float dx[3], const float r2,
+    const double weight, const float mj, const double dm_SW,
+    const double new_mass, const struct cosmology *cosmo);
+void feedback_accumulate_SN_for_multiple_sn_events(
+    struct xpart *xp, const struct spart *si, const float mj,
+    const double dm_SN, const double new_mass, const struct cosmology *cosmo,
+    const int is_event);
 float feedback_compute_residual_internal_energy_for_multiple_sn_events(
     const struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
     const float old_mass, const float new_mass, const float f_corr);
