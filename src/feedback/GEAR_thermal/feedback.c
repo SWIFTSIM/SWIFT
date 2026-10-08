@@ -287,7 +287,8 @@ __attribute__((noinline)) void feedback_accumulate_wind_for_multiple_sn_events(
  * @param si The star.
  * @param mj The mass of the gas particle before the events.
  * @param dm_SN The supernova mass given to the #part.
- * @param new_mass The mass of the gas particle after this event.
+ * @param new_mass The mass of the gas particle after this supernova alone,
+ * mj + dm_SN, without the wind mass of the same star.
  * @param cosmo The #cosmology.
  * @param is_event Does the supernova bring energy?
  */

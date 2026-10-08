@@ -297,7 +297,7 @@ runner_iact_nonsym_feedback_apply(
     /* Inputs of the multiple-event correction */
     if (fb_props->enable_multiple_SN_momentum_correction_factor)
       feedback_accumulate_SN_for_multiple_sn_events(
-          xpj, si, mj, dm_SN, new_mass, cosmo,
+          xpj, si, mj, dm_SN, mj + dm_SN, cosmo,
           feedback_should_inject_SN_feedback(si));
 
     /* Add the metals */
