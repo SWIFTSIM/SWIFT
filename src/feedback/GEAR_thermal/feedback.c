@@ -246,6 +246,55 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
 }
 
 /**
+ * @brief Should this particle inject anything as supernovae feedback?
+ *
+ * The supernova branch of runner_iact_nonsym_feedback_apply() runs when the
+ * star has supernova energy to give.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_feedback(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar wind feedback?
+ *
+ * The wind branch of runner_iact_nonsym_feedback_apply() runs when the star
+ * has wind energy to give.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_wind_feedback(const struct spart *sp) {
+  return sp->feedback_data.winds.energy_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle deliver supernova ejecta without energy?
+ *
+ * The stellar evolution has already removed the ejected mass from the star, so
+ * the mass and the metals must reach the gas when an efficiency factor has
+ * zeroed the energy. These ejecta set no supernova flag.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_mass_only(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected == 0.f &&
+         sp->feedback_data.supernovae.mass_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar feedback?
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_feedback(const struct spart *sp) {
+  return feedback_should_inject_SN_feedback(sp) ||
+         feedback_should_inject_wind_feedback(sp) ||
+         feedback_should_inject_SN_mass_only(sp);
+}
+
+/**
  * @brief Is this star particle done evolving, i.e. finished with its
  * feedback-relevant lifetime?
  *
