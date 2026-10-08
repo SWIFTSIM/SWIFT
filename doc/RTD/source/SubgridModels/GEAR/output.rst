@@ -376,7 +376,7 @@ See :ref:`gear_radiation_pressure` for the physics. These gas fields need ``--wi
 Interstellar radiation field
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See :ref:`gear_isrf` for the physics. In a build that compiles the ISRF, ``PELuminosities``, ``LWLuminosities`` and ``EffectiveTemperatures`` are written for every GEAR run with feedback, whether or not the ISRF module or ``--with-tracers=GEAR`` are used; the first two read 0 unless ``with_interstellar_radiation_field`` is on.
+See :ref:`gear_isrf` for the physics. In a build that compiles the ISRF, ``PELuminosities`` and ``LWLuminosities`` are written for every GEAR run with feedback, whether or not the ISRF module or ``--with-tracers=GEAR`` are used; both read 0 unless ``with_interstellar_radiation_field`` is on.
 
 .. list-table::
    :header-rows: 1
