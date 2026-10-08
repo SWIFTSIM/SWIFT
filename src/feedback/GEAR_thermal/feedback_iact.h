@@ -270,7 +270,7 @@ runner_iact_nonsym_feedback_apply(
     /* Inputs of the multiple-event correction */
     if (fb_props->enable_multiple_SN_momentum_correction_factor)
       feedback_accumulate_SN_for_multiple_sn_events(xpj, si, mj, dm_SN,
-                                                    new_mass, cosmo, 1);
+                                                    mj + dm_SN, cosmo, 1);
 
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
