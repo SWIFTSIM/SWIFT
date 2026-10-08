@@ -3103,7 +3103,9 @@ if test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical"; then
          AC_MSG_ERROR([--with-subgrid-radiation needs a value: all, none, or a comma-separated list of rp, hii and isrf])
       ;;
       *)
+         subgrid_radiation_nparts=0
          for part in `echo "$with_subgrid_radiation" | tr ',' ' '`; do
+            subgrid_radiation_nparts=`expr $subgrid_radiation_nparts + 1`
             case "$part" in
                rp) with_subgrid_radiation_rp=yes ;;
                hii) with_subgrid_radiation_hii=yes ;;
@@ -3111,6 +3113,9 @@ if test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical"; then
                *) AC_MSG_ERROR([Unknown --with-subgrid-radiation part '$part': use all, none, or a comma-separated list of rp, hii and isrf]) ;;
             esac
          done
+         if test "$subgrid_radiation_nparts" = "0"; then
+            AC_MSG_ERROR([--with-subgrid-radiation='$with_subgrid_radiation' names no part: use all, none, or a comma-separated list of rp, hii and isrf])
+         fi
       ;;
    esac
 
@@ -3162,7 +3167,6 @@ if test -n "$with_subgrid_radiation_name"; then
 else
    with_subgrid_radiation_name=" none"
 fi
-AM_CONDITIONAL([HAVEGEARRADIATION], [test "$with_subgrid_radiation_name" != " none"])
 AM_CONDITIONAL([HAVEGEARRADIATIONPRESSURE], [test "$with_subgrid_radiation_rp" = "yes"])
 AM_CONDITIONAL([HAVEGEARRADIATIONHII], [test "$with_subgrid_radiation_hii" = "yes"])
 AM_CONDITIONAL([HAVEGEARRADIATIONISRF], [test "$with_subgrid_radiation_isrf" = "yes"])
