@@ -411,23 +411,23 @@ To solve this, a physically correct solution would be to process events serially
 
 This method maintains global energy conservation for each gas cell without the computational expense of serial processing.
 
-This behaviour is controlled by ``GEARFeedaback:enable_multiple_SN_momentum_correction_factor`` parameter.
+This behaviour is controlled by the ``GEARFeedback:enable_multiple_SN_momentum_correction_factor`` parameter. Both GEAR thermal and GEAR mechanical feedback use it. GEAR thermal rescales only the momentum that the stellar winds direct away from the stars; the ejecta keep their momentum.
 
 Model parameters
 ----------------
 
 The parameters of the GEAR feedback and mechanical feedback prescriptions are grouped into the ``GEARFeedback`` section of the parameter file. Here we only review the parameters *relevant to supernova energy injection*.
 
-The first two parameters relate to the quantity of energy injected and are available for all feedback presciptions.
+The first three parameters are available for all feedback presciptions.
 
 * The energy released by a supernova: ``supernovae_energy_erg``. In practice, this is only used by SN Ia as the SNII energy is in the feedback tables ``yields_table_first_stars`` and ``yields_table``.
 * The effective injected energy is multiplied by a factor ``supernovae_efficiency``.
+* Enable or not the momentum correction factor if multiple supernovae or winds reach a gas particle in a given timestep: ``enable_multiple_SN_momentum_correction_factor``. See the previous section for the motivation. (default: 0)
 
 The mechanical feedback defines a few more parameters.
 
 * The maximal radius (in internal units) for energy, momentum and metal injection: ``maximal_radius``. If the star-gas distance is larger than this value, then it is not considered for feedback. This also means that the particle is not considered to compute the weights.
 * The terminal momentum normalisation value: ``terminal_momentum_normalisation_Msun_km_per_s``. The default value is ``2.5e5``, which is the value we provided in the terminal momentum parametrisation in a previous section.
-* Enable or not the momentum correction factor if multiple supernovae occur in a given timestep: ``enable_multiple_SN_momentum_correction_factor``. See the previous section for the motivation. (default: 0)
 * This last parameter is only used for the mechanical feedback mode 2: ``f_kin_0``. It represents the idealized fraction of the SN energy available in kinetic energy. Note this is not the actual coupled kinetic energy fraction (see above). (default: 0.28)
 
 Hence, the full parameter section is:
@@ -444,10 +444,10 @@ Hence, the full parameter section is:
 	    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
 	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 	    discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+	    enable_multiple_SN_momentum_correction_factor: 0         # Correct the momentum and the thermal energy of a gas particle that several supernovae or winds reach in one timestep, so that the energy is conserved. GEAR thermal rescales only the momentum that the winds direct away from the stars. (Default: 0)
 
 	    # Mechanical feedback only
 	    maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
-	    enable_multiple_SN_momentum_correction_factor: 0         # Enable the correction factor to momentum if multiple SN affect a gas particle during one timestep. This factor ensures exact energy conservation in the case of multiple SN. (Default: 0)
 	    f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
 	    terminal_momentum_normalisation_Msun_km_per_s: 2.5e5     # Normalisation factor for the terminal momentum relation, in Msun*km/s. (Default: 2.5e5)
 

@@ -167,6 +167,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
  * @param p The #part.
  * @param xp The #xpart.
  * @param cosmo The #cosmology.
+ * @return The factor (at most 1) applied to the directed momentum.
  */
 float feedback_compute_momentum_correction_factor_for_multiple_sn_events(
     struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
