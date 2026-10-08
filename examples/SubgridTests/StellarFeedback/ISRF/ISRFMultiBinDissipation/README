@@ -131,7 +131,13 @@ uniform control, gates the closed ledger residual
 `|E + Abs - Inj| / |Inj|` (the same reduction `ISRFInjectionConservation`
 gates: `R(M1) <= max(R(M0), 1e-3)`, with M2 reported alongside as the
 attribution half), NOT the per-run `fractional_change` field (the field's
-growth under continuous injection, not a conservation residual). This
+growth under continuous injection, not a conservation residual). `E` is
+the band specific energy plus its `PendingSpecificEnergies`, the energy
+finer neighbours owe a particle on a longer step, which is non-zero between
+synchronised steps. The plain sums close well below the bar only for one
+uniform `c_hyp` (`c_hyp_fraction > 0` in `run.sh`); with the default
+`kernel_local` speeds the residual is large in every run, so the
+criterion compares M1 with the M0 control. This
 needs SWIFT built with `--enable-debugging-checks`: the two accumulators
 it reads are written as identically zero otherwise. `run.sh` detects the
 build from the binary's own `--version` banner and passes

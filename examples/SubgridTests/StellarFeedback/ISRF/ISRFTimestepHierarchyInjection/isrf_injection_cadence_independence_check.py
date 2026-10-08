@@ -144,6 +144,10 @@ def load(path: str) -> dict:
                 "PE": gas["PESpecificEnergies"][:].astype(np.float64),
                 "LW": gas["LWSpecificEnergies"][:].astype(np.float64),
             },
+            pending={
+                "PE": gas["PEPendingSpecificEnergies"][:].astype(np.float64),
+                "LW": gas["LWPendingSpecificEnergies"][:].astype(np.float64),
+            },
             L={
                 "PE": float(star["PELuminosities"][0]),
                 "LW": float(star["LWLuminosities"][0]),
@@ -398,7 +402,12 @@ def lag_in_steps(snaps: list, band: str, c_hyp: float, dt: float) -> tuple:
     """
     L = np.array([s["L"][band] for s in snaps])
     t = np.array([s["time"] for s in snaps])
-    E = np.array([np.sum(s["mass"] * s["u"][band]) * s["c"] / c_hyp for s in snaps])
+    E = np.array(
+        [
+            np.sum(s["mass"] * (s["u"][band] + s["pending"][band])) * s["c"] / c_hyp
+            for s in snaps
+        ]
+    )
     n = (t - E / L) / dt
     # E is a sum of N float32 specific energies, so its rounding error
     # grows as sqrt(N) eps E; carried to the lag through L that is

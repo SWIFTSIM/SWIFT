@@ -142,8 +142,10 @@ the running energy ledger:
 python3 isrf_ledger_check.py -s '<run>/snap/snapshot_*.hdf5'
 ```
 Per band and per snapshot it gates `|E + Abs - Inj| / |Inj|` against
-`--tol` (default 1e-3), where `Inj` and `Abs` are the cumulative injected
-and absorbed specific energies. It needs a run with
+`--tol` (default 1e-3), where `E` is the band specific energy plus its
+`PendingSpecificEnergies` (the energy finer neighbours owe a particle on a
+longer step), and `Inj` and `Abs` are the cumulative injected and absorbed
+specific energies. It needs a run with
 `GEARFeedback:ISRF_propagation: 1`, since only the propagation update
 writes those two fields, and a binary configured with
 `--enable-debugging-checks`, which is what makes them anything but zero.

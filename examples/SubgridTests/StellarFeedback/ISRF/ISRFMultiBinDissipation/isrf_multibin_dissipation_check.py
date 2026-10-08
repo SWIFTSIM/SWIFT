@@ -160,6 +160,12 @@ def load_snapshot(path):
         inj_lw = gas["LWCumulativeInjectedSpecificEnergies"][:].astype(np.float64)
         abs_pe = gas["PECumulativeAbsorbedSpecificEnergies"][:].astype(np.float64)
         abs_lw = gas["LWCumulativeAbsorbedSpecificEnergies"][:].astype(np.float64)
+        pending = {}
+        for band in ("PE", "LW"):
+            name = f"{band}PendingSpecificEnergies"
+            pending[band] = gas[name][:].astype(np.float64)
+            if not np.all(np.isfinite(pending[band])):
+                raise RuntimeError(f"{path}: {name} holds a non-finite value")
         Z = gas["MetalMassFractions"][:, -1].astype(np.float64)
         star = f["/PartType4"]
         star_pos = star["Coordinates"][:, :]
@@ -182,6 +188,8 @@ def load_snapshot(path):
         inj_lw=inj_lw,
         abs_pe=abs_pe,
         abs_lw=abs_lw,
+        pend_pe=pending["PE"],
+        pend_lw=pending["LW"],
         Z=Z,
         star_pos=star_pos,
         star_ids=star_ids,
@@ -575,15 +583,19 @@ def main():
                 snap["Z"], rho, snap["unit_length_cgs"], snap["unit_mass_cgs"], sigma
             )
 
-        for band, u_field, alpha_field, inj_field, abs_field in (
-            ("PE", "u_pe", "alpha_pe", "inj_pe", "abs_pe"),
-            ("LW", "u_lw", "alpha_lw", "inj_lw", "abs_lw"),
+        for band, u_field, alpha_field, inj_field, abs_field, pend_field in (
+            ("PE", "u_pe", "alpha_pe", "inj_pe", "abs_pe", "pend_pe"),
+            ("LW", "u_lw", "alpha_lw", "inj_lw", "abs_lw", "pend_lw"),
         ):
             u = snap[u_field]
             alpha = snap[alpha_field]
-            conservation[band].append((snap["time"], float(np.sum(mass * u))))
+            # Energy owed by finer neighbours is part of the band energy
+            # until the particle's next update adds it to u.
+            conservation[band].append(
+                (snap["time"], float(np.sum(mass * (u + snap[pend_field]))))
+            )
 
-            E = float(np.sum(mass * u))
+            E = float(np.sum(mass * (u + snap[pend_field])))
             Inj = float(np.sum(mass * snap[inj_field]))
             Abs = float(np.sum(mass * snap[abs_field]))
             R = abs(E + Abs - Inj) / abs(Inj) if Inj != 0.0 else np.nan
