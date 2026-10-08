@@ -57,6 +57,9 @@
  * (a) Fix A -- grid floor via space_init(dry_run=1)
  * ============================================================ */
 
+/* The grid floor exists only for a sink model with a fixed cut-off radius. */
+#ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
+
 static void test_grid_floor(void) {
 
   struct swift_params params;
@@ -137,6 +140,16 @@ static void test_grid_floor(void) {
         s.cell_min, sink_properties.cut_off_radius);
   }
 }
+
+#else
+
+static void test_grid_floor(void) {
+  message(
+      "Fix A (grid floor) SKIPPED: the sink model has no fixed cut-off "
+      "radius (configure --with-sink=GEAR to run it).");
+}
+
+#endif /* SINKS_WITH_FIXED_CUTOFF_RADIUS */
 
 /* ============================================================
  * (b) Fix B -- cell_can_split_{pair,self}_hydro_task() gate behaviour
