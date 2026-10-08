@@ -356,6 +356,42 @@ radiation_isrf_iact_nonsym_inject_weighted(
     const integertime_t ti_current) {}
 #endif
 
+/**
+ * @brief Record that a star pass reached a gas neighbour with a zero share of
+ * the star's LW/PE emission.
+ *
+ * Without propagation the field is instantaneous: the neighbour must hold this
+ * pass's share (zero), not the value of an earlier pass.
+ *
+ * @param si First (star) particle (not updated).
+ * @param pj Second (gas) particle.
+ * @param fb_props Properties of the feedback scheme.
+ * @param ti_current Current integer time
+ */
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+__attribute__((always_inline)) INLINE static void
+radiation_iact_nonsym_feedback_apply_zero_share(
+    const struct spart *si, struct part *pj,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {
+
+  if (fb_props->ISRF_propagation) return;
+  if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] == 0.0 &&
+      si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] == 0.0)
+    return;
+
+  if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      pj->feedback_data.isrf_moment[m].u = 0.f;
+    pj->feedback_data.ISRF_last_touch_ti = ti_current;
+  }
+}
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_iact_nonsym_feedback_apply_zero_share(
+    const struct spart *si, struct part *pj,
+    const struct feedback_props *fb_props, const integertime_t ti_current) {}
+#endif
+
 #ifdef GEAR_SUBGRID_RADIATION
 /**
  * @brief Radiation feedback of a star on one gas neighbour, for a given

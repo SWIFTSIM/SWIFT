@@ -389,12 +389,20 @@ runner_iact_nonsym_feedback_apply(
         "receive feedback!",
         pj->id, sqrt(r2), fb_props->r_max);
 #endif
+    if (feedback_should_inject_radiation_feedback(si, fb_props))
+      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
+                                                      ti_current);
     return;
   }
 
   /* The weights were not accumulated (nothing to distribute), or no
      neighbour contributes: the normalization below would divide by 0. */
-  if (si->feedback_data.enrichment_weight <= 0.f) return;
+  if (si->feedback_data.enrichment_weight <= 0.f) {
+    if (feedback_should_inject_radiation_feedback(si, fb_props))
+      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
+                                                      ti_current);
+    return;
+  }
 
   /* Compute the w_j_bar. */
   double w_j_bar[3];
@@ -407,6 +415,9 @@ runner_iact_nonsym_feedback_apply(
   /* If the particle does not contribute, skip the computations. This
    * avoids 1./0. */
   if (w_j_bar_norm == 0) {
+    if (feedback_should_inject_radiation_feedback(si, fb_props))
+      radiation_iact_nonsym_feedback_apply_zero_share(si, pj, fb_props,
+                                                      ti_current);
     return;
   }
 
