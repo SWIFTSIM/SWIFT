@@ -280,9 +280,7 @@ int feedback_is_star_dead(const struct spart *sp) {
 void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
-#ifdef GEAR_SUBGRID_RADIATION_HII
   sp->feedback_data.num_ngbs = 0;
-#endif
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
      rebuild step. It is reset in feedback_will_do_feedback(). */

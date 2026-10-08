@@ -191,10 +191,8 @@ struct feedback_spart_data {
   char will_do_HII_ionization;
 #endif
 
-#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Integer number of neighbours */
   int num_ngbs;
-#endif
 
 #ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Gas density gradient at the star location */
