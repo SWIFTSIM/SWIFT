@@ -209,15 +209,12 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
-  /* Note: this selects r_cut purely at compile time (SINKS_WITH_FIXED_
-     CUTOFF_RADIUS), unlike task creation which additionally gates on the
-     runtime flag (sink_formation_gas_loop_is_active(), see
-     sink_properties.h). This asymmetry is harmless: when the runtime gate
-     is off, no sink_formation_gas task is ever created, so this dispatch
-     value is never read. */
+  /* The sink properties are NULL in the stand-alone FoF tool. */
   const struct sink_props *sink_properties = e->sink_properties;
   const float sink_cut_off_radius =
-      sink_formation_gas_loop_r_cut(sink_properties);
+      sink_formation_gas_loop_is_active(sink_properties)
+          ? sink_formation_gas_loop_r_cut(sink_properties)
+          : -1.f;
 
 #ifdef WITH_LIKWID
   swift_likwid_marker_start_region("runner_main");
