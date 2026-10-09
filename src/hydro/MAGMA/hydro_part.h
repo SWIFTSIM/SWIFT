@@ -249,6 +249,12 @@ struct part {
        * replaced by kernel gradients during the last force loop (diagnostic) */
       int n_pair_fallbacks;
 
+      /*! Convergence fraction of the local flow, (div v)^2 / ((div v)^2 +
+       * |S|^2) with S the traceless shear (Cullen & Dehnen 2010, eq. 18
+       * without the shock term): 1 in pure compression, 0 in pure shear.
+       * Gates the distance cut-off of the slope limiter. */
+      float convergence_fraction;
+
     } force;
   };
 

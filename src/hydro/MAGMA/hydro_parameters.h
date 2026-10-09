@@ -127,6 +127,17 @@ struct viscosity_global_data {
 
   /*! cos(angle_limit), pre-computed */
   float cos_angle_limit;
+
+  /*! Apply the distance cut-off of the slope limiter (eq. 21, eta_crit) in
+   * proportion to the convergence fraction of the flow (0 or 1, default 1).
+   * The cut-off guards against particles converging past each other below
+   * the resolution scale in a smooth compression; distance alone is a poor
+   * proxy for that in shear flows, where close pairs approach along their
+   * separation without ever colliding and the viscosity acting on their
+   * un-reconstructed velocity difference dissipates the shear (differential
+   * rotation). With the gate, the cut-off keeps its full strength in
+   * compressions and is inactive in pure shear. */
+  int limiter_convergence_gate;
 };
 
 /*! Thermal diffusion parameters */
@@ -167,6 +178,7 @@ static INLINE void viscosity_set_defaults(
   viscosity->max_condition_number =
       hydro_props_default_gradient_max_condition_number;
   viscosity->angle_limit = hydro_props_default_gradient_angle_limit;
+  viscosity->limiter_convergence_gate = 1;
 
   if (viscosity->eta_crit < 0.f) viscosity->eta_crit = 1.f / eta_neighbours;
   if (viscosity->limiter_width < 0.f)
@@ -204,6 +216,8 @@ static INLINE void viscosity_init(struct swift_params *params,
   viscosity->angle_limit =
       parser_get_opt_param_float(params, "SPH:gradient_angle_limit",
                                  hydro_props_default_gradient_angle_limit);
+  viscosity->limiter_convergence_gate = parser_get_opt_param_int(
+      params, "SPH:limiter_convergence_gate", 1);
 
   /* Automatic limiter settings: the paper's prescription in SWIFT's h
    * convention (kernel support = kernel_gamma * h, the paper uses 2 h) */
@@ -259,6 +273,8 @@ static INLINE void viscosity_print(
       "condition number of %.1f (particle); fallback: angle > %.3f rad "
       "(pair).",
       viscosity->max_condition_number, viscosity->angle_limit);
+  message("Slope-limiter distance cut-off gated by the convergence fraction: %s.",
+          viscosity->limiter_convergence_gate ? "yes" : "no");
 }
 
 #if defined(HAVE_HDF5)
@@ -276,6 +292,8 @@ static INLINE void viscosity_print_snapshot(
   io_write_attribute_f(h_grpsph, "Epsilon viscosity", viscosity->epsilon);
   io_write_attribute_f(h_grpsph, "Limiter eta_crit", viscosity->eta_crit);
   io_write_attribute_f(h_grpsph, "Limiter width", viscosity->limiter_width);
+  io_write_attribute_i(h_grpsph, "Limiter convergence gate",
+                       viscosity->limiter_convergence_gate);
   io_write_attribute_f(h_grpsph, "Gradient max condition number",
                        viscosity->max_condition_number);
   io_write_attribute_f(h_grpsph, "Gradient angle limit",

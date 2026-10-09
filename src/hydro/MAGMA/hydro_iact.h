@@ -338,10 +338,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float A_ij_vel =
         A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
 
-    /* Slope limiter exponential term (eq. 21, right term) */
+    /* Slope limiter exponential term (eq. 21, right term): no reconstruction
+     * for pairs closer than eta_crit, a guard against particles converging
+     * past each other below the resolution scale in a smooth compression. */
     const float delta_eta = (eta_ij - eta_crit) * width_inv;
-    const float exp_term =
+    const float cut_off =
         eta_ij < eta_crit ? expf(-delta_eta * delta_eta) : 1.f;
+    /* Convergence gate (SPH:limiter_convergence_gate): the cut-off acts in
+     * proportion to the convergence fraction of the flow (1 in a
+     * compression, 0 in pure shear), so that close pairs of a shear flow,
+     * which approach along their separation without colliding, keep their
+     * reconstruction and the viscosity does not act on the shear. The larger
+     * of the two particles' fractions is used: a compression seen by either
+     * is respected. Without the gate the fractions are 1 and the cut-off is
+     * the paper's. */
+    const float gate = fmaxf(pi->force.convergence_fraction,
+                             pj->force.convergence_fraction);
+    const float exp_term = 1.f - gate * (1.f - cut_off);
 
     /* Van Leer limiter (eq. 21).
      * Slopes of opposite signs (A <= 0) mean an extremum between the

@@ -806,6 +806,29 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                                   p->gradient.gradient_u);
   }
 
+  /* Convergence fraction of the local flow (Cullen & Dehnen 2010, eq. 18
+   * without the shock term): the convergence of the flow against its shear,
+   * both from the matrix velocity gradient V. Pure shear (differential
+   * rotation) gives 0, pure compression 1. Particles without a valid
+   * gradient get 1 (the slope limiter then keeps its full distance
+   * cut-off). */
+  float convergence_fraction = 1.f;
+  if (magma_viscosity.limiter_convergence_gate && !res) {
+    const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
+    /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I */
+    const float iso = div_v / hydro_dimension;
+    const float Sxx = gradient_vx[0] - iso;
+    const float Syy = gradient_vy[1] - iso;
+    const float Szz = gradient_vz[2] - iso;
+    const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
+    const float Sxz = 0.5f * (gradient_vx[2] + gradient_vz[0]);
+    const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
+    const float S2 = Sxx * Sxx + Syy * Syy + Szz * Szz +
+                     2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
+    const float div2 = div_v * div_v;
+    convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
+  }
+
   /* Finally, update the 'force' sub-structure' */
   memcpy(&p->force.c_matrix, &c_matrix, sizeof(struct sym_matrix));
   memcpy(&p->force.gradient_vx, gradient_vx, 3 * sizeof(float));
@@ -814,6 +837,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   memcpy(&p->force.gradient_u, gradient_u, 3 * sizeof(float));
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
+  p->force.convergence_fraction = convergence_fraction;
 }
 
 /**
