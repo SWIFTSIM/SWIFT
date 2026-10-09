@@ -64,13 +64,6 @@ FFTW
 Version 3.3.x or higher is required for periodic gravity. FFTW  is widely available
 through system package managers or on http://fftw.org/.
 
-ParMETIS or METIS
-~~~~~~~~~~~~~~~~~
-One of these libraries is required for domain decomposition and load balancing. 
-Source codes for them libraries are available 
-`here for METIS <https://github.com/KarypisLab/METIS>`_ and 
-`here for ParMETIS <https://github.com/KarypisLab/ParMETIS>`_ .
-
 GSL
 ~~~
 The GSL is required for cosmological integration. GSL is widely available through
@@ -81,6 +74,13 @@ Optional Dependencies
 ---------------------
 
 There are also the following *optional* dependencies.
+
+ParMETIS or METIS
+~~~~~~~~~~~~~~~~~
+One of these libraries is required for domain decomposition and load balancing.
+Source codes for them libraries are available
+`here for METIS <https://github.com/KarypisLab/METIS>`_ and
+`here for ParMETIS <https://github.com/KarypisLab/ParMETIS>`_ .
 
 libNUMA
 ~~~~~~~
