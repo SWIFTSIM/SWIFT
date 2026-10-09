@@ -1017,7 +1017,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
 #ifdef CENTER_OF_MASS_DENSITY
     /* Set density at the particle (generator) position */
-    p.rho_generator = p->rho + hydro_extrapolate_density_to_generator(p);
+    p->rho_generator = p->rho + hydro_extrapolate_density_to_generator(p);
 #endif
     /* Update the particle */
     hydro_part_set_conserved_variables(p, Q);
