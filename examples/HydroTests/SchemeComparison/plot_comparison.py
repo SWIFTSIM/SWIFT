@@ -1044,10 +1044,26 @@ TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_g
 
 
 def main():
+    # plot_comparison.py ROOT [--schemes=a,b,c] [--out=DIR] [test ...]
+    # --schemes restricts the comparison to a subset of runs/<scheme> (for
+    # large parameter studies), --out puts the figures and summary elsewhere
+    # than ROOT/plots.
     root = sys.argv[1]
-    tests = sys.argv[2:] or ALL_TESTS
-    schemes = sorted(os.listdir(os.path.join(root, "runs")))
+    args = sys.argv[2:]
+    only = None
     out = os.path.join(root, "plots")
+    tests = []
+    for a in args:
+        if a.startswith("--schemes="):
+            only = a[len("--schemes="):].split(",")
+        elif a.startswith("--out="):
+            out = a[len("--out="):]
+        else:
+            tests.append(a)
+    tests = tests or ALL_TESTS
+    schemes = sorted(os.listdir(os.path.join(root, "runs")))
+    if only is not None:
+        schemes = [s for s in schemes if s in only]
     os.makedirs(out, exist_ok=True)
     summary = {}
     for t in tests:

@@ -14,8 +14,14 @@
 #   -k NAME   kernel passed to --with-kernel (default: wendland-C4)
 #   -b        (re)build the binaries (done automatically when missing)
 #   -n        do not run, only build and/or plot
+#   -i        prepare the initial conditions only (no build, run or plot)
 #   -p        do not plot
 #   -h        this help
+#
+# Schemes with identical configure flags share one build: the build
+# directory of a scheme is a symbolic link to builds/by_flags/<hash>_<dim>,
+# so that a parameter study with many run-time variants of one scheme
+# compiles the code once per flavour.
 #
 # Layout of the output directory:
 #   builds/<scheme>_{2d,3d,3dnfw}/   source copies + binaries
@@ -37,6 +43,7 @@ KERNEL=wendland-C4
 DO_BUILD=0
 DO_RUN=1
 DO_PLOT=1
+ICS_ONLY=0
 
 # ---------------------------------------------------------------------------
 # Knobs for the individual tests (resolution / duration). Change them here or
@@ -69,7 +76,7 @@ REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob"
 TESTS=$ALL_TESTS
 
-while getopts "s:o:c:t:j:k:bnph" opt; do
+while getopts "s:o:c:t:j:k:bniph" opt; do
   case $opt in
     s) SRC_DIR=$(cd "$OPTARG" && pwd) ;;
     o) OUT_DIR=$OPTARG ;;
@@ -79,6 +86,7 @@ while getopts "s:o:c:t:j:k:bnph" opt; do
     k) KERNEL=$OPTARG ;;
     b) DO_BUILD=1 ;;
     n) DO_RUN=0 ;;
+    i) ICS_ONLY=1 ;;
     p) DO_PLOT=0 ;;
     h) sed -n 2,30p "$0"; exit 0 ;;
     *) exit 1 ;;
@@ -314,7 +322,15 @@ declare -A BUILD_FLAGS=(
 
 build_one() {
   local name=$1 build=$2
-  local dir=$OUT_DIR/builds/${name}_${build}
+  local link=$OUT_DIR/builds/${name}_${build}
+  local common=$COMMON_FLAGS
+  [[ ${BUILD_FLAGS[$build]} == *--with-ext-potential* ]] && common=${common/--with-ext-potential=point-mass-softened/}
+  # One build per distinct set of configure flags, shared through a link
+  local key
+  key=$(echo "$common ${BUILD_FLAGS[$build]} ${SCHEME_FLAGS[$name]}" | md5sum | cut -c1-10)
+  local dir=$OUT_DIR/builds/by_flags/${key}_${build}
+  mkdir -p "$OUT_DIR/builds/by_flags"
+  if [[ ! -L $link ]]; then rm -rf "$link"; ln -s "by_flags/${key}_${build}" "$link"; fi
   if [[ $DO_BUILD -eq 0 && -x $dir/swift ]]; then return 0; fi
   log "Building $name ($build) in $dir"
   mkdir -p "$dir"
@@ -326,8 +342,6 @@ build_one() {
     --exclude='/swift_fof_mpi' --exclude='*.png' --exclude='*.pdf' \
     --exclude='restart' --exclude='suite_output' --exclude='results_*' \
     "$SRC_DIR/" "$dir/" || return 1
-  local common=$COMMON_FLAGS
-  [[ ${BUILD_FLAGS[$build]} == *--with-ext-potential* ]] && common=${common/--with-ext-potential=point-mass-softened/}
   if ! ( cd "$dir" && ./autogen.sh && ./configure $common ${BUILD_FLAGS[$build]} ${SCHEME_FLAGS[$name]} \
       && make -j"$THREADS" ) > "$dir/build.log" 2>&1; then
     echo "Build of ${name}_${build} failed, see $dir/build.log"; return 1
@@ -390,6 +404,12 @@ run_one() {
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+if [[ $ICS_ONLY -eq 1 ]]; then
+  for t in $TESTS; do prepare_ic "$t" || exit 1; done
+  log "Initial conditions ready in $OUT_DIR/ics"
+  exit 0
+fi
+
 # Only the builds needed by the selected tests
 NEEDED_BUILDS=""
 for t in $TESTS; do
