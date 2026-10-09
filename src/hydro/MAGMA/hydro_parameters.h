@@ -138,6 +138,12 @@ struct viscosity_global_data {
    * rotation). With the gate, the cut-off keeps its full strength in
    * compressions and is inactive in pure shear. */
   int limiter_convergence_gate;
+
+  /*! EXPERIMENTAL: scale each particle's viscous pressure by its own
+   * Cullen & Dehnen (2010) limiter (convergence fraction with the
+   * shock-presence boost): 0 off, 1 both terms of Q, 2 the quadratic
+   * (beta mu^2) term only */
+  int shear_limiter;
 };
 
 /*! Thermal diffusion parameters */
@@ -179,6 +185,7 @@ static INLINE void viscosity_set_defaults(
       hydro_props_default_gradient_max_condition_number;
   viscosity->angle_limit = hydro_props_default_gradient_angle_limit;
   viscosity->limiter_convergence_gate = 1;
+  viscosity->shear_limiter = 0;
 
   if (viscosity->eta_crit < 0.f) viscosity->eta_crit = 1.f / eta_neighbours;
   if (viscosity->limiter_width < 0.f)
@@ -218,6 +225,8 @@ static INLINE void viscosity_init(struct swift_params *params,
                                  hydro_props_default_gradient_angle_limit);
   viscosity->limiter_convergence_gate = parser_get_opt_param_int(
       params, "SPH:limiter_convergence_gate", 1);
+  viscosity->shear_limiter = parser_get_opt_param_int(
+      params, "SPH:viscosity_shear_limiter", 0);
 
   /* Automatic limiter settings: the paper's prescription in SWIFT's h
    * convention (kernel support = kernel_gamma * h, the paper uses 2 h) */
@@ -275,6 +284,9 @@ static INLINE void viscosity_print(
       viscosity->max_condition_number, viscosity->angle_limit);
   message("Slope-limiter distance cut-off gated by the convergence fraction: %s.",
           viscosity->limiter_convergence_gate ? "yes" : "no");
+  if (viscosity->shear_limiter)
+    message("EXPERIMENTAL: viscous pressure scaled by the Cullen & Dehnen limiter (%s).",
+            viscosity->shear_limiter == 2 ? "quadratic term only" : "both terms");
 }
 
 #if defined(HAVE_HDF5)

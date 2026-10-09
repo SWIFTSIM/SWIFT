@@ -202,6 +202,11 @@ struct part {
       /*! Gradient of the internal energy */
       float gradient_u[3];
 
+      /*! Shock-presence sum of Cullen & Dehnen (2010, eq. 17):
+       * sum_j sign(div v_j) m_j W_ij, with the neighbours' divergence from
+       * their last gradient evaluation (EXPERIMENTAL viscosity limiter) */
+      float shock_indicator;
+
     } gradient;
 
     /**
@@ -255,6 +260,11 @@ struct part {
        * Gates the distance cut-off of the slope limiter. */
       float convergence_fraction;
 
+      /*! EXPERIMENTAL viscosity limiter (Cullen & Dehnen 2010, eq. 18 with
+       * the shock-presence boost of eq. 17): scales this particle's viscous
+       * pressure, 1 when the limiter is switched off */
+      float viscosity_limiter;
+
     } force;
   };
 
@@ -281,6 +291,11 @@ struct part {
 
   /*! RT sub-cycling time stepping data */
   struct rt_timestepping_data rt_time_data;
+
+  /*! Velocity divergence from the last gradient evaluation (matrix
+   * gradient); read by the neighbours in the next gradient loop for the
+   * shock-presence sum (EXPERIMENTAL viscosity limiter) */
+  float div_v;
 
   /*! Why this particle interacts using base SPH (magma_fallback_none if it
    * does not, otherwise a combination of the #magma_fallback_reasons) */

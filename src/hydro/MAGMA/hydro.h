@@ -651,6 +651,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] = 0.f;
+  p->gradient.shock_indicator = 0.f;
 }
 
 /**
@@ -813,7 +814,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * gradient get 1 (the slope limiter then keeps its full distance
    * cut-off). */
   float convergence_fraction = 1.f;
-  if (magma_viscosity.limiter_convergence_gate && !res) {
+  float viscosity_limiter = 1.f;
+  if ((magma_viscosity.limiter_convergence_gate ||
+       magma_viscosity.shear_limiter) &&
+      !res) {
     const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
     /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I */
     const float iso = div_v / hydro_dimension;
@@ -827,6 +831,23 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                      2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
     const float div2 = div_v * div_v;
     convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
+
+    /* EXPERIMENTAL viscosity limiter: the same comparison with the
+     * shock-presence boost of Cullen & Dehnen (2010, eq. 17-18). R = (1/rho)
+     * sum_j sign(div v_j) m_j W_ij is -1 inside a converging front (all
+     * neighbours converge) and ~0 where the signs are mixed (noise, smooth
+     * shear); the divergence is boosted by 2 (1 - R)^4, up to 32 in a
+     * shock, so that a shock seen through shear keeps its viscosity. */
+    if (magma_viscosity.shear_limiter) {
+      const float R = fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
+      const float one_minus_R = 1.f - R;
+      const float boost = 2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
+      const float bdiv2 = boost * boost * div2;
+      viscosity_limiter = (bdiv2 + S2 > 0.f) ? bdiv2 / (bdiv2 + S2) : 1.f;
+    }
+
+    /* Remember the divergence for the neighbours' shock-presence sums */
+    p->div_v = div_v;
   }
 
   /* Finally, update the 'force' sub-structure' */
@@ -838,6 +859,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
   p->force.convergence_fraction = convergence_fraction;
+  p->force.viscosity_limiter = viscosity_limiter;
 }
 
 /**
@@ -1106,6 +1128,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
+  p->div_v = 0.f;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

@@ -180,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 18;
+  *num_fields = 19;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -279,6 +279,12 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "1 in pure compression, 0 in pure shear. Gates the distance cut-off of "
       "the slope limiter (1 everywhere if the gate is switched off or the "
       "particle has no valid gradient).");
+
+  list[18] = io_make_output_field(
+      "ViscosityLimiter", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      force.viscosity_limiter,
+      "EXPERIMENTAL: Cullen & Dehnen (2010) limiter of the viscous pressure "
+      "with the shock-presence boost (1 if switched off).");
 }
 
 /**

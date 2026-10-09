@@ -141,6 +141,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
 
   const float common_term = w * mj / rhoj;
 
+  /* Shock-presence sum (Cullen & Dehnen 2010, eq. 17) with the neighbour's
+   * divergence from its last gradient evaluation (EXPERIMENTAL) */
+  pi->gradient.shock_indicator += copysignf(mj * w, pj->div_v);
+
   /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. */
   pi->gradient.c_matrix_inv.xx += common_term * dx[0] * dx[0];
@@ -563,14 +567,26 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Eq. 14 */
   const float visc_alpha = magma_viscosity.alpha;
   const float visc_beta = magma_viscosity.beta;
-  const float Qi =
-      Q_dissipative_i
-          ? rhoi * (-visc_alpha * ci * mu_i + visc_beta * mu_i * mu_i)
-          : 0.f;
-  const float Qj =
-      Q_dissipative_j
-          ? rhoj * (-visc_alpha * cj * mu_j + visc_beta * mu_j * mu_j)
-          : 0.f;
+  /* EXPERIMENTAL shear limiter of the viscous pressure: each particle's Q
+   * scaled by its own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the
+   * shock-presence boost of eq. 17, as their alpha_i xi_i). 1 when switched
+   * off. Mode 1 scales both terms of Q; mode 2 scales only the quadratic
+   * (beta mu^2) term, which is the one that dominates the dissipation of a
+   * cold (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
+   * maintains particle order in subsonic shear layers. */
+  const float xi_q_i = pi->force.viscosity_limiter;
+  const float xi_q_j = pj->force.viscosity_limiter;
+  const int quad_only = (magma_viscosity.shear_limiter == 2);
+  const float xi_lin_i = quad_only ? 1.f : xi_q_i;
+  const float xi_lin_j = quad_only ? 1.f : xi_q_j;
+  const float Qi = Q_dissipative_i
+                       ? rhoi * (-xi_lin_i * visc_alpha * ci * mu_i +
+                                 xi_q_i * visc_beta * mu_i * mu_i)
+                       : 0.f;
+  const float Qj = Q_dissipative_j
+                       ? rhoj * (-xi_lin_j * visc_alpha * cj * mu_j +
+                                 xi_q_j * visc_beta * mu_j * mu_j)
+                       : 0.f;
 
 #ifdef TRADITIONAL_SPH_ACCELERATION_TERM
 
