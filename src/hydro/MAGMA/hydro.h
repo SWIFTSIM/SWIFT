@@ -844,6 +844,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
       const float boost = 2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
       const float bdiv2 = boost * boost * div2;
       viscosity_limiter = (bdiv2 + S2 > 0.f) ? bdiv2 / (bdiv2 + S2) : 1.f;
+      viscosity_limiter = fmaxf(viscosity_limiter, magma_viscosity.limiter_floor);
     }
 
     /* Remember the divergence for the neighbours' shock-presence sums */

@@ -144,6 +144,15 @@ struct viscosity_global_data {
    * shock-presence boost): 0 off, 1 both terms of Q, 2 the quadratic
    * (beta mu^2) term only */
   int shear_limiter;
+
+  /*! EXPERIMENTAL: floor of the viscosity limiter, xi = max(xi, floor):
+   * keeps a fraction of the viscosity in pure shear (0: none) */
+  float limiter_floor;
+
+  /*! EXPERIMENTAL: the limiter acts on the linear (alpha c mu) term of Q
+   * only for pairs with |mu| > limiter_mach * c, i.e. only in supersonic
+   * shear (0: always, as mode 1) */
+  float limiter_mach;
 };
 
 /*! Thermal diffusion parameters */
@@ -186,6 +195,8 @@ static INLINE void viscosity_set_defaults(
   viscosity->angle_limit = hydro_props_default_gradient_angle_limit;
   viscosity->limiter_convergence_gate = 1;
   viscosity->shear_limiter = 0;
+  viscosity->limiter_floor = 0.f;
+  viscosity->limiter_mach = 0.f;
 
   if (viscosity->eta_crit < 0.f) viscosity->eta_crit = 1.f / eta_neighbours;
   if (viscosity->limiter_width < 0.f)
@@ -227,6 +238,10 @@ static INLINE void viscosity_init(struct swift_params *params,
       params, "SPH:limiter_convergence_gate", 1);
   viscosity->shear_limiter = parser_get_opt_param_int(
       params, "SPH:viscosity_shear_limiter", 0);
+  viscosity->limiter_floor = parser_get_opt_param_float(
+      params, "SPH:viscosity_limiter_floor", 0.f);
+  viscosity->limiter_mach = parser_get_opt_param_float(
+      params, "SPH:viscosity_limiter_mach", 0.f);
 
   /* Automatic limiter settings: the paper's prescription in SWIFT's h
    * convention (kernel support = kernel_gamma * h, the paper uses 2 h) */
@@ -285,8 +300,11 @@ static INLINE void viscosity_print(
   message("Slope-limiter distance cut-off gated by the convergence fraction: %s.",
           viscosity->limiter_convergence_gate ? "yes" : "no");
   if (viscosity->shear_limiter)
-    message("EXPERIMENTAL: viscous pressure scaled by the Cullen & Dehnen limiter (%s).",
-            viscosity->shear_limiter == 2 ? "quadratic term only" : "both terms");
+    message(
+        "EXPERIMENTAL: viscous pressure scaled by the Cullen & Dehnen limiter "
+        "(%s, floor %.2f, linear term limited for |mu| > %.1f c).",
+        viscosity->shear_limiter == 2 ? "quadratic term only" : "both terms",
+        viscosity->limiter_floor, viscosity->limiter_mach);
 }
 
 #if defined(HAVE_HDF5)

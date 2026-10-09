@@ -577,8 +577,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float xi_q_i = pi->force.viscosity_limiter;
   const float xi_q_j = pj->force.viscosity_limiter;
   const int quad_only = (magma_viscosity.shear_limiter == 2);
-  const float xi_lin_i = quad_only ? 1.f : xi_q_i;
-  const float xi_lin_j = quad_only ? 1.f : xi_q_j;
+  /* With a Mach threshold the linear term is limited only in supersonic
+   * shear (|mu| > limiter_mach c), where it is a Keplerian flow rather than
+   * a subsonic shear layer that needs its particle order kept. */
+  const float mach_i = magma_viscosity.limiter_mach * ci;
+  const float mach_j = magma_viscosity.limiter_mach * cj;
+  const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
+  const float xi_lin_j = (quad_only || fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
   const float Qi = Q_dissipative_i
                        ? rhoi * (-xi_lin_i * visc_alpha * ci * mu_i +
                                  xi_q_i * visc_beta * mu_i * mu_i)
