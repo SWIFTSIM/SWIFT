@@ -363,35 +363,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_part_get_primitive_variables(p, W);
   hydro_gradients_extrapolate_in_time(p, W, dt_therm, p->dW_time);
 
-  float new_internal_energy;
-  float old_internal_energy;
-  old_internal_energy = gas_internal_energy_from_pressure(W[0], W[4]);
-  new_internal_energy = old_internal_energy;
-
-  /* Apply entropy floor on internal energy, applies entropy floor on entropy */
-  float floor_entropy;
-  floor_entropy = entropy_floor(p, cosmo, floor_props);
-  new_internal_energy = fmax(new_internal_energy,
-    gas_internal_energy_from_entropy(W[0], floor_entropy));
-
-  /* Apply internal energy floor */
-  new_internal_energy = fmax(new_internal_energy,
-    hydro_props->minimal_internal_energy / cosmo->a_factor_internal_energy);
-
-  /* Calculate new Pressure */
-  float new_pressure;
-  new_pressure = gas_pressure_from_internal_energy(W[0],
-    new_internal_energy);
-
-  /* Calculate new Entropy */
-  float new_entropy;
-  new_entropy = gas_entropy_from_internal_energy(W[0],
-    new_internal_energy);
-
-  W[4] = new_pressure;
-  W[5] = new_entropy;
-
-  hydro_part_set_primitive_variables(p, W);
+  /* Entropy Floor*/
 #endif
 
   /* I'm not convinced this is anything? */
