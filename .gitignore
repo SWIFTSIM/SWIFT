@@ -28,6 +28,7 @@ doc/latex/
 doc/man/
 doc/Doxyfile
 doc/RTD/source/SubgridModels/*/*.png
+doc/RTD/source/TimeStepping/figures/*.png
 doc/RTD/source/RadiativeTransfer/full_dependency_graph_RT.png
 
 examples/*/*/*.xmf
