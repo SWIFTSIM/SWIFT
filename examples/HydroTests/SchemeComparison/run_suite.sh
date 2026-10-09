@@ -46,6 +46,10 @@ DO_PLOT=1
 : "${EVRARD_NPARTS:=100000}"    # Evrard: number of particles
 : "${KEPLERIAN_T_END:=50}"      # Keplerian ring: end time
 : "${KEPLERIAN2D_T_END:=30}"    # Keplerian ring, 2D code: end time (the 2D run segfaults later on particles without neighbours)
+: "${KEPLERIAN_N:=64}"          # Keplerian disc (Hopkins): effective resolution across the disc (makeIC.py -n; Hopkins: 256)
+: "${KEPLERIAN_DT_MIN:=1e-9}"   # Keplerian disc/ring: minimal time step (particles plunging onto the point mass need it)
+: "${KEPLERIAN_CD10_T_END:=40}" # Keplerian ring (Cullen & Dehnen): end time (paper: 40 = 6.4 orbits at the ring centre)
+: "${KEPLERIAN_CD10_N:=9745}"   # Keplerian ring (Cullen & Dehnen): number of particles (paper: 9745)
 : "${ZELDOVICH_Z_END:=0.9}"     # Zeldovich: final redshift
 : "${ZELDOVICH_PERTURB:=0.1}"   # Zeldovich_pert: transverse random displacement in units of the spacing
 : "${ZELDOVICH_N:=32}"          # Zeldovich (lattice): particles per dimension
@@ -62,7 +66,7 @@ REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
 # The NFW halo (nfw) is not in the default list: expensive and so far not
 # discriminating between schemes; run it with -t nfw.
-ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d kh noh evrard sedov zeldovich_pert blob"
+ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bnph" opt; do
@@ -173,12 +177,12 @@ test_gresho() {
   make_ic() { get_glass glassPlane_128; python3 makeIC.py; }
 }
 test_keplerian() {
-  # A razor-thin disc run with the 3D code (see the example's README)
+  # Hopkins (2015) Keplerian disc as a razor-thin disc run with the 3D code (see the example's README)
   DIM=3; EXAMPLE=HydroTests/KeplerianRing; YML=keplerian_ring.yml; IC=initial_conditions.hdf5
   FLAGS="--hydro --external-gravity"
-  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN_T_END -P Snapshots:delta_time:1"
+  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN_T_END -P Snapshots:delta_time:1 -P TimeIntegration:dt_min:$KEPLERIAN_DT_MIN"
   PLOT_SNAP=""
-  make_ic() { python3 makeIC.py; }
+  make_ic() { python3 makeIC.py -n "$KEPLERIAN_N"; }
 }
 # The same ring with the 2D code: the particles are put in the z = 0 plane and
 # the point mass with them. In the 3D planar set-up every MAGMA particle has
@@ -189,10 +193,10 @@ test_keplerian() {
 test_keplerian2d() {
   DIM=2; EXAMPLE=HydroTests/KeplerianRing; YML=keplerian_ring.yml; IC=initial_conditions.hdf5
   FLAGS="--hydro --external-gravity"
-  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN2D_T_END -P Snapshots:delta_time:1 -P PointMassPotential:position:[5.,5.,0.]"
+  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN2D_T_END -P Snapshots:delta_time:1 -P PointMassPotential:position:[5.,5.,0.] -P TimeIntegration:dt_min:$KEPLERIAN_DT_MIN"
   PLOT_SNAP=""
   make_ic() {
-    python3 makeIC.py
+    python3 makeIC.py -n "$KEPLERIAN_N"
     python3 -c "
 import h5py
 with h5py.File('initial_conditions.hdf5', 'r+') as f:
@@ -202,6 +206,18 @@ with h5py.File('initial_conditions.hdf5', 'r+') as f:
 "
   }
 }
+# The Keplerian ring of Cullen & Dehnen (2010), Section 4.3: Gaussian ring,
+# GM = 1000, Mach 1000, 9745 equal-mass particles placed with the method of
+# Cartwright et al. (2009), run with the 2D code. The test used by Cullen &
+# Dehnen to build their viscosity switch (their Fig. 8 = particle positions).
+test_keplerian_cd10() {
+  DIM=2; EXAMPLE=HydroTests/KeplerianRing_CullenDehnen; YML=keplerian_ring.yml; IC=initial_conditions.hdf5
+  FLAGS="--hydro --external-gravity"
+  PARAMS="-P TimeIntegration:time_end:$KEPLERIAN_CD10_T_END -P Snapshots:delta_time:1 -P TimeIntegration:dt_min:$KEPLERIAN_DT_MIN"
+  PLOT_SNAP=""
+  make_ic() { python3 makeIC.py -n "$KEPLERIAN_CD10_N"; }
+}
+
 test_zeldovich() {
   DIM=3; EXAMPLE=Cosmology/ZeldovichPancake_3D; YML=zeldovichPancake.yml; IC=zeldovichPancake.hdf5
   FLAGS="--hydro --self-gravity --cosmology"

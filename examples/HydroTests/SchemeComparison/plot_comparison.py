@@ -32,7 +32,8 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
-ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d", "zeldovich",
+ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d",
+             "keplerian_cd10", "zeldovich",
              "zeldovich_glass", "zeldovich_pert", "blob"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
@@ -656,13 +657,76 @@ def test_square(root, schemes, out, test="square"):
     return metrics
 
 
+def ring_positions_figure(runs, times, out_path, half_width=2.5, title=None):
+    """Particle positions of the Keplerian ring at several times, in the style
+    of Fig. 8 of Cullen & Dehnen (2010): one column per run, one row per time,
+    black dots on white, centred on the point mass.
+
+    runs: list of (label, run_dir) pairs; times: list of output times.
+    """
+    fig, axes = plt.subplots(len(times), len(runs), figsize=(2.6 * len(runs), 2.6 * len(times)),
+                             squeeze=False, sharex=True, sharey=True)
+    for j, (label, run_dir) in enumerate(runs):
+        axes[0, j].set_title(label, fontsize=9)
+        for i, t in enumerate(times):
+            ax = axes[i, j]
+            f = pick_snapshot(run_dir, "keplerian_ring", time=t)
+            if f is None:
+                ax.text(0.5, 0.5, "no output", transform=ax.transAxes, ha="center", va="center")
+                continue
+            with h5py.File(f, "r") as h:
+                pos = h["/PartType0/Coordinates"][:]
+                box = np.atleast_1d(h["/Header"].attrs["BoxSize"])
+                t_snap = float(np.atleast_1d(h["/Header"].attrs["Time"])[0])
+            x = pos[:, 0] - 0.5 * box[0]
+            y = pos[:, 1] - 0.5 * box[min(1, len(box) - 1)]
+            ax.plot(x, y, ",", color="k", rasterized=True)
+            ax.text(0.04, 0.95, f"t={t_snap:.0f}", transform=ax.transAxes, ha="left", va="top", fontsize=9)
+            ax.set_xlim(-half_width, half_width)
+            ax.set_ylim(-half_width, half_width)
+            ax.set_aspect("equal")
+            if i == len(times) - 1:
+                ax.set_xlabel("x")
+            if j == 0:
+                ax.set_ylabel("y")
+    if title:
+        fig.suptitle(title)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200)
+    plt.close(fig)
+
+
+# Geometry of the ring tests: the Hopkins (2015) disc occupies 0.5 < r < 2 and
+# the Cullen & Dehnen (2010) ring is a Gaussian of centre 10 and width 2.5
+# (annulus = +-2 widths). "plunge" radii define the plunger metrics, "half"
+# the window of the position plots.
+RING_GEOMETRY = {
+    "keplerian": dict(r_in=0.5, r_out=2.0, plunge=(0.25, 0.1), half=2.5,
+                      times=[0.0, 10.0, 25.0, 50.0], pos_times=[5.0, 10.0, 20.0, 30.0]),
+    "keplerian2d": dict(r_in=0.5, r_out=2.0, plunge=(0.25, 0.1), half=2.5,
+                        times=[0.0, 10.0, 25.0, 50.0], pos_times=[5.0, 10.0, 20.0, 30.0]),
+    # the Gaussian's inner tail reaches r ~ 1.7 in the IC: plunge radii below it
+    "keplerian_cd10": dict(r_in=5.0, r_out=15.0, plunge=(1.5, 0.5), half=16.0,
+                           times=[0.0, 10.0, 20.0, 40.0], pos_times=[10.0, 15.0, 25.0, 40.0]),
+}
+
+
 def test_keplerian(root, schemes, out, test="keplerian"):
-    times = [0.0, 10.0, 25.0, 50.0]
+    geo = RING_GEOMETRY[test]
+    times = geo["times"]
+    # Initial mass in the ring annulus, for the ring-mass metric
+    ring_mass_0 = {}
+    for s in schemes:
+        f0 = pick_snapshot(os.path.join(root, "runs", s, test), "keplerian_ring", index=0)
+        if f0:
+            d0 = load(f0)
+            r0 = np.hypot(d0["pos"][:, 0] - 0.5 * d0["boxsize"][0], d0["pos"][:, 1] - 0.5 * d0["boxsize"][1])
+            ring_mass_0[s] = float(np.sum(d0["m"][(r0 > geo["r_in"]) & (r0 < geo["r_out"])]))
     fig, axes = plt.subplots(len(schemes) + 1, len(times),
                              figsize=(3.4 * len(times), 3.4 * (len(schemes) + 1)), squeeze=False)
     metrics = {}
     clim = (-1.0, 0.3)
-    edges = np.linspace(0, 5, 51)
+    edges = np.linspace(0, 2.0 * geo["half"], 51)
     areas = np.pi * (edges[1:] ** 2 - edges[:-1] ** 2)
     for i, t in enumerate(times):
         data = load_all(root, schemes, test, "keplerian_ring", time=t)
@@ -681,8 +745,8 @@ def test_keplerian(root, schemes, out, test="keplerian"):
             sc = ax.scatter(x, y, c=np.log10(d["rho"]), s=1.5, cmap="viridis", linewidths=0,
                             rasterized=True, vmin=clim[0], vmax=clim[1])
             ax.set_aspect("equal")
-            ax.set_xlim(-5, 5)
-            ax.set_ylim(-5, 5)
+            ax.set_xlim(-2.0 * geo["half"], 2.0 * geo["half"])
+            ax.set_ylim(-2.0 * geo["half"], 2.0 * geo["half"])
             ax.set_xticks([])
             ax.set_yticks([])
             ax.set_title(f"{s}, t={d['time']:.1f}", fontsize=9)
@@ -690,17 +754,65 @@ def test_keplerian(root, schemes, out, test="keplerian"):
             mass, _ = np.histogram(r, bins=edges, weights=d["m"])
             sigma = mass / areas
             axes[-1, i].plot(0.5 * (edges[1:] + edges[:-1]), sigma, "-", color=COLORS[j % len(COLORS)], label=s)
-            # Fraction of the mass that left the initial ring region (1 < r < 3.5)
+            # Fraction of the ring's mass that left the initial ring annulus
+            # (0.5 < r < 2.0 in the example's IC; the gas beyond r = 2 is a
+            # 100:1 lower-density background filling the periodic box)
+            in_ring = (r > geo["r_in"]) & (r < geo["r_out"])
             metrics.setdefault(s, {})[f"mass_frac_outside_ring_t{t:.0f}"] = float(
-                np.sum(d["m"][(r < 1.0) | (r > 3.5)]) / np.sum(d["m"]))
+                1.0 - np.sum(d["m"][in_ring]) / ring_mass_0[s]) if ring_mass_0.get(s) else float("nan")
         axes[-1, i].set_xlabel("r")
         axes[-1, i].set_ylabel(r"$\Sigma$")
         axes[-1, i].set_title(f"surface density, t={t:.0f}", fontsize=9)
         axes[-1, i].legend(fontsize=7)
+    # Plungers: particles that fall well inside the inner edge of the ring
+    # (r < 0.25, the inner edge is at r = 0.5) towards the point mass. They
+    # end the useful life of the test (they set the time step and seed the
+    # chaotic divergence), so the time before the first one appears is a
+    # figure of merit: the longer, the better. Resolution: the snapshot cadence.
+    # inside the inner edge; deep in the potential (see RING_GEOMETRY)
+    r_plunge = {"": geo["plunge"][0], f"_r{geo['plunge'][1]:g}": geo["plunge"][1]}
+    for s in schemes:
+        files = sorted(glob.glob(os.path.join(root, "runs", s, test, "keplerian_ring_[0-9]*.hdf5")))
+        t_first = {k: None for k in r_plunge}
+        n_final = {k: 0 for k in r_plunge}
+        mass_final = {k: 0.0 for k in r_plunge}
+        t_last, r_min_final, m_tot = 0.0, np.inf, 1.0
+        for f in files:
+            with h5py.File(f, "r") as h:
+                t_last = float(np.atleast_1d(h["/Header"].attrs["Time"])[0])
+                pos = h["/PartType0/Coordinates"][:]
+                mass = h["/PartType0/Masses"][:].reshape(-1)
+                box = np.atleast_1d(h["/Header"].attrs["BoxSize"])
+            r = np.hypot(pos[:, 0] - 0.5 * box[0], pos[:, 1] - 0.5 * box[min(1, len(box) - 1)])
+            r_min_final = float(r.min())
+            m_tot = float(mass.sum())
+            for k, rp in r_plunge.items():
+                sel = r < rp
+                n_final[k] = int(np.sum(sel))
+                mass_final[k] = float(mass[sel].sum())
+                if n_final[k] > 0 and t_first[k] is None:
+                    t_first[k] = t_last
+        if files:
+            m = metrics.setdefault(s, {})
+            for k in r_plunge:
+                # No plunger by the end: report the end time (a lower bound)
+                m[f"t_first_plunger{k}"] = float(t_first[k] if t_first[k] is not None else t_last)
+                m[f"plunger_free_to_end{k}"] = float(t_first[k] is None)
+                m[f"n_plungers_final{k}"] = n_final[k]
+                # Mass fraction, comparable between resolutions (the particle
+                # masses follow the ring's density profile)
+                m[f"plunger_mass_frac_final{k}"] = mass_final[k] / m_tot
+            m["r_min_final"] = r_min_final
     fig.suptitle(f"Keplerian ring ({'2D code' if test.endswith('2d') else '3D planar'}), log density")
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
+    # Particle positions, Cullen & Dehnen (2010) Fig. 8 style
+    runs = [(s, os.path.join(root, "runs", s, test)) for s in schemes
+            if glob.glob(os.path.join(root, "runs", s, test, "keplerian_ring_[0-9]*.hdf5"))]
+    if runs:
+        ring_positions_figure(runs, geo["pos_times"], os.path.join(out, f"{test}_positions.png"), half_width=geo["half"],
+                              title=f"Keplerian ring ({test}), particle positions")
     return metrics
 
 
@@ -919,6 +1031,7 @@ TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_g
          "square_mass": lambda root, schemes, out: test_square(root, schemes, out, test="square_mass"),
          "keplerian": test_keplerian,
          "keplerian2d": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian2d"),
+         "keplerian_cd10": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian_cd10"),
          "zeldovich": test_zeldovich,
          "zeldovich_glass": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_glass"),
          "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
