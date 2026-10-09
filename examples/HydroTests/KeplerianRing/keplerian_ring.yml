@@ -9,8 +9,8 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   50    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  time_end:   120   # The end time of the simulation (in internal units): ~20 orbits at r = 1 (Hopkins 2015).
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units). Particles falling onto the point mass need very small steps.
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots

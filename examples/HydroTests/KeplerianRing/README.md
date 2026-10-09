@@ -1,131 +1,64 @@
-Keplerian Ring Test
-===================
+Keplerian disc test (Hopkins 2015)
+==================================
 
-This test uses the '2D Keplerian Ring' to assess the accuracy of SPH
-calculations. It is known to fail with all schemes in SWIFT. For more
-information on the test, please see Cullen & Dehnen 2009
-(http://arxiv.org/abs/1006.1524) Section 4.3.
+A cold, pressure-less gas disc on circular orbits around a point mass. The
+disc should stay in its initial configuration indefinitely; numerical
+(artificial) shear viscosity transports angular momentum, spreads the disc and
+eventually breaks it up through the viscous instability. The set-up follows
+Section 4.2.4 of Hopkins (2015, MNRAS 450, 53, "A new class of accurate,
+mesh-free hydrodynamic simulation methods"), which itself is a variant of the
+ring tests of Maddison et al. (1996), Imaeda & Inutsuka (2002), Cartwright et
+al. (2009) and Cullen & Dehnen (2010). For the Cullen & Dehnen (2010) version
+(a Gaussian ring with their units and particle placement) see the example
+`KeplerianRing_CullenDehnen`.
 
-It is key that for this test in particular that the initial conditions are
-perfectly arranged (here we use the same methodology as described in the paper
-referenced above).
+Definitions (Hopkins 2015, eq. 34 and text):
 
-The test uses:
++ surface density Sigma = 1 for 0.5 <= r <= 2 (the paper's profile has a
+  (r/0.5)^3 rise inside and a (1 + (r - 2)/0.1)^-3 fall outside plus a 0.01
+  floor; for particle codes Hopkins removes the particles inside r < 0.5 and
+  outside r > 2, which is what `makeIC.py` does by default; `--background 1`
+  keeps the outer floor as a 100:1 lower-density background filling the box);
++ vanishing, uniform pressure P = 1e-6, i.e. u = 1.5e-6 for gamma = 5/3
+  (Mach ~ 700 at r = 1);
++ softened Keplerian potential Phi = -GM / sqrt(r^2 + eps^2) with GM = 1; the
+  paper does not quote eps, this example uses eps = 0.05 (the IC velocities
+  are the circular velocities of the softened potential);
++ particles on a uniform grid of spacing 4/256 across the square -2 < x < 2
+  ("effective resolution 256^2", about 48000 particles in the disc), equal
+  masses; `-n` sets this effective resolution;
++ evolved to t = 120, about 20 orbits at r = 1 (orbital period 2 pi r^1.5).
 
-+ $M = 10^10$ for a central point mass
-+ $r$ up to 5 (particles created to edge of box when relevant)
-+ Approximately 16000 particles
-+ $c_s = 0.01 \ll v_\phi = 10$, enforced by giving them a mass of 1 unit and an
-  internal energy of 0.015.
+Hopkins measures the surface-density map at t = 120 and, for convergence, the
+L1 velocity error at r = 1 after 10 orbits and the times at which the L1
+velocity error at r = 1 exceeds 0.01 and the L1 density error exceeds 0.25.
 
-
-Code Setup
+Code setup
 ----------
 
-The ring is a razor-thin disc (all particles in the z = 5 plane) run with the
-3D code around an external point mass. You will need to recompile SWIFT with
-the softened point-mass potential, which is the one the initial velocities are
-computed for (v = sqrt(G M r^2 / (r^2 + eps^2)^(3/2)) with the softening eps):
+The disc can be run with the 2D code (particles in the z = 0 plane, the point
+mass at z = 0) or as a razor-thin disc with the 3D code (all particles in the
+z = 5 plane). In both cases SWIFT has to be configured with the softened
+point-mass potential:
 
-    ./configure --with-ext-potential=point-mass-softened
+    ./configure --with-ext-potential=point-mass-softened              # 3D planar
+    ./configure --with-hydro-dimension=2 --with-ext-potential=point-mass-softened
 
-in the root directory of the project. We suggest leaving all other code options
-as their defaults.
+The parameter file caps the smoothing length (`SPH:h_max`) because particles
+ejected from the disc can lose all their neighbours, and uses a small minimal
+time step: particles that fall onto the point mass orbit at the softening
+radius with very short time steps, and the run must not abort on them (the
+number of such particles is one measure of the viscosity of a scheme).
 
-The initial conditions exclude the particles within r = 0.5 of the centre
-(option `--innerradius` of `makeIC.py`): with the 100:1 density contrast at the
-inner edge of the ring, these light particles are shock-heated, fall through
-the point mass and end the run within a fraction of an orbit. Particles
-ejected from the ring later in the run lose all their neighbours; the
-parameter file caps the smoothing length (`SPH:h_max`) so that they do not
-stop the run either.
-
-
-Initial Conditions Generation
------------------------------
-
-The initial condition generation is handled by ```makeIC.py```, for which
-the options are available with
+Initial conditions
+------------------
 
     python3 makeIC.py --help
 
-however the defaults are very sensible. If you wish to change the central mass,
-you will need to change the external point mass in ```keplerian_ring.yml``` as
-well.
-
-There are three main types of generation, handled through `--generationmethod`:
-
-+ `spiral`: using the original spiral method with a density distribution
-            created using different mass particles.
-+ `gaussian`: a guassian density profile with density distribution changed
-              through the _distribution_ of equal mass particles.
-+ `grid`: a grid with a flat density profile (similar to Hopkins 2013) imposed
-          on it through different particle masses.
-
-All of them have their benefits and drawbacks, so give each a go.
-
-Plotting
---------
-
-Once you have ran swift (we suggest that you use the following)
-
-    ../../../swift --external-gravity --stars --hydro --threads=16 keplerian_ring.yml 2>&1 | tee output.log
-
-there will be around 350 ```.hdf5``` files in your directory. To check out
-the results of the example use the plotting script:
-
-    python3 plotSolution.py
-
-which will produce a png file in the directory. Check out `plotSolution.py
---help` for more options.
-
-You can also try the `make_movie.py` script which should make a movie.
-
-
-Theory
-------
-
-We use the 'spiral' technique to generate the initial conditions. To do this,
-we first calculate
-$$
-    m_i = \frac{i - \frac{1}{2}}{N}
-$$
-for each particle $i$ with $N$ the total number of required particles. Then the
-radius of each particle is given by
-$$
-    r_i = f^{-1}(m_i)
-$$
-where for us the PDF $f$ is a Gaussian.
-
-To choose the radial positions, we then choose an initial angle $\theta_1$, and
-from there
-$$
-    \delta \theta_i = \left[2\pi\left( 1 - \frac{r_{i-1}}{r_i} \right)\right]~.
-$$
-
-### Inverse CDF of Gaussian
-
-We need:
-$$
-    f^{-1}(m_i) = r_i = r_{central} + \sqrt{2}\sigma \mathrm{erf}^{-1}(2m_i - 1),
-$$
-and thankfully scipy has an inverse error function built in.
-
-
-Implementation Details
-----------------------
-
-+ The $m_i$ are generated by ```generate_m_i```.
-+ The inverse Gaussian PDF is implemented as ```inverse_gaussian```.
-+ The $\theta_i$ are generated by ```generate_theta_i```.
-
-
-Useful Information
-------------------
-
-$G$ in simulation units (by default using this yaml) is given by:
-$$
-    4.300970\times10^{-6}
-$$
-This is used to convert the mass of the central potential (used in the
-parameterfile) to the $GM$ required in the initial conditions generator.
+`-n` effective resolution (default 256), `-i` internal energy (default
+1.5e-6), `-e` softening (default 0.05, also the inner exclusion radius unless
+`-c` is larger), `-c` inner exclusion radius (default 0.5), `--background`
+(default 0), `-m` GM (default 1; change `PointMassPotential:mass` in the
+parameter file accordingly), `-g` generation method (`grid` for this test;
+`spiral` and `gaussian` place the particles with the method of Cartwright et
+al. 2009 and are kept for experiments).

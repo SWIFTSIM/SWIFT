@@ -427,7 +427,10 @@ def gen_particles_grid(meta):
 
     # Because we are using a uniform grid we actually use the same x and y
     # range for the initial particle setup.
-    step = (range[1] - range[0]) / meta["nparts"]
+    # Effective resolution as in Hopkins (2015): nparts particles across the
+    # square -2 < x < 2 that contains the disc, i.e. a spacing of 4 / nparts,
+    # continued over the whole box.
+    step = 4.0 / meta["nparts"]
 
     x_values = np.arange(0, range[1] - range[0], step)
 
@@ -442,12 +445,19 @@ def gen_particles_grid(meta):
         (x - centre_of_ring[0]) ** 2 + (y - centre_of_ring[1]) ** 2
     )
     particles.theta = np.arctan2(y - centre_of_ring[1], x - centre_of_ring[0])
+    # Hopkins (2015): particles removed inside r < 0.5 and outside r > 2 to
+    # match the density profile (the tails of sigma() are for mesh codes);
+    # --background keeps the 100:1 lower-density gas outside the disc.
+    outer = 100.0 if meta["background"] else 2.0
     particles.exclude_particles(
-        (max(particles.softening, meta["innerradius"]), 100.0)
+        (max(particles.softening, meta["innerradius"]), outer)
     )
 
     particles.densities = sigma(particles.radii)
     particles.calculate_velocities()
+    if meta["particlemass"] < 0:
+        # Surface density 1 in the disc (Hopkins 2015): m = Sigma * spacing^2
+        particles.particlemass = particles.densities.max() * step * step
     particles.calculate_masses()
 
     particles.generate_ids()
@@ -587,23 +597,26 @@ if __name__ == "__main__":
         "-n",
         "--nparts",
         help="""
-             Square-root of the number of particles, i.e. the default
-             nparts=128 leads to a ring with 128^2 particles in it.
-             Note that for the spiral generation method this number is 
+             Effective resolution as defined by Hopkins (2015): number of
+             particles across the square -2 < x < 2 containing the disc
+             (grid method; the disc then holds ~0.74 nparts^2 particles).
+             Default: 256, the resolution of Hopkins (2015). For the spiral
+             and gaussian methods: square root of the number of particles,
              somewhat approximate.
              """,
         required=False,
-        default=128,
+        default=256,
     )
 
     PARSER.add_argument(
         "-p",
         "--particlemass",
         help="""
-             Maximum mass of the gas particles. Default: 10.
+             Maximum mass of the gas particles. Default (-1): set such that
+             the surface density of the disc is 1, as in Hopkins (2015).
              """,
         required=False,
-        default=10.0,
+        default=-1.0,
     )
 
     PARSER.add_argument(
@@ -647,12 +660,25 @@ if __name__ == "__main__":
         "-i",
         "--internalenergy",
         help="""
-             Initial internal energy for all of the particles. Note that this
-             should be low to ensure that the ring is very cold (see Inviscid
-             SPH for details). Default: 0.015.
+             Initial internal energy for all of the particles. Hopkins (2015)
+             uses a vanishing pressure P = 1e-6 with surface density 1, i.e.
+             u = P / ((gamma - 1) Sigma) = 1.5e-6 for gamma = 5/3 (sound speed
+             1.3e-3, Mach ~700 at r = 1). Default: 1.5e-6.
              """,
         required=False,
-        default=0.015,
+        default=1.5e-6,
+    )
+
+    PARSER.add_argument(
+        "--background",
+        help="""
+             Keep the particles outside the disc (r > 2) as a 100:1
+             lower-density background filling the box (grid method only).
+             Hopkins (2015) removes them. Default: 0.
+             """,
+        required=False,
+        default=0,
+        type=int,
     )
 
     PARSER.add_argument(
@@ -719,6 +745,7 @@ if __name__ == "__main__":
         "gravitymass": float(ARGS["gravitymass"]),
         "nparts": int(ARGS["nparts"]),
         "particlemass": float(ARGS["particlemass"]),
+        "background": int(ARGS["background"]),
         "smoothing": smoothing,
         "softening": float(ARGS["softening"]),
         "innerradius": float(ARGS["innerradius"]),
