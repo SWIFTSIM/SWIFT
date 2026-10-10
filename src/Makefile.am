@@ -17,7 +17,8 @@
 
 # Add the non-standard paths to the included library headers
 AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) \
-        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS)
+        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS) \
+        $(AGAMA_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -224,7 +225,7 @@ AM_SOURCES += $(GEAR_RT_SOURCES)
 AM_SOURCES += swift_lustre_api.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h custom_mpi.h error.h inline.h kernel_hydro.h kernel_gravity.h
 nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h runner_doiact_sidm.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h runner_doiact_functions_sidm.h
@@ -428,6 +429,10 @@ nobase_noinst_HEADERS += cooling/PS2020/cooling.h cooling/PS2020/cooling_struct.
 nobase_noinst_HEADERS += cooling/PS2020/cooling_io.h cooling/PS2020/interpolate.h cooling/PS2020/cooling_rates.h
 nobase_noinst_HEADERS += cooling/PS2020/cooling_tables.h cooling/PS2020/cooling_subgrid.h
 nobase_noinst_HEADERS += cooling/PS2020/cooling_properties.h cooling/PS2020/cooling_debug.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling.h cooling/TREECOOL/cooling_struct.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling_io.h cooling/TREECOOL/cooling_rates.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling_tables.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling_properties.h cooling/TREECOOL/cooling_debug.h
 nobase_noinst_HEADERS += chemistry/none/chemistry.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_additions.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_io.h
@@ -510,6 +515,10 @@ nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_part.h black_holes/SPI
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_properties.h black_holes/SPIN_JET/black_holes_parameters.h
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_spin.h black_holes/SPIN_JET/black_holes_struct.h
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_debug.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes.h black_holes/GEAR/black_holes_io.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_part.h black_holes/GEAR/black_holes_iact.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_properties.h black_holes/GEAR/black_holes_parameters.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_struct.h black_holes/GEAR/black_holes_debug.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h
