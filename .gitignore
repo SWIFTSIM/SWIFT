@@ -140,6 +140,7 @@ tests/testSPHStep
 tests/testExp
 tests/testErfc
 tests/testKernel
+tests/testKernelAccuracy
 tests/testKernelGrav
 tests/testKernelLongGrav
 tests/testFFT
@@ -178,7 +179,7 @@ tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
 tests/testRiemannHLLC
-tests/testMatrixInversion
+tests/testSymmetricMatrix
 tests/testVoronoi1D
 tests/testVoronoi2D
 tests/testVoronoi3D

@@ -1,0 +1,45 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1   # Grams
+  UnitLength_in_cgs:   1   # Centimeters
+  UnitVelocity_in_cgs: 1   # Centimeters per second
+  UnitCurrent_in_cgs:  1   # Amperes
+  UnitTemp_in_cgs:     1   # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   40.   # The end time of the simulation (in internal units): 6.4 orbits at the ring centre (period 2 pi).
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units). Particles falling onto the point mass need very small steps.
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            keplerian_ring # Common part of the name of output files
+  time_first:          0.        # Time of the first output (in internal units)
+  delta_time:          1.        # Time difference between consecutive outputs (in internal units)
+  compression:         4        # Compress the snapshots (gzip level, lossless)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          0.1 # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:                 3.       # Particles in the Gaussian tails or ejected from the ring have few neighbours; cap h so that they do not stop the run (the top-level cells follow h_max and must fit the box at least 3 times).
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  initial_conditions.hdf5        # The file to read
+  periodic:   1
+
+# External potential: point mass with GM = 1000 (G = 6.6743e-8 in cgs)
+PointMassPotential:
+  useabspos:       1
+  position:        [25.,25.,0.]  # location of the point mass in internal units (centre of the box, z = 0 for the 2D code)
+  mass:            1.498351e10   # mass of the external point mass in internal units: GM = 1000
+  timestep_mult:   0.03          # controls the time step
+  softening:       0.1           # 1% of the ring radius (the paper's potential is not softened)

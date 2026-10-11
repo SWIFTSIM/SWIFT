@@ -5,7 +5,7 @@ Josh Borrow (joshua.borrow@durham.ac.uk)
 """
 
 from swiftsimio import load, SWIFTDataset
-from swiftsimio.visualisation.projection import scatter_parallel
+from swiftsimio.visualisation.projection_backends.subsampled_extreme import scatter_parallel
 
 import numpy as np
 import matplotlib.pyplot as plt
