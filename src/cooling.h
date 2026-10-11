@@ -45,6 +45,8 @@
 #include "./cooling/Compton/cooling.h"
 #elif defined(COOLING_GRACKLE)
 #include "./cooling/grackle/cooling.h"
+#elif defined(COOLING_GEAJAY)
+#include "./cooling/geajay/cooling.h"
 #elif defined(COOLING_QLA)
 #include "./cooling/QLA/cooling.h"
 #elif defined(COOLING_QLA_EAGLE)

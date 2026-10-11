@@ -1497,6 +1497,49 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for geajay.
+have_geajay="no"
+AC_ARG_WITH([geajay],
+    [AS_HELP_STRING([--with-geajay=PATH],
+       [root directory where geajay is installed @<:@yes/no@:>@]
+    )],
+    [with_geajay="$withval"],
+    [with_geajay="no"]
+)
+if test "x$with_geajay" != "xno"; then
+   if test "x$with_geajay" != "xyes" -a "x$with_geajay" != "x"; then
+      GEAJAY_LIBS="-L$with_geajay/lib -lgeajay -lhdf5 -lm"
+      GEAJAY_INCS="-I$with_geajay/include"
+   else
+      GEAJAY_LIBS="-lgeajay -lhdf5 -lm"
+      GEAJAY_INCS=""
+   fi
+
+   if test "$have_grackle" = "yes"; then
+      AC_MSG_ERROR([geajay and Grackle both define the Grackle C API: use only one of --with-geajay and --with-grackle.])
+   fi
+
+   # The header of the particle API is in the include directory of geajay.
+   geajay_save_CPPFLAGS="$CPPFLAGS"
+   CPPFLAGS="$CPPFLAGS $GEAJAY_INCS"
+   AC_CHECK_HEADER(
+      [geajay_particle.h],
+      [ : ],
+      [AC_MSG_ERROR(Cannot find geajay_particle.h! A geajay with the particle API is needed.)])
+   CPPFLAGS="$geajay_save_CPPFLAGS"
+
+   AC_CHECK_LIB(
+      [geajay],
+      [geajay_particle_solve],
+      [AC_DEFINE([HAVE_GEAJAY],1,[The geajay library appears to be present.])
+       have_geajay="yes"
+      ],
+      [AC_MSG_ERROR(Cannot find the geajay library with the particle API! Please check --with-geajay.)],
+      [$GEAJAY_LIBS])
+fi
+AC_SUBST([GEAJAY_LIBS])
+AC_SUBST([GEAJAY_INCS])
+
 # Check for Agama (All-purpose Galaxy Modelling Architecture).
 # See https://agama.software/ for details.
 # Agama is linked as a static archive (agama.a) and requires two companion
@@ -2735,7 +2778,7 @@ fi
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
       [cooling function @<:@none, const-du, const-lambda, TREECOOL, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
-      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0). The same holds for geajay_* (e.g. geajay_3)]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -2773,6 +2816,18 @@ case "$with_cooling" in
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
       with_cooling_name="Grackle $primordial_chemistry"
       with_cooling="grackle"
+   ;;
+   geajay_*)
+
+      if test "$have_geajay" != "yes"; then
+        AC_MSG_ERROR([geajay cooling: You need the geajay library for geajay cooling. (--with-geajay=PATH)])
+      fi
+
+      AC_DEFINE([COOLING_GEAJAY], [1], [Cooling via the geajay library])
+      primordial_chemistry=${with_cooling#*_}
+      AC_DEFINE_UNQUOTED([COOLING_GEAJAY_MODE], [$primordial_chemistry], [geajay species network])
+      with_cooling_name="geajay $primordial_chemistry"
+      with_cooling="geajay"
    ;;
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
@@ -3429,6 +3484,9 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
+# check if using geajay cooling
+AM_CONDITIONAL([HAVEGEAJAYCOOLING], [test "$with_cooling" = "geajay"])
+
 # check if using EAGLE floor
 AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
 
@@ -3548,6 +3606,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   geajay enabled       : $have_geajay
    AGAMA enabled        : $have_agama
    Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
