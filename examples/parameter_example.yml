@@ -706,6 +706,40 @@ GrackleCooling:
   initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
 
 
+# Cooling with geajay (configure with --with-geajay=PATH --with-cooling=geajay_X)
+GeajayCooling:
+  cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
+  primordial_chemistry_network: 0              # (optional) Primordial chemistry network (0 to 3). Defaults to the mode selected at configure time.
+  with_UV_background: 1                        # Enable or not the UV background
+  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                        # Enable or not the metal cooling
+  max_substeps: 10000                          # (optional) Maximal number of sub-steps of one solve (default: 10000)
+  subcycle_on_failure: 2                       # (optional) Number of retries with a time-step split in smaller pieces after a failed solve (0 to 20, default: 2)
+  thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
+  uv_self_shielding: 0                         # (optional) 1 to 3 for the library's methods, 0 for none and -1 for the density threshold below (default: 0)
+  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with uv_self_shielding: -1. Density threshold of the self shielding
+  h2_shielding_length_method: 0                # (optional) H2 self-shielding length: 0 none, 2 kernel support radius, 3 local Jeans length (default: 0). 1 is not supported.
+  H2_self_shielding_path: kernel_radius        # (optional) Path length for method 2: kernel_radius or kernel_diameter
+  metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
+  agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
+  maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value. A value < 0 deactivates this parameter.
+  hydrogen_mass_fraction: 0.76                 # (optional) Hydrogen fraction by mass (default: 0.76)
+  use_radiative_transfer_fields: 0             # (optional) Arrays of ionization and heating rates are provided (default: 0)
+  RT_heating_rate_cgs    : 0                   # (optional) Heating rate in units of / nHI_cgs
+  RT_HI_ionization_rate_cgs  : 0               # (optional) HI ionization rate in cgs [1/s]
+  RT_HeI_ionization_rate_cgs : 0               # (optional) HeI ionization rate in cgs [1/s]
+  RT_HeII_ionization_rate_cgs: 0               # (optional) HeII ionization rate in cgs [1/s]
+  RT_H2_dissociation_rate_cgs: 0               # (optional) H2 dissociation rate in cgs [1/s]
+  volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
+  specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
+  h2_three_body_fit: 0                         # (optional) H2 formation three body rate (0 to 5, see the geajay documentation) (default: 0)
+  h2_cie_cooling: 0                            # (optional) Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004) (default: 0)
+  h2_formation_on_dust: 0                      # (optional) Enable/disable H2 formation on dust grains (default: 0)
+  h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
+  reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)
+  initial_nHII_to_nH_ratio:    -1              # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1. The same holds for the nHeI, nHeII, nHeIII, nDI, nDII, nHM, nH2I, nH2II and nHDI ratios.
+
+
   
 
 
