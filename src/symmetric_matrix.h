@@ -529,7 +529,8 @@ __attribute__((always_inline)) INLINE static int sym_matrix_invert_regularised(
 
   if (ev_small >= ev_floor) {
 
-    /* Well-conditioned case: direct inverse, identical to sym_matrix_invert() */
+    /* Well-conditioned case: direct inverse, identical to sym_matrix_invert()
+     */
     const double det_inv = 1. / (a * c - b * b);
     M_inv->xx = c * det_inv;
     M_inv->yy = a * det_inv;

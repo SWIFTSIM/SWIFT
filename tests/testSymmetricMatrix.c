@@ -634,9 +634,9 @@ static void test_sym_matrix_invert(void) {
  *
  * Positive semi-definite matrices are built with a known eigen-basis Q and
  * spectrum lambda, so that the expected result Q diag(f(lambda)) Q^T, with
- * f the filter of sym_matrix_invert_regularised(), is known exactly. Planar (one zero eigenvalue),
- * filamentary (two small eigenvalues) and round-off (tiny negative
- * eigenvalue) spectra are all covered, at all scales.
+ * f the filter of sym_matrix_invert_regularised(), is known exactly. Planar
+ * (one zero eigenvalue), filamentary (two small eigenvalues) and round-off
+ * (tiny negative eigenvalue) spectra are all covered, at all scales.
  */
 static void test_sym_matrix_invert_regularised(void) {
 
@@ -695,8 +695,8 @@ static void test_sym_matrix_invert_regularised(void) {
         check(res == 0, name, "inversion failed", sp, scales[s]);
         if (res != 0) continue;
 
-        check(regularised == expect_regularised, name,
-              "regularisation flag", regularised, expect_regularised);
+        check(regularised == expect_regularised, name, "regularisation flag",
+              regularised, expect_regularised);
 
         /* Element-wise comparison with the expected filtered inverse. The
          * rounding of M to float perturbs its spectrum by ~eps_f lambda_max,
@@ -757,10 +757,10 @@ static void test_sym_matrix_invert_regularised(void) {
       S.elements[e] = bad_values[v];
       for (int i = 0; i < sym_matrix_num_elements; ++i)
         S_inv.elements[i] = 42.f;
-      check(sym_matrix_invert_regularised(&S_inv, &S, kappa, &regularised) ==
-                    1 &&
-                sym_matrix_is_null(&S_inv),
-            name, "non-finite element not rejected", e, v);
+      check(
+          sym_matrix_invert_regularised(&S_inv, &S, kappa, &regularised) == 1 &&
+              sym_matrix_is_null(&S_inv),
+          name, "non-finite element not rejected", e, v);
     }
   }
   fpe_traps(1);

@@ -356,8 +356,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
      * of the two particles' fractions is used: a compression seen by either
      * is respected. Without the gate the fractions are 1 and the cut-off is
      * the paper's. */
-    const float gate = fmaxf(pi->force.convergence_fraction,
-                             pj->force.convergence_fraction);
+    const float gate =
+        fmaxf(pi->force.convergence_fraction, pj->force.convergence_fraction);
     const float exp_term = 1.f - gate * (1.f - cut_off);
 
     /* Van Leer limiter (eq. 21).

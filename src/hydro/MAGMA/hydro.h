@@ -839,12 +839,15 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
      * shear); the divergence is boosted by 2 (1 - R)^4, up to 32 in a
      * shock, so that a shock seen through shear keeps its viscosity. */
     if (magma_viscosity.shear_limiter) {
-      const float R = fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
+      const float R =
+          fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
       const float one_minus_R = 1.f - R;
-      const float boost = 2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
+      const float boost =
+          2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
       const float bdiv2 = boost * boost * div2;
       viscosity_limiter = (bdiv2 + S2 > 0.f) ? bdiv2 / (bdiv2 + S2) : 1.f;
-      viscosity_limiter = fmaxf(viscosity_limiter, magma_viscosity.limiter_floor);
+      viscosity_limiter =
+          fmaxf(viscosity_limiter, magma_viscosity.limiter_floor);
     }
 
     /* Remember the divergence for the neighbours' shock-presence sums */

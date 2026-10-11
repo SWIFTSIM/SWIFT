@@ -234,14 +234,14 @@ static INLINE void viscosity_init(struct swift_params *params,
   viscosity->angle_limit =
       parser_get_opt_param_float(params, "SPH:gradient_angle_limit",
                                  hydro_props_default_gradient_angle_limit);
-  viscosity->limiter_convergence_gate = parser_get_opt_param_int(
-      params, "SPH:limiter_convergence_gate", 1);
-  viscosity->shear_limiter = parser_get_opt_param_int(
-      params, "SPH:viscosity_shear_limiter", 0);
-  viscosity->limiter_floor = parser_get_opt_param_float(
-      params, "SPH:viscosity_limiter_floor", 0.f);
-  viscosity->limiter_mach = parser_get_opt_param_float(
-      params, "SPH:viscosity_limiter_mach", 0.f);
+  viscosity->limiter_convergence_gate =
+      parser_get_opt_param_int(params, "SPH:limiter_convergence_gate", 1);
+  viscosity->shear_limiter =
+      parser_get_opt_param_int(params, "SPH:viscosity_shear_limiter", 0);
+  viscosity->limiter_floor =
+      parser_get_opt_param_float(params, "SPH:viscosity_limiter_floor", 0.f);
+  viscosity->limiter_mach =
+      parser_get_opt_param_float(params, "SPH:viscosity_limiter_mach", 0.f);
 
   /* Automatic limiter settings: the paper's prescription in SWIFT's h
    * convention (kernel support = kernel_gamma * h, the paper uses 2 h) */
@@ -297,8 +297,9 @@ static INLINE void viscosity_print(
       "condition number of %.1f (particle); fallback: angle > %.3f rad "
       "(pair).",
       viscosity->max_condition_number, viscosity->angle_limit);
-  message("Slope-limiter distance cut-off gated by the convergence fraction: %s.",
-          viscosity->limiter_convergence_gate ? "yes" : "no");
+  message(
+      "Slope-limiter distance cut-off gated by the convergence fraction: %s.",
+      viscosity->limiter_convergence_gate ? "yes" : "no");
   if (viscosity->shear_limiter)
     message(
         "EXPERIMENTAL: viscous pressure scaled by the Cullen & Dehnen limiter "
