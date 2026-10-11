@@ -151,7 +151,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
                           cooling->cloudy_table);
 
   cooling->primordial_chemistry = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:species_network", COOLING_GEAJAY_MODE);
+      parameter_file, "GeajayCooling:primordial_chemistry_network",
+      COOLING_GEAJAY_MODE);
 
   if (cooling->primordial_chemistry < 0)
     error("Primordial chemistry cannot be below 0");
@@ -190,16 +191,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GeajayCooling:agora_cmb_temperature_floor", 0);
 
   cooling->with_uv_background =
-      parser_get_param_int(parameter_file, "GeajayCooling:uv_background");
+      parser_get_param_int(parameter_file, "GeajayCooling:with_UV_background");
 
   cooling->redshift =
       parser_get_param_double(parameter_file, "GeajayCooling:redshift");
 
   cooling->with_metal_cooling =
-      parser_get_param_int(parameter_file, "GeajayCooling:metal_line_cooling");
+      parser_get_param_int(parameter_file, "GeajayCooling:with_metal_cooling");
 
   cooling->use_radiative_transfer = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:rt_rates_from_fields", 0);
+      parameter_file, "GeajayCooling:use_radiative_transfer_fields", 0);
 
   cooling->RT_heating_rate = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:RT_heating_rate_cgs", 0);

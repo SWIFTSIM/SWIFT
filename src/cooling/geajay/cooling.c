@@ -1167,7 +1167,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 #if COOLING_GEAJAY_MODE == 0
   if (cooling->use_radiative_transfer)
     error(
-        "The parameter GeajayCooling:rt_rates_from_fields cannot be set "
+        "The parameter GeajayCooling:use_radiative_transfer_fields cannot be "
+        "set "
         "to 1 in geajay mode 0 !");
 #endif
 
