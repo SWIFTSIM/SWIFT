@@ -1124,10 +1124,11 @@ void zoom_dump_geometry(const struct engine *e) {
       const struct gpart *gp = &s->gparts[k];
 
       /* Safety check: skip any unknown particle types. */
-      if (gp->type < 0 || gp->type >= swift_type_count) continue;
+      const int type = gp->type;
+      if (type < 0 || type >= swift_type_count) continue;
 
       const int cid = cell_getid_from_pos(s, gp->x[0], gp->x[1], gp->x[2]);
-      local_counts[cid * swift_type_count + gp->type]++;
+      local_counts[cid * swift_type_count + type]++;
     }
 
   } else {
