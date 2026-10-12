@@ -195,11 +195,16 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
 
   /* Loop until we've found an acceptable geometry. */
   int old_bkg_cdim = s->cdim[0];
+
+  /* A periodic background grid below 3 cells per axis cannot hold a zoom
+   * region that does not span the box. */
+  const int min_bkg_cdim = s->periodic ? 3 : 1;
   while (zoom_need_regrid(s, new_cdim)) {
 
     /* First try decreasing the background cdim to a minimum of 50% its
      * current value. */
-    while (zoom_need_regrid(s, new_cdim) && s->cdim[0] > 0.5 * old_bkg_cdim) {
+    while (zoom_need_regrid(s, new_cdim) && s->cdim[0] > 0.5 * old_bkg_cdim &&
+           s->zoom_props->bkg_cdim[0] - 2 >= min_bkg_cdim) {
 
       message(
           "Adjusting background cell size to find acceptable zoom geometry ("

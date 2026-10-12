@@ -34,6 +34,9 @@
 #include "swift.h"
 #include "zoom_region/zoom.h"
 
+void zoom_regrid_find_acceptable_geometry(struct space *s,
+                                          const int new_cdim[3]);
+
 /**
  * @brief Build a periodic zoom space and its zoom geometry.
  *
@@ -111,6 +114,31 @@ static int zoom_space_fails(struct swift_params *params,
   return !(WIFEXITED(status) && WEXITSTATUS(status) == 0);
 }
 
+/**
+ * @brief Regrid a zoom space for an h_max asking for 2 zoom cells per axis, in
+ * a child process.
+ *
+ * @return 0 if the regrid recovered 2 zoom cells per axis, 1 if the run
+ * stopped with an error, 2 if the zoom grid is not 2 cells per axis.
+ */
+static int zoom_regrid_outcome(struct swift_params *params) {
+
+  fflush(stdout);
+  fflush(stderr);
+  const pid_t pid = fork();
+  if (pid < 0) error("fork() failed.");
+  if (pid == 0) {
+    struct space *s = make_zoom_space(params, 40., 0.);
+    const int new_cdim[3] = {2, 2, 2};
+    zoom_regrid_find_acceptable_geometry(s, new_cdim);
+    _exit(s->zoom_props->cdim[0] == 2 ? 0 : 2);
+  }
+  int status = 0;
+  if (waitpid(pid, &status, 0) != pid) error("waitpid() failed.");
+  if (!WIFEXITED(status)) return 1;
+  return WEXITSTATUS(status) == 0 ? 0 : (WEXITSTATUS(status) == 2 ? 2 : 1);
+}
+
 static void make_params(struct swift_params *params, const char *depth,
                         const char *bkg_cdim) {
   parser_init("testZoomRadiationGrid-in-memory", params);
@@ -185,6 +213,29 @@ int main(int argc, char *argv[]) {
   if (!zoom_space_fails(&params, 40., 1.01 * zoom_width))
     error("A floor above the zoom cell width was accepted.");
   message("Zoom cell width floor check passed (width %g).", zoom_width);
+
+  /* A small background grid must not stop a hmax regrid: the background
+   * shrink gives up before the zoom region spans the box, and the zoom depth
+   * is lowered instead. An even grid keeps the zoom region over 2 background
+   * cells, so it has no 2 cell zoom grid before depth 0 and is not tried. */
+  const char *bkg_starts[] = {"3", "5", "7", "9"};
+  for (int i = 0; i < 4; i++) {
+    char buf[64];
+    struct swift_params params_regrid;
+    snprintf(buf, sizeof(buf), "ZoomRegion:bkg_top_level_cells:%s",
+             bkg_starts[i]);
+    make_params(&params_regrid, "ZoomRegion:zoom_top_level_depth:2", buf);
+    const int outcome = zoom_regrid_outcome(&params_regrid);
+    if (outcome == 1)
+      error("The hmax regrid stopped the run for %s background cells.",
+            bkg_starts[i]);
+    if (outcome == 2)
+      error(
+          "The hmax regrid left more than 2 zoom cells per axis for %s "
+          "background cells.",
+          bkg_starts[i]);
+  }
+  message("Zoom hmax regrid recovery passed.");
 
 #ifdef SINKS_WITH_FIXED_CUTOFF_RADIUS
   /* space_init() hands the sink aperture floor to the zoom grid. */
