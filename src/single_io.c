@@ -63,6 +63,7 @@
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
+#include "zoom_region/zoom.h"
 
 /* Max number of entries that can be written for a given particle type */
 static const int io_max_size_output_list = 100;
@@ -1019,6 +1020,14 @@ void write_output_single(struct engine *e,
 
   };
 
+  /* Number of particles in the zoom region */
+  long long N_total_zoom[swift_type_count];
+  memcpy(N_total_zoom, N_total, swift_type_count * sizeof(long long));
+  if (e->s->with_zoom_region) {
+    zoom_io_count_particles_in_cells(e, subsample, subsample_fraction, N_total,
+                                     N_total_zoom);
+  }
+
   /* Set the minimal API version to avoid issues with advanced features */
   hid_t h_props = H5Pcreate(H5P_FILE_ACCESS);
   herr_t err = H5Pset_libver_bounds(h_props, HDF5_LOWEST_FILE_FORMAT_VERSION,
@@ -1081,6 +1090,8 @@ void write_output_single(struct engine *e,
   long long numParticlesThisFile[swift_type_count] = {0};
   unsigned int numParticles[swift_type_count] = {0};
   unsigned int numParticlesHighWord[swift_type_count] = {0};
+  long long numParticles_InCells[swift_type_count] = {0};
+  long long numParticles_OutsideCells[swift_type_count] = {0};
 
   /* Total number of fields to write per ptype */
   int numFields[swift_type_count] = {0};
@@ -1094,8 +1105,12 @@ void write_output_single(struct engine *e,
 
     if (numFields[ptype] == 0) {
       numParticlesThisFile[ptype] = 0;
+      numParticles_InCells[ptype] = 0;
+      numParticles_OutsideCells[ptype] = 0;
     } else {
       numParticlesThisFile[ptype] = N_total[ptype];
+      numParticles_InCells[ptype] = N_total_zoom[ptype];
+      numParticles_OutsideCells[ptype] = N_total[ptype] - N_total_zoom[ptype];
     }
   }
 
@@ -1107,6 +1122,15 @@ void write_output_single(struct engine *e,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
+  if (!e->s->with_zoom_region) {
+    io_write_attribute(h_grp, "NumParticles_InCells", LONGLONG,
+                       numParticles_InCells, swift_type_count);
+    io_write_attribute(h_grp, "NumParticles_OutsideCells", LONGLONG,
+                       numParticles_OutsideCells, swift_type_count);
+  } else {
+    zoom_write_particle_counts(h_grp, N_total, N_total_zoom, N_total,
+                               N_total_zoom, numFields);
+  }
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1120,6 +1144,10 @@ void write_output_single(struct engine *e,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1143,9 +1171,30 @@ void write_output_single(struct engine *e,
   h_grp = H5Gcreate(h_file, "/Cells", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
   if (h_grp < 0) error("Error while creating cells group");
 
+  /* Is the zoom code used and altering the normal top-level zoom topology ? */
+  double zoom_shift[3] = {0.};
+  double width[3] = {e->s->width[0], e->s->width[1], e->s->width[2]};
+  int cdim[3] = {e->s->cdim[0], e->s->cdim[1], e->s->cdim[2]};
+  struct cell *cells = e->s->cells_top;
+  int nr_cells = e->s->nr_cells;
+  if (e->s->with_zoom_region) {
+    const struct zoom_region_properties *props = e->s->zoom_props;
+    zoom_shift[0] = props->applied_zoom_shift[0];
+    zoom_shift[1] = props->applied_zoom_shift[1];
+    zoom_shift[2] = props->applied_zoom_shift[2];
+    width[0] = props->width[0];
+    width[1] = props->width[1];
+    width[2] = props->width[2];
+    cdim[0] = props->cdim[0];
+    cdim[1] = props->cdim[1];
+    cdim[2] = props->cdim[2];
+    cells = props->zoom_cells_top;
+    nr_cells = props->nr_zoom_cells;
+  }
+
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp, e->s->cdim, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, e->nodeID,
+  io_write_cell_offsets(h_grp, cdim, e->s->dim, cells, nr_cells, width,
+                        zoom_shift, e->nodeID,
                         /*distributed=*/0, subsample, subsample_fraction,
                         e->snapshot_output_count, N_total, global_offsets,
                         to_write, numFields, internal_units, snapshot_units);

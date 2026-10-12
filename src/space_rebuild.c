@@ -180,7 +180,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     error("We just repartitioned but still found inhibited bparts.");
   if (repartitioned && count_inhibited_sinks)
     error("We just repartitioned but still found inhibited sinks.");
-
   if (count_extra_parts != s->nr_extra_parts)
     error(
         "Number of extra parts in the part array not matching the space "
@@ -581,8 +580,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
-    h_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    h_index[k] = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
     cell_part_counts[h_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[h_index[k]].nodeID != local_nodeID)
@@ -595,8 +593,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
     const struct spart *const sp = &s->sparts[k];
-    s_index[k] =
-        cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
+    s_index[k] = cell_getid_from_pos(s, sp->x[0], sp->x[1], sp->x[2]);
     cell_spart_counts[s_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[s_index[k]].nodeID != local_nodeID)
@@ -609,8 +606,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received bpart to its cell. */
   for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
     const struct bpart *const bp = &s->bparts[k];
-    b_index[k] =
-        cell_getid(cdim, bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
+    b_index[k] = cell_getid_from_pos(s, bp->x[0], bp->x[1], bp->x[2]);
     cell_bpart_counts[b_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[b_index[k]].nodeID != local_nodeID)
@@ -658,9 +654,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_ind =
-        cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
-                   p->x[2] * s->iwidth[2]);
+    const int new_ind = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
 
     /* New cell of this part */
     const struct cell *c = &s->cells_top[new_ind];
@@ -688,9 +682,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_sind =
-        cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
-                   sp->x[2] * s->iwidth[2]);
+    const int new_sind = cell_getid_from_pos(s, sp->x[0], sp->x[1], sp->x[2]);
 
     /* New cell of this spart */
     const struct cell *c = &s->cells_top[new_sind];
@@ -718,9 +710,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_bind =
-        cell_getid(s->cdim, bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1],
-                   bp->x[2] * s->iwidth[2]);
+    const int new_bind = cell_getid_from_pos(s, bp->x[0], bp->x[1], bp->x[2]);
 
     /* New cell of this bpart */
     const struct cell *c = &s->cells_top[new_bind];
@@ -771,8 +761,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   h_index[nr_parts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_parts; k++) {
     if (h_index[k] < h_index[k + 1]) {
-      cells_top[h_index[k]].hydro.count =
-          k - last_index + 1 - space_extra_parts;
+      struct cell *c = &cells_top[h_index[k]];
+      c->hydro.count = k - last_index + 1;
+
+      /* When running with a zoom extra gas particles only exist on
+       * non-background cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->hydro.count -= space_extra_parts;
+      }
       last_index = k + 1;
     }
   }
@@ -783,8 +779,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s_index[nr_sparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sparts; k++) {
     if (s_index[k] < s_index[k + 1]) {
-      cells_top[s_index[k]].stars.count =
-          k - last_sindex + 1 - space_extra_sparts;
+      struct cell *c = &cells_top[s_index[k]];
+      c->stars.count = k - last_sindex + 1;
+
+      /* When running with a zoom extra stars only exist on non-background
+       * cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->stars.count -= space_extra_sparts;
+      }
       last_sindex = k + 1;
     }
   }
@@ -795,8 +797,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   b_index[nr_bparts] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_bparts; k++) {
     if (b_index[k] < b_index[k + 1]) {
-      cells_top[b_index[k]].black_holes.count =
-          k - last_bindex + 1 - space_extra_bparts;
+      struct cell *c = &cells_top[b_index[k]];
+      c->black_holes.count = k - last_bindex + 1;
+
+      /* When running with a zoom extra black holes only exist on non-background
+       * cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->black_holes.count -= space_extra_bparts;
+      }
       last_bindex = k + 1;
     }
   }
@@ -807,8 +815,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   sink_index[nr_sinks] = s->nr_cells;  // sentinel.
   for (size_t k = 0; k < nr_sinks; k++) {
     if (sink_index[k] < sink_index[k + 1]) {
-      cells_top[sink_index[k]].sinks.count =
-          k - last_sink_index + 1 - space_extra_sinks;
+      struct cell *c = &cells_top[sink_index[k]];
+      c->sinks.count = k - last_sink_index + 1;
+
+      /* When running with a zoom extra sinks only exist on non-background
+       * cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->sinks.count -= space_extra_sinks;
+      }
       last_sink_index = k + 1;
     }
   }
@@ -842,8 +856,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
-    g_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    g_index[k] = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
     cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[g_index[k]].nodeID != s->e->nodeID)
@@ -881,9 +894,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_gind =
-        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                   gp->x[2] * s->iwidth[2]);
+    const int new_gind = cell_getid_from_pos(s, gp->x[0], gp->x[1], gp->x[2]);
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];
@@ -894,7 +905,11 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     if (gp->x[0] < c->loc[0] || gp->x[0] > c->loc[0] + c->width[0] ||
         gp->x[1] < c->loc[1] || gp->x[1] > c->loc[1] + c->width[1] ||
         gp->x[2] < c->loc[2] || gp->x[2] > c->loc[2] + c->width[2])
-      error("gpart not sorted into the right top-level cell!");
+      error(
+          "gpart not sorted into the right top-level cell! "
+          "(gp->x=[%f, %f, %f] c->loc=[%f, %f, %f] c->width[%f, %f, %f])",
+          gp->x[0], gp->x[1], gp->x[2], c->loc[0], c->loc[1], c->loc[2],
+          c->width[0], c->width[1], c->width[2]);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
@@ -904,8 +919,14 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   g_index[nr_gparts] = s->nr_cells;
   for (size_t k = 0; k < nr_gparts; k++) {
     if (g_index[k] < g_index[k + 1]) {
-      cells_top[g_index[k]].grav.count =
-          k - last_gindex + 1 - space_extra_gparts;
+      struct cell *c = &cells_top[g_index[k]];
+      c->grav.count = k - last_gindex + 1;
+
+      /* When running with a zoom extra gravity particles only exist on
+       * non-background cells (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->grav.count -= space_extra_gparts;
+      }
       last_gindex = k + 1;
     }
   }
@@ -923,6 +944,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
                       verbose);
 #endif
 
+  /* Define variables to count particles in cell types */
+  size_t bkg_cell_particles = 0;
+  size_t zoom_cell_particles = 0;
+
   /* Hook the cells up to the parts. Make list of local and non-empty cells */
   const ticks tic3 = getticks();
   struct part *finger = s->parts;
@@ -934,6 +959,13 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   s->nr_cells_with_particles = 0;
   s->nr_local_cells_with_particles = 0;
   s->nr_local_cells = 0;
+  int empty_tl_zooms = 0;
+  if (s->with_zoom_region) {
+    s->zoom_props->nr_local_zoom_cells = 0;
+    s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_zoom_cells_with_particles = 0;
+    s->zoom_props->nr_local_bkg_cells_with_particles = 0;
+  }
 
   for (int k = 0; k < s->nr_cells; k++) {
     struct cell *restrict c = &cells_top[k];
@@ -945,7 +977,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     c->black_holes.ti_old_part = ti_current;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-    cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
+    cell_assign_top_level_cell_index(c, s);
 #endif
 
     const int is_local = (c->nodeID == engine_rank);
@@ -966,11 +998,56 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       c->sinks.parts_rebuild = c->sinks.parts;
       c->grav.parts_rebuild = c->grav.parts;
 
-      c->hydro.count_total = c->hydro.count + space_extra_parts;
-      c->grav.count_total = c->grav.count + space_extra_gparts;
-      c->stars.count_total = c->stars.count + space_extra_sparts;
-      c->sinks.count_total = c->sinks.count + space_extra_sinks;
-      c->black_holes.count_total = c->black_holes.count + space_extra_bparts;
+      c->hydro.count_total = c->hydro.count;
+      c->grav.count_total = c->grav.count;
+      c->stars.count_total = c->stars.count;
+      c->sinks.count_total = c->sinks.count;
+      c->black_holes.count_total = c->black_holes.count;
+
+      /* When running with a zoom extras only exist on non-background cells
+       * (true for all cells when not running a zoom). */
+      if (c->type != cell_type_bkg) {
+        c->hydro.count_total += space_extra_parts;
+        c->grav.count_total += space_extra_gparts;
+        c->stars.count_total += space_extra_sparts;
+        c->sinks.count_total += space_extra_sinks;
+        c->black_holes.count_total += space_extra_bparts;
+      }
+
+      /* Add the number of particles to the correct cell counter for
+       * reporting to the user. */
+      switch (c->type) {
+        case cell_type_zoom:
+          zoom_cell_particles += c->grav.count;
+          if (c->grav.count == 0) empty_tl_zooms++;
+          break;
+        case cell_type_bkg:
+          bkg_cell_particles += c->grav.count;
+          break;
+        case cell_type_regular:
+          /* Only check this case when debugging. With a zoom region we
+           * shouldn't get any regular cells. */
+          if (s->with_zoom_region) {
+            error(
+                "When running with a zoom region, all cells should be of type "
+                "Zoom or Background, not %s",
+                cellID_names[c->type]);
+          }
+          break;
+        default:
+          error("Unknown cell type %d", c->type);
+      }
+
+      /* Need to ensure void cells have zeroed total counts too since they
+       * don't have extras but they are local so need some of the operations
+       * below. */
+      if (c->subtype == cell_subtype_void) {
+        c->hydro.count_total = 0;
+        c->grav.count_total = 0;
+        c->stars.count_total = 0;
+        c->sinks.count_total = 0;
+        c->black_holes.count_total = 0;
+      }
 
       finger = &finger[c->hydro.count_total];
       xfinger = &xfinger[c->hydro.count_total];
@@ -982,6 +1059,22 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Add this cell to the list of local cells */
       s->local_cells_top[s->nr_local_cells] = k;
       s->nr_local_cells++;
+      if (s->with_zoom_region) {
+        switch (c->type) {
+          case cell_type_zoom:
+            s->zoom_props
+                ->local_zoom_cells_top[s->zoom_props->nr_local_zoom_cells] = k;
+            s->zoom_props->nr_local_zoom_cells++;
+            break;
+          case cell_type_bkg:
+            s->zoom_props
+                ->local_bkg_cells_top[s->zoom_props->nr_local_bkg_cells] = k;
+            s->zoom_props->nr_local_bkg_cells++;
+            break;
+          default:
+            error("Unknown cell type %d", c->type);
+        }
+      }
     }
 
     if (is_local && has_particles) {
@@ -989,6 +1082,22 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       /* Add this cell to the list of non-empty cells */
       s->local_cells_with_particles_top[s->nr_local_cells_with_particles] = k;
       s->nr_local_cells_with_particles++;
+      if (s->with_zoom_region) {
+        switch (c->type) {
+          case cell_type_zoom:
+            s->zoom_props->local_zoom_cells_with_particles_top
+                [s->zoom_props->nr_local_zoom_cells_with_particles] = k;
+            s->zoom_props->nr_local_zoom_cells_with_particles++;
+            break;
+          case cell_type_bkg:
+            s->zoom_props->local_bkg_cells_with_particles_top
+                [s->zoom_props->nr_local_bkg_cells_with_particles] = k;
+            s->zoom_props->nr_local_bkg_cells_with_particles++;
+            break;
+          default:
+            error("Unknown cell type %d", c->type);
+        }
+      }
     }
   }
 
@@ -999,6 +1108,26 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
             s->nr_cells);
     message("hooking up cells took %.3f %s.",
             clocks_from_ticks(getticks() - tic3), clocks_getunit());
+    if (s->with_zoom_region) {
+      message("Have %zd local particles in background cells",
+              bkg_cell_particles);
+      message("Have %zd local particles in zoom cells", zoom_cell_particles);
+      s->zoom_props->nr_bkg_cell_particles = bkg_cell_particles;
+      s->zoom_props->nr_zoom_cell_particles = zoom_cell_particles;
+
+      /* Lets report how many wanderers (baryons leaving the zoom region) have
+       * been converted to dark matter. */
+      if (s->with_hydro && s->zoom_props->nr_wanderers > 0)
+        message("Converted %zu wandering particles to dark matter thus far",
+                s->zoom_props->nr_wanderers);
+
+      /* Report if we have any empty top level zoom cells */
+      if (empty_tl_zooms > 0)
+        warning(
+            "Found %d empty top level zoom cells! Is your zoom region "
+            "malformed?",
+            empty_tl_zooms);
+    }
   }
 
   /* Re-order the extra particles such that they are at the end of their cell's

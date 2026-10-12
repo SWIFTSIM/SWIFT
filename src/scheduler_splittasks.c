@@ -619,6 +619,20 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
   const struct space *sp = s->space;
   struct engine *e = sp->e;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we haven't got a task including a void cell. */
+  if (t->ci->subtype == cell_subtype_void ||
+      (t->type == task_type_pair && t->cj->subtype == cell_subtype_void))
+    error("Got a task with a void cell.");
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Mark that we reached this cell in the task splitting. We need to only do
+   * this for ci since we check this at the top level (for zoom cells) which
+   * should all make it this far for a self task. */
+  t->ci->reached_in_task_split = 1;
+#endif
+
   /* Iterate on this task until we're done with it. */
   int redo = 1;
   while (redo) {
@@ -707,8 +721,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
 
       /* Should this task be split-up? */
-      if (cell_can_split_pair_gravity_task(ci) &&
-          cell_can_split_pair_gravity_task(cj)) {
+      if (cell_can_split_pair_gravity_task(ci, cj)) {
         const long long gcount_i = ci->grav.count;
         const long long gcount_j = cj->grav.count;
 
@@ -720,7 +733,7 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
           /* Turn the task into a M-M task that will take care of all the
            * progeny pairs */
           t->type = task_type_grav_mm;
-          t->subtype = task_subtype_none;
+          t->subtype = task_subtype_progeny;
           t->flags = 0;
 
           /* Make a task for every other pair of progeny */
@@ -738,9 +751,11 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
                   }
 
                   /* Can we use a M-M interaction here? */
-                  if (cell_can_use_pair_mm(cpi, cpj, e, sp,
-                                           /*use_rebuild_data=*/1,
-                                           /*is_tree_walk=*/1)) {
+                  if (cell_can_use_pair_mm(ci->progeny[i], cj->progeny[j], e,
+                                           sp, /*use_rebuild_data=*/1,
+                                           /*is_tree_walk=*/1,
+                                           /*periodic boundaries*/ sp->periodic,
+                                           /*use_mesh*/ sp->periodic)) {
 
                     /* Flag this pair as being treated by the M-M task.
                      * We use the 64 bits in the task->flags field to store
@@ -775,6 +790,336 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
       }
     } /* pair interaction? */
   } /* iterate over the current task. */
+}
+
+/**
+ * @brief Split a void cell pair gravity task to get down to the zoom cells.
+ *
+ * Both cells must be either split or void (void cells are always split but
+ * have split=0 at the zoom interface). If neither cell is void the task is
+ * redirected to the normal gravity splitter. Otherwise the task is converted
+ * to a grav_mm/progeny task that handles M-M interactions between all pairs
+ * of progeny, with any progeny pairs that cannot use M-M spawned as new pair
+ * tasks and recursed into. Once the zoom region is reached
+ * scheduler_splittask_gravity handles any further splitting.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void zoom_scheduler_splittask_gravity_void_pair(struct task *t,
+                                                       struct scheduler *s) {
+  const struct space *sp = s->space;
+  struct engine *e = sp->e;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have a pair task. */
+  if (t->type != task_type_pair) {
+    error("Got a non-pair task (t->type=%s)", taskID_names[t->type]);
+  }
+
+  /* Ensure everything is at the same depth (while this is the norm, we
+   * once didn't split symmetrically so should make sure this is
+   * not the case here). */
+  int depth_i = t->ci->depth;
+  int depth_j = t->cj->depth;
+
+  if (t->ci->type == cell_type_zoom) {
+    depth_i += sp->zoom_props->zoom_cell_depth;
+  }
+  if (t->cj->type == cell_type_zoom) {
+    depth_j += sp->zoom_props->zoom_cell_depth;
+  }
+  if (depth_i != depth_j) {
+    error("Got a pair task with different depths: %d (%s/%s) != %d (%s/%s)",
+          depth_i, cellID_names[t->ci->type], subcellID_names[t->ci->subtype],
+          depth_j, cellID_names[t->cj->type], subcellID_names[t->cj->subtype]);
+  }
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
+  /* Ensure we have a proxy whenever this pair spans local/foreign nodes.
+   * For void/zoom interactions this must hold at the top-cell level too. */
+  if ((t->ci->nodeID == engine_rank && t->cj->nodeID != engine_rank) ||
+      (t->ci->nodeID != engine_rank && t->cj->nodeID == engine_rank)) {
+    engine_check_proxy_exists(e, t->ci->top, t->cj->top, e->nodeID);
+  }
+#endif
+
+#endif
+
+  /* Get a handle on the cells involved. */
+  struct cell *restrict ci = t->ci;
+  struct cell *restrict cj = t->cj;
+
+  /* If neither cell is a void cell, redirect to the normal splitter. */
+  if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    scheduler_splittask_gravity(t, s);
+    return;
+  }
+
+  /* Both cells must be splittable: either genuinely split, or a void cell
+   * (which always has progeny despite having split=0 at the zoom interface).
+   * If either side is an unsplit non-void leaf we cannot iterate progeny. */
+  if (!(ci->split || ci->subtype == cell_subtype_void) ||
+      !(cj->split || cj->subtype == cell_subtype_void)) {
+    error(
+        "zoom_scheduler_splittask_gravity_void_pair called with a non-split "
+        "non-void cell: ci->split=%d ci->subtype=%s ci->depth=%d ci->nodeID=%d "
+        "ci->contains_zoom_cells=%d ci->grav.count=%d cj->split=%d "
+        "cj->subtype=%s cj->depth=%d cj->nodeID=%d cj->contains_zoom_cells=%d "
+        "cj->grav.count=%d",
+        ci->split, subcellID_names[ci->subtype], ci->depth, ci->nodeID,
+        ci->contains_zoom_cells, ci->grav.count, cj->split,
+        subcellID_names[cj->subtype], cj->depth, cj->nodeID,
+        cj->contains_zoom_cells, cj->grav.count);
+  }
+
+  /* Convert to a grav_mm/progeny task. The flags field encodes which progeny
+   * pairs will be handled by M-M; remaining pairs are spawned as new tasks. */
+  t->type = task_type_grav_mm;
+  t->subtype = task_subtype_progeny;
+  t->flags = 0;
+
+  /* Define a flag for when the original task has been reused. */
+  int reused = 0;
+
+  /* When we split a regular cell's task because it is interacting with a
+   * void cell, we can end up below the depth set by space_subdepth_diff_grav.
+   * This will cause absolute havoc with hierarchical gravity tasks being
+   * missing on the regular cell if we don't flag this somehow to ensure
+   * task recursions continue to this level. */
+  if (!cell_is_above_diff_grav_depth(ci)) {
+    ci->grav.tasks_below_diff_grav_depth = 1;
+  }
+  if (!cell_is_above_diff_grav_depth(cj)) {
+    cj->grav.tasks_below_diff_grav_depth = 1;
+  }
+
+  /* Loop over the progeny. */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
+
+    /* Skip NULL progeny (can happen if a background cell tree has no
+     * particles at the leaves for whatever reason). */
+    if (cpi == NULL) continue;
+
+    /* Skip void progeny that do not contain any zoom cells. This can happen
+     * only when running with MPI and a void cell has no local (or proxy
+     * required) zoom progeny. */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
+    /* Skip any empty progeny of a void cell (void cells themselves always
+     * have 0 particles but are never "empty"). */
+    if (cell_is_empty_mpole(cpi)) continue;
+
+    for (int j = 0; j < 8; j++) {
+      struct cell *cpj = cj->progeny[j];
+
+      /* Skip NULL progeny (can happen is a background cell tree has no
+       * particles at the leaves for whatever reason). */
+      if (cpj == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. This can happen
+       * only when running with MPI and a void cell has no local (or proxy
+       * required) zoom progeny. */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with non-useful void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
+      /* Skip any empty progeny of a void cell (void cells themselves always
+       * have 0 particles but are never "empty"). */
+      if (cell_is_empty_mpole(cpj)) continue;
+
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
+      /* Could we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
+        continue;
+      }
+
+      /* Can we use a M-M interaction here? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, sp,
+                               /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/1,
+                               /*periodic boundaries*/ sp->periodic,
+                               /*use_mesh*/ sp->periodic)) {
+
+        /* Flag that we've reused the original task. */
+        reused = 1;
+
+        /* Flag this pair as being treated by the M-M task.
+         * We use the 64 bits in the task->flags field to store
+         * this information. The corresponding taks will unpack
+         * the information and operate according to the choices
+         * made here. */
+        const int flag = i * 8 + j;
+        t->flags |= (1ULL << flag);
+
+      } else {
+
+        /* Can't use an M-M so let's make a pair task. */
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_pair, task_subtype_grav, 0, 0, cpi,
+                              cpj),
+            s);
+      }
+    }
+  }
+
+  /* Can none of the progenies use M-M calculations? */
+  if (!reused) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->cj = NULL;
+    t->skip = 1;
+  }
+}
+
+/**
+ * @brief Split a void cell self gravity task to get down to the zoom cells.
+ *
+ * This will create a self task for each progeny and a pair task for each
+ * progeny pair. This will continue splitting until we reach the zoom cells,
+ * at which point scheduler_splittask_gravity will take over.
+ *
+ * @param t The #task
+ * @param s The #scheduler we are working in.
+ */
+static void zoom_scheduler_splittask_gravity_void_self(struct task *t,
+                                                       struct scheduler *s) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we have a self task. */
+  if (t->type != task_type_self) {
+    error("Got a non-self task (t->type=%s)", taskID_names[t->type]);
+  }
+#endif
+
+  /* Iterate on this task until we're done with it. */
+  while (t->ci->subtype == cell_subtype_void) {
+
+    /* Get a handle on the cell involved. */
+    const struct cell *ci = t->ci;
+
+    /* Get the first progeny that exists and is local (and in the case
+     * of a non-void progeny: has particles. */
+    int first_child = 0;
+    for (; first_child < 8; first_child++) {
+      /* Skip non-existant progeny. */
+      if (ci->progeny[first_child] == NULL) continue;
+
+      /* Skip empty progeny. */
+      if (cell_is_empty_mpole(ci->progeny[first_child])) continue;
+
+      /* Skip foreign zoom progeny (no such thing as a foreign self task). */
+      if (ci->progeny[first_child]->type == cell_type_zoom &&
+          ci->progeny[first_child]->nodeID != engine_rank) {
+        continue;
+      }
+
+      /* We found our first child. Stop looking. */
+      break;
+    }
+
+    /* If we have found no progeny, we are done here. */
+    if (first_child == 8) break;
+
+    /* Reuse the task we already have. */
+    t->ci = ci->progeny[first_child];
+    cell_set_flag(t->ci, cell_flag_has_tasks);
+
+    /* Create a self for all progeny beyond the first. */
+    for (int i = first_child + 1; i < 8; i++) {
+
+      /* Skip non-existant progeny. */
+      if (ci->progeny[i] == NULL) continue;
+
+      /* Skip empty progeny. */
+      if (cell_is_empty_mpole(ci->progeny[i])) continue;
+
+      /* Skip non-local progeny (no such thing as a foreign self task). */
+      if (ci->progeny[i]->type == cell_type_zoom &&
+          ci->progeny[i]->nodeID != engine_rank)
+        continue;
+
+      /* Create the self task. */
+      zoom_scheduler_splittask_gravity_void_self(
+          scheduler_addtask(s, task_type_self, t->subtype, 0, 0, ci->progeny[i],
+                            NULL),
+          s);
+    }
+
+    /* Create pair tasks for all pairs of progeny. */
+    for (int j = 0; j < 8; j++) {
+
+      /* Skip non-existant progeny. */
+      if (ci->progeny[j] == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. This can happen
+       * only when running with MPI and a void cell has no local (or proxy
+       * required) zoom progeny. */
+      if (ci->progeny[j]->subtype == cell_subtype_void &&
+          !ci->progeny[j]->contains_zoom_cells)
+        continue;
+
+      /* Skip empty non-void progeny. */
+      if (ci->progeny[j]->subtype != cell_subtype_void &&
+          ci->progeny[j]->grav.count == 0)
+        continue;
+
+      for (int k = j + 1; k < 8; k++) {
+
+        /* Skip non-existant progeny. */
+        if (ci->progeny[k] == NULL) continue;
+
+        /* Skip void progeny that do not contain any zoom cells. This can happen
+         * only when running with MPI and a void cell has no local (or proxy
+         * required) zoom progeny. */
+        if (ci->progeny[k]->subtype == cell_subtype_void &&
+            !ci->progeny[k]->contains_zoom_cells)
+          continue;
+
+        /* Skip empty progeny. */
+        if (cell_is_empty_mpole(ci->progeny[k])) continue;
+
+        /* Skip entirely foreign pairs. */
+        if ((ci->progeny[j]->type == cell_type_zoom &&
+             ci->progeny[k]->type == cell_type_zoom) &&
+            ci->progeny[j]->nodeID != engine_rank &&
+            ci->progeny[k]->nodeID != engine_rank)
+          continue;
+
+        /* Could we use the mesh for this pair? */
+        if (cell_can_use_mesh(s->space->e, ci->progeny[j], ci->progeny[k])) {
+          continue;
+        }
+
+        /* Create the pair task. */
+        zoom_scheduler_splittask_gravity_void_pair(
+            scheduler_addtask(s, task_type_pair, t->subtype, sub_sid_flag[j][k],
+                              0, ci->progeny[j], ci->progeny[k]),
+            s);
+      }
+    }
+  }
+
+  /* Exit and kill the task if we ended up with an empty task, a foreign task or
+   * we still have a void cell. */
+  if (t->ci == NULL || t->ci->nodeID != engine_rank ||
+      t->ci->subtype == cell_subtype_void) {
+    t->type = task_type_none;
+    t->subtype = task_subtype_none;
+    t->ci = NULL;
+    t->skip = 1;
+    return;
+  }
+
+  /* Now we're not in a void cell we can just call the normal splitter.  */
+  scheduler_splittask_gravity(t, s);
 }
 
 /**
@@ -894,6 +1239,13 @@ void scheduler_splittasks_mapper(void *map_data, int num_elements,
       scheduler_splittask_radiation_subgrid(t, s);
     } else if (t->subtype == task_subtype_external_grav) {
       scheduler_splittask_gravity(t, s);
+    } else if (t->type == task_type_self &&
+               t->ci->subtype == cell_subtype_void) {
+      zoom_scheduler_splittask_gravity_void_self(t, s);
+    } else if (t->type == task_type_pair &&
+               (t->ci->subtype == cell_subtype_void ||
+                t->cj->subtype == cell_subtype_void)) {
+      zoom_scheduler_splittask_gravity_void_pair(t, s);
     } else if (t->subtype == task_subtype_grav) {
       scheduler_splittask_gravity(t, s);
     } else {

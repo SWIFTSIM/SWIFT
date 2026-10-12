@@ -34,6 +34,7 @@
 #include "kernel_gravity.h"
 #include "kernel_long_gravity.h"
 #include "restart.h"
+#include "space.h"
 
 #define gravity_props_default_a_smooth 1.25f
 #define gravity_props_default_r_cut_max 4.5f
@@ -101,6 +102,7 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
       error("Mesh too small given r_cut_max. Should be at least %d cells wide.",
             (int)(2. * p->a_smooth * p->r_cut_max_ratio) + 1);
 
+    /* Check the mesh */
     if (p->mesh_size < max3(cdim[0], cdim[1], cdim[2]))
       error(
           "Mesh too small given the number of top-level cells. Should be at "
@@ -148,11 +150,12 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
   if (p->theta_crit >= 1.) error("Theta too large. FMM won't converge.");
 
   /* Adaptive opening angle tolerance */
-  if (p->use_adaptive_tolerance)
+  if (p->use_adaptive_tolerance) {
     p->adaptive_tolerance =
         parser_get_param_float(params, "Gravity:epsilon_fmm");
-  if (p->adaptive_tolerance <= 0.f)
-    error("Gravity:epsilon_fmm must be > 0, got %e.", p->adaptive_tolerance);
+    if (p->adaptive_tolerance <= 0.f)
+      error("Gravity:epsilon_fmm must be > 0, got %e.", p->adaptive_tolerance);
+  }
 
   /* Consider truncated forces in the MAC? */
   if (p->use_adaptive_tolerance)

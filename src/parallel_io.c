@@ -65,6 +65,7 @@
 #include "units.h"
 #include "version.h"
 #include "xmf.h"
+#include "zoom_region/zoom.h"
 
 /* The current limit of ROMIO (the underlying MPI-IO layer) is 2GB */
 #define HDF5_PARALLEL_IO_MAX_BYTES 2147000000LL
@@ -1181,6 +1182,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
  * @param e The #engine.
  * @param fileName The file name to write to.
  * @param N_total The total number of particles of each type to write.
+ * @param N_total_zoom The total number of particles in the first region.
  * @param to_write Whether or not specific particle types must be written.
  * @param numFields The number of fields to write for each particle type.
  * @param internal_units The #unit_system used internally.
@@ -1192,6 +1194,7 @@ void read_ic_parallel(char *fileName, const struct unit_system *internal_units,
 void prepare_file(struct engine *e, const char *fileName,
                   const char *xmfFileName,
                   const long long N_total[swift_type_count],
+                  const long long N_total_zoom[swift_type_count],
                   const int to_write[swift_type_count],
                   const int numFields[swift_type_count],
                   const char current_selection_name[FIELD_BUFFER_SIZE],
@@ -1309,6 +1312,10 @@ void prepare_file(struct engine *e, const char *fileName,
                      numParticlesHighWord, swift_type_count);
   io_write_attribute(h_grp, "TotalNumberOfParticles", LONGLONG, N_total,
                      swift_type_count);
+  if (e->s->with_zoom_region) {
+    zoom_write_particle_counts(h_grp, N_total, N_total_zoom, N_total,
+                               N_total_zoom, numFields);
+  }
   double MassTable[swift_type_count] = {0};
   io_write_attribute(h_grp, "MassTable", DOUBLE, MassTable, swift_type_count);
   io_write_attribute(h_grp, "InitialMassTable", DOUBLE,
@@ -1322,6 +1329,10 @@ void prepare_file(struct engine *e, const char *fileName,
   io_write_attribute_s(h_grp, "SelectOutput", current_selection_name);
   io_write_attribute_i(h_grp, "Virtual", 0);
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   if (subsample_any) {
     io_write_attribute_s(h_grp, "OutputType", "SubSampled");
@@ -1667,6 +1678,20 @@ void write_output_parallel(struct engine *e,
    * broadcast from there */
   MPI_Bcast(N_total, swift_type_count, MPI_LONG_LONG_INT, mpi_size - 1, comm);
 
+  long long N_in_cells[swift_type_count];
+  long long N_total_in_cells[swift_type_count];
+  long long offset_in_cells[swift_type_count];
+  long long offset_outside_cells[swift_type_count] = {0};
+
+  /* In zoom land we need particles in zoom cells to precede particles in
+   * background cells, so compute separate counts and offsets for each region.
+   */
+  if (e->s->with_zoom_region) {
+    zoom_io_prepare_particle_layout(
+        e, subsample, subsample_fraction, N, N_total, offset, comm, N_in_cells,
+        N_total_in_cells, offset_in_cells, offset_outside_cells);
+  }
+
   /* Now everybody konws its offset and the total number of
    * particles of each type */
 
@@ -1680,10 +1705,12 @@ void write_output_parallel(struct engine *e,
   };
 
   /* Rank 0 prepares the file */
-  if (mpi_rank == 0)
-    prepare_file(e, fileName, xmfFileName, N_total, to_write, numFields,
-                 current_selection_name, internal_units, snapshot_units, fof,
-                 subsample_any, subsample_fraction);
+  if (mpi_rank == 0) {
+    prepare_file(e, fileName, xmfFileName, N_total,
+                 !e->s->with_zoom_region ? NULL : N_total_in_cells, to_write,
+                 numFields, current_selection_name, internal_units,
+                 snapshot_units, fof, subsample_any, subsample_fraction);
+  }
 
   MPI_Barrier(MPI_COMM_WORLD);
 
@@ -1710,12 +1737,34 @@ void write_output_parallel(struct engine *e,
     if (h_grp_cells < 0) error("Error while creating cells group");
   }
 
+  /* Is the zoom code used and altering the normal top-level zoom topology ? */
+  double zoom_shift[3] = {0.};
+  double width[3] = {e->s->width[0], e->s->width[1], e->s->width[2]};
+  int cdim[3] = {e->s->cdim[0], e->s->cdim[1], e->s->cdim[2]};
+  struct cell *cells = e->s->cells_top;
+  int nr_cells = e->s->nr_cells;
+  if (e->s->with_zoom_region) {
+    const struct zoom_region_properties *props = e->s->zoom_props;
+    zoom_shift[0] = props->applied_zoom_shift[0];
+    zoom_shift[1] = props->applied_zoom_shift[1];
+    zoom_shift[2] = props->applied_zoom_shift[2];
+    width[0] = props->width[0];
+    width[1] = props->width[1];
+    width[2] = props->width[2];
+    cdim[0] = props->cdim[0];
+    cdim[1] = props->cdim[1];
+    cdim[2] = props->cdim[2];
+    cells = props->zoom_cells_top;
+    nr_cells = props->nr_zoom_cells;
+  }
+
   /* Write the location of the particles in the arrays */
-  io_write_cell_offsets(h_grp_cells, e->s->cdim, e->s->dim, e->s->cells_top,
-                        e->s->nr_cells, e->s->width, mpi_rank,
+  io_write_cell_offsets(h_grp_cells, cdim, e->s->dim, cells, nr_cells, width,
+                        zoom_shift, mpi_rank,
                         /*distributed=*/0, subsample, subsample_fraction,
-                        e->snapshot_output_count, N_total, offset, to_write,
-                        numFields, internal_units, snapshot_units);
+                        e->snapshot_output_count, N_total,
+                        !e->s->with_zoom_region ? offset : offset_in_cells,
+                        to_write, numFields, internal_units, snapshot_units);
 
   /* Close everything */
   if (mpi_rank == 0) {
@@ -2094,9 +2143,27 @@ void write_output_parallel(struct engine *e,
               e->verbose);
 
       if (compression_level != compression_do_not_write) {
-        write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
-                             Nparticles, N_total[ptype], mpi_rank,
-                             offset[ptype], internal_units, snapshot_units);
+        if (!e->s->with_zoom_region) {
+          write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
+                               Nparticles, N_total[ptype], mpi_rank,
+                               offset[ptype], internal_units, snapshot_units);
+        } else {
+          /* When running a zoom we need to write the zoom-cell and
+           * background-cell particles to separate locations in the global
+           * array. */
+          write_array_parallel(e, h_grp, fileName, partTypeGroupName, list[i],
+                               N_in_cells[ptype], N_total[ptype], mpi_rank,
+                               offset_in_cells[ptype], internal_units,
+                               snapshot_units);
+
+          struct io_props outside_props = list[i];
+          const size_t outside_offset = N_in_cells[ptype];
+          zoom_io_advance_particle_pointers(&outside_props, outside_offset);
+          write_array_parallel(
+              e, h_grp, fileName, partTypeGroupName, outside_props,
+              Nparticles - N_in_cells[ptype], N_total[ptype], mpi_rank,
+              offset_outside_cells[ptype], internal_units, snapshot_units);
+        }
       }
     }
 

@@ -90,8 +90,9 @@ static void test_grid_floor(void) {
                /*periodic=*/1, /*replicate=*/1, /*remap_ids=*/0,
                /*generate_gas_in_ics=*/0, /*hydro=*/1, /*self_gravity=*/0,
                /*star_formation=*/0, /*with_sink=*/0, /*with_DM=*/0,
-               /*with_DM_background=*/0, /*neutrinos=*/0, /*verbose=*/0,
-               /*dry_run=*/1, /*nr_nodes=*/1);
+               /*with_DM_background=*/0, /*neutrinos=*/0,
+               /*with_zoom_region=*/0, /*verbose=*/0, /*dry_run=*/1,
+               /*nr_nodes=*/1);
 
     const double expected =
         (double)(space_stretch * sink_properties.cut_off_radius);
@@ -126,8 +127,9 @@ static void test_grid_floor(void) {
                /*periodic=*/1, /*replicate=*/1, /*remap_ids=*/0,
                /*generate_gas_in_ics=*/0, /*hydro=*/1, /*self_gravity=*/0,
                /*star_formation=*/0, /*with_sink=*/0, /*with_DM=*/0,
-               /*with_DM_background=*/0, /*neutrinos=*/0, /*verbose=*/0,
-               /*dry_run=*/1, /*nr_nodes=*/1);
+               /*with_DM_background=*/0, /*neutrinos=*/0,
+               /*with_zoom_region=*/0, /*verbose=*/0, /*dry_run=*/1,
+               /*nr_nodes=*/1);
 
     if (s.cell_min >= sink_properties.cut_off_radius)
       error(

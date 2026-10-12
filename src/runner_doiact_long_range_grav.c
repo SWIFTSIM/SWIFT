@@ -38,14 +38,20 @@
  * handled by a pair task are interacted with here in this long range
  * gravity function.
  *
+ * This function is used when running a non-periodic uniform box (i.e. non-zoom
+ * simulation) and just loops over every other cell with particles and interacts
+ * with them.
+ *
  * @param r The thread #runner.
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
-                                            struct cell *top) {
+void runner_do_grav_long_range_uniform_non_periodic(struct runner *r,
+                                                    struct cell *ci,
+                                                    struct cell *top) {
 
   struct engine *e = r->e;
+  struct space *s = e->s;
 
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -70,7 +76,9 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
     if (multi_j->m_pole.M_000 == 0.f) continue;
 
     if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
 
       /* Call the PM interaction function on the active sub-cells of ci */
       runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -84,12 +92,198 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
 }
 
 /**
+ * @brief Performs M-M interactions between a given top-level cell and
+ *        all other top level cells not interacted with via pair tasks.
+ *
+ * This is the non-periodic case where there is no mesh so all cells not
+ * handled by a pair task are interacted with here in this long range
+ * gravity function.
+ *
+ * This function is used when running a non-periodic zoom simulation and
+ * will loop over all non-zoom cells but use the void cell hierarchy to
+ * interact with all zoom cells.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param top The top-level parent of the #cell of interest.
+ */
+void runner_do_grav_long_range_zoom_non_periodic(struct runner *r,
+                                                 struct cell *ci,
+                                                 struct cell *top) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* Recover the list of top-level cells */
+  struct cell *bkg_cells = e->s->zoom_props->bkg_cells_top;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Define counters used to count gparts. */
+  size_t tested_gparts = 0;
+#endif
+
+  /* Since the zoom cells will be handled by the void cell hierarchy we can
+   * just loop over all other cells which are not zoom cells. This is
+   * trivial since the zoom cells are first in cells_top. */
+  for (int cjd = 0; cjd < s->zoom_props->nr_bkg_cells; cjd++) {
+
+    /* Handle on the top-level cell and it's gravity business*/
+    struct cell *cj = &bkg_cells[cjd];
+    struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+    /* Skip empty cells */
+    if (multi_j->m_pole.M_000 == 0.f) continue;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    tested_gparts += multi_j->m_pole.num_gpart;
+#endif
+
+    /* Avoid self contributions */
+    if (top == cj) continue;
+
+    if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
+      /* Call the PM interaction function on the active sub-cells of ci */
+      runner_dopair_grav_mm_nonsym(r, ci, cj);
+      // runner_dopair_recursive_grav_pm(r, ci, cj);
+
+      /* Record that this multipole received a contribution */
+      multi_i->pot.interacted = 1;
+
+    } /* We are in charge of this pair */
+  } /* Loop over top-level cells */
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure we at tested against all possible gparts. */
+  if (tested_gparts != e->s->nr_gparts) {
+    error(
+        "Not all gparts were tested in long range gravity task! (tested: %ld, "
+        "total: %ld)",
+        tested_gparts, e->s->nr_gparts);
+  }
+#endif
+}
+
+/**
  * @brief Performs M-M interactions between a given top-level cell and all other
  * top level cells not interacted with via pair tasks or the mesh.
  *
- * This is used when the space is periodic and there is a mesh, therefore we
- * only interact with cells that are closer than the mesh interaction distance
- * but further than the direct interaction distance.
+ * This is used when running a zoom simulation, the space is periodic and there
+ * is a mesh, therefore we only interact with cells that are closer than the
+ * mesh interaction distance but further than the direct interaction distance.
+ *
+ * This function will be "clever" and only loop over the parts of the
+ * top-level grid that are not covered by the mesh. Add some buffer for
+ * safety.
+ *
+ * This function handles the following long range interactions:
+ * - zoom -> bkg
+ * - bkg -> bkg
+ *
+ * Since we define the original pair tasks at the void level we only need to
+ * consider combinations of background cells. However, If a zoom cell has a long
+ * range task it means there were no tasks in the void level but we still only
+ * need to consider interactions between the zoom cell and the background cells.
+ * Note that the top cell pointer here is already going to be the top level void
+ * parent cell if ci is a zoom cell.
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest.
+ * @param top The top-level parent of the #cell of interest.
+ */
+void runner_do_grav_long_range_zoom_periodic(struct runner *r, struct cell *ci,
+                                             struct cell *top) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+
+  /* Get the maximum distance at which we can have a non-mesh interaction. */
+  const double max_distance = e->mesh->r_cut_max;
+
+  /* Get the multipole of the cell we are interacting. */
+  struct gravity_tensors *const multi_i = ci->grav.multipole;
+
+  /* Get the (i,j,k) location of the top-level cell in the grid. */
+  int top_i = top->loc[0] * s->iwidth[0];
+  int top_j = top->loc[1] * s->iwidth[1];
+  int top_k = top->loc[2] * s->iwidth[2];
+
+  /* Maximal distance any interaction can take place before the mesh kicks in,
+   * rounded up to the next integer */
+  int d =
+      ceil(max_distance * max3(s->iwidth[0], s->iwidth[1], s->iwidth[2])) + 1;
+
+  /* Ensure we don't go out of bounds */
+  if (d > s->cdim[0] / 2) d = s->cdim[0] / 2;
+  if (d > s->cdim[1] / 2) d = s->cdim[1] / 2;
+  if (d > s->cdim[2] / 2) d = s->cdim[2] / 2;
+
+  /* Loop over plausibly useful cells */
+  for (int ii = top_i - d; ii <= top_i + d; ++ii) {
+    for (int jj = top_j - d; jj <= top_j + d; ++jj) {
+      for (int kk = top_k - d; kk <= top_k + d; ++kk) {
+
+        /* Box wrap */
+        const int iii = (ii + s->cdim[0]) % s->cdim[0];
+        const int jjj = (jj + s->cdim[1]) % s->cdim[1];
+        const int kkk = (kk + s->cdim[2]) % s->cdim[2];
+
+        /* Get the cell */
+        const int cell_index = cell_getid(s->cdim, iii, jjj, kkk);
+
+        /* Handle on the top-level cell */
+        struct cell *cj = &bkg_cells[cell_index];
+
+        /* Avoid self contributions  */
+        if (top == cj) continue;
+
+        /* Handle on the top-level cell's gravity business*/
+        const struct gravity_tensors *multi_j = cj->grav.multipole;
+
+        /* Skip empty cells */
+        if (multi_j->m_pole.M_000 == 0.f) continue;
+
+        /* Are we beyond the distance where the truncated forces are 0 ?*/
+        if (cell_can_use_mesh(e, top, cj)) {
+
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
+
+          /* We are done here. */
+          continue;
+        }
+
+        /* Shall we interact with this cell? */
+        if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
+
+          /* Call the PM interaction function on the active sub-cells of ci */
+          runner_dopair_grav_mm_nonsym(r, ci, cj);
+
+          /* Record that this multipole received a contribution */
+          multi_i->pot.interacted = 1;
+
+        } /* We can interact with this cell */
+      } /* Loop over relevant top-level cells (k) */
+    } /* Loop over relevant top-level cells (j) */
+  } /* Loop over relevant top-level cells (i) */
+}
+
+/**
+ * @brief Performs M-M interactions between a given top-level cell and all other
+ * top level cells not interacted with via pair tasks or the mesh.
+ *
+ * This is used when running a uniform box, the space is periodic and there is a
+ * mesh, therefore we only interact with cells that are closer than the mesh
+ * interaction distance but further than the direct interaction distance.
  *
  * This function will be "clever" and only loop over the parts of the
  * top-level grid that are not covered by the mesh. Add some buffer for
@@ -99,18 +293,16 @@ void runner_do_grav_long_range_non_periodic(struct runner *r, struct cell *ci,
  * @param ci The #cell of interest.
  * @param top The top-level parent of the #cell of interest.
  */
-void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
-                                        struct cell *top) {
+void runner_do_grav_long_range_uniform_periodic(struct runner *r,
+                                                struct cell *ci,
+                                                struct cell *top) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
   struct cell *cells = s->cells_top;
-  const int periodic = e->mesh->periodic;
-  const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
 
   /* Get the maximum distance at which we can have a non-mesh interaction. */
   const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
   /* Get the multipole of the cell we are interacting. */
   struct gravity_tensors *const multi_i = ci->grav.multipole;
@@ -155,12 +347,8 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
         /* Skip empty cells */
         if (multi_j->m_pole.M_000 == 0.f) continue;
 
-        /* Minimal distance between any pair of particles */
-        const double min_radius2 =
-            cell_min_dist2_same_size(top, cj, periodic, dim);
-
         /* Are we beyond the distance where the truncated forces are 0 ?*/
-        if (min_radius2 > max_distance2) {
+        if (cell_can_use_mesh(e, top, cj)) {
 
           /* Record that this multipole received a contribution */
           multi_i->pot.interacted = 1;
@@ -171,8 +359,9 @@ void runner_do_grav_long_range_periodic(struct runner *r, struct cell *ci,
 
         /* Shall we interact with this cell? */
         if (cell_can_use_pair_mm(top, cj, e, e->s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/0)) {
-
+                                 /*is_tree_walk=*/0,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
           /* Call the PM interaction function on the active sub-cells of ci
            */
           runner_dopair_grav_mm_nonsym(r, ci, cj);
@@ -244,8 +433,14 @@ static void runner_accumulate_interaction(
 static void runner_count_mesh_interaction(struct cell *super, struct cell *ci,
                                           struct cell *cj) {
 
+  /* Get the correct top level cells for self-interaction check */
+  struct cell *top_i = ci->top;
+  if (top_i->void_parent != NULL) top_i = top_i->void_parent->top;
+  struct cell *top_j = cj->top;
+  if (top_j->void_parent != NULL) top_j = top_j->void_parent->top;
+
   /* Do we share the same top level cell? i.e. are we self-interacting? */
-  int is_self = ci->top == cj->top;
+  int is_self = top_i == top_j;
 
   /* Decide which cell we are updating. */
   if (super == ci) {
@@ -291,9 +486,13 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
   struct engine *e = s->e;
 
+  /* Foreign pair? This mirrors scheduler_splittask_gravity. */
+  if (ci->nodeID != engine_rank && cj->nodeID != engine_rank) {
+    return;
+  }
+
   /* Should this pair be split? */
-  if (cell_can_split_pair_gravity_task(ci) &&
-      cell_can_split_pair_gravity_task(cj)) {
+  if (cell_can_split_pair_gravity_task(ci, cj)) {
 
     /* Check particle count threshold - mirrors scheduler_splittask_gravity */
     const long long gcount_i = ci->grav.count;
@@ -319,7 +518,9 @@ static void runner_count_mesh_interactions_pair_recursive(struct cell *c,
 
         /* Can we use M-M for this pair? */
         if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
-                                 /*is_tree_walk=*/1)) {
+                                 /*is_tree_walk=*/1,
+                                 /*periodic boundaries*/ s->periodic,
+                                 /*use_mesh*/ s->periodic)) {
           /* This would be handled by a M-M task, nothing to count */
           continue;
         }
@@ -348,6 +549,11 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
                                                           struct space *s) {
 
   struct engine *e = s->e;
+
+  /* Foreign task? This mirrors scheduler_splittask_gravity. */
+  if (ci->nodeID != engine_rank) {
+    return;
+  }
 
   /* Should this self task be split? */
   if (cell_can_split_self_gravity_task(ci)) {
@@ -397,7 +603,6 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
   /* else: We have a real task that doesn't split further, no mesh
    * interactions to count */
 }
-#endif
 
 /**
  * @brief Accumulate the number of particle mesh interactions for debugging
@@ -413,10 +618,9 @@ static void runner_count_mesh_interactions_self_recursive(struct cell *c,
  * @param ci The #cell of interest (active cell receiving interactions).
  * @param top The current top-level cell (ci's top-level parent).
  */
-void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
-                                    struct cell *top) {
-
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
+static void runner_count_mesh_interactions_uniform(struct runner *r,
+                                                   struct cell *ci,
+                                                   struct cell *top) {
 
   struct engine *e = r->e;
   struct space *s = e->s;
@@ -450,7 +654,9 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
 
     /* Can we use M-M for this top-level pair? */
     if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
-                             /*is_tree_walk=*/0)) {
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
 
       /* M-M task handles this, nothing to count */
       continue;
@@ -460,12 +666,261 @@ void runner_count_mesh_interactions(struct runner *r, struct cell *ci,
      * that arise from task splitting */
     runner_count_mesh_interactions_pair_recursive(ci, top, cj, s);
   }
-#else
-  error(
-      "This function should not be called without debugging checks or "
-      "force checks enabled!");
-#endif
 }
+
+/**
+ * @brief Recursively accumulate mesh interactions for zoom pair interactions.
+ *
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_pair, recursing through the void cell
+ * hierarchy and then using the normal pair recursive function once we reach
+ * non-void cells.
+ *
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
+ * @param cj The current #cell being paired with.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_zoom_pair_recursive(
+    struct cell *c, struct cell *ci, struct cell *cj, struct space *s) {
+
+  struct engine *e = s->e;
+
+  /* If neither cell is a void cell, use the normal pair recursive function */
+  if (ci->subtype != cell_subtype_void && cj->subtype != cell_subtype_void) {
+    runner_count_mesh_interactions_pair_recursive(c, ci, cj, s);
+    return;
+  }
+
+  /* Loop over progeny pairs, mirroring
+   * zoom_scheduler_splittask_gravity_void_pair */
+  for (int i = 0; i < 8; i++) {
+    struct cell *cpi = ci->progeny[i];
+
+    /* Skip NULL progeny */
+    if (cpi == NULL) continue;
+
+    /* Skip void progeny that do not contain any zoom cells. This mirrors
+     * zoom_scheduler_splittask_gravity_void_pair(). */
+    if (cpi->subtype == cell_subtype_void && !cpi->contains_zoom_cells)
+      continue;
+
+    /* Skip empty non-void progeny */
+    if (cell_is_empty_mpole(cpi)) continue;
+
+    for (int j = 0; j < 8; j++) {
+      struct cell *cpj = cj->progeny[j];
+
+      /* Skip NULL progeny */
+      if (cpj == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. This mirrors
+       * zoom_scheduler_splittask_gravity_void_pair(). */
+      if (cpj->subtype == cell_subtype_void && !cpj->contains_zoom_cells)
+        continue;
+
+      /* Skip leaf neighbours interacting with non-useful void cells. */
+      if (!ci->split && cpj->subtype == cell_subtype_void) continue;
+
+      /* Skip empty non-void progeny */
+      if (cell_is_empty_mpole(cpj)) continue;
+
+      /* Skip entirely foreign pairs. */
+      if (cpi->nodeID != engine_rank && cpj->nodeID != engine_rank) continue;
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpi, cpj)) {
+        /* Record the mesh interaction */
+        runner_count_mesh_interaction(c, cpi, cpj);
+        continue;
+      }
+
+      /* Can we use M-M for this pair? */
+      if (cell_can_use_pair_mm(cpi, cpj, e, s, /*use_rebuild_data=*/1,
+                               /*is_tree_walk=*/1,
+                               /*periodic boundaries*/ s->periodic,
+                               /*use_mesh*/ s->periodic)) {
+        /* M-M task handles this, nothing to count */
+        continue;
+      }
+
+      /* Recurse to find more mesh interactions */
+      runner_count_mesh_interactions_zoom_pair_recursive(c, cpi, cpj, s);
+    }
+  }
+}
+
+/**
+ * @brief Recursively accumulate mesh interactions for zoom self interactions.
+ *
+ * This function mirrors the logic in
+ * zoom_scheduler_splittask_gravity_void_self, recursing through the void cell
+ * hierarchy and then using the normal self recursive function once we reach
+ * non-void cells.
+ *
+ * @param c The #cell of interest (active cell receiving interactions).
+ * @param ci The current #cell from c's hierarchy being processed.
+ * @param s The #space.
+ */
+static void runner_count_mesh_interactions_zoom_self_recursive(
+    struct cell *c, struct cell *ci, struct space *s) {
+
+  struct engine *e = s->e;
+
+  /* If not a void cell, use the normal self recursive function */
+  if (ci->subtype != cell_subtype_void) {
+    runner_count_mesh_interactions_self_recursive(c, ci, s);
+    return;
+  }
+
+  /* Loop over progeny for self interactions */
+  for (int k = 0; k < 8; k++) {
+    if (ci->progeny[k] == NULL) continue;
+
+    struct cell *cp = ci->progeny[k];
+
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (cp->subtype == cell_subtype_void && !cp->contains_zoom_cells) continue;
+
+    /* Skip empty progeny (void cells are never empty). */
+    if (cell_is_empty_mpole(cp)) continue;
+
+    /* Skip foreign progeny (no such thing as a foreign self task). */
+    if (cp->type == cell_type_zoom && cp->nodeID != engine_rank) continue;
+
+    runner_count_mesh_interactions_zoom_self_recursive(c, cp, s);
+  }
+
+  /* Now handle pair interactions between progeny */
+  for (int j = 0; j < 8; j++) {
+    if (ci->progeny[j] == NULL) continue;
+
+    /* Skip void progeny that do not contain any zoom cells. */
+    if (ci->progeny[j]->subtype == cell_subtype_void &&
+        !ci->progeny[j]->contains_zoom_cells)
+      continue;
+
+    /* Skip empty non-void progeny. */
+    if (ci->progeny[j]->subtype != cell_subtype_void &&
+        ci->progeny[j]->grav.count == 0)
+      continue;
+
+    struct cell *cpj = ci->progeny[j];
+
+    for (int k = j + 1; k < 8; k++) {
+      if (ci->progeny[k] == NULL) continue;
+
+      /* Skip void progeny that do not contain any zoom cells. */
+      if (ci->progeny[k]->subtype == cell_subtype_void &&
+          !ci->progeny[k]->contains_zoom_cells)
+        continue;
+
+      /* Skip empty progeny. */
+      if (cell_is_empty_mpole(ci->progeny[k])) continue;
+
+      struct cell *cpk = ci->progeny[k];
+
+      /* Skip entirely foreign pairs. */
+      if ((cpj->type == cell_type_zoom && cpk->type == cell_type_zoom) &&
+          cpj->nodeID != engine_rank && cpk->nodeID != engine_rank)
+        continue;
+
+      /* Can we use the mesh for this pair? */
+      if (cell_can_use_mesh(e, cpj, cpk)) {
+        /* Record the mesh interaction */
+        runner_count_mesh_interaction(c, cpj, cpk);
+        continue;
+      }
+
+      /* Check which cell contains c to decide how to recurse. */
+      const int cpj_contains_c = (cpj == c || cell_contains_progeny(cpj, c));
+      const int cpk_contains_c = (cpk == c || cell_contains_progeny(cpk, c));
+
+      /* Recurse as a pair interaction, ensuring we always pass the cell
+       * containing c as the first argument after c. */
+      if (cpj_contains_c) {
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
+      } else if (cpk_contains_c) {
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpk, cpj, s);
+      } else {
+        runner_count_mesh_interactions_zoom_pair_recursive(c, cpj, cpk, s);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Accumulate the number of particle mesh interactions for debugging
+ * purposes in zoom simulations.
+ *
+ * This function mirrors the task creation and splitting logic for zoom
+ * simulations to count mesh interactions that ci would receive from all
+ * top-level cells.
+ *
+ * NOTE: This will recurse over cells that are not directly related to c (the
+ * super cell of ci). It will not add their contribution though so is "safe".
+ *
+ * @param r The thread #runner.
+ * @param ci The #cell of interest (active cell receiving interactions).
+ * @param top The current top-level cell (ci's top-level parent).
+ */
+static void runner_count_mesh_interactions_zoom(struct runner *r,
+                                                struct cell *ci,
+                                                struct cell *top) {
+
+  struct engine *e = r->e;
+  struct space *s = e->s;
+  struct cell *bkg_cells = s->zoom_props->bkg_cells_top;
+
+  /* First, handle self interactions from the top-level cell.
+   * This mirrors the self task created at the void level. */
+  runner_count_mesh_interactions_zoom_self_recursive(ci, top, s);
+
+  /* Now loop over all other background/void top-level cells for pair
+   * interactions. This mirrors the pair tasks created between void cells. */
+  for (int n = 0; n < s->zoom_props->nr_bkg_cells; n++) {
+
+    /* Handle on the top-level cell and its gravity business */
+    struct cell *cj = &bkg_cells[n];
+    struct gravity_tensors *const multi_j = cj->grav.multipole;
+
+    /* Avoid self contributions (already handled above) */
+    if (top == cj) continue;
+
+    /* Skip pairs that would not have been created on this rank. */
+    if (top->nodeID != engine_rank && cj->nodeID != engine_rank) continue;
+
+    /* Skip void cells that do not contain any zoom cells. */
+    if (cj->subtype == cell_subtype_void && !cj->contains_zoom_cells) continue;
+
+    /* Skip empty cells */
+    if (multi_j->m_pole.M_000 == 0.f) continue;
+
+    /* Can we use the mesh for this top-level pair? */
+    if (cell_can_use_mesh(e, top, cj)) {
+
+      /* If so, record the mesh interaction */
+      runner_count_mesh_interaction(ci, top, cj);
+      continue;
+    }
+
+    /* Can we use M-M for this top-level pair? */
+    if (cell_can_use_pair_mm(top, cj, e, s, /*use_rebuild_data=*/1,
+                             /*is_tree_walk=*/0,
+                             /*periodic boundaries*/ s->periodic,
+                             /*use_mesh*/ s->periodic)) {
+
+      /* M-M task handles this, nothing to count */
+      continue;
+    }
+
+    /* We would create a pair task here, so recurse to count mesh interactions
+     * that arise from task splitting through the void hierarchy */
+    runner_count_mesh_interactions_zoom_pair_recursive(ci, top, cj, s);
+  }
+}
+
+#endif /* SWIFT_DEBUG_CHECKS || SWIFT_GRAVITY_FORCE_CHECKS */
 
 /**
  * @brief Performs all M-M interactions between a given top-level cell and
@@ -499,18 +954,53 @@ void runner_do_grav_long_range(struct runner *r, struct cell *ci,
   struct cell *top = ci;
   while (top->parent != NULL) top = top->parent;
 
+  /* If we have a nested cell the true top level cell where we defined the
+   * interactions is the background void parent cell. */
+  /* TODO: This is a bit of a hack, we should actually have the top pointers set
+   * properly during void tree splitting. */
+  while (top->void_parent != NULL) top = top->void_parent->top;
+
   /* Call the appropriate interaction function based on the type of the
    * cell in question. */
   if (periodic) {
-    runner_do_grav_long_range_periodic(r, ci, top);
+    switch (ci->type) {
+
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
+    }
   } else {
-    runner_do_grav_long_range_non_periodic(r, ci, top);
+
+    switch (ci->type) {
+
+      case cell_type_regular:
+        runner_do_grav_long_range_uniform_non_periodic(r, ci, top);
+        break;
+      case cell_type_zoom:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      case cell_type_bkg:
+        runner_do_grav_long_range_zoom_non_periodic(r, ci, top);
+        break;
+      default:
+        error("Unknown cell type in long-range gravity task!");
+    }
   }
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_GRAVITY_FORCE_CHECKS)
   /* Count the number of mesh interactions if using the mesh. */
-  if (periodic) {
-    runner_count_mesh_interactions(r, ci, top);
+  if (periodic && s->with_zoom_region) {
+    runner_count_mesh_interactions_zoom(r, ci, top);
+  } else if (periodic) {
+    runner_count_mesh_interactions_uniform(r, ci, top);
   }
 #endif
 

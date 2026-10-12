@@ -50,6 +50,7 @@
 #include "space.h"
 #include "task.h"
 #include "timeline.h"
+#include "zoom_region/zoom.h"
 
 /* Avoid cyclic inclusions */
 struct engine;
@@ -99,6 +100,64 @@ struct cell_split_pair {
   } pairs[16];
 };
 extern struct cell_split_pair cell_split_pairs[13];
+
+/**
+ * @brief Names of the cell types.
+ */
+extern const char *cellID_names[];
+
+/**
+ * @brief Names of the cell sub-types.
+ */
+extern const char *subcellID_names[];
+
+/**
+ * @brief What type of top level cell is this cell?
+ *
+ * All cells are cell_type_regular when running a periodic box. The other types
+ * are never used in a periodic box and conversely, cell_type_regular cells are
+ * never used when running with a zoom region.
+ *
+ * When running with a zoom region:
+ *
+ * - Background cells are low resolution cells covering the majority of
+ *   the volume. The zoom region fills a number of these cells in the centre
+ *   of the volume.
+ * - Zoom cells are the high resolution cells that cover the zoom region.
+ */
+enum cell_types {
+  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
+  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
+} __attribute__((__packed__));
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * When running a periodic box, cells can only have regular_sub type.
+ *
+ * When running with a zoom region:
+ *
+ * - Zoom cells can only be cell_subtype_regular.
+ * - Background cells can be neighbours if they are within the gravity
+ *   criterion of the zoom region or void cells if they contain the zoom
+ *   region. Otherwise, they are cell_subtype_regular.
+ *
+ * All cell types serve a function but only cell_subtype_neighbour and
+ * cell_subtype_regular can get tasks.
+ *
+ * Void cells do not contain any pointers to particles but carry multipoles and
+ * particle counts based on the nested zoom cells.
+ *
+ * Empty cells do not contain anything, they should not feature in any
+ * calculation and only exist to ensure the cell grids are maintained.
+ */
+enum cell_subtypes {
+  cell_subtype_regular,   /* A normal cell. */
+  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
+                             region. */
+  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
+} __attribute__((__packed__));
 
 /**
  * @brief Packed cell for information correct at rebuild time.
@@ -241,6 +300,12 @@ struct pcell {
 
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
+
+  /*! Cell type. */
+  enum cell_types type;
+
+  /*! Cell sub-type. */
+  enum cell_subtypes subtype;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Cell ID (for debugging) */
@@ -401,6 +466,22 @@ struct cell {
   /*! Super cell, i.e. the highest-level parent cell with *any* task */
   struct cell *super;
 
+  /*! The direct void cell parent of a zoom cell. Only used if running with
+   * a zoom region. */
+  struct cell *void_parent;
+
+  /*! The void cell super (if this cell is nested below void cells).
+   * Only set for zoom cells that have void cells above them with active
+   * gravity. Used during gravity down-pass to check if void level has active
+   * tasks. Only used if running with a zoom region. */
+  struct cell *void_super;
+
+  /*! (Only applicable to void cells) Flag for whether this void cell has
+   * real, non-empty, local zoom cells nested within it. Certain geometries
+   * or totally foreign progeny can lead to this being false and we need
+   * to be able to know this at a glance. */
+  int contains_zoom_cells;
+
   /*! Cell flags bit-mask. */
   volatile uint32_t flags;
 
@@ -513,6 +594,12 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+  /*! What type of cell is this? */
+  enum cell_types type;
+
+  /*! What subtype of cell is this? */
+  enum cell_subtypes subtype;
+
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   long long cellID;
@@ -528,6 +615,9 @@ struct cell {
 
   /*! The list of sub-tasks that have been executed on this cell */
   char subtasks_executed[task_type_count];
+
+  /*! Flag set to 1 when this cell has been reached during task splitting */
+  int reached_in_task_split;
 #endif
 
   struct ghost_stats ghost_statistics;
@@ -755,6 +845,8 @@ struct gpart *cell_convert_part_to_gpart(const struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct gpart *cell_convert_spart_to_gpart(const struct engine *e,
                                           struct cell *c, struct spart *sp);
+struct gpart *cell_convert_bpart_to_gpart(const struct engine *e,
+                                          struct cell *c, struct bpart *bp);
 struct spart *cell_convert_part_to_spart(struct engine *e, struct cell *c,
                                          struct part *p, struct xpart *xp);
 struct sink *cell_convert_part_to_sink(struct engine *e, struct cell *c,
@@ -767,7 +859,8 @@ void cell_reorder_extra_sparts(struct cell *c, const ptrdiff_t sparts_offset);
 void cell_reorder_extra_sinks(struct cell *c, const ptrdiff_t sinks_offset);
 int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
-                         const int use_rebuild_data, const int is_tree_walk);
+                         const int use_rebuild_data, const int is_tree_walk,
+                         const int periodic, const int use_mesh);
 int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj);
 int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
@@ -775,17 +868,311 @@ int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
 int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
                                const struct cell *cj);
 void cell_check_grav_mesh_pairs(struct cell *c, struct engine *e);
+void cell_check_grav_mesh_pairs_zoom(struct cell *c, struct engine *e);
+
+/***
+ * @brief Get the cell ID of a cell including an offset.
+ *
+ * NOTE: This function is only used in the zoom code.
+ *
+ * @param cdim The dimensions of the cell grid.
+ * @param offset The offset to add to the cell ID.
+ * @param i, j, k The cell ijk coordinates.
+ *
+ * @return The cell id.
+ * */
+__attribute__((always_inline)) INLINE int cell_getid_offset(const int cdim[3],
+                                                            const int offset,
+                                                            const int i,
+                                                            const int j,
+                                                            const int k) {
+  return cell_getid(cdim, i, j, k) + offset;
+}
+
+/**
+ * @brief For a given location, what TL cell does it belong to in one of the
+ * cell grids below the background level?
+ *
+ * NOTE: This function is only applicable when running with a zoom region.
+ *
+ * It finds the cell ID in a region below the background level (zoom/buffer)
+ * using the lower boundary of the nested region to offset the input coordinates
+ * before multiplying by the inverse width of a cell to get the integer cell
+ * coordinates.
+ *
+ * This function is mainly just a convenience wrapper around cell_getid_offset
+ * to remove some boilerplate when applying the bounds.
+ *
+ * @param cdim The cell grid dimensions.
+ * @param bounds The edges of this nested region.
+ * @param x, y, z Location of particle within buffer or zoom region.
+ * @param iwidth The width of a cell in this grid.
+ * @param offset The offset of this cell type in cells_top.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_below_bkg(
+    const int cdim[3], const double bounds[3], const double x, const double y,
+    const double z, const double iwidth[3], const int offset) {
+
+  /* Get the cell ijk coordinates in this grid. */
+  const int i = (x - bounds[0]) * iwidth[0];
+  const int j = (y - bounds[1]) * iwidth[1];
+  const int k = (z - bounds[2]) * iwidth[2];
+
+  /* Which zoom TL cell are we in? */
+  return cell_getid_offset(cdim, offset, i, j, k);
+}
+
+/**
+ * @brief For a given particle location, what TL cell does it belong to?
+ *
+ * Any calls to cell_getid_from_pos will be redirected to this function when
+ * running with a zoom region. This function will then identify which level of
+ * top level (TL) cell should be returned, either background or zoom.
+ *
+ * The cell hierarchy is structured with background cells at the top (largest)
+ * and zoom cells nested inside void background cell(s).
+ *
+ * We do this by testing each level from the top down. First we see what
+ * background cell the position is in. If it's a void cell, we then get the
+ * zoom cell.
+ *
+ * Cells are not stored in their hierarchy order in s->cells_top. Instead,
+ * zoom cells are first, followed by background cells.
+ * This is a bit strange but puts the zoom cells as the primary cell type and
+ * means we can simplify the code surrounding hydro operations which are
+ * isolated to the zoom region.
+ *
+ * @param s The space.
+ * @param x, y, z Location to get the cell ID for.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE int zoom_cell_getid(const struct space *s,
+                                                          const double x,
+                                                          const double y,
+                                                          const double z) {
+
+  /* Lets get some properties of the zoom region. */
+  const struct zoom_region_properties *zoom_props = s->zoom_props;
+  const int bkg_cell_offset = zoom_props->bkg_cell_offset;
+  const double zoom_lower_bounds[3] = {zoom_props->region_lower_bounds[0],
+                                       zoom_props->region_lower_bounds[1],
+                                       zoom_props->region_lower_bounds[2]};
+
+  /* Get the background cell ijk coordinates. */
+  const int bkg_i = x * s->iwidth[0];
+  const int bkg_j = y * s->iwidth[1];
+  const int bkg_k = z * s->iwidth[2];
+
+  /* Which background cell is this? */
+  int cell_id =
+      cell_getid_offset(s->cdim, bkg_cell_offset, bkg_i, bkg_j, bkg_k);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cell_id < 0 || cell_id >= s->nr_cells)
+    error("cell_id out of range: %i (%f %f %f)", cell_id, x, y, z);
+#endif
+
+  /* If this is a void cell we are in the zoom region. */
+  if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+
+    /* Which zoom TL cell are we in? */
+    return cell_getid_below_bkg(s->zoom_props->cdim, zoom_lower_bounds, x, y, z,
+                                s->zoom_props->iwidth,
+                                /*offset*/ 0);
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Make sure we haven't got a void cell here. */
+  if (s->cells_top[cell_id].subtype == cell_subtype_void) {
+    error("cell_getid_from_pos: got a void cell (%i) at (%f %f %f)", cell_id, x,
+          y, z);
+  }
+#endif
+
+  return cell_id;
+}
+
+/**
+ * @brief Convert a coordinate to the cell ID containing it.
+ *
+ * @param s The space.
+ * @param x, y, z Coordinates of particle/cell.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE int cell_getid_from_pos(
+    const struct space *s, const double x, const double y, const double z) {
+
+  /* When running with a zoom region we need to account for the nested
+   * cell grids, so call the zoom specific version. */
+  if (s->with_zoom_region) {
+
+    /* Use the version that accounts for the zoom region */
+    return zoom_cell_getid(s, x, y, z);
+
+  } else {
+
+    /* Zoom region isn't enabled so we can use the simple version */
+    const int i = x * s->iwidth[0];
+    const int j = y * s->iwidth[1];
+    const int k = z * s->iwidth[2];
+    return cell_getid(s->cdim, i, j, k);
+  }
+}
+
+/**
+ * @brief Is this cell pair at the zoom top level?
+ *
+ * A zoom top level pair can either be a pair of depth 0 zoom cells, or a
+ * depth 0 zoom cell and a neighbour background cell at the zoom cell depth.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param s The #space.
+ * @return 1 if both cells are at the zoom top level, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_pair_is_zoom_tl(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const struct space *restrict s) {
+
+  /* Are the cells zoom top level cells? */
+  int ci_is_zoom_tl = (ci->type == cell_type_zoom && ci->depth == 0);
+  int cj_is_zoom_tl = (cj->type == cell_type_zoom && cj->depth == 0);
+
+  /* Are the cells neighbour background cells at the zoom cell depth? */
+  int ci_is_neighbour_at_zoom_depth =
+      (ci->subtype == cell_subtype_neighbour &&
+       ci->depth == s->zoom_props->zoom_cell_depth);
+  int cj_is_neighbour_at_zoom_depth =
+      (cj->subtype == cell_subtype_neighbour &&
+       cj->depth == s->zoom_props->zoom_cell_depth);
+
+  /* If both cells are type zoom and have depth 0 then by definition they are
+   * zoom top level cells. */
+  if (ci_is_zoom_tl && cj_is_zoom_tl) {
+    return 1;
+  }
+
+  /* If one cell is zoom type and at depth 0, and the other is a background
+   * neighbour cell at the zoom top level cell depth then we also have a zoom
+   * top level pair. */
+  if ((ci_is_zoom_tl && cj_is_neighbour_at_zoom_depth) ||
+      (cj_is_zoom_tl && ci_is_neighbour_at_zoom_depth)) {
+    return 1;
+  }
+
+  return 0;
+}
 
 /**
  * @brief Does a #cell contain no particle at all.
  *
  * @param c The #cell.
  */
+/**
+ * @brief Is a cell empty based on particle counts alone?
+ *
+ * Returns 1 if the cell contains no particles of any kind.
+ *
+ * @param c The #cell.
+ * @return 1 if all particle counts are zero, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_empty_counts(
+    const struct cell *c) {
+
+  return c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
+         c->black_holes.count == 0 && c->sinks.count == 0;
+}
+
+/**
+ * @brief Is a cell empty based on multipole mass?
+ *
+ * Returns 1 if the cell has no multipole mass. In MPI runs, this works for
+ * both local and foreign cells as every rank gets a copy of the multipoles.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell has no multipole mass, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_empty_mpole(
+    const struct cell *c) {
+
+  return c->grav.multipole == NULL || c->grav.multipole->m_pole.M_000 <= 0.f;
+}
+
+/**
+ * @brief Is a cell empty?
+ *
+ * Returns 1 if the cell has neither particles nor multipole mass.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is empty, 0 otherwise.
+ */
 __attribute__((always_inline)) INLINE static int cell_is_empty(
     const struct cell *c) {
 
-  return (c->hydro.count == 0 && c->grav.count == 0 && c->stars.count == 0 &&
-          c->black_holes.count == 0 && c->sinks.count == 0);
+  return cell_is_empty_counts(c) && cell_is_empty_mpole(c);
+}
+
+/**
+ * @brief Is a cell split, or a void cell (which has progeny but split=0)?
+ *
+ * Void cells only appears in zoom simulations and only take part in gravity
+ * calculations. As such this function should be avoided outside these
+ * contexts.
+ *
+ * Void cells sit at the zoom-region boundary and are explicitly given
+ * c->split = 0 to stop normal traversal from crossing into the zoom
+ * cell tree.
+ *
+ * @param c The #cell.
+ * @return 1 if the cell is split or a void cell, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int cell_is_split_or_void(
+    const struct cell *c) {
+
+  return c->split || c->subtype == cell_subtype_void;
+}
+
+/**
+ * @brief Compute the square of the distance between the CoMs of two multipoles.
+ *
+ * @param multi_i The first #gravity_tensors.
+ * @param multi_j The second #gravity_tensors.
+ * @param use_rebuild_data Are we considering the data at the last tree-build
+ * (1) or current data (0)?
+ * @param periodic Are we using periodic BCs?
+ * @param dim The dimensions of the simulation volume.
+ *
+ * @return The square of the distance between the multiepoles' CoMs.
+ */
+__attribute__((always_inline)) INLINE static double cell_mpole_CoM_dist2(
+    const struct gravity_tensors *restrict multi_i,
+    const struct gravity_tensors *restrict multi_j, const int use_rebuild_data,
+    const int periodic, const double dim[3]) {
+
+  double dx, dy, dz;
+
+  /* Get the distance between the CoMs */
+  if (use_rebuild_data) {
+    dx = multi_i->CoM_rebuild[0] - multi_j->CoM_rebuild[0];
+    dy = multi_i->CoM_rebuild[1] - multi_j->CoM_rebuild[1];
+    dz = multi_i->CoM_rebuild[2] - multi_j->CoM_rebuild[2];
+  } else {
+    dx = multi_i->CoM[0] - multi_j->CoM[0];
+    dy = multi_i->CoM[1] - multi_j->CoM[1];
+    dz = multi_i->CoM[2] - multi_j->CoM[2];
+  }
+
+  /* Apply BC */
+  if (periodic) {
+    dx = nearest(dx, dim[0]);
+    dy = nearest(dy, dim[1]);
+    dz = nearest(dz, dim[2]);
+  }
+  return dx * dx + dy * dy + dz * dz;
 }
 
 /**
@@ -797,8 +1184,8 @@ __attribute__((always_inline)) INLINE static int cell_is_empty(
 __attribute__((always_inline)) INLINE static int cell_contains_progeny(
     const struct cell *c, const struct cell *progeny) {
 
-  /* Early exit if progeny is above c. */
-  if (progeny->depth < c->depth) {
+  /* Early exit if progeny is above c (only holds for regular cells). */
+  if (c->type == cell_type_regular && progeny->depth < c->depth) {
     return 0;
   }
 
@@ -808,7 +1195,13 @@ __attribute__((always_inline)) INLINE static int cell_contains_progeny(
     if (current == c) {
       return 1;
     }
-    current = current->parent;
+
+    /* Handle the zoom->void cell case, otherwise normal parent. */
+    if (current->void_parent != NULL) {
+      current = current->void_parent;
+    } else {
+      current = current->parent;
+    }
   }
   return 0;
 }
@@ -821,8 +1214,10 @@ __attribute__((always_inline)) INLINE static int cell_contains_progeny(
  * @param cj The second #cell.
  * @param periodic Are we using periodic BCs?
  * @param dim The dimensions of the simulation volume
+ *
+ * @return The square of the minimal distance between the two cells.
  */
-__attribute__((always_inline)) INLINE static double cell_min_dist2_same_size(
+__attribute__((always_inline)) INLINE static double cell_min_dist2(
     const struct cell *restrict ci, const struct cell *restrict cj,
     const int periodic, const double dim[3]) {
 
@@ -1402,16 +1797,56 @@ cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
 }
 
 /**
- * @brief Can a pair gravity task associated with a cell be split into smaller
- * sub-tasks.
+ * @brief Is a cell above the task level?
+ *
+ * The task level is defined as space_subdepth_diff_grav above the leaves
+ * of the tree.
+ *
+ * When running a zoom simulation this will use zoom_bkg_subdepth_diff_grav for
+ * the background cells while the zoom cells will use the regular threshold.
+ *
+ * When running a zoom we split all tasks involving a void cell, this can lead
+ * some cells interacting below space_subdepth_diff_grav to ensure we reach
+ * the zoom cells on the void side of the interaction. Cells requiring these
+ * tasks carry a flag (tasks_below_diff_grav_depth) to signify this
+ * special condition. This flag ensures any task related recursion will continue
+ * right down to the lowest point tasks are defined on the cell in question.
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int
-cell_can_split_pair_gravity_task(const struct cell *c) {
+__attribute__((always_inline)) INLINE static int cell_is_above_diff_grav_depth(
+    const struct cell *c) {
 
-  /* Is the cell split and still far from the leaves ? */
-  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  /* When running a zoom we can have cells with tasks below
+   * space_subdepth_diff_grav due to interactions with the void cells (i.e.
+   * zoom region). These cells carry a special flag and must return true here
+   * to ensure task recursions work properly. */
+  if (c->grav.tasks_below_diff_grav_depth) {
+    return 1;
+  }
+
+  /* Regular and zoom cells use the usual condition. */
+  if (c->type == cell_type_regular || c->type == cell_type_zoom) {
+    return (c->maxdepth - c->depth) > space_subdepth_diff_grav;
+  }
+
+  /* Otherwise all other cells use the background diff_grav constant. */
+  return (c->maxdepth - c->depth) > zoom_bkg_subdepth_diff_grav;
+}
+
+/**
+ * @brief Can a pair gravity task associated with a pair of cells be split
+ * into smaller sub-tasks?
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_split_pair_gravity_task(const struct cell *ci, const struct cell *cj) {
+
+  /* Otherwise, are the cells split and still far from the leaves ? */
+  return (ci->split && cj->split) && cell_is_above_diff_grav_depth(ci) &&
+         cell_is_above_diff_grav_depth(cj);
 }
 
 /**
@@ -1424,7 +1859,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_split_self_gravity_task(const struct cell *c) {
 
   /* Is the cell split and still far from the leaves ? */
-  return c->split && ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return c->split && cell_is_above_diff_grav_depth(c);
 }
 
 /**
@@ -1437,8 +1872,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
     const struct cell *c) {
 
   /* Is the cell split ? */
-  return c->split && c->grav.count > 5000 &&
-         ((c->maxdepth - c->depth) > space_subdepth_diff_grav);
+  return c->split && c->grav.count > 5000 && cell_is_above_diff_grav_depth(c);
 }
 
 /**
@@ -1939,36 +2373,78 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
  * to be unique and reproducible between two runs, but only unique.
  *
  * @param c #cell to work with
- * @param cdim number of cells in each dimension
- * @param dim spatial extent.
- * @param iwidth inverse of top cell width
+ * @param s The #space
  */
 __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
-    struct cell *c, int cdim[3], double dim[3], double iwidth[3]) {
+    struct cell *c, struct space *s) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-  if (c->depth != 0) {
+  if (c->depth != 0 && c->subtype != cell_subtype_void) {
     error("assigning top level cell index to cell with depth > 0");
   } else {
-    if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
-      /* print warning only once */
-      if (last_cell_id == 1ULL) {
-        message(
-            "WARNING: Got %d x %d x %d top level cells. "
-            "Cell IDs are only guaranteed to be "
-            "reproduceably unique if count is < 32^3",
-            cdim[0], cdim[1], cdim[2]);
+
+    if (!s->with_zoom_region) {
+
+      /* Unpack properties we'll need */
+      const int *cdim = s->cdim;
+      const double *iwidth = s->iwidth;
+
+      if (cdim[0] * cdim[1] * cdim[2] > 32 * 32 * 32) {
+        /* print warning only once */
+        if (last_cell_id == 1ULL) {
+          message(
+              "WARNING: Got %d x %d x %d top level cells. "
+              "Cell IDs are only guaranteed to be "
+              "reproduceably unique if count is < 32^3",
+              cdim[0], cdim[1], cdim[2]);
+        }
+        /* Do this in same line. Otherwise, bad things happen. */
+        c->cellID = atomic_inc(&last_cell_id);
+      } else {
+        int i = (int)(c->loc[0] * iwidth[0] + 0.5);
+        int j = (int)(c->loc[1] * iwidth[1] + 0.5);
+        int k = (int)(c->loc[2] * iwidth[2] + 0.5);
+        c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
       }
-      /* Do this in same line. Otherwise, bad things happen. */
-      c->cellID = atomic_inc(&last_cell_id);
+      /* in both cases, keep track of first prodigy index */
+      atomic_inc(&last_leaf_cell_id);
     } else {
-      int i = (int)(c->loc[0] * iwidth[0] + 0.5);
-      int j = (int)(c->loc[1] * iwidth[1] + 0.5);
-      int k = (int)(c->loc[2] * iwidth[2] + 0.5);
-      c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
+
+      /* In the zoom case we assign 2 separate cell grids. These are stored in
+       * s->cells_top with zoom cells first, followed by background cells.
+       *
+       * Therefore: zoom_cell_ids < background_cell_ids
+       *
+       * The offsets of each cell grid are stored for accessing the cells, but
+       * this means cell ids are only reproducable if the total number of all
+       * cells is less than 32^3. */
+
+      /* Get the cdims */
+      const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+      const int zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                                s->zoom_props->cdim[2]};
+
+      if (((cdim[0] * cdim[1] * cdim[2]) +
+           (zoom_cdim[0] * zoom_cdim[1] * zoom_cdim[2])) > 32 * 32 * 32) {
+        /* print warning only once */
+        if (last_cell_id == 1ULL) {
+          message(
+              "WARNING: Got (%d x %d x %d + %d x %d x %d) top "
+              "level cells. "
+              "Cell IDs are only guaranteed to be "
+              "reproduceably unique if count is < 32^3",
+              cdim[0], cdim[1], cdim[2], zoom_cdim[0], zoom_cdim[1],
+              zoom_cdim[2]);
+        }
+        /* Do this in same line. Otherwise, bad things happen. */
+        c->cellID = atomic_inc(&last_cell_id);
+      } else {
+        c->cellID = (unsigned long long)(cell_getid_from_pos(
+            s, c->loc[0], c->loc[1], c->loc[2]));
+      }
+      /* in both cases, keep track of first prodigy index */
+      atomic_inc(&last_leaf_cell_id);
     }
-    /* in both cases, keep track of first prodigy index */
-    atomic_inc(&last_leaf_cell_id);
   }
 #endif
 }
@@ -2066,7 +2542,8 @@ __attribute__((always_inline)) static INLINE void cell_set_part_h_depth(
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  error("Could not find an appropriate depth!");
+  error("Could not find an appropriate depth! (%s/%s)",
+        cellID_names[leaf_cell->type], subcellID_names[leaf_cell->subtype]);
 #endif
 }
 
@@ -2175,4 +2652,71 @@ __attribute__((always_inline)) static INLINE void cell_set_bpart_h_depth(
 #endif
 }
 
+/**
+ * @brief Does this cell overlap the zoom region?
+ *
+ * This will test if there is any overlap whatsoever between the zoom boundaries
+ * and the cell boundaries.
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int zoom_cell_overlaps_zoom_region(
+    const struct cell *c, const struct space *s) {
+
+  /* Simple tolerance to suppress FP noise */
+  const double tol = 1e-6 * s->zoom_props->dim[0];
+
+  /* Cell boundaries */
+  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                              c->loc[2] + c->width[2]};
+
+  /* Zoom region boundaries */
+  const double zoom_min[3] = {s->zoom_props->region_lower_bounds[0],
+                              s->zoom_props->region_lower_bounds[1],
+                              s->zoom_props->region_lower_bounds[2]};
+  const double zoom_max[3] = {s->zoom_props->region_upper_bounds[0],
+                              s->zoom_props->region_upper_bounds[1],
+                              s->zoom_props->region_upper_bounds[2]};
+
+  /* Calculate overlap in each dimension */
+  const double overlap_x =
+      fmin(cell_max[0], zoom_max[0]) - fmax(cell_min[0], zoom_min[0]);
+  const double overlap_y =
+      fmin(cell_max[1], zoom_max[1]) - fmax(cell_min[1], zoom_min[1]);
+  const double overlap_z =
+      fmin(cell_max[2], zoom_max[2]) - fmax(cell_min[2], zoom_min[2]);
+
+  /* Check if overlap lengths are positive */
+  return (overlap_x > tol) && (overlap_y > tol) && (overlap_z > tol);
+}
+
+/**
+ * @brief Is this cell entirely inside the zoom region?
+ *
+ * @param c The #cell.
+ * @param s The #space.
+ */
+__attribute__((always_inline)) INLINE static int zoom_cell_inside_zoom_region(
+    const struct cell *c, const struct space *s) {
+
+  /* Cell boundaries */
+  const double cell_min[3] = {c->loc[0], c->loc[1], c->loc[2]};
+  const double cell_max[3] = {c->loc[0] + c->width[0], c->loc[1] + c->width[1],
+                              c->loc[2] + c->width[2]};
+
+  /* Zoom region boundaries */
+  const double zoom_min[3] = {s->zoom_props->region_lower_bounds[0],
+                              s->zoom_props->region_lower_bounds[1],
+                              s->zoom_props->region_lower_bounds[2]};
+  const double zoom_max[3] = {s->zoom_props->region_upper_bounds[0],
+                              s->zoom_props->region_upper_bounds[1],
+                              s->zoom_props->region_upper_bounds[2]};
+
+  /* Check if the cell is entirely inside the zoom region */
+  return (cell_min[0] >= zoom_min[0] && cell_min[1] >= zoom_min[1] &&
+          cell_min[2] >= zoom_min[2] && cell_max[0] <= zoom_max[0] &&
+          cell_max[1] <= zoom_max[1] && cell_max[2] <= zoom_max[2]);
+}
 #endif /* SWIFT_CELL_H */

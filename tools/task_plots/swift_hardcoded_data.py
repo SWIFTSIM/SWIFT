@@ -15,6 +15,8 @@
 # -----------------------------------------------------------------------------
 
 #  Tasks and subtypes. Indexed as in tasks.h.
+import os
+
 TASKTYPES = [
     "none",
     "sort",
@@ -107,6 +109,7 @@ SUBTYPES = [
     "force",
     "limiter",
     "grav",
+    "progeny",
     "fof",
     "external_grav",
     "tend",
@@ -274,7 +277,6 @@ for task in SUBTYPES:
 
 # check if label files are found that have (possibly different) labels
 # output by SWIFT itself
-import os
 
 if os.path.exists("task_labels_task_types.txt"):
     print("SWIFT task label file 'task_labels_task_types.txt' found, reading it.")

@@ -18,11 +18,11 @@
 #
 ################################################################################
 
+import argparse
+
 import h5py
 import numpy as np
-import argparse
-from astropy import units
-from astropy import constants
+from astropy import constants, units
 
 
 class store_as_array(argparse._StoreAction):
@@ -34,7 +34,6 @@ class store_as_array(argparse._StoreAction):
 
 
 def parse_options():
-
     usage = "usage: %prog [options] file"
     parser = argparse.ArgumentParser(description=usage)
 

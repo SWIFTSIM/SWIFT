@@ -281,7 +281,6 @@ AS_IF([test "x$enable_atomics_within_tasks" != "xno"],
    [AC_DEFINE([SWIFT_TASKS_WITHOUT_ATOMICS],1,[Makes SWIFT use atomic-free and lock-free tasks.])
 ])
 
-
 # Check if task debugging is on.
 AC_ARG_ENABLE([task-debugging],
    [AS_HELP_STRING([--enable-task-debugging],
@@ -3718,6 +3717,10 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
+AC_CONFIG_FILES([tests/testZoomInit.sh], [chmod +x tests/testZoomInit.sh])
+AC_CONFIG_FILES([tests/testGetZoomIJKFunc.sh], [chmod +x tests/testGetZoomIJKFunc.sh])
+AC_CONFIG_FILES([tests/testZoomRegrid.sh], [chmod +x tests/testZoomRegrid.sh])
+AC_CONFIG_FILES([tests/testZoomVoidTree.sh], [chmod +x tests/testZoomVoidTree.sh])
 AC_CONFIG_FILES([tests/testCustomMPI.sh], [chmod +x tests/testCustomMPI.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 AC_CONFIG_FILES([tests/selectOutputParameters.yml])

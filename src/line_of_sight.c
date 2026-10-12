@@ -21,6 +21,10 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Standard header */
+#include <stdio.h>
+#include <stdlib.h>
+
 /* MPI headers. */
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -34,9 +38,7 @@
 #include "line_of_sight.h"
 #include "periodic.h"
 #include "version.h"
-
-#include <stdio.h>
-#include <stdlib.h>
+#include "zoom_region/zoom.h"
 
 /**
  * @brief Will the line of sight intersect a given cell?
@@ -600,6 +602,10 @@ void write_hdf5_header(hid_t h_file, const struct engine *e,
   const int to_write[swift_type_count] = {1}; /* We can only have gas */
   io_write_attribute(h_grp, "CanHaveTypes", INT, to_write, swift_type_count);
   io_write_attribute_s(h_grp, "OutputType", "LineOfSight");
+
+  /* Write zoom related attributes (only writes ZoomIn=0 to the Header if not a
+   * zoom) */
+  zoom_write_metadata(h_file, h_grp, e->s);
 
   /* Close group */
   H5Gclose(h_grp);

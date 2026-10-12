@@ -19,6 +19,7 @@
  ******************************************************************************/
 #ifndef SWIFT_RUNNER_DOIACT_GRAV_H
 #define SWIFT_RUNNER_DOIACT_GRAV_H
+
 /* Config */
 #include <config.h>
 

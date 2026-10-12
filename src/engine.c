@@ -106,6 +106,7 @@
 #include "tools.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_region/zoom.h"
 
 const char *engine_policy_names[] = {"none",
                                      "rand",
@@ -226,7 +227,14 @@ void engine_repartition(struct engine *e) {
   if (e->s->cells_top != NULL) space_free_cells(e->s);
 
   /* Report the time spent in the different task categories */
-  if (e->verbose) scheduler_report_task_times(&e->sched, e->nr_threads);
+  if (e->verbose) {
+    scheduler_report_task_times(&e->sched, e->nr_threads);
+
+    /* In zoom land we also call the zoom specific report function. */
+    if (e->s->with_zoom_region) {
+      zoom_scheduler_report_task_times(&e->sched, e->nr_threads);
+    }
+  }
 
   /* Task arrays. */
   scheduler_free_tasks(&e->sched);
@@ -577,6 +585,11 @@ void engine_exchange_top_multipoles(struct engine *e) {
 
   /* Let's check that what we received makes sense */
   for (int i = 0; i < e->s->nr_cells; ++i) {
+
+    /* Skip the void cells, avoids double counting zoom cells. (Only applicable
+     * to zoom sims) */
+    if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
     const struct gravity_tensors *m = &e->s->multipoles_top[i];
     counter += m->m_pole.num_gpart;
     if (m->m_pole.num_gpart < 0) {
@@ -803,17 +816,26 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
             cell_count_gparts_for_tasks(e->proxies[k].cells_in[j]);
       }
 
-      /* For stars, we just use the numbers in the top-level cells */
-      count_sparts_in +=
-          e->proxies[k].cells_in[j]->stars.count + space_extra_sparts;
+      /* For stars, we just use the numbers in the top-level cells. */
+      count_sparts_in += e->proxies[k].cells_in[j]->stars.count;
+
+      /* When running with a zoom stars only exist on non-background cells
+       * (true for all cells when not running a zoom). */
+      if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+        count_sparts_in += space_extra_sparts;
+      }
 
       /* For black holes, we just use the numbers in the top-level cells */
       count_bparts_in += e->proxies[k].cells_in[j]->black_holes.count;
 
-      /* For sinks, we just use the numbers in the top-level cells + some
-         extra space */
-      count_sinks_in +=
-          e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks;
+      /* For sinks, we just use the numbers in the top-level cells. */
+      count_sinks_in += e->proxies[k].cells_in[j]->sinks.count;
+
+      /* When running with a zoom sinks only exist on non-background cells
+       * (true for all cells when not running a zoom). */
+      if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+        count_sinks_in += space_extra_sinks;
+      }
     }
   }
 
@@ -994,10 +1016,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       if (!fof && with_stars) {
 
-        /* For stars, we just use the numbers in the top-level cells */
+        /* For stars, we just use the numbers in the top-level cells. */
         cell_link_sparts(e->proxies[k].cells_in[j], sparts);
-        sparts = &sparts[e->proxies[k].cells_in[j]->stars.count +
-                         space_extra_sparts];
+        sparts = &sparts[e->proxies[k].cells_in[j]->stars.count];
+
+        /* When running with a zoom stars only exist on non-background cells
+         * (true for all cells when not running a zoom). */
+        if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+          sparts = &sparts[space_extra_sparts];
+        }
       }
 
       if (!fof && with_black_holes) {
@@ -1009,10 +1036,15 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
       if (!fof && with_sinks) {
 
-        /* For sinks, we just use the numbers in the top-level cells */
+        /* For sinks, we just use the numbers in the top-level cells. */
         cell_link_sinks(e->proxies[k].cells_in[j], sinks);
-        sinks =
-            &sinks[e->proxies[k].cells_in[j]->sinks.count + space_extra_sinks];
+        sinks = &sinks[e->proxies[k].cells_in[j]->sinks.count];
+
+        /* When running with a zoom sinks only exist on non-background cells
+         * (true for all cells when not running a zoom). */
+        if (e->proxies[k].cells_in[j]->type != cell_type_bkg) {
+          sinks = &sinks[space_extra_sinks];
+        }
       }
     }
   }
@@ -1057,6 +1089,72 @@ void engine_do_tasks_count_mapper(void *map_data, int num_elements,
   /* Update the global counts */
   for (int k = 0; k <= task_type_count; k++) {
     if (local_counts[k]) atomic_add(global_counts + k, local_counts[k]);
+  }
+}
+
+/**
+ * @brief Mapper function to count tasks by cell type (zoom/bkg).
+ *
+ * This function counts tasks in parallel, accumulating them into separate
+ * arrays for zoom and background cells.
+ *
+ * @param map_data Array of tasks to process
+ * @param num_elements Number of tasks in this chunk
+ * @param extra_data Pointer to structure containing count arrays
+ */
+void engine_count_cell_type_tasks_mapper(void *map_data, int num_elements,
+                                         void *extra_data) {
+
+  /* Unpack the mapper data */
+  const struct task *tasks = (struct task *)map_data;
+  int *const global_counts = (int *)extra_data;
+
+  /* Extract pointers to the two count arrays from extra_data
+   * Each array has (task_type_count + 1) elements */
+  int *const zoom_counts = global_counts;
+  int *const bkg_counts = global_counts + (task_type_count + 1);
+
+  /* Local accumulator copies */
+  int local_zoom_counts[task_type_count + 1];
+  int local_bkg_counts[task_type_count + 1];
+
+  /* Initialize local counts to zero */
+  for (int k = 0; k <= task_type_count; k++) {
+    local_zoom_counts[k] = 0;
+    local_bkg_counts[k] = 0;
+  }
+
+  /* Add task counts locally by cell type */
+  for (int k = 0; k < num_elements; k++) {
+    const struct task *t = &tasks[k];
+
+    /* Skip tasks with NULL cells */
+    if (t->ci == NULL) continue;
+
+    /* Determine which array to increment based on cell type */
+    int *local_counts = NULL;
+    switch (t->ci->type) {
+      case cell_type_zoom:
+        local_counts = local_zoom_counts;
+        break;
+      case cell_type_bkg:
+        local_counts = local_bkg_counts;
+        break;
+      default:
+        continue;
+    }
+
+    /* Increment the appropriate counter */
+    if (t->skip)
+      local_counts[task_type_count] += 1;
+    else
+      local_counts[(int)t->type] += 1;
+  }
+
+  /* Update the global counts atomically */
+  for (int k = 0; k <= task_type_count; k++) {
+    if (local_zoom_counts[k]) atomic_add(zoom_counts + k, local_zoom_counts[k]);
+    if (local_bkg_counts[k]) atomic_add(bkg_counts + k, local_bkg_counts[k]);
   }
 }
 
@@ -1115,15 +1213,221 @@ void engine_print_task_counts(const struct engine *e) {
   printf("%s engine_print_task_counts: task counts are [ %s=%i",
          clocks_get_timesincestart(), taskID_names[0], counts[0]);
 #endif
+
   for (int k = 1; k < task_type_count; k++)
     printf(" %s=%i", taskID_names[k], counts[k]);
   printf(" skipped=%i ]\n", counts[task_type_count]);
   fflush(stdout);
-  message("nr_parts = %zu.", e->s->nr_parts);
-  message("nr_gparts = %zu.", e->s->nr_gparts);
-  message("nr_sink = %zu.", e->s->nr_sinks);
-  message("nr_sparts = %zu.", e->s->nr_sparts);
-  message("nr_bparts = %zu.", e->s->nr_bparts);
+
+  /* In zoom land we can also break this down by cell type. */
+  if (e->s->with_zoom_region) {
+
+    /* Allocate count arrays for zoom and background cells
+     * Each array has (task_type_count + 1) elements */
+    int all_counts[2 * (task_type_count + 1)];
+    for (int k = 0; k < 2 * (task_type_count + 1); k++) {
+      all_counts[k] = 0;
+    }
+
+    /* Use mapper to count tasks by cell type in parallel */
+    threadpool_map((struct threadpool *)&e->threadpool,
+                   engine_count_cell_type_tasks_mapper, (void *)tasks, nr_tasks,
+                   sizeof(struct task), threadpool_auto_chunk_size, all_counts);
+
+    /* Extract individual count arrays */
+    int *zoom_counts = all_counts;
+    int *bkg_counts = all_counts + (task_type_count + 1);
+
+    /* Print the counts. */
+#ifdef WITH_MPI
+    printf("[%04i] %s engine_print_task_counts: zoom task counts are [ %s=%i",
+           e->nodeID, clocks_get_timesincestart(), taskID_names[0],
+           zoom_counts[0]);
+#else
+    printf("%s engine_print_task_counts: zoom task counts are [ %s=%i",
+           clocks_get_timesincestart(), taskID_names[0], zoom_counts[0]);
+#endif /* WITH_MPI */
+
+    for (int k = 1; k < task_type_count; k++)
+      printf(" %s=%i", taskID_names[k], zoom_counts[k]);
+    printf(" skipped=%i ]\n", zoom_counts[task_type_count]);
+    fflush(stdout);
+
+#ifdef WITH_MPI
+    printf(
+        "[%04i] %s engine_print_task_counts: background task counts are [ "
+        "%s=%i",
+        e->nodeID, clocks_get_timesincestart(), taskID_names[0], bkg_counts[0]);
+#else
+    printf("%s engine_print_task_counts: background task counts are [ %s=%i",
+           clocks_get_timesincestart(), taskID_names[0], bkg_counts[0]);
+#endif /* WITH_MPI */
+
+    for (int k = 1; k < task_type_count; k++)
+      printf(" %s=%i", taskID_names[k], bkg_counts[k]);
+    printf(" skipped=%i ]\n", bkg_counts[task_type_count]);
+    fflush(stdout);
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* In zoom land its helpful to print the pair and mm types. */
+  if (e->s->with_zoom_region) {
+    /* Initialise counts; */
+    int nr_zoom_zoom = 0;
+    int nr_zoom_bkg = 0;
+    int nr_bkg_bkg = 0;
+    int nr_zoom_neighbour = 0;
+    /* Loop over tasks. */
+    for (int i = 0; i < nr_tasks; i++) {
+      const struct task *t = &tasks[i];
+
+      /* Skip skipped tasks. */
+      if (t->skip) continue;
+
+      /* Skip non-pairs. */
+      if (t->type != task_type_pair) continue;
+
+      /* Count a nieghbour pair if ci and cj are the combination of a zoom and
+       * neighbour cell. */
+      if ((t->ci->type == cell_type_zoom &&
+           t->cj->subtype == cell_subtype_neighbour) ||
+          (t->cj->type == cell_type_zoom &&
+           t->ci->subtype == cell_subtype_neighbour)) {
+        nr_zoom_neighbour++;
+      }
+
+      /* Count the pair types. */
+      switch (t->ci->type) {
+        case cell_type_zoom:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_zoom++;
+              break;
+            case cell_type_bkg:
+              nr_zoom_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_bkg:
+          switch (t->cj->type) {
+            case cell_type_zoom:
+              nr_zoom_bkg++;
+              break;
+            case cell_type_bkg:
+              nr_bkg_bkg++;
+              break;
+            default:
+              error("Unknown cell type %d", t->cj->type);
+          }
+          break;
+        case cell_type_regular:
+          error(
+              "Regular cell found in zoom simulation pair task! There should "
+              "be no regular cells in zoom simulations.");
+          break;
+        default:
+          error("Unknown cell type %d", t->ci->type);
+      }
+    }
+
+    /* Print the pair types. */
+#ifdef WITH_MPI
+    printf(
+        "[%04i] %s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg,
+        nr_bkg_bkg, nr_zoom_neighbour);
+#else
+    printf(
+        "%s engine_print_task_counts: pair task type counts are [ "
+        "zoom<->zoom=%i  zoom<->bkg=%i bkg<->bkg=%i zoom<->neighbour=%i ]\n",
+        clocks_get_timesincestart(), nr_zoom_zoom, nr_zoom_bkg, nr_bkg_bkg,
+        nr_zoom_neighbour);
+#endif /* WITH_MPI */
+
+    /* Now count MM tasks. */
+    nr_zoom_zoom = 0;
+    nr_bkg_bkg = 0;
+    int nr_void_zoom = 0;
+    int nr_void_bkg = 0;
+    /* Loop over tasks. */
+    for (int i = 0; i < nr_tasks; i++) {
+      const struct task *t = &tasks[i];
+
+      /* Skip skipped tasks. */
+      if (t->skip) continue;
+
+      /* Skip non-pairs. */
+      if (t->type != task_type_grav_mm) continue;
+
+      /* Count the pair types. */
+      switch (t->ci->type) {
+        case cell_type_zoom:
+          if (t->cj->type == cell_type_zoom) {
+            nr_zoom_zoom++;
+          }
+          break;
+        case cell_type_bkg:
+          if (t->cj->type == cell_type_bkg) {
+            nr_bkg_bkg++;
+          }
+          break;
+        case cell_type_regular:
+          error(
+              "Regular cell found in zoom simulation pair task! There should "
+              "be no regular cells in zoom simulations.");
+          break;
+        default:
+          error("Unknown cell type %d", t->ci->type);
+      }
+
+      /* Handle subtypes. */
+      if (t->ci->subtype == cell_subtype_void) {
+        switch (t->cj->type) {
+          case cell_type_zoom:
+            nr_void_zoom++;
+            break;
+          case cell_type_bkg:
+            nr_void_bkg++;
+            break;
+          default:
+            error("Unknown cell type %d", t->cj->type);
+        }
+      } else if (t->cj->subtype == cell_subtype_void) {
+        switch (t->ci->type) {
+          case cell_type_zoom:
+            nr_void_zoom++;
+            break;
+          case cell_type_bkg:
+            nr_void_bkg++;
+            break;
+          default:
+            error("Unknown cell type %d", t->ci->type);
+        }
+      }
+    }
+
+    /* Print the pair types. */
+#ifdef WITH_MPI
+    printf(
+        "[%04i] %s engine_print_task_counts: grav-MM task type counts are [ "
+        "zoom<->zoom=%i  bkg<->bkg=%i "
+        "void<->zoom=%i  void<->bkg=%i ]\n",
+        e->nodeID, clocks_get_timesincestart(), nr_zoom_zoom, nr_bkg_bkg,
+        nr_void_zoom, nr_void_bkg);
+#else
+    printf(
+        "%s engine_print_task_counts: grav-MM task type counts are [ "
+        "zoom<->zoom=%i  bkg<->bkg=%i "
+        "void<->zoom=%i  void<->bkg=%i ]\n",
+        clocks_get_timesincestart(), nr_zoom_zoom, nr_bkg_bkg, nr_void_zoom,
+        nr_void_bkg);
+#endif /* WITH_MPI */
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(WITH_MPI)
   if (e->verbose == 2) {
@@ -1137,6 +1441,12 @@ void engine_print_task_counts(const struct engine *e) {
             global_counts[1]);
   }
 #endif
+
+  message("nr_parts = %zu.", e->s->nr_parts);
+  message("nr_gparts = %zu.", e->s->nr_gparts);
+  message("nr_sink = %zu.", e->s->nr_sinks);
+  message("nr_sparts = %zu.", e->s->nr_sparts);
+  message("nr_bparts = %zu.", e->s->nr_bparts);
 
   if (e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
@@ -1430,8 +1740,14 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   e->restarting = 0;
 
   /* Report the time spent in the different task categories */
-  if (e->verbose && !repartitioned)
+  if (e->verbose && !repartitioned) {
     scheduler_report_task_times(&e->sched, e->nr_threads);
+
+    /* In zoom land we also call the zoom specific report function. */
+    if (e->s->with_zoom_region) {
+      zoom_scheduler_report_task_times(&e->sched, e->nr_threads);
+    }
+  }
 
   /* Give some breathing space */
   scheduler_free_tasks(&e->sched);
@@ -1553,6 +1869,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_exchange_cells(e);
 #endif
 
+  if (e->s->with_zoom_region) {
+    /* Construct the void cell tree. */
+    zoom_void_space_split(e->s, e->verbose);
+  }
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */
@@ -1560,6 +1881,11 @@ void engine_rebuild(struct engine *e, const int repartitioned,
     long long counter = 0;
 
     for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip the void cells, avoids double counting zoom cells. (Only
+       * applicable to zoom sims) */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       const struct gravity_tensors *m = &e->s->multipoles_top[i];
       counter += m->m_pole.num_gpart;
     }
@@ -2490,8 +2816,14 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+
+      /* Skip void cells. */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
+
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
+
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Top-level multipoles don't contain the total number of gpart "
@@ -3038,8 +3370,11 @@ int engine_step(struct engine *e) {
   /* Check that we have the correct total mass in the top-level multipoles */
   long long num_gpart_mpole = 0;
   if (e->policy & engine_policy_self_gravity) {
-    for (int i = 0; i < e->s->nr_cells; ++i)
+    for (int i = 0; i < e->s->nr_cells; ++i) {
+      /* Skip void cells. */
+      if (e->s->cells_top[i].subtype == cell_subtype_void) continue;
       num_gpart_mpole += e->s->cells_top[i].grav.multipole->m_pole.num_gpart;
+    }
     if (num_gpart_mpole != e->total_nr_gparts)
       error(
           "Multipoles don't contain the total number of gpart mpoles=%lld "
@@ -3233,6 +3568,13 @@ int engine_step(struct engine *e) {
   e->s_updates_since_rebuild += e->collect_group1.s_updated;
   e->sink_updates_since_rebuild += e->collect_group1.sink_updated;
   e->b_updates_since_rebuild += e->collect_group1.b_updated;
+
+  /* In zoom land we need to update the void tree timesteps. The number of
+   * void cells is guranteed to be small so this is cheap enough to do
+   * outside the tasking. */
+  if (e->s->with_zoom_region) {
+    zoom_void_timestep_collect(e);
+  }
 
   /* Check if we updated all of the particles on this step */
   if ((e->collect_group1.updated == e->total_nr_parts) &&

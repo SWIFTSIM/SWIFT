@@ -62,6 +62,7 @@
 #include "threadpool.h"
 #include "tools.h"
 #include "tracers.h"
+#include "zoom_region/zoom.h"
 
 /* Split size. */
 int space_splitsize = space_splitsize_default;
@@ -246,22 +247,33 @@ void space_reorder_extra_sinks_mapper(void *map_data, int num_cells,
  */
 void space_reorder_extras(struct space *s, int verbose) {
 
+  /* Unpack the local cells and how many local cells there are. */
+  int *local_cells = s->local_cells_top;
+  int nr_local_cells = s->nr_local_cells;
+
+  /* In a zoom simulation, we only want to reorder the zoom cells as no extra
+   * particles are allocated in the non-zoom cells. */
+  if (s->with_zoom_region) {
+    local_cells = s->zoom_props->local_zoom_cells_top;
+    nr_local_cells = s->zoom_props->nr_local_zoom_cells;
+  }
+
   /* Re-order the gas particles */
   if (space_extra_parts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_parts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the gravity particles */
   if (space_extra_gparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_gparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the star particles */
   if (space_extra_sparts)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sparts_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 
   /* Re-order the black hole particles */
@@ -271,7 +283,7 @@ void space_reorder_extras(struct space *s, int verbose) {
   /* Re-order the sink particles */
   if (space_extra_sinks)
     threadpool_map(&s->e->threadpool, space_reorder_extra_sinks_mapper,
-                   s->local_cells_top, s->nr_local_cells, sizeof(int),
+                   local_cells, nr_local_cells, sizeof(int),
                    threadpool_auto_chunk_size, s);
 }
 
@@ -604,7 +616,13 @@ void space_list_useful_top_level_cells(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) {
     struct cell *c = &s->cells_top[i];
 
-    if (cell_has_tasks(c)) {
+    /* Record local cells with tasks. */
+    /* Note that void cells are always local and will almost always have tasks
+     * somewhere in their hierarchy, this is dictated by the contains_zoom_cells
+     * flag. Void cell inclusion in this set of pointers is mainly to ensure the
+     * void tasks get activated. */
+    if (cell_has_tasks(c) ||
+        (c->subtype == cell_subtype_void && c->contains_zoom_cells)) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
@@ -1143,8 +1161,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
-                int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes) {
+                int with_DM, int with_DM_background, int neutrinos,
+                int with_zoom_region, int verbose, int dry_run, int nr_nodes) {
 
   /* Clean-up everything */
   bzero(s, sizeof(struct space));
@@ -1161,6 +1179,7 @@ void space_init(struct space *s, struct swift_params *params,
   s->with_DM = with_DM;
   s->with_DM_background = with_DM_background;
   s->with_neutrinos = neutrinos;
+  s->with_zoom_region = with_zoom_region;
   s->nr_parts = Npart;
   s->nr_gparts = Ngpart;
   s->nr_sparts = Nspart;
@@ -1469,11 +1488,18 @@ void space_init(struct space *s, struct swift_params *params,
     message("Imposing a BH smoothing length of %e", s->initial_bpart_h);
   }
 
+  /* Init the zoom region, if not enabled this does nothing other than flag
+   * that zoom support is off. */
+  zoom_props_init(params, s, verbose);
+
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,
                                     shift);
+
+  /* Store the shift */
   memcpy(s->initial_shift, shift, 3 * sizeof(double));
+
   if ((shift[0] != 0. || shift[1] != 0. || shift[2] != 0.) && !dry_run) {
     message("Shifting particles by [%e %e %e]", shift[0], shift[1], shift[2]);
     for (size_t k = 0; k < Npart; k++) {
@@ -2682,6 +2708,18 @@ void space_clean(struct space *s) {
   free(s->cells_sub);
   free(s->multipoles_sub);
 
+  if (s->zoom_props != NULL) {
+    swift_free("local_zoom_cells_top", s->zoom_props->local_zoom_cells_top);
+    swift_free("local_bkg_cells_top", s->zoom_props->local_bkg_cells_top);
+    swift_free("local_zoom_cells_with_particles_top",
+               s->zoom_props->local_zoom_cells_with_particles_top);
+    swift_free("local_bkg_cell_with_particless_top",
+               s->zoom_props->local_bkg_cells_with_particles_top);
+    swift_free("void_cell_indices", s->zoom_props->void_cell_indices);
+    swift_free("neighbour_cells_top", s->zoom_props->neighbour_cells_top);
+    free(s->zoom_props);
+  }
+
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");
 }
@@ -2776,6 +2814,11 @@ void space_struct_dump(struct space *s, FILE *stream) {
                        "engine_foreign_alloc_margin",
                        "engine_foreign_alloc_margin");
 
+  /* Zoom specific blocks. */
+  restart_write_blocks(&zoom_bkg_subdepth_diff_grav, sizeof(int), 1, stream,
+                       "zoom_bkg_subdepth_diff_grav",
+                       "zoom_bkg_subdepth_diff_grav");
+
   /* More things to write. */
   if (s->nr_parts > 0) {
     restart_write_blocks(s->parts, s->nr_parts, sizeof(struct part), stream,
@@ -2797,6 +2840,11 @@ void space_struct_dump(struct space *s, FILE *stream) {
   if (s->nr_bparts > 0)
     restart_write_blocks(s->bparts, s->nr_bparts, sizeof(struct bpart), stream,
                          "bparts", "bparts");
+
+  if (s->with_zoom_region)
+    restart_write_blocks(s->zoom_props, 1,
+                         sizeof(struct zoom_region_properties), stream,
+                         "zoom_props", "zoom_props");
 }
 
 /**
@@ -2871,6 +2919,10 @@ void space_struct_restore(struct space *s, FILE *stream) {
                       stream, NULL, "engine_redistribute_alloc_margin");
   restart_read_blocks(&engine_foreign_alloc_margin, sizeof(double), 1, stream,
                       NULL, "engine_foreign_alloc_margin");
+
+  /* Zoom specific blocks. */
+  restart_read_blocks(&zoom_bkg_subdepth_diff_grav, sizeof(int), 1, stream,
+                      NULL, "zoom_bkg_subdepth_diff_grav");
 
   /* Things that should be reconstructed in a rebuild. */
   s->cells_top = NULL;
@@ -2974,6 +3026,25 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* Re-link the bparts. */
   if (s->nr_bparts > 0 && s->nr_gparts > 0)
     part_relink_bparts_to_gparts(s->gparts, s->nr_gparts, s->bparts);
+
+  if (s->with_zoom_region) {
+    s->zoom_props = (struct zoom_region_properties *)malloc(
+        sizeof(struct zoom_region_properties));
+    if (s->zoom_props == NULL)
+      error("Error allocating memory for the zoom parameters.");
+    bzero(s->zoom_props, sizeof(struct zoom_region_properties));
+
+    restart_read_blocks(s->zoom_props, 1, sizeof(struct zoom_region_properties),
+                        stream, NULL, "zoom_props");
+    s->zoom_props->nr_local_zoom_cells = 0;
+    s->zoom_props->nr_local_bkg_cells = 0;
+    s->zoom_props->nr_local_zoom_cells_with_particles = 0;
+    s->zoom_props->nr_local_bkg_cells_with_particles = 0;
+    s->zoom_props->local_zoom_cells_top = NULL;
+    s->zoom_props->local_bkg_cells_top = NULL;
+    s->zoom_props->local_zoom_cells_with_particles_top = NULL;
+    s->zoom_props->local_bkg_cells_with_particles_top = NULL;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Verify that everything is correct */

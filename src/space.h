@@ -30,6 +30,7 @@
 #include <stddef.h>
 
 /* Includes. */
+#include "gravity_properties.h"
 #include "hydro_space.h"
 #include "inline.h"
 #include "lock.h"
@@ -40,6 +41,7 @@
 
 /* Avoid cyclic inclusions */
 struct cell;
+struct cell_buff;
 struct cosmology;
 struct gravity_props;
 struct star_formation;
@@ -382,6 +384,12 @@ struct space {
   /*! Structure dealing with the computation of a unique ID */
   struct unique_id unique_id;
 
+  /*! Are we running with a zoom region? */
+  int with_zoom_region;
+
+  /*! Structure that stores the zoom regions properties. */
+  struct zoom_region_properties *zoom_props;
+
   /*! Have the top-level cells' time-steps been updated? */
   char *cells_top_updated;
 
@@ -453,6 +461,174 @@ space_radiation_top_stencil_can_cover_box(const struct space *s) {
   return s->cell_max_width >= s->dim[0] / 3.;
 }
 
+struct zoom_region_properties {
+
+  /*! The factor used to define the buffer zone size around the zoom region. */
+  float region_pad_factor;
+
+  /*! The user specified padding around the high resolution particles. */
+  double user_region_pad_factor;
+
+  /*! Centre of mass of the zoom region. */
+  double com[3];
+
+  /*! The maximum distance the zoom region CoM can move before we recentre
+   * in units of the zoom region extent. */
+  double max_com_dx;
+
+  /*! Extent of the high resolution particles. */
+  double part_dim[3];
+
+  /*! Dimensions of the zoom region (includes the part_dim, the padding, and
+   * and any additional padding to make the zoom region fit in the background
+   * void cells). */
+  double dim[3];
+
+  /*! Width of the top level zoom cells. */
+  double width[3];
+
+  /*! Inverse width of the top level zoom cells. */
+  double iwidth[3];
+
+  /*! The depth of the zoom cells within a background cell. */
+  int zoom_cell_depth;
+
+  /*! The requested minimum number of top level zoom cells. Will override
+   * the zoom depth parameter if stated. */
+  int zoom_cell_min_cdim;
+
+  /*! Space dimensions in number of top level zoom cells. */
+  int cdim[3];
+
+  /*! The target number of top level background cells where we perform
+   *  background->background interactions, set by the user. */
+  int bkg_cdim[3];
+
+  /*! The target number of top level neighbour cells the size of
+   *  the zoom region. */
+
+  /*! The minimum top-level zoom cell width allowed. */
+  double cell_min;
+
+  /*! The distance in which neighbour cells are defined (same as the gravity
+   * mesh distance). */
+  double neighbour_distance;
+
+  /*! Shift to particles needed to centre the high res particles in the box. */
+  double zoom_shift[3];
+
+  /*! Shift applied to particles to centre the high res particles in the box. */
+  double applied_zoom_shift[3];
+
+  /*! Scale factor of the last shift applied to the particles. */
+  double scale_factor_at_last_shift;
+
+  /*! Vector outlining the zoom region upper boundaries. */
+  double region_upper_bounds[3];
+
+  /*! Vector outlining the zoom region lower boundaries. */
+  double region_lower_bounds[3];
+
+  /*! The width of the void region. */
+  double void_dim[3];
+
+  /*! Vector outlining the void cell region upper boundaries. This is a
+   * convenience variable; it matches region_upper_bounds. */
+  double void_upper_bounds[3];
+
+  /*! Vector outlining the void cell region lower boundaries. This is a
+   * convenience variable; it matches region_lower_bounds. */
+  double void_lower_bounds[3];
+
+  /*! The depth of the neighbour cell tree. */
+  int neighbour_max_tree_depth;
+
+  /*! Offset in the top level cell list background cells start from. */
+  int bkg_cell_offset;
+
+  /*! Number of zoom cells */
+  int nr_zoom_cells;
+
+  /*! Pointers the the top level zoom cells. */
+  struct cell *zoom_cells_top;
+
+  /*! Number of background cells */
+  int nr_bkg_cells;
+
+  /*! Pointers the the top level background cells. */
+  struct cell *bkg_cells_top;
+
+  /*! Number of particles in zoom cells */
+  size_t nr_zoom_cell_particles;
+
+  /*! Number of particls in natural/background cells */
+  size_t nr_bkg_cell_particles;
+
+  /*! Number of neighbour top-level bkg cells */
+  int nr_neighbour_cells;
+
+  /*! The indices of the neighbour top-level bkg cells */
+  int *neighbour_cells_top;
+
+  /*! Number of void top-level cells (cells containing the zoom region) */
+  int nr_void_cells;
+
+  /*! The indices of the neighbour top-level bkg  cells */
+  int *void_cell_indices;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_zoom_cells;
+
+  /*! The indices of the *local* top-level zoom cells */
+  int *local_zoom_cells_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_bkg_cells;
+
+  /*! The indices of the *local* top-level background cells */
+  int *local_bkg_cells_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_zoom_cells_with_particles;
+
+  /*! The indices of the *local* top-level zoom cells */
+  int *local_zoom_cells_with_particles_top;
+
+  /*! Number of *local* top-level zoom cells */
+  int nr_local_bkg_cells_with_particles;
+
+  /*! The indices of the *local* top-level background cells */
+  int *local_bkg_cells_with_particles_top;
+
+  /*! The Maximum depth reached in the zoom cells. */
+  int zoom_maxdepth;
+
+  /*! The Maximum depth reached in the background cells. */
+  int bkg_maxdepth;
+
+  /*! Number of baryonic particles that have left the zoom region and been
+   * converted to dark matter */
+  size_t nr_wanderers;
+
+  /*! Are we using wedges for the background decomp? */
+  int use_bkg_wedges;
+
+  /*! Are we treating each grid individually? */
+  int separate_decomps;
+
+#if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
+  /*! The total number of edges summed over all cells.  */
+  int nr_edges;
+
+  /*! The wedge edge counts. */
+  int *nr_wedge_edges;
+
+  /*! The wedge edge start indices. */
+  int *wedge_edges_start;
+
+#endif
+};
+
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);
 void space_free_sort_indices(struct space *s);
@@ -479,8 +655,8 @@ void space_init(struct space *s, struct swift_params *params,
                 size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int gravity, int star_formation, int with_sink,
-                int with_DM, int with_DM_background, int neutrinos, int verbose,
-                int dry_run, int nr_nodes);
+                int with_DM, int with_DM_background, int neutrinos,
+                int with_zoom_region, int verbose, int dry_run, int nr_nodes);
 void space_sanitize(struct space *s);
 void space_map_cells_pre(struct space *s, int full,
                          void (*fun)(struct cell *c, void *data), void *data);
@@ -509,7 +685,23 @@ double space_regrid_search_radius_for(float h_max_no_hii,
 double space_regrid_cell_width_for(float h_max_no_hii, float h_max_radiation,
                                    double cell_min, double cell_max_width);
 void space_allocate_extras(struct space *s, int verbose);
+void space_allocate_and_fill_buffers(const struct cell *c,
+                                     struct cell_buff *restrict *buff,
+                                     struct cell_buff *restrict *sbuff,
+                                     struct cell_buff *restrict *bbuff,
+                                     struct cell_buff *restrict *gbuff,
+                                     struct cell_buff *restrict *sink_buff);
+void space_split_recursive(struct space *s, struct cell *c,
+                           struct cell_buff *restrict buff,
+                           struct cell_buff *restrict sbuff,
+                           struct cell_buff *restrict bbuff,
+                           struct cell_buff *restrict gbuff,
+                           struct cell_buff *restrict sink_buff,
+                           const short int tpid);
 void space_split(struct space *s, int verbose);
+void space_construct_progeny(struct space *s, struct cell *c,
+                             const short int tpid);
+void space_populate_multipole(struct cell *c);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,

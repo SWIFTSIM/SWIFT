@@ -42,16 +42,17 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-	    testLog testDistance testTimeline \
-	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
+        testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh \
+        testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-         testKernel testFFT testInteractions testMaths testRandom testExp \
-         testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-         testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-         testRiemannHLLC testMatrixInversion testDump testCSDS \
+                 testKernel testFFT testInteractions testMaths testRandom testExp \
+                 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
+                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
+                 testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
@@ -61,7 +62,9 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
-		 testChemistryFluxAntisymmetry
+		 testChemistryFluxAntisymmetry \
+		 testZoomInit testGetZoomIJKFunc testZoomRegrid testSpaceSplit \
+		 testZoomVoidTree
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -202,9 +205,25 @@ testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 # The MPI library pulls in the same extra dependencies as the swift_mpi binary
 testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
 EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
+TESTS += testPartitionWeights
+check_PROGRAMS += testPartitionWeights
+testPartitionWeights_SOURCES = testPartitionWeights.c
+testPartitionWeights_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+testPartitionWeights_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
+EXTRA_testPartitionWeights_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
 endif
 
 testSymmetricMatrixDiagonalisation.c_SOURCES = testSymmetricMatrixDiagonalisation.c
+
+testZoomInit_SOURCES = testZoomInit.c
+
+testGetZoomIJKFunc_SOURCES = testGetZoomIJKFunc.c
+
+testSpaceSplit_SOURCES = testSpaceSplit.c
+
+testZoomRegrid_SOURCES = testZoomRegrid.c
+
+testZoomVoidTree_SOURCES = testZoomVoidTree.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
@@ -220,4 +239,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              test27cellsHydroSinks.sh hydro_sinks_tolerance_27_normal.dat \
+             testZoomInit.sh zoom_params_small.yml zoom_params_large.yml zoom_params_cells.yml zoom_params_cells_exact.yml testGetZoomIJKFunc.sh \
+             testZoomRegrid.sh testZoomVoidTree.sh \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh
