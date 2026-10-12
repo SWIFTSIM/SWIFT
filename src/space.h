@@ -34,6 +34,7 @@
 #include "hydro_space.h"
 #include "inline.h"
 #include "lock.h"
+#include "minmax.h"
 #include "parser.h"
 #include "part.h"
 #include "space_unique_id.h"
@@ -419,48 +420,6 @@ struct space {
 #endif
 };
 
-/**
- * @brief Does the top-level radiation stencil already wire every top-level
- * cell pair, making h_hii coverage between two unsplit top-level cells
- * complete regardless of reach?
- *
- * True only at the periodic minimum of 3 cells/axis, where the 27-cell
- * stencil (with wraparound) connects every top-level cell to every other
- * one. Computed from cdim/periodic directly rather than cached, so it is
- * always consistent with whatever grid s currently describes.
- *
- * @param s The #space.
- */
-__attribute__((always_inline, nonnull)) INLINE static int
-space_radiation_top_stencil_covers_box(const struct space *s) {
-
-  return s->periodic && s->cdim[0] == 3 && s->cdim[1] == 3 && s->cdim[2] == 3;
-}
-
-/**
- * @brief Can this #space's grid ever coarsen far enough for
- * #space_radiation_top_stencil_covers_box to hold?
- *
- * A star whose HII reach outgrows the top-level cell width has no coarser
- * grid left to rebuild into, and then relies on that stencil-completeness
- * fallback instead. Two configurations never reach it: a non-cubic box
- * (cell widths are a single scalar, so only a cubic box sits at 3 cells
- * along every axis at once) and Scheduler:min_top_level_cells > 3, which
- * pins the grid finer than 3 cells/axis for the whole run.
- *
- * @param s The #space.
- */
-__attribute__((always_inline, nonnull)) INLINE static int
-space_radiation_top_stencil_can_cover_box(const struct space *s) {
-
-  if (!s->periodic) return 0;
-  if (s->dim[0] != s->dim[1] || s->dim[1] != s->dim[2]) return 0;
-
-  /* cell_max_width is dim/Scheduler:min_top_level_cells, so this holds
-     exactly when that parameter is at most 3. */
-  return s->cell_max_width >= s->dim[0] / 3.;
-}
-
 struct zoom_region_properties {
 
   /*! The factor used to define the buffer zone size around the zoom region. */
@@ -628,6 +587,88 @@ struct zoom_region_properties {
 
 #endif
 };
+
+/**
+ * @brief Does the top-level radiation stencil already wire every top-level
+ * cell pair, making h_hii coverage between two unsplit top-level cells
+ * complete regardless of reach?
+ *
+ * The radiation tasks live on the grid that holds the gas: the uniform grid,
+ * or the zoom grid in a zoom run. The 27-cell stencil connects every cell of
+ * that grid to every other one at the periodic minimum of 3 cells/axis, or
+ * at 2 cells/axis on the zoom grid, which never wraps. Computed from the
+ * current grid rather than cached, so it always matches the grid s describes.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+space_radiation_top_stencil_covers_box(const struct space *s) {
+
+  if (s->with_zoom_region) {
+    const int *zoom_cdim = s->zoom_props->cdim;
+    return zoom_cdim[0] <= 2 && zoom_cdim[1] <= 2 && zoom_cdim[2] <= 2;
+  }
+
+  return s->periodic && s->cdim[0] == 3 && s->cdim[1] == 3 && s->cdim[2] == 3;
+}
+
+/**
+ * @brief Can this #space's grid ever coarsen far enough for
+ * #space_radiation_top_stencil_covers_box to hold?
+ *
+ * A star whose HII reach outgrows the top-level cell width has no coarser
+ * grid left to rebuild into, and then relies on that stencil-completeness
+ * fallback instead. Without a zoom region, two configurations never reach
+ * it: a non-cubic box (cell widths are a single scalar, so only a cubic box
+ * sits at 3 cells along every axis at once) and
+ * Scheduler:min_top_level_cells > 3, which pins the grid finer than 3
+ * cells/axis for the whole run.
+ *
+ * The zoom grid has 2^depth cells/axis per background cell of the void
+ * region, and a regrid can lower the depth down to 1. It reaches 2 cells/axis
+ * only when the void region is a single background cell.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static int
+space_radiation_top_stencil_can_cover_box(const struct space *s) {
+
+  if (s->with_zoom_region) {
+    const int cells_per_void = 1 << s->zoom_props->zoom_cell_depth;
+    const int *zoom_cdim = s->zoom_props->cdim;
+    return zoom_cdim[0] == cells_per_void && zoom_cdim[1] == cells_per_void &&
+           zoom_cdim[2] == cells_per_void;
+  }
+
+  if (!s->periodic) return 0;
+  if (s->dim[0] != s->dim[1] || s->dim[1] != s->dim[2]) return 0;
+
+  /* cell_max_width is dim/Scheduler:min_top_level_cells, so this holds
+     exactly when that parameter is at most 3. */
+  return s->cell_max_width >= s->dim[0] / 3.;
+}
+
+/**
+ * @brief The coarsest top-level cell width the star radiation term may drive
+ * the grid that holds the gas to.
+ *
+ * Without a zoom region this is space::cell_max_width. On the zoom grid it is
+ * half the shortest zoom region side: at that width the zoom grid has 2
+ * cells/axis and #space_radiation_top_stencil_covers_box holds, so a wider
+ * cell buys no extra coverage. Zero before the zoom region geometry exists.
+ *
+ * @param s The #space.
+ */
+__attribute__((always_inline, nonnull)) INLINE static double
+space_radiation_cell_max_width(const struct space *s) {
+
+  if (s->with_zoom_region) {
+    const double *zoom_dim = s->zoom_props->dim;
+    return 0.5 * min3(zoom_dim[0], zoom_dim[1], zoom_dim[2]);
+  }
+
+  return s->cell_max_width;
+}
 
 /* Function prototypes. */
 void space_free_buff_sort_indices(struct space *s);

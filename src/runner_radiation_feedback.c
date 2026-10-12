@@ -238,7 +238,18 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
      can never reach it abort mid-run: on an unsatisfiable rebuild for a
      non-periodic box, or on space_regrid()'s "not enough cells" error for
      a periodic one. */
-  if (e->nodeID == 0 && !space_radiation_top_stencil_can_cover_box(e->s))
+  if (e->nodeID == 0 && e->s->with_zoom_region &&
+      !space_radiation_top_stencil_can_cover_box(e->s))
+    warning(
+        "The zoom region spans more than one background cell along an axis, "
+        "so the zoom grid cannot coarsen to 2 top-level cells along every "
+        "axis. If a star's HII reach outgrows the coarsest zoom cell width, "
+        "the zoom regrid has to change the background grid and aborts if it "
+        "cannot. Fit the zoom region in one background cell (lower "
+        "ZoomRegion:bkg_top_level_cells, or leave it unset), or keep h_hii "
+        "well below the zoom cell width, e.g. via "
+        "Stars:HII_max_search_radius.");
+  else if (e->nodeID == 0 && !space_radiation_top_stencil_can_cover_box(e->s))
     warning(
         "This box cannot coarsen to 3 top-level cells along every axis "
         "(non-cubic box, non-periodic, or Scheduler:min_top_level_cells "

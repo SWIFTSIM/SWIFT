@@ -167,7 +167,9 @@ double space_regrid_cell_width_for(const float h_max_no_hii,
  * @param nr_local_cells_with_particles Number of local non-empty TL cells.
  * @param nr_cells Number of TL cells to run over.
  * @param cell_min The minimum cell size.
- * @param h_max_radiation (return) The largest star radiation term.
+ * @param radiation_cell_max_width The coarsest cell width the star radiation
+ * term may ask for (see space_radiation_cell_max_width()).
+ * @param h_max_radiation_out (return) The largest star radiation term.
  * @param verbose Are we talking?
  *
  * @return The current h_max.
@@ -175,7 +177,8 @@ double space_regrid_cell_width_for(const float h_max_no_hii,
 static float space_get_current_hmax(
     struct space *s, const int *const local_cells_with_particles_top,
     const int nr_local_cells_with_particles, const int nr_cells,
-    const double cell_min, float *h_max_radiation_out, const int verbose) {
+    const double cell_min, const double radiation_cell_max_width,
+    float *h_max_radiation_out, const int verbose) {
 
   const size_t nr_parts = s->nr_parts;
   const size_t nr_sparts = s->nr_sparts;
@@ -224,7 +227,9 @@ static float space_get_current_hmax(
      coarsest grid the run allows (Scheduler:min_top_level_cells, at least 3
      when periodic), the 27-cell radiation stencil wraps around and already
      covers the entire box, so the radiation term cannot miss any gas no
-     matter how large it grows from there. Cap its own contribution to
+     matter how large it grows from there. In a zoom run all the gas sits on
+     the zoom grid, which never wraps and is covered at 2 cells/axis, see
+     space_radiation_cell_max_width(). Cap its own contribution to
      h_max at the value that would size cells down to exactly that minimum:
      it can still widen cells toward full coverage at finer configurations,
      just never push cdim to the floor for a quantity that buys nothing once
@@ -247,7 +252,7 @@ static float space_get_current_hmax(
         h_max_no_hii = space_regrid_star_h_max_no_hii_term_for(h_max_no_hii,
                                                                c->stars.h_max);
         const float star_radiation_term = space_regrid_star_radiation_term_for(
-            c->stars.h_hii_max, c->stars.h_max, s->cell_max_width);
+            c->stars.h_hii_max, c->stars.h_max, radiation_cell_max_width);
         if (star_radiation_term > h_max_radiation) {
           h_max_radiation = star_radiation_term;
         }
@@ -271,7 +276,7 @@ static float space_get_current_hmax(
               h_max_no_hii, c->stars.h_max);
           const float star_radiation_term =
               space_regrid_star_radiation_term_for(
-                  c->stars.h_hii_max, c->stars.h_max, s->cell_max_width);
+                  c->stars.h_hii_max, c->stars.h_max, radiation_cell_max_width);
           if (star_radiation_term > h_max_radiation) {
             h_max_radiation = star_radiation_term;
           }
@@ -293,7 +298,7 @@ static float space_get_current_hmax(
         h_max_no_hii = space_regrid_star_h_max_no_hii_term_for(h_max_no_hii,
                                                                s->sparts[k].h);
         const float star_radiation_term = space_regrid_star_radiation_term_for(
-            s->sparts[k].h_hii, s->sparts[k].h, s->cell_max_width);
+            s->sparts[k].h_hii, s->sparts[k].h, radiation_cell_max_width);
         if (star_radiation_term > h_max_radiation)
           h_max_radiation = star_radiation_term;
       }
@@ -367,6 +372,8 @@ static float space_get_current_hmax(
  * and cell_max_width (the complement of Scheduler:min_top_level_cells), so
  * cdim never drops below that minimum. With a zoom region the zoom cell
  * size is not bounded from above here: zoom_need_regrid() decides what to do.
+ * It only ever coarsens the zoom grid, so a zoom grid coarsened for a large
+ * star radiation term stays coarse after that term shrinks.
  *
  * @param s The #space.
  * @param h_max The current h_max.
@@ -808,24 +815,11 @@ void space_regrid(struct space *s, int verbose) {
   const ticks tic = getticks();
   const integertime_t ti_current = (s->e != NULL) ? s->e->ti_current : 0;
 
-  /* Get the current h_max. (In zoom land we only care about zoom cells.) */
-  float h_max, h_max_radiation;
-  if (!s->with_zoom_region) {
-    h_max = space_get_current_hmax(s, s->local_cells_with_particles_top,
-                                   s->nr_local_cells_with_particles,
-                                   s->nr_cells, s->cell_min, &h_max_radiation,
-                                   verbose);
-  } else {
-    h_max = space_get_current_hmax(
-        s, s->zoom_props->local_zoom_cells_with_particles_top,
-        s->zoom_props->nr_local_zoom_cells_with_particles,
-        s->zoom_props->nr_zoom_cells, s->zoom_props->cell_min,
-        &h_max_radiation, verbose);
-  }
-
   /* When running a zoom region if this is our first regrid then we need to get
    * the zoom region geometry before moving on. Note that this is always
-   * verbose regardless of global verbosity (but only on rank 0 in MPI land). */
+   * verbose regardless of global verbosity (but only on rank 0 in MPI land).
+   * The geometry must exist before h_max is computed: the zoom cell_min and
+   * the cap on the star radiation term both derive from it. */
   if (s->with_zoom_region && s->cells_top == NULL) {
     zoom_region_init(s, /*regridding=*/0, /*verbose=*/engine_rank == 0);
   }
@@ -839,6 +833,21 @@ void space_regrid(struct space *s, int verbose) {
      * avoid this extra loop over all gparts but for now this is simpler
      * and **probably** not a big overhead. */
     zoom_get_region_dim_and_shift(s, verbose);
+  }
+
+  /* Get the current h_max. (In zoom land we only care about zoom cells.) */
+  float h_max, h_max_radiation;
+  if (!s->with_zoom_region) {
+    h_max = space_get_current_hmax(
+        s, s->local_cells_with_particles_top, s->nr_local_cells_with_particles,
+        s->nr_cells, s->cell_min, space_radiation_cell_max_width(s),
+        &h_max_radiation, verbose);
+  } else {
+    h_max = space_get_current_hmax(
+        s, s->zoom_props->local_zoom_cells_with_particles_top,
+        s->zoom_props->nr_local_zoom_cells_with_particles,
+        s->zoom_props->nr_zoom_cells, s->zoom_props->cell_min,
+        space_radiation_cell_max_width(s), &h_max_radiation, verbose);
   }
 
   /* Get the new putative cell dimensions. */

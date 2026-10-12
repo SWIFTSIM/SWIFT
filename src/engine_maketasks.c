@@ -4875,8 +4875,9 @@ static void engine_radiation_check_self_linked(struct cell *c) {
 
 /**
  * @brief Mapper wrapper for the missing-link tripwire: one top-level cell
- * and its 26 periodic neighbours per element, mirroring
- * engine_make_radiationloop_tasks_mapper()'s own stencil.
+ * and its 26 neighbours per element, mirroring
+ * engine_make_radiationloop_tasks_mapper()'s own stencil (on the zoom grid,
+ * without wrapping, in a zoom run).
  *
  * @param map_data Offset of the first cell index disguised as a pointer.
  * @param num_elements Number of top-level cells to visit.
@@ -4887,8 +4888,8 @@ static void engine_radiation_check_missing_links_mapper(void *map_data,
                                                         void *extra_data) {
   struct engine *e = (struct engine *)extra_data;
   const struct space *s = e->s;
-  const int periodic = s->periodic;
-  const int *cdim = s->cdim;
+  const int periodic = !s->with_zoom_region ? s->periodic : 0;
+  const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
   struct cell *cells = s->cells_top;
   const int with_stars = (e->policy & engine_policy_stars);
 
@@ -4925,6 +4926,14 @@ static void engine_radiation_check_missing_links_mapper(void *map_data,
           if (cid >= cjd) continue;
 
           struct cell *cj = &cells[cjd];
+
+          if (s->with_zoom_region &&
+              (ci->type != cell_type_zoom || cj->type != cell_type_zoom))
+            error(
+                "Checking radiation links of non-zoom cells while running a "
+                "zoom! (ci->type=%s, cj->type=%s)",
+                cellID_names[ci->type], cellID_names[cj->type]);
+
           if ((cj->hydro.count == 0) && (!with_stars || cj->stars.count == 0))
             continue;
 
@@ -4956,6 +4965,9 @@ static void engine_radiation_check_missing_links_mapper(void *map_data,
  * Additional loop over neighbours can later be added by simply duplicating
  * all the tasks created by this function.
  *
+ * As for the hydro loop, in the zoom case we only consider zoom cells (the
+ * only cells holding gas and stars) and periodicity is ignored.
+ *
  * @param map_data Offset of first two indices disguised as a pointer.
  * @param num_elements Number of cells to traverse.
  * @param extra_data The #engine.
@@ -4967,14 +4979,14 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
 
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
-  const int periodic = e->s->periodic;
+  const int periodic = !e->s->with_zoom_region ? e->s->periodic : 0;
   const int with_feedback = (e->policy & engine_policy_feedback);
   const int with_stars = (e->policy & engine_policy_stars);
 
   struct space *s = e->s;
   struct scheduler *sched = &e->sched;
   const int nodeID = e->nodeID;
-  const int *cdim = s->cdim;
+  const int *cdim = !s->with_zoom_region ? s->cdim : s->zoom_props->cdim;
   struct cell *cells = s->cells_top;
 
   /* Loop through the elements, which are just byte offsets from NULL. */
@@ -5018,6 +5030,17 @@ void engine_make_radiationloop_tasks_mapper(void *map_data, int num_elements,
           /* Get the neighbouring cell */
           const int cjd = cell_getid(cdim, iii, jjj, kkk);
           struct cell *cj = &cells[cjd];
+
+#ifdef SWIFT_DEBUG_CHECKS
+          /* Ensure we only have zoom cells in the zoom case. */
+          if (s->with_zoom_region &&
+              (ci->type != cell_type_zoom || cj->type != cell_type_zoom)) {
+            error(
+                "Trying to make radiation tasks for non-zoom cells while "
+                "running a zoom! (ci->type=%s, cj->type=%s)",
+                cellID_names[ci->type], cellID_names[cj->type]);
+          }
+#endif
 
           /* Is that neighbour local and does it have gas or star particles ? */
           if ((cid >= cjd) ||
@@ -5626,8 +5649,10 @@ void engine_maketasks(struct engine *e) {
      * radiation_subgrid_task() (cell.h) use that flag as their stop
      * condition. */
     const int nr_tasks_before_radiation = sched->nr_tasks;
+    const int nr_radiation_top_cells =
+        !s->with_zoom_region ? s->nr_cells : s->zoom_props->nr_zoom_cells;
     threadpool_map(&e->threadpool, engine_make_radiationloop_tasks_mapper, NULL,
-                   s->nr_cells, 1, threadpool_auto_chunk_size, e);
+                   nr_radiation_top_cells, 1, threadpool_auto_chunk_size, e);
 
     if (sched->nr_tasks > nr_tasks_before_radiation)
       scheduler_splittasks_radiation(sched, nr_tasks_before_radiation);
@@ -5723,8 +5748,10 @@ void engine_maketasks(struct engine *e) {
      * adjacent radiation_level cells must share a radiation_in link. Catches
      * the failure mode neither of the two checks above can see -- a link
      * that should exist but does not. */
-    threadpool_map(&e->threadpool, engine_radiation_check_missing_links_mapper,
-                   NULL, s->nr_cells, 1, threadpool_auto_chunk_size, e);
+    threadpool_map(
+        &e->threadpool, engine_radiation_check_missing_links_mapper, NULL,
+        !s->with_zoom_region ? s->nr_cells : s->zoom_props->nr_zoom_cells, 1,
+        threadpool_auto_chunk_size, e);
   }
 #endif
 

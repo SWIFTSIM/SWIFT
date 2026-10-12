@@ -1015,6 +1015,20 @@ void zoom_region_init(struct space *s, const int regridding,
   /* Construct the zoom region geometry. */
   zoom_get_geometry(s);
 
+  /* The hydro, star and radiation stencils on the zoom grid never wrap. That
+   * is only correct if the zoom region does not span the periodic box. */
+  if (s->periodic && (s->zoom_props->dim[0] >= 0.999 * s->dim[0] ||
+                      s->zoom_props->dim[1] >= 0.999 * s->dim[1] ||
+                      s->zoom_props->dim[2] >= 0.999 * s->dim[2])) {
+    error(
+        "The zoom region (dim=[%f, %f, %f]) spans the whole periodic box "
+        "(dim=[%f, %f, %f]), but the zoom grid neighbour stencils do not "
+        "wrap. Increase ZoomRegion:bkg_top_level_cells or run without a "
+        "zoom region.",
+        s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2],
+        s->dim[0], s->dim[1], s->dim[2]);
+  }
+
   /* Store what the true boost factor ended up being */
   s->zoom_props->region_pad_factor = s->zoom_props->dim[0] / ini_dim;
 

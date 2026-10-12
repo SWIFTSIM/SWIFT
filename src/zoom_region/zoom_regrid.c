@@ -253,7 +253,8 @@ void zoom_regrid_find_acceptable_geometry(struct space *s,
       error(
           "Failed to find an acceptable zoom region before reaching depth=0 "
           "(i.e. not a zoom). Try to decrease the initial background cell "
-          "size.");
+          "size. With HII feedback the search radius includes the star "
+          "radiation term max(h_hii, h): see Stars:HII_max_search_radius.");
     }
 
     /* If the geometry was originally driven by a requested cdim, update that
