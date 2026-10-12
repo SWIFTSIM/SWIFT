@@ -840,19 +840,27 @@ void DOPAIR_SUBSET_BRANCH_SIDM(struct runner *r, const struct cell *restrict ci,
   const int is_sorted = (cj->sidm.sorted & (1 << sid)) &&
                         (cj->sidm.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-  /* Now we can unlock */
-  if (lock_unlock(&cj->sidm.extra_sort_lock) != 0)
-    error("Impossible to unlock cell!");
-
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else
   const int force_naive = 0;
 #endif
+
   if (force_naive || !is_sorted) {
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->sidm.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+
     DOPAIR_SUBSET_SIDM_NAIVE(r, ci, siparts_i, ind, sicount, cj, shift);
+
   } else {
+
     DOPAIR_SUBSET_SIDM(r, ci, siparts_i, ind, sicount, cj, sid, flipped, shift);
+
+    /* Unlock now that we are done reading the sort array */
+    if (lock_unlock(&cj->sidm.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
   }
 }
 
@@ -2412,11 +2420,13 @@ void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->sidm.sorted & (1 << sid)) ||
         ci->sidm.dx_max_sort_old > ci->dmin * space_maxreldx) {
-      runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+      runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                          /*clock=*/0);
     }
     if (!(cj->sidm.sorted & (1 << sid)) ||
         cj->sidm.dx_max_sort_old > cj->dmin * space_maxreldx) {
-      runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+      runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                          /*clock=*/0);
     }
 
     /* We interact all particles in that cell:
@@ -2445,11 +2455,13 @@ void DOSUB_PAIR1_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
        * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->sidm.sorted & (1 << sid)) ||
           ci->sidm.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+        runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                            /*clock=*/0);
       }
       if (!(cj->sidm.sorted & (1 << sid)) ||
           cj->sidm.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+        runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                            /*clock=*/0);
       }
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)
@@ -2570,11 +2582,13 @@ void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->sidm.sorted & (1 << sid)) ||
         ci->sidm.dx_max_sort_old > ci->dmin * space_maxreldx) {
-      runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+      runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                          /*clock=*/0);
     }
     if (!(cj->sidm.sorted & (1 << sid)) ||
         cj->sidm.dx_max_sort_old > cj->dmin * space_maxreldx) {
-      runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+      runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                          /*clock=*/0);
     }
 
     /* We interact all particles in that cell:
@@ -2601,11 +2615,13 @@ void DOSUB_PAIR2_SIDM(struct runner *r, struct cell *ci, struct cell *cj,
        * Since h_max might have changed, we may not have sorted at this level */
       if (!(ci->sidm.sorted & (1 << sid)) ||
           ci->sidm.dx_max_sort_old > ci->dmin * space_maxreldx) {
-        runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+        runner_do_sidm_sort(r, ci, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                            /*clock=*/0);
       }
       if (!(cj->sidm.sorted & (1 << sid)) ||
           cj->sidm.dx_max_sort_old > cj->dmin * space_maxreldx) {
-        runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*clock=*/0);
+        runner_do_sidm_sort(r, cj, (1 << sid), /*cleanup=*/0, /*lock=*/1,
+                            /*clock=*/0);
       }
 
       /* Interact all *active* particles with h in the range [dmin/2, dmin)

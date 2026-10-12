@@ -306,6 +306,10 @@ void space_regrid(struct space *s, int verbose) {
         error("Failed to init spinlock for black holes.");
       if (lock_init(&s->cells_top[k].stars.star_formation_lock) != 0)
         error("Failed to init spinlock for star formation (spart).");
+      if (lock_init(&s->cells_top[k].sidm.lock) != 0)
+        error("Failed to init spinlock for SIDM.");
+      if (lock_init(&s->cells_top[k].sidm.extra_sort_lock) != 0)
+        error("Failed to init spinlock for SIDM extra sort.");
     }
 
     /* Set the cell location and sizes. */

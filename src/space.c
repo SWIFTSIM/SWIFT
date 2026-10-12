@@ -566,6 +566,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
         lock_init(&cells[j]->stars.lock) != 0 ||
         lock_init(&cells[j]->sinks.lock) != 0 ||
         lock_init(&cells[j]->sidm.lock) != 0 ||
+        lock_init(&cells[j]->sidm.extra_sort_lock) != 0 ||
         lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
         lock_init(&cells[j]->black_holes.lock) != 0 ||
         lock_init(&cells[j]->stars.star_formation_lock) != 0 ||

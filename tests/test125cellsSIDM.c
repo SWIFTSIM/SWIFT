@@ -438,7 +438,7 @@ int main(int argc, char *argv[]) {
 
   /* First, sort stuff */
   for (int j = 0; j < 125; ++j)
-    runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0);
+    runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
   for (int i = 0; i < 5; i++) {
     for (int j = 0; j < 5; j++) {
@@ -541,7 +541,7 @@ int main(int argc, char *argv[]) {
 
     /* First, sort stuff */
     for (int j = 0; j < 125; ++j)
-      runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0);
+      runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
     /* Do the density calculation */
 
