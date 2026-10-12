@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
 #include "../GEAR/radiation_isrf.h"
+#include "../GEAR/radiation_selection.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
 #include "chemistry.h"
@@ -343,6 +344,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
               ? "ON"
               : "OFF");
 
+  message(
+      "Subgrid radiation parts compiled (--with-subgrid-radiation) =%s%s%s%s",
+      RADIATION_COMPILED_PRESSURE ? " rp" : "",
+      RADIATION_COMPILED_HII ? " hii" : "",
+      RADIATION_COMPILED_ISRF ? " isrf" : "",
+      radiation_selection_absent_mask() ==
+              (RADIATION_SELECTION_BIT_PRESSURE | RADIATION_SELECTION_BIT_HII |
+               RADIATION_SELECTION_BIT_ISRF)
+          ? " none"
+          : "");
+
   /* Radiation pressure */
   message(
       "Radiation pressure                                         = %i",
@@ -544,13 +556,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       params, "GEARFeedback:with_stellar_wind_feedback");
   fp->with_stellar_wind_feedback = with_stellar_wind_feedback;
 
+  /* The keys of a part this build lacks are ignored, with one warning. */
+  radiation_selection_warn_absent_parts(params);
+
   /* Are we running with photoionization? */
-  const char with_photoionization = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_photoionization", 0);
+  const char with_photoionization = (char)radiation_selection_get_switch(
+      params, "GEARFeedback:with_photoionization", RADIATION_COMPILED_HII);
 
   /* Radiation pressure. The efficiency is read only when this is on. */
-  const char with_radiation_pressure = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_radiation_pressure", 0);
+  const char with_radiation_pressure = (char)radiation_selection_get_switch(
+      params, "GEARFeedback:with_radiation_pressure",
+      RADIATION_COMPILED_PRESSURE);
 
   /* Stays 0 when radiation pressure is off. */
   float radiation_pressure_efficiency = 0.f;
@@ -568,8 +584,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
   /* Are we running with the local Lyman-Werner/PE feedback (photoelectric
    * heating + H2 photodissociation)? */
-  const char with_interstellar_radiation_field = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_interstellar_radiation_field", 0);
+  const char with_interstellar_radiation_field =
+      (char)radiation_selection_get_switch(
+          params, "GEARFeedback:with_interstellar_radiation_field",
+          RADIATION_COMPILED_ISRF);
 
   /* Every channel switch must appear here. Keep in sync with
    * feedback_struct_restore(). */
@@ -706,9 +724,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   fp->ISRF_extinction_path_in_kernel_radii = 0.f;
   fp->ISRF_extinction_jeans_temperature_cap_K = 0.f;
 
-  char extinction_path[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
-                              extinction_path, "pair_separation");
+  /* A build without the ISRF keeps the default and reads no ISRF key. */
+  char extinction_path[PARSER_MAX_LINE_SIZE] = "pair_separation";
+  if (RADIATION_COMPILED_ISRF)
+    parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
+                                extinction_path, "pair_separation");
 
   if (strcmp(extinction_path, "constant_kernel_path") == 0) {
     fp->ISRF_extinction_path_mechanism =

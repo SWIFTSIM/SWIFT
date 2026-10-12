@@ -21,6 +21,7 @@
 #define SWIFT_COOLING_GRACKLE_IO_H
 
 /* Local includes */
+#include "../../feedback/GEAR/radiation_selection.h"
 #include "cooling.h"
 #include "cooling_properties.h"
 #include "cooling_struct.h"
@@ -238,8 +239,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   /* Lives under GEARFeedback, alongside its sibling HII_* parameters,
      rather than GrackleCooling: forces use_radiative_transfer on
      internally so the user only sets this one flag. */
-  cooling->HII_couple_ionization_rate = parser_get_opt_param_int(
-      parameter_file, "GEARFeedback:HII_couple_ionization_rate", 0);
+  cooling->HII_couple_ionization_rate = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:HII_couple_ionization_rate",
+      RADIATION_COMPILED_HII);
   if (cooling->HII_couple_ionization_rate) {
     cooling->use_radiative_transfer = 1;
   }
@@ -285,8 +287,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
      COOLING_GRACKLE_MODE > 1, use_radiative_transfer here for the
      RT_H2_dissociation_rate channel) on internally so the user only sets
      this one flag. */
-  cooling->with_ISRF = parser_get_opt_param_int(
-      parameter_file, "GEARFeedback:with_interstellar_radiation_field", 0);
+  cooling->with_ISRF = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:with_interstellar_radiation_field",
+      RADIATION_COMPILED_ISRF);
 
   char pe_efficiency[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,

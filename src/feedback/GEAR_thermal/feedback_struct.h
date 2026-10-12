@@ -180,25 +180,34 @@ struct feedback_isrf_operator_data {
  */
 struct feedback_part_data {
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Tag to mark the particle as ionized. */
   char is_ionized;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Largest #part.time_bin among this particle and its neighbours in the
       ISRF density loop of this h-iteration. Drives #c_hyp. Sits in the
       padding after #is_ionized, so #part does not grow. */
   timebin_t max_ngb_time_bin;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */
   long long star_id;
 
   /*! Simulation time until which this particle stays flagged as ionized. */
   double end_time;
+#endif
 
+#ifdef GEAR_COOLING
   /*! Neutral hydrogen mass fraction cached by the cooling step (grackle_0:
       1.0f). Not read by anything yet: an MPI-consistent consumer must read
       the PREVIOUS pass's value. 0 until first written, not "fully ionized". */
   float neutral_H_frac;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */
   struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
 
@@ -254,6 +263,7 @@ struct feedback_part_data {
       #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
       every star touch. Set to -1 at first init. */
   integertime_t ISRF_reservoir_end_ti;
+#endif
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   /* Trace the metals received from feedback events. This is similar to not
@@ -304,13 +314,16 @@ struct feedback_xpart_data {
      with the multiple-event correction) */
   unsigned int number_winds;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Radiation struct */
   struct {
 
     /*! Momentum received from radiation pressure */
     float delta_p[3];
   } radiation;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! HII ionization payload computed by the owner, local to its rank. The tag
       itself lives in #feedback_part_data. */
   struct {
@@ -325,6 +338,7 @@ struct feedback_xpart_data {
     float photoionization_rate_HI;
 
   } HII_region;
+#endif
 
   /*! Indicator if the particule receive energy from SN specifically */
   char hit_by_SN;
@@ -332,9 +346,11 @@ struct feedback_xpart_data {
   /*! Indicator if the particle receives energy from SW specifically */
   char hit_by_winds;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Indicator if the particle receives energy from radiation pressure
    * specifically */
   char hit_by_radiation;
+#endif
 };
 
 /**
@@ -352,17 +368,21 @@ struct feedback_spart_data {
   /*! Does the particle needs to go through the feedback loops? */
   char will_do_feedback;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Does the particle needs to go through the HII ionization loop? */
   char will_do_HII_ionization;
+#endif
 
   /*! Integer number of neighbours */
   int num_ngbs;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Gas density gradient at the star location */
   float grad_rho_star[3];
 
   /*! Gas metallicity at the star location */
   float Z_star;
+#endif
 
   /*! Number of Ia supernovae */
   float number_snia;
@@ -398,9 +418,12 @@ struct feedback_spart_data {
   /*! Radiation data structs */
   struct {
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
     /*! Bolometric luminosity (physical units) from the stellar evolution */
     double L_bol;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
     /*! Ionizing photon rate of each active pixel (physical units): the star's
         total, split evenly. Double, since the value is huge. A pure rate,
         never debited. */
@@ -440,11 +463,15 @@ struct feedback_spart_data {
     /*! Mean photon energy above 13.6 eV, cached once per HII rebuild pass, in
         erg. Only set with GEARFeedback:HII_couple_ionization_rate. */
     float mean_excess_photon_energy_HI;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
     /*! Moment luminosity (physical units) by #radiation_isrf_moment, from the
         radiation table. 0 unless the interstellar radiation field is on. */
     double L_band[ISRF_MOMENT_COUNT];
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION
     /*! Photospheric effective temperature (internal units), a diagnostic no
         feedback channel uses. For a population particle, the hottest
         surviving star. 0 without a "Teff" table dataset. */
@@ -457,6 +484,7 @@ struct feedback_spart_data {
 #ifdef SWIFT_DEBUG_CHECKS
     /*! Integer time at the start of the step #Delta_t was cached for. */
     integertime_t Delta_t_cached_ti_begin;
+#endif
 #endif
 
   } radiation;

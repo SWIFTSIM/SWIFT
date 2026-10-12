@@ -254,12 +254,16 @@ static INLINE void tracers_first_init_xpart(
 
   xp->tracers_data.feedback_cumulative.momentum_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.momentum_winds = 0.f;
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   xp->tracers_data.feedback_cumulative.momentum_radiation = 0.f;
+#endif
   xp->tracers_data.feedback_cumulative.energy_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.energy_winds = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_supernovae = 0.f;
   xp->tracers_data.feedback_cumulative.max_kick_velocity_winds = 0.f;
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation = 0.f;
+#endif
 }
 
 /**
@@ -476,11 +480,13 @@ static INLINE void tracers_after_stellar_winds_feedback_part(
 static INLINE void tracers_after_radiation_pressure_feedback_part(
     struct xpart *xp, const float delta_p, const float kick_velocity) {
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   tracers_gear_accumulate_feedback_part(
       &xp->tracers_data.feedback_cumulative.momentum_radiation,
       /* Radiation pressure only deposits momentum */ NULL,
       &xp->tracers_data.feedback_cumulative.max_kick_velocity_radiation,
       delta_p, 0.f, kick_velocity);
+#endif
 }
 
 /**

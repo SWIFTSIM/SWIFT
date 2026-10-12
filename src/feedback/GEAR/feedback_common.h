@@ -25,6 +25,7 @@
 #include "cooling.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "radiation_selection.h"
 #include "units.h"
 
 /**
@@ -48,10 +49,6 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin);
 
-void feedback_will_do_HII_ionization(
-    struct spart *sp, const struct feedback_props *feedback_props,
-    const double star_age_beg_step, const double star_age_end_step);
-
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
@@ -69,6 +66,10 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const double time,
                                         const double dt_star);
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+void feedback_will_do_HII_ionization(
+    struct spart *sp, const struct feedback_props *feedback_props,
+    const double star_age_beg_step, const double star_age_end_step);
 int feedback_is_HII_ionization_active(const struct spart *sp,
                                       const struct engine *e);
 double feedback_get_star_ionization_rate(const struct spart *sp, int pixel);
@@ -106,6 +107,18 @@ void feedback_set_star_HII_last_rebuild(struct spart *sp,
 double feedback_get_star_HII_last_attempt(const struct spart *sp);
 void feedback_set_star_HII_last_attempt(struct spart *sp,
                                         double star_age_beg_step);
+#else
+/* Without the part: the star carries no HII state. */
+__attribute__((always_inline)) INLINE static void
+feedback_will_do_HII_ionization(struct spart *sp,
+                                const struct feedback_props *feedback_props,
+                                const double star_age_beg_step,
+                                const double star_age_end_step) {}
+__attribute__((always_inline)) INLINE static double
+feedback_get_star_HII_last_rebuild(const struct spart *sp) {
+  return 0.;
+}
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp);
@@ -115,6 +128,7 @@ float feedback_get_star_HII_mass(const struct spart *sp);
 double feedback_get_star_L_PE(const struct spart *sp);
 double feedback_get_star_L_LW(const struct spart *sp);
 float feedback_get_star_teff(const struct spart *sp);
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 double feedback_get_part_u_PE(const struct part *p);
 double feedback_get_part_u_LW(const struct part *p);
 double feedback_get_part_u_LW_PHOTON(const struct part *p);
@@ -143,6 +157,7 @@ float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
 float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
 float feedback_get_part_c_hyp(const struct part *p);
 float feedback_get_part_pending_specific_energy(const struct part *p, int m);
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 void feedback_init_after_star_formation(
     struct spart *sp, const struct feedback_props *feedback_props,
@@ -154,6 +169,23 @@ void feedback_first_init_spart(struct spart *sp,
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
  * pending fields at a = 0 only, 3 phi-weighted pending at any a. */
 #define FEEDBACK_RESTART_ISRF_PART_LAYOUT 3
+
+/*! The restart layout marker adds this factor times
+    #radiation_selection_absent_mask(), so that a build with all the parts
+    writes #FEEDBACK_RESTART_ISRF_PART_LAYOUT unchanged. */
+#define FEEDBACK_RESTART_SELECTION_FACTOR 16
+
+/**
+ * @brief The particle layout marker this build writes to its restart files.
+ *
+ * @return #FEEDBACK_RESTART_ISRF_PART_LAYOUT plus
+ * #FEEDBACK_RESTART_SELECTION_FACTOR times the absent-part mask.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_restart_particle_layout(void) {
+  return FEEDBACK_RESTART_ISRF_PART_LAYOUT +
+         FEEDBACK_RESTART_SELECTION_FACTOR * radiation_selection_absent_mask();
+}
 
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,

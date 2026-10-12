@@ -32,7 +32,9 @@
 #define EXTRA_STAR_LOOPS
 #elif defined(FEEDBACK_GEAR)
 #include "./feedback/GEAR_thermal/feedback.h"
+#ifdef GEAR_SUBGRID_RADIATION_HII
 #define IONIZATION_FEEDBACK_LOOP
+#endif
 #elif defined(FEEDBACK_AGORA)
 #include "./feedback/AGORA/feedback.h"
 #else
