@@ -357,12 +357,7 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
   const struct engine *e = data->e;
   const int periodic = s->periodic;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
-  /* Use float precision to match the formation loop, which computes
-   * r_cut2 = r_cut * r_cut and dx/r2 all in float.  Using double here
-   * would give a more precise r_cut2 and could exclude particles that
-   * the formation loop (at float precision) correctly included. */
   const float r_cut = sink_formation_gas_loop_r_cut(e->sink_properties);
-  const float r_cut2 = r_cut * r_cut;
   int counter = 0;
 
   for (int i = 0; i < nr_parts; ++i) {
@@ -384,9 +379,6 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
         continue;
       }
 
-      /* Get position of gas particle i (in double for nearest() accuracy) */
-      const double pix[3] = {pi->x[0], pi->x[1], pi->x[2]};
-
       /* Brute-force count: loop over all gas particles */
       int N_formation_exact = 0;
 
@@ -398,27 +390,10 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
          * because map_data may start mid-array when threadpool chunks work. */
         if (pj == pi) continue;
 
-        /* Compute pairwise distance.  Subtract in double (like the self-cell
-         * formation loop: `(float)(pi->x[k] - pj->x[k])`), apply periodic BC
-         * in double for accuracy, then cast to float before squaring so that
-         * the r2 < r_cut2 comparison uses the same float precision as the
-         * formation loop.  This prevents spurious mismatches from particles
-         * sitting exactly on the r_cut boundary. */
-        double ddx = pj->x[0] - pix[0];
-        double ddy = pj->x[1] - pix[1];
-        double ddz = pj->x[2] - pix[2];
-
-        /* Apply periodic BC in double */
-        if (periodic) {
-          ddx = nearest(ddx, dim[0]);
-          ddy = nearest(ddy, dim[1]);
-          ddz = nearest(ddz, dim[2]);
-        }
-
-        const float dx = (float)ddx;
-        const float dy = (float)ddy;
-        const float dz = (float)ddz;
-        const float r2 = dx * dx + dy * dy + dz * dz;
+        /* Same distance and aperture test as the formation loop. */
+        float dx[3];
+        const double r2 =
+            sink_formation_gas_loop_r2(pi->x, pj->x, dim, periodic, dx);
 
         /* Count if within fixed aperture.
          * Particles swallowed *during this step* (by the swallow task,
@@ -431,7 +406,7 @@ void sink_exact_formation_count_compute_mapper(void *map_data, int nr_parts,
          * In non-debug builds ti_drift is unavailable; fall back to
          * excluding all inhibited particles (may produce false alarms
          * when swallowing occurs between rebuilds). */
-        if (r2 < r_cut2) {
+        if (sink_formation_gas_loop_in_aperture(r2, r_cut)) {
 #ifdef SWIFT_DEBUG_CHECKS
           const int skip =
               part_is_inhibited(pj, e) && (pj->ti_drift != e->ti_current);
