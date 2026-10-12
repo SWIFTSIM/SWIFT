@@ -38,8 +38,8 @@ if [ "$WITH_WINDS" = true ]; then
     echo "Source: UniGe Astro servers"
     echo "========================================"
 
-    wget -P "$DEST_DIR" https://obswww.unige.ch/~revazy/DATA/Swift/PreSNeTables/POPII.hdf5
-    wget -P "$DEST_DIR" https://obswww.unige.ch/~revazy/DATA/Swift/PreSNeTables/POPIII_PISNe.hdf5
+    wget -P "$DEST_DIR" https://virgodb.cosma.dur.ac.uk/swift-webstorage/FeedbackTables/POPII.hdf5
+    wget -P "$DEST_DIR" https://virgodb.cosma.dur.ac.uk/swift-webstorage/FeedbackTables/POPIII_PISNe.hdf5
 
 else
     echo "========================================"
