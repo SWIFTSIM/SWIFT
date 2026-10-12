@@ -10,7 +10,8 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-n_threads=${n_threads:=8}
+n_threads=${n_threads:=8}                     # per rank
+n_ranks=${n_ranks:=1}                         # >1: swift_mpi under mpirun
 gas_density=${gas_density:=1e3}                # cold-phase n_H, atom/cm^3
 gas_particle_mass=${gas_mass:=0.1}              # cold-phase particle mass, Msun
 level=${level:=6}
@@ -88,6 +89,13 @@ if python3 -c "import sys; sys.exit(0 if float(sys.argv[1]) > 0.0 else 1)" "$c_h
     c_hyp_scheme=fixed_fraction
 fi
 
+swift_bin="../../../../../swift"
+swift_cmd="$swift_bin"
+if [ "$n_ranks" -gt 1 ]; then
+    swift_bin="../../../../../swift_mpi"
+    swift_cmd="mpirun -np $n_ranks $swift_bin"
+fi
+
 printf "Running simulation..."
 
 # --external-gravity with no Potential: block gives zero gravitational
@@ -96,7 +104,7 @@ printf "Running simulation..."
 # energy update itself is skipped via
 # GrackleCooling:disable_cooling_for_debugging in params.yml, which keeps
 # the two-phase temperature (hence timestep-bin) structure frozen.
-../../../../../swift --hydro --stars --external-gravity --feedback --cooling \
+$swift_cmd --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter --verbose=0 --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
@@ -118,7 +126,7 @@ printf "Running simulation..."
 # --enable-debugging-checks (feedback_common.c:1248), so detect the build
 # the same way ISRFHyperbolicPropagation/run.sh does and pass it through,
 # rather than let multibin_compare.py silently gate on all-zero data.
-swift_banner=$(../../../../../swift --version 2>&1 || true)
+swift_banner=$($swift_bin --version 2>&1 || true)
 case "$swift_banner" in
     *enable-debugging-checks=no*|*disable-debugging-checks*)
 	ledger_valid=0
@@ -139,6 +147,12 @@ esac
 check_status=0
 python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin \
 	--ledger-valid $ledger_valid || check_status=$?
+
+# Closed energy ledger against its float32 bound; valid only for one
+# propagation speed and a debugging-checks build (see README).
+if [ "$ledger_valid" = 1 ] && [ "$c_hyp_scheme" = fixed_fraction ]; then
+    python3 isrf_multibin_ledger_check.py || check_status=$?
+fi
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
