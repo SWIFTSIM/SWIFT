@@ -31,6 +31,7 @@
 #include "stellar_wind.h"
 #include "supernovae_ia.h"
 #include "supernovae_ii.h"
+#include "tracers.h"
 
 #include <math.h>
 #include <stddef.h>
@@ -680,19 +681,17 @@ void stellar_evolution_compute_preSN_properties(
     const float dt_myr, const float m_beg_step, const float m_end_step,
     const float m_init) {
 
-  /* The end/beg step mass are already limited to the imf if SSP or
-     continuous IMF stars. Upper mass bound for this continuous-emission
-     channel this step; see
-     stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen for the
-     overestimate/underestimate tradeoff. */
+  /* m_beg_step/m_end_step are already limited to the IMF for SSP and
+     continuous-IMF stars. */
   const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
       sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
-  /* Get the log of the metallicity normalised by solar metallicity */
+  /* Data/SW is indexed by absolute Z, not Z/Zsun; floor to avoid log10(0). */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-  const float log_metallicity =
-      log10(metallicity / stellar_evolution_get_solar_abundance(sm, "Metals"));
+  const double metallicity_floored =
+      max((double)metallicity, STELLAR_WIND_LOG_FLOOR);
+  const float log_metallicity = (float)log10(metallicity_floored);
   const float log_m = log10(m_sup);
 
   /* If the star particle is single_star the calculation is straight forward */
@@ -708,7 +707,7 @@ void stellar_evolution_compute_preSN_properties(
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
-        "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
+        "Star_type=single init_mass[M_odot]=%g metallicity[mass_fraction]=%g "
         "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
         m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
@@ -757,7 +756,8 @@ void stellar_evolution_compute_preSN_properties(
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
-        "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
+        "Star_type=continuous init_mass[M_odot]=%g "
+        "metallicity[mass_fraction]=%g "
         "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
         "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
         m_init, exp10(log_metallicity),
@@ -814,10 +814,10 @@ void stellar_evolution_compute_preSN_properties(
  */
 void stellar_evolution_evolve_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_wind_feedback,
-    const integertime_t ti_begin, const double star_age_beg_step,
-    const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const char with_stellar_wind_feedback, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for single_star only. */
   if (sp->star_type != single_star) {
@@ -860,7 +860,8 @@ void stellar_evolution_evolve_individual_star(
   }
   /* Supernova feedback */
   stellar_evolution_compute_SN_feedback_individual_star(
-      sp, sm, cosmo, us, phys_const, ti_begin, star_age_beg_step, dt);
+      sp, sm, with_cosmology, cosmo, time, us, phys_const, ti_begin,
+      star_age_beg_step, dt);
 }
 
 /**
@@ -883,10 +884,10 @@ void stellar_evolution_evolve_individual_star(
  */
 void stellar_evolution_evolve_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_wind_feedback,
-    const integertime_t ti_begin, const double star_age_beg_step,
-    const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const char with_stellar_wind_feedback, const integertime_t ti_begin,
+    const double star_age_beg_step, const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
@@ -912,8 +913,9 @@ void stellar_evolution_evolve_spart(
   }
 
   /* Supernova feedback */
-  stellar_evolution_compute_SN_feedback_spart(sp, sm, cosmo, us, phys_const,
-                                              ti_begin, star_age_beg_step, dt);
+  stellar_evolution_compute_SN_feedback_spart(sp, sm, with_cosmology, cosmo,
+                                              time, us, phys_const, ti_begin,
+                                              star_age_beg_step, dt);
 }
 
 /**
@@ -975,9 +977,10 @@ float stellar_evolution_compute_initial_mass(
  */
 void stellar_evolution_compute_SN_feedback_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for individual starsv*/
   if (sp->star_type != single_star) {
@@ -1031,6 +1034,13 @@ void stellar_evolution_compute_SN_feedback_individual_star(
   /* Save the number of supernovae */
   sp->feedback_data.number_snia = number_snia;
   sp->feedback_data.number_snii = number_snii;
+
+  /* Record this star's own SN-event history (single_star always fires
+     exactly one SNII, never SNIa; see stellar_evolution_evolve_spart()'s
+     own population-only counterpart for the SNIa channel). */
+  tracers_after_snii_event_spart(sp, number_snii,
+                                 sp->feedback_data.enrichment_weight,
+                                 with_cosmology, cosmo, time);
 
   /* this is needed for  stellar_evolution_compute_discrete_feedback_properties
    */
@@ -1090,9 +1100,10 @@ void stellar_evolution_compute_SN_feedback_individual_star(
  */
 void stellar_evolution_compute_SN_feedback_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const integertime_t ti_begin,
-    const double star_age_beg_step, const double dt) {
+    const int with_cosmology, const struct cosmology *cosmo, const double time,
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
 
   /* Check that this function is called for populations of stars and not
      individual stars. */
@@ -1209,6 +1220,15 @@ void stellar_evolution_compute_SN_feedback_spart(
     sp->feedback_data.number_snia = number_snia;
     sp->feedback_data.number_snii = number_snii;
 
+    /* Record this star's own SN-event history for each channel that fired
+       this step. */
+    tracers_after_snia_event_spart(sp, number_snia,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
+    tracers_after_snii_event_spart(sp, number_snii,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
+
     /* Compute the yields */
     stellar_evolution_compute_discrete_feedback_properties(
         sp, sm, phys_const, m_beg_step, m_end_step, m_init, number_snia,
@@ -1218,6 +1238,15 @@ void stellar_evolution_compute_SN_feedback_spart(
     /* Save the number of supernovae */
     sp->feedback_data.number_snia = number_snia_f;
     sp->feedback_data.number_snii = number_snii_f;
+
+    /* Record this star's own SN-event history for each channel that fired
+       this step. */
+    tracers_after_snia_event_spart(sp, number_snia_f,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
+    tracers_after_snii_event_spart(sp, number_snii_f,
+                                   sp->feedback_data.enrichment_weight,
+                                   with_cosmology, cosmo, time);
 
     /* Compute the yields */
     stellar_evolution_compute_continuous_feedback_properties(
@@ -1382,17 +1411,16 @@ void stellar_evolution_compute_preSN_feedback_spart(
   if (m_beg_step < sm->imf.mass_min) return;
 
   /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They do not contain stars above the mass that separate the
-  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback for the discrete part. m_end_step needs the same clamp: stellar
-  winds are a continuous emission (unlike SN's discrete death events), so a
-  young population where even m_end_step exceeds minimal_discrete_mass_Msun
-  is not "nothing to do yet" -- every star this particle can contain, up to
-  minimal_discrete_mass_Msun, is still alive and still emitting, so the
-  m_sup query point computed downstream (stellar_evolution_get_continuous_
-  feedback_mass_sup, via stellar_evolution_compute_preSN_properties) must
-  reach exactly that far, not stop early or reach past it. */
+  special treatment. They do not contain stars above the mass that separate
+  the IMF into two parts (variable called minimal_discrete_mass_Msun in the
+  sink module). So, if m_beg_step > minimal_discrete_mass_Msun, skip
+  feedback for the discrete part. m_end_step needs the same clamp: winds are
+  continuous emission, not discrete death events, so a young population with
+  m_end_step above minimal_discrete_mass_Msun still has every star up to
+  that mass alive and emitting. The m_sup query point computed downstream
+  (stellar_evolution_get_continuous_feedback_mass_sup, via
+  stellar_evolution_compute_preSN_properties) must reach exactly that far,
+  not stop early or overshoot. */
   if (sp->star_type == star_population_continuous_IMF) {
     m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
     m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);

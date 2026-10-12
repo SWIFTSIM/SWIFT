@@ -2009,8 +2009,10 @@ void engine_synchronize_times(struct engine *e) {
   const ticks tic_start = getticks();
 
   /* Collect which top-level cells have been updated */
-  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
-                MPI_SUM, MPI_COMM_WORLD);
+  /* Note: the array holds 0/1 flags, so a byte-wise OR is what we want (and
+   * MPI_CHAR is not a valid type for arithmetic reductions). */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_BYTE,
+                MPI_BOR, MPI_COMM_WORLD);
 
   /* Activate tend communications involving the cells that have changed. */
   for (int i = 0; i < e->s->nr_cells; ++i) {

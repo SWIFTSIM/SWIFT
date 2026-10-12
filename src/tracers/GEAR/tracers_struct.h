@@ -25,12 +25,65 @@
 /**
  * @brief Properties of the tracers stored in the extended particle data.
  */
-struct tracers_xpart_data {};
+struct tracers_xpart_data {
+
+  /*! Feedback received over this particle's whole lifetime, physical internal
+   * units. */
+  struct {
+
+    /*! Cumulative |delta_p| per event (scalar sum, not vector: isotropic
+        kicks would else cancel), physical. */
+    float momentum_supernovae;
+    float momentum_winds;
+
+    /*! Cumulative specific internal energy received. */
+    float energy_supernovae;
+    float energy_winds;
+
+    /*! Largest single-event kick velocity received (outflow diagnostic). */
+    float max_kick_velocity_supernovae;
+    float max_kick_velocity_winds;
+
+  } feedback_cumulative;
+};
+
+/**
+ * @brief Per-channel record of a star's own SN events over its lifetime.
+ *
+ * One event for a discrete star; for a population particle, "event" means
+ * an active SN step (possibly fractional), not one discrete explosion.
+ */
+struct tracers_sn_event_data {
+
+  /*! Number of events so far (fractional for a continuously-sampled
+      population particle, matching feedback_data.number_snii/snia's own
+      type) */
+  float n_events;
+
+  /*! Density at the most recent event, physical internal units. Whether
+      this was the star's only event since the last snapshot is readable
+      from n_events itself: compare it against the previous snapshot's
+      value for the same star. */
+  float density_at_last_event;
+
+  /*! Scale-factor (cosmological runs) or time (non-cosmological), of the
+      most recent event */
+  union {
+    float last_event_scale_factor;
+    float last_event_time;
+  };
+};
 
 /**
  * @brief Properties of the tracers stored in the star particle data.
+ *
  */
-struct tracers_spart_data {};
+struct tracers_spart_data {
+
+  /*! SN event tracers, one per channel */
+  struct tracers_sn_event_data snii_events;
+  struct tracers_sn_event_data snia_events;
+};
 
 /**
  * @brief Properties of the tracers stored in the black hole particle data.
