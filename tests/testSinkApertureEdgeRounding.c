@@ -158,8 +158,7 @@ static void edge_vector(const int axis, double d[3]) {
   do {
     for (int k = 0; k < 3; k++) u[k] = 2. * rng_uniform() - 1.;
     norm = sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
-  } while (norm < 0.1 || norm > 1. ||
-           (axis >= 0 && u[axis] / norm < 0.2));
+  } while (norm < 0.1 || norm > 1. || (axis >= 0 && u[axis] / norm < 0.2));
   const double delta = EDGE_BAND * (2. * rng_uniform() - 1.);
   const double r = (double)R_CUT * sqrt(1. + delta);
   for (int k = 0; k < 3; k++) d[k] = r * u[k] / norm;
@@ -193,8 +192,8 @@ static void compare(struct part *const *first, struct part *const *second,
     const double r2_ba =
         sink_formation_gas_loop_r2(b->x, a->x, dim, periodic, dx_ba);
     if (r2_ab != r2_ba)
-      error("%s: r2 depends on the particle order (%.17g, %.17g)", label,
-            r2_ab, r2_ba);
+      error("%s: r2 depends on the particle order (%.17g, %.17g)", label, r2_ab,
+            r2_ba);
     const int expect = sink_formation_gas_loop_in_aperture(r2_ab, R_CUT);
     if (expect)
       t->inside++;
@@ -221,7 +220,8 @@ static void compare(struct part *const *first, struct part *const *second,
 }
 
 static void reset_counts(struct cell *c) {
-  for (int i = 0; i < c->hydro.count; i++) c->hydro.parts[i].density.wcount = 0.f;
+  for (int i = 0; i < c->hydro.count; i++)
+    c->hydro.parts[i].density.wcount = 0.f;
 }
 
 /**
