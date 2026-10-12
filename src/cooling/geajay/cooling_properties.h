@@ -118,8 +118,9 @@ struct cooling_function_data {
   /*! Specific heating rates */
   float specific_heating_rates;
 
-  /*! Hydrogen fraction by mass */
-  float HydrogenFractionByMass;
+  /*! Hydrogen fraction by mass (negative in the parameter file: the library
+   * value, resolved at initialisation) */
+  double HydrogenFractionByMass;
 
   /*! initial nHII to nH ratio (number density ratio) */
   float initial_nHII_to_nH_ratio;

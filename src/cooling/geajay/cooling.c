@@ -1214,6 +1214,10 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
     error("Error in initialize_chemistry_data");
   }
 
+  /* geajay resolves a negative hydrogen mass fraction to its own value */
+  cooling->HydrogenFractionByMass =
+      cooling->chemistry_data.HydrogenFractionByMass;
+
   geajay_context_error context_error;
   cooling->context =
       geajay_context_create(&cooling->chemistry_data, &cooling->chemistry_rates,

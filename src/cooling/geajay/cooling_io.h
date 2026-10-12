@@ -229,7 +229,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GeajayCooling:specific_heating_rates_cgs", 0);
 
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:hydrogen_mass_fraction", 0.76);
+      parameter_file, "GeajayCooling:hydrogen_mass_fraction", -1.);
 
   cooling->initial_nHII_to_nH_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:initial_nHII_to_nH_ratio", -1);
