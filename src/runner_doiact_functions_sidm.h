@@ -269,7 +269,18 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
                       (depth_j <= max_depth) && ((r2 < hjg2) || (r2 < hig2));
 
       /* Hit or miss? */
-      if (doi) {
+      if (doi && doj) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
+        if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
+#endif
+
+        /* Both active: a single symmetric call so the pair is only
+         * considered for scattering once */
+        IACT_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology, cosmo,
+                  e->sidm_properties, e->ti_current, e->time_base);
+      } else if (doi) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (hi < h_min || hi >= h_max) error("Inappropriate h for this level!");
@@ -278,8 +289,7 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
         IACT_NONSYM_SIDM(r2, dx, hi, hj, sipi, sipj, a, H, with_cosmology,
                          cosmo, e->sidm_properties, e->ti_current,
                          e->time_base);
-      }
-      if (doj) {
+      } else if (doj) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (hj < h_min || hj >= h_max) error("Inappropriate h for this level!");
