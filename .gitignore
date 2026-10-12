@@ -81,7 +81,8 @@ examples/SmallCosmoVolume/SmallCosmoVolume_hydro/snapshots/
 examples/**/CloudyData_UVB=HM2012.h5
 examples/**/CloudyData_UVB=HM2012_shielded.h5
 examples/**/CloudyData_UVB=HM2012_high_density.h5
-examples/**/chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5
+examples/**/POPII.hdf5
+examples/**/POPIII_PISNe.hdf5
 examples/**/POPIIsw.h5
 examples/**/GRACKLE_INFO
 examples/**/snap/
