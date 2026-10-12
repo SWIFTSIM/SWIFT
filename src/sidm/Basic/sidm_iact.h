@@ -126,6 +126,28 @@ runner_iact_nonsym_sidm_density(
 }
 
 /**
+ * @brief Returns a random number in [0, 1[ for an SIDM pair.
+ *
+ * The IDs are ordered before being combined so that the number does not
+ * depend on which particle of the pair plays the role of i (e.g. when the
+ * pair is evaluated from both sides over MPI).
+ *
+ * @param id_i ID of the first particle.
+ * @param id_j ID of the second particle.
+ * @param ti_current The current integer time.
+ * @param type The #random_number_type to generate.
+ */
+__attribute__((always_inline)) INLINE static double sidm_random_unit_interval(
+    const long long id_i, const long long id_j, const integertime_t ti_current,
+    const enum random_number_type type) {
+
+  const long long id_lo = min(id_i, id_j);
+  const long long id_hi = max(id_i, id_j);
+
+  return random_unit_interval_two_IDs(id_lo, id_hi, ti_current, type);
+}
+
+/**
  * @brief Apply SIDM velocity kick to particles (elastic, isotropic scattering).
  *
  * @param sipi First part*icle.
@@ -151,14 +173,14 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   /* For isotropic sampling:
    * Draw cos(theta) uniformly in [-1, 1] and phi uniformly in [0, 2*pi). */
   const float cos_theta =
-      2.f * random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
-                                         random_number_sidm_polar_angle) -
+      2.f * sidm_random_unit_interval(sipi->id, sipj->id, ti_current,
+                                      random_number_sidm_polar_angle) -
       1.f;
   const float sin_theta = sqrtf(max(0.f, 1.f - cos_theta * cos_theta));
   const float phi =
       2.f * M_PI *
-      random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
-                                   random_number_sidm_azimuthal_angle);
+      sidm_random_unit_interval(sipi->id, sipj->id, ti_current,
+                                random_number_sidm_azimuthal_angle);
 
   /* New velocity direction, magnitude of relative veolcity is conserved. */
   const float v_new[3] = {vij * sin_theta * cosf(phi),
@@ -169,15 +191,18 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float fi = mj / mi_plus_mj;
   const float fj = mi / mi_plus_mj;
 
+  /* The particle with the lower ID always gets +v_new. */
+  const float sign = (sipi->id < sipj->id) ? 1.f : -1.f;
+
   /* By momentum conservation sipj gets the opposite COM-frame kick.
   Also convert velocities back to comoving. */
-  sipi->v[0] = a * (v_com[0] + fi * v_new[0]);
-  sipi->v[1] = a * (v_com[1] + fi * v_new[1]);
-  sipi->v[2] = a * (v_com[2] + fi * v_new[2]);
+  sipi->v[0] = a * (v_com[0] + sign * fi * v_new[0]);
+  sipi->v[1] = a * (v_com[1] + sign * fi * v_new[1]);
+  sipi->v[2] = a * (v_com[2] + sign * fi * v_new[2]);
 
-  sipj->v[0] = a * (v_com[0] - fj * v_new[0]);
-  sipj->v[1] = a * (v_com[1] - fj * v_new[1]);
-  sipj->v[2] = a * (v_com[2] - fj * v_new[2]);
+  sipj->v[0] = a * (v_com[0] - sign * fj * v_new[0]);
+  sipj->v[1] = a * (v_com[1] - sign * fj * v_new[1]);
+  sipj->v[2] = a * (v_com[2] - sign * fj * v_new[2]);
 }
 
 /**
@@ -235,12 +260,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
-  /* Scattering rates */
-  float SIDM_rate_i = mj * sidm_props->sigma_over_m * vij * lambda_ij;
-  float SIDM_rate_j = mi * sidm_props->sigma_over_m * vij * lambda_ij;
+  /* Pair scattering rate. The mean mass makes it symmetric under i <-> j
+   * and matches the mean momentum exchange between the two particles. */
+  const float m_pair = 0.5f * (mi + mj);
+  const float pair_rate = m_pair * sidm_props->sigma_over_m * vij * lambda_ij;
 
-  sipi->SIDM_rate += SIDM_rate_i;
-  sipj->SIDM_rate += SIDM_rate_j;
+  sipi->SIDM_rate += pair_rate;
+  sipj->SIDM_rate += pair_rate;
 
   /* Inertia tensor contributions */
   sipi->inertia_tensor[0] += mj * (r2 - dx[0] * dx[0]);
@@ -257,14 +283,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
   sipj->inertia_tensor[4] -= mi * dx[0] * dx[2];
   sipj->inertia_tensor[5] -= mi * dx[1] * dx[2];
 
-  /* Interaction probability for sipi and sipj */
-  float pij = SIDM_rate_i * dt_sipi;
-  float pji = SIDM_rate_j * dt_sipj;
-  float p = (pij + pji) * 0.5;
+  /* Interaction probability. Use the shorter time-step: the earlier part of
+   * the longer step was already covered by the non-symmetric interactions
+   * made while only the particle on the shorter step was active. */
+  const float p = pair_rate * min(dt_sipi, dt_sipj);
 
   /* Pair interaction? */
-  const float x = random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
-                                               random_number_sidm_scattering);
+  const float x = sidm_random_unit_interval(sipi->id, sipj->id, ti_current,
+                                            random_number_sidm_scattering);
 
   if (x < p) {
     sidm_debug_interaction(sipi, sipj);
@@ -296,6 +322,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   const float r = sqrtf(r2);
 
   /* Get the masses. */
+  const float mi = sipi->mass;
   const float mj = sipj->mass;
 
   /* Compute pair relative velocity. */
@@ -308,7 +335,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   const double vij = sqrt(v2) * cosmo->a_inv;
 
   /* Get time-step for sipi and sipj */
-  double dt_sipi;
+  double dt_sipi, dt_sipj;
 
   if (with_cosmology) {
 
@@ -316,16 +343,22 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
         get_integer_time_begin(ti_current - 1, sipi->time_bin);
     const integertime_t ti_step = get_integer_timestep(sipi->time_bin);
     dt_sipi = cosmology_get_delta_time(cosmo, ti_begin, ti_begin + ti_step);
+    const integertime_t tj_begin =
+        get_integer_time_begin(ti_current - 1, sipj->time_bin);
+    const integertime_t tj_step = get_integer_timestep(sipj->time_bin);
+    dt_sipj = cosmology_get_delta_time(cosmo, tj_begin, tj_begin + tj_step);
 
   } else {
     dt_sipi = get_timestep(sipi->time_bin, time_base);
+    dt_sipj = get_timestep(sipj->time_bin, time_base);
   }
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
-  /* Scattering rates */
-  float SIDM_rate_i = mj * sidm_props->sigma_over_m * vij * lambda_ij;
-  sipi->SIDM_rate += SIDM_rate_i;
+  /* Pair scattering rate (same definition as in the symmetric case) */
+  const float m_pair = 0.5f * (mi + mj);
+  const float pair_rate = m_pair * sidm_props->sigma_over_m * vij * lambda_ij;
+  sipi->SIDM_rate += pair_rate;
 
   /* Inertia tensor contribution */
   sipi->inertia_tensor[0] += mj * (r2 - dx[0] * dx[0]);
@@ -335,14 +368,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
   sipi->inertia_tensor[4] -= mj * dx[0] * dx[2];
   sipi->inertia_tensor[5] -= mj * dx[1] * dx[2];
 
-  /* Interaction probability */
-  float pij = SIDM_rate_i * dt_sipi;
+  /* Interaction probability, as in the symmetric case. sipj is usually
+   * inactive (so dt_sipi is the shorter step), but it can also be active and
+   * excluded here because it is foreign or outside this task's h range. */
+  const float p = pair_rate * min(dt_sipi, dt_sipj);
 
   /* Pair interaction? */
-  const float x = random_unit_interval_two_IDs(sipi->id, sipj->id, ti_current,
-                                               random_number_sidm_scattering);
+  const float x = sidm_random_unit_interval(sipi->id, sipj->id, ti_current,
+                                            random_number_sidm_scattering);
 
-  if (x < pij) {
+  if (x < p) {
     sidm_debug_interaction(sipi, sipj);
     kick_siparts(sipi, sipj, a, vij, ti_current);
     sidm_debug_interaction(sipi, sipj);
