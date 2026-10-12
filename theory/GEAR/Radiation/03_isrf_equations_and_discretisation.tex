@@ -707,7 +707,7 @@ floating-point annotation: the compiler may reassociate them under
 \code{-ffast-math}, so a rerun after a compiler or flag change can move the last
 bits of the accumulators without changing the discrete scheme.
 
-\paragraph{Pairs across time bins.} On one rank, a force pair whose members
+\paragraph{Pairs across time bins.} A force pair whose members
 have unequal steps is booked once, over the finer member's step $dt_f$. The
 finer member $f$ takes its rate from the pair as above. The coarser member $c$
 takes no rate from the pair. It accumulates two pending amounts per moment,
@@ -743,9 +743,14 @@ $c_{\rm hyp}\,dt \le C_{\rm hyp} h_{\rm phys}$ its relative size is at most
 $\lambda\, C_{\rm hyp} h_{\rm phys} H / (2c)$, negligible for any $h$ much
 smaller than the Hubble length.
 
-The booking needs the extra ghost, which marks each member's active step, and
-one rank. On several MPI ranks it is off: each member integrates the pair with
-its own $dt$, and the cancellation fails across time bins. The pending amounts
+The booking needs the extra ghost, which marks each member's active step. On
+several MPI ranks, the inactive coarser member may live on a rank where the
+pair would not run. The force pair therefore also runs there
+(\code{MPI\_SYMMETRIC\_FORCE\_INTERACTION}), and the foreign finer member
+books the pending amounts into the local coarser one: each rank writes only
+its own particles. On \code{ISRFMultiBinDissipation} at a fixed speed and
+$Z = 0$, the ledger residual is $3\times10^{-8}$ on one, two and four ranks.
+Without the pair on the coarser member's rank it is $-1\times10^{-2}$. The pending amounts
 live on the particle, so they are written to restart files; the restart
 layout marker is 3 for this layout (Section~\ref{sec:isrf-eqdisc-chyp}). A
 snapshot writes $c_{\rm hyp}(P^{\rm tr} + P^{\rm d})$ per band as
@@ -757,8 +762,7 @@ particles are synchronised must add them to $u$.
 ledger residual: $E + \mathrm{Abs} - \mathrm{Inj}$ over the injected energy,
 with each term divided by its particle's $c_{\rm hyp}$ and the pending amounts
 included (0 is exact conservation). Final values, one rank, 8
-threads, per-owner booking (each member books the pair over its own step, as
-on several ranks) against the cross-bin booking:
+threads, per-owner booking (each member books the pair over its own step) against the cross-bin booking:
 \begin{center}
 \begin{tabular}{p{5.0cm}llll}
 \hline
@@ -1918,7 +1922,7 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
     extinction path uses $\gamma_K h$.
   \item Transport conservation is exact per pair at the \emph{accumulator}
     level. In the applied update it holds between members of one time bin with
-    equal depth, and across time bins on one rank up to the same-step and
+    equal depth, and across time bins up to the same-step and
     Hubble terms; see Section~\ref{sec:isrf-eqdisc-pairwise}. The cross-bin
     booking does not preserve positivity, and neither does the per-owner one.
     The metric counts the particle-snapshots whose lowest value at the end of
@@ -1937,9 +1941,9 @@ throttle is \code{radiation\_gas.c:560-561} and \code{:592-600}. Item 16:
     Section~\ref{sec:isrf-eqdisc-F-update}.
   \item MPI and restart: operator and moment state, the pending amounts
     included, lives on \code{struct part}, so it rides the
-    normal exchange and dump; the HII owner-computed payload does not. On
-    several ranks the cross-bin booking is off and the pending amounts stay
-    zero. The flux
+    normal exchange and dump; the HII owner-computed payload does not. A
+    pending amount is booked on its particle's own rank and never sent.
+    The flux
     read order is safe across ranks:
     the gradient loop reads the old flux (before this cell's extra ghost), the
     force loop the new one, every force task runs after the extra ghosts of both
