@@ -24,6 +24,7 @@
 
 /* Local headers. */
 #include "inline.h"
+#include "periodic.h"
 
 /* Select the correct sink model */
 #if defined(SINK_NONE)
@@ -77,6 +78,49 @@ sink_formation_gas_loop_r_cut(const struct sink_props *sink_properties) {
 #else
   return -1.f;
 #endif
+}
+
+/**
+ * @brief Squared separation of two gas particles in the sink-formation
+ * gas-gas preparation loop.
+ *
+ * The neighbour search and its brute-force count check both use it, so an
+ * edge particle is classified the same way by both. It works in double on
+ * the absolute positions, so it does not depend on the visiting cell pair.
+ *
+ * @param xi Position of the first particle.
+ * @param xj Position of the second particle.
+ * @param dim Size of the simulation box.
+ * @param periodic Is the box periodic?
+ * @param dx (return) Separation xi - xj of the nearest image.
+ * @return The squared separation.
+ */
+__attribute__((always_inline)) INLINE static double sink_formation_gas_loop_r2(
+    const double xi[3], const double xj[3], const double dim[3],
+    const int periodic, float dx[3]) {
+
+  double d[3] = {xi[0] - xj[0], xi[1] - xj[1], xi[2] - xj[2]};
+  if (periodic) {
+    d[0] = nearest(d[0], dim[0]);
+    d[1] = nearest(d[1], dim[1]);
+    d[2] = nearest(d[2], dim[2]);
+  }
+  dx[0] = (float)d[0];
+  dx[1] = (float)d[1];
+  dx[2] = (float)d[2];
+  return d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+}
+
+/**
+ * @brief Does a squared separation from sink_formation_gas_loop_r2() lie
+ * inside the aperture of the sink-formation gas-gas preparation loop?
+ *
+ * @param r2 The squared separation.
+ * @param r_cut The aperture radius.
+ */
+__attribute__((always_inline)) INLINE static int
+sink_formation_gas_loop_in_aperture(const double r2, const float r_cut) {
+  return r2 < (double)r_cut * (double)r_cut;
 }
 
 #endif /* SWIFT_SINK_PROPERTIES_H */
