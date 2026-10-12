@@ -1079,9 +1079,9 @@ void zoom_region_init(struct space *s, const int regridding,
    * as space_init() requires of the top-level cells of a run without a zoom
    * region. The zoom geometry is set by the ZoomRegion parameters and a regrid
    * only ever widens it, so a violation here is a configuration error. */
-  const double zoom_dmin = min3(s->zoom_props->width[0],
-                                s->zoom_props->width[1],
-                                s->zoom_props->width[2]);
+  const double zoom_dmin =
+      min3(s->zoom_props->width[0], s->zoom_props->width[1],
+           s->zoom_props->width[2]);
   if (zoom_dmin < s->zoom_props->cell_min_fixed_radius) {
     error(
         "The top-level zoom cells (width %e) are narrower than the "

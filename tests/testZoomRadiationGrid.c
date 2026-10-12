@@ -172,8 +172,9 @@ int main(int argc, char *argv[]) {
   message("wide zoom cdim=%d depth=%d", s_wide->zoom_props->cdim[0],
           s_wide->zoom_props->zoom_cell_depth);
   if (space_radiation_top_stencil_can_cover_box(s_wide))
-    error("A zoom region over several background cells cannot reach 2 "
-          "cells/axis.");
+    error(
+        "A zoom region over several background cells cannot reach 2 "
+        "cells/axis.");
   message("Wide zoom region correctly flagged.");
 
   /* The fixed radius floor: a floor at the zoom cell width is accepted, a
