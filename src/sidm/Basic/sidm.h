@@ -210,11 +210,13 @@ __attribute__((always_inline)) INLINE static float sidm_compute_timestep(
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const double time_base) {
 
-  /* Choose timestep such that the expected number of scattering events is <1 */
-  if (sip->density.wcount == 0) {
+  /* No scattering: no SIDM constraint on the time-step */
+  if (sip->SIDM_rate <= 0.f) {
     return FLT_MAX;
   } else {
-    return sidm_properties->kappa_timestep * 1.f / sip->SIDM_rate;
+    /* Choose timestep such that the expected number of scattering events is
+     * <1 */
+    return sidm_properties->kappa_timestep / sip->SIDM_rate;
   }
 }
 
