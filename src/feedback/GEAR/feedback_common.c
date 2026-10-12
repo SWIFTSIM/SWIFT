@@ -186,7 +186,7 @@ void feedback_compute_spart_timestep(
        as "0.0 = never rebuilt yet" below is correct for a brand-new
        star too, so no separate first-time case is needed. */
     const double HII_region_last_rebuild =
-        sp->feedback_data.radiation.HII_region_last_rebuild;
+        feedback_get_star_HII_last_rebuild(sp);
 
     /* Calculate the absolute target age for the next rebuild */
     const double target = HII_region_last_rebuild + HII_region_rebuild_dt;
@@ -286,7 +286,7 @@ void feedback_will_do_feedback(
   sp->feedback_data.winds.mass_ejected = 0;
 
   sp->feedback_data.will_do_feedback = 0;
-  sp->feedback_data.will_do_HII_ionization = 0;
+  radiation_set_star_will_do_HII_ionization(sp, 0);
 
   /* Zero the radiation pressure luminosity. Unlike the energies above, this
      is not otherwise reset when a star is dead (mass floored, or age past
@@ -294,7 +294,7 @@ void feedback_will_do_feedback(
      stellar_evolution_compute_preSN_feedback_*, so without this a dead star
      would keep exerting its last living L_bol as a radiation-pressure kick
      on its gas neighbours indefinitely. */
-  sp->feedback_data.radiation.L_bol = 0;
+  radiation_set_star_bolometric_luminosity(sp, 0);
 
   /* Quit if the birth_scale_factor or birth_time is negative.
      No Feedback event for the initial fake step. */
@@ -326,7 +326,7 @@ void feedback_will_do_feedback(
        need to go through the feedback loops in the next timestep to compute
        all required quantities for the stellar evolution. */
     sp->feedback_data.will_do_feedback = 1;
-    sp->feedback_data.will_do_HII_ionization = 1;
+    radiation_set_star_will_do_HII_ionization(sp, 1);
     return;
   }
 
@@ -383,8 +383,9 @@ void feedback_will_do_feedback(
                                   sp->feedback_data.enrichment_weight);
 
   /* Apply the radiation pressure efficiency factor */
-  sp->feedback_data.radiation.L_bol *=
-      feedback_props->radiation_pressure_efficiency;
+  radiation_set_star_bolometric_luminosity(
+      sp, radiation_get_star_bolometric_luminosity(sp) *
+              feedback_props->radiation_pressure_efficiency);
 
   /* Set the particle as doing some feedback. The ejected mass is a gate in
      its own right and not implied by the energy: the efficiency factors
@@ -400,6 +401,8 @@ void feedback_will_do_feedback(
   feedback_will_do_HII_ionization(sp, feedback_props, star_age_beg_step,
                                   star_age_end_step);
 }
+
+#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Determines whether this star does HII ionization feedback during
@@ -490,6 +493,8 @@ void feedback_will_do_HII_ionization(
     sp->feedback_data.radiation.mass_HII_region = 0.f;
   }
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 /**
  * @brief Compute age of the star at the end of the current timestep.
@@ -583,6 +588,8 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
                                         const double dt_star) {
   return dt_star;
 }
+
+#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Get the #spart ionization photon emission rate for a given angular
@@ -1078,6 +1085,8 @@ void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
   radiation_resync_ionizing_photon_rate_cache(sp);
 }
 
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
 /**
  * @brief Is this gas particle currently tagged as HII-ionized?
  *
@@ -1113,6 +1122,8 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp) {
   return radiation_get_part_ionized_star_id(p, xp);
 }
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /**
  * @brief Local specific PE-band radiation field, see
@@ -1481,6 +1492,8 @@ float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
          (mo->pending_transport_u + mo->pending_dissipation_u);
 }
 
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
+
 /**
  * @brief Current ionized mass of this star's HII region.
  *
@@ -1493,7 +1506,11 @@ float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
  * @return Current ionized mass of this star's HII region.
  */
 float feedback_get_star_HII_mass(const struct spart *sp) {
+#ifdef GEAR_SUBGRID_RADIATION_HII
   return sp->feedback_data.radiation.mass_HII_region;
+#else
+  return 0.f;
+#endif
 }
 
 /**
@@ -1508,7 +1525,7 @@ float feedback_get_star_HII_mass(const struct spart *sp) {
  * @return Star's current non-ionizing PE-band luminosity.
  */
 double feedback_get_star_L_PE(const struct spart *sp) {
-  return sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE];
+  return radiation_get_star_band_luminosity(sp, ISRF_MOMENT_PE);
 }
 
 /**
@@ -1519,7 +1536,7 @@ double feedback_get_star_L_PE(const struct spart *sp) {
  * @return Star's current Lyman-Werner-band luminosity.
  */
 double feedback_get_star_L_LW(const struct spart *sp) {
-  return sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
+  return radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW);
 }
 
 /**
@@ -1530,7 +1547,45 @@ double feedback_get_star_L_LW(const struct spart *sp) {
  * @return Star's photospheric effective temperature.
  */
 float feedback_get_star_teff(const struct spart *sp) {
+#ifdef GEAR_SUBGRID_RADIATION
   return sp->feedback_data.radiation.teff;
+#else
+  return 0.f;
+#endif
+}
+
+/**
+ * @brief Seed the HII state of a star at its birth or at the first init.
+ *
+ * @param sp The #spart.
+ * @param first_init Is this the first init after reading the ICs?
+ */
+static INLINE void feedback_seed_star_HII_state(struct spart *sp,
+                                                const int first_init) {
+#ifdef GEAR_SUBGRID_RADIATION_HII
+  /* n_HII_pixels bounds the loop in feedback_get_star_ionization_budget_max();
+     set it before the first stellar_evolution call so a population star
+     that returns early (already past the IMF's alive range) never reads
+     it uninitialized. */
+  if (first_init) sp->feedback_data.radiation.n_HII_pixels = 1;
+
+  /* 0.0 reads as "never attempted", so the first attempt's dt_elapsed
+     measures from the star's actual birth age. */
+  sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
+
+  /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
+     carries a pixel's overdraft into the next pass, so this must start clean.
+     Over the whole array, not n_HII_pixels, which can still grow. */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
+  }
+
+  /* No previous pass to average against yet; -1 is the sentinel
+     radiation_open_ionizing_photon_budget() checks for. */
+  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
+  }
+#endif
 }
 
 /**
@@ -1560,24 +1615,9 @@ void feedback_init_after_star_formation(
      3. Timestep task: feedback_will_do_feedback() runs the stellar
         evolution, to be distributed starting next step. */
   sp->feedback_data.will_do_feedback = 0;
-  sp->feedback_data.will_do_HII_ionization = 0;
+  radiation_set_star_will_do_HII_ionization(sp, 0);
 
-  /* 0.0 reads as "never attempted", so the first attempt's dt_elapsed
-     measures from the star's actual birth age. */
-  sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
-
-  /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
-     carries a pixel's overdraft into the next pass, so this must start clean.
-     Over the whole array, not n_HII_pixels, which can still grow. */
-  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
-    sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
-  }
-
-  /* No previous pass to average against yet; -1 is the sentinel
-     radiation_open_ionizing_photon_budget() checks for. */
-  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
-  }
+  feedback_seed_star_HII_state(sp, /*first_init=*/0);
 
   /* Give to the star its appropriate type: single star, continuous IMF star or
      single population star */
@@ -1604,30 +1644,11 @@ void feedback_first_init_spart(struct spart *sp,
   sp->feedback_data.winds.energy_ejected = 0.0;
   sp->feedback_data.winds.mass_ejected = 0.0;
 
-  /* n_HII_pixels bounds the loop in feedback_get_star_ionization_budget_max();
-     set it before the first stellar_evolution call so a population star
-     that returns early (already past the IMF's alive range) never reads
-     it uninitialized. */
-  sp->feedback_data.radiation.n_HII_pixels = 1;
-
-  /* Same reasoning as the identical seed in
-     feedback_init_after_star_formation(). */
-  sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
-
-  /* No photon debt carried in from before the run, same reasoning as the
-     identical seed in feedback_init_after_star_formation(). */
-  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
-    sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
-  }
-
-  /* Same sentinel-seeding reasoning as feedback_init_after_star_formation(). */
-  for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = -1.0;
-  }
+  feedback_seed_star_HII_state(sp, /*first_init=*/1);
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;
-  sp->feedback_data.will_do_HII_ionization = 1;
+  radiation_set_star_will_do_HII_ionization(sp, 1);
 }
 
 /* Printed by restart_read_blocks() when the marker block is missing, i.e.
@@ -1662,7 +1683,7 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
      block is the (much larger) #feedback_props block, fails the block-length
      check of restart_read_blocks() instead of being read with the wrong flux
      form. The description string is what that error prints. */
-  const int flux_form = FEEDBACK_RESTART_ISRF_PART_LAYOUT;
+  const int flux_form = feedback_restart_particle_layout();
   restart_write_blocks((void *)&flux_form, sizeof(int), 1, stream,
                        "isrf_flux_form", ISRF_FLUX_FORM_RESTART_DESCRIPTION);
 
@@ -1693,13 +1714,24 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   int flux_form = 0;
   restart_read_blocks(&flux_form, sizeof(int), 1, stream, NULL,
                       ISRF_FLUX_FORM_RESTART_DESCRIPTION);
-  if (flux_form != FEEDBACK_RESTART_ISRF_PART_LAYOUT)
+  if (flux_form % FEEDBACK_RESTART_SELECTION_FACTOR ==
+          FEEDBACK_RESTART_ISRF_PART_LAYOUT &&
+      flux_form != feedback_restart_particle_layout())
+    error(
+        "The restart file was written by a build with the subgrid radiation "
+        "parts absent-mask %d, but this build has absent-mask %d (bit 1 rp, "
+        "2 hii, 4 isrf; ./configure --with-subgrid-radiation). The particles "
+        "differ in layout: resume with a build of the same selection, or "
+        "rerun the simulation from its initial conditions.",
+        flux_form / FEEDBACK_RESTART_SELECTION_FACTOR,
+        radiation_selection_absent_mask());
+  if (flux_form != feedback_restart_particle_layout())
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (reduced flux, phi-weighted cross-bin pending fields). A restart "
         "written by another code version cannot be resumed: rerun the "
         "simulation from its initial conditions.",
-        flux_form, FEEDBACK_RESTART_ISRF_PART_LAYOUT);
+        flux_form, feedback_restart_particle_layout());
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
