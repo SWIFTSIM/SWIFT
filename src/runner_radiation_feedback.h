@@ -262,6 +262,30 @@ void runner_dopair_stars_hii_ionization_feedback(
     struct hii_maintenance_context *ctx);
 
 /**
+ * @brief Shift that brings the neighbour cell next to the star's cell.
+ *
+ * @param dim The size of the simulation box.
+ * @param periodic Is the box periodic?
+ * @param loc_c Lower corner of the star's cell.
+ * @param loc_cj Lower corner of the neighbour cell.
+ * @param shift (return) Vector to add to the neighbour's coordinates.
+ */
+__attribute__((always_inline)) INLINE static void runner_hii_get_pair_shift(
+    const double dim[3], const int periodic, const double loc_c[3],
+    const double loc_cj[3], double shift[3]) {
+
+  for (int k = 0; k < 3; k++) {
+    const double dx = loc_cj[k] - loc_c[k];
+    if (periodic && dx < -dim[k] / 2)
+      shift[k] = dim[k];
+    else if (periodic && dx > dim[k] / 2)
+      shift[k] = -dim[k];
+    else
+      shift[k] = 0.0;
+  }
+}
+
+/**
  * @brief (r2, id) < (r2, id): is @p a_r2/@p a_id strictly before
  * @p b_r2/@p b_id in the buffer's sort order?
  *
