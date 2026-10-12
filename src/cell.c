@@ -1418,9 +1418,8 @@ int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
    * space_subdepth_diff_grav because they have pair tasks with zoom cells. If
    * this is the case we flag this cell so that we can force the gravity tasks
    * to be executed below space_subdepth_diff_grav. */
-  c->grav.tasks_below_diff_grav_depth = c->subtype == cell_subtype_neighbour &&
-                                        !cell_is_above_diff_grav_depth(c) &&
-                                        children_have_gravity_tasks;
+  c->grav.tasks_below_diff_grav_depth =
+      !cell_is_above_diff_grav_depth(c) && children_have_gravity_tasks;
 
   return has_gravity_tasks || children_have_gravity_tasks;
 }
