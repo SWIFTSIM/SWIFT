@@ -117,7 +117,10 @@ void make_mock_space(struct space *s, struct engine *e, const double std) {
 void make_cell(struct cell *c, struct space *s) {
 
   /* Allocate a multipole for this cell. */
-  struct gravity_tensors *m = malloc(sizeof(struct gravity_tensors));
+  struct gravity_tensors *m = NULL;
+  if (posix_memalign((void **)&m, multipole_align,
+                     sizeof(struct gravity_tensors)) != 0)
+    error("Couldn't allocate the multipole");
   bzero(m, sizeof(struct gravity_tensors));
 
   c->loc[0] = s->dim[0] / 2 - s->width[0] / 2;
