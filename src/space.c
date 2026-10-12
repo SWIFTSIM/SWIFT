@@ -4351,13 +4351,13 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
   const double tolerance = 10e-9; //Choose reasonable value here
   int counter = 0;
   int fine_steps = 20; //Choose reasonable value here
+  int fine_steps_new = 20;
 
   int V_cycles=0;
   int depth = 0;
 
-  /* Make a copy of the initial guess in case we diverge and need to restart */
+  /* Assign grid to make a copy of the grid after the pre-smoothing in case we diverge and need to restart */
   double *u_copy = swift_malloc("fR_copy", N_max*N_max*N_max *sizeof(double));
-  memcpy(u_copy, u, N_max*N_max*N_max*sizeof(double));
 
   while (residual > tolerance && V_cycles < V_max) { 
     ticks tic = getticks();
@@ -4372,6 +4372,9 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     get_residual_array_fR(u, rho, MG, cdim, mean_density, residual_array, delta);
     if (residual<tolerance) break;
+
+    /* Make the copy of the grid after the pre-smoothing */
+    memcpy(u_copy, u, N_max*N_max*N_max*sizeof(double));
     
     /* Transfer residual array to get coarse-grid correction */
     message("After pre-smoothing the residual is %E. Going to recurse with V-cycles.", residual);
@@ -4380,26 +4383,45 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     if (MG->timing) message("The recursive part of the V-cycle took %.3f %s.",
             clocks_from_ticks(getticks() - toc), clocks_getunit());
 
-    /* Post-smoothing if needed */
-    residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
-    message("Back on the finest grid the residual is %E", residual);
-    if (residual > tolerance) {
-      for (int i=0; i<fine_steps; i++) {
-        perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
-      }
-    }
+    /* Let's not do post-smoothing if we have already diverged. Move on to the next loop.  */
     double residual_end = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     residual = residual_end;
     V_cycles +=1;
     message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
     if (residual_end > residual_start || !isfinite(residual_end)) { //The algorithm did something weird, so let's try again with extra pre-smoothing
       message("Restarting V-cycles!");
-      fine_steps += 10;
+      fine_steps_new += 10;
+      /* Reset the guess */
+      for (int i=0; i<N_max*N_max*N_max; i++) {
+        u[i] = u_copy[i];
+      }
+      continue;
+    }
+
+    /* Post-smoothing if needed */
+    //residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
+    message("Back on the finest grid the residual is %E", residual);
+    if (residual > tolerance) {
+      for (int i=0; i<fine_steps; i++) {
+        perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
+      }
+    }
+    residual_end = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
+    residual = residual_end;
+    V_cycles +=1;
+    message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
+    if (residual_end > residual_start || !isfinite(residual_end)) { //The algorithm did something weird, so let's try again with extra pre-smoothing
+      message("Restarting V-cycles!");
+      fine_steps_new += 10;
       /* Reset the guess */
       for (int i=0; i<N_max*N_max*N_max; i++) {
         u[i] = u_copy[i];
       }
     }
+
+    /* If we diverged before, we now want to set the number of fine steps to the increased amount as dictated by fine_steps_new */
+    fine_steps = fine_steps_new;
+
     if (MG->timing) message("V-cycle number %d on the grid with size %d took %.3f %s.",
             V_cycles, N_max, clocks_from_ticks(getticks() - tic), clocks_getunit());
   }
