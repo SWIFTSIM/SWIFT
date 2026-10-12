@@ -250,7 +250,9 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
         max(ti_black_holes_beg_max, cp->black_holes.ti_beg_max);
   }
 
-  /* Update the properties of the void cell. */
+  /* Update the properties of the void cell. Only the time-step fields are
+   * collected: no hydro, star, sink or radiation task runs on a void cell, so
+   * its smoothing length maxima keep the zero set on construction. */
   c->maxdepth = maxdepth;
   c->hydro.ti_end_min = ti_hydro_end_min;
   c->hydro.ti_beg_max = ti_hydro_beg_max;

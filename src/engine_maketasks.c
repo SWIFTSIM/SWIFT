@@ -5669,6 +5669,21 @@ void engine_maketasks(struct engine *e) {
     if (t->ci == NULL && t->cj != NULL && !t->skip) error("Invalid task");
   }
 
+  /* The hydro, star, sink and radiation stencils are built on the zoom grid
+   * only, so no background cell may hold a baryon. */
+  if (e->s->with_zoom_region) {
+    for (int i = 0; i < e->s->zoom_props->nr_bkg_cells; i++) {
+      const struct cell *c = &e->s->zoom_props->bkg_cells_top[i];
+      if (c->hydro.count > 0 || c->stars.count > 0 || c->sinks.count > 0 ||
+          c->black_holes.count > 0)
+        error(
+            "Background cell %d holds baryons (hydro=%d, stars=%d, sinks=%d, "
+            "black holes=%d) outside the zoom region.",
+            i, c->hydro.count, c->stars.count, c->sinks.count,
+            c->black_holes.count);
+    }
+  }
+
   /* Verify that all local top-level zoom cells were reached during task
    * splitting */
   if (e->s->with_zoom_region) {
