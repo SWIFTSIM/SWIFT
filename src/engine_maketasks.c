@@ -4493,8 +4493,12 @@ static void engine_radiation_check_missing_links_mapper(void *map_data,
     if ((ci->hydro.count == 0) && (!with_stars || ci->stars.count == 0))
       continue;
 
+    /* Tasks exist only where at least one cell is local, as in
+     * engine_make_radiationloop_tasks_mapper(). */
+    const int ci_local = (ci->nodeID == e->nodeID);
+
     /* Sibling/self adjacency within ci's own subtree. */
-    engine_radiation_check_self_linked(ci);
+    if (ci_local) engine_radiation_check_self_linked(ci);
 
     /* Neighbouring top-level cells, cid < cjd to avoid checking every pair
      * twice. */
@@ -4517,6 +4521,7 @@ static void engine_radiation_check_missing_links_mapper(void *map_data,
           struct cell *cj = &cells[cjd];
           if ((cj->hydro.count == 0) && (!with_stars || cj->stars.count == 0))
             continue;
+          if (!ci_local && cj->nodeID != e->nodeID) continue;
 
           double shift[3];
           for (int d = 0; d < 3; d++) {
