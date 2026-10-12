@@ -244,6 +244,7 @@ tests/testGetZoomIJKFunc.sh
 tests/testSpaceSplit
 tests/testZoomRegrid
 tests/testZoomRegrid.sh
+tests/testZoomRadiationGrid
 tests/testZoomVoidTree
 tests/testZoomVoidTree.sh
 tests/testMeshGravityRebuildCheck
