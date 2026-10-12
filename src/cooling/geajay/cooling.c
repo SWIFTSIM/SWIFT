@@ -79,6 +79,9 @@ static long long cooling_geajay_failed_solves = 0;
  * retry since the last report. */
 static long long cooling_geajay_recovered_solves = 0;
 
+/*! Set by the first particle above the density range of the Cloudy table. */
+static int cooling_geajay_table_edge_warned = 0;
+
 /**
  * @brief Return the numbers of failed and of recovered geajay solves on this
  * rank since the last call, and reset both to zero.
@@ -502,7 +505,12 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("UV background = %d", cooling->with_uv_background);
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
   message("Self Shielding = %i", cooling->self_shielding_method);
-  message("Maximal density = %e", cooling->cooling_density_max);
+  message(
+      "Cloudy table density range = [%g, %g] cm^-3, beyond it the lookup %s",
+      cooling->table_density_min_Hpcm3, cooling->table_density_max_Hpcm3,
+      cooling->table_density_edge == GEAJAY_TABLE_EDGE_HOLD
+          ? "holds the edge value (table_density_edge: edge)"
+          : "extrapolates (table_density_edge: extrapolate)");
   message("AGORA CMB temperature floor = %d",
           cooling->agora_cmb_temperature_floor);
   if (cooling->self_shielding_method == -1) {
@@ -1218,6 +1226,20 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   cooling->HydrogenFractionByMass =
       cooling->chemistry_data.HydrogenFractionByMass;
 
+  /* Here, so that a restart pads the reloaded tables again */
+  if (geajay_set_table_density_edge(&cooling->chemistry_rates,
+                                    cooling->table_density_edge) == GR_FAIL)
+    error("geajay refused GeajayCooling:table_density_edge: %s",
+          geajay_last_error_message());
+
+  if (geajay_table_density_range(&cooling->chemistry_rates,
+                                 &cooling->table_density_min_Hpcm3,
+                                 &cooling->table_density_max_Hpcm3) == GR_FAIL)
+    error("geajay could not give the density range of the Cloudy table.");
+  cooling->table_edge_density =
+      cooling->table_density_max_Hpcm3 * cooling->proton_mass_cgs /
+      (cooling->HydrogenFractionByMass * cooling->units.density_units);
+
   geajay_context_error context_error;
   cooling->context =
       geajay_context_create(&cooling->chemistry_data, &cooling->chemistry_rates,
@@ -1313,11 +1335,11 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
 }
 
 /**
- * @brief Get the density of the #part. If the density is bigger than
- * cooling_density_max, then we floor the density to this value.
+ * @brief Get the physical density of the #part passed to geajay.
  *
- * This function ensures that we pass to geajay a density value that is not
- * to big to ensure good working of the solver.
+ * The first particle of a run above the density range of the Cloudy table
+ * prints a warning. Its n_H is X_H rho / m_p, close to the n_H of geajay,
+ * which sums the hydrogen species.
  *
  * Note: This function is called in cooling_time() and cooling_new_energy().
  *
@@ -1330,22 +1352,19 @@ double cooling_get_physical_density(
     const struct cooling_function_data *cooling) {
 
   const double part_density = hydro_get_physical_density(p, cosmo);
-  const double cooling_max_density = cooling->cooling_density_max;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  if (cooling_max_density > 0.0 && part_density > cooling_max_density) {
+  if (part_density > cooling->table_edge_density &&
+      atomic_cas(&cooling_geajay_table_edge_warned, 0, 1) == 0)
     warning(
-        "Gas particle %lld physical density (%e) is higher than the maximal "
-        "physical density set in the parameter files (%e).",
-        p->id, part_density, cooling_max_density);
-  }
-#endif
-  /* Maximal density cooling is defined */
-  if (cooling_max_density > 0.0) {
-    return fminf(part_density, cooling_max_density);
-  }
-  /* else ( if cooling_max_density <= 0) we do not want to use a density
-     threshold, then return the part density. */
+        "Gas particle %lld has n_H = %e cm^-3, above the Cloudy table range "
+        "(%e cm^-3): the table lookup %s. Printed once per run.",
+        p->id,
+        cooling->table_density_max_Hpcm3 * part_density /
+            cooling->table_edge_density,
+        cooling->table_density_max_Hpcm3,
+        cooling->table_density_edge == GEAJAY_TABLE_EDGE_HOLD
+            ? "holds the edge value"
+            : "extrapolates");
 
   return part_density;
 }

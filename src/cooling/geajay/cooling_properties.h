@@ -188,8 +188,20 @@ struct cooling_function_data {
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 
-  /*! Maximal allowed density for cooling (in internal units). */
-  double cooling_density_max;
+  /*! Lookup beyond the density range of the Cloudy table
+   * (GeajayCooling:table_density_edge). */
+  geajay_table_edge table_density_edge;
+
+  /*! Proton mass [g] */
+  double proton_mass_cgs;
+
+  /*! Hydrogen number density range of the Cloudy table [cm^-3], set by
+   * cooling_init_geajay(). [0, inf] without a table. */
+  double table_density_min_Hpcm3, table_density_max_Hpcm3;
+
+  /*! Physical density (internal units) whose X_H rho / m_p is
+   * table_density_max_Hpcm3. */
+  double table_edge_density;
 
   /*! Debug/test-only: skip cooling_cool_part()'s per-particle energy
       update entirely (leaving hydro's own internal-energy derivative

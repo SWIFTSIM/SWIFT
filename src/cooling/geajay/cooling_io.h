@@ -322,15 +322,25 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parser_get_param_double(parameter_file, "GeajayCooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
 
-  /* Maximal cooling density (in acc) */
-  cooling->cooling_density_max = parser_get_param_double(
-      parameter_file, "GeajayCooling:maximal_density_Hpcm3");
+  if (parser_does_param_exist(parameter_file,
+                              "GeajayCooling:maximal_density_Hpcm3"))
+    error(
+        "GeajayCooling:maximal_density_Hpcm3 was removed. Use "
+        "GeajayCooling:table_density_edge: extrapolate (default) or edge.");
 
-  /* Convert from acc to intenal units */
-  const double m_p_cgs = phys_const->const_proton_mass *
-                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
-  cooling->cooling_density_max *=
-      m_p_cgs / units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  char table_edge[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file,
+                              "GeajayCooling:table_density_edge", table_edge,
+                              "extrapolate");
+  if (geajay_table_edge_from_string(table_edge, &cooling->table_density_edge) ==
+      GR_FAIL)
+    error(
+        "GeajayCooling:table_density_edge must be extrapolate or edge, got "
+        "'%s'.",
+        table_edge);
+
+  cooling->proton_mass_cgs = phys_const->const_proton_mass *
+                             units_cgs_conversion_factor(us, UNIT_CONV_MASS);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */
