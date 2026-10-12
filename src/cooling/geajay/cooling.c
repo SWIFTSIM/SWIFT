@@ -35,6 +35,7 @@
 #include <string.h>
 
 /* The geajay library itself */
+#include <geajay_message.h>
 #include <geajay_particle.h>
 #include <grackle.h>
 
