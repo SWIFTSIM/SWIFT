@@ -1492,6 +1492,12 @@ void space_init(struct space *s, struct swift_params *params,
    * that zoom support is off. */
   zoom_props_init(params, s, verbose);
 
+  /* The zoom grid holds the gas, so it carries the aperture floor folded into
+   * s->cell_min above. zoom_region_init() checks it against the zoom cells. */
+  if (s->with_zoom_region && sink_formation_gas_loop_is_active(sink_properties))
+    s->zoom_props->cell_min_fixed_radius =
+        space_stretch * sink_formation_gas_loop_r_cut(sink_properties);
+
   /* Apply shift */
   double shift[3] = {0.0, 0.0, 0.0};
   parser_get_opt_param_double_array(params, "InitialConditions:shift", 3,

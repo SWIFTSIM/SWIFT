@@ -1075,6 +1075,24 @@ void zoom_region_init(struct space *s, const int regridding,
       max3(s->zoom_props->dim[0], s->zoom_props->dim[1], s->zoom_props->dim[2]);
   s->zoom_props->cell_min = 0.99 * zoom_dmax / s->zoom_props->cdim[0];
 
+  /* The zoom cells must be at least as wide as the fixed interaction radii,
+   * as space_init() requires of the top-level cells of a run without a zoom
+   * region. The zoom geometry is set by the ZoomRegion parameters and a regrid
+   * only ever widens it, so a violation here is a configuration error. */
+  const double zoom_dmin = min3(s->zoom_props->width[0],
+                                s->zoom_props->width[1],
+                                s->zoom_props->width[2]);
+  if (zoom_dmin < s->zoom_props->cell_min_fixed_radius) {
+    error(
+        "The top-level zoom cells (width %e) are narrower than the "
+        "sink-formation gas loop aperture times the space stretch factor "
+        "(%e). Widen the zoom cells: lower ZoomRegion:zoom_top_level_depth "
+        "(or ZoomRegion:zoom_min_top_level_cells), or lower "
+        "ZoomRegion:bkg_top_level_cells. Otherwise lower "
+        "GEARSink:cut_off_radius.",
+        zoom_dmin, s->zoom_props->cell_min_fixed_radius);
+  }
+
   /* Set the minimum background cell size. */
   const double dmax = max3(s->dim[0], s->dim[1], s->dim[2]);
   s->cell_min = 0.99 * dmax / s->cdim[0];

@@ -469,6 +469,12 @@ struct zoom_region_properties {
   /*! The minimum top-level zoom cell width allowed. */
   double cell_min;
 
+  /*! The smallest top-level zoom cell width the fixed interaction radii
+   * allow (space_stretch times the sink-formation gas loop aperture). This is
+   * the floor space_init() folds into space::cell_min for a run without a
+   * zoom region. */
+  double cell_min_fixed_radius;
+
   /*! The distance in which neighbour cells are defined (same as the gravity
    * mesh distance). */
   double neighbour_distance;
