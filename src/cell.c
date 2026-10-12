@@ -1377,10 +1377,11 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   const int has_gravity_tasks = c->grav.grav != NULL || c->grav.mm != NULL;
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* Make sure in zoom land we don't get any confusing empty top level cells
-   * with tasks (this breaks hierarchical task creation) */
+  /* Are we in a cell with some kind of self/pair task ? */
   if (super_gravity == NULL && has_gravity_tasks) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Make sure in zoom land we don't get any confusing empty top level cells
+     * with tasks (this breaks hierarchical task creation) */
     if (cell_is_empty_mpole(c))
       error(
           "Setting super_gravity to non-void cell at depth %d with no gparts "
@@ -1388,11 +1389,8 @@ int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
           "c->grav.grav=%p c->grav.mm=%p, c=%p",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
           (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
-  }
 #endif
 
-  /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && has_gravity_tasks) {
     super_gravity = c;
   }
 
@@ -1420,9 +1418,8 @@ int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
    * space_subdepth_diff_grav because they have pair tasks with zoom cells. If
    * this is the case we flag this cell so that we can force the gravity tasks
    * to be executed below space_subdepth_diff_grav. */
-  c->grav.tasks_below_diff_grav_depth = c->subtype == cell_subtype_neighbour &&
-                                        !cell_is_above_diff_grav_depth(c) &&
-                                        children_have_gravity_tasks;
+  c->grav.tasks_below_diff_grav_depth =
+      !cell_is_above_diff_grav_depth(c) && children_have_gravity_tasks;
 
   return has_gravity_tasks || children_have_gravity_tasks;
 }

@@ -181,6 +181,12 @@ testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 # The MPI library pulls in the same extra dependencies as the swift_mpi binary
 testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
 EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
+TESTS += testPartitionWeights
+check_PROGRAMS += testPartitionWeights
+testPartitionWeights_SOURCES = testPartitionWeights.c
+testPartitionWeights_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+testPartitionWeights_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
+EXTRA_testPartitionWeights_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
 endif
 
 testZoomInit_SOURCES = testZoomInit.c
