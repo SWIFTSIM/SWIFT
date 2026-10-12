@@ -287,12 +287,15 @@ void cooling_first_init_part(const struct phys_const *phys_const,
 
   /* Compute nH (formally divided by the gas density and assuming the proton
    * mass to be one) */
-  const double nH = cooling->chemistry_data.HydrogenFractionByMass;
+  const int has_context = (cooling->context != NULL);
+  const double nH =
+      has_context ? cooling->chemistry_data.HydrogenFractionByMass : 1.;
 
   /* Compute nHe (formally divided by the gas density and assuming the proton
    * mass to be one) */
   const double nHe =
-      (1.f - cooling->chemistry_data.HydrogenFractionByMass) / 4.f;
+      has_context ? (1. - cooling->chemistry_data.HydrogenFractionByMass) / 4.
+                  : 0.;
 
   /* Electron density */
   double ne = zero;
