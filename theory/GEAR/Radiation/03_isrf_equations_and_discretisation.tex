@@ -263,6 +263,24 @@ in its $c_{\rm hyp}$-weighted form. The ledger is updated at
 \code{radiation\_isrf.c:611-626} and, for the pending add, at
 \code{radiation\_isrf.c:500-501}.
 
+The ledger residual is
+\begin{equation}
+  R = \frac{E - E_0 + (\mathrm{Abs} - \mathrm{Abs}_0) - (\mathrm{Inj} - \mathrm{Inj}_0)}
+           {\mathrm{Inj} - \mathrm{Inj}_0},
+  \label{eq:isrfd-ledger-residual}
+\end{equation}
+formed at each snapshot after the first, with every sum taken over particles
+and the subscript 0 marking the first snapshot. It needs one propagation speed
+in the whole box and a build with debugging checks, which write the two
+cumulative totals. With the pending amounts in $E$, the pair operator is exact,
+so $R$ is float32 rounding only. Each particle updates $u$ and its two
+accumulators at most once per step, hence
+$|R| \le n_{\rm steps}\,2^{-23}$, with $n_{\rm steps}$ the number of global
+steps taken. This is the bar of the check, not a proof: float32 rounding scales
+with $E$, so $R$ can exceed it when $E_0$ is much larger than the injected
+energy. The bar does not depend on the number of ranks or threads. An $R$ above
+it points to lost or doubled energy, not rounding.
+
 \textbf{\code{grad\_u} is not the gradient of $u$.} The code accumulates the
 anisotropic M1 pressure-tensor divergence
 $\rho^{-1}\nabla\!\cdot\!(\mathsf{D}(\hat f)\,\rho\, u)$ into it
@@ -707,6 +725,23 @@ floating-point annotation: the compiler may reassociate them under
 \code{-ffast-math}, so a rerun after a compiler or flag change can move the last
 bits of the accumulators without changing the discrete scheme.
 
+\paragraph{Why a pair across time bins needs a booking.} A scheme that
+updates only the active particles meets the following problem at a pair of
+unequal steps. The finer member $f$ is active and the coarser member $c$ is
+not. If the pair is summed for $f$ alone, the energy that leaves $f$ is never
+added to $c$, and the sum $\sum m\,u$ changes by that amount at every such
+pair and step. The explicit scheme of the metal diffusion of
+\citet[Appendix~C]{Correa2026} is of this kind. An inactive neighbour takes
+part in the sum of the active particle, but its own value is not updated, and
+the loss or gain of the conserved quantity is accepted as small. For two
+active particles of unequal steps that scheme uses
+$dt_{ij} = \min(dt_i, dt_j)$ on both sides, as the booking here does. It has no
+pending amount, no conservation check with a bar and no treatment of MPI ranks.
+The booking below removes the loss by construction: the amount that $f$ gives
+up over $dt_f$ is held for $c$ and added at its next update. The pair then
+conserves energy, and the ledger residual of
+Equation~(\ref{eq:isrfd-ledger-residual}) tests it.
+
 \paragraph{Pairs across time bins.} A force pair whose members
 have unequal steps is booked once, over the finer member's step $dt_f$. The
 finer member $f$ takes its rate from the pair as above. The coarser member $c$
@@ -744,13 +779,42 @@ $\lambda\, C_{\rm hyp} h_{\rm phys} H / (2c)$, negligible for any $h$ much
 smaller than the Hubble length.
 
 The booking needs the extra ghost, which marks each member's active step. On
-several MPI ranks, the inactive coarser member may live on a rank where the
-pair would not run. In an MPI build that compiles the ISRF, the force pair
-therefore also runs there (\code{MPI\_SYMMETRIC\_FORCE\_INTERACTION}), and
-the foreign finer member books the pending amounts into the local coarser
-one: each rank writes only its own particles. On
-\code{ISRFMultiBinDissipation} at a fixed speed and $Z = 0$, the ledger
-residual is $3\times10^{-8}$ on one, two and four ranks. The pending amounts
+several MPI ranks, two gaps must be closed for the coarser member to receive
+its amount. Each rank writes only its own particles, so the amount must be
+booked by the rank that owns $c$.
+
+\emph{First gap, the pair does not run.} A force pair runs on a rank only if
+one of its cells is active there. If $c$ is inactive and local, and $f$ is
+active and foreign, no cell is active on the rank of $c$, so the pair does not
+run on that rank. The rank of $f$ then books into its copy of $c$, and nothing
+sends the amount back. The force pair is therefore also run on the rank of
+$c$. The macro \code{MPI\_SYMMETRIC\_FORCE\_INTERACTION} enables this. It also
+makes each force task depend on the sorts of its cells. The default hydro scheme does not define the
+macro, so \code{part.h} defines it when the build has MPI, the GEAR feedback,
+the ISRF and the extra hydro loop. Without the ISRF the macro stays off.
+
+\emph{Second gap, the pair loop skips half of the pairs.} Even when the pair
+task runs, the pair loop of an inactive local particle visits an active foreign
+one only for $h_f \le r < h_c$. The other part, $r < h_f$, belongs to a loop
+that visits active particles only, so $c$ is not reached. The standard
+interactions never need that part, because neither particle changes. The pair
+loop of the force task therefore has two extra visit passes under MPI, one for
+each orientation of the cells. They call the dissipation interaction only and
+skip pairs where $c$ is active.
+
+On \code{ISRFMultiBinDissipation} at a fixed speed and $Z = 0$, the ledger
+residual stays below $6\times10^{-8}$ in every run. The 2-rank run with 32\,768
+gas particles takes 281 steps, with a bar of $3.4\times10^{-5}$ and a maximum
+of $4.5\times10^{-8}$. The 1-rank and 4-rank runs with 262\,144 gas particles
+take 319 steps, with a bar of $3.8\times10^{-5}$ and a maximum of
+$5.2\times10^{-8}$. With only the first gap closed the residual on two ranks
+is about $-1\times10^{-2}$ (the last snapshot reads $-9.4\times10^{-3}$), and
+it is $+0.43$ without any booking. The
+extra visits sit behind the macro, so a non-MPI build is unchanged. In a
+build that compiles the macro and the ISRF, the cost is $+4.4$ per cent per
+step with the ISRF off and $+5.6$ per cent with it on (four ranks
+of two threads, $20\,000$ steps of the multi-bin box with star formation).
+The pending amounts
 live on the particle, so they are written to restart files; the restart
 layout marker is 3 for this layout (Section~\ref{sec:isrf-eqdisc-chyp}). A
 snapshot writes $c_{\rm hyp}(P^{\rm tr} + P^{\rm d})$ per band as
@@ -824,14 +888,36 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     \code{:603-605} and the two pending sums at \code{:630-632}. The symmetric
     and non-symmetric force pairs route an unequal-step pair there at
     \code{:716-726} and \code{:798-814}. The active step is marked in
-    \code{dt\_active}: reset at the drift (\code{radiation\_isrf.c:168}) and set
-    by the extra ghost (\code{radiation\_isrf.c:825}), only while
-    \code{radiation\_cross\_bin\_booking\_on} (\code{radiation\_isrf.c:129-135})
-    reports one rank and an extra ghost.
+    \code{dt\_active}: reset at the drift (\code{radiation\_isrf.c:172}) and set
+    by the extra ghost (\code{radiation\_isrf.c:829}), only while
+    \code{radiation\_cross\_bin\_booking\_on} (\code{radiation\_isrf.c})
+    is true. It is true when the build has the extra ghost and the ISRF
+    propagation is on, and, without the symmetric force interaction, only on one
+    rank. A particle with a pending amount in the state of an inactive particle
+    stops the run (\code{radiation\_add\_pending\_part}).
     Equation~(\ref{eq:isrfd-pending-add}) is
-    \code{radiation\_add\_pending\_part} (\code{radiation\_isrf.c:456-504}), called at
-    the end of the update at \code{radiation\_isrf.c:639-645}. The snapshot fields
+    \code{radiation\_add\_pending\_part} (\code{radiation\_isrf.c:460}), called at
+    the end of the update at \code{radiation\_isrf.c:644-646}. The snapshot fields
     are registered at \code{feedback\_io.h:550-567}.
+  \item Pending-amount arrays: \code{pending\_transport\_u} and
+    \code{pending\_dissipation\_u}, one pair per moment in
+    \code{isrf\_moment[]} of \code{struct feedback\_part\_data}
+    (\code{feedback\_struct.h}), and the state \code{dt\_active} of the same
+    struct. They are zeroed by the moment reset in \code{radiation\_isrf.c}.
+  \item Several ranks, first gap: \code{MPI\_SYMMETRIC\_FORCE\_INTERACTION} is
+    defined in \code{part.h} for the ISRF build, and it acts in
+    \code{cell\_unskip.c:cell\_unskip\_hydro\_tasks} (the pair is activated
+    when the foreign cell is active), and in
+    \code{engine\_maketasks.c} (the sort dependency of each force task).
+  \item Several ranks, second gap: the two extra visit passes are in
+    \code{runner\_doiact\_functions\_hydro.h:DOPAIR2}, in the branch of each
+    cell orientation where the particle is not updated, behind
+    \code{WITH\_MPI}, the force loop and the macro. They call
+    \code{runner\_iact\_nonsym\_isrf\_dissipation}.
+  \item Check of the ledger: the example \code{ISRFMultiBinDissipation} has a
+    one-run check of Equation~(\ref{eq:isrfd-ledger-residual}) against
+    $n_{\rm steps}\,2^{-23}$. It stops on missing or non-finite data first and
+    returns a failure on a residual above the bound.
 \end{itemize}
 
 \subsubsection{The exact-exponential relaxation update of $u$ (end-force ghost)}
@@ -924,7 +1010,7 @@ is at \code{radiation\_isrf.c:373-374} and
 reason for the double $\varphi$ is the comment at
 \code{radiation\_propagation\_iact.h:552-553}. The debug ledger counters are at
 \code{radiation\_isrf.c:611-626}. The pending add follows at
-\code{radiation\_isrf.c:639-645}, and the debug minimum since the last snapshot
+\code{radiation\_isrf.c:644-646}, and the debug minimum since the last snapshot
 is recorded after it, at \code{radiation\_isrf.c:647-654}. The limiter that
 already ran is applied at \code{radiation\_isrf.c:916-920}.
 
