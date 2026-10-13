@@ -1505,8 +1505,17 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        struct part *p, struct xpart *xp, const double dt,
                        const double dt_therm, const double time) {
 
-  /* Nothing to do here? */
-  if (dt == 0.) return;
+  /* Nothing to do here? The first step has dt = 0: write the caches a
+     foreign copy reads, so that gas not yet cooled is not left at the
+     "not yet primed" sentinel and excluded from the HII search of another
+     rank. */
+  if (dt == 0.) {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp,
+        hydro_get_physical_internal_energy(p, xp, cosmo));
+    return;
+  }
 
   /* Debug/test-only: skip the per-particle energy update entirely,
      leaving hydro's own internal-energy derivative untouched. See
