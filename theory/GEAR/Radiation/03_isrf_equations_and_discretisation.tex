@@ -276,8 +276,10 @@ cumulative totals. With the pending amounts in $E$, the pair operator is exact,
 so $R$ is float32 rounding only. Each particle updates $u$ and its two
 accumulators at most once per step, hence
 $|R| \le n_{\rm steps}\,2^{-23}$, with $n_{\rm steps}$ the number of global
-steps taken. This holds for any number of ranks and threads. An $R$ above this
-bound shows lost or doubled energy, not rounding.
+steps taken. This is the bar of the check, not a proof: float32 rounding scales
+with $E$, so $R$ can exceed it when $E_0$ is much larger than the injected
+energy. The bar does not depend on the number of ranks or threads. An $R$ above
+it points to lost or doubled energy, not rounding.
 
 \textbf{\code{grad\_u} is not the gradient of $u$.} The code accumulates the
 anisotropic M1 pressure-tensor divergence
@@ -801,12 +803,16 @@ each orientation of the cells. They call the dissipation interaction only and
 skip pairs where $c$ is active.
 
 On \code{ISRFMultiBinDissipation} at a fixed speed and $Z = 0$, the ledger
-residual is $3\times10^{-8}$ on one, two and four ranks, against a bound of
-$3.4\times10^{-5}$ for 281 steps. With only the first gap closed the residual is
-$-9.4\times10^{-3}$ on two ranks, and it is $+0.43$ without any booking. The
+residual stays below $6\times10^{-8}$ in every run. The 2-rank run with 32\,768
+gas particles takes 281 steps, with a bar of $3.4\times10^{-5}$ and a maximum
+of $4.5\times10^{-8}$. The 1-rank and 4-rank runs with 262\,144 gas particles
+take 319 steps, with a bar of $3.8\times10^{-5}$ and a maximum of
+$5.2\times10^{-8}$. With only the first gap closed the residual on two ranks
+is about $-1\times10^{-2}$ (the last snapshot reads $-9.4\times10^{-3}$), and
+it is $+0.43$ without any booking. The
 extra visits sit behind the macro, so a non-MPI build is unchanged. In a
 build that compiles the macro and the ISRF, the cost is $+4.4$ per cent per
-step with the ISRF propagation off and $+5.6$ per cent with it on (four ranks
+step with the ISRF off and $+5.6$ per cent with it on (four ranks
 of two threads, $20\,000$ steps of the multi-bin box with star formation).
 The pending amounts
 live on the particle, so they are written to restart files; the restart
@@ -882,16 +888,16 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     \code{:603-605} and the two pending sums at \code{:630-632}. The symmetric
     and non-symmetric force pairs route an unequal-step pair there at
     \code{:716-726} and \code{:798-814}. The active step is marked in
-    \code{dt\_active}: reset at the drift (\code{radiation\_isrf.c:168}) and set
-    by the extra ghost (\code{radiation\_isrf.c:825}), only while
+    \code{dt\_active}: reset at the drift (\code{radiation\_isrf.c:172}) and set
+    by the extra ghost (\code{radiation\_isrf.c:829}), only while
     \code{radiation\_cross\_bin\_booking\_on} (\code{radiation\_isrf.c})
     is true. It is true when the build has the extra ghost and the ISRF
     propagation is on, and, without the symmetric force interaction, only on one
     rank. A particle with a pending amount in the state of an inactive particle
     stops the run (\code{radiation\_add\_pending\_part}).
     Equation~(\ref{eq:isrfd-pending-add}) is
-    \code{radiation\_add\_pending\_part} (\code{radiation\_isrf.c:456-504}), called at
-    the end of the update at \code{radiation\_isrf.c:639-645}. The snapshot fields
+    \code{radiation\_add\_pending\_part} (\code{radiation\_isrf.c:460}), called at
+    the end of the update at \code{radiation\_isrf.c:644-646}. The snapshot fields
     are registered at \code{feedback\_io.h:550-567}.
   \item Pending-amount arrays: \code{pending\_transport\_u} and
     \code{pending\_dissipation\_u}, one pair per moment in
@@ -1004,7 +1010,7 @@ is at \code{radiation\_isrf.c:373-374} and
 reason for the double $\varphi$ is the comment at
 \code{radiation\_propagation\_iact.h:552-553}. The debug ledger counters are at
 \code{radiation\_isrf.c:611-626}. The pending add follows at
-\code{radiation\_isrf.c:639-645}, and the debug minimum since the last snapshot
+\code{radiation\_isrf.c:644-646}, and the debug minimum since the last snapshot
 is recorded after it, at \code{radiation\_isrf.c:647-654}. The limiter that
 already ran is applied at \code{radiation\_isrf.c:916-920}.
 
