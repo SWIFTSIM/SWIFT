@@ -5,7 +5,6 @@ set -e
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
-n_ranks=${n_ranks:=0}     # Number of ranks to use
 n_threads=${n_threads:=8} # Number of threads to use
 N=${N:=500000}            # Number of gas particles
 
@@ -37,11 +36,7 @@ else
     mkdir $DIR
 fi
 
-if [[ $n_ranks -gt 0 ]]; then
-  swift="mpirun -n $n_ranks ../../../swift_mpi"
-else
-  swift="../../../swift"
-fi
+swift="../../../swift"
 
 printf "Running simulation..."
 
