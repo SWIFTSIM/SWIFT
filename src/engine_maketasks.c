@@ -3020,6 +3020,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_bh_stars_density);
         engine_addunlock_bh_stars_new_stars(sched, ci, t_bh_stars_density);
+        /* The gas properties around the BHs (e.g. the sound speed used
+         * by the repositioning) must be final before the loop runs. */
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                            t_bh_stars_density);
         scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
                             t_bh_stars_density);
         scheduler_addunlock(sched, t_bh_stars_density,
@@ -3422,6 +3426,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_bh_stars_density);
           engine_addunlock_bh_stars_new_stars(sched, ci, t_bh_stars_density);
+          /* The gas properties around the BHs (e.g. the sound speed used
+           * by the repositioning) must be final before the loop runs. */
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.density_ghost,
+                              t_bh_stars_density);
           scheduler_addunlock(sched,
                               ci->hydro.super->black_holes.black_holes_in,
                               t_bh_stars_density);
@@ -3610,6 +3618,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                                 t_bh_stars_density);
             engine_addunlock_bh_stars_new_stars(sched, cj, t_bh_stars_density);
+            /* The gas properties around the BHs (e.g. the sound speed used
+             * by the repositioning) must be final before the loop runs. */
+            scheduler_addunlock(sched,
+                                cj->hydro.super->black_holes.density_ghost,
+                                t_bh_stars_density);
             scheduler_addunlock(sched,
                                 cj->hydro.super->black_holes.black_holes_in,
                                 t_bh_stars_density);

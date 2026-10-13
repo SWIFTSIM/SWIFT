@@ -256,6 +256,9 @@ struct black_holes_props {
   /*! Correct potential of BH? */
   int correct_bh_potential_for_repositioning;
 
+  /*! Also consider star particles as repositioning targets? */
+  int reposition_on_stars;
+
   /* ---- Properties of the merger model ---------- */
 
   /*! Mass ratio above which a merger is considered 'minor' */
@@ -592,6 +595,17 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
 
   bp->correct_bh_potential_for_repositioning =
       parser_get_param_int(params, "EAGLEAGN:with_potential_correction");
+
+  /* The star repositioning targets are found by the loop over the star
+   * neighbours of the black holes, so this requires that loop to be on. */
+  bp->reposition_on_stars =
+      parser_get_opt_param_int(params, "EAGLEAGN:reposition_on_stars", 0);
+  if (bp->reposition_on_stars &&
+      !parser_get_opt_param_int(params, "BlackHoles:use_star_neighbour_loop",
+                                0))
+    error(
+        "EAGLEAGN:reposition_on_stars requires the black hole star neighbour "
+        "loop to be switched on (BlackHoles:use_star_neighbour_loop: 1).");
 
   /* Merger parameters ------------------------------------- */
 

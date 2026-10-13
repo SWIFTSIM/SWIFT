@@ -110,6 +110,9 @@ void runner_doself_bh_stars_density(struct runner *r, struct cell *c,
 
       if (r2 < hig2) {
         runner_iact_nonsym_bh_stars_density(r2, dx, hi, bi, sj);
+        runner_iact_nonsym_bh_stars_repos(r2, dx, bi, sj, e->cosmology,
+                                          e->gravity_properties,
+                                          e->black_holes_properties);
       }
     } /* loop over the sparts in c. */
   } /* loop over the bparts in c. */
@@ -184,6 +187,9 @@ static void runner_dopair_bh_stars_density_naive_one_sided(
 
       if (r2 < hig2) {
         runner_iact_nonsym_bh_stars_density(r2, dx, hi, bi, sj);
+        runner_iact_nonsym_bh_stars_repos(r2, dx, bi, sj, e->cosmology,
+                                          e->gravity_properties,
+                                          e->black_holes_properties);
       }
     } /* loop over the sparts in cj. */
   } /* loop over the bparts in ci. */
@@ -310,6 +316,9 @@ void runner_doself_subset_branch_bh_stars_density(struct runner *r,
       /* Hit or miss? */
       if (r2 < hig2) {
         runner_iact_nonsym_bh_stars_density(r2, dx, hi, bi, sj);
+        runner_iact_nonsym_bh_stars_repos(r2, dx, bi, sj, e->cosmology,
+                                          e->gravity_properties,
+                                          e->black_holes_properties);
       }
     } /* loop over the sparts in ci. */
   } /* loop over the subset of bparts. */
@@ -396,6 +405,9 @@ void runner_dopair_subset_branch_bh_stars_density(struct runner *r,
       /* Hit or miss? */
       if (r2 < hig2) {
         runner_iact_nonsym_bh_stars_density(r2, dx, hi, bi, sj);
+        runner_iact_nonsym_bh_stars_repos(r2, dx, bi, sj, e->cosmology,
+                                          e->gravity_properties,
+                                          e->black_holes_properties);
       }
     } /* loop over the sparts in cj. */
   } /* loop over the subset of bparts. */

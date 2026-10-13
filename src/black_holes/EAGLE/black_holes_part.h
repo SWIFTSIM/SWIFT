@@ -197,6 +197,10 @@ struct bpart {
    * lower potential than all eligible neighbours) */
   int number_of_reposition_attempts;
 
+  /*! Total number of times the black hole has been repositioned onto a star
+   * particle (a subset of number_of_repositions) */
+  int number_of_star_repositions;
+
   /* Velocity of most recent reposition jump */
   float last_repos_vel;
 
@@ -300,7 +304,23 @@ struct bpart {
     /*! Delta position to apply after the reposition procedure */
     double delta_x[3];
 
+    /*! Is the selected repositioning target a star particle? */
+    char target_is_star;
+
   } reposition;
+
+  /*! Best repositioning target found amongst the star neighbours. Kept apart
+   * from the gas candidate as the two are gathered by different loops; they
+   * are merged in black_holes_end_reposition(). */
+  struct {
+
+    /*! Value of the minimum potential across all star neighbours. */
+    float min_potential;
+
+    /*! Delta position to the star with the minimum potential */
+    double delta_x[3];
+
+  } reposition_stars;
 
   /*! Splitting structure */
   struct particle_splitting_data split_data;

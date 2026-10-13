@@ -776,9 +776,11 @@ converged radius and the kernel-weighted stellar mass density within it are
 written to the snapshots as ``StarSearchRadii`` and ``StarDensities``. The
 census is infrastructure for models that need to know about the stellar
 environment of the black holes (e.g. tidal disruption event rates or
-dynamical friction); it does not by itself alter any physics and the star
-particles are never modified. The census is guaranteed to be complete
-before the black holes take any accretion decision in the same time-step.
+dynamical friction); on its own it does not alter any physics (but see the
+repositioning option below) and the star particles are never modified. The
+census runs after the black-hole gas-density loop and is guaranteed to be
+complete before the black holes take any accretion decision in the same
+time-step.
 
 The loop is switched on at run time via the parameter file:
 
@@ -811,6 +813,27 @@ severely degrade performance; the code only aborts if this leaves fewer than
 gas smoothing lengths in the galaxies of interest, with
 :math:`\gamma_K h_{\rm star, max}` well below the top-level cell width
 reported at start-up.
+
+The census can also be used to let black holes reposition onto star
+particles, and not just onto gas particles and other black holes:
+
+.. code:: YAML
+
+   EAGLEAGN:
+     reposition_on_stars:      1       # (Optional) Also consider star particles as repositioning targets. Default: 0. Requires BlackHoles:use_star_neighbour_loop: 1.
+
+The star particles are subject to exactly the same criteria as the gas
+particles: they must lie within ``max_reposition_distance_ratio`` softening
+lengths of the black hole and (if ``with_reposition_velocity_threshold`` is
+set) move slowly enough relative to it, where the threshold is still
+expressed in units of the gas sound speed around the black hole. Note that a
+black hole without gas neighbours therefore cannot reposition onto stars
+unless ``min_reposition_velocity_threshold`` is set. Only the stars within
+the star search radius are considered, in the same way as only the gas
+particles within the gas smoothing length are. The black hole then jumps
+towards the eligible particle (gas, star or black hole) with the lowest
+gravitational potential. The number of repositioning events onto stars is
+written to the snapshots as ``NumberOfStarRepositions``.
 
 The census requires the EAGLE black hole model and is not yet available
 when running over MPI.

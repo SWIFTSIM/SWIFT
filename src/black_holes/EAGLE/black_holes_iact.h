@@ -291,6 +291,116 @@ runner_iact_nonsym_bh_stars_density(const float r2, const float dx[3],
 }
 
 /**
+ * @brief Repositioning interaction between a black hole and a star particle
+ * (non-symmetric).
+ *
+ * Mirrors runner_iact_nonsym_bh_gas_repos(), but records the candidate in
+ * the separate bi->reposition_stars, which is merged with the gas candidate
+ * in black_holes_end_reposition(). The velocity threshold uses the gas sound
+ * speed around the BH, which is final here as the loop over the star
+ * neighbours runs after the BH density ghost.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (bi - sj).
+ * @param bi First particle (black hole).
+ * @param sj Second particle (star, not updated).
+ * @param cosmo The cosmological model.
+ * @param grav_props The properties of the gravity scheme (softening, G, ...).
+ * @param bh_props The properties of the BH scheme
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_bh_stars_repos(const float r2, const float dx[3],
+                                  struct bpart *bi, const struct spart *sj,
+                                  const struct cosmology *cosmo,
+                                  const struct gravity_props *grav_props,
+                                  const struct black_holes_props *bh_props) {
+
+  /* Are we considering the stars at all? */
+  if (!bh_props->reposition_on_stars) return;
+
+  /* (Square of) Max repositioning distance allowed based on the softening */
+  const float max_dist_repos2 =
+      kernel_gravity_softening_plummer_equivalent_inv *
+      kernel_gravity_softening_plummer_equivalent_inv *
+      bh_props->max_reposition_distance_ratio *
+      bh_props->max_reposition_distance_ratio * grav_props->epsilon_baryon_cur *
+      grav_props->epsilon_baryon_cur;
+
+  /* Is this star neighbour close enough that we can consider its potential
+     for repositioning? */
+  if (r2 >= max_dist_repos2) return;
+
+  /* Is the neighbour slow enough to be considered as repositioning target?
+   * Always true if velocity cut is switched off. */
+  if (bh_props->with_reposition_velocity_threshold) {
+
+    /* Compute relative peculiar velocity between the two particles
+     * Recall that in SWIFT v is (v_pec * a) */
+    const float delta_v[3] = {bi->v[0] - sj->v[0], bi->v[1] - sj->v[1],
+                              bi->v[2] - sj->v[2]};
+    const float v2 = delta_v[0] * delta_v[0] + delta_v[1] * delta_v[1] +
+                     delta_v[2] * delta_v[2];
+    const float v2_pec = v2 * cosmo->a2_inv;
+
+    /* Compute the maximum allowed velocity */
+    float v2_max = bh_props->max_reposition_velocity_ratio *
+                   bh_props->max_reposition_velocity_ratio *
+                   bi->sound_speed_gas * bi->sound_speed_gas *
+                   cosmo->a_factor_sound_speed * cosmo->a_factor_sound_speed;
+
+    /* If desired, limit the value of the threshold (v2_max) to be no
+     * smaller than a user-defined value */
+    if (bh_props->min_reposition_velocity_threshold > 0) {
+      const float v2_min_thresh = bh_props->min_reposition_velocity_threshold *
+                                  bh_props->min_reposition_velocity_threshold;
+      v2_max = max(v2_max, v2_min_thresh);
+    }
+
+    /* Is the neighbour too fast to jump to? */
+    if (v2_pec >= v2_max) return;
+  }
+
+  /* Note: Unlike the gas, the star particles do not carry a copy of their
+   * potential, so we read it from the #gpart. This is safe as the gravity
+   * calculation of this step is complete, but will need a copy in the
+   * #spart (as for the gas) to work over MPI. */
+  float potential = sj->gpart->potential;
+
+  if (bh_props->correct_bh_potential_for_repositioning) {
+
+    /* Let's not include the contribution of the BH
+     * itself to the potential of the star particle */
+
+    /* Note: This assumes the BH and stars have the same
+     * softening, which is currently true */
+    const float eps = gravity_get_softening(bi->gpart, grav_props);
+    const float eps2 = eps * eps;
+    const float eps_inv = 1.f / eps;
+    const float eps_inv3 = eps_inv * eps_inv * eps_inv;
+    const float BH_mass = bi->mass;
+
+    /* Compute the Newtonian or truncated potential the BH
+     * exherts onto the star particle */
+    float dummy, pot_ij;
+    runner_iact_grav_pp_full(r2, eps2, eps_inv, eps_inv3, BH_mass, &dummy,
+                             &pot_ij);
+
+    /* Deduct the BH contribution */
+    potential -= pot_ij * grav_props->G_Newton;
+  }
+
+  /* Is the potential lower? */
+  if (potential < bi->reposition_stars.min_potential) {
+
+    /* Store this as our new best */
+    bi->reposition_stars.min_potential = potential;
+    bi->reposition_stars.delta_x[0] = -dx[0];
+    bi->reposition_stars.delta_x[1] = -dx[1];
+    bi->reposition_stars.delta_x[2] = -dx[2];
+  }
+}
+
+/**
  * @brief Repositioning interaction between two particles (non-symmetric).
  *
  * Function used to identify the gas particle that this BH may move towards.

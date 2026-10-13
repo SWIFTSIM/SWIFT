@@ -122,6 +122,7 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
   bp->number_of_direct_gas_swallows = 0;
   bp->number_of_repositions = 0;
   bp->number_of_reposition_attempts = 0;
+  bp->number_of_star_repositions = 0;
   bp->number_of_time_steps = 0;
   bp->last_high_Eddington_fraction_scale_factor = -1.f;
   bp->last_minor_merger_time = -1.;
@@ -181,6 +182,7 @@ __attribute__((always_inline)) INLINE static void black_holes_init_bpart(
   bp->reposition.delta_x[2] = -FLT_MAX;
   bp->reposition.min_potential = FLT_MAX;
   bp->reposition.potential = FLT_MAX;
+  bp->reposition.target_is_star = 0;
   bp->accretion_rate = 0.f; /* Optionally accumulated ngb-by-ngb */
   bp->f_visc = FLT_MAX;
   bp->accretion_boost_factor = -FLT_MAX;
@@ -205,6 +207,10 @@ black_holes_init_stars_density(struct bpart *bp) {
   bp->stars_density.wcount = 0.f;
   bp->stars_density.wcount_dh = 0.f;
   bp->stars_density.rho = 0.f;
+  bp->reposition_stars.delta_x[0] = -FLT_MAX;
+  bp->reposition_stars.delta_x[1] = -FLT_MAX;
+  bp->reposition_stars.delta_x[2] = -FLT_MAX;
+  bp->reposition_stars.min_potential = FLT_MAX;
 
 #ifdef SWIFT_BH_STARS_DENSITY_CHECKS
   bp->N_stars_density = 0;
@@ -237,7 +243,8 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
     const double dy = bp->reposition.delta_x[1];
     const double dz = bp->reposition.delta_x[2];
     const double d = sqrt(dx * dx + dy * dy + dz * dz);
-    if (d > 1.01 * kernel_gamma * bp->h)
+    /* Note: star targets are found within the star search radius */
+    if (d > 1.01 * kernel_gamma * max(bp->h, bp->h_star))
       error("Repositioning BH beyond the kernel support!");
 #endif
 
@@ -264,6 +271,8 @@ __attribute__((always_inline)) INLINE static void black_holes_predict_extra(
 
     /* Count the jump */
     bp->number_of_repositions++;
+    if (bp->reposition.target_is_star) bp->number_of_star_repositions++;
+    bp->reposition.target_is_star = 0;
   }
 }
 
@@ -1187,6 +1196,17 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
     const struct phys_const *constants, const struct cosmology *cosmo,
     const double dt, const integertime_t ti_begin) {
 
+  /* Is the best star candidate (if any) better than the best gas or BH one?
+   * The star candidate is only ever set when running with
+   * EAGLEAGN:reposition_on_stars. */
+  if (bp->reposition_stars.min_potential < bp->reposition.min_potential) {
+    bp->reposition.min_potential = bp->reposition_stars.min_potential;
+    bp->reposition.delta_x[0] = bp->reposition_stars.delta_x[0];
+    bp->reposition.delta_x[1] = bp->reposition_stars.delta_x[1];
+    bp->reposition.delta_x[2] = bp->reposition_stars.delta_x[2];
+    bp->reposition.target_is_star = 1;
+  }
+
   /* First check: did we find any eligible neighbour particle to jump to? */
   if (bp->reposition.min_potential != FLT_MAX) {
 
@@ -1204,6 +1224,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
       bp->reposition.delta_x[0] = -FLT_MAX;
       bp->reposition.delta_x[1] = -FLT_MAX;
       bp->reposition.delta_x[2] = -FLT_MAX;
+      bp->reposition.target_is_star = 0;
 
     } else if (props->set_reposition_speed) {
 
@@ -1274,6 +1295,7 @@ __attribute__((always_inline)) INLINE static void black_holes_end_reposition(
       bp->reposition.delta_x[1] += offset_dy * norm;
       bp->reposition.delta_x[2] += offset_dz * norm;
     }
+
   } /* ends section if we found eligible repositioning target(s) */
 }
 
@@ -1371,6 +1393,7 @@ INLINE static void black_holes_create_from_gas(
   /* We haven't repositioned yet, nor attempted it */
   bp->number_of_repositions = 0;
   bp->number_of_reposition_attempts = 0;
+  bp->number_of_star_repositions = 0;
   bp->last_repos_vel = 0.f;
 
   /* Copy over the splitting struct */
@@ -1405,6 +1428,7 @@ INLINE static void black_holes_create_from_gas(
 
   /* First initialisation */
   black_holes_init_bpart(bp);
+  black_holes_init_stars_density(bp);
 
   black_holes_mark_bpart_as_not_swallowed(&bp->merger_data);
 }

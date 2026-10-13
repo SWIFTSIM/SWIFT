@@ -436,6 +436,11 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.nodeID = NODE_ID;
 
+  /* The loops read the BH properties (zeroed: no repositioning onto stars) */
+  struct black_holes_props bh_props;
+  bzero(&bh_props, sizeof(struct black_holes_props));
+  engine.black_holes_properties = &bh_props;
+
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
   engine.cosmology = &cosmo;

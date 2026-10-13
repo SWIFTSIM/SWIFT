@@ -169,7 +169,7 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
                                                const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 46;
+  *num_fields = 47;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_bpart(
@@ -222,6 +222,14 @@ INLINE static void black_holes_write_particles(const struct bpart *bparts,
       stars_density.rho,
       "Co-moving stellar mass densities of the particles, computed from the "
       "star neighbours within the star search radius");
+
+  list[46] = io_make_physical_output_field(
+      "NumberOfStarRepositions", INT, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
+      number_of_star_repositions, /*can convert to comoving=*/1,
+      "Number of repositioning events the black holes went through onto a "
+      "star particle (a subset of NumberOfRepositions). This does not include "
+      "the number of reposition events accumulated by any merged black "
+      "holes.");
 
   list[8] = io_make_output_field(
       "GasSoundSpeeds", FLOAT, 1, UNIT_CONV_SPEED,
