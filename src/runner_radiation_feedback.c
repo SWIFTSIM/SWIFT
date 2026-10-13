@@ -433,13 +433,9 @@ static void runner_hii_visit_neighbors(struct runner *r, struct cell *c,
     }
 
     /* Get the relative distance between the pairs, wrapping. */
-    double shift[3] = {0.0, 0.0, 0.0};
-    for (int k = 0; k < 3; k++) {
-      if (cj->loc[k] - c->loc[k] < -e->s->dim[k] / 2)
-        shift[k] = e->s->dim[k];
-      else if (cj->loc[k] - c->loc[k] > e->s->dim[k] / 2)
-        shift[k] = -e->s->dim[k];
-    }
+    double shift[3];
+    runner_hii_get_pair_shift(e->s->dim, e->s->periodic, c->loc, cj->loc,
+                              shift);
 
     /* Get the sorting index. */
     int sid = 0;
