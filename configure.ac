@@ -1535,7 +1535,7 @@ if test "x$with_geajay" != "xno"; then
        have_geajay="yes"
       ],
       [AC_MSG_ERROR(Cannot find the geajay library with the particle API! Please check --with-geajay.)],
-      [$GEAJAY_LIBS])
+      [$HDF5_LDFLAGS $GEAJAY_LIBS])
 fi
 AC_SUBST([GEAJAY_LIBS])
 AC_SUBST([GEAJAY_INCS])
