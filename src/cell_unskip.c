@@ -3341,20 +3341,6 @@ void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
     struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut) {
   const struct engine *e = s->space->e;
 
-  /* Store the current dx_max and h_max values, which the recursion test of
-     the runner reads. */
-  ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
-  ci->sinks.h_max_old = ci->sinks.h_max;
-  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
-  ci->hydro.h_max_old = ci->hydro.h_max;
-
-  if (cj != NULL) {
-    cj->sinks.dx_max_part_old = cj->sinks.dx_max_part;
-    cj->sinks.h_max_old = cj->sinks.h_max;
-    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
-    cj->hydro.h_max_old = cj->hydro.h_max;
-  }
-
   /* Self interaction? */
   if (cj == NULL) {
     const int ci_active = cell_is_active_hydro(ci, e);
@@ -3445,6 +3431,20 @@ void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
 void cell_activate_subcell_hydro_sink_aperture_sink_formation_tasks(
     struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut) {
   const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values, which the recursion test of
+     the runner reads. */
+  ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
+  ci->sinks.h_max_old = ci->sinks.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+
+  if (cj != NULL) {
+    cj->sinks.dx_max_part_old = cj->sinks.dx_max_part;
+    cj->sinks.h_max_old = cj->sinks.h_max;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
+  }
 
   /* Self interaction? */
   if (cj == NULL) {
