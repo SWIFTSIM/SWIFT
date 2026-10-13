@@ -2611,6 +2611,9 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     /* Compute mesh forces */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
+    /* Add the high-resolution zoom mesh correction, if enabled. */
+    zoom_mesh_compute_potential(e->zoom_mesh, e->s, &e->threadpool, e->verbose);
+
     /* Compute mesh time-step length */
     engine_recompute_displacement_constraint(e);
 
@@ -3285,6 +3288,9 @@ int engine_step(struct engine *e) {
     /* ... and recompute */
     pm_mesh_compute_potential(e->mesh, e->s, &e->threadpool, e->verbose);
 
+    /* Add the high-resolution zoom mesh correction, if enabled. */
+    zoom_mesh_compute_potential(e->zoom_mesh, e->s, &e->threadpool, e->verbose);
+
     /* Check whether we need to update the mesh time-step length */
     engine_recompute_displacement_constraint(e);
 
@@ -3818,7 +3824,8 @@ void engine_init(
     struct neutrino_response *neutrino_response,
     struct feedback_props *feedback,
     struct pressure_floor_props *pressure_floor, struct rt_props *rt,
-    struct pm_mesh *mesh, struct power_spectrum_data *pow_data,
+    struct pm_mesh *mesh, struct zoom_pm_mesh *zoom_mesh,
+    struct power_spectrum_data *pow_data,
     const struct external_potential *potential,
     struct forcing_terms *forcing_terms,
     struct cooling_function_data *cooling_func,
@@ -3967,6 +3974,7 @@ void engine_init(
   e->neutrino_properties = neutrinos;
   e->neutrino_response = neutrino_response;
   e->mesh = mesh;
+  e->zoom_mesh = zoom_mesh;
   e->power_data = pow_data;
   e->external_potential = potential;
   e->forcing_terms = forcing_terms;
@@ -4235,10 +4243,13 @@ void engine_recompute_displacement_constraint(struct engine *e) {
 
     /* Mesh forces smoothing scale */
     float r_s;
-    if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
+    if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
       r_s = e->mesh->r_s;
-    else
+      if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+        r_s = min(r_s, (float)e->zoom_mesh->r_s);
+    } else {
       r_s = FLT_MAX;
+    }
 
     float dt_dm = FLT_MAX, dt_b = FLT_MAX;
 
@@ -4440,6 +4451,7 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     free((void *)e->internal_units);
     free((void *)e->cosmology);
     free((void *)e->mesh);
+    free((void *)e->zoom_mesh);
     free((void *)e->power_data);
     free((void *)e->chemistry);
     free((void *)e->entropy_floor);
@@ -4500,6 +4512,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   gravity_props_struct_dump(e->gravity_properties, stream);
   stars_props_struct_dump(e->stars_properties, stream);
   pm_mesh_struct_dump(e->mesh, stream);
+  zoom_mesh_struct_dump(e->zoom_mesh, stream);
   power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
   forcing_terms_struct_dump(e->forcing_terms, stream);
@@ -4609,6 +4622,11 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct pm_mesh *mesh = (struct pm_mesh *)malloc(sizeof(struct pm_mesh));
   pm_mesh_struct_restore(mesh, stream);
   e->mesh = mesh;
+
+  struct zoom_pm_mesh *zoom_mesh =
+      (struct zoom_pm_mesh *)malloc(sizeof(struct zoom_pm_mesh));
+  zoom_mesh_struct_restore(zoom_mesh, stream);
+  e->zoom_mesh = zoom_mesh;
 
   struct power_spectrum_data *pow_data =
       (struct power_spectrum_data *)malloc(sizeof(struct power_spectrum_data));

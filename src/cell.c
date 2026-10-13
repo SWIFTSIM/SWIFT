@@ -53,6 +53,7 @@
 #include "multipole_accept.h"
 #include "space.h"
 #include "tools.h"
+#include "zoom_mesh_gravity.h"
 
 /* Global variables. */
 int cell_next_tag = 0;
@@ -1378,11 +1379,10 @@ void cell_set_super_hydro(struct cell *c, struct cell *super_hydro) {
 int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
   const int has_gravity_tasks = c->grav.grav != NULL || c->grav.mm != NULL;
 
-  /* Are we in a cell with some kind of self/pair task ? */
-  if (super_gravity == NULL && has_gravity_tasks) {
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Make sure in zoom land we don't get any confusing empty top level cells
-     * with tasks (this breaks hierarchical task creation) */
+  /* Make sure in zoom land we don't get any confusing empty top level cells
+   * with tasks (this breaks hierarchical task creation) */
+  if (super_gravity == NULL && has_gravity_tasks) {
     if (cell_is_empty_mpole(c))
       error(
           "Setting super_gravity to non-void cell at depth %d with no gparts "
@@ -1390,8 +1390,11 @@ int cell_set_super_gravity(struct cell *c, struct cell *super_gravity) {
           "c->grav.grav=%p c->grav.mm=%p, c=%p",
           c->depth, cellID_names[c->type], subcellID_names[c->subtype],
           (void *)c->grav.grav, (void *)c->grav.mm, (void *)c);
+  }
 #endif
 
+  /* Are we in a cell with some kind of self/pair task ? */
+  if (super_gravity == NULL && has_gravity_tasks) {
     super_gravity = c;
   }
 
@@ -1724,6 +1727,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
                          const int use_mesh) {
 
   const struct gravity_props *props = e->gravity_properties;
+  struct gravity_props zoom_props;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Check for trivial cases */
@@ -1736,6 +1740,14 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 
   const double r2 =
       cell_mpole_CoM_dist2(multi_i, multi_j, use_rebuild_data, periodic, dim);
+
+  /* If both cells are covered by the zoom mesh, make the MAC truncation
+   * estimator match the split used by the eventual M-M interaction. */
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+    zoom_props = *props;
+    zoom_props.r_s_inv = e->zoom_mesh->r_s_inv;
+    props = &zoom_props;
+  }
 
   return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
                                       use_rebuild_data, use_mesh);
@@ -1785,19 +1797,22 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj) {
 
   struct space *s = e->s;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
-  /* If not periodic then we cannot use the mesh */
-  if (!s->periodic) {
-    return 0;
+  /* First try the regular periodic mesh. */
+  if (s->periodic) {
+    const double max_distance = e->mesh->r_cut_max;
+    const double max_distance2 = max_distance * max_distance;
+
+    /* Minimal distance between any pair of particles */
+    const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
+
+    /* Are we safely beyond the distance where the truncated forces are 0 ?*/
+    if (cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2))
+      return 1;
   }
 
-  /* Minimal distance between any pair of particles */
-  const double min_radius2 = cell_min_dist2(ci, cj, s->periodic, s->dim);
-
-  /* Are we safely beyond the distance where the truncated forces are 0 ?*/
-  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+  /* If present, try the high-resolution zoom mesh. */
+  return zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
 }
 
 /**
@@ -1816,21 +1831,24 @@ int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
                                        const struct cell *cj) {
 
   struct space *s = e->s;
-  const double max_distance = e->mesh->r_cut_max;
-  const double max_distance2 = max_distance * max_distance;
 
-  /* If not periodic then we cannot use the mesh */
-  if (!s->periodic) {
-    return 0;
+  /* First try the regular periodic mesh. */
+  if (s->periodic) {
+    const double max_distance = e->mesh->r_cut_max;
+    const double max_distance2 = max_distance * max_distance;
+
+    /* Minimal distance between any pair of particles including max
+     * displacement since rebuild */
+    const double min_radius2 =
+        cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
+
+    /* Are we safely beyond the distance where the truncated forces are 0 ?*/
+    if (cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2))
+      return 1;
   }
 
-  /* Minimal distance between any pair of particles including max
-   * displacement since rebuild */
-  const double min_radius2 =
-      cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
-
-  /* Are we safely beyond the distance where the truncated forces are 0 ?*/
-  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+  /* If present, try the high-resolution zoom mesh. */
+  return zoom_mesh_can_use_mesh_between_rebuilds(e->zoom_mesh, s, ci, cj);
 }
 
 /**
@@ -1878,12 +1896,14 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
    * longer do so */
   if (could_use_mesh_at_rebuild && !can_use_mesh_now) {
     struct space *s = e->s;
-    const double max_distance = e->mesh->r_cut_max;
+    const int zoom_mesh_pair = zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
+    const double max_distance =
+        zoom_mesh_pair ? e->zoom_mesh->r_cut_max : e->mesh->r_cut_max;
     const double max_distance2 = max_distance * max_distance;
     const double min_radius2_rebuild =
-        cell_min_dist2(ci, cj, s->periodic, s->dim);
-    const double min_radius2 =
-        cell_min_dist2_with_max_dx(ci, cj, s->periodic, s->dim);
+        cell_min_dist2(ci, cj, zoom_mesh_pair ? 0 : s->periodic, s->dim);
+    const double min_radius2 = cell_min_dist2_with_max_dx(
+        ci, cj, zoom_mesh_pair ? 0 : s->periodic, s->dim);
     message(
         "Forcing rebuild due to particle motion. Cell pair: "
         "min_radius2_rebuild=%e min_radius2_now=%e max_distance2=%e "

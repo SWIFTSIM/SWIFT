@@ -666,14 +666,32 @@ void space_regrid(struct space *s, int verbose) {
    * order, or passing around extra information. Although annoying this just
    * means this error could be triggered after everything is set up instead of
    * during set up at the beginning of a run. */
-  if (s->periodic && s->with_zoom_region && s->e != NULL &&
-      s->dim[0] / s->e->gravity_properties->mesh_size >
-          s->zoom_props->width[0]) {
-    error(
-        "Mesh too small given the size of top-level zoom cells (width= "
-        "%.2f). Should be at least %d cells wide (Currently: %d).",
-        s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
-        s->e->gravity_properties->mesh_size);
+  if (s->periodic && s->with_zoom_region && s->e != NULL) {
+
+    const struct zoom_pm_mesh *zoom_mesh = s->e->zoom_mesh;
+
+    if (zoom_mesh != NULL && zoom_mesh->enabled) {
+
+      /* The zoom mesh supplies the long-range forces inside the zoom region, so
+       * it is the zoom mesh -- not the background mesh -- that has to resolve
+       * the zoom cells. The background mesh only ever handles the background
+       * cells here, and that it resolves those is already checked against the
+       * background cdim in gravity_props_init. */
+      zoom_mesh_check_geometry(zoom_mesh, s);
+
+    } else if (s->dim[0] / s->e->gravity_properties->mesh_size >
+               s->zoom_props->width[0]) {
+
+      /* Without a zoom mesh the background mesh is responsible for the zoom
+       * cells too, and so must resolve them. */
+      error(
+          "Mesh too small given the size of top-level zoom cells (width= "
+          "%.2f). Should be at least %d cells wide (Currently: %d). "
+          "Alternatively, enable the high-resolution zoom mesh with "
+          "Gravity:zoom_mesh, which handles the zoom cells itself.",
+          s->zoom_props->width[0], (int)(s->dim[0] / s->zoom_props->width[0]),
+          s->e->gravity_properties->mesh_size);
+    }
   }
 
   if (verbose)

@@ -117,18 +117,34 @@ void make_mock_space(struct space *s) {
       (struct gravity_tensors **)calloc(2, sizeof(struct gravity_tensors *));
 }
 
+/**
+ * @brief Sort mock gparts into contiguous top-level cell slices for splitting.
+ */
 void associate_gparts_to_cells(struct space *s) {
+  int *indices = malloc(s->nr_gparts * sizeof(int));
+  int *counts = calloc(s->nr_cells, sizeof(int));
+  if (indices == NULL || counts == NULL)
+    error("Failed to allocate mock particle cell indices");
+
   for (size_t i = 0; i < s->nr_gparts; i++) {
     struct gpart *gpart = &s->gparts[i];
 
     int cid = cell_getid_from_pos(s, gpart->x[0], gpart->x[1], gpart->x[2]);
-
-    struct cell *c = &s->cells_top[cid];
-    if (c == NULL) {
-      error("Failed to find cell for gpart.");
-    }
-    c->grav.count++;
+    indices[i] = cid;
+    counts[cid]++;
   }
+
+  space_gparts_sort(s->gparts, NULL, NULL, NULL, NULL, indices, counts,
+                    s->nr_cells);
+  size_t offset = 0;
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    struct cell *c = &s->cells_top[cid];
+    c->grav.parts = &s->gparts[offset];
+    c->grav.count = c->grav.count_total = counts[cid];
+    offset += counts[cid];
+  }
+  free(indices);
+  free(counts);
 }
 
 void test_cell_tree(struct cell *c, struct space *s) {
@@ -194,8 +210,25 @@ int main(int argc, char *argv[]) {
   /* Run the regridding. */
   space_regrid(s, /*verbose*/ 0);
 
+  /* Ensure forced neighbour splitting is exercised, even with sparse gparts. */
+  if (s->zoom_props->nr_neighbour_cells > 0) {
+    const struct cell *c = &s->cells_top[s->zoom_props->neighbour_cells_top[0]];
+    for (int k = 0; k < 3; k++)
+      s->gparts[0].x[k] = c->loc[k] + 0.5 * c->width[k];
+  }
+
   /* Associate gparts. */
   associate_gparts_to_cells(s);
+
+  /* Production builds neighbour trees before linking the void hierarchy. */
+  struct engine e = {0};
+  e.s = s;
+  s->e = &e;
+  for (int i = 0; i < s->zoom_props->nr_neighbour_cells; i++) {
+    struct cell *c = &s->cells_top[s->zoom_props->neighbour_cells_top[i]];
+    if (c->grav.count > 0)
+      space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, /*tpid=*/0);
+  }
 
   /* Construct the void cell tree. */
   zoom_void_space_split(s, /*verbose*/ 0);

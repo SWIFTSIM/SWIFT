@@ -96,8 +96,13 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
 
-      /* Do we have a progenitor with any active g-particles ? */
-      if (cp != NULL && cell_is_active_gravity(cp, e)) {
+      /* Do we have a local progenitor with any active g-particles?
+       * NOTE: the rank check is explicitly for zoom scenarios where you are
+       * recursing in a void cell and hit the zoom top level where the partition
+       * was done. There is no guarantee that all your progeny will be on the
+       * same rank! */
+      if (cp != NULL && cp->nodeID == e->nodeID &&
+          cell_is_active_gravity(cp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->grav.ti_old_multipole != e->ti_current)
@@ -1440,8 +1445,12 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
-  const double min_trunc = e->mesh->r_cut_min;
+  float r_s_inv = e->mesh->r_s_inv;
+  double min_trunc = e->mesh->r_cut_min;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
+    r_s_inv = e->zoom_mesh->r_s_inv;
+    min_trunc = e->zoom_mesh->r_cut_min;
+  }
 
   TIMER_TIC;
 
@@ -2035,8 +2044,12 @@ void runner_doself_grav_pp(struct runner *r, struct cell *c) {
   /* Recover some useful constants */
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
-  const float r_s_inv = e->mesh->r_s_inv;
-  const double min_trunc = e->mesh->r_cut_min;
+  float r_s_inv = e->mesh->r_s_inv;
+  double min_trunc = e->mesh->r_cut_min;
+  if (zoom_mesh_cell_is_covered(e->zoom_mesh, c, /*use_max_dx=*/0)) {
+    r_s_inv = e->zoom_mesh->r_s_inv;
+    min_trunc = e->zoom_mesh->r_cut_min;
+  }
 
   TIMER_TIC;
 
@@ -2161,7 +2174,9 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
-  const float r_s_inv = e->mesh->r_s_inv;
+  float r_s_inv = e->mesh->r_s_inv;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    r_s_inv = e->zoom_mesh->r_s_inv;
 
   /* Anything to do here? */
   if (!(cell_is_active_gravity(ci, e) && ci->nodeID == e->nodeID)) return;
@@ -2268,7 +2283,9 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const int nodeID = e->nodeID;
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
-  const double max_distance = e->mesh->r_cut_max;
+  double max_distance = e->mesh->r_cut_max;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    max_distance = e->zoom_mesh->r_cut_max;
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||

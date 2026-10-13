@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
   struct pm_mesh mesh;
+  struct zoom_pm_mesh zoom_mesh;
   struct power_spectrum_data pow_data;
   struct gpart *gparts = NULL;
   struct gravity_props gravity_properties;
@@ -1538,6 +1539,10 @@ int main(int argc, char *argv[]) {
       pm_mesh_init_no_mesh(&mesh, s.dim);
     }
 
+    /* Initialise the high-resolution zoom gravity mesh. */
+    zoom_mesh_init(&zoom_mesh, with_self_gravity ? params : NULL,
+                   &gravity_properties, &s, talking);
+
     /* Also update the total counts (in case of changes due to replication) */
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;
     Nnupart = s.nr_nuparts;
@@ -1649,9 +1654,10 @@ int main(int argc, char *argv[]) {
                 &gravity_properties, &stars_properties, &black_holes_properties,
                 &sink_properties, &neutrino_properties, &neutrino_response,
                 &feedback_properties, &pressure_floor_props, &rt_properties,
-                &mesh, &pow_data, &potential, &forcing_terms, &cooling_func,
-                &starform, &chemistry, &extra_io_props, &fof_properties,
-                &los_properties, &lightcone_array_properties, &ics_metadata);
+                &mesh, &zoom_mesh, &pow_data, &potential, &forcing_terms,
+                &cooling_func, &starform, &chemistry, &extra_io_props,
+                &fof_properties, &los_properties, &lightcone_array_properties,
+                &ics_metadata);
     engine_config(/*restart=*/0, /*fof=*/0, &e, params, nr_nodes, myrank,
                   nr_threads, nr_pool_threads, with_aff, talking, restart_dir,
                   restart_file, &reparttype);
@@ -2045,6 +2051,7 @@ int main(int argc, char *argv[]) {
   if (e.neutrino_properties->use_linear_response)
     neutrino_response_clean(e.neutrino_response);
   if (e.mesh->periodic) pm_mesh_clean(e.mesh);
+  if (e.zoom_mesh != NULL) zoom_mesh_clean(e.zoom_mesh);
   if (with_stars) stars_props_clean(e.stars_properties);
   if (with_cooling || with_temperature) cooling_clean(e.cooling_func);
   if (with_feedback) feedback_clean(e.feedback_props);

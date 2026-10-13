@@ -41,7 +41,9 @@
  *
  * - All top-cells get a self task.
  * - All pairs within range according to the multipole acceptance
- *   criterion get a pair task.
+ *   criterion get a pair task, up to the range worked out once per rebuild in
+ *   engine_gravity_get_P2P_search_delta (which also bounds it by the mesh
+ * cut-off).
  *
  * This will create pair tasks between void cells and background cells. These
  * pair tasks will be split into smaller
