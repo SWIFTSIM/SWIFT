@@ -34,7 +34,8 @@ GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
 ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d",
              "keplerian_cd10", "zeldovich",
-             "zeldovich_glass", "zeldovich_pert", "blob"]  # "nfw" on request
+             "zeldovich_glass", "zeldovich_pert", "blob", "taylorgreen", "shearing", "blast", "rt",
+             "khgr", "ibw"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
@@ -1026,6 +1027,450 @@ def test_nfw(root, schemes, out):
     return metrics
 
 
+# ---------------------------------------------------------------------------
+# Tests added 2026-10-12 (viscosity-oriented: Taylor-Green, shearing shock,
+# strong blast wave, Rayleigh-Taylor, KH growth rate, interacting blast waves)
+# ---------------------------------------------------------------------------
+
+
+def ic_arrays(run_dir, ic_name, *datasets):
+    """Arrays of the initial-condition file linked into a run directory (None if absent)."""
+    f = os.path.join(run_dir, ic_name)
+    if not os.path.exists(f):
+        return None
+    with h5py.File(f, "r") as h:
+        arrays = [h["/PartType0/" + d][:] for d in datasets]
+    return [a.reshape(-1) if a.ndim == 2 and a.shape[1] == 1 else a for a in arrays]
+
+
+def energy_history(run_dir):
+    """Time and kinetic energy from statistics.txt (None if absent)."""
+    st = os.path.join(run_dir, "statistics.txt")
+    if not os.path.exists(st):
+        return None
+    data = np.loadtxt(st, comments="#", ndmin=2)
+    return data[:, 1], data[:, 13]
+
+
+def snapshot_series(run_dir, basename, fn):
+    """Apply fn(d) to every snapshot of a run; returns (times, values)."""
+    tt, vv = [], []
+    for f in snapshot_files(run_dir, basename):
+        d = load(f)
+        tt.append(d["time"])
+        vv.append(fn(d))
+    return np.array(tt), np.array(vv)
+
+
+def growth_rate(t, a, t0, t1):
+    """Exponential growth rate of a(t) fitted on ln a between t0 and t1 (nan if too few points)."""
+    ok = (t >= t0) & (t <= t1) & (a > 0)
+    if np.sum(ok) < 3:
+        return float("nan")
+    return float(np.polyfit(t[ok], np.log(a[ok]), 1)[0])
+
+
+def test_taylorgreen(root, schemes, out):
+    """Stationary Taylor-Green vortex: kinetic-energy decay (effective viscosity) and the error of the final field."""
+    v0, k = 0.1, 2.0 * np.pi
+    data = load_all(root, schemes, "taylorgreen", "taylorGreen")
+    ref = next((d for d in data.values() if d), None)
+    if ref is None:
+        return {}
+    t_end = ref["time"]
+    fig, axes = plt.subplots(2, len(schemes) + 1, figsize=(3.6 * (len(schemes) + 1), 3.2 * 2), squeeze=False)
+    metrics = {}
+    axE = axes[0, -1]
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "taylorgreen")
+        hist = energy_history(run_dir)
+        if hist is not None:
+            t, E = hist
+            ok = E > 0
+            slope = np.polyfit(t[ok], np.log(E[ok] / E[0]), 1)[0]
+            nu = -slope / (16.0 * np.pi**2)
+            metrics.setdefault(s, {})["nu_eff"] = float(nu)
+            metrics[s]["E_kin_ratio_end"] = float(E[-1] / E[0])
+            axE.semilogy(t, E / E[0], "-", color=COLORS[j % len(COLORS)], label=f"{s}: nu_eff = {nu:.1e}")
+        d = data[s]
+        if d is None:
+            continue
+        x, y = d["pos"][:, 0], d["pos"][:, 1]
+        vx_ex = v0 * np.sin(k * x) * np.cos(k * y)
+        vy_ex = -v0 * np.cos(k * x) * np.sin(k * y)
+        dv = np.sqrt((d["vel"][:, 0] - vx_ex) ** 2 + (d["vel"][:, 1] - vy_ex) ** 2)
+        metrics.setdefault(s, {})["L1_v"] = float(np.mean(dv) / v0)
+        metrics[s]["L1_rho"] = float(np.mean(np.abs(d["rho"] - 1.0)))
+        # Velocity magnitude map and the v_x profile along y = 0 (exact: v0 sin kx)
+        d["vmag"] = np.sqrt(d["vel"][:, 0] ** 2 + d["vel"][:, 1] ** 2) / v0
+        strip = np.minimum(y, 1.0 - y) < 0.02
+        ax = axes[1, j]
+        ax.scatter(x[strip], d["vel"][strip, 0] / v0, color="0.4", **scatter_props)
+        xs = np.linspace(0, 1, 200)
+        ax.plot(xs, np.sin(k * xs), "k-", lw=1)
+        xb, vb, sb = binned(x[strip], d["vel"][strip, 0] / v0, np.linspace(0, 1, 26))
+        ax.errorbar(xb, vb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
+        axes[1, -1].plot(xb, vb, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        ax.set_xlabel("x (|y| < 0.02)")
+        ax.set_ylabel(r"$v_x / v_0$")
+        ax.set_ylim(-1.2, 1.2)
+    image_panels(axes, 0, schemes, data, "vmag", (0, 1), cmap="viridis")
+    axE.axis("on")
+    axE.set_xlabel("t")
+    axE.set_ylabel(r"$E_{\rm kin}(t) / E_{\rm kin}(0)$")
+    axE.legend(fontsize=6)
+    axes[1, -1].plot(xs, np.sin(k * xs), "k-", lw=1, label="exact")
+    axes[1, -1].set_xlabel("x")
+    axes[1, -1].set_ylabel(r"$v_x / v_0$")
+    axes[1, -1].legend(fontsize=7)
+    fig.suptitle(f"Taylor-Green vortex (2D, Mach 0.1), t = {t_end:.2f}: |v| / v0 and kinetic-energy decay")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "taylorgreen.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_shearing(root, schemes, out):
+    """Shearing shock: profiles against the exact 1D solution, post-shock noise and the diffusion of v_y."""
+    from riemannSolver import RiemannSolver
+
+    data = load_all(root, schemes, "shearing", "shearingShock")
+    ref = next((d for d in data.values() if d), None)
+    if ref is None:
+        return {}
+    t = ref["time"]
+    L = float(ref["boxsize"][0])
+    xc = 0.5 * L
+    # Stream speed, shear amplitude and pressure from the initial conditions
+    first = next(s for s in schemes if data[s] is not None)
+    ic = ic_arrays(os.path.join(root, "runs", first, "shearing"), "shearingShock.hdf5",
+                   "Velocities", "ParticleIDs", "InternalEnergy")
+    if ic is None:
+        return {}
+    v_ic, ids_ic, u_ic = ic
+    dv = float(np.max(v_ic[:, 0]))
+    s_amp = float(np.max(np.abs(v_ic[:, 1])))
+    P0 = (GAS_GAMMA - 1.0) * float(u_ic[0])
+    order_ic = np.argsort(ids_ic)
+    vy0_sorted = v_ic[order_ic, 1]
+    ids_sorted = ids_ic[order_ic]
+
+    solver = RiemannSolver(GAS_GAMMA)
+    x_s = np.linspace(0, L, 2000)
+    rho_c, v_c, P_c, _ = solver.solve(1.0, dv, P0, 1.0, -dv, P0, (x_s - xc) / t)
+    x_edge = np.where(x_s < xc, x_s, x_s - L)
+    rho_e, v_e, P_e, _ = solver.solve(1.0, -dv, P0, 1.0, dv, P0, x_edge / t)
+    central = np.abs(x_s - xc) < 0.25 * L
+    rho_s = np.where(central, rho_c, rho_e)
+    v_s = np.where(central, v_c, v_e)
+    P_s = np.where(central, P_c, P_e)
+    # Post-shock region: where the exact density is above half the jump
+    shocked = central & (rho_s > 0.5 * (rho_s.max() + 1.0))
+    x_shock = float(np.max(np.abs(x_s[shocked] - xc))) if np.any(shocked) else 0.0
+
+    def xf(d):
+        return d["pos"][:, 0]
+
+    edges = np.linspace(0, L, 161)
+    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
+                  ("vx", lambda d: d["vel"][:, 0], v_s, r"$v_x$"),
+                  ("P", lambda d: d["P"], P_s, r"$P$")]
+    fig, axes = setup_figure(schemes, quantities, extra_rows=1)
+    metrics = {}
+    for i, (name, yf, ex, lab) in enumerate(quantities):
+        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="x", ylabel=lab, xlim=(0, L))
+        for s in schemes:
+            if data[s] is None:
+                continue
+            x = xf(data[s])
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, np.ones_like(x, dtype=bool))
+    row = len(quantities)
+    for j, s in enumerate(schemes):
+        d = data[s]
+        ax = axes[row, j]
+        if d is None:
+            continue
+        x = xf(d)
+        # Lagrangian change of v_y (exact: none) and post-shock noise of v_x
+        vy0 = vy0_sorted[np.searchsorted(ids_sorted, d["ids"])]
+        dvy = d["vel"][:, 1] - vy0
+        metrics[s]["L1_vy_lagrangian"] = float(np.mean(np.abs(dvy)) / s_amp)
+        post = np.abs(x - xc) < 0.8 * x_shock
+        metrics[s]["vx_noise_postshock"] = float(np.std(d["vel"][post, 0]) / dv) if np.any(post) else float("nan")
+        metrics[s]["x_shock_exact"] = x_shock
+        ax.scatter(x, dvy / s_amp, color="0.4", **scatter_props)
+        xb, yb, sb = binned(x, dvy / s_amp, edges)
+        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
+        axes[row, -1].plot(xb, sb, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        ax.axhline(0, color="k", lw=1)
+        ax.set_xlim(0, L)
+        ax.set_ylim(-0.05, 0.05)
+        ax.set_xlabel("x")
+        ax.set_ylabel(r"$(v_y - v_{y,0}) / s$")
+    axes[row, -1].set_xlabel("x")
+    axes[row, -1].set_ylabel(r"rms$(v_y - v_{y,0}) / s$ per bin")
+    axes[row, -1].set_yscale("log")
+    axes[row, -1].legend(fontsize=7)
+    fig.suptitle(f"Shearing shock (3D), t = {t:.3f}, streams at Mach {dv:g}, shear amplitude {s_amp:g}")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "shearing.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_blast(root, schemes, out):
+    """Strong blast wave: profiles against the exact Riemann solution (P jump 1e4, uniform density)."""
+    from riemannSolver import RiemannSolver
+
+    data = load_all(root, schemes, "blast", "blastWave")
+    ref = next((d for d in data.values() if d), None)
+    if ref is None:
+        return {}
+    t = ref["time"]
+    L = float(ref["boxsize"][0])
+    first = next(s for s in schemes if data[s] is not None)
+    ic = ic_arrays(os.path.join(root, "runs", first, "blast"), "blastWave.hdf5", "InternalEnergy")
+    if ic is None:
+        return {}
+    P_L, P_R = (GAS_GAMMA - 1.0) * float(ic[0].max()), (GAS_GAMMA - 1.0) * float(ic[0].min())
+    # The periodic boundary carries the same jump: only the middle half of the
+    # box, |x - L/2| < L/4, is free of the waves from it until the end time.
+    solver = RiemannSolver(GAS_GAMMA)
+    x_s = np.linspace(0.25 * L, 0.75 * L, 4000)
+    rho_s, v_s, P_s, _ = solver.solve(1.0, 0.0, P_L, 1.0, 0.0, P_R, (x_s - 0.5 * L) / t)
+    u_s = P_s / (rho_s * (GAS_GAMMA - 1.0))
+
+    def xf(d):
+        return d["pos"][:, 0]
+
+    edges = np.linspace(0.25 * L, 0.75 * L, 101)
+    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$", False),
+                  ("v", lambda d: d["vel"][:, 0], v_s, r"$v_x$", False),
+                  ("P", lambda d: d["P"], P_s, r"$P$", True),
+                  ("u", lambda d: d["u"], u_s, r"$u$", True)]
+    fig, axes = setup_figure(schemes, quantities)
+    metrics = {}
+    for i, (name, yf, ex, lab, logy) in enumerate(quantities):
+        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="x", ylabel=lab,
+                       xlim=(0.25 * L, 0.75 * L), logy=logy)
+        for s in schemes:
+            if data[s] is None:
+                continue
+            x = xf(data[s])
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, np.abs(x - 0.5 * L) < 0.25 * L)
+    # Particle interpenetration: velocity noise behind the shock
+    shocked = (rho_s > 0.5 * (rho_s.max() + 1.0)) & (x_s > 0.5 * L)
+    if np.any(shocked):
+        x0, x1 = float(x_s[shocked].min()), float(x_s[shocked].max())
+        for s in schemes:
+            if data[s] is None:
+                continue
+            x = xf(data[s])
+            post = (x > x0 + 0.2 * (x1 - x0)) & (x < x1 - 0.2 * (x1 - x0))
+            vref = float(np.interp(0.5 * (x0 + x1), x_s, v_s))
+            metrics[s]["v_noise_postshock"] = float(np.std(data[s]["vel"][post, 0]) / vref) if np.any(post) else float("nan")
+    fig.suptitle(f"Strong blast wave (3D), t = {t:.4f}, P_L / P_R = {P_L / P_R:g}")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "blast.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_rt(root, schemes, out):
+    """Rayleigh-Taylor: growth of the seeded mode against linear theory, bubble and spike heights."""
+    gamma, g, k = 1.4, 0.5, 4.0 * np.pi  # the seed is cos(4 pi x): wavelength 1/2
+    y_if = 0.75
+    times = [1.0, 2.0, 3.0, 4.0]
+    fig, axes = plt.subplots(len(times), len(schemes) + 1,
+                             figsize=(3.0 * (len(schemes) + 1), 4.2 * len(times)), squeeze=False)
+    metrics = {}
+    sigma_th = None
+    for i, tt in enumerate(times):
+        data = load_all(root, schemes, "rt", "rayleigh_taylor", time=tt)
+        image_panels(axes, i, schemes, data, "rho", (0.8, 2.2), cmap="RdBu_r")
+        axes[i, -1].axis("off")
+    ax = axes[0, -1]
+    ax.axis("on")
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "rt")
+        ic = ic_arrays(run_dir, "rayleigh_taylor.hdf5", "Coordinates", "ParticleIDs")
+        if ic is None:
+            continue
+        pos0, ids0 = ic
+        order = np.argsort(ids0)
+        y0_sorted = pos0[order, 1]
+        ids_sorted = ids0[order]
+        if sigma_th is None:
+            rho_top, rho_bot = 2.0, 1.0
+            A = (rho_top - rho_bot) / (rho_top + rho_bot)
+            sigma_th = float(np.sqrt(A * g * k))
+
+        def analyse(d):
+            y0 = y0_sorted[np.searchsorted(ids_sorted, d["ids"])]
+            free = (y0 > 0.1) & (y0 < 1.4)
+            heavy = free & (y0 > y_if)
+            light = free & (y0 < y_if)
+            x, y = d["pos"][:, 0], d["pos"][:, 1]
+            band = free & (np.abs(y0 - y_if) < 0.2)
+            # amplitude of the seeded mode in v_y (projection on cos 4 pi x)
+            amp = 2.0 * np.abs(np.mean(d["vel"][band, 1] * np.cos(k * x[band])))
+            bubble = float(np.percentile(y[light], 99.5) - y_if)
+            spike = float(y_if - np.percentile(y[heavy], 0.5))
+            return amp, bubble, spike
+
+        t, vals = snapshot_series(run_dir, "rayleigh_taylor", analyse)
+        if len(t) == 0:
+            continue
+        amp, bubble, spike = vals[:, 0], vals[:, 1], vals[:, 2]
+        # The seed relaxes until t ~ 0.5; the mode then grows cleanly until the
+        # mushrooms form (t ~ 2.5). sigma_theory is the incompressible
+        # sharp-interface value sqrt(A g k); the stratified, smoothed
+        # interface of the example grows more slowly, so the ratio is a
+        # comparison between schemes rather than an absolute error.
+        sigma = growth_rate(t, amp, 0.5, 2.0)
+        m = metrics.setdefault(s, {})
+        m["sigma_fit"] = sigma
+        m["sigma_theory"] = sigma_th
+        m["sigma_ratio"] = float(sigma / sigma_th)
+        for tq in (2.0, 4.0):
+            if t[-1] >= tq - 0.05:
+                m[f"bubble_height_t{tq:g}"] = float(np.interp(tq, t, bubble))
+                m[f"spike_depth_t{tq:g}"] = float(np.interp(tq, t, spike))
+        m["mixing_width_end"] = float(bubble[-1] + spike[-1])
+        ax.semilogy(t, amp, "-", color=COLORS[j % len(COLORS)], label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
+        axes[1, -1].axis("on")
+        axes[1, -1].plot(t, bubble, "-", color=COLORS[j % len(COLORS)], label=s)
+        axes[1, -1].plot(t, spike, "--", color=COLORS[j % len(COLORS)])
+    if sigma_th is not None:
+        tt = np.linspace(0, 1.2, 20)
+        ax.semilogy(tt, 0.02 * np.exp(sigma_th * tt), "k:",
+                    label=rf"$e^{{\sigma t}}$, $\sigma$ = {sigma_th:.2f}")
+    ax.set_xlabel("t")
+    ax.set_ylabel("mode amplitude of $v_y$")
+    ax.legend(fontsize=6)
+    axes[1, -1].set_xlabel("t")
+    axes[1, -1].set_ylabel("bubble height (solid), spike depth (dashed)")
+    axes[1, -1].legend(fontsize=6)
+    fig.suptitle("Rayleigh-Taylor (2D), density")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "rt.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_khgr(root, schemes, out):
+    """KH growth rate: E_y(t) against the analytic growth rate of the piecewise-linear shear layer."""
+    U0, d_ramp, k = 0.5, 0.0317, 4.0 * np.pi
+    # Rayleigh (1880): growth rate of a shear layer of half-thickness d with a linear velocity ramp
+    arg = np.exp(-4.0 * k * d_ramp) - (2.0 * k * d_ramp - 1.0) ** 2
+    sigma_th = float(U0 / (2.0 * d_ramp) * np.sqrt(max(arg, 0.0)))
+    times = [1.0, 2.0]
+    fig, axes = plt.subplots(len(times), len(schemes) + 1,
+                             figsize=(3.4 * (len(schemes) + 1), 3.4 * len(times)), squeeze=False)
+    metrics = {}
+    for i, tt in enumerate(times):
+        data = load_all(root, schemes, "khgr", "kelvinHelmholtzGrowthRate", time=tt)
+        for d in data.values():
+            if d is not None:
+                d["vy"] = d["vel"][:, 1]
+        image_panels(axes, i, schemes, data, "vy", (-0.3, 0.3), cmap="RdBu_r")
+        axes[i, -1].axis("off")
+    ax = axes[0, -1]
+    ax.axis("on")
+
+    def mode_amplitude(d):
+        """Amplitude of the seeded v_y mode (McNally et al. 2012, eq. 10), averaged over the two interfaces."""
+        x, y, vy = d["pos"][:, 0], d["pos"][:, 1], d["vel"][:, 1]
+        amps = []
+        for y_if in (0.25, 0.75):
+            w = np.exp(-k * np.abs(y - y_if))
+            si = np.sum(vy * np.sin(k * x) * w)
+            ci = np.sum(vy * np.cos(k * x) * w)
+            amps.append(2.0 * np.sqrt(si * si + ci * ci) / np.sum(w))
+        return float(np.mean(amps))
+
+    series = {}
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "khgr")
+        t, vals = snapshot_series(run_dir, "kelvinHelmholtzGrowthRate",
+                                  lambda d: (mode_amplitude(d), float(np.sum(0.5 * d["m"] * d["vel"][:, 1] ** 2))))
+        if len(t) == 0:
+            continue
+        M, Ey = vals[:, 0], vals[:, 1]
+        series[s] = (t, M)
+        # linear phase: the mode grows from the seed until it reaches ~ 0.1 of the shear
+        t_lin = t[M < 0.1 * U0]
+        t1 = float(min(t_lin[-1], 1.0)) if len(t_lin) else 0.6
+        sigma = growth_rate(t, M, 0.1, t1)
+        m = metrics.setdefault(s, {})
+        m["sigma_fit"] = sigma
+        m["sigma_theory"] = sigma_th
+        m["sigma_ratio"] = float(sigma / sigma_th)
+        m["mode_amp_t0.5"] = float(np.interp(0.5, t, M))
+        m["mode_amp_max"] = float(np.max(M))
+        m["t_mode_amp_max"] = float(t[np.argmax(M)])
+        # Incoherent v_y generated by the shear flow itself (gradient noise), early on
+        m["E_y_noise_t0.2"] = float(np.interp(0.2, t, Ey))
+        ax.semilogy(t, M, "-", color=COLORS[j % len(COLORS)], label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
+    tt = np.linspace(0, 0.8, 20)
+    if series:
+        M0 = float(np.mean([np.interp(0.1, *ser) for ser in series.values()]))
+        ax.semilogy(tt + 0.1, M0 * np.exp(sigma_th * tt), "k:", label=rf"$e^{{\sigma t}}$, $\sigma$ = {sigma_th:.2f}")
+    ax.set_xlabel("t")
+    ax.set_ylabel("mode amplitude of $v_y$")
+    ax.legend(fontsize=6)
+    fig.suptitle("Kelvin-Helmholtz growth rate (2D, uniform density): $v_y$")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "khgr.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_ibw(root, schemes, out):
+    """Interacting blast waves (1D, gamma = 7/5) against the high-resolution reference solution."""
+    gamma = 1.4
+    data = load_all(root, schemes, "ibw", "interactingBlastWaves")
+    ref = next((d for d in data.values() if d), None)
+    if ref is None:
+        return {}
+    t = ref["time"]
+    first = next(s for s in schemes if data[s] is not None)
+    ref_file = os.path.join(root, "runs", first, "ibw", "interactingBlastWaves1D_exact.txt")
+    if not os.path.exists(ref_file):
+        return {}
+    exact = np.loadtxt(ref_file)
+    x_s, rho_s, v_s, P_s = exact[:, 0], exact[:, 1], exact[:, 2], exact[:, 3]
+    u_s = P_s / (rho_s * (gamma - 1.0))
+
+    # The periodic box of length 2 holds the problem on [0, 1] and its mirror
+    # image: fold both halves onto the reference domain.
+    def xf(d):
+        x = d["pos"][:, 0]
+        return np.minimum(x, 2.0 - x)
+
+    edges = np.linspace(0, 1, 201)
+    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$", False),
+                  # the mirror image has the opposite velocity
+                  ("v", lambda d: d["vel"][:, 0] * np.where(d["pos"][:, 0] < 1.0, 1.0, -1.0), v_s, r"$v_x$", False),
+                  ("P", lambda d: d["P"], P_s, r"$P$", True),
+                  ("u", lambda d: d["u"], u_s, r"$u$", True)]
+    fig, axes = setup_figure(schemes, quantities)
+    metrics = {}
+    for i, (name, yf, ex, lab, logy) in enumerate(quantities):
+        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="min(x, 2 - x)", ylabel=lab,
+                       xlim=(0.4, 1.0) if name != "u" else (0, 1), logy=logy)
+        for s in schemes:
+            if data[s] is None:
+                continue
+            x = xf(data[s])
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, np.ones_like(x, dtype=bool))
+    fig.suptitle(f"Interacting blast waves (1D), t = {t:.3f}; the two mirrored halves of the box are folded together")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "ibw.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
 TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_gresho,
          "evrard": test_evrard, "kh": test_kh, "square": test_square,
          "square_mass": lambda root, schemes, out: test_square(root, schemes, out, test="square_mass"),
@@ -1035,7 +1480,9 @@ TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_g
          "zeldovich": test_zeldovich,
          "zeldovich_glass": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_glass"),
          "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
-         "blob": test_blob, "nfw": test_nfw}
+         "blob": test_blob, "nfw": test_nfw,
+         "taylorgreen": test_taylorgreen, "shearing": test_shearing, "blast": test_blast,
+         "rt": test_rt, "khgr": test_khgr, "ibw": test_ibw}
 
 
 # ---------------------------------------------------------------------------
