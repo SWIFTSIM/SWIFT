@@ -2845,6 +2845,16 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
 
       scheduler_activate(s, t);
 
+      /* The loop waits for the star formation via the stars_in task of
+       * the cells (when it exists). Activate it, as it would otherwise be
+       * skipped (and the dependency ignored) if the cell has no active
+       * stars. */
+      if (ci_nodeID == nodeID && ci->hydro.super->stars.stars_in != NULL)
+        scheduler_activate(s, ci->hydro.super->stars.stars_in);
+      if (cj != NULL && cj_nodeID == nodeID &&
+          cj->hydro.super->stars.stars_in != NULL)
+        scheduler_activate(s, cj->hydro.super->stars.stars_in);
+
       /* Store current values of dx_max and h_max. */
       if (t->type == task_type_self) {
         cell_activate_subcell_bh_stars_tasks(ci, NULL, s);

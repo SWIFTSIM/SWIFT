@@ -3662,8 +3662,7 @@ void engine_init(
     error(
         "Black holes star neighbour loop requested "
         "(BlackHoles:use_star_neighbour_loop) but SWIFT was compiled with a "
-        "black hole model that does not support it. Use the Default or EAGLE "
-        "model.");
+        "black hole model that does not support it. Use the EAGLE model.");
 #endif
 #ifdef WITH_MPI
     error(

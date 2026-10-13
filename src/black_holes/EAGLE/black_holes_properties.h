@@ -359,8 +359,14 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
        pow_dimension(bp->stars_eta_neighbours)) *
       kernel_norm;
 
-  bp->stars_h_max =
-      parser_get_opt_param_float(params, "BlackHoles:stars_h_max", FLT_MAX);
+  /* The search radius is the only thing preventing the radius of black
+   * holes without star neighbours from growing without bounds, so it must
+   * be set explicitly when the loop is used. */
+  if (parser_get_opt_param_int(params, "BlackHoles:use_star_neighbour_loop",
+                               0))
+    bp->stars_h_max = parser_get_param_float(params, "BlackHoles:stars_h_max");
+  else
+    bp->stars_h_max = FLT_MAX;
 
   /* Time integration properties */
   const float max_volume_change =

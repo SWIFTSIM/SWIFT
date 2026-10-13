@@ -1200,7 +1200,9 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_hydro_task(
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_star_max <
+          0.5f * c->dmin);
 }
 
 /**
@@ -1221,7 +1223,9 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
          (space_stretch * kernel_gamma * c->hydro.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->stars.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
-         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
+         (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin) &&
+         (space_stretch * kernel_gamma * c->black_holes.h_star_max <
+          0.5f * c->dmin);
 }
 
 /**

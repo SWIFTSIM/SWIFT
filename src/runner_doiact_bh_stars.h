@@ -29,9 +29,9 @@ struct bpart;
 /* Loops computing the density of star particles around black holes.
  *
  * The black holes gather from the stars only (non-symmetric); the star
- * particles are never updated. The black holes are not sorted (they are
- * rare), but the pair interactions walk the star sort arrays where
- * available. */
+ * particles are never updated. Neither the black holes nor the stars are
+ * sorted: all the loops are naive N^2 loops over the particles in the cells
+ * (black holes are rare). */
 
 void runner_doself_bh_stars_density(struct runner *r, struct cell *c,
                                     int timer);

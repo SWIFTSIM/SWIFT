@@ -790,18 +790,16 @@ The loop is switched on at run time via the parameter file:
      use_star_neighbour_loop:  1       # Default: 0
      stars_resolution_eta:     1.2348  # (Optional) Target star neighbour number in units of the mean inter-particle separation. Defaults to BlackHoles:resolution_eta.
      stars_h_tolerance:        7e-3    # (Optional) Tolerance of the search radius iteration. Defaults to BlackHoles:h_tolerance.
-     stars_h_max:              0.1     # (Optional) Maximal allowed search radius in internal units. Defaults to SPH:h_max.
+     stars_h_max:              0.1     # Maximal allowed search radius in internal units (required if use_star_neighbour_loop is 1).
 
-**Setting** ``stars_h_max`` **is strongly recommended.** Black holes can sit
+``stars_h_max`` **must be set when the loop is used.** Black holes can sit
 in star-poor regions (e.g. freshly seeded black holes in gas-rich haloes at
 high redshift) where the target neighbour number cannot be reached, so
 unlike the gas smoothing lengths the maximal search radius is routinely
 attained. Black holes that hit the ceiling keep a truncated kernel and
 simply report the stars they do find. The search radius is bounded below by the
 hydro minimal smoothing length (set via ``SPH:h_min_ratio``) and above by
-the smaller of ``BlackHoles:stars_h_max`` and ``SPH:h_max``. If neither is
-set, the search radius of a black hole with no stars around it keeps
-doubling until the run aborts with a convergence error.
+the smaller of ``BlackHoles:stars_h_max`` and ``SPH:h_max``.
 
 As for the gas smoothing lengths, the top-level cells must be larger than
 the largest search radius, :math:`\gamma_K h_{\rm star}` (with
