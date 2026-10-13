@@ -49,6 +49,10 @@ applied to both. Where a closed form exists, the check compares against it:
   the totals with that solution and with the code's own step-by-step update,
   in all three moments (PE, LW and the LW photon number). The star (3 Msun)
   outlives the run, so its luminosity is constant.
+- `star_propagation_pe`: the same at ten times the speed (600 km/s), with
+  heavier gas particles and half the steps so that every particle stays on
+  one time bin. The Hubble signal of every band grows tenfold, so the PE band
+  clears its bar and is gated too.
 
 `h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
 self-shielding) has no closed form. It is compared between `redshift=0` and
@@ -224,6 +228,11 @@ config=star_propagation redshift=9 run_name=star_z9 ./run.sh
 config=star_propagation redshift=0 run_name=star_z0 ./run.sh
 python3 isrf_cosmology_star_propagation_check.py -s "star_z9/snap/snapshot_*.hdf5"
 python3 isrf_cosmology_star_propagation_check.py -s "star_z0/snap/snapshot_*.hdf5"
+config=star_propagation_pe redshift=9 run_name=star_pe_z9 ./run.sh
+config=star_propagation_pe redshift=0 run_name=star_pe_z0 ./run.sh
+python3 isrf_cosmology_star_propagation_check.py -s "star_pe_z9/snap/snapshot_*.hdf5" \
+    --require-pe
+python3 isrf_cosmology_star_propagation_check.py -s "star_pe_z0/snap/snapshot_*.hdf5"
 ```
 The check compares each band's box total with two models: (S1) the code's own
 update, applied step by step to the box totals in double precision, and (S2)
@@ -239,7 +248,11 @@ At `redshift=9` the Hubble loss of the LW band grows to about 1.4e-4 of the
 injected energy by `a = 0.125`. The check fails a cosmological leg whose LW
 signal does not exceed its bar. The PE band's own decay and its gain from the
 LW band nearly cancel at this star's band ratio, so its signal is printed but
-not required. `--no-expansion-in-models` drops the Hubble terms from both
+not required. The `star_propagation_pe` leg raises every signal tenfold: its
+PE signal (4.1e-5) is about 11 times its bar, and `--require-pe` makes the
+check fail when it is not. Its gas particles weigh 64000 Msun and it runs 2048
+steps, which keeps the Courant step above `dt_max` at 600 km/s.
+`--no-expansion-in-models` drops the Hubble terms from both
 models and must make the `redshift=9` leg fail. The `redshift=0` leg has no
 expansion; both models reduce to the injected energy, and it must pass the same
 bar. It carries the one float term with no bound computable from a snapshot,

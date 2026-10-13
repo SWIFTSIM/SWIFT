@@ -69,7 +69,9 @@ Hubble signal, ``(E_noH - E_cont)/E_noH``, is printed per band. A cosmological
 leg FAILS when the LW signal does not exceed its S2 bar, because such a leg
 cannot tell an expanding box from a static one. At this fixture's band ratio
 the PE signal nearly cancels: its own decay and its gain from LW have opposite
-signs. The PE signal is reported, not required.
+signs. The PE signal is reported, not required, unless ``--require-pe`` is
+given, as for the ``star_propagation_pe`` configuration, whose ten times higher
+speed lifts it clear of the bar.
 
 The float bar is a sum of worst-case bounds, each derived from the code and
 none from a measurement:
@@ -130,7 +132,7 @@ def parse_options() -> argparse.Namespace:
     Returns
     -------
     argparse.Namespace
-        The snapshot glob, the kernel radius factor and the two flags.
+        The snapshot glob, the kernel radius factor and the three flags.
     """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
@@ -144,6 +146,12 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--table", action="store_true", help="Print the residuals at every snapshot"
+    )
+    parser.add_argument(
+        "--require-pe",
+        action="store_true",
+        help="Also FAIL a cosmological leg whose PE Hubble signal does not exceed "
+        "its bar (for star_propagation_pe)",
     )
     parser.add_argument(
         "--no-expansion-in-models",
@@ -824,9 +832,10 @@ def check(opt: argparse.Namespace) -> bool:
             ok = False
         if first["cosmological"]:
             ratio = abs(signal[b]) / (bar + disc[-1])
-            word = "required" if b != "PE" else "reported, not required"
+            required = b != "PE" or opt.require_pe
+            word = "required" if required else "reported, not required"
             print(f"  signal over S2 bar {ratio:.3g} ({word})")
-            if b != "PE" and not ratio > 1.0:
+            if required and not ratio > 1.0:
                 fail(
                     f"{BAND_NAMES[b]}: the Hubble signal does not exceed the bar; "
                     "this leg cannot tell an expanding box from a static one"
