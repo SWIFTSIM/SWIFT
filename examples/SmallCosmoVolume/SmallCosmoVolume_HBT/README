@@ -26,12 +26,11 @@ https://hbt-herons.strw.leidenuniv.nl/installation/
 
     git clone https://github.com/SWIFTSIM/HBT-HERONS.git && cd HBT-HERONS
     mkdir build && cd build
-    cmake ../ -DHBT_DM_ONLY=On && make -j 4
+    cmake ../ && make -j 4
 
-The HBT_DM_ONLY flag is set because this is a dark-matter-only simulation. Note we
-compile from a separate build directory, as HBT-HERONS records whether its tracked
-files have been modified. This produces the executable build/HBT, which is what
-run.sh needs to be pointed at.
+Note we compile from a separate build directory, as HBT-HERONS records whether
+its tracked files have been modified. This produces the executable build/HBT,
+which is what run.sh needs to be pointed at.
 
 ### How to run
 
