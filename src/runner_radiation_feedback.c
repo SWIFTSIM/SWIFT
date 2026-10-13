@@ -1024,6 +1024,28 @@ void runner_do_stars_hii_ionization_feedback_branch(
     }
   } else {
 
+    /* Gas of a foreign cell has no xparts here and its tags would never
+     * reach the owner, so stop as soon as the search sphere can touch it.
+     * The box is widened by the largest gas displacement since the rebuild. */
+    if (cj->nodeID != r->e->nodeID && cj->hydro.count > 0) {
+      const double margin = cj->hydro.dx_max_part;
+      double d2 = 0.0;
+      for (int k = 0; k < 3; k++) {
+        const double x = si->x[k] - shift[k];
+        const double lo = cj->loc[k] - margin;
+        const double hi = cj->loc[k] + cj->width[k] + margin;
+        const double d = (x < lo) ? lo - x : (x > hi) ? x - hi : 0.0;
+        d2 += d * d;
+      }
+      if (d2 < (double)search_radius * (double)search_radius)
+        error(
+            "The HII region of star %lld on rank %d reaches gas owned by rank "
+            "%d. HII photoionization is not supported across MPI rank "
+            "boundaries on this branch. Run on one rank, or use the branch "
+            "darwin/gear_radiation_mpi_s3.",
+            si->id, r->e->nodeID, cj->nodeID);
+    }
+
     /* Let's first lock the cell */
     lock_lock(&cj->hydro.extra_sort_lock);
 
@@ -1194,7 +1216,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
     /* Check that cells are drifted. */
     if (!cell_are_part_drifted(cj, e))
       error("Interacting undrifted cell (hydro).");
-    if (!cell_are_spart_drifted(cj, e))
+    if (!cell_are_spart_drifted(ci, e))
       error("Interacting undrifted cell (stars).");
 
     struct part *restrict parts_j = cj->hydro.parts;
@@ -1277,7 +1299,7 @@ void runner_dopair_stars_hii_ionization_feedback(
   /* Check that cells are drifted. */
   if (!cell_are_part_drifted(cj, e))
     error("Interacting undrifted cell (hydro).");
-  if (!cell_are_spart_drifted(cj, e))
+  if (!cell_are_spart_drifted(ci, e))
     error("Interacting undrifted cell (stars).");
 
   /* Get the hydro sorts for our gas cell */
