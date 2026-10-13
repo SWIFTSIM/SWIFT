@@ -819,11 +819,22 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
        magma_viscosity.shear_limiter) &&
       !res) {
     const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
-    /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I */
+    /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
+     * the d diagonal entries that exist in d dimensions (the absent ones
+     * would contribute -(div v / d)^2 each and make a pure compression
+     * look partly sheared: xi = 1/3 in 1D, 4/5 in 2D). */
     const float iso = div_v / hydro_dimension;
     const float Sxx = gradient_vx[0] - iso;
+#if defined(HYDRO_DIMENSION_1D)
+    const float Syy = 0.f;
+    const float Szz = 0.f;
+#elif defined(HYDRO_DIMENSION_2D)
+    const float Syy = gradient_vy[1] - iso;
+    const float Szz = 0.f;
+#else
     const float Syy = gradient_vy[1] - iso;
     const float Szz = gradient_vz[2] - iso;
+#endif
     const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
     const float Sxz = 0.5f * (gradient_vx[2] + gradient_vz[0]);
     const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
