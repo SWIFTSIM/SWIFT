@@ -681,15 +681,60 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
 }
 
 /**
+ * @brief HII eligibility temperature of a #part, safe for a foreign copy.
+ *
+ * cooling_get_temperature() reads the species of the #xpart, which a foreign
+ * copy does not have. A foreign copy returns the temperature cached at the
+ * owner's last cooling call and sent with the post-cooling state. The cache
+ * is read as it stands, never recombined with the internal energy of the
+ * xv/rho channel, which is an earlier snapshot. One cooling call writes this
+ * cache and mu_eligibility, so the two stay a matched pair.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_props The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle, or NULL for a foreign copy.
+ * @return The particle's eligibility temperature.
+ */
+__attribute__((always_inline)) INLINE float
+feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#ifdef WITH_MPI
+  if (xp == NULL) return p->feedback_data.T_eligibility;
+#endif
+
+  return cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p,
+                                 xp);
+}
+
+/**
  * @brief Determines whether a gas #part can be ionized.
  *
+ * A foreign copy whose caches still hold the -1 "not yet primed" sentinel of
+ * feedback_first_init_part() is excluded.
+ *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle, or NULL for a foreign copy.
  * @param e The #engine.
  * @return Is the particle ionized?
  */
 __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
     const struct part *p, const struct xpart *xp, const struct engine *e) {
+
+#ifdef WITH_MPI
+  /* The owner has not yet cooled this foreign copy: its caches hold the
+     sentinel, not data. The next state update replaces them. */
+  if (xp == NULL && (p->feedback_data.mu_eligibility < 0.f ||
+                     p->feedback_data.neutral_H_frac < 0.f))
+    return 0;
+#endif
 
   const struct phys_const *phys_const = e->physical_constants;
   const struct hydro_props *hydro_props = e->hydro_properties;
@@ -699,8 +744,8 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
   const struct cooling_function_data *cooling = e->cooling_func;
 
   /* Is T > 10^4 K ? */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
+  const float T = feedback_get_eligibility_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const float ten_to_four_kelvin =
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
@@ -782,7 +827,8 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being ionized.
- * @param xpj The #xpart (gas) being ionized.
+ * @param xpj The #xpart (gas) being ionized, or NULL for a foreign copy
+ * under MPI owner-computes; the tracer-float write is then skipped.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
  * @param us Internal unit system.
@@ -805,6 +851,35 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Same claim path for local and foreign pj under owner-computes, so this
+     also guards the report-back channel against a silent-zero-rate bug.
+     xpj == NULL for a foreign copy: radiation_tag_part_as_ionized just
+     skipped storing the rate for it, so there is nothing valid to read back
+     and the check does not apply. */
+  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
+      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+    error(
+        "Fresh HII claim with HII_couple_ionization_rate on but a "
+        "non-positive photoionization rate coefficient (part %lld).",
+        pj->id);
+#endif
+#ifdef WITH_MPI
+  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting: only
+     meaningful when pj is a foreign copy (xpj == NULL, this subsystem's
+     established xp == NULL contract, see feedback_get_eligibility_temperature)
+     and this claim must be reported to pj's real owner. A claim on this
+     rank's own local pj (xpj != NULL) has no owner to report to, so leaving
+     these fields untouched avoids latching claimed_this_pass at 1 on a
+     local part, which would otherwise re-echo as a phantom claim every time
+     the whole-part xv/rho/gradient channels re-deliver it to foreign
+     mirrors. */
+  if (xpj == NULL) {
+    pj->feedback_data.r2 = r2;
+    pj->feedback_data.cost = cost;
+    pj->feedback_data.claimed_this_pass = 1;
+  }
+#endif
   timestep_sync_part(pj);
 
   radiation_consume_ionizing_photons(si, pixel, cost);
@@ -833,7 +908,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being maintained.
- * @param xpj The #xpart (gas) being maintained.
+ * @param xpj The #xpart (gas) being maintained, or NULL for a foreign copy
+ * under MPI owner-computes; the tracer-float write is then skipped.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
  * @param phys_const Physics constants.
@@ -875,6 +951,25 @@ feedback_iact_HII_maintain_ionized_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef SWIFT_DEBUG_CHECKS
+  /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
+     guard for why the check does not apply there. */
+  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
+      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+    error(
+        "HII maintenance renewal with HII_couple_ionization_rate on but a "
+        "non-positive photoionization rate coefficient (part %lld).",
+        pj->id);
+#endif
+#ifdef WITH_MPI
+  /* Foreign-copy guard: see feedback_hii_claim_part's identical block for
+     why this only applies when xpj == NULL. */
+  if (xpj == NULL) {
+    pj->feedback_data.r2 = r2;
+    pj->feedback_data.cost = cost;
+    pj->feedback_data.claimed_this_pass = 1;
+  }
+#endif
 
   return cost;
 }

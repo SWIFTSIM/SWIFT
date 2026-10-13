@@ -242,6 +242,43 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
 }
 
 /**
+ * @brief Search and add an MPI recv task to the list of active tasks,
+ * disambiguated by sending rank (MPI plan S3.1, seam 2).
+ *
+ * scheduler_activate_recv() above matches first-by-subtype, which is
+ * correct everywhere else because a cell has at most one recv per subtype.
+ * An owner cell's task_subtype_part_hii_tag recv chain is the exception:
+ * one recv PER computing rank reporting into it, all sharing the subtype,
+ * distinguished only by the sending rank carried in t->cj (seam 1).
+ *
+ * @param s The #scheduler.
+ * @param link The first element in the linked list of links for the task of
+ * interest.
+ * @param subtype the task subtype to activate.
+ * @param nodeID the sending rank to match, read from the recv task's
+ * t->cj->nodeID.
+ *
+ * @return The #link to the MPI recv task.
+ */
+__attribute__((always_inline)) INLINE static struct link *
+scheduler_activate_recv_by_node(struct scheduler *s, struct link *link,
+                                const enum task_subtypes subtype,
+                                const int nodeID) {
+  struct link *l = NULL;
+  for (l = link; l != NULL && !(l->t->subtype == subtype && l->t->cj != NULL &&
+                                l->t->cj->nodeID == nodeID);
+       l = l->next) {
+    /* Nothing to do here */
+  }
+
+  if (l == NULL) {
+    error("Missing link to recv task for the given node.");
+  }
+  scheduler_activate(s, l->t);
+  return l;
+}
+
+/**
  * @brief Search and add an MPI pack task to the list of active tasks.
  *
  * @param s The #scheduler.
@@ -303,6 +340,9 @@ struct task *scheduler_gettask(struct scheduler *s, int qid,
                                const struct task *prev);
 void scheduler_enqueue(struct scheduler *s, struct task *t);
 void scheduler_start(struct scheduler *s);
+#if defined(WITH_MPI) && defined(SWIFT_DEBUG_CHECKS)
+void scheduler_check_mpi_activation_symmetry(struct scheduler *s);
+#endif
 void scheduler_reset(struct scheduler *s, int nr_tasks);
 void scheduler_ranktasks(struct scheduler *s);
 void scheduler_reweight(struct scheduler *s, int verbose);

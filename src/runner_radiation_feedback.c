@@ -417,6 +417,23 @@ static void runner_hii_visit_neighbors(struct runner *r, struct cell *c,
       cj = (l->t->cj == c->stars.radiation_level) ? l->t->ci : l->t->cj;
     }
 
+#ifdef SWIFT_DEBUG_CHECKS
+#ifdef WITH_MPI
+    /* S3.0 coverage assert: every foreign radiation_in partner this gather
+     * is about to walk must have been fully allocated and linked, with a
+     * live rho recv keeping it refreshed. A trip here means the foreign
+     * coverage extension (engine_addtasks_send/recv_hydro) did not reach
+     * this cell. */
+    if (cj->nodeID != engine_rank) {
+      if (cj->hydro.count > 0 && cj->hydro.parts == NULL)
+        error("Foreign radiation_in partner %lld has NULL parts.", cj->cellID);
+      if (cell_get_recv(cj, task_subtype_rho) == NULL)
+        error("Foreign radiation_in partner %lld has no live rho recv.",
+              cj->cellID);
+    }
+#endif
+#endif
+
     /* Get the relative distance between the pairs, wrapping. */
     double shift[3];
     runner_hii_get_pair_shift(e->s->dim, e->s->periodic, c->loc, cj->loc,
@@ -907,9 +924,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     }
 
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Repeat-run/cross-scheme comparator: every field here is order
-       independent, so two runs reaching the same physical decisions print
-       identical lines regardless of thread scheduling or traversal order. */
+    /* Repeat-run comparator: claimed_id_hash (a sum of id * constant) is
+       order independent, but leftover_budget on the same line is a
+       floating-point accumulation and is NOT; compare the hash, not the
+       budget. */
     message(
         "HII CHECKSUM: star_id %lld ti_current %lld n_claimed %d "
         "claimed_id_hash %llu held %d leftover_budget %.17e",
@@ -1024,28 +1042,6 @@ void runner_do_stars_hii_ionization_feedback_branch(
     }
   } else {
 
-    /* Gas of a foreign cell has no xparts here and its tags would never
-     * reach the owner, so stop as soon as the search sphere can touch it.
-     * The box is widened by the largest gas displacement since the rebuild. */
-    if (cj->nodeID != r->e->nodeID && cj->hydro.count > 0) {
-      const double margin = cj->hydro.dx_max_part;
-      double d2 = 0.0;
-      for (int k = 0; k < 3; k++) {
-        const double x = si->x[k] - shift[k];
-        const double lo = cj->loc[k] - margin;
-        const double hi = cj->loc[k] + cj->width[k] + margin;
-        const double d = (x < lo) ? lo - x : (x > hi) ? x - hi : 0.0;
-        d2 += d * d;
-      }
-      if (d2 < (double)search_radius * (double)search_radius)
-        error(
-            "The HII region of star %lld on rank %d reaches gas owned by rank "
-            "%d. HII photoionization is not supported across MPI rank "
-            "boundaries on this branch. Run on one rank, or use the branch "
-            "darwin/gear_radiation_mpi_s3.",
-            si->id, r->e->nodeID, cj->nodeID);
-    }
-
     /* Let's first lock the cell */
     lock_lock(&cj->hydro.extra_sort_lock);
 
@@ -1142,9 +1138,12 @@ void runner_doself_stars_hii_ionization_feedback(
   /* Loop over the parts in c. */
   for (int pjd = 0; pjd < count; pjd++) {
 
-    /* Get a pointer to the jth particle. */
+    /* Get a pointer to the jth particle. A foreign cell (S3.0) carries no
+     * local xparts array; xpj must resolve to a genuine NULL there rather
+     * than undefined NULL-based pointer arithmetic (feedback_get_
+     * eligibility_temperature owns the xp == NULL contract downstream). */
     struct part *restrict pj = &parts[pjd];
-    struct xpart *restrict xpj = &xparts[pjd];
+    struct xpart *restrict xpj = (xparts != NULL) ? &xparts[pjd] : NULL;
 
     /* Early abort? */
     if (part_is_inhibited(pj, e)) continue;
@@ -1213,7 +1212,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
     }
   } else {
 
-    /* Check that cells are drifted. */
+    /* Gas comes from cj, the star from ci: check each for what it supplies. */
     if (!cell_are_part_drifted(cj, e))
       error("Interacting undrifted cell (hydro).");
     if (!cell_are_spart_drifted(ci, e))
@@ -1228,9 +1227,10 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
 
     for (int pjd = 0; pjd < count_j; pjd++) {
 
-      /* Get a pointer to the jth particle. */
+      /* Get a pointer to the jth particle. See the doself version above for
+       * why xpj must be a genuine NULL when cj has no local xparts. */
       struct part *restrict pj = &parts_j[pjd];
-      struct xpart *restrict xpj = &xparts_j[pjd];
+      struct xpart *restrict xpj = (xparts_j != NULL) ? &xparts_j[pjd] : NULL;
 
       /* Early abort? */
       if (part_is_inhibited(pj, e)) continue;
@@ -1296,7 +1296,7 @@ void runner_dopair_stars_hii_ionization_feedback(
   /* Anything to do here?*/
   if (count_j == 0) return;
 
-  /* Check that cells are drifted. */
+  /* Gas comes from cj, the star from ci: check each for what it supplies. */
   if (!cell_are_part_drifted(cj, e))
     error("Interacting undrifted cell (hydro).");
   if (!cell_are_spart_drifted(ci, e))
@@ -1349,8 +1349,11 @@ void runner_dopair_stars_hii_ionization_feedback(
       /* Skip particles that haven't reached the interaction zone yet */
       if (sort_j[pjd].d < di_min) continue;
 
+      /* See the doself version (runner_doself_stars_hii_ionization_feedback)
+       * for why xpj must be a genuine NULL when cj has no local xparts. */
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+      struct xpart *restrict xpj =
+          (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
 
       if (part_is_inhibited(pj, e)) continue;
       if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))
@@ -1379,7 +1382,8 @@ void runner_dopair_stars_hii_ionization_feedback(
       if (sort_j[pjd].d > di_max) continue;
 
       struct part *restrict pj = &parts_j[sort_j[pjd].i];
-      struct xpart *restrict xpj = &xparts_j[sort_j[pjd].i];
+      struct xpart *restrict xpj =
+          (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
 
       if (part_is_inhibited(pj, e)) continue;
       if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))

@@ -26,6 +26,7 @@
 #include "cell.h"
 
 /* Local headers */
+#include "feedback.h"
 #include "gravity.h"
 
 /**
@@ -108,6 +109,83 @@ int cell_pack(struct cell *restrict c, struct pcell *restrict pc,
 
   /* Return the number of packed cells used. */
   c->mpi.pcell_size = count;
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Pack cell_flag_hydro_task_attached for the given cell and all its
+ * sub-cells.
+ *
+ * The stamp records where a split hydro density task came to rest, i.e. where
+ * hydro.super will end up, and the radiation split predicate
+ * (cell_can_split_pair/self_radiation_subgrid_task) reads it as its stop
+ * condition. A rank only stamps from the tasks IT creates, and its task set
+ * over a cell it does not own is a subset of the owner's, so an owner and a
+ * foreign copy of the same cell disagree unless the stamp is exchanged.
+ *
+ * @param c The #cell.
+ * @param flags Pointer to an array of packed flags.
+ *
+ * @return The number of packed flags.
+ */
+int cell_pack_hydro_attach(const struct cell *c, int *flags) {
+#ifdef WITH_MPI
+
+  flags[0] = cell_get_flag(c, cell_flag_hydro_task_attached) ? 1 : 0;
+
+  /* Fill in the progeny, depth-first recursion. */
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_pack_hydro_attach(c->progeny[k], &flags[count]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent hydro-attach flag and pcell count!");
+#endif
+
+  return count;
+
+#else
+  error("SWIFT was not compiled with MPI support.");
+  return 0;
+#endif
+}
+
+/**
+ * @brief Merge a packed cell_flag_hydro_task_attached array into a given cell
+ * and its sub-cells.
+ *
+ * The flags are OR-ed in rather than assigned. The owner's stamp is the
+ * authoritative one, being drawn from the complete task set, but OR is also
+ * the safe direction on its own terms: more cells stamped means the radiation
+ * split stops higher, and a coarser radiation_level is always valid.
+ *
+ * @param flags Pointer to an array of packed flags.
+ * @param c The #cell.
+ *
+ * @return The number of unpacked flags.
+ */
+int cell_unpack_hydro_attach(const int *flags, struct cell *restrict c) {
+#ifdef WITH_MPI
+
+  if (flags[0]) cell_set_flag(c, cell_flag_hydro_task_attached);
+
+  int count = 1;
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      count += cell_unpack_hydro_attach(&flags[count], c->progeny[k]);
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->mpi.pcell_size != count)
+    error("Inconsistent hydro-attach flag and pcell count!");
+#endif
+
   return count;
 
 #else
@@ -231,6 +309,116 @@ void cell_unpack_bpart_swallow(struct cell *c,
 
   for (size_t i = 0; i < count; ++i) {
     bparts[i].merger_data = data[i];
+  }
+}
+
+/**
+ * @brief Pack the HII tag report-back payload for a cell's #part array
+ * (MPI plan S3.1, task_subtype_part_hii_tag).
+ *
+ * Runs on the computing (star-owning) rank, over its (possibly foreign)
+ * copy of the covered cell: @p c is the cell whose gas the local HII pass
+ * gathered over, so its tag state may include claims made this pass. The
+ * per-field copy is flavour-specific and lives in
+ * feedback_pack_hii_tag_report() (feedback.h of the active module): this
+ * function stays module-agnostic so it links against every feedback
+ * flavour, not just GEAR_thermal. @p c is mutable: the pack drains each
+ * particle's this-pass claim stamp (S3.4) so a later pack without a fresh
+ * claim does not re-report a stale one.
+ *
+ * @param c The #cell to pack (local or a foreign copy).
+ * @param data The destination buffer, one entry per particle of @p c.
+ */
+void cell_pack_part_hii_tag(struct cell *c, struct hii_tag_report *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    feedback_pack_hii_tag_report(&parts[i], &data[i]);
+  }
+}
+
+/**
+ * @brief Unpack the HII tag report-back payload into a cell's #part array
+ * (MPI plan S3.1, task_subtype_part_hii_tag).
+ *
+ * Runs on the owner rank, over its local copy of the covered cell. The
+ * stamped-entries-only merge rule (S3.1/F2) and the S3.4 (r2, star_id)
+ * cross-rank tiebreak are flavour-specific and live in
+ * feedback_unpack_hii_tag_report() (feedback.h of the active module).
+ *
+ * @param c The owner's local #cell.
+ * @param data The source buffer, one entry per particle of @p c.
+ * @param collision_count (return) Incremented once per particle whose
+ * merge competed against an existing claim (S3.4 debug counter).
+ * @param forfeited_budget (return) Summed photon cost of every losing
+ * claim across this cell's merge (S3.4 debug counter).
+ */
+void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
+                              long long *collision_count,
+                              double *forfeited_budget) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    char collision = 0;
+    double forfeited_cost = 0.0;
+    feedback_unpack_hii_tag_report(&parts[i], &data[i], &collision,
+                                   &forfeited_cost);
+    if (collision) {
+      (*collision_count)++;
+      *forfeited_budget += forfeited_cost;
+    }
+  }
+}
+
+/**
+ * @brief Pack the post-cooling gas state update payload for a cell's #part
+ * array (MPI plan S3.1b, task_subtype_part_hii_state).
+ *
+ * Runs on the gas owner rank, in the normal send direction: @p c is a
+ * local cell whose post-cooling state is being shipped to every rank
+ * holding a foreign copy of it. The per-field copy is flavour-specific and
+ * lives in feedback_pack_hii_state_update() (feedback.h of the active
+ * module).
+ *
+ * @param c The owner's local #cell.
+ * @param data The destination buffer, one entry per particle of @p c.
+ */
+void cell_pack_part_hii_state(const struct cell *c,
+                              struct hii_state_update *data) {
+
+  const size_t count = c->hydro.count;
+  const struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    feedback_pack_hii_state_update(&parts[i], &data[i]);
+  }
+}
+
+/**
+ * @brief Unpack the post-cooling gas state update payload into a cell's
+ * #part array (MPI plan S3.1b, task_subtype_part_hii_state).
+ *
+ * Runs on the computing rank, over its foreign copy of the covered cell.
+ * Writes only the state-channel fields, never u/rho/v: the hydro force
+ * pipeline on this rank must not see any change from this unpack. The
+ * per-field copy is flavour-specific and lives in
+ * feedback_unpack_hii_state_update() (feedback.h of the active module).
+ *
+ * @param c The computing rank's (foreign) #cell copy.
+ * @param data The source buffer, one entry per particle of @p c.
+ */
+void cell_unpack_part_hii_state(struct cell *c,
+                                const struct hii_state_update *data) {
+
+  const size_t count = c->hydro.count;
+  struct part *parts = c->hydro.parts;
+
+  for (size_t i = 0; i < count; ++i) {
+    feedback_unpack_hii_state_update(&parts[i], &data[i]);
   }
 }
 

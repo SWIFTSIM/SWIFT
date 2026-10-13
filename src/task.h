@@ -178,6 +178,8 @@ enum task_subtypes {
   task_subtype_stars_radiation_in,  /* Implicit */
   task_subtype_stars_radiation_out, /* Implicit */
   task_subtype_chemistry_fct_prep,
+  task_subtype_part_hii_tag,
+  task_subtype_part_hii_state,
   task_subtype_count
 } __attribute__((packed));
 

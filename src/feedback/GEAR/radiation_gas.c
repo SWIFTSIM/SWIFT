@@ -113,15 +113,40 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     const struct xpart *xp) {
 
 #if COOLING_GRACKLE_MODE >= 1
+  double X_HI;
+#ifdef WITH_MPI
+  if (xp == NULL) {
+    /* Foreign copy: struct part's feedback_data.neutral_H_frac already
+       folds in the H2/H- arms at mode >= 2 (see cooling_cache_neutral_H_
+       fraction_subgrid), so this is the same quantity the branch below
+       would read from a real xpart. */
+#ifdef SWIFT_DEBUG_CHECKS
+    /* feedback_part_can_be_ionized is the only caller allowed to reach a
+       still-sentinel (-1.f, "not yet primed") cache; anything else reading
+       it here is a bypass of that gate. */
+    if (p->feedback_data.neutral_H_frac < 0.f)
+      error(
+          "Reading un-primed neutral_H_frac (foreign copy id=%lld): caller "
+          "must gate on feedback_part_can_be_ionized before pricing.",
+          p->id);
+#endif
+    X_HI = p->feedback_data.neutral_H_frac;
+  } else
+#endif
+  {
+    const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+    X_HI = cool_data->HI_frac;
+#if COOLING_GRACKLE_MODE >= 2
+    /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
+       already singly-ionized, so it is excluded -- the same H2II
+       approximation radiation_get_part_total_hydrogen_mass_fraction's own
+       doxygen already notes for the total-hydrogen accounting. */
+    X_HI += cool_data->H2I_frac + cool_data->HM_frac;
+#endif
+  }
+
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
-  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-
-  double X_HI = cool_data->HI_frac;
-#if COOLING_GRACKLE_MODE >= 2
-  /* H2 and H- hydrogen is neutral; H2II is already ionized, so excluded. */
-  X_HI += cool_data->H2I_frac + cool_data->HM_frac;
-#endif
   const double N_HI = (X_HI * m) / m_p;
 
   /* Capped at the composition total: species can transiently exceed it. */
@@ -165,6 +190,49 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
 }
 
 /**
+ * @brief Mean molecular weight of a #part, safe for a foreign copy.
+ *
+ * A foreign copy has no #xpart, so it returns the value cached at the owner's
+ * last cooling call and sent with the post-cooling state. The cache is read
+ * as it stands: the internal energy on the xv/rho channel is an earlier
+ * snapshot, so inverting the cached temperature against it would mix epochs.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_props The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle, or NULL for a foreign copy.
+ * @return Mean molecular weight.
+ */
+__attribute__((always_inline)) INLINE double
+radiation_get_part_mean_molecular_weight(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#ifdef WITH_MPI
+  if (xp == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Only feedback_part_can_be_ionized may meet the -1 "not yet primed"
+       sentinel; any other reader here bypasses that gate. */
+    if (p->feedback_data.mu_eligibility < 0.f)
+      error(
+          "Reading un-primed mu_eligibility (foreign copy id=%lld): caller "
+          "must gate on feedback_part_can_be_ionized before pricing.",
+          p->id);
+#endif
+    return p->feedback_data.mu_eligibility;
+  }
+#endif
+
+  return cooling_get_mean_molecular_weight(phys_const, us, cosmo, hydro_props,
+                                           cooling, p, xp);
+}
+
+/**
  * @brief Specific internal energy of this #part once ionized: the minimum of
  * the energy to fully ionize it and the collisional-equilibrium energy.
  *
@@ -197,8 +265,8 @@ radiation_get_part_ionized_internal_energy(
   const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p);
 
   const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  const double mu = radiation_get_part_mean_molecular_weight(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
 
   const double T_collisional =
       radiation_get_T_collisional_K(Z) /
@@ -263,8 +331,8 @@ radiation_get_part_rate_to_fully_ionize(
   /* Case-B coefficient at the temperature the gas is held at once ionized. */
   const double u_ionized = radiation_get_part_ionized_internal_energy(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
+  const double mu = radiation_get_part_mean_molecular_weight(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const double T_ionized_K =
       cooling_temperature_from_internal_energy(u_ionized, mu, k_B, m_p) *
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
@@ -412,7 +480,10 @@ __attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
  * @brief Tag the #part as ionized to be ionized in feedback_update_part().
  *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle, or NULL for a foreign gas
+ * copy under MPI owner-computes. The two tracer floats below are then
+ * skipped (not stored anywhere retrievable for that copy); the #part fields
+ * above are always written, since @p p is never NULL.
  * @param star_id The id of the star that ionized this particle.
  * @param end_time The simulation time until which the particle stays tagged
  * (the star's next HII rebuild).
@@ -427,6 +498,9 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
   p->feedback_data.is_ionized = 1;
   p->feedback_data.star_id = star_id;
   p->feedback_data.end_time = end_time;
+  /* A foreign copy has no xpart. The payload is only read by rate coupling,
+     which is refused on more than one rank. */
+  if (xp == NULL) return;
   xp->feedback_data.HII_region.excess_photon_energy_HI =
       excess_photon_energy_HI;
   xp->feedback_data.HII_region.photoionization_rate_HI =
@@ -523,12 +597,20 @@ radiation_get_part_ionized_star_id(const struct part *p,
  * in cgs (erg), frozen at tag time. Valid only while tagged ionized.
  *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle. Must not be NULL: a foreign
+ * copy never stores this value.
  * @return Mean excess photon energy above the HI threshold, cgs erg.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
                                            const struct xpart *xp) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (xp == NULL)
+    error(
+        "radiation_get_part_excess_photon_energy_HI called with xp == NULL "
+        "(part %lld); this value is never stored for a foreign gas copy.",
+        p->id);
+#endif
   return xp->feedback_data.HII_region.excess_photon_energy_HI;
 }
 
@@ -537,12 +619,21 @@ radiation_get_part_excess_photon_energy_HI(const struct part *p,
  * 1/time). Valid only while tagged ionized.
  *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle. Must not be NULL: a foreign
+ * copy never stores this value.
  * @return Photoionization rate coefficient Gamma_HI, internal 1/time.
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_photoionization_rate_coefficient(const struct part *p,
                                                     const struct xpart *xp) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (xp == NULL)
+    error(
+        "radiation_get_part_photoionization_rate_coefficient called with "
+        "xp == NULL (part %lld); this value is never stored for a foreign "
+        "gas copy.",
+        p->id);
+#endif
   return xp->feedback_data.HII_region.photoionization_rate_HI;
 }
 
