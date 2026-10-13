@@ -909,12 +909,80 @@ size_t io_sizeof_type(enum IO_DATA_TYPE type) {
       return sizeof(double);
     case CHAR:
       return sizeof(char);
+    case BOOL:
+      return sizeof(bool);
     case SIZE_T:
       return sizeof(size_t);
     default:
       error("Unknown type");
       return 0;
   }
+}
+
+/**
+ * @brief Fill a buffer with the default value of an optional field.
+ *
+ * Each of the @a dimension elements is written at the width of @a type, so the
+ * function writes exactly dimension * io_sizeof_type(type) bytes.
+ *
+ * @param dest The buffer to fill.
+ * @param type The #IO_DATA_TYPE of the field.
+ * @param dimension The number of elements per particle.
+ * @param value The default value.
+ */
+void io_fill_default_value(void *dest, enum IO_DATA_TYPE type, int dimension,
+                           double value) {
+
+#define IO_FILL_DEFAULT(ctype)                               \
+  {                                                          \
+    ctype *d = (ctype *)dest;                                \
+    for (int i = 0; i < dimension; ++i) d[i] = (ctype)value; \
+  }
+
+  switch (type) {
+    case INT:
+      IO_FILL_DEFAULT(int);
+      break;
+    case UINT8:
+      IO_FILL_DEFAULT(uint8_t);
+      break;
+    case UINT:
+      IO_FILL_DEFAULT(unsigned int);
+      break;
+    case UINT64:
+      IO_FILL_DEFAULT(uint64_t);
+      break;
+    case LONG:
+      IO_FILL_DEFAULT(long);
+      break;
+    case ULONG:
+      IO_FILL_DEFAULT(unsigned long);
+      break;
+    case LONGLONG:
+      IO_FILL_DEFAULT(long long);
+      break;
+    case ULONGLONG:
+      IO_FILL_DEFAULT(unsigned long long);
+      break;
+    case FLOAT:
+      IO_FILL_DEFAULT(float);
+      break;
+    case DOUBLE:
+      IO_FILL_DEFAULT(double);
+      break;
+    case CHAR:
+      IO_FILL_DEFAULT(char);
+      break;
+    case BOOL:
+      IO_FILL_DEFAULT(bool);
+      break;
+    case SIZE_T:
+      IO_FILL_DEFAULT(size_t);
+      break;
+    default:
+      error("Unknown type");
+  }
+#undef IO_FILL_DEFAULT
 }
 
 void io_prepare_dm_gparts_mapper(void *restrict data, int Ndm, void *dummy) {

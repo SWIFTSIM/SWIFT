@@ -102,8 +102,9 @@ void read_array_single(hid_t h_grp, const struct io_props props, size_t N,
     } else {
 
       /* Create a single instance of the default value */
-      float *temp = (float *)malloc(copySize);
-      for (int i = 0; i < props.dimension; ++i) temp[i] = props.default_value;
+      void *temp = malloc(copySize);
+      io_fill_default_value(temp, props.type, props.dimension,
+                            props.default_value);
 
       /* Copy it everywhere in the particle array */
       for (size_t i = 0; i < N; ++i)
