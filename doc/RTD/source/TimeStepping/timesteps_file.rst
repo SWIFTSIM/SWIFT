@@ -1,7 +1,7 @@
-.. Reading the table of the steps and tuning the time-steps
+.. Reading the table of the steps (the timesteps.txt file)
    Darwin Roduit, 2026
 
-.. _time_step_tuning:
+.. _time_step_file:
 
 Reading the table of the steps
 ==============================

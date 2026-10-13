@@ -146,7 +146,7 @@ synchronisation (for instance ``--eagle``, ``--flamingo`` and ``--gear``). When
 a particle is woken, its step becomes shorter than what its own criteria asked
 for, so the number of active particles per step goes up. The bins of the
 particles of a region with a strong event (a blast, a feedback event) are then
-spread over a wide range (see :ref:`time_step_tuning`).
+spread over a wide range (see :ref:`time_step_file`).
 
 Over MPI, the limiter loop also needs the time-bins of the particles on the
 neighbouring ranks. A separate exchange (``task_subtype_limiter``) sends them
