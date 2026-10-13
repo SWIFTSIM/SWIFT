@@ -40,6 +40,15 @@ applied to both. Where a closed form exists, the check compares against it:
   the star's, and the check reads the star's `Delta_t` from the step table,
   which reports the step's `dt` instead. Override it with `disable_cooling=0`
   only if the star is known to stay on the shortest bin.
+- `star_propagation`: a star with propagation on, in metal-free gas, at one
+  fixed speed `c_pin` for the whole box. The pairwise transport cancels in the
+  box total `E = sum m u`, so each band's total follows
+  `dE/dt = (c_pin/c) [L - lambda H E]`, plus `(c_pin/c) [lambda_E(LW) - 1] H
+  E_LW` for PE. Each parcel of light decays from its own emission time, so
+  `E(t)` is the convolution of the source with the decay. The check compares
+  the totals with that solution and with the code's own step-by-step update,
+  in all three moments (PE, LW and the LW photon number). The star (3 Msun)
+  outlives the run, so its luminosity is constant.
 
 `h2_shielded` (the `../ISRFH2Photodissociation` thick fixture, with H2
 self-shielding) has no closed form. It is compared between `redshift=0` and
@@ -111,6 +120,8 @@ python3 isrf_cosmology_check.py --config injection_dusty \
 python3 isrf_cosmology_h2_identity_check.py --reference "h2_z0/snap/snapshot_*.hdf5" \
     --replicate "h2_z0_replicate/snap/snapshot_*.hdf5" \
     --cosmo "h2_z9/snap/snapshot_*.hdf5" "h2_z4/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_star_propagation_check.py -s "star_z9/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_star_propagation_check.py -s "star_z0/snap/snapshot_*.hdf5"
 ```
 
 Several of these bars are set by the SNAPSHOT CADENCE rather than by
@@ -206,6 +217,41 @@ depth, a relative error of about `lambda (c_hyp/c) H dt / 2`. On several MPI
 ranks each particle integrates the pair with its own time step, which is not
 conservative across bins. The check prints the (A1) drift as `two-bin witness,
 not gated` and never counts it as a failure.
+
+## The star_propagation pair
+```
+config=star_propagation redshift=9 run_name=star_z9 ./run.sh
+config=star_propagation redshift=0 run_name=star_z0 ./run.sh
+python3 isrf_cosmology_star_propagation_check.py -s "star_z9/snap/snapshot_*.hdf5"
+python3 isrf_cosmology_star_propagation_check.py -s "star_z0/snap/snapshot_*.hdf5"
+```
+The check compares each band's box total with two models: (S1) the code's own
+update, applied step by step to the box totals in double precision, and (S2)
+the exact convolution above. The two differ by the scheme's time-integration
+error, which is first order in the step and is printed for reference. The S1
+bar is float arithmetic only (printed term by term). The S2 bar adds the
+difference between the two models. A dose emitted by the star enters the box
+total on the next gas step, so a snapshot holds the doses up to the previous
+step. Snapshot times must not fall on a step boundary, which is why
+`snapshots` is odd.
+
+At `redshift=9` the Hubble loss of the LW band grows to about 1.4e-4 of the
+injected energy by `a = 0.125`. The check fails a cosmological leg whose LW
+signal does not exceed its bar. The PE band's own decay and its gain from the
+LW band nearly cancel at this star's band ratio, so its signal is printed but
+not required. `--no-expansion-in-models` drops the Hubble terms from both
+models and must make the `redshift=9` leg fail. The `redshift=0` leg has no
+expansion; both models reduce to the injected energy, and it must pass the same
+bar. It carries the one float term with no bound computable from a snapshot,
+the float sum of the pairwise transport.
+
+The closed system needs every particle and the star on one time bin, and the
+check fails otherwise. Two choices give this: the gas particle mass (8 Msun),
+which sets `h`, and `steps`, which sets `dt_max`. Together they keep the
+Courant step `0.5*h/c_pin` above `dt_max` at 60 km/s over the whole run. Re-derive
+them as in "Choosing the speed" when `level`, `gas_density`, `gas_mass` or the
+speed change. The 3 Msun star lives about 310 Myr in GEAR's lifetime model, so its
+band luminosity is constant over the 218 Myr run; the check fails if it changes.
 
 # Regression-testing the receiver-side extinction path
 `GEARFeedback:ISRF_extinction_path` selects the length that builds the dust

@@ -53,6 +53,7 @@
  * @param cooling The #cooling_function_data used in the run.
  * @param ti_current Current integer time value
  */
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
 __attribute__((always_inline)) INLINE static void
 radiation_iact_nonsym_feedback_density(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -96,6 +97,16 @@ radiation_iact_nonsym_feedback_density(
   si->feedback_data.Z_star +=
       chemistry_get_total_metal_mass_fraction_for_feedback(pj) * mj * wi;
 }
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_iact_nonsym_feedback_density(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, const struct part *pj, const struct xpart *xpj,
+    const struct cosmology *cosmo, const struct feedback_props *fb_props,
+    const struct hydro_props *hydro_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {}
+#endif
 
 /**
  * @brief Store the star's feedback time-step for this step.
@@ -111,11 +122,13 @@ radiation_iact_nonsym_feedback_density(
 __attribute__((always_inline)) INLINE static void feedback_star_store_timestep(
     struct spart *restrict sp, const double dt, const integertime_t ti_begin) {
 
+#ifdef GEAR_SUBGRID_RADIATION
   sp->feedback_data.radiation.Delta_t = (float)dt;
 #ifdef SWIFT_DEBUG_CHECKS
   sp->feedback_data.radiation.Delta_t_cached_ti_begin = ti_begin;
 #else
   (void)ti_begin;
+#endif
 #endif
 }
 
@@ -145,6 +158,7 @@ feedback_prepare_radiation_feedback(
     const struct phys_const *phys_const, const double star_age_beg_step,
     const double dt, const double time, const integertime_t ti_begin,
     const int with_cosmology) {
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /* Add missing h factor */
   const float hi_inv = 1.f / sp->h;
   const float hi_inv_dim = pow_dimension(hi_inv);        /* 1/h^d */
@@ -160,6 +174,7 @@ feedback_prepare_radiation_feedback(
     sp->feedback_data.Z_star *=
         hi_inv_dim / sp->feedback_data.enrichment_weight;
   }
+#endif
 
   feedback_star_store_timestep(sp, dt, ti_begin);
 }
@@ -185,6 +200,8 @@ feedback_prepare_radiation_feedback(
  * @param cooling The properties of the cooling scheme.
  * @param ti_current Current integer time
  */
+#if defined(GEAR_SUBGRID_RADIATION_PRESSURE) || \
+    defined(GEAR_SUBGRID_RADIATION_ISRF)
 __attribute__((always_inline)) INLINE static void
 radiation_iact_nonsym_feedback_apply(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -211,8 +228,10 @@ radiation_iact_nonsym_feedback_apply(
                                    : 1. / si->feedback_data.enrichment_weight;
   const double weight = mj * wi * si_inv_weight;
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /* Also used to renew the LW/PE illumination window. */
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
+#endif
 
   /* Cached once per star by feedback_prepare_radiation_feedback(). */
   const float Delta_t = si->feedback_data.radiation.Delta_t;
@@ -225,6 +244,7 @@ radiation_iact_nonsym_feedback_apply(
         si->id);
 #endif
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /* Test the policy bit first: L_bol can be positive from two negative
      factors even with the switch off. */
   if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
@@ -248,7 +268,9 @@ radiation_iact_nonsym_feedback_apply(
     /* Required for feedback_update_part_radiation() to apply the momentum. */
     xpj->feedback_data.hit_by_radiation = 1;
   }
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /* L_band is zero unless with_interstellar_radiation_field is on. */
   if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
       si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
@@ -306,7 +328,18 @@ radiation_iact_nonsym_feedback_apply(
       timestep_sync_part(pj);
     }
   }
+#endif
 }
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_iact_nonsym_feedback_apply(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct spart *si, struct part *pj, struct xpart *xpj,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct feedback_props *fb_props, const struct phys_const *phys_const,
+    const struct unit_system *us, const struct cooling_function_data *cooling,
+    const integertime_t ti_current) {}
+#endif
 
 /**
  * @brief Update the properties of the particle due to radiation feedback.
@@ -316,6 +349,7 @@ radiation_iact_nonsym_feedback_apply(
  * @param e The #engine.
  * @param initial_mass Initial mass of the gas, i.e. before any winds or SN.
  */
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
 __attribute__((always_inline)) INLINE static void
 feedback_update_part_radiation(struct part *p, struct xpart *xp,
                                const struct engine *e,
@@ -333,5 +367,11 @@ feedback_update_part_radiation(struct part *p, struct xpart *xp,
     xp->feedback_data.hit_by_radiation = 0;
   }
 }
+#else
+__attribute__((always_inline)) INLINE static void
+feedback_update_part_radiation(struct part *p, struct xpart *xp,
+                               const struct engine *e,
+                               const float initial_mass) {}
+#endif
 
 #endif /* SWIFT_RADIATION_IACT_GEAR_H */

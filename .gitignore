@@ -135,6 +135,7 @@ tests/testSinkFormationGasCompleteness
 tests/testSinkOverlapCriteria
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
+tests/testRadiationPairShift
 tests/testIOOptionalFieldDefaultWidth
 tests/test27cellsStars_subset
 tests/testPeriodicBC

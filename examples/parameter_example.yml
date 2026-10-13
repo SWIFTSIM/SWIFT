@@ -877,11 +877,12 @@ GEARFeedback:
   stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
   enable_multiple_SN_momentum_correction_factor: 0         # Correct the momentum and the thermal energy of a gas particle that several supernovae or winds reach in one timestep, so that the energy is conserved. GEAR thermal rescales only the momentum that the winds direct away from the stars. (Default: 0)
 
-  # Radiation pressure
+  # Subgrid radiation. A channel left out by ./configure --with-subgrid-radiation has its keys ignored, with one warning.
+  # Radiation pressure (--with-subgrid-radiation part rp)
   with_radiation_pressure:      0                         # 1: run the radiation-pressure momentum channel, 0: do not. (Default: 0)
   radiation_pressure_efficiency: 1                        # Multiplier on the table L_bol; 1 is the physical coupling. Must be positive when with_radiation_pressure is 1. (Default: 0.0, an error then)
 
-  # HII regions (subgrid photoionization, Strömgren-sphere model)
+  # HII regions (subgrid photoionization, Strömgren-sphere model; --with-subgrid-radiation part hii)
   with_photoionization:          0                        # 1: run the subgrid photoionization (Stromgren sphere) model, 0: do not. (Default: 0)
   HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
@@ -891,7 +892,7 @@ GEARFeedback:
   HII_rebuild_floor_Myr:  1e-4                            # Minimum rebuild interval (Myr). (Default: 1e-4)
   HII_couple_ionization_rate: 0                           # 1: couple the HII rate into the Grackle RT fields, 0: flag-and-floor scheme. Needs COOLING_GRACKLE_MODE >= 1. (Default: 0)
 
-  # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation)
+  # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation; --with-subgrid-radiation part isrf)
   with_interstellar_radiation_field: 0                    # Master switch of the ISRF module (photoelectric heating, H2 photodissociation). H2 photodissociation needs COOLING_GRACKLE_MODE > 1. (Default: 0)
   ISRF_propagation:            0                           # Transport the injected field with the hyperbolic M1 scheme. Needs with_interstellar_radiation_field. (Default: 0)
   ISRF_extinction_path: pair_separation                   # (optional) Dust path: pair_separation, constant_kernel_path or temperature_capped_jeans. (Default: pair_separation)

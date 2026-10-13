@@ -37,9 +37,9 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
         testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
-        testSinkApertureEdgeRounding \
+        testSinkApertureEdgeRounding testSinkDriftFlags \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
-        testRadiationRebuildCheck \
+        testRadiationRebuildCheck testRadiationPairShift \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -57,9 +57,9 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
-		 testSinkApertureEdgeRounding \
+		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
-		 testRadiationRebuildCheck \
+		 testRadiationRebuildCheck testRadiationPairShift \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
@@ -76,6 +76,8 @@ testMaths_SOURCES = testMaths.c
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
+
+testRadiationPairShift_SOURCES = testRadiationPairShift.c
 
 testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 
@@ -135,6 +137,8 @@ testSinkFormationGasCompleteness_SOURCES = testSinkFormationGasCompleteness.c
 testSinkOverlapCriteria_SOURCES = testSinkOverlapCriteria.c
 
 testSinkApertureEdgeRounding_SOURCES = testSinkApertureEdgeRounding.c
+
+testSinkDriftFlags_SOURCES = testSinkDriftFlags.c
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 

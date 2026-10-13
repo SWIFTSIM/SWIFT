@@ -36,6 +36,8 @@
 #include "radiation.h"
 #include "units.h"
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+
 /**
  * @brief Total hydrogen mass fraction of this #part, from its composition.
  *
@@ -298,6 +300,8 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
   }
 }
 
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
 /**
  * @brief Zero a #spart's radiation output, for when no radiation table is
  * loaded (#radiation.is_active = 0).
@@ -309,13 +313,15 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
  */
 __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
-  sp->feedback_data.radiation.L_bol = 0.f;
-  sp->feedback_data.radiation.mean_excess_photon_energy_HI = 0.f;
+  radiation_set_star_bolometric_luminosity(sp, 0.f);
+  radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    sp->feedback_data.radiation.L_band[m] = 0.;
-  sp->feedback_data.radiation.teff = 0.f;
+    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)m, 0.);
+  radiation_set_star_teff(sp, 0.f);
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
+
+#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
@@ -466,6 +472,10 @@ radiation_get_part_ionized_end_time(const struct part *p,
   return p->feedback_data.end_time;
 }
 
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+
 /**
  * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
  * window has lapsed. Called once per step per particle (feedback_reset_part).
@@ -489,6 +499,10 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
       p->feedback_data.isrf_moment[m].u = 0.f;
   }
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
+
+#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Id of the star that ionized this #part. Valid only while tagged
@@ -554,6 +568,10 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
 
   return sigma_HI * ionizing_flux_HI;
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /* Warning throttle: the first N clamp events are reported, then one summary
    per interval. */
@@ -709,3 +727,5 @@ double radiation_get_part_LW_dissociation_rate_internal(
       "LW photodissociation rate", k_diss, &lw_dissociation_clamp_count,
       &lw_dissociation_clamp_worst);
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */

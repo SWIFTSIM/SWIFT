@@ -148,6 +148,25 @@ void cell_set_ti_old_sink(struct cell *c, const integertime_t ti) {
 }
 
 /**
+ * @brief Recursively clear the sink drift flags of a cell hierarchy.
+ *
+ * A flag left set below a cell makes cell_activate_drift_sink() return
+ * early on a later step, so the super-cell drift is never activated.
+ *
+ * @param c The cell to update.
+ */
+static void cell_clear_sink_drift_flags_recursive(struct cell *c) {
+
+  cell_clear_flag(c, cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        cell_clear_sink_drift_flags_recursive(c->progeny[k]);
+    }
+  }
+}
+
+/**
  * @brief Recursively drifts the #part in a cell hierarchy.
  *
  * @param c The #cell.
@@ -1040,8 +1059,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
   /* Early abort? */
   if (c->sinks.count == 0) {
 
-    /* Clear the drift flags. */
-    cell_clear_flag(c, cell_flag_do_sink_drift | cell_flag_do_sink_sub_drift);
+    /* Clear the drift flags, including those set on the progeny. */
+    cell_clear_sink_drift_flags_recursive(c);
 
     /* Update the time of the last drift */
     cell_set_ti_old_sink(c, ti_current);
