@@ -120,6 +120,8 @@ The ``+ 1`` in the exponent of the length exists to keep the *half* of the
 shortest step an integer. The kick-drift-kick integrator (see
 :ref:`kick_drift_kick`) needs the middle of every step.
 
+Special values of the time-bin
+------------------------------
 
 A few other values of the time-bin mark special particles. They are not valid
 step lengths.
@@ -166,8 +168,6 @@ The highest active bin is computed from the integer time by
 integer time, minus one. The lowest active bin is the bin whose step is as long
 as the step that has just been taken (``get_min_active_bin()``).
 
-Because the time-line is shared universally, two particles are synchronized on
-the same step only when the integer time is a multiple of both of their step
-lengths. Consequently, a particle can only transition to a longer step if its
-current time aligns as a multiple of that target step length (see
-:ref:`time_step_criteria`).
+The multiples also restrict the growth of a step. A particle can only move to
+a longer step when the current time is a multiple of the length of that step
+(see :ref:`time_step_criteria`).

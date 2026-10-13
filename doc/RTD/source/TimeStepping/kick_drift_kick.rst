@@ -76,18 +76,30 @@ that it takes its new step, it is both. The two tests are
 condition (``time_bin <= max_active_bin``), because the particles that end a step
 are precisely the ones that start a new one.
 
-However, they are invoked at different phases of the step execution and serve
-distinct validation purposes in debug check builds:
+They are used at different phases of the step. In the debug-check builds, each
+one verifies a different thing:
 
-* **Active** checks are used by tasks running before the new time-bin is chosen, such
-  as the neighbour loops, *kick2*, and the ``timestep`` task, to verify that the
-  particle's current step correctly terminates at the present time.
-* **Starting** checks are used by *kick1*, which runs after the ``timestep`` task,
-  to verify that the particle's newly assigned time-bin correctly governs its
-  upcoming step beginning at the present time.
+.. list-table::
+   :header-rows: 1
+   :widths: 15 40 45
 
-The tasks do not work on single particles but on *cells*, the groups of
-neighbouring particles of the spatial tree. A cell has no time-step of its
+   * - Test
+     - Used by
+     - Verifies that
+   * - Active
+     - The tasks that run before the new time-bin is chosen: the neighbour
+       loops, *kick2* and ``timestep``.
+     - The current step of the particle ends at the present time.
+   * - Starting
+     - *kick1*, which runs after ``timestep``.
+     - The new time-bin of the particle governs the step that begins at the
+       present time.
+
+The tasks do not work on single particles but on *cells*. The cells form a
+tree. The *top-level cells* tile the box, and each one is split recursively
+into smaller cells. The *super cell* is the cell of a branch that holds the
+tasks of its particles (``drift``, ``kick1``, ``timestep``, ...). The cells
+group neighbouring particles, and a cell has no time-step of its
 own. It only **records the steps of the particles that it holds**:
 ``ti_end_min`` is the earliest end of a step and ``ti_beg_max`` is the latest
 start of a step among them (see below for how they are computed).
@@ -227,7 +239,7 @@ the time of the output, marks all the bins as inactive and drifts every
 particle to that time, and writes the output. Then it puts the time back. The
 particles are not kicked, so their steps and bins are unchanged. The price is a
 drift of all the cells and the writing itself. In the table of the steps, the
-column ``Props`` shows which steps did I/O (see :ref:`time_step_tuning`).
+column ``Props`` shows which steps did I/O (see :ref:`time_step_file`).
 
 Synchronised steps
 ~~~~~~~~~~~~~~~~~~
