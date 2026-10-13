@@ -142,7 +142,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float common_term = w * mj / rhoj;
 
   /* Shock-presence sum (Cullen & Dehnen 2010, eq. 17) with the neighbour's
-   * divergence from its last gradient evaluation (EXPERIMENTAL) */
+   * divergence from its last gradient evaluation (viscosity limiter) */
   pi->gradient.shock_indicator += copysignf(mj * w, pj->div_v);
 
   /* The inverse of the C-matrix. eq. 6
@@ -567,19 +567,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Eq. 14 */
   const float visc_alpha = magma_viscosity.alpha;
   const float visc_beta = magma_viscosity.beta;
-  /* EXPERIMENTAL shear limiter of the viscous pressure: each particle's Q
-   * scaled by its own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the
-   * shock-presence boost of eq. 17, as their alpha_i xi_i). 1 when switched
-   * off. Mode 1 scales both terms of Q; mode 2 scales only the quadratic
-   * (beta mu^2) term, which is the one that dominates the dissipation of a
-   * cold (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
+  /* Shear limiter of the viscous pressure: each particle's Q scaled by its
+   * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence
+   * boost of eq. 17, as their alpha_i xi_i). 1 when switched off. Mode 1
+   * scales both terms of Q; mode 2 scales only the quadratic (beta mu^2)
+   * term, which is the one that dominates the dissipation of a cold
+   * (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
    * maintains particle order in subsonic shear layers. */
   const float xi_q_i = pi->force.viscosity_limiter;
   const float xi_q_j = pj->force.viscosity_limiter;
   const int quad_only = (magma_viscosity.shear_limiter == 2);
-  /* With a Mach threshold the linear term is limited only in supersonic
-   * shear (|mu| > limiter_mach c), where it is a Keplerian flow rather than
-   * a subsonic shear layer that needs its particle order kept. */
+  /* With the Mach threshold (default 0.7) the linear term is limited only
+   * in supersonic shear (|mu| > limiter_mach c), where it is a Keplerian
+   * flow rather than a subsonic shear layer that needs its particle order
+   * kept. */
   const float mach_i = magma_viscosity.limiter_mach * ci;
   const float mach_j = magma_viscosity.limiter_mach * cj;
   const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;

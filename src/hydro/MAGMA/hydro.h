@@ -843,7 +843,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const float div2 = div_v * div_v;
     convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
 
-    /* EXPERIMENTAL viscosity limiter: the same comparison with the
+    /* Viscosity limiter: the same comparison with the
      * shock-presence boost of Cullen & Dehnen (2010, eq. 17-18). R = (1/rho)
      * sum_j sign(div v_j) m_j W_ij is -1 inside a converging front (all
      * neighbours converge) and ~0 where the signs are mixed (noise, smooth

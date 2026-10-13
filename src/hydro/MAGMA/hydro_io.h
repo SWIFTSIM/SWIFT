@@ -283,8 +283,9 @@ INLINE static void hydro_write_particles(const struct part *parts,
   list[18] = io_make_output_field(
       "ViscosityLimiter", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
       force.viscosity_limiter,
-      "EXPERIMENTAL: Cullen & Dehnen (2010) limiter of the viscous pressure "
-      "with the shock-presence boost (1 if switched off).");
+      "Cullen & Dehnen (2010) limiter of the viscous pressure with the "
+      "shock-presence boost, (boost div v)^2 / ((boost div v)^2 + |S|^2); "
+      "scales the particle's viscous pressure (1 if switched off).");
 }
 
 /**
