@@ -1,5 +1,7 @@
 #!/bin/bash
-for v in {0..3}
+# Only the divergent (2) and rotating (3) velocity fields give pairs a
+# relative velocity, so the zero (0) and constant (1) fields never scatter.
+for v in 2 3
 do
     for p in {0..2}
     do
@@ -7,8 +9,8 @@ do
 
 	rm -f sidm_brute_force_125_standard.dat swift_sidm_dopair_125_standard.dat SIDM_NONE.dat
 
-	echo "Running ./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard"
-	./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard testSIDM.yml
+	echo "Running ./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard -P BasicSIDM:kappa_timestep:1"
+	./test125cellsSIDM -n 6 -r 1 -d 1 -v $v -p $p -f standard -P BasicSIDM:kappa_timestep:1 testSIDM.yml
 
 	# Skip tests if compiled without SIDM and exit early
     if [ -e ./SIDM_NONE.dat ]

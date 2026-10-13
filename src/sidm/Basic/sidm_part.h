@@ -82,6 +82,10 @@ struct sipart {
    * the force loop (comoving). Stored as (xx, yy, zz, xy, xz, yz). */
   float inertia_tensor[6];
 
+  /*! Velocity change from SIDM scatterings, accumulated in the force loop and
+   * applied in sidm_end_force. */
+  float dv_sidm[3];
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Time of the last drift */

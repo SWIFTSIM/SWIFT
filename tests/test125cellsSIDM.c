@@ -247,6 +247,10 @@ int main(int argc, char *argv[]) {
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
 
+  /* Parameter-file overrides given with -P section:parameter:value */
+  char *param_overrides[PARSER_MAX_NO_OF_PARAMS];
+  int num_param_overrides = 0;
+
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
@@ -260,7 +264,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   int c;
-  while ((c = getopt(argc, argv, "m:s:h:p:n:r:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:p:n:r:d:f:v:P:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -289,6 +293,11 @@ int main(int argc, char *argv[]) {
       case 'v':
         sscanf(optarg, "%d", (int *)&vel);
         break;
+      case 'P':
+        if (num_param_overrides == PARSER_MAX_NO_OF_PARAMS)
+          error("Too many -P parameter overrides.");
+        param_overrides[num_param_overrides++] = optarg;
+        break;
       case '?':
         error("Unknown option.");
         break;
@@ -315,7 +324,8 @@ int main(int argc, char *argv[]) {
         "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
         "rotating)"
-        "\n-f fileName        - Part of the file name used to save the dumps\n",
+        "\n-f fileName        - Part of the file name used to save the dumps"
+        "\n-P sec:param:value - Override a parameter from the parameter file\n",
         argv[0]);
     exit(1);
   }
@@ -340,6 +350,10 @@ int main(int argc, char *argv[]) {
   message("Reading parameters.");
   struct swift_params param_file;
   parser_read_file(argv[optind], &param_file);
+  for (int k = 0; k < num_param_overrides; k++) {
+    message("Overriding parameter: %s", param_overrides[k]);
+    parser_set_param(&param_file, param_overrides[k]);
+  }
 
   /* Default unit system */
   message("Initialization of the unit system.");

@@ -148,7 +148,8 @@ __attribute__((always_inline)) INLINE static double sidm_random_unit_interval(
 }
 
 /**
- * @brief Apply SIDM velocity kick to particles (elastic, isotropic scattering).
+ * @brief Compute the SIDM velocity kick for a pair (elastic, isotropic
+ * scattering) and add it to the particles' dv_sidm accumulators.
  *
  * @param sipi First part*icle.
  * @param sipj Second part*icle.
@@ -195,14 +196,11 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float sign = (sipi->id < sipj->id) ? 1.f : -1.f;
 
   /* By momentum conservation sipj gets the opposite COM-frame kick.
-  Also convert velocities back to comoving. */
-  sipi->v[0] = a * (v_com[0] + sign * fi * v_new[0]);
-  sipi->v[1] = a * (v_com[1] + sign * fi * v_new[1]);
-  sipi->v[2] = a * (v_com[2] + sign * fi * v_new[2]);
-
-  sipj->v[0] = a * (v_com[0] - sign * fj * v_new[0]);
-  sipj->v[1] = a * (v_com[1] - sign * fj * v_new[1]);
-  sipj->v[2] = a * (v_com[2] - sign * fj * v_new[2]);
+  Also convert velocities back to comoving and store the changes. */
+  for (int k = 0; k < 3; k++) {
+    sipi->dv_sidm[k] += a * (v_com[k] + sign * fi * v_new[k]) - sipi->v[k];
+    sipj->dv_sidm[k] += a * (v_com[k] - sign * fj * v_new[k]) - sipj->v[k];
+  }
 }
 
 /**
@@ -260,8 +258,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
 
   float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
 
-  /* Pair scattering rate. The mean mass makes it symmetric under i <-> j
-   * and matches the mean momentum exchange between the two particles. */
+  /* Pair scattering rate. */
   const float m_pair = 0.5f * (mi + mj);
   const float pair_rate = m_pair * sidm_props->sigma_over_m * vij * lambda_ij;
 

@@ -74,6 +74,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
 __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
     struct sipart *sip, const struct sidm_props *sidm_properties) {
   sip->time_bin = 0;
+  for (int k = 0; k < 3; k++) sip->dv_sidm[k] = 0.f;
   sidm_init_sipart(sip);
 }
 
@@ -113,11 +114,7 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the force and accelerations by the appropiate constants
- * and add the self-contribution term. In most cases, there is little
- * to do here.
- *
- * Cosmological terms are also added/multiplied here.
+ * Applies the SIDM kicks accumulated in the force loop.
  *
  * @param sip The si-particle to act upon
  * @param cosmo The current cosmological model.
@@ -125,7 +122,12 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
 __attribute__((always_inline)) INLINE static void sidm_end_force(
     struct sipart *restrict sip, const struct cosmology *cosmo) {
 
-  // TODO
+  for (int k = 0; k < 3; k++) {
+    sip->v[k] += sip->dv_sidm[k];
+
+    /* Re-set velocity kick */
+    sip->dv_sidm[k] = 0.f;
+  }
 }
 
 /**
