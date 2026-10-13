@@ -6,7 +6,7 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # pipefail: swift is piped into tee, whose exit code would hide a crash.
 set -eo pipefail
 
-config=${config:="free_field"}  #free_field, free_field_uniform, free_field_two_bin_witness, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty, star_propagation or h2_shielded
+config=${config:="free_field"}  #free_field, free_field_uniform, free_field_two_bin_witness, dust_absorption, photoelectric, photoelectric_dark, injection, injection_dusty, star_propagation, star_propagation_pe or h2_shielded
 redshift=${redshift:=0}         #Starting redshift, 0 runs without cosmology
 
 # Physical inputs at the starting redshift, see README.
@@ -94,7 +94,7 @@ case "$config" in
 	    disable_cooling_default=1
 	fi
 	;;
-    star_propagation)
+    star_propagation|star_propagation_pe)
 	# A star that outlives the run, with propagation on at one fixed speed
 	# chosen so that every particle stays on one time bin (see the README).
 	c_hyp_scheme_default=fixed_fraction
@@ -105,6 +105,13 @@ case "$config" in
 	star_mass_default=3
 	star_age_default=1e-6
 	max_star_dt_myr_default=10  # the star steps at dt_max
+	if [ "$config" = "star_propagation_pe" ]; then
+	    # Ten times the speed, so that the PE band's Hubble signal clears
+	    # its bar. The gas mass keeps the Courant step above dt_max.
+	    c_hyp_fraction_default=2.001384571e-03  # 600 km/s
+	    gas_mass_default=64000
+	    steps_default=2048
+	fi
 	;;
     h2_shielded)
 	gas_density_default=1e3
