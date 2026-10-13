@@ -227,16 +227,13 @@ python3 isrf_cosmology_star_propagation_check.py -s "star_z0/snap/snapshot_*.hdf
 ```
 The check compares each band's box total with two models: (S1) the code's own
 update, applied step by step to the box totals in double precision, and (S2)
-the exact convolution above. The difference between the two models is the
-time-integration error of the scheme, first order in the step's `d ln a`. The
-check prints it next to its leading-order estimate,
-`(c_pin/c) lambda d(ln a) [1 + q <x>]`: one step from the delay before a dose
-is folded into `u`, and the rest from `H` being held at the step end, with
-`q = -(1/2) d ln H / d ln a` and `<x>` the mean age of the light in `ln a`.
-The S1 bar is float arithmetic only (printed term by term). The S2 bar adds the
-model difference. A dose deposited by the star is folded into `u` on the next
-gas step, so a snapshot holds the doses up to the previous step. Snapshot
-times must not fall on a step boundary, which is why `snapshots` is odd.
+the exact convolution above. The two differ by the scheme's time-integration
+error, which is first order in the step and is printed for reference. The S1
+bar is float arithmetic only (printed term by term). The S2 bar adds the
+difference between the two models. A dose emitted by the star enters the box
+total on the next gas step, so a snapshot holds the doses up to the previous
+step. Snapshot times must not fall on a step boundary, which is why
+`snapshots` is odd.
 
 At `redshift=9` the Hubble loss of the LW band grows to about 1.4e-4 of the
 injected energy by `a = 0.125`. The check fails a cosmological leg whose LW

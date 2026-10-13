@@ -125,7 +125,13 @@ BAND_NAMES = {"PE": "PE energy", "LW": "LW energy", "N": "LW photon number"}
 
 
 def parse_options() -> argparse.Namespace:
-    """Parse the command line."""
+    """Parse the command line.
+
+    Returns
+    -------
+    argparse.Namespace
+        The snapshot glob, the kernel radius factor and the two flags.
+    """
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "-s", "--snapshots", required=True, help="Snapshot glob of the run"
@@ -149,12 +155,34 @@ def parse_options() -> argparse.Namespace:
 
 
 def run_directory(pattern: str) -> str:
-    """Return the run directory holding ``snap/``."""
+    """Return the run directory holding ``snap/``.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+
+    Returns
+    -------
+    str
+        The directory that contains the snapshot directory.
+    """
     return os.path.dirname(os.path.dirname(sorted(glob.glob(pattern))[0]))
 
 
 def read_parameters(pattern: str) -> Dict:
-    """Return the run's used_parameters.yml."""
+    """Return the run's used_parameters.yml.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+
+    Returns
+    -------
+    dict
+        The parsed parameter file.
+    """
     with open(os.path.join(run_directory(pattern), "used_parameters.yml")) as handle:
         return yaml.safe_load(handle)
 
@@ -164,6 +192,17 @@ def read_step_table(pattern: str) -> Dict:
 
     ``Time-bins`` holds two columns in every row, which shifts every column
     after it by one; the columns are found from the table's own header.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+
+    Returns
+    -------
+    dict
+        ``path``, and per step the arrays ``time``, ``a``, ``dt``, ``gas``
+        (gas updates) and ``star`` (star updates).
     """
     path = os.path.join(run_directory(pattern), "timesteps.txt")
     with open(path) as handle:
@@ -208,7 +247,20 @@ def read_step_table(pattern: str) -> Dict:
 
 
 def hubble_internal(a: np.ndarray, snap: Dict) -> np.ndarray:
-    """Return H(a) in internal units (0 without cosmology)."""
+    """Return H(a) in internal units (0 without cosmology).
+
+    Parameters
+    ----------
+    a : numpy.ndarray
+        Scale factor.
+    snap : dict
+        A loaded snapshot, which carries the cosmology.
+
+    Returns
+    -------
+    numpy.ndarray
+        The Hubble rate at each ``a``.
+    """
     if not snap["cosmological"]:
         return np.zeros_like(np.asarray(a, dtype=float))
     c = snap["cosmology"]
@@ -228,6 +280,22 @@ def step_grid(run: List[Dict], parameters: Dict, table: Dict) -> Dict:
     power-of-two subdivision of ``ln(a_end/a_begin)``; without it, of
     ``time_end - time_begin``. The subdivision is read from the table's first
     step and checked against every row.
+
+    Parameters
+    ----------
+    run : list of dict
+        The loaded snapshots, in time order.
+    parameters : dict
+        The run's used_parameters.yml.
+    table : dict
+        The step table from `read_step_table`.
+
+    Returns
+    -------
+    dict
+        ``s`` (ln a, or 0, at each step boundary), ``t`` (time of each
+        boundary), ``dt`` (each step), ``step`` (the step in ``s``) and
+        ``n_steps``.
     """
     first = run[0]
     if first["cosmological"]:
@@ -280,6 +348,20 @@ def snapshot_steps(run: List[Dict], grid: Dict) -> Tuple[np.ndarray, float]:
     The exception is the last snapshot at the end of the run, written after the
     last step. The clock gap is the largest relative difference between SWIFT's
     elapsed time at a snapshot and the Friedmann time the models integrate.
+
+    Parameters
+    ----------
+    run : list of dict
+        The loaded snapshots, in time order.
+    grid : dict
+        The step grid from `step_grid`.
+
+    Returns
+    -------
+    completed : numpy.ndarray
+        Completed steps per snapshot, -1 for an ambiguous one.
+    clock : float
+        The clock gap, relative. Infinite if any gap is not finite.
     """
     first = run[0]
     completed = []
@@ -318,7 +400,10 @@ def snapshot_steps(run: List[Dict], grid: Dict) -> Tuple[np.ndarray, float]:
                 * np.sum(GAUSS_WEIGHTS / hubble_internal(np.exp(nodes), first))
             )
             model = grid["t"][n] + partial
-            clock = max(clock, abs(model / elapsed - 1.0))
+            gap = abs(model / elapsed - 1.0)
+            # max() would silently drop a NaN gap: an infinite clock term
+            # makes the bar non-finite, which check() rejects.
+            clock = max(clock, gap) if np.isfinite(gap) else np.inf
     return np.array(completed), clock
 
 
@@ -336,6 +421,30 @@ def models(
     All three are per band at every snapshot, in internal units. The dose is
     ``L_b`` times each step narrowed to a float, as the star stores it.
     Without ``expansion`` both models drop their Hubble terms.
+
+    Parameters
+    ----------
+    grid : dict
+        The step grid from `step_grid`.
+    run : list of dict
+        The loaded snapshots, in time order.
+    eps : float
+        Propagation speed over the speed of light.
+    lam : dict
+        Band-edge weights per band.
+    lum : dict
+        The star's luminosity per band.
+    completed : numpy.ndarray
+        Completed steps per snapshot from `snapshot_steps`.
+    expansion : bool, optional
+        Keep the Hubble terms.
+
+    Returns
+    -------
+    dict
+        ``rec`` (recursion), ``cont`` (continuous solution), ``no_h``
+        (E_noH) and ``estimate`` (leading-order error estimate), each a dict
+        of one array per band over the snapshots.
     """
     first = run[0]
     n_max = int(np.max(completed))
@@ -458,7 +567,22 @@ def models(
 
 
 def star_neighbours(pattern: str, run: List[Dict], kernel_gamma: float) -> int:
-    """Return the largest number of gas particles inside the star's kernel radius."""
+    """Return the largest number of gas particles inside the star's kernel radius.
+
+    Parameters
+    ----------
+    pattern : str
+        Snapshot glob of the run.
+    run : list of dict
+        The loaded snapshots.
+    kernel_gamma : float
+        Kernel radius over smoothing length.
+
+    Returns
+    -------
+    int
+        The largest count over the snapshots.
+    """
     files = sorted(glob.glob(pattern))
     times = [s["time"] for s in run]
     count = 0
@@ -479,7 +603,19 @@ def star_neighbours(pattern: str, run: List[Dict], kernel_gamma: float) -> int:
 
 
 def float_bar(n_ngb: int) -> Dict[str, float]:
-    """Return the float terms of the bar, relative, dimensionless."""
+    """Return the float terms of the bar, relative, dimensionless.
+
+    Parameters
+    ----------
+    n_ngb : int
+        Number of gas neighbours of the star.
+
+    Returns
+    -------
+    dict
+        One float32 error bound per term. The weight closure term is
+        infinite when the neighbour count is too large to bound.
+    """
     n_round = max(n_ngb - 1, 0)
     growth = 1.0 - n_round * U32
     terms = {
@@ -493,7 +629,20 @@ def float_bar(n_ngb: int) -> Dict[str, float]:
 
 
 def lambda_print_term(lam: Dict[str, float], signal: Dict[str, float]) -> float:
-    """Return the effect of the log's five-digit lambdas on the Hubble signal."""
+    """Return the effect of the log's five-digit lambdas on the Hubble signal.
+
+    Parameters
+    ----------
+    lam : dict
+        Band-edge weights as printed in the log.
+    signal : dict
+        The Hubble signal per band.
+
+    Returns
+    -------
+    float
+        The largest signal change from rounding each weight to five digits.
+    """
     worst = 0.0
     for b in BANDS:
         relative = max(
@@ -505,7 +654,19 @@ def lambda_print_term(lam: Dict[str, float], signal: Dict[str, float]) -> float:
 
 
 def check(opt: argparse.Namespace) -> bool:
-    """Run every premise and gate; return True on PASS."""
+    """Run every premise and gate; return True on PASS.
+
+    Parameters
+    ----------
+    opt : argparse.Namespace
+        The parsed command line.
+
+    Returns
+    -------
+    bool
+        True if every premise and gate passes. A non-finite bar or residual
+        is a failure.
+    """
     run = load_run(opt.snapshots)
     first = run[0]
     parameters = read_parameters(opt.snapshots)
@@ -606,6 +767,9 @@ def check(opt: argparse.Namespace) -> bool:
     terms["lambda print"] = lambda_print_term(lam, signal)
     terms["clock"] = clock
     bar = float(sum(terms.values()))
+    if not np.isfinite(bar):
+        fail(f"the float bar is not finite ({bar}); every comparison would be void")
+        return False
 
     print(
         f"setup: cosmological={first['cosmological']}, a {first['a']:.6g} to "
@@ -654,9 +818,9 @@ def check(opt: argparse.Namespace) -> bool:
         )
         print(line1 + ("  PASS" if abs(r1[k1]) <= bar else "  FAIL"))
         print(line2 + ("  PASS" if abs(r2[k2]) <= bar + disc[k2] else "  FAIL"))
-        if abs(r1[k1]) > bar:
+        if not abs(r1[k1]) <= bar:
             ok = False
-        if abs(r2[k2]) > bar + disc[k2]:
+        if not abs(r2[k2]) <= bar + disc[k2]:
             ok = False
         if first["cosmological"]:
             ratio = abs(signal[b]) / (bar + disc[-1])
@@ -671,7 +835,13 @@ def check(opt: argparse.Namespace) -> bool:
 
 
 def main() -> int:
-    """Run the check and print the verdict."""
+    """Run the check and print the verdict.
+
+    Returns
+    -------
+    int
+        0 if the printed result is PASS, 1 otherwise.
+    """
     opt = parse_options()
     ok = check(opt)
     print(f"RESULT: {'PASS' if ok else 'FAIL'}")
