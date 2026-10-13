@@ -790,14 +790,27 @@ The loop is switched on at run time via the parameter file:
      stars_h_tolerance:        7e-3    # (Optional) Tolerance of the search radius iteration. Defaults to BlackHoles:h_tolerance.
      stars_h_max:              0.1     # (Optional) Maximal allowed search radius in internal units. Defaults to SPH:h_max.
 
-Black holes can sit in star-poor regions where the target neighbour number
-cannot be reached, so unlike the gas smoothing lengths the maximal search
-radius is routinely attained and should be chosen deliberately: black holes
-that hit the ceiling keep a truncated kernel and simply report the stars
-they do find. As for the gas smoothing lengths, the search radii must fit
-in the top-level cells, i.e. :math:`\gamma \cdot h_{\rm star, max}` must
-remain below the top-level cell size or the code will abort when
-re-gridding the space.
+**Setting** ``stars_h_max`` **is strongly recommended.** Black holes can sit
+in star-poor regions (e.g. freshly seeded black holes in gas-rich haloes at
+high redshift) where the target neighbour number cannot be reached, so
+unlike the gas smoothing lengths the maximal search radius is routinely
+attained. Black holes that hit the ceiling keep a truncated kernel and
+simply report the stars they do find. The search radius is bounded below by the
+hydro minimal smoothing length (set via ``SPH:h_min_ratio``) and above by
+the smaller of ``BlackHoles:stars_h_max`` and ``SPH:h_max``. If neither is
+set, the search radius of a black hole with no stars around it keeps
+doubling until the run aborts with a convergence error.
+
+As for the gas smoothing lengths, the top-level cells must be larger than
+the largest search radius, :math:`\gamma_K h_{\rm star}` (with
+:math:`\gamma_K` the kernel support in units of :math:`h`). A single black
+hole with a large ``h_star`` therefore forces the whole space to be
+re-gridded with fewer, larger top-level cells at the next rebuild, which can
+severely degrade performance; the code only aborts if this leaves fewer than
+3 top-level cells per dimension. A good choice is a value comparable to the
+gas smoothing lengths in the galaxies of interest, with
+:math:`\gamma_K h_{\rm star, max}` well below the top-level cell width
+reported at start-up.
 
 The census requires the EAGLE black hole model and is not yet available
 when running over MPI.

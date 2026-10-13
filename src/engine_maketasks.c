@@ -2581,6 +2581,34 @@ static inline void engine_make_hydro_loops_dependencies(
 #endif
 
 /**
+ * @brief Make a black hole star-density task wait for all the star particles
+ * of a cell created in this step.
+ *
+ * Star formation adds sparts to the cells (shifting the existing ones to make
+ * space), so it must not run concurrently with a loop reading the sparts.
+ * With feedback, the stars_in task of the super-cell is already behind the
+ * star formation (via the stars resort). Without feedback, there is no
+ * stars_in and we wait directly for the top-level star formation tasks.
+ *
+ * @param sched The #scheduler.
+ * @param c The #cell whose star particles are read by the task.
+ * @param t The black hole star-density #task.
+ */
+static void engine_addunlock_bh_stars_new_stars(struct scheduler *sched,
+                                                struct cell *c,
+                                                struct task *t) {
+
+  if (c->hydro.super->stars.stars_in != NULL) {
+    scheduler_addunlock(sched, c->hydro.super->stars.stars_in, t);
+  } else {
+    if (c->top->hydro.star_formation != NULL)
+      scheduler_addunlock(sched, c->top->hydro.star_formation, t);
+    if (c->top->sinks.star_formation_sink != NULL)
+      scheduler_addunlock(sched, c->top->sinks.star_formation_sink, t);
+  }
+}
+
+/**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
  *
@@ -2930,9 +2958,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                             t_bh_stars_density);
         scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                             t_bh_stars_density);
-        if (ci->hydro.super->stars.stars_in != NULL)
-          scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                              t_bh_stars_density);
+        engine_addunlock_bh_stars_new_stars(sched, ci, t_bh_stars_density);
         scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
                             t_bh_stars_density);
         scheduler_addunlock(sched, t_bh_stars_density,
@@ -3326,9 +3352,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                               t_bh_stars_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.drift,
                               t_bh_stars_density);
-          if (ci->hydro.super->stars.stars_in != NULL)
-            scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
-                                t_bh_stars_density);
+          engine_addunlock_bh_stars_new_stars(sched, ci, t_bh_stars_density);
           scheduler_addunlock(sched,
                               ci->hydro.super->black_holes.black_holes_in,
                               t_bh_stars_density);
@@ -3508,9 +3532,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_bh_stars_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.drift,
                                 t_bh_stars_density);
-            if (cj->hydro.super->stars.stars_in != NULL)
-              scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
-                                  t_bh_stars_density);
+            engine_addunlock_bh_stars_new_stars(sched, cj, t_bh_stars_density);
             scheduler_addunlock(sched,
                                 cj->hydro.super->black_holes.black_holes_in,
                                 t_bh_stars_density);

@@ -264,6 +264,12 @@ void black_holes_exact_stars_density_check(struct space *s,
 
   int wrong_rho = 0;
   int counter = 0;
+  int counter_clamped = 0;
+
+  /* Limits of the search radius, as applied in runner_do_bh_stars_ghost() */
+  const float stars_h_max =
+      min(e->black_holes_properties->stars_h_max, e->hydro_properties->h_max);
+  const float stars_h_min = e->hydro_properties->h_min;
 
   /* Output the exact densities and check against the SWIFT ones */
   for (size_t i = 0; i < nr_bparts; ++i) {
@@ -287,8 +293,18 @@ void black_holes_exact_stars_density_check(struct space *s,
        * neighbour as we don't know whether that neighbour became inhibited in
        * that step or not.
        * Black holes with zero star neighbours are also ignored (their h_star
-       * has hit the maximal allowed search radius). */
-      if (!found_inhibited && bpi->N_stars_density_exact > 0 &&
+       * has hit the maximal allowed search radius).
+       * Black holes whose search radius is pinned at either of the allowed
+       * limits are ignored too: the ghost clamps h_star to the limit without
+       * re-running the neighbour loop, so their density was gathered with the
+       * previous (unclamped) h_star whilst the brute-force loop uses the
+       * clamped one. */
+      const int is_clamped =
+          (bpi->h_star <= stars_h_min || bpi->h_star >= stars_h_max);
+      if (is_clamped) counter_clamped++;
+
+      if (!found_inhibited && !is_clamped &&
+          bpi->N_stars_density_exact > 0 &&
           (fabsf(bpi->stars_n_exact) > 0.f) &&
           (fabsf(bpi->stars_density.wcount / bpi->stars_n_exact - 1.f) >
                rel_tol ||
@@ -314,7 +330,10 @@ void black_holes_exact_stars_density_check(struct space *s,
         "black holes! (out of %d black holes)",
         wrong_rho, counter);
   else
-    message("Verified the star densities of %d black holes", counter);
+    message(
+        "Verified the star densities of %d black holes (%d skipped as their "
+        "search radius is at the h_min/h_max limits)",
+        counter - counter_clamped, counter_clamped);
 
   if (e->verbose)
     message("Writing brute-force density files took %.3f %s. ",
