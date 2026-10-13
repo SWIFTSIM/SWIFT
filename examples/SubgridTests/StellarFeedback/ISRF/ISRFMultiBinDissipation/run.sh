@@ -93,7 +93,7 @@ swift_bin="../../../../../swift"
 swift_cmd="$swift_bin"
 if [ "$n_ranks" -gt 1 ]; then
     swift_bin="../../../../../swift_mpi"
-    swift_cmd="mpirun -np $n_ranks $swift_bin"
+    swift_cmd="mpirun -np $n_ranks --bind-to none $swift_bin"
 fi
 
 printf "Running simulation..."

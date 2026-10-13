@@ -2,12 +2,14 @@
 """
 Closed energy ledger of one run, gated on the float32 rounding bound.
 
-For each band, at every snapshot with a non-zero injected energy,
+For each band, at every snapshot where energy was injected since the first,
 
-    R = (E - E_0 + Abs - Inj) / Inj,   E = sum m (u + pending),
+    R = (E - E_0 + Abs - Abs_0 - Inj + Inj_0) / (Inj - Inj_0),
+    E = sum m (u + pending),
 
-where Abs and Inj are the cumulative absorbed and injected specific energies
-and pending is the energy finer neighbours owe a particle on a longer step.
+where Abs and Inj are the cumulative absorbed and injected specific energies,
+pending is the energy finer neighbours owe a particle on a longer step, and
+the subscript 0 marks the first snapshot.
 The pair operator conserves energy exactly, so R is float32 rounding only:
 each particle updates u and its two accumulators at most once per step, which
 bounds |R| by n_steps * 2^-23, n_steps read from timesteps.txt.
@@ -117,9 +119,11 @@ def main() -> int:
         sums = band_sums(path)
         row = []
         for band in BANDS:
+            E0, absorbed0, injected0 = first[band]
             E, absorbed, injected = sums[band]
-            if injected > 0.0:
-                r = (E - first[band][0] + absorbed - injected) / injected
+            d_injected = injected - injected0
+            if d_injected > 0.0:
+                r = (E - E0 + absorbed - absorbed0 - d_injected) / d_injected
                 if not np.isfinite(r):
                     print(f"{path}: non-finite residual in {band}.")
                     return 1
@@ -130,9 +134,9 @@ def main() -> int:
         last = sums
         print(f"{path[-9:-5]:8s}  " + "  ".join(row))
 
-    if any(last[band][2] <= 0.0 for band in BANDS):
+    if any(last[band][2] - first[band][2] <= 0.0 for band in BANDS):
         print(
-            "Injected energy is zero at the last snapshot: build with "
+            "No energy injected after the first snapshot: build with "
             "--enable-debugging-checks."
         )
         return 1
