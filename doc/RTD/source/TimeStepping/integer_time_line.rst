@@ -27,7 +27,8 @@ whole simulation, from the start to the end time, is divided into
    **A tick is the smallest interval on the integer time-line.** Integer
    time advances in whole numbers of ticks, so events cannot be scheduled
    between two consecutive ticks. A time-step is therefore always a whole
-   number of ticks.   
+   number of ticks. Not every whole number is allowed, though: the number of
+   ticks of a time-step is a power of two (see the time-bins below).
 
 The total number of ticks is the constant ``max_nr_timesteps``, which is
 ``1 << (num_time_bins + 1)`` with ``num_time_bins = 56``.
@@ -58,6 +59,11 @@ return physical time-steps. They are multiplied by the Hubble rate
 :math:`H(a)`, which is stored in ``cosmology->time_step_factor``, before they
 are converted to ticks.
 
+For example, a cosmological run that goes from :math:`z=127` to :math:`z=0`
+has about :math:`\Delta t_{\rm tick} = 4.86/2^{57} \approx 3.4\times10^{-17}`
+in :math:`\log a`. A non-cosmological run that covers 10 Gyr has ticks of
+about 2 seconds, since :math:`10\,{\rm Gyr}/2^{57} \approx 2.2\,{\rm s}`.
+
 The simulation is finished when the integer time reaches :math:`2^{57}`
 (``engine_is_done()``).
 
@@ -75,6 +81,18 @@ long. This is the function ``get_integer_timestep()``. It returns 0 for a
 bin :math:`b \leq 0`, which is not a valid step length. The shortest possible
 time-step is the one of the bin 1 and has 4 ticks. The longest one is the one
 of the bin 56 and is the whole time-line.
+
+A time-step is thus a whole number of ticks, **but only a power of two**: 4, 8,
+16, 32 ticks and so on. 
+
+At the end of each step, a particle gets a new time-bin. The bin comes from
+the physical criteria of the particle (see :ref:`time_step_criteria`): a
+particle in a quiet region asks for a long step, a particle in a dense or
+fast-moving region asks for a short one. The bin of a particle is therefore not
+fixed. It goes up or down as the local conditions change, and nothing pushes
+all the particles towards the long bins. Only the *growth* is restricted: a
+particle can move up by one bin per step, and only at the right time on the
+time-line (see :ref:`time_step_criteria`).
 
 Each successive bin doubles the time-step length, as shown below.
 

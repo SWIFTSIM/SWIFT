@@ -56,7 +56,8 @@ the same in comoving coordinates.
    :alt: Kick-drift-kick timeline of a particle over two steps
 
    A particle takes a step of the bin 3 (16 ticks) and then a step of the bin 4
-   (32 ticks), to scale. The growth to the bin 4 is possible because the end of
+   (32 ticks), to scale. At the end of its first step, the criteria of the
+   particle allow a longer step. The particle can take it, because the end of
    the first step, :math:`t=32`, is a multiple of 32 (see
    :ref:`time_step_criteria`). The kicks split every step in two halves. The
    drift uses the velocity that the *kick1* has produced, which is valid at
@@ -79,17 +80,23 @@ However, they are invoked at different phases of the step execution and serve
 distinct validation purposes in debug check builds:
 
 * **Active** checks are used by tasks running before the new time-bin is chosen, such
-  as the neighbour loops, *kick2*, and the ``timestep`` task—to verify that the
+  as the neighbour loops, *kick2*, and the ``timestep`` task, to verify that the
   particle's current step correctly terminates at the present time.
 * **Starting** checks are used by *kick1*, which runs after the ``timestep`` task,
   to verify that the particle's newly assigned time-bin correctly governs its
   upcoming step beginning at the present time.
 
-For a cell, similar notions apply. For instance, ``cell_is_active_hydro()`` is true when
-the earliest end of a step in the cell is the current time
-(``hydro.ti_end_min == ti_current``), and ``cell_is_starting_hydro()`` when the
-latest start of a step in the cell is the current time
-(``hydro.ti_beg_max == ti_current``). The other particle types have the same
+The tasks do not work on single particles but on *cells*, the groups of
+neighbouring particles of the spatial tree. A cell has no time-step of its
+own. It only **records the steps of the particles that it holds**:
+``ti_end_min`` is the earliest end of a step and ``ti_beg_max`` is the latest
+start of a step among them (see below for how they are computed).
+
+The two notions above carry over from these two times. A cell is *active* when
+at least one of its particles ends a step now, and *starting* when at least one
+of its particles begins a step now. For instance, ``cell_is_active_hydro()`` is
+true when ``hydro.ti_end_min == ti_current``, and ``cell_is_starting_hydro()``
+when ``hydro.ti_beg_max == ti_current``. The other particle types have the same
 functions. Note that a particle that was removed from the simulation
 (``time_bin_inhibited``) is neither.
 
@@ -169,9 +176,8 @@ later, over a longer interval. All the cells are drifted at once
 The times of the cells and the next step
 ----------------------------------------
 
-Each cell stores two times per particle type: ``ti_end_min`` (the earliest
-end of a step of any of its particles) and ``ti_beg_max`` (the latest start
-of a step). The ``timestep`` task computes them for the super cell. For an
+As said above, each cell stores two times per particle type: ``ti_end_min``
+and ``ti_beg_max``. The ``timestep`` task computes them for the super cell. For an
 active particle they come from the new step. For an inactive one they come
 from its current step (``get_integer_time_end()`` and
 ``get_integer_time_begin()``). The ``timestep_collect`` task and then
@@ -226,10 +232,9 @@ column ``Props`` shows which steps did I/O (see :ref:`time_step_tuning`).
 Synchronised steps
 ~~~~~~~~~~~~~~~~~~
 
-A step at which the highest active bin is at least as high as the highest bin
-that contains particles is *synchronised*: all the particles are active. It
-happens when the integer time is a multiple of the longest step in use. There
-are few of them, at most one per longest step. Some quantities can only be
+A step at which all the particles are active is *synchronised*. It happens
+when the integer time is a multiple of the longest step in use. There are few
+of them, at most one per longest step. Some quantities can only be
 computed on such steps. For instance, the exact gravity forces that are used
 to check the accuracy (see the parameter ``only_when_all_active`` in the
 section on the gravity force checks of the parameter file documentation) need
