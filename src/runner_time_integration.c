@@ -910,6 +910,10 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
         if (ti_end != ti_current)
           error("Computing time-step of rogue particle.");
 #endif
+        /* Bin before the overwrite below; feedback_will_do_feedback() needs
+           it to reconstruct the just-finished step's age. */
+        const timebin_t old_time_bin = sp->time_bin;
+
         /* Old time-step length in physical units */
         const integertime_t ti_old_step = get_integer_timestep(sp->time_bin);
         double old_time_step_length;
@@ -938,7 +942,7 @@ void runner_do_timestep(struct runner *r, struct cell *c, const int timer) {
 
           feedback_will_do_feedback(sp, feedback_props, with_cosmology, cosmo,
                                     e->time, us, phys_const, e->ti_current,
-                                    e->time_base);
+                                    e->time_base, old_time_bin);
         }
 
         /* Number of updated s-particles */

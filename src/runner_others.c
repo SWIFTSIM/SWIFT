@@ -969,10 +969,38 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
           /* Let's add a self interaction to simplify the count */
           gp->num_interacted++;
 
-          /* Check that this gpart has interacted with all the other
-           * particles (via direct or multipoles) in the box */
-          if (gp->num_interacted !=
-              e->total_nr_gparts - e->count_inhibited_gparts) {
+          /* We need 2 different checks depending on whether we are in a
+           * periodic or non-periodic run. In the latter we can have gparts
+           * removed if they leave the box and in that case P2P interactions
+           * will ignore the inhibited particles that have left the box and
+           * multipole interactions will not.
+           * TODO: [Will] This can be fixed by removing the particles leaving
+           * the volume only at rebuild but we need to check that won't
+           * negatively impact anyone. This removal at rebuild will also remove
+           * the technically incorrect issue that multipole interactions can
+           * account for a particle the simulation has "removed" */
+          int interaction_check = 0;
+          if (e->s->periodic) {
+
+            /* In periodic runs we expect all g-particles to have interacted
+             * with all particles. */
+            interaction_check = (gp->num_interacted != e->total_nr_gparts);
+
+          } else {
+
+            /* In non-periodic runs we need to use an acceptable range between
+             * all particles and all particles minus the number of inhibited
+             * particles. */
+            const int n_removed = e->s->nr_inhibited_gparts;
+            const int min_interactions = e->total_nr_gparts - n_removed;
+            const int max_interactions = e->total_nr_gparts;
+            interaction_check = (gp->num_interacted < min_interactions ||
+                                 gp->num_interacted > max_interactions);
+          }
+
+          /* Check that this gpart has interacted with all the other particles
+           * (via direct or multipoles) in the box.*/
+          if (interaction_check) {
 
 #ifdef SWIFT_GRAVITY_FORCE_CHECKS
             /* If we have the gravity force checks enabled, we print more
@@ -991,11 +1019,11 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
                 "g-particle (id=%lld, type=%s) did not interact "
                 "gravitationally with all other gparts "
                 "gp->num_interacted=%lld, total_gparts=%lld, missing=%lld "
-                "(local num_gparts=%zd inhibited_gparts=%lld) "
+                "(local num_gparts=%zd inhibited_gparts=%zd) "
                 "(cell info: c->depth=%d c->grav.super->depth=%d)",
                 id, part_type_names[gp->type], gp->num_interacted,
                 e->total_nr_gparts, e->total_nr_gparts - gp->num_interacted,
-                e->s->nr_gparts, e->count_inhibited_gparts, c->depth,
+                e->s->nr_gparts, e->s->nr_inhibited_gparts, c->depth,
                 c->grav.super->depth);
           }
         }

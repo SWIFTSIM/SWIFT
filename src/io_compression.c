@@ -101,6 +101,10 @@ void io_check_field_compression(const enum IO_DATA_TYPE type,
 
   const int is_float_type = (type == FLOAT || type == DOUBLE);
 
+  /* Fields such as the particle IDs are stored as (signed) long long
+   * internally but declared as ULONGLONG for i/o. Both are acceptable here. */
+  const int is_longlong_type = (type == LONGLONG || type == ULONGLONG);
+
   if (is_float_filter && type != FLOAT)
     error("Applying float compression filter '%s' to non-float field '%s'.",
           lossy_compression_schemes_names[comp], field_name);
@@ -110,7 +114,7 @@ void io_check_field_compression(const enum IO_DATA_TYPE type,
         "Applying DMantissa compression filter '%s' to non-double field '%s'.",
         lossy_compression_schemes_names[comp], field_name);
 
-  if (is_nbit_filter && type != LONGLONG)
+  if (is_nbit_filter && !is_longlong_type)
     error("Applying Nbit compression filter '%s' to non-longlong field '%s'.",
           lossy_compression_schemes_names[comp], field_name);
 
