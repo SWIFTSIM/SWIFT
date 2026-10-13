@@ -322,12 +322,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parser_get_param_double(parameter_file, "GeajayCooling:thermal_time_myr");
   cooling->thermal_time *= phys_const->const_year * 1e6;
 
-  if (parser_does_param_exist(parameter_file,
-                              "GeajayCooling:maximal_density_Hpcm3"))
-    error(
-        "GeajayCooling:maximal_density_Hpcm3 was removed. Use "
-        "GeajayCooling:table_density_edge: extrapolate (default) or edge.");
-
   char table_edge[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
                               "GeajayCooling:table_density_edge", table_edge,
