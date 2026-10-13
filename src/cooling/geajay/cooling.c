@@ -1355,10 +1355,12 @@ double cooling_get_physical_density(
   const double part_density = hydro_get_physical_density(p, cosmo);
 
   if (part_density > cooling->table_edge_density &&
+      !cooling_geajay_table_edge_warned &&
       atomic_cas(&cooling_geajay_table_edge_warned, 0, 1) == 0)
     warning(
         "Gas particle %lld has n_H = %e cm^-3, above the Cloudy table range "
-        "(%e cm^-3): the table lookup %s. Printed once per run.",
+        "(%e cm^-3): the table lookup %s. Printed once per rank, and again "
+        "after a restart.",
         p->id,
         cooling->table_density_max_Hpcm3 * part_density /
             cooling->table_edge_density,
