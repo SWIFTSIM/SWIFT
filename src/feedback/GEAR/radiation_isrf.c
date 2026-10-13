@@ -120,14 +120,18 @@ void radiation_first_init_part(struct part *restrict p) {
 }
 
 /**
- * @brief Is the cross-bin pair booking on? It needs one rank and the extra
- * ghost, which sets the active state.
+ * @brief Is the cross-bin pair booking on? It needs the extra ghost, which
+ * sets the active state, and on several ranks the force pairs that run on the
+ * inactive member's rank (#MPI_SYMMETRIC_FORCE_INTERACTION).
  *
  * @param e The #engine.
  * @return 1 if pair amounts of unequal-step pairs go to pending, else 0.
  */
 static int radiation_cross_bin_booking_on(const struct engine *e) {
-#ifdef EXTRA_HYDRO_LOOP
+#if defined(EXTRA_HYDRO_LOOP) && defined(MPI_SYMMETRIC_FORCE_INTERACTION) && \
+    !defined(SWIFT_USE_NAIVE_INTERACTIONS)
+  return e->feedback_props->ISRF_propagation;
+#elif defined(EXTRA_HYDRO_LOOP)
   return e->nr_nodes <= 1 && e->feedback_props->ISRF_propagation;
 #else
   return 0;

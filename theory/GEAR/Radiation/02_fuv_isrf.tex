@@ -702,8 +702,7 @@ the same $h_i$ and $\Delta t_i$, and hence the same $c_{{\rm hyp},i}$ and
 relaxation depth $a_i$: only then does the transport operator conserve
 $\sum_i m_i u_i$ exactly across the applied update
 (Section~\ref{sec:fuv-operators}); under a non-uniform
-$c_{\rm hyp}\kappa\rho$, or under mixed time bins on several MPI ranks,
-the identity holds up to the same residual described there.
+$c_{\rm hyp}\kappa\rho$, the identity holds up to the same residual described there.
 
 \subsubsection{Coupling to the chemistry and cooling solver}
 \label{sec:fuv-coupling}
@@ -1380,9 +1379,9 @@ the $c_{\rm hyp}$-weighted ledger. What remains is the residual of
 unequal $\varphi(a)$ above and the Hubble term left out of the finer
 member's $\varphi$ under cosmology. On a multi-bin fixture with dust the
 ledger residual falls from about $10^{-1}$ of the injected energy to
-about $3\times10^{-4}$. On several MPI ranks the booking is off: each
-member integrates the pair with its own $\Delta t$, and the residual
-includes the step mismatch.
+about $3\times10^{-4}$. On several MPI ranks the pair also runs on the
+rank of the coarser member, which books its own pending amounts, so the
+ledger closes as on one rank.
 
 \textbf{Pressure-tensor divergence.} A difference estimator on the
 volumetric field $U = \rho u$ contracted with each particle's own
@@ -1767,7 +1766,7 @@ $C_{\rm hyp} = 0.5$ ($1.68$ against $1.35$) and $1.35$ at $C_{\rm hyp} = 1.0$
 It is bounded within the stability bound of
 Eq.~\ref{eq:fuv-stability-bound} (the spectral radius stays at or below
 one there) and vanishes with the dissipation off. The dissipation conserves $\sum_i m_i u_i$ exactly
-for pairs of active particles in the same time bin, and across time bins on one rank
+for pairs of active particles in the same time bin, and across time bins
 (Section~\ref{sec:fuv-operators});
 it does not conserve the first spatial moment: behind a source moving through the
 gas the trigger fires preferentially on the depleted trailing side, and
@@ -2179,8 +2178,8 @@ path.
     to $323$ particles (FUV) and $456$ (LW) at snapshots $3$ to $8$,
     against at most $1$ before the dispatch moved; a smaller, standing
     negative population also appears at time-bin boundaries, where
-    particles that do not share the same $c_{\rm hyp}\kappa\rho$, or a
-    time bin on several MPI ranks, leave a residual by construction
+    particles that do not share the same $c_{\rm hyp}\kappa\rho$ leave a
+    residual by construction
     (Section~\ref{sec:fuv-operators}). Both are clamped to zero before
     Grackle sees them (Section~\ref{sec:fuv-coupling}); improving
     positivity at time-bin boundaries and in strongly contrasted gas,
