@@ -67,8 +67,8 @@ int main(int argc, char *argv[]) {
   {
     const double loc_c[3] = {1.75, 1.0, 1.0};
     const double loc_cj[3] = {0.0, 1.0, 1.0};
-    fails += check_shift("non-periodic, separation -1.75", 0, loc_c, loc_cj,
-                         zero);
+    fails +=
+        check_shift("non-periodic, separation -1.75", 0, loc_c, loc_cj, zero);
   }
 
   /* Same in the positive direction along every axis at once. */
