@@ -158,8 +158,8 @@ void partition_check_weights(struct task *tasks, int nr_tasks,
         int cjd = cj - cells;
 
         /* Local cells add weight to vertices. */
-        if (vweights && ci->nodeID == nodeID) {
-          weights_v[cid] += 0.5 * w;
+        if (vweights) {
+          if (ci->nodeID == nodeID) weights_v[cid] += 0.5 * w;
           if (cj->nodeID == nodeID) weights_v[cjd] += 0.5 * w;
         }
 
