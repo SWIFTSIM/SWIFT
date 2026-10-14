@@ -41,7 +41,7 @@ G_in_SI = 6.67408e-11
 
 # Some useful variables in h-full units
 H_0 = 1.0 / Mpc_in_m * 10**5  # h s^-1
-rho_0 = 3.0 * H_0**2 / (8 * math.pi * G_in_SI)  # h^2 kg m^-3
+rho_0 = 3.0 * H_0**2 / (8 * pi * G_in_SI)  # h^2 kg m^-3
 lambda_i = 64.0 / H_0 * 10**5  # h^-1 m (= 64 h^-1 Mpc)
 x_min = -0.5 * lambda_i
 x_max = 0.5 * lambda_i
@@ -98,7 +98,8 @@ for i in range(numPart_1D):
             v[index, 0] = 0.0
             v[index, 1] = 0.0
             v[index, 2] = 0.0
-
+b = v
+vp = v
 # Unit conversion
 pos /= unit_l_in_si
 v /= unit_v_in_si
@@ -147,5 +148,7 @@ grp.create_dataset(
     "InternalEnergy", data=u, dtype="f", compression="gzip", shuffle=True
 )
 grp.create_dataset("ParticleIDs", data=ids, dtype="L", compression="gzip", shuffle=True)
+grp.create_dataset("Bfield", data=b, dtype="f")
+grp.create_dataset("VecPot", data=vp, dtype="f")
 
 file.close()

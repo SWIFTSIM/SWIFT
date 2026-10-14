@@ -286,4 +286,4 @@ yticks([])
 
 tight_layout()
 
-savefig("GreshoVortex.png")
+savefig("GreshoVortex_%d.png" % snap)

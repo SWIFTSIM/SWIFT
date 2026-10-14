@@ -208,7 +208,7 @@ def plot_result(filename):
         )
         set_colorbar(ax3, im3)
         ax3.set_title(r"Pressure [g/cm/s$^2$]")
-    except (ValueError, TypeError):
+    except (ValueError, TypeError) as e:
         print(
             filename,
             "pressures wrong? min",

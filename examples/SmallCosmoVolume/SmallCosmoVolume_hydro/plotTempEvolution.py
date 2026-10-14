@@ -24,7 +24,7 @@ k_in_J_K = 1.38064852e-23
 mH_in_kg = 1.6737236e-27
 
 # Number of snapshots generated
-n_snapshots = 200
+n_snapshots = 63
 
 import matplotlib
 
@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import h5py
 
-plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../../tools/stylesheets/mnras.mplstyle")
 
 # Read the simulation data
 sim = h5py.File("snapshots/snap_0000.hdf5", "r")
