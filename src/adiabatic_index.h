@@ -545,6 +545,61 @@ pow_three_gamma_minus_five_over_two(float x) {
 #endif
 }
 
+
+__attribute__((always_inline, const)) INLINE static float
+pow_three_gamma_minus_five(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return 1.f; /* x^(0) */
+
+#elif defined(HYDRO_GAMMA_7_5)
+
+  return powf(x, -0.8f); /* x^(-2/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return powf(x, -1.f); /* x^(-1) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return powf(x, 1.f)); /* x^(1) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
+__attribute__((always_inline, const)) INLINE static float
+pow_three_gamma_minus_one_over_two(float x) {
+
+#if defined(HYDRO_GAMMA_5_3)
+
+  return powf(x, 2.f); /* x^(2) */
+
+#elif defined(HYDRO_GAMMA_7_5)
+
+  return powf(x, 1.6f); /* x^(8/5) */
+
+#elif defined(HYDRO_GAMMA_4_3)
+
+  return powf(x, 1.5f); /* x^(3/2) */
+
+#elif defined(HYDRO_GAMMA_2_1)
+
+  return powf(x, 2.5f)); /* x^(5/2) */
+
+#else
+
+  error("The adiabatic index is not defined !");
+  return 0.f;
+
+#endif
+}
+
 /**
  * @brief Return the argument to the power three (adiabatic index - 1).
  *

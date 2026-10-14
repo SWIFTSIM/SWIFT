@@ -98,7 +98,7 @@ runner_iact_nonsym_bh_gas_density(
     if (u < u_EoS * bh_props->fixed_T_above_EoS_factor &&
         u > bh_props->fixed_u_for_soundspeed) {
       cj = gas_soundspeed_from_internal_energy(
-               pj->rho, bh_props->fixed_u_for_soundspeed) /
+               pj->rho, bh_props->fixed_u_for_soundspeed) / /* Add , pj->mat_id for using REMIX*/
            cosmo->a_factor_sound_speed;
     }
   }

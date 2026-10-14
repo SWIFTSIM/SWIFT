@@ -141,7 +141,7 @@ double get_thermal_equilibrium_pressure(
 
   /* Finish by computing the pressure from the density
    * and equilibirum internal energy */
-  const float P_eq_cgs = gas_pressure_from_internal_energy(rho_cgs, u_eq_cgs);
+  const float P_eq_cgs = gas_pressure_from_internal_energy(rho_cgs, u_eq_cgs); /*add , 0 for using REMIX*/
   return (double)log10f(P_eq_cgs);
 }
 
