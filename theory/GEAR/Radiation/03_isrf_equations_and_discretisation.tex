@@ -387,7 +387,11 @@ Each $\lambda_m$ multiplies the dilated Hubble rate inside its own moment's
 relaxation depth (Equations~(\ref{eq:isrfd-depth-u}) and
 (\ref{eq:isrfd-depth-F})). Its meaning: the number of e-folds-worth of band
 content lost per e-fold of expansion, because the band edges are fixed in
-\emph{physical} energy while photons redshift downward through them.
+\emph{physical} energy while photons redshift downward through them. That
+meaning holds for $u_m$. On $\boldsymbol{F}_m$ the same weight is an
+assumption: it holds if the flux has the same spectral shape at the band edge
+as its own moment, and the flux receives no LW-to-PE transfer. Its effect is
+bounded in Section~\ref{sec:fuv-lagrangian}.
 
 The grey (comoving-edge) value \textbf{differs per moment}:
 
@@ -445,17 +449,18 @@ $\lambda_E(\mathrm{PE}) = 2.154$, $\lambda_E(\mathrm{LW}) = 6.508$,
 $\lambda_N(\mathrm{LW}) = 6.0$.
 
 \paragraph{Implementation.} The weights enter the depths at
-\code{radiation\_isrf.c:607} (double) and \code{:858} (float).
+\code{radiation\_isrf.c:611} (double), \code{:483} (the pending add, double)
+and \code{:862} (float).
 Equation~(\ref{eq:isrfd-lambda-E}) is stated in the comments at
-\code{radiation.h:125} and \code{radiation.c:47}, and
+\code{radiation.h:129} and \code{radiation.c:47}, and
 Equation~(\ref{eq:isrfd-lambda-N}) is computed at \code{radiation.c:149-151};
 the rationale for the missing $+1$ is the comment at \code{radiation.c:153}. The
-fallbacks are at \code{radiation.h:133-135} and are stored as the double fields
+fallbacks are at \code{radiation.h:134-136} and are stored as the double fields
 \code{band\_edge\_weight\_pe}, \code{band\_edge\_weight\_lw} and
 \code{band\_edge\_photon\_weight\_lw} of \code{struct feedback\_props}
-(\code{feedback\_properties.h:186-188}). The start-up computation is
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:187-189}). The start-up computation is
 \code{radiation\_set\_band\_edge\_coefficients} (\code{radiation.c:57}). The
-reference metallicity is at \code{radiation.h:107} and is applied at
+reference metallicity is at \code{radiation.h:108} and is applied at
 \code{radiation.c:68-73}. Equations~(\ref{eq:isrfd-lambda-pe-table}),
 (\ref{eq:isrfd-lambda-lw-table}) and (\ref{eq:isrfd-lambda-n-table}) are at
 \code{radiation.c:144}, \code{:145} and \code{:148-151}, with the ratio itself
@@ -564,11 +569,13 @@ equations. The reason: $u$ is
 gas density it is measured against, and the specific flux loses the same single
 power. $H$ is \textbf{dilated} by the same $c_{\rm hyp}/c$ factor as the
 absorption term, in double precision in the energy update and in float in the
-flux update. Unlike $\kappa$, $H$ does not pick
+flux update. The single power is derived for a grey band. The band-edge
+weight $\lambda_m$ is derived for $u_m$ and assumed for $\boldsymbol{F}_m$
+(Section~\ref{sec:isrf-eqdisc-lambda}). Unlike $\kappa$, $H$ does not pick
 that factor up for free. Leaving it bare suppresses the true-speed fixed point of
 the homogeneous equation and stops $c_{\rm hyp}$ cancelling out of it. A
 consequence, not a defect: with $\kappa = 0$ the pure-expansion transient decays
-at $(c_{\rm hyp}/c)H$, not at $H$. The term vanishes exactly in a
+at $\lambda_m(c_{\rm hyp}/c)H$, not at $\lambda_m H$. The term vanishes exactly in a
 non-cosmological run, because SWIFT sets \code{cosmo->H} $=0$.
 
 The Hubble term is folded \emph{into} the relaxation depth rather than subtracted
@@ -579,25 +586,25 @@ accumulators are physical, and each spatial operator carries one net inverse
 length, so each closes with one factor $1/a$.
 
 \paragraph{Implementation.} $H_{\rm dil}$ of Equation~(\ref{eq:isrfd-Hdil}) is
-the variable \code{H\_dilated}, computed in double at \code{radiation\_isrf.c:550}
+the variable \code{H\_dilated}, computed in double at \code{radiation\_isrf.c:554}
 in \code{radiation\_end\_force\_propagation} and in float at
-\code{radiation\_isrf.c:830} in \code{radiation\_end\_gradient\_propagation}. The
-one-step updates are at \code{radiation\_isrf.c:628-632} and \code{:871-872},
-and the depths at \code{radiation\_isrf.c:607} and \code{:858}; the depth
+\code{radiation\_isrf.c:834} in \code{radiation\_end\_gradient\_propagation}. The
+one-step updates are at \code{radiation\_isrf.c:632-636} and \code{:875-876},
+and the depths at \code{radiation\_isrf.c:611} and \code{:862}; the depth
 variable is \code{a}. The decay of the dissipation together with $u_{\rm prev}$
-is at \code{radiation\_isrf.c:628-629}. The closure tensor is built by
+is at \code{radiation\_isrf.c:632-633}. The closure tensor is built by
 \code{radiation\_build\_m1\_closure\_tensor}
-(\code{radiation\_propagation\_iact.h:218-227}), with coefficients from
+(\code{radiation\_propagation\_iact.h:219-229}), with coefficients from
 \code{radiation\_get\_m1\_closure\_coefficients\_band}
-(\code{radiation\_propagation\_iact.h:186-206}); $c_M = 1$ is passed by
+(\code{radiation\_propagation\_iact.h:187-208}); $c_M = 1$ is passed by
 \code{radiation\_cache\_m1\_closure\_part}
-(\code{radiation\_propagation\_iact.h:258-269}). $\kappa_o$ is
+(\code{radiation\_propagation\_iact.h:260-271}). $\kappa_o$ is
 \code{radiation\_get\_part\_linear\_absorption\_rate}
-(\code{radiation\_isrf.c:1086}, lines 1091-1093), and the comment at
-\code{feedback\_struct.h:149-152} keeps it apart from the extinction opacity. The
+(\code{radiation\_isrf.c:1090}, lines 1095-1097), and the comment at
+\code{feedback\_struct.h:153-156} keeps it apart from the extinction opacity. The
 factor $1/a$ is the variable \code{a\_factor\_comoving\_to\_physical}, documented
-at \code{radiation\_propagation\_iact.h:27-34} and set at \code{:476},
-\code{:532}, \code{:714} and \code{:795}.
+at \code{radiation\_propagation\_iact.h:27-34} and set at \code{:478},
+\code{:534}, \code{:716} and \code{:797}.
 
 \subsection{The discretisation}
 \label{sec:isrf-eqdisc-disc}

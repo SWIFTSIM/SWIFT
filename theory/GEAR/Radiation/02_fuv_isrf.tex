@@ -585,7 +585,7 @@ acquire that factor (once, respectively twice) from the plain
 $c\to c_{\rm hyp}$ replacement inside them, but the absorption-plus-expansion
 decay rate and the source term must be rescaled explicitly, as the whole
 true-speed rate $c/\lambda + H = c\,\kappa\rho + H$, because $H$ carries no
-factor of $c$ for the substitution to act on -- it is a property of the
+factor of $c$ for the substitution to act on. It is a property of the
 expanding background, not of the radiation transport, so unlike
 $\kappa$ it does not pick up the dilation "for free". Leaving $H$ out of
 that rescaling is the same
@@ -605,8 +605,11 @@ class of error as leaving any other rate undilated:
 \end{align}
 with $\dot s = S_V/\rho$ the source rate per unit gas mass (${\rm
 erg\,g^{-1}\,s^{-1}}$), $H$ the Hubble rate, and $c/\lambda = c\,\kappa\rho$
-the true-speed absorption rate. This is the exact system the code
-integrates. The gradients in it are physical; the discrete operators are
+the true-speed absorption rate. For a grey band this is the exact system
+the code integrates. The code replaces $H$ by $\lambda(m)\,H$ in both
+equations, with $\lambda(m)$ the band-edge weight of moment $m$, and adds
+the LW-to-PE transfer to the PE energy equation
+(Section~\ref{sec:fuv-cosmo}). The gradients in it are physical; the discrete operators are
 evaluated on comoving inputs and converted once, as
 Section~\ref{sec:fuv-cosmo} shows. Both equations carry the same single
 power of $H$, dilated by the same $c_{\rm hyp}/c$ factor as absorption
@@ -616,6 +619,29 @@ as rates rather than as timescales, and $c_{\rm hyp}$ cancels out of the
 homogeneous equation's fixed point identically to every other term, for
 any per-particle speed field (Section~\ref{sec:fuv-time}).
 
+\textbf{The band-edge weight on the flux is an assumption.} Steps 1 to 3
+derive one power of $H$ for a grey band, in both equations. The weight
+$\lambda(m)$ corrects the equation of each moment, energy or photon
+number, for photons that redshift out of a band whose edges are fixed in
+physical energy; that correction is
+derived in Section~\ref{sec:fuv-cosmo}. The code applies the same
+$\lambda(m)$ to the flux of moment $m$. This is assumed, not derived: it
+holds if the flux has the same spectral shape at the band edge as its own
+moment. The flux equation also has no LW-to-PE transfer term. An error
+$\Delta\lambda$ in the flux weight changes the flux decay rate by
+$\Delta\lambda\,(c_{\rm hyp}/c)\,H$. Over the light-crossing time
+$L/c_{\rm hyp}$ of a region of size $L$, it changes the flux by a fraction
+$\Delta\lambda\,HL/c$, for any $c_{\rm hyp}$. The Hubble length $c/H$ is
+about $250$\,Mpc at $z=9$, so for $L=1$\,kpc this fraction is
+$4\times10^{-6}\,\Delta\lambda$. In the diffusion limit the weight enters
+only the diffusion coefficient, $D = (c_{\rm hyp}/3)/(\kappa\rho +
+\lambda(m)\,H/c)$, so it matters only where the absorption length approaches
+the Hubble length. The box total $\sum_i m_i u_i$ cannot detect the flux
+weight, because the flux enters $u$ only through a divergence that
+cancels in pairs. The relaxation-residual gate of the dissipation floor
+(Section~\ref{sec:fuv-dissipation}) tests the flux fixed point with the
+same weight, so it rests on the same assumption.
+
 \textbf{Consequence of the undilated form.} Writing $H$ bare instead,
 $(c_{\rm hyp}/\lambda + H)$ suppresses the true-speed fixed
 point $u^\ast_{\rm true} = (\dot s/c)/(\kappa\rho + H/c)$ by the factor
@@ -624,7 +650,7 @@ $H/c_{\rm hyp} \gg H/c$, so the bare-$H$ fixed point
 $(\dot s/c)/(\kappa\rho + H/c_{\rm hyp})$ undershoots the true one by
 exactly that ratio. This is a spurious sink, strongest exactly where
 $c_{\rm hyp}\kappa\rho$ is smallest relative to $H$, i.e.\ at low density
-and low metallicity -- the early ultra-faint-dwarf ISM this module is
+and low metallicity: the early ultra-faint-dwarf ISM this module is
 built for. Verified by a cosmological run of \code{ISRFCosmology}'s
 \code{free\_field} fixture, redshift $9$ to $a=0.125$: the corrected form
 passes (mass-weighted $u_{\rm FUV}/u_0-1$ and $u_{\rm LW}/u_0-1$ both
@@ -1707,10 +1733,12 @@ floor costs accuracy on a resolved, settled profile in the band
 $0.25\lesssim h/\lambda\lesssim0.85$, where the physical absorption is
 too weak to damp it and the front it protects has long passed. A settled
 particle is recognisable: its flux sits at the fixed point of
-Eq.~\ref{eq:fuv-fixed-point}. With $w_i = \kappa\rho_i + H/c$ -- the
-\emph{true} speed of light, not $c_{{\rm hyp},i}$: $w_i$ is
-$a_i/(c_{{\rm hyp},i}\Delta t_i)$ by construction, so $c_{{\rm hyp},i}$
-cancels out of $w_i$ itself, unlike $a_i$ -- the residual
+Eq.~\ref{eq:fuv-fixed-point}. Let $w_i = \kappa\rho_i + \lambda(m)\,H/c$,
+with $\lambda(m)$ the band-edge weight of the moment that owns the
+operator (Section~\ref{sec:fuv-cosmo}) and $c$ the \emph{true} speed of
+light, not $c_{{\rm hyp},i}$. By construction $w_i$ is
+$a_i/(c_{{\rm hyp},i}\Delta t_i)$, so $c_{{\rm hyp},i}$ cancels out of
+$w_i$ itself, unlike $a_i$. The residual
 \begin{equation}
   R_i = \frac{\big|\,w_i\,\mathbf F_i + c_{{\rm hyp},i}\,\mathbf G_i\,\big|}
              {w_i\,|\mathbf F_i| + c_{{\rm hyp},i}\,|\mathbf G_i|}
@@ -1922,12 +1950,14 @@ $\lambda(m)$ is the transported moment $m$'s own band-edge weight
 (the PE and LW energy moments' $\lambda_E({\rm PE})$/$\lambda_E({\rm LW})$,
 the LW photon-number moment's $\lambda_N({\rm LW})$); $\lambda(m) = 1$
 recovers the grey, comoving-band-edge result the "band-edge transfer"
-paragraph below replaces.
+paragraph below replaces. On $u$ the weight is the band-edge loss derived
+below. On $\mathbf F$ it is an assumption, stated with its effect in
+Section~\ref{sec:fuv-lagrangian}.
 
 Here $a_i$ is the same $a_i$ of Eq.~\ref{eq:fuv-phi}, formed identically by
 the flux update (Eq.~\ref{eq:fuv-F-update}) and the energy update
-(Eq.~\ref{eq:fuv-u-update}). $H$ enters
-\emph{only} through $a_i$: it changes the decay $e^{-a_i}$ and the
+(Eq.~\ref{eq:fuv-u-update}). Apart from the LW-to-PE transfer of the
+band-edge paragraph below, $H$ enters \emph{only} through $a_i$: it changes the decay $e^{-a_i}$ and the
 weight $\varphi(a_i) = (1-e^{-a_i})/a_i$ that both the transport
 divergence and the rescaled source rate are multiplied by in
 Eq.~\ref{eq:fuv-u-update}, and it changes nothing else: the deposited
@@ -1936,8 +1966,8 @@ dose (Eq.~\ref{eq:fuv-inject}) and the reservoir drawdown
 This is the only place expansion touches the band energy, so injection
 cannot test it: with propagation off (Section~\ref{sec:fuv-instantaneous})
 $a_i$ is never formed at all, and with propagation on but
-$\kappa\rho \gg (c_{\rm hyp}/c)H$ -- true for any gas above the most
-diffuse, metal-poor tail this module targets -- the $H$ term is a small
+$c_{\rm hyp}\kappa\rho \gg (c_{\rm hyp}/c)H$, true for any gas above the most
+diffuse, metal-poor tail this module targets, the $H$ term is a small
 correction to an absorption rate that already dominates $a_i$; isolating
 it needs the opposite limit, $\kappa\to0$, specifically (the
 "Consequence of the undilated form" paragraph of
@@ -1983,27 +2013,28 @@ count would flatten the diagnostic identity that moment exists to
 expose.
 
 \paragraph{Implementation.} The star's proper-time window is formed by
-\code{compute\_time} (\code{src/feedback/GEAR/feedback\_common.c:539}), whose
-cosmology branch calls \code{cosmology\_get\_delta\_time} at lines 549-551,
+\code{compute\_time} (\code{src/feedback/GEAR/feedback\_common.c:544}), whose
+cosmology branch calls \code{cosmology\_get\_delta\_time} at lines 554-556,
 because \code{get\_timestep()} returns $\Delta(\ln a)$ under cosmology. The
 window is cached once per star and step by \code{feedback\_star\_store\_timestep}
-(\code{src/feedback/GEAR/radiation\_iact.h:111}, called at line 164), and
+(\code{src/feedback/GEAR/radiation\_iact.h:122}, called at line 179), and
 \code{radiation\_iact\_nonsym\_feedback\_apply} reads the cached value
-(\code{radiation\_iact.h:218}). The particle's step and the drain horizon are
+(\code{radiation\_iact.h:237}). The particle's step and the drain horizon are
 formed in \code{radiation\_snapshot\_part\_propagation}
-(\code{src/feedback/GEAR/radiation\_isrf.c:147}), at lines 198-204 and 228-236,
+(\code{src/feedback/GEAR/radiation\_isrf.c:151}), at lines 202-208 and 232-240,
 the horizon ending at \code{ISRF\_reservoir\_end\_ti}. The depth $a_i$ is formed
-in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:819},
-line 858) and \code{radiation\_end\_force\_propagation}
-(\code{radiation\_isrf.c:531}, line 607), and $\varphi$ is
-\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:372}) and
-its double twin (\code{radiation\_propagation\_iact.h:558-559}). The comoving path is returned
+in \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:823},
+line 862) and \code{radiation\_end\_force\_propagation}
+(\code{radiation\_isrf.c:535}, line 611), where lines 576-605 also form the
+LW-to-PE transfer, and $\varphi$ is
+\code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c:376}) and
+its double twin (\code{radiation\_propagation\_iact.h:560-561}). The comoving path is returned
 by \code{radiation\_get\_comoving\_extinction\_path}
-(\code{radiation\_isrf.c:943}), the comoving product is formed by
+(\code{radiation\_isrf.c:947}), the comoving product is formed by
 \code{radiation\_get\_comoving\_gas\_column\_density\_at\_part}
-(\code{radiation\_isrf.c:998}), and the $a^{-2}$ is applied in
+(\code{radiation\_isrf.c:1002}), and the $a^{-2}$ is applied in
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{radiation\_isrf.c:1112}, lines 1118-1120).
+(\code{radiation\_isrf.c:1116}, lines 1122-1124).
 
 \subsubsection{Runtime parameters}
 \label{sec:fuv-parameters}
@@ -2143,8 +2174,9 @@ logbook.
     band.
   \item \textbf{Unit tests.} Conservation of the dissipation exchange
     across a smoothing-length ratio, scale-factor independence of the
-    three spatial operators, and the sign and magnitude of the expansion
-    term. All pass.
+    three spatial operators (with one $c_{\rm hyp}$ on both sides of a
+    pair), and the sign and magnitude of the expansion term in $u$ and
+    $\mathbf F$. All pass.
   \item \textbf{End-to-end heating.} A heating-on versus heating-off
     pair through Grackle checks the sign and magnitude of the thermal
     response; no quantitative accuracy target is defined for the $G_0$
@@ -2167,9 +2199,19 @@ path.
     criterion but stays $\sim6\times$ above what a uniform, tiny floor
     would give at the same point. Measuring $R$ against the limited
     recurrence's own fixed point is the candidate improvement.
-  \item \textbf{Untested branches.} The gate and the $H$ terms have
-    been unit-tested for scale-factor independence but not exercised in
-    a cosmological run with $a\ne1$ and $H\ne0$. The many-source,
+  \item \textbf{Untested branches.} The Hubble terms of the energy
+    equation, band-edge weights and LW-to-PE transfer included, are
+    checked in cosmological runs from $z=9$ (\code{ISRFCosmology},
+    \code{star\_propagation} and \code{star\_propagation\_pe}), at one
+    fixed $c_{\rm hyp}$ on one time bin and one rank. The Hubble term of
+    the flux equation is checked only by the unit test
+    \code{testRadiationISRFExpansionTerm}, which drives the real update
+    and compares the decay of $\mathbf F$ in each moment with the
+    formula; the box totals those runs check cannot detect it. The
+    kernel-local $c_{\rm hyp}$ under expansion has been checked only at
+    the speed contrast of a glass, about $1\%$. Strong speed contrast
+    across several time bins, several ranks and self-gravity under
+    expansion are untested. The many-source,
     near-isotropic branch (Eq.~\ref{eq:fuv-steady-diffusion}), which is
     the production use, has not been validated directly; every
     propagation test above uses one source or one seeded pulse.
