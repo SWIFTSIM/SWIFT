@@ -31,9 +31,10 @@ __attribute__((always_inline)) INLINE static void sidm_debug_particle(
 __attribute__((always_inline)) INLINE static void sidm_debug_interaction(
     const struct sipart *sipi, const struct sipart *sipj) {
   warning(
-      "[PIDi%lld] vi=[%.3e,%.3e,%.3e], "
-      "[PIDj%lld] vj=[%.3e,%.3e,%.3e], ",
-      sipi->id, sipi->v[0], sipi->v[1], sipi->v[2], sipj->id, sipj->v[0],
-      sipj->v[1], sipj->v[2]);
+      "[PIDi%lld] vi=[%.3e,%.3e,%.3e] dvi=[%.3e,%.3e,%.3e], "
+      "[PIDj%lld] vj=[%.3e,%.3e,%.3e] dvj=[%.3e,%.3e,%.3e], ",
+      sipi->id, sipi->v[0], sipi->v[1], sipi->v[2], sipi->dv_sidm[0],
+      sipi->dv_sidm[1], sipi->dv_sidm[2], sipj->id, sipj->v[0], sipj->v[1],
+      sipj->v[2], sipj->dv_sidm[0], sipj->dv_sidm[1], sipj->dv_sidm[2]);
 }
 #endif /* SWIFT_SIDM_BASIC_DEBUG_H */

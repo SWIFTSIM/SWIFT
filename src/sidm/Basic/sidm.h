@@ -46,6 +46,8 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
   sip->density.rho_dh = 0.f;
   sip->SIDM_rate = 0.f;
 
+  for (int k = 0; k < 6; k++) sip->inertia_tensor[k] = 0.f;
+
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
   sip->N_density = 0;
   sip->N_density_exact = 0;
@@ -72,6 +74,7 @@ __attribute__((always_inline)) INLINE static void sidm_init_sipart(
 __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
     struct sipart *sip, const struct sidm_props *sidm_properties) {
   sip->time_bin = 0;
+  for (int k = 0; k < 3; k++) sip->dv_sidm[k] = 0.f;
   sidm_init_sipart(sip);
 }
 
@@ -111,11 +114,7 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
 /**
  * @brief Finishes the force calculation.
  *
- * Multiplies the force and accelerations by the appropiate constants
- * and add the self-contribution term. In most cases, there is little
- * to do here.
- *
- * Cosmological terms are also added/multiplied here.
+ * Applies the SIDM kicks accumulated in the force loop.
  *
  * @param sip The si-particle to act upon
  * @param cosmo The current cosmological model.
@@ -123,7 +122,12 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
 __attribute__((always_inline)) INLINE static void sidm_end_force(
     struct sipart *restrict sip, const struct cosmology *cosmo) {
 
-  // TODO
+  for (int k = 0; k < 3; k++) {
+    sip->v[k] += sip->dv_sidm[k];
+
+    /* Re-set velocity kick */
+    sip->dv_sidm[k] = 0.f;
+  }
 }
 
 /**
@@ -208,11 +212,13 @@ __attribute__((always_inline)) INLINE static float sidm_compute_timestep(
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const double time_base) {
 
-  /* Choose timestep such that the expected number of scattering events is <1 */
-  if (sip->density.wcount == 0) {
+  /* No scattering: no SIDM constraint on the time-step */
+  if (sip->SIDM_rate <= 0.f) {
     return FLT_MAX;
   } else {
-    return sidm_properties->kappa_timestep * 1.f / sip->SIDM_rate;
+    /* Choose timestep such that the expected number of scattering events is
+     * <1 */
+    return sidm_properties->kappa_timestep / sip->SIDM_rate;
   }
 }
 
