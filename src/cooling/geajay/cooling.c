@@ -1043,35 +1043,50 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cosmology *cosmo,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp) {
+
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  const double density = cooling_get_physical_density(p, cosmo, cooling);
 
-#if COOLING_GEAJAY_MODE == 0
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-  const double mu_neutral = hydro_props->mu_neutral;
-  const double mu_ionised = hydro_props->mu_ionised;
-  const double T_transition = hydro_props->hydrogen_ionization_temperature;
-  const double T_over_mu = hydro_gamma_minus_one * u * m_H / k_B;
+  geajay_particle_inputs inputs;
+  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
 
-  /* Are we above or below the HII -> HI transition? */
-  if (T_over_mu > (T_transition + 1.) / mu_ionised)
-    return T_over_mu * mu_ionised;
-  else if (T_over_mu < (T_transition - 1.) / mu_neutral)
-    return T_over_mu * mu_neutral;
-  else
-    return T_transition;
+  double temperature;
+  if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
+                                  &inputs, &temperature) != GR_SUCCESS)
+    return cooling_stored_nan();
 
-#elif COOLING_GEAJAY_MODE == 1
-  const double m_H = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
-  const double mu = cooling_get_mean_molecular_weight(
-      phys_const, us, cosmo, hydro_props, cooling, p, xp);
-  return cooling_temperature_from_internal_energy(u, mu, k_B, m_H);
+  return temperature;
+}
 
-#else /* COOLING_GEAJAY_MODE >= 2 */
-  return cooling_get_temperature_h2_gamma_corrected(phys_const, cosmo, p, xp,
-                                                    u);
-#endif
+/**
+ * @brief Compute the mean molecular weight of a #part based on geajay.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ */
+double cooling_get_mean_molecular_weight(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+  const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  const double density = cooling_get_physical_density(p, cosmo, cooling);
+
+  geajay_particle_inputs inputs;
+  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
+
+  double mu;
+  if (geajay_particle_mean_molecular_weight(cooling->context, &cooling->layout,
+                                            xp, &inputs, &mu) != GR_SUCCESS)
+    return cooling_stored_nan();
+
+  return mu;
 }
 
 /**
