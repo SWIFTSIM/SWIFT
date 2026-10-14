@@ -1520,7 +1520,13 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Debug/test-only: skip the per-particle energy update entirely,
      leaving hydro's own internal-energy derivative untouched. See
      cooling_function_data.disable_cooling_for_debugging's own doxygen. */
-  if (cooling->disable_cooling_for_debugging) return;
+  if (cooling->disable_cooling_for_debugging) {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp,
+        hydro_get_physical_internal_energy(p, xp, cosmo));
+    return;
+  }
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -1555,6 +1561,9 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Is the cooling turn off */
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
   } else {
     int kept_previous_state;
     u_new = cooling_new_energy_or_keep_previous(
@@ -1562,7 +1571,11 @@ void cooling_cool_part(const struct phys_const *phys_const,
         dt_therm, time, &kept_previous_state);
 
     /* No cooling this step: exactly the adiabatic energy */
-    if (kept_previous_state) u_new = u_ad_before;
+    if (kept_previous_state) {
+      u_new = u_ad_before;
+      cooling_cache_eligibility_temperature_subgrid(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
+    }
 
     /* Grackle's solve evolves the ion/molecule fractions that set mu;
        recompute the floor from the post-solve composition. */
