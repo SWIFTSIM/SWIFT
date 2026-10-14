@@ -138,7 +138,7 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                         int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 8;
+  *num_fields = 9;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_sipart(
@@ -172,6 +172,13 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
   list[7] = io_make_output_field(
       "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f, siparts, SIDM_rate,
       "SIDM scattering rate of the particles");  // TODO:check cosmo factor
+
+  list[8] = io_make_output_field(
+      "InertiaTensors", FLOAT, 6, UNIT_CONV_MOMENT_OF_INERTIA, 2.f, siparts,
+      inertia_tensor,
+      "Co-moving inertia tensors of the neighbour positions about the "
+      "particles, computed in the force loop. Stored as (xx, yy, zz, xy, xz, "
+      "yz).");
 }
 
 #endif /* SWIFT_BASIC_SIDM_IO_H */
