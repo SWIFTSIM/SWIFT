@@ -148,17 +148,36 @@ __attribute__((always_inline)) INLINE static double sidm_random_unit_interval(
 }
 
 /**
- * @brief Compute the SIDM velocity kick for a pair (elastic, isotropic
- * scattering) and add it to the particles' dv_sidm accumulators.
+ * @brief Is the si-particle active at this time?
+ *
+ * Same as sipart_is_active(), without needing the #engine.
+ *
+ * @param sip The si-particle.
+ * @param ti_current Current integer time.
+ */
+__attribute__((always_inline)) INLINE static int sidm_sipart_is_active(
+    const struct sipart *sip, const integertime_t ti_current) {
+
+  return get_integer_time_end(ti_current, sip->time_bin) == ti_current;
+}
+
+/**
+ * @brief Compute the SIDM velocity kicks for a pair (elastic, isotropic
+ * scattering).
+ *
  *
  * @param sipi First part*icle.
  * @param sipj Second part*icle.
  * @param a Current scale factor.
  * @param vij Relative speed.
+ * @param ti_current Current integer time.
+ * @param dv_i Velocity change of sipi.
+ * @param dv_j Velocity change of sipj.
  */
-__attribute__((always_inline)) INLINE static void kick_siparts(
-    struct sipart *restrict sipi, struct sipart *restrict sipj, const float a,
-    const double vij, const integertime_t ti_current) {
+__attribute__((always_inline)) INLINE static void sidm_compute_kick(
+    const struct sipart *restrict sipi, const struct sipart *restrict sipj,
+    const float a, const double vij, const integertime_t ti_current,
+    float dv_i[3], float dv_j[3]) {
 
   /* Get COM velocity. */
   const float mi = sipi->mass;
@@ -196,10 +215,10 @@ __attribute__((always_inline)) INLINE static void kick_siparts(
   const float sign = (sipi->id < sipj->id) ? 1.f : -1.f;
 
   /* By momentum conservation sipj gets the opposite COM-frame kick.
-  Also convert velocities back to comoving and store the changes. */
+  Also convert velocities back to comoving. */
   for (int k = 0; k < 3; k++) {
-    sipi->dv_sidm[k] += a * (v_com[k] + sign * fi * v_new[k]) - sipi->v[k];
-    sipj->dv_sidm[k] += a * (v_com[k] - sign * fj * v_new[k]) - sipj->v[k];
+    dv_i[k] = a * (v_com[k] + sign * fi * v_new[k]) - sipi->v[k];
+    dv_j[k] = a * (v_com[k] - sign * fj * v_new[k]) - sipj->v[k];
   }
 }
 
@@ -291,7 +310,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
 
   if (x < p) {
     sidm_debug_interaction(sipi, sipj);
-    kick_siparts(sipi, sipj, a, vij, ti_current);
+
+    float dv_i[3], dv_j[3];
+    sidm_compute_kick(sipi, sipj, a, vij, ti_current, dv_i, dv_j);
+    for (int k = 0; k < 3; k++) {
+      sipi->dv_sidm[k] += dv_i[k];
+      sipj->dv_sidm[k] += dv_j[k];
+    }
+
     sidm_debug_interaction(sipi, sipj);
   }
 }
@@ -376,7 +402,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
 
   if (x < p) {
     sidm_debug_interaction(sipi, sipj);
-    kick_siparts(sipi, sipj, a, vij, ti_current);
+
+    float dv_i[3], dv_j[3];
+    sidm_compute_kick(sipi, sipj, a, vij, ti_current, dv_i, dv_j);
+    for (int k = 0; k < 3; k++) sipi->dv_sidm[k] += dv_i[k];
+
+    /* An active sipj is updated by its own task and applies its half of this
+     * kick. Only an inactive sipj needs its half applied here. */
+    if (!sidm_sipart_is_active(sipj, ti_current))
+      for (int k = 0; k < 3; k++) sipj->dv_sidm[k] += dv_j[k];
+
     sidm_debug_interaction(sipi, sipj);
   }
 }
