@@ -1544,7 +1544,7 @@ if test "x$with_geajay" != "xno"; then
       [geajay],
       [geajay_choice_from_string],
       [ : ],
-      [AC_MSG_ERROR(This geajay is too old: it has no geajay_choice_from_string, which reads the names of the choice parameters. Please check --with-geajay.)],
+      [AC_MSG_ERROR(This geajay is too old: it has no geajay_choice_from_string to read the names of the choice parameters. Please check --with-geajay.)],
       [$HDF5_LDFLAGS $GEAJAY_LIBS])
 fi
 AC_SUBST([GEAJAY_LIBS])
