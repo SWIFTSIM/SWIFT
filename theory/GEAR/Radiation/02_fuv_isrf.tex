@@ -605,7 +605,7 @@ class of error as leaving any other rate undilated:
 \end{align}
 with $\dot s = S_V/\rho$ the source rate per unit gas mass (${\rm
 erg\,g^{-1}\,s^{-1}}$), $H$ the Hubble rate, and $c/\lambda = c\,\kappa\rho$
-the true-speed absorption rate. For a grey band this is the exact system
+the true-speed absorption rate. For the energy of a grey band this is the exact system
 the code integrates. The code replaces $H$ by $\lambda(m)\,H$ in both
 equations, with $\lambda(m)$ the band-edge weight of moment $m$, and adds
 the LW-to-PE transfer to the PE energy equation
@@ -620,14 +620,18 @@ homogeneous equation's fixed point identically to every other term, for
 any per-particle speed field (Section~\ref{sec:fuv-time}).
 
 \textbf{The band-edge weight on the flux is an assumption.} Steps 1 to 3
-derive one power of $H$ for a grey band, in both equations. The weight
+derive one power of $H$ for the energy of a grey band, in both equations.
+The photon number of a grey band has none, because photon number does not
+redshift. The weight
 $\lambda(m)$ corrects the equation of each moment, energy or photon
 number, for photons that redshift out of a band whose edges are fixed in
 physical energy; that correction is
 derived in Section~\ref{sec:fuv-cosmo}. The code applies the same
 $\lambda(m)$ to the flux of moment $m$. This is assumed, not derived: it
 holds if the flux has the same spectral shape at the band edge as its own
-moment. The flux equation also has no LW-to-PE transfer term. An error
+moment. For the photon-number moment the whole rate
+$\lambda_N({\rm LW})\,H$ on the flux is assumed. The flux equation also has
+no LW-to-PE transfer term. An error
 $\Delta\lambda$ in the flux weight changes the flux decay rate by
 $\Delta\lambda\,(c_{\rm hyp}/c)\,H$. Over the light-crossing time
 $L/c_{\rm hyp}$ of a region of size $L$, it changes the flux by a fraction
@@ -1547,14 +1551,16 @@ transport term that is frozen over the step. Each is integrated exactly
 for frozen right-hand side. With the relaxation depth and integrating
 factor
 \begin{equation}
-  a_i = c_{{\rm hyp},i}\left(\kappa\rho_i + \frac{H}{c}\right)\Delta t_i , \qquad
+  a_i = c_{{\rm hyp},i}\big(\kappa\rho_i + \lambda(m)\,H/c\big)\Delta t_i , \qquad
   \varphi(a) = \frac{1-e^{-a}}{a}
   \quad (\varphi\to1 \text{ as } a\to0,\ \ \varphi\to1/a \text{ as } a\to\infty),
   \label{eq:fuv-phi}
 \end{equation}
 $H$ entering divided by the true speed of light $c$, not
 $c_{{\rm hyp},i}$ (dilated by the same $c_{\rm hyp}/c$ factor as
-absorption, as Section~\ref{sec:fuv-lagrangian} derives), the flux
+absorption, as Section~\ref{sec:fuv-lagrangian} derives), and
+$\lambda(m)$ the band-edge weight of moment $m$
+(Section~\ref{sec:fuv-cosmo}), the flux
 update, from the pressure-tensor divergence of $u^n$, reads
 \begin{equation}
   \mathbf F_i^{\,n+1} = e^{-a_i}\,\mathbf F_i^{\,n}
@@ -1592,12 +1598,12 @@ rather than added afterwards.
 The flux update has an exact fixed point for a frozen gradient,
 \begin{equation}
   \mathbf F_i^\ast = -\,\mathcal C_i\,\mathbf G_i , \qquad
-  \mathcal C_i = \frac{c_{{\rm hyp},i}}{\kappa\rho_i + H/c} ,
+  \mathcal C_i = \frac{c_{{\rm hyp},i}}{\kappa\rho_i + \lambda(m)\,H/c} ,
   \label{eq:fuv-fixed-point}
 \end{equation}
 which is the discrete form of Fick's law with $D = c_{\rm hyp}\lambda$
 in front of the tensor-weighted gradient at $H=0$ (the $1/3$ sits inside
-$\mathbf D$); $H/c$ is the same dilated Hubble contribution as in $a_i$
+$\mathbf D$); $\lambda(m)\,H/c$ is the same dilated Hubble contribution as in $a_i$
 above. The dissipation floor gate of
 Section~\ref{sec:fuv-dissipation} measures each particle's distance
 from this fixed point.
@@ -1949,6 +1955,7 @@ $c_{\rm hyp}/c$ and folded into the relaxation depth,
 $\lambda(m)$ is the transported moment $m$'s own band-edge weight
 (the PE and LW energy moments' $\lambda_E({\rm PE})$/$\lambda_E({\rm LW})$,
 the LW photon-number moment's $\lambda_N({\rm LW})$); $\lambda(m) = 1$
+for the energy moments, and $\lambda(m) = 0$ for the photon-number moment,
 recovers the grey, comoving-band-edge result the "band-edge transfer"
 paragraph below replaces. On $u$ the weight is the band-edge loss derived
 below. On $\mathbf F$ it is an assumption, stated with its effect in
