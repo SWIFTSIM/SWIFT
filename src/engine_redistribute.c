@@ -685,8 +685,8 @@ void engine_redistribute(struct engine *e) {
       if (s->siparts[k].gpart != NULL) {
         s->siparts[k].gpart->id_or_neg_offset = -k;
       }
-      if (s->siparts[nr_bparts].gpart != NULL) {
-        s->siparts[nr_bparts].gpart->id_or_neg_offset = -nr_siparts;
+      if (s->siparts[nr_siparts].gpart != NULL) {
+        s->siparts[nr_siparts].gpart->id_or_neg_offset = -nr_siparts;
       }
     } else {
       k++;
