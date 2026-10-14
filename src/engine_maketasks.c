@@ -4978,6 +4978,31 @@ static int engine_radiation_hii_tag_recv_cmp(const void *a, const void *b) {
 }
 
 /**
+ * @brief Wire @p t_recv -> timestep_sync of the super cell of @p c, or of
+ * every super cell beneath @p c if it sits above the super level.
+ *
+ * A claim received from another rank flags its gas for synchronization, so
+ * the owner's timestep_sync must run after the unpack to act on it this
+ * step, as it does for a claim made on this rank.
+ *
+ * @param s The #scheduler.
+ * @param c The owner cell of the recv_part_hii_tag task.
+ * @param t_recv The recv_part_hii_tag #task.
+ */
+static void engine_radiation_wire_hii_tag_recv_sync(struct scheduler *s,
+                                                    struct cell *c,
+                                                    struct task *t_recv) {
+  if (c->super != NULL) {
+    if (c->super->timestep_sync != NULL)
+      scheduler_addunlock(s, t_recv, c->super->timestep_sync);
+    return;
+  }
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      engine_radiation_wire_hii_tag_recv_sync(s, c->progeny[k], t_recv);
+}
+
+/**
  * @brief Chain an owner cell's task_subtype_part_hii_tag recv tasks in
  * sending-rank order, and anchor the owner's own hydro sends before the
  * first recv of the chain.
@@ -4994,6 +5019,7 @@ static int engine_radiation_hii_tag_recv_cmp(const void *a, const void *b) {
  * The first recv is also anchored behind every local hii_ionization_feedback
  * task covering the owner cell, since the unpack is an unlocked
  * read-modify-write of the same parts those tasks write under cell locks.
+ * Every recv unlocks the owner's timestep_sync.
  *
  * @param e The #engine.
  */
@@ -5060,6 +5086,8 @@ static void engine_radiation_chain_hii_tag_recvs(struct engine *e) {
       /* Chained after the previous sending rank's recv for this owner. */
       scheduler_addunlock(sched, tags[i - 1], t);
     }
+
+    engine_radiation_wire_hii_tag_recv_sync(sched, owner, t);
   }
 
   free(tags);

@@ -26,6 +26,7 @@
 #include "feedback_properties.h"
 #include "hydro_properties.h"
 #include "part.h"
+#include "timestep_sync_part.h"
 #include "units.h"
 
 #include <string.h>
@@ -147,6 +148,10 @@ __attribute__((always_inline)) INLINE static void feedback_apply_hii_tag_claim(
  * counted. A report from the star that already holds @p p is applied
  * directly and is not a collision.
  *
+ * A fresh claim (an untagged @p p, or a won collision) flags @p p for
+ * time-step synchronization, as a claim on a local particle does; a renewal
+ * by the holding star does not.
+ *
  * @param p The #part to unpack into.
  * @param data The source entry.
  * @param collision (return) Set to 1 if the entry met a claim of another
@@ -175,13 +180,16 @@ feedback_unpack_hii_tag_report(struct part *restrict p,
     if (incoming_wins) {
       *forfeited_cost = p->feedback_data.cost;
       feedback_apply_hii_tag_claim(p, data);
+      timestep_sync_part(p);
     } else {
       *forfeited_cost = data->cost;
     }
     return;
   }
 
+  const int fresh = !p->feedback_data.is_ionized && data->is_ionized;
   feedback_apply_hii_tag_claim(p, data);
+  if (fresh) timestep_sync_part(p);
 #endif
 }
 
