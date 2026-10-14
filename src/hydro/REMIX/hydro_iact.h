@@ -238,6 +238,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Get r. */
   const float r = sqrtf(r2);
+  const float hubble_flow_times_a2 = a * a * H;
 
   /* Recover some data */
   const float mi = pi->mass;
@@ -274,7 +275,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
-                  pj, dx);
+                  pj, dx, a, H);
 
   /* Pressure terms to be used in evolution equations */
   const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
@@ -306,6 +307,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
   pj->u_dt += mi * (P_j_term + Q_j_term) * dvdotG;
 
+  /* Additional term from cosmology */
+  const float drdotG = dx[0] * G_mean[0] +
+                       dx[1] * G_mean[1] +
+                       dx[2] * G_mean[2];
+
+  pi->u_dt += H_a2 * mj * Q_i_term * drdotG;
+  pj->u_dt += H_a2 * mi * Q_j_term * drdotG;
+
   /* Density time derivative */
   pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
   pj->drho_dt += mi * (rhoj * rhoi_inv) * dvdotG;
@@ -332,9 +341,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float mean_balsara = 0.5f * (pi->force.balsara + pj->force.balsara);
   const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                             G_mean[2] * G_mean[2]);
-  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                                 (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                                 (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+  const float v_sig_norm = sqrtf((hubble_flow_times_a2 * - dx[0]) * (hubble_flow_times_a2 * - dx[0]) + (pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                                (hubble_flow_times_a2 * - dx[1]) * (hubble_flow_times_a2 * - dx[1]) + (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                                (hubble_flow_times_a2 * - dx[2]) * (hubble_flow_times_a2 * - dx[2]) + (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
@@ -344,7 +353,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   float drho_dt_norm_and_difn_j = alpha_norm * mi * v_sig_norm *
                                   pj->force.vac_switch *
                                   (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
-
   /* Only include diffusion for same-material particle pair */
   if (pi->mat_id == pj->mat_id) {
     /* Diffusion parameters */
@@ -368,8 +376,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
-    pi->u_dt += du_dt_difn_i;
-    pj->u_dt += du_dt_difn_j;
+    pi->u_dt += (pi->diffusion.omega * pj->diffusion.omega) * du_dt_difn_i;
+    pj->u_dt += (pi->diffusion.omega * pj->diffusion.omega) * du_dt_difn_j;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
@@ -411,6 +419,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Get r. */
   const float r = sqrtf(r2);
+  const float hubble_flow_times_a2 = a * a * H;
 
   /* Recover some data */
   const float mj = pj->mass;
@@ -446,7 +455,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float Qi, Qj;
   float visc_signal_velocity, difn_signal_velocity;
   hydro_set_Qi_Qj(&Qi, &Qj, &visc_signal_velocity, &difn_signal_velocity, pi,
-                  pj, dx);
+                  pj, dx, a, H);
 
   /* Pressure terms to be used in evolution equations */
   const float P_i_term = pressurei * rhoi_inv * rhoj_inv;
@@ -469,6 +478,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Internal energy time derivative */
   pi->u_dt += mj * (P_i_term + Q_i_term) * dvdotG;
+
+  /* Additional term from cosmology */
+  const float drdotG = dx[0] * G_mean[0] +
+                       dx[1] * G_mean[1] +
+                       dx[2] * G_mean[2];
+
+  pi->u_dt += hubble_flow_times_a2 * mj * Q_i_term * drdotG;
 
   /* Density time derivative */
   pi->drho_dt += mj * (rhoi * rhoj_inv) * dvdotG;
@@ -494,9 +510,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float mod_G = sqrtf(G_mean[0] * G_mean[0] + G_mean[1] * G_mean[1] +
                             G_mean[2] * G_mean[2]);
 
-  const float v_sig_norm = sqrtf((pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
-                                 (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
-                                 (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
+  const float v_sig_norm = sqrtf((hubble_flow_times_a2 * - dx[0]) * (hubble_flow_times_a2 * - dx[0]) + (pi->v[0] - pj->v[0]) * (pi->v[0] - pj->v[0]) +
+                                 (hubble_flow_times_a2 * - dx[1]) * (hubble_flow_times_a2 * - dx[1]) + (pi->v[1] - pj->v[1]) * (pi->v[1] - pj->v[1]) +
+                                 (hubble_flow_times_a2 * - dx[2]) * (hubble_flow_times_a2 * - dx[2]) + (pi->v[2] - pj->v[2]) * (pi->v[2] - pj->v[2]));
 
   /* Add normalising term to density evolution (Sandnes+2025 Eqn. 51) */
   const float alpha_norm = const_remix_norm_alpha;
@@ -524,7 +540,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                mean_rho_inv;
 
     /* Add artificial diffusion to evolution of internal energy */
-    pi->u_dt += du_dt_difn_i;
+    pi->u_dt += (pi->diffusion.omega * pj->diffusion.omega)* du_dt_difn_i;
 
     /* Calculate artificial diffusion of density (Sandnes+2025 Eqn. 43) */
     drho_dt_norm_and_difn_i += -(a_difn_rho + b_difn_rho * mean_balsara) * mj *
