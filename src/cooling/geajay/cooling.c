@@ -825,6 +825,18 @@ static double cooling_stored_nan(void) {
 }
 
 /**
+ * @brief Check that the library has the channels of the header.
+ *
+ * The library names exactly its channels and returns NULL beyond them.
+ *
+ * @return 1 if the library has GEAJAY_RATE_NCHANNELS channels.
+ */
+static int cooling_channel_count_matches(void) {
+  return geajay_rate_channel_name(GEAJAY_RATE_NCHANNELS - 1) != NULL &&
+         geajay_rate_channel_name(GEAJAY_RATE_NCHANNELS) == NULL;
+}
+
+/**
  * @brief Compute the cooling time of a particle at its stored state.
  *
  * Signed as in Grackle: negative for net cooling, +inf at a net rate of 0.
@@ -1292,6 +1304,13 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   cooling->table_edge_density =
       cooling->table_density_max_Hpcm3 * cooling->proton_mass_cgs /
       (cooling->HydrogenFractionByMass * cooling->units.density_units);
+
+  if (!cooling_channel_count_matches())
+    error(
+        "The geajay library has a different number of energy rate channels "
+        "than the geajay header this SWIFT was compiled with (%d). Rebuild "
+        "SWIFT against the installed library.",
+        (int)GEAJAY_RATE_NCHANNELS);
 
   geajay_context_error context_error;
   cooling->context =
