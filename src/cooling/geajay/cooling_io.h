@@ -21,6 +21,7 @@
 #define SWIFT_COOLING_GEAJAY_IO_H
 
 /* Local includes */
+#include "adiabatic_index.h"
 #include "cooling.h"
 #include "cooling_properties.h"
 #include "cooling_struct.h"
@@ -196,7 +197,8 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
   list[num] = io_make_physical_output_field_convert_part(
       "CoolingRates", FLOAT, GEAJAY_RATE_NCHANNELS,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, -3.f * hydro_gamma_minus_one,
+      parts, xparts,
       /*can convert to comoving=*/1, convert_part_cooling_rates,
       "Energy rates du/dt of the gas at the state of CoolingTimes, not a step "
       "average, one per process (names in SubgridScheme/NamedColumns/"
