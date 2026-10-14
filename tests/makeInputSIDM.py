@@ -54,6 +54,12 @@ mat = zeros((numPart, 1), dtype="i")
 # chemistry data
 he = zeros((numPart, 1))
 
+# SIDM particles get non-trivial velocities and smoothing lengths so that the
+# reading of these fields can be checked (values exactly representable in
+# single precision, see testReadingSIDM.c)
+v_sidm = zeros((numPart, 3))
+h_sidm = zeros((numPart, 1))
+
 for i in range(L):
     for j in range(L):
         for k in range(L):
@@ -69,6 +75,10 @@ for i in range(L):
             v[index, 2] = 0.0
             m[index] = mass
             ids[index] = index
+            v_sidm[index, 0] = 0.125 * index
+            v_sidm[index, 1] = -0.25 * index
+            v_sidm[index, 2] = 1.0
+            h_sidm[index] = 0.125
 
 # --------------------------------------------------
 
@@ -126,12 +136,12 @@ grp = file.create_group("/PartType7")
 ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
 ds[()] = coords
 ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = v
+ds[()] = v_sidm
 ds = grp.create_dataset("Masses", (numPart, 1), "f")
 ds[()] = m
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids
 ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-ds[()] = h
+ds[()] = h_sidm
 
 file.close()
