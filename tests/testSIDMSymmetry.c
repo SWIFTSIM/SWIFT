@@ -189,6 +189,7 @@ void test(const char *param_filename) {
           pj2.SIDM_rate);
   }
 
+#ifndef SIDM_NONE
   /* Check that both versions gave the same kicks: each non-symmetric call only
    * kicks its own particle since both particles are active. */
   for (int k = 0; k < 3; k++) {
@@ -199,6 +200,7 @@ void test(const char *param_filename) {
       error("Particle j dv_sidm[%d] mismatch: %.8e != %.8e", k, pj.dv_sidm[k],
             pj2.dv_sidm[k]);
   }
+#endif
 }
 
 int main(int argc, char *argv[]) {
