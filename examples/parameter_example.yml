@@ -717,9 +717,9 @@ GeajayCooling:
   max_substeps: 10000                          # (optional) Maximal number of sub-steps of one solve (default: 10000)
   subcycle_on_failure: 2                       # (optional) Number of retries with a time-step split in smaller pieces after a failed solve (0 to 20, default: 2)
   thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
-  uv_self_shielding: off                       # (optional) Self shielding: off, HI, HI_HeI or HI_HeI_no_HeII (the library's methods, or 0 to 3), or density_threshold (or -1) for the threshold below (default: off)
+  uv_self_shielding: none                      # (optional) Self shielding: none, HI, HI_HeI or HI_HeI_no_HeII (the library's methods, or 0 to 3), or density_threshold (or -1) for the threshold below (default: none)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Density threshold of the self shielding
-  h2_shielding_length_method: off              # (optional) H2 self-shielding length: off, given_length (kernel support radius) or Jeans (local Jeans length), or 0, 2, 3 (default: off). Sobolev (1) is not supported.
+  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (kernel support radius) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported.
   H2_self_shielding_path: kernel_radius        # (optional) Path length for method 2: kernel_radius or kernel_diameter
   metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
@@ -734,7 +734,7 @@ GeajayCooling:
   volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
   specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
   h2_three_body_fit: Abel+2002                 # (optional) H2 three-body formation rate: Abel+2002, Palla+1983, Cohen+Westberg1983, Flower+Harris2007, Glover2008 or Forrey2013 (or 0 to 5) (default: Abel+2002)
-  h2_cie_cooling: off                          # (optional) H2 collision-induced emission cooling: off or Ripamonti+Abel2004 (or 0, 1) (default: off)
+  h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   h2_formation_on_dust: 0                      # (optional) Enable/disable H2 formation on dust grains (default: 0)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)

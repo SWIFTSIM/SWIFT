@@ -1526,6 +1526,10 @@ if test "x$with_geajay" != "xno"; then
       [geajay_particle.h],
       [ : ],
       [AC_MSG_ERROR(Cannot find geajay_particle.h! A geajay with the particle API is needed.)])
+   AC_CHECK_HEADER(
+      [geajay_choices.h],
+      [ : ],
+      [AC_MSG_ERROR(Cannot find geajay_choices.h! This geajay is too old: it cannot read the names of the choice parameters.)])
    CPPFLAGS="$geajay_save_CPPFLAGS"
 
    AC_CHECK_LIB(
@@ -1535,6 +1539,12 @@ if test "x$with_geajay" != "xno"; then
        have_geajay="yes"
       ],
       [AC_MSG_ERROR(Cannot find the geajay library with the particle API! Please check --with-geajay.)],
+      [$HDF5_LDFLAGS $GEAJAY_LIBS])
+   AC_CHECK_LIB(
+      [geajay],
+      [geajay_choice_from_string],
+      [ : ],
+      [AC_MSG_ERROR(This geajay is too old: it has no geajay_choice_from_string, which reads the names of the choice parameters. Please check --with-geajay.)],
       [$HDF5_LDFLAGS $GEAJAY_LIBS])
 fi
 AC_SUBST([GEAJAY_LIBS])
