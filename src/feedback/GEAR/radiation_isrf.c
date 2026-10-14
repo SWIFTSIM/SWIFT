@@ -53,7 +53,8 @@
  * Does not zero #feedback_isrf_moment_data.u, which an IC may supply through
  * the optional "PESpecificEnergy"/"LWSpecificEnergy" fields. u_prev is seeded
  * from u, because the initial pass rebuilds `u` from `u_prev` before the first
- * snapshot. The specific flux is always zeroed.
+ * snapshot. The specific flux is kept too: an IC may seed it with the optional
+ * reduced-flux fields, and an IC without them leaves 0.
  *
  * @param p The #part to initialise.
  */
@@ -62,9 +63,6 @@ void radiation_first_init_part(struct part *restrict p) {
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
     moment->u_prev = moment->u;
-    moment->specific_flux[0] = 0.f;
-    moment->specific_flux[1] = 0.f;
-    moment->specific_flux[2] = 0.f;
     moment->u_dose_reservoir = 0.f;
     moment->u_source_rate = 0.f;
     moment->dissipation_u = 0.f;

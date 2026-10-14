@@ -343,7 +343,22 @@ INLINE static int feedback_read_particles(struct part *parts,
                           UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                           feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u);
 
-  return 3;
+  /* Stored reduced flux Ft = F / c_hyp, units of u: |Ft| = u is free
+     streaming. Not the snapshot's PESpecificFluxes, which is c_hyp Ft. */
+  list[3] = io_make_input_field(
+      "PEReducedSpecificFlux", FLOAT, 3, OPTIONAL,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+      feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux);
+  list[4] = io_make_input_field(
+      "LWReducedSpecificFlux", FLOAT, 3, OPTIONAL,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+      feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux);
+  list[5] = io_make_input_field(
+      "LWPhotonReducedSpecificFlux", FLOAT, 3, OPTIONAL,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+      feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux);
+
+  return 6;
 #else
   return 0;
 #endif
