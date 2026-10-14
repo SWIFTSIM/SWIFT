@@ -61,13 +61,6 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             struct part *p, struct xpart *xp, double dt,
                             double dt_therm, double time);
 
-gr_float cooling_time(const struct phys_const *phys_const,
-                      const struct unit_system *us,
-                      const struct hydro_props *hydro_properties,
-                      const struct cosmology *cosmo,
-                      const struct cooling_function_data *cooling,
-                      const struct part *p, struct xpart *xp);
-
 double cooling_get_physical_density(
     const struct part *p, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling);
@@ -816,7 +809,26 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
 }
 
 /**
- * @brief Compute the cooling time
+ * @brief A quiet NaN made from its bits, for a value that is only stored.
+ *
+ * SWIFT builds with -ffinite-math-only, under which a NaN constant is
+ * undefined: the volatile keeps the compiler from seeing one.
+ *
+ * @return A quiet NaN.
+ */
+static double cooling_stored_nan(void) {
+  volatile uint64_t bits = 0x7ff8000000000000ULL;
+  const uint64_t value = bits;
+  double nan_value;
+  memcpy(&nan_value, &value, sizeof(nan_value));
+  return nan_value;
+}
+
+/**
+ * @brief Compute the cooling time of a particle at its stored state.
+ *
+ * Signed as in Grackle: negative for net cooling, +inf at a net rate of 0.
+ * geajay reads the particle and writes nothing to it.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -826,14 +838,15 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
  *
- * @return cooling time
+ * @return The physical cooling time in internal units, NaN if geajay refuses
+ * the particle.
  */
-gr_float cooling_time(const struct phys_const *phys_const,
-                      const struct unit_system *us,
-                      const struct hydro_props *hydro_props,
-                      const struct cosmology *cosmo,
-                      const struct cooling_function_data *cooling,
-                      const struct part *p, struct xpart *xp) {
+double cooling_time(const struct phys_const *phys_const,
+                    const struct unit_system *us,
+                    const struct hydro_props *hydro_props,
+                    const struct cosmology *cosmo,
+                    const struct cooling_function_data *cooling,
+                    const struct part *p, const struct xpart *xp) {
 
   /* general particle data */
   const double density = cooling_get_physical_density(p, cosmo, cooling);
@@ -843,12 +856,10 @@ gr_float cooling_time(const struct phys_const *phys_const,
   geajay_particle_inputs inputs;
   cooling_fill_inputs(cooling, p, cosmo, density, energy, &inputs);
 
-  /* Compute cooling time */
   double cooling_time;
   if (geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
-                                   &inputs, &cooling_time) == GR_FAIL) {
-    error("Error in geajay_particle_cooling_time.");
-  }
+                                   &inputs, &cooling_time) != GR_SUCCESS)
+    return cooling_stored_nan();
 
   return cooling_time;
 }

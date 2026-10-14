@@ -119,6 +119,12 @@ void cooling_set_part_time_cooling_off(struct part *p, struct xpart *xp,
                                        const double time);
 
 float cooling_get_radiated_energy(const struct xpart *restrict xp);
+double cooling_time(const struct phys_const *phys_const,
+                    const struct unit_system *us,
+                    const struct hydro_props *hydro_props,
+                    const struct cosmology *cosmo,
+                    const struct cooling_function_data *cooling,
+                    const struct part *p, const struct xpart *xp);
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_cool_part(const struct phys_const *restrict phys_const,
