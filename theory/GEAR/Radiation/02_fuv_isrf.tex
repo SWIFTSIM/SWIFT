@@ -1973,7 +1973,7 @@ dose (Eq.~\ref{eq:fuv-inject}) and the reservoir drawdown
 This is the only place expansion touches the band energy, so injection
 cannot test it: with propagation off (Section~\ref{sec:fuv-instantaneous})
 $a_i$ is never formed at all, and with propagation on but
-$c_{\rm hyp}\kappa\rho \gg \lambda(m)\,(c_{\rm hyp}/c)H$, with $\lambda(m)$ up to $6.5$ for LW and true for any gas above the most
+$c_{\rm hyp}\kappa\rho \gg \lambda(m)\,(c_{\rm hyp}/c)H$ (with $\lambda({\rm LW}) = 6.5$ at the default weight), true for any gas above the most
 diffuse, metal-poor tail this module targets, the $H$ term is a small
 correction to an absorption rate that already dominates $a_i$; isolating
 it needs the opposite limit, $\kappa\to0$, specifically (the
@@ -2210,7 +2210,7 @@ path.
     equation, band-edge weights and LW-to-PE transfer included, are
     checked in cosmological runs from $z=9$ (\code{ISRFCosmology},
     \code{star\_propagation} and \code{star\_propagation\_pe}), at one
-    fixed $c_{\rm hyp}$ on one time bin, except the kernel-local \code{free\_field} leg, and on one rank. The Hubble term of
+    fixed $c_{\rm hyp}$ (except in the kernel-local \code{free\_field} leg) on one time bin and one rank. The Hubble term of
     the flux equation is checked only by the unit test
     \code{testRadiationISRFExpansionTerm}, which drives the real update
     and compares the decay of $\mathbf F$ in each moment with the

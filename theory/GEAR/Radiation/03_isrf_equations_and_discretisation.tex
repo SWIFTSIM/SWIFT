@@ -878,7 +878,7 @@ $c_{\rm hyp}$, and that the loops read \code{rho\_prev}.
     \code{feedback\_struct.h:247-249}.
   \item The reads of \code{rho\_prev} are at
     \code{radiation\_propagation\_iact.h:362-363}, \code{:473-474} and
-    \code{:708-709}, documented at \code{:27-34}.
+    \code{:708-709} (the non-symmetric twins read it at \code{:418-419}, \code{:529-530} and \code{:790-791}), documented at \code{:27-34}.
   \item Dissipation reference:
     \code{radiation\_dissipation\_reference\_accumulate\_band}
     (\code{radiation\_propagation\_iact.h:104}); the missing $1/a$ is explained
@@ -1692,8 +1692,9 @@ The rescale is applied only in the end-force update
 \code{radiation\_isrf.c:550}. The doxygen of
 \code{radiation\_relaxation\_phi\_factor} names an ``injection-site equivalent,
 $c_{\rm hyp}\kappa\Delta t_\star$'' (\code{radiation\_isrf.c:372-373}). No such
-caller exists: the only callers are the two ghosts inside
-\code{radiation\_isrf.c}.
+caller exists: the callers are the two ghosts and the pending add inside
+\code{radiation\_isrf.c}, and the cross-bin pair of
+\code{radiation\_propagation\_iact.h}, which uses the finer member's step.
 
 \subsection{The band-edge transfer, LW into PE}
 \label{sec:isrf-eqdisc-transfer}
@@ -2078,8 +2079,8 @@ something the code does not do. The equations in this section follow the code.
     M1 pressure-tensor divergence, Equation~(\ref{eq:isrfd-grad-apply}).
   \item \code{radiation\_isrf.c:372-373} names an ``injection-site equivalent''
     relaxation depth $c_{\rm hyp}\kappa\Delta t_\star$. No such caller exists:
-    the only callers of $\varphi$ are \code{radiation\_isrf.c:485}, \code{:587},
-    \code{:613} and \code{:864}. The same doxygen gives
-    $\mathcal{A} = c_{\rm hyp}(\kappa + H/c)dt$, omitting $\lambda_m$; the code
-    is Equation~(\ref{eq:isrfd-depth-u}).
+    the callers of $\varphi$ are \code{radiation\_isrf.c:485}, \code{:587},
+    \code{:613} and \code{:864}, and the cross-bin pair at
+    \code{radiation\_propagation\_iact.h:606}, which passes the finer member's
+    step, not $\Delta t_\star$.
 \end{enumerate}
