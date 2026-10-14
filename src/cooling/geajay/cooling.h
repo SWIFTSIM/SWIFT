@@ -131,7 +131,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
                           const struct cosmology *cosmo,
                           const struct cooling_function_data *cooling,
                           const struct part *p, const struct xpart *xp,
-                          float rates[GEAJAY_RATE_NCHANNELS]);
+                          double rates[GEAJAY_RATE_NCHANNELS]);
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_cool_part(const struct phys_const *restrict phys_const,

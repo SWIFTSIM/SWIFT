@@ -825,19 +825,6 @@ static double cooling_stored_nan(void) {
 }
 
 /**
- * @brief A quiet NaN made from its bits, single precision.
- *
- * @return A quiet NaN.
- */
-static float cooling_stored_nan_float(void) {
-  volatile uint32_t bits = 0x7fc00000U;
-  const uint32_t value = bits;
-  float nan_value;
-  memcpy(&nan_value, &value, sizeof(nan_value));
-  return nan_value;
-}
-
-/**
  * @brief Compute the cooling time of a particle at its stored state.
  *
  * Signed as in Grackle: negative for net cooling, +inf at a net rate of 0.
@@ -900,7 +887,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
                           const struct cosmology *cosmo,
                           const struct cooling_function_data *cooling,
                           const struct part *p, const struct xpart *xp,
-                          float rates[GEAJAY_RATE_NCHANNELS]) {
+                          double rates[GEAJAY_RATE_NCHANNELS]) {
 
   const double density = cooling_get_physical_density(p, cosmo, cooling);
   gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -915,7 +902,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
       geajay_particle_energy_rates(cooling->context, &cooling->layout, xp,
                                    &inputs, &result) == GR_SUCCESS;
   for (int k = 0; k < GEAJAY_RATE_NCHANNELS; k++)
-    rates[k] = ok ? (float)result.channel[k] : cooling_stored_nan_float();
+    rates[k] = ok ? result.channel[k] : cooling_stored_nan();
 }
 
 /**

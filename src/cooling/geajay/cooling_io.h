@@ -103,7 +103,7 @@ INLINE static void convert_part_cooling_time(const struct engine *e,
 INLINE static void convert_part_cooling_rates(const struct engine *e,
                                               const struct part *p,
                                               const struct xpart *xp,
-                                              float *ret) {
+                                              double *ret) {
   cooling_energy_rates(e->physical_constants, e->internal_units,
                        e->hydro_properties, e->cosmology, e->cooling_func, p,
                        xp, ret);
@@ -196,15 +196,16 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   num++;
 
   list[num] = io_make_physical_output_field_convert_part(
-      "CoolingRates", FLOAT, GEAJAY_RATE_NCHANNELS,
+      "CoolingRates", DOUBLE, GEAJAY_RATE_NCHANNELS,
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, -3.f * hydro_gamma_minus_one,
       parts, xparts,
       /*can convert to comoving=*/1, convert_part_cooling_rates,
       "Energy rates du/dt of the gas at the state of CoolingTimes, not a step "
       "average, one per process (names in SubgridScheme/NamedColumns/"
       "CoolingRates); "
-      "positive heats. Their sum is the net rate of CoolingTimes, without the "
-      "H2 formation heating that the solver adds in a step. NaN if geajay "
+      "positive heats. Their sum is the net rate of CoolingTimes up to double "
+      "rounding, without the H2 formation heating that the solver adds in a "
+      "step. NaN if geajay "
       "refused the particle. Cosmological runs: the redshift is the one of the "
       "end of the step that contains the snapshot.");
   num++;
