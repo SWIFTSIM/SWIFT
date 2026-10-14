@@ -516,8 +516,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_sidm_sort:
-        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
-               (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
+        cost = wscale * intrinsics_popcount(t->flags) * sicount_i *
+               (sizeof(int) * 8 - (sicount_i ? intrinsics_clz(sicount_i) : 0));
         break;
 
       case task_type_stars_resort:
