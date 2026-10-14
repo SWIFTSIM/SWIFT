@@ -507,7 +507,7 @@ struct engine {
    * per-step delta. */
   long long radiation_reach_clamp_count_last_step;
 
-  /*! Cumulative S3.4 owner-side merge collisions, summed across all ranks
+  /*! Cumulative owner-side HII merge collisions, summed across all ranks
    * (engine_collect_end_of_step.c reduces
    * radiation_hii_merge_collision_count_local into this field every step).
    * Expected to be nonzero whenever two ranks' stars both reach the same
@@ -526,10 +526,9 @@ struct engine {
   long long radiation_hii_merge_collision_count_local;
 
   /*! Cumulative ionizing photon count forfeited by losing claims in the
-   * S3.4 merge, summed across all ranks (same reduction as
-   * radiation_hii_merge_collision_count above). S3.4's accept-and-merge
-   * design: the losing star's debit already happened on its own rank and
-   * cannot be recovered here. */
+   * owner-side HII merge, summed across all ranks (same reduction as
+   * radiation_hii_merge_collision_count above). The losing star's debit already
+   * happened on its own rank and cannot be recovered here. */
   double radiation_hii_forfeited_budget;
 
   /*! radiation_hii_forfeited_budget at the last per-step report. */

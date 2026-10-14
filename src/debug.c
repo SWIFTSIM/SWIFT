@@ -514,10 +514,8 @@ static void dumpCells_map(struct cell *c, void *data) {
     int ismpiactive = 0;
 #if WITH_MPI
     /* Catch both a local cell with foreign partners (send) and a foreign
-     * cell mirrored locally (recv): these were aliased into one field
-     * until the radiation report-back channel required both lists on the
-     * same cell, so a single c->mpi.send check no longer sees the
-     * recv-only case. */
+     * cell mirrored locally (recv): the two lists are separate fields, so
+     * a c->mpi.send check alone misses the recv-only case. */
     ismpiactive = (c->mpi.send != NULL || c->mpi.recv != NULL);
     if (mpiactive)
       mpiactive = ismpiactive;

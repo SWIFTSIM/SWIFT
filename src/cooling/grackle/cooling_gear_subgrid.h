@@ -362,7 +362,7 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
 /**
  * @brief Cache this step's HII eligibility temperature and mean molecular
  * weight on the particle (struct part's feedback_data.T_eligibility and
- * mu_eligibility, S3.3/F3).
+ * mu_eligibility).
  *
  * WITH_MPI-only: a foreign copy carries no struct xpart, so
  * feedback_get_eligibility_temperature() and

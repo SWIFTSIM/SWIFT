@@ -314,7 +314,7 @@ void cell_unpack_bpart_swallow(struct cell *c,
 
 /**
  * @brief Pack the HII tag report-back payload for a cell's #part array
- * (MPI plan S3.1, task_subtype_part_hii_tag).
+ * (task_subtype_part_hii_tag).
  *
  * Runs on the computing (star-owning) rank, over its (possibly foreign)
  * copy of the covered cell: @p c is the cell whose gas the local HII pass
@@ -323,7 +323,7 @@ void cell_unpack_bpart_swallow(struct cell *c,
  * feedback_pack_hii_tag_report() (feedback.h of the active module): this
  * function stays module-agnostic so it links against every feedback
  * flavour, not just GEAR_thermal. @p c is mutable: the pack drains each
- * particle's this-pass claim stamp (S3.4) so a later pack without a fresh
+ * particle's this-pass claim stamp so a later pack without a fresh
  * claim does not re-report a stale one.
  *
  * @param c The #cell to pack (local or a foreign copy).
@@ -341,19 +341,19 @@ void cell_pack_part_hii_tag(struct cell *c, struct hii_tag_report *data) {
 
 /**
  * @brief Unpack the HII tag report-back payload into a cell's #part array
- * (MPI plan S3.1, task_subtype_part_hii_tag).
+ * (task_subtype_part_hii_tag).
  *
  * Runs on the owner rank, over its local copy of the covered cell. The
- * stamped-entries-only merge rule (S3.1/F2) and the S3.4 (r2, star_id)
- * cross-rank tiebreak are flavour-specific and live in
+ * stamped-entries-only merge rule and the (r2, star_id) cross-rank
+ * tiebreak are flavour-specific and live in
  * feedback_unpack_hii_tag_report() (feedback.h of the active module).
  *
  * @param c The owner's local #cell.
  * @param data The source buffer, one entry per particle of @p c.
  * @param collision_count (return) Incremented once per particle whose
- * merge competed against an existing claim (S3.4 debug counter).
+ * merge competed against an existing claim (debug counter).
  * @param forfeited_budget (return) Summed photon cost of every losing
- * claim across this cell's merge (S3.4 debug counter).
+ * claim across this cell's merge (debug counter).
  */
 void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
                               long long *collision_count,
@@ -376,7 +376,7 @@ void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
 
 /**
  * @brief Pack the post-cooling gas state update payload for a cell's #part
- * array (MPI plan S3.1b, task_subtype_part_hii_state).
+ * array (task_subtype_part_hii_state).
  *
  * Runs on the gas owner rank, in the normal send direction: @p c is a
  * local cell whose post-cooling state is being shipped to every rank
@@ -400,7 +400,7 @@ void cell_pack_part_hii_state(const struct cell *c,
 
 /**
  * @brief Unpack the post-cooling gas state update payload into a cell's
- * #part array (MPI plan S3.1b, task_subtype_part_hii_state).
+ * #part array (task_subtype_part_hii_state).
  *
  * Runs on the computing rank, over its foreign copy of the covered cell.
  * Writes only the state-channel fields, never u/rho/v: the hydro force

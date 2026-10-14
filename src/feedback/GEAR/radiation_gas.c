@@ -138,7 +138,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     X_HI = cool_data->HI_frac;
 #if COOLING_GRACKLE_MODE >= 2
     /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
-       already singly-ionized, so it is excluded -- the same H2II
+       already singly-ionized, so it is excluded: the same H2II
        approximation radiation_get_part_total_hydrogen_mass_fraction's own
        doxygen already notes for the total-hydrogen accounting. */
     X_HI += cool_data->H2I_frac + cool_data->HM_frac;

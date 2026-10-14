@@ -927,7 +927,7 @@ static int scheduler_mpi_task_peer(const struct task *t) {
   }
 
   /* The inverted part_hii_tag recv carries its source in cj, every other
-   * recv in ci (see the seam 1 note in scheduler_enqueue). */
+   * recv in ci (see the source-rank note in scheduler_enqueue). */
   const struct cell *source =
       (t->subtype == task_subtype_part_hii_tag) ? t->cj : t->ci;
   if (source == NULL) error("Recv task with no source cell.");
@@ -1220,18 +1220,17 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_part_hii_tag) {
 
-          /* S3.2: activated by cell_unskip.c's boundary radiation-pair
+          /* Activated by cell_unskip.c's boundary radiation-pair
            * handling (scheduler_activate_recv_by_node on the foreign gas
            * side's owner, gated on that side's own local pass being
-           * active this step); no longer a skeleton. */
+           * active this step). */
           count = size = t->ci->hydro.count * sizeof(struct hii_tag_report);
           buff = t->buff = malloc(size);
 
         } else if (t->subtype == task_subtype_part_hii_state) {
 
-          /* S3.2: activated unconditionally for any active boundary
-           * radiation pair (cell_unskip.c), same mechanism as
-           * part_hii_tag above; no longer a skeleton. */
+          /* Activated unconditionally for any active boundary radiation
+           * pair (cell_unskip.c), same mechanism as part_hii_tag above. */
           count = size = t->ci->hydro.count * sizeof(struct hii_state_update);
           buff = t->buff = malloc(size);
 
@@ -1304,7 +1303,7 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
           error("Unknown communication sub-type");
         }
 
-        /* Seam 1 (MPI plan S3.1): source-rank derivation. Every other recv
+        /* Source-rank derivation. Every other recv
          * subtype's t->ci is the FOREIGN cell, so t->ci->nodeID is the
          * source. The inverted part_hii_tag recv is the one exception:
          * t->ci is the OWNER's own local cell (needed for its hydro.count
@@ -1369,9 +1368,9 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_part_hii_tag) {
 
-          /* S3.2: activated by cell_unskip.c's boundary radiation-pair
+          /* Activated by cell_unskip.c's boundary radiation-pair
            * handling, gated on the local (reporting) side's own pass
-           * being active this step; no longer a skeleton. Inverted
+           * being active this step. Inverted
            * direction: t->ci is the (possibly foreign) cell being reported
            * on, per engine_addtasks_recv_hydro. */
           size = count = t->ci->hydro.count * sizeof(struct hii_tag_report);
@@ -1380,9 +1379,8 @@ void scheduler_enqueue(struct scheduler *s, struct task *t) {
 
         } else if (t->subtype == task_subtype_part_hii_state) {
 
-          /* S3.2: activated unconditionally for any active boundary
-           * radiation pair, same mechanism as part_hii_tag above; no
-           * longer a skeleton. */
+          /* Activated unconditionally for any active boundary radiation
+           * pair, same mechanism as part_hii_tag above. */
           size = count = t->ci->hydro.count * sizeof(struct hii_state_update);
           buff = t->buff = malloc(size);
           cell_pack_part_hii_state(t->ci, (struct hii_state_update *)t->buff);

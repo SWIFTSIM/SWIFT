@@ -1252,13 +1252,12 @@ int engine_estimate_nr_tasks(const struct engine *e) {
       n2 += 4 * 27;
 
 #ifdef WITH_MPI
-      /* MPI plan S3.1/S3.1b skeleton: recv_part_hii_tag + send_part_hii_state
-         (owner side, engine_addtasks_send_hydro) or send_part_hii_tag +
-         recv_part_hii_state (computing side, engine_addtasks_recv_hydro) --
-         4 task instances total, created at the same S3.0-extended xv/rho
-         predicate site as the hydro MPI overhead below, which per the
-         comment above this block can sit below the top level. Bumping both
-         n1 and n2 for the same reason. */
+      /* HII report-back channel: recv_part_hii_tag and send_part_hii_state
+         (owner side, engine_addtasks_send_hydro) or send_part_hii_tag and
+         recv_part_hii_state (computing side, engine_addtasks_recv_hydro),
+         4 task instances in total. They are created at the same xv/rho
+         predicate site as the hydro MPI overhead below, which can sit below
+         the top level, so both n1 and n2 are bumped. */
       n1 += 4;
       n2 += 4;
 #endif
@@ -2786,9 +2785,9 @@ int engine_step(struct engine *e) {
       e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
     }
 
-    /* S3.4: two ranks' stars both reaching the same boundary gas is
-     * expected cross-rank contention, not a bug -- reported for visibility
-     * rather than as a warning. */
+    /* Two ranks' stars both reaching the same boundary gas is expected
+     * cross-rank contention, not a bug, so this is a message, not a
+     * warning. */
     if (e->radiation_hii_merge_collision_count > 0) {
       message(
           "Radiation HII cross-rank merge collisions: %lld cumulative "

@@ -419,7 +419,7 @@ static void runner_hii_visit_neighbors(struct runner *r, struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
 #ifdef WITH_MPI
-    /* S3.0 coverage assert: every foreign radiation_in partner this gather
+    /* Coverage assert: every foreign radiation_in partner this gather
      * is about to walk must have been fully allocated and linked, with a
      * live rho recv keeping it refreshed. A trip here means the foreign
      * coverage extension (engine_addtasks_send/recv_hydro) did not reach
@@ -1138,7 +1138,7 @@ void runner_doself_stars_hii_ionization_feedback(
   /* Loop over the parts in c. */
   for (int pjd = 0; pjd < count; pjd++) {
 
-    /* Get a pointer to the jth particle. A foreign cell (S3.0) carries no
+    /* Get a pointer to the jth particle. A foreign cell carries no
      * local xparts array; xpj must resolve to a genuine NULL there rather
      * than undefined NULL-based pointer arithmetic (feedback_get_
      * eligibility_temperature owns the xp == NULL contract downstream). */

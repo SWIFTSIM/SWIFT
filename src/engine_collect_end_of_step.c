@@ -274,7 +274,7 @@ void engine_collect_end_of_step(struct engine *e, int apply) {
   collectgroup1_reduce(&e->collect_group1);
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* S3.4 MPI radiation HII merge-collision debug counters: each rank only
+  /* MPI radiation HII merge-collision debug counters: each rank only
    * accumulates its own owner-side merges into the _local fields
    * (runner_main.c), so the engine.c per-step report (rank 0 only) needs
    * a cross-rank sum, not the rank-0-local value, to mean what its

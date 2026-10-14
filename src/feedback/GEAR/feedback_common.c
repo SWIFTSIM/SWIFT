@@ -865,7 +865,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
         pj->id);
 #endif
 #ifdef WITH_MPI
-  /* S3.4 owner-side merge tiebreak and forfeited-budget accounting: only
+  /* Owner-side merge tiebreak and forfeited-budget accounting: only
      meaningful when pj is a foreign copy (xpj == NULL, this subsystem's
      established xp == NULL contract, see feedback_get_eligibility_temperature)
      and this claim must be reported to pj's real owner. A claim on this

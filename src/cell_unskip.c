@@ -2299,7 +2299,7 @@ static void cell_radiation_activate_supers_out(struct cell *c,
 #ifdef WITH_MPI
 /**
  * @brief Activate hydro.sorts over every hydro.super beneath a (possibly
- * coarse) FOREIGN radiation cell (S3.2).
+ * coarse) FOREIGN radiation cell.
  *
  * Mirrors cell_radiation_activate_supers_in for the recv-side gas channel:
  * once xv/rho for the foreign subtree has been received, the local copy
@@ -2465,7 +2465,7 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
       }
 
 #ifdef WITH_MPI
-      /* S3.2: activate the foreign side's gas channel and the S3.1/S3.1b
+      /* Activate the foreign side's gas channel and the HII tag and state
        * report-back channels for a boundary radiation pair. Exactly one of
        * ci/cj is foreign here (a both-foreign pair is never created, see
        * engine_make_radiationloop_tasks_mapper). Tag exchange is gated on

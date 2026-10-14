@@ -562,8 +562,8 @@ void *runner_main(void *data) {
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
           } else if (t->subtype == task_subtype_part_hii_tag) {
-            /* MPI plan S3.1: owner-side application of the computing rank's
-             * tag report, merged per S3.4's (r2, star_id) tiebreak. */
+            /* Owner-side application of the computing rank's tag report,
+             * merged by the (r2, star_id) tiebreak. */
             long long collisions = 0;
             double forfeited = 0.;
             cell_unpack_part_hii_tag(ci, (struct hii_tag_report *)t->buff,
@@ -577,8 +577,8 @@ void *runner_main(void *data) {
 #endif
             free(t->buff);
           } else if (t->subtype == task_subtype_part_hii_state) {
-            /* MPI plan S3.1b: foreign-copy application of the owner's
-             * post-cooling state. Inert until S3.2 activates this channel. */
+            /* Foreign-copy application of the owner's post-cooling
+             * state. */
             cell_unpack_part_hii_state(ci, (struct hii_state_update *)t->buff);
             free(t->buff);
           } else {

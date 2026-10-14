@@ -394,7 +394,8 @@ int cell_link_foreign_parts(struct cell *c, struct part *parts) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* S3.0 invariant, see the matching check in cell_count_parts_for_tasks. */
+  /* Coverage invariant, see the matching check in
+   * cell_count_parts_for_tasks. */
   if (c->stars.radiation_in != NULL)
     error("radiation_in link with no live xv recv: foreign coverage gap.");
 #endif
@@ -577,7 +578,7 @@ int cell_count_parts_for_tasks(const struct cell *c) {
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /* S3.0 invariant: a radiation_in link at this level always implies an xv
+  /* Coverage invariant: a radiation_in link at this level always implies an xv
    * recv was created here by engine_addtasks_recv_hydro's extended
    * predicate. A link with no live recv means the foreign-coverage
    * extension failed to reach this cell (see the cell_flag_has_tasks

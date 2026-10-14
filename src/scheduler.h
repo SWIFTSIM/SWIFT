@@ -243,13 +243,13 @@ scheduler_activate_recv(struct scheduler *s, struct link *link,
 
 /**
  * @brief Search and add an MPI recv task to the list of active tasks,
- * disambiguated by sending rank (MPI plan S3.1, seam 2).
+ * disambiguated by sending rank.
  *
  * scheduler_activate_recv() above matches first-by-subtype, which is
  * correct everywhere else because a cell has at most one recv per subtype.
  * An owner cell's task_subtype_part_hii_tag recv chain is the exception:
  * one recv PER computing rank reporting into it, all sharing the subtype,
- * distinguished only by the sending rank carried in t->cj (seam 1).
+ * distinguished only by the sending rank carried in t->cj.
  *
  * @param s The #scheduler.
  * @param link The first element in the linked list of links for the task of
