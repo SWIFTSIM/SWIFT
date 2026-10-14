@@ -707,6 +707,7 @@ GrackleCooling:
 
 
 # Cooling with geajay (configure with --with-geajay=PATH --with-cooling=geajay_X)
+# The snapshots hold CoolingTimes and CoolingRates; to switch them off, set Snapshots:select_output_on: 1 and CoolingTimes_Gas: off, CoolingRates_Gas: off under Default: in the output selection file
 GeajayCooling:
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
   primordial_chemistry_network: 0              # (optional) Primordial chemistry network (0 to 3). Defaults to the mode selected at configure time.
