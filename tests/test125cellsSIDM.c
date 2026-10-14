@@ -29,6 +29,7 @@
 
 /* Local headers. */
 #include "swift.h"
+#include "timestep.h"
 
 #define NODE_ID 0
 
@@ -218,10 +219,10 @@ void runner_dopair1_branch_sidm_density(struct runner *r, struct cell *ci,
 void runner_doself1_branch_sidm_density(struct runner *r, struct cell *c,
                                         int limit_h_min, int limit_h_max);
 
-void runner_dopair1_branch_sidm_force(struct runner *r, struct cell *ci,
+void runner_dopair2_branch_sidm_force(struct runner *r, struct cell *ci,
                                       struct cell *cj, int limit_h_min,
                                       int limit_h_max);
-void runner_doself1_branch_sidm_force(struct runner *r, struct cell *ci,
+void runner_doself2_branch_sidm_force(struct runner *r, struct cell *ci,
                                       int limit_h_min, int limit_h_max);
 void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer);
 
@@ -246,6 +247,10 @@ int main(int argc, char *argv[]) {
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
 
+  /* Parameter-file overrides given with -P section:parameter:value */
+  char *param_overrides[PARSER_MAX_NO_OF_PARAMS];
+  int num_param_overrides = 0;
+
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
@@ -259,7 +264,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   int c;
-  while ((c = getopt(argc, argv, "m:s:h:p:n:r:d:f:v:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:p:n:r:d:f:v:P:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -288,6 +293,11 @@ int main(int argc, char *argv[]) {
       case 'v':
         sscanf(optarg, "%d", (int *)&vel);
         break;
+      case 'P':
+        if (num_param_overrides == PARSER_MAX_NO_OF_PARAMS)
+          error("Too many -P parameter overrides.");
+        param_overrides[num_param_overrides++] = optarg;
+        break;
       case '?':
         error("Unknown option.");
         break;
@@ -314,7 +324,8 @@ int main(int argc, char *argv[]) {
         "\n-d pert            - Perturbation to apply to the particles [0,1["
         "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
         "rotating)"
-        "\n-f fileName        - Part of the file name used to save the dumps\n",
+        "\n-f fileName        - Part of the file name used to save the dumps"
+        "\n-P sec:param:value - Override a parameter from the parameter file\n",
         argv[0]);
     exit(1);
   }
@@ -339,6 +350,10 @@ int main(int argc, char *argv[]) {
   message("Reading parameters.");
   struct swift_params param_file;
   parser_read_file(argv[optind], &param_file);
+  for (int k = 0; k < num_param_overrides; k++) {
+    message("Overriding parameter: %s", param_overrides[k]);
+    parser_set_param(&param_file, param_overrides[k]);
+  }
 
   /* Default unit system */
   message("Initialization of the unit system.");
@@ -368,9 +383,16 @@ int main(int argc, char *argv[]) {
   bzero(&engine, sizeof(struct engine));
   engine.s = &space;
   engine.time = 0.1f;
+  /* Placeholder time_base for the warm-up pass below: kept
+   * small so that the scattering probability is ~0 during initial run. */
+  engine.time_base = FLT_MIN;
+  engine.time_base_inv = 1. / engine.time_base;
   engine.ti_current = 8;
   engine.max_active_bin = num_time_bins;
   engine.nodeID = NODE_ID;
+  engine.dt_min = 0.;
+  engine.dt_max = FLT_MAX;
+  engine.dt_max_RMS_displacement = FLT_MAX;
 
   struct runner runner;
   runner.e = &engine;
@@ -420,6 +442,103 @@ int main(int argc, char *argv[]) {
   /* Store the main cell for future use */
   main_cell = cells[62];
 
+  /* --- Initial run ---------------------------------------------------
+   * Need a timestep small enough that number of scattering pairs per step stays
+   below 1 Need SIDM rate estimate for that. */
+
+  /* Initialise the particles */
+  for (int j = 0; j < 125; ++j) runner_do_drift_sipart(&runner, cells[j], 0);
+  for (int j = 0; j < 125; ++j) zero_particle_fields(cells[j]);
+
+  /* First, sort stuff */
+  for (int j = 0; j < 125; ++j)
+    runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
+
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < 5; j++) {
+      for (int k = 0; k < 5; k++) {
+
+        struct cell *ci = cells[i * 25 + j * 5 + k];
+
+        for (int ii = -1; ii < 2; ii++) {
+          int iii = i + ii;
+          if (iii < 0 || iii >= 5) continue;
+          iii = (iii + 5) % 5;
+          for (int jj = -1; jj < 2; jj++) {
+            int jjj = j + jj;
+            if (jjj < 0 || jjj >= 5) continue;
+            jjj = (jjj + 5) % 5;
+            for (int kk = -1; kk < 2; kk++) {
+              int kkk = k + kk;
+              if (kkk < 0 || kkk >= 5) continue;
+              kkk = (kkk + 5) % 5;
+
+              struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+
+              if (cj > ci)
+                runner_dopair1_branch_sidm_density(
+                    &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* And now the self-interaction for the central cells*/
+  for (int j = 0; j < 27; ++j)
+    runner_doself1_branch_sidm_density(&runner, inner_cells[j],
+                                       /*limit_h_min=*/0, /*limit_h_max=*/0);
+
+  /* Ghost to finish everything on the central cells */
+  for (int j = 0; j < 27; ++j)
+    runner_do_sidm_density_ghost(&runner, inner_cells[j], /*timer=*/0);
+
+  for (int j = 1; j < 4; j++) {
+    for (int k = 1; k < 4; k++) {
+      for (int l = 1; l < 4; l++) {
+
+        struct cell *cj = cells[j * 25 + k * 5 + l];
+
+        if (main_cell != cj)
+          runner_dopair2_branch_sidm_force(&runner, main_cell, cj,
+                                           /*limit_h_min=*/0,
+                                           /*limit_h_max=*/0);
+      }
+    }
+  }
+
+  runner_doself2_branch_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
+                                   /*limit_h_max=*/0);
+
+  /* Rescale time_base to smallest time-step actually required. */
+  float min_dt = FLT_MAX;
+  for (int j = 0; j < 27; ++j) {
+    struct cell *cj = inner_cells[j];
+    for (int i = 0; i < cj->sidm.count; ++i) {
+      const struct sipart *sip = &cj->sidm.parts[i];
+      if (sip->density.wcount > 0 && sip->SIDM_rate > 0)
+        min_dt = fminf(min_dt, sidm_p.kappa_timestep / sip->SIDM_rate);
+    }
+  }
+  if (min_dt < FLT_MAX) {
+    engine.time_base = min_dt / 8.;
+    engine.time_base_inv = 1. / engine.time_base;
+  }
+
+  /* Pick each particle's time_bin */
+  for (int j = 0; j < 27; ++j) {
+    struct cell *cj = inner_cells[j];
+    for (int i = 0; i < cj->sidm.count; ++i) {
+      struct sipart *sip = &cj->sidm.parts[i];
+      const integertime_t ti_new_step = get_sipart_timestep(sip, &engine);
+      sip->time_bin = get_time_bin(ti_new_step);
+    }
+  }
+
+  /* Reset particles while keeping the time_bin we just computed. */
+  for (int j = 0; j < 125; ++j) reset_siparticles(cells[j], vel, size);
+
   ticks timings[27];
   for (int i = 0; i < 27; i++) timings[i] = 0;
 
@@ -433,6 +552,10 @@ int main(int argc, char *argv[]) {
 
     /* Zero the density and SIDM_rate fields */
     for (int j = 0; j < 125; ++j) zero_particle_fields(cells[j]);
+
+    /* First, sort stuff */
+    for (int j = 0; j < 125; ++j)
+      runner_do_sidm_sort(&runner, cells[j], 0x1FFF, 0, 0, 0);
 
     /* Do the density calculation */
 
@@ -490,7 +613,7 @@ int main(int argc, char *argv[]) {
           if (main_cell != cj) {
             const ticks sub_tic = getticks();
 
-            runner_dopair1_branch_sidm_force(&runner, main_cell, cj,
+            runner_dopair2_branch_sidm_force(&runner, main_cell, cj,
                                              /*limit_h_min=*/0,
                                              /*limit_h_max=*/0);
 
@@ -503,7 +626,7 @@ int main(int argc, char *argv[]) {
     const ticks self_tic = getticks();
 
     /* And now the self-interaction for the main cell */
-    runner_doself1_branch_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
+    runner_doself2_branch_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
                                      /*limit_h_max=*/0);
 
     timings[26] += getticks() - self_tic;
@@ -606,13 +729,17 @@ int main(int argc, char *argv[]) {
 
         struct cell *cj = cells[i * 25 + j * 5 + k];
 
-        if (main_cell != cj) pairs_all_sidm_force(&runner, main_cell, cj);
+        if (main_cell != cj)
+          pairs_all_sidm_force(&runner, main_cell, cj,
+                               /*limit_h_min=*/0,
+                               /*limit_h_max=*/0);
       }
     }
   }
 
   /* And now the self-interaction for the main cell */
-  self_all_sidm_force(&runner, main_cell);
+  self_all_sidm_force(&runner, main_cell, /*limit_h_min=*/0,
+                      /*limit_h_max=*/0);
 
   /* Finally, end the force loop */
   runner_do_end_sidm_force(&runner, main_cell, 0);

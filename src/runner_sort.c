@@ -701,11 +701,13 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
  * @param flags Cell flag.
  * @param cleanup If true, re-build the sorts for the selected flags instead
  *        of just adding them.
+ * @param lock Are we locking the cell while sorting? (Needed when sorting
+ *        on the fly inside the pair loops.)
  * @param clock Flag indicating whether to record the timing or not, needed
  *      for recursive calls.
  */
 void runner_do_sidm_sort(struct runner *r, struct cell *c, int flags,
-                         int cleanup, int clock) {
+                         int cleanup, const int lock, int clock) {
 
   struct sort_entry *fingers[8];
   const int count = c->sidm.count;
@@ -718,6 +720,25 @@ void runner_do_sidm_sort(struct runner *r, struct cell *c, int flags,
   if (c->sidm.super == NULL) error("Task called above the super level!!!");
 #endif
 
+  /* Should we lock the cell once more? */
+  if (lock) lock_lock(&c->sidm.extra_sort_lock);
+
+  /* Now that we acquired the lock, verify whether it has
+   * not been already sorted while we were waiting */
+  if (lock) {
+
+    if ((c->sidm.sorted & flags) &&
+        c->sidm.dx_max_sort_old <= c->dmin * space_maxreldx) {
+      /* Another thread did the sort while we were waiting.
+       * We can free the lock and exit. */
+
+      if (lock_unlock(&c->sidm.extra_sort_lock) != 0)
+        error("Impossible to unlock the cell!");
+
+      return;
+    }
+  }
+
   /* We need to do the local sorts plus whatever was requested further up. */
   flags |= c->sidm.do_sort;
   if (cleanup) {
@@ -725,7 +746,14 @@ void runner_do_sidm_sort(struct runner *r, struct cell *c, int flags,
   } else {
     flags &= ~c->sidm.sorted;
   }
-  if (flags == 0 && !cell_get_flag(c, cell_flag_do_sidm_sub_sort)) return;
+  if (flags == 0 && !cell_get_flag(c, cell_flag_do_sidm_sub_sort)) {
+
+    /* Unlock before returning */
+    if (lock && lock_unlock(&c->sidm.extra_sort_lock) != 0)
+      error("Impossible to unlock the cell!");
+
+    return;
+  }
 
   /* Check that the particles have been moved to the current time */
   if (flags && !cell_are_sipart_drifted(c, r->e)) {
@@ -766,7 +794,8 @@ void runner_do_sidm_sort(struct runner *r, struct cell *c, int flags,
           const int cleanup_prog =
               cleanup && (c->progeny[k]->sidm.dx_max_sort_old >
                           space_maxreldx * c->progeny[k]->dmin);
-          runner_do_sidm_sort(r, c->progeny[k], flags, cleanup_prog, 0);
+          runner_do_sidm_sort(r, c->progeny[k], flags, cleanup_prog, lock,
+                              /*clock=*/0);
           dx_max_sort = max(dx_max_sort, c->progeny[k]->sidm.dx_max_sort);
           dx_max_sort_old =
               max(dx_max_sort_old, c->progeny[k]->sidm.dx_max_sort_old);
@@ -917,6 +946,10 @@ void runner_do_sidm_sort(struct runner *r, struct cell *c, int flags,
   c->sidm.do_sort = 0;
   cell_clear_flag(c, cell_flag_do_sidm_sub_sort);
   c->sidm.requires_sorts = 0;
+
+  /* Make sure we unlock if necessary */
+  if (lock && lock_unlock(&c->sidm.extra_sort_lock) != 0)
+    error("Impossible to unlock the cell!");
 
   if (clock) TIMER_TOC(timer_do_sidm_sort);
 }

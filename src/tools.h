@@ -48,8 +48,10 @@ void pairs_all_stars_density(struct runner *r, struct cell *ci,
 void self_all_stars_density(struct runner *r, struct cell *ci);
 void pairs_all_sidm_density(struct runner *r, struct cell *ci, struct cell *cj);
 void self_all_sidm_density(struct runner *r, struct cell *ci);
-void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj);
-void self_all_sidm_force(struct runner *r, struct cell *ci);
+void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj,
+                          const int limit_min_h, const int limit_max_h);
+void self_all_sidm_force(struct runner *r, struct cell *ci,
+                         const int limit_min_h, const int limit_max_h);
 
 void pairs_n2(double *dim, struct part *restrict parts, int N, int periodic);
 

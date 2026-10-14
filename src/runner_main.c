@@ -282,9 +282,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_self(r, ci, 1);
           else if (t->subtype == task_subtype_sidm_density)
-            runner_dosub_self_sidm_density(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self1_sidm_density(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_sidm_force)
-            runner_dosub_self_sidm_force(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self2_sidm_force(r, ci, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -344,9 +344,9 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sidm_density)
-            runner_dosub_pair_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair1_sidm_density(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_sidm_force)
-            runner_dosub_pair_sidm_force(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair2_sidm_force(r, ci, cj, /*below_h_max=*/0, 1);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);
@@ -386,7 +386,8 @@ void *runner_main(void *data) {
           /* Cleanup only if any of the indices went stale. */
           runner_do_sidm_sort(
               r, ci, t->flags,
-              ci->sidm.dx_max_sort_old > space_maxreldx * ci->dmin, 1);
+              ci->sidm.dx_max_sort_old > space_maxreldx * ci->dmin,
+              /*lock=*/0, /*clock=*/1);
           /* Reset the sort flags as our work here is done. */
           t->flags = 0;
           break;
