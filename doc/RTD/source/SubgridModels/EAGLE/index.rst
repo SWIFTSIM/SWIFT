@@ -773,7 +773,9 @@ black holes, alongside the regular gas-density loop. Each black hole then
 carries a second search radius, iterated in the same way as a smoothing
 length until a target weighted number of star neighbours is reached. The
 converged radius and the kernel-weighted stellar mass density within it are
-written to the snapshots as ``StarSearchRadii`` and ``StarDensities``. The
+written to the snapshots as ``StarSearchRadii`` and ``StarDensities``.
+These fields (and ``NumberOfStarRepositions``) are written even when the
+loop is switched off, in which case they are meaningless. The
 census is infrastructure for models that need to know about the stellar
 environment of the black holes (e.g. tidal disruption event rates or
 dynamical friction); on its own it does not alter any physics (but see the

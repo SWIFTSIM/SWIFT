@@ -1,0 +1,15 @@
+Black holes alone in a sub-cell miss neighbours in sibling sub-cells
+--------------------------------------------------------------------
+
+When a self task is split (scheduler_splittask_hydro() in
+src/scheduler_splittasks.c), a pair task is only created between two progeny
+if both contain gas, stars (with feedback or the BH star loop) or sinks.
+A progeny holding only black holes is therefore never paired with its
+siblings. Its black holes then miss the gas (BH density/swallow loops) and the
+stars (BH star loop) in the sibling sub-cells, giving too-large smoothing
+lengths / star search radii and wrong densities. This is pre-existing in master
+(it affects the black hole gas loops there) and was inherited by the BH star
+loop on this branch. It has not been seen in the EAGLE_6 runs, where the
+brute-force BH star density check would flag it. A fix would be to also
+accept progeny with (with_black_holes && progeny->black_holes.count) in both
+conditions of that loop.

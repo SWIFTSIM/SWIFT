@@ -46,7 +46,11 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
   /* Are we considering both stars and hydro when splitting? */
   /* Note this is not very clean as the scheduler should not really
      access the engine... */
-  const int with_feedback = (s->space->e->policy & engine_policy_feedback);
+  /* Stars need pairs with their neighbours for the feedback loops and for
+   * the black holes to find them as neighbours */
+  const int with_star_pairs =
+      (s->space->e->policy & engine_policy_feedback) ||
+      s->space->e->with_bh_stars_density;
   const int with_stars = (s->space->e->policy & engine_policy_stars);
   const int with_sinks = (s->space->e->policy & engine_policy_sinks);
   const int with_black_holes =
@@ -69,11 +73,11 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
     const int is_pair = (t->type == task_type_pair) && (t->ci != NULL) &&
                         (t->cj != NULL) &&
                         ((t->ci->hydro.count > 0) ||
-                         (with_feedback && t->ci->stars.count > 0) ||
+                         (with_star_pairs && t->ci->stars.count > 0) ||
                          (with_sinks && t->ci->sinks.count > 0) ||
                          (with_black_holes && t->ci->black_holes.count > 0)) &&
                         ((t->cj->hydro.count > 0) ||
-                         (with_feedback && t->cj->stars.count > 0) ||
+                         (with_star_pairs && t->cj->stars.count > 0) ||
                          (with_sinks && t->cj->sinks.count > 0) ||
                          (with_black_holes && t->cj->black_holes.count > 0));
 
@@ -136,13 +140,13 @@ static void scheduler_splittask_hydro(struct task *t, struct scheduler *s) {
             /* Do we have a non-empty progenitor? */
             if (ci->progeny[j] != NULL &&
                 (ci->progeny[j]->hydro.count ||
-                 (with_feedback && ci->progeny[j]->stars.count) ||
+                 (with_star_pairs && ci->progeny[j]->stars.count) ||
                  (with_sinks && ci->progeny[j]->sinks.count))) {
               for (int k = j + 1; k < 8; k++) {
                 /* Do we have a second non-empty progenitor? */
                 if (ci->progeny[k] != NULL &&
                     (ci->progeny[k]->hydro.count ||
-                     (with_feedback && ci->progeny[k]->stars.count) ||
+                     (with_star_pairs && ci->progeny[k]->stars.count) ||
                      (with_sinks && ci->progeny[k]->sinks.count))) {
                   scheduler_splittask_hydro(
                       scheduler_addtask(s, task_type_pair, t->subtype,

@@ -2643,6 +2643,10 @@ static inline void engine_make_hydro_loops_dependencies(
  * star formation (via the stars resort). Without feedback, there is no
  * stars_in and we wait directly for the top-level star formation tasks.
  *
+ * With feedback, the stars ghost also changes the star masses (stellar mass
+ * loss of this step), so we wait for it too to make the results
+ * reproducible.
+ *
  * @param sched The #scheduler.
  * @param c The #cell whose star particles are read by the task.
  * @param t The black hole star-density #task.
@@ -2659,6 +2663,9 @@ static void engine_addunlock_bh_stars_new_stars(struct scheduler *sched,
     if (c->top->sinks.star_formation_sink != NULL)
       scheduler_addunlock(sched, c->top->sinks.star_formation_sink, t);
   }
+
+  if (c->hydro.super->stars.ghost_out != NULL)
+    scheduler_addunlock(sched, c->hydro.super->stars.ghost_out, t);
 }
 
 /**
@@ -3708,7 +3715,10 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
   /* Extract the engine pointer. */
   struct engine *e = (struct engine *)extra_data;
   const int periodic = e->s->periodic;
-  const int with_feedback = (e->policy & engine_policy_feedback);
+  /* Stars need pairs with their neighbours for the feedback loops and for
+   * the black holes to find them as neighbours */
+  const int with_star_pairs =
+      (e->policy & engine_policy_feedback) || e->with_bh_stars_density;
   const int with_stars = (e->policy & engine_policy_stars);
   const int with_sinks = (e->policy & engine_policy_sinks);
   const int with_black_holes = (e->policy & engine_policy_black_holes);
@@ -3766,7 +3776,7 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
           /* Is that neighbour local and does it have gas or star particles ? */
           if ((cid >= cjd) ||
               ((cj->hydro.count == 0) &&
-               (!with_feedback || cj->stars.count == 0) &&
+               (!with_star_pairs || cj->stars.count == 0) &&
                (!with_sinks || cj->sinks.count == 0) &&
                (!with_black_holes || cj->black_holes.count == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))

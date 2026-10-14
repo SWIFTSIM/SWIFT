@@ -364,7 +364,7 @@ runner_iact_nonsym_bh_stars_repos(const float r2, const float dx[3],
    * potential, so we read it from the #gpart. This is safe as the gravity
    * calculation of this step is complete, but will need a copy in the
    * #spart (as for the gas) to work over MPI. */
-  float potential = sj->gpart->potential;
+  float potential = gravity_get_comoving_potential(sj->gpart);
 
   if (bh_props->correct_bh_potential_for_repositioning) {
 
