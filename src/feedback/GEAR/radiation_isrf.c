@@ -369,8 +369,8 @@ void radiation_end_density_propagation(struct part *p, const struct engine *e) {
  * @brief Exact-relaxation integrating factor `phi(a) = (1 - exp(-a))/a`,
  * used by the `u`- and `F`-updates. A Taylor series is used near `a = 0`.
  *
- * @param a Dimensionless relaxation depth `c_hyp*(kappa + H/c)*dt` (or
- * `c_hyp*kappa*Delta_t_star` at injection). Always `>= 0`.
+ * @param a Dimensionless relaxation depth `c_hyp*(kappa + lambda(m)*H/c)*dt`
+ * (or `c_hyp*kappa*Delta_t_star` at injection). Always `>= 0`.
  * @return phi(a).
  */
 float radiation_relaxation_phi_factor(float a) {
@@ -814,7 +814,7 @@ radiation_dissipation_floor_relaxation_gate(const float F[3],
  * Runs once per step in the extra ghost. The limiter scale is decided once per
  * operator from its owning moment and applied to every moment sharing it.
  * The stored flux is `Ft = F_true/c_hyp` and obeys
- * `Ft_new = e*Ft - c_hyp*dt*phi*grad(u)` with `a = c_hyp*(kappa + H/c)*dt`;
+ * `Ft_new = e*Ft - c_hyp*dt*phi*grad(u)`, with `a` as in the `u` update;
  * the limiter bound is `|Ft| <= u`. No-op when propagation is off.
  *
  * @param p The particle to act upon.
