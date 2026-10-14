@@ -144,8 +144,10 @@ __attribute__((always_inline)) INLINE static void black_holes_first_init_bpart(
    * BH time step determination */
   bp->AGN_delta_T = props->AGN_delta_T_desired;
 
-  /* Start the star-neighbour search from the gas smoothing length */
-  bp->h_star = bp->h;
+  /* Start the star-neighbour search from the gas smoothing length, within
+   * the maximal allowed search radius (the first search happens before the
+   * drift that applies the limits) */
+  bp->h_star = min(bp->h, props->stars_h_max);
 }
 
 /**
@@ -1423,8 +1425,9 @@ INLINE static void black_holes_create_from_gas(
 
   /* Start the star-neighbour search from the gas smoothing length
    * (bp->h has been set by the seeding code). Without this, h_star would
-   * be left at zero and the search radius iteration could never grow. */
-  bp->h_star = bp->h;
+   * be left at zero and the search radius iteration could never grow.
+   * Stay within the maximal allowed search radius. */
+  bp->h_star = min(bp->h, props->stars_h_max);
 
   /* First initialisation */
   black_holes_init_bpart(bp);

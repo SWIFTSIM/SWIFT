@@ -634,12 +634,16 @@ void space_split_recursive(struct space *s, struct cell *c,
         black_holes_h_max_active = max(black_holes_h_max_active, bparts[k].h);
 
 #ifdef BLACK_HOLES_HAVE_STAR_DENSITY
-      black_holes_h_star_max =
-          max(black_holes_h_star_max, bparts[k].h_star);
+      /* The star search radius is only meaningful (and only updated) if
+       * the loop is used */
+      if (e->with_bh_stars_density) {
+        black_holes_h_star_max =
+            max(black_holes_h_star_max, bparts[k].h_star);
 
-      if (bpart_is_active(&bparts[k], e))
-        black_holes_h_star_max_active =
-            max(black_holes_h_star_max_active, bparts[k].h_star);
+        if (bpart_is_active(&bparts[k], e))
+          black_holes_h_star_max_active =
+              max(black_holes_h_star_max_active, bparts[k].h_star);
+      }
 #endif
 
       cell_set_bpart_h_depth(&bparts[k], c);

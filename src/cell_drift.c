@@ -802,6 +802,11 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float black_holes_h_max = e->hydro_properties->h_max;
   const float black_holes_h_min = e->hydro_properties->h_min;
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+  const int with_bh_stars_density = e->with_bh_stars_density;
+  const float black_holes_h_star_max = min(
+      e->black_holes_properties->stars_h_max, e->hydro_properties->h_max);
+#endif
   const integertime_t ti_old_bpart = c->black_holes.ti_old_part;
   const integertime_t ti_current = e->ti_current;
   struct bpart *const bparts = c->black_holes.parts;
@@ -946,6 +951,15 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       bp->h = min(bp->h, black_holes_h_max);
       bp->h = max(bp->h, black_holes_h_min);
 
+#ifdef BLACK_HOLES_HAVE_STAR_DENSITY
+      /* Same for the star search radius (which starts at h, so can be
+       * outside its own allowed range) */
+      if (with_bh_stars_density) {
+        bp->h_star = min(bp->h_star, black_holes_h_star_max);
+        bp->h_star = max(bp->h_star, black_holes_h_min);
+      }
+#endif
+
       /* Set the appropriate depth level for this particle */
       cell_set_bpart_h_depth(bp, c);
 
@@ -959,8 +973,10 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       cell_h_max = max(cell_h_max, bp->h);
 
 #ifdef BLACK_HOLES_HAVE_STAR_DENSITY
-      /* Maximal star-neighbour search radius */
-      cell_h_star_max = max(cell_h_star_max, bp->h_star);
+      /* Maximal star-neighbour search radius (only meaningful, and only
+       * updated, if the loop is used) */
+      if (with_bh_stars_density)
+        cell_h_star_max = max(cell_h_star_max, bp->h_star);
 #endif
 
       /* Mark the particle has not being swallowed */
@@ -975,7 +991,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
         /* Update the maximal active smoothing length in the cell */
         cell_h_max_active = max(cell_h_max_active, bp->h);
 #ifdef BLACK_HOLES_HAVE_STAR_DENSITY
-        cell_h_star_max_active = max(cell_h_star_max_active, bp->h_star);
+        if (with_bh_stars_density)
+          cell_h_star_max_active = max(cell_h_star_max_active, bp->h_star);
 #endif
       }
     }

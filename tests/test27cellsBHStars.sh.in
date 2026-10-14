@@ -3,6 +3,14 @@
 # List each test that should be run
 declare -a TEST_LIST=(test27cellsBHStars test27cellsBHStars_subset)
 
+# The test is only compiled in for black hole models with the star-density
+# loops; skip it otherwise.
+if ./test27cellsBHStars | grep -q "Test not run"
+then
+  echo "Skipping: the black hole model does not support the star-density loops"
+  exit 0
+fi
+
 # Run same test for each executable
 for TEST in "${TEST_LIST[@]}"
 do

@@ -265,6 +265,7 @@ void black_holes_exact_stars_density_check(struct space *s,
   int wrong_rho = 0;
   int counter = 0;
   int counter_clamped = 0;
+  int counter_no_ngb = 0;
 
   /* Limits of the search radius, as applied in runner_do_bh_stars_ghost() */
   const float stars_h_max =
@@ -301,11 +302,14 @@ void black_holes_exact_stars_density_check(struct space *s,
        * clamped one. */
       const int is_clamped =
           (bpi->h_star <= stars_h_min || bpi->h_star >= stars_h_max);
-      if (is_clamped) counter_clamped++;
+      const int no_ngb = found_inhibited || bpi->N_stars_density_exact == 0 ||
+                         fabsf(bpi->stars_n_exact) == 0.f;
+      if (is_clamped)
+        counter_clamped++;
+      else if (no_ngb)
+        counter_no_ngb++;
 
-      if (!found_inhibited && !is_clamped &&
-          bpi->N_stars_density_exact > 0 &&
-          (fabsf(bpi->stars_n_exact) > 0.f) &&
+      if (!is_clamped && !no_ngb &&
           (fabsf(bpi->stars_density.wcount / bpi->stars_n_exact - 1.f) >
                rel_tol ||
            fabsf(bpi->stars_n_exact / bpi->stars_density.wcount - 1.f) >
@@ -332,8 +336,10 @@ void black_holes_exact_stars_density_check(struct space *s,
   else
     message(
         "Verified the star densities of %d black holes (%d skipped as their "
-        "search radius is at the h_min/h_max limits)",
-        counter - counter_clamped, counter_clamped);
+        "search radius is at the h_min/h_max limits, %d skipped as they have "
+        "no star neighbours or an inhibited one)",
+        counter - counter_clamped - counter_no_ngb, counter_clamped,
+        counter_no_ngb);
 
   if (e->verbose)
     message("Writing brute-force density files took %.3f %s. ",
