@@ -30,6 +30,10 @@
 #include "physical_constants.h"
 #include "units.h"
 
+#include <geajay_message.h>
+#include <geajay_options.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef HAVE_HDF5
@@ -214,6 +218,40 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 }
 
 /**
+ * @brief Read a geajay choice parameter given by the name of its value or by
+ * its integer.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param key The parameter, e.g. "GeajayCooling:h2_cie_cooling".
+ * @param option The geajay option, e.g. "h2_cie_cooling".
+ * @param def The default value.
+ * @param swift_name A name handled by SWIFT, or NULL.
+ * @param swift_value The value of swift_name.
+ * @return The value.
+ */
+INLINE static int cooling_read_choice(struct swift_params *parameter_file,
+                                      const char *key, const char *option,
+                                      int def, const char *swift_name,
+                                      int swift_value) {
+  char text[PARSER_MAX_LINE_SIZE], def_text[32];
+  snprintf(def_text, sizeof(def_text), "%d", def);
+  parser_get_opt_param_string(parameter_file, key, text, def_text);
+
+  char *end;
+  const long number = strtol(text, &end, 10);
+  if (end != text && *end == '\0') return (int)number;
+
+  if (swift_name != NULL && strcmp(text, swift_name) == 0) return swift_value;
+
+  int value;
+  if (geajay_choice_from_string(option, text, &value) == GR_FAIL)
+    error("%s: %s%s%s%s", key, geajay_last_error_message(),
+          swift_name != NULL ? ", or \"" : "",
+          swift_name != NULL ? swift_name : "", swift_name != NULL ? "\"" : "");
+  return value;
+}
+
+/**
  * @brief Parser the parameter file and initialize the #cooling_function_data
  *
  * @param parameter_file The parser parameter file
@@ -227,9 +265,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   parser_get_param_string(parameter_file, "GeajayCooling:cloudy_table_file",
                           cooling->cloudy_table);
 
-  cooling->primordial_chemistry = parser_get_opt_param_int(
+  cooling->primordial_chemistry = cooling_read_choice(
       parameter_file, "GeajayCooling:primordial_chemistry_network",
-      COOLING_GEAJAY_MODE);
+      "species_network", COOLING_GEAJAY_MODE, NULL, 0);
 
   if (cooling->primordial_chemistry < 0)
     error("Primordial chemistry cannot be below 0");
@@ -238,11 +276,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GEAJAY_MODE);
 
-  cooling->H2_three_body_rate = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:h2_three_body_fit", 0);
+  cooling->H2_three_body_rate =
+      cooling_read_choice(parameter_file, "GeajayCooling:h2_three_body_fit",
+                          "h2_three_body_fit", 0, NULL, 0);
 
-  cooling->H2_cie_cooling = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:h2_cie_cooling", 0);
+  cooling->H2_cie_cooling =
+      cooling_read_choice(parameter_file, "GeajayCooling:h2_cie_cooling",
+                          "h2_cie_cooling", 0, NULL, 0);
 
   cooling->H2_on_dust = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_formation_on_dust", 0);
@@ -339,25 +379,28 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GeajayCooling:initial_nHDI_to_nH_ratio", -1);
 
   /* Self shielding */
-  cooling->self_shielding_method = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:uv_self_shielding", 0);
+  cooling->self_shielding_method =
+      cooling_read_choice(parameter_file, "GeajayCooling:uv_self_shielding",
+                          "uv_self_shielding", 0, "density_threshold", -1);
 
   if (cooling->self_shielding_method == -1) {
     cooling->self_shielding_threshold = parser_get_param_float(
         parameter_file, "GeajayCooling:self_shielding_threshold_atom_per_cm3");
   }
 
-  cooling->H2_self_shielding = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:h2_shielding_length_method", 0);
+  cooling->H2_self_shielding = cooling_read_choice(
+      parameter_file, "GeajayCooling:h2_shielding_length_method",
+      "h2_shielding_length_method", 0, NULL, 0);
 
   /* Mode 1 differences the density against the six neighbouring grid
      cells, which do not exist when geajay is called on one particle. */
   if (cooling->H2_self_shielding == 1)
     error(
-        "GeajayCooling:h2_shielding_length_method = 1 is not supported: its "
+        "GeajayCooling:h2_shielding_length_method = 1 (Sobolev) is not "
+        "supported: its "
         "Sobolev-like length reads neighbouring grid cells, and SWIFT calls "
-        "geajay one particle at a time. Use 2 (kernel support radius) or 3 "
-        "(local Jeans length).");
+        "geajay one particle at a time. Use 2 or given_length (kernel "
+        "support radius), or 3 or Jeans (local Jeans length).");
   if (cooling->H2_self_shielding < 0 || cooling->H2_self_shielding > 3)
     error("GeajayCooling:h2_shielding_length_method must be 0, 2 or 3, got %d.",
           cooling->H2_self_shielding);
