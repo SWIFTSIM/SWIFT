@@ -84,6 +84,78 @@ do
     fi
 
     echo "------------"
+
+  # Test for perturbed particle positions
+    echo ""
+
+    rm -f sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat
+
+    echo "Running ./$TEST -n 6 -r 1 -d 0.1 -f perturbed"
+    ./$TEST -n 6 -r 1 -d 0.1 -f perturbed
+
+    if [ -e sidm_brute_force_27_perturbed.dat ]
+    then
+      if python3 @srcdir@/difffloat.py sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat @srcdir@/tolerance_27_normal_SIDM.dat 6
+      then
+        echo "Accuracy test passed"
+      else
+        echo "Accuracy test failed"
+        exit 1
+      fi
+    else
+      echo "Error Missing test output file"
+      exit 1
+    fi
+
+    echo "------------"
+
+  # Test for perturbed particle positions and random smoothing lengths
+    echo ""
+
+    rm -f sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat
+
+    echo "Running ./$TEST -n 6 -r 1 -d 0.1 -f perturbed -p 1.1"
+    ./$TEST -n 6 -r 1 -d 0.1 -f perturbed -p 1.1
+
+    if [ -e sidm_brute_force_27_perturbed.dat ]
+    then
+      if python3 @srcdir@/difffloat.py sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed_h_SIDM.dat 6
+      then
+        echo "Accuracy test passed"
+      else
+        echo "Accuracy test failed"
+        exit 1
+      fi
+    else
+      echo "Error Missing test output file"
+      exit 1
+    fi
+
+    echo "------------"
+
+  # Test for perturbed particle positions and random smoothing lengths
+    echo ""
+
+    rm -f sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat
+
+    echo "Running ./$TEST -n 6 -r 1 -d 0.1 -f perturbed -p 1.3"
+    ./$TEST -n 6 -r 1 -d 0.1 -f perturbed -p 1.3
+
+    if [ -e sidm_brute_force_27_perturbed.dat ]
+    then
+      if python3 @srcdir@/difffloat.py sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed_h2_SIDM.dat 6
+      then
+        echo "Accuracy test passed"
+      else
+        echo "Accuracy test failed"
+        exit 1
+      fi
+    else
+      echo "Error Missing test output file"
+      exit 1
+    fi
+
+    echo "------------"
 done
 
 exit $?
