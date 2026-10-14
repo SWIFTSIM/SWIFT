@@ -200,11 +200,39 @@ struct feedback_part_data {
   double end_time;
 #endif
 
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  /*! Photons debited from the claiming star's budget for this claim. Read by
+      the owner-side merge when this claim loses a collision, to count the
+      forfeited budget. */
+  double cost;
+#endif
+
 #ifdef GEAR_COOLING
-  /*! Neutral hydrogen mass fraction cached by the cooling step (grackle_0:
-      1.0f). Not read by anything yet: an MPI-consistent consumer must read
-      the PREVIOUS pass's value. 0 until first written, not "fully ionized". */
+  /*! Neutral hydrogen mass fraction cached by every cooling call (grackle_0:
+      1.0f). Read only for a foreign copy, which has no #xpart. Set to -1 at
+      first init, so "not yet primed" is unambiguous. */
   float neutral_H_frac;
+#endif
+
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  /*! HII eligibility temperature cached by the owner's cooling call, for a
+      foreign copy with no #xpart. 0 before the first cooling call, which
+      reads as cold: an unprimed copy of hot gas then reads as cold. */
+  float T_eligibility;
+
+  /*! Mean molecular weight cached by the same cooling call as
+      #T_eligibility, so the two describe one internal energy. Set to -1 at
+      first init. */
+  float mu_eligibility;
+
+  /*! Squared comoving distance to the star of the current claim, at claim
+      time. The owner-side merge keeps the claim with the smallest
+      (r2, star_id). */
+  float r2;
+
+  /*! Set when this rank claims a foreign copy of this particle, so the claim
+      is reported to the owner. Cleared when the report is packed. */
+  char claimed_this_pass;
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
@@ -271,6 +299,80 @@ struct feedback_part_data {
   double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 };
+
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+
+/**
+ * @brief HII claim sent back by the rank that ran the star's search to the
+ * rank that owns the gas (task_subtype_part_hii_tag).
+ *
+ * One entry per particle of the cell. The owner merges only the entries
+ * stamped by #claimed_this_pass.
+ */
+struct hii_tag_report {
+
+  /*! Id of the star that claimed the particle. */
+  long long star_id;
+
+  /*! Simulation time until which the particle stays tagged. */
+  double end_time;
+
+  /*! Photons debited for this claim, counted as forfeited if it loses. */
+  double cost;
+
+  /*! Squared distance to the claiming star at claim time. The owner may hold
+      no copy of that star, so it is sent, not recomputed. */
+  float r2;
+
+  /*! Ionization tag of the claim. */
+  char is_ionized;
+
+  /*! Set if this entry is a claim of this pass; others are not merged. */
+  char claimed_this_pass;
+};
+
+/**
+ * @brief Post-cooling HII state sent by the gas owner to every rank that
+ * holds a foreign copy (task_subtype_part_hii_state).
+ *
+ * The search on the other rank then sees the owner's tag and eligibility
+ * caches of this step, not the pre-cooling snapshot of the xv/rho channel.
+ * The unpack writes only these fields.
+ */
+struct hii_state_update {
+
+  /*! Id of the star holding the tag. */
+  long long star_id;
+
+  /*! Simulation time until which the particle stays tagged. */
+  double end_time;
+
+  /*! Photons debited for the current claim. */
+  double cost;
+
+  /*! Eligibility temperature cache, see #feedback_part_data. */
+  float T_eligibility;
+
+  /*! Mean molecular weight cache, see #feedback_part_data. */
+  float mu_eligibility;
+
+  /*! Neutral hydrogen mass fraction cache, see #feedback_part_data. */
+  float neutral_H_frac;
+
+  /*! Squared distance to the star holding the tag, at claim time. */
+  float r2;
+
+  /*! Ionization tag. */
+  char is_ionized;
+};
+
+#else
+
+/*! Empty payloads: without HII under MPI these subtypes carry nothing. */
+struct hii_tag_report {};
+struct hii_state_update {};
+
+#endif
 
 /**
  * @brief Extra feedback fields carried by each hydro particles

@@ -469,10 +469,22 @@ void feedback_init_part(struct part *p, const struct engine *e) {
  * @brief First-init of a #part's feedback state, see
  * #radiation_first_init_part.
  *
+ * Also sets the mu_eligibility and neutral_H_frac caches to the -1 sentinel:
+ * 0 is a physical value of both, so it cannot mean "not yet primed". Before
+ * the owner's first cooling call, a foreign copy would otherwise be priced
+ * at almost zero photons. feedback_part_can_be_ionized() excludes a foreign
+ * copy that still holds the sentinel.
+ *
  * @param p The #part to initialise.
  */
 void feedback_first_init_part(struct part *restrict p) {
   radiation_first_init_part(p);
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  p->feedback_data.mu_eligibility = -1.f;
+#endif
+#ifdef GEAR_COOLING
+  p->feedback_data.neutral_H_frac = -1.f;
+#endif
 }
 
 /**
