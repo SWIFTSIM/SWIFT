@@ -59,6 +59,15 @@ v[:, 0] /= norm_v
 v[:, 1] /= norm_v
 v[:, 2] /= norm_v
 
+
+# Densities (each particle has the rho0 value as density, since each mass
+# is rho0 * vol / numpart. The vol / numpart can be seen as the particle value, 
+# i.e. the whole volume is split into numpart)
+densities = np.ones(numPart, dtype=np.float32)
+
+# Material IDs
+mat_ids = np.zeros(numPart)
+
 # File
 file = h5py.File(fileName, "w")
 
@@ -90,6 +99,8 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("MaterialIDs", data=mat_ids, dtype="L")
+grp.create_dataset("Density", data=densities, dtype="f")
 
 
 file.close()

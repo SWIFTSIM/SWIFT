@@ -54,6 +54,10 @@ SPH:
   h_max:                 10.
   minimal_temperature:   100.
 
+# Parameters related to the EOS (REMIX)
+EoS:
+  planetary_use_idg_def:  1 # default ideal gas, material ID 0
+
 # Parameters for the stars neighbour search
 Stars:
   resolution_eta:        1.1642  # Target smoothing length in units of the mean inter-particle separation

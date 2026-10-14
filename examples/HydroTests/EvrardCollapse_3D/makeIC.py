@@ -69,6 +69,12 @@ ids = linspace(1, numPart, numPart)
 m = ones(numPart) * M / numPart
 u = ones(numPart) * u0
 
+# Initial density profile
+rho = M / (2 * np.pi * R ** 2 * r)
+
+# Material IDs
+mat = np.zeros(numPart)
+
 # --------------------------------------------------
 
 # File
@@ -102,5 +108,7 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("Density", data=rho, dtype="f")
+grp.create_dataset("MaterialIDs", data=mat, dtype="L")
 
 file.close()

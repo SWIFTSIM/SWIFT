@@ -82,6 +82,10 @@ m = zeros(numPart)
 h = zeros(numPart)
 u = zeros(numPart)
 
+# Add in densities and material ids
+rhos = zeros(numPart)
+material_ids = zeros(numPart)
+
 # Set the particles on the left
 for i in range(numPart_1D):
     for j in range(numPart_1D):
@@ -99,12 +103,18 @@ for i in range(numPart_1D):
             v[index, 1] = 0.0
             v[index, 2] = 0.0
 
+            rho = rho_0 / (1.0 - zfac * cos(k_i * q))
+            rhos[index] = rho
+
 # Unit conversion
 coords /= unit_l_in_si
 v /= unit_v_in_si
 m /= unit_m_in_si
 h /= unit_l_in_si
 u /= unit_u_in_si
+
+rhos /= unit_m_in_si
+rhos *= (unit_l_in_si**3)
 
 boxSize /= unit_l_in_si
 
@@ -139,6 +149,9 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+
+grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
+grp.create_dataset("Density", data=rhos, dtype="f")
 
 file.close()
 

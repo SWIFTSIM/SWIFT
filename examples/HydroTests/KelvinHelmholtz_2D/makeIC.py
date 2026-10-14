@@ -56,6 +56,8 @@ u1 = zeros(numPart1)
 u2 = zeros(numPart2)
 vel1 = zeros((numPart1, 3))
 vel2 = zeros((numPart2, 3))
+rho_part1 = np.full(numPart1, rho1)
+rho_part2 = np.full(numPart2, rho2)
 
 # Particles in the central region
 for i in range(L1):
@@ -114,6 +116,8 @@ vel[:, 1] = (
     )
 )
 
+rhos = append(rho_part1[where1], rho_part2[where2], axis=0)
+
 # File
 fileOutput = h5py.File(fileOutputName, "w")
 
@@ -151,5 +155,9 @@ ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
 ds[()] = u.reshape((numPart, 1))
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids.reshape((numPart, 1))
+ds = grp.create_dataset("MaterialIDs", (numPart, 1), "L")
+ds[()] = material_ids.reshape((numPart, 1))
+ds = grp.create_dataset("Density", (numPart, 1), "f")
+ds[()] = rhos.reshape((numPart, 1))
 
 fileOutput.close()

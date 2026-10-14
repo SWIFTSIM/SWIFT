@@ -45,6 +45,10 @@ m = ones(numPart) * rho0 * boxSize**3 / numPart
 u = zeros(numPart)
 v = zeros((numPart, 3))
 
+# Add rho and material ids
+rho = np.ones(numPart) # given rho0=1, this is easily done
+material_ids = np.zeros(numPart) # assuming ideal gas particles
+
 for i in range(numPart):
 
     x = coords[i, 0]
@@ -111,5 +115,9 @@ ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
 ds[()] = u.reshape((numPart, 1))
 ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids.reshape((numPart, 1))
+ds = grp.create_dataset("MaterialIDs", shape=(numPart, 1), data=material_ids, dtype="i")
+ds[()] = material_ids.reshape((numPart, 1))
+ds = grp.create_dataset("Density", shape=(numPart, 1), data=rho, dtype="f")
+ds[()] = rho.reshape((numPart, 1))
 
 fileOutput.close()
