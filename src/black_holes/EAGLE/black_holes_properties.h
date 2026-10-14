@@ -368,6 +368,10 @@ INLINE static void black_holes_props_init(struct black_holes_props *bp,
   else
     bp->stars_h_max = FLT_MAX;
 
+  /* The search radius can also not exceed the hydro maximal smoothing
+   * length (this is the limit applied by the search radius iteration) */
+  bp->stars_h_max = min(bp->stars_h_max, hydro_props->h_max);
+
   /* Time integration properties */
   const float max_volume_change =
       parser_get_opt_param_float(params, "BlackHoles:max_volume_change", -1);
