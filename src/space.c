@@ -318,7 +318,7 @@ void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    cell_sanitize(c, 0);
+    cell_sanitize(c, /*treated=*/0, /*sidm_treated=*/0);
   }
 }
 

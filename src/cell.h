@@ -572,7 +572,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 struct cell_buff *sbuff, struct cell_buff *bbuff,
                 struct cell_buff *gbuff, struct cell_buff *sinkbuff,
                 struct cell_buff *sibuff);
-void cell_sanitize(struct cell *c, int treated);
+void cell_sanitize(struct cell *c, int treated, int sidm_treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);
