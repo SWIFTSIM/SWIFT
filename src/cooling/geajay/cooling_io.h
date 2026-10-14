@@ -55,6 +55,22 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 #else
   error("This function should be called only with one of the geajay cooling.");
 #endif
+
+  /* Names of the components of CoolingRates */
+  const int name_length = 32;
+  char names[GEAJAY_RATE_NCHANNELS][32];
+  for (int k = 0; k < GEAJAY_RATE_NCHANNELS; k++)
+    snprintf(names[k], name_length, "%s", geajay_rate_channel_name(k));
+  hsize_t dims[1] = {GEAJAY_RATE_NCHANNELS};
+  hid_t type = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type, name_length);
+  hid_t space = H5Screate_simple(1, dims, NULL);
+  hid_t dset = H5Dcreate(h_grp_columns, "CoolingRates", type, space,
+                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+  H5Dwrite(dset, type, H5S_ALL, H5S_ALL, H5P_DEFAULT, names[0]);
+  H5Dclose(dset);
+  H5Tclose(type);
+  H5Sclose(space);
 }
 #endif
 
@@ -73,6 +89,23 @@ INLINE static void convert_part_cooling_time(const struct engine *e,
   *ret =
       cooling_time(e->physical_constants, e->internal_units,
                    e->hydro_properties, e->cosmology, e->cooling_func, p, xp);
+}
+
+/**
+ * @brief Energy rates of a particle for the snapshot.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The physical rate of each channel.
+ */
+INLINE static void convert_part_cooling_rates(const struct engine *e,
+                                              const struct part *p,
+                                              const struct xpart *xp,
+                                              float *ret) {
+  cooling_energy_rates(e->physical_constants, e->internal_units,
+                       e->hydro_properties, e->cosmology, e->cooling_func, p,
+                       xp, ret);
 }
 
 /**
@@ -159,6 +192,19 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "exactly 0, NaN if geajay refused the particle; do not store with a "
       "lossy filter. Cosmological runs: the redshift is the one of the end of "
       "the step that contains the snapshot.");
+  num++;
+
+  list[num] = io_make_physical_output_field_convert_part(
+      "CoolingRates", FLOAT, GEAJAY_RATE_NCHANNELS,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
+      /*can convert to comoving=*/1, convert_part_cooling_rates,
+      "Energy rates du/dt of the gas at the state of CoolingTimes, not a step "
+      "average, one per process (names in SubgridScheme/NamedColumns/"
+      "CoolingRates); "
+      "positive heats. Their sum is the net rate of CoolingTimes, without the "
+      "H2 formation heating that the solver adds in a step. NaN if geajay "
+      "refused the particle. Cosmological runs: the redshift is the one of the "
+      "end of the step that contains the snapshot.");
   num++;
 
   return num;

@@ -825,6 +825,19 @@ static double cooling_stored_nan(void) {
 }
 
 /**
+ * @brief A quiet NaN made from its bits, single precision.
+ *
+ * @return A quiet NaN.
+ */
+static float cooling_stored_nan_float(void) {
+  volatile uint32_t bits = 0x7fc00000U;
+  const uint32_t value = bits;
+  float nan_value;
+  memcpy(&nan_value, &value, sizeof(nan_value));
+  return nan_value;
+}
+
+/**
  * @brief Compute the cooling time of a particle at its stored state.
  *
  * Signed as in Grackle: negative for net cooling, +inf at a net rate of 0.
@@ -862,6 +875,47 @@ double cooling_time(const struct phys_const *phys_const,
     return cooling_stored_nan();
 
   return cooling_time;
+}
+
+/**
+ * @brief Compute the energy rates of a particle at its stored state, one per
+ * channel of geajay (geajay_rate_channel_name()).
+ *
+ * The rates are du/dt in internal units, physical, positive for heating.
+ * geajay reads the particle and writes nothing to it.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param hydro_props The #hydro_props.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
+ * @param rates (return) The GEAJAY_RATE_NCHANNELS rates, NaN if geajay
+ * refuses the particle.
+ */
+void cooling_energy_rates(const struct phys_const *phys_const,
+                          const struct unit_system *us,
+                          const struct hydro_props *hydro_props,
+                          const struct cosmology *cosmo,
+                          const struct cooling_function_data *cooling,
+                          const struct part *p, const struct xpart *xp,
+                          float rates[GEAJAY_RATE_NCHANNELS]) {
+
+  const double density = cooling_get_physical_density(p, cosmo, cooling);
+  gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  energy = max(energy, hydro_props->minimal_internal_energy);
+
+  geajay_particle_inputs inputs;
+  cooling_fill_inputs(cooling, p, cosmo, density, energy, &inputs);
+
+  geajay_particle_rates result;
+  result.size = sizeof(result);
+  const int ok =
+      geajay_particle_energy_rates(cooling->context, &cooling->layout, xp,
+                                   &inputs, &result) == GR_SUCCESS;
+  for (int k = 0; k < GEAJAY_RATE_NCHANNELS; k++)
+    rates[k] = ok ? (float)result.channel[k] : cooling_stored_nan_float();
 }
 
 /**
