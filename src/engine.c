@@ -1484,7 +1484,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       (long long)(e->s->nr_siparts - e->s->nr_extra_siparts),
   };
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, num_particles, 6, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
   e->total_nr_parts = num_particles[0];
