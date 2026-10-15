@@ -5,8 +5,9 @@ This section is a reference for the equations the GEAR interstellar-radiation-fi
 (ISRF) channel actually solves, and for the discretisation that solves them. Each
 subsection first states the equations, the discretisation and the numerics. A
 paragraph or subsection titled ``Implementation'' at its end then names the file,
-function and line that compute each piece. The section contains no validation
-status and no run results.
+function and line that compute each piece. Run results appear only where a
+design choice rests on them, and in the review guide of
+Section~\ref{sec:isrf-review}, which states what each check covers.
 
 \subsection{Scope and where each piece runs}
 \label{sec:isrf-eqdisc-scope}
@@ -2237,7 +2238,7 @@ pairs across time bins on several ranks &
 \small
 \begin{tabular}{>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{4.9cm}>{\raggedright\arraybackslash}p{4.9cm}}
 \toprule
-check & exercises & cannot detect \\
+unit test & exercises & cannot detect \\
 \midrule
 \code{testRadiationISRFForceDispatchConservation} &
   the accumulator identity of the divergence and the dissipation against a
@@ -2251,8 +2252,9 @@ check & exercises & cannot detect \\
 \code{testRadiationISRFCrossBinPending} &
   the energy ledger of the force-loop pair terms over the real drift, extra
   ghost, force dispatch and end-force, on mixed bins, with dust, the
-  kernel-local speed and a Hubble term; needs a debugging build &
-  several ranks, the flux \\
+  kernel-local speed and a Hubble term &
+  several ranks, the flux; without SPHENIX and a debugging build it prints
+  \code{SKIPPED} and exits 0, so read its output \\
 \code{testRadiationISRFComovingFactors} &
   the three spatial operators at $a = 1$, $0.5$, $0.25$, $0.1$ &
   the default speed formula ($c_{\rm hyp}$ is held fixed), a speed
@@ -2277,14 +2279,25 @@ check & exercises & cannot detect \\
 \code{testRadiationISRFExtinctionPathCosmology} &
   the comoving extinction path &
   its result depends on the Grackle mode \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{4.2cm}>{\raggedright\arraybackslash}p{4.9cm}>{\raggedright\arraybackslash}p{4.9cm}}
+\toprule
+example & exercises & cannot detect \\
+\midrule
 \code{ISRFInjectionConservation} &
   $\sum_j m_j u_j = \Delta t_\star L$ per band with the transport off &
   any transport term \\
 \code{ISRFMultiBinDissipation} &
   the energy ledger against $n_{\rm steps}\,2^{-23}$ on several bins and
   ranks (debugging build) &
-  the kernel-local speed and dust in the passing configuration (one fixed
-  speed, $Z = 0$); the flux \\
+  the flux; it passes at one fixed speed and $Z = 0$. At the kernel-local
+  speed with dust the same-step $\varphi$ term puts the residual above the
+  bar by construction, so a red there is not a defect signal \\
 \code{ISRFHyperbolicPropagation} &
   the settled profile of one source against the discrete fixed point &
   transients, several sources \\
@@ -2320,8 +2333,9 @@ and a pass holds only in that regime.
     of $c_{\rm hyp}$ makes in production is not measured.
   \item The flux sum is not conserved
     (Section~\ref{sec:fuv-flux-conservation}).
-  \item A uniform flux seeded in a dust-free expanding box grows, and the
-    cause is not located (Section~\ref{sec:fuv-limits}).
+  \item The spread of a uniform flux seeded on a dust-free lattice grows
+    from rounding level, and the cause is not located
+    (Section~\ref{sec:fuv-limits}).
   \item A varying speed under expansion at a strong density contrast has
     never run.
   \item The multi-bin box at a bin gap of $5$ stops with non-finite

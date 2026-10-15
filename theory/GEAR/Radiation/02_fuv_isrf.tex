@@ -1710,8 +1710,8 @@ band-edge transfer are the only sources and sinks, and the energy ledger
 closes with them. Under the kernel-local speed the energy itself is
 therefore not conserved: energy that streams from slow into fast gas is
 multiplied by about the speed ratio, and energy that streams the other
-way is divided by it. Optically thin gas is the worst case; with dust the
-steady field does not depend on $c_{\rm hyp}$.
+way is lost. With dust the steady field does not depend on
+$c_{\rm hyp}$.
 
 \textbf{Flux.} The flux sum $\mathbf P$ of Eq.~\ref{eq:fuv-flux-sum} is
 not conserved, and nothing books it. Four terms change it:
@@ -2408,15 +2408,16 @@ path.
     the flux has no booking across time bins
     (Section~\ref{sec:fuv-flux-conservation}). No implemented variant
     conserves it without degrading the thin-gas tests.
-  \item \textbf{Flux growth in a dust-free box, open.} A uniform flux
-    seeded in a dust-free expanding box with static gas grows by about
-    $0.4$ per cent per step at $c_{\rm hyp}\Delta t/h = 0.0175$, in every
-    band. The growth per unit time scales roughly with $c_{\rm hyp}/h$,
-    not with the step. This points to the spatial operator rather than
-    the time integration. The cause is not located. The growth is
-    consistent with the remark of Section~\ref{sec:fuv-operators} that
-    the quadratic invariant bounds the transport only for a fixed
-    closure tensor.
+  \item \textbf{Growth of a perturbed uniform flux, open.} A uniform flux
+    is seeded on a regular lattice of static, dust-free gas in an
+    expanding box. Its box total follows the Hubble decay. Its spread
+    from particle to particle grows from rounding level, by about $0.4$
+    per cent per step at $c_{\rm hyp}\Delta t/h = 0.0175$ (relative spread
+    from $10^{-3}$ to $1.2$), in every band, until the flux limiter acts.
+    The growth per unit time scales roughly with $c_{\rm hyp}/h$. On a
+    regular lattice the kernel-sum error of
+    Eq.~\ref{eq:fuv-grad-kernel-error} vanishes, so it does not explain
+    the growth. The cause is not located.
   \item \textbf{Flux dissipation, an optional experiment.} Damping
     $\mathbf F$ with the pair coefficient of the dissipation of $u$ is
     an experiment outside the shipped code; its review is not complete,
