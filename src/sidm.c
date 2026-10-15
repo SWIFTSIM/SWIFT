@@ -322,13 +322,13 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
   else
     message("Verified %d sidm particles", counter);
 
-  /* if (wrong_n_ngb) */
-  /*   error( */
-  /*       "N_ngb difference larger than the allowed tolerance for %d " */
-  /*       "sidm particles! (out of %d particles)", */
-  /*       wrong_n_ngb, counter); */
-  /* else */
-  /*   message("Verified %d sidm particles", counter); */
+  if (wrong_n_ngb)
+    error(
+        "N_ngb difference larger than the allowed tolerance for %d "
+        "sidm particles! (out of %d particles)",
+        wrong_n_ngb, counter);
+  else
+    message("Verified %d sidm particles", counter);
 
   if (e->verbose)
     message("Writing brute-force density files took %.3f %s. ",

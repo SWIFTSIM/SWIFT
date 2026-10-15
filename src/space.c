@@ -318,7 +318,7 @@ void space_sanitize_mapper(void *map_data, int num_cells, void *extra_data) {
 
   for (int ind = 0; ind < num_cells; ind++) {
     struct cell *c = &cells_top[ind];
-    cell_sanitize(c, 0);
+    cell_sanitize(c, /*treated=*/0, /*sidm_treated=*/0);
   }
 }
 
@@ -1455,6 +1455,13 @@ void space_init(struct space *s, struct swift_params *params,
       params, "Scheduler:cell_extra_sinks", space_extra_sinks_default);
   space_extra_siparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_siparts", space_extra_siparts_default);
+
+  /* SIDM particles are never created during a run, so no extra particles are
+   * allocated for them (see space_allocate_extras()). */
+  if (space_extra_siparts != 0)
+    error(
+        "Scheduler:cell_extra_siparts must be 0: extra SIDM particles are not "
+        "supported.");
 
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",

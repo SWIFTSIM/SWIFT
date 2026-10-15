@@ -320,7 +320,7 @@ void ENGINE_REDISTRIBUTE_DEST_MAPPER(gpart);
 void ENGINE_REDISTRIBUTE_DEST_MAPPER(bpart);
 
 /**
- * @brief Accumulate the counts of black holes particles per cell.
+ * @brief Accumulate the counts of SIDM particles per cell.
  * Threadpool helper for accumulating the counts of particles per cell.
  *
  * sipart version.
@@ -538,7 +538,7 @@ void engine_redistribute_relink_mapper(void *map_data, int num_elements,
         s->bparts[partner_index].gpart = &s->gparts[k];
       }
 
-      /* Does this gpart have a black hole partner ? */
+      /* Does this gpart have a SIDM partner ? */
       else if (s->gparts[k].type == swift_type_sidm) {
 
         const ptrdiff_t partner_index =
@@ -685,8 +685,8 @@ void engine_redistribute(struct engine *e) {
       if (s->siparts[k].gpart != NULL) {
         s->siparts[k].gpart->id_or_neg_offset = -k;
       }
-      if (s->siparts[nr_bparts].gpart != NULL) {
-        s->siparts[nr_bparts].gpart->id_or_neg_offset = -nr_siparts;
+      if (s->siparts[nr_siparts].gpart != NULL) {
+        s->siparts[nr_siparts].gpart->id_or_neg_offset = -nr_siparts;
       }
     } else {
       k++;
@@ -1011,12 +1011,12 @@ void engine_redistribute(struct engine *e) {
         cell_getid(s->cdim, si->x[0] * s->iwidth[0], si->x[1] * s->iwidth[1],
                    si->x[2] * s->iwidth[2]);
 
-    /* New cell of this bpart */
+    /* New cell of this sipart */
     const struct cell *c = &s->cells_top[new_cid];
     const int new_node = c->nodeID;
 
     if (si_dest[k] != new_node)
-      error("bpart's new node index not matching sorted index.");
+      error("sipart's new node index not matching sorted index.");
 
     if (si->x[0] < c->loc[0] || si->x[0] > c->loc[0] + c->width[0] ||
         si->x[1] < c->loc[1] || si->x[1] > c->loc[1] + c->width[1] ||
@@ -1182,10 +1182,10 @@ void engine_redistribute(struct engine *e) {
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
     error("Failed to allreduce bparticle transfer counts.");
 
-  /* Get all the sink_counts from all the nodes. */
+  /* Get all the si_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, si_counts, nr_nodes * nr_nodes, MPI_INT,
                     MPI_SUM, MPI_COMM_WORLD) != MPI_SUCCESS)
-    error("Failed to allreduce sink particle transfer counts.");
+    error("Failed to allreduce SIDM particle transfer counts.");
 
   /* Get all the sink_counts from all the nodes. */
   if (MPI_Allreduce(MPI_IN_PLACE, sink_counts, nr_nodes * nr_nodes, MPI_INT,
@@ -1235,7 +1235,7 @@ void engine_redistribute(struct engine *e) {
                 100.0 * (double)(b_total - b_unmoved) / (double)b_total);
       if (sidm_total > 0)
         message(
-            "%ld of %ld (%.2f%%) of b-particles moved",
+            "%ld of %ld (%.2f%%) of SIDM particles moved",
             sidm_total - sidm_unmoved, sidm_total,
             100.0 * (double)(sidm_total - sidm_unmoved) / (double)sidm_total);
       if (sink_total > 0)
@@ -1246,12 +1246,9 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
-  /* Now each node knows how many parts, sparts, bparts, sinks and gparts will
-   * be transferred to every other node. Get the new numbers of particles for
-   * this node.
-   *
-   * TODO: Add computation for the siparts. Only placeholders here for now
-   */
+  /* Now each node knows how many parts, sparts, bparts, sinks, siparts and
+   * gparts will be transferred to every other node. Get the new numbers of
+   * particles for this node. */
   size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0,
          nr_bparts_new = 0, nr_siparts_new = 0, nr_sinks_new = 0;
   for (int k = 0; k < nr_nodes; k++)
@@ -1372,7 +1369,7 @@ void engine_redistribute(struct engine *e) {
   s->nr_bparts = nr_bparts_new;
   s->size_bparts = engine_redistribute_alloc_margin * nr_bparts_new;
 
-  /* Black holes particles. */
+  /* SIDM particles. */
   new_parts = engine_do_redistribute("siparts", si_counts, (char *)s->siparts,
                                      nr_siparts_new, sizeof(struct sipart),
                                      sipart_align, sipart_mpi_type, nr_nodes,
@@ -1518,14 +1515,10 @@ void engine_redistribute(struct engine *e) {
           k, cells[cid].nodeID);
   }
 
-  /* Verify that the links are correct
-   *
-   * TODO: Use the correct siparts counter when implementation is ready!!
-   */
+  /* Verify that the links are correct */
   part_verify_links(s->parts, s->gparts, s->sinks, s->sparts, s->bparts,
                     s->siparts, nr_parts_new, nr_gparts_new, nr_sinks_new,
-                    nr_sparts_new, nr_bparts_new, /*nr_siparts_new=*/0,
-                    e->verbose);
+                    nr_sparts_new, nr_bparts_new, nr_siparts_new, e->verbose);
 
 #endif
 

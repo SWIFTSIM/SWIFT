@@ -136,9 +136,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   atomic_inc(&s->completed_unlock_writes);
 }
 
-/* Conservative number of dependencies per task type */
-#define MAX_NUMBER_DEP 128
-
 /**
  * @brief Describe the level at which the task are done.
  * WARNING: the order is supposed to be sorted from the root
@@ -516,8 +513,8 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
         break;
 
       case task_type_sidm_sort:
-        cost = wscale * intrinsics_popcount(t->flags) * scount_i *
-               (sizeof(int) * 8 - (scount_i ? intrinsics_clz(scount_i) : 0));
+        cost = wscale * intrinsics_popcount(t->flags) * sicount_i *
+               (sizeof(int) * 8 - (sicount_i ? intrinsics_clz(sicount_i) : 0));
         break;
 
       case task_type_stars_resort:

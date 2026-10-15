@@ -69,7 +69,9 @@ void test(const char *param_filename) {
   sidm_props_init(&sidm_props, &prog_const, &us, &param_file, &hydro_properties,
                   &cosmo);
   sidm_props.eta_neighbours = 1.2348f;
-  sidm_props.sigma_over_m = 0.f;
+  /* Random cross-section spanning several orders of magnitude, so that the
+   * pairs sometimes scatter (p >= 1) and sometimes do not (p << 1). */
+  sidm_props.sigma_over_m = (float)pow(10., random_uniform(-3., 2.));
   sidm_props.h_tolerance = 1e0;
   sidm_props.h_max = FLT_MAX;
   sidm_props.h_min = 0.f;
@@ -170,12 +172,15 @@ void test(const char *param_filename) {
                                 with_cosmology, &cosmo, &sidm_props, ti_current,
                                 time_base);
 
-  /* Check that the particles have the same scattering rates
-  Only meaningful for sigma_over_m=0 since particle velocities change if a kick
-  is triggered */
-  const float tol = 1e-6f;
-  i_not_ok = fabs(pi.SIDM_rate - pi2.SIDM_rate) > tol;
-  j_not_ok = fabs(pj.SIDM_rate - pj2.SIDM_rate) > tol;
+  /* Check that the particles have the same scattering rates. The kicks are
+   * only accumulated in dv_sidm, so the velocities used for the rates are the
+   * same in both versions even if the pair scattered. The rates scale with
+   * the (random) cross-section, so compare them in relative terms. */
+  const float tol = 1e-5f;
+  i_not_ok = fabsf(pi.SIDM_rate - pi2.SIDM_rate) >
+             tol * fmaxf(fabsf(pi.SIDM_rate), fabsf(pi2.SIDM_rate));
+  j_not_ok = fabsf(pj.SIDM_rate - pj2.SIDM_rate) >
+             tol * fmaxf(fabsf(pj.SIDM_rate), fabsf(pj2.SIDM_rate));
 
   if (i_not_ok) {
     error("Particle i SIDM_rate mismatch: %.8e != %.8e", pi.SIDM_rate,
@@ -186,15 +191,37 @@ void test(const char *param_filename) {
     error("Particle j SIDM_rate mismatch: %.8e != %.8e", pj.SIDM_rate,
           pj2.SIDM_rate);
   }
+
+#ifndef SIDM_NONE
+  /* Check that both versions gave the same kicks: each non-symmetric call only
+   * kicks its own particle since both particles are active. The kicks are not
+   * bitwise identical once the compiler contracts or re-orders the operations
+   * differently in each version (e.g. with FMAs), so compare them relative to
+   * the velocities they were computed from. */
+  float v_scale = 0.f;
+  for (int k = 0; k < 3; k++)
+    v_scale = fmaxf(v_scale, fmaxf(fabsf(pi.v[k]), fabsf(pj.v[k])));
+  const float tol_kick = 1e-5f * v_scale;
+
+  for (int k = 0; k < 3; k++) {
+    if (fabsf(pi.dv_sidm[k] - pi2.dv_sidm[k]) > tol_kick)
+      error("Particle i dv_sidm[%d] mismatch: %.8e != %.8e", k, pi.dv_sidm[k],
+            pi2.dv_sidm[k]);
+    if (fabsf(pj.dv_sidm[k] - pj2.dv_sidm[k]) > tol_kick)
+      error("Particle j dv_sidm[%d] mismatch: %.8e != %.8e", k, pj.dv_sidm[k],
+            pj2.dv_sidm[k]);
+  }
+#endif
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  const char *param_filename = "testSIDM.yml";
+  if (argc != 2) error("Usage: %s parameter_file.yml", argv[0]);
+  const char *param_filename = argv[1];
 
 #ifdef SIDM_NONE
   message("SIDM disabled: skipping unit test.");
