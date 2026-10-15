@@ -101,10 +101,12 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_quantity(
     float gradient[3], const float maxr, const float value, const float valmin,
     const float valmax, const float condition_number) {
 
-  const double gradtrue =
-      sqrt(gradient[0] * gradient[0] + gradient[1] * gradient[1] +
-           gradient[2] * gradient[2]) *
-      maxr;
+  /* Square in double: the squares of RT gradients in internal units fall
+   * outside the float range. */
+  const double gradtrue = sqrt((double)gradient[0] * gradient[0] +
+                               (double)gradient[1] * gradient[1] +
+                               (double)gradient[2] * gradient[2]) *
+                          maxr;
   if (gradtrue <= 0.0) return;
 
   const double gradtrue_inv = 1.0 / gradtrue;
