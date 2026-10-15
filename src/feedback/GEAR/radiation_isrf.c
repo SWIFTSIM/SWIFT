@@ -66,6 +66,9 @@ void radiation_first_init_part(struct part *restrict p) {
     moment->u_dose_reservoir = 0.f;
     moment->u_source_rate = 0.f;
     moment->dissipation_u = 0.f;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    for (int k = 0; k < 3; k++) moment->dissipation_flux[k] = 0.f;
+#endif
     moment->div_specific_flux = 0.f;
     moment->pending_transport_u = 0.f;
     moment->pending_dissipation_u = 0.f;
@@ -158,6 +161,9 @@ void radiation_snapshot_part_propagation(struct part *p,
 
     /* The force loop also runs once per step, with no h-iteration redo. */
     moment->dissipation_u = 0.f;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    for (int k = 0; k < 3; k++) moment->dissipation_flux[k] = 0.f;
+#endif
   }
 
   /* Cached even without ISRF_propagation: the gradient loop always reads
@@ -636,6 +642,15 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     /* Raw add, not subject to PE's absorption this step. A separate statement
      * so -ffast-math cannot merge it into a form that is not 0 at H = 0. */
     if (m == ISRF_MOMENT_PE) moment->u += transfer;
+
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    /* Experiment: weighted by phi like the transport terms of u. */
+    for (int k = 0; k < 3; k++) {
+      moment->specific_flux[k] +=
+          (float)(dt * phi * (double)moment->dissipation_flux[k]);
+      moment->dissipation_flux[k] = 0.f;
+    }
+#endif
   }
 
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
@@ -876,6 +891,9 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* Not zeroed at drift, which would blank the output field at snapshots. */
     moment->div_specific_flux = 0.f;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    for (int k = 0; k < 3; k++) moment->dissipation_flux[k] = 0.f;
+#endif
   }
 
   /* The limiter decision and dissipation coefficients are operator state:

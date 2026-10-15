@@ -165,6 +165,36 @@ radiation_dissipation_force_accumulate_band(
   *dissipation_u_j += -mi * (alpha_ij * c_j * shape_ij);
 }
 
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+/**
+ * @brief Experiment: the same artificial dissipation applied to the reduced
+ * flux, with the pair coefficient of #radiation_dissipation_force_accumulate_band,
+ * so both characteristic waves u +- F are damped alike.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_flux_dissipation_force_accumulate_band(
+    float wi_dr, float wj_dr, float mi, float mj, float rho_i, float rho_j,
+    float c_i, float c_j, float alpha_trigger_i, float alpha_trigger_j,
+    float alpha_floor_i, float alpha_floor_j, const float F_i[3],
+    const float F_j[3], float a_factor_comoving_to_physical,
+    float dissipation_flux_i[3], float dissipation_flux_j[3]) {
+
+  const float alpha_trigger_ij = max(alpha_trigger_i, alpha_trigger_j);
+  const float alpha_floor_ij = max(alpha_floor_i, alpha_floor_j);
+  const float alpha_ij = max(alpha_trigger_ij, alpha_floor_ij);
+  if (alpha_ij <= 0.f) return;
+
+  const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
+  const float fac = Wbar_ij / (rho_i * rho_j) * a_factor_comoving_to_physical;
+
+  for (int k = 0; k < 3; k++) {
+    const float shape_k = (rho_i * F_i[k] - rho_j * F_j[k]) * fac;
+    dissipation_flux_i[k] += mj * (alpha_ij * c_i * shape_k);
+    dissipation_flux_j[k] += -mi * (alpha_ij * c_j * shape_k);
+  }
+}
+#endif /* ISRF_FLUX_CONSISTENT_DISSIPATION */
+
 /**
  * @brief M1 closure coefficients for one particle, one band, from its own `(u,
  * F, c_M)`; `c_M` normalises the flux (1 for the reduced flux).
@@ -627,6 +657,18 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
   if (fine_rate) {
     fine->div_specific_flux += div[f];
     fine->dissipation_u += diss[f];
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    /* Experiment: the finer member's flux share only; the coarser one's is
+     * dropped here (no pending flux field), so this pair does not conserve. */
+    float dflux[2][3] = {{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
+    radiation_flux_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, cf_i, cf_j,
+        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+        moment_i->specific_flux, moment_j->specific_flux,
+        a_factor_comoving_to_physical, dflux[0], dflux[1]);
+    for (int k = 0; k < 3; k++) fine->dissipation_flux[k] += dflux[f][k];
+#endif
   }
   /* Gains to u over the finer step: -div and +phi*diss. */
   coarse->pending_transport_u += -div[1 - f] * dt_fine;
@@ -746,6 +788,16 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
         op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
         moment_i->u, moment_j->u, a_factor_comoving_to_physical,
         &moment_i->dissipation_u, &moment_j->dissipation_u);
+
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    radiation_flux_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_i, c_j,
+        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+        moment_i->specific_flux, moment_j->specific_flux,
+        a_factor_comoving_to_physical, moment_i->dissipation_flux,
+        moment_j->dissipation_flux);
+#endif
   }
 }
 
@@ -837,6 +889,17 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
         op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
         moment_i->u, moment_j->u, a_factor_comoving_to_physical,
         &moment_i->dissipation_u, &unused_dissipation_u);
+
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    float unused_dissipation_flux[3] = {0.f, 0.f, 0.f};
+    radiation_flux_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, rho_i, rho_j, c_i, c_j,
+        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+        moment_i->specific_flux, moment_j->specific_flux,
+        a_factor_comoving_to_physical, moment_i->dissipation_flux,
+        unused_dissipation_flux);
+#endif
   }
 }
 

@@ -113,6 +113,12 @@ struct feedback_isrf_moment_data {
   /*! Artificial-dissipation source term from the force loop. Scratch. */
   float dissipation_u;
 
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+  /*! Artificial-dissipation rate of the reduced flux, same pair coefficient
+      as #dissipation_u. Scratch. */
+  float dissipation_flux[3];
+#endif
+
   /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
       loop, per physical length. Scratch. */
   float grad_u[3];
