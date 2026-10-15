@@ -51,17 +51,20 @@ struct rt_part_data {
     float flux[3][3];
   } gradient[RT_NGROUPS];
 
+  /*! The gradients above are stored divided by this power of two. */
+  float gradient_scale_inv;
+
   /* cell slope limiter quantities */
   /* array of length two: store min among all neighbours
    * at first index, store max among all neighbours at
    * second index */
-  /* the Gizmo-style slope limiting doesn't help for RT as is,
-   * so we're skipping it for now. */
-  /* struct { */
-  /*   float energy_density[2]; */
-  /*   float flux[3][2]; */
-  /*   [> float maxr; [> just use the hydro one <] <] */
-  /* } limiter[RT_NGROUPS]; */
+  struct {
+    float energy_density[2];
+    float flux[3][2];
+  } limiter[RT_NGROUPS];
+
+  /*! Largest distance to a neighbour, for the cell slope limiter. */
+  float limiter_maxr;
 
   /* Data for thermochemistry */
   struct {
