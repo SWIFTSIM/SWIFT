@@ -1111,6 +1111,88 @@ double cooling_get_mean_molecular_weight(
 }
 
 /**
+ * @brief Compute the specific internal energy at which a #part has a given
+ * temperature, based on geajay.
+ *
+ * @param phys_const #phys_const data structure.
+ * @param us The internal system of units.
+ * @param cosmo #cosmology data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param T_target The temperature in K.
+ * @return The physical specific internal energy.
+ */
+double cooling_get_internal_energy_from_temperature(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp, const double T_target) {
+
+  const double density = cooling_get_physical_density(p, cosmo, cooling);
+
+  /* In mode 0 the energy is the first guess of the iteration. */
+  geajay_particle_inputs inputs;
+  cooling_fill_inputs(cooling, p, cosmo, density,
+                      hydro_get_drifted_physical_internal_energy(p, cosmo),
+                      &inputs);
+
+  double u;
+  if (geajay_particle_internal_energy_from_temperature(
+          cooling->context, &cooling->layout, xp, &inputs, T_target, &u) !=
+      GR_SUCCESS)
+    error(
+        "Particle %lld: geajay cannot give the energy for T = %e K "
+        "(refused arguments or an energy that is not positive).",
+        p->id, T_target);
+
+  return u;
+}
+
+/**
+ * @brief Compute the mean molecular weight of gas in ionisation equilibrium
+ * based on geajay.
+ *
+ * The gas has no species here, so geajay uses its density, energy and
+ * metallicity. The UV background is switched off above the self-shielding
+ * density, as for a particle.
+ *
+ * @param u Physical specific internal energy.
+ * @param rho_physical Physical gas density.
+ * @param metal_mass_fraction Metal mass fraction of the gas.
+ * @param phys_const #phys_const data structure.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cooling #cooling_function_data struct.
+ */
+double cooling_get_equilibrium_mean_molecular_weight(
+    const float u, const double rho_physical, const double metal_mass_fraction,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling) {
+
+  geajay_particle_inputs inputs;
+  geajay_particle_inputs_init(cooling->context, &inputs);
+  inputs.density = rho_physical;
+  inputs.internal_energy = u;
+  inputs.has_metal = 1;
+  inputs.metal = metal_mass_fraction * rho_physical;
+
+  if (cooling->with_uv_background && cooling->self_shielding_method < 0 &&
+      rho_physical > cooling->self_shielding_threshold)
+    inputs.uvb_off = 1;
+
+  double mu;
+  if (geajay_particle_equilibrium_mean_molecular_weight(
+          cooling->context, &inputs, &mu) != GR_SUCCESS)
+    error(
+        "geajay refused the arguments of the equilibrium mean molecular "
+        "weight (density %e, energy %e, metal mass fraction %e).",
+        rho_physical, (double)u, metal_mass_fraction);
+
+  return mu;
+}
+
+/**
  * @brief Compute the y-Compton contribution of a #part based on the cooling
  * function.
  *

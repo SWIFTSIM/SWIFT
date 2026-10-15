@@ -774,6 +774,19 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
 }
 
 /**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * sink particle.
+ *
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_metal_mass_fraction(const struct sink *restrict sink) {
+
+  return sink->chemistry_data
+      .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+}
+
+/**
  * @brief Returns the abundances (metal mass fraction) of the
  * star particle to be used in feedback/enrichment related routines.
  *
