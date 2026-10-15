@@ -962,7 +962,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   double u_CMB_agora = 0.0;
   if (cooling->agora_cmb_temperature_floor) {
     u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
-        phys_const, us, cosmo, hydro_props, cooling, p, xp);
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
 
     if (u_ad_before < u_CMB_agora) {
       u_ad_before = u_CMB_agora;
@@ -998,7 +998,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
        recompute the floor from the post-solve composition. */
     if (cooling->agora_cmb_temperature_floor) {
       u_CMB_agora = cooling_agora_cmb_floor_internal_energy(
-          phys_const, us, cosmo, hydro_props, cooling, p, xp);
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_new);
     }
   }
 
@@ -1027,6 +1027,33 @@ void cooling_cool_part(const struct phys_const *phys_const,
 }
 
 /**
+ * @brief Compute the temperature of a #part at a given energy, based on geajay.
+ *
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param u Physical specific internal energy.
+ */
+double cooling_get_temperature_at_energy(
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p, const struct xpart *xp, const double u) {
+
+  const double density = cooling_get_physical_density(p, cosmo, cooling);
+
+  geajay_particle_inputs inputs;
+  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
+
+  double temperature;
+  if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
+                                  &inputs, &temperature) != GR_SUCCESS)
+    error("Particle %lld: geajay refused the arguments of the temperature.",
+          p->id);
+
+  return temperature;
+}
+
+/**
  * @brief Compute the temperature of a #part based on the cooling function.
  *
  * @param phys_const #phys_const data structure.
@@ -1044,19 +1071,9 @@ float cooling_get_temperature(const struct phys_const *phys_const,
                               const struct cooling_function_data *cooling,
                               const struct part *p, const struct xpart *xp) {
 
-  const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-  const double density = cooling_get_physical_density(p, cosmo, cooling);
-
-  geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
-
-  double temperature;
-  if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
-                                  &inputs, &temperature) != GR_SUCCESS)
-    error("Particle %lld: geajay refused the arguments of the temperature.",
-          p->id);
-
-  return temperature;
+  return cooling_get_temperature_at_energy(
+      cosmo, cooling, p, xp,
+      hydro_get_drifted_physical_internal_energy(p, cosmo));
 }
 
 /**

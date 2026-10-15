@@ -166,11 +166,29 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
 }
 
 /**
+ * @brief Compute the temperature of a particle at a given energy.
+ *
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle.
+ * @param u Physical specific internal energy.
+ * @return The temperature in K.
+ */
+double cooling_get_temperature_at_energy(
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p, const struct xpart *xp, const double u);
+
+/**
  * @brief compute the AGORA redshift-dependent CMB-floor specific internal
  * energy for a particle, from its current composition.
  *
  * Call again after the composition changes (e.g. a Grackle chemistry solve)
  * to keep it consistent with cooling_get_temperature()'s later mu.
+ *
+ * The inverse is costly in mode 0, so it runs only if the particle at u_now is
+ * colder than the floor. Otherwise the floor does not bind at u_now and the
+ * function returns 0.
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -179,17 +197,24 @@ cooling_temperature_from_internal_energy(const double u, const double mu,
  * @param cooling The #cooling_function_data used in the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
- * @return Specific internal energy corresponding to T_CMB,0 * (1+z).
+ * @param u_now Physical specific internal energy that the floor is applied to.
+ * @return Specific internal energy corresponding to T_CMB,0 * (1+z), or 0 if
+ *   the temperature at u_now is not below it.
  */
 __attribute__((always_inline)) INLINE static double
 cooling_agora_cmb_floor_internal_energy(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling, const struct part *p,
-    const struct xpart *xp) {
+    const struct xpart *xp, const double u_now) {
 
   const double z = (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
   const double T_CMB_agora = phys_const->const_T_CMB_0 * (z + 1.0);
+
+  /* geajay takes no non-positive energy: that case goes to the inverse. */
+  if (u_now > 0. && cooling_get_temperature_at_energy(cosmo, cooling, p, xp,
+                                                      u_now) >= T_CMB_agora)
+    return 0.;
 
   return cooling_get_internal_energy_from_temperature(
       phys_const, us, cosmo, hydro_props, cooling, p, xp, T_CMB_agora);
