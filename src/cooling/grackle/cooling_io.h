@@ -21,8 +21,10 @@
 #define SWIFT_COOLING_GRACKLE_IO_H
 
 /* Local includes */
+#include "cooling.h"
 #include "cooling_properties.h"
 #include "cooling_struct.h"
+#include "engine.h"
 #include "io_properties.h"
 #include "physical_constants.h"
 #include "units.h"
@@ -53,6 +55,23 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 #endif
 }
 #endif
+
+/**
+ * @brief Cooling time of a particle for the snapshot.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The physical cooling time.
+ */
+INLINE static void convert_part_cooling_time(const struct engine *e,
+                                             const struct part *p,
+                                             const struct xpart *xp,
+                                             double *ret) {
+  *ret =
+      cooling_time(e->physical_constants, e->internal_units,
+                   e->hydro_properties, e->cosmology, e->cooling_func, p, xp);
+}
 
 /**
  * @brief Specifies which particle fields to write to a dataset
@@ -128,6 +147,13 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
                            cooling_data.HDI_frac, "HDI mass fraction");
   num += 3;
 #endif
+
+  list[num] = io_make_physical_output_field_convert_part(
+      "CoolingTimes", DOUBLE, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
+      /*can convert to comoving=*/1, convert_part_cooling_time,
+      "Cooling times u / (du/dt) of the gas at its stored state, not a step "
+      "average. Negative for net cooling.");
+  num++;
 
   return num;
 }
