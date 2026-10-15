@@ -72,6 +72,9 @@ void radiation_first_init_part(struct part *restrict p) {
     moment->div_specific_flux = 0.f;
     moment->pending_transport_u = 0.f;
     moment->pending_dissipation_u = 0.f;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    for (int k = 0; k < 3; k++) moment->pending_dissipation_flux[k] = 0.f;
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
     moment->u_min_since_snapshot = 0.f;
     moment->cumulative_injected = 0.f;
@@ -494,6 +497,14 @@ __attribute__((noinline)) static void radiation_add_pending_part(
     absorbed[m] = -expm1(-a) * pend_d + (1. - phi) * pend_t;
     mo->pending_transport_u = 0.f;
     mo->pending_dissipation_u = 0.f;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    /* Weight one, as the finer member's flux term has no decay. */
+    for (int k = 0; k < 3; k++) {
+      mo->specific_flux[k] +=
+          (float)(c_hyp * (double)mo->pending_dissipation_flux[k]);
+      mo->pending_dissipation_flux[k] = 0.f;
+    }
+#endif
   }
 
   double transfer = 0.;
@@ -654,8 +665,14 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   }
 
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-    if (fd->isrf_moment[m].pending_transport_u != 0.f ||
-        fd->isrf_moment[m].pending_dissipation_u != 0.f) {
+    const struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
+    int pending =
+        mo->pending_transport_u != 0.f || mo->pending_dissipation_u != 0.f;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+    for (int k = 0; k < 3; k++)
+      pending = pending || mo->pending_dissipation_flux[k] != 0.f;
+#endif
+    if (pending) {
       radiation_add_pending_part(p, e);
       break;
     }

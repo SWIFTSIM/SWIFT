@@ -168,8 +168,9 @@ radiation_dissipation_force_accumulate_band(
 #ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
 /**
  * @brief Experiment: the same artificial dissipation applied to the reduced
- * flux, with the pair coefficient of #radiation_dissipation_force_accumulate_band,
- * so both characteristic waves u +- F are damped alike.
+ * flux, with the pair coefficient of
+ * #radiation_dissipation_force_accumulate_band, so both characteristic waves u
+ * +- F are damped alike.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_flux_dissipation_force_accumulate_band(
@@ -654,19 +655,19 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
   const int f = i_is_fine ? 0 : 1;
   struct feedback_isrf_moment_data *fine = i_is_fine ? moment_i : moment_j;
   struct feedback_isrf_moment_data *coarse = i_is_fine ? moment_j : moment_i;
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+  float dflux[2][3] = {{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
+  radiation_flux_dissipation_force_accumulate_band(
+      wi_dr, wj_dr, mi, mj, rho_i, rho_j, cf_i, cf_j,
+      op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+      op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+      moment_i->specific_flux, moment_j->specific_flux,
+      a_factor_comoving_to_physical, dflux[0], dflux[1]);
+#endif
   if (fine_rate) {
     fine->div_specific_flux += div[f];
     fine->dissipation_u += diss[f];
 #ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
-    /* Experiment: the finer member's flux share only; the coarser one's is
-     * dropped here (no pending flux field), so this pair does not conserve. */
-    float dflux[2][3] = {{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
-    radiation_flux_dissipation_force_accumulate_band(
-        wi_dr, wj_dr, mi, mj, rho_i, rho_j, cf_i, cf_j,
-        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
-        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
-        moment_i->specific_flux, moment_j->specific_flux,
-        a_factor_comoving_to_physical, dflux[0], dflux[1]);
     for (int k = 0; k < 3; k++) fine->dissipation_flux[k] += dflux[f][k];
 #endif
   }
@@ -674,6 +675,12 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
   coarse->pending_transport_u += -div[1 - f] * dt_fine;
   coarse->pending_dissipation_u +=
       (float)((double)diss[1 - f] * (double)dt_fine * phi_fine);
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+  /* Same weight as the finer member's flux term, dt*phi. */
+  for (int k = 0; k < 3; k++)
+    coarse->pending_dissipation_flux[k] +=
+        (float)((double)dflux[1 - f][k] * (double)dt_fine * phi_fine);
+#endif
 }
 
 /**

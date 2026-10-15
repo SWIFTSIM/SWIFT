@@ -137,6 +137,13 @@ struct feedback_isrf_moment_data {
       weighted by their phi. Same life cycle as #pending_transport_u. */
   float pending_dissipation_u;
 
+#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
+  /*! Reduced-flux dissipation amount owed by finer neighbours, divided by
+      c_hyp and weighted by their phi. Same life cycle as
+      #pending_transport_u. */
+  float pending_dissipation_flux[3];
+#endif
+
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u at the end of an update since the previous snapshot,
       0 if none. */
