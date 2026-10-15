@@ -832,7 +832,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
   if (!with_sidm && count_siparts_in)
     error(
-        "Not running with hydro but about to receive gas particles in "
+        "Not running with SIDM but about to receive SIDM particles in "
         "proxies!");
 
   if (e->verbose)

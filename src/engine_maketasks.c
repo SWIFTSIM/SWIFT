@@ -4296,7 +4296,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_sink_gas_swallow=*/NULL,
                                  /*t_sink_formation_count=*/NULL);
 
-    /* Add the send tasks for the cells in the proxy that have a black holes
+    /* Add the send tasks for the cells in the proxy that have a SIDM
      * connection. */
     if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_sidm))
       engine_addtasks_send_sidm(e, ci, cj, /*t_xv=*/NULL, /*t_rho=*/NULL);
@@ -4413,7 +4413,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  /*t_sink_gas_swallow=*/NULL,
                                  /*t_sink_formation_counts=*/NULL, tend);
 
-    /* Add the recv tasks for the cells in the proxy that have a black holes
+    /* Add the recv tasks for the cells in the proxy that have a SIDM
      * connection. */
     if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_sidm))
       engine_addtasks_recv_sidm(e, ci, /*t_xv=*/NULL,

@@ -297,7 +297,7 @@ void engine_exchange_strays(
       error("Attempting to exchange an inhibited particle");
 #endif
 
-    /* Load the spart into the proxy */
+    /* Load the sipart into the proxy */
     proxy_siparts_load(&e->proxies[pid], &s->siparts[offset_siparts + k], 1);
 
 #ifdef WITH_CSDS
