@@ -20,6 +20,7 @@
 #define SWIFT_BASIC_SIDM_PROPERTIES_H
 
 /* Local header */
+#include "kernel_sidm.h"
 #include "parser.h"
 #include "units.h"
 
@@ -116,11 +117,12 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
                                                 sidm_props_default_h_tolerance);
 
   /* Get derived properties */
-  sip->target_neighbours = pow_dimension(sip->eta_neighbours) * kernel_norm;
+  sip->target_neighbours =
+      pow_dimension(sip->eta_neighbours) * sidm_kernel_norm;
   const float delta_eta = sip->eta_neighbours * (1.f + sip->h_tolerance);
   sip->delta_neighbours =
       (pow_dimension(delta_eta) - pow_dimension(sip->eta_neighbours)) *
-      kernel_norm;
+      sidm_kernel_norm;
 
   /* Maximal smoothing length */
   sip->h_max = parser_get_opt_param_float(params, "BasicSIDM:h_max",
@@ -171,7 +173,7 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
 INLINE static void sidm_props_update(struct sidm_props *sip,
                                      const struct gravity_props *gp,
                                      const struct cosmology *cosmo) {
-  sip->h_min = sip->h_min_ratio * gp->epsilon_DM_cur / kernel_gamma;
+  sip->h_min = sip->h_min_ratio * gp->epsilon_DM_cur / sidm_kernel_gamma;
 }
 
 /**

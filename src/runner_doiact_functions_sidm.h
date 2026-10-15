@@ -70,8 +70,8 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(ci) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(ci) : FLT_MAX;
 #endif
 
   /* Get the relative distance between the pairs, wrapping. */
@@ -95,7 +95,7 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
     const int sipi_active = sipart_is_active(sipi, e);
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
     const float sipix[3] = {(float)(sipi->x[0] - (cj->loc[0] + shift[0])),
                             (float)(sipi->x[1] - (cj->loc[1] + shift[1])),
                             (float)(sipi->x[2] - (cj->loc[2] + shift[2]))};
@@ -112,7 +112,7 @@ void DOPAIR1_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
       const int sipj_active = sipart_is_active(sipj, e);
       const char depth_j = sipj->depth_h;
       const float hj = sipj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
       /* Compute the pairwise distance. */
       const float sipjx[3] = {(float)(sipj->x[0] - cj->loc[0]),
@@ -203,8 +203,8 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(ci) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(ci) : FLT_MAX;
 #endif
 
   /* Get the relative distance between the pairs, wrapping. */
@@ -228,7 +228,7 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
     const int pi_active = sipart_is_active(sipi, e);
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
     const float sipix[3] = {(float)(sipi->x[0] - (cj->loc[0] + shift[0])),
                             (float)(sipi->x[1] - (cj->loc[1] + shift[1])),
                             (float)(sipi->x[2] - (cj->loc[2] + shift[2]))};
@@ -245,7 +245,7 @@ void DOPAIR2_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
       const int pj_active = sipart_is_active(sipj, e);
       const char depth_j = sipj->depth_h;
       const float hj = sipj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
       /* Compute the pairwise distance. */
       const float sipjx[3] = {(float)(sipj->x[0] - cj->loc[0]),
@@ -342,8 +342,8 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(c) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(c) : FLT_MAX;
 #endif
 
   /* Loop over the parts in ci. */
@@ -358,7 +358,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
     const int sipi_active = sipart_is_active(sipi, e);
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
     const float sipix[3] = {(float)(sipi->x[0] - c->loc[0]),
                             (float)(sipi->x[1] - c->loc[1]),
                             (float)(sipi->x[2] - c->loc[2])};
@@ -373,7 +373,7 @@ void DOSELF1_SIDM_NAIVE(struct runner *r, const struct cell *c,
       if (sipart_is_inhibited(sipj, e)) continue;
 
       const float hj = sipj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const float hjg2 = hj * hj * sidm_kernel_gamma2;
       const int sipj_active = sipart_is_active(sipj, e);
       const char depth_j = sipj->depth_h;
 
@@ -472,8 +472,8 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(c) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(c) : FLT_MAX;
 #endif
 
   /* Loop over the parts in ci. */
@@ -488,7 +488,7 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
     const int pi_active = sipart_is_active(sipi, e);
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
     const float sipix[3] = {(float)(sipi->x[0] - c->loc[0]),
                             (float)(sipi->x[1] - c->loc[1]),
                             (float)(sipi->x[2] - c->loc[2])};
@@ -505,7 +505,7 @@ void DOSELF2_SIDM_NAIVE(struct runner *r, const struct cell *c,
       const int pj_active = sipart_is_active(sipj, e);
       const char depth_j = sipj->depth_h;
       const float hj = sipj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
       /* Compute the pairwise distance. */
       const float sipjx[3] = {(float)(sipj->x[0] - c->loc[0]),
@@ -603,7 +603,7 @@ void DOPAIR_SUBSET_SIDM_NAIVE(struct runner *r, const struct cell *restrict ci,
     double sipix[3];
     for (int k = 0; k < 3; k++) sipix[k] = sipi->x[k] - shift[k];
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!sipart_is_active(sipi, e))
@@ -694,10 +694,10 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
       const double sipiy = sipi->x[1] - (shift[1]);
       const double sipiz = sipi->x[2] - (shift[2]);
       const float hi = sipi->h;
-      const float hig2 = hi * hi * kernel_gamma2;
-      const double di = hi * kernel_gamma + dxj + sipix * runner_shift[sid][0] +
-                        sipiy * runner_shift[sid][1] +
-                        sipiz * runner_shift[sid][2];
+      const float hig2 = hi * hi * sidm_kernel_gamma2;
+      const double di =
+          hi * sidm_kernel_gamma + dxj + sipix * runner_shift[sid][0] +
+          sipiy * runner_shift[sid][1] + sipiz * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
       for (int pjd = 0; pjd < sicount_j && sort_j[pjd].d < di; pjd++) {
@@ -748,9 +748,9 @@ void DOPAIR_SUBSET_SIDM(struct runner *r, const struct cell *restrict ci,
       const double sipiy = sipi->x[1] - (shift[1]);
       const double sipiz = sipi->x[2] - (shift[2]);
       const float hi = sipi->h;
-      const float hig2 = hi * hi * kernel_gamma2;
+      const float hig2 = hi * hi * sidm_kernel_gamma2;
       const double di =
-          -hi * kernel_gamma - dxj + sipix * runner_shift[sid][0] +
+          -hi * sidm_kernel_gamma - dxj + sipix * runner_shift[sid][0] +
           sipiy * runner_shift[sid][1] + sipiz * runner_shift[sid][2];
 
       /* Loop over the parts in cj. */
@@ -897,7 +897,7 @@ void DOSELF_SUBSET_SIDM(struct runner *r, const struct cell *c,
                             (float)(sipi->x[1] - c->loc[1]),
                             (float)(sipi->x[2] - c->loc[2])};
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!sipart_is_active(sipi, e))
@@ -1007,14 +1007,14 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(ci) : 0.;
 #endif
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(ci) : FLT_MAX;
 
   /* Get some other useful values. */
   const double hi_max =
-      min(h_max, ci->sidm.h_max_active) * kernel_gamma - rshift;
-  const double hj_max = min(h_max, cj->sidm.h_max_active) * kernel_gamma;
+      min(h_max, ci->sidm.h_max_active) * sidm_kernel_gamma - rshift;
+  const double hj_max = min(h_max, cj->sidm.h_max_active) * sidm_kernel_gamma;
   const int count_i = ci->sidm.count;
   const int count_j = cj->sidm.count;
   struct sipart *restrict siparts_i = ci->sidm.parts;
@@ -1052,11 +1052,12 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
       if (depth_i > max_depth) continue;
 
       /* Is there anything we need to interact with ? */
-      const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+      const double di =
+          sort_i[pid].d + hi * sidm_kernel_gamma + dx_max - rshift;
       if (di < dj_min) continue;
 
       /* Get some additional information about pi */
-      const float hig2 = hi * hi * kernel_gamma2;
+      const float hig2 = hi * hi * sidm_kernel_gamma2;
       const float sipix = sipi->x[0] - (cj->loc[0] + shift[0]);
       const float sipiy = sipi->x[1] - (cj->loc[1] + shift[1]);
       const float sipiz = sipi->x[2] - (cj->loc[2] + shift[2]);
@@ -1156,11 +1157,12 @@ void DOPAIR1_SIDM(struct runner *r, const struct cell *restrict ci,
       if (depth_j > max_depth) continue;
 
       /* Is there anything we need to interact with ? */
-      const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max + rshift;
+      const double dj =
+          sort_j[pjd].d - hj * sidm_kernel_gamma - dx_max + rshift;
       if (dj - rshift > di_max) continue;
 
       /* Get some additional information about pj */
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const float hjg2 = hj * hj * sidm_kernel_gamma2;
       const float sipjx = sipj->x[0] - cj->loc[0];
       const float sipjy = sipj->x[1] - cj->loc[1];
       const float sipjz = sipj->x[2] - cj->loc[2];
@@ -1330,8 +1332,8 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? ci->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? ci->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(ci) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(ci) : FLT_MAX;
 #endif
 
   /* Get some other useful values. */
@@ -1414,7 +1416,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
      we are out of range of anything in cj (using the maximal hi). */
   for (int pid = count_i - 1;
        pid >= 0 &&
-       sort_i[pid].d + hi_max * kernel_gamma + dx_max - rshift > dj_min;
+       sort_i[pid].d + hi_max * sidm_kernel_gamma + dx_max - rshift > dj_min;
        pid--) {
 
     /* Get a hold of the ith part in ci. */
@@ -1427,11 +1429,11 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
     const float hi = sipi->h;
 
     /* Is there anything we need to interact with (for this specific hi) ? */
-    const double di = sort_i[pid].d + hi * kernel_gamma + dx_max - rshift;
+    const double di = sort_i[pid].d + hi * sidm_kernel_gamma + dx_max - rshift;
     if (di < dj_min) continue;
 
     /* Get some additional information about pi */
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
     const float sipix = sipi->x[0] - shift_i[0];
     const float sipiy = sipi->x[1] - shift_i[1];
     const float sipiz = sipi->x[2] - shift_i[2];
@@ -1620,7 +1622,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
      we are out of range of anything in ci (using the maximal hj). */
   for (int pjd = 0;
        pjd < count_j &&
-       sort_j[pjd].d - hj_max * kernel_gamma - dx_max < di_max - rshift;
+       sort_j[pjd].d - hj_max * sidm_kernel_gamma - dx_max < di_max - rshift;
        pjd++) {
 
     /* Get a hold of the jth part in cj. */
@@ -1633,11 +1635,11 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
     const float hj = sipj->h;
 
     /* Is there anything we need to interact with (for this specific hj) ? */
-    const double dj = sort_j[pjd].d - hj * kernel_gamma - dx_max;
+    const double dj = sort_j[pjd].d - hj * sidm_kernel_gamma - dx_max;
     if (dj > di_max - rshift) continue;
 
     /* Get some additional information about pj */
-    const float hjg2 = hj * hj * kernel_gamma2;
+    const float hjg2 = hj * hj * sidm_kernel_gamma2;
     const float sipjx = sipj->x[0] - shift_j[0];
     const float sipjy = sipj->x[1] - shift_j[1];
     const float sipjz = sipj->x[2] - shift_j[2];
@@ -1664,7 +1666,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
         if (sipart_is_inhibited(sipi, e)) continue;
 
         const float hi = sipi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi * sidm_kernel_gamma2;
 
         /* Get the position of pi in the right frame */
         const float sipix = sipi->x[0] - shift_i[0];
@@ -1740,7 +1742,7 @@ void DOPAIR2_SIDM(struct runner *r, const struct cell *restrict ci,
         if (sipart_is_inhibited(sipi, e)) continue;
 
         const float hi = sipi->h;
-        const float hig2 = hi * hi * kernel_gamma2;
+        const float hig2 = hi * hi * sidm_kernel_gamma2;
 
         /* Get the position of pi in the right frame */
         const float sipix = sipi->x[0] - shift_i[0];
@@ -1900,8 +1902,8 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(c) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(c) : FLT_MAX;
 #endif
 
   /* Set up a list of the particles for which we want to compute interactions */
@@ -1940,7 +1942,7 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
     /* Get the particle position and (square of) search radius. */
     const double sipix[3] = {sipi->x[0], sipi->x[1], sipi->x[2]};
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
 
     /* Is the ith particle in the range of h we care about? */
     const int update_i = (sipart_is_active(sipi, e)) &&
@@ -1960,7 +1962,7 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* This particle's (square of) search radius. */
         const float hj = sipj->h;
-        const float hjg2 = hj * hj * kernel_gamma2;
+        const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
 #if defined(SWIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
@@ -2014,7 +2016,7 @@ void DOSELF1_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* This particle's (square of) search radius. */
         const float hj = sipj->h;
-        const float hjg2 = hj * hj * kernel_gamma2;
+        const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
 #if defined(SWIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
@@ -2115,8 +2117,8 @@ void DOSELF1_BRANCH_SIDM(struct runner *r, const struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Did we mess up the recursion? */
-  if (c->sidm.h_max_old * kernel_gamma > c->dmin)
-    if (!limit_max_h && c->sidm.h_max_active * kernel_gamma > c->dmin)
+  if (c->sidm.h_max_old * sidm_kernel_gamma > c->dmin)
+    if (!limit_max_h && c->sidm.h_max_active * sidm_kernel_gamma > c->dmin)
       error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */
@@ -2158,8 +2160,8 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Get the limits in h (if any) */
-  const float h_min = limit_min_h ? c->h_min_allowed : 0.;
-  const float h_max = limit_max_h ? c->h_max_allowed : FLT_MAX;
+  const float h_min = limit_min_h ? cell_sidm_h_min_allowed(c) : 0.;
+  const float h_max = limit_max_h ? cell_sidm_h_max_allowed(c) : FLT_MAX;
 #endif
 
   /* Set up a list of the particles for which we want to compute interactions */
@@ -2198,7 +2200,7 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
     /* Get the particle position and (square of) search radius. */
     const double sipix[3] = {sipi->x[0], sipi->x[1], sipi->x[2]};
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
 
     /* Is the ith particle active and in the range of h we care about? */
     const int update_i = sipart_is_active(sipi, e) && (depth_i >= min_depth) &&
@@ -2215,7 +2217,7 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* This particle's (square of) search radius. */
         const float hj = sipj->h;
-        const float hjg2 = hj * hj * kernel_gamma2;
+        const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
@@ -2269,7 +2271,7 @@ void DOSELF2_SIDM(struct runner *r, const struct cell *c, const int limit_min_h,
 
         /* This particle's (square of) search radius. */
         const float hj = sipj->h;
-        const float hjg2 = hj * hj * kernel_gamma2;
+        const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time */
@@ -2365,8 +2367,8 @@ void DOSELF2_BRANCH_SIDM(struct runner *r, const struct cell *c,
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Did we mess up the recursion? */
-  if (c->sidm.h_max_old * kernel_gamma > c->dmin)
-    if (!limit_max_h && c->sidm.h_max_active * kernel_gamma > c->dmin)
+  if (c->sidm.h_max_old * sidm_kernel_gamma > c->dmin)
+    if (!limit_max_h && c->sidm.h_max_active * sidm_kernel_gamma > c->dmin)
       error("Cell smaller than smoothing length");
 
   /* Did we mess up the recursion? */

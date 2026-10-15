@@ -829,7 +829,7 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
 
     sipi = &ci->sidm.parts[i];
     hi = sipi->h;
-    hig2 = hi * hi * kernel_gamma2;
+    hig2 = hi * hi * sidm_kernel_gamma2;
 
     /* Skip inactive particles. */
     if (!sipart_is_active(sipi, e)) continue;
@@ -868,7 +868,7 @@ void pairs_all_sidm_density(struct runner *r, struct cell *ci,
 
     sipj = &cj->sidm.parts[j];
     hj = sipj->h;
-    hjg2 = hj * hj * kernel_gamma2;
+    hjg2 = hj * hj * sidm_kernel_gamma2;
 
     /* Skip inactive particles. */
     if (!sipart_is_active(sipj, e)) continue;
@@ -918,7 +918,7 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
 
     sipi = &ci->sidm.parts[i];
     hi = sipi->h;
-    hig2 = hi * hi * kernel_gamma2;
+    hig2 = hi * hi * sidm_kernel_gamma2;
 
     const double sipix[3] = {sipi->x[0], sipi->x[1], sipi->x[2]};
 
@@ -926,7 +926,7 @@ void self_all_sidm_density(struct runner *r, struct cell *ci) {
 
       sipj = &ci->sidm.parts[j];
       hj = sipj->h;
-      hjg2 = hj * hj * kernel_gamma2;
+      hjg2 = hj * hj * sidm_kernel_gamma2;
 
       if (sipi == sipj) continue;
 
@@ -984,7 +984,7 @@ void self_all_sidm_force(struct runner *r, struct cell *c,
 
     const char depth_i = sipi->depth_h;
     const float hi = sipi->h;
-    const float hig2 = hi * hi * kernel_gamma2;
+    const float hig2 = hi * hi * sidm_kernel_gamma2;
     const double sipix[3] = {sipi->x[0], sipi->x[1], sipi->x[2]};
 
     const int doi = sipart_is_active(sipi, e) && (depth_i >= min_depth) &&
@@ -997,7 +997,7 @@ void self_all_sidm_force(struct runner *r, struct cell *c,
 
       const char depth_j = sipj->depth_h;
       const float hj = sipj->h;
-      const float hjg2 = hj * hj * kernel_gamma2;
+      const float hjg2 = hj * hj * sidm_kernel_gamma2;
 
       const int doj = sipart_is_active(sipj, e) && (depth_j >= min_depth) &&
                       (depth_j <= max_depth);
@@ -1064,7 +1064,7 @@ void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj,
 
     const char depth_i = sipi->depth_h;
     hi = sipi->h;
-    hig2 = hi * hi * kernel_gamma2;
+    hig2 = hi * hi * sidm_kernel_gamma2;
 
     const float sipix = sipi->x[0] - shift_i[0];
     const float sipiy = sipi->x[1] - shift_i[1];
@@ -1081,7 +1081,7 @@ void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj,
 
       const char depth_j = sipj->depth_h;
       hj = sipj->h;
-      hjg2 = hj * hj * kernel_gamma2;
+      hjg2 = hj * hj * sidm_kernel_gamma2;
 
       const int doj = sipart_is_active(sipj, e) && local_j &&
                       (depth_j >= min_depth) && (depth_j <= max_depth);

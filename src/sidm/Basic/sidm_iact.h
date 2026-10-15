@@ -20,7 +20,7 @@
 #define SWIFT_BASIC_SIDM_IACT_H
 
 /* Local headers. */
-#include "kernel_dark_matter.h"
+#include "kernel_sidm.h"
 #include "random.h"
 #include "sidm_debug.h"
 #include "sidm_properties.h"
@@ -57,7 +57,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
   const float hi_inv = 1.f / hi;
   const float ui = r * hi_inv;
 
-  kernel_deval(ui, &wi, &wi_dx);
+  sidm_kernel_deval(ui, &wi, &wi_dx);
 
   sipi->rho += mj * wi;
   sipi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
@@ -67,7 +67,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_density(
   /* Compute density of pj. */
   const float hj_inv = 1.f / hj;
   const float uj = r * hj_inv;
-  kernel_deval(uj, &wj, &wj_dx);
+  sidm_kernel_deval(uj, &wj, &wj_dx);
 
   sipj->rho += mi * wj;
   sipj->density.rho_dh -= mi * (hydro_dimension * wj + uj * wj_dx);
@@ -112,7 +112,7 @@ runner_iact_nonsym_sidm_density(
 
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
-  kernel_deval(ui, &wi, &wi_dx);
+  sidm_kernel_deval(ui, &wi, &wi_dx);
 
   sipi->rho += mj * wi;
   sipi->density.rho_dh -= mj * (hydro_dimension * wi + ui * wi_dx);
@@ -275,7 +275,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
     dt_sipj = get_timestep(sipj->time_bin, time_base);
   }
 
-  float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
+  float lambda_ij = sidm_kernel_overlap(r, hi, hj) * cosmo->a3_inv;
 
   /* Pair scattering rate. */
   const float m_pair = 0.5f * (mi + mj);
@@ -376,7 +376,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
     dt_sipj = get_timestep(sipj->time_bin, time_base);
   }
 
-  float lambda_ij = sidm_kernel_overlap_tophat(r, hi, hj) * cosmo->a3_inv;
+  float lambda_ij = sidm_kernel_overlap(r, hi, hj) * cosmo->a3_inv;
 
   /* Pair scattering rate (same definition as in the symmetric case) */
   const float m_pair = 0.5f * (mi + mj);

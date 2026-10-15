@@ -43,6 +43,7 @@
 #include "cell_stars.h"
 #include "ghost_stats.h"
 #include "kernel_hydro.h"
+#include "kernel_sidm.h"
 #include "multipole_struct.h"
 #include "part.h"
 #include "periodic.h"
@@ -1198,6 +1199,32 @@ cell_can_recurse_in_self_sinks_task(const struct cell *c) {
 }
 
 /**
+ * @brief Minimal smoothing length of an #sipart that is handled at the
+ * depth of this cell.
+ *
+ * Equivalent of c->h_min_allowed but using the SIDM kernel support.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_sidm_h_min_allowed(
+    const struct cell *c) {
+  return c->dmin * 0.5 * (1. / sidm_kernel_gamma);
+}
+
+/**
+ * @brief Maximal smoothing length of an #sipart that is handled at the
+ * depth of this cell.
+ *
+ * Equivalent of c->h_max_allowed but using the SIDM kernel support.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_sidm_h_max_allowed(
+    const struct cell *c) {
+  return c->dmin * (1. / sidm_kernel_gamma);
+}
+
+/**
  * @brief Can a sub-pair sidm task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1210,7 +1237,7 @@ cell_can_recurse_in_pair_sidm_task(const struct cell *c) {
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->sidm.h_max_old +
+  return c->split && ((sidm_kernel_gamma * c->sidm.h_max_old +
                        c->sidm.dx_max_part_old) < 0.5f * c->dmin);
 }
 
@@ -1225,7 +1252,7 @@ cell_can_recurse_in_subpair_sidm_task(const struct cell *c) {
 
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  return ((kernel_gamma * c->sidm.h_max_active + c->sidm.dx_max_part_old) <
+  return ((sidm_kernel_gamma * c->sidm.h_max_active + c->sidm.dx_max_part_old) <
           0.5f * c->dmin);
 }
 
@@ -1240,7 +1267,7 @@ cell_can_recurse_in_subpair2_sidm_task(const struct cell *c) {
 
   /* If so, is the cut-off radius plus the max distance the parts have moved */
   /* smaller than the sub-cell sizes ? */
-  return ((kernel_gamma * c->sidm.h_max + c->sidm.dx_max_part) <
+  return ((sidm_kernel_gamma * c->sidm.h_max + c->sidm.dx_max_part) <
           0.5f * c->dmin);
 }
 
@@ -1254,7 +1281,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_self_sidm_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->sidm.h_max_old < 0.5f * c->dmin);
+  return c->split && (sidm_kernel_gamma * c->sidm.h_max_old < 0.5f * c->dmin);
 }
 
 /**
@@ -1267,7 +1294,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subself_sidm_task(const struct cell *c) {
 
   /* Is the cell not smaller than the smoothing length? */
-  return (kernel_gamma * c->sidm.h_max_active < 0.5f * c->dmin);
+  return (sidm_kernel_gamma * c->sidm.h_max_active < 0.5f * c->dmin);
 }
 
 /**
@@ -1280,7 +1307,7 @@ __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_subself2_sidm_task(const struct cell *c) {
 
   /* Is the cell split and not smaller than the smoothing length? */
-  return c->split && (kernel_gamma * c->sidm.h_max < 0.5f * c->dmin);
+  return c->split && (sidm_kernel_gamma * c->sidm.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1319,7 +1346,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_pair_sidm_task(
   /* Note that since tasks are create after a rebuild no need to take */
   /* into account any part motion (i.e. dx_max == 0 here) */
   return c->split &&
-         (space_stretch * kernel_gamma * c->sidm.h_max < 0.5f * c->dmin);
+         (space_stretch * sidm_kernel_gamma * c->sidm.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1358,7 +1385,7 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_sidm_task(
   /* Note: No need for more checks here as all the sub-pairs and sub-self */
   /* tasks will be created. So no need to check for h_max */
   return c->split &&
-         (space_stretch * kernel_gamma * c->sidm.h_max < 0.5f * c->dmin);
+         (space_stretch * sidm_kernel_gamma * c->sidm.h_max < 0.5f * c->dmin);
 }
 
 /**
@@ -1540,7 +1567,7 @@ cell_need_rebuild_for_sidm_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
-  if (kernel_gamma * max(ci->sidm.h_max, cj->sidm.h_max) +
+  if (sidm_kernel_gamma * max(ci->sidm.h_max, cj->sidm.h_max) +
           ci->sidm.dx_max_part + cj->sidm.dx_max_part >
       cj->dmin) {
     return 1;
@@ -2252,14 +2279,14 @@ __attribute__((always_inline)) static INLINE void cell_set_sipart_h_depth(
 #endif
 
   /* Case where h is much smaller than the leaf cell itself */
-  if (h < c->h_min_allowed) {
+  if (h < cell_sidm_h_min_allowed(c)) {
     sip->depth_h = c->depth;
     return;
   }
 
   /* Climb the tree to find the correct level */
   while (c != NULL) {
-    if (h >= c->h_min_allowed && h < c->h_max_allowed) {
+    if (h >= cell_sidm_h_min_allowed(c) && h < cell_sidm_h_max_allowed(c)) {
       sip->depth_h = c->depth;
       return;
     }

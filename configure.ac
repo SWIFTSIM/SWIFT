@@ -3082,6 +3082,55 @@ case "$with_sidm" in
    ;;
 esac
 
+# SIDM density / neighbour-search kernel function (defaults to the hydro one).
+AC_ARG_WITH([sidm-kernel],
+   [AS_HELP_STRING([--with-sidm-kernel=<kernel>],
+      [Kernel function to use for the SIDM density loop and neighbour search @<:@cubic-spline, quartic-spline, quintic-spline, wendland-C2, wendland-C4, wendland-C6 default: same as --with-kernel@:>@]
+   )],
+   [with_sidm_kernel="$withval"],
+   [with_sidm_kernel="$with_kernel"]
+)
+case "$with_sidm_kernel" in
+   cubic-spline)
+      AC_DEFINE([SIDM_CUBIC_SPLINE_KERNEL], [1], [Cubic spline SIDM kernel])
+   ;;
+   quartic-spline)
+      AC_DEFINE([SIDM_QUARTIC_SPLINE_KERNEL], [1], [Quartic spline SIDM kernel])
+   ;;
+   quintic-spline)
+      AC_DEFINE([SIDM_QUINTIC_SPLINE_KERNEL], [1], [Quintic spline SIDM kernel])
+   ;;
+   wendland-C2)
+      AC_DEFINE([SIDM_WENDLAND_C2_KERNEL], [1], [Wendland-C2 SIDM kernel])
+   ;;
+   wendland-C4)
+      AC_DEFINE([SIDM_WENDLAND_C4_KERNEL], [1], [Wendland-C4 SIDM kernel])
+   ;;
+   wendland-C6)
+      AC_DEFINE([SIDM_WENDLAND_C6_KERNEL], [1], [Wendland-C6 SIDM kernel])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown SIDM kernel function: $with_sidm_kernel])
+   ;;
+esac
+
+# SIDM overlap (interaction) kernel.
+AC_ARG_WITH([sidm-overlap-kernel],
+   [AS_HELP_STRING([--with-sidm-overlap-kernel=<kernel>],
+      [Kernel used for the SIDM pair overlap in the scattering loop @<:@tophat default: tophat@:>@]
+   )],
+   [with_sidm_overlap_kernel="$withval"],
+   [with_sidm_overlap_kernel="tophat"]
+)
+case "$with_sidm_overlap_kernel" in
+   tophat)
+      AC_DEFINE([SIDM_OVERLAP_TOPHAT], [1], [Top-hat SIDM overlap kernel])
+   ;;
+   *)
+      AC_MSG_ERROR([Unknown SIDM overlap kernel: $with_sidm_overlap_kernel])
+   ;;
+esac
+
 # Forcing terms
 AC_ARG_WITH([forcing],
    [AS_HELP_STRING([--with-forcing=<term>],
@@ -3625,6 +3674,8 @@ AC_MSG_RESULT([
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt
    SIDM mode            : $with_sidm
+   SIDM kernel          : $with_sidm_kernel
+   SIDM overlap kernel  : $with_sidm_overlap_kernel
    Extra i/o            : $with_extra_io
    Hydro cooling ntask  : $with_hydro_cooling_ntask
    Hydro ghost ntask    : $with_hydro_ghost_ntask

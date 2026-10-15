@@ -2239,7 +2239,7 @@ void runner_do_sidm_density_ghost(struct runner *r, struct cell *c, int timer) {
         int has_no_neighbours = 0;
 
         if (sip->density.wcount <
-            1.e-5 * kernel_root) { /* No neighbours case */
+            1.e-5 * sidm_kernel_root) { /* No neighbours case */
 
           ghost_stats_no_ngb_sidm_iteration(&c->ghost_statistics, num_reruns);
 

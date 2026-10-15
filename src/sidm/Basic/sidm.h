@@ -94,10 +94,10 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
   const float h_inv_dim_plus_one = h_inv_dim * h_inv; /* 1/h^(d+1) */
 
   /* Final operation on the density (add self-contribution). */
-  sip->rho += sip->mass * kernel_root;
-  sip->density.rho_dh -= hydro_dimension * sip->mass * kernel_root;
-  sip->density.wcount += kernel_root;
-  sip->density.wcount_dh -= hydro_dimension * kernel_root;
+  sip->rho += sip->mass * sidm_kernel_root;
+  sip->density.rho_dh -= hydro_dimension * sip->mass * sidm_kernel_root;
+  sip->density.wcount += sidm_kernel_root;
+  sip->density.wcount_dh -= hydro_dimension * sidm_kernel_root;
 
   /* Finish the calculation by inserting the missing h-factors */
   sip->rho *= h_inv_dim;
@@ -106,7 +106,7 @@ __attribute__((always_inline)) INLINE static void sidm_end_density(
   sip->density.wcount_dh *= h_inv_dim_plus_one;
 
 #ifdef SWIFT_SIDM_DENSITY_CHECKS
-  sip->n += kernel_root;
+  sip->n += sidm_kernel_root;
   sip->n *= h_inv_dim;
 #endif
 }
@@ -151,7 +151,7 @@ __attribute__((always_inline)) INLINE static void sidm_sipart_has_no_neighbours(
   const float h_inv_dim = pow_dimension(h_inv); /* 1/h^d */
 
   /* Re-set problematic values */
-  sip->density.wcount = kernel_root * h_inv_dim;
+  sip->density.wcount = sidm_kernel_root * h_inv_dim;
   sip->density.wcount_dh = 0.f;
 }
 
