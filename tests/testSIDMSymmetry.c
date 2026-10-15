@@ -174,10 +174,13 @@ void test(const char *param_filename) {
 
   /* Check that the particles have the same scattering rates. The kicks are
    * only accumulated in dv_sidm, so the velocities used for the rates are the
-   * same in both versions even if the pair scattered. */
-  const float tol = 1e-6f;
-  i_not_ok = fabs(pi.SIDM_rate - pi2.SIDM_rate) > tol;
-  j_not_ok = fabs(pj.SIDM_rate - pj2.SIDM_rate) > tol;
+   * same in both versions even if the pair scattered. The rates scale with
+   * the (random) cross-section, so compare them in relative terms. */
+  const float tol = 1e-5f;
+  i_not_ok = fabsf(pi.SIDM_rate - pi2.SIDM_rate) >
+             tol * fmaxf(fabsf(pi.SIDM_rate), fabsf(pi2.SIDM_rate));
+  j_not_ok = fabsf(pj.SIDM_rate - pj2.SIDM_rate) >
+             tol * fmaxf(fabsf(pj.SIDM_rate), fabsf(pj2.SIDM_rate));
 
   if (i_not_ok) {
     error("Particle i SIDM_rate mismatch: %.8e != %.8e", pi.SIDM_rate,
