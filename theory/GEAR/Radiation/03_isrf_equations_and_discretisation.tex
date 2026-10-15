@@ -2112,7 +2112,7 @@ It names the function that computes each equation, the invariant each
 function must keep, the checks that exercise it, and what those checks
 cannot see. The C unit tests named here live in the \code{swift-gear}
 repository, \code{tests/swift/}; each is built against a configured
-checkout of this branch and run one at a time. The examples live in
+checkout of SWIFT and run one at a time. The examples live in
 \code{examples/SubgridTests/StellarFeedback/ISRF/}.
 
 \subsubsection{Equations and the functions that compute them}
@@ -2128,7 +2128,8 @@ equations & function (file) \\
 \midrule
 closure, Eqs.~(\ref{eq:isrfd-fhat})--(\ref{eq:isrfd-eddington}) &
   \code{radiation\_get\_m1\_closure\_coefficients\_band},
-  \code{radiation\_build\_m1\_closure\_tensor}, cached once per step by
+  \code{radiation\_build\_m1\_closure\_tensor}, cached at drift
+  and again in \code{radiation\_end\_density\_propagation} by
   \code{radiation\_cache\_m1\_closure\_part}
   (\code{radiation\_propagation\_iact.h}) \\
 $c_{\rm hyp}$, Section~\ref{sec:isrf-eqdisc-chyp} &
@@ -2167,8 +2168,9 @@ pairs across time bins, Eqs.~(\ref{eq:isrfd-pending}),
 energy update and band-edge transfer, Eqs.~(\ref{eq:isrfd-u-update}),
   (\ref{eq:isrfd-transfer}) &
   \code{radiation\_end\_force\_propagation}; $\varphi$ by
-  \code{radiation\_relaxation\_phi\_factor} and
-  \code{radiation\_relaxation\_phi\_factor\_double} \\
+  \code{radiation\_relaxation\_phi\_factor} (\code{radiation\_isrf.c}) and
+  \code{radiation\_relaxation\_phi\_factor\_double}
+  (\code{radiation\_propagation\_iact.h}) \\
 injection and dose reservoir, Section~\ref{sec:isrf-eqdisc-injection} &
   \code{radiation\_iact\_nonsym\_feedback\_apply} (\code{radiation\_iact.h});
   drawdown in \code{radiation\_snapshot\_part\_propagation} \\
@@ -2214,8 +2216,8 @@ pairs across time bins on several ranks &
     added by the coarser member at its own next update, after which both
     amounts are zero. In a debugging build, a particle that adds pending
     amounts without a marked active step stops the run. The amounts live
-    on the particle, so a change of their
-    layout changes the restart layout marker.
+    on the particle, so a change of their layout MUST bump
+    \code{FEEDBACK\_RESTART\_ISRF\_PART\_LAYOUT}.
   \item \textbf{MPI foreign particles.} A rank writes only its own
     particles. A pending amount is booked by the rank that owns the
     coarser member and is never sent. A foreign particle is received after
@@ -2320,8 +2322,10 @@ example & exercises & cannot detect \\
 
 No shipped check measures the flux sum. Its measure, $L$ against
 $n_{\rm steps}\,2^{-23}$, is defined in
-Section~\ref{sec:fuv-flux-conservation}; it tells an exact scheme from one
-that is not, and it cannot rank two schemes that are not. Most checks
+Section~\ref{sec:fuv-flux-conservation}; it is the bar of the check, not a
+proof, and exact arms have exceeded it by a factor near $1$ on several
+ranks. It separates an exact scheme from one that is not only when the
+excess is large, and it cannot rank two schemes that are not. Most checks
 above run on one time bin, at one fixed speed, at $Z = 0$ or on one rank,
 and a pass holds only in that regime.
 
@@ -2334,8 +2338,16 @@ and a pass holds only in that regime.
   \item The flux sum is not conserved
     (Section~\ref{sec:fuv-flux-conservation}).
   \item The spread of a uniform flux seeded on a dust-free lattice grows
-    from rounding level, and the cause is not located
-    (Section~\ref{sec:fuv-limits}).
+    from below $10^{-3}$, and the cause is not located
+    (Section~\ref{sec:fuv-limits}). Whether it needs the expansion is not
+    tested.
+  \item In the extreme-dissipation fixture, the flux in a beam's shell
+    may turn sideways. A rerun reads $0.777$ against an observed (not
+    derived) bar of $0.75$, earlier $0.838$. The residue is present and
+    its run-to-run spread is unknown.
+  \item On a fixture with many time bins, the one-bin identity checks
+    cannot tell a real multi-bin error from fast-math rounding plus
+    thread-order divergence.
   \item A varying speed under expansion at a strong density contrast has
     never run.
   \item The multi-bin box at a bin gap of $5$ stops with non-finite

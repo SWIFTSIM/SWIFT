@@ -1707,11 +1707,13 @@ the booking of Section~\ref{sec:fuv-operators} keeps it, up to the
 same-step $\varphi$ mismatch and the Hubble term left out of the finer
 member's $\varphi$. Absorption, the Hubble term, injection and the
 band-edge transfer are the only sources and sinks, and the energy ledger
-closes with them. Under the kernel-local speed the energy itself is
+closes with them, up to the same-step $\varphi$ residual (about
+$10^{-3}$ of the injected energy in a dusty $Z=3$ box). Under the kernel-local speed the energy itself is
 therefore not conserved: energy that streams from slow into fast gas is
 multiplied by about the speed ratio, and energy that streams the other
 way is lost. With dust the steady field does not depend on
-$c_{\rm hyp}$.
+$c_{\rm hyp}$ (derived from the steady state of
+Eq.~\ref{eq:fuv-variable-c-eqs}, not measured).
 
 \textbf{Flux.} The flux sum $\mathbf P$ of Eq.~\ref{eq:fuv-flux-sum} is
 not conserved, and nothing books it. Four terms change it:
@@ -1740,19 +1742,22 @@ and no split into shares exists.
 
 \textbf{How the flux loss is measured.} Write the net flux $|\mathbf P|$
 and the gross flux $\sum_i m_i|\tilde{\mathbf F}_i|/c_{{\rm hyp},i}$, and
-their ratio $L$. Every float32 update can change $\mathbf P$ by at most
-one rounding, $2^{-23}$ of the gross flux, so an exactly conservative
-scheme keeps $L \le n_{\rm steps}\,2^{-23}$ after $n_{\rm steps}$ steps;
-this is a linear worst case, and an exact scheme lands well below it.
-The bound is a test of exactness only. A scheme that is not exact
-exceeds it by orders of magnitude. The factor by which it does so cannot
+their ratio $L$. Each float32 update rounds $\mathbf P$ by about
+$2^{-23}$ of the gross flux, and the check takes $n_{\rm steps}\,2^{-23}$
+as its bar after $n_{\rm steps}$ steps. This is the bar of the check, not
+a proof: it leaves out the rounding of the neighbour-accumulator adds.
+Exact arms pass it by $3$ to $7$ orders of magnitude, but on several
+ranks at step ratio $2$ an exact arm has read $1.19$ and $1.37$ times
+the bar in $2$ of $12$ runs. A scheme that is not exact exceeds it by
+orders of magnitude, so the bar separates the two only when the excess
+is large. The factor by which it does so cannot
 rank two such schemes: a term that damps the flux lowers the gross flux,
 so $L$ can rise while the net flux does not change. Any comparison
 of schemes that are not exact therefore reports the net and the gross
 flux beside $L$, and compares them on a physical measure, such as the
 fraction of its net flux that a free beam keeps. In the box above, at
 step ratio $4$ and one fixed speed, the shipped scheme ends at
-$L = 6.1\times10^{-2}$ against the exactness bound
+$L = 6.1\times10^{-2}$ against the bar
 $3.4\times10^{-5}$ ($281$ steps).
 
 \textbf{Where the loss comes from in thin gas.} No coupling reads
@@ -1762,7 +1767,7 @@ $u$ and not on $\mathbf F$. Where a step lowers $u$, the unchanged flux
 exceeds the bound $|\mathbf F| \le c_{\rm hyp}u$, and the limiter deletes
 the excess. Where a step raises $u$, the flux falls below the bound: the
 closure turns that energy from streaming to diffusing, and it spreads in
-every direction. A free beam in a glass keeps $0.36$ of its net flux.
+every direction. After $62$ steps on one time bin without absorption, a free beam in a glass keeps $0.36$ of its net flux.
 No implemented variant both conserves $\mathbf P$ and keeps the
 thin-gas results of the shipped scheme.
 
@@ -2368,7 +2373,7 @@ path.
     criterion but stays $\sim6\times$ above what a uniform, tiny floor
     would give at the same point. Measuring $R$ against the limited
     recurrence's own fixed point is the candidate improvement.
-  \item \textbf{Untested branches.} The Hubble terms of the energy
+  \item \textbf{Cosmological branches.} The Hubble terms of the energy
     equation, band-edge weights and LW-to-PE transfer included, are
     checked in cosmological runs from $z=9$ (\code{ISRFCosmology},
     \code{star\_propagation} and \code{star\_propagation\_pe}), at one
@@ -2411,17 +2416,19 @@ path.
   \item \textbf{Growth of a perturbed uniform flux, open.} A uniform flux
     is seeded on a regular lattice of static, dust-free gas in an
     expanding box. Its box total follows the Hubble decay. Its spread
-    from particle to particle grows from rounding level, by about $0.4$
+    from particle to particle grows from below $10^{-3}$, by about $0.4$
     per cent per step at $c_{\rm hyp}\Delta t/h = 0.0175$ (relative spread
     from $10^{-3}$ to $1.2$), in every band, until the flux limiter acts.
     The growth per unit time scales roughly with $c_{\rm hyp}/h$. On a
     regular lattice the kernel-sum error of
     Eq.~\ref{eq:fuv-grad-kernel-error} vanishes, so it does not explain
-    the growth. The cause is not located.
+    the growth. Whether the growth needs the expansion is not tested
+    (there is no run at $z=0$ and none on a glass). The cause is not
+    located.
   \item \textbf{Flux dissipation, an optional experiment.} Damping
     $\mathbf F$ with the pair coefficient of the dissipation of $u$ is
-    an experiment outside the shipped code; its review is not complete,
-    so it is not described here.
+    an experiment outside the shipped code; the damping is not part of
+    the shipped scheme.
   \item \textbf{Symmetric divergence dispatch: a positivity cost.}
     Reaching every pair with $H_i \le r_{ij} < H_j$ from the force loop
     (Section~\ref{sec:fuv-operators}) fixed the time-bin seam's
