@@ -78,13 +78,26 @@ ICS_ONLY=0
 : "${KHGR_T_END:=2.0}"          # KH growth rate: end time (the seeded mode saturates at t ~ 1.2)
 : "${KHGR_SEED:=0.01}"          # KH growth rate: amplitude of the seed velocity (the example's 5e-4 is below the shear noise of SPH)
 : "${KERNEL_1D:=wendland-C2}"   # Kernel of the 1D build (the Wendland C4 and C6 kernels have no 1D coefficients in SWIFT)
+: "${SOUNDWAVE_GLASS:=glassCube_32}" # Sound wave: 3D glass (32: 32 particles per wavelength for one wave per box)
+: "${SOUNDWAVE_AMPLITUDE:=1e-3}" # Sound wave: relative density amplitude (linear for ~100 periods)
+: "${SOUNDWAVE_NWAVE:=1}"       # Sound wave: wavelengths across the box
+: "${SOUNDWAVE_T_END:=5}"       # Sound wave (travelling): end time in periods of the n = 1 wave
+: "${WAVEDAMPING_T_END:=10}"    # Wave damping (standing wave): end time
+: "${THERMAL_CONTRAST:=4}"      # Thermal discontinuity: density contrast of the cold slab
+: "${THERMAL_T_END:=3}"         # Thermal discontinuity: end time (sound crossing of the slab: 1.5)
+: "${SOD_WEAK_P_RIGHT:=0.5}"    # Sod series: right-state pressure of the weak shock (standard 0.1)
+: "${SOD_STRONG_P_RIGHT:=0.01}" # Sod series: right-state pressure of the strong shock
+: "${KH8_CONTRAST:=8}"         # High-contrast KH: density contrast (the example's IC is a sharp interface of equal-mass particles)
+: "${KH8_L2:=128}"              # High-contrast KH: particles per edge in the low-density region
+: "${KH8_T_END:=6}"             # High-contrast KH: end time (the KH time of the seeded mode is 1.6 at contrast 8, 1.1 at contrast 2)
+: "${GRESHO_BOOST:=3}"          # Boosted Gresho vortex: bulk velocity along x (sound speed 2.9-3.1; integer: the vortex is back at the centre at t = 1)
 
 GLASS_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs
 REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
 # The NFW halo (nfw) is not in the default list: expensive and so far not
 # discriminating between schemes; run it with -t nfw.
-ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob taylorgreen shearing blast rt khgr ibw"
+ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob taylorgreen shearing blast rt khgr ibw soundwave wavedamping thermal gresho_boost kh8 sod_weak sod_strong"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bniph" opt; do
@@ -374,6 +387,48 @@ test_ibw() {
   }
 }
 
+test_sod_weak() {
+  # Sod shock with a weaker shock (right pressure 0.5): the contact discontinuity dominates
+  DIM=3; EXAMPLE=HydroTests/SodShock_3D; YML=sodShock.yml; IC=sodShock.hdf5
+  FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_64 glassCube_32; python3 makeIC.py --P-right $SOD_WEAK_P_RIGHT; }
+}
+test_sod_strong() {
+  # Sod shock with a stronger shock (right pressure 0.01)
+  DIM=3; EXAMPLE=HydroTests/SodShock_3D; YML=sodShock.yml; IC=sodShock.hdf5
+  FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_64 glassCube_32; python3 makeIC.py --P-right $SOD_STRONG_P_RIGHT; }
+}
+test_kh8() {
+  # Kelvin-Helmholtz at a high density contrast (sharp interface, equal-mass particles)
+  DIM=2; EXAMPLE=HydroTests/KelvinHelmholtz_2D; YML=kelvinHelmholtz.yml; IC=kelvinHelmholtz.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$KH8_T_END -P Snapshots:delta_time:0.5"; PLOT_SNAP=""
+  make_ic() { sed -i "s/^L2 = .*/L2 = $KH8_L2/; s/^rho1 = .*/rho1 = $KH8_CONTRAST  # Central density/" makeIC.py; python3 makeIC.py; }
+}
+test_soundwave() {
+  # Travelling linear sound wave: phase speed (dispersion), damping, transverse noise
+  DIM=3; EXAMPLE=HydroTests/SoundWave_3D; YML=soundWave.yml; IC=soundWave.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$SOUNDWAVE_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass $SOUNDWAVE_GLASS; python3 makeIC.py --glass $SOUNDWAVE_GLASS.hdf5 --amplitude $SOUNDWAVE_AMPLITUDE --nwave $SOUNDWAVE_NWAVE; }
+}
+test_wavedamping() {
+  # Standing sound wave over many periods: damping rate of the mode energy, frequency
+  DIM=3; EXAMPLE=HydroTests/SoundWave_3D; YML=soundWave.yml; IC=soundWave.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$WAVEDAMPING_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass $SOUNDWAVE_GLASS; python3 makeIC.py --glass $SOUNDWAVE_GLASS.hdf5 --amplitude $SOUNDWAVE_AMPLITUDE --nwave $SOUNDWAVE_NWAVE --standing; }
+}
+test_thermal() {
+  # Thermal discontinuity in pressure equilibrium: artificial conduction at a contact, pressure blip
+  DIM=2; EXAMPLE=HydroTests/ThermalDiffusion_2D; YML=thermalDiffusion.yml; IC=thermalDiffusion.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$THERMAL_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass glassPlane_128; python3 makeIC.py --contrast $THERMAL_CONTRAST; }
+}
+test_gresho_boost() {
+  # Gresho vortex advected at ~Mach 1 through the box: Galilean invariance (compare with gresho)
+  DIM=2; EXAMPLE=HydroTests/GreshoVortex_2D; YML=gresho.yml; IC=greshoVortex.hdf5
+  FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassPlane_128; python3 makeIC.py --boost $GRESHO_BOOST 0; }
+}
 get_glass() {
   for g in "$@"; do
     [[ -e $g.hdf5 ]] || wget -q "$GLASS_URL/$g.hdf5" || { echo "Cannot fetch $g"; return 1; }

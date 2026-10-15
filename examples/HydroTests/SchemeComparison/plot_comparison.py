@@ -35,7 +35,8 @@ COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
 ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d",
              "keplerian_cd10", "zeldovich",
              "zeldovich_glass", "zeldovich_pert", "blob", "taylorgreen", "shearing", "blast", "rt",
-             "khgr", "ibw"]  # "nfw" on request
+             "khgr", "ibw", "soundwave", "wavedamping", "thermal", "gresho_boost", "kh8",
+             "sod_weak", "sod_strong"]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
@@ -316,18 +317,39 @@ def gresho_solution(r):
 # ---------------------------------------------------------------------------
 
 
-def test_sod(root, schemes, out):
+def test_sod(root, schemes, out, test="sod"):
+    """Sod shock; test = sod_weak / sod_strong are the same tube with another right-state pressure
+    (read from the IC header). A second figure zooms on the contact discontinuity."""
     from riemannSolver import RiemannSolver
 
-    data = load_all(root, schemes, "sod", "sodShock", index=1)
+    data = load_all(root, schemes, test, "sodShock", index=1)
     ref = next((d for d in data.values() if d), None)
     if ref is None:
         return {}
     t = ref["time"]
+    states = [1.0, 0.0, 1.0, 0.125, 0.0, 0.1]
+    for s in schemes:
+        att = ic_attrs(os.path.join(root, "runs", s, test), "sodShock.hdf5", "SodShockStates")
+        if att is not None:
+            states = [float(v) for v in att[0]]
+            break
     solver = RiemannSolver(GAS_GAMMA)
-    x_s = np.linspace(-0.5, 0.5, 1000)
-    rho_s, v_s, P_s, _ = solver.solve(1.0, 0.0, 1.0, 0.125, 0.0, 0.1, x_s / t)
+    x_s = np.linspace(-1.0, 1.0, 8000)  # the whole tube (the hot right state of the weak tube sends its shock past 0.5)
+    rho_s, v_s, P_s, _ = solver.solve(*states, x_s / t)
     u_s = P_s / (rho_s * (GAS_GAMMA - 1.0))
+    # Contact: the density jump without a pressure jump; shock: the largest pressure jump to its right
+    jumps = np.abs(np.diff(rho_s))
+    dP = np.abs(np.diff(P_s))
+    contact_candidates = np.where((jumps > 0.05 * jumps.max()) & (dP < 1e-3 * P_s.max()))[0]
+    i_c = contact_candidates[np.argmax(jumps[contact_candidates])] if len(contact_candidates) else int(np.argmax(jumps))
+    x_c = 0.5 * (x_s[i_c] + x_s[i_c + 1])
+    right = np.arange(i_c + 1, len(dP))
+    i_sh = right[np.argmax(dP[right])] if len(right) else i_c
+    x_sh = 0.5 * (x_s[i_sh] + x_s[i_sh + 1])
+    w = float(min(0.12, 0.6 * (x_sh - x_c))) if x_sh > x_c + 0.02 else 0.12
+    P_star = float(P_s[i_c])
+    print(f"{test}: contact at x = {x_c:.3f}, shock at x = {x_sh:.3f}, window +-{w:.3f}")
+    rho_star_L, rho_star_R = float(rho_s[i_c - 5]), float(rho_s[i_c + 6])
 
     def xf(d):
         return d["pos"][:, 0] - 1.0
@@ -348,9 +370,45 @@ def test_sod(root, schemes, out):
             x = xf(data[s])
             mask = np.abs(x) < 0.5
             metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, mask)
-    fig.suptitle(f"Sod shock (3D), t = {t:.3f}")
+    label = {"sod": "Sod shock", "sod_weak": "weak Sod shock", "sod_strong": "strong Sod shock"}.get(test, test)
+    fig.suptitle(f"{label} (3D, P_R = {states[5]:g}), t = {t:.3f}")
     fig.tight_layout()
-    fig.savefig(os.path.join(out, "sod.png"), dpi=150)
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
+    plt.close(fig)
+
+    # Zoom on the contact discontinuity: profiles within +-w of x_c, L1 there, pressure blip and
+    # the width of the density transition (10-90 per cent of the star-state jump)
+    edges_c = np.arange(x_c - w, x_c + w + 1e-9, 0.01)
+    fig, axes = setup_figure(schemes, quantities)
+    in_w = np.abs(x_s - x_c) < w
+    for i, (name, yf, ex, lab) in enumerate(quantities):
+        lo, hi = float(np.min(ex[in_w])), float(np.max(ex[in_w]))
+        pad = max(0.3 * (hi - lo), 0.6 * abs(hi))  # the contact's pressure blip can reach +-70 per cent
+        profile_panels(axes, i, schemes, data, xf, yf, edges_c, exact=(x_s, ex), xlabel="x",
+                       ylabel=lab, xlim=(x_c - w, x_c + w), ylim=(lo - pad, hi + pad))
+        for s in schemes:
+            if data[s] is None:
+                continue
+            x = xf(data[s])
+            mask = np.abs(x - x_c) < w
+            metrics[s][f"contact_L1_{name}"] = l1(x, yf(data[s]), x_s, ex, mask)
+    for s in schemes:
+        d = data[s]
+        if d is None:
+            continue
+        x = xf(d)
+        mask = np.abs(x - x_c) < w
+        xb, Pb, _ = binned(x[mask], d["P"][mask], edges_c)
+        metrics[s]["contact_P_blip"] = float(np.nanmax(np.abs(Pb / P_star - 1.0)))
+        xb, rb, _ = binned(x[mask], d["rho"][mask], edges_c)
+        jump = rho_star_L - rho_star_R
+        hi = np.where(rb < rho_star_L - 0.1 * jump)[0]
+        lo = np.where(rb < rho_star_R + 0.1 * jump)[0]
+        metrics[s]["contact_width_rho"] = float(xb[lo[0]] - xb[hi[0]]) if len(hi) and len(lo) and lo[0] >= hi[0] else float("nan")
+        axes[0, [j for j, ss in enumerate(schemes) if ss == s][0]].axvline(x_c, color="k", lw=0.5, ls=":")
+    fig.suptitle(f"{label}: the contact discontinuity (x_c = {x_c:.3f}, window +-{w:.2f}), t = {t:.3f}")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, f"{test}_contact.png"), dpi=150)
     plt.close(fig)
     return metrics
 
@@ -457,8 +515,11 @@ def test_noh(root, schemes, out):
     return metrics
 
 
-def test_gresho(root, schemes, out):
-    data = load_all(root, schemes, "gresho", "gresho", index=10)
+def test_gresho(root, schemes, out, test="gresho"):
+    """Gresho vortex; test="gresho_boost" is the same vortex advected by a bulk velocity (Galilean
+    invariance): the bulk velocity is the mass-weighted mean velocity of the box, the vortex centre
+    has moved by it, and the metrics are also compared with the static run of the same scheme."""
+    data = load_all(root, schemes, test, "gresho", index=10)
     ref = next((d for d in data.values() if d), None)
     if ref is None:
         return {}
@@ -467,23 +528,30 @@ def test_gresho(root, schemes, out):
     P_s, v_s = gresho_solution(r_s)
     rho_s = np.ones_like(r_s)
 
+    def frame(d):
+        """Position relative to the (advected) vortex centre and the velocity in its rest frame."""
+        if "frame" not in d:
+            L = d["boxsize"]
+            vb = np.sum(d["m"][:, None] * d["vel"], axis=0) / np.sum(d["m"])
+            c = np.mod(0.5 * L + vb * d["time"], np.where(L > 0, L, 1.0))
+            dx = d["pos"] - c
+            dx -= L * np.round(dx / np.where(L > 0, L, 1.0))
+            d["frame"] = (dx, d["vel"] - vb)
+        return d["frame"]
+
     def rf(d):
-        c = 0.5 * d["boxsize"]
-        return np.sqrt((d["pos"][:, 0] - c[0]) ** 2 + (d["pos"][:, 1] - c[1]) ** 2)
+        dx, _ = frame(d)
+        return np.sqrt(dx[:, 0] ** 2 + dx[:, 1] ** 2)
 
     def vphi(d):
-        c = 0.5 * d["boxsize"]
-        x = d["pos"][:, 0] - c[0]
-        y = d["pos"][:, 1] - c[1]
-        r = np.sqrt(x * x + y * y)
-        return (-y * d["vel"][:, 0] + x * d["vel"][:, 1]) / np.maximum(r, 1e-10)
+        dx, v = frame(d)
+        r = np.sqrt(dx[:, 0] ** 2 + dx[:, 1] ** 2)
+        return (-dx[:, 1] * v[:, 0] + dx[:, 0] * v[:, 1]) / np.maximum(r, 1e-10)
 
     def vrad(d):
-        c = 0.5 * d["boxsize"]
-        x = d["pos"][:, 0] - c[0]
-        y = d["pos"][:, 1] - c[1]
-        r = np.sqrt(x * x + y * y)
-        return (x * d["vel"][:, 0] + y * d["vel"][:, 1]) / np.maximum(r, 1e-10)
+        dx, v = frame(d)
+        r = np.sqrt(dx[:, 0] ** 2 + dx[:, 1] ** 2)
+        return (dx[:, 0] * v[:, 0] + dx[:, 1] * v[:, 1]) / np.maximum(r, 1e-10)
 
     edges = np.arange(0.0, 0.8, 0.02)
     quantities = [("vphi", vphi, v_s, r"$v_\phi$"),
@@ -502,9 +570,24 @@ def test_gresho(root, schemes, out):
             mask = r < 0.8
             metrics.setdefault(s, {})[f"L1_{name}"] = l1(r, yf(data[s]), r_s, ex, mask,
                                                        norm=1.0 if name in ("vphi", "vr") else None)
-    fig.suptitle(f"Gresho vortex (2D), t = {t:.3f}")
+    if test == "gresho_boost":
+        # Galilean invariance: the same error as the static vortex of the same scheme?
+        static = load_all(root, schemes, "gresho", "gresho", index=10)
+        for s in schemes:
+            if data[s] is None or static[s] is None:
+                continue
+            r = rf(static[s])
+            L1_static = l1(r, vphi(static[s]), r_s, v_s, r < 0.8, norm=1.0)
+            metrics[s]["L1_vphi_static"] = L1_static
+            metrics[s]["dL1_vphi"] = metrics[s]["L1_vphi"] - L1_static
+            vb = np.sum(data[s]["m"][:, None] * data[s]["vel"], axis=0) / np.sum(data[s]["m"])
+            metrics[s]["boost"] = float(np.sqrt(np.sum(vb**2)))
+        title = f"Gresho vortex (2D) advected at |v| = {metrics[schemes[0]].get('boost', 0):.1f}, t = {t:.3f} (vortex frame)"
+    else:
+        title = f"Gresho vortex (2D), t = {t:.3f}"
+    fig.suptitle(title)
     fig.tight_layout()
-    fig.savefig(os.path.join(out, "gresho.png"), dpi=150)
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
     return metrics
 
@@ -566,20 +649,34 @@ def test_evrard(root, schemes, out):
     return metrics
 
 
-def test_kh(root, schemes, out):
-    times = [1.5, 3.0, 4.5]
+def test_kh(root, schemes, out, test="kh"):
+    """Kelvin-Helmholtz; test="kh8" is the same set-up at a density contrast of 8 (longer run)."""
+    last = max((load(f)["time"] for s in schemes
+                for f in snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")[-1:]), default=4.5)
+    times = [last / 3.0, 2.0 * last / 3.0, last]
     fig, axes = plt.subplots(len(times), len(schemes) + 1,
                              figsize=(3.6 * (len(schemes) + 1), 3.4 * len(times)), squeeze=False)
     metrics = {}
+    rho_max, contrast = 2.0, 2
     for i, t in enumerate(times):
-        data = load_all(root, schemes, "kh", "kelvinHelmholtz", time=t)
-        image_panels(axes, i, schemes, data, "rho", (0.8, 2.2), cmap="RdBu_r")
+        data = load_all(root, schemes, test, "kelvinHelmholtz", time=t)
+        ref = next((d for d in data.values() if d), None)
+        if ref is not None and i == 0:
+            rho_max = float(np.percentile(ref["rho"], 99.5))
+            # Density contrast of the initial conditions (first snapshot of the reference run)
+            first = next((snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")[:1]
+                          for s in schemes if data[s] is not None), [])
+            rho_ic = load(first[0])["rho"] if first else ref["rho"]
+            contrast = round(float(np.percentile(rho_ic, 90)) / float(np.percentile(rho_ic, 10)))
+        log = rho_max > 3.0
+        clim = (np.log10(0.8), np.log10(rho_max + 0.2)) if log else (0.8, rho_max + 0.2)
+        image_panels(axes, i, schemes, data, "rho", clim, cmap="RdBu_r", log=log)
         axes[i, -1].axis("off")
     # Growth of the instability: rms of v_y versus time
     ax = axes[0, -1]
     ax.axis("on")
     for j, s in enumerate(schemes):
-        files = snapshot_files(os.path.join(root, "runs", s, "kh"), "kelvinHelmholtz")
+        files = snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")
         tt, vy = [], []
         for f in files:
             d = load(f)
@@ -587,13 +684,13 @@ def test_kh(root, schemes, out):
             vy.append(np.sqrt(np.mean(d["vel"][:, 1] ** 2)))
         if tt:
             ax.semilogy(tt, vy, "-o", ms=3, color=COLORS[j % len(COLORS)], label=s)
-            metrics[s] = {"rms_vy_final": float(vy[-1]), "rms_vy_t1.5": float(np.interp(1.5, tt, vy))}
+            metrics[s] = {"rms_vy_final": float(vy[-1]), f"rms_vy_t{times[0]:.3g}": float(np.interp(times[0], tt, vy))}
     ax.set_xlabel("t")
     ax.set_ylabel(r"rms $v_y$")
     ax.legend(fontsize=7)
-    fig.suptitle("Kelvin-Helmholtz (2D), density")
+    fig.suptitle(f"Kelvin-Helmholtz (2D, density contrast {contrast}), " + ("log10 density" if rho_max > 3.0 else "density"))
     fig.tight_layout()
-    fig.savefig(os.path.join(out, "kh.png"), dpi=150)
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
     return metrics
 
@@ -1471,6 +1568,234 @@ def test_ibw(root, schemes, out):
     return metrics
 
 
+def ic_attrs(run_dir, ic_name, *attrs):
+    """Header attributes of the initial-condition file linked into a run directory (None if absent)."""
+    f = os.path.join(run_dir, ic_name)
+    if not os.path.exists(f):
+        return None
+    with h5py.File(f, "r") as h:
+        if any(a not in h["/Header"].attrs for a in attrs):
+            return None
+        return [h["/Header"].attrs[a] for a in attrs]
+
+
+def test_soundwave(root, schemes, out, test="soundwave"):
+    """Linear sound wave in 3D: travelling (phase speed, damping, L1 of the field, transverse noise)
+    or standing (frequency and damping of the mode energy over many periods)."""
+    metrics = {}
+    series = {}
+    final = {}
+    params = {}
+    for s in schemes:
+        run_dir = os.path.join(root, "runs", s, test)
+        att = ic_attrs(run_dir, "soundWave.hdf5", "SoundWaveAmplitude", "SoundWaveNWave",
+                       "SoundWaveStanding", "SoundWaveBoost", "SoundWaveSoundSpeed", "BoxSize")
+        if att is None:
+            continue
+        A, n, standing, boost, cs, L = (float(att[0]), int(att[1]), bool(att[2]), float(att[3]),
+                                        float(att[4]), float(np.atleast_1d(att[5])[0]))
+        k = 2.0 * np.pi * n / L
+        omega = cs * k
+        params[s] = (A, k, omega, standing, boost, cs, L)
+
+        def project(d):
+            x = np.mod(d["pos"][:, 0] - boost * d["time"], L)
+            w = d["m"] / np.sum(d["m"])
+            e = np.exp(-1j * k * x)
+            Zv = 2.0 * np.sum(w * (d["vel"][:, 0] - boost) * e)
+            Zr = 2.0 * np.sum(w * (d["rho"] / np.sum(w * d["rho"]) - 1.0) * e)
+            return [Zv.real, Zv.imag, Zr.real, Zr.imag]
+
+        tt, zz = snapshot_series(run_dir, "soundWave", project)
+        if len(tt) < 4:
+            continue
+        Zv = zz[:, 0] + 1j * zz[:, 1]
+        Zr = zz[:, 2] + 1j * zz[:, 3]
+        series[s] = (tt, Zv, Zr)
+        d = load(snapshot_files(run_dir, "soundWave")[-1])
+        final[s] = d
+        x = np.mod(d["pos"][:, 0] - boost * d["time"], L)
+        if standing:
+            v_ex = A * cs * np.sin(k * x) * np.sin(omega * d["time"])
+        else:
+            v_ex = A * cs * np.cos(k * x - omega * d["time"])
+        m = metrics.setdefault(s, {})
+        m["L1_v_end"] = float(np.mean(np.abs(d["vel"][:, 0] - boost - v_ex)) / (A * cs))
+        m["transverse_noise_end"] = float(np.sqrt(np.mean(d["vel"][:, 1] ** 2 + d["vel"][:, 2] ** 2)) / (A * cs))
+        if standing:
+            E = np.abs(Zv) ** 2 + cs**2 * np.abs(Zr) ** 2
+            gam = -0.5 * np.polyfit(tt, np.log(E / (A * cs) ** 2), 1)[0]
+            a = Zr.real / A
+            crossings = np.where(np.diff(np.sign(a)) != 0)[0]
+            if len(crossings) > 2:
+                # linear interpolation of the zero crossings
+                tc = tt[crossings] - a[crossings] * (tt[crossings + 1] - tt[crossings]) / (a[crossings + 1] - a[crossings])
+                omega_meas = np.pi / np.mean(np.diff(tc))
+            else:
+                omega_meas = float("nan")
+            m["omega_ratio"] = float(omega_meas / omega)
+            m["damping_per_period"] = float(gam * 2.0 * np.pi / omega)
+            m["E_mode_end"] = float(E[-1] / (A * cs) ** 2)
+        else:
+            phase = np.unwrap(np.angle(Zv))
+            omega_meas = -np.polyfit(tt, phase, 1)[0]
+            gam = -np.polyfit(tt, np.log(np.abs(Zv) / (A * cs)), 1)[0]
+            m["phase_speed_ratio"] = float(omega_meas / omega)
+            m["damping_per_period"] = float(gam * 2.0 * np.pi / omega)
+            m["amplitude_end"] = float(np.abs(Zv[-1]) / (A * cs))
+    if not series:
+        return {}
+    present = [s for s in schemes if s in series]
+    A, k, omega, standing, boost, cs, L = params[present[0]]
+    fig, axes = plt.subplots(2, len(present) + 1, figsize=(3.6 * (len(present) + 1), 3.0 * 2), squeeze=False)
+    xs = np.linspace(0, L, 400)
+    for j, s in enumerate(present):
+        d = final[s]
+        t_end = d["time"]
+        x = np.mod(d["pos"][:, 0] - boost * d["time"], L)
+        if standing:
+            v_ex = np.sin(k * xs) * np.sin(omega * t_end)
+            r_ex = np.cos(k * xs) * np.cos(omega * t_end)
+        else:
+            v_ex = np.cos(k * xs - omega * t_end)
+            r_ex = v_ex
+        for row, (y, ex, lab) in enumerate([((d["vel"][:, 0] - boost) / (A * cs), v_ex, r"$v_x / (A c_s)$"),
+                                            ((d["rho"] / np.mean(d["rho"]) - 1.0) / A, r_ex, r"$\delta\rho / (A \rho_0)$")]):
+            ax = axes[row, j]
+            ax.scatter(x, y, color="0.4", **scatter_props)
+            xb, yb, sb = binned(x, y, np.linspace(0, L, 33))
+            ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
+            ax.plot(xs, ex, "k-", lw=1)
+            ax.set_ylim(-2.5, 2.5)
+            ax.set_xlabel("x")
+            ax.set_ylabel(lab)
+            if row == 0:
+                ax.set_title(s, fontsize=9)
+        tt, Zv, Zr = series[s]
+        c = COLORS[j % len(COLORS)]
+        if standing:
+            E = np.abs(Zv) ** 2 + cs**2 * np.abs(Zr) ** 2
+            axes[0, -1].semilogy(tt, E / (A * cs) ** 2, "-", color=c, lw=1.2,
+                                 label=f"{s}: {metrics[s]['damping_per_period']:.1e} / period")
+            axes[1, -1].plot(tt, Zr.real / A, "-", color=c, lw=1, label=f"{s}: omega / (c k) = {metrics[s]['omega_ratio']:.4f}")
+        else:
+            axes[0, -1].plot(tt, np.abs(Zv) / (A * cs), "-", color=c, lw=1.2,
+                             label=f"{s}: {metrics[s]['damping_per_period']:.1e} / period")
+            axes[1, -1].plot(tt, np.unwrap(np.angle(Zv)) + omega * tt, "-", color=c, lw=1.2,
+                             label=f"{s}: c / c_s = {metrics[s]['phase_speed_ratio']:.4f}")
+    if standing:
+        axes[1, -1].plot(xs * 0 + tt[0], xs * 0, "k:", lw=0.5)
+        axes[0, -1].set_ylabel(r"$E_{\rm mode} / (A c_s)^2$")
+        axes[1, -1].set_ylabel(r"Re $Z_\rho / A$")
+        kind = "standing"
+    else:
+        axes[0, -1].set_ylabel(r"$|Z_v| / (A c_s)$")
+        axes[1, -1].set_ylabel("phase $-$ exact [rad]")
+        kind = "travelling"
+    for ax in axes[:, -1]:
+        ax.set_xlabel("t")
+        ax.legend(fontsize=6)
+    fig.suptitle(f"{kind} sound wave (3D, A = {A:g}, {2 * np.pi * n / L / k * round(len(final[present[0]]['m']) ** (1 / 3)):.0f} particles per wavelength), t = {t_end:.2f}")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_thermal(root, schemes, out):
+    """Thermal discontinuity in pressure equilibrium: width of the u profiles (effective conductivity),
+    pressure blip and spurious velocities."""
+    from scipy.optimize import curve_fit
+    from scipy.special import erf
+
+    metrics = {}
+    series = {}
+    profiles = {}
+    for s in schemes:
+        run_dir = os.path.join(root, "runs", s, "thermal")
+        att = ic_attrs(run_dir, "thermalDiffusion.hdf5", "ThermalDiffusionContrast", "ThermalDiffusionPressure",
+                       "ThermalDiffusionInterfaces", "BoxSize")
+        if att is None:
+            continue
+        C, P0 = float(att[0]), float(att[1])
+        x1, x2 = [float(v) for v in att[2]]
+        Lx = float(np.atleast_1d(att[3])[0])
+        u_hot = P0 / (GAS_GAMMA - 1.0)
+        u_cold = u_hot / C
+        cs_cold = np.sqrt(GAS_GAMMA * P0 / C)
+        edges = np.linspace(0, Lx, 201)
+
+        def width(x, u, xi, sign):
+            sel = np.abs(x - xi) < 0.3
+            theta = (u[sel] - u_cold) / (u_hot - u_cold)
+            model = lambda xx, w, x0: 0.5 * (1.0 + sign * erf((xx - x0) / (np.sqrt(2.0) * w)))
+            try:
+                p, _ = curve_fit(model, x[sel], theta, p0=[0.02, xi], bounds=([1e-4, xi - 0.1], [0.3, xi + 0.1]))
+                return p[0]
+            except RuntimeError:
+                return float("nan")
+
+        def measure(d):
+            x = d["pos"][:, 0]
+            xb, ub, _ = binned(x, d["u"], edges)
+            _, Pb, _ = binned(x, d["P"], edges)
+            vmag = np.sqrt(np.sum(d["vel"] ** 2, axis=1))
+            return [0.5 * (width(x, d["u"], x1, -1) + width(x, d["u"], x2, +1)),
+                    np.nanmax(np.abs(Pb / P0 - 1.0)), np.max(vmag) / cs_cold,
+                    np.sqrt(np.mean(vmag**2)) / cs_cold] + list(ub / u_hot) + list(Pb / P0)
+
+        tt, vals = snapshot_series(run_dir, "thermalDiffusion", measure)
+        if len(tt) < 2:
+            continue
+        sig, blip, vmax, vrms = vals[:, 0], vals[:, 1], vals[:, 2], vals[:, 3]
+        nb = len(edges) - 1
+        profiles[s] = (0.5 * (edges[1:] + edges[:-1]), vals[:, 4:4 + nb], vals[:, 4 + nb:4 + 2 * nb])
+        series[s] = (tt, sig, blip, vmax, vrms)
+        ok = np.isfinite(sig)
+        kappa = np.polyfit(tt[ok], sig[ok] ** 2, 1)[0] / 2.0 if np.sum(ok) > 2 else float("nan")
+        m = metrics.setdefault(s, {})
+        m["sigma_0"] = float(sig[0])
+        m["sigma_end"] = float(sig[-1])
+        m["kappa_eff"] = float(kappa)
+        m["P_blip_max"] = float(np.max(blip))
+        m["P_blip_end"] = float(blip[-1])
+        m["v_max_max"] = float(np.max(vmax))
+        m["v_rms_end"] = float(vrms[-1])
+    if not series:
+        return {}
+    present = [s for s in schemes if s in series]
+    fig, axes = plt.subplots(2, len(present) + 1, figsize=(3.6 * (len(present) + 1), 3.0 * 2), squeeze=False)
+    for j, s in enumerate(present):
+        xb, up, Pp = profiles[s]
+        tt = series[s][0]
+        for i in range(len(tt)):
+            c = plt.cm.viridis(i / max(len(tt) - 1, 1))
+            axes[0, j].plot(xb, up[i], color=c, lw=0.8, label=f"t = {tt[i]:.2f}" if i in (0, len(tt) - 1) else None)
+            axes[1, j].plot(xb, Pp[i], color=c, lw=0.8)
+        axes[0, j].set_title(s, fontsize=9)
+        axes[0, j].set_ylabel(r"$u / u_{\rm hot}$")
+        axes[0, j].legend(fontsize=6)
+        axes[1, j].set_ylabel(r"$P / P_0$")
+        axes[1, j].set_ylim(0.8, 1.2)
+        for ax in axes[:, j]:
+            ax.set_xlabel("x")
+        tt, sig, blip, vmax, vrms = series[s]
+        c = COLORS[j % len(COLORS)]
+        axes[0, -1].plot(tt, sig, "o-", color=c, ms=3, lw=1, label=f"{s}: kappa = {metrics[s]['kappa_eff']:.1e}")
+        axes[1, -1].semilogy(tt, vrms, "-", color=c, lw=1.2, label=f"{s} rms")
+        axes[1, -1].semilogy(tt, blip, "--", color=c, lw=1, label=f"{s} P blip")
+    axes[0, -1].set_ylabel(r"interface width $\sigma$")
+    axes[1, -1].set_ylabel(r"$v_{\rm rms} / c_{s,\rm cold}$, max $|P/P_0 - 1|$")
+    for ax in axes[:, -1]:
+        ax.set_xlabel("t")
+        ax.legend(fontsize=6)
+    fig.suptitle(f"Thermal discontinuity in pressure equilibrium (2D, contrast {C:g}), t = {tt[-1]:.2f}")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "thermal.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
 TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_gresho,
          "evrard": test_evrard, "kh": test_kh, "square": test_square,
          "square_mass": lambda root, schemes, out: test_square(root, schemes, out, test="square_mass"),
@@ -1482,7 +1807,14 @@ TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_g
          "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
          "blob": test_blob, "nfw": test_nfw,
          "taylorgreen": test_taylorgreen, "shearing": test_shearing, "blast": test_blast,
-         "rt": test_rt, "khgr": test_khgr, "ibw": test_ibw}
+         "rt": test_rt, "khgr": test_khgr, "ibw": test_ibw,
+         "soundwave": test_soundwave,
+         "wavedamping": lambda root, schemes, out: test_soundwave(root, schemes, out, test="wavedamping"),
+         "thermal": test_thermal,
+         "gresho_boost": lambda root, schemes, out: test_gresho(root, schemes, out, test="gresho_boost"),
+         "kh8": lambda root, schemes, out: test_kh(root, schemes, out, test="kh8"),
+         "sod_weak": lambda root, schemes, out: test_sod(root, schemes, out, test="sod_weak"),
+         "sod_strong": lambda root, schemes, out: test_sod(root, schemes, out, test="sod_strong")}
 
 
 # ---------------------------------------------------------------------------
