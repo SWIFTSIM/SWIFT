@@ -987,6 +987,37 @@ INLINE static void sink_star_formation_give_new_velocity(
 }
 
 /**
+ * @brief Compute the mean molecular weight of the gas around a #sink, to get
+ * the birth temperature of a star.
+ *
+ * A sink without gas neighbours keeps rho_gas = 0 and an energy of -FLT_MAX.
+ * It has no state to equilibrate, so the neutral weight is returned.
+ *
+ * @param sink The #sink particle.
+ * @param cosmo The cosmological model.
+ * @param phys_const The physical constants in internal units.
+ * @param hydro_props The properties of the hydro scheme.
+ * @param cooling The cooling function data.
+ */
+__attribute__((always_inline)) INLINE static double
+sink_get_birth_mean_molecular_weight(
+    const struct sink *sink, const struct cosmology *cosmo,
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling) {
+
+  const float internal_energy_gas = sink->to_collect.internal_energy_gas;
+  const double rho_gas_physical = sink->to_collect.rho_gas * cosmo->a3_inv;
+
+  if (!(rho_gas_physical > 0.) || !(internal_energy_gas >= 0.f))
+    return hydro_props->mu_neutral;
+
+  return cooling_get_equilibrium_mean_molecular_weight(
+      internal_energy_gas, rho_gas_physical,
+      chemistry_get_sink_total_metal_mass_fraction(sink), phys_const,
+      hydro_props, cooling);
+}
+
+/**
  * @brief Copy the properties of the sink particle towards the new star. Also,
  * give the stars some properties such as position and velocity.
  *
@@ -1042,11 +1073,8 @@ INLINE static void sink_copy_properties_to_star(
   const double m_p = phys_const->const_proton_mass;
   const double k_b = phys_const->const_boltzmann_k;
   const float internal_energy_gas = sink->to_collect.internal_energy_gas;
-  const double rho_gas_physical = sink->to_collect.rho_gas * cosmo->a3_inv;
-  const double mu = cooling_get_equilibrium_mean_molecular_weight(
-      internal_energy_gas, rho_gas_physical,
-      chemistry_get_sink_total_metal_mass_fraction(sink), phys_const,
-      hydro_props, cooling);
+  const double mu = sink_get_birth_mean_molecular_weight(
+      sink, cosmo, phys_const, hydro_props, cooling);
   const float T_gas = cooling_temperature_from_internal_energy(
       internal_energy_gas, mu, k_b, m_p);
 

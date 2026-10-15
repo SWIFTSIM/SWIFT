@@ -105,10 +105,6 @@ double cooling_get_mean_molecular_weight(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp);
 
-double cooling_get_mean_molecular_weight_at_energy(
-    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
-    const struct part *p, const struct xpart *xp, const double u);
-
 /**
  * @brief Compute the specific internal energy at which a particle has the
  * temperature T_target: the inverse of cooling_get_temperature().

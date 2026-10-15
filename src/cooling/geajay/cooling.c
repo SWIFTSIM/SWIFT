@@ -1068,7 +1068,7 @@ float cooling_get_temperature(const struct phys_const *phys_const,
  * @param xp Pointer to the #xpart data.
  * @param u Physical specific internal energy.
  */
-double cooling_get_mean_molecular_weight_at_energy(
+static double cooling_get_mean_molecular_weight_at_energy(
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p, const struct xpart *xp, const double u) {
 
