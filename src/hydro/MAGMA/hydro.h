@@ -651,6 +651,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_P[i] = 0.f;
   p->gradient.shock_indicator = 0.f;
 }
 
@@ -684,6 +685,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Finish the construction of the (un-normalised) internal energy gradient
    * by multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_P[i] *= h_inv_dim;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
@@ -760,6 +762,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float gradient_vy[3] = {0.f, 0.f, 0.f};
   float gradient_vz[3] = {0.f, 0.f, 0.f};
   float gradient_u[3] = {0.f, 0.f, 0.f};
+  float gradient_P[3] = {0.f, 0.f, 0.f};
 
   /* Invert the c-matrix. Directions in which the neighbourhood is
    * (nearly) degenerate (planar or filamentary configurations) are
@@ -805,6 +808,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     /* Finish computation of u gradient (same as eq. 18) */
     sym_matrix_multiply_by_vector(gradient_u, &c_matrix,
                                   p->gradient.gradient_u);
+
+    /* Same for the pressure */
+    sym_matrix_multiply_by_vector(gradient_P, &c_matrix,
+                                  p->gradient.gradient_P);
   }
 
   /* Convergence fraction of the local flow (Cullen & Dehnen 2010, eq. 18
@@ -871,6 +878,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   memcpy(&p->force.gradient_vy, gradient_vy, 3 * sizeof(float));
   memcpy(&p->force.gradient_vz, gradient_vz, 3 * sizeof(float));
   memcpy(&p->force.gradient_u, gradient_u, 3 * sizeof(float));
+  memcpy(&p->force.gradient_P, gradient_P, 3 * sizeof(float));
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
   p->force.convergence_fraction = convergence_fraction;

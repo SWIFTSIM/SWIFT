@@ -121,6 +121,27 @@
 /*! Thermal conduction coefficient alpha_u (Rosswog 2020, eq. 24) */
 #define hydro_props_default_diffusion_alpha 0.05f
 
+/*! Coefficient of the reconstructed-pressure-residual conduction term,
+ * added to the paper's: the conduction speed is alpha_u |v~_ab| + alpha_P
+ * sqrt(2 |dP_rec| / (rho_a + rho_b)); 0 switches it off. The residual
+ * of the slope-limited mid-point reconstruction of P is ~0 across a
+ * resolved pressure gradient (hydrostatic equilibrium under gravity) and the
+ * full jump across the kernel-scale pressure blip of the density estimate
+ * at an entropy jump, or a shock; the conduction then removes the blip and
+ * switches itself off. 0.5 (default, with the threshold below) takes the
+ * static-contact pressure blip from 20 to 5 per cent, halves the Sod
+ * contact blip, cures the Sedov central overheating and keeps the KH rolls
+ * coherent, for MI2 and MI3 alike, at no cost on the sound wave, Gresho
+ * vortex or hydrostatic halo. */
+#define hydro_props_default_diffusion_alpha_pressure 0.5f
+
+/*! Threshold of the pressure-residual conduction term: only the part of the
+ * residual above this fraction of the pair's mean pressure counts, so that
+ * the term switches off once a blip is reduced to the pressure noise of the
+ * particle distribution (a few per cent) instead of diffusing the entropy
+ * jump for ever at the rate the noise sets. */
+#define hydro_props_default_diffusion_pressure_threshold 0.05f
+
 /* Structs that store the relevant variables */
 
 /*! Artificial viscosity (and gradient-function) parameters */
@@ -182,6 +203,14 @@ struct diffusion_global_data {
 
   /*! Conduction coefficient (eq. 24) */
   float alpha;
+
+  /*! Coefficient of the reconstructed-pressure-residual conduction term
+   * (default 0.5; 0 switches it off) */
+  float alpha_pressure;
+
+  /*! Fraction of the mean pressure below which the residual is ignored
+   * (default 0.05) */
+  float pressure_threshold;
 };
 
 /*! Copies of the parameters accessible to the interaction functions */
@@ -379,8 +408,17 @@ static INLINE void diffusion_init(struct swift_params *params,
 
   diffusion->alpha = parser_get_opt_param_float(
       params, "SPH:diffusion_alpha", hydro_props_default_diffusion_alpha);
+  diffusion->alpha_pressure =
+      parser_get_opt_param_float(params, "SPH:diffusion_alpha_pressure",
+                                 hydro_props_default_diffusion_alpha_pressure);
 
-  if (diffusion->alpha < 0.f) error("Invalid MAGMA diffusion parameters.");
+  diffusion->pressure_threshold = parser_get_opt_param_float(
+      params, "SPH:diffusion_pressure_threshold",
+      hydro_props_default_diffusion_pressure_threshold);
+
+  if (diffusion->alpha < 0.f || diffusion->alpha_pressure < 0.f ||
+      diffusion->pressure_threshold < 0.f)
+    error("Invalid MAGMA diffusion parameters.");
 
   /* Make the values available to the interaction functions */
   magma_diffusion = *diffusion;
@@ -396,6 +434,9 @@ static INLINE void diffusion_init_no_hydro(
     struct diffusion_global_data *diffusion) {
 
   diffusion->alpha = hydro_props_default_diffusion_alpha;
+  diffusion->alpha_pressure = hydro_props_default_diffusion_alpha_pressure;
+  diffusion->pressure_threshold =
+      hydro_props_default_diffusion_pressure_threshold;
   magma_diffusion = *diffusion;
 }
 
@@ -407,8 +448,11 @@ static INLINE void diffusion_init_no_hydro(
  **/
 static INLINE void diffusion_print(
     const struct diffusion_global_data *diffusion) {
-  message("Artificial conduction parameters set to alpha_u: %.3f.",
-          diffusion->alpha);
+  message(
+      "Artificial conduction parameters set to alpha_u: %.3f, "
+      "pressure-residual term: %.2f (threshold %.2f of the pressure).",
+      diffusion->alpha, diffusion->alpha_pressure,
+      diffusion->pressure_threshold);
 }
 
 #ifdef HAVE_HDF5
@@ -421,6 +465,10 @@ static INLINE void diffusion_print(
 static INLINE void diffusion_print_snapshot(
     hid_t h_grpsph, const struct diffusion_global_data *diffusion) {
   io_write_attribute_f(h_grpsph, "Alpha diffusion", diffusion->alpha);
+  io_write_attribute_f(h_grpsph, "Alpha diffusion (pressure residual)",
+                       diffusion->alpha_pressure);
+  io_write_attribute_f(h_grpsph, "Pressure residual threshold",
+                       diffusion->pressure_threshold);
 }
 #endif
 

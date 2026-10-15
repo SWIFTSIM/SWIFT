@@ -202,6 +202,10 @@ struct part {
       /*! Gradient of the internal energy */
       float gradient_u[3];
 
+      /*! Gradient of the pressure (conduction signal speed from the
+       * reconstructed pressure residual) */
+      float gradient_P[3];
+
       /*! Shock-presence sum of Cullen & Dehnen (2010, eq. 17):
        * sum_j sign(div v_j) m_j W_ij, with the neighbours' divergence from
        * their last gradient evaluation (viscosity limiter) */
@@ -232,6 +236,9 @@ struct part {
 
       /*! Gradient of the internal energy */
       float gradient_u[3];
+
+      /*! Gradient of the pressure */
+      float gradient_P[3];
 
       /*! Particle pressure. */
       float pressure;

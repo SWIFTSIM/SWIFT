@@ -27,6 +27,7 @@
  */
 
 #include "adiabatic_index.h"
+#include "equation_of_state.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
@@ -175,6 +176,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.gradient_u[1] -= common_term * uij * dx[1];
   pi->gradient.gradient_u[2] -= common_term * uij * dx[2];
 
+  /* Gradient of the pressure (without the pressure floor), for the
+   * reconstructed pressure residual of the conduction signal speed */
+  const float Pij = gas_pressure_from_internal_energy(pj->rho, pj->u) -
+                    gas_pressure_from_internal_energy(pi->rho, pi->u);
+  pi->gradient.gradient_P[0] -= common_term * Pij * dx[0];
+  pi->gradient.gradient_P[1] -= common_term * Pij * dx[1];
+  pi->gradient.gradient_P[2] -= common_term * Pij * dx[2];
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_gradient += w;
   pi->N_gradient++;
@@ -292,6 +301,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Reconstructed internal energies at the mid-point (before reconstruction) */
   float u_rec_i = pi->u;
   float u_rec_j = pj->u;
+
+  /* Pressure jump left by the slope-limited mid-point reconstruction of
+   * P (the whole jump for pairs without reconstruction): a resolved
+   * pressure gradient (hydrostatic equilibrium) reconstructs away, the
+   * kernel-scale pressure blip of the density estimate across an entropy
+   * jump, or a shock, does not. Drives the conduction signal speed. */
+  float delta_P_rec = pressurei - pressurej;
 
 #ifdef USE_ZEROTH_ORDER_VELOCITIES
   const int force_zeroth_order = 1;
@@ -419,6 +435,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     u_rec_j += Phi_ij_u * pj->force.gradient_u[0] * delta_j[0];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
+
+    /* Same for the pressure (only needed with the pressure-residual term of
+     * the conduction signal speed) */
+    if (magma_diffusion.alpha_pressure > 0.f) {
+      const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
+                               pi->force.gradient_P[1] * dx[1] +
+                               pi->force.gradient_P[2] * dx[2];
+      const float A_ij_P_den = pj->force.gradient_P[0] * dx[0] +
+                               pj->force.gradient_P[1] * dx[1] +
+                               pj->force.gradient_P[2] * dx[2];
+      const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
+      const float fraction_P =
+          (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
+                         : 0.f;
+      const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
+      const float P_rec_i =
+          pressurei + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
+                                  pi->force.gradient_P[1] * delta_i[1] +
+                                  pi->force.gradient_P[2] * delta_i[2]);
+      const float P_rec_j =
+          pressurej + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
+                                  pj->force.gradient_P[1] * delta_j[1] +
+                                  pj->force.gradient_P[2] * delta_j[2]);
+      /* The residual never exceeds the raw jump (reconstruction overshoot) */
+      delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
+    }
 
     /* Limiter preventing inversion: the slope limiter above only compares
      * the two slopes, not the actual difference. For steep profiles, the
@@ -713,9 +755,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
 #endif
 
+  /* Pressure-residual term (Price 2008's sqrt(|P_a - P_b| / rho) on the
+   * reconstructed jump, with its own coefficient): acts on the kernel-scale
+   * pressure blips of entropy jumps and in shocks, not on resolved pressure
+   * gradients */
+  const float dP_eff = fmaxf(
+      0.f, fabsf(delta_P_rec) - 0.5f * magma_diffusion.pressure_threshold *
+                                    (pressurei + pressurej));
+  const float v_sig_P =
+      magma_diffusion.alpha_pressure * sqrtf(2.f * dP_eff / (rhoi + rhoj));
+
   /* Diffusion term (eq. 24) */
-  pi->u_dt += -magma_diffusion.alpha * mj * delta_u * v_sig_u * norm_sum_G /
-              (rhoi + rhoj);
+  pi->u_dt += -mj * delta_u * (magma_diffusion.alpha * v_sig_u + v_sig_P) *
+              norm_sum_G / (rhoi + rhoj);
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
