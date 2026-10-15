@@ -64,6 +64,15 @@ def parse_args():
     )
 
     parser.add_argument(
+        "-f",
+        "--filter",
+        dest="filter",
+        choices=["none", "hydro"],
+        default="none",
+        help="Filter the graph to show only tasks related to XXX.",
+    )
+
+    parser.add_argument(
         "files",
         nargs="+",
         type=str,
@@ -716,9 +725,32 @@ def set_task_colours(data):
     return data
 
 
-if __name__ == "__main__":
+def filter_hydro_dependencies(row):
+    """
+    Filter for hydro-centric tasks, without the other particle types.
 
+    Parameters
+    ----------
+    row : pandas.Series
+        A row from the dependency dataframe containing task_in and task_out.
+
+    Returns
+    -------
+    keep : bool
+        True if the dependency should be kept in the graph.
+    """
+    tin, tout = row["task_in"], row["task_out"]
+
+    for name in (tin, tout):
+        if task_is_stars(name) or task_is_sink(name) or task_is_black_holes(name):
+            return False
+
+    return task_is_hydro(tin) or task_is_hydro(tout)
+
+
+if __name__ == "__main__":
     args, files = parse_args()
+    filter_value = args.filter
 
     for f in files:
         # output
@@ -731,6 +763,11 @@ if __name__ == "__main__":
         git = None
         data = read_csv(f, delimiter=",", comment="#")
         git = get_git_version(f, git)
+
+        # Filter for hydro
+        if filter_value == "hydro":
+            mask = data.apply(filter_hydro_dependencies, axis=1)
+            data = data[mask].reset_index(drop=True)
 
         data = set_task_colours(data)
 
