@@ -1433,10 +1433,10 @@ $1/\rho^2$ normalisation:
 \end{equation}
 with $\hat{\mathbf x}_{ij} = \mathbf x_{ij}/r_{ij}$ and the mirrored
 term for $j$ using $\rho_j$ and $\nabla_i W_{ij}^{(j)}$. $\mathbf D_i$ is
-recomputed from the particle's own $(u_i^n, \mathbf F_i^n, c_{{\rm
-hyp},i})$ through Eq.~\ref{eq:fuv-m1-closure} in every pair interaction
-that needs it, rather than cached once per particle; it is never stored,
-and every recomputation over one step draws on the same frozen inputs.
+built from the particle's own $(u_i^n, \mathbf F_i^n, c_{{\rm hyp},i})$
+through Eq.~\ref{eq:fuv-m1-closure} once per step, before the gradient
+loop, and cached per particle and operator; every pair interaction of the
+step reads that cached tensor.
 The reduced flux is clamped at $1$ because $\mathbf F_i$
 was limited against the previous step's $u_i$ (Section~\ref{sec:fuv-limiter}),
 and $f = 0$, $\hat{\mathbf n} = \mathbf 0$ are used where $u_i\le0$ or
@@ -1459,7 +1459,62 @@ transverse eigenvalue vanishes), so stability there rests on the Courant
 bound and on the artificial dissipation, not on this property. Whether
 the staggered integrator's stability (Section~\ref{sec:fuv-time}) needs
 more than this weaker, $\mathbf D_i=\mathbf D_j$-only adjointness is not
-resolved here.
+resolved here. In the free-streaming limit the scheme is not stable by
+itself: a transverse tilt of a free beam ($\hat f = 1$) grows by the
+factor $g = \sqrt{1 + (C_{\rm hyp} K h)^2}$ per step, with $K$ the
+wavenumber that the kernel gradient resolves. The measured value is
+$g = 1.063$ at $C_{\rm hyp} = 0.5$, against $1.064$ predicted; turning
+off the dissipation or the flux limiter changes it by less than $0.01$.
+
+\textbf{Consistency against conservation of the flux sum.} The
+pressure-tensor divergence is a difference estimator, not a pair
+exchange. Both members of a pair apply the same difference
+$\mathbf T_{ij}$, each with its own positive weight, so both receive a
+term of the same sign, and a pair adds to $\sum_i m_i \mathbf G_i$ the
+amount
+\begin{equation}
+  m_i\,\delta\mathbf G_i + m_j\,\delta\mathbf G_j
+    = K_{ij}\,\mathbf T_{ij} ,
+  \qquad
+  K_{ij} = m_i m_j\left(\frac{|\nabla_i W_{ij}^{(i)}|}{\rho_i^2}
+    + \frac{|\nabla_i W_{ij}^{(j)}|}{\rho_j^2}\right) > 0 .
+  \label{eq:fuv-grad-pair-sum}
+\end{equation}
+Summed over all pairs,
+\begin{equation}
+  \sum_i m_i \mathbf G_i = \sum_i U_i\,\mathbf D_i\cdot\mathbf E_i ,
+  \qquad
+  \mathbf E_i = \sum_j K_{ij}\,\hat{\mathbf x}_{ij} ,
+  \label{eq:fuv-grad-kernel-error}
+\end{equation}
+where $\mathbf E_i$ is a kernel-sum error: zero on a symmetric lattice,
+nonzero where the particles are disordered or where the density or the
+particle mass jumps, and with $\sum_i \mathbf E_i = 0$. A uniform
+$U\mathbf D$ therefore gives $\sum_i m_i\mathbf G_i = 0$, and the
+estimator returns $\mathbf G_i = 0$ for a uniform field at every
+particle: it is consistent. A field that varies on a disordered set gives
+a nonzero sum. In a periodic box with $\kappa = 0$ and $H = 0$ the
+continuum flux equation conserves $\int \rho\,\mathbf F/c_{\rm hyp}^2\,dV$,
+whose particle form is the flux sum
+\begin{equation}
+  \mathbf P = \sum_i \frac{m_i\,\tilde{\mathbf F}_i}{c_{{\rm hyp},i}}
+            = \sum_i \frac{m_i\,\mathbf F_i}{c_{{\rm hyp},i}^2} ,
+  \label{eq:fuv-flux-sum}
+\end{equation}
+the total flux at a uniform speed. One step on one time bin changes it
+by $-\Delta t\sum_i m_i\mathbf G_i$, so the shipped estimator does not
+conserve $\mathbf P$. The alternative is a pair-exchange form: one
+vector per pair, credited to one member and debited from the other. It
+conserves $\mathbf P$ exactly, but it answers a uniform field with a
+nonzero $\mathbf G_i$ of size $|U\mathbf D\cdot\mathbf E_i|/m_i$, so it
+creates flux at every disorder and at every density or mass jump. Of these two forms,
+each keeps one property and gives up the other; the shipped scheme keeps
+consistency. A matrix-corrected pair form would make $\mathbf E_i$ small
+for both and is not implemented. The skew-adjointness above is a separate
+property: it concerns the quadratic norm, holds only where neighbouring
+tensors agree, and implies nothing about $\mathbf P$. What the transport
+conserves, and the size of each flux leak, is in
+Section~\ref{sec:fuv-flux-conservation}.
 
 \subsubsection{The consistent variable-speed operators}
 \label{sec:fuv-variable-c-operators}
@@ -1634,7 +1689,82 @@ admissibility once per step, so that the state the next step's closure is
 built from satisfies Eq.~\ref{eq:fuv-admissible} by construction; the
 $\min(f,1)$ inside the closure tensor (Eq.~\ref{eq:fuv-grad-op}) is a
 guard behind it, which with the limiter in place rarely binds. The limiter
-touches only $\mathbf F$ and conserves $\sum_i m_i u_i$.
+touches only $\mathbf F$ and conserves $\sum_i m_i u_i$. It removes flux
+and returns it nowhere, so it does not conserve the flux sum
+$\mathbf P$ of Eq.~\ref{eq:fuv-flux-sum}; at one fixed $c_{\rm hyp}$ it
+is the largest of the flux leaks
+(Section~\ref{sec:fuv-flux-conservation}).
+
+\subsubsection{What the transport conserves}
+\label{sec:fuv-flux-conservation}
+
+\textbf{Energy.} The conserved energy is the $c_{\rm hyp}$-weighted sum
+$\sum_i m_i u_i/c_{{\rm hyp},i}$ (Eq.~\ref{eq:fuv-variable-c-conservation}),
+which at a uniform speed is the energy itself. It holds exactly per pair
+at the level of the accumulators, and in the applied update between
+members of one time bin with the same relaxation depth. Across time bins
+the booking of Section~\ref{sec:fuv-operators} keeps it, up to the
+same-step $\varphi$ mismatch and the Hubble term left out of the finer
+member's $\varphi$. Absorption, the Hubble term, injection and the
+band-edge transfer are the only sources and sinks, and the energy ledger
+closes with them. Under the kernel-local speed the energy itself is
+therefore not conserved: energy that streams from slow into fast gas is
+multiplied by about the speed ratio, and energy that streams the other
+way is divided by it. Optically thin gas is the worst case; with dust the
+steady field does not depend on $c_{\rm hyp}$.
+
+\textbf{Flux.} The flux sum $\mathbf P$ of Eq.~\ref{eq:fuv-flux-sum} is
+not conserved, and nothing books it. Four terms change it:
+\begin{enumerate}
+  \item the pressure-tensor divergence, through the kernel-sum error of
+    Eq.~\ref{eq:fuv-grad-kernel-error};
+  \item the time bins: each member of a pair integrates its own
+    $\mathbf G$ over its own step, the visit of an inactive member
+    discards that member's side, and no pending flux exists. Since the
+    pair term is not antisymmetric, the coarser member has no share that
+    is the exact opposite of the finer member's, so a booking in the
+    style of the energy booking cannot restore $\mathbf P$ for this
+    estimator;
+  \item the flux limiter, Eq.~\ref{eq:fuv-flux-limiter};
+  \item with the kernel-local speed only, the change of $c_{{\rm hyp},i}$
+    between steps while $\tilde{\mathbf F}_i$ is held.
+\end{enumerate}
+At one fixed speed, in a dust-free periodic box with a 16-fold particle
+mass contrast, the limiter makes $99.7$ per cent of the net change of
+$\mathbf P$ on one time bin and the pressure-tensor divergence
+$0.3$ per cent. At a step ratio of $4$ the limiter makes $70$ per cent
+and the update (divergence and time bins together) $30$ per cent. The
+terms are vectors and partly cancel, so their shares do not add to the
+total. At the kernel-local speed every term also changes the trajectory,
+and no split into shares exists.
+
+\textbf{How the flux loss is measured.} Write the net flux $|\mathbf P|$
+and the gross flux $\sum_i m_i|\tilde{\mathbf F}_i|/c_{{\rm hyp},i}$, and
+their ratio $L$. Every float32 update can change $\mathbf P$ by at most
+one rounding, $2^{-23}$ of the gross flux, so an exactly conservative
+scheme keeps $L \le n_{\rm steps}\,2^{-23}$ after $n_{\rm steps}$ steps;
+this is a linear worst case, and an exact scheme lands well below it.
+The bound is a test of exactness only. A scheme that is not exact
+exceeds it by orders of magnitude. The factor by which it does so cannot
+rank two such schemes: a term that damps the flux lowers the gross flux,
+so $L$ can rise while the net flux does not change. Any comparison
+of schemes that are not exact therefore reports the net and the gross
+flux beside $L$, and compares them on a physical measure, such as the
+fraction of its net flux that a free beam keeps. In the box above, at
+step ratio $4$ and one fixed speed, the shipped scheme ends at
+$L = 6.1\times10^{-2}$ against the exactness bound
+$3.4\times10^{-5}$ ($281$ steps).
+
+\textbf{Where the loss comes from in thin gas.} No coupling reads
+$\mathbf F$ directly; the flux acts only through the transport of $u$.
+The artificial dissipation of Section~\ref{sec:fuv-dissipation} acts on
+$u$ and not on $\mathbf F$. Where a step lowers $u$, the unchanged flux
+exceeds the bound $|\mathbf F| \le c_{\rm hyp}u$, and the limiter deletes
+the excess. Where a step raises $u$, the flux falls below the bound: the
+closure turns that energy from streaming to diffusing, and it spreads in
+every direction. A free beam in a glass keeps $0.36$ of its net flux.
+No implemented variant both conserves $\mathbf P$ and keeps the
+thin-gas results of the shipped scheme.
 
 \subsubsection{Artificial dissipation}
 \label{sec:fuv-dissipation}
@@ -2179,11 +2309,43 @@ logbook.
     post-death snapshot carries a negative field. Outcome: ratio $1.000$
     (FUV) and $0.999$ (LW), $0$ negative snapshots of $67$ in either
     band.
-  \item \textbf{Unit tests.} Conservation of the dissipation exchange
-    across a smoothing-length ratio, scale-factor independence of the
-    three spatial operators (with one $c_{\rm hyp}$ on both sides of a
-    pair), and the sign and magnitude of the expansion term in $u$ and
-    $\mathbf F$. All pass.
+  \item \textbf{Energy across time bins.} A dust-free box at one fixed
+    speed with particles on many time bins (bin gap $4$), on 1, 4 and 8
+    ranks. Criterion: the $c_{\rm hyp}$-weighted energy ledger residual
+    (field energy plus absorbed minus injected energy, over the injected
+    energy) below $n_{\rm steps}\,2^{-23}$. Outcome: at most
+    $5.2\times10^{-8}$ against $3.8\times10^{-5}$. A build without the
+    extra visits that reach the cross-rank pairs reads about $10^{-2}$ on
+    the same check.
+  \item \textbf{Hubble terms.} A star in an expanding box from $z = 9$,
+    at $Z = 0$, one fixed speed, one time bin and one rank. Expansion
+    removes $1.355\times10^{-4}$ of the LW energy, reproduced to
+    $1.2\times10^{-7}$ against a bar of $3.8\times10^{-6}$. The PE band,
+    in a twin at a ten times faster speed, matches to $0.4$ per cent of
+    its signal. For the flux Hubble term, a uniform flux is seeded on a
+    regular lattice, where the pressure-tensor divergence vanishes. It
+    decays at $\lambda_m (c_{\rm hyp}/c)H$ to $9.6\times10^{-5}$ against a
+    bar of $4.9\times10^{-4}$, up to the first snapshot at which a
+    particle reaches the flux bound. Band weights off by one fail the
+    same check.
+  \item \textbf{Energy across a speed contrast.} A dust-free box with a
+    dense cube that holds half the mass, kernel-local speed, speed ratio
+    $4.00$, the field seeded in the dense gas. The energy must end at
+    $Q_0\sum V/\sum(V/c_{\rm hyp})$, with $Q$ the conserved
+    $c_{\rm hyp}$-weighted energy. Outcome on the hydrodynamical time
+    bins: a growth by $3.752$ against $3.745$ predicted, bar $0.066$; a
+    fixed-speed twin keeps its energy to $10^{-5}$.
+  \item \textbf{Flux sum.} Not conserved
+    (Section~\ref{sec:fuv-flux-conservation}): $L = 6.1\times10^{-2}$
+    against the exactness bound $3.4\times10^{-5}$ at one fixed speed.
+  \item \textbf{Unit tests.} They check the conservation of the
+    dissipation exchange across a ratio of smoothing lengths, and the
+    scale-factor independence of the three spatial operators (with one
+    $c_{\rm hyp}$ on both sides of a pair). They also check the sign and
+    magnitude of the expansion term in $u$ and $\mathbf F$, and the energy
+    ledger of the force-loop pair terms across time bins.
+    Section~\ref{sec:isrf-review} lists each test with what it can and
+    cannot detect.
   \item \textbf{End-to-end heating.} A heating-on versus heating-off
     pair through Grackle checks the sign and magnitude of the thermal
     response; no quantitative accuracy target is defined for the $G_0$
@@ -2211,18 +2373,54 @@ path.
     checked in cosmological runs from $z=9$ (\code{ISRFCosmology},
     \code{star\_propagation} and \code{star\_propagation\_pe}), at one
     fixed $c_{\rm hyp}$ (except in the kernel-local \code{free\_field} leg) on one time bin and one rank. The Hubble term of
-    the flux equation is checked only by the unit test
+    the flux equation is checked by the unit test
     \code{testRadiationISRFExpansionTerm}, which drives the real update
     and compares the decay of $\mathbf F$ in each moment with the
-    formula; the box totals those runs check cannot detect it. The
-    kernel-local $c_{\rm hyp}$ under expansion has been checked only at
-    the speed contrast of a glass, about $1\%$. Strong speed contrast
-    across several time bins, several ranks and self-gravity under
-    expansion are untested. The many-source,
-    near-isotropic branch (Eq.~\ref{eq:fuv-steady-diffusion}), which is
-    the production use, has not been validated directly; every
-    propagation test above uses one source or one seeded pulse.
-    Production resolution has been tested at one point only.
+    formula. It is also checked in a run from $z = 9$ on a regular lattice
+    at one fixed speed, up to the first snapshot at which a particle
+    reaches the flux bound. That run needs a flux in the initial
+    conditions, which the shipped initial-condition reader does not read.
+    On a lattice the pressure-tensor divergence vanishes, so the run does
+    not test transport under expansion.
+  \item \textbf{Self-gravity under expansion.} It is checked through the
+    energy ledger only. The fixture is an expanding box with a clump $27$
+    times denser than its surroundings, so that gravity sets the short
+    steps, and a uniform twin. Each has $\Omega_{\rm b}$ matched to the
+    particle mass and no dark matter, and runs on two time bins at one
+    fixed speed on one rank. In the clump box the residual is
+    $2.3\times10^{-7}$ against a bar of $5.7\times10^{-4}$, and
+    $1.2\times10^{-2}$ with the pending amounts dropped. This shows that
+    the energy books close when gravity sets the steps. It does not show
+    that the cosmology or the forces are realistic.
+  \item \textbf{Speed contrast, ranks and production.} The kernel-local
+    $c_{\rm hyp}$ under expansion has been checked only at the speed
+    contrast of a glass, about $1\%$. A strong speed contrast under
+    expansion has never run, and nothing checks transport at a varying
+    speed under expansion. Several ranks under expansion are untested.
+    The many-source, near-isotropic branch
+    (Eq.~\ref{eq:fuv-steady-diffusion}), which is the production use, has
+    not been validated directly; every propagation test above uses one
+    source or one seeded pulse. The size of the energy change that a
+    spread of $c_{\rm hyp}$ makes in production
+    (Section~\ref{sec:fuv-flux-conservation}, \textbf{Energy}) is not
+    measured. Production resolution has been tested at one point only.
+  \item \textbf{Flux not conserved.} The flux sum is not conserved, and
+    the flux has no booking across time bins
+    (Section~\ref{sec:fuv-flux-conservation}). No implemented variant
+    conserves it without degrading the thin-gas tests.
+  \item \textbf{Flux growth in a dust-free box, open.} A uniform flux
+    seeded in a dust-free expanding box with static gas grows by about
+    $0.4$ per cent per step at $c_{\rm hyp}\Delta t/h = 0.0175$, in every
+    band. The growth per unit time scales roughly with $c_{\rm hyp}/h$,
+    not with the step. This points to the spatial operator rather than
+    the time integration. The cause is not located. The growth is
+    consistent with the remark of Section~\ref{sec:fuv-operators} that
+    the quadratic invariant bounds the transport only for a fixed
+    closure tensor.
+  \item \textbf{Flux dissipation, an optional experiment.} Damping
+    $\mathbf F$ with the pair coefficient of the dissipation of $u$ is
+    an experiment outside the shipped code; its review is not complete,
+    so it is not described here.
   \item \textbf{Symmetric divergence dispatch: a positivity cost.}
     Reaching every pair with $H_i \le r_{ij} < H_j$ from the force loop
     (Section~\ref{sec:fuv-operators}) fixed the time-bin seam's
@@ -2285,16 +2483,16 @@ path.
     accuracy target exists yet for the $G_0$ path.
   \item \textbf{Multi-source excess noise at high resolution, open.} A
     lattice of many co-located sources (\texttt{ISRFMultiSourceSuperposition}),
-    checked outside every star's own kernel to probe the many-source
-    branch flagged untested above, agrees with the continuum
-    free-streaming prediction at a coarser gas resolution and does not at
-    a finer one: the second moment of $u$ runs $0.349$/$0.360$
-    (root-mean-square of $u/\langle u\rangle-1$, FUV/LW) against a
-    continuum prediction of $0.028$/$0.047$, about $12\times$ high in FUV
-    and $8\times$ in LW, and keeps changing from snapshot to snapshot
-    rather than settling, while the first moment $\langle u\rangle$
-    agrees with the prior implementation to four to six significant
-    figures. At the finer resolution the flux is pinned by the limiter
+    checked outside every star's own kernel, probes the many-source
+    branch. It agrees with the continuum free-streaming prediction at a
+    coarser gas resolution and not at a finer one. There the root-mean-square of $u/\langle u\rangle-1$
+    about the sample mean is $0.390$/$0.405$ (FUV/LW), against a continuum
+    prediction of $0.056$/$0.095$: $6.98$ and $4.27$ times high. With one
+    fixed distance cut, the factors are
+    $40.4$ and $25.1$. The second moment does not settle, while the first
+    moment
+    $\langle u\rangle$ agrees with the prior implementation to four to six
+    significant figures. At the finer resolution the flux is pinned by the limiter
     for essentially all of that outside-kernel gas ($99.75\%$ FUV,
     $98.84\%$ LW), so the flux-relaxation-residual gate of
     Eq.~\ref{eq:fuv-diss-gate} saturates at $s=1$ there, for the reason
@@ -2306,5 +2504,7 @@ path.
     the step-to-step variation of $u$, and positivity all degrade
     further), while forcing the same saturated coefficient onto the
     coarser resolution leaves it passing and improves every diagnostic
-    there. The excess noise's own cause remains under investigation.
+    there. The injection alone, followed by exact transport, accounts for
+    a factor of at most $1.37$, so the excess comes from the transport.
+    Its cause is not located.
 \end{itemize}
