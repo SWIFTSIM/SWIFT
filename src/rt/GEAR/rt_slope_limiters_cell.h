@@ -140,6 +140,9 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell(
 
   if (rt_params.slope_limiter == rt_slope_limiter_minmod) return;
 
+  /* No neighbours: maxr is still -FLT_MAX, and scaling it can overflow. */
+  if (p->rt_data.limiter_maxr <= 0.f) return;
+
   /* The stored gradients carry the factor 1 / gradient_scale_inv. */
   const float maxr = p->rt_data.limiter_maxr * p->rt_data.gradient_scale_inv;
   const float N_cond = p->geometry.condition_number;
