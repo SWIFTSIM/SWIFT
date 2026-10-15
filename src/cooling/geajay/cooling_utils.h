@@ -324,8 +324,11 @@ cooling_get_internal_energy_h2_gamma_corrected(
  * T-to-u counterpart of cooling_get_temperature() itself.
  *
  * In mode 0 the mean molecular weight depends on the energy through the Cloudy
- * table, so the energy is found by fixed-point iteration. The iteration stops
- * the run if it does not converge.
+ * table, so the energy is found by fixed-point iteration. The result is exact
+ * where mu is continuous. Where mu jumps, no energy may give T_target. The
+ * iteration then alternates between two energies and the larger one is
+ * returned, so T is up to about 0.5% above T_target and never below it. The
+ * run stops only if the energy is not positive.
  *
  * Every caller that needs to turn a target temperature into the u that
  * actually produces it (currently just the AGORA CMB floor, potentially
@@ -355,18 +358,24 @@ cooling_get_internal_energy_from_temperature(
   const double k_B = phys_const->const_boltzmann_k;
 
   double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  double u_prev = u;
   for (int i = 0; i < 20; i++) {
     const double mu =
         cooling_get_mean_molecular_weight_at_energy(cosmo, cooling, p, xp, u);
     const double u_next =
         cooling_internal_energy_from_T(T_target, mu, k_B, m_H);
-    const double change = fabs(u_next - u);
+    if (!(u_next > 0.))
+      error("Particle %lld: invalid floor energy %e for T = %e K.", p->id,
+            u_next, T_target);
+    if (fabs(u_next - u) <= 1.e-6 * u_next) return u_next;
+    /* mu(u) has jumps: the iteration can alternate between two energies. */
+    const int cycle = (i > 0 && fabs(u_next - u_prev) <= 1.e-6 * u_next);
+    u_prev = u;
     u = u_next;
-    if (change <= 1.e-6 * u) return u;
+    if (cycle) break;
   }
-  error("Particle %lld: the floor energy for T = %e K did not converge.", p->id,
-        T_target);
-  return 0.;
+  /* Keep the energy that gives T at or above T_target. */
+  return fmax(u, u_prev);
 #else
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
