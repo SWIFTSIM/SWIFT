@@ -509,7 +509,7 @@ def write_header(f, data, git, opt):
     f.write("\t # Header\n")
     f.write('\t label="Task dependencies for SWIFT %s";\n' % git)
     f.write("\t compound=true;\n")
-    f.write("\t ratio=0.66;\n")
+    f.write("\t newrank=true;\n")
     f.write("\t node[nodesep=0.15, fontsize=18, penwidth=3.];\n")
     f.write("\t edge[fontsize=12, penwidth=0.5];\n")
     f.write("\t ranksep=0.8;\n")
