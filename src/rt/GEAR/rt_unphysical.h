@@ -19,10 +19,64 @@
 #ifndef SWIFT_RT_UNPHYSICAL_GEAR_H
 #define SWIFT_RT_UNPHYSICAL_GEAR_H
 
+#include "minmax.h"
+
 /**
  * @file src/rt/GEAR/rt_unphysical.h
  * @brief Routines for checking for and correcting unphysical scenarios
  */
+
+/**
+ * @brief Check that the float sum of squares of a vector is exact to float
+ * rounding: no square overflows (components up to 2^63), and no square that
+ * matters underflows (below 2^-63 only for components under 2^-13 of the
+ * largest). Radiation fluxes leave that range in cgs and in galactic units.
+ *
+ * @param v the vector
+ */
+__attribute__((always_inline)) INLINE static int rt_float_squares_in_range(
+    const float v[3]) {
+
+  const float a[3] = {fabsf(v[0]), fabsf(v[1]), fabsf(v[2])};
+  const float amax = max3(a[0], a[1], a[2]);
+  if (amax == 0.f) return 1;
+  if (amax > 0x1p63f || amax < 0x1p-63f) return 0;
+  const float negligible = amax * 0x1p-13f;
+  for (int k = 0; k < 3; k++)
+    if (a[k] < 0x1p-63f && a[k] > negligible) return 0;
+  return 1;
+}
+
+/**
+ * @brief Squared norm of a flux vector. Computed in double when its float
+ * squares would leave the float range, in float otherwise.
+ *
+ * @param F the flux vector
+ */
+__attribute__((always_inline)) INLINE static double rt_flux_norm2(
+    const float F[3]) {
+
+  if (rt_float_squares_in_range(F))
+    return F[0] * F[0] + F[1] * F[1] + F[2] * F[2];
+  return (double)F[0] * F[0] + (double)F[1] * F[1] + (double)F[2] * F[2];
+}
+
+/**
+ * @brief Norm of a flux vector. Computed in double when its float squares
+ * would leave the float range, in float otherwise. A norm below FLT_MIN is
+ * returned as 0, since its inverse would overflow.
+ *
+ * @param F the flux vector
+ */
+__attribute__((always_inline)) INLINE static float rt_flux_norm(
+    const float F[3]) {
+
+  if (rt_float_squares_in_range(F))
+    return sqrtf(F[0] * F[0] + F[1] * F[1] + F[2] * F[2]);
+  const double norm =
+      sqrt((double)F[0] * F[0] + (double)F[1] * F[1] + (double)F[2] * F[2]);
+  return (norm < FLT_MIN) ? 0.f : (float)norm;
+}
 
 /**
  * @brief check for and correct if needed unphysical
@@ -72,9 +126,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state(
   }
 
   /* Check for too high fluxes */
-  const double flux2 =
-      flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
-  const double flux_norm = sqrt(flux2);
+  const double flux_norm = sqrt(rt_flux_norm2(flux));
   const double flux_max = rt_params.reduced_speed_of_light * *energy_density;
   if (flux_norm > flux_max) {
     const double correct = flux_max / flux_norm;
@@ -113,8 +165,7 @@ __attribute__((always_inline)) INLINE static void rt_check_unphysical_state_ICs(
     error("Got inf/nan energy_density: %g", *energy_density);
 
   /* Check for too high fluxes */
-  const float flux2 = flux[0] * flux[0] + flux[1] * flux[1] + flux[2] * flux[2];
-  const float flux_norm = sqrtf(flux2);
+  const double flux_norm = sqrt(rt_flux_norm2(flux));
   const float flux_max = c * *energy_density;
   if (flux_max > FLT_MAX || isnan(flux_max))
     error("Got inf/nan flux_max: %g", flux_max);
