@@ -877,7 +877,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
      * converging flow (xi the shock-boosted limiter, H the kernel support)
      * sets alpha_loc = alpha_max A / (A + c_s^2), which is ~(k H)^2 times
      * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
-     * up to alpha_loc and decays back towards it over H / (4 length c_s);
+     * up to alpha_loc and decays back towards it over H / (2 length c_s);
      * floored at alpha_min. Divergence and sound speed are physical. */
     if (magma_viscosity.alpha_switch) {
       const float H = kernel_gamma * p->h * cosmo->a;
@@ -894,10 +894,11 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
         alpha = alpha_loc;
       } else {
         /* Implicit decay, stable for any time step (Price et al. 2018),
-         * over Cullen & Dehnen's tau = h / (2 l v_sig) with their h = H / 2
-         * (kernel support 2 h) and v_sig -> c_s: H / (4 l c_s). */
+         * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
+         * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
+         * H, and with v_sig -> c_s: H / (2 l c_s). */
         const float ratio =
-            dt_alpha * 4.f * magma_viscosity.length * c_phys / H;
+            dt_alpha * 2.f * magma_viscosity.length * c_phys / H;
         alpha = (alpha + alpha_loc * ratio) / (1.f + ratio);
       }
       p->alpha_visc = fmaxf(alpha, magma_viscosity.alpha_min);

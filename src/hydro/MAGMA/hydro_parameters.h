@@ -114,7 +114,7 @@
  * flow is converging (xi the shock-boosted limiter above, H the kernel
  * support) and decaying back otherwise, floored at
  * alpha_min; the decay time is Cullen & Dehnen's h / (2 length v_sig) with
- * their h = H / 2, i.e. H / (4 length c_s). The slope-limited
+ * their h the kernel support radius H: H / (2 length c_s). The slope-limited
  * reconstruction does not switch the
  * viscosity off in smooth flow to better than a few per cent of the
  * velocity jump (gradient noise and the first-order mid-point
@@ -227,7 +227,7 @@ struct viscosity_global_data {
   float alpha_min;
 
   /*! Decay rate of the time-dependent alpha, Cullen & Dehnen's l: the decay
-   * time is H / (4 l c_s) (default 0.05, i.e. 5 sound crossings of H) */
+   * time is H / (2 l c_s) (default 0.05, i.e. 10 sound crossings of H) */
   float length;
 };
 
