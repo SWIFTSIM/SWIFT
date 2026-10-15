@@ -191,12 +191,20 @@ void test(const char *param_filename) {
 
 #ifndef SIDM_NONE
   /* Check that both versions gave the same kicks: each non-symmetric call only
-   * kicks its own particle since both particles are active. */
+   * kicks its own particle since both particles are active. The kicks are not
+   * bitwise identical once the compiler contracts or re-orders the operations
+   * differently in each version (e.g. with FMAs), so compare them relative to
+   * the velocities they were computed from. */
+  float v_scale = 0.f;
+  for (int k = 0; k < 3; k++)
+    v_scale = fmaxf(v_scale, fmaxf(fabsf(pi.v[k]), fabsf(pj.v[k])));
+  const float tol_kick = 1e-5f * v_scale;
+
   for (int k = 0; k < 3; k++) {
-    if (pi.dv_sidm[k] != pi2.dv_sidm[k])
+    if (fabsf(pi.dv_sidm[k] - pi2.dv_sidm[k]) > tol_kick)
       error("Particle i dv_sidm[%d] mismatch: %.8e != %.8e", k, pi.dv_sidm[k],
             pi2.dv_sidm[k]);
-    if (pj.dv_sidm[k] != pj2.dv_sidm[k])
+    if (fabsf(pj.dv_sidm[k] - pj2.dv_sidm[k]) > tol_kick)
       error("Particle j dv_sidm[%d] mismatch: %.8e != %.8e", k, pj.dv_sidm[k],
             pj2.dv_sidm[k]);
   }
