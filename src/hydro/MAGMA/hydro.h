@@ -460,7 +460,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* Signal speed: maximal sound speed of the particle and its neighbours
    * (the paper's global time-step limits every particle by the hottest one) */
   const float c = p->force.c_sig;
-  const float alpha = magma_viscosity.alpha;
+  const float alpha =
+      magma_viscosity.alpha_switch ? p->alpha_visc : magma_viscosity.alpha;
   const float v_sig = 2.f * (c + 0.6f * alpha * (c + 2.f * p->force.mu_tilde));
   const float dt_Courant = 2.f * kernel_gamma * cosmo->a * p->h /
                            (cosmo->a_factor_sound_speed * v_sig);
@@ -823,7 +824,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float convergence_fraction = 1.f;
   float viscosity_limiter = 1.f;
   if ((magma_viscosity.limiter_convergence_gate ||
-       magma_viscosity.shear_limiter) &&
+       magma_viscosity.shear_limiter || magma_viscosity.alpha_switch) &&
       !res) {
     const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
     /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
@@ -870,6 +871,38 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
     /* Remember the divergence for the neighbours' shock-presence sums */
     p->div_v = div_v;
+
+    /* Time-dependent alpha (Cullen & Dehnen 2010, eq. 13-16, in the form
+     * of SPHENIX): the source A = xi H^2 max(0, -d(div v)/dt) of a
+     * converging flow (xi the shock-boosted limiter, H the kernel support)
+     * sets alpha_loc = alpha_max A / (A + c_s^2), which is ~(k H)^2 times
+     * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
+     * up to alpha_loc and decays back towards it over H / (4 length c_s);
+     * floored at alpha_min. Divergence and sound speed are physical. */
+    if (magma_viscosity.alpha_switch) {
+      const float H = kernel_gamma * p->h * cosmo->a;
+      const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
+      const float div_v_phys = div_v * cosmo->a2_inv;
+      const float div_v_dt =
+          dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
+      const float A = div_v_phys < 0.f
+                          ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
+                          : 0.f;
+      const float alpha_loc = magma_viscosity.alpha * A / (A + c_phys * c_phys);
+      float alpha = p->alpha_visc;
+      if (alpha_loc > alpha) {
+        alpha = alpha_loc;
+      } else {
+        /* Implicit decay, stable for any time step (Price et al. 2018),
+         * over Cullen & Dehnen's tau = h / (2 l v_sig) with their h = H / 2
+         * (kernel support 2 h) and v_sig -> c_s: H / (4 l c_s). */
+        const float ratio =
+            dt_alpha * 4.f * magma_viscosity.length * c_phys / H;
+        alpha = (alpha + alpha_loc * ratio) / (1.f + ratio);
+      }
+      p->alpha_visc = fmaxf(alpha, magma_viscosity.alpha_min);
+      p->div_v_previous = div_v_phys;
+    }
   }
 
   /* Finally, update the 'force' sub-structure' */
@@ -1152,6 +1185,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
   p->div_v = 0.f;
+  p->div_v_previous = 0.f;
+  p->alpha_visc = hydro_props_default_viscosity_alpha;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

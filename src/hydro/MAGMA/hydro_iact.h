@@ -606,8 +606,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const int Q_dissipative_j = Q_dissipative_i;
 #endif
 
-  /* Eq. 14 */
-  const float visc_alpha = magma_viscosity.alpha;
+  /* Eq. 14; with the viscosity switch each particle brings its own
+   * time-dependent alpha to the linear term */
+  const float visc_alpha_i =
+      magma_viscosity.alpha_switch ? pi->alpha_visc : magma_viscosity.alpha;
+  const float visc_alpha_j =
+      magma_viscosity.alpha_switch ? pj->alpha_visc : magma_viscosity.alpha;
   const float visc_beta = magma_viscosity.beta;
   /* Shear limiter of the viscous pressure: each particle's Q scaled by its
    * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence
@@ -628,11 +632,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
   const float xi_lin_j = (quad_only || fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
   const float Qi = Q_dissipative_i
-                       ? rhoi * (-xi_lin_i * visc_alpha * ci * mu_i +
+                       ? rhoi * (-xi_lin_i * visc_alpha_i * ci * mu_i +
                                  xi_q_i * visc_beta * mu_i * mu_i)
                        : 0.f;
   const float Qj = Q_dissipative_j
-                       ? rhoj * (-xi_lin_j * visc_alpha * cj * mu_j +
+                       ? rhoj * (-xi_lin_j * visc_alpha_j * cj * mu_j +
                                  xi_q_j * visc_beta * mu_j * mu_j)
                        : 0.f;
 

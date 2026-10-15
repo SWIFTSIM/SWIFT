@@ -180,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 19;
+  *num_fields = 20;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -286,6 +286,12 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Cullen & Dehnen (2010) limiter of the viscous pressure with the "
       "shock-presence boost, (boost div v)^2 / ((boost div v)^2 + |S|^2); "
       "scales the particle's viscous pressure (1 if switched off).");
+
+  list[19] = io_make_output_field(
+      "ViscosityAlpha", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_visc,
+      "Time-dependent coefficient alpha of the linear viscosity term "
+      "(Cullen & Dehnen 2010; the constant alpha if the viscosity switch is "
+      "off).");
 }
 
 /**

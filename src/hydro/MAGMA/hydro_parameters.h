@@ -108,6 +108,27 @@
  * blast and more surviving fragments of the blob. */
 #define hydro_props_default_viscosity_limiter_mach 0.7f
 
+/*! Time-dependent viscosity coefficient (Cullen & Dehnen 2010): 0 the
+ * paper's constant alpha, 1 a per-particle alpha raised to
+ * alpha_max A / (A + c_s^2) with A = xi H^2 max(0, -d(div v)/dt) where the
+ * flow is converging (xi the shock-boosted limiter above, H the kernel
+ * support) and decaying back otherwise, floored at
+ * alpha_min; the decay time is Cullen & Dehnen's h / (2 length v_sig) with
+ * their h = H / 2, i.e. H / (4 length c_s). The slope-limited
+ * reconstruction does not switch the
+ * viscosity off in smooth flow to better than a few per cent of the
+ * velocity jump (gradient noise and the first-order mid-point
+ * reconstruction), which with a constant alpha = 1 damps a linear sound
+ * wave by 4-5 per cent per period at 32 particles per wavelength. */
+#define hydro_props_default_viscosity_switch 0
+
+/*! Floor of the time-dependent viscosity coefficient. */
+#define hydro_props_default_viscosity_alpha_min 0.1f
+
+/*! Inverse decay time of the time-dependent viscosity coefficient in units
+ * of the sound-crossing time of the kernel support (Cullen & Dehnen's l). */
+#define hydro_props_default_viscosity_length 0.05f
+
 /*! Maximal condition number of the inverse C-matrix. Directions in which the
  * neighbourhood is more degenerate than this (planar or filamentary
  * configurations) are regularised by clipping the spectrum of the inverse. */
@@ -196,6 +217,18 @@ struct viscosity_global_data {
    * with |mu| > limiter_mach * c, i.e. only in supersonic shear (default
    * 0.7; 0: always) */
   float limiter_mach;
+
+  /*! Time-dependent alpha (Cullen & Dehnen 2010): 0 constant alpha, 1 the
+   * per-particle alpha of part::alpha_visc on the linear term of Q
+   * (default 0) */
+  int alpha_switch;
+
+  /*! Floor of the time-dependent alpha (default 0.1) */
+  float alpha_min;
+
+  /*! Decay rate of the time-dependent alpha, Cullen & Dehnen's l: the decay
+   * time is H / (4 l c_s) (default 0.05, i.e. 5 sound crossings of H) */
+  float length;
 };
 
 /*! Thermal diffusion parameters */
@@ -248,6 +281,9 @@ static INLINE void viscosity_set_defaults(
   viscosity->shear_limiter = hydro_props_default_viscosity_shear_limiter;
   viscosity->limiter_floor = hydro_props_default_viscosity_limiter_floor;
   viscosity->limiter_mach = hydro_props_default_viscosity_limiter_mach;
+  viscosity->alpha_switch = hydro_props_default_viscosity_switch;
+  viscosity->alpha_min = hydro_props_default_viscosity_alpha_min;
+  viscosity->length = hydro_props_default_viscosity_length;
 
   if (viscosity->eta_crit < 0.f) viscosity->eta_crit = 1.f / eta_neighbours;
   if (viscosity->limiter_width < 0.f)
@@ -296,6 +332,13 @@ static INLINE void viscosity_init(struct swift_params *params,
   viscosity->limiter_mach =
       parser_get_opt_param_float(params, "SPH:viscosity_limiter_mach",
                                  hydro_props_default_viscosity_limiter_mach);
+  viscosity->alpha_switch = parser_get_opt_param_int(
+      params, "SPH:viscosity_switch", hydro_props_default_viscosity_switch);
+  viscosity->alpha_min =
+      parser_get_opt_param_float(params, "SPH:viscosity_alpha_min",
+                                 hydro_props_default_viscosity_alpha_min);
+  viscosity->length = parser_get_opt_param_float(
+      params, "SPH:viscosity_length", hydro_props_default_viscosity_length);
 
   /* Automatic limiter settings: the paper's prescription in SWIFT's h
    * convention (kernel support = kernel_gamma * h, the paper uses 2 h) */
@@ -312,7 +355,10 @@ static INLINE void viscosity_init(struct swift_params *params,
       viscosity->max_condition_number < 1.f || viscosity->angle_limit < 0.f ||
       viscosity->angle_limit > M_PI_2 || viscosity->shear_limiter < 0 ||
       viscosity->shear_limiter > 2 || viscosity->limiter_floor < 0.f ||
-      viscosity->limiter_floor > 1.f || viscosity->limiter_mach < 0.f)
+      viscosity->limiter_floor > 1.f || viscosity->limiter_mach < 0.f ||
+      viscosity->alpha_switch < 0 || viscosity->alpha_switch > 1 ||
+      viscosity->alpha_min < 0.f || viscosity->alpha_min > viscosity->alpha ||
+      viscosity->length <= 0.f)
     error("Invalid MAGMA viscosity / gradient parameters.");
 
   viscosity->cos_angle_limit = cosf(viscosity->angle_limit);
@@ -364,6 +410,13 @@ static INLINE void viscosity_print(
         viscosity->limiter_floor, viscosity->limiter_mach);
   else
     message("Viscous pressure not scaled by the Cullen & Dehnen limiter.");
+  if (viscosity->alpha_switch)
+    message(
+        "Time-dependent alpha (Cullen & Dehnen 2010): alpha_max %.2f, "
+        "alpha_min %.2f, decay length %.3f.",
+        viscosity->alpha, viscosity->alpha_min, viscosity->length);
+  else
+    message("Constant viscosity alpha %.2f.", viscosity->alpha);
 }
 
 #if defined(HAVE_HDF5)
@@ -381,6 +434,9 @@ static INLINE void viscosity_print_snapshot(
   io_write_attribute_f(h_grpsph, "Epsilon viscosity", viscosity->epsilon);
   io_write_attribute_f(h_grpsph, "Limiter eta_crit", viscosity->eta_crit);
   io_write_attribute_f(h_grpsph, "Limiter width", viscosity->limiter_width);
+  io_write_attribute_i(h_grpsph, "Viscosity switch", viscosity->alpha_switch);
+  io_write_attribute_f(h_grpsph, "Alpha viscosity (min)", viscosity->alpha_min);
+  io_write_attribute_f(h_grpsph, "Viscosity decay length", viscosity->length);
   io_write_attribute_i(h_grpsph, "Limiter convergence gate",
                        viscosity->limiter_convergence_gate);
   io_write_attribute_f(h_grpsph, "Gradient max condition number",

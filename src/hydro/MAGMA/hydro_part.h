@@ -304,6 +304,14 @@ struct part {
    * shock-presence sum (viscosity limiter) */
   float div_v;
 
+  /*! Velocity divergence of the previous force preparation, for the time
+   * derivative driving the time-dependent alpha (viscosity switch) */
+  float div_v_previous;
+
+  /*! Time-dependent viscosity coefficient alpha of the particle (Cullen &
+   * Dehnen 2010); alpha_max when the switch is off */
+  float alpha_visc;
+
   /*! Why this particle interacts using base SPH (magma_fallback_none if it
    * does not, otherwise a combination of the #magma_fallback_reasons) */
   char fallback_flags;
