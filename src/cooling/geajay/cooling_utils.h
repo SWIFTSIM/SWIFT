@@ -25,6 +25,7 @@
 
 #include "chemistry.h"
 #include "cooling_properties.h"
+#include "error.h"
 #include "hydro.h"
 #include "units.h"
 
@@ -132,8 +133,8 @@ cooling_get_equilibrium_mean_molecular_weight(
 /**
  * @brief Compute the mean molecular weight of a particle, as geajay uses it.
  *
- * Calls geajay_particle_mean_molecular_weight() at the drifted state. Returns
- * NaN if geajay refuses the particle.
+ * Calls geajay_particle_mean_molecular_weight() at the drifted state. Stops the
+ * run if geajay refuses the particle.
  *
  * @param phys_const Physical constants.
  * @param us Unit system.
@@ -149,6 +150,10 @@ double cooling_get_mean_molecular_weight(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp);
+
+double cooling_get_mean_molecular_weight_at_energy(
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p, const struct xpart *xp, const double u);
 
 /**
  * @brief compute the (physical) specific internal energy of an ideal gas for
@@ -315,8 +320,12 @@ cooling_get_internal_energy_h2_gamma_corrected(
 
 /**
  * @brief compute the specific internal energy a particle with this
- * composition must have for cooling_get_temperature() to report exactly
- * T_target: the T-to-u counterpart of cooling_get_temperature() itself.
+ * composition must have for cooling_get_temperature() to report T_target: the
+ * T-to-u counterpart of cooling_get_temperature() itself.
+ *
+ * In mode 0 the mean molecular weight depends on the energy through the Cloudy
+ * table, so the energy is found by fixed-point iteration. The iteration stops
+ * the run if it does not converge.
  *
  * Every caller that needs to turn a target temperature into the u that
  * actually produces it (currently just the AGORA CMB floor, potentially
@@ -341,6 +350,24 @@ cooling_get_internal_energy_from_temperature(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp, const double T_target) {
 
+#if COOLING_GEAJAY_MODE == 0
+  const double m_H = phys_const->const_proton_mass;
+  const double k_B = phys_const->const_boltzmann_k;
+
+  double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
+  for (int i = 0; i < 20; i++) {
+    const double mu =
+        cooling_get_mean_molecular_weight_at_energy(cosmo, cooling, p, xp, u);
+    const double u_next =
+        cooling_internal_energy_from_T(T_target, mu, k_B, m_H);
+    const double change = fabs(u_next - u);
+    u = u_next;
+    if (change <= 1.e-6 * u) return u;
+  }
+  error("Particle %lld: the floor energy for T = %e K did not converge.", p->id,
+        T_target);
+  return 0.;
+#else
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
 
@@ -352,6 +379,7 @@ cooling_get_internal_energy_from_temperature(
   const double k_B = phys_const->const_boltzmann_k;
 
   return cooling_internal_energy_from_T(T_target, mu, k_B, m_H);
+#endif
 #endif
 }
 

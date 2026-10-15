@@ -1053,9 +1053,39 @@ float cooling_get_temperature(const struct phys_const *phys_const,
   double temperature;
   if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
                                   &inputs, &temperature) != GR_SUCCESS)
-    return cooling_stored_nan();
+    error("Particle %lld: geajay refused the arguments of the temperature.",
+          p->id);
 
   return temperature;
+}
+
+/**
+ * @brief Compute the mean molecular weight of a #part at a given energy.
+ *
+ * @param cosmo #cosmology data structure.
+ * @param cooling #cooling_function_data struct.
+ * @param p #part data.
+ * @param xp Pointer to the #xpart data.
+ * @param u Physical specific internal energy.
+ */
+double cooling_get_mean_molecular_weight_at_energy(
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p, const struct xpart *xp, const double u) {
+
+  const double density = cooling_get_physical_density(p, cosmo, cooling);
+
+  geajay_particle_inputs inputs;
+  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
+
+  double mu;
+  if (geajay_particle_mean_molecular_weight(cooling->context, &cooling->layout,
+                                            xp, &inputs, &mu) != GR_SUCCESS)
+    error(
+        "Particle %lld: geajay refused the arguments of the mean molecular "
+        "weight.",
+        p->id);
+
+  return mu;
 }
 
 /**
@@ -1075,18 +1105,9 @@ double cooling_get_mean_molecular_weight(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
-  const double density = cooling_get_physical_density(p, cosmo, cooling);
-
-  geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
-
-  double mu;
-  if (geajay_particle_mean_molecular_weight(cooling->context, &cooling->layout,
-                                            xp, &inputs, &mu) != GR_SUCCESS)
-    return cooling_stored_nan();
-
-  return mu;
+  return cooling_get_mean_molecular_weight_at_energy(
+      cosmo, cooling, p, xp,
+      hydro_get_drifted_physical_internal_energy(p, cosmo));
 }
 
 /**
