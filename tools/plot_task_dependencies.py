@@ -68,7 +68,7 @@ def parse_args():
         "-f",
         "--filter",
         dest="filter",
-        choices=["none", "stars"],
+        choices=["none", "stars", "sinks"],
         default="none",
         help="Filter the graph to show only tasks related to XXX.",
     )
@@ -725,33 +725,6 @@ def set_task_colours(data):
 
     return data
 
-def filter_star_dependencies(row):
-    """
-    Filter for star-centric tasks and the SF backbone.
-
-    Parameters
-    ----------
-    row : pandas.Series
-        A row from the dependency dataframe containing task_in and task_out.
-
-    Returns
-    -------
-    keep : bool
-        True if the dependency should be kept in the graph.
-    """
-    tin, tout = row["task_in"], row["task_out"]
-
-    # Standard star-centric tasks
-    if task_is_stars(tin) or task_is_stars(tout):
-        return True
-
-    # Add kick2 -> SF -> send_grav_count
-    if tin == "kick2" and "star_formation" in tout:
-        return True
-    if "star_formation" in tin and "send_grav_count" in tout:
-        return True
-
-    return False
 
 def filter_star_dependencies(row):
     """
@@ -780,10 +753,26 @@ def filter_star_dependencies(row):
         return True
 
     return False
+
+
+def filter_sink_dependencies(row):
+    """
+    Filter for sink-centric tasks.
+
+    Parameters
+    ----------
+    row : pandas.Series
+        A row from the dependency dataframe containing task_in and task_out.
+
+    Returns
+    -------
+    keep : bool
+        True if the dependency should be kept in the graph.
+    """
+    return task_is_sink(row["task_in"]) or task_is_sink(row["task_out"])
 
 
 if __name__ == "__main__":
-
     args, files = parse_args()
     filter_value = args.filter
 
@@ -802,6 +791,11 @@ if __name__ == "__main__":
         # Filter for stars
         if filter_value == "stars":
             mask = data.apply(filter_star_dependencies, axis=1)
+            data = data[mask].reset_index(drop=True)
+
+        # Filter for sinks
+        if filter_value == "sinks":
+            mask = data.apply(filter_sink_dependencies, axis=1)
             data = data[mask].reset_index(drop=True)
 
         # Apply the colors
