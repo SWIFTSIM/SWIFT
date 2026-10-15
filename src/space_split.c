@@ -218,7 +218,8 @@ void space_split_recursive(
   /* Split or let it be? */
   if ((with_self_gravity && gcount > space_splitsize) ||
       (!with_self_gravity &&
-       (count > space_splitsize || scount > space_splitsize))) {
+       (count > space_splitsize || scount > space_splitsize ||
+        sicount > space_splitsize))) {
 
     /* No longer just a leaf. */
     c->split = 1;
