@@ -1211,7 +1211,7 @@ GEARSink:
 GEARRT:
   f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
-  slope_limiter: minmod                             # (Optional) slope limiter of the radiation state at particle interfaces: minmod, gizmo (cell limiter plus the Hopkins 2015 face limiter) or cell (cell limiter only). (Default: minmod)
+  slope_limiter: minmod                             # (Optional) slope limiter of the radiation state at particle interfaces: minmod, gizmo (cell limiter plus the Hopkins 2015 face limiter) or cell (cell limiter only). gizmo and cell are experimental. (Default: minmod)
   f_limit_cooling_time: 0.6                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.

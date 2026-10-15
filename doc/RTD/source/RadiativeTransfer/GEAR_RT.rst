@@ -171,7 +171,8 @@ yaml parameter file:
   particle's gradients with a cell limiter, then applies the Hopkins (2015)
   face limiter. The cell limiter takes its bounds from the neighbours and the
   particle itself, and allows twice the slope for a well-conditioned particle.
-  ``cell`` uses the cell limiter only.
+  ``cell`` uses the cell limiter only. The ``gizmo`` and ``cell`` choices are
+  experimental. Use ``minmod`` for production runs.
 
 There are some further optional parameters related to setting up initial ion mass
 fractions which are detailed in the 
