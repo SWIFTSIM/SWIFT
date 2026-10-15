@@ -50,6 +50,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_init(
       rtd->gradient[g].flux[i][2] = 0.f;
     }
   }
+  rtd->gradient_scale_inv = 1.f;
 }
 
 /**
@@ -110,7 +111,15 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
     norm = hinvdimp1 * volume;
   }
 
+  /* Store the gradients times a power of two close to h. The product is
+   * exact, and it keeps gradients below the float minimum, frequent in cgs
+   * units, from flushing to zero. */
+  int h_exponent;
+  frexpf(h, &h_exponent);
+  norm = ldexpf(norm, h_exponent);
+
   struct rt_part_data *rtd = &p->rt_data;
+  rtd->gradient_scale_inv = ldexpf(1.f, -h_exponent);
   for (int g = 0; g < RT_NGROUPS; g++) {
     rtd->gradient[g].energy_density[0] *= norm;
     rtd->gradient[g].energy_density[1] *= norm;
@@ -397,17 +406,19 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict(
    * Do it this way in case dx contains periodicity corrections already */
   const float xij_j[3] = {xij_i[0] + dx[0], xij_i[1] + dx[1], xij_i[2] + dx[2]};
 
+  const float si = pi->rt_data.gradient_scale_inv;
   float dUi[4];
-  dUi[0] = rt_gradients_extrapolate(dE_i, xij_i);
-  dUi[1] = rt_gradients_extrapolate(dFx_i, xij_i);
-  dUi[2] = rt_gradients_extrapolate(dFy_i, xij_i);
-  dUi[3] = rt_gradients_extrapolate(dFz_i, xij_i);
+  dUi[0] = rt_gradients_extrapolate(dE_i, xij_i) * si;
+  dUi[1] = rt_gradients_extrapolate(dFx_i, xij_i) * si;
+  dUi[2] = rt_gradients_extrapolate(dFy_i, xij_i) * si;
+  dUi[3] = rt_gradients_extrapolate(dFz_i, xij_i) * si;
 
+  const float sj = pj->rt_data.gradient_scale_inv;
   float dUj[4];
-  dUj[0] = rt_gradients_extrapolate(dE_j, xij_j);
-  dUj[1] = rt_gradients_extrapolate(dFx_j, xij_j);
-  dUj[2] = rt_gradients_extrapolate(dFy_j, xij_j);
-  dUj[3] = rt_gradients_extrapolate(dFz_j, xij_j);
+  dUj[0] = rt_gradients_extrapolate(dE_j, xij_j) * sj;
+  dUj[1] = rt_gradients_extrapolate(dFx_j, xij_j) * sj;
+  dUj[2] = rt_gradients_extrapolate(dFy_j, xij_j) * sj;
+  dUj[3] = rt_gradients_extrapolate(dFz_j, xij_j) * sj;
 
   /* Apply the slope limiter at this interface */
   rt_slope_limit_face(Ui, Uj, dUi, dUj, dx, r, xij_i, xij_j);
@@ -448,11 +459,12 @@ __attribute__((always_inline)) INLINE static void rt_gradients_predict_drift(
   float dE[3], dFx[3], dFy[3], dFz[3];
   rt_part_get_gradients(p, group, dE, dFx, dFy, dFz);
 
+  const float s = p->rt_data.gradient_scale_inv;
   float dU[4];
-  dU[0] = rt_gradients_extrapolate(dE, dx);
-  dU[1] = rt_gradients_extrapolate(dFx, dx);
-  dU[2] = rt_gradients_extrapolate(dFy, dx);
-  dU[3] = rt_gradients_extrapolate(dFz, dx);
+  dU[0] = rt_gradients_extrapolate(dE, dx) * s;
+  dU[1] = rt_gradients_extrapolate(dFx, dx) * s;
+  dU[2] = rt_gradients_extrapolate(dFy, dx) * s;
+  dU[3] = rt_gradients_extrapolate(dFz, dx) * s;
 
   U[0] += dU[0];
   U[1] += dU[1];

@@ -51,6 +51,9 @@ struct rt_part_data {
     float flux[3][3];
   } gradient[RT_NGROUPS];
 
+  /*! The gradients above are stored divided by this power of two. */
+  float gradient_scale_inv;
+
   /* cell slope limiter quantities */
   /* array of length two: store min among all neighbours
    * at first index, store max among all neighbours at

@@ -140,7 +140,8 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_cell(
 
   if (rt_params.slope_limiter == rt_slope_limiter_minmod) return;
 
-  const float maxr = p->rt_data.limiter_maxr;
+  /* The stored gradients carry the factor 1 / gradient_scale_inv. */
+  const float maxr = p->rt_data.limiter_maxr * p->rt_data.gradient_scale_inv;
   const float N_cond = p->geometry.condition_number;
   struct rt_part_data *rtd = &p->rt_data;
 
