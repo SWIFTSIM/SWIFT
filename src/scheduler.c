@@ -136,9 +136,6 @@ void scheduler_addunlock(struct scheduler *s, struct task *ta,
   atomic_inc(&s->completed_unlock_writes);
 }
 
-/* Conservative number of dependencies per task type */
-#define MAX_NUMBER_DEP 128
-
 /**
  * @brief Describe the level at which the task are done.
  * WARNING: the order is supposed to be sorted from the root

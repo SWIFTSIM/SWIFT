@@ -83,6 +83,8 @@ __attribute__((always_inline)) INLINE static void drift_gpart(
     id = e->s->sinks[-gp->id_or_neg_offset].id;
   else if (gp->type == swift_type_black_hole)
     id = e->s->bparts[-gp->id_or_neg_offset].id;
+  else if (gp->type == swift_type_sidm)
+    id = e->s->siparts[-gp->id_or_neg_offset].id;
   else
     id = gp->id_or_neg_offset;
 

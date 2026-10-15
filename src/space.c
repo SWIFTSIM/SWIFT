@@ -1456,6 +1456,13 @@ void space_init(struct space *s, struct swift_params *params,
   space_extra_siparts = parser_get_opt_param_int(
       params, "Scheduler:cell_extra_siparts", space_extra_siparts_default);
 
+  /* SIDM particles are never created during a run, so no extra particles are
+   * allocated for them (see space_allocate_extras()). */
+  if (space_extra_siparts != 0)
+    error(
+        "Scheduler:cell_extra_siparts must be 0: extra SIDM particles are not "
+        "supported.");
+
   engine_max_parts_per_ghost =
       parser_get_opt_param_int(params, "Scheduler:engine_max_parts_per_ghost",
                                engine_max_parts_per_ghost_default);
