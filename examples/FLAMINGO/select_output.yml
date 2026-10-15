@@ -42,7 +42,7 @@ Default:
   ParticleIDs_Stars: Nbit40
   SmoothingLengths_Stars: on
   InitialMasses_Stars: FMantissa9
-  BirthScaleFactors_Stars: DMantissa9
+  BirthScaleFactors_Stars: DMantissa13
   FeedbackEnergyFractions_Stars: off
   NumberOfFeedbackEvents_Stars: off
   BirthDensities_Stars: BFloat16
