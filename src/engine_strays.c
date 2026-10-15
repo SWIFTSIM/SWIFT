@@ -699,7 +699,8 @@ void engine_exchange_strays(
 
         /* Log the siparts */
         if (prox->nr_siparts_in > 0) {
-          error("TODO");
+          /* Not implemented yet */
+          error("CSDS logging of SIDM particles is not implemented.");
         }
       }
 #endif

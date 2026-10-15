@@ -1246,12 +1246,9 @@ void engine_redistribute(struct engine *e) {
     }
   }
 
-  /* Now each node knows how many parts, sparts, bparts, sinks and gparts will
-   * be transferred to every other node. Get the new numbers of particles for
-   * this node.
-   *
-   * TODO: Add computation for the siparts. Only placeholders here for now
-   */
+  /* Now each node knows how many parts, sparts, bparts, sinks, siparts and
+   * gparts will be transferred to every other node. Get the new numbers of
+   * particles for this node. */
   size_t nr_parts_new = 0, nr_gparts_new = 0, nr_sparts_new = 0,
          nr_bparts_new = 0, nr_siparts_new = 0, nr_sinks_new = 0;
   for (int k = 0; k < nr_nodes; k++)
