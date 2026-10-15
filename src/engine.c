@@ -1922,6 +1922,13 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_stars_radiation_in ||
         t->subtype == task_subtype_stars_radiation_out)
       t->skip = 1;
+
+    /* Foreign stars are not received yet; only the feedback loops need their
+     * sort. Also drop the sort requests the skipped task would have reset. */
+    if (t->type == task_type_stars_sort && t->ci->nodeID != e->nodeID) {
+      t->skip = 1;
+      cell_clear_stars_sort_flags(t->ci, /*clear_unused_flags=*/1);
+    }
   }
 
   /* Run through the cells and clear some flags. */
