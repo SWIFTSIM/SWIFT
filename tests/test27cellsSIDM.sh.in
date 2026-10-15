@@ -95,7 +95,7 @@ do
 
     if [ -e sidm_brute_force_27_perturbed.dat ]
     then
-      if python3 @srcdir@/difffloat.py sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat @srcdir@/tolerance_27_normal_SIDM.dat 6
+      if python3 @srcdir@/difffloat.py sidm_brute_force_27_perturbed.dat swift_sidm_dopair_27_perturbed.dat @srcdir@/tolerance_27_perturbed_SIDM.dat 6
       then
         echo "Accuracy test passed"
       else

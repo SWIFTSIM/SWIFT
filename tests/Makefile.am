@@ -208,5 +208,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
 	     testSIDMSetUp.sh testSIDMSymmetry.sh testReadingSIDM.sh makeInputSIDM.py testSIDM.yml test27cellsSIDM.sh \
-	     tolerance_27_normal_SIDM.dat tolerance_27_perturbed_h2_SIDM.dat tolerance_27_perturbed_h_SIDM.dat \
+	     tolerance_27_normal_SIDM.dat tolerance_27_perturbed_SIDM.dat tolerance_27_perturbed_h2_SIDM.dat tolerance_27_perturbed_h_SIDM.dat \
              test125cellsSIDM.sh tolerance_125_normal_SIDM.dat
