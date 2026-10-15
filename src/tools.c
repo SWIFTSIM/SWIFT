@@ -1043,15 +1043,16 @@ void pairs_all_sidm_force(struct runner *r, struct cell *ci, struct cell *cj,
   const float H = cosmo->H;
   const int with_cosmology = e->policy & engine_policy_cosmology;
 
+  double shift[3] = {0.0, 0.0, 0.0};
+  space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+
   /* Get the depth limits (if any) */
   const char min_depth = limit_max_h ? ci->depth : 0;
   const char max_depth = limit_min_h ? ci->depth : CHAR_MAX;
 
+  /* Locality of the cells, once they have been (possibly) swapped */
   const int local_i = ci->nodeID == e->nodeID;
   const int local_j = cj->nodeID == e->nodeID;
-
-  double shift[3] = {0.0, 0.0, 0.0};
-  space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
   const double shift_i[3] = {cj->loc[0] + shift[0], cj->loc[1] + shift[1],
                              cj->loc[2] + shift[2]};
   const double shift_j[3] = {cj->loc[0], cj->loc[1], cj->loc[2]};
