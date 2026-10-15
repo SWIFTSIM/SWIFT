@@ -180,6 +180,9 @@ __attribute__((always_inline)) INLINE static void rt_props_print(
 
   message("Radiative transfer scheme: '%s'", RT_IMPLEMENTATION);
   message("RT Riemann Solver used: '%s'", RT_RIEMANN_SOLVER_NAME);
+  const char *limiter_names[3] = {"minmod", "gizmo", "cell"};
+  message("RT slope limiter used: '%s'",
+          limiter_names[rt_params.slope_limiter]);
   char messagestring[200] = "Using photon frequency bins: [ ";
   char freqstring[20];
   for (int g = 0; g < RT_NGROUPS; g++) {
@@ -302,6 +305,22 @@ __attribute__((always_inline)) INLINE static void rt_props_init(
   rt_params.reduced_speed_of_light = phys_const->const_speed_light_c * f_r;
   rt_params.reduced_speed_of_light_inverse =
       1.f / rt_params.reduced_speed_of_light;
+
+  /* get the slope limiter */
+  /* --------------------- */
+  char limiter_str[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "GEARRT:slope_limiter", limiter_str,
+                              "minmod");
+  if (strcmp(limiter_str, "minmod") == 0) {
+    rt_params.slope_limiter = rt_slope_limiter_minmod;
+  } else if (strcmp(limiter_str, "gizmo") == 0) {
+    rt_params.slope_limiter = rt_slope_limiter_gizmo;
+  } else if (strcmp(limiter_str, "cell") == 0) {
+    rt_params.slope_limiter = rt_slope_limiter_cell;
+  } else {
+    error("Unknown GEARRT:slope_limiter '%s' (minmod, gizmo or cell)",
+          limiter_str);
+  }
 
   /* get CFL condition */
   /* ----------------- */

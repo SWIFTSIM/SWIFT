@@ -165,6 +165,13 @@ yaml parameter file:
   the thermochemistry step is repeated twice using half the time step size. This
   parameter sets the maximal recursion depth of halving the time step size and 
   repeating the entire thermochemistry step.
+- ``slope_limiter``: (Default: ``minmod``) The slope limiter used to reconstruct
+  the radiation state at the particle interfaces. ``minmod`` applies the minmod
+  limiter to the two extrapolations at each interface. ``gizmo`` limits each
+  particle's gradients with a cell limiter, then applies the Hopkins (2015)
+  face limiter. The cell limiter takes its bounds from the neighbours and the
+  particle itself, and allows twice the slope for a well-conditioned particle.
+  ``cell`` uses the cell limiter only.
 
 There are some further optional parameters related to setting up initial ion mass
 fractions which are detailed in the 

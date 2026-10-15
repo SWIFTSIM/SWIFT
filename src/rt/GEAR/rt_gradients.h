@@ -22,7 +22,7 @@
 
 #include "fvpm_geometry.h"
 #include "rt_getters.h"
-/* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
+#include "rt_slope_limiters_cell.h"
 #include "rt_slope_limiters_face.h"
 #include "rt_unphysical.h"
 
@@ -122,9 +122,7 @@ __attribute__((always_inline)) INLINE static void rt_finalise_gradient_part(
     }
   }
 
-  /* the Gizmo-style slope limiting doesn't help for RT as is,
-   * so we're skipping it for now. */
-  /* rt_slope_limit_cell(p); */
+  rt_slope_limit_cell(p);
 }
 
 /**
@@ -236,9 +234,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
-    /* the Gizmo-style slope limiting doesn't help for RT as is,
-     * so we're skipping it for now. */
-    /* rt_slope_limit_cell_collect(pi, pj, g); */
+    rt_slope_limit_cell_collect(pi, pj, g, r);
 
     /* Now do the gradients of pj */
     float dE_j[3], dFx_j[3], dFy_j[3], dFz_j[3];
@@ -260,9 +256,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_collect(
     dFz_j[2] = dU[3] * psij_tilde[2];
 
     rt_gradients_update_part(pj, g, dE_j, dFx_j, dFy_j, dFz_j);
-    /* the Gizmo-style slope limiting doesn't help for RT as is,
-     * so we're skipping it for now. */
-    /* rt_slope_limit_cell_collect(pj, pi, g); */
+    rt_slope_limit_cell_collect(pj, pi, g, r);
   }
 }
 
@@ -348,9 +342,7 @@ __attribute__((always_inline)) INLINE static void rt_gradients_nonsym_collect(
     dFz_i[2] = dU[3] * psii_tilde[2];
 
     rt_gradients_update_part(pi, g, dE_i, dFx_i, dFy_i, dFz_i);
-    /* the Gizmo-style slope limiting doesn't help for RT as is,
-     * so we're skipping it for now. */
-    /* rt_slope_limit_cell_collect(pi, pj, g); */
+    rt_slope_limit_cell_collect(pi, pj, g, r);
   }
 }
 
