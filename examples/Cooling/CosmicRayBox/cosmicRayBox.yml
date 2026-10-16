@@ -1,0 +1,51 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     2.0e33     # Solar masses
+  UnitLength_in_cgs:   3.0857e21  # Kiloparsecs
+  UnitVelocity_in_cgs: 1.0e5      # Kilometers per second
+  UnitCurrent_in_cgs:  1          # Amperes
+  UnitTemp_in_cgs:     1          # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.    # The starting time of the simulation (in internal units).
+  time_end:   0.1   # About 100 Myr
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-2  # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            cosmicRayBox # Common part of the name of output files
+  time_first:          0.           # Time of the first output (in internal units)
+  delta_time:          1e-2         # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          1e-2 # Time between statistics output
+
+Scheduler:
+  max_top_level_cells: 8
+  tasks_per_cell:      64
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  minimal_temperature:   10.      # Kelvin
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./cosmicRayBox.hdf5 # The file to read
+  periodic:   1
+
+# Cooling with geajay and its reduced cosmic-ray network
+GeajayCooling:
+  cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table (not read here: no metals, no UV background)
+  primordial_chemistry_network: H_He           # Cosmic rays need a species network
+  with_UV_background: 0                        # No UV background
+  redshift: 0                                  # Redshift of the CMB
+  with_metal_cooling: 0                        # No metal cooling
+  thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
+  cosmic_rays: reduced                         # The reduced cosmic-ray network
+  cosmic_ray_input: constant                   # The same rate for every particle
+  cosmic_ray_constant_rate: 2e-16              # Primary ionisation rate per H [s^-1] (Indriolo et al. 2007)

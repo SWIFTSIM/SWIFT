@@ -1,0 +1,13 @@
+Neutral primordial gas at n_H = 1 cm^-3 and 1000 K, heated and ionised by
+cosmic rays with the reduced network of geajay (primary ionisation rate
+2e-16 s^-1, no metals, no UV background). The gas reaches an equilibrium
+near 7900 K with an electron fraction near 0.03 within about 20 Myr.
+The particles sit on a lattice, so every particle has the same state and
+the box behaves as one zone. checkEquilibrium.py compares the end state with
+a one-zone run of the Python binding pygeajay.
+
+Configure SWIFT with a species network:
+  ./configure --with-cooling=geajay_1 --with-geajay=$GEAJAY_ROOT
+
+Run with ./run.sh. The comparison needs pygeajay (in the geajay source tree,
+src/python) and GEAJAY_LIBRARY_PATH set to the same libgeajay.
