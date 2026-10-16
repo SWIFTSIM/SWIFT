@@ -172,8 +172,9 @@ void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
- * pending fields at a = 0 only, 3 phi-weighted pending at any a. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 3
+ * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
+ * reduced-flux dissipation fields. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 4
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

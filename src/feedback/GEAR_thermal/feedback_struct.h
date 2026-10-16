@@ -113,11 +113,10 @@ struct feedback_isrf_moment_data {
   /*! Artificial-dissipation source term from the force loop. Scratch. */
   float dissipation_u;
 
-#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
   /*! Artificial-dissipation rate of the reduced flux, same pair coefficient
-      as #dissipation_u. Scratch. */
+      as #dissipation_u. Zero unless #feedback_part_data.ISRF_flux_dissipation
+      is set. Scratch. */
   float dissipation_flux[3];
-#endif
 
   /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
       loop, per physical length. Scratch. */
@@ -137,12 +136,10 @@ struct feedback_isrf_moment_data {
       weighted by their phi. Same life cycle as #pending_transport_u. */
   float pending_dissipation_u;
 
-#ifdef ISRF_FLUX_CONSISTENT_DISSIPATION
   /*! Reduced-flux dissipation amount owed by finer neighbours, divided by
       c_hyp and weighted by their phi. Same life cycle as
       #pending_transport_u. */
   float pending_dissipation_flux[3];
-#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u at the end of an update since the previous snapshot,
@@ -289,6 +286,10 @@ struct feedback_part_data {
       episode still live? Gates a first-touch-only timestep_sync_part call and
       is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
   char is_illuminated_ISRF;
+
+  /*! Copy of #feedback_props.ISRF_flux_dissipation, set at drift and in the
+      extra ghost, so the force pairs read it without the engine. */
+  char ISRF_flux_dissipation;
 
   /*! Cross-bin pair booking state: < 0 inactive (may receive pending), > 0
       active (equals #dt_prev), 0 legacy (every pair booked as before). */

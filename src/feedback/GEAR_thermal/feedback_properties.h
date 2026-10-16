@@ -237,6 +237,10 @@ struct feedback_props {
    * value. */
   float ISRF_dissipation_alpha_pin_for_debugging;
 
+  /*! Also damp the reduced flux with the pair dissipation coefficient of u?
+   * Experimental, off by default. */
+  char ISRF_flux_dissipation;
+
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
 
@@ -422,6 +426,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
         message(
             "ISRF dissipation alpha pinned for debugging                = %g",
             feedback_props->ISRF_dissipation_alpha_pin_for_debugging);
+      message("ISRF reduced-flux dissipation (experimental)               = %s",
+              feedback_props->ISRF_flux_dissipation ? "ON" : "OFF");
     }
   }
 }
@@ -914,6 +920,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "exceeds the stability bound %g at the run's C_hyp: not itself "
           "clamped (debug/test only). Never use this in a production run.",
           fp->ISRF_dissipation_alpha_pin_for_debugging, alpha_bound);
+
+    /* Experimental: damp the reduced flux with the pair coefficient of u. */
+    const int flux_dissipation = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_flux_dissipation", 0);
+    if (flux_dissipation != 0 && flux_dissipation != 1)
+      error("GEARFeedback:ISRF_flux_dissipation must be 0 or 1 (got %d).",
+            flux_dissipation);
+    if (flux_dissipation && !fp->ISRF_propagation)
+      error(
+          "GEARFeedback:ISRF_flux_dissipation needs "
+          "GEARFeedback:ISRF_propagation: 1.");
+    fp->ISRF_flux_dissipation = (char)flux_dissipation;
 
     if (fp->ISRF_propagation) {
       /* The IC metallicity is not visible here, so warn unconditionally. */

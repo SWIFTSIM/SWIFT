@@ -908,6 +908,7 @@ GEARFeedback:
   ISRF_dissipation_floor_h_over_lambda: 0.5                # (optional) Screening-length error budget eps_lambda: the floor decays as (eps_lambda/(h*kappa))^4 above this h/lambda. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_floor_relaxation_residual: 0.40         # (optional) Threshold eps_R, in [0, 1], of the gate that lowers the floor where the flux is already settled. 0 disables the gate. Needs ISRF_propagation. (Default: 0.40)
   ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug only) When positive, hold the dissipation coefficient at this value and bypass the trigger. Never set in a production run. (Default: 0)
+  ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well. Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
 
 GEARRadiation:
   interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)
