@@ -1077,10 +1077,6 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    /* Prepare and verify the selection of outputs */
-    io_prepare_output_fields(output_options, with_cosmology, with_fof,
-                             with_structure_finding, e.verbose);
-
 #if defined(SWIFT_DEBUG_TASKS)
     task_create_name_files("task_labels");
 #endif
@@ -1228,6 +1224,12 @@ int main(int argc, char *argv[]) {
       cooling_init(params, &us, &prog_const, &hydro_properties, &cooling_func);
     }
     if (myrank == 0) cooling_print(&cooling_func);
+
+    /* Prepare and verify the selection of outputs. This comes after
+     * cooling_init() because the cooling chooses its snapshot fields from its
+     * parameters. */
+    io_prepare_output_fields(output_options, with_cosmology, with_fof,
+                             with_structure_finding, e.verbose);
 
     /* Initialise the star formation law and its properties */
     bzero(&starform, sizeof(struct star_formation));

@@ -115,6 +115,53 @@ INLINE static void convert_part_cooling_rates(const struct engine *e,
                        xp, ret);
 }
 
+#if COOLING_GEAJAY_MODE >= 1
+/**
+ * @brief Cosmic-ray value of a particle in internal units, for the snapshot.
+ *
+ * The stored value is proper and in cgs: s^-1 for an ionisation rate, eV
+ * cm^-3 for an energy density.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The value, 1 / time or energy / volume.
+ */
+INLINE static void convert_part_cosmic_ray_value(const struct engine *e,
+                                                 const struct part *p,
+                                                 const struct xpart *xp,
+                                                 float *ret) {
+  const struct unit_system *us = e->internal_units;
+  double factor = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  if (cooling_cosmic_ray_input_is_energy_density())
+    factor = e->physical_constants->const_electron_volt *
+             pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
+  *ret = (float)(xp->cooling_data.cosmic_ray_value * factor);
+}
+
+/**
+ * @brief Cosmic-ray energy loss rate of a particle in internal units, for
+ * the snapshot.
+ *
+ * The stored value is proper and in eV cm^-3 s^-1.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The rate, energy / volume / time.
+ */
+INLINE static void convert_part_cosmic_ray_energy_loss_rate(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  const struct unit_system *us = e->internal_units;
+  const double factor =
+      e->physical_constants->const_electron_volt *
+      pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.) *
+      units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  *ret = (float)(xp->cooling_data.cosmic_ray_energy_loss_rate * factor);
+}
+#endif
+
 /**
  * @brief Specifies which particle fields to write to a dataset
  *
@@ -218,22 +265,25 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 #if COOLING_GEAJAY_MODE >= 1
   if (cooling_with_cosmic_rays()) {
-    list[num] = io_make_output_field(
-        "CosmicRayValues", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-        cooling_data.cosmic_ray_value,
+    list[num] = io_make_physical_output_field_convert_part(
+        "CosmicRayValues", FLOAT, 1,
+        cooling_cosmic_ray_input_is_energy_density() ? UNIT_CONV_ENERGY_DENSITY
+                                                     : UNIT_CONV_INV_TIME,
+        0.f, parts, xparts, /*can convert to comoving=*/0,
+        convert_part_cosmic_ray_value,
         "Cosmic-ray value of the cooling, proper: the primary ionisation rate "
-        "per H in s^-1 or the cosmic-ray energy density in eV cm^-3, as "
+        "per H or the cosmic-ray energy density, as "
         "GeajayCooling:cosmic_ray_input says (not read with the input "
         "constant).");
     num++;
 
-    list[num] = io_make_output_field(
-        "CosmicRayEnergyLossRates", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
-        cooling_data.cosmic_ray_energy_loss_rate,
+    list[num] = io_make_physical_output_field_convert_part(
+        "CosmicRayEnergyLossRates", FLOAT, 1, UNIT_CONV_POWER_DENSITY, 0.f,
+        parts, xparts, /*can convert to comoving=*/0,
+        convert_part_cosmic_ray_energy_loss_rate,
         "Coulomb and hadronic energy loss rate of the cosmic rays in the last "
-        "solve, eV cm^-3 s^-1, proper, averaged over the step; 0 unless the "
-        "input is the energy density or when no solve ran, NaN after a failed "
-        "solve.");
+        "solve, proper, averaged over the step; 0 unless the input is the "
+        "energy density or when no solve ran, NaN after a failed solve.");
     num++;
   }
 #endif
@@ -434,7 +484,10 @@ INLINE static void cooling_read_background_parameters(
       !(cooling->dust_cross_section_fuv_cgs >= 0.))
     error("The dust cross-sections must be >= 0.");
 
-  /* Mass per H nucleon, He included, that pairs with the cross-sections */
+  /* Mass per H nucleon, He included, that pairs with the cross-sections per
+     H. 1.4 m_p is the value of RADIATION_MU_H of the GEAR radiation, so both
+     attenuate with the same column. It is not the hydrogen fraction of the
+     run: the dust-to-gas ratio cancels the composition. */
   const double mass_per_H_nucleon_cgs = 1.4 * cooling->proton_mass_cgs;
   cooling->column_factor = units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
                            (units_cgs_conversion_factor(us, UNIT_CONV_AREA) *

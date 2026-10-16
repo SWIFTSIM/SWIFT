@@ -83,12 +83,25 @@ static int cooling_geajay_table_edge_warned = 0;
 /*! 1 when the run has cosmic rays, for the snapshot fields. */
 static int cooling_geajay_cosmic_rays_on = 0;
 
+/*! 1 when the cosmic-ray input is the energy density, for the snapshot units.
+ */
+static int cooling_geajay_cosmic_ray_energy_density = 0;
+
 /**
  * @brief Does the run have cosmic rays?
  *
  * @return 1 with GeajayCooling:cosmic_rays on, 0 otherwise.
  */
 int cooling_with_cosmic_rays(void) { return cooling_geajay_cosmic_rays_on; }
+
+/**
+ * @brief Is the cosmic-ray input of the run the energy density?
+ *
+ * @return 1 with GeajayCooling:cosmic_ray_input energy_density, 0 otherwise.
+ */
+int cooling_cosmic_ray_input_is_energy_density(void) {
+  return cooling_geajay_cosmic_ray_energy_density;
+}
 
 /**
  * @brief Number of energy rate channels of the run.
@@ -577,12 +590,17 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
             geajay_cosmic_ray_choice_name("cosmic_ray_input", cr->input),
             cooling->cosmic_ray_initial_value,
             geajay_cosmic_ray_choice_name("cosmic_ray_heating", cr->heating));
-    message(
-        "Cosmic-ray constant rate = %g s^-1, rate per energy density = %g "
-        "s^-1 / (eV cm^-3), heat per ionisation = %g eV, Coulomb and "
-        "hadronic loss coefficients = %g, %g cm^3 s^-1",
-        cr->constant_rate, cr->rate_per_energy_density, cr->heat_per_ionisation,
-        cr->coulomb_loss_coefficient, cr->hadronic_loss_coefficient);
+    if (cr->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+      message("Cosmic-ray constant rate = %g s^-1", cr->constant_rate);
+    if (cr->input == GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY)
+      message(
+          "Cosmic-ray rate per energy density = %g s^-1 / (eV cm^-3), Coulomb "
+          "and hadronic loss coefficients = %g, %g cm^3 s^-1",
+          cr->rate_per_energy_density, cr->coulomb_loss_coefficient,
+          cr->hadronic_loss_coefficient);
+    if (cr->heating == GEAJAY_COSMIC_RAY_HEATING_FIXED_ENERGY)
+      message("Cosmic-ray heat per ionisation = %g eV",
+              cr->heat_per_ionisation);
   }
   if (cooling->disable_cooling_for_debugging)
     warning(
@@ -1700,6 +1718,10 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   cooling->cosmic_ray_context = NULL;
   cooling_geajay_cosmic_rays_on =
       cooling->cosmic_ray_settings.network != GEAJAY_COSMIC_RAYS_OFF;
+  cooling_geajay_cosmic_ray_energy_density =
+      cooling_geajay_cosmic_rays_on &&
+      cooling->cosmic_ray_settings.input ==
+          GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY;
   if (cooling_geajay_cosmic_rays_on) {
     cooling->cosmic_ray_context = geajay_cosmic_ray_reduced_context_create(
         cooling->context, &cooling->cosmic_ray_settings, &context_error);

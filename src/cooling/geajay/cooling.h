@@ -48,6 +48,7 @@ void cooling_pop_geajay_solve_failure_counts(long long *failed,
                                              long long *recovered);
 
 int cooling_with_cosmic_rays(void);
+int cooling_cosmic_ray_input_is_energy_density(void);
 int cooling_rate_channel_count(void);
 const char *cooling_rate_channel_name(const int channel);
 
