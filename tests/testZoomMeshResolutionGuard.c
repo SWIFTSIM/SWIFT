@@ -127,7 +127,8 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length) {
      * expected and not a test failure. */
     struct zoom_pm_mesh zoom_mesh;
     bzero(&zoom_mesh, sizeof(struct zoom_pm_mesh));
-    zoom_mesh_init(&zoom_mesh, &params, &props, &s, /*verbose=*/0);
+    zoom_mesh_init(&zoom_mesh, &params, &props, &s, /*nr_threads=*/1,
+                   /*verbose=*/0);
     zoom_mesh_clean(&zoom_mesh);
     _exit(0);
   }

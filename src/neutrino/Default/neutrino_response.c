@@ -31,6 +31,7 @@
 
 /* Local headers */
 #include "neutrino.h"
+#include "zoom_mesh_gravity.h"
 
 /*! Number of time steps in the neutrino density interpolation table */
 const hsize_t timestep_length = 10000;
@@ -127,7 +128,8 @@ void neutrino_response_init(struct neutrino_response *numesh,
                             const struct unit_system *us, const double dim[3],
                             const struct cosmology *c,
                             const struct neutrino_props *np,
-                            const struct gravity_props *gp, int rank,
+                            const struct gravity_props *gp,
+                            const struct zoom_pm_mesh *zoom_mesh, int rank,
                             int verbose) {
 
   /* Do we need to do anything? */
@@ -255,8 +257,19 @@ void neutrino_response_init(struct neutrino_response *numesh,
   const double boxlen = dim[0];
   const int mesh_size = gp->mesh_size;
   const double k_margin = 1.1;  // safety margin around the edges
-  const double k_min = 2.0 * M_PI / boxlen / k_margin;
-  const double k_max = sqrt(3.0) * k_min * mesh_size * k_margin * k_margin;
+  double k_min = 2.0 * M_PI / boxlen / k_margin;
+  double k_max = sqrt(3.0) * k_min * mesh_size * k_margin * k_margin;
+
+  /* Include the full physical mode range of the zero-padded zoom FFT. */
+  if (zoom_mesh != NULL && zoom_mesh->enabled) {
+    const double zoom_boxlen = 2. * zoom_mesh->dim[0];
+    const int zoom_mesh_size = 2 * zoom_mesh->N[0];
+    const double zoom_k_min = 2.0 * M_PI / zoom_boxlen / k_margin;
+    const double zoom_k_max =
+        sqrt(3.0) * zoom_k_min * zoom_mesh_size * k_margin * k_margin;
+    k_min = fmin(k_min, zoom_k_min);
+    k_max = fmax(k_max, zoom_k_max);
+  }
   const double k_unit = UnitLengthCGS / us->UnitLength_in_cgs;
 
   /* Determine the range of redshifts needed for this simulation */
@@ -516,27 +529,25 @@ void neutrino_response_apply_neutrino_response_mapper(void *map_data,
  * gravitational potential.
  *
  * @param s The current #space
- * @param mesh The #pm_mesh used to store the potential
  * @param tp The #threadpool object used for parallelisation
  * @param frho The NxNx(N/2) complex array of the Fourier transform of the
  * density field
  * @param slice_offset The x coordinate of the start of the slice on this MPI
  * rank
  * @param slice_width The width of the local slice on this MPI rank
+ * @param N Side length of the FFT mesh.
+ * @param boxlen Physical side length represented by the FFT mesh.
+ * @param clear_dc Whether to zero the periodic potential's DC mode.
  * @param verbose Are we talkative?
  */
-void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
-                               struct threadpool *tp, fftw_complex *frho,
-                               const int slice_offset, const int slice_width,
-                               int verbose) {
+void neutrino_response_compute_mesh(
+    const struct space *s, struct threadpool *tp, fftw_complex *frho,
+    const int slice_offset, const int slice_width, const int N,
+    const double boxlen, const int clear_dc, int verbose) {
 #ifdef HAVE_FFTW
 
   const struct cosmology *c = s->e->cosmology;
   struct neutrino_response *numesh = s->e->neutrino_response;
-
-  /* Grid size */
-  const int N = mesh->N;
-  const double boxlen = mesh->dim[0];
 
   /* Calculate the background neutrino density */
   const double a = numesh->fixed_bg_density ? 1.0 : c->a;
@@ -588,7 +599,7 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
                  &data);
 
   /* Correct singularity at (0,0,0) */
-  if (slice_offset == 0 && slice_width > 0) {
+  if (clear_dc && slice_offset == 0 && slice_width > 0) {
     frho[0][0] = 0.;
     frho[0][1] = 0.;
   }
@@ -596,6 +607,15 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
 #else
   error("No FFTW library found. Cannot compute periodic long-range forces.");
 #endif
+}
+
+void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
+                               struct threadpool *tp, fftw_complex *frho,
+                               const int slice_offset, const int slice_width,
+                               int verbose) {
+
+  neutrino_response_compute_mesh(s, tp, frho, slice_offset, slice_width,
+                                 mesh->N, mesh->dim[0], /*clear_dc=*/1, verbose);
 }
 
 #endif /* HAVE FFTW */
