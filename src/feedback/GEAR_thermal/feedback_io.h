@@ -313,6 +313,69 @@ INLINE static void convert_part_pending_LW_PHOTON(const struct engine *e,
   ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_LW_PHOTON);
 }
 
+/**
+ * @brief True flux owed to a moment by finer neighbours: `c_hyp^2` times the
+ * pending amount, in the units of #PESpecificFluxes.
+ *
+ * @param p The #part to query.
+ * @param m The #radiation_isrf_moment.
+ * @param ret (return) The pending specific flux, 3 components.
+ */
+INLINE static void convert_part_pending_flux(const struct part *p, int m,
+                                             float *ret) {
+  const float c2 = p->feedback_data.c_hyp * p->feedback_data.c_hyp;
+  for (int k = 0; k < 3; k++)
+    ret[k] = c2 * p->feedback_data.isrf_moment[m].pending_dissipation_flux[k];
+}
+
+/**
+ * @brief Snapshot converter for #PEPendingSpecificFluxes, see
+ * #feedback_write_particles.
+ *
+ * @param e The #engine (unused).
+ * @param p The #part to query.
+ * @param xp The #xpart (unused).
+ * @param ret (return) The pending specific flux, 3 components.
+ */
+INLINE static void convert_part_pending_flux_PE(const struct engine *e,
+                                                const struct part *p,
+                                                const struct xpart *xp,
+                                                float *ret) {
+  convert_part_pending_flux(p, ISRF_MOMENT_PE, ret);
+}
+
+/**
+ * @brief Snapshot converter for #LWPendingSpecificFluxes, see
+ * #feedback_write_particles.
+ *
+ * @param e The #engine (unused).
+ * @param p The #part to query.
+ * @param xp The #xpart (unused).
+ * @param ret (return) The pending specific flux, 3 components.
+ */
+INLINE static void convert_part_pending_flux_LW(const struct engine *e,
+                                                const struct part *p,
+                                                const struct xpart *xp,
+                                                float *ret) {
+  convert_part_pending_flux(p, ISRF_MOMENT_LW, ret);
+}
+
+/**
+ * @brief Snapshot converter for #LWPhotonPendingSpecificFluxes, see
+ * #feedback_write_particles.
+ *
+ * @param e The #engine (unused).
+ * @param p The #part to query.
+ * @param xp The #xpart (unused).
+ * @param ret (return) The pending specific flux, 3 components.
+ */
+INLINE static void convert_part_pending_flux_LW_PHOTON(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  convert_part_pending_flux(p, ISRF_MOMENT_LW_PHOTON, ret);
+}
+
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**
@@ -343,7 +406,22 @@ INLINE static int feedback_read_particles(struct part *parts,
                           UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                           feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u);
 
-  return 3;
+  /* Stored reduced flux Ft = F / c_hyp, units of u: |Ft| = u is free
+     streaming. Not the snapshot's PESpecificFluxes, which is c_hyp Ft. */
+  list[3] = io_make_input_field(
+      "PEReducedSpecificFlux", FLOAT, 3, OPTIONAL,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+      feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux);
+  list[4] = io_make_input_field(
+      "LWReducedSpecificFlux", FLOAT, 3, OPTIONAL,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+      feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux);
+  list[5] = io_make_input_field(
+      "LWPhotonReducedSpecificFlux", FLOAT, 3, OPTIONAL,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
+      feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux);
+
+  return 6;
 #else
   return 0;
 #endif
@@ -577,6 +655,28 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_pending_LW_PHOTON,
       "Same as PEPendingSpecificEnergies, Lyman-Werner-band photon-number "
+      "moment.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PEPendingSpecificFluxes", FLOAT, 3,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
+      convert_part_pending_flux_PE,
+      "PE-band specific flux owed by neighbours on shorter time steps, added "
+      "by the particle's next update. Add it to PESpecificFluxes for a flux "
+      "sum at a time when not all particles are synchronised. Zero unless "
+      "ISRF_flux_dissipation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "LWPendingSpecificFluxes", FLOAT, 3,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
+      convert_part_pending_flux_LW,
+      "Same as PEPendingSpecificFluxes, Lyman-Werner band.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "LWPhotonPendingSpecificFluxes", FLOAT, 3,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
+      convert_part_pending_flux_LW_PHOTON,
+      "Same as PEPendingSpecificFluxes, Lyman-Werner-band photon-number "
       "moment.");
 #endif
 

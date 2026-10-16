@@ -53,7 +53,8 @@
  * Does not zero #feedback_isrf_moment_data.u, which an IC may supply through
  * the optional "PESpecificEnergy"/"LWSpecificEnergy" fields. u_prev is seeded
  * from u, because the initial pass rebuilds `u` from `u_prev` before the first
- * snapshot. The specific flux is always zeroed.
+ * snapshot. The specific flux is kept too: an IC may seed it with the optional
+ * reduced-flux fields, and an IC without them leaves 0.
  *
  * @param p The #part to initialise.
  */
@@ -62,15 +63,14 @@ void radiation_first_init_part(struct part *restrict p) {
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
     struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
     moment->u_prev = moment->u;
-    moment->specific_flux[0] = 0.f;
-    moment->specific_flux[1] = 0.f;
-    moment->specific_flux[2] = 0.f;
     moment->u_dose_reservoir = 0.f;
     moment->u_source_rate = 0.f;
     moment->dissipation_u = 0.f;
+    for (int k = 0; k < 3; k++) moment->dissipation_flux[k] = 0.f;
     moment->div_specific_flux = 0.f;
     moment->pending_transport_u = 0.f;
     moment->pending_dissipation_u = 0.f;
+    for (int k = 0; k < 3; k++) moment->pending_dissipation_flux[k] = 0.f;
 #ifdef SWIFT_DEBUG_CHECKS
     moment->u_min_since_snapshot = 0.f;
     moment->cumulative_injected = 0.f;
@@ -160,6 +160,7 @@ void radiation_snapshot_part_propagation(struct part *p,
 
     /* The force loop also runs once per step, with no h-iteration redo. */
     moment->dissipation_u = 0.f;
+    for (int k = 0; k < 3; k++) moment->dissipation_flux[k] = 0.f;
   }
 
   /* Cached even without ISRF_propagation: the gradient loop always reads
@@ -170,6 +171,8 @@ void radiation_snapshot_part_propagation(struct part *p,
   /* Every particle a force pair can reach is drifted here; the extra ghost
    * overwrites this for the active ones. */
   p->feedback_data.dt_active = radiation_cross_bin_booking_on(e) ? -1.f : 0.f;
+  p->feedback_data.ISRF_flux_dissipation =
+      e->feedback_props->ISRF_flux_dissipation;
 
   if (!e->feedback_props->ISRF_propagation) {
     p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa = 0.f;
@@ -452,7 +455,8 @@ radiation_apply_flux_limiter_band(enum radiation_isrf_flux_limiter_state state,
  * own terms: transport by `phi`, dissipation by `decay`. Out of line.
  *
  * Each amount enters `u` plus absorbed with weight 1. LW's absorbed share
- * feeds the band-edge transfer into PE, as in the update.
+ * feeds the band-edge transfer into PE, as in the update. The pending
+ * reduced-flux dissipation is added to the flux with weight 1.
  *
  * @param p The particle to act upon.
  * @param e The #engine.
@@ -490,6 +494,21 @@ __attribute__((noinline)) static void radiation_add_pending_part(
     absorbed[m] = -expm1(-a) * pend_d + (1. - phi) * pend_t;
     mo->pending_transport_u = 0.f;
     mo->pending_dissipation_u = 0.f;
+  }
+
+  /* Weight one, as the finer member's flux term has no decay: unlike the
+   * energy share above, the held flux share skips this step's absorption.
+   * Exact at kappa = 0 only. Never nonzero with ISRF_flux_dissipation off,
+   * and then left untouched. */
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
+    for (int k = 0; k < 3; k++) {
+      if (mo->pending_dissipation_flux[k] != 0.f) {
+        mo->specific_flux[k] +=
+            (float)(c_hyp * (double)mo->pending_dissipation_flux[k]);
+        mo->pending_dissipation_flux[k] = 0.f;
+      }
+    }
   }
 
   double transfer = 0.;
@@ -640,9 +659,32 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     if (m == ISRF_MOMENT_PE) moment->u += transfer;
   }
 
+  /* Weighted by phi like the transport terms of u. A loop of its own, so the
+   * update of u keeps its code generation. */
+  if (e->feedback_props->ISRF_flux_dissipation) {
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      struct feedback_isrf_moment_data *moment = &fd->isrf_moment[m];
+      const struct feedback_isrf_operator_data *op =
+          &fd->isrf_operator[radiation_isrf_moment_to_operator[m]];
+      const double a = (c_hyp * (double)op->kappa + lambda[m] * H_dilated) * dt;
+      const double phi = radiation_relaxation_phi_factor_double(a);
+      for (int k = 0; k < 3; k++) {
+        moment->specific_flux[k] +=
+            (float)(dt * phi * (double)moment->dissipation_flux[k]);
+        moment->dissipation_flux[k] = 0.f;
+      }
+    }
+  }
+
+  /* The flux trigger stays on with the switch off, so a pending amount is
+   * never stranded. */
   for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-    if (fd->isrf_moment[m].pending_transport_u != 0.f ||
-        fd->isrf_moment[m].pending_dissipation_u != 0.f) {
+    const struct feedback_isrf_moment_data *mo = &fd->isrf_moment[m];
+    int pending =
+        mo->pending_transport_u != 0.f || mo->pending_dissipation_u != 0.f;
+    for (int k = 0; k < 3; k++)
+      pending = pending || mo->pending_dissipation_flux[k] != 0.f;
+    if (pending) {
       radiation_add_pending_part(p, e);
       break;
     }
@@ -827,6 +869,8 @@ void radiation_end_gradient_propagation(struct part *p,
 
   struct feedback_part_data *fd = &p->feedback_data;
   fd->dt_active = radiation_cross_bin_booking_on(e) ? fd->dt_prev : 0.f;
+  /* Also set here: a cell may skip the drift before its first force loop. */
+  fd->ISRF_flux_dissipation = e->feedback_props->ISRF_flux_dissipation;
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
   const float H = (float)e->cosmology->H;
@@ -878,6 +922,7 @@ void radiation_end_gradient_propagation(struct part *p,
 
     /* Not zeroed at drift, which would blank the output field at snapshots. */
     moment->div_specific_flux = 0.f;
+    for (int k = 0; k < 3; k++) moment->dissipation_flux[k] = 0.f;
   }
 
   /* The limiter decision and dissipation coefficients are operator state:
