@@ -43,12 +43,13 @@
  * field), since -ffast-math lets the compiler assume isnan()/isinf() are
  * false. For the same reason an inlined bit test, or one on a float passed
  * by value, can be folded to true: the bits are read through a pointer in a
- * function that is never inlined.
+ * function that is never inlined. The function is a plain static function,
+ * not INLINE, because gcc rejects `inline` together with `noinline`.
  *
  * @param x Pointer to the value.
  * @return 1 if *x is finite, 0 otherwise.
  */
-__attribute__((noinline)) INLINE static int float_is_finite(const float *x) {
+__attribute__((noinline, unused)) static int float_is_finite(const float *x) {
   uint32_t bits;
   memcpy(&bits, x, sizeof(bits));
   return ((bits >> 23) & 0xFFU) != 0xFFU;
