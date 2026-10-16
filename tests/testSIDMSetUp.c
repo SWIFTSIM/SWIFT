@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
   struct feedback_props feedback_properties;
   struct rt_props rt_properties;
   struct entropy_floor_properties entropy_floor;
+  bzero(&entropy_floor, sizeof(struct entropy_floor_properties));
   struct pressure_floor_props pressure_floor_props;
   struct black_holes_props black_holes_properties;
   bzero(&black_holes_properties, sizeof(struct black_holes_props));
@@ -76,9 +77,11 @@ int main(int argc, char *argv[]) {
   struct forcing_terms forcing_terms;
   struct extra_io_properties extra_io_props;
   struct star_formation starform;
+  bzero(&starform, sizeof(struct star_formation));
   struct pm_mesh mesh;
   struct power_spectrum_data pow_data;
   struct chemistry_global_data chemistry;
+  bzero(&chemistry, sizeof(struct chemistry_global_data));
   struct cooling_function_data cooling_func;
   struct los_props los_properties;
   struct repartition reparttype;

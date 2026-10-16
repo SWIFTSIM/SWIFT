@@ -3543,6 +3543,8 @@ AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
 AC_CONFIG_FILES([tests/testSIDMSetUp.sh], [chmod +x tests/testSIDMSetUp.sh])
+AC_CONFIG_FILES([tests/testSIDMSymmetry.sh], [chmod +x tests/testSIDMSymmetry.sh])
+AC_CONFIG_FILES([tests/testReadingSIDM.sh], [chmod +x tests/testReadingSIDM.sh])
 AC_CONFIG_FILES([tests/testCustomMPI.sh], [chmod +x tests/testCustomMPI.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 AC_CONFIG_FILES([tests/selectOutputParameters.yml])

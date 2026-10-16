@@ -62,6 +62,14 @@ do_configure --with-sidm=Basic --with-subgrid=EAGLE
 do_make -j 2
 do_make clean
 
+echo "-----------------------"
+echo "SIDM + density checks  "
+echo "-----------------------"
+do_configure --with-sidm=Basic --enable-debugging-checks --enable-sidm-density-checks=1
+do_make -j 2
+# do_make check # No need for checks, nothing is different from the earlier builds
+do_make clean
+
 
 exit
 

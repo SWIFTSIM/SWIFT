@@ -832,7 +832,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
   if (!with_sidm && count_siparts_in)
     error(
-        "Not running with hydro but about to receive gas particles in "
+        "Not running with SIDM but about to receive SIDM particles in "
         "proxies!");
 
   if (e->verbose)
@@ -914,9 +914,9 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
       swift_free("siparts_foreign", s->siparts_foreign);
     s->size_siparts_foreign = engine_foreign_alloc_margin * count_siparts_in;
     if (swift_memalign("siparts_foreign", (void **)&s->siparts_foreign,
-                       bpart_align,
-                       sizeof(struct bpart) * s->size_siparts_foreign) != 0)
-      error("Failed to allocate foreign bpart data.");
+                       sipart_align,
+                       sizeof(struct sipart) * s->size_siparts_foreign) != 0)
+      error("Failed to allocate foreign sipart data.");
   }
 
   /* Allocate space for the foreign sink particles we will receive */
@@ -1484,7 +1484,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
       (long long)(e->s->nr_siparts - e->s->nr_extra_siparts),
   };
 #ifdef WITH_MPI
-  MPI_Allreduce(MPI_IN_PLACE, num_particles, 5, MPI_LONG_LONG, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, num_particles, 6, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
   e->total_nr_parts = num_particles[0];
@@ -2332,7 +2332,7 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
 
-  // /* Udpate the SIDM properties */
+  /* Update the SIDM properties */
   if (e->policy & engine_policy_sidm)
     sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
 
@@ -2870,6 +2870,10 @@ int engine_step(struct engine *e) {
   if (e->policy & engine_policy_hydro)
     hydro_props_update(e->hydro_properties, e->gravity_properties,
                        e->cosmology);
+
+  /* Update the SIDM properties */
+  if (e->policy & engine_policy_sidm)
+    sidm_props_update(e->sidm_properties, e->gravity_properties, e->cosmology);
 
   /* Update the forcing terms */
   forcing_update(e->forcing_terms, e->time_old);

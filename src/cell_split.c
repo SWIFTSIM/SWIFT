@@ -793,7 +793,7 @@ void cell_reorder_extra_siparts(struct cell *c,
       }
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (first_not_extra >= count_real + space_extra_sparts)
+      if (first_not_extra >= count_real + space_extra_siparts)
         error("Looking for extra particles beyond this cell's range!");
 #endif
 

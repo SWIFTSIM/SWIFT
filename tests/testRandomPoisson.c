@@ -22,10 +22,8 @@
 
 /* System includes. */
 #include <fenv.h>
-#include <math.h>
 
 /* Local headers. */
-#include "exp10.h"
 #include "swift.h"
 
 const int N = 1000000;
