@@ -44,6 +44,8 @@
 /*! One-sided normal quantile for p = 0.001. */
 #define Z_P001 3.0902323
 
+#if defined(HAVE_CHEALPIX)
+
 /**
  * @brief Next value of a splitmix64 stream, mapped to [0, 1).
  *
@@ -106,6 +108,8 @@ static double chi2_flat(const long *counts, const int n_pix, const long total) {
   return chi2;
 }
 
+#endif /* HAVE_CHEALPIX */
+
 /**
  * @brief Print and score one check that must pass or must fail.
  *
@@ -144,6 +148,8 @@ static double departure_from_rotation(const double R[9]) {
   return fmax(worst, fabs(det - 1.0));
 }
 
+#if defined(HAVE_CHEALPIX)
+
 /**
  * @brief A rotation about z only, by an angle fixed by the ID.
  *
@@ -154,7 +160,8 @@ static double departure_from_rotation(const double R[9]) {
  */
 static void rotation_about_z_only(const int64_t id, double R[9]) {
   const double angle =
-      2.0 * M_PI * random_unit_interval(id, 0, random_number_HII_frame_rotation);
+      2.0 * M_PI *
+      random_unit_interval(id, 0, random_number_HII_frame_rotation);
   const double c = cos(angle), s = sin(angle);
   const double M[9] = {c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0};
   memcpy(R, M, sizeof(M));
@@ -171,6 +178,8 @@ static void rotation_identity(const int64_t id, double R[9]) {
   const double M[9] = {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0};
   memcpy(R, M, sizeof(M));
 }
+
+#endif /* HAVE_CHEALPIX */
 
 /**
  * @brief Matrix checks: orthonormality, determinant, determinism.
@@ -267,7 +276,8 @@ static double stacked_chi2(void (*rot)(int64_t, double *), const int nside) {
   /* A generic axis, not along a box axis or a diagonal. The sign convention
      of runner_hii_get_pixel negates dx, so -dx is the axis itself. */
   const double n = sqrt(0.3 * 0.3 + 0.5 * 0.5 + 0.81 * 0.81);
-  const float dx[3] = {(float)(-0.3 / n), (float)(-0.5 / n), (float)(-0.81 / n)};
+  const float dx[3] = {(float)(-0.3 / n), (float)(-0.5 / n),
+                       (float)(-0.81 / n)};
   double R[9];
   for (int64_t id = 1; id <= N_SAMPLES; id++) {
     rot(id, R);
@@ -316,17 +326,19 @@ static int test_pixels(void) {
 
     snprintf(name, sizeof(name), "nside %d, uniform directions, one star's R",
              nside);
-    fail += report(name, occupancy_chi2(runner_hii_cone_frame_from_id, 7, nside, 0),
-                   bar, 0);
+    fail +=
+        report(name, occupancy_chi2(runner_hii_cone_frame_from_id, 7, nside, 0),
+               bar, 0);
     snprintf(name, sizeof(name),
              "nside %d, control: squeezed (non-rotation) matrix", nside);
-    fail += report(
-        name, occupancy_chi2(runner_hii_cone_frame_from_id, 7, nside, 1), bar, 1);
+    fail +=
+        report(name, occupancy_chi2(runner_hii_cone_frame_from_id, 7, nside, 1),
+               bar, 1);
 
     snprintf(name, sizeof(name), "nside %d, stacked image of an axis over IDs",
              nside);
-    fail += report(name, stacked_chi2(runner_hii_cone_frame_from_id, nside), bar,
-                   0);
+    fail += report(name, stacked_chi2(runner_hii_cone_frame_from_id, nside),
+                   bar, 0);
     snprintf(name, sizeof(name),
              "nside %d, control: rotation about z only, stacked", nside);
     fail += report(name, stacked_chi2(rotation_about_z_only, nside), bar, 1);
@@ -360,16 +372,19 @@ static int test_pixels(void) {
       if (p != pixel_rotated_reference(dx, nside, R)) bad_rotated++;
       if (q != pixel_rotated_reference(mdx, nside, R)) bad_rotated++;
     }
-    snprintf(name, sizeof(name), "nside %d, flag off: pixels differing from box",
-             nside);
+    snprintf(name, sizeof(name),
+             "nside %d, flag off: pixels differing from box", nside);
     fail += report(name, (double)diff_null, 0.0, 0);
     snprintf(name, sizeof(name),
-             "nside %d, identity frame: pixels changed (negative control)", nside);
+             "nside %d, identity frame: pixels changed (negative control)",
+             nside);
     fail += report(name, (double)diff_identity, 0.0, 0);
-    snprintf(name, sizeof(name), "nside %d, rotated: pixels differing from an independent rotation",
+    snprintf(name, sizeof(name),
+             "nside %d, rotated: pixels differing from an independent rotation",
              nside);
     fail += report(name, (double)bad_rotated, 0.0, 0);
-    snprintf(name, sizeof(name), "nside %d, rotated: pixel out of range", nside);
+    snprintf(name, sizeof(name), "nside %d, rotated: pixel out of range",
+             nside);
     fail += report(name, (double)bad_range, 0.0, 0);
   }
 
@@ -385,8 +400,9 @@ static int test_pixels(void) {
       test_direction(&state, dx);
       if (runner_hii_get_pixel(dx, 12, R) != pixel_reference(dx, 1)) changed++;
     }
-    fail += report("control: share of pixels left unmoved by a random frame (nside 1)",
-                   1.0 - (double)changed / 10000, 0.5, 0);
+    fail += report(
+        "control: share of pixels left unmoved by a random frame (nside 1)",
+        1.0 - (double)changed / 10000, 0.5, 0);
   }
   return fail;
 }
@@ -407,7 +423,8 @@ static uint64_t digest_of_ids(const int64_t id_shift) {
     runner_hii_cone_frame_from_id(id + id_shift, R);
     unsigned char bytes[sizeof(R)];
     memcpy(bytes, R, sizeof(R));
-    for (size_t k = 0; k < sizeof(R); k++) h = (h ^ bytes[k]) * 1099511628211ULL;
+    for (size_t k = 0; k < sizeof(R); k++)
+      h = (h ^ bytes[k]) * 1099511628211ULL;
 #if defined(HAVE_CHEALPIX)
     const float dx[3] = {0.3f * (float)(id % 7) - 1.f, 0.2f, 0.1f + (float)id};
     h = (h ^ (uint64_t)runner_hii_get_pixel(dx, 48, R)) * 1099511628211ULL;
