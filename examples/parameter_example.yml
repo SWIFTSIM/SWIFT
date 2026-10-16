@@ -739,6 +739,15 @@ GeajayCooling:
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)
   initial_nHII_to_nH_ratio:    -1              # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1. The same holds for the nHeI, nHeII, nHeIII, nDI, nDII, nHM, nH2I, nH2II and nHDI ratios.
+  cosmic_rays: off                             # (optional) Cosmic-ray network: off or reduced (H and He ionisation, one net H2 loss, heating; needs primordial_chemistry_network H_He or above) (default: off)
+  cosmic_ray_input: ionisation_rate            # (optional) Meaning of the per-particle cosmic-ray value: ionisation_rate (primary rate per H, s^-1), energy_density (eV cm^-3) or constant (cosmic_ray_constant_rate everywhere, no per-particle value) (default: ionisation_rate)
+  cosmic_ray_initial_value: 2e-16              # Required with a per-particle input, refused otherwise. Value given to every particle at the start, in the unit of the input, proper. The cooling never changes it; a module that injects cosmic rays writes it.
+  cosmic_ray_constant_rate: 2e-16              # Required with cosmic_ray_input: constant, refused otherwise. Primary ionisation rate per H [s^-1]
+  cosmic_ray_rate_per_energy_density: 3e-17    # Required with cosmic_ray_input: energy_density, refused otherwise. Ionisation rate per unit energy density kappa [s^-1 / (eV cm^-3)]
+  cosmic_ray_coulomb_loss_coefficient: 1.65e-16  # Required with cosmic_ray_input: energy_density, refused otherwise. Coulomb loss coefficient [cm^3 s^-1]
+  cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Required with cosmic_ray_input: energy_density, refused otherwise. Hadronic loss coefficient [cm^3 s^-1]
+  cosmic_ray_heating: atomic_molecular_fit     # (optional) Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
+  cosmic_ray_heat_per_ionisation: 20           # (optional) Heat per ionisation of fixed_energy [eV] (default: 20)
 
 
   

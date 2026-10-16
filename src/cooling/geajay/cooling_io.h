@@ -30,6 +30,7 @@
 #include "physical_constants.h"
 #include "units.h"
 
+#include <float.h>
 #include <geajay_message.h>
 #include <geajay_options.h>
 #include <stdio.h>
@@ -63,10 +64,11 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
 
   /* Names of the components of CoolingRates */
   const int name_length = 32;
-  char names[GEAJAY_RATE_NCHANNELS][32];
-  for (int k = 0; k < GEAJAY_RATE_NCHANNELS; k++)
-    snprintf(names[k], name_length, "%s", geajay_rate_channel_name(k));
-  hsize_t dims[1] = {GEAJAY_RATE_NCHANNELS};
+  const int num_channels = cooling_rate_channel_count();
+  char names[GEAJAY_RATE_NCHANNELS_COSMIC_RAY][32];
+  for (int k = 0; k < num_channels; k++)
+    snprintf(names[k], name_length, "%s", cooling_rate_channel_name(k));
+  hsize_t dims[1] = {num_channels};
   hid_t type = H5Tcopy(H5T_C_S1);
   H5Tset_size(type, name_length);
   hid_t space = H5Screate_simple(1, dims, NULL);
@@ -200,7 +202,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   num++;
 
   list[num] = io_make_physical_output_field_convert_part(
-      "CoolingRates", DOUBLE, GEAJAY_RATE_NCHANNELS,
+      "CoolingRates", DOUBLE, cooling_rate_channel_count(),
       UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, -3.f * hydro_gamma_minus_one,
       parts, xparts,
       /*can convert to comoving=*/1, convert_part_cooling_rates,
@@ -213,6 +215,28 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "refused the particle. Cosmological runs: the redshift is the one of the "
       "end of the step that contains the snapshot.");
   num++;
+
+#if COOLING_GEAJAY_MODE >= 1
+  if (cooling_with_cosmic_rays()) {
+    list[num] = io_make_output_field(
+        "CosmicRayValues", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+        cooling_data.cosmic_ray_value,
+        "Cosmic-ray value of the cooling, proper: the primary ionisation rate "
+        "per H in s^-1 or the cosmic-ray energy density in eV cm^-3, as "
+        "GeajayCooling:cosmic_ray_input says (not read with the input "
+        "constant).");
+    num++;
+
+    list[num] = io_make_output_field(
+        "CosmicRayEnergyLossRates", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+        cooling_data.cosmic_ray_energy_loss_rate,
+        "Coulomb and hadronic energy loss rate of the cosmic rays in the last "
+        "solve, eV cm^-3 s^-1, proper, averaged over the step; 0 unless the "
+        "input is the energy density or when no solve ran, NaN after a failed "
+        "solve.");
+    num++;
+  }
+#endif
 
   return num;
 }
@@ -249,6 +273,78 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
           swift_name != NULL ? ", or \"" : "",
           swift_name != NULL ? swift_name : "", swift_name != NULL ? "\"" : "");
   return value;
+}
+
+/**
+ * @brief Read the cosmic-ray options of geajay and the initial value of the
+ * particles.
+ *
+ * Only the options present in the parameter file are passed to geajay, which
+ * refuses a value that the chosen input does not read.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param cooling The cooling properties to initialize.
+ */
+INLINE static void cooling_read_cosmic_ray_parameters(
+    struct swift_params *parameter_file,
+    struct cooling_function_data *cooling) {
+
+  static const char *options[] = {"cosmic_rays",
+                                  "cosmic_ray_input",
+                                  "cosmic_ray_rate_per_energy_density",
+                                  "cosmic_ray_constant_rate",
+                                  "cosmic_ray_heating",
+                                  "cosmic_ray_heat_per_ionisation",
+                                  "cosmic_ray_coulomb_loss_coefficient",
+                                  "cosmic_ray_hadronic_loss_coefficient"};
+  const int num_options = sizeof(options) / sizeof(options[0]);
+
+  geajay_cosmic_ray_settings *settings = &cooling->cosmic_ray_settings;
+  geajay_cosmic_ray_settings_init(settings);
+
+  char key[PARSER_MAX_LINE_SIZE], text[PARSER_MAX_LINE_SIZE];
+  for (int i = 0; i < num_options; i++) {
+    snprintf(key, sizeof(key), "GeajayCooling:%s", options[i]);
+    if (!parser_does_param_exist(parameter_file, key)) continue;
+    parser_get_param_string(parameter_file, key, text);
+    if (geajay_cosmic_ray_settings_set(settings, options[i], text) ==
+        GEAJAY_FAIL)
+      error("%s: geajay refused the value '%s': %s", key, text,
+            geajay_last_error_message());
+  }
+
+  /* The initial value is SWIFT's: read only by a per-particle input */
+  const char *initial_key = "GeajayCooling:cosmic_ray_initial_value";
+  const int has_initial = parser_does_param_exist(parameter_file, initial_key);
+  const int per_particle = settings->network != GEAJAY_COSMIC_RAYS_OFF &&
+                           settings->input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT;
+  cooling->cosmic_ray_initial_value = 0.f;
+  if (per_particle) {
+    if (!has_initial)
+      error("%s is required with the cosmic-ray input %s.", initial_key,
+            geajay_cosmic_ray_choice_name("cosmic_ray_input", settings->input));
+    const double value = parser_get_param_double(parameter_file, initial_key);
+    if (!(value >= 0.) || value > FLT_MAX)
+      error("%s must be >= 0 and fit in a float, got %e.", initial_key, value);
+    cooling->cosmic_ray_initial_value = (float)value;
+  } else if (has_initial) {
+    error(
+        "%s is read only with cosmic rays on and a per-particle input "
+        "(ionisation_rate or energy_density).",
+        initial_key);
+  }
+
+  if (settings->network == GEAJAY_COSMIC_RAYS_OFF) return;
+
+  if (geajay_cosmic_ray_settings_check(settings) == GEAJAY_FAIL)
+    error("geajay refused the cosmic-ray options: %s",
+          geajay_last_error_message());
+
+  if (cooling->primordial_chemistry < 1)
+    error(
+        "GeajayCooling:cosmic_rays needs a species network (H_He or above): "
+        "GeajayCooling:primordial_chemistry_network is %d.",
+        cooling->primordial_chemistry);
 }
 
 /**
@@ -455,6 +551,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->proton_mass_cgs = phys_const->const_proton_mass *
                              units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+
+  cooling_read_cosmic_ray_parameters(parameter_file, cooling);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */

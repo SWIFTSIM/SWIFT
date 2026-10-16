@@ -36,6 +36,7 @@
 
 /* The geajay library itself */
 #include <geajay.h>
+#include <geajay_cosmic_ray.h>
 #include <geajay_message.h>
 #include <geajay_particle.h>
 
@@ -73,6 +74,39 @@ static long long cooling_geajay_recovered_solves = 0;
 
 /*! Set by the first particle above the density range of the Cloudy table. */
 static int cooling_geajay_table_edge_warned = 0;
+
+/*! 1 when the run has cosmic rays, for the snapshot fields. */
+static int cooling_geajay_cosmic_rays_on = 0;
+
+/**
+ * @brief Does the run have cosmic rays?
+ *
+ * @return 1 with GeajayCooling:cosmic_rays on, 0 otherwise.
+ */
+int cooling_with_cosmic_rays(void) { return cooling_geajay_cosmic_rays_on; }
+
+/**
+ * @brief Number of energy rate channels of the run.
+ *
+ * @return GEAJAY_RATE_NCHANNELS, or GEAJAY_RATE_NCHANNELS_COSMIC_RAY with
+ * cosmic rays.
+ */
+int cooling_rate_channel_count(void) {
+  return cooling_geajay_cosmic_rays_on ? GEAJAY_RATE_NCHANNELS_COSMIC_RAY
+                                       : GEAJAY_RATE_NCHANNELS;
+}
+
+/**
+ * @brief Name of an energy rate channel of the run.
+ *
+ * @param channel The channel, below cooling_rate_channel_count().
+ * @return Its static name.
+ */
+const char *cooling_rate_channel_name(const int channel) {
+  return channel < GEAJAY_RATE_NCHANNELS
+             ? geajay_rate_channel_name(channel)
+             : geajay_cosmic_ray_rate_channel_name(channel);
+}
 
 /**
  * @brief Return the numbers of failed and of recovered geajay solves on this
@@ -437,6 +471,9 @@ void cooling_first_init_part(const struct phys_const *phys_const,
      sum to the total gas mass fraction. */
   if (fabs(Xtot - 1.0) > 1e-3)
     error("Got total mass fraction of gas = %.6g", Xtot);
+
+  xp->cooling_data.cosmic_ray_value = cooling->cosmic_ray_initial_value;
+  xp->cooling_data.cosmic_ray_energy_loss_rate = 0.f;
 #endif  // MODE >= 1
 }
 
@@ -512,6 +549,21 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Thermal time = %g", cooling->thermal_time);
   message("Max geajay sub-steps = %d", cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
+  const geajay_cosmic_ray_settings *cr = &cooling->cosmic_ray_settings;
+  message("Cosmic rays = %s",
+          geajay_cosmic_ray_choice_name("cosmic_rays", cr->network));
+  if (cr->network != GEAJAY_COSMIC_RAYS_OFF) {
+    message("Cosmic-ray input = %s (initial value %g), heating = %s",
+            geajay_cosmic_ray_choice_name("cosmic_ray_input", cr->input),
+            cooling->cosmic_ray_initial_value,
+            geajay_cosmic_ray_choice_name("cosmic_ray_heating", cr->heating));
+    message(
+        "Cosmic-ray constant rate = %g s^-1, rate per energy density = %g "
+        "s^-1 / (eV cm^-3), heat per ionisation = %g eV, Coulomb and "
+        "hadronic loss coefficients = %g, %g cm^3 s^-1",
+        cr->constant_rate, cr->rate_per_energy_density, cr->heat_per_ionisation,
+        cr->coulomb_loss_coefficient, cr->hadronic_loss_coefficient);
+  }
   if (cooling->disable_cooling_for_debugging)
     warning(
         "GeajayCooling:disable_cooling_for_debugging is set: the "
@@ -665,6 +717,100 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
 }
 
 /**
+ * @brief A quiet NaN made from its bits, for a value that is only stored.
+ *
+ * SWIFT builds with -ffinite-math-only, under which a NaN constant is
+ * undefined: the volatile keeps the compiler from seeing one.
+ *
+ * @return A quiet NaN.
+ */
+static double cooling_stored_nan(void) {
+  volatile uint64_t bits = 0x7ff8000000000000ULL;
+  const uint64_t value = bits;
+  double nan_value;
+  memcpy(&nan_value, &value, sizeof(nan_value));
+  return nan_value;
+}
+
+/**
+ * @brief Cosmic-ray value passed to geajay for a particle.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param xp Pointer to the particle extra data.
+ * @return The stored value, or 0 with the input "constant".
+ */
+static double cooling_cosmic_ray_value(
+    const struct cooling_function_data *cooling, const struct xpart *xp) {
+#if COOLING_GEAJAY_MODE >= 1
+  if (cooling->cosmic_ray_settings.input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+    return xp->cooling_data.cosmic_ray_value;
+#endif
+  return 0.;
+}
+
+/**
+ * @brief Set the cosmic-ray energy loss rate of a particle.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @param loss The loss rate, eV cm^-3 s^-1.
+ */
+static void cooling_set_cosmic_ray_loss(struct xpart *xp, const double loss) {
+#if COOLING_GEAJAY_MODE >= 1
+  xp->cooling_data.cosmic_ray_energy_loss_rate = loss;
+#endif
+}
+
+/**
+ * @brief The solve of cooling_new_energy_or_keep_previous() with the reduced
+ * cosmic-ray network.
+ *
+ * The loss rate is used only after a successful return code: a failed solve
+ * stores NaN, and geajay does not write the output on a refusal, which stops
+ * the run.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data.
+ * @param inputs The inputs of the solve.
+ * @param dt The time-step of this particle.
+ * @param energy The energy passed to geajay.
+ * @param status (return) What happened in the solve.
+ * @param kept_previous_state (return) 1 if every solve failed.
+ * @return The new internal energy, or @p energy if every solve failed.
+ */
+static double cooling_new_energy_cosmic_rays(
+    const struct cooling_function_data *cooling, const struct part *p,
+    struct xpart *xp, const geajay_particle_inputs *inputs, const double dt,
+    const double energy, geajay_particle_status *status,
+    int *kept_previous_state) {
+
+  geajay_cosmic_ray_output output = {.size = sizeof(output)};
+
+  const int solved = geajay_particle_solve_cosmic_ray_reduced(
+                         cooling->cosmic_ray_context, &cooling->layout, xp,
+                         inputs, cooling_cosmic_ray_value(cooling, xp), dt,
+                         /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
+
+  if (status->reason == GEAJAY_PARTICLE_BAD_ARGUMENT)
+    error(
+        "Particle %lld: geajay refused the arguments of the cosmic-ray solve "
+        "(cosmic-ray value %e).",
+        p->id, cooling_cosmic_ray_value(cooling, xp));
+
+  if (!solved) {
+    cooling_set_cosmic_ray_loss(xp, cooling_stored_nan());
+    atomic_inc(&cooling_geajay_failed_solves);
+    *kept_previous_state = 1;
+    return energy;
+  }
+
+  cooling_set_cosmic_ray_loss(xp, output.cosmic_ray_energy_loss_rate);
+  if (status->retries > 0) atomic_inc(&cooling_geajay_recovered_solves);
+
+  return output.internal_energy;
+}
+
+/**
  * @brief Compute the energy of a particle after dt and update the particle
  * chemistry data, or keep the previous state if geajay fails.
  *
@@ -740,6 +886,8 @@ static geajay_float cooling_new_energy_or_keep_previous(
      geajay cannot integrate from it, so skip the solve and keep the
      particle's previous state instead of calling error(). */
   if (energy <= 0.) {
+    if (cooling->cosmic_ray_context != NULL)
+      cooling_set_cosmic_ray_loss(xp, cooling_stored_nan());
     atomic_inc(&cooling_geajay_failed_solves);
     *kept_previous_state = 1;
     return energy;
@@ -751,8 +899,13 @@ static geajay_float cooling_new_energy_or_keep_previous(
   /* The particle keeps its previous state on a final failure */
   inputs.store_on_failure = 0;
 
-  geajay_particle_output output = {.size = sizeof(output)};
   geajay_particle_status status = {.size = sizeof(status)};
+
+  if (cooling->cosmic_ray_context != NULL)
+    return cooling_new_energy_cosmic_rays(cooling, p, xp, &inputs, dt, energy,
+                                          &status, kept_previous_state);
+
+  geajay_particle_output output = {.size = sizeof(output)};
 
   const int solved =
       geajay_particle_solve(cooling->context, &cooling->layout, xp, &inputs, dt,
@@ -806,22 +959,6 @@ geajay_float cooling_new_energy(
 }
 
 /**
- * @brief A quiet NaN made from its bits, for a value that is only stored.
- *
- * SWIFT builds with -ffinite-math-only, under which a NaN constant is
- * undefined: the volatile keeps the compiler from seeing one.
- *
- * @return A quiet NaN.
- */
-static double cooling_stored_nan(void) {
-  volatile uint64_t bits = 0x7ff8000000000000ULL;
-  const uint64_t value = bits;
-  double nan_value;
-  memcpy(&nan_value, &value, sizeof(nan_value));
-  return nan_value;
-}
-
-/**
  * @brief Check that the library has the channels of the header.
  *
  * The library names exactly its channels and returns NULL beyond them.
@@ -866,9 +1003,14 @@ double cooling_time(const struct phys_const *phys_const,
   cooling_fill_inputs(cooling, p, cosmo, density, energy, &inputs);
 
   double cooling_time;
-  if (geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
-                                   &inputs, &cooling_time) != GEAJAY_SUCCESS)
-    return cooling_stored_nan();
+  const int ok =
+      cooling->cosmic_ray_context != NULL
+          ? geajay_particle_cooling_time_cosmic_ray_reduced(
+                cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
+                cooling_cosmic_ray_value(cooling, xp), &cooling_time)
+          : geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
+                                         &inputs, &cooling_time);
+  if (ok != GEAJAY_SUCCESS) return cooling_stored_nan();
 
   return cooling_time;
 }
@@ -887,7 +1029,7 @@ double cooling_time(const struct phys_const *phys_const,
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
- * @param rates (return) The GEAJAY_RATE_NCHANNELS rates, NaN if geajay
+ * @param rates (return) The cooling_rate_channel_count() rates, NaN if geajay
  * refuses the particle.
  */
 void cooling_energy_rates(const struct phys_const *phys_const,
@@ -896,7 +1038,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
                           const struct cosmology *cosmo,
                           const struct cooling_function_data *cooling,
                           const struct part *p, const struct xpart *xp,
-                          double rates[GEAJAY_RATE_NCHANNELS]) {
+                          double rates[GEAJAY_RATE_NCHANNELS_COSMIC_RAY]) {
 
   const double density = cooling_get_physical_density(p, cosmo, cooling);
   geajay_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -908,9 +1050,15 @@ void cooling_energy_rates(const struct phys_const *phys_const,
   geajay_particle_rates result;
   result.size = sizeof(result);
   const int ok =
-      geajay_particle_energy_rates(cooling->context, &cooling->layout, xp,
-                                   &inputs, &result) == GEAJAY_SUCCESS;
-  for (int k = 0; k < GEAJAY_RATE_NCHANNELS; k++)
+      (cooling->cosmic_ray_context != NULL
+           ? geajay_particle_energy_rates_cosmic_ray_reduced(
+                 cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
+                 cooling_cosmic_ray_value(cooling, xp), &result)
+           : geajay_particle_energy_rates(cooling->context, &cooling->layout,
+                                          xp, &inputs, &result)) ==
+      GEAJAY_SUCCESS;
+  const int num_channels = cooling_rate_channel_count();
+  for (int k = 0; k < num_channels; k++)
     rates[k] = ok ? result.channel[k] : cooling_stored_nan();
 }
 
@@ -982,6 +1130,8 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Is the cooling turn off */
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
+    if (cooling->cosmic_ray_context != NULL)
+      cooling_set_cosmic_ray_loss(xp, 0.);
   } else {
     int kept_previous_state;
     u_new = cooling_new_energy_or_keep_previous(
@@ -1464,6 +1614,17 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (geajay_context_check_layout(cooling->context, &cooling->layout,
                                   sizeof(struct xpart)) == GEAJAY_FAIL)
     error("The species layout of the xpart does not fit the geajay context.");
+
+  cooling->cosmic_ray_context = NULL;
+  cooling_geajay_cosmic_rays_on =
+      cooling->cosmic_ray_settings.network != GEAJAY_COSMIC_RAYS_OFF;
+  if (cooling_geajay_cosmic_rays_on) {
+    cooling->cosmic_ray_context = geajay_cosmic_ray_reduced_context_create(
+        cooling->context, &cooling->cosmic_ray_settings, &context_error);
+    if (cooling->cosmic_ray_context == NULL)
+      error("geajay refused the cosmic-ray options (error %d): %s",
+            (int)context_error, geajay_last_error_message());
+  }
 }
 
 /**
@@ -1497,6 +1658,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
  * @param cooling the cooling data structure.
  */
 void cooling_clean(struct cooling_function_data *cooling) {
+  geajay_cosmic_ray_reduced_context_free(cooling->cosmic_ray_context);
+  cooling->cosmic_ray_context = NULL;
   geajay_context_free(cooling->context);
   cooling->context = NULL;
 

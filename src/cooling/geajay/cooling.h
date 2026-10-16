@@ -47,6 +47,10 @@ struct swift_params;
 void cooling_pop_geajay_solve_failure_counts(long long *failed,
                                              long long *recovered);
 
+int cooling_with_cosmic_rays(void);
+int cooling_rate_channel_count(void);
+const char *cooling_rate_channel_name(const int channel);
+
 void cooling_update(const struct phys_const *phys_const,
                     const struct cosmology *cosmo,
                     const struct pressure_floor_props *pressure_floor,
@@ -131,7 +135,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
                           const struct cosmology *cosmo,
                           const struct cooling_function_data *cooling,
                           const struct part *p, const struct xpart *xp,
-                          double rates[GEAJAY_RATE_NCHANNELS]);
+                          double rates[GEAJAY_RATE_NCHANNELS_COSMIC_RAY]);
 void cooling_print_backend(const struct cooling_function_data *cooling);
 
 void cooling_cool_part(const struct phys_const *restrict phys_const,

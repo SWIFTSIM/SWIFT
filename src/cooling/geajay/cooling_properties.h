@@ -24,6 +24,7 @@
 
 /* geajay: the chemistry API and the particle API */
 #include <geajay.h>
+#include <geajay_cosmic_ray.h>
 #include <geajay_particle.h>
 
 /**
@@ -90,6 +91,19 @@ struct cooling_function_data {
 
   /*! Where the species live in the #xpart, checked against the context. */
   geajay_species_layout layout;
+
+  /*! Cosmic-ray settings (GeajayCooling:cosmic_rays and the options after
+   * it). */
+  geajay_cosmic_ray_settings cosmic_ray_settings;
+
+  /*! Context of the reduced cosmic-ray network over #context; NULL without
+   * cosmic rays. Created in cooling_init_geajay(), not valid after a restart
+   * read. */
+  geajay_cosmic_ray_reduced_context *cosmic_ray_context;
+
+  /*! Initial cosmic-ray value of every particle, in the unit of the input
+   * (GeajayCooling:cosmic_ray_initial_value); 0 with the input "constant". */
+  float cosmic_ray_initial_value;
 
   /*! Enable/Disable metal cooling */
   int with_metal_cooling;
