@@ -129,8 +129,6 @@ hydro_set_comoving_internal_energy_dt(struct part* restrict p,
   p->flux.entropy +=
       p->conserved.mass * gas_entropy_from_internal_energy(p->rho, du);
 
-  /* Needed for hydro_predict_extra */
-  p->cool_du_dt_prev = du_dt - old_du_dt;
 }
 
 /**
