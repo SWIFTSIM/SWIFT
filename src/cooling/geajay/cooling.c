@@ -35,9 +35,9 @@
 #include <string.h>
 
 /* The geajay library itself */
+#include <geajay.h>
 #include <geajay_message.h>
 #include <geajay_particle.h>
-#include <grackle.h>
 
 /* Local includes. */
 #include "atomic.h"
@@ -52,14 +52,12 @@
 #include "units.h"
 
 /* TODO: Move these to cooling.h */
-gr_float cooling_new_energy(const struct phys_const *phys_const,
-                            const struct unit_system *us,
-                            const struct cosmology *cosmo,
-                            const struct hydro_props *hydro_properties,
-                            const struct pressure_floor_props *pressure_floor,
-                            const struct cooling_function_data *cooling,
-                            struct part *p, struct xpart *xp, double dt,
-                            double dt_therm, double time);
+geajay_float cooling_new_energy(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_properties,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double dt, double dt_therm, double time);
 
 double cooling_get_physical_density(
     const struct part *p, const struct cosmology *cosmo,
@@ -144,7 +142,7 @@ void cooling_update(const struct phys_const *phys_const,
   else
     cooling->units.a_value = 1. / (1. + cooling->redshift);
 
-  if (geajay_context_update(cooling->context, &cooling->units) == GR_FAIL)
+  if (geajay_context_update(cooling->context, &cooling->units) == GEAJAY_FAIL)
     error("Error in geajay_context_update.");
 
   /* Report the geajay failures of the previous step */
@@ -275,7 +273,7 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   xp->cooling_data.time_last_event = -cooling->thermal_time;
 
 #if COOLING_GEAJAY_MODE >= 1
-  gr_float zero = 1.e-20;
+  geajay_float zero = 1.e-20;
 
   /* NOTE: if the ratio with respect to hydrogen is given, use it. Instead,
    * we assume neutral gas.
@@ -502,7 +500,7 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message(
       "Cloudy table density range = [%g, %g] cm^-3, beyond it the lookup %s",
       cooling->table_density_min_Hpcm3, cooling->table_density_max_Hpcm3,
-      cooling->table_density_edge == GEAJAY_TABLE_EDGE_HOLD
+      cooling->table_density_edge == GEAJAY_TABLE_EDGE_EDGE
           ? "holds the edge value (table_density_edge: edge)"
           : "extrapolates (table_density_edge: extrapolate)");
   message("AGORA CMB temperature floor = %d",
@@ -695,7 +693,7 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
  * @return The new internal energy, or the energy passed to geajay if
  * kept_previous_state is 1.
  */
-static gr_float cooling_new_energy_or_keep_previous(
+static geajay_float cooling_new_energy_or_keep_previous(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct pressure_floor_props *pressure_floor,
@@ -724,8 +722,9 @@ static gr_float cooling_new_energy_or_keep_previous(
 
   /* general particle data */
   const double density = cooling_get_physical_density(p, cosmo, cooling);
-  gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo) +
-                    dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
+  geajay_float energy =
+      hydro_get_physical_internal_energy(p, xp, cosmo) +
+      dt_therm * hydro_get_physical_internal_energy_dt(p, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
 
   /* The stored density already passed the finite/positive guard above, so a
@@ -757,7 +756,7 @@ static gr_float cooling_new_energy_or_keep_previous(
 
   const int solved =
       geajay_particle_solve(cooling->context, &cooling->layout, xp, &inputs, dt,
-                            /*n_substeps=*/1, &output, &status) != GR_FAIL;
+                            /*n_substeps=*/1, &output, &status) != GEAJAY_FAIL;
 
   if (status.reason == GEAJAY_PARTICLE_BAD_ARGUMENT)
     error("Particle %lld: geajay refused the arguments of the solve.", p->id);
@@ -794,14 +793,12 @@ static gr_float cooling_new_energy_or_keep_previous(
  *
  * @return The new internal energy.
  */
-gr_float cooling_new_energy(const struct phys_const *phys_const,
-                            const struct unit_system *us,
-                            const struct cosmology *cosmo,
-                            const struct hydro_props *hydro_props,
-                            const struct pressure_floor_props *pressure_floor,
-                            const struct cooling_function_data *cooling,
-                            struct part *p, struct xpart *xp, double dt,
-                            double dt_therm, double time) {
+geajay_float cooling_new_energy(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double dt, double dt_therm, double time) {
   int kept_previous_state;
   return cooling_new_energy_or_keep_previous(
       phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
@@ -862,7 +859,7 @@ double cooling_time(const struct phys_const *phys_const,
 
   /* general particle data */
   const double density = cooling_get_physical_density(p, cosmo, cooling);
-  gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  geajay_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
 
   geajay_particle_inputs inputs;
@@ -870,7 +867,7 @@ double cooling_time(const struct phys_const *phys_const,
 
   double cooling_time;
   if (geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
-                                   &inputs, &cooling_time) != GR_SUCCESS)
+                                   &inputs, &cooling_time) != GEAJAY_SUCCESS)
     return cooling_stored_nan();
 
   return cooling_time;
@@ -902,7 +899,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
                           double rates[GEAJAY_RATE_NCHANNELS]) {
 
   const double density = cooling_get_physical_density(p, cosmo, cooling);
-  gr_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
+  geajay_float energy = hydro_get_physical_internal_energy(p, xp, cosmo);
   energy = max(energy, hydro_props->minimal_internal_energy);
 
   geajay_particle_inputs inputs;
@@ -912,7 +909,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
   result.size = sizeof(result);
   const int ok =
       geajay_particle_energy_rates(cooling->context, &cooling->layout, xp,
-                                   &inputs, &result) == GR_SUCCESS;
+                                   &inputs, &result) == GEAJAY_SUCCESS;
   for (int k = 0; k < GEAJAY_RATE_NCHANNELS; k++)
     rates[k] = ok ? result.channel[k] : cooling_stored_nan();
 }
@@ -980,7 +977,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
   }
 
   /* Calculate energy after dt */
-  gr_float u_new = 0;
+  geajay_float u_new = 0;
 
   /* Is the cooling turn off */
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
@@ -1010,7 +1007,7 @@ void cooling_cool_part(const struct phys_const *phys_const,
      into hydro_du_dt (excluded from radiated_energy below) instead of
      cool_du_dt, matching the pre-solve floor clamp above, so both book the
      floor the same way regardless of when it triggers. */
-  const gr_float u_new_solved = u_new;
+  const geajay_float u_new_solved = u_new;
   u_new = max3(u_new, u_minimal, u_CMB_agora);
   const float floor_injection = u_new - u_new_solved;
   if (floor_injection > 0.f) hydro_du_dt += floor_injection / dt_therm;
@@ -1046,7 +1043,7 @@ double cooling_get_temperature_at_energy(
 
   double temperature;
   if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
-                                  &inputs, &temperature) != GR_SUCCESS)
+                                  &inputs, &temperature) != GEAJAY_SUCCESS)
     error("Particle %lld: geajay refused the arguments of the temperature.",
           p->id);
 
@@ -1096,7 +1093,7 @@ static double cooling_get_mean_molecular_weight_at_energy(
 
   double mu;
   if (geajay_particle_mean_molecular_weight(cooling->context, &cooling->layout,
-                                            xp, &inputs, &mu) != GR_SUCCESS)
+                                            xp, &inputs, &mu) != GEAJAY_SUCCESS)
     error(
         "Particle %lld: geajay refused the arguments of the mean molecular "
         "weight.",
@@ -1158,7 +1155,7 @@ double cooling_get_internal_energy_from_temperature(
   double u;
   if (geajay_particle_internal_energy_from_temperature(
           cooling->context, &cooling->layout, xp, &inputs, T_target, &u) !=
-      GR_SUCCESS)
+      GEAJAY_SUCCESS)
     error(
         "Particle %lld: geajay cannot give the energy for T = %e K "
         "(refused arguments or an energy that is not positive).",
@@ -1200,7 +1197,7 @@ double cooling_get_equilibrium_mean_molecular_weight(
 
   double mu;
   if (geajay_particle_equilibrium_mean_molecular_weight(
-          cooling->context, &inputs, &mu) != GR_SUCCESS)
+          cooling->context, &inputs, &mu) != GEAJAY_SUCCESS)
     error(
         "geajay refused the arguments of the equilibrium mean molecular "
         "weight (density %e, energy %e, metal mass fraction %e).",
@@ -1347,11 +1344,11 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
  */
 void cooling_init_geajay(struct cooling_function_data *cooling) {
 
-  chemistry_data *chemistry = &cooling->chemistry_data;
+  geajay_chemistry_data *chemistry = &cooling->chemistry_data;
 
   /* Create a chemistry object for parameters and rate data. */
-  if (set_default_chemistry_parameters(chemistry) == 0) {
-    error("Error in set_default_chemistry_parameters.");
+  if (geajay_global_set_default_chemistry_parameters(chemistry) == 0) {
+    error("Error in geajay_global_set_default_chemistry_parameters.");
   }
 
   // Set parameter values for chemistry.
@@ -1416,10 +1413,10 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 1;
 
-  if (local_initialize_chemistry_data(&cooling->chemistry_data,
-                                      &cooling->chemistry_rates,
-                                      &cooling->units) == 0) {
-    error("Error in initialize_chemistry_data");
+  if (geajay_initialize_chemistry_data(&cooling->chemistry_data,
+                                       &cooling->chemistry_rates,
+                                       &cooling->units) == 0) {
+    error("Error in geajay_initialize_chemistry_data");
   }
 
   /* geajay resolves a negative hydrogen mass fraction to its own value */
@@ -1428,13 +1425,13 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   /* Here, so that a restart pads the reloaded tables again */
   if (geajay_set_table_density_edge(&cooling->chemistry_rates,
-                                    cooling->table_density_edge) == GR_FAIL)
+                                    cooling->table_density_edge) == GEAJAY_FAIL)
     error("geajay refused GeajayCooling:table_density_edge: %s",
           geajay_last_error_message());
 
-  if (geajay_table_density_range(&cooling->chemistry_rates,
-                                 &cooling->table_density_min_Hpcm3,
-                                 &cooling->table_density_max_Hpcm3) == GR_FAIL)
+  if (geajay_table_density_range(
+          &cooling->chemistry_rates, &cooling->table_density_min_Hpcm3,
+          &cooling->table_density_max_Hpcm3) == GEAJAY_FAIL)
     error("geajay could not give the density range of the Cloudy table.");
   cooling->table_edge_density =
       cooling->table_density_max_Hpcm3 * cooling->proton_mass_cgs /
@@ -1457,7 +1454,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   if (cooling->redshift != -1 &&
       geajay_context_set_redshift(cooling->context, cooling->redshift) ==
-          GR_FAIL)
+          GEAJAY_FAIL)
     error("Invalid redshift %g for geajay.", cooling->redshift);
 
   geajay_context_set_subcycle_on_failure(cooling->context,
@@ -1465,7 +1462,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   cooling_init_species_layout(&cooling->layout);
   if (geajay_context_check_layout(cooling->context, &cooling->layout,
-                                  sizeof(struct xpart)) == GR_FAIL)
+                                  sizeof(struct xpart)) == GEAJAY_FAIL)
     error("The species layout of the xpart does not fit the geajay context.");
 }
 
@@ -1504,8 +1501,8 @@ void cooling_clean(struct cooling_function_data *cooling) {
   cooling->context = NULL;
 
   /* Clean up the rate data. This is a call to a geajay function */
-  local_free_chemistry_data(&cooling->chemistry_data,
-                            &cooling->chemistry_rates);
+  geajay_free_chemistry_data(&cooling->chemistry_data,
+                             &cooling->chemistry_rates);
 }
 
 /**
@@ -1571,7 +1568,7 @@ double cooling_get_physical_density(
         cooling->table_density_max_Hpcm3 * part_density /
             cooling->table_edge_density,
         cooling->table_density_max_Hpcm3,
-        cooling->table_density_edge == GEAJAY_TABLE_EDGE_HOLD
+        cooling->table_density_edge == GEAJAY_TABLE_EDGE_EDGE
             ? "holds the edge value"
             : "extrapolates");
 

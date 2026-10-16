@@ -244,7 +244,7 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
   if (swift_name != NULL && strcmp(text, swift_name) == 0) return swift_value;
 
   int value;
-  if (geajay_choice_from_string(option, text, &value) == GR_FAIL)
+  if (geajay_choice_from_string(option, text, &value) == GEAJAY_FAIL)
     error("%s: %s%s%s%s", key, geajay_last_error_message(),
           swift_name != NULL ? ", or \"" : "",
           swift_name != NULL ? swift_name : "", swift_name != NULL ? "\"" : "");
@@ -447,7 +447,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
                               "GeajayCooling:table_density_edge", table_edge,
                               "extrapolate");
   if (geajay_table_edge_from_string(table_edge, &cooling->table_density_edge) ==
-      GR_FAIL)
+      GEAJAY_FAIL)
     error(
         "GeajayCooling:table_density_edge must be extrapolate or edge, got "
         "'%s'.",

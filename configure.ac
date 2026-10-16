@@ -1530,6 +1530,10 @@ if test "x$with_geajay" != "xno"; then
       [geajay_choices.h],
       [ : ],
       [AC_MSG_ERROR(Cannot find geajay_choices.h! This geajay is too old: it cannot read the names of the choice parameters.)])
+   AC_CHECK_HEADER(
+      [geajay.h],
+      [ : ],
+      [AC_MSG_ERROR(Cannot find geajay.h! This geajay is too old: it has only the Grackle names.)])
    CPPFLAGS="$geajay_save_CPPFLAGS"
 
    AC_CHECK_LIB(

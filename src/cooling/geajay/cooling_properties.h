@@ -19,12 +19,12 @@
 #ifndef SWIFT_COOLING_PROPERTIES_GEAJAY_H
 #define SWIFT_COOLING_PROPERTIES_GEAJAY_H
 
-/* skip deprecation warnings. I cleaned old API calls. */
+/* Hide the deprecated separate-array functions of geajay. */
 #define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
 
-/* include geajay (it provides the Grackle C API and the particle API) */
+/* geajay: the chemistry API and the particle API */
+#include <geajay.h>
 #include <geajay_particle.h>
-#include <grackle.h>
 
 /**
  * @file src/cooling/geajay/cooling_properties.h
@@ -75,13 +75,13 @@ struct cooling_function_data {
   double redshift;
 
   /*! unit system */
-  code_units units;
+  geajay_code_units units;
 
   /*! geajay chemistry parameters */
-  chemistry_data chemistry_data;
+  geajay_chemistry_data chemistry_data;
 
   /*! geajay rate storage (kept alive for as long as the context) */
-  chemistry_data_storage chemistry_rates;
+  geajay_chemistry_data_storage chemistry_rates;
 
   /*! Chemistry parameters and unit factors, shared by all threads between two
    * calls of cooling_update(). Created in cooling_init_geajay(), not valid
