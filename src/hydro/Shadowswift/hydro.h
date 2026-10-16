@@ -457,7 +457,7 @@ hydro_convert_conserved_to_primitive(
    */
 
 if (is_nan_float(Q[4])) {
-    warning("NaN Energy - Break here");
+    error("NaN Energy in Kick 2!");
   }
 
   const double epsilon = 16. * FLT_MIN;
