@@ -136,6 +136,7 @@ tests/testSinkOverlapCriteria
 tests/test27cellsStars
 tests/testRadiationRebuildCheck
 tests/testRadiationPairShift
+tests/testRadiationHIIConeFrame
 tests/testIOOptionalFieldDefaultWidth
 tests/test27cellsStars_subset
 tests/testPeriodicBC
