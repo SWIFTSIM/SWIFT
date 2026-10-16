@@ -379,20 +379,11 @@ struct part {
   /*! Cooling information */
   struct cooling_part_data cooling_data;
 
-  /*! Cool_du_dt of previous time step */
-  float cool_du_dt_prev;
-
-  /*! Grackle Cooling Rate */
-  float grackle_dudt;
-
   /*! Radiated energy in particle */
   float radiated_energy;
 
   /*! Hydro dudt in particle, time derivative from spatial gradient */
   float hydro_dudt;
-
-  /*! Gravity dudt in particle */
-  float gravity_dudt;
 
   /*! Additional data used by the feedback */
   struct feedback_part_data feedback_data;
