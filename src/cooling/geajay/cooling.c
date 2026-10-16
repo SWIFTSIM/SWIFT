@@ -38,6 +38,7 @@
 #include <geajay.h>
 #include <geajay_cosmic_ray.h>
 #include <geajay_message.h>
+#include <geajay_options.h>
 #include <geajay_particle.h>
 
 /* Local includes. */
@@ -74,6 +75,10 @@ static long long cooling_geajay_recovered_solves = 0;
 
 /*! Set by the first particle above the density range of the Cloudy table. */
 static int cooling_geajay_table_edge_warned = 0;
+
+/*! Dust-to-gas ratio of the dust cross-sections (Pollack et al. 1994, the
+ * Grackle default local_dust_to_gas_ratio). */
+#define COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO 0.009387
 
 /*! 1 when the run has cosmic rays, for the snapshot fields. */
 static int cooling_geajay_cosmic_rays_on = 0;
@@ -549,6 +554,21 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Thermal time = %g", cooling->thermal_time);
   message("Max geajay sub-steps = %d", cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
+  message(
+      "Background mode = %s, attenuation = %s",
+      cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND ? "per_band"
+                                                                  : "grackle",
+      cooling->background_attenuation == GEAJAY_BACKGROUND_ATTENUATION_PER_BAND
+          ? "per_band"
+          : "none");
+  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+    message(
+        "Background models (-1: default): ionising %d, LW %d, G_0 %d (G_0 = "
+        "%g); dust cross-sections LW %g cm^2, FUV %g cm^2",
+        cooling->ionising_background_model, cooling->lw_background_model,
+        cooling->isrf_background_model, cooling->isrf_background_habing,
+        cooling->dust_cross_section_lw_cgs,
+        cooling->dust_cross_section_fuv_cgs);
   const geajay_cosmic_ray_settings *cr = &cooling->cosmic_ray_settings;
   message("Cosmic rays = %s",
           geajay_cosmic_ray_choice_name("cosmic_rays", cr->network));
@@ -709,6 +729,24 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
     inputs->H2_self_shielding_length =
         0.5f * cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma *
         p->h * cosmo->a;
+
+  /* Dust attenuation of the backgrounds, through the column of the H2
+     self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
+     ratio scaled by Z / Z_sun as geajay does. */
+  if (cooling->background_attenuation ==
+      GEAJAY_BACKGROUND_ATTENUATION_PER_BAND) {
+    const double path = 2. * inputs->H2_self_shielding_length;
+    const double column = cooling->column_factor * density * path;
+    const double dust_ratio =
+        max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f) /
+        cooling->chemistry_data.SolarMetalFractionByMass *
+        (cooling->chemistry_data.local_dust_to_gas_ratio /
+         COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO);
+    inputs->lw_background_attenuation =
+        exp(-cooling->dust_cross_section_lw_cgs * dust_ratio * column);
+    inputs->fuv_background_attenuation =
+        exp(-cooling->dust_cross_section_fuv_cgs * dust_ratio * column);
+  }
 
   /* Self shielding by a density threshold: switch the UV background off */
   if (cooling->with_uv_background && cooling->self_shielding_method < 0 &&
@@ -1488,6 +1526,39 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
 }
 
 /**
+ * @brief Create the context of background_mode "per_band" from the options.
+ *
+ * The context owns a second copy of the rate storage, filled from the same
+ * parameters as #cooling_function_data.chemistry_rates.
+ *
+ * @param cooling The cooling properties.
+ * @param chemistry The chemistry parameters before their initialisation.
+ * @param context_error (return) The reason of a refusal.
+ * @return The context, or NULL.
+ */
+static geajay_context *cooling_create_per_band_context(
+    const struct cooling_function_data *cooling,
+    const geajay_chemistry_data *chemistry,
+    geajay_context_error *context_error) {
+
+  geajay_options options;
+  geajay_options_set_defaults(&options);
+  if (geajay_options_from_chemistry_data(chemistry, &options) == GEAJAY_FAIL)
+    error("geajay refused the chemistry parameters as options: %s",
+          geajay_last_error_message());
+
+  options.background_mode = cooling->background_mode;
+  options.ionising_background_model = cooling->ionising_background_model;
+  options.lw_background_model = cooling->lw_background_model;
+  options.isrf_background_model = cooling->isrf_background_model;
+  options.isrf_background_habing = cooling->isrf_background_habing;
+  options.background_attenuation = cooling->background_attenuation;
+
+  return geajay_context_create_from_options(&options, &cooling->units,
+                                            context_error);
+}
+
+/**
  * @brief Initialises geajay.
  *
  * @param cooling The cooling properties to initialize
@@ -1558,10 +1629,17 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   chemistry->H2_self_shielding = cooling->H2_self_shielding;
 
+  if (cooling->lw_background_j21 >= 0.)
+    chemistry->LWbackground_intensity = cooling->lw_background_j21;
+  if (cooling->isrf_from_field) chemistry->use_isrf_field = 1;
+
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of
      a state integrated over only part of the time-step. */
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 1;
+
+  /* The options of "per_band" start from the parameters as set here */
+  const geajay_chemistry_data chemistry_as_set = *chemistry;
 
   if (geajay_initialize_chemistry_data(&cooling->chemistry_data,
                                        &cooling->chemistry_rates,
@@ -1595,12 +1673,16 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
         (int)GEAJAY_RATE_NCHANNELS);
 
   geajay_context_error context_error;
-  cooling->context =
-      geajay_context_create(&cooling->chemistry_data, &cooling->chemistry_rates,
-                            &cooling->units, &context_error);
+  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_GRACKLE)
+    cooling->context = geajay_context_create(&cooling->chemistry_data,
+                                             &cooling->chemistry_rates,
+                                             &cooling->units, &context_error);
+  else
+    cooling->context = cooling_create_per_band_context(
+        cooling, &chemistry_as_set, &context_error);
   if (cooling->context == NULL)
-    error("geajay refused the chemistry parameters (error %d).",
-          (int)context_error);
+    error("geajay refused the chemistry parameters (error %d): %s",
+          (int)context_error, geajay_last_error_message());
 
   if (cooling->redshift != -1 &&
       geajay_context_set_redshift(cooling->context, cooling->redshift) ==

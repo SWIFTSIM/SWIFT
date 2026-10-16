@@ -1550,6 +1550,12 @@ if test "x$with_geajay" != "xno"; then
       [ : ],
       [AC_MSG_ERROR(This geajay is too old: it has no geajay_choice_from_string to read the names of the choice parameters. Please check --with-geajay.)],
       [$HDF5_LDFLAGS $GEAJAY_LIBS])
+   AC_CHECK_LIB(
+      [geajay],
+      [geajay_context_create_from_options],
+      [ : ],
+      [AC_MSG_ERROR(This geajay is too old: it has no geajay_context_create_from_options for the background options. Please check --with-geajay.)],
+      [$HDF5_LDFLAGS $GEAJAY_LIBS])
 fi
 AC_SUBST([GEAJAY_LIBS])
 AC_SUBST([GEAJAY_INCS])

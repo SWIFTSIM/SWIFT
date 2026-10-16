@@ -748,6 +748,16 @@ GeajayCooling:
   cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Required with cosmic_ray_input: energy_density, refused otherwise. Hadronic loss coefficient [cm^3 s^-1]
   cosmic_ray_heating: atomic_molecular_fit     # (optional) Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
   cosmic_ray_heat_per_ionisation: 20           # (optional) Heat per ionisation of fixed_energy [eV] (default: 20)
+  lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default (default: -1)
+  isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field). The particle field is the local field only; the cooling sets it to 0, a radiation module would write it (default: 0)
+  background_mode: grackle                     # (optional) Background rules: grackle (Grackle's) or per_band (one switch per band; the options below) (default: grackle)
+  ionising_background_model: default          # (optional, per_band only) Ionising band: default (follows with_UV_background), none or uv_table (default: default)
+  lw_background_model: default                 # (optional, per_band only) Lyman-Werner band: default, none, uv_table, constant_j21 or Brown+2025 (default: default)
+  isrf_background_model: default               # (optional, per_band only) Background G_0: default, none or constant (default: default)
+  isrf_background_habing: -1                   # (optional, per_band only) Background G_0 of the model constant [Habing] (default: -1, unset)
+  background_attenuation: none                 # (optional, per_band only) Dust attenuation of the backgrounds: none or per_band; per_band needs h2_shielding_length_method: given_length, whose path is also the path of the dust column, and use_radiative_transfer_fields: 1 for the LW band or isrf_from_field: 1 for G_0 (default: none)
+  dust_cross_section_lw_cm2: 1.5e-21           # (optional, per_band attenuation only) Dust cross-section per H nucleon of the LW band (11.2-13.6 eV) at the reference dust-to-gas ratio, scaled by Z/Z_sun (default: 1.5e-21)
+  dust_cross_section_fuv_cm2: 9e-22            # (optional, per_band attenuation only) Dust cross-section per H nucleon of the FUV band (6-11.2 eV) (default: 9e-22)
 
 
   

@@ -348,6 +348,100 @@ INLINE static void cooling_read_cosmic_ray_parameters(
 }
 
 /**
+ * @brief Read the background options of geajay.
+ *
+ * The per-band options are read with background_mode "per_band" only and are
+ * refused otherwise, so that "grackle" keeps the context of the chemistry.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param cooling The cooling properties to initialize.
+ * @param us The internal system of units.
+ */
+INLINE static void cooling_read_background_parameters(
+    struct swift_params *parameter_file, struct cooling_function_data *cooling,
+    const struct unit_system *us) {
+
+  cooling->background_mode = cooling_read_choice(
+      parameter_file, "GeajayCooling:background_mode", "background_mode",
+      GEAJAY_BACKGROUND_MODE_GRACKLE, NULL, 0);
+
+  cooling->lw_background_j21 = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:lw_background_j21", -1.);
+  cooling->isrf_from_field = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:isrf_from_field", 0);
+
+  cooling->ionising_background_model = GEAJAY_IONISING_BACKGROUND_DEFAULT;
+  cooling->lw_background_model = GEAJAY_LW_BACKGROUND_DEFAULT;
+  cooling->isrf_background_model = GEAJAY_ISRF_BACKGROUND_DEFAULT;
+  cooling->isrf_background_habing = -1.;
+  cooling->background_attenuation = GEAJAY_BACKGROUND_ATTENUATION_NONE;
+  cooling->dust_cross_section_lw_cgs = 0.;
+  cooling->dust_cross_section_fuv_cgs = 0.;
+
+  static const char *per_band_keys[] = {
+      "GeajayCooling:ionising_background_model",
+      "GeajayCooling:lw_background_model",
+      "GeajayCooling:isrf_background_model",
+      "GeajayCooling:isrf_background_habing",
+      "GeajayCooling:background_attenuation",
+      "GeajayCooling:dust_cross_section_lw_cm2",
+      "GeajayCooling:dust_cross_section_fuv_cm2"};
+  if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) {
+    for (size_t i = 0; i < sizeof(per_band_keys) / sizeof(per_band_keys[0]);
+         i++)
+      if (parser_does_param_exist(parameter_file, per_band_keys[i]))
+        error("%s is read only with GeajayCooling:background_mode: per_band.",
+              per_band_keys[i]);
+    return;
+  }
+
+  cooling->ionising_background_model = cooling_read_choice(
+      parameter_file, per_band_keys[0], "ionising_background_model",
+      GEAJAY_IONISING_BACKGROUND_DEFAULT, NULL, 0);
+  cooling->lw_background_model = cooling_read_choice(
+      parameter_file, per_band_keys[1], "lw_background_model",
+      GEAJAY_LW_BACKGROUND_DEFAULT, NULL, 0);
+  cooling->isrf_background_model = cooling_read_choice(
+      parameter_file, per_band_keys[2], "isrf_background_model",
+      GEAJAY_ISRF_BACKGROUND_DEFAULT, NULL, 0);
+  cooling->isrf_background_habing =
+      parser_get_opt_param_double(parameter_file, per_band_keys[3], -1.);
+  cooling->background_attenuation = cooling_read_choice(
+      parameter_file, per_band_keys[4], "background_attenuation",
+      GEAJAY_BACKGROUND_ATTENUATION_NONE, NULL, 0);
+
+  if (cooling->table_density_edge != GEAJAY_TABLE_EDGE_EXTRAPOLATE)
+    error(
+        "GeajayCooling:table_density_edge: edge cannot be used with "
+        "background_mode: per_band: the context owns its tables.");
+
+  if (cooling->background_attenuation != GEAJAY_BACKGROUND_ATTENUATION_PER_BAND)
+    return;
+
+  /* The dust column is the one of the H2 self-shielding */
+  if (cooling->H2_self_shielding != 2)
+    error(
+        "GeajayCooling:background_attenuation: per_band needs "
+        "h2_shielding_length_method: given_length, whose path is also the "
+        "path of the dust column.");
+
+  /* Kim et al. (2023), Weingartner & Draine (2001) grains */
+  cooling->dust_cross_section_lw_cgs =
+      parser_get_opt_param_double(parameter_file, per_band_keys[5], 1.5e-21);
+  cooling->dust_cross_section_fuv_cgs =
+      parser_get_opt_param_double(parameter_file, per_band_keys[6], 9e-22);
+  if (!(cooling->dust_cross_section_lw_cgs >= 0.) ||
+      !(cooling->dust_cross_section_fuv_cgs >= 0.))
+    error("The dust cross-sections must be >= 0.");
+
+  /* Mass per H nucleon, He included, that pairs with the cross-sections */
+  const double mass_per_H_nucleon_cgs = 1.4 * cooling->proton_mass_cgs;
+  cooling->column_factor = units_cgs_conversion_factor(us, UNIT_CONV_MASS) /
+                           (units_cgs_conversion_factor(us, UNIT_CONV_AREA) *
+                            mass_per_H_nucleon_cgs);
+}
+
+/**
  * @brief Parser the parameter file and initialize the #cooling_function_data
  *
  * @param parameter_file The parser parameter file
@@ -553,6 +647,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
                              units_cgs_conversion_factor(us, UNIT_CONV_MASS);
 
   cooling_read_cosmic_ray_parameters(parameter_file, cooling);
+  cooling_read_background_parameters(parameter_file, cooling, us);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */

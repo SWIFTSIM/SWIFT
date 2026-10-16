@@ -101,6 +101,35 @@ struct cooling_function_data {
    * read. */
   geajay_cosmic_ray_reduced_context *cosmic_ray_context;
 
+  /*! Background rules (GeajayCooling:background_mode), a
+   * #geajay_background_mode. With "grackle" the context is built from the
+   * chemistry as before; with "per_band" from geajay_options. */
+  int background_mode;
+
+  /*! Per-band choices of "per_band" (geajay_choices.h); -1 for "default". */
+  int ionising_background_model, lw_background_model, isrf_background_model;
+
+  /*! Background G_0 of isrf_background_model "constant" [Habing]; negative:
+   * unset. */
+  double isrf_background_habing;
+
+  /*! Dust attenuation of the background, a #geajay_background_attenuation. */
+  int background_attenuation;
+
+  /*! Constant LW background J21 (Grackle LWbackground_intensity); negative:
+   * the library default. */
+  double lw_background_j21;
+
+  /*! G_0 is read from the particle field (Grackle use_isrf_field). */
+  int isrf_from_field;
+
+  /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and FUV
+   * (6-11.2 eV) bands [cm^2]. */
+  double dust_cross_section_lw_cgs, dust_cross_section_fuv_cgs;
+
+  /*! Converts rho * path (internal units) to the H nucleon column [cm^-2]. */
+  double column_factor;
+
   /*! Initial cosmic-ray value of every particle, in the unit of the input
    * (GeajayCooling:cosmic_ray_initial_value); 0 with the input "constant". */
   float cosmic_ray_initial_value;
