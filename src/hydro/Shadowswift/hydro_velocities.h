@@ -194,17 +194,17 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
     /* Angle Steering Parameters (AREPO Defaults) */
     const float max_angle = p->geometry.max_face_angle;
-    const float beta = steering_beta ; //2.25f; // Controls how steep angle is before steering. Lower -> more cells steered. AREPO = 2.25 or 2.0
-    const float f_shaping_speed = steering_factor; //0.67; // Steering aggressiveness factor. AREPO 0.5
+    const float beta = steering_beta; // Steering angle
+    const float f_shaping_speed = steering_factor;  // Steering aggressiveness
     const float vchar_dt = dt > 0. ? d / dt : 0.;// Timestep based correction
-    float vchar = soundspeed; // Determines cold steering corrective velocity. Default is soundspeed.
+    float vchar = soundspeed; // Steering speed
 
     /* Prefactor for steering, catch 1/d errors now before inf velocity */
     float fac = d > 0. ? f_shaping_speed / d : 0.;
 
     /* Additionally impose that we use the timestep based steering if it is less
-     * aggressive than soundspeed steering, and if the cell is very deformed */
-    if ((vchar_dt < vchar) || (max_angle > 2 * beta)) {
+     * aggressive than soundspeed steering*/
+    if (vchar_dt < vchar) {
       vchar = vchar_dt;
     }
 
@@ -214,6 +214,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
 
       /* Fancy settings for vchar */
 #ifdef SHADOWSWIFT_STEERING_COLD_FLOWS
+
       /* Enables much more aggressive cold steering if the cell
        * has high Mach (assumed cold) */
       if (soundspeed <= 0.f) {
@@ -258,18 +259,17 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
         fac *= (max_angle - 0.75 * beta) / (0.25 * beta);
 
       }  // If not, then hits third criteria.
-    } // End Angle Criteria
+      /* Set characteristic speed into factor */
+      fac *= vchar;
 
-    /* Set characteristic speed into factor */
-    fac *= vchar;
+      /* Apply velocity corrections */
+      v[0] += ds[0] * fac;
+      v[1] += ds[1] * fac;
+      v[2] += ds[2] * fac;
+    } // max_angle < 0.75 beta, and no steering is needed
 
-    /* Apply velocity corrections */
-    v[0] += ds[0] * fac;
-    v[1] += ds[1] * fac;
-    v[2] += ds[2] * fac;
-
-/* Enter else correspondning to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
- * being off, but SHADOWSWIFT_STEER_MOTION being on*/
+    /* Enter else correspondning to SHADOWSWIFT_STEERING_FACEANGLE_FLOWS
+     * being off, but SHADOWSWIFT_STEER_MOTION being on*/
 #else
 
     /* Add a correction to the velocity to keep particle positions close enough
@@ -306,7 +306,7 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
                                                    fluid_v[1] * fluid_v[1] +
                                                    fluid_v[2] * fluid_v[2]) {
           fac = fac_dt;
-        }
+                                                   }
 #endif
       }
       if (d < 1.1f * etaR) {
@@ -318,16 +318,16 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
     }
 #endif  // Face Angle Flows
 #endif  // Steering Motion
-  }
 
-  if (p->rho < hydro_properties->epsilon_rho) {
-    /* Linearly suppress particle velocity near vacuum */
-    float fac = p->rho * hydro_properties->epsilon_rho_inv;
-    v[0] *= fac;
-    v[1] *= fac;
-    v[2] *= fac;
-  }
 
+    if (p->rho < hydro_properties->epsilon_rho) {
+      /* Linearly suppress particle velocity near vacuum */
+      float fac = p->rho * hydro_properties->epsilon_rho_inv;
+      v[0] *= fac;
+      v[1] *= fac;
+      v[2] *= fac;
+    }
+  }
   /* Now make sure all velocity variables are up-to-date with the new generator
    * velocity. */
   xp->v_full[0] = v[0];
