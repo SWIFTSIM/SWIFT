@@ -66,6 +66,9 @@ struct zoom_pm_mesh {
 
   /*! Full zero-padded mesh used as density and potential field. */
   double *potential_global;
+
+  /*! Fourier transform of the static isolated-convolution kernel. */
+  void *kernel_fft;
 };
 
 /* Prototypes. */
