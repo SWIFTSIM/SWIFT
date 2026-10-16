@@ -1212,12 +1212,11 @@ __attribute__((always_inline)) INLINE static void hydro_split_part_displacement(
    * In Moving Mesh, h corresponds to a safety
    * radius. This guarantees the displacement is inside the cell and the cells
    * will be more regular, or at least possible to regularise quickly. */
-  double fac;
-#ifdef MOVING_MESH_HYDRO
-  fac = 0.025 / 0.2; // Undo Factor 0.2 that is applied after function call
-#else
-  fac = fmax(1e-6, 1e-8 * p->h / displacement_nrm);
-#endif
+
+  /* Undo Factor 0.2 that is applied after function call
+   * Undo h factor in split, replace with safety radius */
+  double fac =  0.025 *  p->geometry.search_radius / (0.2 * p->h);
+
   displacement[0] *= fac;
   displacement[1] *= fac;
   displacement[2] *= fac;

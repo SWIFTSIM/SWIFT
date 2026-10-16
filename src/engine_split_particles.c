@@ -316,6 +316,28 @@ void engine_split_gas_particle_split_mapper(void *restrict map_data, int count,
       /* Mark the particles as not having been swallowed by a sink */
       sink_mark_part_as_not_swallowed(&p->sink_data);
       sink_mark_part_as_not_swallowed(&global_parts[k_parts].sink_data);
+
+#ifdef MOVING_MESH
+      /* Splittng a Moving Mesh generator can lead to errors in conservation
+       * as the interface velocity between the new particles is poorly
+       * handled. Therefore, we make a call here to add a slight steering
+       * correction. This points along the displacement vector, away from their
+       * shared interface */
+
+      /* The mirror displacement that was applied to p */
+      double displacement_neg[3] = {-displacement[0],
+                                    -displacement[1],
+                                    -displacement[2]};
+
+      /* Set current particle steered velocities */
+      hydro_velocities_set_split(p, xp, displacement);
+
+      /* Set the new particles steered velocities in opposite direction */
+      hydro_velocities_set_split(&global_parts[k_parts],
+                                &global_xparts[k_parts],
+                                displacement_neg);
+#endif
+
     }
   }
 }

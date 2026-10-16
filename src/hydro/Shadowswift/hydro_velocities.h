@@ -347,4 +347,84 @@ __attribute__((always_inline)) INLINE static void hydro_velocities_set(
   }
 }
 
+/**
+ * @brief Set the velocity of a ShadowSWIFT particle that was just split.
+ * This is done to prevent catastrophic fluxes after splitting, when the
+ * geometry of the twin particles can be highly irregular. We gently suggest
+ * that they move apart after splitting.
+ *
+ * Drift is called after split, therefore we do steering here, which will last
+ * for one timestep. After the split -> drift -> voronoi -> flux calculation
+ * the parts enter kick2, where their velocities are reset and new steering
+ * applied if necessary.
+ *
+ * Here we may safely assume that we can go ahead and use maximal steering.
+ * Splitting will rarely, if ever, result in face angles that are not
+ * above steering_beta. Even if it didn't, it's safer to adjust conservatively.
+ *
+ * @param p The particle to act upon.
+ * @param xp The extended particle data to act upon.
+ * @param displacement Displacement vector for particle after splitting.
+ * @param hydro_properties The hydro_props struct
+ */
+__attribute__((always_inline)) INLINE static void hydro_velocities_set_split(
+    struct part* restrict p, struct xpart* restrict xp,
+    const double* displacement) {
+
+  /* We first get the particle velocity. */
+  float v[3] = {0.f, 0.f, 0.f};
+  float fluid_v[3] = {0.f, 0.f, 0.f};
+
+  /* Everything is up to date */
+  fluid_v[0] = p->v[0];
+  fluid_v[1] = p->v[1];
+  fluid_v[2] = p->v[2];
+  v[0] = fluid_v[0];
+  v[1] = fluid_v[1];
+  v[2] = fluid_v[2];
+
+  /* Direction is along displacement vector, directly away from split twin */
+  float ds[3];
+  ds[0] = displacement[0];
+  ds[1] = displacement[1];
+  ds[2] = displacement[2];
+
+  /* d is guaranteed positive */
+  const float d = sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+  float vchar = hydro_get_comoving_soundspeed(p);
+
+  /* More aggressive, but much less than vchar_dt */
+  const float hydro_v = sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  vchar = hydro_v;
+
+
+  /* Angle Steering Parameters (AREPO Defaults) */
+  const float f_shaping_speed = 1;
+  float fac = vchar * f_shaping_speed / d;
+
+  /* Apply velocity corrections. v is the new generator velocity */
+  v[0] += ds[0] * fac;
+  v[1] += ds[1] * fac;
+  v[2] += ds[2] * fac;
+
+  /* Now make sure all velocity variables are up-to-date with the new generator
+ * velocity. */
+  xp->v_full[0] = v[0];
+  xp->v_full[1] = v[1];
+  xp->v_full[2] = v[2];
+  p->v_part_full[0] = v[0];
+  p->v_part_full[1] = v[1];
+  p->v_part_full[2] = v[2];
+  p->v_rel_full[0] = fluid_v[0] - v[0];
+  p->v_rel_full[1] = fluid_v[1] - v[1];
+  p->v_rel_full[2] = fluid_v[2] - v[2];
+
+  if (p->gpart) {
+    p->gpart->v_full[0] = v[0];
+    p->gpart->v_full[1] = v[1];
+    p->gpart->v_full[2] = v[2];
+  }
+}
+
+
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_VELOCITIES_H */
