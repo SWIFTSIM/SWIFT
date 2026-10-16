@@ -35,6 +35,9 @@ The bar is 1e-5, about 100 eps: it allows for the amplification of that
 rounding by the temperature and the electron fraction, which is below 10. The
 bar is applied to the largest deviation over the particles.
 
+The stored rate is not amplified: CosmicRayValues is float32 and holds the
+constant once rounded, so its bar is half an ulp, 2^-24 = 6e-8.
+
 A wrong ionisation rate shifts the equilibrium: x_e changes by 0.5 d(rate) /
 rate and T by 0.04 d(rate) / rate (pygeajay, rate +-1%, +-10%). The bar
 detects an error of the rate above 2e-5 in x_e. It cannot detect an error that
@@ -50,6 +53,7 @@ import pygeajay
 
 rate = 2.0e-16  # s^-1, the rate of the parameter file
 bar = 1.0e-5
+bar_values = 2.0**-24  # half an ulp of float32: the stored rate is one rounding of its value
 species = ["HI", "HII", "HeI", "HeII", "HeIII", "e"]
 
 
@@ -93,8 +97,8 @@ ok = True
 if per_particle:
     values = last["cosmic_ray_value"]
     deviation = np.max(np.abs(values / rate - 1.0))
-    print("CosmicRayValues: largest deviation from %g s^-1 is %.2e, bar %.0e" % (rate, deviation, bar))
-    ok = ok and np.isfinite(deviation) and deviation <= bar
+    print("CosmicRayValues: largest deviation from %g s^-1 is %.2e, bar %.1e" % (rate, deviation, bar_values))
+    ok = ok and np.isfinite(deviation) and deviation <= bar_values
 
 units = pygeajay.CodeUnits(density_units=um / ul**3, length_units=ul, time_units=ut)
 options = pygeajay.Options(chemistry_enabled=1, radiative_cooling=1, species_network=1, metal_line_cooling=0,
