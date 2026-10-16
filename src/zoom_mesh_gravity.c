@@ -29,6 +29,7 @@
 
 /* This object's header. */
 #include "zoom_mesh_gravity.h"
+#include "zoom_mesh_gravity_mpi.h"
 
 /* Local headers. */
 #include "atomic.h"
@@ -39,6 +40,8 @@
 #include "inline.h"
 #include "kernel_long_gravity.h"
 #include "memuse.h"
+#include "mesh_gravity.h"
+#include "neutrino.h"
 #include "parser.h"
 #include "part.h"
 #include "restart.h"
@@ -48,6 +51,7 @@
 
 /* Standard headers. */
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 
@@ -80,11 +84,12 @@ static void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh) {
  * @param params The parsed parameter file.
  * @param props The properties of the gravity scheme.
  * @param s The #space.
+ * @param nr_threads Number of threads used by FFTW plans.
  * @param verbose Are we talkative?
  */
 void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
                     const struct gravity_props *props, const struct space *s,
-                    const int verbose) {
+                    const int nr_threads, const int verbose) {
 
   /* Start with a clean mesh which is identical to there being no mesh. */
   zoom_mesh_init_no_mesh(mesh);
@@ -117,10 +122,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   if (side_length < 8)
     error("Gravity:zoom_mesh_side_length must be at least 8.");
 
-  /* This implementation stores the full zero-padded (2N)^3 FFT mesh on every
-   * rank. Keep the doubled mesh side length within the same practical serial
-   * FFT limit used by the regular non-distributed PM mesh. */
-  if (2 * side_length > 1290)
+  /* Replicated transforms retain the global mesh's practical serial limit. */
+  if (!props->distributed_mesh && 2 * side_length > 1290)
     error(
         "Gravity:zoom_mesh_side_length is too large for the current "
         "zero-padded zoom mesh implementation. The active side length N is "
@@ -197,6 +200,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 
   /* Fill in the mesh structure. */
   mesh->enabled = 1;
+  mesh->distributed_mesh = props->distributed_mesh;
+  mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->r_s = zoom_r_s;
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
@@ -220,6 +225,11 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         mesh->r_cut_max);
 
   /* Allocate the zero-padded FFT mesh. */
+#ifdef HAVE_THREADED_FFTW
+  const int padded_side_length = 2 * side_length;
+  if (padded_side_length >= 64 && props->mesh_size < 64) fftw_init_threads();
+  if (padded_side_length >= 64) fftw_plan_with_nthreads(nr_threads);
+#endif
   zoom_mesh_allocate(mesh);
 }
 
@@ -246,7 +256,7 @@ void zoom_mesh_clean(struct zoom_pm_mesh *mesh) {
 static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
 
   /* Nothing to allocate for a disabled or absent mesh. */
-  if (mesh == NULL || !mesh->enabled) return;
+  if (mesh == NULL || !mesh->enabled || mesh->distributed_mesh) return;
 
 #ifdef HAVE_FFTW
 
@@ -330,7 +340,7 @@ void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream) {
   /* Recreate the transient FFT storage from the restored geometry. */
   mesh->potential_global = NULL;
   mesh->kernel_fft = NULL;
-  if (mesh->enabled) zoom_mesh_allocate(mesh);
+  if (mesh->enabled && !mesh->distributed_mesh) zoom_mesh_allocate(mesh);
 }
 
 #ifdef HAVE_FFTW
@@ -452,6 +462,16 @@ struct zoom_cic_mapper_data {
 
   /*! Newton's constant in internal units. */
   float const_G;
+
+  /*! Constants used for neutrino delta-f mesh weighting. */
+  const struct neutrino_model *nu_model;
+};
+
+/** @brief Private non-periodic density patch for one top-level cell. */
+struct zoom_mesh_patch {
+  int mesh_min[3];
+  int mesh_size[3];
+  double *values;
 };
 
 /**
@@ -535,7 +555,7 @@ int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
  * @param data The shared CIC mapper data.
  */
 static void zoom_mesh_deposit_cell(const struct cell *c,
-                                   const struct zoom_cic_mapper_data *data) {
+                                    const struct zoom_cic_mapper_data *data) {
 
   /* Recurse until we find covered leaves. */
   if (c->split) {
@@ -557,25 +577,173 @@ static void zoom_mesh_deposit_cell(const struct cell *c,
     int ind[3];
     double d[3], t[3];
     if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
-      error("Covered cell contains a particle outside the zoom mesh.");
+      error(
+          "Covered cell contains a particle outside the zoom mesh "
+          "(x=[%g %g %g], index=[%d %d %d]).",
+          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
+
+    double weight = 1.;
+    if (gp->type == swift_type_neutrino)
+      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
 
     zoom_mesh_CIC_set(data->rho, data->M, ind[0], ind[1], ind[2], t[0], t[1],
-                      t[2], d[0], d[1], d[2], gp->mass);
+                       t[2], d[0], d[1], d[2], gp->mass * weight);
   }
+}
+
+/** @brief Extend patch bounds with particles in covered leaf cells. */
+static void zoom_mesh_patch_bounds(const struct cell *c,
+                                   const struct zoom_cic_mapper_data *data,
+                                   int mesh_min[3], int mesh_max[3],
+                                   int *has_particles) {
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL)
+        zoom_mesh_patch_bounds(c->progeny[k], data, mesh_min, mesh_max,
+                               has_particles);
+    return;
+  }
+
+  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
+
+  for (int n = 0; n < c->grav.count; ++n) {
+    const struct gpart *gp = &c->grav.parts[n];
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    int ind[3];
+    double d[3], t[3];
+    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
+      error(
+          "Covered cell contains a particle outside the zoom mesh "
+          "(x=[%g %g %g], index=[%d %d %d]).",
+          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
+
+    for (int axis = 0; axis < 3; ++axis) {
+      mesh_min[axis] = min(mesh_min[axis], ind[axis]);
+      mesh_max[axis] = max(mesh_max[axis], ind[axis] + 1);
+    }
+    *has_particles = 1;
+  }
+}
+
+/** @brief Return a private zoom-patch row-major index. */
+__attribute__((always_inline, const)) INLINE static size_t
+zoom_mesh_patch_index(const struct zoom_mesh_patch *patch, const int i,
+                      const int j, const int k) {
+  return ((size_t)i * patch->mesh_size[1] + j) * patch->mesh_size[2] + k;
+}
+
+/** @brief Deposit covered leaf particles into a private patch. */
+static void zoom_mesh_deposit_cell_to_patch(
+    const struct cell *c, const struct zoom_cic_mapper_data *data,
+    const struct zoom_mesh_patch *patch) {
+
+  if (c->split) {
+    for (int k = 0; k < 8; ++k)
+      if (c->progeny[k] != NULL)
+        zoom_mesh_deposit_cell_to_patch(c->progeny[k], data, patch);
+    return;
+  }
+
+  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
+
+  for (int n = 0; n < c->grav.count; ++n) {
+    const struct gpart *gp = &c->grav.parts[n];
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    int ind[3];
+    double d[3], t[3];
+    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
+      error("Covered cell contains a particle outside the zoom mesh.");
+
+    const int i = ind[0] - patch->mesh_min[0];
+    const int j = ind[1] - patch->mesh_min[1];
+    const int k = ind[2] - patch->mesh_min[2];
+    double weight = 1.;
+    if (gp->type == swift_type_neutrino)
+      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
+    const double value = gp->mass * weight;
+
+#define ZOOM_PATCH_ADD(ii, jj, kk, w)                                      \
+  patch->values[zoom_mesh_patch_index(patch, ii, jj, kk)] += value * (w)
+    ZOOM_PATCH_ADD(i, j, k, t[0] * t[1] * t[2]);
+    ZOOM_PATCH_ADD(i, j, k + 1, t[0] * t[1] * d[2]);
+    ZOOM_PATCH_ADD(i, j + 1, k, t[0] * d[1] * t[2]);
+    ZOOM_PATCH_ADD(i, j + 1, k + 1, t[0] * d[1] * d[2]);
+    ZOOM_PATCH_ADD(i + 1, j, k, d[0] * t[1] * t[2]);
+    ZOOM_PATCH_ADD(i + 1, j, k + 1, d[0] * t[1] * d[2]);
+    ZOOM_PATCH_ADD(i + 1, j + 1, k, d[0] * d[1] * t[2]);
+    ZOOM_PATCH_ADD(i + 1, j + 1, k + 1, d[0] * d[1] * d[2]);
+#undef ZOOM_PATCH_ADD
+  }
+}
+
+/** @brief Deposit one top-level cell through a private non-periodic patch. */
+static void zoom_mesh_deposit_cell_with_patch(
+    const struct cell *c, const struct zoom_cic_mapper_data *data) {
+
+  int mesh_min[3] = {INT_MAX, INT_MAX, INT_MAX};
+  int mesh_max[3] = {INT_MIN, INT_MIN, INT_MIN};
+  int has_particles = 0;
+  zoom_mesh_patch_bounds(c, data, mesh_min, mesh_max, &has_particles);
+  if (!has_particles) return;
+
+  struct zoom_mesh_patch patch;
+  size_t nr_cells = 1;
+  for (int axis = 0; axis < 3; ++axis) {
+    patch.mesh_min[axis] = mesh_min[axis];
+    patch.mesh_size[axis] = mesh_max[axis] - mesh_min[axis] + 1;
+    nr_cells *= patch.mesh_size[axis];
+  }
+  if (swift_memalign("zoom_mesh_patch", (void **)&patch.values,
+                     SWIFT_CACHE_ALIGNMENT, nr_cells * sizeof(double)) != 0)
+    error("Failed to allocate zoom mesh patch.");
+  bzero(patch.values, nr_cells * sizeof(double));
+
+  zoom_mesh_deposit_cell_to_patch(c, data, &patch);
+
+  for (int i = 0; i < patch.mesh_size[0]; ++i)
+    for (int j = 0; j < patch.mesh_size[1]; ++j)
+      for (int k = 0; k < patch.mesh_size[2]; ++k)
+        atomic_add_d(
+            &data->rho[zoom_mesh_index(i + patch.mesh_min[0],
+                                       j + patch.mesh_min[1],
+                                       k + patch.mesh_min[2], data->M)],
+            patch.values[zoom_mesh_patch_index(&patch, i, j, k)]);
+
+  swift_free("zoom_mesh_patch", patch.values);
 }
 
 /**
  * @brief Threadpool mapper for depositing top-level cells on the zoom mesh.
  */
 static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
-                                           void *extra) {
+                                            void *extra) {
 
   const struct zoom_cic_mapper_data *data =
       (const struct zoom_cic_mapper_data *)extra;
   const int *cell_ids = (const int *)map_data;
 
-  for (int n = 0; n < num; ++n)
-    zoom_mesh_deposit_cell(&data->cells[cell_ids[n]], data);
+  for (int n = 0; n < num; ++n) {
+    const struct cell *c = &data->cells[cell_ids[n]];
+    if (data->mesh->use_local_patches)
+      zoom_mesh_deposit_cell_with_patch(c, data);
+    else
+      zoom_mesh_deposit_cell(c, data);
+  }
+}
+
+/** @brief Label zoom-cell density assignment in threadpool diagnostics. */
+static void zoom_mesh_deposit_zoom_cells_mapper(void *map_data, int num,
+                                                 void *extra) {
+  zoom_mesh_deposit_cells_mapper(map_data, num, extra);
+}
+
+/** @brief Label background-cell density assignment in threadpool diagnostics. */
+static void zoom_mesh_deposit_bkg_cells_mapper(void *map_data, int num,
+                                                void *extra) {
+  zoom_mesh_deposit_cells_mapper(map_data, num, extra);
 }
 
 /**
@@ -695,7 +863,7 @@ static void zoom_mesh_interpolate_cell(
  * @brief Threadpool mapper for interpolating top-level zoom mesh cells.
  */
 static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
-                                               void *extra) {
+                                                void *extra) {
 
   const struct zoom_cic_mapper_data *data =
       (const struct zoom_cic_mapper_data *)extra;
@@ -703,6 +871,18 @@ static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
 
   for (int n = 0; n < num; ++n)
     zoom_mesh_interpolate_cell(&data->cells[cell_ids[n]], data);
+}
+
+/** @brief Label zoom-cell force interpolation in threadpool diagnostics. */
+static void zoom_mesh_interpolate_zoom_cells_mapper(void *map_data, int num,
+                                                     void *extra) {
+  zoom_mesh_interpolate_cells_mapper(map_data, num, extra);
+}
+
+/** @brief Label background-cell force interpolation in diagnostics. */
+static void zoom_mesh_interpolate_bkg_cells_mapper(void *map_data, int num,
+                                                    void *extra) {
+  zoom_mesh_interpolate_cells_mapper(map_data, num, extra);
 }
 
 /**
@@ -715,11 +895,11 @@ static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp
                                      const struct zoom_cic_mapper_data *data) {
 
   if (s->with_zoom_region && s->zoom_props != NULL) {
-    threadpool_map(tp, zoom_mesh_deposit_cells_mapper,
+    threadpool_map(tp, zoom_mesh_deposit_zoom_cells_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, (void *)data);
-    threadpool_map(tp, zoom_mesh_deposit_cells_mapper,
+    threadpool_map(tp, zoom_mesh_deposit_bkg_cells_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, (void *)data);
@@ -742,11 +922,11 @@ static void zoom_mesh_interpolate_cells(
     const struct zoom_cic_mapper_data *data) {
 
   if (s->with_zoom_region && s->zoom_props != NULL) {
-    threadpool_map(tp, zoom_mesh_interpolate_cells_mapper,
+    threadpool_map(tp, zoom_mesh_interpolate_zoom_cells_mapper,
                    s->zoom_props->local_zoom_cells_with_particles_top,
                    s->zoom_props->nr_local_zoom_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, (void *)data);
-    threadpool_map(tp, zoom_mesh_interpolate_cells_mapper,
+    threadpool_map(tp, zoom_mesh_interpolate_bkg_cells_mapper,
                    s->zoom_props->local_bkg_cells_with_particles_top,
                    s->zoom_props->nr_local_bkg_cells_with_particles,
                    sizeof(int), threadpool_auto_chunk_size, (void *)data);
@@ -853,6 +1033,35 @@ struct zoom_multiply_mapper_data {
   double norm;
 };
 
+struct zoom_deconvolution_mapper_data {
+  fftw_complex *kernel;
+  int M;
+};
+
+/** @brief Apply the global PM CIC deconvolution to the cached zoom kernel. */
+static void zoom_mesh_deconvolve_mapper(void *map_data, int num, void *extra) {
+
+  fftw_complex *kernel = (fftw_complex *)map_data;
+  const struct zoom_deconvolution_mapper_data *data =
+      (const struct zoom_deconvolution_mapper_data *)extra;
+  const size_t offset = kernel - data->kernel;
+  const int M = data->M;
+  const int complex_width = M / 2 + 1;
+
+  for (int i = 0; i < num; ++i) {
+    const size_t index = offset + i;
+    const int kx_index = index / ((size_t)M * complex_width);
+    const int remainder = index % ((size_t)M * complex_width);
+    const int ky_index = remainder / complex_width;
+    const int kz = remainder % complex_width;
+    const int kx = kx_index > M / 2 ? kx_index - M : kx_index;
+    const int ky = ky_index > M / 2 ? ky_index - M : ky_index;
+    const double CIC_cor4 = mesh_CIC_deconvolution(kx, ky, kz, M);
+    kernel[i][0] *= CIC_cor4;
+    kernel[i][1] *= CIC_cor4;
+  }
+}
+
 /**
  * @brief Threadpool mapper multiplying density by the Fourier-space kernel.
  */
@@ -890,9 +1099,10 @@ static void zoom_mesh_multiply_mapper(void *map_data, int num, void *extra) {
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
-                                 const struct space *s, struct threadpool *tp,
-                                 int verbose) {
+static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
+                                               const struct space *s,
+                                               struct threadpool *tp,
+                                               int verbose) {
 
   /* Nothing to compute if the zoom mesh is disabled. */
   if (mesh == NULL || !mesh->enabled) return;
@@ -918,6 +1128,13 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   data.potential = NULL;
   data.M = M;
   data.const_G = 0.f;
+
+  /* Match the global PM mesh's delta-f neutrino mass weighting. */
+  struct neutrino_model nu_model;
+  bzero(&nu_model, sizeof(struct neutrino_model));
+  if (s->e->neutrino_properties->use_delta_f_mesh_only)
+    gather_neutrino_consts(s, &nu_model);
+  data.nu_model = &nu_model;
 
   /* Assign the local covered cells to the active zoom mesh. This mirrors the
    * cell predicate used to select the zoom split in the tree. */
@@ -948,8 +1165,10 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 
   /* Prepare transforms of the density and resulting potential. */
   fftw_plan rho_forward =
-      fftw_plan_dft_r2c_3d(M, M, M, rho, frho, FFTW_ESTIMATE);
-  fftw_plan inverse = fftw_plan_dft_c2r_3d(M, M, M, frho, rho, FFTW_ESTIMATE);
+      fftw_plan_dft_r2c_3d(M, M, M, rho, frho,
+                           FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+  fftw_plan inverse = fftw_plan_dft_c2r_3d(
+      M, M, M, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
   /* Build and transform the static correction kernel only once. */
   if (mesh->kernel_fft == NULL) {
@@ -965,9 +1184,15 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 
     zoom_mesh_apply_kernel(mesh, kernel, s, tp);
     fftw_plan kernel_forward =
-        fftw_plan_dft_r2c_3d(M, M, M, kernel, fkernel, FFTW_ESTIMATE);
+        fftw_plan_dft_r2c_3d(M, M, M, kernel, fkernel,
+                             FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
     fftw_execute(kernel_forward);
     fftw_destroy_plan(kernel_forward);
+    struct zoom_deconvolution_mapper_data deconvolution_data = {
+        .kernel = fkernel, .M = M};
+    threadpool_map(tp, zoom_mesh_deconvolve_mapper, fkernel, complex_size,
+                   sizeof(fftw_complex), threadpool_auto_chunk_size,
+                   &deconvolution_data);
     memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 0, 0);
     fftw_free(kernel);
     mesh->kernel_fft = fkernel;
@@ -985,6 +1210,19 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   threadpool_map(tp, zoom_mesh_multiply_mapper, frho, complex_size,
                  sizeof(fftw_complex), threadpool_auto_chunk_size,
                  &multiply_data);
+
+  /* Apply the same linear neutrino response as the global PM solve, using the
+   * physical mode spacing of the zero-padded isolated FFT. Unlike the periodic
+   * mesh, the isolated correction retains its potential's DC offset. */
+  if (s->e->neutrino_properties->use_linear_response) {
+    const ticks response_tic = getticks();
+    neutrino_response_compute_mesh(s, tp, frho, /*slice_offset=*/0,
+                                   /*slice_width=*/M, M, 2. * mesh->dim[0],
+                                   /*clear_dc=*/0, verbose);
+    if (verbose)
+      message("Applying zoom mesh neutrino response took %.3f %s.",
+              clocks_from_ticks(getticks() - response_tic), clocks_getunit());
+  }
 
   /* Transform back to real space; rho now stores the potential correction. */
   fftw_execute(inverse);
@@ -1027,9 +1265,10 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
  * @param tp The #threadpool object used for parallelisation.
  * @param verbose Are we talkative?
  */
-void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
-                                 const struct space *s, struct threadpool *tp,
-                                 int verbose) {
+static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
+                                               const struct space *s,
+                                               struct threadpool *tp,
+                                               int verbose) {
 
   /* Disabled zoom meshes must remain harmless in non-FFTW builds. */
   if (mesh == NULL || !mesh->enabled) return;
@@ -1037,6 +1276,18 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   error("No FFTW library found. Cannot compute zoom mesh gravity.");
 }
 #endif
+
+void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
+                                 const struct space *s, struct threadpool *tp,
+                                 int verbose) {
+
+  if (mesh == NULL || !mesh->enabled) return;
+
+  if (mesh->distributed_mesh)
+    zoom_mesh_compute_potential_distributed(mesh, s, tp, verbose);
+  else
+    zoom_mesh_compute_potential_global(mesh, s, tp, verbose);
+}
 
 /**
  * @brief Test whether a distance is safely beyond a mesh cutoff.

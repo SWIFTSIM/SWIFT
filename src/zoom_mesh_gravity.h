@@ -40,6 +40,12 @@ struct zoom_pm_mesh {
   /*! Is the zoom mesh enabled? */
   int enabled;
 
+  /*! Use FFTW-MPI slab decomposition, matching the global mesh option. */
+  int distributed_mesh;
+
+  /*! Use private cell patches instead of per-particle atomic writes. */
+  int use_local_patches;
+
   /*! Side-length of the mesh along each axis. */
   int N[3];
 
@@ -81,7 +87,7 @@ int zoom_mesh_can_use_mesh_between_rebuilds(const struct zoom_pm_mesh *mesh,
                                             const struct cell *cj);
 void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
                     const struct gravity_props *props, const struct space *s,
-                    const int verbose);
+                    const int nr_threads, const int verbose);
 void zoom_mesh_clean(struct zoom_pm_mesh *mesh);
 void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
                               const struct space *s);

@@ -98,6 +98,11 @@ void pm_mesh_clean(struct pm_mesh *mesh);
 void pm_mesh_allocate(struct pm_mesh *mesh);
 void pm_mesh_free(struct pm_mesh *mesh);
 
+#ifdef HAVE_FFTW
+double mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
+                              const int N);
+#endif
+
 /* Dump/restore. */
 void pm_mesh_struct_dump(const struct pm_mesh *p, FILE *stream);
 void pm_mesh_struct_restore(struct pm_mesh *p, FILE *stream);

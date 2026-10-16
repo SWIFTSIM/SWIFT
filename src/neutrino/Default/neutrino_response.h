@@ -62,12 +62,15 @@ struct neutrino_response {
   char fixed_bg_density;
 };
 
+struct zoom_pm_mesh;
+
 void neutrino_response_init(struct neutrino_response *numesh,
                             struct swift_params *params,
                             const struct unit_system *us, const double dim[3],
                             const struct cosmology *c,
                             const struct neutrino_props *np,
-                            const struct gravity_props *gp, int rank,
+                            const struct gravity_props *gp,
+                            const struct zoom_pm_mesh *zoom_mesh, int rank,
                             int verbose);
 void neutrino_response_clean(struct neutrino_response *numesh);
 
@@ -76,6 +79,10 @@ void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
                                struct threadpool *tp, fftw_complex *frho,
                                const int slice_offset, const int slice_width,
                                int verbose);
+void neutrino_response_compute_mesh(
+    const struct space *s, struct threadpool *tp, fftw_complex *frho,
+    const int slice_offset, const int slice_width, const int N,
+    const double boxlen, const int clear_dc, int verbose);
 #endif /* HAVE_FFTW */
 
 void neutrino_response_struct_dump(const struct neutrino_response *numesh,

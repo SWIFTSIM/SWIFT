@@ -1508,13 +1508,6 @@ int main(int argc, char *argv[]) {
                          s.dim, s.cdim);
     }
 
-    /* Initialize the neutrino response if used */
-    bzero(&neutrino_response, sizeof(struct neutrino_response));
-    if (neutrino_properties.use_linear_response)
-      neutrino_response_init(&neutrino_response, params, &us, s.dim, &cosmo,
-                             &neutrino_properties, &gravity_properties, myrank,
-                             verbose);
-
     /* Initialise the external potential properties */
     bzero(&potential, sizeof(struct external_potential));
     if (with_external_gravity)
@@ -1541,7 +1534,14 @@ int main(int argc, char *argv[]) {
 
     /* Initialise the high-resolution zoom gravity mesh. */
     zoom_mesh_init(&zoom_mesh, with_self_gravity ? params : NULL,
-                   &gravity_properties, &s, talking);
+                   &gravity_properties, &s, nr_threads, talking);
+
+    /* Initialize the neutrino response over both mesh mode ranges if used. */
+    bzero(&neutrino_response, sizeof(struct neutrino_response));
+    if (neutrino_properties.use_linear_response)
+      neutrino_response_init(&neutrino_response, params, &us, s.dim, &cosmo,
+                             &neutrino_properties, &gravity_properties,
+                             &zoom_mesh, myrank, verbose);
 
     /* Also update the total counts (in case of changes due to replication) */
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;

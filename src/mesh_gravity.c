@@ -576,6 +576,29 @@ struct Green_function_data {
 };
 
 /**
+ * @brief Return the Fourier-space correction for CIC assignment and sampling.
+ *
+ * @param kx Fourier mode along x.
+ * @param ky Fourier mode along y.
+ * @param kz Fourier mode along z.
+ * @param N Mesh side length.
+ */
+double mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
+                              const int N) {
+
+  const double k_fac = M_PI / (double)N;
+  const double fx = k_fac * (double)kx;
+  const double fy = k_fac * (double)ky;
+  const double fz = k_fac * (double)kz;
+  const double sinc_kx_inv = (kx != 0) ? fx / sin(fx) : 1.;
+  const double sinc_ky_inv = (ky != 0) ? fy / sin(fy) : 1.;
+  const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
+  const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;
+  const double CIC_cor2 = CIC_cor * CIC_cor;
+  return CIC_cor2 * CIC_cor2;
+}
+
+/**
  * @brief Mapper function for the application of the Green function.
  *
  * @param map_data The array of the density field Fourier transform.
@@ -627,7 +650,8 @@ void mesh_apply_Green_function_mapper(void *map_data, const int num,
         const int kz = (k > N_half ? k - N : k);
         const double kz_d = (double)kz;
         const double fz = k_fac * kz_d;
-        const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
+        const double sinc_kz_inv =
+            (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
 
         /* Norm of vector in Fourier space */
         const double k2 = (kx_d * kx_d + ky_d * ky_d + kz_d * kz_d);

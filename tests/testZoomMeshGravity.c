@@ -148,12 +148,20 @@ int main(int argc, char *argv[]) {
   struct zoom_pm_mesh zoom_mesh;
   struct gravity_props props;
   struct phys_const phys_const;
+  struct neutrino_props neutrino_props;
+  struct neutrino_response neutrino_response;
+  struct cosmology cosmology;
+  struct zoom_region_properties zoom_props;
   bzero(&e, sizeof(struct engine));
   bzero(&s, sizeof(struct space));
   bzero(&mesh, sizeof(struct pm_mesh));
   bzero(&zoom_mesh, sizeof(struct zoom_pm_mesh));
   bzero(&props, sizeof(struct gravity_props));
   bzero(&phys_const, sizeof(struct phys_const));
+  bzero(&neutrino_props, sizeof(struct neutrino_props));
+  bzero(&neutrino_response, sizeof(struct neutrino_response));
+  bzero(&cosmology, sizeof(struct cosmology));
+  bzero(&zoom_props, sizeof(struct zoom_region_properties));
 
   s.periodic = 1;
   s.dim[0] = 100.;
@@ -170,6 +178,7 @@ int main(int argc, char *argv[]) {
   mesh.r_s_inv = 0.1;
 
   zoom_mesh.enabled = 1;
+  zoom_mesh.use_local_patches = 1;
   zoom_mesh.N[0] = 16;
   zoom_mesh.N[1] = 16;
   zoom_mesh.N[2] = 16;
@@ -196,7 +205,23 @@ int main(int argc, char *argv[]) {
   e.zoom_mesh = &zoom_mesh;
   e.gravity_properties = &props;
   e.physical_constants = &phys_const;
+  e.neutrino_properties = &neutrino_props;
+  e.neutrino_response = &neutrino_response;
+  e.cosmology = &cosmology;
   s.e = &e;
+  s.with_zoom_region = 1;
+  s.zoom_props = &zoom_props;
+
+  const int test_mode[3] = {3, -2, 5};
+  double expected_deconvolution = 1.;
+  for (int axis = 0; axis < 3; ++axis) {
+    const double x = M_PI * test_mode[axis] / 32.;
+    expected_deconvolution *= pow(x / sin(x), 4.);
+  }
+  const double measured_deconvolution = mesh_CIC_deconvolution(
+      test_mode[0], test_mode[1], test_mode[2], 32);
+  if (fabs(measured_deconvolution - expected_deconvolution) > 1e-12)
+    error("Shared CIC deconvolution differs from the global PM convention");
 
   const double width[3] = {1., 1., 1.};
   const double loc_i[3] = {16., 16., 16.};
@@ -244,7 +269,8 @@ int main(int argc, char *argv[]) {
     error("dx_max should make the zoom mesh unsafe between rebuilds");
 
   /* Check the Hockney solve against the analytic correction kernel sampled
-   * with the same finite-difference stencil. */
+   * with the same finite-difference stencil. CIC deconvolution modifies this
+   * sampled reference slightly at this deliberately small mesh size. */
   const int source_i = 6;
   const int probe_i = 9;
   const double y_node = zoom_mesh.loc[1] + source_i / zoom_mesh.cell_fac[1];
@@ -268,22 +294,65 @@ int main(int argc, char *argv[]) {
   s.cells_top = mesh_cells;
   s.nr_local_cells_with_particles = 2;
   s.local_cells_with_particles_top = local_cells_with_particles_top;
+  zoom_props.nr_local_zoom_cells_with_particles = 1;
+  zoom_props.local_zoom_cells_with_particles_top =
+      &local_cells_with_particles_top[0];
+  zoom_props.nr_local_bkg_cells_with_particles = 1;
+  zoom_props.local_bkg_cells_with_particles_top =
+      &local_cells_with_particles_top[1];
 
   threadpool_init(&e.threadpool, /*num_threads=*/4);
+
+  /* Exercise the shared linear-response multiplier on a minimal FFT. */
+  double neutrino_density = 0.5;
+  cosmology.a = 1.;
+  cosmology.N_nu = 1;
+  cosmology.Omega_cdm = 1.;
+  cosmology.log_a_long_begin = 1.;
+  cosmology.neutrino_density_early_table = &neutrino_density;
+  neutrino_response.fixed_bg_density = 1;
+  neutrino_response.log_a_min = -100.;
+  neutrino_response.delta_log_a = 1000.;
+  neutrino_response.log_k_min = -100.;
+  neutrino_response.delta_log_k = 1000.;
+  neutrino_response.pt_density_ratio =
+      (double *)malloc(10002 * sizeof(double));
+  if (neutrino_response.pt_density_ratio == NULL)
+    error("Failed to allocate synthetic neutrino response");
+  for (int i = 0; i < 10002; ++i)
+    neutrino_response.pt_density_ratio[i] = 2.;
+
+  fftw_complex response_mesh[8];
+  for (int i = 0; i < 8; ++i) {
+    response_mesh[i][0] = 1.;
+    response_mesh[i][1] = -1.;
+  }
+  neutrino_response_compute_mesh(
+      &s, &e.threadpool, response_mesh, /*slice_offset=*/0,
+      /*slice_width=*/2, /*N=*/2, /*boxlen=*/2., /*clear_dc=*/0,
+      /*verbose=*/0);
+  if (response_mesh[0][0] != 1. || response_mesh[0][1] != -1.)
+    error("Isolated neutrino response changed the DC mode");
+  for (int i = 1; i < 8; ++i)
+    if (fabs(response_mesh[i][0] - 2.) > 1e-12 ||
+        fabs(response_mesh[i][1] + 2.) > 1e-12)
+      error("Linear neutrino response multiplier mismatch");
+
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 
   const double expected_ax = zoom_mesh_expected_acceleration_x(
       zoom_mesh.cell_fac[0], source_i, probe_i, zoom_mesh.r_s, mesh.r_s);
   const double measured_ax = mesh_cells[1].grav.parts[0].a_grav_mesh[0];
-  const double tolerance = 1e-7 * max(1., fabs(expected_ax));
+  const double analytic_tolerance = 4e-3 * max(1., fabs(expected_ax));
 
-  if (fabs(measured_ax - expected_ax) > tolerance)
+  if (fabs(measured_ax - expected_ax) > analytic_tolerance)
     error(
         "Zoom mesh Hockney force mismatch: measured=%e expected=%e diff=%e "
         "tol=%e",
-        measured_ax, expected_ax, measured_ax - expected_ax, tolerance);
-  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[1]) > tolerance ||
-      fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[2]) > tolerance)
+        measured_ax, expected_ax, measured_ax - expected_ax,
+        analytic_tolerance);
+  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[1]) > analytic_tolerance ||
+      fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[2]) > analytic_tolerance)
     error("Zoom mesh force should be aligned with the x-axis");
 
   /* Exercise the cached-kernel path and require the same force. */
@@ -292,12 +361,77 @@ int main(int argc, char *argv[]) {
 #ifndef SWIFT_GRAVITY_NO_POTENTIAL
   mesh_cells[1].grav.parts[0].potential_mesh = 0.f;
 #endif
+  zoom_mesh.use_local_patches = 0;
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
-  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[0] - expected_ax) > tolerance)
-    error("Cached zoom mesh kernel changed the computed force");
+  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[0] - measured_ax) > 1e-7)
+    error("Atomic deposition or cached kernel changed the computed force");
+  zoom_mesh.use_local_patches = 1;
+
+  /* Shift both particles off the nodes to exercise fractional CIC assignment
+   * and interpolation with the cached, deconvolved kernel. */
+  const double shift = 0.37 / zoom_mesh.cell_fac[0];
+  for (int cell = 0; cell < 2; ++cell) {
+    mesh_cells[cell].loc[0] += shift;
+    mesh_cells[cell].grav.parts[0].x[0] += shift;
+  }
+  for (int axis = 0; axis < 3; ++axis)
+    mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  mesh_cells[1].grav.parts[0].potential_mesh = 0.f;
+#endif
+  zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
+  const double expected_fractional_ax = -3.946721553802e-2;
+  const double measured_fractional_ax =
+      mesh_cells[1].grav.parts[0].a_grav_mesh[0];
+  if (fabs(measured_fractional_ax - expected_fractional_ax) > 1e-7)
+    error("Off-grid zoom mesh force changed: measured=%e expected=%e",
+          measured_fractional_ax, expected_fractional_ax);
+
+  /* Delta-f deposition is linear in the mesh-only particle weight. */
+  double neutrino_mass = 1.;
+  double neutrino_degeneracy = 1.;
+  cosmology.M_nu_eV = &neutrino_mass;
+  cosmology.deg_nu = &neutrino_degeneracy;
+  cosmology.T_nu_0_eV = 1.;
+  phys_const.const_speed_light_c = 1.;
+  e.neutrino_mass_conversion_factor = 1.;
+  neutrino_props.use_delta_f_mesh_only = 1;
+  mesh_cells[0].grav.parts[0].type = swift_type_neutrino;
+  mesh_cells[0].grav.parts[0].id_or_neg_offset = 1;
+  struct neutrino_model nu_model;
+  gather_neutrino_consts(&s, &nu_model);
+  double delta_f_weight = 1.;
+  gpart_neutrino_weight_mesh_only(&mesh_cells[0].grav.parts[0], &nu_model,
+                                  &delta_f_weight);
+  for (int axis = 0; axis < 3; ++axis)
+    mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  mesh_cells[1].grav.parts[0].potential_mesh = 0.f;
+#endif
+  zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
+  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[0] -
+           delta_f_weight * measured_fractional_ax) > 1e-7)
+    error("Zoom mesh did not apply delta-f deposition weighting");
+  neutrino_props.use_delta_f_mesh_only = 0;
+  mesh_cells[0].grav.parts[0].type = swift_type_dark_matter;
+
+  /* The synthetic response has a constant factor of two for every non-DC
+   * mode, so the acceleration correction must double exactly. */
+  for (int axis = 0; axis < 3; ++axis)
+    mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  mesh_cells[1].grav.parts[0].potential_mesh = 0.f;
+#endif
+  neutrino_props.use_linear_response = 1;
+  zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
+  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[0] -
+           2. * measured_fractional_ax) > 1e-7)
+    error("Zoom mesh did not apply the linear neutrino response");
+  neutrino_props.use_linear_response = 0;
 
   zoom_mesh_clean(&zoom_mesh);
   threadpool_clean(&e.threadpool);
+  free(neutrino_response.pt_density_ratio);
 
   free_cell(&mesh_cells[0]);
   free_cell(&mesh_cells[1]);
