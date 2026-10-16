@@ -297,7 +297,7 @@ void engine_exchange_strays(
       error("Attempting to exchange an inhibited particle");
 #endif
 
-    /* Load the spart into the proxy */
+    /* Load the sipart into the proxy */
     proxy_siparts_load(&e->proxies[pid], &s->siparts[offset_siparts + k], 1);
 
 #ifdef WITH_CSDS
@@ -699,7 +699,8 @@ void engine_exchange_strays(
 
         /* Log the siparts */
         if (prox->nr_siparts_in > 0) {
-          error("TODO");
+          /* Not implemented yet */
+          error("CSDS logging of SIDM particles is not implemented.");
         }
       }
 #endif

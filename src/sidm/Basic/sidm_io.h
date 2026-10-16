@@ -169,9 +169,10 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                  siparts, rho,
                                  "Co-moving mass densities of the particles");
 
-  list[7] = io_make_output_field(
-      "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f, siparts, SIDM_rate,
-      "SIDM scattering rate of the particles");  // TODO:check cosmo factor
+  list[7] = io_make_physical_output_field(
+      "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, siparts, SIDM_rate,
+      /*can convert to comoving=*/0,
+      "Physical SIDM scattering rate of the particles");
 
   list[8] = io_make_output_field(
       "InertiaTensors", FLOAT, 6, UNIT_CONV_MOMENT_OF_INERTIA, 2.f, siparts,

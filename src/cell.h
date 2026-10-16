@@ -202,16 +202,16 @@ struct pcell {
   /*! SIDM variables */
   struct {
 
-    /*! Number of #spart in this cell. */
+    /*! Number of #sipart in this cell. */
     int count;
 
     /*! Maximal smoothing length. */
     float h_max;
 
-    /*! Minimal integer end-of-timestep in this cell for black hole tasks */
+    /*! Minimal integer end-of-timestep in this cell for SIDM tasks */
     integertime_t ti_end_min;
 
-    /*! Integer time of the last drift of the #spart in this cell */
+    /*! Integer time of the last drift of the #sipart in this cell */
     integertime_t ti_old_part;
 
   } sidm;
@@ -307,7 +307,7 @@ struct pcell_step {
     /*! Minimal integer end-of-timestep in this cell (sidm) */
     integertime_t ti_end_min;
 
-    /*! Maximal distance any #part has travelled since last rebuild */
+    /*! Maximal distance any #sipart has travelled since last rebuild */
     float dx_max_part;
   } sidm;
 
@@ -572,7 +572,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 struct cell_buff *sbuff, struct cell_buff *bbuff,
                 struct cell_buff *gbuff, struct cell_buff *sinkbuff,
                 struct cell_buff *sibuff);
-void cell_sanitize(struct cell *c, int treated);
+void cell_sanitize(struct cell *c, int treated, int sidm_treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);

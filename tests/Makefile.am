@@ -39,7 +39,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline \
-        testSIDMSetUp.sh testSIDMSymmetry test27cellsSIDM.sh test125cellsSIDM.sh  # testMatrixInversion
+        testSIDMSetUp.sh testSIDMSymmetry.sh testReadingSIDM.sh test27cellsSIDM.sh \
+        test125cellsSIDM.sh  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -53,7 +54,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testMeshGravityRebuildCheck \
-	         testSIDMSetUp testSIDMSymmetry test27cellsSIDM test125cellsSIDM
+	         testSIDMSetUp testSIDMSymmetry testReadingSIDM test27cellsSIDM test125cellsSIDM
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -186,6 +187,8 @@ testSIDMSetUp_SOURCES = testSIDMSetUp.c
 
 testSIDMSymmetry_SOURCES = testSIDMSymmetry.c
 
+testReadingSIDM_SOURCES = testReadingSIDM.c
+
 test27cellsSIDM_SOURCES = test27cellsSIDM.c
 
 test125cellsSIDM_SOURCES = test125cellsSIDM.c
@@ -204,6 +207,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
-	     testSIDMSetUp.sh makeInputSIDM.py testSIDM.yml test27cellsSIDM.sh \
-	     tolerance_27_normal_SIDM.dat tolerance_27_perturbed_h2_SIDM.dat tolerance_27_perturbed_h_SIDM.dat \
+	     testSIDMSetUp.sh testSIDMSymmetry.sh testReadingSIDM.sh makeInputSIDM.py testSIDM.yml test27cellsSIDM.sh \
+	     tolerance_27_normal_SIDM.dat tolerance_27_perturbed_SIDM.dat tolerance_27_perturbed_h2_SIDM.dat tolerance_27_perturbed_h_SIDM.dat \
              test125cellsSIDM.sh tolerance_125_normal_SIDM.dat

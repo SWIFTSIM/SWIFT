@@ -1,4 +1,7 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -euo pipefail
+
 python3 @srcdir@/makeInputSIDM.py
-@srcdir@/testReadingSIDM
+./testReadingSIDM
