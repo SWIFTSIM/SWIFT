@@ -446,6 +446,18 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - Same, Lyman-Werner-band photon-number moment
      - [U_L^2 U_T^{-2}]
      - Same as ``PEPendingSpecificEnergies``.
+   * - ``PEPendingSpecificFluxes``
+     - PE-band specific flux owed to the particle by neighbours on shorter time steps through the reduced-flux dissipation, not yet in ``PESpecificFluxes``. The particle's next update adds it to its flux. It is ``HyperbolicPropagationSpeeds`` squared times the stored amount
+     - [U_L^3 U_T^{-3}]
+     - Add it to ``PESpecificFluxes`` for a flux sum at a time when not all particles are synchronised. 0 with ``ISRF_flux_dissipation`` off, on a synchronised snapshot and on one time bin.
+   * - ``LWPendingSpecificFluxes``
+     - Same, Lyman-Werner band
+     - [U_L^3 U_T^{-3}]
+     - Same as ``PEPendingSpecificFluxes``.
+   * - ``LWPhotonPendingSpecificFluxes``
+     - Same, Lyman-Werner-band photon-number moment
+     - [U_L^3 U_T^{-3}]
+     - Same as ``PEPendingSpecificFluxes``.
    * - ``PEMinimumSpecificEnergies``
      - Most negative ``PESpecificEnergies`` value at the end of an update since the previous snapshot, 0 if none was negative
      - [U_L^2 U_T^{-2}]
