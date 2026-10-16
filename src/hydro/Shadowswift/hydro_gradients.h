@@ -59,7 +59,7 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_init(
  * time).
  */
 __attribute__((always_inline)) INLINE static void
-hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
+hydro_gradients_extrapolate_in_time(struct part* restrict p, const float* W,
                                     float dt, float* dW) {
 #ifdef SHADOWSWIFT_EXTRAPOLATE_TIME
   float drho[3], dvx[3], dvy[3], dvz[3], dP[3], dA[3];
@@ -69,8 +69,10 @@ hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
   dW[0] -= dt * (W[0] * div_v + p->v_rel_full[0] * drho[0] +
                  p->v_rel_full[1] * drho[1] + p->v_rel_full[2] * drho[2]);
 
+  float rho_inv = 0.;
+
   if (W[0] != 0.0f) {
-    const float rho_inv = 1.f / W[0];
+    rho_inv = 1.f / W[0];
     dW[1] -= dt * (p->v_rel_full[0] * div_v + rho_inv * dP[0]);
     dW[2] -= dt * (p->v_rel_full[1] * div_v + rho_inv * dP[1]);
     dW[3] -= dt * (p->v_rel_full[2] * div_v + rho_inv * dP[2]);
@@ -80,6 +82,21 @@ hydro_gradients_extrapolate_in_time(const struct part* p, const float* W,
   /* See eq. 51 in springel 2010 */
   dW[5] -= dt * (p->v_rel_full[0] * dA[0] + p->v_rel_full[1] * dA[1] +
                  p->v_rel_full[2] * dA[2]);
+
+  if (dt > 0.f) {
+    /* Create a time derivative of internal energy from spatial gradients
+     * that is used for cooling. This is a convinient place to put it*/
+    float gradu[3] = {0.f, 0.f, 0.f};
+    for (int i = 0; i < 3; i++) {
+      gradu[i] = hydro_one_over_gamma_minus_one * rho_inv *
+                 (dP[i] - rho_inv * W[4] * drho[i]);
+    }
+
+    /* Set, not += or -= since we need the gradient to integrate in cooling() */
+    p->hydro_dudt = -(W[1] * gradu[0] + W[2] * gradu[1] + W[3] * gradu[2]) -
+                        rho_inv * W[4] * div_v;
+  }
+
 #else
   dW[0] = 0.f;
   dW[1] = 0.f;
