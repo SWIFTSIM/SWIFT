@@ -177,10 +177,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   /* Get the signal velocity */
   vmax -= dvdotdx * r_inv;
 
-  /* Store the signal velocity */
-  pi->timestepvars.vmax = (float)fmax(pi->timestepvars.vmax, vmax);
+  float tau_min = r / vmax;
+  /* iterate over tau_min*/
+
+  /* Store the minimal timestep Eq 58 Weinberger 2020 */
+  pi->timestepvars.tau = (float)fmin(pi->timestepvars.tau, tau_min);
   if (pj->flux.dt >= 0)
-    pj->timestepvars.vmax = (float)fmax(pj->timestepvars.vmax, vmax);
+    pj->timestepvars.tau = (float)fmin(pj->timestepvars.tau, tau_min);
+
+  /* Arepo uses cs + vdiff in Eq 52 Weinberger 2020*/
+  float v_diff = 0.f;
+  v_diff = sqrtf((Wi[1] - Wj[1]) * (Wi[1] - Wj[1]) +
+                    (Wi[2] - Wj[2]) * (Wi[2] - Wj[2]) +
+                    (Wi[3] - Wj[3]) * (Wi[3] - Wj[3]));
+
+  float v_signal = gas_soundspeed_from_pressure(Wi[0], Wi[4]);
+  v_signal += v_diff;
+
+
+  /* Store the signal velocity */
+  pi->timestepvars.v_signal = (float)fmax(pi->timestepvars.v_signal, v_signal);
+  if (pj->flux.dt >= 0)
+    pj->timestepvars.v_signal = (float)fmax(pj->timestepvars.v_signal, v_signal);
 
   /* Store the maximal relative kinetic energy of the neighbours */
   float v_rel_j[3] = {pj->v[0] - pi->v[0], pj->v[1] - pi->v[1],

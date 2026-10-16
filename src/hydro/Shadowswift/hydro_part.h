@@ -314,8 +314,9 @@ struct part {
 
   struct {
 
-    /*! Signal velocity */
-    float vmax;
+    /*! Signal velocity + max(v_diff_ij) of fluid velocities of
+     * neighboring cells */
+    float v_signal;
 
     /*! Maximal value of the kinetic energy among the neighbours */
     float Ekin;
@@ -326,6 +327,10 @@ struct part {
 
     /*! Last kick type applied to this particle. */
     enum kick_type last_kick;
+
+    /* The minimum timestep as a result of signal velocity between neighboring
+     * cells, Weinberger 2020 Eq 58 */
+    float tau;
 
   } timestepvars;
 

@@ -84,12 +84,21 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
     }
 
   /* Max Signal Velocity between neighbours + soundspeed */
-  float vmax = p->timestepvars.vmax + hydro_get_comoving_soundspeed(p);
+  float vmax = p->timestepvars.v_signal + FLT_MIN;
 
   /* NOTE (yuyttenh, 06/25): To compute the (physical) dt we want to divide the
    * physical particle size (a * psize) by the physical/peculiar velocity
    * (v / a). Hence, the two a factors in front. */
-  float dt = cosmo->a * cosmo->a * psize / (vmax + FLT_MIN);
+  /* First fake timestep needs a non-zero dt */
+  float dt = FLT_MAX;
+
+
+  float tau_min = p->timestepvars.tau;
+
+  if (tau_min > 0.f && vmax > 0.f) {
+    dt = fmin(psize / vmax , tau_min);
+    dt *= cosmo->a * cosmo->a;
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (dt == 0.f) error("Hydro part wants dt=0!");

@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->limiter.v[2][0], p->limiter.v[2][1], p->limiter.P[0], p->limiter.P[1],
       p->conserved.momentum[0], p->conserved.momentum[1],
       p->conserved.momentum[2], p->conserved.mass, p->conserved.energy,
-      p->geometry.volume, p->timestepvars.vmax);
+      p->geometry.volume, p->timestepvars.v_signal);
 }
 
 #endif /* SWIFT_SHADOWSWIFT_HYDRO_DEBUG_H */
