@@ -278,17 +278,24 @@ static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
 static void zoom_mesh_free(struct zoom_pm_mesh *mesh) {
 
   /* Nothing to release if the mesh was never allocated. */
-  if (mesh == NULL || mesh->potential_global == NULL) return;
+  if (mesh == NULL ||
+      (mesh->potential_global == NULL && mesh->kernel_fft == NULL))
+    return;
 
 #ifdef HAVE_FFTW
 
-  /* Update memory accounting before releasing the FFTW allocation. */
-  memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 0,
-                        0);
-  fftw_free(mesh->potential_global);
+  if (mesh->potential_global != NULL) {
+    memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 0,
+                          0);
+    fftw_free(mesh->potential_global);
+    mesh->potential_global = NULL;
+  }
 
-  /* Avoid leaving a dangling pointer in restart/output code paths. */
-  mesh->potential_global = NULL;
+  if (mesh->kernel_fft != NULL) {
+    memuse_log_allocation("fftw_zoom_mesh.kernel_fft", mesh->kernel_fft, 0, 0);
+    fftw_free(mesh->kernel_fft);
+    mesh->kernel_fft = NULL;
+  }
 #else
   error("No FFTW library found. Cannot compute zoom mesh gravity.");
 #endif
@@ -302,7 +309,7 @@ static void zoom_mesh_free(struct zoom_pm_mesh *mesh) {
  */
 void zoom_mesh_struct_dump(const struct zoom_pm_mesh *mesh, FILE *stream) {
 
-  /* The FFT work array is not serialized; it is reallocated on restore. */
+  /* Transient FFT arrays are not serialized; recreate them on restore. */
   restart_write_blocks((void *)mesh, sizeof(struct zoom_pm_mesh), 1, stream,
                        "gravity", "zoom gravity mesh");
 }
@@ -322,6 +329,7 @@ void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream) {
 
   /* Recreate the transient FFT storage from the restored geometry. */
   mesh->potential_global = NULL;
+  mesh->kernel_fft = NULL;
   if (mesh->enabled) zoom_mesh_allocate(mesh);
 }
 
@@ -429,6 +437,9 @@ struct zoom_cic_mapper_data {
 
   /*! The zoom mesh geometry. */
   const struct zoom_pm_mesh *mesh;
+
+  /*! The top-level cell array. */
+  struct cell *cells;
 
   /*! The density mesh to write to. */
   double *rho;
@@ -554,6 +565,20 @@ static void zoom_mesh_deposit_cell(const struct cell *c,
 }
 
 /**
+ * @brief Threadpool mapper for depositing top-level cells on the zoom mesh.
+ */
+static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
+                                           void *extra) {
+
+  const struct zoom_cic_mapper_data *data =
+      (const struct zoom_cic_mapper_data *)extra;
+  const int *cell_ids = (const int *)map_data;
+
+  for (int n = 0; n < num; ++n)
+    zoom_mesh_deposit_cell(&data->cells[cell_ids[n]], data);
+}
+
+/**
  * @brief Threadpool mapper function for zoom mesh force interpolation.
  *
  * Interpolates the isolated zoom mesh correction to particles and adds it to
@@ -667,29 +692,42 @@ static void zoom_mesh_interpolate_cell(
 }
 
 /**
+ * @brief Threadpool mapper for interpolating top-level zoom mesh cells.
+ */
+static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
+                                               void *extra) {
+
+  const struct zoom_cic_mapper_data *data =
+      (const struct zoom_cic_mapper_data *)extra;
+  const int *cell_ids = (const int *)map_data;
+
+  for (int n = 0; n < num; ++n)
+    zoom_mesh_interpolate_cell(&data->cells[cell_ids[n]], data);
+}
+
+/**
  * @brief Deposit all local covered cells on the zoom mesh.
  *
  * @param s The #space.
  * @param data The shared CIC mapper data.
  */
-static void zoom_mesh_deposit_cells(const struct space *s,
-                                    const struct zoom_cic_mapper_data *data) {
+static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp,
+                                     const struct zoom_cic_mapper_data *data) {
 
   if (s->with_zoom_region && s->zoom_props != NULL) {
-    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles;
-         ++n) {
-      const int cid = s->zoom_props->local_zoom_cells_with_particles_top[n];
-      zoom_mesh_deposit_cell(&s->cells_top[cid], data);
-    }
-    for (int n = 0; n < s->zoom_props->nr_local_bkg_cells_with_particles; ++n) {
-      const int cid = s->zoom_props->local_bkg_cells_with_particles_top[n];
-      zoom_mesh_deposit_cell(&s->cells_top[cid], data);
-    }
+    threadpool_map(tp, zoom_mesh_deposit_cells_mapper,
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
+    threadpool_map(tp, zoom_mesh_deposit_cells_mapper,
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
   } else if (s->cells_top != NULL) {
-    for (int n = 0; n < s->nr_local_cells_with_particles; ++n) {
-      const int cid = s->local_cells_with_particles_top[n];
-      zoom_mesh_deposit_cell(&s->cells_top[cid], data);
-    }
+    threadpool_map(tp, zoom_mesh_deposit_cells_mapper,
+                   s->local_cells_with_particles_top,
+                   s->nr_local_cells_with_particles, sizeof(int),
+                   threadpool_auto_chunk_size, (void *)data);
   }
 }
 
@@ -700,42 +738,43 @@ static void zoom_mesh_deposit_cells(const struct space *s,
  * @param data The shared CIC mapper data.
  */
 static void zoom_mesh_interpolate_cells(
-    const struct space *s, const struct zoom_cic_mapper_data *data) {
+    const struct space *s, struct threadpool *tp,
+    const struct zoom_cic_mapper_data *data) {
 
   if (s->with_zoom_region && s->zoom_props != NULL) {
-    for (int n = 0; n < s->zoom_props->nr_local_zoom_cells_with_particles;
-         ++n) {
-      const int cid = s->zoom_props->local_zoom_cells_with_particles_top[n];
-      zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
-    }
-    for (int n = 0; n < s->zoom_props->nr_local_bkg_cells_with_particles; ++n) {
-      const int cid = s->zoom_props->local_bkg_cells_with_particles_top[n];
-      zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
-    }
+    threadpool_map(tp, zoom_mesh_interpolate_cells_mapper,
+                   s->zoom_props->local_zoom_cells_with_particles_top,
+                   s->zoom_props->nr_local_zoom_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
+    threadpool_map(tp, zoom_mesh_interpolate_cells_mapper,
+                   s->zoom_props->local_bkg_cells_with_particles_top,
+                   s->zoom_props->nr_local_bkg_cells_with_particles,
+                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
   } else if (s->cells_top != NULL) {
-    for (int n = 0; n < s->nr_local_cells_with_particles; ++n) {
-      const int cid = s->local_cells_with_particles_top[n];
-      zoom_mesh_interpolate_cell(&s->cells_top[cid], data);
-    }
+    threadpool_map(tp, zoom_mesh_interpolate_cells_mapper,
+                   s->local_cells_with_particles_top,
+                   s->nr_local_cells_with_particles, sizeof(int),
+                   threadpool_auto_chunk_size, (void *)data);
   }
 }
 
+/** @brief Shared data for constructing the isolated kernel. */
+struct zoom_kernel_mapper_data {
+  const struct zoom_pm_mesh *mesh;
+  double *kernel;
+  double global_r_s_inv;
+};
+
 /**
- * @brief Construct the zero padded Hockney-Eastwood isolated-convolution
- * kernel.
- *
- * The active zoom mesh has side length N but the FFT domain has side length
- * 2N. Positive Green-function offsets are stored in [0, N-1] and negative
- * offsets are stored in [2N-(N-1), 2N-1]. This makes the circular convolution
- * performed by the FFT equivalent to the isolated linear convolution on the
- * active N^3 mesh.
- *
- * @param mesh The #zoom_pm_mesh.
- * @param kernel The zero-padded real-space kernel to fill.
- * @param s The #space.
+ * @brief Threadpool mapper constructing slices of the isolated kernel.
  */
-static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
-                                   const struct space *s) {
+static void zoom_mesh_apply_kernel_mapper(void *map_data, int num,
+                                          void *extra) {
+
+  const struct zoom_kernel_mapper_data *data =
+      (const struct zoom_kernel_mapper_data *)extra;
+  const struct zoom_pm_mesh *mesh = data->mesh;
+  double *kernel = (double *)map_data;
 
   /* Unpack the active and zero-padded mesh sizes. */
   const int N = mesh->N[0];
@@ -743,11 +782,12 @@ static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
 
   /* Unpack the split scales for the zoom and global PM meshes. */
   const double r_s_inv = mesh->r_s_inv;
-  const double global_r_s_inv = s->periodic ? s->e->mesh->r_s_inv : 0.;
+  const double global_r_s_inv = data->global_r_s_inv;
   const double global_r_s = global_r_s_inv > 0. ? 1. / global_r_s_inv : 0.;
+  const int i_start = (int)((kernel - data->kernel) / ((size_t)M * M));
 
   /* Fill the embedded real-space correction Green's function. */
-  for (int i = 0; i < M; ++i) {
+  for (int i = i_start; i < i_start + num; ++i) {
     /* Indices in the upper half of the padded domain are negative offsets. */
     const int ii = i < N ? i : i - M;
     const double dx = ii / mesh->cell_fac[0];
@@ -777,9 +817,60 @@ static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
 
         /* Store only the correction that must be added to the global PM field.
          */
-        kernel[zoom_mesh_index(i, j, k, M)] = zoom_long - global_long;
+        data->kernel[zoom_mesh_index(i, j, k, M)] = zoom_long - global_long;
       }
     }
+  }
+}
+
+/**
+ * @brief Construct the zero padded Hockney-Eastwood isolated-convolution
+ * kernel using the threadpool.
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param kernel The zero-padded real-space kernel to fill.
+ * @param s The #space.
+ * @param tp The #threadpool object used for parallelisation.
+ */
+static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
+                                   const struct space *s,
+                                   struct threadpool *tp) {
+
+  const int M = 2 * mesh->N[0];
+  struct zoom_kernel_mapper_data data = {
+      .mesh = mesh,
+      .kernel = kernel,
+      .global_r_s_inv = s->periodic ? s->e->mesh->r_s_inv : 0.};
+
+  threadpool_map(tp, zoom_mesh_apply_kernel_mapper, kernel, M,
+                 M * M * (int)sizeof(double), threadpool_auto_chunk_size,
+                 &data);
+}
+
+struct zoom_multiply_mapper_data {
+  fftw_complex *density;
+  const fftw_complex *kernel;
+  double norm;
+};
+
+/**
+ * @brief Threadpool mapper multiplying density by the Fourier-space kernel.
+ */
+static void zoom_mesh_multiply_mapper(void *map_data, int num, void *extra) {
+
+  fftw_complex *density = (fftw_complex *)map_data;
+  const struct zoom_multiply_mapper_data *data =
+      (const struct zoom_multiply_mapper_data *)extra;
+  const size_t offset = density - data->density;
+
+  for (int i = 0; i < num; ++i) {
+    const size_t k = offset + i;
+    const double a = density[i][0];
+    const double b = density[i][1];
+    const double c = data->kernel[k][0];
+    const double d = data->kernel[k][1];
+    density[i][0] = data->norm * (a * c - b * d);
+    density[i][1] = data->norm * (a * d + b * c);
   }
 }
 
@@ -803,8 +894,6 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                                  const struct space *s, struct threadpool *tp,
                                  int verbose) {
 
-  (void)tp;
-
   /* Nothing to compute if the zoom mesh is disabled. */
   if (mesh == NULL || !mesh->enabled) return;
 
@@ -824,6 +913,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   /* Fill in the data shared by the CIC density-assignment mapper. */
   struct zoom_cic_mapper_data data;
   data.mesh = mesh;
+  data.cells = s->cells_top;
   data.rho = rho;
   data.potential = NULL;
   data.M = M;
@@ -831,7 +921,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 
   /* Assign the local covered cells to the active zoom mesh. This mirrors the
    * cell predicate used to select the zoom split in the tree. */
-  zoom_mesh_deposit_cells(s, &data);
+  zoom_mesh_deposit_cells(s, tp, &data);
 
 #ifdef WITH_MPI
   /* This implementation stores the full mesh on every rank, so sum the mass
@@ -846,65 +936,66 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 
   tic = getticks();
 
-  /* Allocate the temporary real-space kernel and Fourier-space work arrays. */
-  double *kernel = (double *)fftw_malloc(real_size * sizeof(double));
+  /* Allocate the Fourier-space density work array. */
   fftw_complex *frho =
       (fftw_complex *)fftw_malloc(complex_size * sizeof(fftw_complex));
-  fftw_complex *fkernel =
-      (fftw_complex *)fftw_malloc(complex_size * sizeof(fftw_complex));
-  if (kernel == NULL || frho == NULL || fkernel == NULL)
+  if (frho == NULL)
     error("Error allocating zoom mesh FFT work arrays.");
 
   /* Record the temporary allocations in the memory-use logger. */
-  memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 1,
-                        real_size * sizeof(double));
   memuse_log_allocation("fftw_zoom_mesh.frho", frho, 1,
                         complex_size * sizeof(fftw_complex));
-  memuse_log_allocation("fftw_zoom_mesh.fkernel", fkernel, 1,
-                        complex_size * sizeof(fftw_complex));
 
-  /* Construct the isolated-convolution correction kernel. */
-  zoom_mesh_apply_kernel(mesh, kernel, s);
-
-  /* Prepare the forward transforms of the density and kernel and the inverse
-   * transform of their product. */
+  /* Prepare transforms of the density and resulting potential. */
   fftw_plan rho_forward =
       fftw_plan_dft_r2c_3d(M, M, M, rho, frho, FFTW_ESTIMATE);
-  fftw_plan kernel_forward =
-      fftw_plan_dft_r2c_3d(M, M, M, kernel, fkernel, FFTW_ESTIMATE);
   fftw_plan inverse = fftw_plan_dft_c2r_3d(M, M, M, frho, rho, FFTW_ESTIMATE);
 
-  /* Transform density and kernel to Fourier space. */
+  /* Build and transform the static correction kernel only once. */
+  if (mesh->kernel_fft == NULL) {
+    double *kernel = (double *)fftw_malloc(real_size * sizeof(double));
+    fftw_complex *fkernel =
+        (fftw_complex *)fftw_malloc(complex_size * sizeof(fftw_complex));
+    if (kernel == NULL || fkernel == NULL)
+      error("Error allocating zoom mesh kernel arrays.");
+    memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 1,
+                          real_size * sizeof(double));
+    memuse_log_allocation("fftw_zoom_mesh.kernel_fft", fkernel, 1,
+                          complex_size * sizeof(fftw_complex));
+
+    zoom_mesh_apply_kernel(mesh, kernel, s, tp);
+    fftw_plan kernel_forward =
+        fftw_plan_dft_r2c_3d(M, M, M, kernel, fkernel, FFTW_ESTIMATE);
+    fftw_execute(kernel_forward);
+    fftw_destroy_plan(kernel_forward);
+    memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 0, 0);
+    fftw_free(kernel);
+    mesh->kernel_fft = fkernel;
+  }
+
+  /* Transform density to Fourier space. */
   fftw_execute(rho_forward);
-  fftw_execute(kernel_forward);
 
   /* Multiply the Fourier-space density and kernel. The inverse FFTW transform
    * is unnormalised, hence the explicit 1 / M^3 factor here. */
-  const double norm = 1. / (double)real_size;
-  for (size_t i = 0; i < complex_size; ++i) {
-    const double a = frho[i][0];
-    const double b = frho[i][1];
-    const double c = fkernel[i][0];
-    const double d = fkernel[i][1];
-    frho[i][0] = norm * (a * c - b * d);
-    frho[i][1] = norm * (a * d + b * c);
-  }
+  struct zoom_multiply_mapper_data multiply_data = {
+      .density = frho,
+      .kernel = (const fftw_complex *)mesh->kernel_fft,
+      .norm = 1. / (double)real_size};
+  threadpool_map(tp, zoom_mesh_multiply_mapper, frho, complex_size,
+                 sizeof(fftw_complex), threadpool_auto_chunk_size,
+                 &multiply_data);
 
   /* Transform back to real space; rho now stores the potential correction. */
   fftw_execute(inverse);
 
   /* Destroy the plans before releasing the temporary arrays. */
   fftw_destroy_plan(rho_forward);
-  fftw_destroy_plan(kernel_forward);
   fftw_destroy_plan(inverse);
 
   /* Release all temporary FFT storage. */
-  memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 0, 0);
   memuse_log_allocation("fftw_zoom_mesh.frho", frho, 0, 0);
-  memuse_log_allocation("fftw_zoom_mesh.fkernel", fkernel, 0, 0);
-  fftw_free(kernel);
   fftw_free(frho);
-  fftw_free(fkernel);
 
   if (verbose)
     message("Zoom mesh convolution took %.3f %s.",
@@ -918,7 +1009,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   data.potential = rho;
   data.const_G = s->e->physical_constants->const_newton_G;
 
-  zoom_mesh_interpolate_cells(s, &data);
+  zoom_mesh_interpolate_cells(s, tp, &data);
 
   if (verbose)
     message("Zoom mesh acceleration interpolation took %.3f %s.",

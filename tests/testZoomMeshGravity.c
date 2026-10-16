@@ -269,7 +269,7 @@ int main(int argc, char *argv[]) {
   s.nr_local_cells_with_particles = 2;
   s.local_cells_with_particles_top = local_cells_with_particles_top;
 
-  threadpool_init(&e.threadpool, /*num_threads=*/1);
+  threadpool_init(&e.threadpool, /*num_threads=*/4);
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 
   const double expected_ax = zoom_mesh_expected_acceleration_x(
@@ -285,6 +285,16 @@ int main(int argc, char *argv[]) {
   if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[1]) > tolerance ||
       fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[2]) > tolerance)
     error("Zoom mesh force should be aligned with the x-axis");
+
+  /* Exercise the cached-kernel path and require the same force. */
+  for (int axis = 0; axis < 3; ++axis)
+    mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
+#ifndef SWIFT_GRAVITY_NO_POTENTIAL
+  mesh_cells[1].grav.parts[0].potential_mesh = 0.f;
+#endif
+  zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
+  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[0] - expected_ax) > tolerance)
+    error("Cached zoom mesh kernel changed the computed force");
 
   zoom_mesh_clean(&zoom_mesh);
   threadpool_clean(&e.threadpool);
