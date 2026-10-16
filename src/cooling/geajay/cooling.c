@@ -551,7 +551,7 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Redshift = %g", cooling->redshift);
   message("UV background = %d", cooling->with_uv_background);
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
-  message("Self Shielding = %i", cooling->self_shielding_method);
+  message("Self Shielding = %i", (int)cooling->self_shielding_method);
   message(
       "Cloudy table density range = [%g, %g] cm^-3, beyond it the lookup %s",
       cooling->table_density_min_Hpcm3, cooling->table_density_max_Hpcm3,
@@ -560,7 +560,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           : "extrapolates (table_density_edge: extrapolate)");
   message("AGORA CMB temperature floor = %d",
           cooling->agora_cmb_temperature_floor);
-  if (cooling->self_shielding_method == -1) {
+  if (cooling->self_shielding_method ==
+      cooling_uv_self_shielding_density_threshold) {
     message("Self Shelding density = %g", cooling->self_shielding_threshold);
   }
 
@@ -743,7 +744,7 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
      through the chosen path of H2_self_shielding_path_in_kernel_radii kernel
      support radii H = kernel_gamma h. With comoving_coordinates = 0, a
      physical length in length_units is expected. */
-  if (cooling->chemistry_data.H2_self_shielding == 2)
+  if (cooling->H2_self_shielding == cooling_h2_shielding_length_given)
     inputs->H2_self_shielding_length =
         0.5f * cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma *
         p->h * cosmo->a;
@@ -767,7 +768,9 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
   }
 
   /* Self shielding by a density threshold: switch the UV background off */
-  if (cooling->with_uv_background && cooling->self_shielding_method < 0 &&
+  if (cooling->with_uv_background &&
+      cooling->self_shielding_method ==
+          cooling_uv_self_shielding_density_threshold &&
       hydro_get_physical_density(p, cosmo) > cooling->self_shielding_threshold)
     inputs->uvb_off = 1;
 }
@@ -1397,7 +1400,9 @@ double cooling_get_equilibrium_mean_molecular_weight(
   inputs.has_metal = 1;
   inputs.metal = metal_mass_fraction * rho_physical;
 
-  if (cooling->with_uv_background && cooling->self_shielding_method < 0 &&
+  if (cooling->with_uv_background &&
+      cooling->self_shielding_method ==
+          cooling_uv_self_shielding_density_threshold &&
       rho_physical > cooling->self_shielding_threshold)
     inputs.uvb_off = 1;
 
@@ -1502,7 +1507,8 @@ void cooling_init_units(const struct unit_system *us,
       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* Self shielding */
-  if (cooling->self_shielding_method == -1) {
+  if (cooling->self_shielding_method ==
+      cooling_uv_self_shielding_density_threshold) {
     cooling->self_shielding_threshold *=
         phys_const->const_proton_mass *
         pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
@@ -1640,12 +1646,12 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
         "heating rates, not both");
 
   /* self shielding */
-  if (cooling->self_shielding_method <= 0)
-    chemistry->self_shielding_method = 0;
+  if (cooling->self_shielding_method <= cooling_uv_self_shielding_none)
+    chemistry->self_shielding_method = GEAJAY_UV_SHIELDING_NONE;
   else
-    chemistry->self_shielding_method = cooling->self_shielding_method;
+    chemistry->self_shielding_method = (int)cooling->self_shielding_method;
 
-  chemistry->H2_self_shielding = cooling->H2_self_shielding;
+  chemistry->H2_self_shielding = (int)cooling->H2_self_shielding;
 
   if (cooling->lw_background_j21 >= 0.)
     chemistry->LWbackground_intensity = cooling->lw_background_j21;

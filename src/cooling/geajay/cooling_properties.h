@@ -33,6 +33,46 @@
  */
 
 /**
+ * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
+ *
+ * The values 0 to 3 are those of geajay_uv_self_shielding.
+ */
+enum cooling_uv_self_shielding {
+  /*! Density threshold, handled by SWIFT (option "density_threshold") */
+  cooling_uv_self_shielding_density_threshold = -1,
+  /*! None */
+  cooling_uv_self_shielding_none = 0,
+  /*! HI only */
+  cooling_uv_self_shielding_HI = 1,
+  /*! HI and HeI, HeII thin */
+  cooling_uv_self_shielding_HI_HeI = 2,
+  /*! HI and HeI, no HeII ionisation and heating */
+  cooling_uv_self_shielding_HI_HeI_no_HeII = 3
+};
+
+/**
+ * @brief Length of the H2 self-shielding column
+ * (GeajayCooling:h2_shielding_length_method).
+ *
+ * The values are those of geajay_h2_shielding_length_method.
+ */
+enum cooling_h2_shielding_length {
+  /*! No H2 self-shielding */
+  cooling_h2_shielding_length_none = 0,
+  /*! Sobolev-like length (rejected at start-up) */
+  cooling_h2_shielding_length_Sobolev = 1,
+  /*! Length supplied per particle */
+  cooling_h2_shielding_length_given = 2,
+  /*! Local Jeans length, computed by geajay */
+  cooling_h2_shielding_length_Jeans = 3
+};
+
+/* The structure is dumped raw in the restart files */
+_Static_assert(sizeof(enum cooling_uv_self_shielding) == sizeof(int) &&
+                   sizeof(enum cooling_h2_shielding_length) == sizeof(int),
+               "The shielding enums must keep the size of an int.");
+
+/**
  * @brief Properties of the cooling function.
  */
 struct cooling_function_data {
@@ -197,7 +237,7 @@ struct cooling_function_data {
 
   /*! Self shielding method (1 -> 3 for the library's ones, 0 for none and -1
    * for a density threshold) */
-  int self_shielding_method;
+  enum cooling_uv_self_shielding self_shielding_method;
 
   /*! Self shielding threshold */
   float self_shielding_threshold;
@@ -211,7 +251,7 @@ struct cooling_function_data {
    * at start-up, since SWIFT calls geajay on a single particle. Unrelated
    * to self_shielding_method above, which is a separate field
    * gating UV-background self-shielding. */
-  int H2_self_shielding;
+  enum cooling_h2_shielding_length H2_self_shielding;
 
   /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
    * for "kernel_radius" (default), 2 for "kernel_diameter"
