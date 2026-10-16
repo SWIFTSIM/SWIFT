@@ -170,8 +170,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_flux_exchange(
   /* Velocity on the axis linking the particles */
   float dvdotdx = (Wi[1] - Wj[1]) * dx[0] + (Wi[2] - Wj[2]) * dx[1] +
                   (Wi[3] - Wj[3]) * dx[2];
-  /* We only care about this velocity for particles moving towards each others
-   */
+  /* We only care about this velocity for particles moving towards each other */
   dvdotdx = fminf(dvdotdx, 0.f);
 
   /* Get the signal velocity */
