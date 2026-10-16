@@ -3,8 +3,21 @@ cosmic rays with the reduced network of geajay (primary ionisation rate
 2e-16 s^-1, no metals, no UV background). The gas reaches an equilibrium
 near 7900 K with an electron fraction near 0.03 within about 20 Myr.
 The particles sit on a lattice, so every particle has the same state and
-the box behaves as one zone. checkEquilibrium.py compares the end state with
-a one-zone run of the Python binding pygeajay.
+the box behaves as one zone.
+
+Two parameter files give the same physics through two inputs:
+  cosmicRayBox.yml             cosmic_ray_input: constant, one rate in the
+                               parameter file;
+  cosmicRayBoxPerParticle.yml  cosmic_ray_input: ionisation_rate, the rate is
+                               stored in each particle (the field
+                               CosmicRayValues of the snapshot).
+
+checkEquilibrium.py compares the end state with a one-zone run of the Python
+binding pygeajay. It tests how SWIFT passes the state, the units and the rate
+to geajay. It does not test the cosmic-ray physics, because SWIFT and pygeajay
+call the same solver. The bar and the size of the rate error that it detects
+are in the header of the script. With --per-particle it also checks that
+CosmicRayValues holds the rate, in the units of the snapshot metadata.
 
 Configure SWIFT with a species network:
   ./configure --with-cooling=geajay_1 --with-geajay=$GEAJAY_ROOT

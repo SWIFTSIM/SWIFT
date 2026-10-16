@@ -7,8 +7,10 @@ then
     python3 makeIC.py
 fi
 
-# Run SWIFT
+# Run SWIFT with the constant rate, then with the rate stored in each particle
 ../../../swift --hydro --cooling --threads=4 cosmicRayBox.yml
+../../../swift --hydro --cooling --threads=4 cosmicRayBoxPerParticle.yml
 
 # Compare with a one-zone run of pygeajay
-python3 checkEquilibrium.py
+python3 checkEquilibrium.py cosmicRayBox &&
+    python3 checkEquilibrium.py cosmicRayBoxPerParticle --per-particle
