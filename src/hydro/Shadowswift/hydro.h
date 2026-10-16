@@ -370,7 +370,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   /* Extrapolate primitive quantities to the current time */
   float W[6];
   hydro_part_get_primitive_variables(p, W);
-  hydro_gradients_extrapolate_in_time(p, W, dt_therm, p->dW_time);
+  hydro_gradients_extrapolate_in_time(p, W, dt_drift, p->dW_time);
 
   /* Entropy Floor*/
 #endif
