@@ -101,6 +101,7 @@ GeajayCooling:
   initial_nH2II_to_nH_ratio: 4.153181E-005       # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
   initial_nHDI_to_nH_ratio: 3.356904E-006        # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
   energy_change_limit: 0.1 # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)
+  table_density_edge: extrapolate # (optional) Cloudy table lookup beyond its n_H range: extrapolate or edge (default: extrapolate). It does not cap the density
 
 GEARChemistry:
   initial_metallicity: 1e-6
