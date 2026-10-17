@@ -4,7 +4,7 @@ coloured and the star particles marked.
 
 Usage:
     python3 plot_hii_disc.py                       # last snapshot in snap/
-    python3 plot_hii_disc.py -s snap/snapshot -i 4 --half-width-pc 400
+    python3 plot_hii_disc.py -s snap/snapshot -i 4 --half-width-pc 500
 """
 
 import argparse
@@ -30,10 +30,10 @@ def parse_options():
         help="Snapshot index (default: last)",
     )
     p.add_argument(
-        "--half-width-pc", type=float, default=400.0, help="Face-on half width [pc]"
+        "--half-width-pc", type=float, default=500.0, help="Face-on half width [pc]"
     )
     p.add_argument(
-        "--half-height-pc", type=float, default=100.0, help="Edge-on half height [pc]"
+        "--half-height-pc", type=float, default=150.0, help="Edge-on half height [pc]"
     )
     p.add_argument("-o", dest="out", default=None, help="Output PNG")
     return p.parse_args()

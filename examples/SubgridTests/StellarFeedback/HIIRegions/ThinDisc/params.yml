@@ -23,7 +23,7 @@ Gravity:
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
   time_begin:        0.      # The starting time of the simulation (in internal units).
-  time_end:          3e-3    # The end time of the simulation (in internal units, ~3 Myr).
+  time_end:          1e-3    # The end time of the simulation (in internal units, ~1 Myr).
   dt_min:            1e-10   # The minimal time-step size of the simulation (in internal units).
   dt_max:            1e-4    # The maximal time-step size of the simulation (in internal units).
 
@@ -51,7 +51,7 @@ Statistics:
 # Parameters related to the initial conditions
 InitialConditions:
   file_name:          ICs_thin_disc.hdf5
-  periodic:                 0  # Isolated disc, open boundaries
+  periodic:                 1  # Periodic box much larger than the disc, so the grid can coarsen for long HII reaches
   shift:              [0.0, 0.0, 0.0]
   cleanup_smoothing_lengths: 1  # Recompute the smoothing lengths from the particle positions
 
@@ -141,7 +141,7 @@ Stars:
   max_timestep_young_Myr:               0.5  # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                 1    # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
   min_star_timestep_Myr: 1e-4                # Floor (in Myr) applied to the star's final time-step, after combining the age-based bound above with the feedback module's own criteria (stellar-evolution stage, HII rebuild cadence, ...). (Default: 1e-4)
-  HII_max_search_radius: 0.05                # Maximal search radius for the Fire-like HII ionization algorithm (in internal units, 50 pc).
+  HII_max_search_radius: 0.5                 # Maximal search radius for the Fire-like HII ionization algorithm (in internal units, 500 pc).
   HII_max_retry_full_buffer: 30              # Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. (Default: 10)
   HII_max_radius_expansion_tries: 5          # Number of times the HII search radius is allowed to expand within a single pass. (Default: 5)
   HII_radius_expansion_factor: 1.1           # Growth factor applied to the HII search radius at each expansion try. (Default: 1.1)

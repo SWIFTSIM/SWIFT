@@ -9,9 +9,11 @@ truncated at 5 scale lengths) and a Gaussian vertical profile (sigma 20 pc).
 It holds 4e6 Msun in 2e5 particles of 20 Msun, starts at 100 K, at rest,
 with Z = 0.02 Zsun. The central density is about 17 H/cm^3, above the
 `HII_min_density_Hpcm3` floor of 1 H/cm^3. There is no self-gravity and no
-rotation. Forty single stars of 10 to 40 Msun (Salpeter slope) are born at
-t = 0: three Gaussian clusters of ten stars (sigma 4 pc) and ten field stars
-drawn from the gas distribution.
+rotation. Sixty-three single stars of 10 to 40 Msun (Salpeter slope) are born
+at t = 0: one Gaussian cluster of 62 stars (sigma 4 pc) and one field star,
+both drawn from the disc. The HII search radius is 500 pc
+(`Stars:HII_max_search_radius: 0.5`); `max_search_radius=0.05 ./run.sh` sets
+a 50 pc cap.
 
 `HII_random_cone_frame_per_star: 0` keeps the 12 cones fixed to the box axes,
 so all stars share the same cone directions. `HII_random_cone_frame_per_star: 1`
@@ -32,7 +34,7 @@ make -j
 random_frame=1 ./run.sh     # random cone frame per star
 ```
 `run.sh` builds the initial conditions with `makeIC_disc.py`, fetches the
-Grackle and radiation tables, runs SWIFT to 3 Myr (4 threads by default) and
+Grackle and radiation tables, runs SWIFT to 1 Myr (4 threads by default) and
 calls `plot_hii_disc.py` on the final snapshot. Use `run_name=<name>` to keep
 the outputs of a run, e.g. one per cone-frame setting. Disc mass, scale
 length, scale height, cluster layout and star counts are environment

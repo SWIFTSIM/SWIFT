@@ -10,16 +10,17 @@ disc_mass=${disc_mass:=4e6}         # Total gas mass in M_sun
 scale_length_pc=${scale_length_pc:=150.0} # Exponential radial scale length in parsec
 scale_height_pc=${scale_height_pc:=20.0}  # Gaussian vertical sigma in parsec
 truncation=${truncation:=5.0}       # Disc radius in scale lengths
-boxsize=${boxsize:=1.6}             # Box side in kpc; must exceed 2 * truncation * scale length
-n_clusters=${n_clusters:=3}         # Number of star clusters
-stars_per_cluster=${stars_per_cluster:=10}
-n_field_stars=${n_field_stars:=10}  # Isolated stars
+boxsize=${boxsize:=4.0}             # Box side in kpc; must exceed 2 * truncation * scale length
+n_clusters=${n_clusters:=1}         # Number of star clusters
+stars_per_cluster=${stars_per_cluster:=62}
+n_field_stars=${n_field_stars:=1}   # Isolated stars
 nside=${nside:=1}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or 1 (12 cones)
 random_frame=${random_frame:=0}     # GEARFeedback:HII_random_cone_frame_per_star override:
                                     # 0 = cones fixed to the box axes, 1 = random rotation per star
+max_search_radius=${max_search_radius:=0.5} # Stars:HII_max_search_radius override (internal units, kpc); 0.05 for a 50 pc cap
 rebuild_time_myr=${rebuild_time_myr:=0.02} # GEARFeedback:HII_rebuild_time_Myr override
 initial_metallicity=${initial_metallicity:=0.02} # GEARChemistry:initial_metallicity override (Z/Zsun)
-time_end=${time_end:=3e-3}          # TimeIntegration:time_end override (internal units, 1e-3 = 0.98 Myr)
+time_end=${time_end:=1e-3}          # TimeIntegration:time_end override (internal units, 1e-3 = 0.98 Myr)
 run_name=${run_name:=""}
 restart=${restart:=0}
 run_analysis=${run_analysis:=1}     # Run plot_hii_disc.py on the final snapshot
@@ -64,6 +65,7 @@ echo "Running simulation..."
     -P GEARFeedback:HII_random_cone_frame_per_star:$random_frame \
     -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
     -P GEARChemistry:initial_metallicity:$initial_metallicity \
+    -P Stars:HII_max_search_radius:$max_search_radius \
     -P TimeIntegration:time_end:$time_end \
     params.yml 2>&1 | tee output.log
 

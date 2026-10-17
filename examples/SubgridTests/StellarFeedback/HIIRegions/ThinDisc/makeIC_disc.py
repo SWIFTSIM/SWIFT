@@ -39,9 +39,9 @@ def parse_options():
     p.add_argument(
         "--temperature", type=float, default=100.0, help="Initial gas temperature [K]"
     )
-    p.add_argument("--n_clusters", type=int, default=3, help="Number of star clusters")
+    p.add_argument("--n_clusters", type=int, default=1, help="Number of star clusters")
     p.add_argument(
-        "--stars_per_cluster", type=int, default=10, help="Stars per cluster"
+        "--stars_per_cluster", type=int, default=62, help="Stars per cluster"
     )
     p.add_argument(
         "--cluster_sigma_pc",
@@ -49,14 +49,14 @@ def parse_options():
         default=4.0,
         help="Cluster Gaussian radius [pc]",
     )
-    p.add_argument("--n_field_stars", type=int, default=10, help="Isolated stars")
+    p.add_argument("--n_field_stars", type=int, default=1, help="Isolated stars")
     p.add_argument(
         "--min_star_mass", type=float, default=10.0, help="Lowest star mass [Msun]"
     )
     p.add_argument(
         "--max_star_mass", type=float, default=40.0, help="Highest star mass [Msun]"
     )
-    p.add_argument("--boxsize", type=float, default=1.6, help="Box side [kpc]")
+    p.add_argument("--boxsize", type=float, default=4.0, help="Box side [kpc]")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("-o", dest="out", type=str, default="ICs_thin_disc.hdf5")
     return p.parse_args()
