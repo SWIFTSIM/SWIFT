@@ -477,11 +477,15 @@ INLINE static void cooling_read_background_parameters(
         "h2_shielding_length_method: given_length, whose path is also the "
         "path of the dust column.");
 
-  /* Kim et al. (2023), Weingartner & Draine (2001) grains */
+  /* Kim et al. 2023, Table 3 (WD01 R_V = 3.1, per H nucleon, mu_H = 1.4):
+     LW (11.2-13.6 eV) 1.5e-21 cm^2, PE (6-11.2 eV) 8.6e-22 cm^2. They are
+     scaled by D/D_sun, with the reference dust-to-gas ratio 0.009387
+     (Grackle's) taken as Kim's Zd' = 1, which is 0.0081 by mass. The GEAR
+     radiation module keeps 9e-22 for the PE band. */
   cooling->dust_cross_section_lw_cgs =
       parser_get_opt_param_double(parameter_file, per_band_keys[5], 1.5e-21);
   cooling->dust_cross_section_fuv_cgs =
-      parser_get_opt_param_double(parameter_file, per_band_keys[6], 9e-22);
+      parser_get_opt_param_double(parameter_file, per_band_keys[6], 8.6e-22);
   if (!(cooling->dust_cross_section_lw_cgs >= 0.) ||
       !(cooling->dust_cross_section_fuv_cgs >= 0.))
     error("The dust cross-sections must be >= 0.");
