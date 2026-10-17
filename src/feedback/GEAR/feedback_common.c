@@ -1096,6 +1096,19 @@ int feedback_get_HII_random_cone_frame(
 }
 
 /**
+ * @brief Time between two draws of a star's cone frame.
+ *
+ * @param feedback_props The #feedback_props.
+ * @return The redraw period times the HII rebuild time (internal units), or 0
+ * when the frame is kept for the star's life.
+ */
+double feedback_get_HII_cone_frame_redraw_interval(
+    const struct feedback_props *feedback_props) {
+  return (double)feedback_props->HII_cone_frame_redraw_period *
+         (double)feedback_props->HII_rebuild_time;
+}
+
+/**
  * @brief Record the (star-relative) age at which this star's HII region was
  * last rebuilt.
  *
@@ -1836,7 +1849,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
-        "dissipation fields, HII random cone frame flag). A restart "
+        "dissipation fields, HII random cone frame flag and redraw period). "
+        "A restart "
         "written by another code version cannot be resumed: rerun the "
         "simulation from its initial conditions.",
         flux_form, feedback_restart_particle_layout());
@@ -1847,6 +1861,9 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
       feedback->HII_random_cone_frame_per_star != 1)
     error("The restart file holds an invalid HII random cone frame flag %d.",
           (int)feedback->HII_random_cone_frame_per_star);
+  if (feedback->HII_cone_frame_redraw_period < 0)
+    error("The restart file holds an invalid HII cone frame redraw period %d.",
+          feedback->HII_cone_frame_redraw_period);
 
   /* The two ISRF operator/moment maps are compile-time constants, so
    * feedback_props_init()'s own check of them applies unchanged here; it
