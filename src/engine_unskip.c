@@ -681,7 +681,9 @@ void engine_unskip(struct engine *e) {
     grav_items.recurses = engine_unskip_gravity_recurses;
     grav_items.has_own_job = NULL;
     grav_items.unskip = engine_do_unskip_gravity;
+    const ticks tic_items = getticks();
     engine_unskip_build_items(&grav_items, local_cells, num_active_cells);
+    const ticks toc_items = getticks();
 
     threadpool_map(&e->threadpool, engine_do_unskip_items_mapper,
                    grav_items.items, grav_items.count,
@@ -689,8 +691,10 @@ void engine_unskip(struct engine *e) {
                    &grav_items);
 
     if (e->verbose)
-      message("gravity: %d active top-level cells split into %d jobs.",
-              num_active_cells, grav_items.count);
+      message(
+          "gravity: %d active top-level cells split into %d jobs in %.3f %s.",
+          num_active_cells, grav_items.count,
+          clocks_from_ticks(toc_items - tic_items), clocks_getunit());
 
     free(grav_items.items);
   }
