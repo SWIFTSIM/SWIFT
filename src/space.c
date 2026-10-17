@@ -585,6 +585,13 @@ void space_free_sort_indices(struct space *s) {
 }
 
 /**
+ * @brief Does a top-level cell belong to the list of local cells with tasks?
+ *
+ * @param c The top-level #cell.
+ */
+int space_top_cell_has_tasks(struct cell *c) { return cell_has_tasks(c); }
+
+/**
  * @brief Construct the list of top-level cells that have any tasks in
  * their hierarchy on this MPI rank. Also construct the list of top-level
  * cells on any rank that have > 0 particles (of any kind).
@@ -603,7 +610,7 @@ void space_list_useful_top_level_cells(struct space *s) {
   for (int i = 0; i < s->nr_cells; ++i) {
     struct cell *c = &s->cells_top[i];
 
-    if (cell_has_tasks(c)) {
+    if (space_top_cell_has_tasks(c)) {
       s->local_cells_with_tasks_top[s->nr_local_cells_with_tasks] = i;
       s->nr_local_cells_with_tasks++;
     }
