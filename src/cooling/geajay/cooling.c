@@ -589,7 +589,7 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
     message(
         "Background models (-1: default): ionising %d, LW %d, G_0 %d (G_0 = "
-        "%g); dust cross-sections LW %g cm^2, FUV %g cm^2",
+        "%g); dust cross-sections LW %g cm^2, PE %g cm^2",
         cooling->ionising_background_model, cooling->lw_background_model,
         cooling->isrf_background_model, cooling->isrf_background_habing,
         cooling->dust_cross_section_lw_cgs,
@@ -766,6 +766,7 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
   if (cooling->background_attenuation ==
       GEAJAY_BACKGROUND_ATTENUATION_PER_BAND) {
     const double path = 2. * inputs->H2_self_shielding_length;
+    /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
     const double dust_ratio =
         max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f) /
@@ -1406,10 +1407,13 @@ double cooling_get_equilibrium_mean_molecular_weight(
 
   geajay_particle_inputs inputs;
   geajay_particle_inputs_init(cooling->context, &inputs);
-  inputs.density = rho_physical;
+  const double rho = cooling->cooling_density_max > 0.
+                         ? fmin(rho_physical, cooling->cooling_density_max)
+                         : rho_physical;
+  inputs.density = rho;
   inputs.internal_energy = u;
   inputs.has_metal = 1;
-  inputs.metal = metal_mass_fraction * rho_physical;
+  inputs.metal = metal_mass_fraction * rho;
 
   if (cooling->with_uv_background &&
       cooling->self_shielding_method ==

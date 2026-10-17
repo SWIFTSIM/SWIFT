@@ -774,9 +774,10 @@ GeajayCooling:
   background_attenuation: none                 # (optional) Read only with background_mode: per_band. Dust attenuation: none or per_band; per_band needs h2_shielding_length_method: given_length (default: none)
   # The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D_sun) N_H) of the LW and PE backgrounds, with N_H the column of the H2 shielding. They do not change uv_self_shielding.
   # Defaults: Kim et al. 2023, Table 3 (WD01 R_V = 3.1, per H nucleon, mu_H = 1.4). D/D_sun uses the reference dust-to-gas ratio 0.009387 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.
-  # The GEAR radiation module (src/feedback/GEAR/radiation.h) keeps 9e-22 cm^2 for the PE band, so the two now differ.
+  # SWIFT's GEAR radiation module (branch darwin/gear_radiation) keeps 9e-22 cm^2 for the PE band, so the two now differ.
   dust_cross_section_lw_cm2: 1.5e-21           # (optional) Read only with background_attenuation: per_band. Dust cross-section of the LW band (11.2-13.6 eV) [cm^2] (default: 1.5e-21)
   dust_cross_section_fuv_cm2: 8.6e-22          # (optional) Read only with background_attenuation: per_band. Dust cross-section of the PE band (6-11.2 eV) [cm^2] (default: 8.6e-22)
+  disable_cooling_for_debugging: 0             # (optional) Debug only: 1 skips the per-particle energy update; start-up and tables run as usual. Always read. Never set it in a production run (default: 0)
 
 
   

@@ -168,7 +168,7 @@ struct cooling_function_data {
   /*! G_0 is read from the particle field (Grackle use_isrf_field). */
   int isrf_from_field;
 
-  /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and FUV
+  /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and PE
    * (6-11.2 eV) bands [cm^2]. */
   double dust_cross_section_lw_cgs, dust_cross_section_fuv_cgs;
 
