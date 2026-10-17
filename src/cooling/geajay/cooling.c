@@ -579,21 +579,25 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
             cooling->cooling_density_max);
   else
     message("Maximal density passed to geajay: none");
-  message(
-      "Background mode = %s, attenuation = %s",
-      cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND ? "per_band"
-                                                                  : "grackle",
-      cooling->background_attenuation == GEAJAY_BACKGROUND_ATTENUATION_PER_BAND
-          ? "per_band"
-          : "none");
+  message("Background mode = %s, dust attenuation = %s",
+          cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND
+              ? "per_band"
+              : "grackle",
+          cooling->dust_background_attenuation ==
+                  GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND
+              ? "per_band"
+              : "none");
   if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
     message(
         "Background models (-1: default): ionising %d, LW %d, G_0 %d (G_0 = "
         "%g); dust cross-sections LW %g cm^2, PE %g cm^2",
         cooling->ionising_background_model, cooling->lw_background_model,
         cooling->isrf_background_model, cooling->isrf_background_habing,
-        cooling->dust_cross_section_lw_cgs,
-        cooling->dust_cross_section_fuv_cgs);
+        cooling->dust_cross_section_lw_cgs, cooling->dust_cross_section_pe_cgs);
+  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+    message("UV rates file = %s", cooling->uv_rates_file[0] != '\0'
+                                      ? cooling->uv_rates_file
+                                      : cooling->cloudy_table);
   const geajay_cosmic_ray_settings *cr = &cooling->cosmic_ray_settings;
   message("Cosmic rays = %s",
           geajay_cosmic_ray_choice_name("cosmic_rays", cr->network));
@@ -763,8 +767,8 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
      ratio scaled by Z / Z_sun as geajay does. */
-  if (cooling->background_attenuation ==
-      GEAJAY_BACKGROUND_ATTENUATION_PER_BAND) {
+  if (cooling->dust_background_attenuation ==
+      GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
     const double path = 2. * inputs->H2_self_shielding_length;
     /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
@@ -775,8 +779,8 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
          COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO);
     inputs->lw_background_attenuation =
         exp(-cooling->dust_cross_section_lw_cgs * dust_ratio * column);
-    inputs->fuv_background_attenuation =
-        exp(-cooling->dust_cross_section_fuv_cgs * dust_ratio * column);
+    inputs->pe_background_attenuation =
+        exp(-cooling->dust_cross_section_pe_cgs * dust_ratio * column);
   }
 
   /* Self shielding by a density threshold: switch the UV background off */
@@ -1591,7 +1595,9 @@ static geajay_context *cooling_create_per_band_context(
   options.lw_background_model = cooling->lw_background_model;
   options.isrf_background_model = cooling->isrf_background_model;
   options.isrf_background_habing = cooling->isrf_background_habing;
-  options.background_attenuation = cooling->background_attenuation;
+  options.dust_background_attenuation = cooling->dust_background_attenuation;
+  if (cooling->uv_rates_file[0] != '\0')
+    options.uv_rates_file = cooling->uv_rates_file;
 
   return geajay_context_create_from_options(&options, &cooling->units,
                                             context_error);

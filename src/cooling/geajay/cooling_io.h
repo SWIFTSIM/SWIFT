@@ -433,18 +433,21 @@ INLINE static void cooling_read_background_parameters(
   cooling->lw_background_model = GEAJAY_LW_BACKGROUND_DEFAULT;
   cooling->isrf_background_model = GEAJAY_ISRF_BACKGROUND_DEFAULT;
   cooling->isrf_background_habing = -1.;
-  cooling->background_attenuation = GEAJAY_BACKGROUND_ATTENUATION_NONE;
+  cooling->dust_background_attenuation =
+      GEAJAY_DUST_BACKGROUND_ATTENUATION_NONE;
+  cooling->uv_rates_file[0] = '\0';
   cooling->dust_cross_section_lw_cgs = 0.;
-  cooling->dust_cross_section_fuv_cgs = 0.;
+  cooling->dust_cross_section_pe_cgs = 0.;
 
   static const char *per_band_keys[] = {
       "GeajayCooling:ionising_background_model",
       "GeajayCooling:lw_background_model",
       "GeajayCooling:isrf_background_model",
       "GeajayCooling:isrf_background_habing",
-      "GeajayCooling:background_attenuation",
+      "GeajayCooling:dust_background_attenuation",
       "GeajayCooling:dust_cross_section_lw_cm2",
-      "GeajayCooling:dust_cross_section_fuv_cm2"};
+      "GeajayCooling:dust_cross_section_pe_cm2",
+      "GeajayCooling:uv_rates_file"};
   if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) return;
 
   cooling->ionising_background_model = cooling_read_choice(
@@ -458,22 +461,28 @@ INLINE static void cooling_read_background_parameters(
       GEAJAY_ISRF_BACKGROUND_DEFAULT, NULL, 0);
   cooling->isrf_background_habing =
       parser_get_opt_param_double(parameter_file, per_band_keys[3], -1.);
-  cooling->background_attenuation = cooling_read_choice(
-      parameter_file, per_band_keys[4], "background_attenuation",
-      GEAJAY_BACKGROUND_ATTENUATION_NONE, NULL, 0);
+  cooling->dust_background_attenuation = cooling_read_choice(
+      parameter_file, per_band_keys[4], "dust_background_attenuation",
+      GEAJAY_DUST_BACKGROUND_ATTENUATION_NONE, NULL, 0);
+  /* An empty default cannot be stored in the parameter table, so the
+     parameter is read only when the file sets it. */
+  if (parser_does_param_exist(parameter_file, per_band_keys[7]))
+    parser_get_param_string(parameter_file, per_band_keys[7],
+                            cooling->uv_rates_file);
 
   if (cooling->table_density_edge != GEAJAY_TABLE_EDGE_EXTRAPOLATE)
     error(
         "GeajayCooling:table_density_edge: edge cannot be used with "
         "background_mode: per_band: the context owns its tables.");
 
-  if (cooling->background_attenuation != GEAJAY_BACKGROUND_ATTENUATION_PER_BAND)
+  if (cooling->dust_background_attenuation !=
+      GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND)
     return;
 
   /* The dust column is the one of the H2 self-shielding */
   if (cooling->H2_self_shielding != cooling_h2_shielding_length_given)
     error(
-        "GeajayCooling:background_attenuation: per_band needs "
+        "GeajayCooling:dust_background_attenuation: per_band needs "
         "h2_shielding_length_method: given_length, whose path is also the "
         "path of the dust column.");
 
@@ -485,10 +494,10 @@ INLINE static void cooling_read_background_parameters(
      the PE band. */
   cooling->dust_cross_section_lw_cgs =
       parser_get_opt_param_double(parameter_file, per_band_keys[5], 1.5e-21);
-  cooling->dust_cross_section_fuv_cgs =
+  cooling->dust_cross_section_pe_cgs =
       parser_get_opt_param_double(parameter_file, per_band_keys[6], 8.6e-22);
   if (!(cooling->dust_cross_section_lw_cgs >= 0.) ||
-      !(cooling->dust_cross_section_fuv_cgs >= 0.))
+      !(cooling->dust_cross_section_pe_cgs >= 0.))
     error("The dust cross-sections must be >= 0.");
 
   /* Mass per H nucleon, He included, that pairs with the cross-sections per

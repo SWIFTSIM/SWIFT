@@ -158,8 +158,12 @@ struct cooling_function_data {
    * unset. */
   double isrf_background_habing;
 
-  /*! Dust attenuation of the background, a #geajay_background_attenuation. */
-  int background_attenuation;
+  /*! Dust attenuation of the background, a #geajay_dust_background_attenuation.
+   */
+  int dust_background_attenuation;
+
+  /*! UV rates file of "per_band"; empty: the Cloudy table file. */
+  char uv_rates_file[200];
 
   /*! Constant LW background J21 (Grackle LWbackground_intensity); negative:
    * the library default. */
@@ -170,7 +174,7 @@ struct cooling_function_data {
 
   /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and PE
    * (6-11.2 eV) bands [cm^2]. */
-  double dust_cross_section_lw_cgs, dust_cross_section_fuv_cgs;
+  double dust_cross_section_lw_cgs, dust_cross_section_pe_cgs;
 
   /*! Converts rho * path (internal units) to the H nucleon column [cm^-2]. */
   double column_factor;
