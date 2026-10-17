@@ -571,6 +571,236 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
   }
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Does a top-level cell get its own job in engine_unskip()?
+ *
+ * This is the membership rule of space_list_useful_top_level_cells() combined
+ * with the activity filter of engine_unskip().
+ *
+ * @param c The top-level #cell.
+ * @param e The #engine.
+ */
+static int engine_unskip_top_cell_is_listed(struct cell *c,
+                                            const struct engine *e) {
+
+  return space_top_cell_has_tasks(c) && engine_unskip_top_cell_is_active(c, e);
+}
+
+/**
+ * @brief Check that engine_unskip_top_cell_is_listed() holds exactly for the
+ * top-level cells of the active list.
+ *
+ * @param e The #engine.
+ * @param active_cells The indices of the active top-level cells.
+ * @param num_active_cells The number of active top-level cells.
+ */
+static void engine_unskip_check_listed_rule(struct engine *e,
+                                            const int *active_cells,
+                                            const int num_active_cells) {
+
+  struct space *s = e->s;
+  char *listed = (char *)calloc(s->nr_cells, sizeof(char));
+  if (listed == NULL) error("Couldn't allocate the active list flags.");
+
+  for (int k = 0; k < num_active_cells; k++) listed[active_cells[k]] = 1;
+
+  for (int cid = 0; cid < s->nr_cells; cid++) {
+    struct cell *c = &s->cells_top[cid];
+    if (engine_unskip_top_cell_is_listed(c, e) != listed[cid])
+      error(
+          "Active list rule does not match the active list (cellID=%lld "
+          "listed=%d).",
+          c->cellID, listed[cid]);
+  }
+
+  free(listed);
+}
+
+/*! Number of steps between two checks of the gravity unskip */
+#ifndef ENGINE_UNSKIP_CHECK_PERIOD
+#define ENGINE_UNSKIP_CHECK_PERIOD 1
+#endif
+
+/**
+ * @brief Reference gravity unskip: one recursive walk per top-level cell.
+ *
+ * @param c The cell.
+ * @param e The engine.
+ */
+static void engine_do_unskip_gravity_reference(struct cell *c,
+                                               struct engine *e) {
+
+  /* Early abort (are we below the level where tasks are)? */
+  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
+
+  /* Ignore empty cells. */
+  if (c->grav.count == 0) return;
+
+  /* Skip inactive cells. */
+  if (!cell_is_active_gravity(c, e)) return;
+
+  /* At the top level we need to recursively check particles haven't moved
+   * too far for the mesh gravity (if using the mesh). */
+  if (c->depth == 0 && e->s->periodic) {
+    cell_check_grav_mesh_pairs(c, e);
+  }
+
+  /* Recurse */
+  if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        struct cell *cp = c->progeny[k];
+        engine_do_unskip_gravity_reference(cp, e);
+      }
+    }
+  }
+
+  /* Unskip any active tasks. */
+  cell_unskip_gravity_tasks(c, &e->sched);
+}
+
+/**
+ * @brief What engine_unskip_check_flags() does on each cell.
+ */
+enum unskip_check_flags_mode {
+  unskip_check_flags_count,
+  unskip_check_flags_store,
+  unskip_check_flags_compare,
+  unskip_check_flags_clear,
+  unskip_check_flags_restore,
+};
+
+/**
+ * @brief Visit a cell and its progeny.
+ *
+ * @param c The #cell.
+ * @param flags The stored flags, in the order of the visit.
+ * @param ind The index of @p c in @p flags.
+ * @param mode The #unskip_check_flags_mode.
+ *
+ * @return The index after the last cell visited.
+ */
+static long engine_unskip_check_flags_recursive(
+    struct cell *c, uint32_t *flags, long ind,
+    const enum unskip_check_flags_mode mode) {
+
+  const uint32_t processed = cell_flag_unskip_self_grav_processed |
+                             cell_flag_unskip_pair_grav_processed;
+  const uint32_t drift = cell_flag_do_grav_drift | cell_flag_do_grav_sub_drift;
+  const uint32_t reset = processed | drift;
+
+  switch (mode) {
+    case unskip_check_flags_count:
+      break;
+    case unskip_check_flags_store:
+      flags[ind] = c->flags;
+      break;
+    case unskip_check_flags_compare: {
+      const uint32_t added = c->flags & ~flags[ind] & ~reset;
+      if (added)
+        error(
+            "The reference gravity unskip sets new cell flags 0x%x "
+            "(cellID=%lld depth=%d nodeID=%d).",
+            added, c->cellID, c->depth, c->nodeID);
+      const uint32_t drift_diff = (c->flags ^ flags[ind]) & drift;
+      if (drift_diff)
+        error(
+            "The reference gravity unskip and the split one set different "
+            "drift flags 0x%x (cellID=%lld depth=%d nodeID=%d).",
+            drift_diff, c->cellID, c->depth, c->nodeID);
+      break;
+    }
+    case unskip_check_flags_clear:
+      c->flags &= ~reset;
+      break;
+    case unskip_check_flags_restore:
+      c->flags = (c->flags & ~reset) | (flags[ind] & reset);
+      break;
+  }
+  ind++;
+
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp == NULL) continue;
+    ind = engine_unskip_check_flags_recursive(cp, flags, ind, mode);
+  }
+  return ind;
+}
+
+/**
+ * @brief Visit all the cells, see engine_unskip_check_flags_recursive().
+ *
+ * @param s The #space.
+ * @param flags The stored flags, in the order of the visit.
+ * @param mode The #unskip_check_flags_mode.
+ *
+ * @return The number of cells visited.
+ */
+static long engine_unskip_check_flags(struct space *s, uint32_t *flags,
+                                      const enum unskip_check_flags_mode mode) {
+
+  long ind = 0;
+  for (int cid = 0; cid < s->nr_cells; cid++)
+    ind = engine_unskip_check_flags_recursive(&s->cells_top[cid], flags, ind,
+                                              mode);
+  return ind;
+}
+
+/**
+ * @brief Check that the reference gravity unskip activates no task and sets
+ * no cell flag that the split gravity unskip did not.
+ *
+ * The processed and drift flags of the split unskip are cleared before the
+ * reference walk, so that it walks the whole tree and sets the drift flags
+ * itself, and restored after. The reference walk must then set the same drift
+ * flags as the split one.
+ *
+ * @param e The #engine.
+ * @param active_cells The indices of the active top-level cells.
+ * @param num_active_cells The number of active top-level cells.
+ */
+static void engine_unskip_check_gravity(struct engine *e,
+                                        const int *active_cells,
+                                        const int num_active_cells) {
+
+  struct space *s = e->s;
+  struct scheduler *sched = &e->sched;
+
+  const long num_cells =
+      engine_unskip_check_flags(s, NULL, unskip_check_flags_count);
+  uint32_t *flags = (uint32_t *)malloc(num_cells * sizeof(uint32_t));
+  if (flags == NULL) error("Couldn't allocate the cell flags copy.");
+  engine_unskip_check_flags(s, flags, unskip_check_flags_store);
+  engine_unskip_check_flags(s, flags, unskip_check_flags_clear);
+
+  const int active_count = sched->active_count;
+  const int forcerebuild = e->forcerebuild;
+
+  for (int k = 0; k < num_active_cells; k++)
+    engine_do_unskip_gravity_reference(&s->cells_top[active_cells[k]], e);
+
+  if (sched->active_count != active_count) {
+    const struct task *t = &sched->tasks[sched->tid_active[active_count]];
+    error(
+        "The reference gravity unskip activates %d more tasks, first: task "
+        "%lld %s/%s ci cellID=%lld cj cellID=%lld.",
+        sched->active_count - active_count, (long long)(t - sched->tasks),
+        taskID_names[t->type], subtaskID_names[t->subtype],
+        t->ci != NULL ? t->ci->cellID : -1LL,
+        t->cj != NULL ? t->cj->cellID : -1LL);
+  }
+  if (forcerebuild == 0 && e->forcerebuild != 0)
+    error("The reference gravity unskip triggers a rebuild.");
+  e->forcerebuild = forcerebuild;
+
+  engine_unskip_check_flags(s, flags, unskip_check_flags_compare);
+  engine_unskip_check_flags(s, flags, unskip_check_flags_restore);
+
+  free(flags);
+}
+#endif
+
 /**
  * @brief Unskip all the tasks that act on active cells at this time.
  *
@@ -610,6 +840,10 @@ void engine_unskip(struct engine *e) {
       num_active_cells += 1;
     }
   }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  engine_unskip_check_listed_rule(e, local_cells, num_active_cells);
+#endif
 
   /* What kind of tasks do we have? */
   struct unskip_data data;
@@ -689,6 +923,11 @@ void engine_unskip(struct engine *e) {
                    grav_items.items, grav_items.count,
                    sizeof(struct unskip_item), engine_unskip_gravity_chunk,
                    &grav_items);
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (e->step % ENGINE_UNSKIP_CHECK_PERIOD == 0)
+      engine_unskip_check_gravity(e, local_cells, num_active_cells);
+#endif
 
     if (e->verbose)
       message(
