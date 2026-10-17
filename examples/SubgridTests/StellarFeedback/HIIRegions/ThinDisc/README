@@ -1,0 +1,46 @@
+# Intro
+An isolated, thin gas disc with young massive stars, to exercise the
+HEALPix-cone HII scheme (`GEARFeedback:HII_angular_nside: 1`, 12 cones per
+star) in a geometry closer to a dwarf galaxy than the single-star boxes
+of the sibling examples.
+
+The gas follows an exponential radial profile (scale length 150 pc,
+truncated at 5 scale lengths) and a Gaussian vertical profile (sigma 20 pc).
+It holds 4e6 Msun in 2e5 particles of 20 Msun, starts at 100 K, at rest,
+with Z = 0.02 Zsun. The central density is about 17 H/cm^3, above the
+`HII_min_density_Hpcm3` floor of 1 H/cm^3. There is no self-gravity and no
+rotation. Forty single stars of 10 to 40 Msun (Salpeter slope) are born at
+t = 0: three Gaussian clusters of ten stars (sigma 4 pc) and ten field stars
+drawn from the gas distribution.
+
+`HII_random_cone_frame_per_star: 0` keeps the 12 cones fixed to the box axes,
+so all stars share the same cone directions. `HII_random_cone_frame_per_star: 1`
+rotates each star's cone frame by a random rotation fixed by its ID. Compare
+the two settings with `run_name` (see Run).
+
+# Configure
+```
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix
+make -j
+```
+`--with-chealpix` is required for `HII_angular_nside` of 1 or more. The default
+`--with-number-of-hii-angular-pixels=12` fits `HII_angular_nside: 1`.
+
+# Run
+```
+./run.sh                    # cones fixed to the box axes
+random_frame=1 ./run.sh     # random cone frame per star
+```
+`run.sh` builds the initial conditions with `makeIC_disc.py`, fetches the
+Grackle and radiation tables, runs SWIFT to 3 Myr (4 threads by default) and
+calls `plot_hii_disc.py` on the final snapshot. Use `run_name=<name>` to keep
+the outputs of a run, e.g. one per cone-frame setting. Disc mass, scale
+length, scale height, cluster layout and star counts are environment
+variables listed at the top of `run.sh`; `python3 makeIC_disc.py --help`
+lists the generator options.
+
+# Plot
+`plot_hii_disc.py -s snap/snapshot -i <index>` writes a figure with the disc
+face-on (top) and edge-on (bottom). Grey is the gas surface density, the
+colour scale is the surface density of HII-tagged gas, and the stars are
+marked.
