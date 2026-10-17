@@ -554,6 +554,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Redshift = %g", cooling->redshift);
   message("UV background = %d", cooling->with_uv_background);
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
+  message("Compton X-ray heating = %d",
+          cooling->chemistry_data.Compton_xray_heating);
   message("Self Shielding = %i", (int)cooling->self_shielding_method);
   message(
       "Cloudy table density range = [%g, %g] cm^-3, beyond it the lookup %s",
@@ -1620,6 +1622,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->h2_on_dust = cooling->H2_on_dust;
   chemistry->H2_photodissociation_heating =
       cooling->H2_photodissociation_heating;
+  chemistry->Compton_xray_heating = cooling->compton_xray_heating;
   chemistry->grackle_data_file = cooling->cloudy_table;
 
   if (cooling->local_dust_to_gas_ratio > 0)

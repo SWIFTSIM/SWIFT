@@ -49,5 +49,6 @@ GeajayCooling:
   cosmic_rays: reduced                         # The reduced cosmic-ray network
   cosmic_ray_input: constant                   # The same rate for every particle
   cosmic_ray_constant_rate: 2e-16              # Primary ionisation rate per H [s^-1] (Indriolo et al. 2007)
+  compton_xray_heating: 0                      # (optional) Enable/disable the Compton heating by the X-ray background (default: 0)
   energy_change_limit: 0.1                     # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate or edge (default: extrapolate). It does not cap the density

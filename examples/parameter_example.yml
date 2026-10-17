@@ -739,6 +739,7 @@ GeajayCooling:
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   h2_formation_on_dust: 0                      # (optional) Enable/disable H2 formation on dust grains (default: 0)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
+  compton_xray_heating: 0                      # (optional) Enable/disable the Compton heating by the X-ray background (Grackle Compton_xray_heating) (default: 0)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)
   initial_nHII_to_nH_ratio: -1                 # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_nHeI_to_nH_ratio: -1                 # (optional) Initial nHeI to nH ratio (number density ratio). Ignored if -1 (default: -1)
@@ -771,10 +772,10 @@ GeajayCooling:
   isrf_background_model: default               # (optional) Read only with background_mode: per_band. Background G_0: default, none or constant (default: default)
   isrf_background_habing: -1                   # (optional) Read only with background_mode: per_band. Background G_0 of the model constant [Habing] (default: -1, unset)
   background_attenuation: none                 # (optional) Read only with background_mode: per_band. Dust attenuation: none or per_band; per_band needs h2_shielding_length_method: given_length (default: none)
-  # The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D_sun) N_H) of the LW and FUV backgrounds, with N_H the column of the H2 shielding. They do not change uv_self_shielding.
-  # Defaults: the values of SWIFT's GEAR radiation module (RADIATION_SIGMA_D_LW_CGS and RADIATION_SIGMA_D_PE_CGS in src/feedback/GEAR/radiation.h), from Kim et al. (2023) with Weingartner & Draine (2001) grains.
+  # The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D_sun) N_H) of the LW and PE backgrounds, with N_H the column of the H2 shielding. They do not change uv_self_shielding.
+  # Defaults: the values of SWIFT's GEAR radiation module (RADIATION_SIGMA_D_LW_CGS and RADIATION_SIGMA_D_PE_CGS); their literature source is to be verified.
   dust_cross_section_lw_cm2: 1.5e-21           # (optional) Read only with background_attenuation: per_band. Dust cross-section of the LW band (11.2-13.6 eV) [cm^2] (default: 1.5e-21)
-  dust_cross_section_fuv_cm2: 9e-22            # (optional) Read only with background_attenuation: per_band. Dust cross-section of the FUV band (6-11.2 eV) [cm^2] (default: 9e-22)
+  dust_cross_section_fuv_cm2: 9e-22            # (optional) Read only with background_attenuation: per_band. Dust cross-section of the PE band (6-11.2 eV) [cm^2] (default: 9e-22)
 
 
   

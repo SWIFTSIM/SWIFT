@@ -319,6 +319,7 @@ GeajayCooling:
   uv_self_shielding: density_threshold # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   thermal_time_myr: 5
+  compton_xray_heating: 0                     # (optional) Enable/disable the Compton heating by the X-ray background (default: 0)
   energy_change_limit: 0.1                    # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)
   table_density_edge: extrapolate             # (optional) Cloudy table lookup beyond its n_H range: extrapolate or edge (default: extrapolate). It does not cap the density
   maximal_density_Hpcm3: -1                   # (optional) Largest density passed to geajay, as n_H = rho / m_p [cm^-3], as in GrackleCooling. Zero or negative: no cap (default: -1)

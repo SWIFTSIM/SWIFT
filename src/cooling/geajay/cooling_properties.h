@@ -99,6 +99,11 @@ struct cooling_function_data {
   /*! Flag to enable heating from H2 photodissociation and UV pumping */
   int H2_photodissociation_heating;
 
+  /*! Compton heating by the X-ray background
+   * (GeajayCooling:compton_xray_heating, chemistry_data.Compton_xray_heating).
+   */
+  int compton_xray_heating;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double local_dust_to_gas_ratio;
 

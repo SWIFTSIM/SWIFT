@@ -543,6 +543,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         COOLING_GEAJAY_MODE);
 #endif
 
+  cooling->compton_xray_heating = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:compton_xray_heating", 0);
+  if (cooling->compton_xray_heating != 0 && cooling->compton_xray_heating != 1)
+    error("GeajayCooling:compton_xray_heating must be 0 or 1, got %d.",
+          cooling->compton_xray_heating);
+
   cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
 
