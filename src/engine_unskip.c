@@ -666,10 +666,11 @@ void engine_unskip(struct engine *e) {
   data.num_active_cells = num_active_cells;
   data.multiplier = multiplier;
 
-  /* Activate all the regular tasks */
-  threadpool_map(&e->threadpool, engine_do_unskip_mapper, local_active_cells,
-                 num_active_cells * multiplier, sizeof(int), /*chunk=*/1,
-                 &data);
+  /* Activate all the regular tasks (gravity-only runs have none) */
+  if (multiplier > 0)
+    threadpool_map(&e->threadpool, engine_do_unskip_mapper, local_active_cells,
+                   num_active_cells * multiplier, sizeof(int), /*chunk=*/1,
+                   &data);
 
   /* The gravity walks of large top-level cells are split into several jobs. */
   if (with_self_grav || with_ext_grav) {
