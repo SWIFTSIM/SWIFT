@@ -101,6 +101,8 @@ double feedback_iact_HII_maintain_ionized_part(
     const double dt_back);
 
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
+int feedback_get_HII_random_cone_frame(
+    const struct feedback_props *feedback_props);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);
 double feedback_get_star_HII_nominal_interval(
     const struct feedback_props *feedback_props, const double dt_enrichment);
@@ -173,8 +175,9 @@ void feedback_first_init_spart(struct spart *sp,
 
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
  * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
- * reduced-flux dissipation fields. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 4
+ * reduced-flux dissipation fields, 5 HII random cone frame flag in
+ * #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 5
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

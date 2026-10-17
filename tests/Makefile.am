@@ -39,7 +39,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
         testSinkApertureEdgeRounding testSinkDriftFlags \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
-        testRadiationRebuildCheck testRadiationPairShift \
+        testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -59,7 +59,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
-		 testRadiationRebuildCheck testRadiationPairShift \
+		 testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
@@ -78,6 +78,8 @@ testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
 
 testRadiationPairShift_SOURCES = testRadiationPairShift.c
+
+testRadiationHIIConeFrame_SOURCES = testRadiationHIIConeFrame.c
 
 testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 

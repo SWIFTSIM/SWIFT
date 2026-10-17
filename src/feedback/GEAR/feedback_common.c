@@ -1084,6 +1084,18 @@ int feedback_get_star_HII_pixel_count(const struct spart *sp) {
 }
 
 /**
+ * @brief Does each star rotate its HEALPix cone frame by a rotation fixed by
+ * its ID?
+ *
+ * @param feedback_props The #feedback_props.
+ * @return 1 if the cone frame is rotated, 0 if cones follow the box axes.
+ */
+int feedback_get_HII_random_cone_frame(
+    const struct feedback_props *feedback_props) {
+  return feedback_props->HII_random_cone_frame_per_star;
+}
+
+/**
  * @brief Record the (star-relative) age at which this star's HII region was
  * last rebuilt.
  *
@@ -1824,13 +1836,17 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
-        "dissipation fields). A restart "
+        "dissipation fields, HII random cone frame flag). A restart "
         "written by another code version cannot be resumed: rerun the "
         "simulation from its initial conditions.",
         flux_form, feedback_restart_particle_layout());
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
+  if (feedback->HII_random_cone_frame_per_star != 0 &&
+      feedback->HII_random_cone_frame_per_star != 1)
+    error("The restart file holds an invalid HII random cone frame flag %d.",
+          (int)feedback->HII_random_cone_frame_per_star);
 
   /* The two ISRF operator/moment maps are compile-time constants, so
    * feedback_props_init()'s own check of them applies unchanged here; it

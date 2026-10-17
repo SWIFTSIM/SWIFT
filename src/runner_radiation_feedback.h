@@ -36,6 +36,7 @@
 #include "feedback.h"
 #include "hydro.h"
 #include "minmax.h"
+#include "random.h"
 #include "stars.h"
 
 /* Avoid cyclic inclusions. */
@@ -242,24 +243,24 @@ void runner_do_stars_hii_ionization_feedback_branch(
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *ngb_buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 
 void runner_doself_stars_hii_ionization_feedback(
     struct runner *r, struct cell *c, struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 void runner_dopair_naive_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
     struct spart *si, const float search_radius, struct hii_neighbor *buffer,
     int max_size, int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 void runner_dopair_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 
 /**
  * @brief Shift that brings the neighbour cell next to the star's cell.
@@ -349,6 +350,45 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
 }
 
 /**
+ * @brief Build the rotation of a star's HEALPix cone frame from its ID.
+ *
+ * Shoemake's uniform random unit quaternion, built from three numbers drawn
+ * with random_unit_interval(), gives a rotation uniform on SO(3). The result
+ * depends only on the star ID and the compile-time random seed, so it is the
+ * same on every rank, after a restart and in any processing order.
+ *
+ * @param id The star ID.
+ * @param R (return) The rotation matrix, row-major.
+ */
+__attribute__((always_inline)) INLINE static void runner_hii_cone_frame_from_id(
+    const int64_t id, double R[9]) {
+
+  const double u1 =
+      random_unit_interval(id, 0, random_number_HII_frame_rotation);
+  const double u2 =
+      random_unit_interval(id, 1, random_number_HII_frame_rotation);
+  const double u3 =
+      random_unit_interval(id, 2, random_number_HII_frame_rotation);
+
+  const double a = sqrt(1.0 - u1);
+  const double b = sqrt(u1);
+  const double qx = a * sin(2.0 * M_PI * u2);
+  const double qy = a * cos(2.0 * M_PI * u2);
+  const double qz = b * sin(2.0 * M_PI * u3);
+  const double qw = b * cos(2.0 * M_PI * u3);
+
+  R[0] = 1.0 - 2.0 * (qy * qy + qz * qz);
+  R[1] = 2.0 * (qx * qy - qz * qw);
+  R[2] = 2.0 * (qx * qz + qy * qw);
+  R[3] = 2.0 * (qx * qy + qz * qw);
+  R[4] = 1.0 - 2.0 * (qx * qx + qz * qz);
+  R[5] = 2.0 * (qy * qz - qx * qw);
+  R[6] = 2.0 * (qx * qz - qy * qw);
+  R[7] = 2.0 * (qy * qz + qx * qw);
+  R[8] = 1.0 - 2.0 * (qx * qx + qy * qy);
+}
+
+/**
  * @brief Compute the angular (HEALPix) pixel a gas candidate falls into,
  * as seen from the star.
  *
@@ -358,10 +398,12 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
  * @param dx Star-minus-particle position offset (dx = x_star - x_particle).
  * @param n_HII_pixels Number of active pixels for this star (1 = spherical,
  * HEALPix disabled).
+ * @param frame Rotation of the cone frame (row-major 3x3, see
+ * #runner_hii_cone_frame_from_id), or NULL for cones fixed to the box axes.
  * @return Pixel index in [0, n_HII_pixels).
  */
 __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
-    const float dx[3], int n_HII_pixels) {
+    const float dx[3], int n_HII_pixels, const double *frame) {
 
   if (n_HII_pixels <= 1) return 0;
 
@@ -388,7 +430,13 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
   /* Pixels are defined around the star, so the direction of interest is
      from the star to the particle -- the negation of dx. vec2pix_ring64
      does not require a normalized vector. */
-  const double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
+  double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
+  if (frame != NULL) {
+    const double d0 = dir[0], d1 = dir[1], d2 = dir[2];
+    dir[0] = frame[0] * d0 + frame[1] * d1 + frame[2] * d2;
+    dir[1] = frame[3] * d0 + frame[4] * d1 + frame[5] * d2;
+    dir[2] = frame[6] * d0 + frame[7] * d1 + frame[8] * d2;
+  }
   int64_t ipix = 0;
   vec2pix_ring64(nside, dir, &ipix);
   return (int)ipix;
