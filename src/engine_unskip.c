@@ -249,6 +249,39 @@ static int engine_unskip_top_cell_is_active(const struct cell *c,
 }
 
 /**
+ * @brief Does a top-level cell get its own job in engine_unskip()?
+ *
+ * This is the membership rule of space_list_useful_top_level_cells() combined
+ * with the activity filter of engine_unskip().
+ *
+ * @param c The top-level #cell.
+ * @param e The #engine.
+ */
+static int engine_unskip_top_cell_is_listed(struct cell *c,
+                                            const struct engine *e) {
+
+  return space_top_cell_has_tasks(c) && engine_unskip_top_cell_is_active(c, e);
+}
+
+/**
+ * @brief Is the progeny of a gravity cell a top-level zoom cell that is
+ * unskipped by its own job?
+ *
+ * The finest void cells link the top-level zoom cells as their progeny. Such a
+ * zoom cell must not be walked a second time from the void hierarchy.
+ *
+ * @param c The parent #cell.
+ * @param cp The progeny of @p c.
+ * @param e The #engine.
+ */
+static int engine_unskip_gravity_progeny_is_listed(const struct cell *c,
+                                                   struct cell *cp,
+                                                   const struct engine *e) {
+
+  return cp->void_parent == c && engine_unskip_top_cell_is_listed(cp, e);
+}
+
+/**
  * @brief Does the gravity unskip of a cell act on it?
  *
  * @param c The #cell.
@@ -315,7 +348,9 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e,
   if (walk_below && engine_unskip_gravity_enters_progeny(c)) {
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
-      if (cp != NULL) engine_do_unskip_gravity(cp, e, /*walk_below=*/1);
+      if (cp == NULL || engine_unskip_gravity_progeny_is_listed(c, cp, e))
+        continue;
+      engine_do_unskip_gravity(cp, e, /*walk_below=*/1);
     }
   }
 
@@ -594,21 +629,6 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
-/**
- * @brief Does a top-level cell get its own job in engine_unskip()?
- *
- * This is the membership rule of space_list_useful_top_level_cells() combined
- * with the activity filter of engine_unskip().
- *
- * @param c The top-level #cell.
- * @param e The #engine.
- */
-static int engine_unskip_top_cell_is_listed(struct cell *c,
-                                            const struct engine *e) {
-
-  return space_top_cell_has_tasks(c) && engine_unskip_top_cell_is_active(c, e);
-}
-
 /**
  * @brief Check that engine_unskip_top_cell_is_listed() holds exactly for the
  * top-level cells of the active list.
@@ -943,7 +963,7 @@ void engine_unskip(struct engine *e) {
     grav_items.e = e;
     grav_items.acts_on = engine_unskip_gravity_acts_on;
     grav_items.recurses = engine_unskip_gravity_recurses;
-    grav_items.has_own_job = NULL;
+    grav_items.has_own_job = engine_unskip_gravity_progeny_is_listed;
     grav_items.unskip = engine_do_unskip_gravity;
     const ticks tic_items = getticks();
     engine_unskip_build_items(&grav_items, local_cells, num_active_cells);
