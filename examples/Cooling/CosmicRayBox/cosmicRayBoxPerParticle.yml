@@ -49,3 +49,4 @@ GeajayCooling:
   cosmic_rays: reduced                         # The reduced cosmic-ray network
   cosmic_ray_input: ionisation_rate            # One rate per particle, in the snapshot field CosmicRayValues
   cosmic_ray_initial_value: 2e-16              # Primary ionisation rate per H of every particle [s^-1] (Indriolo et al. 2007)
+  energy_change_limit: 0.1                     # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)

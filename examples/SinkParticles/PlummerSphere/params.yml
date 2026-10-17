@@ -78,6 +78,7 @@ GeajayCooling:
   uv_self_shielding: density_threshold          # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   thermal_time_myr: 5
+  energy_change_limit: 0.1                      # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)
 
 GEARChemistry:
   initial_metallicity: -5

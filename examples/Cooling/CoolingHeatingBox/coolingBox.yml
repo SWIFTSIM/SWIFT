@@ -78,6 +78,7 @@ GeajayCooling:
   RT_HeI_ionization_rate_cgs: 0                # HeI ionization  rate in cgs [1/s]
   RT_HeII_ionization_rate_cgs: 0               # HeII ionization rate in cgs [1/s]
   RT_H2_dissociation_rate_cgs: 0               # H2 dissociation rate in cgs [1/s]
+  energy_change_limit: 0.1                     # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)
 
 GEARChemistry:
   initial_metallicity: 0.01295
