@@ -129,6 +129,17 @@ static int report(const char *name, const double value, const double bar,
 }
 
 /**
+ * @brief The cone frame of a star at epoch 0, the frame of a run that never
+ * redraws.
+ *
+ * @param id The star ID.
+ * @param R (return) The rotation matrix, row-major.
+ */
+static void frame_of_id(const int64_t id, double R[9]) {
+  runner_hii_cone_frame_from_id(id, 0, R);
+}
+
+/**
  * @brief Largest departure of a 3x3 matrix from a proper rotation.
  *
  * @param R The matrix, row-major.
@@ -193,18 +204,18 @@ static int test_matrices(void) {
   int deterministic = 1;
   int distinct = 0;
   for (int64_t id = 1; id <= N_IDS_MATRIX; id++) {
-    runner_hii_cone_frame_from_id(id, R);
+    frame_of_id(id, R);
     worst = fmax(worst, departure_from_rotation(R));
-    runner_hii_cone_frame_from_id(id, R2);
+    frame_of_id(id, R2);
     if (memcmp(R, R2, sizeof(R)) != 0) deterministic = 0;
-    runner_hii_cone_frame_from_id(id + 1, R2);
+    frame_of_id(id + 1, R2);
     if (memcmp(R, R2, sizeof(R)) != 0) distinct++;
   }
   fail += report("rotation matrix departure from orthonormal, det 1", worst,
                  ORTHONORMAL_BAR, 0);
 
   /* Control: a matrix scaled by 1.001 is not a rotation. */
-  runner_hii_cone_frame_from_id(12345, R);
+  frame_of_id(12345, R);
   for (int k = 0; k < 9; k++) R[k] *= 1.001;
   fail += report("control: scaled matrix departure", departure_from_rotation(R),
                  ORTHONORMAL_BAR, 1);
@@ -326,19 +337,14 @@ static int test_pixels(void) {
 
     snprintf(name, sizeof(name), "nside %d, uniform directions, one star's R",
              nside);
-    fail +=
-        report(name, occupancy_chi2(runner_hii_cone_frame_from_id, 7, nside, 0),
-               bar, 0);
+    fail += report(name, occupancy_chi2(frame_of_id, 7, nside, 0), bar, 0);
     snprintf(name, sizeof(name),
              "nside %d, control: squeezed (non-rotation) matrix", nside);
-    fail +=
-        report(name, occupancy_chi2(runner_hii_cone_frame_from_id, 7, nside, 1),
-               bar, 1);
+    fail += report(name, occupancy_chi2(frame_of_id, 7, nside, 1), bar, 1);
 
     snprintf(name, sizeof(name), "nside %d, stacked image of an axis over IDs",
              nside);
-    fail += report(name, stacked_chi2(runner_hii_cone_frame_from_id, nside),
-                   bar, 0);
+    fail += report(name, stacked_chi2(frame_of_id, nside), bar, 0);
     snprintf(name, sizeof(name),
              "nside %d, control: rotation about z only, stacked", nside);
     fail += report(name, stacked_chi2(rotation_about_z_only, nside), bar, 1);
@@ -361,7 +367,7 @@ static int test_pixels(void) {
     float dx[3], mdx[3];
     for (int i = 0; i < 100000; i++) {
       test_direction(&state, dx);
-      runner_hii_cone_frame_from_id(1 + i % 977, R);
+      frame_of_id(1 + i % 977, R);
       const int ref = pixel_reference(dx, nside);
       if (runner_hii_get_pixel(dx, n_pix, NULL) != ref) diff_null++;
       if (runner_hii_get_pixel(dx, n_pix, I) != ref) diff_identity++;
@@ -395,7 +401,7 @@ static int test_pixels(void) {
     long changed = 0;
     double R[9];
     float dx[3];
-    runner_hii_cone_frame_from_id(31, R);
+    frame_of_id(31, R);
     for (int i = 0; i < 10000; i++) {
       test_direction(&state, dx);
       if (runner_hii_get_pixel(dx, 12, R) != pixel_reference(dx, 1)) changed++;
@@ -420,7 +426,7 @@ static uint64_t digest_of_ids(const int64_t id_shift) {
   uint64_t h = 1469598103934665603ULL;
   double R[9];
   for (int64_t id = 1; id <= 20000; id++) {
-    runner_hii_cone_frame_from_id(id + id_shift, R);
+    frame_of_id(id + id_shift, R);
     unsigned char bytes[sizeof(R)];
     memcpy(bytes, R, sizeof(R));
     for (size_t k = 0; k < sizeof(R); k++)
@@ -465,6 +471,139 @@ static int test_rank_independence(const int rank, const int n_ranks) {
   return fail;
 }
 
+/**
+ * @brief qsort comparator of two uint64_t.
+ *
+ * @param a The first value.
+ * @param b The second value.
+ * @return -1, 0 or 1.
+ */
+static int compare_uint64(const void *a, const void *b) {
+  const uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
+  return (x > y) - (x < y);
+}
+
+/**
+ * @brief Trace of A^T B, which is 1 + 2 cos(angle) of the rotation between
+ * two frames.
+ *
+ * @param A The first rotation, row-major.
+ * @param B The second rotation, row-major.
+ * @return The trace.
+ */
+static double relative_trace(const double A[9], const double B[9]) {
+  double t = 0.0;
+  for (int k = 0; k < 9; k++) t += A[k] * B[k];
+  return t;
+}
+
+/**
+ * @brief Frame redraw checks: epoch of a time, frame inside and across an
+ * epoch, a period of 0, independence and determinism.
+ *
+ * @return The number of failed checks.
+ */
+static int test_epochs(void) {
+  int fail = 0;
+  const double interval = 0.37;
+  const double offsets[3] = {0.01, 0.5, 0.99};
+
+  /* Times well inside epoch k map to k; a rounding formula fails here. */
+  long wrong_epoch = 0;
+  for (int64_t k = 0; k < 100000; k++)
+    for (int f = 0; f < 3; f++)
+      if (runner_hii_cone_frame_epoch((k + offsets[f]) * interval, interval) !=
+          k)
+        wrong_epoch++;
+  fail += report("times inside epoch k not mapped to k", (double)wrong_epoch,
+                 0.0, 0);
+
+  long nonzero = 0;
+  for (int i = 0; i < 100000; i++)
+    if (runner_hii_cone_frame_epoch(1e-3 * i * i, 0.0) != 0) nonzero++;
+  fail += report("period 0: times with an epoch other than 0", (double)nonzero,
+                 0.0, 0);
+
+  double R[9], R2[9], R3[9];
+  long changed_inside = 0, unchanged_across = 0, not_epoch0 = 0, nondet = 0;
+  const int n_ids = 2000;
+  for (int64_t id = 1; id <= n_ids; id++) {
+    for (int64_t k = 0; k < 20; k++) {
+      const int64_t e1 =
+          runner_hii_cone_frame_epoch((k + 0.01) * interval, interval);
+      const int64_t e2 =
+          runner_hii_cone_frame_epoch((k + 0.99) * interval, interval);
+      const int64_t e3 =
+          runner_hii_cone_frame_epoch((k + 1.01) * interval, interval);
+      runner_hii_cone_frame_from_id(id, e1, R);
+      runner_hii_cone_frame_from_id(id, e2, R2);
+      runner_hii_cone_frame_from_id(id, e3, R3);
+      if (memcmp(R, R2, sizeof(R)) != 0) changed_inside++;
+      if (memcmp(R2, R3, sizeof(R)) == 0) unchanged_across++;
+      runner_hii_cone_frame_from_id(id, e1, R2);
+      if (memcmp(R, R2, sizeof(R)) != 0) nondet++;
+    }
+    runner_hii_cone_frame_from_id(
+        id, runner_hii_cone_frame_epoch(1e5 * interval, 0.0), R);
+    frame_of_id(id, R2);
+    if (memcmp(R, R2, sizeof(R)) != 0) not_epoch0++;
+  }
+  fail += report("frame changes inside an epoch (count)",
+                 (double)changed_inside, 0.0, 0);
+  fail += report("frame kept across an epoch boundary (count)",
+                 (double)unchanged_across, 0.0, 0);
+  fail += report("period 0: frame differs from the epoch-0 frame (count)",
+                 (double)not_epoch0, 0.0, 0);
+  fail += report("same star and epoch, two calls differ (count)",
+                 (double)nondet, 0.0, 0);
+
+  /* Independence. The trace of the relative rotation between two
+     independent uniform rotations has mean 0 and variance 1. */
+  const int n_pairs = 200000;
+  double sum_epochs = 0.0, sum_stars = 0.0, sum_same = 0.0;
+  for (int i = 0; i < n_pairs; i++) {
+    const int64_t id = 1 + i % 4001;
+    const int64_t e = i / 4001;
+    runner_hii_cone_frame_from_id(id, e, R);
+    runner_hii_cone_frame_from_id(id, e + 1, R2);
+    sum_epochs += relative_trace(R, R2);
+    runner_hii_cone_frame_from_id(id + 1, e, R2);
+    sum_stars += relative_trace(R, R2);
+    runner_hii_cone_frame_from_id(id, e, R2);
+    sum_same += relative_trace(R, R2);
+  }
+  const double bar = 4.0 / sqrt((double)n_pairs);
+  fail += report("|mean trace|, one star, consecutive epochs",
+                 fabs(sum_epochs / n_pairs), bar, 0);
+  fail += report("|mean trace|, neighbouring stars, same epoch",
+                 fabs(sum_stars / n_pairs), bar, 0);
+  fail += report("control: |mean trace|, same star and epoch",
+                 fabs(sum_same / n_pairs), bar, 1);
+
+  /* No two (star, epoch) pairs share a frame. */
+  const int n_e = 50;
+  const size_t n_frames = (size_t)n_ids * n_e;
+  uint64_t *keys = malloc(n_frames * sizeof(uint64_t));
+  size_t n_keys = 0;
+  for (int64_t id = 1; id <= n_ids; id++)
+    for (int64_t e = 0; e < n_e; e++) {
+      runner_hii_cone_frame_from_id(id, e, R);
+      uint64_t h = 1469598103934665603ULL;
+      unsigned char bytes[sizeof(R)];
+      memcpy(bytes, R, sizeof(R));
+      for (size_t k = 0; k < sizeof(R); k++)
+        h = (h ^ bytes[k]) * 1099511628211ULL;
+      keys[n_keys++] = h;
+    }
+  qsort(keys, n_keys, sizeof(uint64_t), compare_uint64);
+  long shared = 0;
+  for (size_t k = 1; k < n_keys; k++)
+    if (keys[k] == keys[k - 1]) shared++;
+  free(keys);
+  fail += report("(star, epoch) pairs sharing a frame", (double)shared, 0.0, 0);
+  return fail;
+}
+
 #if defined(HAVE_CHEALPIX)
 
 /**
@@ -488,7 +627,7 @@ static int dump_pixels(const char *path) {
     float dx[3];
     for (int i = 0; i < N_SAMPLES; i++) {
       test_direction(&state, dx);
-      runner_hii_cone_frame_from_id(1 + i % 4093, R);
+      frame_of_id(1 + i % 4093, R);
       const int p = runner_hii_get_pixel(dx, n_pix, R);
       uint8_t near_boundary = 0;
       for (int k = 0; k < 3 && !near_boundary; k++) {
@@ -538,6 +677,7 @@ int main(int argc, char *argv[]) {
   printf("skip pixel checks: HAVE_CHEALPIX is not defined\n");
 #endif
   fail += test_rank_independence(rank, n_ranks);
+  fail += test_epochs();
 
 #if defined(HAVE_CHEALPIX)
 done:
