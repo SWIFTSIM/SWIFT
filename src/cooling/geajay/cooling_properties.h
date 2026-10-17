@@ -268,6 +268,11 @@ struct cooling_function_data {
    * 2^i sub-steps. 0 disables the retries. */
   int subcycle_on_failure;
 
+  /*! Largest fraction of the internal energy that one sub-step of the solver
+   * may change, in (0, 1] (GeajayCooling:energy_change_limit,
+   * chemistry_data.energy_change_limit). Grackle fixes 0.1. */
+  double energy_change_limit;
+
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 

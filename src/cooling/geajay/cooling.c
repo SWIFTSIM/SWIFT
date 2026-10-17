@@ -544,6 +544,9 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   }
 
   message("Cooling function is 'geajay'.");
+  const geajay_version version = geajay_get_version();
+  message("geajay version = %s, branch %s, revision %s", version.version,
+          version.branch, version.revision);
   message("Using geajay = %i", cooling->chemistry_data.use_grackle);
   message("Chemical network = %i",
           cooling->chemistry_data.primordial_chemistry);
@@ -568,6 +571,7 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Thermal time = %g", cooling->thermal_time);
   message("Max geajay sub-steps = %d", cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
+  message("geajay energy change limit = %g", cooling->energy_change_limit);
   message(
       "Background mode = %s, attenuation = %s",
       cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND ? "per_band"
@@ -1661,6 +1665,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
      a state integrated over only part of the time-step. */
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 1;
+  chemistry->energy_change_limit = cooling->energy_change_limit;
 
   /* The options of "per_band" start from the parameters as set here */
   const geajay_chemistry_data chemistry_as_set = *chemistry;

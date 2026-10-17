@@ -688,6 +688,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:subcycle_on_failure must be in [0, 20], got %d.",
           cooling->subcycle_on_failure);
 
+  /* Largest fraction of the internal energy that one sub-step may change */
+  cooling->energy_change_limit = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:energy_change_limit", 0.1);
+  if (!(cooling->energy_change_limit > 0. &&
+        cooling->energy_change_limit <= 1.))
+    error("GeajayCooling:energy_change_limit must be in (0, 1], got %g.",
+          cooling->energy_change_limit);
+
   /* Thermal time */
   cooling->thermal_time =
       parser_get_param_double(parameter_file, "GeajayCooling:thermal_time_myr");

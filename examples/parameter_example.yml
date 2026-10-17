@@ -716,6 +716,7 @@ GeajayCooling:
   with_metal_cooling: 1                        # Enable or not the metal cooling
   max_substeps: 10000                          # (optional) Maximal number of sub-steps of one solve (default: 10000)
   subcycle_on_failure: 2                       # (optional) Number of retries with a time-step split in smaller pieces after a failed solve (0 to 20, default: 2)
+  energy_change_limit: 0.1                     # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1]. Smaller values take more sub-steps (default: 0.1, the value Grackle fixes)
   thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
   uv_self_shielding: none                      # (optional) Self shielding: none, HI, HI_HeI or HI_HeI_no_HeII (the library's methods, or 0 to 3), or density_threshold (or -1) for the threshold below (default: none)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Density threshold of the self shielding
