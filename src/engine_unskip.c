@@ -652,8 +652,9 @@ static void engine_unskip_check_listed_rule(struct engine *e,
     if (engine_unskip_top_cell_is_listed(c, e) != listed[cid])
       error(
           "Active list rule does not match the active list (cellID=%lld "
-          "listed=%d).",
-          c->cellID, listed[cid]);
+          "type=%s subtype=%s listed=%d).",
+          c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
+          listed[cid]);
   }
 
   free(listed);
@@ -722,7 +723,8 @@ enum unskip_check_flags_mode {
 };
 
 /**
- * @brief Visit a cell and its progeny.
+ * @brief Visit a cell and its progeny without crossing from a void cell into
+ * the top-level zoom cells.
  *
  * @param c The #cell.
  * @param flags The stored flags, in the order of the visit.
@@ -751,14 +753,17 @@ static long engine_unskip_check_flags_recursive(
       if (added)
         error(
             "The reference gravity unskip sets new cell flags 0x%x "
-            "(cellID=%lld depth=%d nodeID=%d).",
-            added, c->cellID, c->depth, c->nodeID);
+            "(cellID=%lld depth=%d type=%s subtype=%s nodeID=%d).",
+            added, c->cellID, c->depth, cellID_names[c->type],
+            subcellID_names[c->subtype], c->nodeID);
       const uint32_t drift_diff = (c->flags ^ flags[ind]) & drift;
       if (drift_diff)
         error(
             "The reference gravity unskip and the split one set different "
-            "drift flags 0x%x (cellID=%lld depth=%d nodeID=%d).",
-            drift_diff, c->cellID, c->depth, c->nodeID);
+            "drift flags 0x%x (cellID=%lld depth=%d type=%s subtype=%s "
+            "nodeID=%d).",
+            drift_diff, c->cellID, c->depth, cellID_names[c->type],
+            subcellID_names[c->subtype], c->nodeID);
       break;
     }
     case unskip_check_flags_clear:
@@ -772,7 +777,7 @@ static long engine_unskip_check_flags_recursive(
 
   for (int k = 0; k < 8; k++) {
     struct cell *cp = c->progeny[k];
-    if (cp == NULL) continue;
+    if (cp == NULL || cp->void_parent == c) continue;
     ind = engine_unskip_check_flags_recursive(cp, flags, ind, mode);
   }
   return ind;
