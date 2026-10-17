@@ -734,35 +734,46 @@ GeajayCooling:
   RT_H2_dissociation_rate_cgs: 0               # (optional) H2 dissociation rate in cgs [1/s]
   volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
   specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
-  h2_three_body_fit: Abel+2002                 # (optional) H2 three-body formation rate: Abel+2002, Palla+1983, Cohen+Westberg1983, Flower+Harris2007, Glover2008 or Forrey2013 (or 0 to 5) (default: Abel+2002)
+  h2_three_body_fit: Abel+2002                 # (optional) H2 three-body formation rate by name: Abel+2002, Palla+1983, Cohen+Westberg1983, Flower+Harris2007, Glover2008 or Forrey2013; 0 to 5 also accepted (Grackle) (default: Abel+2002)
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   h2_formation_on_dust: 0                      # (optional) Enable/disable H2 formation on dust grains (default: 0)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)
-  initial_nHII_to_nH_ratio:    -1              # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1. The same holds for the nHeI, nHeII, nHeIII, nDI, nDII, nHM, nH2I, nH2II and nHDI ratios.
+  initial_nHII_to_nH_ratio: -1                 # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nHeI_to_nH_ratio: -1                 # (optional) Initial nHeI to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nHeII_to_nH_ratio: -1                # (optional) Initial nHeII to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nHeIII_to_nH_ratio: -1               # (optional) Initial nHeIII to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nDI_to_nH_ratio: -1                  # (optional) Initial nDI to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nDII_to_nH_ratio: -1                 # (optional) Initial nDII to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nHM_to_nH_ratio: -1                  # (optional) Initial nHM to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nH2I_to_nH_ratio: -1                 # (optional) Initial nH2I to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nH2II_to_nH_ratio: -1                # (optional) Initial nH2II to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  initial_nHDI_to_nH_ratio: -1                 # (optional) Initial nHDI to nH ratio (number density ratio). Ignored if -1 (default: -1)
   cosmic_rays: off                             # (optional) Cosmic-ray network: off or reduced (needs primordial_chemistry_network H_He or above) (default: off)
   # With it the fields CosmicRayValues and CosmicRayEnergyLossRates join the snapshot, but swift -o does not list them.
-  cosmic_ray_input: ionisation_rate            # (optional) Meaning of the per-particle value: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)
-  # cosmic_ray_initial_value: 2e-16              # Only with cosmic_rays on and a per-particle input, then required. Start value of every particle, proper; a cosmic-ray source module changes it
-  # cosmic_ray_constant_rate: 2e-16              # Only with cosmic_ray_input: constant, then required. Primary ionisation rate per H [s^-1]
-  # cosmic_ray_rate_per_energy_density: 3e-17    # Only with energy_density, then required. Ionisation rate per energy density kappa [s^-1 / (eV cm^-3)]
-  # cosmic_ray_coulomb_loss_coefficient: 1.65e-16  # Only with energy_density, then required. Coulomb loss coefficient [cm^3 s^-1]
-  # cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Only with energy_density, then required. Hadronic loss coefficient [cm^3 s^-1]
-  cosmic_ray_heating: atomic_molecular_fit     # (optional) Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
-  cosmic_ray_heat_per_ionisation: 20           # (optional) Heat per ionisation of fixed_energy [eV] (default: 20)
+  cosmic_ray_input: ionisation_rate            # (optional) Read only with cosmic_rays: reduced. Meaning of the per-particle value: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)
+  cosmic_ray_initial_value: 2e-16              # Read only with cosmic_rays: reduced and a per-particle input (ionisation_rate or energy_density), then required. Start value of every particle, proper
+  cosmic_ray_constant_rate: 2e-16              # Read only with cosmic_ray_input: constant, then required. Primary ionisation rate per H [s^-1]
+  cosmic_ray_rate_per_energy_density: 3e-17    # Read only with cosmic_ray_input: energy_density, then required. Ionisation rate per energy density kappa [s^-1 / (eV cm^-3)]
+  cosmic_ray_coulomb_loss_coefficient: 1.65e-16 # Read only with cosmic_ray_input: energy_density, then required. Coulomb loss coefficient [cm^3 s^-1]
+  cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Read only with cosmic_ray_input: energy_density, then required. Hadronic loss coefficient [cm^3 s^-1]
+  cosmic_ray_heating: atomic_molecular_fit     # (optional) Read only with cosmic_rays: reduced. Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
+  cosmic_ray_heat_per_ionisation: 20           # (optional) Read only with cosmic_ray_heating: fixed_energy. Heat per ionisation [eV] (default: 20)
   lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default (default: -1)
   isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field) (default: 0)
   # With background_mode: grackle the cooling passes the library value of interstellar_radiation_field (1.7 Habing) for every particle.
   # With per_band it passes 0, the local field only, to which the background G_0 is added.
   # A radiation module would write the local field.
   background_mode: grackle                     # (optional) Background rules: grackle (Grackle's) or per_band (one switch per band; the options below) (default: grackle)
-  # ionising_background_model: default          # (optional, per_band only) Ionising band: default (follows with_UV_background), none or uv_table (default: default)
-  # lw_background_model: default                 # (optional, per_band only) Lyman-Werner band: default, none, uv_table, constant_j21 or Brown+2025 (default: default)
-  # isrf_background_model: default               # (optional, per_band only) Background G_0: default, none or constant (default: default)
-  # isrf_background_habing: -1                   # (optional, per_band only) Background G_0 of the model constant [Habing] (default: -1, unset)
-  # background_attenuation: none                 # (optional, per_band only) Dust attenuation: none or per_band; per_band needs h2_shielding_length_method: given_length (default: none)
-  # dust_cross_section_lw_cm2: 1.5e-21           # (optional, per_band attenuation only) Dust cross-section per H nucleon of the LW band (11.2-13.6 eV) at the reference dust-to-gas ratio, scaled by Z/Z_sun (default: 1.5e-21)
-  # dust_cross_section_fuv_cm2: 9e-22            # (optional, per_band attenuation only) Dust cross-section per H nucleon of the FUV band (6-11.2 eV) (default: 9e-22)
+  ionising_background_model: default           # (optional) Read only with background_mode: per_band. Ionising band: default (follows with_UV_background), none or uv_table (default: default)
+  lw_background_model: default                 # (optional) Read only with background_mode: per_band. Lyman-Werner band: default, none, uv_table, constant_j21 or Brown+2025 (default: default)
+  isrf_background_model: default               # (optional) Read only with background_mode: per_band. Background G_0: default, none or constant (default: default)
+  isrf_background_habing: -1                   # (optional) Read only with background_mode: per_band. Background G_0 of the model constant [Habing] (default: -1, unset)
+  background_attenuation: none                 # (optional) Read only with background_mode: per_band. Dust attenuation: none or per_band; per_band needs h2_shielding_length_method: given_length (default: none)
+  # The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D_sun) N_H) of the LW and FUV backgrounds, with N_H the column of the H2 shielding. They do not change uv_self_shielding.
+  # Defaults: the values of SWIFT's GEAR radiation module (RADIATION_SIGMA_D_LW_CGS and RADIATION_SIGMA_D_PE_CGS in src/feedback/GEAR/radiation.h), from Kim et al. (2023) with Weingartner & Draine (2001) grains.
+  dust_cross_section_lw_cm2: 1.5e-21           # (optional) Read only with background_attenuation: per_band. Dust cross-section of the LW band (11.2-13.6 eV) [cm^2] (default: 1.5e-21)
+  dust_cross_section_fuv_cm2: 9e-22            # (optional) Read only with background_attenuation: per_band. Dust cross-section of the FUV band (6-11.2 eV) [cm^2] (default: 9e-22)
 
 
   

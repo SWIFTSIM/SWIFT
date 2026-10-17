@@ -326,11 +326,31 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
 }
 
 /**
+ * @brief Pass one cosmic-ray option to geajay, if the parameter file has it.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param settings The cosmic-ray settings.
+ * @param option The geajay option name, e.g. "cosmic_ray_input".
+ */
+INLINE static void cooling_set_cosmic_ray_option(
+    struct swift_params *parameter_file, geajay_cosmic_ray_settings *settings,
+    const char *option) {
+
+  char key[PARSER_MAX_LINE_SIZE], text[PARSER_MAX_LINE_SIZE];
+  snprintf(key, sizeof(key), "GeajayCooling:%s", option);
+  if (!parser_does_param_exist(parameter_file, key)) return;
+  parser_get_param_string(parameter_file, key, text);
+  if (geajay_cosmic_ray_settings_set(settings, option, text) == GEAJAY_FAIL)
+    error("%s: geajay refused the value '%s': %s", key, text,
+          geajay_last_error_message());
+}
+
+/**
  * @brief Read the cosmic-ray options of geajay and the initial value of the
  * particles.
  *
- * Only the options present in the parameter file are passed to geajay, which
- * refuses a value that the chosen input does not read.
+ * An option is read only when the choices above it use it, so the others
+ * stay in unused_parameters.yml.
  *
  * @param parameter_file The parser parameter file.
  * @param cooling The cooling properties to initialize.
@@ -339,52 +359,41 @@ INLINE static void cooling_read_cosmic_ray_parameters(
     struct swift_params *parameter_file,
     struct cooling_function_data *cooling) {
 
-  static const char *options[] = {"cosmic_rays",
-                                  "cosmic_ray_input",
-                                  "cosmic_ray_rate_per_energy_density",
-                                  "cosmic_ray_constant_rate",
-                                  "cosmic_ray_heating",
-                                  "cosmic_ray_heat_per_ionisation",
-                                  "cosmic_ray_coulomb_loss_coefficient",
-                                  "cosmic_ray_hadronic_loss_coefficient"};
-  const int num_options = sizeof(options) / sizeof(options[0]);
-
   geajay_cosmic_ray_settings *settings = &cooling->cosmic_ray_settings;
   geajay_cosmic_ray_settings_init(settings);
+  cooling->cosmic_ray_initial_value = 0.f;
 
-  char key[PARSER_MAX_LINE_SIZE], text[PARSER_MAX_LINE_SIZE];
-  for (int i = 0; i < num_options; i++) {
-    snprintf(key, sizeof(key), "GeajayCooling:%s", options[i]);
-    if (!parser_does_param_exist(parameter_file, key)) continue;
-    parser_get_param_string(parameter_file, key, text);
-    if (geajay_cosmic_ray_settings_set(settings, options[i], text) ==
-        GEAJAY_FAIL)
-      error("%s: geajay refused the value '%s': %s", key, text,
-            geajay_last_error_message());
+  cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_rays");
+  if (settings->network == GEAJAY_COSMIC_RAYS_OFF) return;
+
+  cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_input");
+  cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_heating");
+  if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+    cooling_set_cosmic_ray_option(parameter_file, settings,
+                                  "cosmic_ray_constant_rate");
+  if (settings->input == GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY) {
+    cooling_set_cosmic_ray_option(parameter_file, settings,
+                                  "cosmic_ray_rate_per_energy_density");
+    cooling_set_cosmic_ray_option(parameter_file, settings,
+                                  "cosmic_ray_coulomb_loss_coefficient");
+    cooling_set_cosmic_ray_option(parameter_file, settings,
+                                  "cosmic_ray_hadronic_loss_coefficient");
   }
+  if (settings->heating == GEAJAY_COSMIC_RAY_HEATING_FIXED_ENERGY)
+    cooling_set_cosmic_ray_option(parameter_file, settings,
+                                  "cosmic_ray_heat_per_ionisation");
 
   /* The initial value is SWIFT's: read only by a per-particle input */
-  const char *initial_key = "GeajayCooling:cosmic_ray_initial_value";
-  const int has_initial = parser_does_param_exist(parameter_file, initial_key);
-  const int per_particle = settings->network != GEAJAY_COSMIC_RAYS_OFF &&
-                           settings->input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT;
-  cooling->cosmic_ray_initial_value = 0.f;
-  if (per_particle) {
-    if (!has_initial)
+  if (settings->input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT) {
+    const char *initial_key = "GeajayCooling:cosmic_ray_initial_value";
+    if (!parser_does_param_exist(parameter_file, initial_key))
       error("%s is required with the cosmic-ray input %s.", initial_key,
             geajay_cosmic_ray_choice_name("cosmic_ray_input", settings->input));
     const double value = parser_get_param_double(parameter_file, initial_key);
     if (!(value >= 0.) || value > FLT_MAX)
       error("%s must be >= 0 and fit in a float, got %e.", initial_key, value);
     cooling->cosmic_ray_initial_value = (float)value;
-  } else if (has_initial) {
-    error(
-        "%s is read only with cosmic rays on and a per-particle input "
-        "(ionisation_rate or energy_density).",
-        initial_key);
   }
-
-  if (settings->network == GEAJAY_COSMIC_RAYS_OFF) return;
 
   if (geajay_cosmic_ray_settings_check(settings) == GEAJAY_FAIL)
     error("geajay refused the cosmic-ray options: %s",
@@ -400,8 +409,8 @@ INLINE static void cooling_read_cosmic_ray_parameters(
 /**
  * @brief Read the background options of geajay.
  *
- * The per-band options are read with background_mode "per_band" only and are
- * refused otherwise, so that "grackle" keeps the context of the chemistry.
+ * The per-band options are read with background_mode "per_band" only, so
+ * that "grackle" keeps the context of the chemistry.
  *
  * @param parameter_file The parser parameter file.
  * @param cooling The cooling properties to initialize.
@@ -436,14 +445,7 @@ INLINE static void cooling_read_background_parameters(
       "GeajayCooling:background_attenuation",
       "GeajayCooling:dust_cross_section_lw_cm2",
       "GeajayCooling:dust_cross_section_fuv_cm2"};
-  if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) {
-    for (size_t i = 0; i < sizeof(per_band_keys) / sizeof(per_band_keys[0]);
-         i++)
-      if (parser_does_param_exist(parameter_file, per_band_keys[i]))
-        error("%s is read only with GeajayCooling:background_mode: per_band.",
-              per_band_keys[i]);
-    return;
-  }
+  if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) return;
 
   cooling->ionising_background_model = cooling_read_choice(
       parameter_file, per_band_keys[0], "ionising_background_model",
