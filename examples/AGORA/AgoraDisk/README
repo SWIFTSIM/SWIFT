@@ -6,6 +6,10 @@ or similarily
 
 ./configure --with-feedback=AGORA --with-chemistry=AGORA  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-grackle=/path/to/grackle
 
+With geajay instead of Grackle:
+
+./configure --with-feedback=AGORA --with-chemistry=AGORA --with-cooling=geajay_0 --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-geajay=/path/to/geajay
+
 
 An analysis script for this test case can be found in the AGORA project repository:
 https://bitbucket.org/mornkr/agora-analysis-script/

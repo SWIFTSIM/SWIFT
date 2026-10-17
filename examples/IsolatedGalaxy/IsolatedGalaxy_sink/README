@@ -10,6 +10,12 @@ To run this example with GEAR model,
 ./configure --with-ext-potential=hernquist --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
 ```
 
+or, with geajay instead of Grackle:
+
+```
+./configure --with-ext-potential=hernquist --with-chemistry=GEAR_10 --with-cooling=geajay_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-geajay=path/to/geajay
+```
+
 and then
 
 `make -j`

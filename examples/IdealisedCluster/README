@@ -50,6 +50,10 @@ To compile with GEAR black holes, configure swift with:
 
 ./configure --with-subgrid=GEAR-BH --with-ext-potential=nfw --with-forcing=boundary-particles --with-grackle=$GRACKLE_ROOT
 
+With geajay instead of Grackle (the subgrid option cannot be combined with --with-cooling):
+
+./configure --with-chemistry=GEAR_10 --with-tracers=GEAR --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-cooling=geajay_0 --with-black-holes=GEAR --enable-fof --with-ext-potential=nfw --with-forcing=boundary-particles --with-geajay=$GEAJAY_ROOT
+
 Notice that you need to have installed Grackle on your machine. You also need to update
 the parameter files from:
 

@@ -11,3 +11,7 @@ The target halo contains the highest-resolution dark matter particles particles 
 To run this example, SWIFT must be configured with the following options:
 
 ./configure --with-subgrid=GEAR --with-grackle=/path/to/grackle
+
+With geajay instead of Grackle (the subgrid option cannot be combined with --with-cooling):
+
+./configure --with-chemistry=GEAR_10 --with-tracers=GEAR --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-cooling=geajay_0 --with-geajay=/path/to/geajay

@@ -12,6 +12,10 @@ To run this example with the GEAR model, SWIFT must be configured with the follo
 
 ./configure --with-subgrid=GEAR --with-grackle=$GRACKLE_ROOT
 
+With geajay instead of Grackle (the subgrid option cannot be combined with --with-cooling):
+
+./configure --with-chemistry=GEAR_10 --with-tracers=GEAR --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-cooling=geajay_0 --with-geajay=$GEAJAY_ROOT
+
 To start the simulation with the GEAR model:
 
 ./run.sh
@@ -24,6 +28,10 @@ To start the simulation with a central seed black hole (via GEAR's BLACK_HOLES_G
 model), configure SWIFT with the GEAR-BH subgrid model instead:
 
 ./configure --with-subgrid=GEAR-BH --with-grackle=$GRACKLE_ROOT
+
+or, with geajay:
+
+./configure --with-chemistry=GEAR_10 --with-tracers=GEAR --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-cooling=geajay_0 --with-black-holes=GEAR --enable-fof --with-geajay=$GEAJAY_ROOT
 
 then run:
 

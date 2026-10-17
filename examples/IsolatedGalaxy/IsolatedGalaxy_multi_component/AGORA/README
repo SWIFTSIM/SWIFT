@@ -12,6 +12,10 @@ To run this example with the AGORA model, SWIFT must be configured with the foll
 
 ./configure --with-feedback=AGORA --with-chemistry=AGORA  --with-cooling=grackle_0  --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR  --with-grackle=${GRACKLE_ROOT}
 
+With geajay instead of Grackle:
+
+./configure --with-feedback=AGORA --with-chemistry=AGORA --with-cooling=geajay_0 --with-pressure-floor=GEAR --with-stars=GEAR --with-star-formation=GEAR --with-geajay=${GEAJAY_ROOT}
+
 To start the simulation with the AGORA model:
 
 ./run.sh
