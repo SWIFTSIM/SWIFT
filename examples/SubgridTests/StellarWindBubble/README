@@ -10,6 +10,12 @@ To run this example with the GEAR model,
 CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-grackle=/path/to/grackle
 ```
 
+or, with geajay instead of Grackle:
+
+```
+CFLAGS="-DSWIFT_TEST_STELLAR_WIND" ./configure  --with-chemistry=GEAR_10 --with-cooling=geajay_0 --with-stars=GEAR --with-star-formation=GEAR --with-sink=GEAR --with-feedback=GEAR --with-kernel=wendland-C2 --with-geajay=/path/to/geajay
+```
+
 Then, type
 
 ```

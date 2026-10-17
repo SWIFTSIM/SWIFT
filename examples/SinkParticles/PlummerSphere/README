@@ -5,3 +5,7 @@ This example is a Plummer sphere collapsing onto itself. It produces sink partic
 To run this example with GEAR model,
 
 ./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+
+or, with geajay instead of Grackle:
+
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=geajay_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay

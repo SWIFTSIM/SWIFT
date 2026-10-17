@@ -82,6 +82,25 @@ GrackleCooling:
   initial_nHDI_to_nH_ratio:   3.356904E-006      # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
   maximal_density_Hpcm3: -1                      # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
+GeajayCooling:
+  cloudy_table_file: CloudyData_UVB=HM2012_high_density.h5    # Name of the Cloudy table
+  with_UV_background: 0                          # Enable or not the UV background
+  redshift: -1                                   # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                          # Enable or not the metal cooling
+  uv_self_shielding: density_threshold           # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
+  self_shielding_threshold_atom_per_cm3: 0.007   # Required only with GEAR's self shielding. Density threshold of the self shielding
+  thermal_time_myr: 5
+  initial_nHII_to_nH_ratio: 2.393761E-004        # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeI_to_nH_ratio: 7.900000E-002        # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeII_to_nH_ratio: 5.692753E-020       # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeIII_to_nH_ratio: 0                  # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDI_to_nH_ratio: 2.529538E-005         # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDII_to_nH_ratio: 4.284496E-009        # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHM_to_nH_ratio: 6.509693E-012         # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2I_to_nH_ratio: 1.891128E-005        # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2II_to_nH_ratio: 4.153181E-005       # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHDI_to_nH_ratio: 3.356904E-006        # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+
 GEARChemistry:
   initial_metallicity: 1e-6
 

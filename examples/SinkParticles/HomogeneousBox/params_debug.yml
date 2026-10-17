@@ -77,6 +77,16 @@ GrackleCooling:
   thermal_time_myr:   5
   maximal_density_Hpcm3: 1e10                          # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
+GeajayCooling:
+  cloudy_table_file: CloudyData_UVB=HM2012_high_density.h5 # Name of the Cloudy table
+  with_UV_background: 0                                # Enable or not the UV background
+  redshift: -1                                         # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                                # Enable or not the metal cooling
+  uv_self_shielding: density_threshold                 # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
+  self_shielding_threshold_atom_per_cm3: 0.007         # Required only with GEAR's self shielding. Density threshold of the self shielding
+  thermal_time_myr: 5
+  # geajay has no density ceiling: maximal_density_Hpcm3 (1e10) of Grackle has no equivalent
+
 GEARChemistry:
   initial_metallicity: -1                              # If < 0, use the metallicity sotred in the ICs
 
