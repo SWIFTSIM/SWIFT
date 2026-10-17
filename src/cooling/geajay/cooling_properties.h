@@ -291,6 +291,10 @@ struct cooling_function_data {
    * table_density_max_Hpcm3. */
   double table_edge_density;
 
+  /*! Largest physical density passed to geajay, in internal units
+   * (GeajayCooling:maximal_density_Hpcm3). Zero or negative: no cap. */
+  double cooling_density_max;
+
   /*! Debug/test-only: skip cooling_cool_part()'s per-particle energy
       update entirely (leaving hydro's own internal-energy derivative
       untouched), while cooling_init() and everything it resolves (table

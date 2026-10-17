@@ -67,6 +67,7 @@ GeajayCooling:
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
   energy_change_limit: 0.1                     # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1] (default: 0.1, the value Grackle fixes)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate or edge (default: extrapolate). It does not cap the density
+  maximal_density_Hpcm3: -1                    # (optional) Largest density passed to geajay, as n_H = rho / m_p [cm^-3], as in GrackleCooling. Zero or negative: no cap (default: -1)
 
 GEARChemistry:
   initial_metallicity: 0.01295

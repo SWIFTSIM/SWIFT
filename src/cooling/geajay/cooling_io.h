@@ -717,6 +717,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->proton_mass_cgs = phys_const->const_proton_mass *
                              units_cgs_conversion_factor(us, UNIT_CONV_MASS);
 
+  /* Density cap, given as n_H = rho / m_p in cm^-3 as in the Grackle module.
+   * Zero or negative: no cap. */
+  cooling->cooling_density_max = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:maximal_density_Hpcm3", -1.);
+  cooling->cooling_density_max *=
+      cooling->proton_mass_cgs /
+      units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
   cooling_read_cosmic_ray_parameters(parameter_file, cooling);
   cooling_read_background_parameters(parameter_file, cooling, us);
 }

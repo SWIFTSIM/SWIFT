@@ -572,6 +572,11 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Max geajay sub-steps = %d", cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
   message("geajay energy change limit = %g", cooling->energy_change_limit);
+  if (cooling->cooling_density_max > 0.)
+    message("Maximal density passed to geajay = %e (internal units)",
+            cooling->cooling_density_max);
+  else
+    message("Maximal density passed to geajay: none");
   message(
       "Background mode = %s, attenuation = %s",
       cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND ? "per_band"
@@ -1819,6 +1824,7 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
 /**
  * @brief Get the physical density of the #part passed to geajay.
  *
+ * A positive cooling_density_max caps it, as in the Grackle module.
  * The first particle of a run above the density range of the Cloudy table
  * prints a warning. Its n_H is X_H rho / m_p, close to the n_H of geajay,
  * which sums the hydrogen species.
@@ -1833,7 +1839,19 @@ double cooling_get_physical_density(
     const struct part *p, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling) {
 
-  const double part_density = hydro_get_physical_density(p, cosmo);
+  double part_density = hydro_get_physical_density(p, cosmo);
+  const double cooling_max_density = cooling->cooling_density_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (cooling_max_density > 0.0 && part_density > cooling_max_density) {
+    warning(
+        "Gas particle %lld physical density (%e) is higher than the maximal "
+        "physical density set in the parameter files (%e).",
+        p->id, part_density, cooling_max_density);
+  }
+#endif
+  if (cooling_max_density > 0.0)
+    part_density = fmin(part_density, cooling_max_density);
 
   if (part_density > cooling->table_edge_density &&
       !cooling_geajay_table_edge_warned &&
