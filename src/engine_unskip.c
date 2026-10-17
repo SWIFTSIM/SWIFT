@@ -208,21 +208,86 @@ static void engine_do_unskip_sinks(struct cell *c, struct engine *e) {
 }
 
 /**
+ * @brief Is a non-empty top-level cell active for any of the broad task types
+ * of the run?
+ *
+ * @param c The top-level #cell.
+ * @param e The #engine.
+ */
+static int engine_unskip_top_cell_is_active(const struct cell *c,
+                                            const struct engine *e) {
+
+  const int nodeID = e->nodeID;
+  const int with_hydro = e->policy & engine_policy_hydro;
+  const int with_self_grav = e->policy & engine_policy_self_gravity;
+  const int with_ext_grav = e->policy & engine_policy_external_gravity;
+  const int with_stars = e->policy & engine_policy_stars;
+  const int with_sinks = e->policy & engine_policy_sinks;
+  const int with_feedback = e->policy & engine_policy_feedback;
+  const int with_black_holes = e->policy & engine_policy_black_holes;
+  const int with_rt = e->policy & engine_policy_rt;
+
+  if (cell_is_empty(c)) return 0;
+
+  return (with_hydro && cell_is_active_hydro(c, e)) ||
+         (with_self_grav && cell_is_active_gravity(c, e)) ||
+         (with_ext_grav && c->nodeID == nodeID &&
+          cell_is_active_gravity(c, e)) ||
+         (with_feedback && cell_is_active_stars(c, e)) ||
+         (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
+         (with_sinks && cell_is_active_sinks(c, e)) ||
+         (with_black_holes && cell_is_active_black_holes(c, e)) ||
+         (with_rt && cell_is_rt_active(c, e));
+}
+
+/**
+ * @brief Does the gravity unskip of a cell act on it?
+ *
+ * @param c The #cell.
+ * @param e The #engine.
+ */
+static int engine_unskip_gravity_acts_on(const struct cell *c,
+                                         const struct engine *e) {
+
+  /* Below the level where tasks are, empty or inactive. */
+  return cell_get_flag(c, cell_flag_has_tasks) && c->grav.count != 0 &&
+         cell_is_active_gravity(c, e);
+}
+
+/**
+ * @brief Does the gravity walk of a cell it acts on go down to its progeny?
+ *
+ * @param c The #cell.
+ */
+static int engine_unskip_gravity_enters_progeny(const struct cell *c) {
+
+  return c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav);
+}
+
+/**
+ * @brief Does the gravity unskip of a cell recurse into its progeny?
+ *
+ * @param c The #cell.
+ * @param e The #engine.
+ */
+static int engine_unskip_gravity_recurses(struct cell *c,
+                                          const struct engine *e) {
+
+  return engine_unskip_gravity_acts_on(c, e) &&
+         engine_unskip_gravity_enters_progeny(c);
+}
+
+/**
  * @brief Unskip any gravity tasks associated with active cells.
  *
  * @param c The cell.
  * @param e The engine.
+ * @param walk_below Also unskip the progeny of @p c?
  */
-static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
+static void engine_do_unskip_gravity(struct cell *c, struct engine *e,
+                                     const int walk_below) {
 
-  /* Early abort (are we below the level where tasks are)? */
-  if (!cell_get_flag(c, cell_flag_has_tasks)) return;
-
-  /* Ignore empty cells. */
-  if (c->grav.count == 0) return;
-
-  /* Skip inactive cells. */
-  if (!cell_is_active_gravity(c, e)) return;
+  if (!engine_unskip_gravity_acts_on(c, e)) return;
 
   /* At the top level we need to recursively check particles haven't moved
    * too far for the mesh gravity (if using the mesh). */
@@ -231,12 +296,10 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
   }
 
   /* Recurse */
-  if (c->split && ((c->maxdepth - c->depth) >= space_subdepth_diff_grav)) {
+  if (walk_below && engine_unskip_gravity_enters_progeny(c)) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
-        engine_do_unskip_gravity(cp, e);
-      }
+      struct cell *cp = c->progeny[k];
+      if (cp != NULL) engine_do_unskip_gravity(cp, e, /*walk_below=*/1);
     }
   }
 
@@ -279,6 +342,143 @@ static void engine_do_unskip_rt(struct cell *c, struct engine *e,
   /* Unskip any active tasks. */
   const int forcerebuild = cell_unskip_rt_tasks(c, &e->sched, sub_cycle);
   if (forcerebuild) atomic_inc(&e->forcerebuild);
+}
+
+/*! Number of tree levels by which a local top-level cell is split into jobs.
+ * 2 gives at most 1 + 8 + 64 jobs per top-level cell. */
+static const int engine_unskip_split_levels = 2;
+
+/*! Chunk size of the gravity items. Chunk 1 costs one atomic per item and
+ * automatic chunking gives one thread a long run of the heavy items of a
+ * single top-level cell, which are neighbours in the list. */
+static const int engine_unskip_gravity_chunk = 8;
+
+/**
+ * @brief A cell to unskip from one job.
+ */
+struct unskip_item {
+
+  /*! The #cell */
+  struct cell *c;
+
+  /*! Does the job also unskip the progeny of the cell? */
+  int walk_below;
+};
+
+/**
+ * @brief A growable list of #unskip_item and the callbacks that build it.
+ */
+struct unskip_item_list {
+
+  /*! The #engine */
+  struct engine *e;
+
+  /*! Does the unskip act on a cell at all? */
+  int (*acts_on)(const struct cell *c, const struct engine *e);
+
+  /*! Does the walk of a cell recurse into its progeny? */
+  int (*recurses)(struct cell *c, const struct engine *e);
+
+  /*! Is a progeny unskipped by a job of its own? Can be NULL. */
+  int (*has_own_job)(const struct cell *c, struct cell *cp,
+                     const struct engine *e);
+
+  /*! The per-cell unskip action of a job */
+  void (*unskip)(struct cell *c, struct engine *e, int walk_below);
+
+  /*! The items */
+  struct unskip_item *items;
+
+  /*! Number of items and allocated size */
+  int count, size;
+};
+
+/**
+ * @brief Append an item to an #unskip_item_list.
+ *
+ * @param list The #unskip_item_list.
+ * @param c The #cell of the item.
+ * @param walk_below Does the item also unskip the progeny of @p c?
+ */
+static void engine_unskip_add_item(struct unskip_item_list *list,
+                                   struct cell *c, const int walk_below) {
+
+  if (list->count == list->size) {
+    list->size = list->size > 0 ? 2 * list->size : 1024;
+    list->items = (struct unskip_item *)realloc(
+        list->items, list->size * sizeof(struct unskip_item));
+    if (list->items == NULL) error("Couldn't allocate the unskip items.");
+  }
+  list->items[list->count].c = c;
+  list->items[list->count].walk_below = walk_below;
+  list->count++;
+}
+
+/**
+ * @brief Split the walk of a cell into items, down to a fixed number of levels.
+ *
+ * A local cell whose walk recurses becomes an item that unskips the cell alone
+ * and its progeny are split in turn. The other cells become items that walk
+ * their whole subtree.
+ *
+ * @param list The #unskip_item_list to fill.
+ * @param c The #cell.
+ * @param levels The number of levels left to split.
+ */
+static void engine_unskip_split_cell(struct unskip_item_list *list,
+                                     struct cell *c, const int levels) {
+
+  const struct engine *e = list->e;
+
+  if (!list->acts_on(c, e)) return;
+
+  if (levels == 0 || c->nodeID != e->nodeID || !list->recurses(c, e)) {
+    engine_unskip_add_item(list, c, /*walk_below=*/1);
+    return;
+  }
+
+  engine_unskip_add_item(list, c, /*walk_below=*/0);
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp == NULL) continue;
+    if (list->has_own_job != NULL && list->has_own_job(c, cp, e)) continue;
+    engine_unskip_split_cell(list, cp, levels - 1);
+  }
+}
+
+/**
+ * @brief Build the items of a set of top-level cells.
+ *
+ * @param list The #unskip_item_list with its callbacks set and no items.
+ * @param cell_ids The indices of the top-level cells.
+ * @param num_cells The number of top-level cells.
+ */
+static void engine_unskip_build_items(struct unskip_item_list *list,
+                                      const int *cell_ids,
+                                      const int num_cells) {
+
+  struct cell *cells_top = list->e->s->cells_top;
+  for (int k = 0; k < num_cells; k++)
+    engine_unskip_split_cell(list, &cells_top[cell_ids[k]],
+                             engine_unskip_split_levels);
+}
+
+/**
+ * @brief Mapper function to run the unskip action of a list of items.
+ *
+ * @param map_data An array of #unskip_item.
+ * @param num_elements Chunk size.
+ * @param extra_data Pointer to the #unskip_item_list.
+ */
+static void engine_do_unskip_items_mapper(void *map_data, int num_elements,
+                                          void *extra_data) {
+
+  const struct unskip_item_list *list =
+      (const struct unskip_item_list *)extra_data;
+  const struct unskip_item *items = (const struct unskip_item *)map_data;
+
+  for (int ind = 0; ind < num_elements; ind++)
+    list->unskip(items[ind].c, list->e, items[ind].walk_below);
 }
 
 /**
@@ -333,14 +533,6 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 #endif
         engine_do_unskip_hydro(c, e);
         break;
-      case task_broad_types_gravity:
-#ifdef SWIFT_DEBUG_CHECKS
-        if (!(e->policy & engine_policy_self_gravity) &&
-            !(e->policy & engine_policy_external_gravity))
-          error("Trying to unskip gravity tasks in a non-gravity run!");
-#endif
-        engine_do_unskip_gravity(c, e);
-        break;
       case task_broad_types_stars:
 #ifdef SWIFT_DEBUG_CHECKS
         if (!(e->policy & engine_policy_stars))
@@ -388,7 +580,6 @@ void engine_unskip(struct engine *e) {
 
   const ticks tic = getticks();
   struct space *s = e->s;
-  const int nodeID = e->nodeID;
 
   const int with_hydro = e->policy & engine_policy_hydro;
   const int with_self_grav = e->policy & engine_policy_self_gravity;
@@ -412,17 +603,7 @@ void engine_unskip(struct engine *e) {
   for (int k = 0; k < s->nr_local_cells_with_tasks; k++) {
     struct cell *c = &s->cells_top[local_cells[k]];
 
-    if (cell_is_empty(c)) continue;
-
-    if ((with_hydro && cell_is_active_hydro(c, e)) ||
-        (with_self_grav && cell_is_active_gravity(c, e)) ||
-        (with_ext_grav && c->nodeID == nodeID &&
-         cell_is_active_gravity(c, e)) ||
-        (with_feedback && cell_is_active_stars(c, e)) ||
-        (with_stars && c->nodeID == nodeID && cell_is_active_stars(c, e)) ||
-        (with_sinks && cell_is_active_sinks(c, e)) ||
-        (with_black_holes && cell_is_active_black_holes(c, e)) ||
-        (with_rt && cell_is_rt_active(c, e))) {
+    if (engine_unskip_top_cell_is_active(c, e)) {
 
       if (num_active_cells != k)
         memswap(&local_cells[k], &local_cells[num_active_cells], sizeof(int));
@@ -436,10 +617,6 @@ void engine_unskip(struct engine *e) {
   int multiplier = 0;
   if (with_hydro) {
     data.task_types[multiplier] = task_broad_types_hydro;
-    multiplier++;
-  }
-  if (with_self_grav || with_ext_grav) {
-    data.task_types[multiplier] = task_broad_types_gravity;
     multiplier++;
   }
   if (with_feedback || with_stars) {
@@ -493,6 +670,29 @@ void engine_unskip(struct engine *e) {
   threadpool_map(&e->threadpool, engine_do_unskip_mapper, local_active_cells,
                  num_active_cells * multiplier, sizeof(int), /*chunk=*/1,
                  &data);
+
+  /* The gravity walks of large top-level cells are split into several jobs. */
+  if (with_self_grav || with_ext_grav) {
+    struct unskip_item_list grav_items;
+    bzero(&grav_items, sizeof(struct unskip_item_list));
+    grav_items.e = e;
+    grav_items.acts_on = engine_unskip_gravity_acts_on;
+    grav_items.recurses = engine_unskip_gravity_recurses;
+    grav_items.has_own_job = NULL;
+    grav_items.unskip = engine_do_unskip_gravity;
+    engine_unskip_build_items(&grav_items, local_cells, num_active_cells);
+
+    threadpool_map(&e->threadpool, engine_do_unskip_items_mapper,
+                   grav_items.items, grav_items.count,
+                   sizeof(struct unskip_item), engine_unskip_gravity_chunk,
+                   &grav_items);
+
+    if (e->verbose)
+      message("gravity: %d active top-level cells split into %d jobs.",
+              num_active_cells, grav_items.count);
+
+    free(grav_items.items);
+  }
 
 #ifdef WITH_PROFILER
   ProfilerStop();
