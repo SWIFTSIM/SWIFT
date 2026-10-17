@@ -89,6 +89,30 @@ GrackleCooling:
 
 
 
+GeajayCooling:
+  cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
+  with_UV_background: 0                        # Enable or not the UV background
+  redshift: -1                                 # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 0                        # Enable or not the metal cooling
+  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+  uv_self_shielding: none                      # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
+  self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
+  hydrogen_mass_fraction: 0.76                 # Hydrogen fraction by mass
+  use_radiative_transfer_fields: 0             # Arrays of ionization and heating rates are provided
+  h2_three_body_fit: Palla+1983                # H2 three-body formation rate
+  h2_cie_cooling: none                         # H2 collision-induced emission cooling
+  metal_cooling_cmb_floor: 1                   # Enable/disable the CMB temperature floor of the metal cooling
+  initial_nHII_to_nH_ratio: 2.393761E-004      # initial nHII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeI_to_nH_ratio: 7.900000E-002      # initial nHeI   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeII_to_nH_ratio: 5.692753E-020     # initial nHeII  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHeIII_to_nH_ratio: 0                # initial nHeIII to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDI_to_nH_ratio: 2.529538E-005       # initial nDI    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nDII_to_nH_ratio: 4.284496E-009      # initial nDII   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHM_to_nH_ratio: 6.509693E-012       # initial nHM    to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2I_to_nH_ratio: 1.891128E-006      # initial nH2I   to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nH2II_to_nH_ratio: 4.153181E-014     # initial nH2II  to nH ratio (number density ratio). Value is ignored if set to -1.
+  initial_nHDI_to_nH_ratio: 3.356904E-010      # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
+
 Scheduler:
   max_top_level_cells:   12
   #cell_split_size:       200
