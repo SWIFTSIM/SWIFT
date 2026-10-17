@@ -22,7 +22,7 @@ then
 fi
 
 # Get the results
-if [ ! -e CoolingHeatingBox_results.txt]
+if [ ! -e CoolingHeatingBox_results.txt ]
 then
     echo "Fetching the the results..."
     ./getResults.sh
