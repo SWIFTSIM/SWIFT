@@ -1096,16 +1096,24 @@ int feedback_get_HII_random_cone_frame(
 }
 
 /**
- * @brief Time between two draws of a star's cone frame.
+ * @brief Number of passes between two draws of a star's cone frame.
  *
  * @param feedback_props The #feedback_props.
- * @return The redraw period times the HII rebuild time (internal units), or 0
- * when the frame is kept for the star's life.
+ * @return The redraw period, or 0 when the frame is kept for the star's life.
  */
-double feedback_get_HII_cone_frame_redraw_interval(
+int feedback_get_HII_cone_frame_redraw_period(
     const struct feedback_props *feedback_props) {
-  return (double)feedback_props->HII_cone_frame_redraw_period *
-         (double)feedback_props->HII_rebuild_time;
+  return feedback_props->HII_cone_frame_redraw_period;
+}
+
+/**
+ * @brief Count one HII pass of this star.
+ *
+ * @param sp The #spart to update.
+ * @return The number of passes the star made before this one.
+ */
+int64_t feedback_count_star_HII_pass(struct spart *sp) {
+  return sp->feedback_data.radiation.HII_pass_count++;
 }
 
 /**
@@ -1692,6 +1700,7 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
   /* 0.0 reads as "never attempted", so the first attempt's dt_elapsed
      measures from the star's actual birth age. */
   sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
+  sp->feedback_data.radiation.HII_pass_count = 0;
 
   /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
      carries a pixel's overdraft into the next pass, so this must start clean.
@@ -1849,7 +1858,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
-        "dissipation fields, HII random cone frame flag and redraw period). "
+        "dissipation fields, HII random cone frame flag, redraw period and "
+        "star pass count). "
         "A restart written by another code version cannot be resumed: rerun "
         "the simulation from its initial conditions.",
         flux_form, feedback_restart_particle_layout());

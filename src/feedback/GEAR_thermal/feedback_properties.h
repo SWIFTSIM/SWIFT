@@ -391,7 +391,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
                 : "probabilistic");
     message("HII random cone frame per star                             = %s",
             feedback_props->HII_random_cone_frame_per_star ? "on" : "off");
-    message("HII cone frame redraw period (rebuild intervals)           = %d",
+    message("HII cone frame redraw period (star passes)                 = %d",
             feedback_props->HII_cone_frame_redraw_period);
     message("HII max age (internal units)                               = %g",
             feedback_props->HII_max_age);
@@ -997,12 +997,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     if (fp->HII_cone_frame_redraw_period < 0)
       error("GEARFeedback:HII_cone_frame_redraw_period must be >= 0, got %d.",
             fp->HII_cone_frame_redraw_period);
-    if (fp->HII_cone_frame_redraw_period > 0 && fp->HII_rebuild_time <= 0.f)
-      error(
-          "GEARFeedback:HII_cone_frame_redraw_period > 0 counts HII rebuild "
-          "intervals, so it needs GEARFeedback:HII_rebuild_time_Myr > 0 "
-          "(got %g).",
-          fp->HII_rebuild_time);
 
     fp->HII_rebuild_floor_Myr =
         parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",

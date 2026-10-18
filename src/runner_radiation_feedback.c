@@ -104,17 +104,17 @@ static int runner_hii_maintenance_compare(const void *a, const void *b) {
  *
  * @param si The #spart.
  * @param feedback_props The #feedback_props.
- * @param time The simulation time, which sets the frame epoch.
+ * @param pass_index Number of passes the star has made before this one.
  * @param storage Memory for the matrix, used only when a rotation is returned.
  * @return @a storage filled with the rotation, or NULL.
  */
 __attribute__((always_inline)) INLINE static const double *
 runner_hii_star_cone_frame(const struct spart *si,
                            const struct feedback_props *feedback_props,
-                           const double time, double storage[9]) {
+                           const int64_t pass_index, double storage[9]) {
   if (!feedback_get_HII_random_cone_frame(feedback_props)) return NULL;
   const int64_t epoch = runner_hii_cone_frame_epoch(
-      time, feedback_get_HII_cone_frame_redraw_interval(feedback_props));
+      pass_index, feedback_get_HII_cone_frame_redraw_period(feedback_props));
   runner_hii_cone_frame_from_id(si->id, epoch, storage);
   return storage;
 }
@@ -612,6 +612,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     const double dt_elapsed =
         star_age_safe - feedback_get_star_HII_last_attempt(si);
     feedback_set_star_HII_last_attempt(si, star_age_safe);
+    const int64_t pass_index = feedback_count_star_HII_pass(si);
 
     /* Nothing to search for in a gas-free working-level cell. The star was
        still "attempted" just above, which is what keeps dt_elapsed correct
@@ -653,8 +654,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     feedback_open_star_ionizing_photon_budget(si, dt_back);
 
     double cone_frame_storage[9];
-    const double *frame = runner_hii_star_cone_frame(si, feedback_props, time,
-                                                     cone_frame_storage);
+    const double *frame = runner_hii_star_cone_frame(
+        si, feedback_props, pass_index, cone_frame_storage);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     if (dt_floored > dt_ceiling)

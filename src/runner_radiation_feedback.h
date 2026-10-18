@@ -350,17 +350,17 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
 }
 
 /**
- * @brief Index of the cone frame in force at a given simulation time.
+ * @brief Index of the cone frame a star uses at one of its passes.
  *
- * @param time The simulation time, the same on every rank.
- * @param redraw_interval Time between two frame draws, or 0 for a frame kept
- * for the star's life.
- * @return floor(time / redraw_interval), or 0 when @a redraw_interval <= 0.
+ * @param pass_index Number of passes the star has made before this one.
+ * @param redraw_period Passes per frame, or 0 for a frame kept for the star's
+ * life.
+ * @return pass_index / redraw_period, or 0 when @a redraw_period <= 0.
  */
 __attribute__((always_inline)) INLINE static int64_t
-runner_hii_cone_frame_epoch(const double time, const double redraw_interval) {
-  if (redraw_interval <= 0.0) return 0;
-  return (int64_t)floor(time / redraw_interval);
+runner_hii_cone_frame_epoch(const int64_t pass_index, const int redraw_period) {
+  if (redraw_period <= 0) return 0;
+  return pass_index / redraw_period;
 }
 
 /**

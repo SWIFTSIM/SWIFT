@@ -498,30 +498,27 @@ static double relative_trace(const double A[9], const double B[9]) {
 }
 
 /**
- * @brief Frame redraw checks: epoch of a time, frame inside and across an
- * epoch, a period of 0, independence and determinism.
+ * @brief Frame redraw checks: epoch of a pass index, frame inside and across
+ * an epoch, a period of 0, independence and determinism.
  *
  * @return The number of failed checks.
  */
 static int test_epochs(void) {
   int fail = 0;
-  const double interval = 0.37;
-  const double offsets[3] = {0.01, 0.5, 0.99};
+  const int period = 7;
 
-  /* Times well inside epoch k map to k; a rounding formula fails here. */
+  /* Passes 0 to period-1 are epoch 0, the next period passes epoch 1, ... */
   long wrong_epoch = 0;
-  for (int64_t k = 0; k < 100000; k++)
-    for (int f = 0; f < 3; f++)
-      if (runner_hii_cone_frame_epoch((k + offsets[f]) * interval, interval) !=
-          k)
-        wrong_epoch++;
-  fail += report("times inside epoch k not mapped to k", (double)wrong_epoch,
-                 0.0, 0);
+  for (int64_t pass = 0; pass < 700000; pass++)
+    if (runner_hii_cone_frame_epoch(pass, period) != pass / period)
+      wrong_epoch++;
+  fail += report("pass indices not mapped to pass / period",
+                 (double)wrong_epoch, 0.0, 0);
 
   long nonzero = 0;
-  for (int i = 0; i < 100000; i++)
-    if (runner_hii_cone_frame_epoch(1e-3 * i * i, 0.0) != 0) nonzero++;
-  fail += report("period 0: times with an epoch other than 0", (double)nonzero,
+  for (int64_t pass = 0; pass < 100000; pass++)
+    if (runner_hii_cone_frame_epoch(pass, 0) != 0) nonzero++;
+  fail += report("period 0: passes with an epoch other than 0", (double)nonzero,
                  0.0, 0);
 
   double R[9], R2[9], R3[9];
@@ -529,12 +526,10 @@ static int test_epochs(void) {
   const int n_ids = 2000;
   for (int64_t id = 1; id <= n_ids; id++) {
     for (int64_t k = 0; k < 20; k++) {
-      const int64_t e1 =
-          runner_hii_cone_frame_epoch((k + 0.01) * interval, interval);
+      const int64_t e1 = runner_hii_cone_frame_epoch(k * period, period);
       const int64_t e2 =
-          runner_hii_cone_frame_epoch((k + 0.99) * interval, interval);
-      const int64_t e3 =
-          runner_hii_cone_frame_epoch((k + 1.01) * interval, interval);
+          runner_hii_cone_frame_epoch((k + 1) * period - 1, period);
+      const int64_t e3 = runner_hii_cone_frame_epoch((k + 1) * period, period);
       runner_hii_cone_frame_from_id(id, e1, R);
       runner_hii_cone_frame_from_id(id, e2, R2);
       runner_hii_cone_frame_from_id(id, e3, R3);
