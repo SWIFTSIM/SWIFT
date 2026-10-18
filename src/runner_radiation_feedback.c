@@ -117,6 +117,106 @@ runner_hii_star_cone_frame(const struct spart *si,
 }
 
 /**
+ * @brief Pay the upkeep of the held gas that sorts before a given key, in
+ * (r2, id) order, under the shadow mask.
+ *
+ * Held gas behind a front keeps its tag until it lapses but is neither
+ * charged nor renewed. Gas in a cone with no photons left is handled by
+ * feedback_iact_HII_maintain_ionized_part() as without a mask.
+ *
+ * @param si The #spart.
+ * @param held The held gas, sorted in (r2, id) order.
+ * @param n_held Number of entries in @p held.
+ * @param k_held Index of the next entry to process.
+ * @param until Process entries sorting before this one; NULL for all.
+ * @param shadow The shadow masks of the star's cones.
+ * @param e The #engine.
+ * @param time The current simulation time.
+ * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param photons_charged (return) Incremented by the upkeep paid.
+ * @return Index of the next entry still to process.
+ */
+static int runner_hii_shadow_walk_held(
+    struct spart *si, const struct hii_neighbor *held, const int n_held,
+    int k_held, const struct hii_neighbor *until,
+    const struct hii_shadow_cone *shadow, const struct engine *e,
+    const double time, const double dt_back, double *photons_charged) {
+
+  for (; k_held < n_held; k_held++) {
+    const struct hii_neighbor *nb = &held[k_held];
+    if (until != NULL &&
+        !runner_hii_r2_id_before(nb->r2, nb->p->id, until->r2, until->p->id))
+      break;
+
+    if (feedback_get_star_ionization_budget(si, nb->pixel) > 0.0 &&
+        runner_hii_shadow_is_blocked(&shadow[nb->pixel], nb->child)) {
+      feedback_iact_HII_hold_shadowed_part(si, nb->p);
+      continue;
+    }
+    *photons_charged += feedback_iact_HII_maintain_ionized_part(
+        si, nb->p, nb->xp, nb->r2, nb->pixel, e->physical_constants,
+        e->hydro_properties, e->internal_units, e->cosmology, e->cooling_func,
+        time, dt_back);
+  }
+  return k_held;
+}
+
+/**
+ * @brief A candidate the cone cannot afford becomes a front: block the
+ * sub-cones it covers and absorb their share of the cone's budget.
+ *
+ * The front covers the angle h / r around its direction, h being its
+ * smoothing length and r its distance to the star.
+ *
+ * @param e The #engine.
+ * @param si The #spart.
+ * @param nb The front.
+ * @param shadow The shadow masks of the star's cones.
+ * @param geom Layout of the star's cones.
+ * @return Photons absorbed.
+ */
+static double runner_hii_shadow_front(const struct engine *e, struct spart *si,
+                                      const struct hii_neighbor *nb,
+                                      struct hii_shadow_cone *shadow,
+                                      const struct hii_cone_geometry *geom) {
+
+  struct hii_shadow_cone *cone = &shadow[nb->pixel];
+#if defined(HAVE_CHEALPIX)
+  if (!cone->have_centres)
+    runner_hii_shadow_fill_centres(cone, geom->nside, nb->pixel);
+#else
+  error("The HII shadow mask needs HEALPix (chealpix).");
+#endif
+
+  /* Nearest periodic image, as the gather that found this particle. */
+  float dx[3];
+  for (int k = 0; k < 3; k++) {
+    double d = si->x[k] - nb->p->x[k];
+    if (e->s->periodic) {
+      if (d > 0.5 * e->s->dim[k])
+        d -= e->s->dim[k];
+      else if (d < -0.5 * e->s->dim[k])
+        d += e->s->dim[k];
+    }
+    dx[k] = (float)d;
+  }
+  double unit[3];
+  const double norm2 = runner_hii_cone_direction(dx, geom->frame, unit);
+  const double inv_norm = norm2 > 0.0 ? 1.0 / sqrt(norm2) : 0.0;
+  for (int k = 0; k < 3; k++) unit[k] *= inv_norm;
+
+  const double r = sqrt((double)nb->r2);
+  const double angle = r > 0.0 ? min((double)nb->p->h / r, M_PI) : M_PI;
+
+  const int n_open = cone->n_open;
+  const int m = runner_hii_shadow_block(cone, unit, nb->child, cos(angle));
+  const double absorbed = runner_hii_shadow_absorbed(
+      feedback_get_star_ionization_budget(si, nb->pixel), m, n_open);
+  feedback_absorb_star_ionizing_photons(si, nb->pixel, absorbed);
+  return absorbed;
+}
+
+/**
  * @brief Assign a gas candidate to its angular pixel and insert it into
  * the neighbour buffer if it is within range and that pixel still has
  * budget left.
@@ -138,8 +238,7 @@ runner_hii_star_cone_frame(const struct spart *si,
  * @param mode Which set of gas particles this traversal is after.
  * @param ctx Maintenance context, non-NULL only for
  * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param geom Layout of the star's cones.
  */
 __attribute__((always_inline)) INLINE static void
 runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
@@ -149,7 +248,7 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
                                 int max_size, int *count_found,
                                 enum hii_gather_mode mode,
                                 struct hii_maintenance_context *ctx,
-                                const double *frame) {
+                                const struct hii_cone_geometry *geom) {
 
   if (r2 >= r2_max) return;
 
@@ -162,8 +261,14 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
     error("Gathering new candidates without a usable neighbour buffer.");
 #endif
 
-  const int pixel =
-      runner_hii_get_pixel(dx, feedback_get_star_HII_pixel_count(si), frame);
+  int pixel = 0;
+  int child = 0;
+  if (geom->shadow == NULL) {
+    pixel = runner_hii_get_pixel(dx, feedback_get_star_HII_pixel_count(si),
+                                 geom->frame);
+  } else {
+    runner_hii_shadow_direction(dx, geom, &pixel, &child);
+  }
 
   if (mode == hii_gather_already_ionized) {
     /* Extent and count track what this star still HOLDS, not what it could
@@ -185,6 +290,7 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
     slot->p = pj;
     slot->xp = xpj;
     slot->pixel = pixel;
+    slot->child = child;
 #ifdef SWIFT_DEBUG_CHECKS
     slot->c = c;
 #endif
@@ -192,10 +298,13 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
   }
 
   /* Skipping the insert once a pixel is exhausted stops a dead pixel's
-     candidates from crowding out other pixels' on retry. */
-  if (feedback_get_star_ionization_budget(si, pixel) > 0.0)
+     candidates from crowding out other pixels' on retry. Gas behind a front
+     is skipped for the same reason. */
+  if (feedback_get_star_ionization_budget(si, pixel) > 0.0 &&
+      (geom->shadow == NULL ||
+       !runner_hii_shadow_is_blocked(&geom->shadow[pixel], child)))
     runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
-                             pixel);
+                             pixel, child);
 }
 
 /**
@@ -411,20 +520,19 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * @param count_found (return) Number of particles gathered/processed.
  * @param mode Which set of gas particles to look for.
  * @param ctx Maintenance context, NULL for new candidates.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param geom Layout of the star's cones.
  */
 static void runner_hii_visit_neighbors(
     struct runner *r, struct cell *c, struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct hii_maintenance_context *ctx, const struct hii_cone_geometry *geom) {
 
   struct engine *e = r->e;
 
   /* First loop over particles in the current cell */
   runner_doself_stars_hii_ionization_feedback(
-      r, c, si, search_radius, buffer, max_size, count_found, mode, ctx, frame);
+      r, c, si, search_radius, buffer, max_size, count_found, mode, ctx, geom);
 
   /* Now loop over particles in the neighboring cells via task links */
   for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
@@ -472,7 +580,7 @@ static void runner_hii_visit_neighbors(
 
     runner_do_stars_hii_ionization_feedback_branch(
         r, c, cj, sid, flipped, shift, si, search_radius, buffer, max_size,
-        count_found, mode, ctx, frame);
+        count_found, mode, ctx, geom);
   } /* Neighbour search */
 }
 
@@ -538,6 +646,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
   const float max_search_radius = star_props->HII_max_search_radius;
 
   struct hii_neighbor ngb_buffer[max_ngbs];
+  struct hii_shadow_cone shadow[HII_MAX_ANGULAR_PIXELS];
+  const int claim_rule = feedback_get_HII_cone_claim_rule(feedback_props);
 
   /* Floor on the wired 27-cell radiation_in stencil's reach beyond this
    * pass's interaction_limit: a star at c's own edge still has at least a
@@ -650,8 +760,18 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     feedback_open_star_ionizing_photon_budget(si, dt_back);
 
     double cone_frame_storage[9];
-    const double *frame =
-        runner_hii_star_cone_frame(si, feedback_props, cone_frame_storage);
+    struct hii_cone_geometry geom = {
+        .frame =
+            runner_hii_star_cone_frame(si, feedback_props, cone_frame_storage),
+        .shadow = NULL,
+        .nside = 0,
+    };
+    if (claim_rule == hii_cone_claim_shadow_mask) {
+      const int n_pix = feedback_get_star_HII_pixel_count(si);
+      for (int p = 0; p < n_pix; p++) runner_hii_shadow_cone_reset(&shadow[p]);
+      geom.shadow = shadow;
+      geom.nside = (int)lround(sqrt(n_pix / 12.0));
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     if (dt_floored > dt_ceiling)
@@ -695,6 +815,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        correctly grants that build the full configured search reach. */
     int count_held = 0;
 
+    /* Held gas whose upkeep the shadow mask walks together with the new
+       candidates: none without the mask or without cooling. */
+    const struct hii_neighbor *held_walk = NULL;
+    int n_held_walk = 0;
+    int k_held_walk = 0;
+    double held_walk_photons = 0.0;
+
 #ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
     /* Phase 1: charge the recombination losses of the gas this star already
        holds ionized, before any photons are spent on new candidates. Skipped
@@ -715,7 +842,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     };
     runner_hii_visit_neighbors(r, c, si, interaction_limit, NULL, 0,
                                &count_held, hii_gather_already_ionized,
-                               &maintenance_ctx, frame);
+                               &maintenance_ctx, &geom);
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* hii_gather_already_ionized increments both counters together, one
@@ -743,12 +870,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     const ticks maintenance_sort_ticks = getticks() - tic_maintenance_sort;
 #endif
-    for (int k = 0; k < maintenance_ctx.buffer_count; k++) {
-      const struct hii_neighbor *nb = &r->hii_maintenance_buffer[k];
-      const double charged = feedback_iact_HII_maintain_ionized_part(
-          si, nb->p, nb->xp, nb->r2, nb->pixel, phys_const, hydro_props, us,
-          cosmo, cooling, time, dt_back);
-      if (charged > 0.0) maintenance_ctx.photons_charged += charged;
+    if (geom.shadow == NULL) {
+      for (int k = 0; k < maintenance_ctx.buffer_count; k++) {
+        const struct hii_neighbor *nb = &r->hii_maintenance_buffer[k];
+        const double charged = feedback_iact_HII_maintain_ionized_part(
+            si, nb->p, nb->xp, nb->r2, nb->pixel, phys_const, hydro_props, us,
+            cosmo, cooling, time, dt_back);
+        if (charged > 0.0) maintenance_ctx.photons_charged += charged;
+      }
+    } else {
+      held_walk = r->hii_maintenance_buffer;
+      n_held_walk = maintenance_ctx.buffer_count;
     }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("HII maintenance sort: star %lld, n=%d, sort_ticks=%lld (%.4f ms)",
@@ -808,6 +940,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       pixel_roll_state[p] = -1;
       pixel_budget_start[p] = feedback_get_star_ionization_budget(si, p);
     }
+    /* Cost of the claim walk: candidates offered to a cone, fronts met,
+       candidates skipped behind a front, photons absorbed at fronts. */
+    int count_evaluated = 0;
+    int count_fronts = 0;
+    int count_shadowed = 0;
+    double photons_absorbed = 0.0;
+    const ticks tic_claim_walk = getticks();
 #endif
 
     while (1) {
@@ -818,10 +957,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          (star, pixel, ti_begin) random draw guarantees the retry would
          reproduce this exact attempt -- see the case-1 branch below. */
       int attempt_claimed_count = 0;
+      /* Fronts met during this attempt: each one empties its cone or hides
+         part of it, so a retry gathers past it. */
+      int attempt_front_count = 0;
 
       runner_hii_visit_neighbors(r, c, si, dynamic_search_radius, ngb_buffer,
                                  max_ngbs, &count_found,
-                                 hii_gather_new_candidates, NULL, frame);
+                                 hii_gather_new_candidates, NULL, &geom);
 
       const int buffer_was_full = (count_found == max_ngbs);
 
@@ -838,12 +980,27 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         /* Now let's ionize the gas particles! */
         for (int k = 0; k < count_found; k++) {
 
+          /* Held gas nearer than this candidate pays its upkeep first. */
+          if (geom.shadow != NULL)
+            k_held_walk = runner_hii_shadow_walk_held(
+                si, held_walk, n_held_walk, k_held_walk, &ngb_buffer[k], shadow,
+                e, time, dt_back, &held_walk_photons);
+
           const int pixel = ngb_buffer[k].pixel;
 
           /* This particle's pixel has no photons left; skip it (not
              break -- other entries in the buffer may belong to a pixel
              that still has budget). */
           if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) {
+            continue;
+          }
+
+          /* Behind a front found earlier in this attempt. */
+          if (geom.shadow != NULL && runner_hii_shadow_is_blocked(
+                                         &shadow[pixel], ngb_buffer[k].child)) {
+#ifdef SWIFT_DEBUG_CHECKS
+            ++count_shadowed;
+#endif
             continue;
           }
 
@@ -854,18 +1011,33 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
               radiation_is_part_tagged_as_ionized(pj, xpj);
 
           /* Do the ionization */
-          feedback_iact_HII_ionization(si, pj, xpj, r2, pixel, phys_const,
-                                       hydro_props, us, cosmo, cooling,
-                                       feedback_props, ti_begin, time, dt_back);
+          const int outcome = feedback_iact_HII_ionization(
+              si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo,
+              cooling, feedback_props, ti_begin, time, dt_back);
+
+          if (outcome == hii_candidate_front) {
+            ++attempt_front_count;
+            if (geom.shadow != NULL) {
+              const double absorbed =
+                  runner_hii_shadow_front(e, si, &ngb_buffer[k], shadow, &geom);
+#ifdef SWIFT_DEBUG_CHECKS
+              photons_absorbed += absorbed;
+#else
+              (void)absorbed;
+#endif
+            }
+          }
+#ifdef SWIFT_DEBUG_CHECKS
+          ++count_evaluated;
+          if (outcome == hii_candidate_front) ++count_fronts;
+#endif
 
           /* A candidate starts this loop untagged, so tagged-with-si->id
              afterwards means this star just claimed it. A concurrent claim
              by another star's task tags a different id instead and is
              correctly excluded here. feedback_hii_claim_part always tags
              AND consumes budget together, so an untagged result here means
-             this pixel's budget is bit-identical to before the call -- the
-             probabilistic roll was lost (or the pixel had no budget left,
-             already filtered above). */
+             the roll was lost or the candidate is a front. */
           const int claimed_this_candidate =
               !was_tagged_before &&
               radiation_is_part_tagged_as_ionized(pj, xpj) &&
@@ -886,6 +1058,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         } /* Loop over the sorted particles */
       }
 
+      /* Every candidate within the radius was seen, so all held gas lies
+         nearer than any later one. */
+      if (geom.shadow != NULL && !buffer_was_full)
+        k_held_walk = runner_hii_shadow_walk_held(
+            si, held_walk, n_held_walk, k_held_walk, NULL, shadow, e, time,
+            dt_back, &held_walk_photons);
+
       /* Fully exhausted: nothing more to do this pass. */
       if (feedback_get_star_ionization_budget_max(si) <= 0.0) break;
 
@@ -896,8 +1075,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          * so a retry re-runs the identical search (same eligible set),
          * meets the identical per-pixel budgets, and every pixel's fixed
          * (star, pixel, ti_begin) random draw replays the identical
-         * win/lose outcome -- a provable no-op, not a heuristic. */
-        if (attempt_claimed_count == 0) break;
+         * win/lose outcome -- a provable no-op, not a heuristic. A front
+         * also changes the state: it empties its cone or blocks part of
+         * it, so a retry gathers past it. */
+        if (attempt_claimed_count == 0 && attempt_front_count == 0) break;
         if (num_retry_full_buffer >= max_retry_full_buffer) break;
         ++num_retry_full_buffer;
         num_empty_expansions = 0;
@@ -947,7 +1128,21 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       }
     }
 
+    /* Held gas beyond the last candidate seen: its cone ended, ran out of
+       retries, or never met a front. */
+    if (geom.shadow != NULL)
+      k_held_walk = runner_hii_shadow_walk_held(
+          si, held_walk, n_held_walk, k_held_walk, NULL, shadow, e, time,
+          dt_back, &held_walk_photons);
+
 #ifdef SWIFT_DEBUG_CHECKS
+    message(
+        "HII walk: star %lld rule %d evaluated %d fronts %d shadowed %d "
+        "absorbed %.6e held_upkeep %.6e walk_ms %.4f",
+        si->id, claim_rule, count_evaluated, count_fronts, count_shadowed,
+        photons_absorbed, held_walk_photons,
+        clocks_from_ticks(getticks() - tic_claim_walk));
+
     /* Repeat-run comparator: claimed_id_hash (a sum of id * constant) is
        order independent, but leftover_budget on the same line is a
        floating-point accumulation and is NOT; compare the hash, not the
@@ -1036,15 +1231,14 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
  * @param mode Which set of gas particles this traversal is after.
  * @param ctx Maintenance context, non-NULL only for
  * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param geom Layout of the star's cones.
  */
 void runner_do_stars_hii_ionization_feedback_branch(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *ngb_buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct hii_maintenance_context *ctx, const struct hii_cone_geometry *geom) {
 
   /* OPTIMIZATION: Check if cj is completely out of reach before doing anything
    * else */
@@ -1063,7 +1257,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
       if (cj->progeny[k] != NULL) {
         runner_do_stars_hii_ionization_feedback_branch(
             r, ci, cj->progeny[k], sid, flipped, shift, si, search_radius,
-            ngb_buffer, max_size, count_found, mode, ctx, frame);
+            ngb_buffer, max_size, count_found, mode, ctx, geom);
       }
     }
   } else {
@@ -1108,11 +1302,11 @@ void runner_do_stars_hii_ionization_feedback_branch(
     if (use_sid < 0) {
       runner_dopair_naive_stars_hii_ionization_feedback(
           r, ci, cj, shift, si, search_radius, ngb_buffer, max_size,
-          count_found, mode, ctx, frame);
+          count_found, mode, ctx, geom);
     } else {
       runner_dopair_stars_hii_ionization_feedback(
           r, ci, cj, use_sid, use_flipped, shift, si, search_radius, ngb_buffer,
-          max_size, count_found, mode, ctx, frame);
+          max_size, count_found, mode, ctx, geom);
     }
   }
 }
@@ -1134,14 +1328,13 @@ void runner_do_stars_hii_ionization_feedback_branch(
  * @param mode Which set of gas particles this traversal is after.
  * @param ctx Maintenance context, non-NULL only for
  * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param geom Layout of the star's cones.
  */
 void runner_doself_stars_hii_ionization_feedback(
     struct runner *r, struct cell *c, struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct hii_maintenance_context *ctx, const struct hii_cone_geometry *geom) {
 
   struct engine *e = r->e;
   const int count = c->hydro.count;
@@ -1194,7 +1387,7 @@ void runner_doself_stars_hii_ionization_feedback(
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
     runner_hii_try_insert_candidate(si, pj, xpj, c, dx, r2, r2_max, buffer,
-                                    max_size, count_found, mode, ctx, frame);
+                                    max_size, count_found, mode, ctx, geom);
   } /* Loop in current cell */
 }
 
@@ -1217,14 +1410,13 @@ void runner_doself_stars_hii_ionization_feedback(
  * @param mode Which set of gas particles this traversal is after.
  * @param ctx Maintenance context, non-NULL only for
  * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param geom Layout of the star's cones.
  */
 void runner_dopair_naive_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
     struct spart *si, const float search_radius, struct hii_neighbor *buffer,
     int max_size, int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct hii_maintenance_context *ctx, const struct hii_cone_geometry *geom) {
 
   struct engine *e = r->e;
   const int count_j = cj->hydro.count;
@@ -1237,7 +1429,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       if (cj->progeny[k] != NULL) {
         runner_dopair_naive_stars_hii_ionization_feedback(
             r, ci, cj->progeny[k], shift, si, search_radius, buffer, max_size,
-            count_found, mode, ctx, frame);
+            count_found, mode, ctx, geom);
       }
     }
   } else {
@@ -1286,7 +1478,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
-                                      max_size, count_found, mode, ctx, frame);
+                                      max_size, count_found, mode, ctx, geom);
     } /* Loop in current cell */
   }
 }
@@ -1312,15 +1504,14 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
  * @param mode Which set of gas particles this traversal is after.
  * @param ctx Maintenance context, non-NULL only for
  * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param geom Layout of the star's cones.
  */
 void runner_dopair_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct hii_maintenance_context *ctx, const struct hii_cone_geometry *geom) {
 
   struct engine *e = r->e;
   const int count_j = cj->hydro.count;
@@ -1402,7 +1593,7 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
-                                      max_size, count_found, mode, ctx, frame);
+                                      max_size, count_found, mode, ctx, geom);
     }
   } else {
     /* Star is on the 'right' relative to the axis direction.
@@ -1432,7 +1623,7 @@ void runner_dopair_stars_hii_ionization_feedback(
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
 
       runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
-                                      max_size, count_found, mode, ctx, frame);
+                                      max_size, count_found, mode, ctx, geom);
     }
   }
 }

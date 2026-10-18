@@ -35,6 +35,7 @@
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_random_cone_frame_per_star 0
+#define default_HII_cone_claim_rule 0
 #define default_HII_rebuild_floor_Myr 1e-4
 #define default_dt_evolution_factor_max 300.0
 #define default_event_dt_floor_Myr 1e-4
@@ -259,6 +260,10 @@ struct feedback_props {
    * or keep the cones fixed to the box axes (0). */
   char HII_random_cone_frame_per_star;
 
+  /*! What a cone does at a candidate it cannot afford: 0 walks on, 1 stops,
+   * 2 casts a shadow (enum hii_cone_claim_rule). */
+  char HII_cone_claim_rule;
+
   /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
 
@@ -386,6 +391,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
                 : "probabilistic");
     message("HII random cone frame per star                             = %s",
             feedback_props->HII_random_cone_frame_per_star ? "on" : "off");
+    message("HII cone claim rule                                        = %d",
+            (int)feedback_props->HII_cone_claim_rule);
     message("HII max age (internal units)                               = %g",
             feedback_props->HII_max_age);
     message("HII rebuild time (internal units)                          = %g",
@@ -983,6 +990,24 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:HII_random_cone_frame_per_star must be 0 or 1, got %d.",
           random_cone_frame);
     fp->HII_random_cone_frame_per_star = (char)random_cone_frame;
+
+    const int cone_claim_rule =
+        parser_get_opt_param_int(params, "GEARFeedback:HII_cone_claim_rule",
+                                 default_HII_cone_claim_rule);
+    if (cone_claim_rule < 0 || cone_claim_rule > 2)
+      error("GEARFeedback:HII_cone_claim_rule must be 0, 1 or 2, got %d.",
+            cone_claim_rule);
+    if (cone_claim_rule != 0 && fp->HII_deterministic_boundary_ionization)
+      error(
+          "GEARFeedback:HII_cone_claim_rule %d acts on the roll at the "
+          "boundary, which GEARFeedback:HII_deterministic_boundary_ionization "
+          "1 replaces. Set one of them to 0.",
+          cone_claim_rule);
+    if (cone_claim_rule == 2 && fp->stellar_model.rad.n_HII_pixels <= 1)
+      error(
+          "GEARFeedback:HII_cone_claim_rule 2 splits each HEALPix cone into "
+          "sub-cones: it needs GEARFeedback:HII_angular_nside >= 1.");
+    fp->HII_cone_claim_rule = (char)cone_claim_rule;
 
     fp->HII_rebuild_floor_Myr =
         parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",

@@ -83,7 +83,7 @@ float feedback_get_eligibility_temperature(
     const struct xpart *xp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
-void feedback_iact_HII_ionization(
+int feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -103,6 +103,12 @@ double feedback_iact_HII_maintain_ionized_part(
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 int feedback_get_HII_random_cone_frame(
     const struct feedback_props *feedback_props);
+int feedback_get_HII_cone_claim_rule(
+    const struct feedback_props *feedback_props);
+void feedback_iact_HII_hold_shadowed_part(struct spart *restrict si,
+                                          const struct part *restrict pj);
+void feedback_absorb_star_ionizing_photons(struct spart *sp, int pixel,
+                                           double photons);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);
 double feedback_get_star_HII_nominal_interval(
     const struct feedback_props *feedback_props, const double dt_enrichment);
@@ -176,8 +182,8 @@ void feedback_first_init_spart(struct spart *sp,
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
  * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
  * reduced-flux dissipation fields, 5 HII random cone frame flag in
- * #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 5
+ * #feedback_props, 6 HII cone claim rule in #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 6
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts
