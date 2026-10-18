@@ -992,6 +992,8 @@ feedback_iact_HII_maintain_ionized_part(
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param open_share Share of the cone's photons that can reach the candidate:
+ * the open sub-cones its footprint covers under the shadow mask, 1 otherwise.
  * @return The #hii_candidate_outcome.
  */
 __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
@@ -1001,7 +1003,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back) {
+    const double time, const double dt_back, const double open_share) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
@@ -1050,7 +1052,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
   const enum hii_candidate_outcome outcome = runner_hii_candidate_outcome(
       rule, deterministic_boundary, budget, cost,
       Delta_dot_N_ion_maintenance_rate,
-      feedback_get_star_ionization_rate(si, pixel), random_number);
+      open_share * feedback_get_star_ionization_rate(si, pixel), random_number);
 
   if (outcome == hii_candidate_claimed) {
     /* On a won roll the full cost is consumed, more than what was left. */

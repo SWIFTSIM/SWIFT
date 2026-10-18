@@ -114,7 +114,9 @@ enum hii_cone_claim_rule {
   /*! An unaffordable candidate is an ionization front that hides part of the
       cone: it blocks the sub-cones it covers and absorbs their share of the
       budget. Held gas and new gas are walked together in distance order, so
-      the shadow also cuts the upkeep of held gas behind a front. */
+      the shadow also cuts the upkeep of held gas behind a front. No roll on
+      gas whose recombination rate is at least the photon rate through the
+      open sub-cones it covers. */
   hii_cone_claim_shadow_mask = 2,
 };
 
@@ -150,8 +152,9 @@ enum hii_candidate_outcome {
  * interval of recombinations.
  * @param recombination_rate Recombinations per unit time of the candidate
  * once ionized.
- * @param cone_photon_rate Ionizing photons per unit time the star sends into
- * the cone.
+ * @param open_photon_rate Ionizing photons per unit time that can reach the
+ * candidate: the cone's rate, times the open share of the candidate's
+ * footprint under the shadow mask.
  * @param random_number The cone's draw in [0, 1), read only if the candidate
  * is unaffordable.
  * @return The #hii_candidate_outcome.
@@ -160,14 +163,14 @@ __attribute__((always_inline)) INLINE static enum hii_candidate_outcome
 runner_hii_candidate_outcome(const int rule, const int deterministic,
                              const double budget, const double cost,
                              const double recombination_rate,
-                             const double cone_photon_rate,
+                             const double open_photon_rate,
                              const float random_number) {
 
   if (cost <= budget) return hii_candidate_claimed;
   if (deterministic) return hii_candidate_claimed;
 
-  /* The cone could not keep this gas ionized for even one interval. */
-  if (rule != hii_cone_claim_walk_on && recombination_rate >= cone_photon_rate)
+  /* The photons that reach this gas could not keep it ionized. */
+  if (rule != hii_cone_claim_walk_on && recombination_rate >= open_photon_rate)
     return hii_candidate_front;
 
   const float proba = budget / cost;
@@ -223,11 +226,63 @@ __attribute__((always_inline)) INLINE static int runner_hii_shadow_is_blocked(
 }
 
 /**
- * @brief Block the sub-cones a front covers.
+ * @brief Sub-cones a gas particle covers seen from the star: its own
+ * sub-cone and every sub-cone whose centre lies within the angle h / r of
+ * its direction, h being its smoothing length and r its distance to the star.
  *
- * The front covers its own sub-cone and every sub-cone whose centre lies
- * within the angle h / r of its direction, h being the front's smoothing
- * length and r its distance to the star.
+ * @param cone The mask, with its centres filled.
+ * @param dir Unit vector to the particle, in the cone frame.
+ * @param own_child Sub-cone of the particle.
+ * @param cos_angle Cosine of the covered angle.
+ * @return Bit k set: sub-cone k is covered.
+ */
+__attribute__((always_inline)) INLINE static uint64_t
+runner_hii_shadow_footprint(const struct hii_shadow_cone *cone,
+                            const double dir[3], const int own_child,
+                            const double cos_angle) {
+
+  uint64_t hit = 1ULL << own_child;
+  for (int k = 0; k < hii_shadow_children; k++) {
+    const double d = dir[0] * cone->centre[k][0] + dir[1] * cone->centre[k][1] +
+                     dir[2] * cone->centre[k][2];
+    if (d >= cos_angle) hit |= 1ULL << k;
+  }
+  return hit;
+}
+
+/**
+ * @brief Share of a cone's photons that can reach a particle: the open
+ * sub-cones of its footprint, over all sub-cones of the cone.
+ *
+ * @param cone The mask.
+ * @param footprint The particle's #runner_hii_shadow_footprint.
+ */
+__attribute__((always_inline)) INLINE static double
+runner_hii_shadow_open_share(const struct hii_shadow_cone *cone,
+                             const uint64_t footprint) {
+  return (double)__builtin_popcountll(footprint & ~cone->blocked) /
+         (double)hii_shadow_children;
+}
+
+/**
+ * @brief Block the sub-cones of a footprint.
+ *
+ * @param cone The mask.
+ * @param footprint The front's #runner_hii_shadow_footprint.
+ * @return Number of sub-cones newly blocked.
+ */
+__attribute__((always_inline)) INLINE static int
+runner_hii_shadow_block_footprint(struct hii_shadow_cone *cone,
+                                  const uint64_t footprint) {
+  const uint64_t newly = footprint & ~cone->blocked;
+  const int m = __builtin_popcountll(newly);
+  cone->blocked |= newly;
+  cone->n_open -= m;
+  return m;
+}
+
+/**
+ * @brief Block the sub-cones a front covers (#runner_hii_shadow_footprint).
  *
  * @param cone The mask, with its centres filled.
  * @param dir Unit vector to the front, in the cone frame.
@@ -238,18 +293,8 @@ __attribute__((always_inline)) INLINE static int runner_hii_shadow_is_blocked(
 __attribute__((always_inline)) INLINE static int runner_hii_shadow_block(
     struct hii_shadow_cone *cone, const double dir[3], const int own_child,
     const double cos_angle) {
-
-  uint64_t hit = 1ULL << own_child;
-  for (int k = 0; k < hii_shadow_children; k++) {
-    const double d = dir[0] * cone->centre[k][0] + dir[1] * cone->centre[k][1] +
-                     dir[2] * cone->centre[k][2];
-    if (d >= cos_angle) hit |= 1ULL << k;
-  }
-  const uint64_t newly = hit & ~cone->blocked;
-  const int m = __builtin_popcountll(newly);
-  cone->blocked |= newly;
-  cone->n_open -= m;
-  return m;
+  return runner_hii_shadow_block_footprint(
+      cone, runner_hii_shadow_footprint(cone, dir, own_child, cos_angle));
 }
 
 /**

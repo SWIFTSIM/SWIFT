@@ -425,6 +425,95 @@ static int test_geometry(void) {
 
   return fail;
 }
+
+/**
+ * @brief Checks of the holdable gate under the shadow mask: only the open
+ * sub-cones of the candidate's footprint feed it.
+ *
+ * @return Number of failed checks.
+ */
+static int test_open_gate(void) {
+  int fail = 0;
+  const double cone_rate = 1.0;
+  const int own = 27;
+
+  struct hii_shadow_cone cone;
+  runner_hii_shadow_cone_reset(&cone);
+  runner_hii_shadow_fill_centres(&cone, 1, 4);
+  const double dir[3] = {cone.centre[own][0], cone.centre[own][1],
+                         cone.centre[own][2]};
+
+  /* A far candidate covers only its own sub-cone. Its upkeep of half the
+     cone's rate exceeds the 1/64 that reaches it: a front, whatever the
+     draw. The whole-cone gate lets the luckiest draw claim it. */
+  const uint64_t narrow = runner_hii_shadow_footprint(&cone, dir, own, 1.0);
+  const double share_narrow = runner_hii_shadow_open_share(&cone, narrow);
+  fail += report("narrow footprint: |open share - 1/64|",
+                 fabs(share_narrow - 1.0 / hii_shadow_children), 0., 0);
+  long narrow_claims = 0;
+  for (int rule = 1; rule < hii_cone_claim_rule_count; rule++)
+    if (runner_hii_candidate_outcome(rule, 0, 1.0, 1.0001, 0.5,
+                                     share_narrow * cone_rate,
+                                     0.f) != hii_candidate_front)
+      narrow_claims++;
+  fail += report("narrow footprint, upkeep 0.5: not a front with draw 0",
+                 (double)narrow_claims, 0., 0);
+  fail += report("control: whole-cone gate claims it with draw 0 (must)",
+                 (double)(runner_hii_candidate_outcome(
+                              hii_cone_claim_shadow_mask, 0, 1.0, 1.0001, 0.5,
+                              cone_rate, 0.f) == hii_candidate_claimed),
+                 0., 1);
+
+  /* Partly blocked footprint: only its open sub-cones count, against an
+     independent count over the centres. */
+  const double wide = cos(0.3);
+  const double side[3] = {cone.centre[own + 1][0], cone.centre[own + 1][1],
+                          cone.centre[own + 1][2]};
+  runner_hii_shadow_block(&cone, side, own + 1, cos(0.15));
+  const uint64_t fp = runner_hii_shadow_footprint(&cone, dir, own, wide);
+  int n_cover = 0, n_open_cover = 0;
+  for (int j = 0; j < hii_shadow_children; j++) {
+    const double c = dir[0] * cone.centre[j][0] + dir[1] * cone.centre[j][1] +
+                     dir[2] * cone.centre[j][2];
+    if (j != own && c < wide) continue;
+    n_cover++;
+    if (!runner_hii_shadow_is_blocked(&cone, j)) n_open_cover++;
+  }
+  const double share_fp = runner_hii_shadow_open_share(&cone, fp);
+  fail += report("partly blocked footprint: own sub-cone blocked",
+                 (double)runner_hii_shadow_is_blocked(&cone, own), 0., 0);
+  fail += report("partly blocked footprint: sub-cones blocked (must)",
+                 (double)(n_cover - n_open_cover), 0., 1);
+  fail += report("partly blocked footprint: |open share - independent|",
+                 fabs(share_fp * hii_shadow_children - n_open_cover), 0., 0);
+
+  /* Upkeep between the open and the whole footprint share: a front. Below
+     the open share: rolled, so the luckiest draw claims it. */
+  const double upkeep_mid =
+      0.5 * (n_open_cover + n_cover) / (double)hii_shadow_children;
+  const double upkeep_low = 0.5 * share_fp;
+  fail += report(
+      "upkeep above the open share: claimed with draw 0",
+      (double)(runner_hii_candidate_outcome(
+                   hii_cone_claim_shadow_mask, 0, 1.0, 1.0001, upkeep_mid,
+                   share_fp * cone_rate, 0.f) != hii_candidate_front),
+      0., 0);
+  fail += report(
+      "upkeep below the open share: not claimed with draw 0",
+      (double)(runner_hii_candidate_outcome(
+                   hii_cone_claim_shadow_mask, 0, 1.0, 1.0001, upkeep_low,
+                   share_fp * cone_rate, 0.f) != hii_candidate_claimed),
+      0., 0);
+
+  /* A footprint over the whole sphere sees the cone's open share. */
+  const uint64_t all = runner_hii_shadow_footprint(&cone, dir, own, -1.0);
+  fail += report("whole footprint: |open share - n_open / 64|",
+                 fabs(runner_hii_shadow_open_share(&cone, all) -
+                      (double)cone.n_open / hii_shadow_children),
+                 0., 0);
+
+  return fail;
+}
 #endif /* HAVE_CHEALPIX */
 
 int main(int argc, char *argv[]) {
@@ -436,6 +525,7 @@ int main(int argc, char *argv[]) {
   fail += test_absorbed();
 #if defined(HAVE_CHEALPIX)
   fail += test_geometry();
+  fail += test_open_gate();
 #else
   printf("skip geometry checks: HAVE_CHEALPIX is not defined\n");
 #endif

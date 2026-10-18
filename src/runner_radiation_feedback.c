@@ -162,23 +162,22 @@ static int runner_hii_shadow_walk_held(
 }
 
 /**
- * @brief A candidate the cone cannot afford becomes a front: block the
- * sub-cones it covers and absorb their share of the cone's budget.
+ * @brief Sub-cones of its cone that a candidate covers, seen from the star.
  *
- * The front covers the angle h / r around its direction, h being its
+ * The candidate covers the angle h / r around its direction, h being its
  * smoothing length and r its distance to the star.
  *
  * @param e The #engine.
  * @param si The #spart.
- * @param nb The front.
+ * @param nb The candidate.
  * @param shadow The shadow masks of the star's cones.
  * @param geom Layout of the star's cones.
- * @return Photons absorbed.
+ * @return The #runner_hii_shadow_footprint.
  */
-static double runner_hii_shadow_front(const struct engine *e, struct spart *si,
-                                      const struct hii_neighbor *nb,
-                                      struct hii_shadow_cone *shadow,
-                                      const struct hii_cone_geometry *geom) {
+static uint64_t runner_hii_shadow_candidate_footprint(
+    const struct engine *e, const struct spart *si,
+    const struct hii_neighbor *nb, struct hii_shadow_cone *shadow,
+    const struct hii_cone_geometry *geom) {
 
   struct hii_shadow_cone *cone = &shadow[nb->pixel];
 #if defined(HAVE_CHEALPIX)
@@ -208,11 +207,29 @@ static double runner_hii_shadow_front(const struct engine *e, struct spart *si,
   const double r = sqrt((double)nb->r2);
   const double angle = r > 0.0 ? min((double)nb->p->h / r, M_PI) : M_PI;
 
+  return runner_hii_shadow_footprint(cone, unit, nb->child, cos(angle));
+}
+
+/**
+ * @brief A candidate the cone cannot afford becomes a front: block the
+ * sub-cones it covers and absorb their share of the cone's budget.
+ *
+ * @param si The #spart.
+ * @param pixel The front's cone.
+ * @param footprint The front's #runner_hii_shadow_footprint.
+ * @param shadow The shadow masks of the star's cones.
+ * @return Photons absorbed.
+ */
+static double runner_hii_shadow_front(struct spart *si, const int pixel,
+                                      const uint64_t footprint,
+                                      struct hii_shadow_cone *shadow) {
+
+  struct hii_shadow_cone *cone = &shadow[pixel];
   const int n_open = cone->n_open;
-  const int m = runner_hii_shadow_block(cone, unit, nb->child, cos(angle));
+  const int m = runner_hii_shadow_block_footprint(cone, footprint);
   const double absorbed = runner_hii_shadow_absorbed(
-      feedback_get_star_ionization_budget(si, nb->pixel), m, n_open);
-  feedback_absorb_star_ionizing_photons(si, nb->pixel, absorbed);
+      feedback_get_star_ionization_budget(si, pixel), m, n_open);
+  feedback_absorb_star_ionizing_photons(si, pixel, absorbed);
   return absorbed;
 }
 
@@ -1013,16 +1030,27 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const int was_tagged_before =
               radiation_is_part_tagged_as_ionized(pj, xpj);
 
+          /* Under the shadow mask, only the photons through the open
+             sub-cones of the candidate's footprint can keep it ionized. */
+          uint64_t footprint = 0;
+          double open_share = 1.0;
+          if (geom.shadow != NULL && !was_tagged_before) {
+            footprint = runner_hii_shadow_candidate_footprint(
+                e, si, &ngb_buffer[k], shadow, &geom);
+            open_share =
+                runner_hii_shadow_open_share(&shadow[pixel], footprint);
+          }
+
           /* Do the ionization */
           const int outcome = feedback_iact_HII_ionization(
               si, pj, xpj, r2, pixel, phys_const, hydro_props, us, cosmo,
-              cooling, feedback_props, ti_begin, time, dt_back);
+              cooling, feedback_props, ti_begin, time, dt_back, open_share);
 
           if (outcome == hii_candidate_front) {
             ++attempt_front_count;
             if (geom.shadow != NULL) {
               const double absorbed =
-                  runner_hii_shadow_front(e, si, &ngb_buffer[k], shadow, &geom);
+                  runner_hii_shadow_front(si, pixel, footprint, shadow);
 #ifdef SWIFT_DEBUG_CHECKS
               photons_absorbed += absorbed;
 #else
