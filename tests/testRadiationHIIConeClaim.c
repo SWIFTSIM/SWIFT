@@ -108,8 +108,8 @@ static double claimed_share(const int rule, const double budget,
   long n_claimed = 0, n_front = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o = runner_hii_candidate_outcome(
-        rule, 0, budget, cost, rate, cone_rate, u);
+    const enum hii_candidate_outcome o =
+        runner_hii_candidate_outcome(rule, 0, budget, cost, rate, cone_rate, u);
     if (o == hii_candidate_claimed) n_claimed++;
     if (o == hii_candidate_front) n_front++;
   }
@@ -168,8 +168,8 @@ static int test_decision(void) {
         refused++;
     }
   }
-  fail += report("affordable gas not claimed, all rules", (double)refused, 0.,
-                 0);
+  fail +=
+      report("affordable gas not claimed, all rules", (double)refused, 0., 0);
 
   /* The deterministic boundary claims every candidate. */
   long det = 0;
@@ -186,8 +186,8 @@ static int test_decision(void) {
   for (int rule = 0; rule < hii_cone_claim_rule_count; rule++) {
     const double rate_ratio[3] = {1.0, 1.5, 1e4};
     for (int k = 0; k < 3; k++)
-      if (runner_hii_candidate_outcome(rule, 0, 1.0, 1.0001, rate_ratio[k],
-                                       1.0, 0.f) == hii_candidate_claimed)
+      if (runner_hii_candidate_outcome(rule, 0, 1.0, 1.0001, rate_ratio[k], 1.0,
+                                       0.f) == hii_candidate_claimed)
         gate_claims[rule]++;
   }
   fail += report("stop rule: gas not holdable claimed with draw 0",
@@ -249,14 +249,13 @@ static int test_absorbed(void) {
   }
   fail += report("one sub-cone per front: worst relative error of the rest",
                  worst, 1e-12, 0);
-  fail += report("budget left after the last sub-cone closes", fabs(budget),
-                 0., 0);
+  fail +=
+      report("budget left after the last sub-cone closes", fabs(budget), 0., 0);
   fail += report("no sub-cone blocked: photons absorbed",
                  runner_hii_shadow_absorbed(5.0, 0, 10), 0., 0);
-  fail +=
-      report("several sub-cones at once: |absorbed - 3/10 budget| / budget",
-             fabs(runner_hii_shadow_absorbed(5.0, 3, 10) - 1.5) / 5.0, 1e-15,
-             0);
+  fail += report("several sub-cones at once: |absorbed - 3/10 budget| / budget",
+                 fabs(runner_hii_shadow_absorbed(5.0, 3, 10) - 1.5) / 5.0,
+                 1e-15, 0);
   return fail;
 }
 
@@ -358,8 +357,7 @@ static int test_geometry(void) {
         int64_t parent = 0;
         ring2nest64(nside, p, &parent);
         double th0, ph0;
-        pix2ang_nest64(8 * nside, parent * hii_shadow_children + k, &th0,
-                       &ph0);
+        pix2ang_nest64(8 * nside, parent * hii_shadow_children + k, &th0, &ph0);
         const double dir[3] = {sin(th0) * cos(ph0), sin(th0) * sin(ph0),
                                cos(th0)};
         const int m = runner_hii_shadow_block(&cone, dir, k, cos(angles[a]));
@@ -367,8 +365,7 @@ static int test_geometry(void) {
         int n_in = 0, n_edge = 0;
         for (int j = 0; j < hii_shadow_children; j++) {
           double th, ph;
-          pix2ang_nest64(8 * nside, parent * hii_shadow_children + j, &th,
-                         &ph);
+          pix2ang_nest64(8 * nside, parent * hii_shadow_children + j, &th, &ph);
           const double c =
               sin(th) * sin(th0) * cos(ph - ph0) + cos(th) * cos(th0);
           const double sep = acos(fmin(1.0, c));
@@ -397,8 +394,8 @@ static int test_geometry(void) {
     const int m = runner_hii_shadow_block(&cone, dir, k, cos(0.2));
     int n_wide = 0;
     for (int j = 0; j < hii_shadow_children; j++) {
-      const double c = dir[0] * cone.centre[j][0] +
-                       dir[1] * cone.centre[j][1] + dir[2] * cone.centre[j][2];
+      const double c = dir[0] * cone.centre[j][0] + dir[1] * cone.centre[j][1] +
+                       dir[2] * cone.centre[j][2];
       if (j == k || c >= cos(0.4)) n_wide++;
     }
     if (m != n_wide) wrong_ctl++;
@@ -417,8 +414,8 @@ static int test_geometry(void) {
     const int m1 = runner_hii_shadow_block(&cone, dir, 10, cos(0.3));
     const int m2 = runner_hii_shadow_block(&cone, dir, 10, cos(0.3));
     fail += report("first front blocks sub-cones (must)", (double)m1, 0., 1);
-    fail += report("same front again: sub-cones newly blocked", (double)m2, 0.,
-                   0);
+    fail +=
+        report("same front again: sub-cones newly blocked", (double)m2, 0., 0);
     const int m3 = runner_hii_shadow_block(&cone, dir, 10, -1.0);
     fail += report("front covering the sphere: sub-cones left open",
                    (double)cone.n_open, 0., 0);
