@@ -37,6 +37,9 @@ Finished runs (marked by a DONE file) are not repeated: delete the run
 directory to redo it. The comparison plots can be regenerated on their own:
 
   python3 plot_comparison.py /path/to/output [test ...]
+  (options: --schemes=a,b restricts to those runs, --out=DIR puts the figures
+   elsewhere, --overlay-only=c draws scheme c only in the all-schemes panel of the
+   image-based figures: KH, squares, blob)
 
 Outputs:
   builds/<scheme>_{2d,3d,3dnfw}/  copies of the source tree with the binaries

@@ -32,6 +32,15 @@ sys.path.insert(0, os.path.join(HERE, ".."))  # examples/HydroTests/riemannSolve
 
 GAS_GAMMA = 5.0 / 3.0
 COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
+# Fixed colours for the schemes that appear on many figures, so that a scheme
+# keeps its colour whatever the set of schemes on a given figure; other
+# schemes (parameter-study variants) take the next free colour by position.
+SCHEME_COLORS = {"sphenix": "C2", "mi3": "C3", "mi2": "C0", "mi1": "C1"}
+
+
+def scheme_color(scheme, j):
+    return SCHEME_COLORS.get(scheme, COLORS[j % len(COLORS)])
+
 ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d",
              "keplerian_cd10", "zeldovich",
              "zeldovich_glass", "zeldovich_pert", "blob", "taylorgreen", "shearing", "blast", "rt",
@@ -146,6 +155,17 @@ def run_stats(run_dir):
     return out
 
 
+# Schemes drawn only in the panels that overlay all the curves (growth of
+# the KH rms velocity, the square's density cut, the blob's mass fraction),
+# without a column of their own in the image-based figures; set with
+# --overlay-only=a,b. Their metrics are computed as for the others.
+OVERLAY_ONLY = set()
+
+
+def column_schemes(schemes):
+    return [s for s in schemes if s not in OVERLAY_ONLY]
+
+
 def setup_figure(schemes, quantities, extra_rows=0, width=3.6, height=2.8):
     ncol = len(schemes) + 1
     nrow = len(quantities) + extra_rows
@@ -167,8 +187,8 @@ def profile_panels(axes, row, schemes, data, xkey_fn, ykey_fn, edges, exact=None
         y = ykey_fn(d)
         ax.scatter(x, y, color="0.4", **scatter_props)
         xb, yb, sb = binned(x, y, edges)
-        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
-        over.plot(xb, yb, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+        over.plot(xb, yb, "-", color=scheme_color(s, j), lw=1.3, label=s)
         if exact is not None:
             ax.plot(exact[0], exact[1], "-", color="k", lw=1, alpha=0.8, zorder=2)
         if row == 0:
@@ -654,25 +674,26 @@ def test_kh(root, schemes, out, test="kh"):
     last = max((load(f)["time"] for s in schemes
                 for f in snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")[-1:]), default=4.5)
     times = [last / 3.0, 2.0 * last / 3.0, last]
-    fig, axes = plt.subplots(len(times), len(schemes) + 1,
-                             figsize=(3.6 * (len(schemes) + 1), 3.4 * len(times)), squeeze=False)
+    cols = column_schemes(schemes)
+    fig, axes = plt.subplots(len(times), len(cols) + 1,
+                             figsize=(3.6 * (len(cols) + 1), 3.4 * len(times)), squeeze=False)
     metrics = {}
     rho_max, contrast = 2.0, 2
     for i, t in enumerate(times):
-        data = load_all(root, schemes, test, "kelvinHelmholtz", time=t)
+        data = load_all(root, cols, test, "kelvinHelmholtz", time=t)
         ref = next((d for d in data.values() if d), None)
         if ref is not None and i == 0:
             rho_max = float(np.percentile(ref["rho"], 99.5))
             # Density contrast of the initial conditions (first snapshot of the reference run)
             first = next((snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")[:1]
-                          for s in schemes if data[s] is not None), [])
+                          for s in cols if data[s] is not None), [])
             rho_ic = load(first[0])["rho"] if first else ref["rho"]
             contrast = round(float(np.percentile(rho_ic, 90)) / float(np.percentile(rho_ic, 10)))
         log = rho_max > 3.0
         clim = (np.log10(0.8), np.log10(rho_max + 0.2)) if log else (0.8, rho_max + 0.2)
-        image_panels(axes, i, schemes, data, "rho", clim, cmap="RdBu_r", log=log)
+        image_panels(axes, i, cols, data, "rho", clim, cmap="RdBu_r", log=log)
         axes[i, -1].axis("off")
-    # Growth of the instability: rms of v_y versus time
+    # Growth of the instability: rms of v_y versus time (all schemes)
     ax = axes[0, -1]
     ax.axis("on")
     for j, s in enumerate(schemes):
@@ -683,7 +704,7 @@ def test_kh(root, schemes, out, test="kh"):
             tt.append(d["time"])
             vy.append(np.sqrt(np.mean(d["vel"][:, 1] ** 2)))
         if tt:
-            ax.semilogy(tt, vy, "-o", ms=3, color=COLORS[j % len(COLORS)], label=s)
+            ax.semilogy(tt, vy, "-o", ms=3, color=scheme_color(s, j), label=s)
             metrics[s] = {"rms_vy_final": float(vy[-1]), f"rms_vy_t{times[0]:.3g}": float(np.interp(times[0], tt, vy))}
     ax.set_xlabel("t")
     ax.set_ylabel(r"rms $v_y$")
@@ -697,13 +718,14 @@ def test_kh(root, schemes, out, test="kh"):
 
 def test_square(root, schemes, out, test="square"):
     times = [1.0, 4.0]
-    fig, axes = plt.subplots(len(times) + 1, len(schemes) + 1,
-                             figsize=(3.6 * (len(schemes) + 1), 3.4 * (len(times) + 1)), squeeze=False)
+    cols = column_schemes(schemes)
+    fig, axes = plt.subplots(len(times) + 1, len(cols) + 1,
+                             figsize=(3.6 * (len(cols) + 1), 3.4 * (len(times) + 1)), squeeze=False)
     metrics = {}
     for i, t in enumerate(times):
-        data = load_all(root, schemes, test, "square", time=t)
-        image_panels(axes, i, schemes, data, "rho", (0.5, 4.5))
-        for j, s in enumerate(schemes):
+        data = load_all(root, cols, test, "square", time=t)
+        image_panels(axes, i, cols, data, "rho", (0.5, 4.5))
+        for j, s in enumerate(cols):
             axes[i, j].add_patch(plt.Rectangle((0.25, 0.25), 0.5, 0.5, fill=False, ec="k", lw=0.8))
         axes[i, -1].axis("off")
     # Density along a slice through the middle at the final time
@@ -722,16 +744,17 @@ def test_square(root, schemes, out, test="square"):
     row = len(times)
     for j, s in enumerate(schemes):
         d = data[s]
-        ax = axes[row, j]
         if d is None:
             continue
         sl = np.abs(d["pos"][:, 1] - 0.5) < 0.03
-        ax.scatter(xf(d)[sl], d["rho"][sl], color=COLORS[j % len(COLORS)], s=4)
         xb, yb, _ = binned(xf(d)[sl], d["rho"][sl], edges)
-        axes[row, -1].plot(xb, yb, "-", color=COLORS[j % len(COLORS)], label=s)
-        ax.set_xlabel("x (|y-0.5|<0.03)")
-        ax.set_ylabel(r"$\rho$")
-        ax.set_ylim(0, 5)
+        axes[row, -1].plot(xb, yb, "-", color=scheme_color(s, j), label=s)
+        if s in cols:
+            ax = axes[row, cols.index(s)]
+            ax.scatter(xf(d)[sl], d["rho"][sl], color=scheme_color(s, j), s=4)
+            ax.set_xlabel("x (|y-0.5|<0.03)")
+            ax.set_ylabel(r"$\rho$")
+            ax.set_ylim(0, 5)
         if ic is not None:
             # target density from the initial positions
             order = np.argsort(ic["ids"])
@@ -851,7 +874,7 @@ def test_keplerian(root, schemes, out, test="keplerian"):
             r = np.sqrt(x * x + y * y)
             mass, _ = np.histogram(r, bins=edges, weights=d["m"])
             sigma = mass / areas
-            axes[-1, i].plot(0.5 * (edges[1:] + edges[:-1]), sigma, "-", color=COLORS[j % len(COLORS)], label=s)
+            axes[-1, i].plot(0.5 * (edges[1:] + edges[:-1]), sigma, "-", color=scheme_color(s, j), label=s)
             # Fraction of the ring's mass that left the initial ring annulus
             # (0.5 < r < 2.0 in the example's IC; the gas beyond r = 2 is a
             # 100:1 lower-density background filling the periodic box)
@@ -1007,12 +1030,13 @@ def test_blob(root, schemes, out):
     # The example's wind has speed 1 (its sound speed is set for Mach 2.7)
     tau_kh = (1.0 + 10.0) * 0.1 / (1.0 * np.sqrt(10.0))
     times = [1.0, 2.0, 4.0]  # in tau_KH
-    fig, axes = plt.subplots(len(times), len(schemes) + 1,
-                             figsize=(3.6 * (len(schemes) + 1), 2.0 * len(times) + 1.0), squeeze=False)
+    cols = column_schemes(schemes)
+    fig, axes = plt.subplots(len(times), len(cols) + 1,
+                             figsize=(3.6 * (len(cols) + 1), 2.0 * len(times) + 1.0), squeeze=False)
     metrics = {}
     for i, t in enumerate(times):
-        data = load_all(root, schemes, "blob", "blob", time=t * tau_kh)
-        for j, s in enumerate(schemes):
+        data = load_all(root, cols, "blob", "blob", time=t * tau_kh)
+        for j, s in enumerate(cols):
             ax = axes[i, j]
             d = data[s]
             if d is None:
@@ -1054,7 +1078,7 @@ def test_blob(root, schemes, out):
             cold_dense = (d["rho"] > 0.64 * rho_blob) & (d["u"] < 0.9 * u_bg)
             tt.append(d["time"] / tau_kh)
             frac.append(float(np.sum(in_blob & cold_dense) / max(np.sum(in_blob), 1)))
-        ax.plot(tt, frac, "-o", ms=3, color=COLORS[j % len(COLORS)], label=s)
+        ax.plot(tt, frac, "-o", ms=3, color=scheme_color(s, j), label=s)
         metrics[s] = {"blob_mass_frac_2tau": float(np.interp(2.0, tt, frac)),
                       "blob_mass_frac_final": float(frac[-1]), "t_final_tauKH": float(tt[-1])}
     ax.set_xlabel(r"$t / \tau_{\rm KH}$")
@@ -1094,19 +1118,19 @@ def test_nfw(root, schemes, out):
         r1, rho1 = profile(d)
         ax = axes[0, j]
         ax.loglog(r0, rho0, "k-", lw=1, label="initial")
-        ax.loglog(r1, rho1, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=f"t={d['time']:.2f}")
+        ax.loglog(r1, rho1, "-", color=scheme_color(s, j), lw=1.3, label=f"t={d['time']:.2f}")
         ax.set_title(s)
         ax.set_ylabel(r"$\rho$")
         ax.set_xlabel("r")
         ax.legend(fontsize=7)
         ax = axes[1, j]
-        ax.semilogx(r1, rho1 / rho0, "-", color=COLORS[j % len(COLORS)], lw=1.3)
+        ax.semilogx(r1, rho1 / rho0, "-", color=scheme_color(s, j), lw=1.3)
         ax.axhline(1.0, color="k", lw=0.8)
         ax.set_ylim(0.5, 1.5)
         ax.set_xlabel("r")
         ax.set_ylabel(r"$\rho / \rho_{\rm initial}$")
-        axes[0, -1].loglog(r1, rho1, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
-        axes[1, -1].semilogx(r1, rho1 / rho0, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        axes[0, -1].loglog(r1, rho1, "-", color=scheme_color(s, j), lw=1.3, label=s)
+        axes[1, -1].semilogx(r1, rho1 / rho0, "-", color=scheme_color(s, j), lw=1.3, label=s)
         sel = (rb > 1.0) & (rb < 50.0) & np.isfinite(rho1) & np.isfinite(rho0)
         metrics[s] = {"L1_logrho_1-50": float(np.mean(np.abs(np.log10(rho1[sel] / rho0[sel])))),
                       "rho_ratio_r<2": float(np.nanmean((rho1 / rho0)[rb < 2.0]))}
@@ -1188,7 +1212,7 @@ def test_taylorgreen(root, schemes, out):
             nu = -slope / (16.0 * np.pi**2)
             metrics.setdefault(s, {})["nu_eff"] = float(nu)
             metrics[s]["E_kin_ratio_end"] = float(E[-1] / E[0])
-            axE.semilogy(t, E / E[0], "-", color=COLORS[j % len(COLORS)], label=f"{s}: nu_eff = {nu:.1e}")
+            axE.semilogy(t, E / E[0], "-", color=scheme_color(s, j), label=f"{s}: nu_eff = {nu:.1e}")
         d = data[s]
         if d is None:
             continue
@@ -1206,8 +1230,8 @@ def test_taylorgreen(root, schemes, out):
         xs = np.linspace(0, 1, 200)
         ax.plot(xs, np.sin(k * xs), "k-", lw=1)
         xb, vb, sb = binned(x[strip], d["vel"][strip, 0] / v0, np.linspace(0, 1, 26))
-        ax.errorbar(xb, vb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
-        axes[1, -1].plot(xb, vb, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        ax.errorbar(xb, vb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+        axes[1, -1].plot(xb, vb, "-", color=scheme_color(s, j), lw=1.3, label=s)
         ax.set_xlabel("x (|y| < 0.02)")
         ax.set_ylabel(r"$v_x / v_0$")
         ax.set_ylim(-1.2, 1.2)
@@ -1297,8 +1321,8 @@ def test_shearing(root, schemes, out):
         metrics[s]["x_shock_exact"] = x_shock
         ax.scatter(x, dvy / s_amp, color="0.4", **scatter_props)
         xb, yb, sb = binned(x, dvy / s_amp, edges)
-        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
-        axes[row, -1].plot(xb, sb, "-", color=COLORS[j % len(COLORS)], lw=1.3, label=s)
+        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+        axes[row, -1].plot(xb, sb, "-", color=scheme_color(s, j), lw=1.3, label=s)
         ax.axhline(0, color="k", lw=1)
         ax.set_xlim(0, L)
         ax.set_ylim(-0.05, 0.05)
@@ -1434,10 +1458,10 @@ def test_rt(root, schemes, out):
                 m[f"bubble_height_t{tq:g}"] = float(np.interp(tq, t, bubble))
                 m[f"spike_depth_t{tq:g}"] = float(np.interp(tq, t, spike))
         m["mixing_width_end"] = float(bubble[-1] + spike[-1])
-        ax.semilogy(t, amp, "-", color=COLORS[j % len(COLORS)], label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
+        ax.semilogy(t, amp, "-", color=scheme_color(s, j), label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
         axes[1, -1].axis("on")
-        axes[1, -1].plot(t, bubble, "-", color=COLORS[j % len(COLORS)], label=s)
-        axes[1, -1].plot(t, spike, "--", color=COLORS[j % len(COLORS)])
+        axes[1, -1].plot(t, bubble, "-", color=scheme_color(s, j), label=s)
+        axes[1, -1].plot(t, spike, "--", color=scheme_color(s, j))
     if sigma_th is not None:
         tt = np.linspace(0, 1.2, 20)
         ax.semilogy(tt, 0.02 * np.exp(sigma_th * tt), "k:",
@@ -1508,7 +1532,7 @@ def test_khgr(root, schemes, out):
         m["t_mode_amp_max"] = float(t[np.argmax(M)])
         # Incoherent v_y generated by the shear flow itself (gradient noise), early on
         m["E_y_noise_t0.2"] = float(np.interp(0.2, t, Ey))
-        ax.semilogy(t, M, "-", color=COLORS[j % len(COLORS)], label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
+        ax.semilogy(t, M, "-", color=scheme_color(s, j), label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
     tt = np.linspace(0, 0.8, 20)
     if series:
         M0 = float(np.mean([np.interp(0.1, *ser) for ser in series.values()]))
@@ -1664,7 +1688,7 @@ def test_soundwave(root, schemes, out, test="soundwave"):
             ax = axes[row, j]
             ax.scatter(x, y, color="0.4", **scatter_props)
             xb, yb, sb = binned(x, y, np.linspace(0, L, 33))
-            ax.errorbar(xb, yb, yerr=sb, fmt=".", color=COLORS[j % len(COLORS)], ms=4, lw=1, zorder=3)
+            ax.errorbar(xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
             ax.plot(xs, ex, "k-", lw=1)
             ax.set_ylim(-2.5, 2.5)
             ax.set_xlabel("x")
@@ -1672,7 +1696,7 @@ def test_soundwave(root, schemes, out, test="soundwave"):
             if row == 0:
                 ax.set_title(s, fontsize=9)
         tt, Zv, Zr = series[s]
-        c = COLORS[j % len(COLORS)]
+        c = scheme_color(s, j)
         if standing:
             E = np.abs(Zv) ** 2 + cs**2 * np.abs(Zr) ** 2
             axes[0, -1].semilogy(tt, E / (A * cs) ** 2, "-", color=c, lw=1.2,
@@ -1780,7 +1804,7 @@ def test_thermal(root, schemes, out):
         for ax in axes[:, j]:
             ax.set_xlabel("x")
         tt, sig, blip, vmax, vrms = series[s]
-        c = COLORS[j % len(COLORS)]
+        c = scheme_color(s, j)
         axes[0, -1].plot(tt, sig, "o-", color=c, ms=3, lw=1, label=f"{s}: kappa = {metrics[s]['kappa_eff']:.1e}")
         axes[1, -1].semilogy(tt, vrms, "-", color=c, lw=1.2, label=f"{s} rms")
         axes[1, -1].semilogy(tt, blip, "--", color=c, lw=1, label=f"{s} P blip")
@@ -1823,10 +1847,12 @@ TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_g
 
 
 def main():
-    # plot_comparison.py ROOT [--schemes=a,b,c] [--out=DIR] [test ...]
+    # plot_comparison.py ROOT [--schemes=a,b,c] [--out=DIR] [--overlay-only=d] [test ...]
     # --schemes restricts the comparison to a subset of runs/<scheme> (for
     # large parameter studies), --out puts the figures and summary elsewhere
-    # than ROOT/plots.
+    # than ROOT/plots, --overlay-only lists schemes that get no column of
+    # their own in the image-based figures (KH, squares, blob), only their
+    # curve in the panel that overlays all schemes.
     root = sys.argv[1]
     args = sys.argv[2:]
     only = None
@@ -1837,6 +1863,8 @@ def main():
             only = a[len("--schemes="):].split(",")
         elif a.startswith("--out="):
             out = a[len("--out="):]
+        elif a.startswith("--overlay-only="):
+            OVERLAY_ONLY.update(a[len("--overlay-only="):].split(","))
         else:
             tests.append(a)
     tests = tests or ALL_TESTS
