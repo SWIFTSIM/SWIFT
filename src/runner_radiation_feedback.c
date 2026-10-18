@@ -768,11 +768,12 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     };
     /* A star whose emission is not set yet holds one pixel and no photons:
        it needs no mask. */
-    const int n_pix = feedback_get_star_HII_pixel_count(si);
-    if (claim_rule == hii_cone_claim_shadow_mask && n_pix > 1) {
-      for (int p = 0; p < n_pix; p++) runner_hii_shadow_cone_reset(&shadow[p]);
+    const int n_cones = feedback_get_star_HII_pixel_count(si);
+    if (claim_rule == hii_cone_claim_shadow_mask && n_cones > 1) {
+      for (int p = 0; p < n_cones; p++)
+        runner_hii_shadow_cone_reset(&shadow[p]);
       geom.shadow = shadow;
-      geom.nside = (int)lround(sqrt(n_pix / 12.0));
+      geom.nside = (int)lround(sqrt(n_cones / 12.0));
     }
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
