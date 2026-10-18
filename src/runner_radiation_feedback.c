@@ -766,8 +766,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         .shadow = NULL,
         .nside = 0,
     };
-    if (claim_rule == hii_cone_claim_shadow_mask) {
-      const int n_pix = feedback_get_star_HII_pixel_count(si);
+    /* A star whose emission is not set yet holds one pixel and no photons:
+       it needs no mask. */
+    const int n_pix = feedback_get_star_HII_pixel_count(si);
+    if (claim_rule == hii_cone_claim_shadow_mask && n_pix > 1) {
       for (int p = 0; p < n_pix; p++) runner_hii_shadow_cone_reset(&shadow[p]);
       geom.shadow = shadow;
       geom.nside = (int)lround(sqrt(n_pix / 12.0));
