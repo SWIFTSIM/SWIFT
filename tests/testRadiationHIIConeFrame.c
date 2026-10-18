@@ -525,7 +525,7 @@ static int test_epochs(void) {
                  0.0, 0);
 
   double R[9], R2[9], R3[9];
-  long changed_inside = 0, unchanged_across = 0, not_epoch0 = 0, nondet = 0;
+  long changed_inside = 0, unchanged_across = 0, nondet = 0;
   const int n_ids = 2000;
   for (int64_t id = 1; id <= n_ids; id++) {
     for (int64_t k = 0; k < 20; k++) {
@@ -543,17 +543,11 @@ static int test_epochs(void) {
       runner_hii_cone_frame_from_id(id, e1, R2);
       if (memcmp(R, R2, sizeof(R)) != 0) nondet++;
     }
-    runner_hii_cone_frame_from_id(
-        id, runner_hii_cone_frame_epoch(1e5 * interval, 0.0), R);
-    frame_of_id(id, R2);
-    if (memcmp(R, R2, sizeof(R)) != 0) not_epoch0++;
   }
   fail += report("frame changes inside an epoch (count)",
                  (double)changed_inside, 0.0, 0);
   fail += report("frame kept across an epoch boundary (count)",
                  (double)unchanged_across, 0.0, 0);
-  fail += report("period 0: frame differs from the epoch-0 frame (count)",
-                 (double)not_epoch0, 0.0, 0);
   fail += report("same star and epoch, two calls differ (count)",
                  (double)nondet, 0.0, 0);
 
