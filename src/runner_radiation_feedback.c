@@ -117,51 +117,6 @@ runner_hii_star_cone_frame(const struct spart *si,
 }
 
 /**
- * @brief Pay the upkeep of the held gas that sorts before a given key, in
- * (r2, id) order, under the shadow mask.
- *
- * Held gas behind a front keeps its tag until it lapses but is neither
- * charged nor renewed. Gas in a cone with no photons left is handled by
- * feedback_iact_HII_maintain_ionized_part() as without a mask.
- *
- * @param si The #spart.
- * @param held The held gas, sorted in (r2, id) order.
- * @param n_held Number of entries in @p held.
- * @param k_held Index of the next entry to process.
- * @param until Process entries sorting before this one; NULL for all.
- * @param shadow The shadow masks of the star's cones.
- * @param e The #engine.
- * @param time The current simulation time.
- * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param photons_charged (return) Incremented by the upkeep paid.
- * @return Index of the next entry still to process.
- */
-static int runner_hii_shadow_walk_held(
-    struct spart *si, const struct hii_neighbor *held, const int n_held,
-    int k_held, const struct hii_neighbor *until,
-    const struct hii_shadow_cone *shadow, const struct engine *e,
-    const double time, const double dt_back, double *photons_charged) {
-
-  for (; k_held < n_held; k_held++) {
-    const struct hii_neighbor *nb = &held[k_held];
-    if (until != NULL &&
-        !runner_hii_r2_id_before(nb->r2, nb->p->id, until->r2, until->p->id))
-      break;
-
-    if (feedback_get_star_ionization_budget(si, nb->pixel) > 0.0 &&
-        runner_hii_shadow_is_blocked(&shadow[nb->pixel], nb->child)) {
-      feedback_iact_HII_hold_shadowed_part(si, nb->p);
-      continue;
-    }
-    *photons_charged += feedback_iact_HII_maintain_ionized_part(
-        si, nb->p, nb->xp, nb->r2, nb->pixel, e->physical_constants,
-        e->hydro_properties, e->internal_units, e->cosmology, e->cooling_func,
-        time, dt_back);
-  }
-  return k_held;
-}
-
-/**
  * @brief Sub-cones of its cone that a candidate covers, seen from the star.
  *
  * The candidate covers the angle h / r around its direction, h being its
@@ -231,6 +186,71 @@ static double runner_hii_shadow_front(struct spart *si, const int pixel,
       feedback_get_star_ionization_budget(si, pixel), m, n_open);
   feedback_absorb_star_ionizing_photons(si, pixel, absorbed);
   return absorbed;
+}
+
+/**
+ * @brief Pay the upkeep of the held gas that sorts before a given key, in
+ * (r2, id) order, under the shadow mask.
+ *
+ * Held gas behind a front keeps its tag until it lapses but is neither
+ * charged nor renewed. So is held gas whose recombination rate is at least
+ * the photon rate through the open sub-cones it covers: it becomes a front.
+ * Gas in a cone with no photons left is handled by
+ * feedback_iact_HII_maintain_ionized_part() as without a mask.
+ *
+ * @param si The #spart.
+ * @param held The held gas, sorted in (r2, id) order.
+ * @param n_held Number of entries in @p held.
+ * @param k_held Index of the next entry to process.
+ * @param until Process entries sorting before this one; NULL for all.
+ * @param shadow The shadow masks of the star's cones.
+ * @param geom Layout of the star's cones.
+ * @param e The #engine.
+ * @param time The current simulation time.
+ * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @param photons_charged (return) Incremented by the upkeep paid.
+ * @param photons_absorbed (return) Incremented by the photons absorbed at
+ * held gas that became a front.
+ * @return Index of the next entry still to process.
+ */
+static int runner_hii_shadow_walk_held(
+    struct spart *si, const struct hii_neighbor *held, const int n_held,
+    int k_held, const struct hii_neighbor *until,
+    struct hii_shadow_cone *shadow, const struct hii_cone_geometry *geom,
+    const struct engine *e, const double time, const double dt_back,
+    double *photons_charged, double *photons_absorbed) {
+
+  for (; k_held < n_held; k_held++) {
+    const struct hii_neighbor *nb = &held[k_held];
+    if (until != NULL &&
+        !runner_hii_r2_id_before(nb->r2, nb->p->id, until->r2, until->p->id))
+      break;
+
+    if (feedback_get_star_ionization_budget(si, nb->pixel) > 0.0) {
+      if (runner_hii_shadow_is_blocked(&shadow[nb->pixel], nb->child)) {
+        feedback_iact_HII_hold_shadowed_part(si, nb->p);
+        continue;
+      }
+      const uint64_t footprint =
+          runner_hii_shadow_candidate_footprint(e, si, nb, shadow, geom);
+      const double open_share =
+          runner_hii_shadow_open_share(&shadow[nb->pixel], footprint);
+      if (!feedback_HII_part_holdable(
+              si, nb->p, nb->xp, nb->pixel, e->physical_constants,
+              e->hydro_properties, e->internal_units, e->cosmology,
+              e->cooling_func, open_share)) {
+        *photons_absorbed +=
+            runner_hii_shadow_front(si, nb->pixel, footprint, shadow);
+        feedback_iact_HII_hold_shadowed_part(si, nb->p);
+        continue;
+      }
+    }
+    *photons_charged += feedback_iact_HII_maintain_ionized_part(
+        si, nb->p, nb->xp, nb->r2, nb->pixel, e->physical_constants,
+        e->hydro_properties, e->internal_units, e->cosmology, e->cooling_func,
+        time, dt_back);
+  }
+  return k_held;
 }
 
 /**
@@ -841,6 +861,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     int n_held_walk = 0;
     int k_held_walk = 0;
     double held_walk_photons = 0.0;
+    double held_walk_absorbed = 0.0;
 
 #ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
     /* Phase 1: charge the recombination losses of the gas this star already
@@ -1004,7 +1025,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           if (geom.shadow != NULL)
             k_held_walk = runner_hii_shadow_walk_held(
                 si, held_walk, n_held_walk, k_held_walk, &ngb_buffer[k], shadow,
-                e, time, dt_back, &held_walk_photons);
+                &geom, e, time, dt_back, &held_walk_photons,
+                &held_walk_absorbed);
 
           const int pixel = ngb_buffer[k].pixel;
 
@@ -1093,8 +1115,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          nearer than any later one. */
       if (geom.shadow != NULL && !buffer_was_full)
         k_held_walk = runner_hii_shadow_walk_held(
-            si, held_walk, n_held_walk, k_held_walk, NULL, shadow, e, time,
-            dt_back, &held_walk_photons);
+            si, held_walk, n_held_walk, k_held_walk, NULL, shadow, &geom, e,
+            time, dt_back, &held_walk_photons, &held_walk_absorbed);
 
       /* Fully exhausted: nothing more to do this pass. */
       if (feedback_get_star_ionization_budget_max(si) <= 0.0) break;
@@ -1163,15 +1185,15 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        retries, or never met a front. */
     if (geom.shadow != NULL)
       k_held_walk = runner_hii_shadow_walk_held(
-          si, held_walk, n_held_walk, k_held_walk, NULL, shadow, e, time,
-          dt_back, &held_walk_photons);
+          si, held_walk, n_held_walk, k_held_walk, NULL, shadow, &geom, e, time,
+          dt_back, &held_walk_photons, &held_walk_absorbed);
 
 #ifdef SWIFT_DEBUG_CHECKS
     message(
         "HII walk: star %lld rule %d evaluated %d fronts %d shadowed %d "
         "absorbed %.6e held_upkeep %.6e walk_ms %.4f",
         si->id, claim_rule, count_evaluated, count_fronts, count_shadowed,
-        photons_absorbed, held_walk_photons,
+        photons_absorbed + held_walk_absorbed, held_walk_photons,
         clocks_from_ticks(getticks() - tic_claim_walk));
 
     /* Repeat-run comparator: claimed_id_hash (a sum of id * constant) is

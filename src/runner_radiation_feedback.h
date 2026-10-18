@@ -114,9 +114,9 @@ enum hii_cone_claim_rule {
   /*! An unaffordable candidate is an ionization front that hides part of the
       cone: it blocks the sub-cones it covers and absorbs their share of the
       budget. Held gas and new gas are walked together in distance order, so
-      the shadow also cuts the upkeep of held gas behind a front. No roll on
-      gas whose recombination rate is at least the photon rate through the
-      open sub-cones it covers. */
+      the shadow also cuts the upkeep of held gas behind a front. Gas, new or
+      held, whose recombination rate is at least the photon rate through the
+      open sub-cones it covers is a front. */
   hii_cone_claim_shadow_mask = 2,
 };
 
