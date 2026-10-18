@@ -649,8 +649,24 @@ def test_evrard(root, schemes, out):
                 ex = (exact[:, 0], exact[:, col])
             else:
                 ex = (exact[:, 0], exact[:, 3] / exact[:, 1] ** GAS_GAMMA)
+        # The exact profiles run to densities and pressures 1e-15 below the
+        # gas's in the outer vacuum: keep the y range to where the particles are.
+        ylim = None
+        if logy:
+            lo, hi = [], []
+            for s in schemes:
+                if data[s] is None:
+                    continue
+                r = rf(data[s])
+                y = yf(data[s])[(r > 3e-3) & (r < 2.0)]
+                y = y[y > 0]
+                if y.size:
+                    lo.append(np.percentile(y, 0.5))
+                    hi.append(np.percentile(y, 99.9))
+            if lo:
+                ylim = (0.3 * min(lo), 3.0 * max(hi))
         profile_panels(axes, i, schemes, data, rf, yf, edges, exact=ex, xlabel="r",
-                       ylabel=lab, xlim=(3e-3, 2.0), logx=True, logy=logy)
+                       ylabel=lab, xlim=(3e-3, 2.0), ylim=ylim, logx=True, logy=logy)
         for s in schemes:
             if data[s] is None or ex is None:
                 continue
@@ -1643,8 +1659,16 @@ def test_soundwave(root, schemes, out, test="soundwave"):
             v_ex = A * cs * np.sin(k * x) * np.sin(omega * d["time"])
         else:
             v_ex = A * cs * np.cos(k * x - omega * d["time"])
+        if standing:
+            r_ex = A * np.cos(k * x) * np.cos(omega * d["time"])
+        else:
+            r_ex = A * np.cos(k * x - omega * d["time"])
         m = metrics.setdefault(s, {})
         m["L1_v_end"] = float(np.mean(np.abs(d["vel"][:, 0] - boost - v_ex)) / (A * cs))
+        # Particle scatter about the exact wave, in units of the amplitude:
+        # the noise a scheme adds to a linear wave (1 = as large as the wave)
+        m["scatter_v_end"] = float(np.sqrt(np.mean((d["vel"][:, 0] - boost - v_ex) ** 2)) / (A * cs))
+        m["scatter_rho_end"] = float(np.sqrt(np.mean((d["rho"] / np.mean(d["rho"]) - 1.0 - r_ex) ** 2)) / A)
         m["transverse_noise_end"] = float(np.sqrt(np.mean(d["vel"][:, 1] ** 2 + d["vel"][:, 2] ** 2)) / (A * cs))
         if standing:
             E = np.abs(Zv) ** 2 + cs**2 * np.abs(Zr) ** 2
@@ -1693,6 +1717,9 @@ def test_soundwave(root, schemes, out, test="soundwave"):
             ax.set_ylim(-2.5, 2.5)
             ax.set_xlabel("x")
             ax.set_ylabel(lab)
+            sc = metrics[s]["scatter_v_end" if row == 0 else "scatter_rho_end"]
+            ax.text(0.03, 0.95, f"scatter {sc:.2f}", transform=ax.transAxes, fontsize=8, va="top",
+                    bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8))
             if row == 0:
                 ax.set_title(s, fontsize=9)
         tt, Zv, Zr = series[s]
