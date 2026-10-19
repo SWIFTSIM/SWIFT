@@ -1066,32 +1066,6 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
 }
 
 /**
- * @brief Can the photons that reach a held gas particle keep it ionized?
- *
- * @param si The #spart (star) holding the gas.
- * @param pj The #part (gas).
- * @param xpj The #xpart (gas).
- * @param pixel The cone of the gas.
- * @param phys_const Physics constants.
- * @param hydro_props Hydrodynamics properties.
- * @param us Internal unit system.
- * @param cosmo Cosmology.
- * @param cooling Cooling function data.
- * @param open_share Share of the cone's photons that can reach the gas.
- * @return 1 if its recombination rate is below that share of the cone's rate.
- */
-int feedback_HII_part_holdable(
-    const struct spart *restrict si, const struct part *restrict pj,
-    const struct xpart *restrict xpj, const int pixel,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double open_share) {
-  const double rate = radiation_get_part_rate_to_fully_ionize(
-      phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
-  return rate < open_share * feedback_get_star_ionization_rate(si, pixel);
-}
-
-/**
  * @brief Count held gas behind a front: it stays in the region's mass until
  * its tag lapses, but its upkeep is not paid and its tag is not renewed.
  *

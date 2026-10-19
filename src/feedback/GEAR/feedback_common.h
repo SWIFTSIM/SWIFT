@@ -92,12 +92,6 @@ int feedback_iact_HII_ionization(
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
     const double time, const double dt_back, const double open_share);
 
-int feedback_HII_part_holdable(
-    const struct spart *restrict si, const struct part *restrict pj,
-    const struct xpart *restrict xpj, const int pixel,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double open_share);
 double feedback_iact_HII_maintain_ionized_part(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, int pixel,
