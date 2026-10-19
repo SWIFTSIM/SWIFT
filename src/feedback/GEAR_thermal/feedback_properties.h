@@ -35,6 +35,7 @@
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_random_cone_frame_per_star 0
+#define default_HII_cone_frame_redraw_period 0
 #define default_HII_rebuild_floor_Myr 1e-4
 #define default_dt_evolution_factor_max 300.0
 #define default_event_dt_floor_Myr 1e-4
@@ -255,9 +256,14 @@ struct feedback_props {
    * probabilistic, 1 = always ionize it. */
   char HII_deterministic_boundary_ionization;
 
-  /*! Rotate each star's HEALPix cone frame by a rotation fixed by its ID (1),
-   * or keep the cones fixed to the box axes (0). */
+  /*! Rotate each star's HEALPix cone frame by a rotation set by its ID and,
+   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1), or keep the
+   * cones fixed to the box axes (0). */
   char HII_random_cone_frame_per_star;
+
+  /*! Number of the star's own HII passes between two draws of its cone
+   * frame; 0 keeps the frame for the star's life. */
+  int HII_cone_frame_redraw_period;
 
   /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
@@ -386,6 +392,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
                 : "probabilistic");
     message("HII random cone frame per star                             = %s",
             feedback_props->HII_random_cone_frame_per_star ? "on" : "off");
+    message("HII cone frame redraw period (star passes)                 = %d",
+            feedback_props->HII_cone_frame_redraw_period);
     message("HII max age (internal units)                               = %g",
             feedback_props->HII_max_age);
     message("HII rebuild time (internal units)                          = %g",
@@ -983,6 +991,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:HII_random_cone_frame_per_star must be 0 or 1, got %d.",
           random_cone_frame);
     fp->HII_random_cone_frame_per_star = (char)random_cone_frame;
+
+    fp->HII_cone_frame_redraw_period = parser_get_opt_param_int(
+        params, "GEARFeedback:HII_cone_frame_redraw_period",
+        default_HII_cone_frame_redraw_period);
+    if (fp->HII_cone_frame_redraw_period < 0)
+      error("GEARFeedback:HII_cone_frame_redraw_period must be >= 0, got %d.",
+            fp->HII_cone_frame_redraw_period);
 
     fp->HII_rebuild_floor_Myr =
         parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",

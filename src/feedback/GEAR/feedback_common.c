@@ -1084,8 +1084,8 @@ int feedback_get_star_HII_pixel_count(const struct spart *sp) {
 }
 
 /**
- * @brief Does each star rotate its HEALPix cone frame by a rotation fixed by
- * its ID?
+ * @brief Does each star rotate its HEALPix cone frame by a rotation set by its
+ * ID and pass epoch?
  *
  * @param feedback_props The #feedback_props.
  * @return 1 if the cone frame is rotated, 0 if cones follow the box axes.
@@ -1093,6 +1093,27 @@ int feedback_get_star_HII_pixel_count(const struct spart *sp) {
 int feedback_get_HII_random_cone_frame(
     const struct feedback_props *feedback_props) {
   return feedback_props->HII_random_cone_frame_per_star;
+}
+
+/**
+ * @brief Number of passes between two draws of a star's cone frame.
+ *
+ * @param feedback_props The #feedback_props.
+ * @return The redraw period, or 0 when the frame is kept for the star's life.
+ */
+int feedback_get_HII_cone_frame_redraw_period(
+    const struct feedback_props *feedback_props) {
+  return feedback_props->HII_cone_frame_redraw_period;
+}
+
+/**
+ * @brief Count one HII pass of this star.
+ *
+ * @param sp The #spart to update.
+ * @return The number of passes the star made before this one.
+ */
+int64_t feedback_count_star_HII_pass(struct spart *sp) {
+  return sp->feedback_data.radiation.HII_pass_count++;
 }
 
 /**
@@ -1679,6 +1700,7 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
   /* 0.0 reads as "never attempted", so the first attempt's dt_elapsed
      measures from the star's actual birth age. */
   sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
+  sp->feedback_data.radiation.HII_pass_count = 0;
 
   /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
      carries a pixel's overdraft into the next pass, so this must start clean.
@@ -1836,9 +1858,10 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
-        "dissipation fields, HII random cone frame flag). A restart "
-        "written by another code version cannot be resumed: rerun the "
-        "simulation from its initial conditions.",
+        "dissipation fields, HII random cone frame flag, redraw period and "
+        "star pass count). "
+        "A restart written by another code version cannot be resumed: rerun "
+        "the simulation from its initial conditions.",
         flux_form, feedback_restart_particle_layout());
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
@@ -1847,6 +1870,9 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
       feedback->HII_random_cone_frame_per_star != 1)
     error("The restart file holds an invalid HII random cone frame flag %d.",
           (int)feedback->HII_random_cone_frame_per_star);
+  if (feedback->HII_cone_frame_redraw_period < 0)
+    error("The restart file holds an invalid HII cone frame redraw period %d.",
+          feedback->HII_cone_frame_redraw_period);
 
   /* The two ISRF operator/moment maps are compile-time constants, so
    * feedback_props_init()'s own check of them applies unchanged here; it
