@@ -18,7 +18,8 @@ KPC_CM = 3.0856775814913673e21
 K_B = 1.380649e-16
 
 
-def parse_options():
+def parse_options() -> argparse.Namespace:
+    """Parse the command-line options."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
         "--gas_mass", type=float, default=20.0, help="Gas particle mass [Msun]"
@@ -62,7 +63,8 @@ def parse_options():
     return p.parse_args()
 
 
-def main():
+def main() -> None:
+    """Write the initial conditions file."""
     opt = parse_options()
     rng = np.random.default_rng(opt.seed)
 
@@ -91,7 +93,8 @@ def main():
     cdf = 1.0 - (1.0 + r_grid / Rd) * np.exp(-r_grid / Rd)
     cdf /= cdf[-1]
 
-    def sample_disc(n):
+    def sample_disc(n: int) -> np.ndarray:
+        """Draw n positions from the truncated disc profile [kpc]."""
         R = np.interp(rng.random(n), cdf, r_grid)
         phi = 2.0 * np.pi * rng.random(n)
         z = rng.normal(0.0, hz, n)

@@ -28,7 +28,7 @@ run_analysis=${run_analysis:=1}     # Run plot_hii_disc.py on the final snapshot
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    "$scripts_location"/getGrackleCoolingTable.sh
+    "$scripts_location"/getGrackleCoolingTable.sh --hm2012
 fi
 
 "$scripts_location"/getRadiationTable.sh radiation_fits_popII.hdf5 || exit 1

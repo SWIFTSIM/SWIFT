@@ -19,7 +19,8 @@ import numpy as np
 from matplotlib.colors import LogNorm
 
 
-def parse_options():
+def parse_options() -> argparse.Namespace:
+    """Parse the command-line options."""
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("-s", dest="base", default="snap/snapshot", help="Snapshot basename")
     p.add_argument(
@@ -39,12 +40,22 @@ def parse_options():
     return p.parse_args()
 
 
-def column_map(x, y, w, xr, yr, nx, ny):
+def column_map(
+    x: np.ndarray,
+    y: np.ndarray,
+    w: np.ndarray,
+    xr: list[float],
+    yr: list[float],
+    nx: int,
+    ny: int,
+) -> np.ndarray:
+    """Return the weighted 2D histogram of (x, y), transposed for imshow."""
     img, _, _ = np.histogram2d(x, y, bins=[nx, ny], range=[xr, yr], weights=w)
     return img.T
 
 
-def main():
+def main() -> None:
+    """Plot the face-on and edge-on views of a snapshot."""
     opt = parse_options()
     if opt.index is None:
         files = sorted(glob.glob(f"{opt.base}_*.hdf5"))
