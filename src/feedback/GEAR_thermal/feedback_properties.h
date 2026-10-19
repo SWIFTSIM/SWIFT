@@ -36,7 +36,7 @@
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_random_cone_frame_per_star 0
 #define default_HII_cone_frame_redraw_period 0
-#define default_HII_cone_claim_rule 0
+#define default_HII_cone_claim_rule 1
 #define default_HII_rebuild_floor_Myr 1e-4
 #define default_dt_evolution_factor_max 300.0
 #define default_event_dt_floor_Myr 1e-4
@@ -265,8 +265,8 @@ struct feedback_props {
   /*! Number of the star's own HII passes between two draws of its cone
    * frame; 0 keeps the frame for the star's life. */
   int HII_cone_frame_redraw_period;
-  /*! What a cone does at a candidate it cannot afford: 0 walks on, 1 stops,
-   * 2 casts a shadow (enum hii_cone_claim_rule). */
+  /*! What a cone does at a candidate it cannot afford: 1 stops, 2 casts a
+   * shadow (enum hii_cone_claim_rule). */
   char HII_cone_claim_rule;
 
   /*! Floor on the interval the photon budget is integrated over. */
@@ -296,6 +296,20 @@ __attribute__((always_inline)) INLINE static int
 feedback_props_needs_cooling_initialized(
     const struct feedback_props *feedback_props) {
   return (feedback_props->radiation_policy & radiation_policy_isrf) != 0;
+}
+
+/**
+ * @brief The HII cone claim rule a value of GEARFeedback:HII_cone_claim_rule
+ * selects. The retired value 0 selects the stop rule.
+ *
+ * @param value The parameter value.
+ * @return 1 (stop rule) or 2 (shadow mask), or -1 for an invalid value.
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_HII_cone_claim_rule_from_param(const int value) {
+  if (value == 0 || value == 1) return 1;
+  if (value == 2) return 2;
+  return -1;
 }
 
 /**
@@ -1004,18 +1018,23 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     if (fp->HII_cone_frame_redraw_period < 0)
       error("GEARFeedback:HII_cone_frame_redraw_period must be >= 0, got %d.",
             fp->HII_cone_frame_redraw_period);
-    const int cone_claim_rule =
+    const int cone_claim_param =
         parser_get_opt_param_int(params, "GEARFeedback:HII_cone_claim_rule",
                                  default_HII_cone_claim_rule);
-    if (cone_claim_rule < 0 || cone_claim_rule > 2)
-      error("GEARFeedback:HII_cone_claim_rule must be 0, 1 or 2, got %d.",
-            cone_claim_rule);
-    if (cone_claim_rule != 0 && fp->HII_deterministic_boundary_ionization)
+    const int cone_claim_rule =
+        feedback_HII_cone_claim_rule_from_param(cone_claim_param);
+    if (cone_claim_rule < 0)
+      error("GEARFeedback:HII_cone_claim_rule must be 1 or 2, got %d.",
+            cone_claim_param);
+    if (cone_claim_param == 0 && engine_rank == 0)
+      warning(
+          "GEARFeedback:HII_cone_claim_rule 0 is retired; the stop rule (1) "
+          "is used instead.");
+    if (cone_claim_rule == 2 && fp->HII_deterministic_boundary_ionization)
       error(
-          "GEARFeedback:HII_cone_claim_rule %d acts on the roll at the "
+          "GEARFeedback:HII_cone_claim_rule 2 acts on the roll at the "
           "boundary, which GEARFeedback:HII_deterministic_boundary_ionization "
-          "1 replaces. Set one of them to 0.",
-          cone_claim_rule);
+          "1 replaces. Set one of them to 0 or 1.");
     if (cone_claim_rule == 2 && fp->stellar_model.rad.n_HII_pixels <= 1)
       error(
           "GEARFeedback:HII_cone_claim_rule 2 splits each HEALPix cone into "

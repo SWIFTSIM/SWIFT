@@ -77,7 +77,7 @@ static int report(const char *name, const double value, const double bar,
 }
 
 /**
- * @brief The claim decision of the claim loop before the rule existed.
+ * @brief The plain roll: claimed if affordable or on a won draw.
  *
  * @param budget Photons left.
  * @param cost Candidate cost.
@@ -91,9 +91,8 @@ static int old_claim(const double budget, const double cost, const float u) {
 }
 
 /**
- * @brief Claimed share of holdable unaffordable candidates under a rule.
+ * @brief Claimed share of holdable unaffordable candidates.
  *
- * @param rule The #hii_cone_claim_rule.
  * @param budget Photons left.
  * @param cost Candidate cost, above @p budget.
  * @param rate Recombination rate of the candidate.
@@ -101,15 +100,15 @@ static int old_claim(const double budget, const double cost, const float u) {
  * @param fronts (return) Share of draws giving a front.
  * @return Share of draws giving a claim.
  */
-static double claimed_share(const int rule, const double budget,
-                            const double cost, const double rate,
-                            const double cone_rate, double *fronts) {
+static double claimed_share(const double budget, const double cost,
+                            const double rate, const double cone_rate,
+                            double *fronts) {
   uint64_t state = 12345;
   long n_claimed = 0, n_front = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const float u = (float)test_uniform(&state);
     const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(rule, 0, budget, cost, rate, cone_rate, u);
+        runner_hii_candidate_outcome(0, budget, cost, rate, cone_rate, u);
     if (o == hii_candidate_claimed) n_claimed++;
     if (o == hii_candidate_front) n_front++;
   }
@@ -126,99 +125,99 @@ static int test_decision(void) {
   int fail = 0;
   uint64_t state = 777;
 
-  /* The walk-on rule reproduces the old decision, draw for draw. */
+  /* The retired value 0 selects the stop rule; other values are refused. */
+  const int param_values[6] = {-1, 0, 1, 2, 3, 99};
+  const int expected_rules[6] = {-1, 1, 1, 2, -1, -1};
+  long mapped_wrong = 0;
+  for (int k = 0; k < 6; k++)
+    if (feedback_HII_cone_claim_rule_from_param(param_values[k]) !=
+        expected_rules[k])
+      mapped_wrong++;
+  fail += report("parameter values mapped to the wrong rule (0 must give 1)",
+                 (double)mapped_wrong, 0., 0);
+
+  /* On holdable gas a claim is decided as before the rules existed, draw for
+     draw; what is not claimed is a front. */
   long differ = 0, passed_bad = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const double budget = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const double cost = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o = runner_hii_candidate_outcome(
-        hii_cone_claim_walk_on, 0, budget, cost, cost, budget, u);
+    const enum hii_candidate_outcome o =
+        runner_hii_candidate_outcome(0, budget, cost, 0.5, 1.0, u);
     if ((o == hii_candidate_claimed) != old_claim(budget, cost, u)) differ++;
-    if (o == hii_candidate_front) passed_bad++;
+    if (o == hii_candidate_passed) passed_bad++;
   }
-  fail += report("walk-on rule: decisions differing from the old loop",
+  fail += report("holdable gas: claims differing from the plain roll",
                  (double)differ, 0., 0);
-  fail += report("walk-on rule: fronts returned (must be none)",
+  fail += report("holdable gas: candidates passed over (must be none)",
                  (double)passed_bad, 0., 0);
 
-  /* Control: the stop rule with gas never holdable differs from the old
-     decision. */
+  /* Control: gas never holdable differs from the plain roll. */
   long differ_stop = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const double budget = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const double cost = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o = runner_hii_candidate_outcome(
-        hii_cone_claim_stop, 0, budget, cost, 2.0, 1.0, u);
+    const enum hii_candidate_outcome o =
+        runner_hii_candidate_outcome(0, budget, cost, 2.0, 1.0, u);
     if ((o == hii_candidate_claimed) != old_claim(budget, cost, u))
       differ_stop++;
   }
-  fail += report("control: stop rule differs from the old loop (must)",
+  fail += report("control: gas not holdable differs from the plain roll (must)",
                  (double)differ_stop, 0., 1);
 
-  /* Affordable gas is claimed by every rule, also at cost == budget. */
+  /* Affordable gas is claimed, also at cost == budget. */
   long refused = 0;
-  for (int rule = 0; rule < hii_cone_claim_rule_count; rule++) {
-    for (long i = 0; i < 1000; i++) {
-      const double budget = 1.0 + test_uniform(&state);
-      const double cost = budget * (i == 0 ? 1.0 : test_uniform(&state));
-      if (runner_hii_candidate_outcome(rule, 0, budget, cost, 1e30, 1.0,
-                                       0.99f) != hii_candidate_claimed)
-        refused++;
-    }
+  for (long i = 0; i < 1000; i++) {
+    const double budget = 1.0 + test_uniform(&state);
+    const double cost = budget * (i == 0 ? 1.0 : test_uniform(&state));
+    if (runner_hii_candidate_outcome(0, budget, cost, 1e30, 1.0, 0.99f) !=
+        hii_candidate_claimed)
+      refused++;
   }
-  fail +=
-      report("affordable gas not claimed, all rules", (double)refused, 0., 0);
+  fail += report("affordable gas not claimed", (double)refused, 0., 0);
 
   /* The deterministic boundary claims every candidate. */
-  long det = 0;
-  for (int rule = 0; rule < hii_cone_claim_rule_count; rule++)
-    if (runner_hii_candidate_outcome(rule, 1, 1.0, 10.0, 1e30, 1.0, 0.99f) !=
-        hii_candidate_claimed)
-      det++;
-  fail += report("deterministic boundary: candidates not claimed", (double)det,
-                 0., 0);
+  fail += report(
+      "deterministic boundary: candidate not claimed",
+      (double)(runner_hii_candidate_outcome(1, 1.0, 10.0, 1e30, 1.0, 0.99f) !=
+               hii_candidate_claimed),
+      0., 0);
 
   /* The holdable gate: no roll on gas that costs more upkeep than the cone
      receives, even with the luckiest draw. */
-  long gate_claims[hii_cone_claim_rule_count] = {0};
-  for (int rule = 0; rule < hii_cone_claim_rule_count; rule++) {
-    const double rate_ratio[3] = {1.0, 1.5, 1e4};
-    for (int k = 0; k < 3; k++)
-      if (runner_hii_candidate_outcome(rule, 0, 1.0, 1.0001, rate_ratio[k], 1.0,
-                                       0.f) == hii_candidate_claimed)
-        gate_claims[rule]++;
-  }
-  fail += report("stop rule: gas not holdable claimed with draw 0",
-                 (double)gate_claims[1], 0., 0);
-  fail += report("shadow rule: gas not holdable claimed with draw 0",
-                 (double)gate_claims[2], 0., 0);
-  fail += report("control: walk-on rule claims gas not holdable (must)",
-                 (double)gate_claims[0], 0., 1);
+  long gate_claims = 0;
+  const double rate_ratio[3] = {1.0, 1.5, 1e4};
+  for (int k = 0; k < 3; k++)
+    if (runner_hii_candidate_outcome(0, 1.0, 1.0001, rate_ratio[k], 1.0, 0.f) ==
+        hii_candidate_claimed)
+      gate_claims++;
+  fail += report("gas not holdable claimed with draw 0", (double)gate_claims,
+                 0., 0);
+  fail += report(
+      "control: holdable gas claimed with draw 0 (must)",
+      (double)(runner_hii_candidate_outcome(0, 1.0, 1.0001, 0.5, 1.0, 0.f) ==
+               hii_candidate_claimed),
+      0., 1);
 
   /* On holdable gas the roll keeps the expected spend at the budget: the
      claimed share is budget / cost, within 5 standard errors. */
   const double budget = 0.3, cost = 1.0;
   const double p = budget / cost;
   const double sigma = sqrt(p * (1. - p) / N_DRAWS);
-  for (int rule = 0; rule < hii_cone_claim_rule_count; rule++) {
+  {
     double fronts = 0.;
-    const double share = claimed_share(rule, budget, cost, 0.5, 1.0, &fronts);
-    char name[128];
-    snprintf(name, sizeof(name),
-             "rule %d, holdable gas: |claimed share - budget/cost| / sigma",
-             rule);
-    fail += report(name, fabs(share - p) / sigma, 5., 0);
-    snprintf(name, sizeof(name),
-             "rule %d, holdable gas: |front share - expected| / sigma", rule);
-    const double expect_front = rule == 0 ? 0. : 1. - p;
-    fail += report(name, fabs(fronts - expect_front) / sigma, 5., 0);
+    const double share = claimed_share(budget, cost, 0.5, 1.0, &fronts);
+    fail += report("holdable gas: |claimed share - budget/cost| / sigma",
+                   fabs(share - p) / sigma, 5., 0);
+    fail += report("holdable gas: |front share - (1 - budget/cost)| / sigma",
+                   fabs(fronts - (1. - p)) / sigma, 5., 0);
   }
   /* Control: the same statistic against a wrong share must fail. */
   {
     double fronts = 0.;
-    const double share = claimed_share(1, budget, cost, 0.5, 1.0, &fronts);
+    const double share = claimed_share(budget, cost, 0.5, 1.0, &fronts);
     fail += report("control: claimed share against 1.1 budget/cost (must)",
                    fabs(share - 1.1 * p) / sigma, 5., 1);
   }
@@ -450,19 +449,16 @@ static int test_open_gate(void) {
   const double share_narrow = runner_hii_shadow_open_share(&cone, narrow);
   fail += report("narrow footprint: |open share - 1/64|",
                  fabs(share_narrow - 1.0 / hii_shadow_children), 0., 0);
-  long narrow_claims = 0;
-  for (int rule = 1; rule < hii_cone_claim_rule_count; rule++)
-    if (runner_hii_candidate_outcome(rule, 0, 1.0, 1.0001, 0.5,
-                                     share_narrow * cone_rate,
-                                     0.f) != hii_candidate_front)
-      narrow_claims++;
   fail += report("narrow footprint, upkeep 0.5: not a front with draw 0",
-                 (double)narrow_claims, 0., 0);
-  fail += report("control: whole-cone gate claims it with draw 0 (must)",
                  (double)(runner_hii_candidate_outcome(
-                              hii_cone_claim_shadow_mask, 0, 1.0, 1.0001, 0.5,
-                              cone_rate, 0.f) == hii_candidate_claimed),
-                 0., 1);
+                              0, 1.0, 1.0001, 0.5, share_narrow * cone_rate,
+                              0.f) != hii_candidate_front),
+                 0., 0);
+  fail += report(
+      "control: whole-cone gate claims it with draw 0 (must)",
+      (double)(runner_hii_candidate_outcome(0, 1.0, 1.0001, 0.5, cone_rate,
+                                            0.f) == hii_candidate_claimed),
+      0., 1);
 
   /* Partly blocked footprint: only its open sub-cones count, against an
      independent count over the centres. */
@@ -492,18 +488,16 @@ static int test_open_gate(void) {
   const double upkeep_mid =
       0.5 * (n_open_cover + n_cover) / (double)hii_shadow_children;
   const double upkeep_low = 0.5 * share_fp;
-  fail += report(
-      "upkeep above the open share: claimed with draw 0",
-      (double)(runner_hii_candidate_outcome(
-                   hii_cone_claim_shadow_mask, 0, 1.0, 1.0001, upkeep_mid,
-                   share_fp * cone_rate, 0.f) != hii_candidate_front),
-      0., 0);
-  fail += report(
-      "upkeep below the open share: not claimed with draw 0",
-      (double)(runner_hii_candidate_outcome(
-                   hii_cone_claim_shadow_mask, 0, 1.0, 1.0001, upkeep_low,
-                   share_fp * cone_rate, 0.f) != hii_candidate_claimed),
-      0., 0);
+  fail += report("upkeep above the open share: claimed with draw 0",
+                 (double)(runner_hii_candidate_outcome(
+                              0, 1.0, 1.0001, upkeep_mid, share_fp * cone_rate,
+                              0.f) != hii_candidate_front),
+                 0., 0);
+  fail += report("upkeep below the open share: not claimed with draw 0",
+                 (double)(runner_hii_candidate_outcome(
+                              0, 1.0, 1.0001, upkeep_low, share_fp * cone_rate,
+                              0.f) != hii_candidate_claimed),
+                 0., 0);
 
   /* A footprint over the whole sphere sees the cone's open share. */
   const uint64_t all = runner_hii_shadow_footprint(&cone, dir, own, -1.0);

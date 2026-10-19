@@ -101,10 +101,6 @@ feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars) {
  */
 enum hii_cone_claim_rule {
 
-  /*! One roll with p = budget / cost; a lost roll spends nothing and the
-      cone goes on to farther, cheaper gas. */
-  hii_cone_claim_walk_on = 0,
-
   /*! The first unaffordable candidate ends the cone: it is claimed on a won
       roll, and the rest of the budget is absorbed otherwise (Hopkins et al.
       2018, Appendix E). No roll on gas whose recombination rate is at least
@@ -120,9 +116,6 @@ enum hii_cone_claim_rule {
   hii_cone_claim_shadow_mask = 2,
 };
 
-/*! Number of values the HII cone claim rule accepts. */
-#define hii_cone_claim_rule_count 3
-
 /**
  * @brief Result of offering one untagged candidate to a cone.
  */
@@ -131,7 +124,7 @@ enum hii_candidate_outcome {
   /*! The candidate is claimed and its cost charged. */
   hii_candidate_claimed = 0,
 
-  /*! Not claimed and nothing charged: the cone goes on. */
+  /*! Already ionized: nothing charged, the cone goes on. */
   hii_candidate_passed = 1,
 
   /*! Not claimed: the candidate is an ionization front that absorbs photons. */
@@ -142,10 +135,9 @@ enum hii_candidate_outcome {
  * @brief Decide whether a cone claims an untagged candidate.
  *
  * The roll is the one-per-cone draw of the caller, so a cone rolls once per
- * pass whatever the rule. Under #hii_cone_claim_walk_on the comparison is the
- * single-precision one the claim loop always used.
+ * pass. The same decision serves both claim rules: they differ in what a
+ * front absorbs.
  *
- * @param rule The #hii_cone_claim_rule.
  * @param deterministic 1 if the boundary candidate is always claimed.
  * @param budget Photons left in the cone.
  * @param cost Photons the candidate costs: its neutral atoms plus one
@@ -160,9 +152,8 @@ enum hii_candidate_outcome {
  * @return The #hii_candidate_outcome.
  */
 __attribute__((always_inline)) INLINE static enum hii_candidate_outcome
-runner_hii_candidate_outcome(const int rule, const int deterministic,
-                             const double budget, const double cost,
-                             const double recombination_rate,
+runner_hii_candidate_outcome(const int deterministic, const double budget,
+                             const double cost, const double recombination_rate,
                              const double open_photon_rate,
                              const float random_number) {
 
@@ -170,14 +161,12 @@ runner_hii_candidate_outcome(const int rule, const int deterministic,
   if (deterministic) return hii_candidate_claimed;
 
   /* The photons that reach this gas could not keep it ionized. */
-  if (rule != hii_cone_claim_walk_on && recombination_rate >= open_photon_rate)
-    return hii_candidate_front;
+  if (recombination_rate >= open_photon_rate) return hii_candidate_front;
 
   const float proba = budget / cost;
   if (random_number <= proba) return hii_candidate_claimed;
 
-  return (rule == hii_cone_claim_walk_on) ? hii_candidate_passed
-                                          : hii_candidate_front;
+  return hii_candidate_front;
 }
 
 /*! Sub-cones per cone of the shadow mask: the nested HEALPix children at

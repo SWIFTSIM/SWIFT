@@ -1034,31 +1034,27 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
 
   const double budget = feedback_get_star_ionization_budget(si, pixel);
 
-  /* Keyed on the star and the pixel, deliberately *not* on pj: this must be
-     one trial per pixel per pass. The same number is drawn for every
-     candidate offered to this pixel, so under the walk-on rule a loss
-     rejects the whole remaining shell, which is exactly the (1 - proba)
-     branch and keeps the expected spend equal to the budget. Rolling per
-     candidate instead would give each of the up-to
-     HII_max_retry_full_buffer x max_ngbs candidates an independent shot in a
-     loop that stops at the first win, so a pass would claim one particle
-     almost surely and spend `cost` rather than `budget`. */
+  /* Keyed on the star and the pixel, deliberately *not* on pj: one draw per
+     pixel per pass. Under the stop rule the first unaffordable candidate
+     ends the cone whether it is claimed or absorbs the rest, so the
+     expected spend equals the budget. Under the shadow mask every
+     candidate the cone rolls for reuses this draw. */
   float random_number = 0.f;
   if (cost > budget && !deterministic_boundary)
     random_number = random_unit_interval_part_ID_and_index(
         si->id, pixel, ti_begin, random_number_HII_regions);
 
-  const int rule = feedback_props->HII_cone_claim_rule;
   const enum hii_candidate_outcome outcome = runner_hii_candidate_outcome(
-      rule, deterministic_boundary, budget, cost,
-      Delta_dot_N_ion_maintenance_rate,
+      deterministic_boundary, budget, cost, Delta_dot_N_ion_maintenance_rate,
       open_share * feedback_get_star_ionization_rate(si, pixel), random_number);
 
   if (outcome == hii_candidate_claimed) {
     /* On a won roll the full cost is consumed, more than what was left. */
     feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
                             dt_back, cost);
-  } else if (outcome == hii_candidate_front && rule == hii_cone_claim_stop) {
+  } else if (outcome == hii_candidate_front &&
+             feedback_props->HII_cone_claim_rule !=
+                 hii_cone_claim_shadow_mask) {
     /* The front absorbs what is left, which ends the cone. */
     radiation_consume_ionizing_photons(si, pixel, budget);
   }
@@ -1905,7 +1901,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   if (feedback->HII_cone_frame_redraw_period < 0)
     error("The restart file holds an invalid HII cone frame redraw period %d.",
           feedback->HII_cone_frame_redraw_period);
-  if (feedback->HII_cone_claim_rule < 0 || feedback->HII_cone_claim_rule > 2)
+  if (feedback->HII_cone_claim_rule != 1 && feedback->HII_cone_claim_rule != 2)
     error("The restart file holds an invalid HII cone claim rule %d.",
           (int)feedback->HII_cone_claim_rule);
 
