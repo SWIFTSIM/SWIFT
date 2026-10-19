@@ -650,11 +650,11 @@ particles first, which then reach their already-recorded
 \texttt{end\_time} unrenewed and expire on their own next cooling
 step. A receding region therefore shrinks from its outer shell inward,
 rather than developing a hole wherever the traversal order happened to
-run out of budget. Each held particle is re-priced against the same
-pixel it was assigned to when claimed or last renewed (the stored
-pixel index is passed straight through to the photon spend), so upkeep tracks
-ownership, not a particle's current direction from the star even if it
-has since drifted into another cone.
+run out of budget. A held particle stores no pixel index. Each pass
+finds its pixel again from its current direction from the star, in the
+star's cone frame of that pass, and charges its upkeep to that pixel's
+budget. Upkeep therefore follows the particle: gas that has drifted into
+another cone is charged to that cone.
 
 The star's extent measure, $h_{\rm hii}$, is updated from this same
 pass: it is set to the largest $r$ among particles the star still
@@ -674,9 +674,10 @@ same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
 \paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{src/feedback/GEAR/feedback\_common.c:842}) passes the stored pixel index
-to \code{radiation\_consume\_ionizing\_photons}
-(\code{src/feedback/GEAR/radiation\_gas.c:399}).
+(\code{src/feedback/GEAR/feedback\_common.c:925}) passes the pixel index found
+for the particle's current direction when it was gathered to
+\code{radiation\_consume\_ionizing\_photons}
+(\code{src/feedback/GEAR/radiation\_gas.c:473}).
 
 \subsection{Front-radius measure}
 \label{sec:front-radius}
