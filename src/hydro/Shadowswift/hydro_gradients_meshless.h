@@ -94,9 +94,11 @@ __attribute__((always_inline)) INLINE static void hydro_gradients_collect(
     }
   }
 
+  float ds_norm =  sqrtf(ds[0] * ds[0] + ds[1] * ds[1] + ds[2] * ds[2]);
+
   /* Collect slope limiting info */
-  hydro_slope_limit_cell_collect(pi, pj, r);
-  hydro_slope_limit_cell_collect(pj, pi, r);
+  hydro_slope_limit_cell_collect(pi, pj, ds_norm);
+  hydro_slope_limit_cell_collect(pj, pi, ds_norm);
 }
 
 /**
