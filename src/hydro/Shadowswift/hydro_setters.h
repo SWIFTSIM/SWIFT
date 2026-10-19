@@ -30,7 +30,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_timestep_vars(
   p->timestepvars.v_signal = 0.f;
   p->timestepvars.mach_number = 0.f;
   p->timestepvars.Ekin = 0.f;
-  p->timestepvars.tau = 0.f;
+  p->timestepvars.tau = FLT_MAX;
 }
 
 /**
