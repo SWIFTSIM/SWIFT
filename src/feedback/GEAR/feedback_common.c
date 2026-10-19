@@ -1084,8 +1084,8 @@ int feedback_get_star_HII_pixel_count(const struct spart *sp) {
 }
 
 /**
- * @brief Does each star rotate its HEALPix cone frame by a rotation fixed by
- * its ID?
+ * @brief Does each star rotate its HEALPix cone frame by a rotation set by its
+ * ID and pass epoch?
  *
  * @param feedback_props The #feedback_props.
  * @return 1 if the cone frame is rotated, 0 if cones follow the box axes.

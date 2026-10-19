@@ -498,6 +498,35 @@ static double relative_trace(const double A[9], const double B[9]) {
 }
 
 /**
+ * @brief The cone frame as built before the redraw existed, with an optional
+ * shift of the time argument of the draws.
+ *
+ * @param id The star ID.
+ * @param shift Added to the time arguments 0, 1 and 2 (0 for the old formula).
+ * @param R (return) The rotation matrix, row-major.
+ */
+static void frame_old_formula(const int64_t id, const int shift, double R[9]) {
+  const double u1 =
+      random_unit_interval(id, 0 + shift, random_number_HII_frame_rotation);
+  const double u2 =
+      random_unit_interval(id, 1 + shift, random_number_HII_frame_rotation);
+  const double u3 =
+      random_unit_interval(id, 2 + shift, random_number_HII_frame_rotation);
+  const double a = sqrt(1.0 - u1), b = sqrt(u1);
+  const double qx = a * sin(2.0 * M_PI * u2), qy = a * cos(2.0 * M_PI * u2);
+  const double qz = b * sin(2.0 * M_PI * u3), qw = b * cos(2.0 * M_PI * u3);
+  R[0] = 1.0 - 2.0 * (qy * qy + qz * qz);
+  R[1] = 2.0 * (qx * qy - qz * qw);
+  R[2] = 2.0 * (qx * qz + qy * qw);
+  R[3] = 2.0 * (qx * qy + qz * qw);
+  R[4] = 1.0 - 2.0 * (qx * qx + qz * qz);
+  R[5] = 2.0 * (qy * qz - qx * qw);
+  R[6] = 2.0 * (qx * qz - qy * qw);
+  R[7] = 2.0 * (qy * qz + qx * qw);
+  R[8] = 1.0 - 2.0 * (qx * qx + qy * qy);
+}
+
+/**
  * @brief Frame redraw checks: epoch of a pass index, frame inside and across
  * an epoch, a period of 0, independence and determinism.
  *
@@ -568,6 +597,21 @@ static int test_epochs(void) {
                  fabs(sum_stars / n_pairs), bar, 0);
   fail += report("control: |mean trace|, same star and epoch",
                  fabs(sum_same / n_pairs), bar, 1);
+
+  /* Epoch 0 is the frame of the code before the redraw existed. */
+  long differ_old = 0, differ_shifted = 0;
+  for (int64_t id = 1; id <= 1000; id++) {
+    double Re[9], Ro[9], Rs[9];
+    runner_hii_cone_frame_from_id(id, 0, Re);
+    frame_old_formula(id, 0, Ro);
+    frame_old_formula(id, 1, Rs);
+    if (memcmp(Re, Ro, sizeof(Re)) != 0) differ_old++;
+    if (memcmp(Re, Rs, sizeof(Re)) != 0) differ_shifted++;
+  }
+  fail += report("epoch 0 frames differing from the old formula (count)",
+                 (double)differ_old, 0.0, 0);
+  fail += report("control: shifted-argument frames equal to epoch 0 (count)",
+                 (double)(1000 - differ_shifted), 0.0, 0);
 
   /* No two (star, epoch) pairs share a frame. */
   const int n_e = 50;
