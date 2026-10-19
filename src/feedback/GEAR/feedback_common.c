@@ -642,12 +642,9 @@ feedback_get_star_ionization_budget_max(const struct spart *sp) {
 }
 
 /**
- * @brief Get the raw sum of the remaining ionizing photon count over all of
- * the #spart's active angular pixels, positive and negative contributions
- * alike
- * (a pixel in debt after #feedback_hii_claim_part's deterministic-boundary
- * overdraw counts negatively). Diagnostic only: the per-pixel budget is
- * still what every spending decision above is gated on.
+ * @brief Get the sum of the remaining ionizing photon count over all of the
+ * #spart's active angular pixels. Diagnostic only: the per-pixel budget is
+ * what every spending decision above is gated on.
  *
  * @param sp The star.
  * @return Sum of the remaining ionizing photon count over all active pixels.
@@ -837,7 +834,8 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
  * @param cooling Cooling function data.
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param cost Ionizing photon count to charge for this particle.
+ * @param cost Ionizing photon count the particle costs; at most the budget
+ * left is charged.
  */
 __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
     struct spart *restrict si, struct part *restrict pj,
@@ -877,12 +875,14 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
      mirrors. */
   if (xpj == NULL) {
     pj->feedback_data.r2 = r2;
-    pj->feedback_data.cost = cost;
+    pj->feedback_data.cost =
+        min(cost, feedback_get_star_ionization_budget(si, pixel));
     pj->feedback_data.claimed_this_pass = 1;
   }
 #endif
   timestep_sync_part(pj);
 
+  /* A candidate costing more than the budget takes what is left. */
   radiation_consume_ionizing_photons(si, pixel, cost);
 
   /* Update HII region properties */
@@ -901,7 +901,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * electrons are already stripped.
  *
  * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
- * renewed and cooling expires those tags at end_time. The caller
+ * renewed and cooling expires those tags at end_time. The last renewal of a
+ * pixel can be paid only in part. The caller
  * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
  * (r2, id) order over the star's whole held region, so a shortfall lapses
  * the outermost shell (largest r2, the recession front) first, rather than
@@ -940,7 +941,7 @@ feedback_iact_HII_maintain_ionized_part(
   const double cost =
       dt_back * radiation_get_part_rate_to_fully_ionize(
                     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
-  radiation_consume_ionizing_photons(si, pixel, cost);
+  const double charged = radiation_consume_ionizing_photons(si, pixel, cost);
 
   /* Renew in place: the tag's other fields would otherwise keep values
      frozen at first claim, growing staler every pass the particle survives.
@@ -967,12 +968,12 @@ feedback_iact_HII_maintain_ionized_part(
      why this only applies when xpj == NULL. */
   if (xpj == NULL) {
     pj->feedback_data.r2 = r2;
-    pj->feedback_data.cost = cost;
+    pj->feedback_data.cost = charged;
     pj->feedback_data.claimed_this_pass = 1;
   }
 #endif
 
-  return cost;
+  return charged;
 }
 
 /**
@@ -1049,7 +1050,9 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
       open_share * feedback_get_star_ionization_rate(si, pixel), random_number);
 
   if (outcome == hii_candidate_claimed) {
-    /* On a won roll the full cost is consumed, more than what was left. */
+    /* At most the budget left is charged. On a won roll that is all of it,
+       and p = budget / cost keeps the claimed cost equal to the budget on
+       average. */
     feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
                             dt_back, cost);
   } else if (outcome == hii_candidate_front &&
@@ -1730,9 +1733,7 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
   sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
   sp->feedback_data.radiation.HII_pass_count = 0;
 
-  /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
-     carries a pixel's overdraft into the next pass, so this must start clean.
-     Over the whole array, not n_HII_pixels, which can still grow. */
+  /* Over the whole array, not n_HII_pixels, which can still grow. */
   for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
   }

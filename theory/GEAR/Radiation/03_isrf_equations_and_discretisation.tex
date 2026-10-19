@@ -90,7 +90,7 @@ The steps of the list above are:
     \code{radiation\_snapshot\_part\_propagation}
     (\code{radiation\_isrf.c:151}), then
     \code{radiation\_reset\_part\_ISRF\_illumination\_tag}
-    (\code{radiation\_gas.c:564}), then
+    (\code{radiation\_gas.c:569}), then
     \code{radiation\_cache\_m1\_closure\_part}
     (\code{radiation\_propagation\_iact.h:261});
   \item density $h$-iteration: \code{radiation\_init\_part\_propagation}
@@ -1347,9 +1347,9 @@ effect, and the user must remove it from the parameter file by hand.
 (\code{feedback\_properties.h:70-78}). An invalid value stops the run at parse
 time (\code{feedback\_properties.h:783-789}), at the drift and density-ghost
 dispatch (\code{radiation\_isrf.c:213-222}, \code{:326-332}) and on a restart
-(\code{feedback\_common.c:1846-1856}). The layout marker is the macro
+(\code{feedback\_common.c:1875-1885}). The layout marker is the macro
 \code{FEEDBACK\_RESTART\_ISRF\_PART\_LAYOUT} (\code{feedback\_common.h:174-176}),
-written at \code{feedback\_common.c:1781-1783} and checked at \code{:1809-1829}. The speed of
+written at \code{feedback\_common.c:1810-1812} and checked at \code{:1838-1858}. The speed of
 scheme 2 is set at \code{radiation\_isrf.c:215-216} and that of scheme 4 at
 \code{radiation\_isrf.c:360-361}. The default scheme is parsed at
 \code{feedback\_properties.h:779-781} and $C_{\rm hyp}$ at
@@ -1831,12 +1831,12 @@ $G_0$ reaches Grackle's per-particle \code{isrf\_habing} only when
 \textbf{no} Grackle-mode gate: it gives 0 only if the ISRF is off.
 
 \paragraph{Implementation.} \code{radiation\_get\_part\_isrf\_habing}
-(\code{radiation\_gas.c:762-781}). Equations~(\ref{eq:isrfd-usum}),
+(\code{radiation\_gas.c:767-786}). Equations~(\ref{eq:isrfd-usum}),
 (\ref{eq:isrfd-habing-flux}) and (\ref{eq:isrfd-G0}) are at
-\code{radiation\_gas.c:768-769}, \code{:770}, \code{:771-773} and
-\code{:778-780}. The per-band clamp is
-\code{radiation\_get\_band\_u\_nonnegative} (\code{radiation\_gas.c:735-745}),
-read-only as its comment states (\code{radiation\_gas.c:727-729}). The value
+\code{radiation\_gas.c:773-774}, \code{:775}, \code{:776-778} and
+\code{:783-785}. The per-band clamp is
+\code{radiation\_get\_band\_u\_nonnegative} (\code{radiation\_gas.c:740-750}),
+read-only as its comment states (\code{radiation\_gas.c:732-734}). The value
 reaches Grackle at \code{cooling.c:931-938}; the forced Grackle switches are
 documented at \code{cooling\_properties.h:123-131}; the ungated getter is
 \code{cooling\_get\_isrf\_habing\_subgrid} (\code{cooling\_gear\_subgrid.h:267-273}).
@@ -1881,11 +1881,11 @@ an illuminated cloud without it.
 
 \paragraph{Implementation.}
 \code{radiation\_get\_part\_LW\_dissociation\_rate\_internal}
-(\code{radiation\_gas.c:799-820}). Equations~(\ref{eq:isrfd-lw-flux}) and
-(\ref{eq:isrfd-kdiss}) are at \code{radiation\_gas.c:804-805}, \code{:806-808},
-\code{:810} and \code{:811-812}. The diagnostic photon energy is
+(\code{radiation\_gas.c:804-825}). Equations~(\ref{eq:isrfd-lw-flux}) and
+(\ref{eq:isrfd-kdiss}) are at \code{radiation\_gas.c:809-810}, \code{:811-813},
+\code{:815} and \code{:816-817}. The diagnostic photon energy is
 \code{radiation\_lw\_photon\_energy\_cgs}, documented at
-\code{radiation\_gas.c:787-789} and \code{src/feedback/GEAR/radiation\_isrf.h:43-47}.
+\code{radiation\_gas.c:792-794} and \code{src/feedback/GEAR/radiation\_isrf.h:43-47}.
 The mode gate is \code{\#if COOLING\_GRACKLE\_MODE > 1} in
 \code{cooling\_get\_LW\_dissociation\_rate\_subgrid}
 (\code{cooling\_gear\_subgrid.h:288-299}). The priority of the per-particle rate
@@ -1945,7 +1945,7 @@ the reference metallicity is applied at \code{radiation.c:68-73}, and the
 unsized bias and the aged-population value are stated at
 \code{radiation.h:126-133}. Item 4: \code{radiation.h:67-70} and \code{:77-79}.
 Item 5: the column is \code{radiation\_isrf.c:1004}. Item 6: the rate ignores the
-spectrum's own photon energy, \code{radiation\_gas.c:787-789}.
+spectrum's own photon energy, \code{radiation\_gas.c:792-794}.
 
 \subsubsection{Clamps, floors and epsilon guards}
 
@@ -1985,10 +1985,10 @@ Each item below is a place where the scheme departs from its own ideal form.
 \code{radiation\_iact\_nonsym\_feedback\_apply} at \code{radiation\_iact.h:216-217},
 and in \code{radiation\_iact\_nonsym\_feedback\_density} at
 \code{radiation\_iact.h:72-74}. Item 15: \code{radiation\_clamp\_nonnegative\_for\_grackle}
-(\code{radiation\_gas.c:686-712}) and \code{radiation\_get\_band\_u\_nonnegative}
-(\code{:735-745}); the comment is \code{radiation\_gas.c:676-678}, and the
-throttle is \code{radiation\_gas.c:667-670} and \code{:701-709}. Item 16:
-\code{radiation\_gas.c:727-729}.
+(\code{radiation\_gas.c:691-717}) and \code{radiation\_get\_band\_u\_nonnegative}
+(\code{:740-750}); the comment is \code{radiation\_gas.c:681-683}, and the
+throttle is \code{radiation\_gas.c:672-675} and \code{:706-714}. Item 16:
+\code{radiation\_gas.c:732-734}.
 
 \subsubsection{Numerical and scheme limitations the code itself flags}
 

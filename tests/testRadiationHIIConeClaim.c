@@ -226,6 +226,56 @@ static int test_decision(void) {
 }
 
 /**
+ * @brief Checks that a cone budget never goes below zero and that a pass
+ * opens with its own photons only.
+ *
+ * @return Number of failed checks.
+ */
+static int test_no_debt(void) {
+  int fail = 0;
+  static struct spart sp;
+  memset(&sp, 0, sizeof(sp));
+  sp.feedback_data.radiation.n_HII_pixels = 1;
+  sp.feedback_data.radiation.dot_N_ion_pix[0] = 3.0e49;
+  sp.feedback_data.radiation.dot_N_ion_pix_prev[0] = -1.0;
+  const double dt = 0.02;
+  const double issued = 3.0e49 * dt;
+
+  radiation_open_ionizing_photon_budget(&sp, dt);
+  double budget = feedback_get_star_ionization_budget(&sp, 0);
+  fail += report("first pass: |budget - issued| / issued",
+                 fabs(budget - issued) / issued, 0., 0);
+
+  /* A won roll on a candidate costing 1.7 times the budget. */
+  const double taken = radiation_consume_ionizing_photons(&sp, 0, 1.7 * budget);
+  budget = feedback_get_star_ionization_budget(&sp, 0);
+  fail += report("won roll: budget left (must be exactly 0)",
+                 budget == 0.0 ? 0. : 1., 0., 0);
+  fail += report("won roll: |photons taken - budget before| / issued",
+                 fabs(taken - issued) / issued, 0., 0);
+  fail += report("spent pixel: photons taken by an upkeep (must be 0)",
+                 radiation_consume_ionizing_photons(&sp, 0, 1.0e40), 0., 0);
+
+  /* The next pass, same rate: its own photons and nothing else. */
+  radiation_open_ionizing_photon_budget(&sp, dt);
+  budget = feedback_get_star_ionization_budget(&sp, 0);
+  fail += report("pass after a won roll: |budget - issued| / issued",
+                 fabs(budget - issued) / issued, 0., 0);
+
+  /* Control: a budget left negative by hand is ignored on opening; with a
+     debt carried the open budget would differ from the issued count. */
+  sp.feedback_data.radiation.N_ion_budget_pix[0] = -0.5 * issued;
+  radiation_open_ionizing_photon_budget(&sp, dt);
+  budget = feedback_get_star_ionization_budget(&sp, 0);
+  fail += report("negative budget before opening: |budget - issued| / issued",
+                 fabs(budget - issued) / issued, 0., 0);
+  fail += report("control: a carried debt would leave this (must)",
+                 fabs((budget - 0.5 * issued) - issued) / issued, 0., 1);
+
+  return fail;
+}
+
+/**
  * @brief Checks of the absorbed share at a front.
  *
  * @return Number of failed checks.
@@ -517,6 +567,7 @@ int main(int argc, char *argv[]) {
   int fail = 0;
   fail += test_decision();
   fail += test_absorbed();
+  fail += test_no_debt();
 #if defined(HAVE_CHEALPIX)
   fail += test_geometry();
   fail += test_open_gate();

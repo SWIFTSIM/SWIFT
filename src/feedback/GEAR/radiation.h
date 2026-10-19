@@ -248,8 +248,8 @@ void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         int n_HII_pixels);
 void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_resync_ionizing_photon_rate_cache(struct spart *sp);
-void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
-                                        double Delta_N_ion);
+double radiation_consume_ionizing_photons(struct spart *sp, int pixel,
+                                          double Delta_N_ion);
 
 /**
  * @brief Set the mean photon energy above 13.6 eV of a star, in erg.

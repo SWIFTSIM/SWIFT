@@ -393,7 +393,7 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
 
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
- * photons emitted over dt_back plus any overdraft carried from the last pass.
+ * the photons emitted over dt_back. Nothing carries over from the last pass.
  *
  * The rate is integrated with the trapezoid rule, because a declining SSP rate
  * makes the rectangle rule under-issue photons.
@@ -411,12 +411,9 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 #endif
 
   for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    /* A pass overdraws its pixel by up to one particle's cost. Carry the debt
-       forward: forgiving it would over-issue photons as 1/dt_back. Unspent
-       positive budget escaped and is dropped. */
-    const double debt =
-        min(sp->feedback_data.radiation.N_ion_budget_pix[p], 0.);
-
+    /* Unspent photons escaped. A pixel never ends a pass below zero: a won
+       roll on a candidate costing more than the budget takes what is left,
+       and the roll's p = budget / cost keeps the spend unbiased. */
     const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[p];
     const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[p];
     /* rate_prev < 0: first pass, no previous sample, so use rate_now. */
@@ -424,7 +421,7 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
         rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
     const double issued = rate_used * dt_back;
 
-    sp->feedback_data.radiation.N_ion_budget_pix[p] = debt + issued;
+    sp->feedback_data.radiation.N_ion_budget_pix[p] = issued;
     sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = rate_now;
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
@@ -464,16 +461,24 @@ radiation_resync_ionizing_photon_rate_cache(struct spart *sp) {
 }
 
 /**
- * @brief Consume the #spart ionizing photon budget.
+ * @brief Consume the #spart ionizing photon budget, down to zero at most.
  *
  * @param sp The star.
  * @param pixel The angular pixel to consume from.
  * @param Delta_N_ion The ionizing photon count to remove.
+ * @return The photon count actually removed.
  */
-__attribute__((always_inline)) INLINE void radiation_consume_ionizing_photons(
+__attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
     struct spart *sp, int pixel, double Delta_N_ion) {
-  sp->feedback_data.radiation.N_ion_budget_pix[pixel] -= Delta_N_ion;
-  return;
+  double *budget = &sp->feedback_data.radiation.N_ion_budget_pix[pixel];
+  if (*budget <= 0.) return 0.;
+  if (Delta_N_ion >= *budget) {
+    const double taken = *budget;
+    *budget = 0.;
+    return taken;
+  }
+  *budget -= Delta_N_ion;
+  return Delta_N_ion;
 }
 
 /**

@@ -1172,7 +1172,7 @@ separated on the fixtures tested.
 \paragraph{Implementation.} The rate getters are
 \code{radiation\_get\_part\_isrf\_habing} and
 \code{radiation\_get\_part\_LW\_dissociation\_rate\_internal}
-(\code{src/feedback/GEAR/radiation\_gas.c:762} and \code{:799}); they read the
+(\code{src/feedback/GEAR/radiation\_gas.c:767} and \code{:804}); they read the
 true $c$ at lines 770 and 805.
 
 \paragraph{Speed definitions tested, and the default chosen among them.}
@@ -2155,7 +2155,7 @@ count would flatten the diagnostic identity that moment exists to
 expose.
 
 \paragraph{Implementation.} The star's proper-time window is formed by
-\code{compute\_time} (\code{src/feedback/GEAR/feedback\_common.c:544}), whose
+\code{compute\_time} (\code{src/feedback/GEAR/feedback\_common.c:545}), whose
 cosmology branch calls \code{cosmology\_get\_delta\_time} at lines 554-556,
 because \code{get\_timestep()} returns $\Delta(\ln a)$ under cosmology. The
 window is cached once per star and step by \code{feedback\_star\_store\_timestep}
