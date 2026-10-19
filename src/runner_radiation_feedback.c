@@ -776,7 +776,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message(
-        "HII pass: star %lld dt_back = %e, held = %d, recomb photons = %e, "
+        "HII pass: star %lld dt_back = %e, held = %d, recomb photons = %.17g, "
         "h_hii %e -> %e",
         si->id, dt_back, count_held, maintenance_ctx.photons_charged, si->h_hii,
         h_hii_held);
@@ -963,7 +963,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        CHECKSUM line above aggregates across pixels and cannot show this.
        One line per star per pass regardless of pixel count. */
     {
-      char pixel_summary[2048];
+      char pixel_summary[16384];
       size_t off = 0;
       const int n_pix = feedback_get_star_HII_pixel_count(si);
       for (int p = 0; p < n_pix && off < sizeof(pixel_summary); p++) {
@@ -972,7 +972,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
             pixel_roll_state[p] < 0 ? 'x' : (pixel_roll_state[p] ? 'W' : 'L');
         off += (size_t)snprintf(
             pixel_summary + off, sizeof(pixel_summary) - off,
-            "%s[%d:c=%d,sp=%.3e,lf=%.3e,r=%c]", p == 0 ? "" : " ", p,
+            "%s[%d:c=%d,sp=%.17g,lf=%.17g,r=%c]", p == 0 ? "" : " ", p,
             pixel_claimed_count[p], pixel_budget_start[p] - left, left, roll);
       }
       message("HII pixels: star %lld %s", si->id, pixel_summary);

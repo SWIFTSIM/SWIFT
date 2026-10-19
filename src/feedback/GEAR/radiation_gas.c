@@ -438,7 +438,7 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   message(
       "HII budget open: star %lld dt_back=%e rate_prev=%e rate_now=%e "
-      "rate_used=%e issued_total=%e",
+      "rate_used=%e issued_total=%.17g",
       sp->id, dt_back, rate_prev_dbg, rate_now_dbg, rate_used_dbg,
       issued_total);
 #endif
