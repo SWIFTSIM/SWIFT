@@ -62,8 +62,8 @@ parser.add_argument("--truncate", type=float, default=2.0,
                          "resolved by the kernel: they orbit much faster than the ring, fall onto the point "
                          "mass within an orbit and act on the ring's inner edge through kernels the size of "
                          "the gap (CD10 report the resulting central features as artefacts; here they break "
-                         "the ring). The default of 2 widths keeps 95% of the mass as a resolved annulus; "
-                         "3 widths (0.3% of the mass removed) still leaves isolated tail particles.")
+                         "the ring). The default of 2 widths keeps 95%% of the mass as a resolved annulus; "
+                         "3 widths (0.3%% of the mass removed) still leaves isolated tail particles.")
 parser.add_argument("--hcap", type=float, default=3.0,
                     help="cap on the initial smoothing length (Gaussian tails); keep SPH:h_max consistent")
 parser.add_argument("-o", "--output", default="initial_conditions.hdf5")

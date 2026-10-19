@@ -460,7 +460,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* Signal speed: maximal sound speed of the particle and its neighbours
    * (the paper's global time-step limits every particle by the hottest one) */
   const float c = p->force.c_sig;
-  const float alpha = magma_viscosity.alpha;
+  const float alpha =
+      magma_viscosity.alpha_switch ? p->alpha_visc : magma_viscosity.alpha;
   const float v_sig = 2.f * (c + 0.6f * alpha * (c + 2.f * p->force.mu_tilde));
   const float dt_Courant = 2.f * kernel_gamma * cosmo->a * p->h /
                            (cosmo->a_factor_sound_speed * v_sig);
@@ -651,6 +652,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] = 0.f;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_P[i] = 0.f;
   p->gradient.shock_indicator = 0.f;
 }
 
@@ -684,6 +686,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   /* Finish the construction of the (un-normalised) internal energy gradient
    * by multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
+  for (int i = 0; i < 3; ++i) p->gradient.gradient_P[i] *= h_inv_dim;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
@@ -760,6 +763,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float gradient_vy[3] = {0.f, 0.f, 0.f};
   float gradient_vz[3] = {0.f, 0.f, 0.f};
   float gradient_u[3] = {0.f, 0.f, 0.f};
+  float gradient_P[3] = {0.f, 0.f, 0.f};
 
   /* Invert the c-matrix. Directions in which the neighbourhood is
    * (nearly) degenerate (planar or filamentary configurations) are
@@ -805,6 +809,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     /* Finish computation of u gradient (same as eq. 18) */
     sym_matrix_multiply_by_vector(gradient_u, &c_matrix,
                                   p->gradient.gradient_u);
+
+    /* Same for the pressure */
+    sym_matrix_multiply_by_vector(gradient_P, &c_matrix,
+                                  p->gradient.gradient_P);
   }
 
   /* Convergence fraction of the local flow (Cullen & Dehnen 2010, eq. 18
@@ -816,14 +824,25 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float convergence_fraction = 1.f;
   float viscosity_limiter = 1.f;
   if ((magma_viscosity.limiter_convergence_gate ||
-       magma_viscosity.shear_limiter) &&
+       magma_viscosity.shear_limiter || magma_viscosity.alpha_switch) &&
       !res) {
     const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
-    /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I */
+    /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
+     * the d diagonal entries that exist in d dimensions (the absent ones
+     * would contribute -(div v / d)^2 each and make a pure compression
+     * look partly sheared: xi = 1/3 in 1D, 4/5 in 2D). */
     const float iso = div_v / hydro_dimension;
     const float Sxx = gradient_vx[0] - iso;
+#if defined(HYDRO_DIMENSION_1D)
+    const float Syy = 0.f;
+    const float Szz = 0.f;
+#elif defined(HYDRO_DIMENSION_2D)
+    const float Syy = gradient_vy[1] - iso;
+    const float Szz = 0.f;
+#else
     const float Syy = gradient_vy[1] - iso;
     const float Szz = gradient_vz[2] - iso;
+#endif
     const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
     const float Sxz = 0.5f * (gradient_vx[2] + gradient_vz[0]);
     const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
@@ -832,7 +851,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const float div2 = div_v * div_v;
     convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
 
-    /* EXPERIMENTAL viscosity limiter: the same comparison with the
+    /* Viscosity limiter: the same comparison with the
      * shock-presence boost of Cullen & Dehnen (2010, eq. 17-18). R = (1/rho)
      * sum_j sign(div v_j) m_j W_ij is -1 inside a converging front (all
      * neighbours converge) and ~0 where the signs are mixed (noise, smooth
@@ -852,6 +871,39 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
     /* Remember the divergence for the neighbours' shock-presence sums */
     p->div_v = div_v;
+
+    /* Time-dependent alpha (Cullen & Dehnen 2010, eq. 13-16, in the form
+     * of SPHENIX): the source A = xi H^2 max(0, -d(div v)/dt) of a
+     * converging flow (xi the shock-boosted limiter, H the kernel support)
+     * sets alpha_loc = alpha_max A / (A + c_s^2), which is ~(k H)^2 times
+     * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
+     * up to alpha_loc and decays back towards it over H / (2 length c_s);
+     * floored at alpha_min. Divergence and sound speed are physical. */
+    if (magma_viscosity.alpha_switch) {
+      const float H = kernel_gamma * p->h * cosmo->a;
+      const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
+      const float div_v_phys = div_v * cosmo->a2_inv;
+      const float div_v_dt =
+          dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
+      const float A = div_v_phys < 0.f
+                          ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
+                          : 0.f;
+      const float alpha_loc = magma_viscosity.alpha * A / (A + c_phys * c_phys);
+      float alpha = p->alpha_visc;
+      if (alpha_loc > alpha) {
+        alpha = alpha_loc;
+      } else {
+        /* Implicit decay, stable for any time step (Price et al. 2018),
+         * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
+         * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
+         * H, and with v_sig -> c_s: H / (2 l c_s). */
+        const float ratio =
+            dt_alpha * 2.f * magma_viscosity.length * c_phys / H;
+        alpha = (alpha + alpha_loc * ratio) / (1.f + ratio);
+      }
+      p->alpha_visc = fmaxf(alpha, magma_viscosity.alpha_min);
+      p->div_v_previous = div_v_phys;
+    }
   }
 
   /* Finally, update the 'force' sub-structure' */
@@ -860,6 +912,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   memcpy(&p->force.gradient_vy, gradient_vy, 3 * sizeof(float));
   memcpy(&p->force.gradient_vz, gradient_vz, 3 * sizeof(float));
   memcpy(&p->force.gradient_u, gradient_u, 3 * sizeof(float));
+  memcpy(&p->force.gradient_P, gradient_P, 3 * sizeof(float));
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
   p->force.convergence_fraction = convergence_fraction;
@@ -1133,6 +1186,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
   p->div_v = 0.f;
+  p->div_v_previous = 0.f;
+  p->alpha_visc = hydro_props_default_viscosity_alpha;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

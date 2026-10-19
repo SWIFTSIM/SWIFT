@@ -27,6 +27,7 @@
  */
 
 #include "adiabatic_index.h"
+#include "equation_of_state.h"
 #include "hydro_parameters.h"
 #include "minmax.h"
 #include "signal_velocity.h"
@@ -142,7 +143,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float common_term = w * mj / rhoj;
 
   /* Shock-presence sum (Cullen & Dehnen 2010, eq. 17) with the neighbour's
-   * divergence from its last gradient evaluation (EXPERIMENTAL) */
+   * divergence from its last gradient evaluation (viscosity limiter) */
   pi->gradient.shock_indicator += copysignf(mj * w, pj->div_v);
 
   /* The inverse of the C-matrix. eq. 6
@@ -174,6 +175,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   pi->gradient.gradient_u[0] -= common_term * uij * dx[0];
   pi->gradient.gradient_u[1] -= common_term * uij * dx[1];
   pi->gradient.gradient_u[2] -= common_term * uij * dx[2];
+
+  /* Gradient of the pressure (without the pressure floor), for the
+   * reconstructed pressure residual of the conduction signal speed */
+  const float Pij = gas_pressure_from_internal_energy(pj->rho, pj->u) -
+                    gas_pressure_from_internal_energy(pi->rho, pi->u);
+  pi->gradient.gradient_P[0] -= common_term * Pij * dx[0];
+  pi->gradient.gradient_P[1] -= common_term * Pij * dx[1];
+  pi->gradient.gradient_P[2] -= common_term * Pij * dx[2];
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   pi->n_gradient += w;
@@ -292,6 +301,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Reconstructed internal energies at the mid-point (before reconstruction) */
   float u_rec_i = pi->u;
   float u_rec_j = pj->u;
+
+  /* Pressure jump left by the slope-limited mid-point reconstruction of
+   * P (the whole jump for pairs without reconstruction): a resolved
+   * pressure gradient (hydrostatic equilibrium) reconstructs away, the
+   * kernel-scale pressure blip of the density estimate across an entropy
+   * jump, or a shock, does not. Drives the conduction signal speed. */
+  float delta_P_rec = pressurei - pressurej;
 
 #ifdef USE_ZEROTH_ORDER_VELOCITIES
   const int force_zeroth_order = 1;
@@ -419,6 +435,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     u_rec_j += Phi_ij_u * pj->force.gradient_u[0] * delta_j[0];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[1] * delta_j[1];
     u_rec_j += Phi_ij_u * pj->force.gradient_u[2] * delta_j[2];
+
+    /* Same for the pressure (only needed with the pressure-residual term of
+     * the conduction signal speed) */
+    if (magma_diffusion.alpha_pressure > 0.f) {
+      const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
+                               pi->force.gradient_P[1] * dx[1] +
+                               pi->force.gradient_P[2] * dx[2];
+      const float A_ij_P_den = pj->force.gradient_P[0] * dx[0] +
+                               pj->force.gradient_P[1] * dx[1] +
+                               pj->force.gradient_P[2] * dx[2];
+      const float A_ij_P = A_ij_P_den != 0.f ? A_ij_P_num / A_ij_P_den : 0.f;
+      const float fraction_P =
+          (A_ij_P > 0.f) ? 4.f * A_ij_P / ((1.f + A_ij_P) * (1.f + A_ij_P))
+                         : 0.f;
+      const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
+      const float P_rec_i =
+          pressurei + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
+                                  pi->force.gradient_P[1] * delta_i[1] +
+                                  pi->force.gradient_P[2] * delta_i[2]);
+      const float P_rec_j =
+          pressurej + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
+                                  pj->force.gradient_P[1] * delta_j[1] +
+                                  pj->force.gradient_P[2] * delta_j[2]);
+      /* The residual never exceeds the raw jump (reconstruction overshoot) */
+      delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
+    }
 
     /* Limiter preventing inversion: the slope limiter above only compares
      * the two slopes, not the actual difference. For steep profiles, the
@@ -564,32 +606,37 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const int Q_dissipative_j = Q_dissipative_i;
 #endif
 
-  /* Eq. 14 */
-  const float visc_alpha = magma_viscosity.alpha;
+  /* Eq. 14; with the viscosity switch each particle brings its own
+   * time-dependent alpha to the linear term */
+  const float visc_alpha_i =
+      magma_viscosity.alpha_switch ? pi->alpha_visc : magma_viscosity.alpha;
+  const float visc_alpha_j =
+      magma_viscosity.alpha_switch ? pj->alpha_visc : magma_viscosity.alpha;
   const float visc_beta = magma_viscosity.beta;
-  /* EXPERIMENTAL shear limiter of the viscous pressure: each particle's Q
-   * scaled by its own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the
-   * shock-presence boost of eq. 17, as their alpha_i xi_i). 1 when switched
-   * off. Mode 1 scales both terms of Q; mode 2 scales only the quadratic
-   * (beta mu^2) term, which is the one that dominates the dissipation of a
-   * cold (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
+  /* Shear limiter of the viscous pressure: each particle's Q scaled by its
+   * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence
+   * boost of eq. 17, as their alpha_i xi_i). 1 when switched off. Mode 1
+   * scales both terms of Q; mode 2 scales only the quadratic (beta mu^2)
+   * term, which is the one that dominates the dissipation of a cold
+   * (Mach >> 1) shear flow, and keeps the linear alpha c mu term that
    * maintains particle order in subsonic shear layers. */
   const float xi_q_i = pi->force.viscosity_limiter;
   const float xi_q_j = pj->force.viscosity_limiter;
   const int quad_only = (magma_viscosity.shear_limiter == 2);
-  /* With a Mach threshold the linear term is limited only in supersonic
-   * shear (|mu| > limiter_mach c), where it is a Keplerian flow rather than
-   * a subsonic shear layer that needs its particle order kept. */
+  /* With the Mach threshold (default 0.7) the linear term is limited only
+   * in supersonic shear (|mu| > limiter_mach c), where it is a Keplerian
+   * flow rather than a subsonic shear layer that needs its particle order
+   * kept. */
   const float mach_i = magma_viscosity.limiter_mach * ci;
   const float mach_j = magma_viscosity.limiter_mach * cj;
   const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
   const float xi_lin_j = (quad_only || fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
   const float Qi = Q_dissipative_i
-                       ? rhoi * (-xi_lin_i * visc_alpha * ci * mu_i +
+                       ? rhoi * (-xi_lin_i * visc_alpha_i * ci * mu_i +
                                  xi_q_i * visc_beta * mu_i * mu_i)
                        : 0.f;
   const float Qj = Q_dissipative_j
-                       ? rhoj * (-xi_lin_j * visc_alpha * cj * mu_j +
+                       ? rhoj * (-xi_lin_j * visc_alpha_j * cj * mu_j +
                                  xi_q_j * visc_beta * mu_j * mu_j)
                        : 0.f;
 
@@ -712,9 +759,19 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
       sqrtf(2.f * fabsf(pressurei - pressurej) / (rhoi + rhoj));
 #endif
 
+  /* Pressure-residual term (Price 2008's sqrt(|P_a - P_b| / rho) on the
+   * reconstructed jump, with its own coefficient): acts on the kernel-scale
+   * pressure blips of entropy jumps and in shocks, not on resolved pressure
+   * gradients */
+  const float dP_eff = fmaxf(
+      0.f, fabsf(delta_P_rec) - 0.5f * magma_diffusion.pressure_threshold *
+                                    (pressurei + pressurej));
+  const float v_sig_P =
+      magma_diffusion.alpha_pressure * sqrtf(2.f * dP_eff / (rhoi + rhoj));
+
   /* Diffusion term (eq. 24) */
-  pi->u_dt += -magma_diffusion.alpha * mj * delta_u * v_sig_u * norm_sum_G /
-              (rhoi + rhoj);
+  pi->u_dt += -mj * delta_u * (magma_diffusion.alpha * v_sig_u + v_sig_P) *
+              norm_sum_G / (rhoi + rhoj);
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;

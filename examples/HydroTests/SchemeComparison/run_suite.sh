@@ -24,7 +24,7 @@
 # compiles the code once per flavour.
 #
 # Layout of the output directory:
-#   builds/<scheme>_{2d,3d,3dnfw}/   source copies + binaries
+#   builds/<scheme>_{1d,2d,2drt,3d,3dnfw}/   source copies + binaries
 #   ics/<test>/                initial conditions (shared by all schemes)
 #   runs/<scheme>/<test>/      snapshots, logs, statistics, example plots
 #   plots/                     comparison figures and summary.md
@@ -67,13 +67,37 @@ ICS_ONLY=0
 : "${BLOB_N:=64}"               # Blob: makeIC.py's num_on_side (BCC lattice: N^3/4 particles per unit cube, N even)
 : "${BLOB_T_END:=1.75}"         # Blob: end time (tau_KH = 0.348 for the example's set-up: wind speed 1, Mach 2.7)
 : "${NFW_T_END:=1.0}"           # NFW hydrostatic halo: end time (internal units, ~Gyr)
+: "${TG_T_END:=5.0}"            # Taylor-Green vortex: end time (eddy turnover 1.6)
+: "${SHEARING_N:=4}"            # Shearing shock: glass cubes along x
+: "${SHEARING_S:=10}"           # Shearing shock: shear amplitude in units of the stream speed (paper: 100, which heats the box through the diffused shear by 10-100x in every SPH scheme)
+: "${SHEARING_T_END:=0.6}"      # Shearing shock: end time (shocks and edge rarefactions meet at t ~ 1 for 4 cubes)
+: "${BLAST_N:=4}"               # Strong blast wave: glass cubes along x
+: "${BLAST_T_END:=0.02}"        # Strong blast wave: end time (the waves from the periodic boundary stay out of the middle half of the box for 4 cubes)
+: "${RT_N:=128}"                # Rayleigh-Taylor: particles along x (the box is 1 x 1.5)
+: "${RT_T_END:=4.0}"            # Rayleigh-Taylor: end time (Hopkins 2015, Rosswog 2020: 4)
+: "${KHGR_T_END:=2.0}"          # KH growth rate: end time (the seeded mode saturates at t ~ 1.2)
+: "${KHGR_SEED:=0.01}"          # KH growth rate: amplitude of the seed velocity (the example's 5e-4 is below the shear noise of SPH)
+: "${KERNEL_1D:=wendland-C2}"   # Kernel of the 1D build (the Wendland C4 and C6 kernels have no 1D coefficients in SWIFT)
+: "${SOUNDWAVE_GLASS:=glassCube_32}" # Sound wave: 3D glass (32: 32 particles per wavelength for one wave per box)
+: "${SOUNDWAVE_AMPLITUDE:=1e-3}" # Sound wave: relative density amplitude (linear for ~100 periods)
+: "${SOUNDWAVE_NWAVE:=1}"       # Sound wave: wavelengths across the box
+: "${SOUNDWAVE_T_END:=5}"       # Sound wave (travelling): end time in periods of the n = 1 wave
+: "${WAVEDAMPING_T_END:=10}"    # Wave damping (standing wave): end time
+: "${THERMAL_CONTRAST:=4}"      # Thermal discontinuity: density contrast of the cold slab
+: "${THERMAL_T_END:=3}"         # Thermal discontinuity: end time (sound crossing of the slab: 1.5)
+: "${SOD_WEAK_P_RIGHT:=0.5}"    # Sod series: right-state pressure of the weak shock (standard 0.1)
+: "${SOD_STRONG_P_RIGHT:=0.01}" # Sod series: right-state pressure of the strong shock
+: "${KH8_CONTRAST:=8}"         # High-contrast KH: density contrast (the example's IC is a sharp interface of equal-mass particles)
+: "${KH8_L2:=128}"              # High-contrast KH: particles per edge in the low-density region
+: "${KH8_T_END:=6}"             # High-contrast KH: end time (the KH time of the seeded mode is 1.6 at contrast 8, 1.1 at contrast 2)
+: "${GRESHO_BOOST:=3}"          # Boosted Gresho vortex: bulk velocity along x (sound speed 2.9-3.1; integer: the vortex is back at the centre at t = 1)
 
 GLASS_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs
 REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
 
 # The NFW halo (nfw) is not in the default list: expensive and so far not
 # discriminating between schemes; run it with -t nfw.
-ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob"
+ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob taylorgreen shearing blast rt khgr ibw soundwave wavedamping thermal gresho_boost kh8 sod_weak sod_strong"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bniph" opt; do
@@ -303,6 +327,108 @@ test_nfw() {
   make_ic() { [[ -e nfw.hdf5 ]] || wget -q $GLASS_URL/NFW_Hydrostatic/nfw.hdf5; }
 }
 
+# Taylor-Green vortex (Phantom paper, section 5.4.1) at Mach 0.1 on a 2D
+# glass: a stationary Euler solution, so the kinetic-energy decay measures the
+# effective numerical viscosity of the scheme in a smooth subsonic flow.
+test_taylorgreen() {
+  DIM=2; EXAMPLE=HydroTests/TaylorGreenVortex_2D; YML=taylorGreen.yml; IC=taylorGreen.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$TG_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass glassPlane_128; python3 makeIC.py; }
+}
+# Shearing shock (Cullen & Dehnen 2010, section 5.3): Mach-1 colliding streams
+# with a sinusoidal shear of SHEARING_S times the stream speed superposed
+# (paper: 100; default 10, see the README of the example). Tests that
+# a shear-aware viscosity switch still captures the shock.
+test_shearing() {
+  DIM=3; EXAMPLE=HydroTests/ShearingShock_3D; YML=shearingShock.yml; IC=shearingShock.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$SHEARING_T_END -P Snapshots:delta_time:$(python3 -c "print($SHEARING_T_END/2)")"; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_32; python3 makeIC.py -n "$SHEARING_N" -s "$SHEARING_S"; }
+}
+# Strong blast wave (Rosswog 2020, section 3.4.3): planar Riemann problem with
+# a pressure jump of 1e4 at uniform density (shock Mach ~ 100).
+test_blast() {
+  DIM=3; EXAMPLE=HydroTests/StrongBlastWave_3D; YML=blastWave.yml; IC=blastWave.hdf5
+  FLAGS="--hydro --limiter"; PARAMS="-P TimeIntegration:time_end:$BLAST_T_END -P Snapshots:delta_time:$(python3 -c "print($BLAST_T_END/2)")"; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_32; python3 makeIC.py -n "$BLAST_N"; }
+}
+# Rayleigh-Taylor instability (2D, Abel 2011 / Saitoh & Makino 2013 set-up of
+# the example, gamma = 7/5, constant gravity, fixed boundary layers): needs the
+# 2drt build (constant potential, boundary-particle forcing, gamma = 7/5).
+test_rt() {
+  DIM=2; BUILD=2drt; EXAMPLE=HydroTests/Rayleigh-Taylor_2D; YML=rayleigh_taylor.yml; IC=rayleigh_taylor.hdf5
+  FLAGS="--hydro --external-gravity"
+  PARAMS="-P TimeIntegration:time_end:$RT_T_END -P Snapshots:delta_time:0.1"
+  # The example prints the highest boundary-particle ID when the ICs are made
+  [[ -e $OUT_DIR/ics/rt/boundary_id.txt ]] && PARAMS="$PARAMS -P BoundaryParticles:boundary_particle_max_id:$(cat "$OUT_DIR/ics/rt/boundary_id.txt")"
+  PLOT_SNAP=""
+  make_ic() {
+    sed -i "s/^N = \[128, 192\]/N = [$RT_N, $((RT_N * 3 / 2))]/" makeIC.py
+    python3 makeIC.py | tee makeIC.out
+    grep -o "boundary_particle_max_id: [0-9]*" makeIC.out | awk '{print $2}' > boundary_id.txt
+    [[ -s boundary_id.txt ]] || { echo "No boundary-particle ID reported by makeIC.py"; return 1; }
+  }
+}
+# Kelvin-Helmholtz growth rate (McNally et al. 2012 style seed on a uniform
+# density shear layer with linear ramps): the growth of the seeded mode is
+# compared with the analytic rate of the piecewise-linear shear layer.
+test_khgr() {
+  DIM=2; EXAMPLE=HydroTests/KelvinHelmholtzGrowthRate_2D; YML=kelvinHelmholtzGrowthRate.yml; IC=kelvinHelmholtzGrowthRate.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$KHGR_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass glassPlane_128; sed -i "s/^B = .*/B = $KHGR_SEED  # Amplitude of the seed velocity/" makeIC.py; python3 makeIC.py; }
+}
+# Interacting blast waves (Woodward & Colella 1984), 1D, gamma = 7/5: needs the
+# 1d build. The reference is a high-resolution grid solution.
+test_ibw() {
+  DIM=1; BUILD=1d; EXAMPLE=HydroTests/InteractingBlastWaves_1D; YML=interactingBlastWaves.yml; IC=interactingBlastWaves.hdf5
+  FLAGS="--hydro --limiter"; PARAMS=""; PLOT_SNAP=4
+  make_ic() {
+    python3 makeIC.py
+    [[ -e interactingBlastWaves1D_exact.txt ]] || wget -q $REF_URL/interactingBlastWaves1D_exact.txt
+  }
+}
+
+test_sod_weak() {
+  # Sod shock with a weaker shock (right pressure 0.5): the contact discontinuity dominates
+  DIM=3; EXAMPLE=HydroTests/SodShock_3D; YML=sodShock.yml; IC=sodShock.hdf5
+  FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_64 glassCube_32; python3 makeIC.py --P-right $SOD_WEAK_P_RIGHT; }
+}
+test_sod_strong() {
+  # Sod shock with a stronger shock (right pressure 0.01)
+  DIM=3; EXAMPLE=HydroTests/SodShock_3D; YML=sodShock.yml; IC=sodShock.hdf5
+  FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_64 glassCube_32; python3 makeIC.py --P-right $SOD_STRONG_P_RIGHT; }
+}
+test_kh8() {
+  # Kelvin-Helmholtz at a high density contrast (sharp interface, equal-mass particles)
+  DIM=2; EXAMPLE=HydroTests/KelvinHelmholtz_2D; YML=kelvinHelmholtz.yml; IC=kelvinHelmholtz.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$KH8_T_END -P Snapshots:delta_time:0.5"; PLOT_SNAP=""
+  make_ic() { sed -i "s/^L2 = .*/L2 = $KH8_L2/; s/^rho1 = .*/rho1 = $KH8_CONTRAST  # Central density/" makeIC.py; python3 makeIC.py; }
+}
+test_soundwave() {
+  # Travelling linear sound wave: phase speed (dispersion), damping, transverse noise
+  DIM=3; EXAMPLE=HydroTests/SoundWave_3D; YML=soundWave.yml; IC=soundWave.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$SOUNDWAVE_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass $SOUNDWAVE_GLASS; python3 makeIC.py --glass $SOUNDWAVE_GLASS.hdf5 --amplitude $SOUNDWAVE_AMPLITUDE --nwave $SOUNDWAVE_NWAVE; }
+}
+test_wavedamping() {
+  # Standing sound wave over many periods: damping rate of the mode energy, frequency
+  DIM=3; EXAMPLE=HydroTests/SoundWave_3D; YML=soundWave.yml; IC=soundWave.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$WAVEDAMPING_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass $SOUNDWAVE_GLASS; python3 makeIC.py --glass $SOUNDWAVE_GLASS.hdf5 --amplitude $SOUNDWAVE_AMPLITUDE --nwave $SOUNDWAVE_NWAVE --standing; }
+}
+test_thermal() {
+  # Thermal discontinuity in pressure equilibrium: artificial conduction at a contact, pressure blip
+  DIM=2; EXAMPLE=HydroTests/ThermalDiffusion_2D; YML=thermalDiffusion.yml; IC=thermalDiffusion.hdf5
+  FLAGS="--hydro"; PARAMS="-P TimeIntegration:time_end:$THERMAL_T_END"; PLOT_SNAP=""
+  make_ic() { get_glass glassPlane_128; python3 makeIC.py --contrast $THERMAL_CONTRAST; }
+}
+test_gresho_boost() {
+  # Gresho vortex advected at ~Mach 1 through the box: Galilean invariance (compare with gresho)
+  DIM=2; EXAMPLE=HydroTests/GreshoVortex_2D; YML=gresho.yml; IC=greshoVortex.hdf5
+  FLAGS="--hydro"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassPlane_128; python3 makeIC.py --boost $GRESHO_BOOST 0; }
+}
 get_glass() {
   for g in "$@"; do
     [[ -e $g.hdf5 ]] || wget -q "$GLASS_URL/$g.hdf5" || { echo "Cannot fetch $g"; return 1; }
@@ -315,7 +441,9 @@ get_glass() {
 # Build flavours: suffix -> configure flags added to COMMON_FLAGS (the
 # external potential of COMMON_FLAGS is replaced for the NFW build).
 declare -A BUILD_FLAGS=(
+  [1d]="--with-hydro-dimension=1 --with-adiabatic-index=7/5 --with-kernel=$KERNEL_1D"
   [2d]="--with-hydro-dimension=2"
+  [2drt]="--with-hydro-dimension=2 --with-ext-potential=constant --with-forcing=boundary-particles --with-adiabatic-index=7/5"
   [3d]=""
   [3dnfw]="--with-ext-potential=nfw"
 )
@@ -325,12 +453,13 @@ build_one() {
   local link=$OUT_DIR/builds/${name}_${build}
   local common=$COMMON_FLAGS
   [[ ${BUILD_FLAGS[$build]} == *--with-ext-potential* ]] && common=${common/--with-ext-potential=point-mass-softened/}
+  [[ ${BUILD_FLAGS[$build]} == *--with-kernel* ]] && common=${common/--with-kernel=$KERNEL/}
   # One build per distinct set of configure flags, shared through a link
   local key
   key=$(echo "$common ${BUILD_FLAGS[$build]} ${SCHEME_FLAGS[$name]}" | md5sum | cut -c1-10)
   local dir=$OUT_DIR/builds/by_flags/${key}_${build}
   mkdir -p "$OUT_DIR/builds/by_flags"
-  if [[ ! -L $link ]]; then rm -rf "$link"; ln -s "by_flags/${key}_${build}" "$link"; fi
+  if [[ ! -L $link || $(readlink "$link") != "by_flags/${key}_${build}" ]]; then rm -rf "$link"; ln -s "by_flags/${key}_${build}" "$link"; fi
   if [[ $DO_BUILD -eq 0 && -x $dir/swift ]]; then return 0; fi
   log "Building $name ($build) in $dir"
   mkdir -p "$dir"
@@ -357,8 +486,23 @@ prepare_ic() {
   test_$test
   local dir=$OUT_DIR/ics/$test
   if [[ -e $dir/$IC ]]; then return 0; fi
-  log "Generating initial conditions for $test"
   mkdir -p "$dir"
+  # Concurrent suite instances (parameter studies) may ask for the same ICs
+  # at the same time: let one generate them while the others wait.
+  if command -v flock > /dev/null; then
+    (
+      flock 9 || exit 1
+      [[ -e $dir/$IC ]] && exit 0
+      prepare_ic_locked "$test" "$dir"
+    ) 9> "$dir/.lock"
+    return $?
+  fi
+  prepare_ic_locked "$test" "$dir"
+}
+
+prepare_ic_locked() {
+  local test=$1 dir=$2
+  log "Generating initial conditions for $test"
   cp -r "$EXAMPLES/$EXAMPLE/." "$dir/"
   # Reuse glass files already downloaded for other tests
   for g in "$OUT_DIR"/ics/*/glass*.hdf5; do
