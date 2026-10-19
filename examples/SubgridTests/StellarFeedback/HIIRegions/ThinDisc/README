@@ -10,15 +10,27 @@ It holds 4e6 Msun in 2e5 particles of 20 Msun, starts at 100 K, at rest,
 with Z = 0.02 Zsun. The central density is about 17 H/cm^3, above the
 `HII_min_density_Hpcm3` floor of 1 H/cm^3. There is no self-gravity and no
 rotation. Sixty-three single stars of 10 to 40 Msun (Salpeter slope) are born
-at t = 0: one Gaussian cluster of 62 stars (sigma 4 pc) and one field star,
-both drawn from the disc. The HII search radius is 500 pc
-(`Stars:HII_max_search_radius: 0.5`); `max_search_radius=0.05 ./run.sh` sets
-a 50 pc cap.
+at t = 0: one Gaussian cluster of 62 stars (sigma 4 pc) and one field star.
+The cluster centre sits in the mid-plane (z = 0) at a random radius of 0.3 to
+1.5 scale lengths. The field star is drawn from the gas profile within 2 scale
+lengths.
+
+`Stars:HII_max_search_radius` (`max_search_radius` in `run.sh`, in kpc) is the
+largest radius the HII search may reach around a star. It caps the size of
+an ionised region. With fixed cones the arms of the pattern described below
+extend up to this cap, so the strength of the pattern grows with it. Set it
+with e.g. `max_search_radius=0.15 ./run.sh`.
 
 `HII_random_cone_frame_per_star: 0` keeps the 12 cones fixed to the box axes,
 so all stars share the same cone directions. `HII_random_cone_frame_per_star: 1`
 rotates each star's cone frame by a random rotation fixed by its ID. Compare
 the two settings with `run_name` (see Run).
+
+# What to expect
+With fixed cones the ionised region of the cluster is a square aligned with
+the box axes, with lobes along the diagonals (an "X"). With
+`random_frame=1` the region is round. The face-on panel of the figure shows
+the difference.
 
 # Configure
 ```
