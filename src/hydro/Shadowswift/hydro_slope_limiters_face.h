@@ -99,6 +99,8 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_pair(
 /**
  * @brief Slope limit the slopes at the interface between two particles
  *
+ * Eq B4 in 2015 Hopkins
+ *
  * @param Wi Hydrodynamic variables of particle i.
  * @param Wj Hydrodynamic variables of particle j.
  * @param dWi Difference between the hydrodynamic variables of particle i at the
@@ -107,7 +109,7 @@ __attribute__((always_inline)) INLINE static void hydro_slope_limit_pair(
  * position of particle j and at the interface position.
  * @param xij_i Relative position vector of the interface w.r.t. particle i.
  * @param xij_j Relative position vector of the interface w.r.t. partilce j.
- * @param r Distance between particle i and particle j.
+ * @param r Distance between centroid i and centroid j.
  */
 __attribute__((always_inline)) INLINE static void hydro_slope_limit_face(
     float *Wi, float *Wj, float *dWi, float *dWj, const float *xij_i,
