@@ -282,6 +282,20 @@ struct cooling_function_data {
    * chemistry_data.energy_change_limit). Grackle fixes 0.1. */
   double energy_change_limit;
 
+  /*! Solver of networks 1 to 3: 0 cheap, 1 accurate, -1 the geajay default
+   * (GeajayCooling:solver, chemistry_data.solver). */
+  int solver;
+
+  /*! Update of the H and D species of network 3: 1 sequential, 2 joint
+   * block, -1 the geajay default (GeajayCooling:hydrogen_deuterium_update). */
+  int hydrogen_deuterium_update;
+
+  /*! Relative and absolute tolerances of the accurate solver, <= 0 for the
+   * geajay defaults (GeajayCooling:accurate_relative_tolerance and
+   * GeajayCooling:accurate_absolute_tolerance). */
+  double accurate_relative_tolerance;
+  double accurate_absolute_tolerance;
+
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 

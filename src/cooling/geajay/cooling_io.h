@@ -719,6 +719,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:energy_change_limit must be in (0, 1], got %g.",
           cooling->energy_change_limit);
 
+  /* Solver choice and accurate-solver tolerances; geajay checks the values */
+  cooling->solver =
+      parser_get_opt_param_int(parameter_file, "GeajayCooling:solver", -1);
+  cooling->hydrogen_deuterium_update = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:hydrogen_deuterium_update", -1);
+  cooling->accurate_relative_tolerance = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:accurate_relative_tolerance", -1.);
+  cooling->accurate_absolute_tolerance = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:accurate_absolute_tolerance", -1.);
+
   /* Thermal time */
   cooling->thermal_time =
       parser_get_param_double(parameter_file, "GeajayCooling:thermal_time_myr");

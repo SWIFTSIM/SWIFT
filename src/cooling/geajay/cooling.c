@@ -574,6 +574,12 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Max geajay sub-steps = %d", cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
   message("geajay energy change limit = %g", cooling->energy_change_limit);
+  message("geajay solver = %d, hydrogen_deuterium_update = %d",
+          cooling->chemistry_data.solver,
+          cooling->chemistry_data.hydrogen_deuterium_update);
+  message("geajay accurate tolerances: relative %g, absolute %g",
+          cooling->chemistry_data.accurate_relative_tolerance,
+          cooling->chemistry_data.accurate_absolute_tolerance);
   if (cooling->cooling_density_max > 0.)
     message("Maximal density passed to geajay = %e (internal units)",
             cooling->cooling_density_max);
@@ -1684,6 +1690,15 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 1;
   chemistry->energy_change_limit = cooling->energy_change_limit;
+  if (cooling->solver >= 0) chemistry->solver = cooling->solver;
+  if (cooling->hydrogen_deuterium_update >= 0)
+    chemistry->hydrogen_deuterium_update = cooling->hydrogen_deuterium_update;
+  if (cooling->accurate_relative_tolerance > 0.)
+    chemistry->accurate_relative_tolerance =
+        cooling->accurate_relative_tolerance;
+  if (cooling->accurate_absolute_tolerance > 0.)
+    chemistry->accurate_absolute_tolerance =
+        cooling->accurate_absolute_tolerance;
 
   /* The options of "per_band" start from the parameters as set here */
   const geajay_chemistry_data chemistry_as_set = *chemistry;
