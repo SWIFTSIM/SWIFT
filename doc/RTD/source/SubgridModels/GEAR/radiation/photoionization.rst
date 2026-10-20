@@ -37,7 +37,6 @@ Model parameters
 * ``HII_rebuild_floor_Myr``: floor on the interval the per-pass photon budget is integrated over. Must be positive. Default: 1e-4.
 * ``HII_angular_nside``: HEALPix splitting of the ionizing budget. 0 (default) is spherical, one shared budget; N >= 1 gives :math:`12 N^2` angular pixels. N > 0 requires building with ``--with-chealpix``, and the resulting pixel count must fit the build's ``--with-number-of-hii-angular-pixels`` (default 12, i.e. N <= 1).
 * ``HII_deterministic_boundary_ionization``: 0 (default, probabilistic) or 1 (deterministic) treatment of the boundary particle described above.
-* ``HII_cone_claim_rule``: what a direction does at its boundary particle. 1 (default): the front described above ends the direction. 2: each HEALPix pixel is split into 64 sub-pixels; a front blocks only the sub-pixels it covers, and needs ``HII_angular_nside`` >= 1 and ``HII_deterministic_boundary_ionization`` 0. The retired value 0 is read as 1, with a warning.
 * ``HII_couple_ionization_rate``: rate-couple the photoionization rate into Grackle instead of the default flag-and-floor scheme. 0 (default) or 1. Requires ``--with-cooling=grackle_1`` or higher; forces ``GrackleCooling:use_radiative_transfer`` on internally.
 
 Four further parameters, in the ``Stars`` section, control the search geometry and are parsed whenever SWIFT is built with GEAR feedback:
@@ -57,7 +56,6 @@ Four further parameters, in the ``Stars`` section, control the search geometry a
      HII_rebuild_floor_Myr: 1e-4                    # Floor (Myr) on the interval the budget is integrated over
      HII_angular_nside: 0                           # HEALPix splitting of the ionizing budget: 0 = spherical, N>=1 = 12*N^2 pixels
      HII_deterministic_boundary_ionization: 0       # 0 = probabilistic, 1 = deterministic boundary-particle treatment
-     HII_cone_claim_rule: 1                         # 1 = a front ends the direction, 2 = a front blocks only the sub-pixels it covers
      HII_couple_ionization_rate: 0                  # Rate-couple into Grackle's own RT fields instead of flag-and-floor
 
    Stars:
