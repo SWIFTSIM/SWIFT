@@ -90,7 +90,7 @@ int feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back, const double open_share);
+    const double time, const double dt_back);
 
 double feedback_iact_HII_maintain_ionized_part(
     struct spart *restrict si, struct part *restrict pj,
@@ -106,12 +106,6 @@ int feedback_get_HII_random_cone_frame(
 int feedback_get_HII_cone_frame_redraw_period(
     const struct feedback_props *feedback_props);
 int64_t feedback_count_star_HII_pass(struct spart *sp);
-int feedback_get_HII_cone_claim_rule(
-    const struct feedback_props *feedback_props);
-void feedback_iact_HII_hold_shadowed_part(struct spart *restrict si,
-                                          const struct part *restrict pj);
-void feedback_absorb_star_ionizing_photons(struct spart *sp, int pixel,
-                                           double photons);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);
 double feedback_get_star_HII_nominal_interval(
     const struct feedback_props *feedback_props, const double dt_enrichment);
@@ -186,8 +180,9 @@ void feedback_first_init_spart(struct spart *sp,
  * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
  * reduced-flux dissipation fields, 5 HII random cone frame flag in
  * #feedback_props, 6 HII cone frame redraw period in #feedback_props, 7 HII
- * pass count in the star, 8 HII cone claim rule in #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 8
+ * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
+ * cone claim rule removed from #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 10
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts
