@@ -80,6 +80,13 @@ struct cache {
   /* Particle sound speed. */
   float *restrict soundspeed SWIFT_CACHE_ALIGN;
 
+#if defined(SPHENIX_SPH)
+  /* Extra SPHENIX fields required by its vectorized force interaction. */
+  float *restrict viscosity_alpha SWIFT_CACHE_ALIGN;
+  float *restrict diffusion_alpha SWIFT_CACHE_ALIGN;
+  float *restrict u SWIFT_CACHE_ALIGN;
+#endif
+
   /* Cache size. */
   int count;
 };
@@ -146,6 +153,11 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
     free(c->pOrho2);
     free(c->balsara);
     free(c->soundspeed);
+#if defined(SPHENIX_SPH)
+    free(c->viscosity_alpha);
+    free(c->diffusion_alpha);
+    free(c->u);
+#endif
   }
 
   error += posix_memalign((void **)&c->x, SWIFT_CACHE_ALIGNMENT, sizeBytes);
@@ -167,6 +179,13 @@ __attribute__((always_inline)) INLINE void cache_init(struct cache *c,
       posix_memalign((void **)&c->balsara, SWIFT_CACHE_ALIGNMENT, sizeBytes);
   error +=
       posix_memalign((void **)&c->soundspeed, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+#if defined(SPHENIX_SPH)
+  error += posix_memalign((void **)&c->viscosity_alpha, SWIFT_CACHE_ALIGNMENT,
+                          sizeBytes);
+  error += posix_memalign((void **)&c->diffusion_alpha, SWIFT_CACHE_ALIGNMENT,
+                          sizeBytes);
+  error += posix_memalign((void **)&c->u, SWIFT_CACHE_ALIGNMENT, sizeBytes);
+#endif
 
   if (error != 0)
     error("Couldn't allocate cache, no. of particles: %d", (int)count);
@@ -495,7 +514,7 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
     const struct cell *restrict const ci,
     struct cache *restrict const ci_cache) {
 
-#if defined(GADGET2_SPH)
+#if defined(GADGET2_SPH) || defined(SPHENIX_SPH)
 
   /* Let the compiler know that the data is aligned and create pointers to the
    * arrays inside the cache. */
@@ -516,6 +535,13 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed,
                             SWIFT_CACHE_ALIGNMENT);
+#if defined(SPHENIX_SPH)
+  swift_declare_aligned_ptr(float, viscosity_alpha, ci_cache->viscosity_alpha,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, diffusion_alpha, ci_cache->diffusion_alpha,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, u, ci_cache->u, SWIFT_CACHE_ALIGNMENT);
+#endif
 
   const int count = ci->hydro.count;
   const struct part *restrict parts = ci->hydro.parts;
@@ -541,6 +567,15 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
       pOrho2[i] = 1.f;
       balsara[i] = 1.f;
       soundspeed[i] = 1.f;
+      m[i] = 1.f;
+      vx[i] = 0.f;
+      vy[i] = 0.f;
+      vz[i] = 0.f;
+#if defined(SPHENIX_SPH)
+      viscosity_alpha[i] = 0.f;
+      diffusion_alpha[i] = 0.f;
+      u[i] = 0.f;
+#endif
 
       continue;
     }
@@ -555,7 +590,14 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
     vz[i] = parts[i].v[2];
     rho[i] = parts[i].rho;
     grad_h[i] = parts[i].force.f;
+#if defined(GADGET2_SPH)
     pOrho2[i] = parts[i].force.P_over_rho2;
+#else
+    pOrho2[i] = parts[i].force.pressure;
+    viscosity_alpha[i] = parts[i].viscosity.alpha;
+    diffusion_alpha[i] = parts[i].diffusion.alpha;
+    u[i] = parts[i].u;
+#endif
     balsara[i] = parts[i].force.balsara;
     soundspeed[i] = parts[i].force.soundspeed;
   }
@@ -578,6 +620,15 @@ __attribute__((always_inline)) INLINE int cache_read_force_particles(
       pOrho2[i] = 1.f;
       balsara[i] = 1.f;
       soundspeed[i] = 1.f;
+      m[i] = 1.f;
+      vx[i] = 0.f;
+      vy[i] = 0.f;
+      vz[i] = 0.f;
+#if defined(SPHENIX_SPH)
+      viscosity_alpha[i] = 0.f;
+      diffusion_alpha[i] = 0.f;
+      u[i] = 0.f;
+#endif
     }
   }
 
@@ -915,6 +966,13 @@ cache_read_two_partial_cells_sorted_force(
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, soundspeed, ci_cache->soundspeed,
                             SWIFT_CACHE_ALIGNMENT);
+#if defined(SPHENIX_SPH)
+  swift_declare_aligned_ptr(float, viscosity_alpha, ci_cache->viscosity_alpha,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, diffusion_alpha, ci_cache->diffusion_alpha,
+                            SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, u, ci_cache->u, SWIFT_CACHE_ALIGNMENT);
+#endif
 
   int ci_cache_count = ci->hydro.count - first_pi_align;
   const double max_dx = max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);
@@ -944,6 +1002,11 @@ cache_read_two_partial_cells_sorted_force(
       pOrho2[i] = 1.f;
       balsara[i] = 1.f;
       soundspeed[i] = 1.f;
+#if defined(SPHENIX_SPH)
+      viscosity_alpha[i] = 0.f;
+      diffusion_alpha[i] = 0.f;
+      u[i] = 0.f;
+#endif
 
       continue;
     }
@@ -962,6 +1025,16 @@ cache_read_two_partial_cells_sorted_force(
     pOrho2[i] = parts_i[idx].force.P_over_rho2;
     balsara[i] = parts_i[idx].force.balsara;
     soundspeed[i] = parts_i[idx].force.soundspeed;
+#elif defined(SPHENIX_SPH)
+    m[i] = parts_i[idx].mass;
+    rho[i] = parts_i[idx].rho;
+    grad_h[i] = parts_i[idx].force.f;
+    pOrho2[i] = parts_i[idx].force.pressure;
+    balsara[i] = parts_i[idx].force.balsara;
+    soundspeed[i] = parts_i[idx].force.soundspeed;
+    viscosity_alpha[i] = parts_i[idx].viscosity.alpha;
+    diffusion_alpha[i] = parts_i[idx].diffusion.alpha;
+    u[i] = parts_i[idx].u;
 #endif
   }
 
@@ -983,6 +1056,11 @@ cache_read_two_partial_cells_sorted_force(
     pOrho2[i] = 1.f;
     balsara[i] = 1.f;
     soundspeed[i] = 1.f;
+#if defined(SPHENIX_SPH)
+    viscosity_alpha[i] = 0.f;
+    diffusion_alpha[i] = 0.f;
+    u[i] = 0.f;
+#endif
   }
 
   /* Let the compiler know that the data is aligned and create pointers to the
@@ -1004,6 +1082,13 @@ cache_read_two_partial_cells_sorted_force(
                             SWIFT_CACHE_ALIGNMENT);
   swift_declare_aligned_ptr(float, soundspeedj, cj_cache->soundspeed,
                             SWIFT_CACHE_ALIGNMENT);
+#if defined(SPHENIX_SPH)
+  swift_declare_aligned_ptr(float, viscosity_alphaj,
+                            cj_cache->viscosity_alpha, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, diffusion_alphaj,
+                            cj_cache->diffusion_alpha, SWIFT_CACHE_ALIGNMENT);
+  swift_declare_aligned_ptr(float, uj, cj_cache->u, SWIFT_CACHE_ALIGNMENT);
+#endif
 
   const float pos_padded_j[3] = {-(2. * cj->width[0] + max_dx),
                                  -(2. * cj->width[1] + max_dx),
@@ -1028,6 +1113,11 @@ cache_read_two_partial_cells_sorted_force(
       pOrho2j[i] = 1.f;
       balsaraj[i] = 1.f;
       soundspeedj[i] = 1.f;
+#if defined(SPHENIX_SPH)
+      viscosity_alphaj[i] = 0.f;
+      diffusion_alphaj[i] = 0.f;
+      uj[i] = 0.f;
+#endif
 
       continue;
     }
@@ -1046,6 +1136,16 @@ cache_read_two_partial_cells_sorted_force(
     pOrho2j[i] = parts_j[idx].force.P_over_rho2;
     balsaraj[i] = parts_j[idx].force.balsara;
     soundspeedj[i] = parts_j[idx].force.soundspeed;
+#elif defined(SPHENIX_SPH)
+    mj[i] = parts_j[idx].mass;
+    rhoj[i] = parts_j[idx].rho;
+    grad_hj[i] = parts_j[idx].force.f;
+    pOrho2j[i] = parts_j[idx].force.pressure;
+    balsaraj[i] = parts_j[idx].force.balsara;
+    soundspeedj[i] = parts_j[idx].force.soundspeed;
+    viscosity_alphaj[i] = parts_j[idx].viscosity.alpha;
+    diffusion_alphaj[i] = parts_j[idx].diffusion.alpha;
+    uj[i] = parts_j[idx].u;
 #endif
   }
 
@@ -1066,6 +1166,11 @@ cache_read_two_partial_cells_sorted_force(
     pOrho2j[i] = 1.f;
     balsaraj[i] = 1.f;
     soundspeedj[i] = 1.f;
+#if defined(SPHENIX_SPH)
+    viscosity_alphaj[i] = 0.f;
+    diffusion_alphaj[i] = 0.f;
+    uj[i] = 0.f;
+#endif
   }
 }
 
@@ -1090,6 +1195,11 @@ static INLINE void cache_clean(struct cache *c) {
     free(c->pOrho2);
     free(c->balsara);
     free(c->soundspeed);
+#if defined(SPHENIX_SPH)
+    free(c->viscosity_alpha);
+    free(c->diffusion_alpha);
+    free(c->u);
+#endif
   }
   c->count = 0;
 }

@@ -39,7 +39,7 @@ void runner_doself_subset_density_vec(struct runner *r,
                                       struct part *restrict parts,
                                       int *restrict ind, int count);
 void runner_doself1_density_vec(struct runner *r, struct cell *restrict c);
-void runner_doself2_force_vec(struct runner *r, struct cell *restrict c);
+void runner_doself2_force_vec(struct runner *r, const struct cell *restrict c);
 void runner_dopair_subset_density_vec(struct runner *r,
                                       struct cell *restrict ci,
                                       struct part *restrict parts_i,
