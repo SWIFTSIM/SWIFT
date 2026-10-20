@@ -69,6 +69,10 @@ double cooling_get_physical_density(
  * report. Each kept the particle's previous state. */
 static long long cooling_geajay_failed_solves = 0;
 
+/*! The failed solves among them that stopped on a species that became NaN or
+ * infinite (reason GEAJAY_PARTICLE_SPECIES_NOT_FINITE). */
+static long long cooling_geajay_not_finite_solves = 0;
+
 /*! geajay solves on this rank that failed once and then succeeded in a
  * retry since the last report. */
 static long long cooling_geajay_recovered_solves = 0;
@@ -131,11 +135,15 @@ const char *cooling_rate_channel_name(const int channel) {
  * rank since the last call, and reset both to zero.
  *
  * @param failed (return) Solves that kept the particle's previous state.
+ * @param not_finite (return) The failed solves that stopped on a species that
+ * is not finite.
  * @param recovered (return) Solves that succeeded in a retry.
  */
 void cooling_pop_geajay_solve_failure_counts(long long *failed,
+                                             long long *not_finite,
                                              long long *recovered) {
   *failed = atomic_swap(&cooling_geajay_failed_solves, 0);
+  *not_finite = atomic_swap(&cooling_geajay_not_finite_solves, 0);
   *recovered = atomic_swap(&cooling_geajay_recovered_solves, 0);
 }
 
@@ -198,13 +206,14 @@ void cooling_update(const struct phys_const *phys_const,
     error("Error in geajay_context_update.");
 
   /* Report the geajay failures of the previous step */
-  long long failed, recovered;
-  cooling_pop_geajay_solve_failure_counts(&failed, &recovered);
+  long long failed, not_finite, recovered;
+  cooling_pop_geajay_solve_failure_counts(&failed, &not_finite, &recovered);
   if (failed > 0 || recovered > 0)
     message(
         "geajay solves in the previous step: %lld failed (particles kept "
-        "their previous state), %lld recovered by retrying.",
-        failed, recovered);
+        "their previous state; %lld of them on a species that became NaN or "
+        "infinite), %lld recovered by retrying.",
+        failed, not_finite, recovered);
 }
 
 /**
@@ -866,15 +875,21 @@ static double cooling_new_energy_cosmic_rays(
                          inputs, cooling_cosmic_ray_value(cooling, xp), dt,
                          /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
 
-  if (status->reason == GEAJAY_PARTICLE_BAD_ARGUMENT)
+  if (status->reason == GEAJAY_PARTICLE_BAD_ARGUMENT) {
+    cooling_print_fractions(xp);
     error(
-        "Particle %lld: geajay refused the arguments of the cosmic-ray solve "
-        "(cosmic-ray value %e).",
-        p->id, cooling_cosmic_ray_value(cooling, xp));
+        "Particle %lld: geajay refused the arguments of the cosmic-ray solve: "
+        "a value is not finite or out of range (cosmic-ray value %e, "
+        "density %e, energy %e, metal density %e; species above).",
+        p->id, cooling_cosmic_ray_value(cooling, xp), inputs->density,
+        inputs->internal_energy, inputs->metal);
+  }
 
   if (!solved) {
     cooling_set_cosmic_ray_loss(xp, cooling_stored_nan());
     atomic_inc(&cooling_geajay_failed_solves);
+    if (status->reason == GEAJAY_PARTICLE_SPECIES_NOT_FINITE)
+      atomic_inc(&cooling_geajay_not_finite_solves);
     *kept_previous_state = 1;
     return energy;
   }
@@ -889,11 +904,14 @@ static double cooling_new_energy_cosmic_rays(
  * @brief Compute the energy of a particle after dt and update the particle
  * chemistry data, or keep the previous state if geajay fails.
  *
- * A failed solve (e.g. more than max_substeps sub-cycle iterations) is
- * retried subcycle_on_failure times by geajay, retry i with 2^i sub-steps of
- * dt/2^i. If every retry fails, the species are not changed and this step's
- * cooling and heating are skipped, not deferred: the next step integrates
- * only its own dt. The failure is counted. A non-positive energy after the
+ * A failed solve (e.g. more than max_substeps sub-cycle iterations, or a
+ * species that became NaN or infinite) is retried subcycle_on_failure times
+ * by geajay, retry i with 2^i sub-steps of dt/2^i. If every retry fails, the
+ * species are not changed and this step's cooling and heating are skipped,
+ * not deferred: the next step integrates only its own dt. The failure is
+ * counted, and a species that is not finite is counted apart. A refused
+ * argument (a value that is not finite, a species included) stops the run
+ * with the particle ID. A non-positive energy after the
  * minimal-energy floor (a legitimate state, not a geajay failure) takes the
  * same kept-previous-state path without ever calling geajay.
  *
@@ -986,11 +1004,19 @@ static geajay_float cooling_new_energy_or_keep_previous(
       geajay_particle_solve(cooling->context, &cooling->layout, xp, &inputs, dt,
                             /*n_substeps=*/1, &output, &status) != GEAJAY_FAIL;
 
-  if (status.reason == GEAJAY_PARTICLE_BAD_ARGUMENT)
-    error("Particle %lld: geajay refused the arguments of the solve.", p->id);
+  if (status.reason == GEAJAY_PARTICLE_BAD_ARGUMENT) {
+    cooling_print_fractions(xp);
+    error(
+        "Particle %lld: geajay refused the arguments of the solve: a value "
+        "is not finite or out of range (density %e, energy %e, metal "
+        "density %e; species above).",
+        p->id, inputs.density, inputs.internal_energy, inputs.metal);
+  }
 
   if (!solved) {
     atomic_inc(&cooling_geajay_failed_solves);
+    if (status.reason == GEAJAY_PARTICLE_SPECIES_NOT_FINITE)
+      atomic_inc(&cooling_geajay_not_finite_solves);
     *kept_previous_state = 1;
     return energy;
   }

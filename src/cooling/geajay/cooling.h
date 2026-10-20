@@ -45,6 +45,7 @@ struct unit_system;
 struct swift_params;
 
 void cooling_pop_geajay_solve_failure_counts(long long *failed,
+                                             long long *not_finite,
                                              long long *recovered);
 
 int cooling_with_cosmic_rays(void);
