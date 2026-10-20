@@ -819,7 +819,7 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
 /**
  * @brief Tag a gas particle as ionized by this star and charge its photons.
  *
- * Shared by the three acceptance branches of #feedback_iact_HII_ionization.
+ * Called by #feedback_iact_HII_ionization for every claimed particle.
  * No atomics: task_type_stars_hii_ionization_feedback's cell locking
  * (src/task.c) already serializes every writer of these fields.
  *

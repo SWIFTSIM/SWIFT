@@ -593,8 +593,8 @@ photons of a lost draw are not passed on to farther gas: the front
 absorbs them. The probabilistic default is the better choice in
 practice too: deterministic mode over-ionizes, mildly for the
 spherical scheme and severely for the angular one (each pixel's own
-small budget makes its one guaranteed over-spend a proportionally
-larger error), with no compensating benefit.
+small budget makes the one boundary particle it always ionizes a
+proportionally larger error), with no compensating benefit.
 
 \code{GEARFeedback:HII\_cone\_claim\_rule} selects this rule (value 1,
 the default). Value 2 replaces it, for $\text{nside}\geq 1$, by a
