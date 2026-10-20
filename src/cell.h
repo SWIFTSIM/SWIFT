@@ -1336,6 +1336,23 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 }
 
 /**
+ * @brief Largest star reach length (max of h_hii and h) around a cell's
+ * top-level cell, its top-level neighbours included.
+ *
+ * A cell that splits pairs its progeny with any neighbour that does not.
+ * That neighbour then searches only the facing progeny, so its own reach
+ * must fit the progeny width. Bounding the split by the neighbourhood's
+ * reach, not the cell's own, keeps cell_need_rebuild_for_radiation_pair()
+ * silent right after a rebuild.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_neighbour_reach(const struct cell *c) {
+  return (c->top != NULL) ? c->top->stars.h_reach_max_neighbours : 0.f;
+}
+
+/**
  * @brief Can a pair radiation subgrid task associated with a cell be split
  * into smaller sub-tasks.
  *
@@ -1387,6 +1404,9 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_hii_max <
           0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              cell_radiation_neighbour_reach(c) <
+          0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
@@ -1411,6 +1431,9 @@ cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
           0.5f * c->dmin) &&
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_hii_max <
+          0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              cell_radiation_neighbour_reach(c) <
           0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
