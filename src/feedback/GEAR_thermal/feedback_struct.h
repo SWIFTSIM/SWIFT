@@ -331,7 +331,7 @@ struct hii_tag_report {
   /*! Simulation time until which the particle stays tagged. */
   double end_time;
 
-  /*! Photons debited for this claim, counted as forfeited if it loses. */
+  /*! Photons charged for this claim, counted as forfeited if it loses. */
   double cost;
 
   /*! Squared distance to the claiming star at claim time. The owner may hold

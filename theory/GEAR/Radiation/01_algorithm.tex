@@ -25,7 +25,8 @@ per rebuild pass:
     (Section~\ref{sec:photon-budget}).
   \item If the star's remaining budget can still afford that cost,
     flag the particle as ionized and deduct the cost from the budget;
-    otherwise stop spending in that direction.
+    otherwise that particle is the ionization front, and spending in
+    that direction stops (Section~\ref{sec:boundary-particle}).
 \end{enumerate}
 This simple algorithm grows the ionized region outward from the star by
 spending its photon budget on the closest not-yet-ionized,
@@ -76,8 +77,8 @@ Section~\ref{sec:front-radius} relies on. ``Tagged'' below always
 means holding an active (not yet lapsed) claim.
 
 \paragraph{Implementation.} The tag is applied by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:418}) and reset by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:437}),
+(\code{src/feedback/GEAR/radiation\_gas.c:500}) and reset by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:522}),
 which leaves the star id in place.
 
 \subsubsection{Candidate Gating and the Recombination Rate}
@@ -113,7 +114,7 @@ identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. 
 
 \paragraph{Implementation.} The candidate filter is \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:684}).
+(\code{src/feedback/GEAR/feedback\_common.c:726}).
 
 \subsubsection{Claim Cost vs.\ Maintenance Rate}
 
@@ -454,7 +455,7 @@ differently; see Section~\ref{sec:front-radius}.
 gate recurs at line 97. The rate-coupled branch starts at line 74 and leaves the energy alone.
 $\Gamma_{\rm HI}$ is
 \code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
-(\code{src/feedback/GEAR/radiation\_gas.c:547}); the excess photon energy is
+(\code{src/feedback/GEAR/radiation\_gas.c:657}); the excess photon energy is
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
 (\code{src/feedback/GEAR/radiation\_getters.c:543}); the fields are handed to
 Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
@@ -501,34 +502,35 @@ partition (closest-first, boundary-particle handling) are identical
 either way, and $\text{nside}=0$ is simply the $N_{\rm pix}=1$ case of
 the same scheme.
 
-\subsubsection{Opening a Pass's Budget: What Carries Over}
+\subsubsection{Opening a Pass's Budget}
 
 At the start of
 each rebuild pass, every pixel's photon count is (re)opened from
 \begin{equation}
   N_{{\rm ion},p}^{\rm open} =
-  \min\!\left(N_{{\rm ion},p}^{\rm prev},\,0\right) +
   \dot N_{{\rm ion},p}\,\Delta t_{\rm back},
   \label{eq:budget-open}
 \end{equation}
 where $\Delta t_{\rm back}$ is the time elapsed since this star's
-previous pass and $N_{{\rm ion},p}^{\rm prev}$ is whatever the pixel's
-count stood at when that pass ended. In
+previous pass. In
 \code{GEARFeedback:HII\_rebuild\_time\_Myr}$\,<0$ (``rebuild every
 step'') mode, $\Delta t_{\rm back}$ tracks the star's own timestep,
 which can be arbitrarily small; the nominal cadence used to bound how
 large a single pass's $\Delta t_{\rm back}$ is trusted to be is
 floored at \code{GEARFeedback:HII\_rebuild\_floor\_Myr}, the same
 constant that also floors the star's own timestep in that mode so it
-cannot collapse toward zero. Unspent \emph{positive} budget is
-not carried forward: those photons reached no gas and escaped;
-but a \emph{negative} balance is: a pass can overdraw a pixel by up to
-one particle's cost (the boundary-particle rule below), and that debt
-is repaid out of the next pass's income before any new spending
-happens, rather than forgiven. Forgiving it every pass instead would
-over-issue photons in proportion to how many passes elapse per unit
-time, i.e.\ as $1/\Delta t_{\rm back}$: a cadence-dependent bias,
-which this model is built to avoid.
+cannot collapse toward zero. Nothing carries over from the last
+pass. Unspent budget is dropped: those photons reached no gas and
+escaped. No pass leaves a debt either: a pixel's count never goes
+below zero, because a charge larger than what is left takes only
+what is left. A claim of a particle the pixel cannot afford is
+therefore not repaid later; the boundary roll
+(Section~\ref{sec:boundary-particle}) is what keeps the ionized mass
+unbiased, since the claim probability $\text{budget}_p/{\rm cost}_b$
+makes the expected cost of claimed gas equal to the budget. The same
+cap applies to the upkeep of held gas: the last renewal a pixel pays
+in a pass can be paid only in part, which favours held gas by at most
+one particle's upkeep per pixel and pass.
 
 In the code, the rate in Eq.~\ref{eq:budget-open} is the trapezoid mean
 $\tfrac{1}{2}(\dot N_{{\rm ion},p}^{\rm prev} + \dot N_{{\rm ion},p}^{\rm now})$
@@ -545,7 +547,7 @@ never averages against a stale rate.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1043}).
+(\code{src/feedback/GEAR/feedback\_common.c:1209}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -560,38 +562,45 @@ pix}=1$) case, just interleaved with every other cone's spending in
 the same traversal.
 
 \subsubsection{The Boundary Particle}
+\label{sec:boundary-particle}
 
 A pixel's boundary particle for the
 pass is the first candidate, in that pixel's own distance order, whose
 claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
 \begin{itemize}
   \item \code{HII\_deterministic\_boundary\_ionization=1}: ionize it
-    anyway, overdrawing the pixel (bounded by Eq.~\ref{eq:budget-open}'s
-    debt carry to at most this one particle's cost);
+    anyway, for the photons the pixel has left;
   \item \code{HII\_deterministic\_boundary\_ionization=0} (the
-    default): draw a single random number, keyed on the star id, the
-    pixel, and the integer time at the start of the step
-    (\code{random\_number\_HII\_regions}): \emph{not} on the
-    candidate particle, and ionize the boundary particle iff the
-    draw is at most the affordable fraction
-    $\text{budget}_p/{\rm cost}_b$.
+    default): if the particle's recombination rate once ionized is at
+    least the pixel's photon rate $\dot N_{{\rm ion},p}$, the pixel
+    could never keep it ionized, and it is not claimed. Otherwise draw
+    a single random number, keyed on the star id, the pixel, and the
+    integer time at the start of the step
+    (\code{random\_number\_HII\_regions}): \emph{not} on the candidate
+    particle, and ionize the boundary particle iff the draw is at most
+    the affordable fraction $\text{budget}_p/{\rm cost}_b$.
 \end{itemize}
-Because the draw is fixed for the whole pixel this pass, at most one
-particle per pixel can win it: a win drives the pixel's budget
-negative (never enough to also afford the next, farther candidate),
-so every later comparison in the same pixel this pass evaluates a
-non-positive affordable fraction and always loses. This is what gives
-expectation-level photon conservation,
-$\mathbb{E}[\text{spent}] = P_{\rm win}\cdot{\rm cost}_b +
-(1-P_{\rm win})\cdot 0 = \text{budget}_p$, and specifically requires
-the single fixed draw: rolling independently per candidate in a loop
-that stops at the first win would instead claim a boundary particle
-almost surely, spending its full cost rather than the pixel's actual
-remaining budget. The probabilistic default is the better choice in
+A boundary particle that is not claimed is the ionization front of
+the pixel: it absorbs the pixel's remaining budget, which ends the
+pixel's spending for the pass \citep[Appendix~E]{Hopkins2018}. A
+claim also ends it, since it takes what is left of the budget. Either way
+each pixel claims at most one boundary particle per pass, and gas
+farther than the front stays neutral until a later pass. The claim
+probability gives
+$\mathbb{E}[\text{cost of claimed gas}] = P_{\rm win}\cdot{\rm cost}_b
+= \text{budget}_p$, so the ionized mass is unbiased on average. The
+photons of a lost draw are not passed on to farther gas: the front
+absorbs them. The probabilistic default is the better choice in
 practice too: deterministic mode over-ionizes, mildly for the
 spherical scheme and severely for the angular one (each pixel's own
-small budget makes its one guaranteed over-spend a proportionally
-larger error), with no compensating benefit.
+small budget makes the one boundary particle it always ionizes a
+proportionally larger error), with no compensating benefit.
+
+\code{GEARFeedback:HII\_cone\_claim\_rule} selects this rule (value 1,
+the default). Value 2 replaces it, for $\text{nside}\geq 1$, by a
+shadow mask: each pixel is split into 64 sub-pixels, a front blocks
+only the sub-pixels it covers and absorbs their share of the budget,
+and spending goes on in the open ones.
 
 \subsection{Persistence and maintenance}
 \label{sec:persistence}
@@ -611,8 +620,8 @@ the stars are identical, not because the code enforces it.
 
 \paragraph{Implementation.} The per-star rebuild schedule is decided in
 \code{feedback\_will\_do\_HII\_ionization}
-(\code{src/feedback/GEAR/feedback\_common.c:415}), from
-\code{HII\_rebuild\_time} at lines 428-450.
+(\code{src/feedback/GEAR/feedback\_common.c:419}), from
+\code{HII\_rebuild\_time} at lines 436-467.
 
 \subsubsection{Maintenance: Renewing Gas Already Held Ionized}
 
@@ -630,12 +639,12 @@ re-charges its ongoing recombination cost, rather than charging it
 once at claim time and never again.
 
 \paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{src/runner\_radiation\_feedback.c:474}), exempt from
+(\code{src/runner\_radiation\_feedback.c:635}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:684}). The charge and renewal are
+(\code{src/feedback/GEAR/feedback\_common.c:726}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{feedback\_common.c:842}), called at
-\code{src/runner\_radiation\_feedback.c:711}.
+(\code{feedback\_common.c:927}), called at
+\code{src/runner\_radiation\_feedback.c:900}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
@@ -667,17 +676,16 @@ has ever claimed: see Section~\ref{sec:front-radius} for the
 distinct, historical-extent measure used to read out this model's
 region from the outside.
 
-Budget carryover between passes: unspent positive budget discarded,
-negative debt carried forward and repaid first, is
+Budget opening, with nothing carried over between passes, is
 Eq.~\ref{eq:budget-open} (Section~\ref{sec:angular-splitting}); the
 same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
 \paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{src/feedback/GEAR/feedback\_common.c:925}) passes the pixel index found
+(\code{src/feedback/GEAR/feedback\_common.c:927}) passes the pixel index found
 for the particle's current direction when it was gathered to
 \code{radiation\_consume\_ionizing\_photons}
-(\code{src/feedback/GEAR/radiation\_gas.c:473}).
+(\code{src/feedback/GEAR/radiation\_gas.c:471}).
 
 \subsection{Front-radius measure}
 \label{sec:front-radius}
@@ -719,8 +727,8 @@ historical-extent measure would instead freeze at the historical
 maximum once the region starts to recede.
 
 \paragraph{Implementation.} The id is written by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:418}) and is left in place by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:437}).
+(\code{src/feedback/GEAR/radiation\_gas.c:500}) and is left in place by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:522}).
 
 \subsubsection{Robust Historical Extent: Gap-Aware Outlier Rejection}
 

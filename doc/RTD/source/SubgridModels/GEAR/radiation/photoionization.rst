@@ -12,7 +12,7 @@ A gas particle is eligible to be ionized if it is cold (:math:`T \leq 1.01 \time
 
 Claiming a fresh particle costs its remaining neutral hydrogen content, plus a maintenance reserve sized to the interval until the star's next pass; this reserve is what makes the region's growth implicit and numerically stable even when that interval is much longer than the local recombination time. A particle stays ionized as long as the star can afford its recombination losses every pass, computed from the case-B recombination coefficient (Hui and Gnedin 1997, a fit accurate to 0.7% from 1 K to :math:`10^9` K) evaluated at the held temperature above.
 
-When a star's budget cannot fully afford its outermost (boundary) particle, ``GEARFeedback:HII_deterministic_boundary_ionization`` decides what happens: probabilistically (an unbiased coin flip, the default) or deterministically (always ionize it, letting the budget go slightly negative).
+When a star's budget cannot fully afford its outermost (boundary) particle, ``GEARFeedback:HII_deterministic_boundary_ionization`` decides what happens: probabilistically (the default) or deterministically (always ionize it for the photons left, which over-ionizes on average). In the probabilistic case the particle is ionized with probability budget/cost, which keeps the ionized mass unbiased on average. A budget never goes below zero and nothing carries over to the star's next pass. A boundary particle that is not ionized is the ionization front: it absorbs the rest of the budget and the star stops spending in that direction for this pass (Hopkins et al. 2018, Appendix E). A particle the cone cannot afford, and whose recombination rate is at least the photon rate of the cone (in the default spherical mode the one cone is the whole star; with ``HII_angular_nside`` > 0 it is one angular sector), is a front without a draw. This gate does not apply with the deterministic boundary.
 
 The star's search for gas to ionize is bounded by ``Stars:HII_max_search_radius`` (comoving), with automatic radius expansion and retry if a single pass does not reach every eligible particle. This search geometry is parsed whenever SWIFT is built with ``--with-feedback=GEAR``, and ``HII_max_search_radius`` has no default: a GEAR feedback run that never intends to use photoionization still has to set it.
 
@@ -37,6 +37,7 @@ Model parameters
 * ``HII_rebuild_floor_Myr``: floor on the interval the per-pass photon budget is integrated over. Must be positive. Default: 1e-4.
 * ``HII_angular_nside``: HEALPix splitting of the ionizing budget. 0 (default) is spherical, one shared budget; N >= 1 gives :math:`12 N^2` angular pixels. N > 0 requires building with ``--with-chealpix``, and the resulting pixel count must fit the build's ``--with-number-of-hii-angular-pixels`` (default 12, i.e. N <= 1).
 * ``HII_deterministic_boundary_ionization``: 0 (default, probabilistic) or 1 (deterministic) treatment of the boundary particle described above.
+* ``HII_cone_claim_rule``: what a direction does at its boundary particle. 1 (default): the front described above ends the direction. 2: each HEALPix pixel is split into 64 sub-pixels; a front blocks only the sub-pixels it covers, and needs ``HII_angular_nside`` >= 1 and ``HII_deterministic_boundary_ionization`` 0. The retired value 0 is read as 1, with a warning.
 * ``HII_couple_ionization_rate``: rate-couple the photoionization rate into Grackle instead of the default flag-and-floor scheme. 0 (default) or 1. Requires ``--with-cooling=grackle_1`` or higher; forces ``GrackleCooling:use_radiative_transfer`` on internally.
 
 Four further parameters, in the ``Stars`` section, control the search geometry and are parsed whenever SWIFT is built with GEAR feedback:
@@ -56,6 +57,7 @@ Four further parameters, in the ``Stars`` section, control the search geometry a
      HII_rebuild_floor_Myr: 1e-4                    # Floor (Myr) on the interval the budget is integrated over
      HII_angular_nside: 0                           # HEALPix splitting of the ionizing budget: 0 = spherical, N>=1 = 12*N^2 pixels
      HII_deterministic_boundary_ionization: 0       # 0 = probabilistic, 1 = deterministic boundary-particle treatment
+     HII_cone_claim_rule: 1                         # 1 = a front ends the direction, 2 = a front blocks only the sub-pixels it covers
      HII_couple_ionization_rate: 0                  # Rate-couple into Grackle's own RT fields instead of flag-and-floor
 
    Stars:
