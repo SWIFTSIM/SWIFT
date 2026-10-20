@@ -425,6 +425,14 @@ void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,
                                struct space *s) {
 #ifdef WITH_MPI
 
+  /* Our tags are top-level cell indices. */
+  if (s->nr_cells - 1 > cell_max_tag) {
+    error(
+        "Too many top-level cells (%d) to tag the grid info exchange by "
+        "cell index: the largest usable tag is %d.",
+        s->nr_cells, cell_max_tag);
+  }
+
   ticks tic2 = getticks();
 
   /* Run through the cells and get the size of the info that will be sent off.
@@ -1445,6 +1453,17 @@ void proxy_free_particle_buffers(struct proxy *p) {
  * @param nodeID The node with which this proxy will communicate.
  */
 void proxy_init(struct proxy *p, int mynodeID, int nodeID) {
+
+#ifdef WITH_MPI
+  /* Our tags are mynodeID * proxy_tag_shift + subtype, so check the largest
+   * one we could emit is usable. */
+  if (mynodeID * proxy_tag_shift + proxy_tag_tags > cell_max_tag) {
+    error(
+        "Too many ranks for the proxy tag scheme: rank %d needs tags up to "
+        "%d but the largest usable tag is %d.",
+        mynodeID, mynodeID * proxy_tag_shift + proxy_tag_tags, cell_max_tag);
+  }
+#endif
 
   /* Set the nodeID. */
   p->mynodeID = mynodeID;

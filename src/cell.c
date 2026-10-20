@@ -56,6 +56,7 @@
 
 /* Global variables. */
 int cell_next_tag = 0;
+int cell_max_tag = cell_max_tag_default;
 
 /** List of cell pairs for sub-cell recursion. For any sid, the entries in
  * this array contain the number of sub-cell pairs and the indices and sid
