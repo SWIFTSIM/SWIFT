@@ -28,6 +28,12 @@
 #include "runner_radiation_feedback.h"
 #include "swift.h"
 
+/* The checks of the parameter mapping and of the photon budget need the GEAR
+   feedback module with its HII radiation. */
+#if defined(FEEDBACK_GEAR) && defined(GEAR_SUBGRID_RADIATION_HII)
+#define TEST_HAS_HII_FEEDBACK
+#endif
+
 /*! Number of random draws in the sampled checks. */
 #define N_DRAWS 1000000
 
@@ -125,6 +131,7 @@ static int test_decision(void) {
   int fail = 0;
   uint64_t state = 777;
 
+#ifdef TEST_HAS_HII_FEEDBACK
   /* The retired value 0 selects the stop rule; other values are refused. */
   const int param_values[6] = {-1, 0, 1, 2, 3, 99};
   const int expected_rules[6] = {-1, 1, 1, 2, -1, -1};
@@ -135,6 +142,7 @@ static int test_decision(void) {
       mapped_wrong++;
   fail += report("parameter values mapped to the wrong rule (0 must give 1)",
                  (double)mapped_wrong, 0., 0);
+#endif
 
   /* On holdable gas a claim is decided as before the rules existed, draw for
      draw; what is not claimed is a front. */
@@ -225,14 +233,64 @@ static int test_decision(void) {
   return fail;
 }
 
+#ifdef TEST_HAS_HII_FEEDBACK
+/*! Number of checks in the no-debt sequence. */
+#define N_NO_DEBT_CHECKS 6
+
+/*! Names of the no-debt checks, in the order of the sequence. */
+static const char *no_debt_names[N_NO_DEBT_CHECKS] = {
+    "first pass: |budget - issued| / issued",
+    "won roll: budget left (must be exactly 0)",
+    "won roll: |photons taken - budget before| / issued",
+    "spent pixel: photons taken by an upkeep (must be 0)",
+    "pass after a won roll: |budget - issued| / issued",
+    "negative budget before opening: |budget - issued| / issued"};
+
 /**
- * @brief Checks that a cone budget never goes below zero and that a pass
- * opens with its own photons only.
+ * @brief Open a budget as the code did when a won roll left a debt: the
+ * photons issued plus the negative budget of the last pass.
  *
- * @return Number of failed checks.
+ * @param sp The star.
+ * @param dt_back The time since the last pass.
  */
-static int test_no_debt(void) {
-  int fail = 0;
+static void open_budget_with_debt(struct spart *sp, const double dt_back) {
+  const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[0];
+  const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[0];
+  const double rate_used =
+      rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
+  const double debt = fmin(sp->feedback_data.radiation.N_ion_budget_pix[0], 0.);
+  sp->feedback_data.radiation.N_ion_budget_pix[0] = debt + rate_used * dt_back;
+  sp->feedback_data.radiation.dot_N_ion_pix_prev[0] = rate_now;
+}
+
+/**
+ * @brief Consume a budget as the code did when a won roll left a debt: the
+ * full charge, whatever is left.
+ *
+ * @param sp The star.
+ * @param pixel The pixel.
+ * @param cost The charge.
+ * @return The charge.
+ */
+static double consume_budget_with_debt(struct spart *sp, const int pixel,
+                                       const double cost) {
+  sp->feedback_data.radiation.N_ion_budget_pix[pixel] -= cost;
+  return cost;
+}
+
+/**
+ * @brief Run the no-debt sequence on one pixel with the given budget functions.
+ *
+ * Each value is 0 when the code behaves as a budget that never goes below
+ * zero.
+ *
+ * @param open Opens the budget of a pass.
+ * @param consume Removes a charge from the budget.
+ * @param v (return) One value per check.
+ */
+static void no_debt_sequence(void (*open)(struct spart *, double),
+                             double (*consume)(struct spart *, int, double),
+                             double v[N_NO_DEBT_CHECKS]) {
   static struct spart sp;
   memset(&sp, 0, sizeof(sp));
   sp.feedback_data.radiation.n_HII_pixels = 1;
@@ -241,39 +299,56 @@ static int test_no_debt(void) {
   const double dt = 0.02;
   const double issued = 3.0e49 * dt;
 
-  radiation_open_ionizing_photon_budget(&sp, dt);
+  open(&sp, dt);
   double budget = feedback_get_star_ionization_budget(&sp, 0);
-  fail += report("first pass: |budget - issued| / issued",
-                 fabs(budget - issued) / issued, 0., 0);
+  v[0] = fabs(budget - issued) / issued;
 
   /* A won roll on a candidate costing 1.7 times the budget. */
-  const double taken = radiation_consume_ionizing_photons(&sp, 0, 1.7 * budget);
+  const double taken = consume(&sp, 0, 1.7 * budget);
   budget = feedback_get_star_ionization_budget(&sp, 0);
-  fail += report("won roll: budget left (must be exactly 0)",
-                 budget == 0.0 ? 0. : 1., 0., 0);
-  fail += report("won roll: |photons taken - budget before| / issued",
-                 fabs(taken - issued) / issued, 0., 0);
-  fail += report("spent pixel: photons taken by an upkeep (must be 0)",
-                 radiation_consume_ionizing_photons(&sp, 0, 1.0e40), 0., 0);
+  v[1] = budget == 0.0 ? 0. : 1.;
+  v[2] = fabs(taken - issued) / issued;
+  v[3] = consume(&sp, 0, 1.0e40);
 
   /* The next pass, same rate: its own photons and nothing else. */
-  radiation_open_ionizing_photon_budget(&sp, dt);
+  open(&sp, dt);
   budget = feedback_get_star_ionization_budget(&sp, 0);
-  fail += report("pass after a won roll: |budget - issued| / issued",
-                 fabs(budget - issued) / issued, 0., 0);
+  v[4] = fabs(budget - issued) / issued;
 
-  /* Control: a budget left negative by hand is ignored on opening; with a
-     debt carried the open budget would differ from the issued count. */
+  /* A budget left negative by hand is ignored on opening. */
   sp.feedback_data.radiation.N_ion_budget_pix[0] = -0.5 * issued;
-  radiation_open_ionizing_photon_budget(&sp, dt);
+  open(&sp, dt);
   budget = feedback_get_star_ionization_budget(&sp, 0);
-  fail += report("negative budget before opening: |budget - issued| / issued",
-                 fabs(budget - issued) / issued, 0., 0);
-  fail += report("control: a carried debt would leave this (must)",
-                 fabs((budget - 0.5 * issued) - issued) / issued, 0., 1);
+  v[5] = fabs(budget - issued) / issued;
+}
+
+/**
+ * @brief Checks that a cone budget never goes below zero and that a pass
+ * opens with its own photons only. The same sequence run on the debt-carrying
+ * copies must fail every check except the first, which is a precondition.
+ *
+ * @return Number of failed checks.
+ */
+static int test_no_debt(void) {
+  int fail = 0;
+  double v[N_NO_DEBT_CHECKS], mutant[N_NO_DEBT_CHECKS];
+
+  no_debt_sequence(radiation_open_ionizing_photon_budget,
+                   radiation_consume_ionizing_photons, v);
+  for (int k = 0; k < N_NO_DEBT_CHECKS; k++)
+    fail += report(no_debt_names[k], v[k], 0., 0);
+
+  no_debt_sequence(open_budget_with_debt, consume_budget_with_debt, mutant);
+  char name[128];
+  for (int k = 0; k < N_NO_DEBT_CHECKS; k++) {
+    snprintf(name, sizeof(name), "control, debt copy: %s (%s)",
+             no_debt_names[k], k > 0 ? "must fail" : "must hold");
+    fail += report(name, mutant[k], 0., k > 0);
+  }
 
   return fail;
 }
+#endif /* TEST_HAS_HII_FEEDBACK */
 
 /**
  * @brief Checks of the absorbed share at a front.
@@ -567,7 +642,11 @@ int main(int argc, char *argv[]) {
   int fail = 0;
   fail += test_decision();
   fail += test_absorbed();
+#ifdef TEST_HAS_HII_FEEDBACK
   fail += test_no_debt();
+#else
+  printf("skip no-debt checks: GEAR HII feedback is not configured\n");
+#endif
 #if defined(HAVE_CHEALPIX)
   fail += test_geometry();
   fail += test_open_gate();
