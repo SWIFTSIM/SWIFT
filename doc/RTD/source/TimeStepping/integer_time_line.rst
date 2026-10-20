@@ -1,7 +1,173 @@
 .. Integer time-line
    Matthieu Schaller 9th November 2019
+   Darwin Roduit, 2026
 
 .. _integer_time_line:
-   
-Integer time-line & time-bins
-=============================
+
+===============================
+ Integer time-line & time-bins
+===============================
+
+SWIFT does not keep track of time with floating-point numbers. Every quantity
+that decides *when* something happens (the start and the end of a time-step,
+whether a particle is active, when to write a snapshot) is an integer on a
+fixed grid, the *integer time-line*. This page explains how SWIFT represents
+time and assigns time-steps to particles. The definitions are in
+``src/timeline.h``.
+
+The time-line
+=============
+
+The integer time is stored in a 64-bit integer (``integertime_t``). The
+whole simulation, from the start to the end time, is divided into
+:math:`2^{57}` equal intervals. Each one is called a *tick*.
+
+.. note::
+
+   **A tick is the smallest interval on the integer time-line.** Integer
+   time advances in whole numbers of ticks, so events cannot be scheduled
+   between two consecutive ticks. A time-step is therefore always a whole
+   number of ticks. Not every whole number is allowed, though: the number of
+   ticks of a time-step is a power of two (see the time-bins below).
+
+The total number of ticks is the constant ``max_nr_timesteps``, which is
+``1 << (num_time_bins + 1)`` with ``num_time_bins = 56``.
+
+For a **non-cosmological** run, the length of one tick is:
+
+.. math::
+
+   \Delta t_{\rm tick} = \frac{t_{\rm end} - t_{\rm begin}}{2^{57}} \, ,
+
+and this value is stored in ``time_base`` (``engine_init()``). The physical
+time of the integer time :math:`t_{\rm int}` is
+:math:`t_{\rm begin} + t_{\rm int}\,\Delta t_{\rm tick}` (see
+``engine_step()``).
+
+For a **cosmological** run, the variable that is divided into ticks is the
+logarithm of the scale-factor. The value of ``time_base`` is:
+
+.. math::
+
+   \Delta t_{\rm tick} = \frac{\log (a_{\rm end}) - \log (a_{\rm begin})}{2^{57}} \, ,
+
+(see ``cosmology_init()`` in ``cosmology.c``). The physical time and the scale-factor of every step are
+computed from the integer time by ``cosmology_update()``. As a consequence,
+``dt_min`` and ``dt_max`` are then intervals of :math:`\log a` (see
+:ref:`Parameters_time_integration`). The time-step criteria of the particles
+return physical time-steps. They are multiplied by the Hubble rate
+:math:`H(a)`, which is stored in ``cosmology->time_step_factor``, before they
+are converted to ticks.
+
+For example, a cosmological run that goes from :math:`z=127` to :math:`z=0`
+has about :math:`\Delta t_{\rm tick} = 4.86/2^{57} \approx 3.4\times10^{-17}`
+in :math:`\log a`. A non-cosmological run that covers 10 Gyr has ticks of
+about 2 seconds, since :math:`10\,{\rm Gyr}/2^{57} \approx 2.2\,{\rm s}`.
+
+The simulation is finished when the integer time reaches :math:`2^{57}`
+(``engine_is_done()``).
+
+Time-bins
+=========
+
+Each particle carries a *time-bin*, stored in ``time_bin``. A particle in the
+time-bin :math:`b \geq 1` uses time-steps that are
+
+.. math::
+
+   \Delta t_{\rm int}(b) = 2^{b+1}\ {\rm ticks} = \left(t_{\rm end} - t_{\rm begin}\right) \times 2^{\,b-56}
+
+long. This is the function ``get_integer_timestep()``. It returns 0 for a
+bin :math:`b \leq 0`, which is not a valid step length. The shortest possible
+time-step is the one of the bin 1 and has 4 ticks. The longest one is the one
+of the bin 56 and is the whole time-line.
+
+A time-step is thus a whole number of ticks, **but only a power of two**: 4, 8,
+16, 32 ticks and so on. 
+
+At the end of each step, a particle gets a new time-bin. The bin comes from
+the physical criteria of the particle (see :ref:`time_step_criteria`): a
+particle in a quiet region asks for a long step, a particle in a dense or
+fast-moving region asks for a short one. The bin of a particle is therefore not
+fixed. It goes up or down as the local conditions change, and nothing pushes
+all the particles towards the long bins. Only the *growth* is restricted: a
+particle can move up by one bin per step, and only at the right time on the
+time-line (see :ref:`time_step_criteria`).
+
+Each successive bin doubles the time-step length, as shown below.
+
+.. figure:: figures/time_bins.png
+   :width: 100%
+   :alt: Length of the time-step of every time-bin
+
+   The length of the time-step of the 56 time-bins, in ticks (left) and for
+   the Sedov blast example (right). In this example the run is :math:`0.05`
+   long, ``dt_min`` is :math:`10^{-9}` and ``dt_max`` is :math:`10^{-2}`. Every
+   bin doubles the length of the step. SWIFT prints the two circled values at
+   the start of a run, as "Minimal timestep size (on time-line)" and "Maximal
+   timestep size (on time-line)". They are the lengths
+   :math:`(t_{\rm end}-t_{\rm begin})/2^k` that are just below ``dt_min`` and
+   ``dt_max``.
+
+The function ``get_time_bin()`` goes the other way. It returns
+
+.. math::
+
+   b(\Delta t_{\rm int}) = \lfloor\log_2 (\Delta t_{\rm int})\rfloor - 1 \, ,
+
+so a time-step that is not a power of two is *rounded down* to the bin below.
+The ``+ 1`` in the exponent of the length exists to keep the *half* of the
+shortest step an integer. The kick-drift-kick integrator (see
+:ref:`kick_drift_kick`) needs the middle of every step.
+
+Special values of the time-bin
+------------------------------
+
+A few other values of the time-bin mark special particles. They are not valid
+step lengths.
+
+* ``time_bin_inhibited`` (``num_time_bins + 2``): the particle has been
+  removed from the simulation (``part_is_inhibited()``).
+* ``time_bin_not_created`` (``num_time_bins + 3``): the slot is a spare one,
+  kept for a particle that will be created during the run.
+* ``time_bin_not_awake`` (``-num_time_bins``): this is not a time-bin. It is
+  the value of ``limiter_data.wakeup`` when no neighbour asked for the
+  particle to be woken up (see :ref:`time_step_limiter`).
+* A negative ``time_bin`` is also written for a short time while a particle
+  is synchronised on the time-line (see :ref:`time_step_sync`).
+
+Which bins are active
+=====================
+
+The steps of the bin :math:`b` start and end at the integer times that are
+multiples of :math:`\Delta t_{\rm int}(b)`. Every length is a power of two (see
+figure below).  Hence a multiple of a long step is also a multiple of all the
+shorter ones. At the end of a step of the bin :math:`b`, all the particles in
+the bins :math:`1,\ldots,b` are also ending a step. Therefore, SWIFT never
+needs a list of the active particles: it only needs the **highest active bin**
+at the current time.
+
+.. figure:: figures/active_bins.png
+   :width: 100%
+   :alt: Active time-bins as a function of the integer time
+
+   The bins that end a step at each integer time (blue), for the eight
+   shortest bins, and the resulting highest active bin (bottom). The bin 1 is
+   active at every point. The bin :math:`b` is active once every
+   :math:`2^{b-1}` of the points. The highest active bin follows the sequence
+   1, 2, 1, 3, 1, 2, 1, 4, and so on.
+
+A particle is active when:
+
+.. code-block:: c
+
+   p->time_bin <= e->max_active_bin # see part_is_active()
+
+The highest active bin is computed from the integer time by
+``get_max_active_bin()``. It is the position of the lowest set bit of the
+integer time, minus one. The lowest active bin is the bin whose step is as long
+as the step that has just been taken (``get_min_active_bin()``).
+
+The multiples also restrict the growth of a step. A particle can only move to
+a longer step when the current time is a multiple of the length of that step
+(see :ref:`time_step_criteria`).
