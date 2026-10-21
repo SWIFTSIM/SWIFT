@@ -547,7 +547,7 @@ never averages against a stale rate.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1169}).
+(\code{src/feedback/GEAR/feedback\_common.c:1177}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -571,14 +571,15 @@ claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
   \item \code{HII\_deterministic\_boundary\_ionization=1}: ionize it
     anyway, for the photons the pixel has left;
   \item \code{HII\_deterministic\_boundary\_ionization=0} (the
-    default): if the particle's recombination rate once ionized is at
-    least the pixel's photon rate $\dot N_{{\rm ion},p}$, the pixel
-    could never keep it ionized, and it is not claimed. Otherwise draw
-    a single random number, keyed on the star id, the pixel, and the
-    integer time at the start of the step
+    default): draw a single random number, keyed on the star id, the
+    pixel, and the integer time at the start of the step
     (\code{random\_number\_HII\_regions}): \emph{not} on the candidate
     particle, and ionize the boundary particle iff the draw is at most
-    the affordable fraction $\text{budget}_p/{\rm cost}_b$.
+    the affordable fraction $\text{budget}_p/{\rm cost}_b$. The draw
+    applies to all gas the pixel cannot afford, also gas that recombines
+    faster than the pixel emits: a pixel whose Strömgren mass is below
+    one particle then ionizes a particle now and then, and the expected
+    ionized mass stays the Strömgren mass.
 \end{itemize}
 A boundary particle that is not claimed is the ionization front of
 the pixel: it absorbs the pixel's remaining budget, which ends the
@@ -630,15 +631,20 @@ maintenance rate (Section~\ref{sec:photon-budget}), which also renews
 its \texttt{end\_time} so the tag survives to the following pass. Every
 rebuild after the one that first claimed a particle therefore
 re-charges its ongoing recombination cost, rather than charging it
-once at claim time and never again.
+once at claim time and never again. When a pixel pays a particle's
+upkeep only in part (the last renewal of that pixel), the tag is
+renewed with probability paid/owed. Without this draw a particle that
+costs more upkeep than the pixel emits, once won by a claim, would stay
+ionized for ever, and a pixel whose Strömgren mass is below one
+particle would hold a whole particle permanently.
 
 \paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
 (\code{src/runner\_radiation\_feedback.c:510}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
 (\code{src/feedback/GEAR/feedback\_common.c:726}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{feedback\_common.c:927}), called at
-\code{src/runner\_radiation\_feedback.c:752}.
+(\code{feedback\_common.c:929}), called at
+\code{src/runner\_radiation\_feedback.c:754}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
@@ -676,7 +682,7 @@ same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
 \paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{src/feedback/GEAR/feedback\_common.c:927}) passes the pixel index found
+(\code{src/feedback/GEAR/feedback\_common.c:929}) passes the pixel index found
 for the particle's current direction when it was gathered to
 \code{radiation\_consume\_ionizing\_photons}
 (\code{src/feedback/GEAR/radiation\_gas.c:471}).
