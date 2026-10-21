@@ -751,6 +751,7 @@ void space_construct_progeny(struct space *s, struct cell *c,
 void space_populate_multipole(struct cell *c);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
+int space_top_cell_has_tasks(struct cell *c);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,
                                 size_t *count_inhibited_parts,
                                 size_t *count_extra_parts, int verbose);
