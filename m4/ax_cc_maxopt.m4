@@ -24,6 +24,20 @@
 #   Requires macros: AX_CHECK_COMPILE_FLAG, AX_COMPILER_VENDOR,
 #   AX_GCC_ARCHFLAG, AX_GCC_X86_CPUID.
 #
+#   NOTE: this copy has diverged from the Autoconf Archive and should not be
+#   replaced wholesale by a newer upstream revision without merging what
+#   follows. Measured against upstream serial 23, it adds branches for clang,
+#   for icx (oneAPI), and for nvc, Cray and Fujitsu, none of which upstream
+#   selects useful flags for; an Intel -x table that reaches current CPUs
+#   rather than stopping at Haswell, with AMD parts given -march= instead
+#   because the -x codes gate on a GenuineIntel check at run time; and a
+#   preference for asking the compiler to target the build host itself, with
+#   -march=native, -mcpu=native, -xHost or -fast, leaving the CPUID tables as
+#   the fallback for portable and cross builds. It also spells the Intel
+#   aliasing flag -ansi-alias rather than -ansi_alias, and tests
+#   ac_test_CFLAGS against "set" rather than against the empty string, which
+#   is the form configure.ac in this tree depends on.
+#
 # LICENSE
 #
 #   Copyright (c) 2008 Steven G. Johnson <stevenj@alum.mit.edu>
@@ -55,7 +69,7 @@
 #   modified version of the Autoconf Macro, you may extend this special
 #   exception to the GPL to apply to your modified version as well.
 
-#serial 18
+#serial 18 (modified for SWIFT)
 
 AC_DEFUN([AX_CC_MAXOPT],
 [
@@ -116,22 +130,39 @@ if test "$ac_test_CFLAGS" != "set"; then
 	      case $ax_cv_gcc_x86_cpuid_0 in # see AX_GCC_ARCHFLAG
                 *:756e6547:6c65746e:49656e69) # Intel
                   case $ax_cv_gcc_x86_cpuid_1 in
+		    # The table below this comment stops at Kaby Lake and Skylake-AVX512, so
+		    # every more recent CPU fell through it with icc_flags empty and got no
+		    # -x flag at all, leaving both compilers on their SSE2 default. Unlike the
+		    # gcc path there is no AX_EXT rescue: configure.ac skips SIMD_FLAGS for the
+		    # Intel vendor. These entries are grouped by instruction set rather than by
+		    # microarchitecture, since that is what -x actually selects.
+		    # Atom cores come first: they are SSE4.2-only, and model 0x4d collides with
+		    # the Skylake pattern further down, which would hand an Avoton -xCORE-AVX2.
+		    *3?67?:*:*:*|*[[45]]?6[[acd]]?:*:*:*|*5?6[[cf]]?:*:*:*|*7?6[[5a]]?:*:*:*|*8?6[[6a]]?:*:*:*|*9?6[[6c]]?:*:*:*) icc_flags="-xSSE4.2" ;; # Silvermont..Tremont
+		    *5?65?:*:*:*|*6?6[[6ac]]?:*:*:*|*7?6[[de]]?:*:*:*|*9?6d?:*:*:*|*8?6[[cdf]]?:*:*:*|*a?6[[7de]]?:*:*:*|*c?6f?:*:*:*|*4??f??:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2" ;; # AVX-512 parts
+		    *3?6[[cdf]]?:*:*:*|*4?6[[567ef]]?:*:*:*|*5?6[[6e]]?:*:*:*|*8?6e?:*:*:*|*9?6[[7ae]]?:*:*:*|*a?6[[56acf]]?:*:*:*|*b?6[[567adef]]?:*:*:*|*c?6[[56c]]?:*:*:*|*d?6[[57d]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2" ;; # Alder Lake onwards
+		    *8?65?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xAVX -xSSE4.2" ;; # Knights Mill
 		    *0?6[[78ab]]?:*:*:*|?6[[78ab]]?:*:*:*|6[[78ab]]?:*:*:*) icc_flags="-xK" ;;
 		    *0?6[[9d]]?:*:*:*|?6[[9d]]?:*:*:*|6[[9d]]?:*:*:*|*1?65?:*:*:*) icc_flags="-xSSE2 -xB -xK" ;;
 		    *0?6e?:*:*:*|?6e?:*:*:*|6e?:*:*:*) icc_flags="-xSSE3 -xP -xO -xB -xK" ;;
 		    *0?6f?:*:*:*|?6f?:*:*:*|6f?:*:*:*|*1?66?:*:*:*) icc_flags="-xSSSE3 -xT -xB -xK" ;;
 		    *1?6[[7d]]?:*:*:*) icc_flags="-xSSE4.1 -xS -xT -xB -xK" ;;
 		    *1?6[[aef]]?:*:*:*|*2?6[[5cef]]?:*:*:*) icc_flags="-xSSE4.2 -xS -xT -xB -xK" ;;
-		    *2?6[[ad]]?:*:*:*) icc_flags="-xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Sandy-bridge
-		    *3?6[[ae]]?:*:*:*) icc_flags="-xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; #Ivy-bridge
-		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Haswell
-		    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) icc_flags=" -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Broadwell
-		    *4?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake
-		    *5?6[[56]]?:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Skylake-AVX512
-		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;; # Knights-Landing
-		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -SSE4.2 -xS -xT -xB -xK" ;;# Kabylake
+		    *2?6[[ad]]?:*:*:*) icc_flags="-xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Sandy-bridge
+		    *3?6[[ae]]?:*:*:*) icc_flags="-xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; #Ivy-bridge
+		    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*|*4?6[[ef]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Haswell
+		    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) icc_flags=" -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Broadwell
+		    *4?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Skylake
+		    *5?6[[56]]?:*:*:*) icc_flags="-xCORE-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Skylake-AVX512
+		    *5?67?:*:*:*) icc_flags="-xMIC-AVX512 -xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;; # Knights-Landing
+		    *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2 -xS -xT -xB -xK" ;;# Kabylake
 		    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) icc_flags="-xSSE3 -xP -xO -xN -xW -xK" ;;
 		    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) icc_flags="-xSSE2 -xN -xW -xK" ;;
+		    # Unknown recent Intel: extended model >= 9 postdates Skylake, so AVX2 is a
+		    # safe floor. The AVX2-less Tremont parts carry extended model 8 and 9 but
+		    # are matched explicitly above, so they cannot reach this. Without it an
+		    # unrecognised CPU gets no -x flag at all and falls back to SSE2.
+		    *[[9a-f]]?6??:*:*:*) icc_flags="-xCORE-AVX2 -xCORE-AVX-I -xAVX -xSSE4.2" ;;
                   esac ;;
                 *:68747541:444d4163:69746e65) # AMDs with AVX2 support.
                   case $ax_cv_gcc_x86_cpuid_1 in
@@ -149,6 +180,30 @@ if test "$ac_test_CFLAGS" != "set"; then
 
                   esac ;;
               esac ;;
+          esac
+          # icx (oneAPI) dropped the single-letter and pre-SSE4.2 processor
+          # codes that classic icc still accepts, so do not offer it flags its
+          # driver will reject. Any host new enough to be worth building with
+          # icx reaches one of the instruction-set entries above.
+          if test "x$ax_cv_c_compiler_vendor" = xoneapi; then
+            icc_oneapi_flags=""
+            for flag in $icc_flags; do
+              case $flag in
+                -xSSE4.2|-xAVX|-xCORE-AVX-I|-xCORE-AVX2|-xCORE-AVX512|-xMIC-AVX512)
+                  icc_oneapi_flags="$icc_oneapi_flags $flag" ;;
+              esac
+            done
+            icc_flags=$icc_oneapi_flags
+          fi
+          # -xHost targets the build host directly, which is more accurate and
+          # stays current without this table being edited, so offer it ahead of
+          # the table flags; the loop below falls through to them if the driver
+          # rejects it. Intel parts only: on AMD the -x codes gate on a
+          # GenuineIntel check at run time, which is why the AMD entries above
+          # use -march= instead. When cross compiling the cpuid is unknown, so
+          # this does not match and -xHost is not offered.
+          case $ax_cv_gcc_x86_cpuid_0 in
+            *:756e6547:6c65746e:49656e69) icc_flags="-xHost $icc_flags" ;;
           esac
           if test "x$icc_flags" != x; then
             for flag in $icc_flags; do
@@ -176,7 +231,26 @@ if test "$ac_test_CFLAGS" != "set"; then
      # not all codes will benefit from this.
      AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
 
-     AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     # Prefer the compiler's own host detection to the CPUID tables in
+     # AX_GCC_ARCHFLAG. It is more accurate, it stays current without this file
+     # being edited, and on Darwin it is the only thing that can work at all.
+     # Skip it when a portable binary is asked for, and when cross compiling,
+     # where native would describe the build machine and not the target. The
+     # tables remain the fallback for both of those cases, as does an explicit
+     # --with-gcc-arch=<arch>, which must keep overriding the guess.
+     ax_maxopt_gotnative=no
+     if test "x$acx_maxopt_portable" = xno && test "x$cross_compiling" = xno \
+        && test -z "$with_gcc_arch"; then
+       case $host_cpu in
+         aarch64*|arm64*|powerpc*) ax_maxopt_nativeflag="-mcpu=native" ;;
+         *) ax_maxopt_nativeflag="-march=native" ;;
+       esac
+       AX_CHECK_COMPILE_FLAG([$ax_maxopt_nativeflag],
+         [CFLAGS="$CFLAGS $ax_maxopt_nativeflag"; ax_maxopt_gotnative=yes])
+     fi
+     if test "x$ax_maxopt_gotnative" = xno; then
+       AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     fi
      ;;
 
     gnu)
@@ -196,7 +270,61 @@ if test "$ac_test_CFLAGS" != "set"; then
      # not all codes will benefit from this.
      AX_CHECK_COMPILE_FLAG(-funroll-loops, CFLAGS="$CFLAGS -funroll-loops")
 
-     AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     # Prefer the compiler's own host detection to the CPUID tables in
+     # AX_GCC_ARCHFLAG. It is more accurate, it stays current without this file
+     # being edited, and on Darwin it is the only thing that can work at all.
+     # Skip it when a portable binary is asked for, and when cross compiling,
+     # where native would describe the build machine and not the target. The
+     # tables remain the fallback for both of those cases, as does an explicit
+     # --with-gcc-arch=<arch>, which must keep overriding the guess.
+     ax_maxopt_gotnative=no
+     if test "x$acx_maxopt_portable" = xno && test "x$cross_compiling" = xno \
+        && test -z "$with_gcc_arch"; then
+       case $host_cpu in
+         aarch64*|arm64*|powerpc*) ax_maxopt_nativeflag="-mcpu=native" ;;
+         *) ax_maxopt_nativeflag="-march=native" ;;
+       esac
+       AX_CHECK_COMPILE_FLAG([$ax_maxopt_nativeflag],
+         [CFLAGS="$CFLAGS $ax_maxopt_nativeflag"; ax_maxopt_gotnative=yes])
+     fi
+     if test "x$ax_maxopt_gotnative" = xno; then
+       AX_GCC_ARCHFLAG($acx_maxopt_portable)
+     fi
+     ;;
+
+    portland | nvhpc)
+     # nvc, the NVIDIA HPC SDK compiler, formerly PGI. Both vendor strings are
+     # matched on purpose: nvc defines __NVCOMPILER as well as __PGI, and while
+     # the AX_COMPILER_VENDOR in this tree only tests for the latter, upstream
+     # added an nvhpc entry ahead of portland. Accepting either means a refresh
+     # of that macro cannot silently drop this branch. Its reference guide says
+     # of -fast that "the appropriate -tp option is automatically included to
+     # enable generation of code optimized for the type of system on which
+     # compilation is performed", so the one flag covers both the optimisation
+     # level and the host targeting that -march=native gives elsewhere. That
+     # also makes it the wrong choice for a portable binary, hence the test.
+     if test "x$acx_maxopt_portable" = xno && test "x$cross_compiling" = xno; then
+       AX_CHECK_COMPILE_FLAG(-fast, CFLAGS="$CFLAGS -fast", [CFLAGS="$CFLAGS -O3"])
+     else
+       CFLAGS="$CFLAGS -O3"
+     fi
+     ;;
+
+    cray)
+     # Classic Cray C only. CCE 9 and later are clang based and define
+     # __clang__, which AX_COMPILER_VENDOR tests before _CRAYC, so those are
+     # handled by the clang branch above. No architecture flag is set here: on
+     # a Cray the cc wrapper takes the target from the loaded craype-* module,
+     # and overriding that from configure is more likely to fight it than help.
+     CFLAGS="$CFLAGS -O3"
+     ;;
+
+    fujitsu)
+     # fcc in Trad mode. In Clang mode it defines __clang__ and is handled by
+     # the clang branch above. -Kfast is the aggregate optimisation flag and
+     # already implies the relaxed floating point that the gcc and clang paths
+     # ask for with -ffast-math, as well as targeting the build host.
+     AX_CHECK_COMPILE_FLAG(-Kfast, CFLAGS="$CFLAGS -Kfast", [CFLAGS="$CFLAGS -O3"])
      ;;
 
     microsoft)
@@ -204,6 +332,19 @@ if test "$ac_test_CFLAGS" != "set"; then
      CFLAGS="$CFLAGS -O2"
      ;;
   esac
+
+  # Nothing above can work out the target when cross compiling. AX_GCC_ARCHFLAG
+  # skips its tables, on every architecture and not just some, and asking the
+  # compiler about a machine it is not running on is meaningless, so the native
+  # paths are skipped too. The result is a build with no architecture flags at
+  # all, which succeeds and is merely slower than it should be, so say so
+  # rather than leave it to be discovered. --with-gcc-arch is exempt because it
+  # replaces the detection instead of refining it, and so still applies here.
+  if test "x$cross_compiling" = xyes && test -z "$with_gcc_arch"; then
+     AC_MSG_WARN([cross compiling: no architecture flags have been selected, so
+this build will not be tuned for the machine it is meant to run on. Use
+--with-gcc-arch=<arch> with GCC or clang, or set CFLAGS yourself, to choose one.])
+  fi
 
   if test -z "$CFLAGS"; then
 	echo ""
