@@ -2326,7 +2326,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 (same as magma2-MI1), magma2-MI1, magma2-MI2, magma2-MI3 default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 (same as magma2-MI3), magma2-MI1, magma2-MI2, magma2-MI3 default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2381,7 +2381,7 @@ case "$with_hydro" in
    ;;
    magma2)
       AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
-      AC_DEFINE([TRADITIONAL_SPH_ACCELERATION_TERM], [1], [Use MI1 discretization of MAGMA])
+      AC_DEFINE([MAGMA_MI3_FORMULATION], [1], [MI2 volume weighting with each pressure on its own gradient function])
    ;;
    magma2-MI1)
       AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])

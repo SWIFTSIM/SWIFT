@@ -81,8 +81,11 @@
 #elif defined(MAGMA_SPH)
 #include "./hydro/MAGMA/hydro.h"
 #include "./hydro/MAGMA/hydro_iact.h"
-#ifdef TRADITIONAL_SPH_ACCELERATION_TERM
+#if defined(TRADITIONAL_SPH_ACCELERATION_TERM)
 #define SPH_IMPLEMENTATION "MAGMA-2-MI1 (Rosswog+ 2020)"
+#elif defined(MAGMA_MI3_FORMULATION)
+#define SPH_IMPLEMENTATION \
+  "MAGMA-2-MI3 (Rosswog+ 2020, own gradient function per pressure)"
 #else
 #define SPH_IMPLEMENTATION "MAGMA-2-MI2 (Rosswog+ 2020)"
 #endif

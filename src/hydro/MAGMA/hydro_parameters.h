@@ -101,12 +101,13 @@
  * linear term keeps its full strength, so subsonic shear layers (which need
  * the viscosity to keep their particle order) are untouched and only cold,
  * supersonic shear (differential rotation) is relieved of it. The 2026-10
- * parameter study of the scheme-comparison suite found 0.7 the smallest
- * value at which the Kelvin-Helmholtz, Gresho and square tests are unchanged
- * and the largest at which the Keplerian rings and discs survive 30-40
- * orbits; the price is a 4 per cent larger L1 pressure error on the Sedov
- * blast and more surviving fragments of the blob. */
-#define hydro_props_default_viscosity_limiter_mach 0.7f
+ * optimisation study of the scheme-comparison suite (one-at-a-time sweep,
+ * factorial, replicated finalists on 27 tests, MI1/MI2/MI3) settled on 0.5:
+ * the Keplerian rings and discs survive 6 and 20 orbits with nothing lost
+ * on shocks, shear layers or interfaces once the pressure-residual
+ * conduction is on (with the paper's conduction alone, 0.5 cost 8 per cent
+ * on the Sedov pressure error, which is why 0.7 was the earlier choice). */
+#define hydro_props_default_viscosity_limiter_mach 0.5f
 
 /*! Time-dependent viscosity coefficient (Cullen & Dehnen 2010): 0 the
  * paper's constant alpha, 1 a per-particle alpha raised to
@@ -149,12 +150,16 @@
  * resolved pressure gradient (hydrostatic equilibrium under gravity) and the
  * full jump across the kernel-scale pressure blip of the density estimate
  * at an entropy jump, or a shock; the conduction then removes the blip and
- * switches itself off. 0.5 (default, with the threshold below) takes the
+ * switches itself off. With the threshold below, 0.5 takes the
  * static-contact pressure blip from 20 to 5 per cent, halves the Sod
  * contact blip, cures the Sedov central overheating and keeps the KH rolls
  * coherent, for MI2 and MI3 alike, at no cost on the sound wave, Gresho
- * vortex or hydrostatic halo. */
-#define hydro_props_default_diffusion_alpha_pressure 0.5f
+ * vortex or hydrostatic halo; 1 (default, from the 2026-10 optimisation
+ * study) further improves the Evrard entropy and pressure profiles, the
+ * contact blips, the blob stripping and the square tests, at the price of
+ * more entropy smearing at strong contacts (weak shock tube, 1D blast
+ * waves). */
+#define hydro_props_default_diffusion_alpha_pressure 1.0f
 
 /*! Threshold of the pressure-residual conduction term: only the part of the
  * residual above this fraction of the pair's mean pressure counts, so that
@@ -238,7 +243,7 @@ struct diffusion_global_data {
   float alpha;
 
   /*! Coefficient of the reconstructed-pressure-residual conduction term
-   * (default 0.5; 0 switches it off) */
+   * (default 1; 0 switches it off) */
   float alpha_pressure;
 
   /*! Fraction of the mean pressure below which the residual is ignored
