@@ -902,7 +902,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  *
  * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
  * renewed and cooling expires those tags at end_time. The last renewal of a
- * pixel can be paid only in part. The caller
+ * pixel can be paid only in part, and is then renewed with probability
+ * paid / owed; a lost renewal ends the tag at once. The caller
  * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
  * (r2, id) order over the star's whole held region, so a shortfall lapses
  * the outermost shell (largest r2, the recession front) first, rather than
@@ -919,6 +920,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * @param us Internal unit system.
  * @param cosmo Cosmology.
  * @param cooling Cooling function data.
+ * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
  * @return Photons charged for this particle, 0 if the budget was exhausted.
@@ -929,8 +931,8 @@ feedback_iact_HII_maintain_ionized_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back) {
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back) {
 
   /* Counted whether or not its photons can be afforded: this field is the
      mass the star HOLDS ionized, matching h_hii's extent (see stars_io.h). */
@@ -943,29 +945,47 @@ feedback_iact_HII_maintain_ionized_part(
                     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
   const double charged = radiation_consume_ionizing_photons(si, pixel, cost);
 
-  /* Renew in place: the tag's other fields would otherwise keep values
-     frozen at first claim, growing staler every pass the particle survives.
-     Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
-     every held particle every pass would drag the whole region down to the
-     shortest time bin. Expiry is therefore checked on the gas particle's own
-     next cooling task, so recession can lag by up to one of its timesteps. */
-  radiation_tag_part_as_ionized(
-      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
-      si->feedback_data.radiation.mean_excess_photon_energy_HI,
-      feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+  /* A part-paid upkeep renews with probability paid / owed. The gas that
+     loses the roll ends its tag now: a tag left to run its full lifetime
+     would hold the gas for an interval nobody paid for. Cooling clears the
+     flag on the particle's next call. */
+  const int renewed =
+      charged >= cost ||
+      runner_hii_upkeep_renewed(
+          charged, cost,
+          random_unit_interval_part_ID_and_index(pj->id, pixel, ti_begin,
+                                                 random_number_HII_regions));
+
+  if (!renewed) {
+    pj->feedback_data.end_time = time;
+  } else {
+    /* Renew in place: the tag's other fields would otherwise keep values
+       frozen at first claim, growing staler every pass the particle survives.
+       Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
+       every held particle every pass would drag the whole region down to the
+       shortest time bin. Expiry is therefore checked on the gas particle's own
+       next cooling task, so recession can lag by up to one of its timesteps. */
+    radiation_tag_part_as_ionized(
+        pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
+        si->feedback_data.radiation.mean_excess_photon_energy_HI,
+        feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo,
+                                             cooling));
 #ifdef SWIFT_DEBUG_CHECKS
-  /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
-     guard for why the check does not apply there. */
-  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
-      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
-    error(
-        "HII maintenance renewal with HII_couple_ionization_rate on but a "
-        "non-positive photoionization rate coefficient (part %lld).",
-        pj->id);
+    /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
+       guard for why the check does not apply there. */
+    if (xpj != NULL && cooling->HII_couple_ionization_rate &&
+        radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+      error(
+          "HII maintenance renewal with HII_couple_ionization_rate on but a "
+          "non-positive photoionization rate coefficient (part %lld).",
+          pj->id);
 #endif
+  }
+
 #ifdef WITH_MPI
   /* Foreign-copy guard: see feedback_hii_claim_part's identical block for
-     why this only applies when xpj == NULL. */
+     why this only applies when xpj == NULL. A lost renewal is reported too,
+     so the owner also ends the tag. */
   if (xpj == NULL) {
     pj->feedback_data.r2 = r2;
     pj->feedback_data.cost = charged;
@@ -993,8 +1013,6 @@ feedback_iact_HII_maintain_ionized_part(
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param open_share Share of the cone's photons that can reach the candidate:
- * the open sub-cones its footprint covers under the shadow mask, 1 otherwise.
  * @return The #hii_candidate_outcome.
  */
 __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
@@ -1004,7 +1022,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
     const struct unit_system *us, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling,
     const struct feedback_props *feedback_props, const integertime_t ti_begin,
-    const double time, const double dt_back, const double open_share) {
+    const double time, const double dt_back) {
 
   const int deterministic_boundary =
       feedback_props->HII_deterministic_boundary_ionization;
@@ -1036,18 +1054,16 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
   const double budget = feedback_get_star_ionization_budget(si, pixel);
 
   /* Keyed on the star and the pixel, deliberately *not* on pj: one draw per
-     pixel per pass. Under the stop rule the first unaffordable candidate
-     ends the cone whether it is claimed or absorbs the rest, so the
-     expected spend equals the budget. Under the shadow mask every
-     candidate the cone rolls for reuses this draw. */
+     pixel per pass. The first unaffordable candidate ends the cone whether
+     it is claimed or absorbs the rest, so the expected spend equals the
+     budget. */
   float random_number = 0.f;
   if (cost > budget && !deterministic_boundary)
     random_number = random_unit_interval_part_ID_and_index(
         si->id, pixel, ti_begin, random_number_HII_regions);
 
   const enum hii_candidate_outcome outcome = runner_hii_candidate_outcome(
-      deterministic_boundary, budget, cost, Delta_dot_N_ion_maintenance_rate,
-      open_share * feedback_get_star_ionization_rate(si, pixel), random_number);
+      deterministic_boundary, budget, cost, random_number);
 
   if (outcome == hii_candidate_claimed) {
     /* At most the budget left is charged. On a won roll that is all of it,
@@ -1055,48 +1071,11 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
        average. */
     feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
                             dt_back, cost);
-  } else if (outcome == hii_candidate_front &&
-             feedback_props->HII_cone_claim_rule !=
-                 hii_cone_claim_shadow_mask) {
+  } else if (outcome == hii_candidate_front) {
     /* The front absorbs what is left, which ends the cone. */
     radiation_consume_ionizing_photons(si, pixel, budget);
   }
   return outcome;
-}
-
-/**
- * @brief Count held gas behind a front: it stays in the region's mass until
- * its tag lapses, but its upkeep is not paid and its tag is not renewed.
- *
- * @param si The #spart (star) holding the gas.
- * @param pj The #part (gas) behind the front.
- */
-void feedback_iact_HII_hold_shadowed_part(struct spart *restrict si,
-                                          const struct part *restrict pj) {
-  si->feedback_data.radiation.mass_HII_region += hydro_get_mass(pj);
-}
-
-/**
- * @brief Remove photons a front absorbs from a cone's budget.
- *
- * @param sp The star.
- * @param pixel The cone.
- * @param photons Photons absorbed.
- */
-void feedback_absorb_star_ionizing_photons(struct spart *sp, int pixel,
-                                           double photons) {
-  radiation_consume_ionizing_photons(sp, pixel, photons);
-}
-
-/**
- * @brief What a cone does at a candidate it cannot afford.
- *
- * @param feedback_props The #feedback_props.
- * @return The #hii_cone_claim_rule.
- */
-int feedback_get_HII_cone_claim_rule(
-    const struct feedback_props *feedback_props) {
-  return feedback_props->HII_cone_claim_rule;
 }
 
 /**
@@ -1887,8 +1866,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
-        "dissipation fields, HII random cone frame flag, redraw period, "
-        "star pass count and HII cone claim rule). "
+        "dissipation fields, HII random cone frame flag, redraw period and "
+        "star pass count). "
         "A restart written by another code version cannot be resumed: rerun "
         "the simulation from its initial conditions.",
         flux_form, feedback_restart_particle_layout());
@@ -1902,9 +1881,6 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   if (feedback->HII_cone_frame_redraw_period < 0)
     error("The restart file holds an invalid HII cone frame redraw period %d.",
           feedback->HII_cone_frame_redraw_period);
-  if (feedback->HII_cone_claim_rule != 1 && feedback->HII_cone_claim_rule != 2)
-    error("The restart file holds an invalid HII cone claim rule %d.",
-          (int)feedback->HII_cone_claim_rule);
 
   /* The two ISRF operator/moment maps are compile-time constants, so
    * feedback_props_init()'s own check of them applies unchanged here; it

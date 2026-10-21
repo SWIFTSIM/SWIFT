@@ -28,8 +28,8 @@
 #include "runner_radiation_feedback.h"
 #include "swift.h"
 
-/* The checks of the parameter mapping and of the photon budget need the GEAR
-   feedback module with its HII radiation. */
+/* The checks of the photon budget need the GEAR feedback module with its HII
+   radiation. */
 #if defined(FEEDBACK_GEAR) && defined(GEAR_SUBGRID_RADIATION_HII)
 #define TEST_HAS_HII_FEEDBACK
 #endif
@@ -90,33 +90,58 @@ static int report(const char *name, const double value, const double bar,
  * @param u The cone's draw.
  * @return 1 if claimed.
  */
-static int old_claim(const double budget, const double cost, const float u) {
+static int plain_roll_claim(const double budget, const double cost,
+                            const float u) {
   if (cost <= budget) return 1;
   const float proba = budget / cost;
   return u <= proba;
 }
 
 /**
- * @brief Claimed share of holdable unaffordable candidates.
+ * @brief The decision as it was when gas whose recombination rate reached the
+ * cone's photon rate was never rolled for. Only the control checks use it.
+ *
+ * @param budget Photons left.
+ * @param cost Candidate cost.
+ * @param recombination_rate Recombination rate of the candidate.
+ * @param photon_rate Photon rate of the cone.
+ * @param u The cone's draw.
+ * @return 1 if claimed.
+ */
+static int refusing_claim(const double budget, const double cost,
+                          const double recombination_rate,
+                          const double photon_rate, const float u) {
+  if (cost <= budget) return 1;
+  if (recombination_rate >= photon_rate) return 0;
+  return u <= (float)(budget / cost);
+}
+
+/**
+ * @brief Claimed share of unaffordable candidates over many draws.
  *
  * @param budget Photons left.
  * @param cost Candidate cost, above @p budget.
- * @param rate Recombination rate of the candidate.
- * @param cone_rate Photon rate of the cone.
+ * @param refuse 1 to use the refusing copy, with a gas recombination rate
+ * above the cone's photon rate.
  * @param fronts (return) Share of draws giving a front.
  * @return Share of draws giving a claim.
  */
 static double claimed_share(const double budget, const double cost,
-                            const double rate, const double cone_rate,
-                            double *fronts) {
+                            const int refuse, double *fronts) {
   uint64_t state = 12345;
   long n_claimed = 0, n_front = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(0, budget, cost, rate, cone_rate, u);
-    if (o == hii_candidate_claimed) n_claimed++;
-    if (o == hii_candidate_front) n_front++;
+    int claimed;
+    if (refuse)
+      claimed = refusing_claim(budget, cost, 8.0, 1.0, u);
+    else
+      claimed = runner_hii_candidate_outcome(0, budget, cost, u) ==
+                hii_candidate_claimed;
+    if (claimed)
+      n_claimed++;
+    else
+      n_front++;
   }
   *fronts = (double)n_front / N_DRAWS;
   return (double)n_claimed / N_DRAWS;
@@ -131,105 +156,122 @@ static int test_decision(void) {
   int fail = 0;
   uint64_t state = 777;
 
-#ifdef TEST_HAS_HII_FEEDBACK
-  /* The retired value 0 selects the stop rule; other values are refused. */
-  const int param_values[6] = {-1, 0, 1, 2, 3, 99};
-  const int expected_rules[6] = {-1, 1, 1, 2, -1, -1};
-  long mapped_wrong = 0;
-  for (int k = 0; k < 6; k++)
-    if (feedback_HII_cone_claim_rule_from_param(param_values[k]) !=
-        expected_rules[k])
-      mapped_wrong++;
-  fail += report("parameter values mapped to the wrong rule (0 must give 1)",
-                 (double)mapped_wrong, 0., 0);
-#endif
-
-  /* On holdable gas a claim is decided as before the rules existed, draw for
-     draw; what is not claimed is a front. */
+  /* A claim is decided by the plain roll, draw for draw; what is not claimed
+     is a front. */
   long differ = 0, passed_bad = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const double budget = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const double cost = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const float u = (float)test_uniform(&state);
     const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(0, budget, cost, 0.5, 1.0, u);
-    if ((o == hii_candidate_claimed) != old_claim(budget, cost, u)) differ++;
+        runner_hii_candidate_outcome(0, budget, cost, u);
+    if ((o == hii_candidate_claimed) != plain_roll_claim(budget, cost, u))
+      differ++;
     if (o == hii_candidate_passed) passed_bad++;
   }
-  fail += report("holdable gas: claims differing from the plain roll",
-                 (double)differ, 0., 0);
-  fail += report("holdable gas: candidates passed over (must be none)",
-                 (double)passed_bad, 0., 0);
-
-  /* Control: gas never holdable differs from the plain roll. */
-  long differ_stop = 0;
-  for (long i = 0; i < N_DRAWS; i++) {
-    const double budget = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
-    const double cost = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
-    const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(0, budget, cost, 2.0, 1.0, u);
-    if ((o == hii_candidate_claimed) != old_claim(budget, cost, u))
-      differ_stop++;
-  }
-  fail += report("control: gas not holdable differs from the plain roll (must)",
-                 (double)differ_stop, 0., 1);
+  fail += report("claims differing from the plain roll", (double)differ, 0., 0);
+  fail += report("candidates passed over (must be none)", (double)passed_bad,
+                 0., 0);
 
   /* Affordable gas is claimed, also at cost == budget. */
   long refused = 0;
   for (long i = 0; i < 1000; i++) {
     const double budget = 1.0 + test_uniform(&state);
     const double cost = budget * (i == 0 ? 1.0 : test_uniform(&state));
-    if (runner_hii_candidate_outcome(0, budget, cost, 1e30, 1.0, 0.99f) !=
+    if (runner_hii_candidate_outcome(0, budget, cost, 0.99f) !=
         hii_candidate_claimed)
       refused++;
   }
   fail += report("affordable gas not claimed", (double)refused, 0., 0);
 
   /* The deterministic boundary claims every candidate. */
-  fail += report(
-      "deterministic boundary: candidate not claimed",
-      (double)(runner_hii_candidate_outcome(1, 1.0, 10.0, 1e30, 1.0, 0.99f) !=
-               hii_candidate_claimed),
-      0., 0);
-
-  /* The holdable gate: no roll on gas that costs more upkeep than the cone
-     receives, even with the luckiest draw. */
-  long gate_claims = 0;
-  const double rate_ratio[3] = {1.0, 1.5, 1e4};
-  for (int k = 0; k < 3; k++)
-    if (runner_hii_candidate_outcome(0, 1.0, 1.0001, rate_ratio[k], 1.0, 0.f) ==
-        hii_candidate_claimed)
-      gate_claims++;
-  fail += report("gas not holdable claimed with draw 0", (double)gate_claims,
+  fail += report("deterministic boundary: candidate not claimed",
+                 (double)(runner_hii_candidate_outcome(1, 1.0, 10.0, 0.99f) !=
+                          hii_candidate_claimed),
                  0., 0);
-  fail += report(
-      "control: holdable gas claimed with draw 0 (must)",
-      (double)(runner_hii_candidate_outcome(0, 1.0, 1.0001, 0.5, 1.0, 0.f) ==
-               hii_candidate_claimed),
-      0., 1);
 
-  /* On holdable gas the roll keeps the expected spend at the budget: the
-     claimed share is budget / cost, within 5 standard errors. */
-  const double budget = 0.3, cost = 1.0;
+  /* A cone whose Stromgren mass is below one particle (budget 5 per cent of
+     the cost, gas recombining faster than the cone emits) claims on a won
+     roll: the claimed share is budget / cost, within 5 standard errors. */
+  const double budget = 0.05, cost = 1.0;
   const double p = budget / cost;
   const double sigma = sqrt(p * (1. - p) / N_DRAWS);
   {
     double fronts = 0.;
-    const double share = claimed_share(budget, cost, 0.5, 1.0, &fronts);
-    fail += report("holdable gas: |claimed share - budget/cost| / sigma",
+    const double share = claimed_share(budget, cost, 0, &fronts);
+    fail += report("sub-particle cone: |claimed share - budget/cost| / sigma",
                    fabs(share - p) / sigma, 5., 0);
-    fail += report("holdable gas: |front share - (1 - budget/cost)| / sigma",
-                   fabs(fronts - (1. - p)) / sigma, 5., 0);
+    fail +=
+        report("sub-particle cone: |front share - (1 - budget/cost)| / sigma",
+               fabs(fronts - (1. - p)) / sigma, 5., 0);
   }
-  /* Control: the same statistic against a wrong share must fail. */
+
+  /* Controls: a refusing copy and a wrong share must fail the same statistic.
+   */
   {
     double fronts = 0.;
-    const double share = claimed_share(budget, cost, 0.5, 1.0, &fronts);
+    double share = claimed_share(budget, cost, 1, &fronts);
+    fail += report(
+        "control, refusing copy: |claimed share - budget/cost| / sigma (must)",
+        fabs(share - p) / sigma, 5., 1);
+    share = claimed_share(budget, cost, 0, &fronts);
     fail += report("control: claimed share against 1.1 budget/cost (must)",
                    fabs(share - 1.1 * p) / sigma, 5., 1);
   }
 
+  return fail;
+}
+
+/**
+ * @brief The renewal decision as it was when a part-paid upkeep always
+ * renewed. Only the control check uses it.
+ *
+ * @param paid Photons charged.
+ * @param owed Photons owed.
+ * @param u The draw.
+ * @return 1, always.
+ */
+static int certain_renewal(const double paid, const double owed,
+                           const double u) {
+  (void)paid;
+  (void)owed;
+  (void)u;
+  return 1;
+}
+
+/**
+ * @brief Checks of the renewal of a held particle whose upkeep is part paid.
+ *
+ * @return Number of failed checks.
+ */
+static int test_renewal(void) {
+  int fail = 0;
+  const double owed = 1.0, paid = 0.13;
+  const double sigma = sqrt(paid * (1. - paid) / N_DRAWS);
+  uint64_t state = 4242;
+  long n_ok = 0, n_certain = 0;
+  for (long i = 0; i < N_DRAWS; i++) {
+    const double u = test_uniform(&state);
+    n_ok += runner_hii_upkeep_renewed(paid, owed, u);
+    n_certain += certain_renewal(paid, owed, u);
+  }
+  fail += report("renewal: |renewed share - paid/owed| / sigma",
+                 fabs((double)n_ok / N_DRAWS - paid) / sigma, 5., 0);
+  fail += report(
+      "control, certain renewal: |renewed share - paid/owed| / sigma (must)",
+      fabs((double)n_certain / N_DRAWS - paid) / sigma, 5., 1);
+
+  /* Fully paid or overpaid upkeep renews for every draw, also the largest. */
+  const double draws[3] = {0., 0.5, 0.9999999999};
+  long lost = 0;
+  for (int k = 0; k < 3; k++) {
+    lost += !runner_hii_upkeep_renewed(owed, owed, draws[k]);
+    lost += !runner_hii_upkeep_renewed(1.5 * owed, owed, draws[k]);
+  }
+  fail += report("fully paid upkeep not renewed", (double)lost, 0., 0);
+  fail +=
+      report("control: part-paid upkeep with the largest draw lost (must)",
+             (double)!runner_hii_upkeep_renewed(paid, owed, draws[2]), 0., 1);
   return fail;
 }
 
@@ -350,308 +392,17 @@ static int test_no_debt(void) {
 }
 #endif /* TEST_HAS_HII_FEEDBACK */
 
-/**
- * @brief Checks of the absorbed share at a front.
- *
- * @return Number of failed checks.
- */
-static int test_absorbed(void) {
-  int fail = 0;
-
-  /* Blocking the 64 sub-cones one at a time leaves (64 - k) / 64 of the
-     budget after k fronts, and exactly 0 after the last. */
-  double budget = 3.7e58;
-  const double b0 = budget;
-  double worst = 0.;
-  int n_open = hii_shadow_children;
-  for (int k = 1; k <= hii_shadow_children; k++) {
-    budget -= runner_hii_shadow_absorbed(budget, 1, n_open);
-    n_open--;
-    const double expect = b0 * (hii_shadow_children - k) / hii_shadow_children;
-    if (k < hii_shadow_children)
-      worst = fmax(worst, fabs(budget - expect) / expect);
-  }
-  fail += report("one sub-cone per front: worst relative error of the rest",
-                 worst, 1e-12, 0);
-  fail +=
-      report("budget left after the last sub-cone closes", fabs(budget), 0., 0);
-  fail += report("no sub-cone blocked: photons absorbed",
-                 runner_hii_shadow_absorbed(5.0, 0, 10), 0., 0);
-  fail += report("several sub-cones at once: |absorbed - 3/10 budget| / budget",
-                 fabs(runner_hii_shadow_absorbed(5.0, 3, 10) - 1.5) / 5.0,
-                 1e-15, 0);
-  return fail;
-}
-
-#if defined(HAVE_CHEALPIX)
-/**
- * @brief Draw a direction uniform on the sphere.
- *
- * @param state The stream state.
- * @param v (return) The unit direction.
- */
-static void test_direction(uint64_t *state, double v[3]) {
-  const double z = 2.0 * test_uniform(state) - 1.0;
-  const double phi = 2.0 * M_PI * test_uniform(state);
-  const double s = sqrt(1.0 - z * z);
-  v[0] = s * cos(phi);
-  v[1] = s * sin(phi);
-  v[2] = z;
-}
-
-/**
- * @brief Checks of the sub-cone layout and of the blocking geometry.
- *
- * @return Number of failed checks.
- */
-static int test_geometry(void) {
-  int fail = 0;
-
-  for (int nside = 1; nside <= 2; nside++) {
-    const int n_pix = 12 * nside * nside;
-    char name[128];
-
-    /* Every sub-cone centre lies in its own cone. */
-    long outside = 0;
-    for (int p = 0; p < n_pix; p++) {
-      struct hii_shadow_cone cone;
-      runner_hii_shadow_cone_reset(&cone);
-      runner_hii_shadow_fill_centres(&cone, nside, p);
-      for (int k = 0; k < hii_shadow_children; k++) {
-        const double v[3] = {cone.centre[k][0], cone.centre[k][1],
-                             cone.centre[k][2]};
-        int64_t ring = 0;
-        vec2pix_ring64(nside, v, &ring);
-        int pixel = -1, child = -1;
-        runner_hii_shadow_locate(v, nside, &pixel, &child);
-        if (ring != p || pixel != p || child != k) outside++;
-      }
-    }
-    snprintf(name, sizeof(name),
-             "nside %d: sub-cone centres outside their cone or index", nside);
-    fail += report(name, (double)outside, 0., 0);
-
-    /* The cone of the nested lookup is the cone the claim loop uses. */
-    uint64_t state = 99 + nside;
-    long mismatch = 0;
-    for (long i = 0; i < N_DRAWS; i++) {
-      double v[3];
-      test_direction(&state, v);
-      int pixel = -1, child = -1;
-      runner_hii_shadow_locate(v, nside, &pixel, &child);
-      const float dx[3] = {(float)-v[0], (float)-v[1], (float)-v[2]};
-      if (pixel != runner_hii_get_pixel(dx, n_pix, NULL)) mismatch++;
-    }
-    snprintf(name, sizeof(name),
-             "nside %d: nested cone differs from the claim-loop cone, 1e6 dirs",
-             nside);
-    fail += report(name, (double)mismatch, 0., 0);
-
-    /* The same through the rotated frame of a star. */
-    double R[9];
-    runner_hii_cone_frame_from_id(4242, 0, R);
-    const struct hii_cone_geometry geom = {
-        .frame = R, .shadow = NULL, .nside = nside};
-    long mismatch_rot = 0;
-    for (long i = 0; i < N_DRAWS; i++) {
-      double v[3];
-      test_direction(&state, v);
-      const float dx[3] = {(float)-v[0], (float)-v[1], (float)-v[2]};
-      int pixel = -1, child = -1;
-      runner_hii_shadow_direction(dx, &geom, &pixel, &child);
-      if (pixel != runner_hii_get_pixel(dx, n_pix, R)) mismatch_rot++;
-    }
-    snprintf(name, sizeof(name),
-             "nside %d, rotated frame: nested cone differs, 1e6 dirs", nside);
-    fail += report(name, (double)mismatch_rot, 0., 0);
-  }
-
-  /* Blocking: a front covering angle a around a sub-cone centre blocks the
-     sub-cones whose centres lie within a, counted independently from the
-     angular coordinates of the centres. */
-  const int nside = 1;
-  long wrong = 0, total = 0;
-  const double angles[5] = {0.0, 0.05, 0.2, 0.4, 0.8};
-  for (int p = 0; p < 12; p++) {
-    for (int k = 0; k < hii_shadow_children; k += 7) {
-      for (int a = 0; a < 5; a++) {
-        struct hii_shadow_cone cone;
-        runner_hii_shadow_cone_reset(&cone);
-        runner_hii_shadow_fill_centres(&cone, nside, p);
-        int64_t parent = 0;
-        ring2nest64(nside, p, &parent);
-        double th0, ph0;
-        pix2ang_nest64(8 * nside, parent * hii_shadow_children + k, &th0, &ph0);
-        const double dir[3] = {sin(th0) * cos(ph0), sin(th0) * sin(ph0),
-                               cos(th0)};
-        const int m = runner_hii_shadow_block(&cone, dir, k, cos(angles[a]));
-        /* Centres within 1e-6 of the edge may fall either side. */
-        int n_in = 0, n_edge = 0;
-        for (int j = 0; j < hii_shadow_children; j++) {
-          double th, ph;
-          pix2ang_nest64(8 * nside, parent * hii_shadow_children + j, &th, &ph);
-          const double c =
-              sin(th) * sin(th0) * cos(ph - ph0) + cos(th) * cos(th0);
-          const double sep = acos(fmin(1.0, c));
-          if (j == k || sep <= angles[a] * (1. - 1e-6))
-            n_in++;
-          else if (sep <= angles[a] * (1. + 1e-6) + 1e-9)
-            n_edge++;
-        }
-        total++;
-        if (m < n_in || m > n_in + n_edge) wrong++;
-        if (cone.n_open != hii_shadow_children - m) wrong++;
-      }
-    }
-  }
-  fail += report("blocked sub-cone count differs from the independent count",
-                 (double)wrong, 0., 0);
-
-  /* Control: the independent count with twice the angle must disagree. */
-  long wrong_ctl = 0;
-  for (int k = 0; k < hii_shadow_children; k += 7) {
-    struct hii_shadow_cone cone;
-    runner_hii_shadow_cone_reset(&cone);
-    runner_hii_shadow_fill_centres(&cone, 1, 4);
-    const double dir[3] = {cone.centre[k][0], cone.centre[k][1],
-                           cone.centre[k][2]};
-    const int m = runner_hii_shadow_block(&cone, dir, k, cos(0.2));
-    int n_wide = 0;
-    for (int j = 0; j < hii_shadow_children; j++) {
-      const double c = dir[0] * cone.centre[j][0] + dir[1] * cone.centre[j][1] +
-                       dir[2] * cone.centre[j][2];
-      if (j == k || c >= cos(0.4)) n_wide++;
-    }
-    if (m != n_wide) wrong_ctl++;
-  }
-  fail += report("control: counts at twice the angle disagree (must)",
-                 (double)wrong_ctl, 0., 1);
-  printf("     (%ld fronts tested)\n", total);
-
-  /* A second front over the same sub-cones blocks nothing new. */
-  {
-    struct hii_shadow_cone cone;
-    runner_hii_shadow_cone_reset(&cone);
-    runner_hii_shadow_fill_centres(&cone, 1, 4);
-    const double dir[3] = {cone.centre[10][0], cone.centre[10][1],
-                           cone.centre[10][2]};
-    const int m1 = runner_hii_shadow_block(&cone, dir, 10, cos(0.3));
-    const int m2 = runner_hii_shadow_block(&cone, dir, 10, cos(0.3));
-    fail += report("first front blocks sub-cones (must)", (double)m1, 0., 1);
-    fail +=
-        report("same front again: sub-cones newly blocked", (double)m2, 0., 0);
-    const int m3 = runner_hii_shadow_block(&cone, dir, 10, -1.0);
-    fail += report("front covering the sphere: sub-cones left open",
-                   (double)cone.n_open, 0., 0);
-    fail += report("front covering the sphere: |m1 + m3 - 64|",
-                   fabs((double)(m1 + m3 - hii_shadow_children)), 0., 0);
-  }
-
-  return fail;
-}
-
-/**
- * @brief Checks of the holdable gate under the shadow mask: only the open
- * sub-cones of the candidate's footprint feed it.
- *
- * @return Number of failed checks.
- */
-static int test_open_gate(void) {
-  int fail = 0;
-  const double cone_rate = 1.0;
-  const int own = 27;
-
-  struct hii_shadow_cone cone;
-  runner_hii_shadow_cone_reset(&cone);
-  runner_hii_shadow_fill_centres(&cone, 1, 4);
-  const double dir[3] = {cone.centre[own][0], cone.centre[own][1],
-                         cone.centre[own][2]};
-
-  /* A far candidate covers only its own sub-cone. Its upkeep of half the
-     cone's rate exceeds the 1/64 that reaches it: a front, whatever the
-     draw. The whole-cone gate lets the luckiest draw claim it. */
-  const uint64_t narrow = runner_hii_shadow_footprint(&cone, dir, own, 1.0);
-  const double share_narrow = runner_hii_shadow_open_share(&cone, narrow);
-  fail += report("narrow footprint: |open share - 1/64|",
-                 fabs(share_narrow - 1.0 / hii_shadow_children), 0., 0);
-  fail += report("narrow footprint, upkeep 0.5: not a front with draw 0",
-                 (double)(runner_hii_candidate_outcome(
-                              0, 1.0, 1.0001, 0.5, share_narrow * cone_rate,
-                              0.f) != hii_candidate_front),
-                 0., 0);
-  fail += report(
-      "control: whole-cone gate claims it with draw 0 (must)",
-      (double)(runner_hii_candidate_outcome(0, 1.0, 1.0001, 0.5, cone_rate,
-                                            0.f) == hii_candidate_claimed),
-      0., 1);
-
-  /* Partly blocked footprint: only its open sub-cones count, against an
-     independent count over the centres. */
-  const double wide = cos(0.3);
-  const double side[3] = {cone.centre[own + 1][0], cone.centre[own + 1][1],
-                          cone.centre[own + 1][2]};
-  runner_hii_shadow_block(&cone, side, own + 1, cos(0.15));
-  const uint64_t fp = runner_hii_shadow_footprint(&cone, dir, own, wide);
-  int n_cover = 0, n_open_cover = 0;
-  for (int j = 0; j < hii_shadow_children; j++) {
-    const double c = dir[0] * cone.centre[j][0] + dir[1] * cone.centre[j][1] +
-                     dir[2] * cone.centre[j][2];
-    if (j != own && c < wide) continue;
-    n_cover++;
-    if (!runner_hii_shadow_is_blocked(&cone, j)) n_open_cover++;
-  }
-  const double share_fp = runner_hii_shadow_open_share(&cone, fp);
-  fail += report("partly blocked footprint: own sub-cone blocked",
-                 (double)runner_hii_shadow_is_blocked(&cone, own), 0., 0);
-  fail += report("partly blocked footprint: sub-cones blocked (must)",
-                 (double)(n_cover - n_open_cover), 0., 1);
-  fail += report("partly blocked footprint: |open share - independent|",
-                 fabs(share_fp * hii_shadow_children - n_open_cover), 0., 0);
-
-  /* Upkeep between the open and the whole footprint share: a front. Below
-     the open share: rolled, so the luckiest draw claims it. */
-  const double upkeep_mid =
-      0.5 * (n_open_cover + n_cover) / (double)hii_shadow_children;
-  const double upkeep_low = 0.5 * share_fp;
-  fail += report("upkeep above the open share: claimed with draw 0",
-                 (double)(runner_hii_candidate_outcome(
-                              0, 1.0, 1.0001, upkeep_mid, share_fp * cone_rate,
-                              0.f) != hii_candidate_front),
-                 0., 0);
-  fail += report("upkeep below the open share: not claimed with draw 0",
-                 (double)(runner_hii_candidate_outcome(
-                              0, 1.0, 1.0001, upkeep_low, share_fp * cone_rate,
-                              0.f) != hii_candidate_claimed),
-                 0., 0);
-
-  /* A footprint over the whole sphere sees the cone's open share. */
-  const uint64_t all = runner_hii_shadow_footprint(&cone, dir, own, -1.0);
-  fail += report("whole footprint: |open share - n_open / 64|",
-                 fabs(runner_hii_shadow_open_share(&cone, all) -
-                      (double)cone.n_open / hii_shadow_children),
-                 0., 0);
-
-  return fail;
-}
-#endif /* HAVE_CHEALPIX */
-
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
   int fail = 0;
   fail += test_decision();
-  fail += test_absorbed();
+  fail += test_renewal();
 #ifdef TEST_HAS_HII_FEEDBACK
   fail += test_no_debt();
 #else
   printf("skip no-debt checks: GEAR HII feedback is not configured\n");
-#endif
-#if defined(HAVE_CHEALPIX)
-  fail += test_geometry();
-  fail += test_open_gate();
-#else
-  printf("skip geometry checks: HAVE_CHEALPIX is not defined\n");
 #endif
 
   if (fail) printf("%d check(s) failed\n", fail);
