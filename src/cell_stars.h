@@ -188,6 +188,10 @@ struct cell_stars {
   /*! Max HII radius / gamma_k in this cell. */
   float h_hii_max;
 
+  /*! Top-level cells only: largest max(h_hii_max, h_max) over this cell and
+   * its top-level neighbours. Set before the radiation tasks are split. */
+  float h_reach_max_neighbours;
+
   /*! Number of #spart updated in this cell. */
   int updated;
 

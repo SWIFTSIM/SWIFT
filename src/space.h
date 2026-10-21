@@ -500,6 +500,9 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct gravity_tensors *multipole_list_end);
 void space_regrid(struct space *s, int verbose);
 float space_regrid_radiation_cap_for(double cell_max_width);
+void space_radiation_neighbour_reach_for(const float *reach, const int cdim[3],
+                                         int periodic, float *reach_neighbours);
+void space_radiation_set_neighbour_reach(struct space *s);
 float space_regrid_star_radiation_term_for(float h_hii_max, float h_max,
                                            double cell_max_width);
 float space_regrid_star_h_max_no_hii_term_for(float h_max_no_hii_so_far,
