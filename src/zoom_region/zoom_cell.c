@@ -198,6 +198,9 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
         "delta_p=%d)",
         delta_cells, delta_m, delta_p);
 
+  /* Reset the count before rebuilding the neighbour-cell array. */
+  zoom_props->nr_neighbour_cells = 0;
+
   /* Allocate the indices of neighbour background cells. */
   /* We don't know how many we will need at this point so have
    * to allocate assuming we will have all cells in range. */
