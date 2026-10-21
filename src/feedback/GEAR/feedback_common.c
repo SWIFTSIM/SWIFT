@@ -903,7 +903,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
  * renewed and cooling expires those tags at end_time. The last renewal of a
  * pixel can be paid only in part, and is then renewed with probability
- * paid / owed. The caller
+ * paid / owed; a lost renewal ends the tag at once. The caller
  * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
  * (r2, id) order over the star's whole held region, so a shortfall lapses
  * the outermost shell (largest r2, the recession front) first, rather than
@@ -945,36 +945,47 @@ feedback_iact_HII_maintain_ionized_part(
                     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
   const double charged = radiation_consume_ionizing_photons(si, pixel, cost);
 
-  /* A part-paid upkeep renews with probability paid / owed, so that the
-     expected photons spent on a held particle equal the photons it costs. */
-  if (charged < cost &&
-      random_unit_interval_part_ID_and_index(
-          pj->id, pixel, ti_begin, random_number_HII_regions) > charged / cost)
-    return charged;
+  /* A part-paid upkeep renews with probability paid / owed. The gas that
+     loses the roll ends its tag now: a tag left to run its full lifetime
+     would hold the gas for an interval nobody paid for. Cooling clears the
+     flag on the particle's next call. */
+  const int renewed =
+      charged >= cost ||
+      runner_hii_upkeep_renewed(
+          charged, cost,
+          random_unit_interval_part_ID_and_index(pj->id, pixel, ti_begin,
+                                                 random_number_HII_regions));
 
-  /* Renew in place: the tag's other fields would otherwise keep values
-     frozen at first claim, growing staler every pass the particle survives.
-     Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
-     every held particle every pass would drag the whole region down to the
-     shortest time bin. Expiry is therefore checked on the gas particle's own
-     next cooling task, so recession can lag by up to one of its timesteps. */
-  radiation_tag_part_as_ionized(
-      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
-      si->feedback_data.radiation.mean_excess_photon_energy_HI,
-      feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+  if (!renewed) {
+    pj->feedback_data.end_time = time;
+  } else {
+    /* Renew in place: the tag's other fields would otherwise keep values
+       frozen at first claim, growing staler every pass the particle survives.
+       Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
+       every held particle every pass would drag the whole region down to the
+       shortest time bin. Expiry is therefore checked on the gas particle's own
+       next cooling task, so recession can lag by up to one of its timesteps. */
+    radiation_tag_part_as_ionized(
+        pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
+        si->feedback_data.radiation.mean_excess_photon_energy_HI,
+        feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo,
+                                             cooling));
 #ifdef SWIFT_DEBUG_CHECKS
-  /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
-     guard for why the check does not apply there. */
-  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
-      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
-    error(
-        "HII maintenance renewal with HII_couple_ionization_rate on but a "
-        "non-positive photoionization rate coefficient (part %lld).",
-        pj->id);
+    /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
+       guard for why the check does not apply there. */
+    if (xpj != NULL && cooling->HII_couple_ionization_rate &&
+        radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+      error(
+          "HII maintenance renewal with HII_couple_ionization_rate on but a "
+          "non-positive photoionization rate coefficient (part %lld).",
+          pj->id);
 #endif
+  }
+
 #ifdef WITH_MPI
   /* Foreign-copy guard: see feedback_hii_claim_part's identical block for
-     why this only applies when xpj == NULL. */
+     why this only applies when xpj == NULL. A lost renewal is reported too,
+     so the owner also ends the tag. */
   if (xpj == NULL) {
     pj->feedback_data.r2 = r2;
     pj->feedback_data.cost = charged;

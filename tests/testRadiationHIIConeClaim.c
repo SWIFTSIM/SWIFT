@@ -222,6 +222,59 @@ static int test_decision(void) {
   return fail;
 }
 
+/**
+ * @brief The renewal decision as it was when a part-paid upkeep always
+ * renewed. Only the control check uses it.
+ *
+ * @param paid Photons charged.
+ * @param owed Photons owed.
+ * @param u The draw.
+ * @return 1, always.
+ */
+static int certain_renewal(const double paid, const double owed,
+                           const double u) {
+  (void)paid;
+  (void)owed;
+  (void)u;
+  return 1;
+}
+
+/**
+ * @brief Checks of the renewal of a held particle whose upkeep is part paid.
+ *
+ * @return Number of failed checks.
+ */
+static int test_renewal(void) {
+  int fail = 0;
+  const double owed = 1.0, paid = 0.13;
+  const double sigma = sqrt(paid * (1. - paid) / N_DRAWS);
+  uint64_t state = 4242;
+  long n_ok = 0, n_certain = 0;
+  for (long i = 0; i < N_DRAWS; i++) {
+    const double u = test_uniform(&state);
+    n_ok += runner_hii_upkeep_renewed(paid, owed, u);
+    n_certain += certain_renewal(paid, owed, u);
+  }
+  fail += report("renewal: |renewed share - paid/owed| / sigma",
+                 fabs((double)n_ok / N_DRAWS - paid) / sigma, 5., 0);
+  fail += report(
+      "control, certain renewal: |renewed share - paid/owed| / sigma (must)",
+      fabs((double)n_certain / N_DRAWS - paid) / sigma, 5., 1);
+
+  /* Fully paid or overpaid upkeep renews for every draw, also the largest. */
+  const double draws[3] = {0., 0.5, 0.9999999999};
+  long lost = 0;
+  for (int k = 0; k < 3; k++) {
+    lost += !runner_hii_upkeep_renewed(owed, owed, draws[k]);
+    lost += !runner_hii_upkeep_renewed(1.5 * owed, owed, draws[k]);
+  }
+  fail += report("fully paid upkeep not renewed", (double)lost, 0., 0);
+  fail +=
+      report("control: part-paid upkeep with the largest draw lost (must)",
+             (double)!runner_hii_upkeep_renewed(paid, owed, draws[2]), 0., 1);
+  return fail;
+}
+
 #ifdef TEST_HAS_HII_FEEDBACK
 /*! Number of checks in the no-debt sequence. */
 #define N_NO_DEBT_CHECKS 6
@@ -345,6 +398,7 @@ int main(int argc, char *argv[]) {
 
   int fail = 0;
   fail += test_decision();
+  fail += test_renewal();
 #ifdef TEST_HAS_HII_FEEDBACK
   fail += test_no_debt();
 #else

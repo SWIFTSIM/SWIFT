@@ -140,6 +140,24 @@ runner_hii_candidate_outcome(const int deterministic, const double budget,
   return hii_candidate_front;
 }
 
+/**
+ * @brief Decide whether a held particle whose upkeep was paid in part keeps
+ * its ionization tag.
+ *
+ * The tag is kept with probability paid / owed, so the expected photons spent
+ * on the particle equal what it costs. A fully paid upkeep always renews.
+ *
+ * @param paid Photons charged for the upkeep.
+ * @param owed Photons the upkeep costs.
+ * @param random_number A draw in [0, 1), read only if @p paid < @p owed.
+ * @return 1 if the tag is renewed.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_upkeep_renewed(
+    const double paid, const double owed, const double random_number) {
+  if (paid >= owed) return 1;
+  return random_number < paid / owed;
+}
+
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
  * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
  * feedback()). Sized to comfortably cover a single rebuild's typical new
