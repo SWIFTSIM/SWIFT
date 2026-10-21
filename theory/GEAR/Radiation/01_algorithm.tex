@@ -547,7 +547,7 @@ never averages against a stale rate.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1177}).
+(\code{src/feedback/GEAR/feedback\_common.c:1188}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -633,7 +633,9 @@ rebuild after the one that first claimed a particle therefore
 re-charges its ongoing recombination cost, rather than charging it
 once at claim time and never again. When a pixel pays a particle's
 upkeep only in part (the last renewal of that pixel), the tag is
-renewed with probability paid/owed. Without this draw a particle that
+renewed with probability paid/owed, and a tag that loses the draw
+ends at once: left to run its two-interval lifetime it would hold the
+gas for an interval nobody paid for. Without this draw a particle that
 costs more upkeep than the pixel emits, once won by a claim, would stay
 ionized for ever, and a pixel whose Strömgren mass is below one
 particle would hold a whole particle permanently.
