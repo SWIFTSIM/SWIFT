@@ -90,33 +90,58 @@ static int report(const char *name, const double value, const double bar,
  * @param u The cone's draw.
  * @return 1 if claimed.
  */
-static int old_claim(const double budget, const double cost, const float u) {
+static int plain_roll_claim(const double budget, const double cost,
+                            const float u) {
   if (cost <= budget) return 1;
   const float proba = budget / cost;
   return u <= proba;
 }
 
 /**
- * @brief Claimed share of holdable unaffordable candidates.
+ * @brief The decision as it was when gas whose recombination rate reached the
+ * cone's photon rate was never rolled for. Only the control checks use it.
+ *
+ * @param budget Photons left.
+ * @param cost Candidate cost.
+ * @param recombination_rate Recombination rate of the candidate.
+ * @param photon_rate Photon rate of the cone.
+ * @param u The cone's draw.
+ * @return 1 if claimed.
+ */
+static int refusing_claim(const double budget, const double cost,
+                          const double recombination_rate,
+                          const double photon_rate, const float u) {
+  if (cost <= budget) return 1;
+  if (recombination_rate >= photon_rate) return 0;
+  return u <= (float)(budget / cost);
+}
+
+/**
+ * @brief Claimed share of unaffordable candidates over many draws.
  *
  * @param budget Photons left.
  * @param cost Candidate cost, above @p budget.
- * @param rate Recombination rate of the candidate.
- * @param cone_rate Photon rate of the cone.
+ * @param refuse 1 to use the refusing copy, with a gas recombination rate
+ * above the cone's photon rate.
  * @param fronts (return) Share of draws giving a front.
  * @return Share of draws giving a claim.
  */
 static double claimed_share(const double budget, const double cost,
-                            const double rate, const double cone_rate,
-                            double *fronts) {
+                            const int refuse, double *fronts) {
   uint64_t state = 12345;
   long n_claimed = 0, n_front = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(0, budget, cost, rate, cone_rate, u);
-    if (o == hii_candidate_claimed) n_claimed++;
-    if (o == hii_candidate_front) n_front++;
+    int claimed;
+    if (refuse)
+      claimed = refusing_claim(budget, cost, 8.0, 1.0, u);
+    else
+      claimed = runner_hii_candidate_outcome(0, budget, cost, u) ==
+                hii_candidate_claimed;
+    if (claimed)
+      n_claimed++;
+    else
+      n_front++;
   }
   *fronts = (double)n_front / N_DRAWS;
   return (double)n_claimed / N_DRAWS;
@@ -131,88 +156,65 @@ static int test_decision(void) {
   int fail = 0;
   uint64_t state = 777;
 
-  /* On holdable gas a claim is decided by the plain roll, draw for draw;
-     what is not claimed is a front. */
+  /* A claim is decided by the plain roll, draw for draw; what is not claimed
+     is a front. */
   long differ = 0, passed_bad = 0;
   for (long i = 0; i < N_DRAWS; i++) {
     const double budget = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const double cost = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
     const float u = (float)test_uniform(&state);
     const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(0, budget, cost, 0.5, 1.0, u);
-    if ((o == hii_candidate_claimed) != old_claim(budget, cost, u)) differ++;
+        runner_hii_candidate_outcome(0, budget, cost, u);
+    if ((o == hii_candidate_claimed) != plain_roll_claim(budget, cost, u))
+      differ++;
     if (o == hii_candidate_passed) passed_bad++;
   }
-  fail += report("holdable gas: claims differing from the plain roll",
-                 (double)differ, 0., 0);
-  fail += report("holdable gas: candidates passed over (must be none)",
-                 (double)passed_bad, 0., 0);
-
-  /* Control: gas never holdable differs from the plain roll. */
-  long differ_stop = 0;
-  for (long i = 0; i < N_DRAWS; i++) {
-    const double budget = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
-    const double cost = pow(10.0, 60.0 * test_uniform(&state) - 10.0);
-    const float u = (float)test_uniform(&state);
-    const enum hii_candidate_outcome o =
-        runner_hii_candidate_outcome(0, budget, cost, 2.0, 1.0, u);
-    if ((o == hii_candidate_claimed) != old_claim(budget, cost, u))
-      differ_stop++;
-  }
-  fail += report("control: gas not holdable differs from the plain roll (must)",
-                 (double)differ_stop, 0., 1);
+  fail += report("claims differing from the plain roll", (double)differ, 0., 0);
+  fail += report("candidates passed over (must be none)", (double)passed_bad,
+                 0., 0);
 
   /* Affordable gas is claimed, also at cost == budget. */
   long refused = 0;
   for (long i = 0; i < 1000; i++) {
     const double budget = 1.0 + test_uniform(&state);
     const double cost = budget * (i == 0 ? 1.0 : test_uniform(&state));
-    if (runner_hii_candidate_outcome(0, budget, cost, 1e30, 1.0, 0.99f) !=
+    if (runner_hii_candidate_outcome(0, budget, cost, 0.99f) !=
         hii_candidate_claimed)
       refused++;
   }
   fail += report("affordable gas not claimed", (double)refused, 0., 0);
 
   /* The deterministic boundary claims every candidate. */
-  fail += report(
-      "deterministic boundary: candidate not claimed",
-      (double)(runner_hii_candidate_outcome(1, 1.0, 10.0, 1e30, 1.0, 0.99f) !=
-               hii_candidate_claimed),
-      0., 0);
-
-  /* The holdable gate: no roll on gas that costs more upkeep than the cone
-     receives, even with the luckiest draw. */
-  long gate_claims = 0;
-  const double rate_ratio[3] = {1.0, 1.5, 1e4};
-  for (int k = 0; k < 3; k++)
-    if (runner_hii_candidate_outcome(0, 1.0, 1.0001, rate_ratio[k], 1.0, 0.f) ==
-        hii_candidate_claimed)
-      gate_claims++;
-  fail += report("gas not holdable claimed with draw 0", (double)gate_claims,
+  fail += report("deterministic boundary: candidate not claimed",
+                 (double)(runner_hii_candidate_outcome(1, 1.0, 10.0, 0.99f) !=
+                          hii_candidate_claimed),
                  0., 0);
-  fail += report(
-      "control: holdable gas claimed with draw 0 (must)",
-      (double)(runner_hii_candidate_outcome(0, 1.0, 1.0001, 0.5, 1.0, 0.f) ==
-               hii_candidate_claimed),
-      0., 1);
 
-  /* On holdable gas the roll keeps the expected spend at the budget: the
-     claimed share is budget / cost, within 5 standard errors. */
-  const double budget = 0.3, cost = 1.0;
+  /* A cone whose Stromgren mass is below one particle (budget 5 per cent of
+     the cost, gas recombining faster than the cone emits) claims on a won
+     roll: the claimed share is budget / cost, within 5 standard errors. */
+  const double budget = 0.05, cost = 1.0;
   const double p = budget / cost;
   const double sigma = sqrt(p * (1. - p) / N_DRAWS);
   {
     double fronts = 0.;
-    const double share = claimed_share(budget, cost, 0.5, 1.0, &fronts);
-    fail += report("holdable gas: |claimed share - budget/cost| / sigma",
+    const double share = claimed_share(budget, cost, 0, &fronts);
+    fail += report("sub-particle cone: |claimed share - budget/cost| / sigma",
                    fabs(share - p) / sigma, 5., 0);
-    fail += report("holdable gas: |front share - (1 - budget/cost)| / sigma",
-                   fabs(fronts - (1. - p)) / sigma, 5., 0);
+    fail +=
+        report("sub-particle cone: |front share - (1 - budget/cost)| / sigma",
+               fabs(fronts - (1. - p)) / sigma, 5., 0);
   }
-  /* Control: the same statistic against a wrong share must fail. */
+
+  /* Controls: a refusing copy and a wrong share must fail the same statistic.
+   */
   {
     double fronts = 0.;
-    const double share = claimed_share(budget, cost, 0.5, 1.0, &fronts);
+    double share = claimed_share(budget, cost, 1, &fronts);
+    fail += report(
+        "control, refusing copy: |claimed share - budget/cost| / sigma (must)",
+        fabs(share - p) / sigma, 5., 1);
+    share = claimed_share(budget, cost, 0, &fronts);
     fail += report("control: claimed share against 1.1 budget/cost (must)",
                    fabs(share - 1.1 * p) / sigma, 5., 1);
   }

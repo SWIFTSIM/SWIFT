@@ -747,11 +747,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     const ticks maintenance_sort_ticks = getticks() - tic_maintenance_sort;
 #endif
+    const integertime_t ti_begin_maintenance =
+        get_integer_time_begin(e->ti_current - 1, si->time_bin);
     for (int k = 0; k < maintenance_ctx.buffer_count; k++) {
       const struct hii_neighbor *nb = &r->hii_maintenance_buffer[k];
       const double charged = feedback_iact_HII_maintain_ionized_part(
           si, nb->p, nb->xp, nb->r2, nb->pixel, phys_const, hydro_props, us,
-          cosmo, cooling, time, dt_back);
+          cosmo, cooling, ti_begin_maintenance, time, dt_back);
       if (charged > 0.0) maintenance_ctx.photons_charged += charged;
     }
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE

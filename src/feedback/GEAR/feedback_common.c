@@ -902,7 +902,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  *
  * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
  * renewed and cooling expires those tags at end_time. The last renewal of a
- * pixel can be paid only in part. The caller
+ * pixel can be paid only in part, and is then renewed with probability
+ * paid / owed. The caller
  * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
  * (r2, id) order over the star's whole held region, so a shortfall lapses
  * the outermost shell (largest r2, the recession front) first, rather than
@@ -919,6 +920,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * @param us Internal unit system.
  * @param cosmo Cosmology.
  * @param cooling Cooling function data.
+ * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
  * @return Photons charged for this particle, 0 if the budget was exhausted.
@@ -929,8 +931,8 @@ feedback_iact_HII_maintain_ionized_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back) {
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back) {
 
   /* Counted whether or not its photons can be afforded: this field is the
      mass the star HOLDS ionized, matching h_hii's extent (see stars_io.h). */
@@ -942,6 +944,13 @@ feedback_iact_HII_maintain_ionized_part(
       dt_back * radiation_get_part_rate_to_fully_ionize(
                     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
   const double charged = radiation_consume_ionizing_photons(si, pixel, cost);
+
+  /* A part-paid upkeep renews with probability paid / owed, so that the
+     expected photons spent on a held particle equal the photons it costs. */
+  if (charged < cost &&
+      random_unit_interval_part_ID_and_index(
+          pj->id, pixel, ti_begin, random_number_HII_regions) > charged / cost)
+    return charged;
 
   /* Renew in place: the tag's other fields would otherwise keep values
      frozen at first claim, growing staler every pass the particle survives.
@@ -1043,8 +1052,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
         si->id, pixel, ti_begin, random_number_HII_regions);
 
   const enum hii_candidate_outcome outcome = runner_hii_candidate_outcome(
-      deterministic_boundary, budget, cost, Delta_dot_N_ion_maintenance_rate,
-      feedback_get_star_ionization_rate(si, pixel), random_number);
+      deterministic_boundary, budget, cost, random_number);
 
   if (outcome == hii_candidate_claimed) {
     /* At most the budget left is charged. On a won roll that is all of it,

@@ -97,8 +97,8 @@ double feedback_iact_HII_maintain_ionized_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back);
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back);
 
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
 int feedback_get_HII_random_cone_frame(

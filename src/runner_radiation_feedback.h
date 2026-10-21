@@ -115,32 +115,24 @@ enum hii_candidate_outcome {
  *
  * The first candidate a cone cannot afford ends the cone: it is claimed on a
  * won roll, and it is a front that absorbs the rest of the budget otherwise
- * (Hopkins et al. 2018, Appendix E). No roll on gas whose recombination rate
- * is at least the cone's photon rate. The roll is the one-per-cone draw of
+ * (Hopkins et al. 2018, Appendix E). The win probability is budget / cost, so
+ * the expected spend equals the budget. The roll is the one-per-cone draw of
  * the caller, so a cone rolls once per pass.
  *
  * @param deterministic 1 if the boundary candidate is always claimed.
  * @param budget Photons left in the cone.
  * @param cost Photons the candidate costs: its neutral atoms plus one
  * interval of recombinations.
- * @param recombination_rate Recombinations per unit time of the candidate
- * once ionized.
- * @param photon_rate Ionizing photons per unit time of the cone.
  * @param random_number The cone's draw in [0, 1), read only if the candidate
  * is unaffordable.
  * @return The #hii_candidate_outcome.
  */
 __attribute__((always_inline)) INLINE static enum hii_candidate_outcome
 runner_hii_candidate_outcome(const int deterministic, const double budget,
-                             const double cost, const double recombination_rate,
-                             const double photon_rate,
-                             const float random_number) {
+                             const double cost, const float random_number) {
 
   if (cost <= budget) return hii_candidate_claimed;
   if (deterministic) return hii_candidate_claimed;
-
-  /* The cone's photons could not keep this gas ionized. */
-  if (recombination_rate >= photon_rate) return hii_candidate_front;
 
   const float proba = budget / cost;
   if (random_number <= proba) return hii_candidate_claimed;
