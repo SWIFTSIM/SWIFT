@@ -233,6 +233,43 @@ int main(int argc, char *argv[]) {
       error("Case 5c: a split was refused with no large reach nearby.");
   }
 
+  /* Case 5d: a cell held coarse only by a big-reach star in a neighbouring
+   * top cell, next to a cell that split two levels deeper. The coarse cell's
+   * gas kernel support (0.35) fits its own width (1.0) but not the progeny
+   * width (0.25). The HII search is centred on the star and never selects gas
+   * by the gas's own smoothing length, so with no drift the rebuild check
+   * must stay silent for this pair, in both directions. */
+  {
+    struct cell coarse, fine;
+    bzero(&coarse, sizeof(struct cell));
+    bzero(&fine, sizeof(struct cell));
+    coarse.split = 1;
+    coarse.hydro.count = fine.hydro.count = 1000;
+    coarse.dmin = 1.0f;
+    fine.dmin = 0.25f;
+    coarse.hydro.h_max = 0.35f / kernel_gamma;
+    coarse.stars.h_hii_max = 0.01f;
+    fine.stars.h_hii_max = 0.01f;
+    fine.hydro.h_max = 0.01f;
+    coarse.top = &coarse;
+    coarse.stars.h_reach_max_neighbours = 0.3f;
+
+    if (!cell_can_split_pair_hydro_task(&coarse, /*r_cut=*/0.f))
+      error("Case 5d: the coarse cell's own gas must allow a hydro split.");
+    if (cell_can_split_pair_radiation_subgrid_task(&coarse))
+      error("Case 5d: the neighbour reach must stop the coarse cell's split.");
+    if (cell_need_rebuild_for_radiation_pair(&fine, &coarse) ||
+        cell_need_rebuild_for_radiation_pair(&coarse, &fine))
+      error(
+          "Case 5d: the rebuild check fired on the coarse cell's gas "
+          "smoothing length with no drift; no rebuild can satisfy it.");
+
+    /* Control: gas drift beyond the progeny width must still fire. */
+    fine.hydro.dx_max_part = 0.3f;
+    if (!cell_need_rebuild_for_radiation_pair(&coarse, &fine))
+      error("Case 5d: a gas drift beyond the progeny width was missed.");
+  }
+
   /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
    * must NEVER split once the cell is at or below a hydro attach point
    * (cell_flag_at_or_below_hydro_attach set), for any combination of the

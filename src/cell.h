@@ -1342,8 +1342,8 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
  * A cell that splits pairs its progeny with any neighbour that does not.
  * That neighbour then searches only the facing progeny, so its own reach
  * must fit the progeny width. Bounding the split by the neighbourhood's
- * reach, not the cell's own, keeps cell_need_rebuild_for_radiation_pair()
- * silent right after a rebuild.
+ * reach, not the cell's own, keeps the star-reach term of
+ * cell_need_rebuild_for_radiation_pair() silent right after a rebuild.
  *
  * @param c The #cell.
  */
@@ -1586,14 +1586,13 @@ cell_need_rebuild_for_radiation_pair(const struct cell *ci,
    * cell size. The runner searches out to radiation_search_radius_factor *
    * kernel_gamma * max(h_hii_max, h_max)
    * (runner_do_stars_hii_ionization_feedback()); match that here so the
-   * criterion bounds the radius actually used, not a narrower one. Split
-   * into two steps (rather than nesting max() calls) since the max() macro
-   * declares locals that would otherwise shadow across the nested
-   * expansion. */
+   * criterion bounds the radius actually used, not a narrower one. The
+   * search is centred on the star and selects gas by distance only, so the
+   * gas smoothing length of cj plays no part; only its drift does. */
   const float pair_dmin = min(ci->dmin, cj->dmin);
   const float star_reach = radiation_search_radius_factor *
                            max(ci->stars.h_hii_max, ci->stars.h_max);
-  if (kernel_gamma * max(star_reach, cj->hydro.h_max) + ci->stars.dx_max_part +
+  if (kernel_gamma * star_reach + ci->stars.dx_max_part +
           cj->hydro.dx_max_part >
       pair_dmin) {
     return 1;

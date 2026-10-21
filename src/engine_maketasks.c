@@ -5771,6 +5771,8 @@ void engine_maketasks(struct engine *e) {
      * subgrid radiation tasks and split them: cell_can_split_pair/self_
      * radiation_subgrid_task() (cell.h) use that flag as their stop
      * condition. */
+
+    /* The split checks also read each top cell's neighbour star reach. */
     space_radiation_set_neighbour_reach(s);
 
     const int nr_tasks_before_radiation = sched->nr_tasks;
