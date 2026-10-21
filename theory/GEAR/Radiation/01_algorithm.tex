@@ -547,7 +547,7 @@ never averages against a stale rate.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1209}).
+(\code{src/feedback/GEAR/feedback\_common.c:1169}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -633,12 +633,12 @@ re-charges its ongoing recombination cost, rather than charging it
 once at claim time and never again.
 
 \paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{src/runner\_radiation\_feedback.c:635}), exempt from
+(\code{src/runner\_radiation\_feedback.c:510}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
 (\code{src/feedback/GEAR/feedback\_common.c:726}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
 (\code{feedback\_common.c:927}), called at
-\code{src/runner\_radiation\_feedback.c:900}.
+\code{src/runner\_radiation\_feedback.c:752}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
