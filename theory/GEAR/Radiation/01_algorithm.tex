@@ -578,8 +578,14 @@ claim cost (Eq.~\ref{eq:claim-cost}) it can no longer afford outright:
     the affordable fraction $\text{budget}_p/{\rm cost}_b$. The draw
     applies to all gas the pixel cannot afford, also gas that recombines
     faster than the pixel emits: a pixel whose Strömgren mass is below
-    one particle then ionizes a particle now and then, and the expected
-    ionized mass stays the Strömgren mass.
+    one particle then ionizes a particle now and then. The expected
+    ionized mass is the Strömgren mass when the gas recombination time
+    is short compared with the pass interval. When it is longer, the
+    pixel pays the neutral hydrogen again at each re-claim and holds
+    less. In a clump of 95\,M$_\odot$ gas particles with four stars and
+    12 cones (fixed $10^4$\,K, one run each) the recombination rate of
+    the ionized gas is 0.98 of the stars' photon rate at a pass
+    interval of 0.01\,Myr and 0.51 at 0.001\,Myr.
 \end{itemize}
 A boundary particle that is not claimed is the ionization front of
 the pixel: it absorbs the pixel's remaining budget, which ends the
