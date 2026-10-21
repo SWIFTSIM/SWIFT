@@ -764,13 +764,19 @@ static void space_partition_cells(struct space *s, int *oldnodeIDs,
           "Basic cell dimensions have increased - recalculating the "
           "global partition.");
 
-    if (!partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
+    /* The resampling assumes one uniform grid. The zoom grids need the zoom
+     * aware partitioners, which also place the void cells. */
+    if (s->with_zoom_region ||
+        !partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
 
       /* Failed, try another technique that requires no settings. */
-      message("Failed to get a new partition, trying less optimal method");
+      if (!s->with_zoom_region)
+        message("Failed to get a new partition, trying less optimal method");
       struct partition initial_partition;
+      bzero(&initial_partition, sizeof(initial_partition));
 #if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
-      initial_partition.type = INITPART_METIS_NOWEIGHT;
+      initial_partition.type =
+          s->with_zoom_region ? INITPART_VECTORIZE : INITPART_METIS_NOWEIGHT;
 #else
       initial_partition.type = INITPART_VECTORIZE;
 #endif
