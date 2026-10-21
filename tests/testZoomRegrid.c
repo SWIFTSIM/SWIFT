@@ -132,6 +132,72 @@ void associate_gparts_to_cells(struct space *s) {
   }
 }
 
+#ifdef WITH_MPI
+static void test_zoom_space_to_space(struct space *s) {
+
+  struct engine e;
+  bzero(&e, sizeof(e));
+  e.nodeID = 0;
+  e.nr_nodes = 2;
+  s->e = &e;
+
+  int *oldnodeIDs = malloc(s->nr_cells * sizeof(int));
+  if (oldnodeIDs == NULL) error("Failed to allocate old node IDs");
+
+  const int old_bkg_cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
+  const int old_zoom_cdim[3] = {s->zoom_props->cdim[0], s->zoom_props->cdim[1],
+                                s->zoom_props->cdim[2]};
+  double old_bkg_width[3], old_zoom_width[3], old_zoom_lower[3];
+  for (int k = 0; k < 3; k++) {
+    old_bkg_width[k] = s->width[k];
+    old_zoom_width[k] = s->zoom_props->width[k];
+    old_zoom_lower[k] = s->zoom_props->region_lower_bounds[k];
+  }
+
+  const double zoom_mid = old_zoom_lower[0] + 0.5 * s->zoom_props->dim[0];
+  for (int cid = 0; cid < s->zoom_props->nr_zoom_cells; cid++) {
+    const struct cell *c = &s->zoom_props->zoom_cells_top[cid];
+    oldnodeIDs[cid] = c->loc[0] + 0.5 * c->width[0] < zoom_mid ? 0 : 1;
+  }
+
+  int sample_bkg = -1;
+  const int bkg_offset = s->zoom_props->bkg_cell_offset;
+  for (int cid = 0; cid < s->zoom_props->nr_bkg_cells; cid++) {
+    const struct cell *c = &s->zoom_props->bkg_cells_top[cid];
+    const int nodeID = c->loc[0] + 0.5 * c->width[0] < 0.5 * s->dim[0] ? 1 : 0;
+    oldnodeIDs[bkg_offset + cid] = c->subtype == cell_subtype_void ? 7 : nodeID;
+    if (sample_bkg < 0 && c->subtype != cell_subtype_void) sample_bkg = cid;
+  }
+  assert(sample_bkg >= 0);
+
+  /* Move one new zoom cell outside the old zoom grid. It must inherit from the
+   * old background grid rather than a clamped old zoom edge. */
+  struct cell *moved = &s->zoom_props->zoom_cells_top[0];
+  const struct cell *sample = &s->zoom_props->bkg_cells_top[sample_bkg];
+  double saved_loc[3], saved_width[3];
+  for (int k = 0; k < 3; k++) {
+    saved_loc[k] = moved->loc[k];
+    saved_width[k] = moved->width[k];
+    moved->loc[k] = sample->loc[k];
+    moved->width[k] = sample->width[k];
+  }
+
+  assert(partition_zoom_space_to_space(old_bkg_width, old_bkg_cdim,
+                                       old_zoom_width, old_zoom_cdim,
+                                       old_zoom_lower, oldnodeIDs, s));
+  assert(moved->nodeID == oldnodeIDs[bkg_offset + sample_bkg]);
+  for (int cid = 0; cid < s->zoom_props->nr_void_cells; cid++)
+    assert(s->cells_top[s->zoom_props->void_cell_indices[cid]].nodeID == 0);
+
+  for (int k = 0; k < 3; k++) {
+    moved->loc[k] = saved_loc[k];
+    moved->width[k] = saved_width[k];
+  }
+  free(oldnodeIDs);
+  s->e = NULL;
+}
+#endif
+
 int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
@@ -207,6 +273,10 @@ int main(int argc, char *argv[]) {
 
   /* Background region + zoom interlopers == 100 background particles. */
   assert(bkg_count + zoom_count - 100 == 100);
+
+#ifdef WITH_MPI
+  test_zoom_space_to_space(s);
+#endif
 
   /* Free the space. */
   free(s->local_cells_top);
