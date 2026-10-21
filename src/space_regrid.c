@@ -494,13 +494,18 @@ static void space_partition_cells(struct space *s, int *oldnodeIDs,
           "global partition.");
 
     int partitioned;
-    if (s->with_zoom_region) {
+    if (!s->with_zoom_region) {
+
+      /* Resample the old uniform grid onto the new uniform grid. */
+      partitioned = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
+
+    } else {
+
+      /* Resample the old zoom and background grids onto their new grids. */
       const int old_bkg_cdim[3] = {oldcdim[0], oldcdim[1], oldcdim[2]};
       partitioned = partition_zoom_space_to_space(
           oldwidth, old_bkg_cdim, old_zoom_width, old_zoom_cdim, old_zoom_lower,
           oldnodeIDs, s);
-    } else {
-      partitioned = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
     }
 
     if (!partitioned) {
