@@ -182,7 +182,7 @@ static void test_zoom_space_to_space(struct space *s) {
     moved->width[k] = sample->width[k];
   }
 
-  assert(partition_zoom_space_to_space(old_bkg_width, old_bkg_cdim,
+  assert(zoom_partition_space_to_space(old_bkg_width, old_bkg_cdim,
                                        old_zoom_width, old_zoom_cdim,
                                        old_zoom_lower, oldnodeIDs, s));
   assert(moved->nodeID == oldnodeIDs[bkg_offset + sample_bkg]);

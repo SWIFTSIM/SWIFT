@@ -117,12 +117,6 @@ void partition_initial_partition(struct partition *initial_partition,
 
 int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeID,
                              struct space *s);
-int partition_zoom_space_to_space(const double old_bkg_width[3],
-                                  const int old_bkg_cdim[3],
-                                  const double old_zoom_width[3],
-                                  const int old_zoom_cdim[3],
-                                  const double old_zoom_lower[3],
-                                  const int *oldnodeIDs, struct space *s);
 void partition_init(struct partition *partition,
                     struct repartition *repartition,
                     struct swift_params *params, int nr_nodes);
