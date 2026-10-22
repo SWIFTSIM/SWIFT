@@ -628,6 +628,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       continue;
     }
 
+    /* This pass recounts the gas the star ionizes, so restart from zero.
+       The gas-free skip above does not rebuild, and keeps the last mass. */
+    feedback_reset_star_HII_mass(si);
+
     /* Photons are budgeted as a count over the interval this pass actually
        covers, so that slicing a run into more (or fewer) rebuild passes
        hands out the same total. The lower clamp guards a star's first pass

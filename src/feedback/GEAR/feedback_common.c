@@ -471,15 +471,6 @@ void feedback_will_do_HII_ionization(
       do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons &&
                              is_HII_eligible && need_HII_region_rebuild);
 
-  /* Reset the accumulated HII-region mass exactly when we're about to redo
-     the search this step, so the value read by anything outside the
-     rebuild step (e.g. a snapshot dump) reflects the last completed
-     rebuild instead of always reading 0 (see feedback_init_spart(), which
-     used to reset this unconditionally every step). */
-  if (sp->feedback_data.will_do_HII_ionization) {
-    sp->feedback_data.radiation.mass_HII_region = 0.0;
-  }
-
   /* This star stopped doing HII for the rest of its life. Its region is no
      longer maintained and will lapse, so freeze both of its extent measures
      rather than leave snapshots reporting a region that no longer exists. */
@@ -1221,6 +1212,19 @@ void feedback_open_star_ionizing_photon_budget(struct spart *sp,
  */
 void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
   radiation_resync_ionizing_photon_rate_cache(sp);
+}
+
+/**
+ * @brief Clear the ionized mass accumulated by the previous HII rebuild.
+ *
+ * Called at the start of a rebuild pass that reaches the gas search, just
+ * before the pass recounts the gas the star holds. A snapshot then reads the
+ * last rebuild that ran. A pass skipped for lack of gas leaves the mass as is.
+ *
+ * @param sp The star.
+ */
+void feedback_reset_star_HII_mass(struct spart *sp) {
+  sp->feedback_data.radiation.mass_HII_region = 0.f;
 }
 
 #endif /* GEAR_SUBGRID_RADIATION_HII */
