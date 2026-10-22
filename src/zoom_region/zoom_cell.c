@@ -613,6 +613,11 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
         zoom_void_timestep_collect_recursive(cp);
       }
 
+      /* Foreign and empty zoom cells have no local timestep information. */
+      else if (cp->nodeID != engine_rank || cell_is_empty(cp)) {
+        continue;
+      }
+
       /* And update */
       ti_hydro_end_min = min(ti_hydro_end_min, cp->hydro.ti_end_min);
       ti_hydro_beg_max = max(ti_hydro_beg_max, cp->hydro.ti_beg_max);
