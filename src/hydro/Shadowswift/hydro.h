@@ -804,8 +804,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct entropy_floor_properties *floor_props) {
 
-  float dE_springel;
-
   if (dt_therm < 0.0f) {
     /* We are reversing a kick1 due to the timestep limiter */
     /* Note on the fluxes: Since a particle can only receive time integrated
@@ -905,12 +903,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 
       /* Find the total change in total (kinetic) energy from gravity kick
        * and infalling/departing mass */
-      dE_springel = hydro_gravity_energy_update_term(
+      float dE_springel = hydro_gravity_energy_update_term(
           dt_grav_corr1, dt_grav_corr2, xp->a_grav, a_grav, xp->mflux,
           p->gravity.mflux, p->v_part_full, xp->v_full, mdt1, mdt2, grav_kick);
-
-      /* Store for debugging, testing, alternative implementations etc */
-      p->gravity.dE_prev = dE_springel;
 
       /* Add correction for energy change from gravity */
       Q[4] += dE_springel;
@@ -939,9 +934,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
 #else
 
       const float dE_kin = hydro_gravity_kinetic_energy_update_direct(p, Q);
-
       Q[4] += dE_kin;
-
 
 #endif
     }
