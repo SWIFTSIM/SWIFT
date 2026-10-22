@@ -34,20 +34,25 @@
 
 #include <math.h>
 #include <stdint.h>
+#include <string.h>
 
 /**
- * @brief Checks whether a float is finite (not NaN or +/-Inf).
+ * @brief Checks whether a stored float is finite (not NaN or +/-Inf).
  *
  * Uses the raw IEEE-754 bit pattern (NaN/Inf have an all-ones exponent
- * field) rather than isnan()/isinf(), which Clang flags as UB under
- * -ffast-math since it may assume such a check is always false.
+ * field), since -ffast-math lets the compiler assume isnan()/isinf() are
+ * false. For the same reason an inlined bit test, or one on a float passed
+ * by value, can be folded to true: the bits are read through a pointer in a
+ * function that is never inlined. The function is a plain static function,
+ * not INLINE, because gcc rejects `inline` together with `noinline`.
+ *
+ * @param x Pointer to the value.
+ * @return 1 if *x is finite, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static int float_is_finite(float x) {
-  union {
-    float f;
-    uint32_t u;
-  } caster = {.f = x};
-  return ((caster.u >> 23) & 0xFF) != 0xFF;
+__attribute__((noinline, unused)) static int float_is_finite(const float *x) {
+  uint32_t bits;
+  memcpy(&bits, x, sizeof(bits));
+  return ((bits >> 23) & 0xFFU) != 0xFFU;
 }
 
 /* First define some constants */
@@ -373,7 +378,7 @@ invert_dimension_by_dimension_matrix(float A[3][3]) {
 
 #elif defined(HYDRO_DIMENSION_1D)
 
-  if (A[0][0] == 0.0f || !float_is_finite(A[0][0])) {
+  if (A[0][0] == 0.0f || !float_is_finite(&A[0][0])) {
     A[0][0] = 0.0f;
     return 1;
   }

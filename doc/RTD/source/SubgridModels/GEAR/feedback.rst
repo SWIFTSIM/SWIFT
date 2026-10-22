@@ -191,6 +191,8 @@ The first two parameters relate to the quantity of energy injected and are avail
 * The energy released by a supernova: ``supernovae_Ia_energy_erg``. Note that the SNII energy is stored in the feedback tables ``yields_table_first_stars`` and ``yields_table``.
 
 * The effective injected energy is multiplied by a factor ``supernovae_efficiency``. This factor is applied to SNII and SNIa.
+
+* ``enable_multiple_SN_momentum_correction_factor``: when several supernovae or winds reach one gas particle in one timestep, scale down the momentum that the winds direct away from the stars and give the kinetic energy difference to the thermal energy, so that the energy is conserved. The ejecta keep their momentum. Default: 0.
   
 * ``yields_table``: Table containing the stellar evolution parameters for population II stars, including the yields.
   
@@ -228,6 +230,7 @@ Here is the whole feedback section:
 	    discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
 	    elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of elements should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 	    discrete_star_minimal_gravity_mass_Msun: 0.1             # Minimal gravity mass after a discrete star completely explodes. In M_sun. (Default: 0.1)
+	    enable_multiple_SN_momentum_correction_factor: 0         # Correct the momentum and the thermal energy of a gas particle that several supernovae or winds reach in one timestep. (Default: 0)
 	    dt_evolution_factor_max: 300                             # Timestep refinement factor for a young SSP/continuous-IMF star, easing to 1 as it ages. Every star, not only radiation ones. (Default: 300)
 	    event_dt_floor_Myr: 1e-4                                 # Floor (Myr) on every star's event-anchored timestep terms (death moment, dt_HII_safe). Must exceed TimeIntegration:dt_min. (Default: 1e-4)
 

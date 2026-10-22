@@ -146,6 +146,10 @@ def load(path: str) -> dict[str, Any]:
                 "PE": gas["PESpecificEnergies"][:][order].astype(np.float64),
                 "LW": gas["LWSpecificEnergies"][:][order].astype(np.float64),
             },
+            pending={
+                "PE": gas["PEPendingSpecificEnergies"][:][order].astype(np.float64),
+                "LW": gas["LWPendingSpecificEnergies"][:][order].astype(np.float64),
+            },
             L={
                 "PE": float(star["PELuminosities"][0]),
                 "LW": float(star["LWLuminosities"][0]),
@@ -463,7 +467,12 @@ def main() -> None:
             spread = float(np.max(np.abs(L - L[0])) / max(abs(L[0]), 1e-300))
             ok &= gate(f"{name} {band} luminosity spread", spread, FLT_EPSILON)
             E = np.array(
-                [np.sum(s["mass"] * s["u"][band]) * s["c"] / c_hyp for s in snaps]
+                [
+                    np.sum(s["mass"] * (s["u"][band] + s["pending"][band]))
+                    * s["c"]
+                    / c_hyp
+                    for s in snaps
+                ]
             )
             lag = t - E / L
             # E is a sum of N float32 specific energies, so its rounding

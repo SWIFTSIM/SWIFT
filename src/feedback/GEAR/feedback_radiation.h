@@ -35,9 +35,14 @@ struct engine;
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
+float feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
-void feedback_iact_HII_ionization(
+int feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -51,24 +56,15 @@ double feedback_iact_HII_maintain_ionized_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back);
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back);
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp);
 long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp);
-
-#else /* GEAR_SUBGRID_RADIATION_HII */
-
-/* Without the part: no gas is ever tagged as ionized. */
-__attribute__((always_inline)) INLINE static char
-feedback_is_part_tagged_as_ionized(const struct part *p,
-                                   const struct xpart *xp) {
-  return 0;
-}
-
-#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 

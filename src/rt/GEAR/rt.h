@@ -23,7 +23,7 @@
 #include "rt_flux.h"
 #include "rt_gradients.h"
 #include "rt_properties.h"
-/* #include "rt_slope_limiters_cell.h" [> skipped for now <] */
+#include "rt_slope_limiters_cell.h"
 #include "rt_stellar_emission_model.h"
 #include "rt_thermochemistry.h"
 
@@ -143,9 +143,7 @@ __attribute__((always_inline)) INLINE static void rt_reset_part_each_subcycle(
 #endif
 
   rt_gradients_init(p);
-  /* the Gizmo-style slope limiting doesn't help for RT as is,
-   * so we're skipping it for now. */
-  /* rt_slope_limit_cell_init(p); */
+  rt_slope_limit_cell_init(p);
 
   p->rt_data.flux_dt = dt;
 }

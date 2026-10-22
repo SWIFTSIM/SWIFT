@@ -28,6 +28,7 @@
 #include "part.h"
 #include "radiation.h"
 #include "radiation_isrf.h"
+#include "runner_radiation_feedback.h"
 #include "timeline.h"
 #include "timestep_sync_part.h"
 #include "units.h"
@@ -37,15 +38,60 @@
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
+ * @brief HII eligibility temperature of a #part, safe for a foreign copy.
+ *
+ * cooling_get_temperature() reads the species of the #xpart, which a foreign
+ * copy does not have. A foreign copy returns the temperature cached at the
+ * owner's last cooling call and sent with the post-cooling state. The cache
+ * is read as it stands, never recombined with the internal energy of the
+ * xv/rho channel, which is an earlier snapshot. One cooling call writes this
+ * cache and mu_eligibility, so the two stay a matched pair.
+ *
+ * @param phys_const Physical constants.
+ * @param hydro_props The #hydro_props.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p The particle.
+ * @param xp The extended data of the particle, or NULL for a foreign copy.
+ * @return The particle's eligibility temperature.
+ */
+__attribute__((always_inline)) INLINE float
+feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp) {
+
+#ifdef WITH_MPI
+  if (xp == NULL) return p->feedback_data.T_eligibility;
+#endif
+
+  return cooling_get_temperature(phys_const, hydro_props, us, cosmo, cooling, p,
+                                 xp);
+}
+
+/**
  * @brief Determines whether a gas #part can be ionized.
  *
+ * A foreign copy whose caches still hold the -1 "not yet primed" sentinel of
+ * feedback_first_init_part() is excluded.
+ *
  * @param p The particle.
- * @param xp The extended data of the particle.
+ * @param xp The extended data of the particle, or NULL for a foreign copy.
  * @param e The #engine.
  * @return Is the particle ionized?
  */
 __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
     const struct part *p, const struct xpart *xp, const struct engine *e) {
+
+#ifdef WITH_MPI
+  /* The owner has not yet cooled this foreign copy: its caches hold the
+     sentinel, not data. The next state update replaces them. */
+  if (xp == NULL && (p->feedback_data.mu_eligibility < 0.f ||
+                     p->feedback_data.neutral_H_frac < 0.f))
+    return 0;
+#endif
 
   const struct phys_const *phys_const = e->physical_constants;
   const struct hydro_props *hydro_props = e->hydro_properties;
@@ -55,8 +101,8 @@ __attribute__((always_inline)) INLINE char feedback_part_can_be_ionized(
   const struct cooling_function_data *cooling = e->cooling_func;
 
   /* Is T > 10^4 K ? */
-  const float T = cooling_get_temperature(phys_const, hydro_props, us, cosmo,
-                                          cooling, p, xp);
+  const float T = feedback_get_eligibility_temperature(
+      phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const float ten_to_four_kelvin =
       1e4 / units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 
@@ -132,13 +178,14 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
 /**
  * @brief Tag a gas particle as ionized by this star and charge its photons.
  *
- * Shared by the three acceptance branches of #feedback_iact_HII_ionization.
+ * Called by #feedback_iact_HII_ionization for every claimed particle.
  * No atomics: task_type_stars_hii_ionization_feedback's cell locking
  * (src/task.c) already serializes every writer of these fields.
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being ionized.
- * @param xpj The #xpart (gas) being ionized.
+ * @param xpj The #xpart (gas) being ionized, or NULL for a foreign copy
+ * under MPI owner-computes; the tracer-float write is then skipped.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
  * @param us Internal unit system.
@@ -146,7 +193,8 @@ __attribute__((always_inline)) INLINE static double feedback_hii_tag_end_time(
  * @param cooling Cooling function data.
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
- * @param cost Ionizing photon count to charge for this particle.
+ * @param cost Ionizing photon count the particle costs; at most the budget
+ * left is charged.
  */
 __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
     struct spart *restrict si, struct part *restrict pj,
@@ -161,8 +209,39 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
       pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
       si->feedback_data.radiation.mean_excess_photon_energy_HI,
       feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Same claim path for local and foreign pj under owner-computes, so this
+     also guards the report-back channel against a silent-zero-rate bug.
+     xpj == NULL for a foreign copy: radiation_tag_part_as_ionized just
+     skipped storing the rate for it, so there is nothing valid to read back
+     and the check does not apply. */
+  if (xpj != NULL && cooling->HII_couple_ionization_rate &&
+      radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+    error(
+        "Fresh HII claim with HII_couple_ionization_rate on but a "
+        "non-positive photoionization rate coefficient (part %lld).",
+        pj->id);
+#endif
+#ifdef WITH_MPI
+  /* Owner-side merge tiebreak and forfeited-budget accounting: only
+     meaningful when pj is a foreign copy (xpj == NULL, this subsystem's
+     established xp == NULL contract, see feedback_get_eligibility_temperature)
+     and this claim must be reported to pj's real owner. A claim on this
+     rank's own local pj (xpj != NULL) has no owner to report to, so leaving
+     these fields untouched avoids latching claimed_this_pass at 1 on a
+     local part, which would otherwise re-echo as a phantom claim every time
+     the whole-part xv/rho/gradient channels re-deliver it to foreign
+     mirrors. */
+  if (xpj == NULL) {
+    pj->feedback_data.r2 = r2;
+    pj->feedback_data.cost =
+        min(cost, feedback_get_star_ionization_budget(si, pixel));
+    pj->feedback_data.claimed_this_pass = 1;
+  }
+#endif
   timestep_sync_part(pj);
 
+  /* A candidate costing more than the budget takes what is left. */
   radiation_consume_ionizing_photons(si, pixel, cost);
 
   /* Update HII region properties */
@@ -181,7 +260,9 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * electrons are already stripped.
  *
  * Renewal is budget-gated: once a pixel is spent, its remaining gas is not
- * renewed and cooling expires those tags at end_time. The caller
+ * renewed and cooling expires those tags at end_time. The last renewal of a
+ * pixel can be paid only in part, and is then renewed with probability
+ * paid / owed; a lost renewal ends the tag at once. The caller
  * (runner_dosub_stars_hii_ionization_feedback) invokes this in ascending
  * (r2, id) order over the star's whole held region, so a shortfall lapses
  * the outermost shell (largest r2, the recession front) first, rather than
@@ -189,7 +270,8 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  *
  * @param si The #spart (star) providing photons.
  * @param pj The #part (gas) being maintained.
- * @param xpj The #xpart (gas) being maintained.
+ * @param xpj The #xpart (gas) being maintained, or NULL for a foreign copy
+ * under MPI owner-computes; the tracer-float write is then skipped.
  * @param r2 Squared distance between star and gas.
  * @param pixel The angular pixel this gas particle was assigned to.
  * @param phys_const Physics constants.
@@ -197,6 +279,7 @@ __attribute__((always_inline)) INLINE static void feedback_hii_claim_part(
  * @param us Internal unit system.
  * @param cosmo Cosmology.
  * @param cooling Cooling function data.
+ * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
  * @return Photons charged for this particle, 0 if the budget was exhausted.
@@ -207,8 +290,8 @@ feedback_iact_HII_maintain_ionized_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back) {
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back) {
 
   /* Counted whether or not its photons can be afforded: this field is the
      mass the star HOLDS ionized, matching h_hii's extent (see stars_io.h). */
@@ -219,20 +302,57 @@ feedback_iact_HII_maintain_ionized_part(
   const double cost =
       dt_back * radiation_get_part_rate_to_fully_ionize(
                     phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
-  radiation_consume_ionizing_photons(si, pixel, cost);
+  const double charged = radiation_consume_ionizing_photons(si, pixel, cost);
 
-  /* Renew in place: the tag's other fields would otherwise keep values
-     frozen at first claim, growing staler every pass the particle survives.
-     Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
-     every held particle every pass would drag the whole region down to the
-     shortest time bin. Expiry is therefore checked on the gas particle's own
-     next cooling task, so recession can lag by up to one of its timesteps. */
-  radiation_tag_part_as_ionized(
-      pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
-      si->feedback_data.radiation.mean_excess_photon_energy_HI,
-      feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo, cooling));
+  /* A part-paid upkeep renews with probability paid / owed. The gas that
+     loses the roll ends its tag now: a tag left to run its full lifetime
+     would hold the gas for an interval nobody paid for. Cooling clears the
+     flag on the particle's next call. */
+  const int renewed =
+      charged >= cost ||
+      runner_hii_upkeep_renewed(
+          charged, cost,
+          random_unit_interval_part_ID_and_index(pj->id, pixel, ti_begin,
+                                                 random_number_HII_regions));
 
-  return cost;
+  if (!renewed) {
+    pj->feedback_data.end_time = time;
+  } else {
+    /* Renew in place: the tag's other fields would otherwise keep values
+       frozen at first claim, growing staler every pass the particle survives.
+       Deliberately no timestep_sync_part() here, unlike a fresh claim: waking
+       every held particle every pass would drag the whole region down to the
+       shortest time bin. Expiry is therefore checked on the gas particle's own
+       next cooling task, so recession can lag by up to one of its timesteps. */
+    radiation_tag_part_as_ionized(
+        pj, xpj, si->id, feedback_hii_tag_end_time(time, dt_back),
+        si->feedback_data.radiation.mean_excess_photon_energy_HI,
+        feedback_hii_photoionization_rate_HI(si, r2, pixel, us, cosmo,
+                                             cooling));
+#ifdef SWIFT_DEBUG_CHECKS
+    /* xpj == NULL for a foreign copy: see feedback_hii_claim_part's identical
+       guard for why the check does not apply there. */
+    if (xpj != NULL && cooling->HII_couple_ionization_rate &&
+        radiation_get_part_photoionization_rate_coefficient(pj, xpj) <= 0.f)
+      error(
+          "HII maintenance renewal with HII_couple_ionization_rate on but a "
+          "non-positive photoionization rate coefficient (part %lld).",
+          pj->id);
+#endif
+  }
+
+#ifdef WITH_MPI
+  /* Foreign-copy guard: see feedback_hii_claim_part's identical block for
+     why this only applies when xpj == NULL. A lost renewal is reported too,
+     so the owner also ends the tag. */
+  if (xpj == NULL) {
+    pj->feedback_data.r2 = r2;
+    pj->feedback_data.cost = charged;
+    pj->feedback_data.claimed_this_pass = 1;
+  }
+#endif
+
+  return charged;
 }
 
 /**
@@ -252,8 +372,9 @@ feedback_iact_HII_maintain_ionized_part(
  * @param ti_begin Integer time at the start of the step (for RNG).
  * @param time The current simulation time.
  * @param dt_back Time elapsed since this star's previous HII rebuild pass.
+ * @return The #hii_candidate_outcome.
  */
-__attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
+__attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -268,7 +389,7 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
   /* If already ionized (by another thread, or by an earlier pass), just move
      on: recombination losses for gas already held ionized are charged by
      feedback_iact_HII_maintain_ionized_part, not here. */
-  if (radiation_is_part_tagged_as_ionized(pj, xpj)) return;
+  if (radiation_is_part_tagged_as_ionized(pj, xpj)) return hii_candidate_passed;
 
   /* Photons this candidate costs: a one-off payment to strip its remaining
      NEUTRAL hydrogen (not its total hydrogen content: a particle whose
@@ -291,43 +412,32 @@ __attribute__((always_inline)) INLINE void feedback_iact_HII_ionization(
 
   const double budget = feedback_get_star_ionization_budget(si, pixel);
 
-  /* Case 1: Ionization is guaranteed */
-  if (cost <= budget) {
-    feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                            dt_back, cost);
-  } else if (deterministic_boundary) {
-    /* Deterministic mode: always ionize the boundary particle, letting the
-       pixel's budget go slightly negative (bounded by one particle's
-       ionization cost). */
-    feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                            dt_back, cost);
-  } else {
-    /* Probabilistic mode: a weighted coin flip decides whether to fully
-       ionize pj. On a win, the full cost is consumed (more than what was
-       left, going slightly negative); on a loss, nothing is consumed, so
-       the budget survives intact to try the next, farther candidate. This
-       keeps the expected photon consumption equal to what's actually
-       available: proba*cost + (1-proba)*0 = budget. */
-    const float proba = budget / cost;
-    /* Keyed on the star and the pixel, deliberately *not* on pj: this must be
-       one trial per pixel per pass for the identity below to hold. The same
-       number is drawn for every candidate offered to this pixel, so a loss
-       rejects the whole remaining shell, which is exactly the (1 - proba)
-       branch. Rolling per candidate instead would give each of the up-to
-       HII_max_retry_full_buffer x max_ngbs candidates an independent shot in a
-       loop that stops at the first win, so a pass would claim one particle
-       almost surely and spend `cost` rather than `budget`. */
-    const float random_number = random_unit_interval_part_ID_and_index(
+  /* Keyed on the star and the pixel, deliberately *not* on pj: one draw per
+     pixel per pass. The first unaffordable candidate ends the cone whether
+     it is claimed or absorbs the rest, so the expected spend equals the
+     budget. */
+  float random_number = 0.f;
+  if (cost > budget && !deterministic_boundary)
+    random_number = random_unit_interval_part_ID_and_index(
         si->id, pixel, ti_begin, random_number_HII_regions);
 
-    if (random_number <= proba) {
-      /* We won the roll! Claim the particle. */
-      feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
-                              dt_back, cost);
-    }
-    /* Lost the roll: consume nothing, budget carries over. */
-  } /* End of probability handling */
+  const enum hii_candidate_outcome outcome = runner_hii_candidate_outcome(
+      deterministic_boundary, budget, cost, random_number);
+
+  if (outcome == hii_candidate_claimed) {
+    /* At most the budget left is charged. On a won roll that is all of it,
+       and p = budget / cost keeps the claimed cost equal to the budget on
+       average. */
+    feedback_hii_claim_part(si, pj, xpj, r2, pixel, us, cosmo, cooling, time,
+                            dt_back, cost);
+  } else if (outcome == hii_candidate_front) {
+    /* The front absorbs what is left, which ends the cone. */
+    radiation_consume_ionizing_photons(si, pixel, budget);
+  }
+  return outcome;
 }
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 /**
  * @brief Is this gas particle currently tagged as HII-ionized?
@@ -364,8 +474,6 @@ long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp) {
   return radiation_get_part_ionized_star_id(p, xp);
 }
-
-#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
