@@ -50,6 +50,82 @@ float space_regrid_radiation_cap_for(const double cell_max_width) {
 }
 
 /**
+ * @brief Largest value of @p reach over each top-level cell and its
+ * neighbours (the 27-cell stencil, wrapped when periodic).
+ *
+ * @param reach Per top-level cell value, indexed as cell_getid().
+ * @param cdim Number of top-level cells along each axis.
+ * @param periodic Is the box periodic?
+ * @param reach_neighbours (return) Per top-level cell stencil maximum.
+ */
+void space_radiation_neighbour_reach_for(const float *reach, const int cdim[3],
+                                         const int periodic,
+                                         float *reach_neighbours) {
+
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        float r = 0.f;
+        for (int ii = -1; ii < 2; ii++) {
+          int iii = i + ii;
+          if (!periodic && (iii < 0 || iii >= cdim[0])) continue;
+          iii = (iii + cdim[0]) % cdim[0];
+          for (int jj = -1; jj < 2; jj++) {
+            int jjj = j + jj;
+            if (!periodic && (jjj < 0 || jjj >= cdim[1])) continue;
+            jjj = (jjj + cdim[1]) % cdim[1];
+            for (int kk = -1; kk < 2; kk++) {
+              int kkk = k + kk;
+              if (!periodic && (kkk < 0 || kkk >= cdim[2])) continue;
+              kkk = (kkk + cdim[2]) % cdim[2];
+              r = fmaxf(r, reach[cell_getid(cdim, iii, jjj, kkk)]);
+            }
+          }
+        }
+        reach_neighbours[cell_getid(cdim, i, j, k)] = r;
+      }
+    }
+  }
+}
+
+/**
+ * @brief Set #cell_stars::h_reach_max_neighbours on every top-level cell.
+ *
+ * Every rank computes the value for every top-level cell from the same
+ * reduced input, so all ranks split a boundary radiation pair alike.
+ *
+ * @param s The #space.
+ */
+void space_radiation_set_neighbour_reach(struct space *s) {
+
+  const int nr_cells = s->nr_cells;
+  float *reach = (float *)malloc(2 * nr_cells * sizeof(float));
+  if (reach == NULL) error("Failed to allocate the radiation reach buffer.");
+  float *reach_neighbours = reach + nr_cells;
+
+  for (int k = 0; k < nr_cells; k++) {
+    const struct cell *c = &s->cells_top[k];
+    reach[k] = (c->nodeID == engine_rank)
+                   ? fmaxf(c->stars.h_hii_max, c->stars.h_max)
+                   : 0.f;
+  }
+
+#ifdef WITH_MPI
+  if (MPI_Allreduce(MPI_IN_PLACE, reach, nr_cells, MPI_FLOAT, MPI_MAX,
+                    MPI_COMM_WORLD) != MPI_SUCCESS)
+    error("Failed to reduce the radiation reach of the top-level cells.");
+#endif
+
+  space_radiation_neighbour_reach_for(reach, s->cdim, s->periodic,
+                                      reach_neighbours);
+
+  for (int k = 0; k < nr_cells; k++)
+    s->cells_top[k].stars.h_reach_max_neighbours = reach_neighbours[k];
+
+  free(reach);
+}
+
+/**
  * @brief A star's contribution to the top-level grid's radiation term:
  * the larger of its HII search radius and its own smoothing length,
  * capped by space_regrid_radiation_cap_for().

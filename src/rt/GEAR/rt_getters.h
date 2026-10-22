@@ -78,7 +78,7 @@ rt_part_get_radiation_state_vector(const struct part *restrict p, int group,
 
 /**
  * @brief Get the gradients of energy density and fluxes for a given photon
- * group
+ * group. They are stored divided by p->rt_data.gradient_scale_inv.
  *
  * @param p Particle.
  * @param group Index of photon group

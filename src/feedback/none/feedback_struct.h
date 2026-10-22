@@ -27,6 +27,19 @@
 struct feedback_part_data {};
 
 /**
+ * @brief Report-back payload for task_subtype_part_hii_tag. Empty stub:
+ * this module has no HII radiation, this type exists only so core files
+ * (scheduler.c, cell_pack.c) compile against the subtype unconditionally.
+ */
+struct hii_tag_report {};
+
+/**
+ * @brief Post-cooling state payload for task_subtype_part_hii_state. Empty
+ * stub, same rationale as hii_tag_report above.
+ */
+struct hii_state_update {};
+
+/**
  * @brief Extra feedback fields carried by each hydro particles
  */
 struct feedback_xpart_data {};

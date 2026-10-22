@@ -127,12 +127,6 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     xp->feedback_data.delta_p[i] = 0;
   }
 
-  /* Update chemistry metal mass and reset feedback variable */
-  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
-    p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
-    xp->feedback_data.delta_metal_mass[i] = 0.0;
-  }
-
   /* The tracers get what the particle received, with the final mass */
   feedback_tracers_pending_update(xp, xp->feedback_data.hit_by_SN,
                                   xp->feedback_data.hit_by_winds, f_corr,
@@ -145,6 +139,12 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   xp->feedback_data.delta_p_hubble_work = 0.0f;
   xp->feedback_data.number_SN = 0;
   xp->feedback_data.number_winds = 0;
+
+  /* Update chemistry metal mass and reset feedback variable */
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
+    xp->feedback_data.delta_metal_mass[i] = 0.0;
+  }
 
   /*----------------------------------------*/
   /* Update the radiation fields */
@@ -456,10 +456,22 @@ void feedback_init_part(struct part *p, const struct engine *e) {
  * @brief First-init of a #part's feedback state, see
  * #radiation_first_init_part.
  *
+ * Also sets the mu_eligibility and neutral_H_frac caches to the -1 sentinel:
+ * 0 is a physical value of both, so it cannot mean "not yet primed". Before
+ * the owner's first cooling call, a foreign copy would otherwise be priced
+ * at almost zero photons. feedback_part_can_be_ionized() excludes a foreign
+ * copy that still holds the sentinel.
+ *
  * @param p The #part to initialise.
  */
 void feedback_first_init_part(struct part *restrict p) {
   radiation_first_init_part(p);
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  p->feedback_data.mu_eligibility = -1.f;
+#endif
+#ifdef GEAR_COOLING
+  p->feedback_data.neutral_H_frac = -1.f;
+#endif
 }
 
 /**
@@ -477,6 +489,17 @@ int feedback_is_active(const struct spart *sp, const struct engine *e) {
   if (sp->birth_scale_factor < 0.0 || sp->birth_time < 0.0) return 0;
 
   return sp->feedback_data.will_do_feedback;
+}
+
+/**
+ * @brief Get the comoving SPH gas density at the star position.
+ *
+ * Only valid after feedback_prepare_feedback() has been called for this step.
+ *
+ * @param sp The #spart.
+ */
+float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
+  return sp->feedback_data.enrichment_weight;
 }
 
 /**
@@ -529,17 +552,6 @@ int feedback_should_inject_feedback(const struct spart *sp) {
 }
 
 /**
- * @brief Get the comoving SPH gas density at the star position.
- *
- * Only valid after feedback_prepare_feedback() has been called for this step.
- *
- * @param sp The #spart.
- */
-float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
-  return sp->feedback_data.enrichment_weight;
-}
-
-/**
  * @brief Is this star particle done evolving, i.e. finished with its
  * feedback-relevant lifetime?
  *
@@ -565,7 +577,8 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.num_ngbs = 0;
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
-     rebuild step. It is reset in feedback_will_do_feedback(). */
+     rebuild step. It is reset in runner_dosub_stars_hii_ionization_feedback()
+     when the pass searches gas. */
 
   radiation_reset_star_pressure_inputs(sp);
 }

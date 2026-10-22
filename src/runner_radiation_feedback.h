@@ -36,6 +36,7 @@
 #include "feedback.h"
 #include "hydro.h"
 #include "minmax.h"
+#include "random.h"
 #include "stars.h"
 
 /* Avoid cyclic inclusions. */
@@ -102,6 +103,69 @@ feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars,
   return 0;
 }
 #endif
+
+/**
+ * @brief Result of offering one untagged candidate to a cone.
+ */
+enum hii_candidate_outcome {
+
+  /*! The candidate is claimed and its cost charged. */
+  hii_candidate_claimed = 0,
+
+  /*! Already ionized: nothing charged, the cone goes on. */
+  hii_candidate_passed = 1,
+
+  /*! Not claimed: the candidate is an ionization front that absorbs photons. */
+  hii_candidate_front = 2,
+};
+
+/**
+ * @brief Decide whether a cone claims an untagged candidate.
+ *
+ * The first candidate a cone cannot afford ends the cone: it is claimed on a
+ * won roll, and it is a front that absorbs the rest of the budget otherwise
+ * (Hopkins et al. 2018, Appendix E). The win probability is budget / cost, so
+ * the expected spend equals the budget. The roll is the one-per-cone draw of
+ * the caller, so a cone rolls once per pass.
+ *
+ * @param deterministic 1 if the boundary candidate is always claimed.
+ * @param budget Photons left in the cone.
+ * @param cost Photons the candidate costs: its neutral atoms plus one
+ * interval of recombinations.
+ * @param random_number The cone's draw in [0, 1), read only if the candidate
+ * is unaffordable.
+ * @return The #hii_candidate_outcome.
+ */
+__attribute__((always_inline)) INLINE static enum hii_candidate_outcome
+runner_hii_candidate_outcome(const int deterministic, const double budget,
+                             const double cost, const float random_number) {
+
+  if (cost <= budget) return hii_candidate_claimed;
+  if (deterministic) return hii_candidate_claimed;
+
+  const float proba = budget / cost;
+  if (random_number <= proba) return hii_candidate_claimed;
+
+  return hii_candidate_front;
+}
+
+/**
+ * @brief Decide whether a held particle whose upkeep was paid in part keeps
+ * its ionization tag.
+ *
+ * The tag is kept with probability paid / owed, so the expected photons spent
+ * on the particle equal what it costs. A fully paid upkeep always renews.
+ *
+ * @param paid Photons charged for the upkeep.
+ * @param owed Photons the upkeep costs.
+ * @param random_number A draw in [0, 1), read only if @p paid < @p owed.
+ * @return 1 if the tag is renewed.
+ */
+__attribute__((always_inline)) INLINE static int runner_hii_upkeep_renewed(
+    const double paid, const double owed, const double random_number) {
+  if (paid >= owed) return 1;
+  return random_number < paid / owed;
+}
 
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
  * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
@@ -251,24 +315,24 @@ void runner_do_stars_hii_ionization_feedback_branch(
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *ngb_buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 
 void runner_doself_stars_hii_ionization_feedback(
     struct runner *r, struct cell *c, struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 void runner_dopair_naive_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
     struct spart *si, const float search_radius, struct hii_neighbor *buffer,
     int max_size, int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 void runner_dopair_stars_hii_ionization_feedback(
     struct runner *r, struct cell *ci, struct cell *cj, const int sid,
     const int flipped, const double shift[3], struct spart *si,
     const float search_radius, struct hii_neighbor *buffer, int max_size,
     int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx);
+    struct hii_maintenance_context *ctx, const double *frame);
 
 /**
  * @brief Shift that brings the neighbour cell next to the star's cell.
@@ -358,6 +422,62 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
 }
 
 /**
+ * @brief Index of the cone frame a star uses at one of its passes.
+ *
+ * @param pass_index Number of passes the star has made before this one.
+ * @param redraw_period Passes per frame, or 0 for a frame kept for the star's
+ * life.
+ * @return pass_index / redraw_period, or 0 when @a redraw_period <= 0.
+ */
+__attribute__((always_inline)) INLINE static int64_t
+runner_hii_cone_frame_epoch(const int64_t pass_index, const int redraw_period) {
+  if (redraw_period <= 0) return 0;
+  return pass_index / redraw_period;
+}
+
+/**
+ * @brief Build the rotation of a star's HEALPix cone frame from its ID and
+ * the frame epoch.
+ *
+ * Shoemake's uniform random unit quaternion, built from three numbers drawn
+ * with random_unit_interval(), gives a rotation uniform on SO(3). The result
+ * depends only on the star ID, the epoch and the compile-time random seed, so
+ * it is the same on every rank, after a restart and in any processing order.
+ *
+ * @param id The star ID.
+ * @param epoch The frame epoch (see #runner_hii_cone_frame_epoch).
+ * @param R (return) The rotation matrix, row-major.
+ */
+__attribute__((always_inline)) INLINE static void runner_hii_cone_frame_from_id(
+    const int64_t id, const int64_t epoch, double R[9]) {
+
+  const integertime_t ti = 3 * (integertime_t)epoch;
+  const double u1 =
+      random_unit_interval(id, ti, random_number_HII_frame_rotation);
+  const double u2 =
+      random_unit_interval(id, ti + 1, random_number_HII_frame_rotation);
+  const double u3 =
+      random_unit_interval(id, ti + 2, random_number_HII_frame_rotation);
+
+  const double a = sqrt(1.0 - u1);
+  const double b = sqrt(u1);
+  const double qx = a * sin(2.0 * M_PI * u2);
+  const double qy = a * cos(2.0 * M_PI * u2);
+  const double qz = b * sin(2.0 * M_PI * u3);
+  const double qw = b * cos(2.0 * M_PI * u3);
+
+  R[0] = 1.0 - 2.0 * (qy * qy + qz * qz);
+  R[1] = 2.0 * (qx * qy - qz * qw);
+  R[2] = 2.0 * (qx * qz + qy * qw);
+  R[3] = 2.0 * (qx * qy + qz * qw);
+  R[4] = 1.0 - 2.0 * (qx * qx + qz * qz);
+  R[5] = 2.0 * (qy * qz - qx * qw);
+  R[6] = 2.0 * (qx * qz - qy * qw);
+  R[7] = 2.0 * (qy * qz + qx * qw);
+  R[8] = 1.0 - 2.0 * (qx * qx + qy * qy);
+}
+
+/**
  * @brief Compute the angular (HEALPix) pixel a gas candidate falls into,
  * as seen from the star.
  *
@@ -367,10 +487,12 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
  * @param dx Star-minus-particle position offset (dx = x_star - x_particle).
  * @param n_HII_pixels Number of active pixels for this star (1 = spherical,
  * HEALPix disabled).
+ * @param frame Rotation of the cone frame (row-major 3x3, see
+ * #runner_hii_cone_frame_from_id), or NULL for cones fixed to the box axes.
  * @return Pixel index in [0, n_HII_pixels).
  */
 __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
-    const float dx[3], int n_HII_pixels) {
+    const float dx[3], int n_HII_pixels, const double *frame) {
 
   if (n_HII_pixels <= 1) return 0;
 
@@ -397,7 +519,13 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
   /* Pixels are defined around the star, so the direction of interest is
      from the star to the particle -- the negation of dx. vec2pix_ring64
      does not require a normalized vector. */
-  const double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
+  double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
+  if (frame != NULL) {
+    const double d0 = dir[0], d1 = dir[1], d2 = dir[2];
+    dir[0] = frame[0] * d0 + frame[1] * d1 + frame[2] * d2;
+    dir[1] = frame[3] * d0 + frame[4] * d1 + frame[5] * d2;
+    dir[2] = frame[6] * d0 + frame[7] * d1 + frame[8] * d2;
+  }
   int64_t ipix = 0;
   vec2pix_ring64(nside, dir, &ipix);
   return (int)ipix;

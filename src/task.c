@@ -182,9 +182,11 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_formation_sink",
     "rt_gradient",
     "rt_transport",
-    "chemistry_fct_prep",
     "stars_radiation_in",
     "stars_radiation_out",
+    "chemistry_fct_prep",
+    "part_hii_tag",
+    "part_hii_state",
 };
 
 const char *task_category_names[task_category_count] = {
@@ -1384,18 +1386,22 @@ void task_get_group_name(int type, int subtype, char *cluster) {
     case task_subtype_sink_do_gas_swallow:
       strcpy(cluster, "DoGasSwallow");
       break;
-    case task_subtype_sink_formation_gas:
-      strcpy(cluster, "SinkFormationGas");
-      break;
-    case task_subtype_sink_formation_sink:
-      strcpy(cluster, "SinkFormationSink");
-      break;
     case task_subtype_stars_radiation_in:
       strcpy(cluster, "RadiationIn");
       break;
     case task_subtype_stars_radiation_out:
       strcpy(cluster, "RadiationOut");
       break;
+    case task_subtype_sink_formation_gas:
+      strcpy(cluster, "SinkFormationGas");
+      break;
+    case task_subtype_sink_formation_sink:
+      strcpy(cluster, "SinkFormationSink");
+      break;
+    /* part_hii_tag/part_hii_state only ever exist as task_type_send/recv
+     * (never self/pair), so they fall through to "None" like every other
+     * comm-only subtype (e.g. xv, rho) rather than getting their own
+     * named cluster here. */
     default:
       strcpy(cluster, "None");
       break;

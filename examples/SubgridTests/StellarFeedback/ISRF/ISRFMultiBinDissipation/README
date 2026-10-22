@@ -81,7 +81,8 @@ Override any parameter via the matching env var: `gas_density`
 (`ISRF_c_hyp_fixed_fraction_of_c`, 0 = kernel_local), `alpha_max`/`alpha_pin`
 (`ISRF_dissipation_alpha_max`/`..._pin_for_debugging`, `alpha_pin` debug
 only), `propagation`, `initial_metallicity`, `time_end`, `dt_max`, `dt_min`,
-`delta_time`, and thread count (`n_threads`); see `run.sh` for the full list
+`delta_time`, thread count per rank (`n_threads`) and MPI ranks (`n_ranks`,
+`swift_mpi` under `mpirun --bind-to none` when above 1); see `run.sh` for the full list
 and defaults. `run_name=<dir> ./run.sh` moves a run's outputs into `<dir>`.
 
 `gas_mass` sets resolution at fixed density (`h ~ (m/rho)^(1/3)`); it also
@@ -93,6 +94,7 @@ accordingly for a finer one.
 # Checking
 ```
 python3 isrf_multibin_dissipation_check.py --c-hyp-margin $c_hyp_margin --ledger-valid 0|1
+python3 isrf_multibin_ledger_check.py
 python3 multibin_compare.py --mode gate --s0 s0_dir --m0 m0_dir --m1 m1_dir --m2 m2_dir --m4 m4_dir --m5 m5_dir [--m3 m3_dir]
 python3 multibin_compare.py --mode report --runs dir1 dir2 ...
 ```
@@ -131,12 +133,27 @@ uniform control, gates the closed ledger residual
 `|E + Abs - Inj| / |Inj|` (the same reduction `ISRFInjectionConservation`
 gates: `R(M1) <= max(R(M0), 1e-3)`, with M2 reported alongside as the
 attribution half), NOT the per-run `fractional_change` field (the field's
-growth under continuous injection, not a conservation residual). This
+growth under continuous injection, not a conservation residual). `E` is
+the band specific energy plus its `PendingSpecificEnergies`, the energy
+finer neighbours owe a particle on a longer step, which is non-zero between
+synchronised steps. The plain sums close well below the bar only for one
+uniform `c_hyp` (`c_hyp_fraction > 0` in `run.sh`); with the default
+`kernel_local` speeds the residual is large in every run, so the
+criterion compares M1 with the M0 control. This
 needs SWIFT built with `--enable-debugging-checks`: the two accumulators
 it reads are written as identically zero otherwise. `run.sh` detects the
 build from the binary's own `--version` banner and passes
 `--ledger-valid` through automatically; on any other build crit4 is
 skipped, not failed.
+
+`isrf_multibin_ledger_check.py` gates one run on its own: the closed ledger
+`|dE + dAbs - dInj| / |dInj|`, each a change since the first snapshot and
+pending energy included, at every snapshot, against
+`n_steps * 2^-23`, the float32 bound of one update per particle per step. It
+needs one propagation speed (`c_hyp_fraction > 0`) and a debugging-checks
+build, and `run.sh` runs it in that case. The bound does not depend on the
+number of ranks, so `n_ranks=2 ./run.sh` checks the MPI exchange of the
+cross-bin energy.
 
 A run flagged void or invalid by its own check script is listed on an
 `Excluded from the gate (VOID/INVALID)` line, but still enters every

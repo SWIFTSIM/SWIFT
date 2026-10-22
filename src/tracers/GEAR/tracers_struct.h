@@ -46,10 +46,10 @@ struct tracers_xpart_data {
     float momentum_radiation;
 #endif
 
-    /*! Cumulative thermal energy per unit mass given by the events. It is not
-        the change of the specific internal energy (dilution is not counted),
-        and the kinetic energy given is not included. Radiation pressure has
-        no thermal channel. */
+    /*! Cumulative thermal energy per unit mass given by the events (radiation
+        pressure has no separate thermal channel). It is not the change of the
+        specific internal energy (dilution is not counted), and the kinetic
+        energy given is not included. */
     float energy_supernovae;
     float energy_winds;
 

@@ -27,9 +27,13 @@ candidates.
 
 Reads, per band (`PE`, `LW`) and per snapshot:
 
-    E   = sum(mass * <band>SpecificEnergies)
+    E   = sum(mass * (<band>SpecificEnergies + <band>PendingSpecificEnergies))
     Inj = sum(mass * <band>CumulativeInjectedSpecificEnergies)
     Abs = sum(mass * <band>CumulativeAbsorbedSpecificEnergies)
+
+The pending term is the energy that finer neighbours owe a particle on a
+longer time step; its next update adds it to the band energy. It is zero
+at a snapshot where every particle is synchronised and non-zero otherwise.
 
 Inj and Abs are running totals since the particle's first init (see the
 two fields' own doxygen, `src/feedback/GEAR_thermal/feedback_struct.h`),
@@ -159,7 +163,14 @@ def check_snapshot(
                 np.float64
             )
 
-            for name, arr in (("u", u), ("Inj", inj), ("Abs", absorbed)):
+            pending = gas[f"{band}PendingSpecificEnergies"][:].astype(np.float64)
+
+            for name, arr in (
+                ("u", u),
+                ("pending", pending),
+                ("Inj", inj),
+                ("Abs", absorbed),
+            ):
                 if not np.all(np.isfinite(arr)):
                     n_bad = int(np.sum(~np.isfinite(arr)))
                     print(
@@ -172,7 +183,7 @@ def check_snapshot(
                 all_ok = False
                 continue
 
-            E = float(np.sum(mass * u))
+            E = float(np.sum(mass * (u + pending)))
             Inj = float(np.sum(mass * inj))
             Abs = float(np.sum(mass * absorbed))
 

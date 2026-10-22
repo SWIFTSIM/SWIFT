@@ -27,6 +27,7 @@
 #include "minmax.h"
 #include "part.h"
 #include "radiation.h"
+#include "runner_radiation_feedback.h"
 #include "stellar_evolution.h"
 #include "timeline.h"
 #include "timestep_sync_part.h"
@@ -401,6 +402,7 @@ void feedback_will_do_feedback(
 }
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
+
 /**
  * @brief Determines whether this star does HII ionization feedback during
  * the next time-step, and retires its HII region once it stops doing so.
@@ -467,15 +469,6 @@ void feedback_will_do_HII_ionization(
       do_photoionization && (!sp->feedback_data.is_dead && has_enough_photons &&
                              is_HII_eligible && need_HII_region_rebuild);
 
-  /* Reset the accumulated HII-region mass exactly when we're about to redo
-     the search this step, so the value read by anything outside the
-     rebuild step (e.g. a snapshot dump) reflects the last completed
-     rebuild instead of always reading 0 (see feedback_init_spart(), which
-     used to reset this unconditionally every step). */
-  if (sp->feedback_data.will_do_HII_ionization) {
-    sp->feedback_data.radiation.mass_HII_region = 0.0;
-  }
-
   /* This star stopped doing HII for the rest of its life. Its region is no
      longer maintained and will lapse, so freeze both of its extent measures
      rather than leave snapshots reporting a region that no longer exists. */
@@ -490,6 +483,7 @@ void feedback_will_do_HII_ionization(
     sp->feedback_data.radiation.mass_HII_region = 0.f;
   }
 }
+
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
 /**
@@ -586,6 +580,7 @@ double feedback_get_enrichment_timestep(const struct spart *sp,
 }
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
+
 /**
  * @brief Get the #spart ionization photon emission rate for a given angular
  * pixel.
@@ -636,12 +631,9 @@ feedback_get_star_ionization_budget_max(const struct spart *sp) {
 }
 
 /**
- * @brief Get the raw sum of the remaining ionizing photon count over all of
- * the #spart's active angular pixels, positive and negative contributions
- * alike
- * (a pixel in debt after #feedback_hii_claim_part's deterministic-boundary
- * overdraw counts negatively). Diagnostic only: the per-pixel budget is
- * still what every spending decision above is gated on.
+ * @brief Get the sum of the remaining ionizing photon count over all of the
+ * #spart's active angular pixels. Diagnostic only: the per-pixel budget is
+ * what every spending decision above is gated on.
  *
  * @param sp The star.
  * @return Sum of the remaining ionizing photon count over all active pixels.
@@ -688,6 +680,39 @@ int feedback_is_HII_ionization_active(const struct spart *sp,
  */
 int feedback_get_star_HII_pixel_count(const struct spart *sp) {
   return sp->feedback_data.radiation.n_HII_pixels;
+}
+
+/**
+ * @brief Does each star rotate its HEALPix cone frame by a rotation set by its
+ * ID and pass epoch?
+ *
+ * @param feedback_props The #feedback_props.
+ * @return 1 if the cone frame is rotated, 0 if cones follow the box axes.
+ */
+int feedback_get_HII_random_cone_frame(
+    const struct feedback_props *feedback_props) {
+  return feedback_props->HII_random_cone_frame_per_star;
+}
+
+/**
+ * @brief Number of passes between two draws of a star's cone frame.
+ *
+ * @param feedback_props The #feedback_props.
+ * @return The redraw period, or 0 when the frame is kept for the star's life.
+ */
+int feedback_get_HII_cone_frame_redraw_period(
+    const struct feedback_props *feedback_props) {
+  return feedback_props->HII_cone_frame_redraw_period;
+}
+
+/**
+ * @brief Count one HII pass of this star.
+ *
+ * @param sp The #spart to update.
+ * @return The number of passes the star made before this one.
+ */
+int64_t feedback_count_star_HII_pass(struct spart *sp) {
+  return sp->feedback_data.radiation.HII_pass_count++;
 }
 
 /**
@@ -788,6 +813,21 @@ void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
 }
 
 /**
+ * @brief Clear the ionized mass accumulated by the previous HII rebuild.
+ *
+ * Called at the start of a rebuild pass that reaches the gas search, just
+ * before the pass recounts the gas the star holds. A snapshot then reads the
+ * last rebuild that ran. A pass skipped for lack of gas leaves the mass as is.
+ *
+ * @param sp The star.
+ */
+void feedback_reset_star_HII_mass(struct spart *sp) {
+  sp->feedback_data.radiation.mass_HII_region = 0.f;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
+
+/**
  * @brief Current ionized mass of this star's HII region.
  *
  * Dispatch wrapper so callers outside this feedback model (e.g. the GEAR
@@ -799,9 +839,12 @@ void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
  * @return Current ionized mass of this star's HII region.
  */
 float feedback_get_star_HII_mass(const struct spart *sp) {
+#ifdef GEAR_SUBGRID_RADIATION_HII
   return sp->feedback_data.radiation.mass_HII_region;
+#else
+  return 0.f;
+#endif
 }
-#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 /**
  * @brief Star's current non-ionizing PE-band luminosity.
@@ -862,10 +905,9 @@ static INLINE void feedback_seed_star_HII_state(struct spart *sp,
   /* 0.0 reads as "never attempted", so the first attempt's dt_elapsed
      measures from the star's actual birth age. */
   sp->feedback_data.radiation.HII_region_last_attempt = 0.0;
+  sp->feedback_data.radiation.HII_pass_count = 0;
 
-  /* A newborn star owes no photons: radiation_open_ionizing_photon_budget()
-     carries a pixel's overdraft into the next pass, so this must start clean.
-     Over the whole array, not n_HII_pixels, which can still grow. */
+  /* Over the whole array, not n_HII_pixels, which can still grow. */
   for (int p = 0; p < HII_MAX_ANGULAR_PIXELS; p++) {
     sp->feedback_data.radiation.N_ion_budget_pix[p] = 0.0;
   }
@@ -1018,13 +1060,22 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   if (flux_form != feedback_restart_particle_layout())
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
-        "%d (reduced flux, phi-weighted cross-bin pending fields). A restart "
-        "written by another code version cannot be resumed: rerun the "
-        "simulation from its initial conditions.",
-        flux_form, FEEDBACK_RESTART_ISRF_PART_LAYOUT);
+        "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
+        "dissipation fields, HII random cone frame flag, redraw period and "
+        "star pass count). "
+        "A restart written by another code version cannot be resumed: rerun "
+        "the simulation from its initial conditions.",
+        flux_form, feedback_restart_particle_layout());
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
+  if (feedback->HII_random_cone_frame_per_star != 0 &&
+      feedback->HII_random_cone_frame_per_star != 1)
+    error("The restart file holds an invalid HII random cone frame flag %d.",
+          (int)feedback->HII_random_cone_frame_per_star);
+  if (feedback->HII_cone_frame_redraw_period < 0)
+    error("The restart file holds an invalid HII cone frame redraw period %d.",
+          feedback->HII_cone_frame_redraw_period);
 
   /* Checks and messages that only the feedback module knows, before the
      tables are read */

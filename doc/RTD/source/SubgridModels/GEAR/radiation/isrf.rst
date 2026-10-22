@@ -84,6 +84,9 @@ The hyperbolic update can produce small negative undershoots of the band energy 
 ``ISRF_dissipation_alpha_pin_for_debugging``
   Debugging only. When positive, holds every particle's coefficient at this value and bypasses the trigger. It is not clamped to the stability bound: SWIFT only warns if it exceeds it.
 
+``ISRF_flux_dissipation`` (default ``0``)
+  Experimental. ``1`` applies the same pairwise dissipation, with the same coefficient :math:`\alpha`, to each component of the reduced flux as well as to the band energy. It damps flux ripples a few smoothing lengths long and leaves a uniform flux untouched. It does not damp long-wavelength modes, and it is not a stability fix. The joint bound above was derived for the dissipation of the band energy only and has not been re-derived with this term. On a pair of particles with unequal time steps, the share of the particle on the longer step is held and added at its next update, as for the energy. That held flux share is added without the absorption of that update, while the held energy share is absorbed, so the two agree only in dust-free gas (:math:`\kappa = 0`). Needs ``ISRF_propagation``. A run restarted from a restart file keeps the value it started with: the parameter file is not read again for it.
+
 Grackle coupling
 ----------------
 
@@ -124,7 +127,7 @@ Two earlier defaults cannot be recovered without setting the mechanism and ``ISR
 Complete parameter list
 -----------------------
 
-The ISRF section of the ``GEARFeedback`` block, with every parameter at its default. The last three are for tests and diagnostics only and must stay at their defaults in a production run:
+The ISRF section of the ``GEARFeedback`` block, with every parameter at its default. The last three are for tests and diagnostics only and must stay at their defaults in a production run; ``ISRF_flux_dissipation`` is experimental:
 
 .. code:: YAML
 
@@ -142,6 +145,7 @@ The ISRF section of the ``GEARFeedback`` block, with every parameter at its defa
      ISRF_dissipation_alpha_floor: 0.5                       # Dissipation floor under the trigger
      ISRF_dissipation_floor_h_over_lambda: 0.5               # Knee of the floor's roll-off
      ISRF_dissipation_floor_relaxation_residual: 0.40        # Relaxation-residual gate of the floor
+     ISRF_flux_dissipation: 0                                # Experimental: also damp the reduced flux
      ISRF_c_hyp_timestep_term_off_for_debugging: 0           # Debugging only, leave at 0
      ISRF_dissipation_alpha_pin_for_debugging: 0             # Debugging only, leave at 0
 
@@ -159,7 +163,7 @@ and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\
 Initial conditions
 ------------------
 
-Three optional gas fields let an initial-conditions file seed the radiation field directly, for a test setup that starts with a field already in place rather than with a star that produces one. All three are singular, following SWIFT's convention that distinguishes input from output fields, and all three are for test and diagnostic use, not a normal production IC.
+Six optional gas fields let an initial-conditions file seed the radiation field and its reduced flux directly, for a test setup that starts with a field already in place rather than with a star that produces one. All six are singular, following SWIFT's convention that distinguishes input from output fields, and all six are for test and diagnostic use, not a normal production IC.
 
 .. list-table::
    :header-rows: 1
@@ -177,8 +181,17 @@ Three optional gas fields let an initial-conditions file seed the radiation fiel
    * - ``LWPhotonSpecificEnergy``
      - Initial Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy, not a photon count
      - [U_L^2 U_T^{-2}]
+   * - ``PEReducedSpecificFlux``
+     - Initial reduced PE-band flux :math:`\mathbf{F}/c_\mathrm{hyp}`, 3 components. :math:`|\mathbf{F}|/c_\mathrm{hyp}` equal to ``PESpecificEnergy`` is free streaming. Not the snapshot's ``PESpecificFluxes``, which is :math:`c_\mathrm{hyp}` times larger
+     - [U_L^2 U_T^{-2}]
+   * - ``LWReducedSpecificFlux``
+     - Same, Lyman-Werner band
+     - [U_L^2 U_T^{-2}]
+   * - ``LWPhotonReducedSpecificFlux``
+     - Same, Lyman-Werner-band photon-number moment
+     - [U_L^2 U_T^{-2}]
 
-An initial-conditions file without any of them is unaffected: every field starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init, per particle: on any particle where one of the two is zero and the other is not, SWIFT sets the zero one equal to the other, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. A particle with a nonzero ``LWSpecificEnergy`` therefore always carries a photon moment: to start with no photon moment, set ``LWSpecificEnergy`` to zero as well.
+An initial-conditions file without any of them is unaffected: every field and flux starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init, per particle: on any particle where one of the two is zero and the other is not, SWIFT sets the zero one equal to the other, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. A particle with a nonzero ``LWSpecificEnergy`` therefore always carries a photon moment: to start with no photon moment, set ``LWSpecificEnergy`` to zero as well.
 
 Snapshot outputs
 ------------------

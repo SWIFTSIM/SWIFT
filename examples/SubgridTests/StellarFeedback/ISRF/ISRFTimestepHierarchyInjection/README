@@ -11,7 +11,9 @@ The fixture exercises the ISRF dose reservoir and the hyperbolic
 propagation across a real time-bin hierarchy. With no dust (`Z = 0`) and one
 fixed `c_hyp`, the stored energy grows as `(c_hyp/c) L t`, so
 `(c/c_hyp) sum m u` tracks `L t` up to the dose still held in the
-reservoirs and in the gas steps in flight.
+reservoirs and in the gas steps in flight. Here `u` includes the
+`PendingSpecificEnergies` field, the energy finer neighbours owe a particle
+on a longer step, which is non-zero between synchronised steps.
 
 The gated quantity is that lag itself. It is bounded by the dose the three
 hand-off stages between the star and the gas can hold, one cadence each, so

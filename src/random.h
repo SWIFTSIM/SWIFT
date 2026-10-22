@@ -66,6 +66,7 @@ enum random_number_type {
   random_number_snapshot_sampling = 6561001LL,
   random_number_stellar_winds = 5947309451LL,
   random_number_HII_regions = 8134165677LL,
+  random_number_HII_frame_rotation = 9172560853LL,
   random_number_enrichment_1 = 7245742351LL,
   random_number_enrichment_2 = 1156895281LL,
   random_number_enrichment_3 = 2189989727LL,

@@ -1106,6 +1106,16 @@ static gr_float cooling_new_energy_or_keep_previous(
      integrator has no notion of the external photoionization forcing and
      would cool the just-floored energy back down within the same step. */
   if (ionized_this_step) {
+    /* The subgrid floor forces species (mode >= 1) and energy together;
+       cache the resulting temperature against u_ionized, since that value
+       has not landed on the particle yet (see the cache function's
+       doxygen). The species cache is refreshed here too: this path runs for
+       every step a tag is held, so leaving that write to Grackle's own solve
+       would freeze the cache at the pre-episode composition for the whole
+       episode. */
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ionized);
     /* Return u_ionized itself, not a re-read of the particle: the caller
        derives a du/dt from this return value and applies it once. */
     return u_ionized;
@@ -1116,6 +1126,13 @@ static gr_float cooling_new_energy_or_keep_previous(
     if (cooling_debug_fix_neutral_temperature_subgrid(
             phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
             &u_o)) {
+      /* Species are untouched here, only u changes, but this path replaces
+         Grackle's solve for every non-ionized particle: both caches are
+         written here or they are never written at all in this
+         configuration. */
+      cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+      cooling_cache_eligibility_temperature_subgrid(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_o);
       return u_o;
     }
   }
@@ -1233,6 +1250,8 @@ static gr_float cooling_new_energy_or_keep_previous(
      particle held at the subgrid-ionized floor: that path already
      returned before reaching Grackle's own solve. */
   cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+  cooling_cache_eligibility_temperature_subgrid(
+      phys_const, us, cosmo, hydro_props, cooling, p, xp, energy);
 
   return energy;
 }
@@ -1486,13 +1505,28 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        struct part *p, struct xpart *xp, const double dt,
                        const double dt_therm, const double time) {
 
-  /* Nothing to do here? */
-  if (dt == 0.) return;
+  /* Nothing to do here? The first step has dt = 0: write the caches a
+     foreign copy reads, so that gas not yet cooled is not left at the
+     "not yet primed" sentinel and excluded from the HII search of another
+     rank. */
+  if (dt == 0.) {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp,
+        hydro_get_physical_internal_energy(p, xp, cosmo));
+    return;
+  }
 
   /* Debug/test-only: skip the per-particle energy update entirely,
      leaving hydro's own internal-energy derivative untouched. See
      cooling_function_data.disable_cooling_for_debugging's own doxygen. */
-  if (cooling->disable_cooling_for_debugging) return;
+  if (cooling->disable_cooling_for_debugging) {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp,
+        hydro_get_physical_internal_energy(p, xp, cosmo));
+    return;
+  }
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -1527,6 +1561,9 @@ void cooling_cool_part(const struct phys_const *phys_const,
   /* Is the cooling turn off */
   if (time - xp->cooling_data.time_last_event < cooling->thermal_time) {
     u_new = u_ad_before;
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
   } else {
     int kept_previous_state;
     u_new = cooling_new_energy_or_keep_previous(
@@ -1534,7 +1571,11 @@ void cooling_cool_part(const struct phys_const *phys_const,
         dt_therm, time, &kept_previous_state);
 
     /* No cooling this step: exactly the adiabatic energy */
-    if (kept_previous_state) u_new = u_ad_before;
+    if (kept_previous_state) {
+      u_new = u_ad_before;
+      cooling_cache_eligibility_temperature_subgrid(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
+    }
 
     /* Grackle's solve evolves the ion/molecule fractions that set mu;
        recompute the floor from the post-solve composition. */
@@ -1724,6 +1765,31 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   /* Enable verbose for grackle for rank 0 only. */
   if (engine_rank == 0) {
     grackle_verbose = 1;
+  }
+#endif
+
+#if defined(WITH_MPI) && COOLING_GRACKLE_MODE > 0
+  /* The per-particle photoionization rate and excess photon energy a claim
+     computes are stored in the gas particle's xpart, which a foreign copy
+     does not have, and the cross-rank claim report (struct hii_tag_report)
+     does not yet apply them on the gas owner. Gas ionized by a star on
+     another rank therefore reaches Grackle with a zero HI ionization rate
+     and zero photoheating, while cooling_ionize_part_subgrid has already
+     handed the energy to the solver instead of forcing the ionized
+     temperature floor. The result is silently wrong thermodynamics rather
+     than a failure, so refuse the combination outright. */
+  if (cooling->HII_couple_ionization_rate) {
+    int nr_nodes = 1;
+    MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes);
+    if (nr_nodes > 1)
+      error(
+          "GEARFeedback:HII_couple_ionization_rate is not supported on more "
+          "than one MPI rank (%d ranks requested): the cross-rank HII claim "
+          "report does not carry the per-particle photoionization rate, so "
+          "gas ionized by a star on another rank would be given a zero rate "
+          "and zero photoheating. Run on a single rank, or set "
+          "GEARFeedback:HII_couple_ionization_rate: 0.",
+          nr_nodes);
   }
 #endif
 

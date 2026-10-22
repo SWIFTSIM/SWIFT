@@ -133,6 +133,11 @@ struct feedback_isrf_moment_data {
   /*! Artificial-dissipation source term from the force loop. Scratch. */
   float dissipation_u;
 
+  /*! Artificial-dissipation rate of the reduced flux, same pair coefficient
+      as #dissipation_u. Zero unless #feedback_part_data.ISRF_flux_dissipation
+      is set. Scratch. */
+  float dissipation_flux[3];
+
   /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
       loop, per physical length. Scratch. */
   float grad_u[3];
@@ -150,6 +155,11 @@ struct feedback_isrf_moment_data {
   /*! Dissipation amount owed by finer neighbours, divided by c_hyp and
       weighted by their phi. Same life cycle as #pending_transport_u. */
   float pending_dissipation_u;
+
+  /*! Reduced-flux dissipation amount owed by finer neighbours, divided by
+      c_hyp and weighted by their phi. Same life cycle as
+      #pending_transport_u. */
+  float pending_dissipation_flux[3];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u at the end of an update since the previous snapshot,
@@ -263,6 +273,10 @@ struct feedback_spart_radiation_data {
   /*! Star age at the last rebuild attempt, whether or not gas was found.
       Anchors the interval dt_back. */
   double HII_region_last_attempt;
+
+  /*! Number of HII passes made by this star, the clock of the cone frame
+      redraw. */
+  int HII_pass_count;
 
   /*! Mean photon energy above 13.6 eV, cached once per HII rebuild pass, in
       erg. Only set with GEARFeedback:HII_couple_ionization_rate. */

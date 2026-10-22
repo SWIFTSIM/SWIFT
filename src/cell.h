@@ -510,13 +510,18 @@ struct cell {
   /*! MPI variables */
   struct {
 
-    union {
-      /* Single list of all send tasks associated with this cell. */
-      struct link *send;
+    /* Single list of all send tasks associated with this cell.
+     *
+     * Kept apart from recv: the HII report-back channel
+     * (task_subtype_part_hii_tag/part_hii_state) is bidirectional per cell
+     * on both sides of a boundary radiation pair. A foreign cell holds a
+     * normal recv_xv/rho and its own send_part_hii_tag; the local owner
+     * cell holds a normal send_xv/rho and a recv_part_hii_tag. */
+    struct link *send;
 
-      /* Single list of all recv tasks associated with this cell. */
-      struct link *recv;
-    };
+    /* Single list of all recv tasks associated with this cell. See the
+     * send field's comment for why it is a separate list. */
+    struct link *recv;
 
     union {
       /* Single list of all pack tasks associated with this cell. */
@@ -682,6 +687,16 @@ void cell_pack_bpart_swallow(const struct cell *c,
                              struct black_holes_bpart_data *data);
 void cell_unpack_bpart_swallow(struct cell *c,
                                const struct black_holes_bpart_data *data);
+void cell_pack_part_hii_tag(struct cell *c, struct hii_tag_report *data);
+void cell_unpack_part_hii_tag(struct cell *c, const struct hii_tag_report *data,
+                              long long *collision_count,
+                              double *forfeited_budget);
+void cell_pack_part_hii_state(const struct cell *c,
+                              struct hii_state_update *data);
+void cell_unpack_part_hii_state(struct cell *c,
+                                const struct hii_state_update *data);
+int cell_pack_hydro_attach(const struct cell *c, int *flags);
+int cell_unpack_hydro_attach(const int *flags, struct cell *c);
 int cell_pack_tags(const struct cell *c, int *tags);
 int cell_unpack_tags(const int *tags, struct cell *c);
 int cell_pack_grid_extra(const struct cell *c,
@@ -1716,6 +1731,23 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_hydro_task(
 }
 
 /**
+ * @brief Largest star reach length (max of h_hii and h) around a cell's
+ * top-level cell, its top-level neighbours included.
+ *
+ * A cell that splits pairs its progeny with any neighbour that does not.
+ * That neighbour then searches only the facing progeny, so its own reach
+ * must fit the progeny width. Bounding the split by the neighbourhood's
+ * reach, not the cell's own, keeps the star-reach term of
+ * cell_need_rebuild_for_radiation_pair() silent right after a rebuild.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline, nonnull)) INLINE static float
+cell_radiation_neighbour_reach(const struct cell *c) {
+  return (c->top != NULL) ? c->top->stars.h_reach_max_neighbours : 0.f;
+}
+
+/**
  * @brief Can a pair radiation subgrid task associated with a cell be split
  * into smaller sub-tasks.
  *
@@ -1767,6 +1799,9 @@ cell_can_split_pair_radiation_subgrid_task(const struct cell *c) {
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_hii_max <
           0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              cell_radiation_neighbour_reach(c) <
+          0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
 }
@@ -1791,6 +1826,9 @@ cell_can_split_self_radiation_subgrid_task(const struct cell *c) {
           0.5f * c->dmin) &&
          (space_stretch * radiation_search_radius_factor * kernel_gamma *
               c->stars.h_hii_max <
+          0.5f * c->dmin) &&
+         (space_stretch * radiation_search_radius_factor * kernel_gamma *
+              cell_radiation_neighbour_reach(c) <
           0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->sinks.h_max < 0.5f * c->dmin) &&
          (space_stretch * kernel_gamma * c->black_holes.h_max < 0.5f * c->dmin);
@@ -1979,14 +2017,13 @@ cell_need_rebuild_for_radiation_pair(const struct cell *ci,
    * cell size. The runner searches out to radiation_search_radius_factor *
    * kernel_gamma * max(h_hii_max, h_max)
    * (runner_do_stars_hii_ionization_feedback()); match that here so the
-   * criterion bounds the radius actually used, not a narrower one. Split
-   * into two steps (rather than nesting max() calls) since the max() macro
-   * declares locals that would otherwise shadow across the nested
-   * expansion. */
+   * criterion bounds the radius actually used, not a narrower one. The
+   * search is centred on the star and selects gas by distance only, so the
+   * gas smoothing length of cj plays no part; only its drift does. */
   const float pair_dmin = min(ci->dmin, cj->dmin);
   const float star_reach = radiation_search_radius_factor *
                            max(ci->stars.h_hii_max, ci->stars.h_max);
-  if (kernel_gamma * max(star_reach, cj->hydro.h_max) + ci->stars.dx_max_part +
+  if (kernel_gamma * star_reach + ci->stars.dx_max_part +
           cj->hydro.dx_max_part >
       pair_dmin) {
     return 1;

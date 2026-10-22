@@ -215,9 +215,18 @@ double radiation_get_part_ionized_internal_energy(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp);
 
+double radiation_get_part_mean_molecular_weight(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
+
 double radiation_get_case_b_recombination_coefficient_cgs(const double T);
 
 double radiation_get_T_collisional_K(const double Z);
+
+double radiation_get_photoionization_rate_coefficient_from_flux_HI(
+    const struct unit_system *us, const double ionizing_flux_HI);
 
 void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
                                    long long star_id, double end_time,
@@ -234,15 +243,13 @@ float radiation_get_part_excess_photon_energy_HI(const struct part *p,
                                                  const struct xpart *xpj);
 float radiation_get_part_photoionization_rate_coefficient(
     const struct part *p, const struct xpart *xpj);
-double radiation_get_photoionization_rate_coefficient_from_flux_HI(
-    const struct unit_system *us, const double ionizing_flux_HI);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
 void radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back);
 void radiation_resync_ionizing_photon_rate_cache(struct spart *sp);
-void radiation_consume_ionizing_photons(struct spart *sp, int pixel,
-                                        double Delta_N_ion);
+double radiation_consume_ionizing_photons(struct spart *sp, int pixel,
+                                          double Delta_N_ion);
 
 /**
  * @brief Set the mean photon energy above 13.6 eV of a star, in erg.
@@ -280,6 +287,9 @@ radiation_get_part_ionized_internal_energy(
     const struct xpart *xp) {
   return 0.;
 }
+__attribute__((always_inline)) INLINE static void radiation_tag_part_as_ionized(
+    struct part *p, struct xpart *xpj, long long star_id, double end_time,
+    float excess_photon_energy_HI, float photoionization_rate_HI) {}
 __attribute__((always_inline)) INLINE static void
 radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj) {}
 __attribute__((always_inline)) INLINE static char
@@ -291,6 +301,11 @@ __attribute__((always_inline)) INLINE static double
 radiation_get_part_ionized_end_time(const struct part *p,
                                     const struct xpart *xpj) {
   return 0.;
+}
+__attribute__((always_inline)) INLINE static long long
+radiation_get_part_ionized_star_id(const struct part *p,
+                                   const struct xpart *xpj) {
+  return 0;
 }
 __attribute__((always_inline)) INLINE static float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
@@ -356,6 +371,8 @@ radiation_get_star_band_luminosity(const struct spart *sp,
 }
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+/* Without the part: the gas carries no LW/PE field. */
 
 __attribute__((always_inline)) INLINE static void
 radiation_reset_part_ISRF_illumination_tag(struct part *p,
@@ -444,6 +461,8 @@ radiation_reset_star_pressure_inputs(struct spart *sp) {
 }
 
 #else /* GEAR_SUBGRID_RADIATION_PRESSURE */
+
+/* Without the part: the star exerts no radiation pressure. */
 
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_bolometric_luminosity(struct spart *sp, const double L) {}
