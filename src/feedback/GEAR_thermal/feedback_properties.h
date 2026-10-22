@@ -961,12 +961,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     }
   }
 
-  if (parser_does_param_exist(params, "GEARFeedback:HII_cone_claim_rule") &&
-      engine_rank == 0)
-    warning(
-        "GEARFeedback:HII_cone_claim_rule is retired and ignored: a cone "
-        "always stops at the first gas it cannot afford.");
-
   if (with_photoionization) {
     fp->radiation_policy |= radiation_policy_photoionization;
 
