@@ -48,7 +48,9 @@ without it.
 `nside=0 ./run.sh` and `nside=1 ./run.sh` (use `run_name=nside0 ./run.sh`
 / `run_name=nside1 ./run.sh` to keep both outputs) run the geometry
 from Figure 2, reproducing the top (spherical) and bottom (HEALPix)
-panels respectively.
+panels respectively. `params.yml` sets
+`HII_random_cone_frame_per_star: 0`, which keeps the cones of every
+star on the box axes, as in the paper's geometry.
 
 `run.sh` runs `plot_temperature_hii.py` on the run's own final
 snapshot automatically (`run_analysis=1` by default; set

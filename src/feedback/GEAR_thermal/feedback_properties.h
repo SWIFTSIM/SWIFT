@@ -34,7 +34,7 @@
 #define default_HII_max_age_Myr 50.0
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
-#define default_HII_random_cone_frame_per_star 0
+#define default_HII_random_cone_frame_per_star 1
 #define default_HII_cone_frame_redraw_period 0
 #define default_HII_rebuild_floor_Myr 1e-4
 #define default_dt_evolution_factor_max 300.0
@@ -257,8 +257,8 @@ struct feedback_props {
   char HII_deterministic_boundary_ionization;
 
   /*! Rotate each star's HEALPix cone frame by a rotation set by its ID and,
-   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1), or keep the
-   * cones fixed to the box axes (0). */
+   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1, the
+   * default), or keep the cones fixed to the box axes (0). */
   char HII_random_cone_frame_per_star;
 
   /*! Number of the star's own HII passes between two draws of its cone
