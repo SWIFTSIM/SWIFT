@@ -345,14 +345,72 @@ __attribute__((always_inline)) INLINE static void hydro_get_drifted_velocities(
 /**
  * @brief Returns the time derivative of co-moving internal energy of a particle
  *
+ * This should only be called after flux calculations and before Kick 2
+ *
+ * At this point we assume that we know the conserved variables at the time
+ * of evaluating Kick 2, and applying the fluxes. This means it is safe to make
+ * the same assumptions in Kick 2 as we do here, ie that Ekin  = p^/2m and
+ * that E = E - Ekin. It would of course be advantageous to do a full thermal
+ * switch, but this approximation will do for now.
+ *
  * We assume a constant density.
  *
  * @param p The particle of interest
  */
 __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_internal_energy_dt(const struct part* restrict p) {
-  /* Was just set in hydro_predict_extra() */
-  return p->hydro_dudt;
+
+  float m_inv_1;
+  float m_inv_2;
+  float ekin_1;
+  float ekin_2;
+
+  // Do we need to catch old mass?
+  if (p->conserved.mass == 0.) {
+    warning("Mass 1 is = 0, setting internal energy dt to 0!");
+    m_inv_1 = 0.;
+    return 0; // If the mass is 0, how can the internal energy change?
+  } else {
+    m_inv_1 = 1.f / p->conserved.mass;
+  }
+
+  // Catch updated mass?
+  if ((p->conserved.mass + p->flux.mass) <= 0.) {
+    /* If the mass is about to be 0, everything else should be reset to 0 anyway
+     * and doing anything here is pointless */
+    warning("Mass 2 is <= 0, setting internal energy dt to u/dt");
+    return 0;
+  } else {
+    m_inv_2 = 1.f / (p->conserved.mass + p->flux.mass);
+  }
+
+  /* Find initial thermal energy, should still be explicitly safe */
+  ekin_1 = 0.5 * (p->conserved.momentum[0] * p->conserved.momentum[0]
+          + p->conserved.momentum[1] * p->conserved.momentum[1]
+          + p->conserved.momentum[2] * p->conserved.momentum[2]) * m_inv_1;
+
+  /* Still safe from setting in previous kick */
+  float thermal_energy_initial = p->conserved.energy - ekin_1;
+
+  /* Kinetic energy at next timestep with pure hydro interactions */
+  ekin_2 = 0.5 * ((p->conserved.momentum[0] + p->flux.momentum[0]) *
+    (p->conserved.momentum[0] + p->flux.momentum[0]) +
+            (p->conserved.momentum[1] + p->flux.momentum[1]) *
+            (p->conserved.momentum[1] + p->flux.momentum[1]) +
+            (p->conserved.momentum[2] + p->flux.momentum[2]) *
+            (p->conserved.momentum[2] + p->flux.momentum[2])) *
+              m_inv_2;
+
+  const float internal_energy_1 =
+    (p->conserved.energy - ekin_1) * m_inv_1;
+
+  float internal_energy_2 =
+    (p->conserved.energy + p->flux.energy - ekin_2) * m_inv_2;
+
+  /* Pure hydro dudt */
+  const float du_dt = (internal_energy_2 - internal_energy_1) / p->flux.dt;
+
+  return du_dt;
 }
 
 /**
