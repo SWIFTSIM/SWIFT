@@ -63,6 +63,18 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
 
   if (syncredist) {
 
+    /* Our tags are the index of the chunk being sent. We send at most
+     * INT_MAX / sizeofparts particles per chunk and counts are ints, so we
+     * can never need more than sizeofparts + 1 chunks. Note that this is
+     * essentially never going to trigger but its covered by this check anyway.
+     */
+    if ((int)sizeofparts + 1 > cell_max_tag) {
+      error(
+          "Particles are too large (%zu bytes) to tag the synchronous "
+          "redistribute by chunk: the largest usable tag is %d.",
+          sizeofparts, cell_max_tag);
+    }
+
     /* Slow synchronous redistribute,. */
     size_t offset_send = 0, offset_recv = 0;
 
@@ -167,6 +179,14 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
         const int ind_send = nodeID * nr_nodes + k;
         const int ind_recv = k * nr_nodes + nodeID;
 
+        /* Tag each message with the rank of its sender. This is all we need
+         * since there will only ever be a single message in flight between any
+         * two nodes at a time. Furthermore, any other comms that could use tags
+         * in the range 0-nr_nodes will not be in flight concurrent with the
+         * redistribute. */
+        const int send_tag = nodeID;
+        const int recv_tag = k;
+
         /* Are we sending any data this loop? */
         int sending = counts[ind_send] - sent;
         if (sending > 0) {
@@ -183,7 +203,7 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
             /* Otherwise send it. */
             int res =
                 MPI_Isend(&parts[offset_send * sizeofparts], sending, mpi_type,
-                          k, ind_send, MPI_COMM_WORLD, &reqs[2 * k + 0]);
+                          k, send_tag, MPI_COMM_WORLD, &reqs[2 * k + 0]);
             if (res != MPI_SUCCESS)
               mpi_error(res, "Failed to isend parts to node %i.", k);
           }
@@ -200,7 +220,7 @@ static void *engine_do_redistribute(const char *label, int *counts, char *parts,
             activenodes++;
             if (receiving > chunk) receiving = chunk;
             int res = MPI_Irecv(&parts_new[offset_recv * sizeofparts],
-                                receiving, mpi_type, k, ind_recv,
+                                receiving, mpi_type, k, recv_tag,
                                 MPI_COMM_WORLD, &reqs[2 * k + 1]);
             if (res != MPI_SUCCESS)
               mpi_error(res, "Failed to emit irecv of parts from node %i.", k);
@@ -552,6 +572,15 @@ void engine_redistribute_relink_mapper(void *map_data, int num_elements,
 void engine_redistribute(struct engine *e) {
 
 #ifdef WITH_MPI
+  /* Our tags are the rank of the sender. Probably always safe but checking
+   * costs us nothing. */
+  if (e->nr_nodes - 1 > cell_max_tag) {
+    error(
+        "Too many ranks (%d) to tag the redistribute by sender: the largest "
+        "usable tag is %d.",
+        e->nr_nodes, cell_max_tag);
+  }
+
   const int nr_nodes = e->nr_nodes;
   const int nodeID = e->nodeID;
   struct space *s = e->s;
