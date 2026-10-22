@@ -579,7 +579,8 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.num_ngbs = 0;
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
-     rebuild step. It is reset in feedback_will_do_feedback(). */
+     rebuild step. It is reset at the start of the star's HII pass in
+     runner_dosub_stars_hii_ionization_feedback(). */
 
   radiation_reset_star_pressure_inputs(sp);
 }
