@@ -102,7 +102,8 @@ struct threadpool;
 #endif
 
 /* The GEAR ISRF books a pair share into the inactive member, on its rank. */
-#if defined(WITH_MPI) && defined(FEEDBACK_GEAR) &&                       \
+#if defined(WITH_MPI) &&                                                 \
+    (defined(FEEDBACK_GEAR) || defined(FEEDBACK_GEAR_MECHANICAL)) &&     \
     defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(EXTRA_HYDRO_LOOP) && \
     !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
 #define MPI_SYMMETRIC_FORCE_INTERACTION
