@@ -279,4 +279,46 @@ hydro_gravity_xp_mflux(struct part* p, struct xpart* xp) {
 }
 
 
+/**
+ * @brief Kinetic Energy change from momentum kicks to fluid velocity of gas
+ * particle. Conserves thermal energy explicitly by assuming that
+ * Thermal Energy = Energy - Kinetic Energy
+ *
+ * @param p Particle.
+ * @param Q Gravity - Kicked conserved variables
+ * @return Kinetic Energy Change term used to update the energy variable.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_gravity_kinetic_energy_update_direct( const struct part *p,
+                                            const float *Q) {
+  /* Here we ignore Eq 94 from Springel 2010 and simply add the change in
+ * kinetic energy that the grav kicks bring. Pakmor, private communication
+ * convinced us that this is better. At least, it is guaranteed positive.
+ * This is done by taking Ekin^n+1 - Ekin_n and adding that to Q[4]. */
+
+  /* Collect masses */
+  const float m_inv1 = (p->conserved.mass != 0.0f) ? 1.0f /
+              p->conserved.mass : 0.0f;
+
+  const float m2 = p->conserved.mass + p->flux.mass;
+  const float m_inv2 = (m2 != 0.0f) ? 1.0f / m2 : 0.0f;
+
+  /* Initial Kinetic Energy */
+  const double Ekin_n = 0.5 * m_inv1 *
+                      (p->conserved.momentum[0] * p->conserved.momentum[0] +
+                      p->conserved.momentum[1] * p->conserved.momentum[1] +
+                      p->conserved.momentum[2] * p->conserved.momentum[2]);
+
+  /* Final Kinetic Energy after BOTH half kicks */
+  const double Ekin_n1 = 0.5 * m_inv2 * (Q[1] * Q[1] +
+                                      Q[2] * Q[2] +
+                                      Q[3] * Q[3]);
+
+  const double dEkin = Ekin_n1 - Ekin_n;
+
+  return dEkin;
+
+}
+
+
 #endif  // SWIFTSIM_SHADOWSWIFT_HYDRO_GRAVITY_H

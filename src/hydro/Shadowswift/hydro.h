@@ -937,37 +937,12 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
        */
       hydro_gravity_xp_mflux(p, xp);
 #else
-      /* Here we ignore Eq 94 from Springel 2010 and simply add the change in
-       * kinetic energy that the grav kicks bring. Pakmor, private communication
-       * convinced us that this is better. At least, it is guaranteed positive.
-       * This is done by taking Ekin^n+1 - Ekin_n and adding that to Q[4]. */
 
-      const float m_inv1 = (p->conserved.mass != 0.0f) ? 1.0f /
-                              p->conserved.mass : 0.0f;
+      const float dE_kin = hydro_gravity_kinetic_energy_update_direct(p, Q);
 
-      /* We want this to be up to date, still check for 1/0
-       * Since grav_kick above uses new masses, we do too here
-       */
-      const float m2 = p->conserved.mass + p->flux.mass;
-      const float m_inv2 = (m2 != 0.0f) ? 1.0f / m2 : 0.0f;
+      Q[4] += dE_kin;
 
-      const float Ekin1 = 0.5 * m_inv1 *
-                         (p->conserved.momentum[0] * p->conserved.momentum[0] +
-                          p->conserved.momentum[1] * p->conserved.momentum[1] +
-                          p->conserved.momentum[2] * p->conserved.momentum[2]);
 
-      /* Explicitly do not include hydro fluxes, this is accounted for in
-       * fluxes[4] later. */
-      const float Ekin2 =  0.5 * m_inv2 * (Q[1] * Q[1] +
-                                            Q[2] * Q[2] +
-                                            Q[3] * Q[3]);
-
-      const float dEkin = Ekin2 - Ekin1;
-
-      /* Add the change in kinetic energy from gravity kicks to energy */
-      Q[4] += dEkin;
-
-      /* NOTE: 1 year of work, just to erase all of it and do this... */
 #endif
     }
 
