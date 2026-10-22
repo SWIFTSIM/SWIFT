@@ -182,8 +182,8 @@ struct feedback_props {
   char HII_deterministic_boundary_ionization;
 
   /*! Rotate each star's HEALPix cone frame by a rotation set by its ID and,
-   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1), or keep the
-   * cones fixed to the box axes (0). */
+   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1, the
+   * default), or keep the cones fixed to the box axes (0). */
   char HII_random_cone_frame_per_star;
 
   /*! Number of the star's own HII passes between two draws of its cone
