@@ -173,6 +173,38 @@ void test_cell_tree(struct cell *c, struct space *s) {
   }
 }
 
+static void set_timestep_test_values(struct cell *c, int *nr_zoom_cells) {
+
+  for (int k = 0; k < 8; k++) {
+    struct cell *cp = c->progeny[k];
+    if (cp == NULL) continue;
+
+    if (cp->subtype == cell_subtype_void) {
+      set_timestep_test_values(cp, nr_zoom_cells);
+      continue;
+    }
+
+    cp->nodeID = engine_rank;
+    cp->grav.count = 1;
+    cp->grav.ti_end_min = max_nr_timesteps;
+
+    if (*nr_zoom_cells == 0) {
+      cp->nodeID = engine_rank + 1;
+      cp->grav.ti_end_min = -1;
+    } else if (*nr_zoom_cells == 1) {
+      cp->hydro.count = 0;
+      cp->grav.count = 0;
+      cp->stars.count = 0;
+      cp->black_holes.count = 0;
+      cp->sinks.count = 0;
+      if (cp->grav.multipole != NULL) cp->grav.multipole->m_pole.M_000 = 0.f;
+      cp->grav.ti_end_min = -1;
+    }
+
+    (*nr_zoom_cells)++;
+  }
+}
+
 int main(int argc, char *argv[]) {
 
   /* NOTE: This is a modified version of testZoomRegrid. It uses the exact same
@@ -239,6 +271,19 @@ int main(int argc, char *argv[]) {
     if (s->cells_top[cid].subtype == cell_subtype_void)
       test_cell_tree(&s->cells_top[cid], s);
   }
+
+  /* Foreign and empty zoom cells must not contribute invalid timesteps. */
+  int nr_zoom_cells = 0;
+  for (int cid = 0; cid < s->zoom_props->nr_void_cells; cid++)
+    set_timestep_test_values(
+        &s->cells_top[s->zoom_props->void_cell_indices[cid]], &nr_zoom_cells);
+  assert(nr_zoom_cells >= 2);
+
+  zoom_void_timestep_collect(&e);
+  for (int cid = 0; cid < s->zoom_props->nr_void_cells; cid++)
+    assert(
+        s->cells_top[s->zoom_props->void_cell_indices[cid]].grav.ti_end_min ==
+        max_nr_timesteps);
 
   /* Free the space. */
   free(s->local_cells_top);
