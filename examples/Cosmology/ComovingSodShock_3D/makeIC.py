@@ -74,6 +74,10 @@ ids = linspace(1, numPart, numPart)
 m = zeros(numPart)
 u = zeros(numPart)
 
+# Add rho and material ids
+rho = np.zeros(numPart)
+material_ids = np.zeros(numPart)
+
 for i in range(numPart):
     x = pos[i, 0]
 
@@ -81,10 +85,12 @@ for i in range(numPart):
         u[i] = P_L / (rho_L * (gamma - 1.0))
         m[i] = rho_L * vol_L / numPart_L
         v[i, 0] = v_L
+        rho[i] = rho_L
     else:  # right
         u[i] = P_R / (rho_R * (gamma - 1.0))
         m[i] = rho_R * vol_R / numPart_R
         v[i, 0] = v_R
+        rho[i] = rho_R
 
 # Shift particles
 pos[:, 0] -= x_min
@@ -122,5 +128,7 @@ grp.create_dataset("Masses", data=m, dtype="f")
 grp.create_dataset("SmoothingLength", data=h, dtype="f")
 grp.create_dataset("InternalEnergy", data=u, dtype="f")
 grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
+grp.create_dataset("Density", data=rho, dtype="f")
 
 file.close()
