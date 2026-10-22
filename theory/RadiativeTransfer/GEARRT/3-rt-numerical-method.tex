@@ -526,6 +526,17 @@ The minmod limiter appears to be the most robust one with regards to ensuring st
 radiative transfer, and for this reason is the recommended choice.
 
 
+Three limiter schemes are selectable. \emph{minmod} is the default. \emph{gizmo} applies the
+cell limiter and then the face limiter of \citet{hopkinsGIZMONewClass2015}, and \emph{cell} applies the cell
+limiter only. The \emph{gizmo} and \emph{cell} schemes are experimental. The cell limiter bounds
+the extrapolated value by an allowance times the extremal neighbour difference. The original RT
+implementation used a constant allowance of $1$. The present form uses the condition number of the
+particle's geometry matrix and gives an allowance of up to $2$ for a well-conditioned matrix and
+$1$ for a badly conditioned one, as in \citet{hopkinsGIZMONewClass2015} and in the Gizmo hydrodynamics of
+SWIFT. The stored gradients and the flux norms are protected against loss of float range: the
+gradients are stored multiplied by a power of two, and the norms are computed in double precision
+when needed.
+
 Other possible choices are the \emph{superbee} limiter:
 
 \begin{align}

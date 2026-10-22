@@ -181,9 +181,11 @@ enum task_subtypes {
   task_subtype_sink_formation_sink,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
-  task_subtype_chemistry_fct_prep,
   task_subtype_stars_radiation_in,  /* Implicit */
   task_subtype_stars_radiation_out, /* Implicit */
+  task_subtype_chemistry_fct_prep,
+  task_subtype_part_hii_tag,
+  task_subtype_part_hii_state,
   task_subtype_count
 } __attribute__((packed));
 

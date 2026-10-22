@@ -37,8 +37,10 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
         testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
+        testSinkApertureEdgeRounding testSinkDriftFlags \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
-        testRadiationRebuildCheck \
+        testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
+        testRadiationHIIConeClaim \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -56,8 +58,10 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
 		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
+		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
-		 testRadiationRebuildCheck \
+		 testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
+		 testRadiationHIIConeClaim \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
@@ -74,6 +78,12 @@ testMaths_SOURCES = testMaths.c
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
 
 testRadiationRebuildCheck_SOURCES = testRadiationRebuildCheck.c
+
+testRadiationPairShift_SOURCES = testRadiationPairShift.c
+
+testRadiationHIIConeFrame_SOURCES = testRadiationHIIConeFrame.c
+
+testRadiationHIIConeClaim_SOURCES = testRadiationHIIConeClaim.c
 
 testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 
@@ -131,6 +141,10 @@ testSinkApertureRebuild_SOURCES = testSinkApertureRebuild.c
 testSinkFormationGasCompleteness_SOURCES = testSinkFormationGasCompleteness.c
 
 testSinkOverlapCriteria_SOURCES = testSinkOverlapCriteria.c
+
+testSinkApertureEdgeRounding_SOURCES = testSinkApertureEdgeRounding.c
+
+testSinkDriftFlags_SOURCES = testSinkDriftFlags.c
 
 testPeriodicBC_SOURCES = testPeriodicBC.c
 
@@ -204,7 +218,7 @@ testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS
 EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
 endif
 
-testSymmetricMatrixDiagonalisation.c_SOURCES = testSymmetricMatrixDiagonalisation.c
+testSymmetricMatrixDiagonalisation_SOURCES = testSymmetricMatrixDiagonalisation.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

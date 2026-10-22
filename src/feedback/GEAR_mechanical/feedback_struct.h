@@ -39,24 +39,61 @@
  */
 struct feedback_part_data {
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Tag to mark the particle as ionized. */
   char is_ionized;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Largest #part.time_bin among this particle and its neighbours in the
       ISRF density loop of this h-iteration. Drives #c_hyp. */
   timebin_t max_ngb_time_bin;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */
   long long star_id;
 
   /*! Simulation time until which this particle stays flagged as ionized. */
   double end_time;
+#endif
 
-  /*! Neutral hydrogen mass fraction cached by the cooling step (grackle_0:
-      1.0f). Not read by anything yet: an MPI-consistent consumer must read
-      the PREVIOUS pass's value. 0 until first written, not "fully ionized". */
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  /*! Photons debited from the claiming star's budget for this claim. Read by
+      the owner-side merge when this claim loses a collision, to count the
+      forfeited budget. */
+  double cost;
+#endif
+
+#ifdef GEAR_COOLING
+  /*! Neutral hydrogen mass fraction cached by every cooling call (grackle_0:
+      1.0f). Read only for a foreign copy, which has no #xpart. Set to -1 at
+      first init, so "not yet primed" is unambiguous. */
   float neutral_H_frac;
+#endif
 
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  /*! HII eligibility temperature cached by the owner's cooling call, for a
+      foreign copy with no #xpart. 0 before the first cooling call, which
+      reads as cold: an unprimed copy of hot gas then reads as cold. */
+  float T_eligibility;
+
+  /*! Mean molecular weight cached by the same cooling call as
+      #T_eligibility, so the two describe one internal energy. Set to -1 at
+      first init. */
+  float mu_eligibility;
+
+  /*! Squared comoving distance to the star of the current claim, at claim
+      time. The owner-side merge keeps the claim with the smallest
+      (r2, star_id). */
+  float r2;
+
+  /*! Set when this rank claims a foreign copy of this particle, so the claim
+      is reported to the owner. Cleared when the report is packed. */
+  char claimed_this_pass;
+#endif
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */
   struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
 
@@ -98,6 +135,10 @@ struct feedback_part_data {
       is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
   char is_illuminated_ISRF;
 
+  /*! Copy of #feedback_props.ISRF_flux_dissipation, set at drift and in the
+      extra ghost, so the force pairs read it without the engine. */
+  char ISRF_flux_dissipation;
+
   /*! Cross-bin pair booking state: < 0 inactive (may receive pending), > 0
       active (equals #dt_prev), 0 legacy (every pair booked as before). */
   float dt_active;
@@ -112,6 +153,7 @@ struct feedback_part_data {
       #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
       every star touch. Set to -1 at first init. */
   integertime_t ISRF_reservoir_end_ti;
+#endif
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   /* Trace the metals received from feedback events. This is similar to not
@@ -125,6 +167,80 @@ struct feedback_part_data {
     float wcount;
   } density;
 };
+
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+
+/**
+ * @brief HII claim sent back by the rank that ran the star's search to the
+ * rank that owns the gas (task_subtype_part_hii_tag).
+ *
+ * One entry per particle of the cell. The owner merges only the entries
+ * stamped by #claimed_this_pass.
+ */
+struct hii_tag_report {
+
+  /*! Id of the star that claimed the particle. */
+  long long star_id;
+
+  /*! Simulation time until which the particle stays tagged. */
+  double end_time;
+
+  /*! Photons charged for this claim, counted as forfeited if it loses. */
+  double cost;
+
+  /*! Squared distance to the claiming star at claim time. The owner may hold
+      no copy of that star, so it is sent, not recomputed. */
+  float r2;
+
+  /*! Ionization tag of the claim. */
+  char is_ionized;
+
+  /*! Set if this entry is a claim of this pass; others are not merged. */
+  char claimed_this_pass;
+};
+
+/**
+ * @brief Post-cooling HII state sent by the gas owner to every rank that
+ * holds a foreign copy (task_subtype_part_hii_state).
+ *
+ * The search on the other rank then sees the owner's tag and eligibility
+ * caches of this step, not the pre-cooling snapshot of the xv/rho channel.
+ * The unpack writes only these fields.
+ */
+struct hii_state_update {
+
+  /*! Id of the star holding the tag. */
+  long long star_id;
+
+  /*! Simulation time until which the particle stays tagged. */
+  double end_time;
+
+  /*! Photons debited for the current claim. */
+  double cost;
+
+  /*! Eligibility temperature cache, see #feedback_part_data. */
+  float T_eligibility;
+
+  /*! Mean molecular weight cache, see #feedback_part_data. */
+  float mu_eligibility;
+
+  /*! Neutral hydrogen mass fraction cache, see #feedback_part_data. */
+  float neutral_H_frac;
+
+  /*! Squared distance to the star holding the tag, at claim time. */
+  float r2;
+
+  /*! Ionization tag. */
+  char is_ionized;
+};
+
+#else
+
+/*! Empty payloads: without HII under MPI these subtypes carry nothing. */
+struct hii_tag_report {};
+struct hii_state_update {};
+
+#endif
 
 /**
  * @brief Extra feedback fields carried by each hydro particles
@@ -165,15 +281,21 @@ struct feedback_xpart_data {
   /*! Number of stellar wind events affecting this particle */
   unsigned int number_winds;
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Radiation pressure momentum received this step */
   struct feedback_xpart_radiation_data radiation;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! HII ionization payload computed by the owner, local to its rank. The tag
       itself lives in #feedback_part_data. */
   struct feedback_xpart_HII_region_data HII_region;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Indicator if the particle receives momentum from radiation pressure */
   char hit_by_radiation;
+#endif
 };
 
 /**
@@ -194,14 +316,18 @@ struct feedback_spart_data {
   /*! Does the particle needs the feedback loop? */
   char will_do_feedback;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Does the particle needs the HII ionization loop? */
   char will_do_HII_ionization;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Gas density gradient at the star location */
   float grad_rho_star[3];
 
   /*! Gas metallicity at the star location, weighted like #gas_density */
   float Z_star;
+#endif
 
   /*! Parameters to be accumulated in the feedback loops. Used to compute the
      vector weights (isotropic distribution) */

@@ -1382,30 +1382,33 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     const float star_age_myr = (float)star_age_beg_step_myr;
 
     /* Get the bolometric luminosity */
-    sp->feedback_data.radiation.L_bol =
-        radiation_get_star_luminosity(&sm->rad, log_m, log_z);
+    radiation_set_star_bolometric_luminosity(
+        sp, radiation_get_star_luminosity(&sm->rad, log_m, log_z));
 
     /* Split off the non-ionizing PE/Lyman-Werner bands, table-direct via
        L_PE/L_LW: radiation_read_data() requires these whenever with_ISRF
        is on, so no fallback branch is needed here. */
     if (sm->rad.with_ISRF) {
-      sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
-          radiation_get_star_luminosity_pe(&sm->rad, log_m, log_z);
-      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
-          radiation_get_star_luminosity_lw(&sm->rad, log_m, log_z);
+      radiation_set_star_band_luminosity(
+          sp, ISRF_MOMENT_PE,
+          radiation_get_star_luminosity_pe(&sm->rad, log_m, log_z));
+      radiation_set_star_band_luminosity(
+          sp, ISRF_MOMENT_LW,
+          radiation_get_star_luminosity_lw(&sm->rad, log_m, log_z));
       /* Direct assignment, no multiply: the mean photon energy is forced to
          the reference energy at this stage, so a computed ratio of 1 is not
          trusted to compile to exactly 1.0f under -ffast-math. */
-      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW_PHOTON] =
-          sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
+      radiation_set_star_band_luminosity(
+          sp, ISRF_MOMENT_LW_PHOTON,
+          radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW));
     }
 
     /* Photospheric effective temperature, a diagnostic of the star's
        evolutionary state. Written to the snapshot only; no feedback
        channel reads it. */
     if (sm->rad.has_teff) {
-      sp->feedback_data.radiation.teff =
-          radiation_get_star_teff(&sm->rad, log_m, log_z);
+      radiation_set_star_teff(sp,
+                              radiation_get_star_teff(&sm->rad, log_m, log_z));
     }
 
     /* For the ionizing band, get the number of photons produced and split
@@ -1419,9 +1422,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
     /* Mean excess photon energy above the 13.6 eV HI threshold, needed for
        Grackle's RT_heating_rate under GEARFeedback:HII_couple_ionization_rate.
      */
-    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-        (float)radiation_get_star_mean_excess_photon_energy_HI(
-            &sm->rad, log_m, log_z, star_age_myr);
+    radiation_set_star_mean_excess_photon_energy_HI(
+        sp, (float)radiation_get_star_mean_excess_photon_energy_HI(
+                &sm->rad, log_m, log_z, star_age_myr));
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message(
@@ -1429,7 +1432,7 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
         "internal",
         sp->id, sp->star_type, mass_msun,
         dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
-        sp->feedback_data.radiation.L_bol);
+        radiation_get_star_bolometric_luminosity(sp));
 #endif
   } else {
     radiation_zero_spart_output(sp);
@@ -1637,7 +1640,7 @@ void stellar_evolution_compute_preSN_feedback_spart(
     }
 
     /* Convert to total luminosities */
-    sp->feedback_data.radiation.L_bol = L_bol * m_init;
+    radiation_set_star_bolometric_luminosity(sp, L_bol * m_init);
 
     /* Split off the non-ionizing PE/Lyman-Werner bands, table-direct via
        Integrated_L_PE/Integrated_L_LW: radiation_read_data() requires
@@ -1664,14 +1667,15 @@ void stellar_evolution_compute_preSN_feedback_spart(
          1e2-1e4x too large across GEAR's stated production mass range and
          would still run to completion with finite, positive,
          plausible-looking numbers). */
-      sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] =
-          L_PE_per_msun * m_init;
-      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] =
-          L_LW_per_msun * m_init;
+      radiation_set_star_band_luminosity(sp, ISRF_MOMENT_PE,
+                                         L_PE_per_msun * m_init);
+      radiation_set_star_band_luminosity(sp, ISRF_MOMENT_LW,
+                                         L_LW_per_msun * m_init);
       /* Direct assignment from the just-set LW entry, not a recomputed
          L_LW_per_msun * m_init: same reasoning as the discrete path above. */
-      sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW_PHOTON] =
-          sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW];
+      radiation_set_star_band_luminosity(
+          sp, ISRF_MOMENT_LW_PHOTON,
+          radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW));
     }
 
     /* Population counterpart of the individual-star effective temperature
@@ -1681,12 +1685,12 @@ void stellar_evolution_compute_preSN_feedback_spart(
        the hottest surviving star of the population. Diagnostic only. */
     if (sm->rad.has_teff) {
       const float log_m_sup = log10f(m_sup);
-      sp->feedback_data.radiation.teff =
-          sm->rad.is_2d
-              ? radiation_get_teff_from_raw_2d(
-                    &sm->rad, radiation_get_log_metallicity(metallicity),
-                    log_m_sup)
-              : radiation_get_teff_from_raw(&sm->rad, log_m_sup);
+      radiation_set_star_teff(
+          sp, sm->rad.is_2d
+                  ? radiation_get_teff_from_raw_2d(
+                        &sm->rad, radiation_get_log_metallicity(metallicity),
+                        log_m_sup)
+                  : radiation_get_teff_from_raw(&sm->rad, log_m_sup));
     }
 
     /* Convert to total ionizing emission rate and split it across the
@@ -1700,8 +1704,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
        integrals, so unlike L_bol/dot_N_ion it is NOT rescaled by birth_mass:
        the mean photon energy of a population does not depend on how many
        stars it has, only on which masses are still alive. */
-    sp->feedback_data.radiation.mean_excess_photon_energy_HI =
-        mean_excess_photon_energy_HI;
+    radiation_set_star_mean_excess_photon_energy_HI(
+        sp, mean_excess_photon_energy_HI);
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     /* Population equivalent of the individual-star print above. */
@@ -1710,8 +1714,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
         "= %e /s, L_bol = %e internal, mean_excess_photon_energy_HI = %e",
         sp->id, sp->star_type, m_init, m_sup,
         dot_N_ion_total * units_cgs_conversion_factor(us, UNIT_CONV_INV_TIME),
-        sp->feedback_data.radiation.L_bol,
-        sp->feedback_data.radiation.mean_excess_photon_energy_HI);
+        radiation_get_star_bolometric_luminosity(sp),
+        mean_excess_photon_energy_HI);
 #endif
   } else {
     radiation_zero_spart_output(sp);

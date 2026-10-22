@@ -441,7 +441,7 @@ runner_iact_nonsym_feedback_apply(
 
     /* A radiation kick puts the gas on a step that resolves it */
     if ((fb_props->radiation_policy & radiation_policy_radiation_pressure) &&
-        si->feedback_data.radiation.L_bol > 0.0)
+        radiation_get_star_bolometric_luminosity(si) > 0.0)
       timestep_sync_part(pj);
   }
 

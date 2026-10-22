@@ -214,15 +214,12 @@ void *runner_main(void *data) {
   struct engine *e = r->e;
   struct scheduler *sched = &e->sched;
 
-  /* Note: this selects r_cut purely at compile time (SINKS_WITH_FIXED_
-     CUTOFF_RADIUS), unlike task creation which additionally gates on the
-     runtime flag (sink_formation_gas_loop_is_active(), see
-     sink_properties.h). This asymmetry is harmless: when the runtime gate
-     is off, no sink_formation_gas task is ever created, so this dispatch
-     value is never read. */
+  /* The sink properties are NULL in the stand-alone FoF tool. */
   const struct sink_props *sink_properties = e->sink_properties;
   const float sink_cut_off_radius =
-      sink_formation_gas_loop_r_cut(sink_properties);
+      sink_formation_gas_loop_is_active(sink_properties)
+          ? sink_formation_gas_loop_r_cut(sink_properties)
+          : -1.f;
 
 #ifdef WITH_LIKWID
   swift_likwid_marker_start_region("runner_main");
@@ -575,6 +572,10 @@ void *runner_main(void *data) {
             free(t->buff);
           } else if (t->subtype == task_subtype_fof) {
             free(t->buff);
+          } else if (t->subtype == task_subtype_part_hii_tag) {
+            free(t->buff);
+          } else if (t->subtype == task_subtype_part_hii_state) {
+            free(t->buff);
           }
           break;
         case task_type_recv:
@@ -626,6 +627,26 @@ void *runner_main(void *data) {
             runner_do_recv_bpart(r, ci, 1, 1);
           } else if (t->subtype == task_subtype_bpart_feedback) {
             runner_do_recv_bpart(r, ci, 0, 1);
+          } else if (t->subtype == task_subtype_part_hii_tag) {
+            /* Owner-side application of the computing rank's tag report,
+             * merged by the (r2, star_id) tiebreak. */
+            long long collisions = 0;
+            double forfeited = 0.;
+            cell_unpack_part_hii_tag(ci, (struct hii_tag_report *)t->buff,
+                                     &collisions, &forfeited);
+#ifdef SWIFT_DEBUG_CHECKS
+            if (collisions > 0) {
+              atomic_add(&e->radiation_hii_merge_collision_count_local,
+                         collisions);
+              atomic_add_d(&e->radiation_hii_forfeited_budget_local, forfeited);
+            }
+#endif
+            free(t->buff);
+          } else if (t->subtype == task_subtype_part_hii_state) {
+            /* Foreign-copy application of the owner's post-cooling
+             * state. */
+            cell_unpack_part_hii_state(ci, (struct hii_state_update *)t->buff);
+            free(t->buff);
           } else {
             error("Unknown/invalid task subtype (%d).", t->subtype);
           }

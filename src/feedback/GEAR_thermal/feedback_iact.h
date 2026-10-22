@@ -146,7 +146,7 @@ runner_iact_nonsym_feedback_apply(
                                        cooling, ti_current);
 
   /* Distribute pre-SN */
-  if (e_winds != 0.0 && weight > 0.0) {
+  if (feedback_should_inject_wind_feedback(si) && weight > 0.0) {
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -245,14 +245,18 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
-      /* Lifetime-cumulative tracer, using this branch's own locally-computed
-         momentum/energy (not the shared feedback_data.delta_p/delta_E_th,
-         which the SN branch below can also add to this same step). The
+      /* Tracer uses this branch's own momentum and energy, not the shared
+         delta_p and delta_E_th, which the SN branch can also change. The
          momentum is the one applied, m_f |dv|, in the frame of the gas as for
          the SN. The GEAR tracers get the sums at the update, with the final
          mass. */
       const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_gas_frame);
       feedback_tracers_event_SW(xpj, delta_p_mag_winds, dE_th, new_mass);
+
+      /* Inputs of the multiple-event correction */
+      if (fb_props->enable_multiple_SN_momentum_correction_factor)
+        feedback_accumulate_wind_for_multiple_sn_events(
+            xpj, si, dx, r2, weight, mj, dm_SW, new_mass, cosmo);
 
       xpj->feedback_data.hit_by_winds = 1;
     }
@@ -261,7 +265,8 @@ runner_iact_nonsym_feedback_apply(
   /* Distribute SN. The mass is a condition in its own right: with zero SN
      energy the ejected mass, already removed from the star, must still reach
      the gas. */
-  if (e_sn != 0.0 || si->feedback_data.supernovae.mass_ejected != 0.0) {
+  if (feedback_should_inject_SN_feedback(si) ||
+      feedback_should_inject_SN_mass_only(si)) {
 
     /* Mass received by SN */
     /* For the conservation of mass and energy, we perform the calculation only
@@ -288,6 +293,12 @@ runner_iact_nonsym_feedback_apply(
       xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
 
+    /* Inputs of the multiple-event correction */
+    if (fb_props->enable_multiple_SN_momentum_correction_factor)
+      feedback_accumulate_SN_for_multiple_sn_events(
+          xpj, si, mj, dm_SN, mj + dm_SN, cosmo,
+          feedback_should_inject_SN_feedback(si));
+
     /* Add the metals */
     for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
       xpj->feedback_data.delta_metal_mass[i] +=
@@ -311,7 +322,8 @@ runner_iact_nonsym_feedback_apply(
 
     /* Flag the thermal event for cooling: it tracks the injected energy,
        not the mass. */
-    if (e_sn != 0.0) xpj->feedback_data.hit_by_SN = 1;
+    if (feedback_should_inject_SN_feedback(si))
+      xpj->feedback_data.hit_by_SN = 1;
   }
 
   /* Must not depend on hit_by_SN: mass can arrive with no energy. */

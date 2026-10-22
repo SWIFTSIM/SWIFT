@@ -258,10 +258,22 @@ void feedback_init_part(struct part *p, const struct engine *e) {
  * @brief First-init of a #part's feedback state, see
  * #radiation_first_init_part.
  *
+ * Also sets the mu_eligibility and neutral_H_frac caches to the -1 sentinel:
+ * 0 is a physical value of both, so it cannot mean "not yet primed". Before
+ * the owner's first cooling call, a foreign copy would otherwise be priced
+ * at almost zero photons. feedback_part_can_be_ionized() excludes a foreign
+ * copy that still holds the sentinel.
+ *
  * @param p The #part to initialise.
  */
 void feedback_first_init_part(struct part *restrict p) {
   radiation_first_init_part(p);
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  p->feedback_data.mu_eligibility = -1.f;
+#endif
+#ifdef GEAR_COOLING
+  p->feedback_data.neutral_H_frac = -1.f;
+#endif
 }
 
 /**
@@ -350,9 +362,9 @@ int feedback_should_inject_radiation_feedback(
   if (feedback_props->radiation_policy == radiation_policy_none) return 0;
   return ((feedback_props->radiation_policy &
            radiation_policy_radiation_pressure) &&
-          sp->feedback_data.radiation.L_bol > 0.0) ||
-         sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
-         sp->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0;
+          radiation_get_star_bolometric_luminosity(sp) > 0.0) ||
+         radiation_get_star_band_luminosity(sp, ISRF_MOMENT_PE) != 0.0 ||
+         radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW) != 0.0;
 }
 
 /**
@@ -376,10 +388,7 @@ void feedback_init_spart(struct spart *sp) {
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
      rebuild step. It is reset in feedback_will_do_feedback(). */
-  sp->feedback_data.grad_rho_star[0] = 0.0;
-  sp->feedback_data.grad_rho_star[1] = 0.0;
-  sp->feedback_data.grad_rho_star[2] = 0.0;
-  sp->feedback_data.Z_star = 0.0;
+  radiation_reset_star_pressure_inputs(sp);
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 2
   sp->feedback_data.accumulator_sn.E_total = 0.0;

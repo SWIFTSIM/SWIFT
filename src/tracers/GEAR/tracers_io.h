@@ -104,9 +104,9 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
     const int with_cosmology) {
 
-  int num = 8;
+  int num = 0;
 
-  list[0] = io_make_physical_output_field(
+  list[num++] = io_make_physical_output_field(
       "CumulativeMomentumFromSupernovae", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f,
       xparts, tracers_data.feedback_cumulative.momentum_supernovae,
       /*can convert to comoving=*/0,
@@ -114,14 +114,15 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "lifetime (scalar sum, not vector: isotropic kicks would else "
       "cancel).");
 
-  list[1] = io_make_physical_output_field(
+  list[num++] = io_make_physical_output_field(
       "CumulativeMomentumFromWinds", FLOAT, 1, UNIT_CONV_MOMENTUM, 0.f, xparts,
       tracers_data.feedback_cumulative.momentum_winds,
       /*can convert to comoving=*/0,
       "Same convention as CumulativeMomentumFromSupernovae, for stellar "
       "winds.");
 
-  list[2] = io_make_physical_output_field(
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
+  list[num++] = io_make_physical_output_field(
       "CumulativeMomentumFromRadiationPressure", FLOAT, 1, UNIT_CONV_MOMENTUM,
       0.f, xparts, tracers_data.feedback_cumulative.momentum_radiation,
       /*can convert to comoving=*/0,
@@ -130,8 +131,9 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "would else cancel). Signed on purpose: a negative value flags a "
       "sign-inverted kick that MaxKickVelocityFromRadiationPressure cannot "
       "show. Exactly 0 when GEARFeedback:with_radiation_pressure is off.");
+#endif
 
-  list[3] = io_make_physical_output_field(
+  list[num++] = io_make_physical_output_field(
       "CumulativeEnergyFromSupernovae", FLOAT, 1,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, xparts,
       tracers_data.feedback_cumulative.energy_supernovae,
@@ -139,29 +141,32 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "Cumulative specific internal energy received from supernovae over "
       "this particle's lifetime.");
 
-  list[4] = io_make_physical_output_field(
+  list[num++] = io_make_physical_output_field(
       "CumulativeEnergyFromWinds", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
       0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
       /*can convert to comoving=*/0,
       "Cumulative specific internal energy received from stellar winds. "
-      "A conservation residual, not strictly positive: can go negative "
-      "when the gas was already moving towards the star before the kick.");
+      "Not negative: each event gives the kinetic energy dissipated when the "
+      "ejecta merge with the gas (the wind energy itself if no mass is "
+      "ejected).");
 
-  list[5] = io_make_physical_output_field(
+  list[num++] = io_make_physical_output_field(
       "MaxKickVelocityFromSupernovae", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
       /*can convert to comoving=*/0,
-      "Largest single-event kick velocity this particle received from "
-      "supernovae (outflow diagnostic).");
+      "Largest kick velocity of one supernova event this particle received "
+      "(its momentum over the mass of the particle at the end of the step; "
+      "outflow diagnostic).");
 
-  list[6] = io_make_physical_output_field(
+  list[num++] = io_make_physical_output_field(
       "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_winds,
       /*can convert to comoving=*/0,
       "Same convention as MaxKickVelocityFromSupernovae, for stellar "
       "winds.");
 
-  list[7] = io_make_physical_output_field(
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
+  list[num++] = io_make_physical_output_field(
       "MaxKickVelocityFromRadiationPressure", FLOAT, 1, UNIT_CONV_SPEED, 0.f,
       xparts, tracers_data.feedback_cumulative.max_kick_velocity_radiation,
       /*can convert to comoving=*/0,
@@ -169,6 +174,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       "from radiation pressure (outflow diagnostic; cannot show a "
       "sign-inverted kick, see CumulativeMomentumFromRadiationPressure for "
       "that). Exactly 0 when GEARFeedback:with_radiation_pressure is off.");
+#endif
 
   return num;
 }

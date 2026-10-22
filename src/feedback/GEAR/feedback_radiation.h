@@ -33,9 +33,16 @@
 
 struct engine;
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+
+float feedback_get_eligibility_temperature(
+    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct unit_system *us, const struct cosmology *cosmo,
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp);
 char feedback_part_can_be_ionized(const struct part *p, const struct xpart *xp,
                                   const struct engine *e);
-void feedback_iact_HII_ionization(
+int feedback_iact_HII_ionization(
     struct spart *restrict si, struct part *restrict pj,
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
@@ -49,13 +56,17 @@ double feedback_iact_HII_maintain_ionized_part(
     struct xpart *restrict xpj, float r2, int pixel,
     const struct phys_const *phys_const, const struct hydro_props *hydro_props,
     const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const double time,
-    const double dt_back);
+    const struct cooling_function_data *cooling, const integertime_t ti_begin,
+    const double time, const double dt_back);
+
+#endif /* GEAR_SUBGRID_RADIATION_HII */
 
 char feedback_is_part_tagged_as_ionized(const struct part *p,
                                         const struct xpart *xp);
 long long feedback_get_part_ionized_star_id(const struct part *p,
                                             const struct xpart *xp);
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 double feedback_get_part_u_PE(const struct part *p);
 double feedback_get_part_u_LW(const struct part *p);
@@ -86,5 +97,18 @@ float feedback_get_part_c_hyp(const struct part *p);
 float feedback_get_part_pending_specific_energy(const struct part *p, int m);
 float feedback_radiation_compute_part_timestep(const struct part *restrict p,
                                                const struct engine *e);
+
+#else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+#include <float.h>
+
+/* Without the part: no ISRF time-step bound. */
+__attribute__((always_inline)) INLINE static float
+feedback_radiation_compute_part_timestep(const struct part *restrict p,
+                                         const struct engine *e) {
+  return FLT_MAX;
+}
+
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 #endif /* SWIFT_FEEDBACK_GEAR_RADIATION_H */

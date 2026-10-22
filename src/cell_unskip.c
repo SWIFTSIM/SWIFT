@@ -29,8 +29,8 @@
 #include "active.h"
 #include "engine.h"
 #include "feedback.h"
-#include "sink_properties.h"
 #include "scheduler.h"
+#include "sink_properties.h"
 #include "space_getsid.h"
 
 extern int engine_star_resort_task_depth;
@@ -2296,6 +2296,37 @@ static void cell_radiation_activate_supers_out(struct cell *c,
       cell_radiation_activate_supers_out(c->progeny[k], s);
 }
 
+#ifdef WITH_MPI
+/**
+ * @brief Activate hydro.sorts over every hydro.super beneath a (possibly
+ * coarse) FOREIGN radiation cell.
+ *
+ * Mirrors cell_radiation_activate_supers_in for the recv-side gas channel:
+ * once xv/rho for the foreign subtree has been received, the local copy
+ * must be re-sorted before the gather can search it, and the recv_xv ->
+ * hydro.sorts -> recv_rho ordering wired at task creation
+ * (engine_addtasks_recv_hydro) needs hydro.sorts activated or the chain
+ * stalls. NULL-safe like cell_radiation_activate_supers_in: a foreign
+ * radiation_level cell can sit above every hydro.super in its subtree, in
+ * which case this recurses into progeny instead of dereferencing NULL; a
+ * subtree with no hydro.super anywhere (no density task ever reaches it,
+ * local or foreign) is a silent no-op, matching
+ * engine_radiation_wire_super_sorts_only's own NULL handling at task
+ * creation.
+ */
+static void cell_radiation_activate_foreign_sorts(struct cell *c,
+                                                  struct scheduler *s) {
+  if (c->hydro.super != NULL) {
+    const int sid = 0;
+    cell_activate_hydro_sorts(c->hydro.super, sid, s);
+    return;
+  }
+  for (int k = 0; k < 8; k++)
+    if (c->progeny[k] != NULL)
+      cell_radiation_activate_foreign_sorts(c->progeny[k], s);
+}
+#endif
+
 /**
  * @brief Activate the HII ionization feedback task owned by @p c's
  * radiation_level region, if it exists.
@@ -2406,60 +2437,7 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
           cell_radiation_activate_supers_in(ci, s, with_timestep_sync);
         if (cj_nodeID == nodeID)
           cell_radiation_activate_supers_in(cj, s, with_timestep_sync);
-
-#ifdef SWIFT_DEBUG_CHECKS
-        /* Precondition probe for the feedback_ghost activation fix above:
-         * fires when an asymmetric radiation pair's inactive side has a
-         * locally-pending active stars.feedback task on its covered super,
-         * the exact case the fix targets. */
-        if (ci_active != cj_active) {
-          struct cell *inactive_side = ci_active ? cj : ci;
-
-          if ((inactive_side->nodeID == nodeID) &&
-              (inactive_side->hydro.super != NULL)) {
-            struct cell *super = inactive_side->hydro.super;
-
-            for (struct link *fl = super->stars.feedback; fl != NULL;
-                 fl = fl->next) {
-              if (!fl->t->skip) {
-                message(
-                    "RADIATION/FEEDBACK_GHOST PRECONDITION PROBE: "
-                    "radiation pair (ci=%lld active=%d, cj=%lld active=%d) "
-                    "activates supers_in on inactive-side super %lld which "
-                    "has an ACTIVE stars.feedback task (type=%s/%s) "
-                    "pending -- feedback_ghost's activation is exercised.",
-                    ci->cellID, ci_active, cj->cellID, cj_active, super->cellID,
-                    taskID_names[fl->t->type], subtaskID_names[fl->t->subtype]);
-                break;
-              }
-            }
-          }
-        }
-#endif
       }
-    }
-
-    else if (t->type == task_type_pair) {
-      /* We only want to activate the task if the cell is active and is
-         going to update some gas on the *local* node */
-      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-          (ci_active || cj_active)) {
-        scheduler_activate(s, t);
-        cell_radiation_activate_hii(s, ci);
-        cell_radiation_activate_hii(s, cj);
-
-      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
-        scheduler_activate(s, t);
-        cell_radiation_activate_hii(s, ci);
-
-      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
-        scheduler_activate(s, t);
-        cell_radiation_activate_hii(s, cj);
-      }
-#ifdef WITH_MPI
-      /* TODO: We need to activate the send and recv parts */
-      if (e->nr_nodes > 1) error("MPI is not yet implemented");
-#endif
     }
 
     /* h_hii-aware rebuild check, exempted per direction: cell_need_rebuild_
@@ -2485,6 +2463,73 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
         rebuild = 1;
         cell_record_radiation_rebuild_demand(e, cj);
       }
+
+#ifdef WITH_MPI
+      /* Activate the foreign side's gas channel and the HII tag and state
+       * report-back channels for a boundary radiation pair. Exactly one of
+       * ci/cj is foreign here (a both-foreign pair is never created, see
+       * engine_make_radiationloop_tasks_mapper). Tag exchange is gated on
+       * the local (computing) side's own activity: nothing to report if
+       * the local pass does not run this step. State exchange is
+       * unconditional for any active pair (bpart_rho precedent): whichever
+       * side turns out to compute, the owner's freshest gas state must
+       * already be in flight. */
+      if (ci_nodeID != nodeID) {
+        /* ci is foreign (owner elsewhere), cj is local. */
+        if (cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_rho);
+          cell_radiation_activate_foreign_sorts(ci, s);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_hii_tag,
+                                  ci_nodeID);
+        }
+        if (ci_active) {
+          /* The owner of ci runs its own gather over our gas this step, so
+           * feed it: counterpart of the recv two clauses above, which the
+           * peer activates under the same ci_active. The gas we send is
+           * drifted by cell_radiation_activate_supers_in(cj), called above
+           * under the weaker (ci_active || cj_active) gate; a plain
+           * cell_activate_drift_part(cj) cannot serve here because a
+           * radiation_level cell may sit above every hydro.super it
+           * covers. */
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_xv, ci_nodeID);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_rho, ci_nodeID);
+        }
+        if (ci_active || cj_active) {
+          scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_hii_state);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_hii_state,
+                                  ci_nodeID);
+        }
+        if (ci_active) {
+          scheduler_activate_recv_by_node(s, cj->mpi.recv,
+                                          task_subtype_part_hii_tag, ci_nodeID);
+        }
+
+      } else if (cj_nodeID != nodeID) {
+        /* cj is foreign (owner elsewhere), ci is local. */
+        if (ci_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_xv);
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_rho);
+          cell_radiation_activate_foreign_sorts(cj, s);
+          scheduler_activate_send(s, cj->mpi.send, task_subtype_part_hii_tag,
+                                  cj_nodeID);
+        }
+        if (cj_active) {
+          /* Mirror of the ci_active clause in the branch above. */
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_xv, cj_nodeID);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_rho, cj_nodeID);
+        }
+        if (ci_active || cj_active) {
+          scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_hii_state);
+          scheduler_activate_send(s, ci->mpi.send, task_subtype_part_hii_state,
+                                  cj_nodeID);
+        }
+        if (cj_active) {
+          scheduler_activate_recv_by_node(s, ci->mpi.recv,
+                                          task_subtype_part_hii_tag, cj_nodeID);
+        }
+      }
+#endif
     }
     /* Nothing more to do here, all drifts and sorts activated above */
   }
@@ -3431,6 +3476,20 @@ void cell_activate_subcell_hydro_aperture_sink_formation_tasks(
 void cell_activate_subcell_hydro_sink_aperture_sink_formation_tasks(
     struct cell *ci, struct cell *cj, struct scheduler *s, const float r_cut) {
   const struct engine *e = s->space->e;
+
+  /* Store the current dx_max and h_max values, which the recursion test of
+     the runner reads. */
+  ci->sinks.dx_max_part_old = ci->sinks.dx_max_part;
+  ci->sinks.h_max_old = ci->sinks.h_max;
+  ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;
+  ci->hydro.h_max_old = ci->hydro.h_max;
+
+  if (cj != NULL) {
+    cj->sinks.dx_max_part_old = cj->sinks.dx_max_part;
+    cj->sinks.h_max_old = cj->sinks.h_max;
+    cj->hydro.dx_max_part_old = cj->hydro.dx_max_part;
+    cj->hydro.h_max_old = cj->hydro.h_max;
+  }
 
   /* Self interaction? */
   if (cj == NULL) {

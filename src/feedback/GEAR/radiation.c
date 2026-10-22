@@ -138,8 +138,9 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
                     const struct phys_const *phys_const) {
 
   /* Before radiation_read_data(), which needs it. */
-  rad->with_ISRF = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_interstellar_radiation_field", 0);
+  rad->with_ISRF = (char)radiation_selection_get_switch(
+      params, "GEARFeedback:with_interstellar_radiation_field",
+      RADIATION_COMPILED_ISRF);
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
@@ -147,8 +148,10 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
   /* HEALPix split of the HII budget: nside=0 is spherical (1 pixel), else
      12*nside^2 pixels. The ceiling is the per-star dot_N_ion_pix array, sized
      by --with-number-of-hii-angular-pixels. */
-  const int nside =
-      parser_get_opt_param_int(params, "GEARFeedback:HII_angular_nside", 0);
+  const int nside = RADIATION_COMPILED_HII
+                        ? parser_get_opt_param_int(
+                              params, "GEARFeedback:HII_angular_nside", 0)
+                        : 0;
   if (nside < 0) {
     error("GEARFeedback:HII_angular_nside must be >= 0; got %d.", nside);
   }

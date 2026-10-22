@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_MECHANICAL_FEEDBACK_PROPERTIES_H
 
 #include "../GEAR/radiation_isrf.h"
+#include "../GEAR/radiation_selection.h"
 #include "../GEAR/radiation_struct.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
@@ -163,6 +164,10 @@ struct feedback_props {
    * value. */
   float ISRF_dissipation_alpha_pin_for_debugging;
 
+  /*! Also damp the reduced flux with the pair dissipation coefficient of u?
+   * Experimental, off by default. */
+  char ISRF_flux_dissipation;
+
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
 
@@ -175,6 +180,15 @@ struct feedback_props {
   /*! Boundary particle the photon budget cannot fully ionize: 0 =
    * probabilistic, 1 = always ionize it. */
   char HII_deterministic_boundary_ionization;
+
+  /*! Rotate each star's HEALPix cone frame by a rotation set by its ID and,
+   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1), or keep the
+   * cones fixed to the box axes (0). */
+  char HII_random_cone_frame_per_star;
+
+  /*! Number of the star's own HII passes between two draws of its cone
+   * frame; 0 keeps the frame for the star's life. */
+  int HII_cone_frame_redraw_period;
 
   /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
@@ -247,6 +261,17 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("Metallicity max for the first stars (in mass fraction) = %g",
             feedback_props->metallicity_max_first_stars);
   }
+
+  message(
+      "Subgrid radiation parts compiled (--with-subgrid-radiation) =%s%s%s%s",
+      RADIATION_COMPILED_PRESSURE ? " rp" : "",
+      RADIATION_COMPILED_HII ? " hii" : "",
+      RADIATION_COMPILED_ISRF ? " isrf" : "",
+      radiation_selection_absent_mask() ==
+              (RADIATION_SELECTION_BIT_PRESSURE | RADIATION_SELECTION_BIT_HII |
+               RADIATION_SELECTION_BIT_ISRF)
+          ? " none"
+          : "");
 
   feedback_props_print_radiation(feedback_props);
 }

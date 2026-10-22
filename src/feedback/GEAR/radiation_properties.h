@@ -42,6 +42,8 @@
 #define default_HII_max_age_Myr 50.0
 #define default_HII_rebuild_time_Myr 0.5
 #define default_HII_deterministic_boundary_ionization 0
+#define default_HII_random_cone_frame_per_star 0
+#define default_HII_cone_frame_redraw_period 0
 #define default_HII_rebuild_floor_Myr 1e-4
 /* One kernel support radius: the largest path with the star inside the
  * receiver's kernel. */
@@ -168,6 +170,10 @@ feedback_props_print_radiation(const struct feedback_props *feedback_props) {
             feedback_props->HII_deterministic_boundary_ionization
                 ? "deterministic"
                 : "probabilistic");
+    message("HII random cone frame per star                             = %s",
+            feedback_props->HII_random_cone_frame_per_star ? "on" : "off");
+    message("HII cone frame redraw period (star passes)                 = %d",
+            feedback_props->HII_cone_frame_redraw_period);
     message("HII max age (internal units)                               = %g",
             feedback_props->HII_max_age);
     message("HII rebuild time (internal units)                          = %g",
@@ -215,6 +221,8 @@ feedback_props_print_radiation(const struct feedback_props *feedback_props) {
         message(
             "ISRF dissipation alpha pinned for debugging                = %g",
             feedback_props->ISRF_dissipation_alpha_pin_for_debugging);
+      message("ISRF reduced-flux dissipation (experimental)               = %s",
+              feedback_props->ISRF_flux_dissipation ? "ON" : "OFF");
     }
   }
 }
@@ -368,13 +376,17 @@ __attribute__((always_inline)) INLINE static char
 feedback_props_init_radiation_switches(struct feedback_props *fp,
                                        struct swift_params *params) {
 
+  /* The keys of a part this build lacks are ignored, with one warning. */
+  radiation_selection_warn_absent_parts(params);
+
   /* Are we running with photoionization? */
-  const char with_photoionization = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_photoionization", 0);
+  const char with_photoionization = (char)radiation_selection_get_switch(
+      params, "GEARFeedback:with_photoionization", RADIATION_COMPILED_HII);
 
   /* Radiation pressure. The efficiency is read only when this is on. */
-  const char with_radiation_pressure = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_radiation_pressure", 0);
+  const char with_radiation_pressure = (char)radiation_selection_get_switch(
+      params, "GEARFeedback:with_radiation_pressure",
+      RADIATION_COMPILED_PRESSURE);
 
   /* Stays 0 when radiation pressure is off. */
   float radiation_pressure_efficiency = 0.f;
@@ -392,8 +404,10 @@ feedback_props_init_radiation_switches(struct feedback_props *fp,
 
   /* Are we running with the local Lyman-Werner/PE feedback (photoelectric
    * heating + H2 photodissociation)? */
-  const char with_interstellar_radiation_field = (char)parser_get_opt_param_int(
-      params, "GEARFeedback:with_interstellar_radiation_field", 0);
+  const char with_interstellar_radiation_field =
+      (char)radiation_selection_get_switch(
+          params, "GEARFeedback:with_interstellar_radiation_field",
+          RADIATION_COMPILED_ISRF);
 
   fp->radiation_policy = 0;
 
@@ -433,9 +447,11 @@ __attribute__((always_inline)) INLINE static void feedback_props_init_radiation(
   fp->ISRF_extinction_path_in_kernel_radii = 0.f;
   fp->ISRF_extinction_jeans_temperature_cap_K = 0.f;
 
-  char extinction_path[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
-                              extinction_path, "pair_separation");
+  /* A build without the ISRF keeps the default and reads no ISRF key. */
+  char extinction_path[PARSER_MAX_LINE_SIZE] = "pair_separation";
+  if (RADIATION_COMPILED_ISRF)
+    parser_get_opt_param_string(params, "GEARFeedback:ISRF_extinction_path",
+                                extinction_path, "pair_separation");
 
   if (strcmp(extinction_path, "constant_kernel_path") == 0) {
     fp->ISRF_extinction_path_mechanism =
@@ -621,6 +637,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_init_radiation(
           "clamped (debug/test only). Never use this in a production run.",
           fp->ISRF_dissipation_alpha_pin_for_debugging, alpha_bound);
 
+    /* Experimental: damp the reduced flux with the pair coefficient of u. */
+    const int flux_dissipation = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_flux_dissipation", 0);
+    if (flux_dissipation != 0 && flux_dissipation != 1)
+      error("GEARFeedback:ISRF_flux_dissipation must be 0 or 1 (got %d).",
+            flux_dissipation);
+    if (flux_dissipation && !fp->ISRF_propagation)
+      error(
+          "GEARFeedback:ISRF_flux_dissipation needs "
+          "GEARFeedback:ISRF_propagation: 1.");
+    fp->ISRF_flux_dissipation = (char)flux_dissipation;
+
     if (fp->ISRF_propagation) {
       /* The IC metallicity is not visible here, so warn unconditionally. */
       warning(
@@ -654,6 +682,22 @@ __attribute__((always_inline)) INLINE static void feedback_props_init_radiation(
     fp->HII_deterministic_boundary_ionization = parser_get_opt_param_int(
         params, "GEARFeedback:HII_deterministic_boundary_ionization",
         default_HII_deterministic_boundary_ionization);
+
+    const int random_cone_frame = parser_get_opt_param_int(
+        params, "GEARFeedback:HII_random_cone_frame_per_star",
+        default_HII_random_cone_frame_per_star);
+    if (random_cone_frame != 0 && random_cone_frame != 1)
+      error(
+          "GEARFeedback:HII_random_cone_frame_per_star must be 0 or 1, got %d.",
+          random_cone_frame);
+    fp->HII_random_cone_frame_per_star = (char)random_cone_frame;
+
+    fp->HII_cone_frame_redraw_period = parser_get_opt_param_int(
+        params, "GEARFeedback:HII_cone_frame_redraw_period",
+        default_HII_cone_frame_redraw_period);
+    if (fp->HII_cone_frame_redraw_period < 0)
+      error("GEARFeedback:HII_cone_frame_redraw_period must be >= 0, got %d.",
+            fp->HII_cone_frame_redraw_period);
 
     fp->HII_rebuild_floor_Myr =
         parser_get_opt_param_float(params, "GEARFeedback:HII_rebuild_floor_Myr",

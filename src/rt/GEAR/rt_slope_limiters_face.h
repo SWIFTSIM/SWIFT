@@ -20,6 +20,7 @@
 #ifndef SWIFT_RT_SLOPE_LIMITERS_FACE_GEAR_H
 #define SWIFT_RT_SLOPE_LIMITERS_FACE_GEAR_H
 
+#include "rt_parameters.h"
 #include "sign.h"
 
 /**
@@ -29,7 +30,7 @@
  * interparticle flux. */
 
 /**
- * @brief Slope limit a single quantity at the interface. CURRENTLY NOT IN USE.
+ * @brief Slope limit a single quantity at the interface (Hopkins 2015).
  *
  * @param phi_i Value of the quantity at the particle position.
  * @param phi_j Value of the quantity at the neighbouring particle position.
@@ -43,7 +44,7 @@
 __attribute__((always_inline)) INLINE static float rt_slope_limit_face_quantity(
     float phi_i, float phi_j, float phi_mid0, float xij_norm, float r_inv) {
 
-  const float dphi = phi_i - phi_j;
+  const float dphi = phi_j - phi_i;
   const float gamma1 = 0.5f;
   const float gamma2 = 0.25f;
 
@@ -165,50 +166,36 @@ __attribute__((always_inline)) INLINE static void rt_slope_limit_face(
     const float *dx, const float r, const float xij_i[3],
     const float xij_j[3]) {
 
-  /* In 1D advection tests, any limiter works with the
-   * GLF solver. If you also activate (uncomment) the
-   * cell slope limiting, you should avoid the superbee
-   * and MC limiters. The Gizmo-style clever limiter
-   * that is used for hydro leads to a more diffusive
-   * behaviour.
-   * For the HLL solver, avoid superbee and MC limiters,
-   * as they lead to unstable results.
-   */
+  /* With the HLL solver, the MC and superbee limiters above are unstable in
+   * 1D advection tests. */
 
-  /* const float xij_i_norm = */
-  /*     sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] + xij_i[2] * xij_i[2]);
-   */
-  /*  */
-  /* const float xij_j_norm = */
-  /*     sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] + xij_j[2] * xij_j[2]);
-   */
-  /*  */
-  /* const float r_inv = 1.f / r; */
+  switch (rt_params.slope_limiter) {
 
-  for (int i = 0; i < 4; i++) {
+    case rt_slope_limiter_minmod:
+      for (int i = 0; i < 4; i++) rt_limiter_minmod(&dQi[i], &dQj[i]);
+      break;
 
-    rt_limiter_minmod(&dQi[i], &dQj[i]);
+    case rt_slope_limiter_gizmo: {
+      const float xij_i_norm = sqrtf(xij_i[0] * xij_i[0] + xij_i[1] * xij_i[1] +
+                                     xij_i[2] * xij_i[2]);
+      const float xij_j_norm = sqrtf(xij_j[0] * xij_j[0] + xij_j[1] * xij_j[1] +
+                                     xij_j[2] * xij_j[2]);
+      const float r_inv = (r > 0.f) ? 1.f / r : 0.f;
+      for (int i = 0; i < 4; i++) {
+        dQi[i] = rt_slope_limit_face_quantity(Qi[i], Qj[i], Qi[i] + dQi[i],
+                                              xij_i_norm, r_inv);
+        dQj[i] = rt_slope_limit_face_quantity(Qj[i], Qi[i], Qj[i] + dQj[i],
+                                              xij_j_norm, r_inv);
+      }
+      break;
+    }
 
-    /* const float alphai = rt_limiter_mc(dQi[i], dQj[i]); */
-    /* const float alphaj = rt_limiter_mc(dQj[i], dQi[i]); */
-    /* dQi[i] *= alphai; */
-    /* dQj[i] *= alphaj; */
+    case rt_slope_limiter_cell:
+      /* The gradients are already limited by the cell limiter. */
+      break;
 
-    /* const float alphai = rt_limiter_superbee(dQi[i], dQj[i]); */
-    /* const float alphaj = rt_limiter_superbee(dQj[i], dQi[i]); */
-    /* dQi[i] *= alphai; */
-    /* dQj[i] *= alphaj; */
-
-    /* const float alphai = rt_limiter_vanLeer(dQi[i], dQj[i]); */
-    /* const float alphaj = rt_limiter_vanLeer(dQj[i], dQi[i]); */
-    /* dQi[i] *= alphai; */
-    /* dQj[i] *= alphaj; */
-
-    /* dQi[i] = rt_slope_limit_face_quantity(Qi[i], Qj[i], Qi[i] + dQi[i], */
-    /*                                          xij_i_norm, r_inv); */
-    /*  */
-    /* dQj[i] = rt_slope_limit_face_quantity(Qj[i], Qi[i], Qj[i] + dQj[i], */
-    /*                                        xij_j_norm, r_inv); */
+    default:
+      error("Unknown RT slope limiter %d", rt_params.slope_limiter);
   }
 }
 

@@ -58,7 +58,7 @@ void feedback_update_part(struct part *p, struct xpart *xp,
      applied. */
   /* TODO: Remove the ionization part from here and move it to cooling */
   if (!xp->feedback_data.hit_by_SN && !xp->feedback_data.hit_by_winds &&
-      !xp->feedback_data.hit_by_radiation &&
+      !radiation_is_part_kicked_by_pressure(xp) &&
       xp->feedback_data.delta_mass == 0.f &&
       !radiation_is_part_tagged_as_ionized(p, xp))
     return;
@@ -77,6 +77,26 @@ void feedback_update_part(struct part *p, struct xpart *xp,
 
   if (xp->feedback_data.delta_mass < 0.) {
     error("Delta mass smaller than 0");
+  }
+
+  /* Correction when several events reach the particle: the directed momentum
+     is scaled down and the thermal energy takes the difference between the
+     kinetic energy the events gave alone and the one the particle gets. It
+     needs the velocity before the update and changes delta_p and delta_E_th
+     in place. */
+  float f_corr = 1.0f;
+  float u_residual = 0.0f;
+  if (e->feedback_props->enable_multiple_SN_momentum_correction_factor &&
+      (xp->feedback_data.number_SN + xp->feedback_data.number_winds > 1)) {
+    f_corr = feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+        p, xp, cosmo);
+    u_residual =
+        feedback_compute_residual_internal_energy_for_multiple_sn_events(
+            p, xp, cosmo, old_mass, new_mass, f_corr);
+    for (int i = 0; i < 3; i++)
+      xp->feedback_data.delta_p[i] -=
+          (1.0f - f_corr) * xp->feedback_data.delta_p_directed[i];
+    xp->feedback_data.delta_E_th += u_residual * new_mass;
   }
 
   hydro_set_mass(p, new_mass);
@@ -107,17 +127,24 @@ void feedback_update_part(struct part *p, struct xpart *xp,
     xp->feedback_data.delta_p[i] = 0;
   }
 
+  /* The tracers get what the particle received, with the final mass */
+  feedback_tracers_pending_update(xp, xp->feedback_data.hit_by_SN,
+                                  xp->feedback_data.hit_by_winds, f_corr,
+                                  u_residual, new_mass_inv);
+  feedback_tracers_pending_reset(xp);
+
+  for (int i = 0; i < 3; i++) xp->feedback_data.delta_p_directed[i] = 0.0f;
+  xp->feedback_data.delta_p_norm_2_sum = 0.0f;
+  xp->feedback_data.delta_E_kin_events = 0.0f;
+  xp->feedback_data.delta_p_hubble_work = 0.0f;
+  xp->feedback_data.number_SN = 0;
+  xp->feedback_data.number_winds = 0;
+
   /* Update chemistry metal mass and reset feedback variable */
   for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
     p->chemistry_data.metal_mass[i] += xp->feedback_data.delta_metal_mass[i];
     xp->feedback_data.delta_metal_mass[i] = 0.0;
   }
-
-  /* The tracers get what the particle received, with the final mass */
-  feedback_tracers_pending_update(xp, xp->feedback_data.hit_by_SN,
-                                  xp->feedback_data.hit_by_winds, 1.0f, 0.0f,
-                                  new_mass_inv);
-  feedback_tracers_pending_reset(xp);
 
   /*----------------------------------------*/
   /* Update the radiation fields */
@@ -126,6 +153,212 @@ void feedback_update_part(struct part *p, struct xpart *xp,
   /* Update the wind fields */
   xp->feedback_data.hit_by_SN = 0;
   xp->feedback_data.hit_by_winds = 0;
+}
+
+/**
+ * @brief Compute the factor that scales the directed momentum down when
+ * several feedback events reach one #part in a timestep.
+ *
+ * It is the factor that makes the kinetic energy of the summed directed
+ * momenta equal to the sum of the kinetic energies of each, never above 1
+ * (Okamoto et al., https://arxiv.org/pdf/2603.17421). Only the momentum that
+ * the winds direct away from the stars enters; the ejecta keep their momentum.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param cosmo The #cosmology.
+ * @return The factor (at most 1) applied to the directed momentum.
+ */
+float feedback_compute_momentum_correction_factor_for_multiple_sn_events(
+    struct part *p, struct xpart *xp, const struct cosmology *cosmo) {
+
+  const float dp[3] = {xp->feedback_data.delta_p_directed[0] * cosmo->a_inv,
+                       xp->feedback_data.delta_p_directed[1] * cosmo->a_inv,
+                       xp->feedback_data.delta_p_directed[2] * cosmo->a_inv};
+  const float dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+
+  /* No directed momentum, or the events cancelled each other */
+  if (dp_norm_2 <= 0.f) return 1.f;
+
+  const float f_corr = sqrtf(xp->feedback_data.delta_p_norm_2_sum / dp_norm_2);
+  return (f_corr >= 1.f) ? 1.f : f_corr;
+}
+
+/**
+ * @brief Add the kinetic energy that one feedback event would give to the
+ * #part alone, for the energy balance of overlapping events.
+ *
+ * The energy is the one in the peculiar frame of the gas: the event changes
+ * the momentum of the gas of mass mj and velocity v by dp + dp_ejecta and its
+ * mass to new_mass. The work of the directed momentum against the Hubble flow
+ * relative to the star is stored apart, since the correction rescales it.
+ *
+ * @param xp The #xpart.
+ * @param mj The mass of the gas particle before the events.
+ * @param new_mass The mass of the gas particle after this event.
+ * @param v_pec The physical peculiar velocity of the gas particle.
+ * @param v_hubble The physical Hubble flow velocity of the gas particle
+ * relative to the star.
+ * @param dp The physical directed momentum given by the event.
+ * @param dp_ejecta The physical momentum of the ejecta in the lab frame.
+ */
+void feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+    struct xpart *xp, const float mj, const float new_mass,
+    const float v_pec[3], const float v_hubble[3], const double dp[3],
+    const double dp_ejecta[3]) {
+
+  const double dp_tot[3] = {dp[0] + dp_ejecta[0], dp[1] + dp_ejecta[1],
+                            dp[2] + dp_ejecta[2]};
+  const double v_norm_2 =
+      v_pec[0] * v_pec[0] + v_pec[1] * v_pec[1] + v_pec[2] * v_pec[2];
+  const double v_dot_dp =
+      v_pec[0] * dp_tot[0] + v_pec[1] * dp_tot[1] + v_pec[2] * dp_tot[2];
+  const double dp_tot_norm_2 =
+      dp_tot[0] * dp_tot[0] + dp_tot[1] * dp_tot[1] + dp_tot[2] * dp_tot[2];
+
+  /* A difference of the energies, written without two large terms */
+  const double dE_kin =
+      0.5 *
+      (-mj * v_norm_2 * (new_mass - mj) + 2.0 * mj * v_dot_dp + dp_tot_norm_2) /
+      new_mass;
+
+  xp->feedback_data.delta_E_kin_events += dE_kin;
+  xp->feedback_data.delta_p_hubble_work +=
+      v_hubble[0] * dp[0] + v_hubble[1] * dp[1] + v_hubble[2] * dp[2];
+}
+
+/**
+ * @brief Store what one stellar wind event gives to a #part, for the
+ * multiple-event correction.
+ *
+ * Only the momentum that the wind directs away from the star is rescaled by
+ * the correction; the ejecta keep their momentum. The values are recomputed
+ * from the inputs of runner_iact_nonsym_feedback_apply(), and the function is
+ * not inlined, so the injection itself compiles as without the correction.
+ *
+ * @param xp The #xpart.
+ * @param si The star.
+ * @param dx Comoving vector separating both particles (si - pj).
+ * @param r2 Comoving square distance between the two particles.
+ * @param weight The share of the star ejecta given to the #part.
+ * @param mj The mass of the gas particle before the events.
+ * @param dm_SW The wind mass given to the #part.
+ * @param new_mass The mass of the gas particle after this event.
+ * @param cosmo The #cosmology.
+ */
+__attribute__((noinline)) void feedback_accumulate_wind_for_multiple_sn_events(
+    struct xpart *xp, const struct spart *si, const float dx[3], const float r2,
+    const double weight, const float mj, const double dm_SW,
+    const double new_mass, const struct cosmology *cosmo) {
+
+  const float a = cosmo->a;
+  const float a_inv = cosmo->a_inv;
+  const float a_dot = a * cosmo->H;
+  const float r_p = sqrtf(r2) * a;
+  const float p_ej = sqrt(2.0 * si->feedback_data.winds.mass_ejected *
+                          si->feedback_data.winds.energy_ejected);
+
+  float v_pec[3], v_hubble[3];
+  double dp[3], dp_ejecta[3];
+  double dp_norm_2 = 0.0;
+  for (int i = 0; i < 3; i++) {
+    v_pec[i] = xp->v_full[i] * a_inv;
+    v_hubble[i] = -a_dot * dx[i];
+    dp[i] = -weight * p_ej * dx[i] * a / r_p;
+    dp_ejecta[i] = dm_SW * si->v[i] * a_inv;
+    dp_norm_2 += dp[i] * dp[i];
+    xp->feedback_data.delta_p_directed[i] += dp[i] * a;
+  }
+
+  feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+      xp, mj, new_mass, v_pec, v_hubble, dp, dp_ejecta);
+  xp->feedback_data.delta_p_norm_2_sum += dp_norm_2;
+  xp->feedback_data.number_winds += 1;
+}
+
+/**
+ * @brief Store what one supernova event gives to a #part, for the
+ * multiple-event correction.
+ *
+ * The ejecta carry no directed momentum. Ejecta without energy are not an
+ * event, but their kinetic energy enters the balance. Not inlined, like
+ * feedback_accumulate_wind_for_multiple_sn_events().
+ *
+ * @param xp The #xpart.
+ * @param si The star.
+ * @param mj The mass of the gas particle before the events.
+ * @param dm_SN The supernova mass given to the #part.
+ * @param new_mass The mass of the gas particle after this supernova alone,
+ * mj + dm_SN, without the wind mass of the same star.
+ * @param cosmo The #cosmology.
+ * @param is_event Does the supernova bring energy?
+ */
+__attribute__((noinline)) void feedback_accumulate_SN_for_multiple_sn_events(
+    struct xpart *xp, const struct spart *si, const float mj,
+    const double dm_SN, const double new_mass, const struct cosmology *cosmo,
+    const int is_event) {
+
+  const float a_inv = cosmo->a_inv;
+  const float v_pec[3] = {xp->v_full[0] * a_inv, xp->v_full[1] * a_inv,
+                          xp->v_full[2] * a_inv};
+  const float v_zero[3] = {0.f, 0.f, 0.f};
+  const double dp_zero[3] = {0.0, 0.0, 0.0};
+  const double dp_ejecta[3] = {dm_SN * si->v[0] * a_inv,
+                               dm_SN * si->v[1] * a_inv,
+                               dm_SN * si->v[2] * a_inv};
+  feedback_accumulate_kinetic_energy_for_multiple_sn_events(
+      xp, mj, new_mass, v_pec, v_zero, dp_zero, dp_ejecta);
+  if (is_event) xp->feedback_data.number_SN += 1;
+}
+
+/**
+ * @brief Compute the specific internal energy that conserves the energy when
+ * several feedback events reach one #part in a timestep.
+ *
+ * Each event gave its thermal energy as if it were alone. The thermal energy
+ * takes the difference between the kinetic energy the events gave alone and
+ * the kinetic energy of the summed, rescaled momentum, in the peculiar frame.
+ * The correction never removes more thermal energy than the events gave.
+ * Called before the velocity update.
+ *
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param cosmo The #cosmology.
+ * @param old_mass The mass of the #part before the events.
+ * @param new_mass The mass of the #part after all the events.
+ * @param f_corr The momentum correction factor.
+ * @return The physical specific internal energy to add.
+ */
+float feedback_compute_residual_internal_energy_for_multiple_sn_events(
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo,
+    const float old_mass, const float new_mass, const float f_corr) {
+
+  /* Physical peculiar velocity and momentum in the frame of the gas */
+  const double a_inv = cosmo->a_inv;
+  double v[3], dp[3];
+  for (int i = 0; i < 3; i++) {
+    v[i] = xp->v_full[i] * a_inv;
+    dp[i] = (xp->feedback_data.delta_p[i] -
+             (1.0 - f_corr) * xp->feedback_data.delta_p_directed[i]) *
+            a_inv;
+  }
+  const double v_norm_2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  const double v_dot_dp = v[0] * dp[0] + v[1] * dp[1] + v[2] * dp[2];
+  const double dp_norm_2 = dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2];
+
+  /* Kinetic energy actually given: the gained mass is accelerated to v, then
+     the whole particle by dp / new_mass */
+  const double dE_kin_actual = 0.5 * (new_mass - old_mass) * v_norm_2 +
+                               v_dot_dp + 0.5 * dp_norm_2 / new_mass;
+
+  const double dE_residual =
+      xp->feedback_data.delta_E_kin_events +
+      (1.0 - f_corr) * xp->feedback_data.delta_p_hubble_work - dE_kin_actual;
+  const double u_residual = dE_residual / new_mass;
+
+  /* Do not remove more thermal energy than what the events gave */
+  const double u_events = max(xp->feedback_data.delta_E_th, 0.0) / new_mass;
+  return (u_residual < -u_events) ? -u_events : u_residual;
 }
 
 /**
@@ -223,10 +456,22 @@ void feedback_init_part(struct part *p, const struct engine *e) {
  * @brief First-init of a #part's feedback state, see
  * #radiation_first_init_part.
  *
+ * Also sets the mu_eligibility and neutral_H_frac caches to the -1 sentinel:
+ * 0 is a physical value of both, so it cannot mean "not yet primed". Before
+ * the owner's first cooling call, a foreign copy would otherwise be priced
+ * at almost zero photons. feedback_part_can_be_ionized() excludes a foreign
+ * copy that still holds the sentinel.
+ *
  * @param p The #part to initialise.
  */
 void feedback_first_init_part(struct part *restrict p) {
   radiation_first_init_part(p);
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  p->feedback_data.mu_eligibility = -1.f;
+#endif
+#ifdef GEAR_COOLING
+  p->feedback_data.neutral_H_frac = -1.f;
+#endif
 }
 
 /**
@@ -258,6 +503,55 @@ float feedback_get_comoving_gas_density_at_star(const struct spart *sp) {
 }
 
 /**
+ * @brief Should this particle inject anything as supernovae feedback?
+ *
+ * The supernova branch of runner_iact_nonsym_feedback_apply() runs when the
+ * star has supernova energy to give.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_feedback(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar wind feedback?
+ *
+ * The wind branch of runner_iact_nonsym_feedback_apply() runs when the star
+ * has wind energy to give.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_wind_feedback(const struct spart *sp) {
+  return sp->feedback_data.winds.energy_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle deliver supernova ejecta without energy?
+ *
+ * The stellar evolution has already removed the ejected mass from the star, so
+ * the mass and the metals must reach the gas when an efficiency factor has
+ * zeroed the energy. These ejecta set no supernova flag.
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_SN_mass_only(const struct spart *sp) {
+  return sp->feedback_data.supernovae.energy_ejected == 0.f &&
+         sp->feedback_data.supernovae.mass_ejected != 0.f;
+}
+
+/**
+ * @brief Should this particle inject anything as stellar feedback?
+ *
+ * @param sp The #spart.
+ */
+int feedback_should_inject_feedback(const struct spart *sp) {
+  return feedback_should_inject_SN_feedback(sp) ||
+         feedback_should_inject_wind_feedback(sp) ||
+         feedback_should_inject_SN_mass_only(sp);
+}
+
+/**
  * @brief Is this star particle done evolving, i.e. finished with its
  * feedback-relevant lifetime?
  *
@@ -283,13 +577,10 @@ void feedback_init_spart(struct spart *sp) {
   sp->feedback_data.num_ngbs = 0;
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
-     rebuild step. It is reset in feedback_will_do_feedback(). */
+     rebuild step. It is reset in runner_dosub_stars_hii_ionization_feedback()
+     when the pass searches gas. */
 
-  sp->feedback_data.grad_rho_star[0] = 0.0;
-  sp->feedback_data.grad_rho_star[1] = 0.0;
-  sp->feedback_data.grad_rho_star[2] = 0.0;
-
-  sp->feedback_data.Z_star = 0.0;
+  radiation_reset_star_pressure_inputs(sp);
 }
 
 /**

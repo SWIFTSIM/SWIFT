@@ -1252,6 +1252,17 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          24-38 actual tasks/cell against a 118-139 estimated max here
          (~20-30% utilisation) with this margin. */
       n2 += 4 * 27;
+
+#ifdef WITH_MPI
+      /* HII report-back channel: recv_part_hii_tag and send_part_hii_state
+         (owner side, engine_addtasks_send_hydro) or send_part_hii_tag and
+         recv_part_hii_state (computing side, engine_addtasks_recv_hydro),
+         4 task instances in total. They are created at the same xv/rho
+         predicate site as the hydro MPI overhead below, which can sit below
+         the top level, so both n1 and n2 are bumped. */
+      n1 += 4;
+      n2 += 4;
+#endif
     }
 
 #ifdef WITH_MPI
@@ -1952,6 +1963,13 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->subtype == task_subtype_stars_radiation_in ||
         t->subtype == task_subtype_stars_radiation_out)
       t->skip = 1;
+
+    /* Foreign stars are not received yet; only the feedback loops need their
+     * sort. Also drop the sort requests the skipped task would have reset. */
+    if (t->type == task_type_stars_sort && t->ci->nodeID != e->nodeID) {
+      t->skip = 1;
+      cell_clear_stars_sort_flags(t->ci, /*clear_unused_flags=*/1);
+    }
   }
 
   /* Run through the cells and clear some flags. */
@@ -1996,6 +2014,13 @@ void engine_launch(struct engine *e, const char *call) {
 #ifdef SWIFT_DEBUG_CHECKS
   /* Re-set all the cell task counters to 0 */
   space_reset_task_counters(e->s);
+#endif
+
+#if defined(WITH_MPI) && defined(SWIFT_DEBUG_CHECKS)
+  /* Confront this rank's activated communications with its peers' before the
+   * runners can start waiting on them: an unmatched send/recv pair otherwise
+   * hangs the step without emitting anything. */
+  scheduler_check_mpi_activation_symmetry(&e->sched);
 #endif
 
   /* reset the active time counters for the runners */
@@ -2806,6 +2831,26 @@ int engine_step(struct engine *e) {
           e->radiation_reach_clamp_count -
               e->radiation_reach_clamp_count_last_step);
       e->radiation_reach_clamp_count_last_step = e->radiation_reach_clamp_count;
+    }
+
+    /* Two ranks' stars both reaching the same boundary gas is expected
+     * cross-rank contention, not a bug, so this is a message, not a
+     * warning. */
+    if (e->radiation_hii_merge_collision_count > 0) {
+      message(
+          "Radiation HII cross-rank merge collisions: %lld cumulative "
+          "(+%lld this step), forfeited budget %.3e cumulative (+%.3e this "
+          "step) photons.",
+          e->radiation_hii_merge_collision_count,
+          e->radiation_hii_merge_collision_count -
+              e->radiation_hii_merge_collision_count_last_step,
+          e->radiation_hii_forfeited_budget,
+          e->radiation_hii_forfeited_budget -
+              e->radiation_hii_forfeited_budget_last_step);
+      e->radiation_hii_merge_collision_count_last_step =
+          e->radiation_hii_merge_collision_count;
+      e->radiation_hii_forfeited_budget_last_step =
+          e->radiation_hii_forfeited_budget;
     }
 #endif
 

@@ -62,6 +62,7 @@
  *   of descending to the true leaf cells. */
 
 #include "runner_doiact_hydro_aperture.h"
+#include "sink_properties.h"
 
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric,
@@ -84,7 +85,8 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const float r_cut2 = r_cut * r_cut;
+  const double *dim = e->s->dim;
+  const int periodic = e->s->periodic;
 
   /* Anything to do here? */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
@@ -108,15 +110,6 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
           r_cut);
 #endif
 
-  /* Get the relative distance between the cell pair, wrapping. */
-  double shift[3] = {0.0, 0.0, 0.0};
-  for (int k = 0; k < 3; k++) {
-    if (cj->loc[k] - ci->loc[k] < -e->s->dim[k] / 2)
-      shift[k] = e->s->dim[k];
-    else if (cj->loc[k] - ci->loc[k] > e->s->dim[k] / 2)
-      shift[k] = -e->s->dim[k];
-  }
-
   /* Loop over the parts in ci. */
   for (int pid = 0; pid < count_i; pid++) {
 
@@ -128,9 +121,6 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
 
     const int pi_active = PART_IS_ACTIVE(pi, e);
     const float hi = pi->h;
-    const float pix[3] = {(float)(pi->x[0] - (cj->loc[0] + shift[0])),
-                          (float)(pi->x[1] - (cj->loc[1] + shift[1])),
-                          (float)(pi->x[2] - (cj->loc[2] + shift[2]))};
 
     /* Loop over the parts in cj. */
     for (int pjd = 0; pjd < count_j; pjd++) {
@@ -145,11 +135,11 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                            (float)(pj->x[1] - cj->loc[1]),
-                            (float)(pj->x[2] - cj->loc[2])};
-      float dx[3] = {pix[0] - pjx[0], pix[1] - pjx[1], pix[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      float dx[3];
+      const double r2_d =
+          sink_formation_gas_loop_r2(pi->x, pj->x, dim, periodic, dx);
+      const int in_aperture = sink_formation_gas_loop_in_aperture(r2_d, r_cut);
+      const float r2 = (float)r2_d;
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time. */
@@ -160,12 +150,12 @@ void DOPAIR1_NAIVE_HYDRO_APERTURE(struct runner *r,
 #endif
 
       /* Hit or miss? */
-      if (pi_active && r2 < r_cut2) {
+      if (pi_active && in_aperture) {
         IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
                                    with_self_gravity, cosmo,
                                    e->sink_properties);
       }
-      if (pj_active && r2 < r_cut2) {
+      if (pj_active && in_aperture) {
         float mdx[3] = {-dx[0], -dx[1], -dx[2]};
         IACT_NONSYM_HYDRO_APERTURE(r2, mdx, hj, hi, pj, pi, a, H,
                                    with_self_gravity, cosmo,
@@ -193,7 +183,8 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const float r_cut2 = r_cut * r_cut;
+  const double *dim = e->s->dim;
+  const int periodic = e->s->periodic;
 
   TIMER_TIC;
 
@@ -234,9 +225,10 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
       const float hj = pj->h;
 
       /* Compute the pairwise distance. */
-      float dx[3] = {(float)(pi->x[0] - pj->x[0]), (float)(pi->x[1] - pj->x[1]),
-                     (float)(pi->x[2] - pj->x[2])};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      float dx[3];
+      const double r2_d =
+          sink_formation_gas_loop_r2(pi->x, pj->x, dim, periodic, dx);
+      const float r2 = (float)r2_d;
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
       /* Check that particles have been drifted to the current time. */
@@ -247,7 +239,7 @@ void DOSELF1_NAIVE_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 #endif
 
       /* Hit or miss? */
-      if (r2 < r_cut2) {
+      if (sink_formation_gas_loop_in_aperture(r2_d, r_cut)) {
         if (pi_active) {
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
                                      with_self_gravity, cosmo,
@@ -293,7 +285,8 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
-  const float r_cut2 = r_cut * r_cut;
+  const double *dim = e->s->dim;
+  const int periodic = e->s->periodic;
 
   TIMER_TIC;
 
@@ -355,11 +348,6 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
       const double di = sort_i[pid].d + r_cut + dx_max - rshift;
       if (di < dj_min) continue;
 
-      /* Position of pi relative to cj origin (shifted for periodicity). */
-      const float pix = (float)(pi->x[0] - (cj->loc[0] + shift[0]));
-      const float piy = (float)(pi->x[1] - (cj->loc[1] + shift[1]));
-      const float piz = (float)(pi->x[2] - (cj->loc[2] + shift[2]));
-
       /* Loop over the parts in cj that are within the inner scan bound. */
       for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
 
@@ -372,11 +360,10 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
         const float hj = pj->h;
 
         /* Compute the pairwise distance. */
-        const float pjx = (float)(pj->x[0] - cj->loc[0]);
-        const float pjy = (float)(pj->x[1] - cj->loc[1]);
-        const float pjz = (float)(pj->x[2] - cj->loc[2]);
-        const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        float dx[3];
+        const double r2_d =
+            sink_formation_gas_loop_r2(pi->x, pj->x, dim, periodic, dx);
+        const float r2 = (float)r2_d;
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time. */
@@ -387,7 +374,7 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < r_cut2) {
+        if (sink_formation_gas_loop_in_aperture(r2_d, r_cut)) {
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H,
                                      with_self_gravity, cosmo,
                                      e->sink_properties);
@@ -417,11 +404,6 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
       const double dj = sort_j[pjd].d - r_cut - dx_max + rshift;
       if (dj - rshift > di_max) continue;
 
-      /* Position of pj relative to cj origin. */
-      const float pjx = (float)(pj->x[0] - cj->loc[0]);
-      const float pjy = (float)(pj->x[1] - cj->loc[1]);
-      const float pjz = (float)(pj->x[2] - cj->loc[2]);
-
       /* Loop over the parts in ci that are within the inner scan bound. */
       for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d > dj; pid--) {
 
@@ -433,14 +415,11 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
 
         const float hi = pi->h;
 
-        /* Position of pi relative to cj origin. */
-        const float pix = (float)(pi->x[0] - (cj->loc[0] + shift[0]));
-        const float piy = (float)(pi->x[1] - (cj->loc[1] + shift[1]));
-        const float piz = (float)(pi->x[2] - (cj->loc[2] + shift[2]));
-
         /* dx = pj - pi (pj is the receiver for the non-symmetric call). */
-        const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        float dx[3];
+        const double r2_d =
+            sink_formation_gas_loop_r2(pj->x, pi->x, dim, periodic, dx);
+        const float r2 = (float)r2_d;
 
 #if defined(SWIFT_DEBUG_CHECKS) && defined(DO_DRIFT_DEBUG_CHECKS)
         /* Check that particles have been drifted to the current time. */
@@ -451,7 +430,7 @@ void DOPAIR1_HYDRO_APERTURE(struct runner *r, const struct cell *restrict ci,
 #endif
 
         /* Hit or miss? */
-        if (r2 < r_cut2) {
+        if (sink_formation_gas_loop_in_aperture(r2_d, r_cut)) {
           /* Note: dx points from pi to pj, so pj is the accumulator. */
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hj, hi, pj, pi, a, H,
                                      with_self_gravity, cosmo,
@@ -541,7 +520,8 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 
   const struct engine *e = r->e;
   const struct cosmology *cosmo = e->cosmology;
-  const float r_cut2 = r_cut * r_cut;
+  const double *dim = e->s->dim;
+  const int periodic = e->s->periodic;
 
   TIMER_TIC;
 
@@ -606,13 +586,13 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 #endif
 
         /* dx = pj - pi (pj is the receiver). */
-        float dx[3] = {(float)(pj->x[0] - pi->x[0]),
-                       (float)(pj->x[1] - pi->x[1]),
-                       (float)(pj->x[2] - pi->x[2])};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        float dx[3];
+        const double r2_d =
+            sink_formation_gas_loop_r2(pj->x, pi->x, dim, periodic, dx);
+        const float r2 = (float)r2_d;
 
         /* Hit or miss? */
-        if (r2 < r_cut2) {
+        if (sink_formation_gas_loop_in_aperture(r2_d, r_cut)) {
           IACT_NONSYM_HYDRO_APERTURE(r2, dx, hj, hi, pj, pi, a, H,
                                      with_self_gravity, cosmo,
                                      e->sink_properties);
@@ -643,13 +623,13 @@ void DOSELF1_HYDRO_APERTURE(struct runner *r, const struct cell *c,
 #endif
 
         /* dx = pi - pj (pi is the receiver). */
-        float dx[3] = {(float)(pi->x[0] - pj->x[0]),
-                       (float)(pi->x[1] - pj->x[1]),
-                       (float)(pi->x[2] - pj->x[2])};
-        const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+        float dx[3];
+        const double r2_d =
+            sink_formation_gas_loop_r2(pi->x, pj->x, dim, periodic, dx);
+        const float r2 = (float)r2_d;
 
         /* Hit or miss? */
-        if (r2 < r_cut2) {
+        if (sink_formation_gas_loop_in_aperture(r2_d, r_cut)) {
           if (PART_IS_ACTIVE(pj, e)) {
             /* Both active: symmetric call updates both pi and pj. */
             IACT_HYDRO_APERTURE(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,

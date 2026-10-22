@@ -161,4 +161,23 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp) {}
 
+/**
+ * @brief Cache the HII eligibility temperature and mean molecular weight.
+ * No-op here: this subgrid model has no HII.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param u The specific internal energy.
+ */
+INLINE static void cooling_cache_eligibility_temperature_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    const struct xpart *xp, const double u) {}
+
 #endif /* SWIFT_NONE_COOLING_SUBGRID_H */

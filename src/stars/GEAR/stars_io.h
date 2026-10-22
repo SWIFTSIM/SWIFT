@@ -171,7 +171,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                                          const int with_cosmology) {
 
   /* Say how much we want to write */
-  *num_fields = 13;
+  int num = 8;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_spart(
@@ -215,7 +215,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
                            "Type of stellar particle: 0=single star ; 1=stellar"
                            " cont. IMF part.  ; 2=normal");
 
-  list[8] = io_make_output_field_convert_spart(
+#ifdef GEAR_SUBGRID_RADIATION_HII
+  list[num++] = io_make_output_field_convert_spart(
       "HIIRegionRadii", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, sparts,
       convert_spart_HII_radius,
       "Co-moving HII region radius of the star particles when the HII was last "
@@ -225,7 +226,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "well past its tag's expiry without being re-tagged, so the true "
       "thermally-affected extent can be larger than this radius.");
 
-  list[9] = io_make_output_field_convert_spart(
+  list[num++] = io_make_output_field_convert_spart(
       "HIIRegionMasses", FLOAT, 1, UNIT_CONV_MASS, 0.f, sparts,
       convert_spart_HII_mass,
       "Gas mass the star particle is currently holding ionized, as of its "
@@ -235,21 +236,25 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "never lapse and the maintenance pass that re-adds already-held mass "
       "is compiled out, so this field counts only each pass's newly-tagged "
       "mass rather than the region's true total.");
+#endif
 
-  list[10] = io_make_output_field_convert_spart(
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  list[num++] = io_make_output_field_convert_spart(
       "PELuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
       convert_spart_L_PE,
       "Star's current non-ionizing PE-band (6-11.2 eV) luminosity, "
       "physical units. Feeds the ISRF injection term; 0 unless "
       "GEARFeedback:with_interstellar_radiation_field is on.");
 
-  list[11] = io_make_output_field_convert_spart(
+  list[num++] = io_make_output_field_convert_spart(
       "LWLuminosities", DOUBLE, 1, UNIT_CONV_POWER, 0.f, sparts,
       convert_spart_L_LW,
       "Star's current Lyman-Werner-band (11.2-13.6 eV) luminosity, "
       "physical units. See #PELuminosities.");
+#endif
 
-  list[12] = io_make_output_field_convert_spart(
+#ifdef GEAR_SUBGRID_RADIATION
+  list[num++] = io_make_output_field_convert_spart(
       "EffectiveTemperatures", FLOAT, 1, UNIT_CONV_TEMPERATURE, 0.f, sparts,
       convert_spart_teff,
       "Photospheric effective temperature of the star, from the radiation "
@@ -258,11 +263,14 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "the hottest surviving star, not an IMF average. A diagnostic of "
       "stellar evolution only: no feedback channel uses it. 0 when no "
       "radiation table is loaded or the table carries no Teff dataset.");
+#endif
+
+  *num_fields = num;
 
 #ifdef DEBUG_INTERACTIONS_STARS
 
   list += *num_fields;
-  *num_fields += 7;
+  *num_fields += 5;
 
   list[0] = io_make_output_field(
       "Num_ngb_density", INT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -287,6 +295,7 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "(radiation_get_comoving_gas_column_density_at_star). Debug-only "
       "diagnostic, not meant for physics analysis outside this build.");
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   list[5] = io_make_output_field(
       "GradRhoStar", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, sparts,
       feedback_data.grad_rho_star,
@@ -298,6 +307,8 @@ INLINE static void stars_write_particles(const struct spart *sparts,
       "ZStar", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, sparts, feedback_data.Z_star,
       "Star's SPH-kernel-weighted local gas metallicity mass fraction, used "
       "by the radiation-pressure opacity. Debug-only diagnostic.");
+  *num_fields += 2;
+#endif
 #endif
 }
 

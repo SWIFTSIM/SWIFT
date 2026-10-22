@@ -3076,6 +3076,101 @@ AC_ARG_WITH([number-of-hii-angular-pixels],
 	    [with_number_of_hii_angular_pixels="12"])
 AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels], [Maximum number of HealPix angular pixels the GEAR subgrid HII photoionization budget can be split across])
 
+# Parts of the GEAR subgrid radiation compiled into a GEAR feedback build. A
+# part left out costs nothing at run time: no particle fields, no pair-loop
+# work and no tasks.
+AC_ARG_WITH([subgrid-radiation],
+   [AS_HELP_STRING([--with-subgrid-radiation=<parts>],
+      [Parts of the GEAR subgrid radiation to compile, GEAR feedback models only: all, none, or a comma-separated list of rp (radiation pressure), hii (HII regions) and isrf (local LW/PE radiation field) @<:@default: all@:>@]
+   )],
+   [with_subgrid_radiation="$withval"; subgrid_radiation_explicit=yes],
+   [with_subgrid_radiation="all"; subgrid_radiation_explicit=no]
+)
+
+with_subgrid_radiation_rp=no
+with_subgrid_radiation_hii=no
+with_subgrid_radiation_isrf=no
+if test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical"; then
+   case "$with_subgrid_radiation" in
+      all)
+         with_subgrid_radiation_rp=yes
+         with_subgrid_radiation_hii=yes
+         with_subgrid_radiation_isrf=yes
+      ;;
+      none)
+      ;;
+      ""|yes|no)
+         AC_MSG_ERROR([--with-subgrid-radiation needs a value: all, none, or a comma-separated list of rp, hii and isrf])
+      ;;
+      *)
+         subgrid_radiation_nparts=0
+         for part in `echo "$with_subgrid_radiation" | tr ',' ' '`; do
+            subgrid_radiation_nparts=`expr $subgrid_radiation_nparts + 1`
+            case "$part" in
+               rp) with_subgrid_radiation_rp=yes ;;
+               hii) with_subgrid_radiation_hii=yes ;;
+               isrf) with_subgrid_radiation_isrf=yes ;;
+               *) AC_MSG_ERROR([Unknown --with-subgrid-radiation part '$part': use all, none, or a comma-separated list of rp, hii and isrf]) ;;
+            esac
+         done
+         if test "$subgrid_radiation_nparts" = "0"; then
+            AC_MSG_ERROR([--with-subgrid-radiation='$with_subgrid_radiation' names no part: use all, none, or a comma-separated list of rp, hii and isrf])
+         fi
+      ;;
+   esac
+
+   # HII regions and the ISRF act on the gas through Grackle only.
+   if test "$with_cooling" != "grackle"; then
+      if test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"; then
+         if test "$subgrid_radiation_explicit" = "yes"; then
+            AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation: the parts hii and isrf need --with-cooling=grackle_*, they act on the gas through Grackle only. Choose rp or none for another cooling model.])
+         fi
+         AC_MSG_WARN([The GEAR subgrid radiation parts hii and isrf need --with-cooling=grackle_*: only rp is compiled. Set --with-subgrid-radiation to silence this warning.])
+         with_subgrid_radiation_hii=no
+         with_subgrid_radiation_isrf=no
+      fi
+   fi
+
+   # The ISRF gradient pass runs in the extra hydro loop (EXTRA_HYDRO_LOOP).
+   case "$with_hydro" in
+      phantom|gizmo-mfv|gizmo-mfm|shadowswift|remix|sphenix|gasoline|anarchy-pu)
+      ;;
+      *)
+         if test "$with_subgrid_radiation_isrf" = "yes"; then
+            if test "$subgrid_radiation_explicit" = "yes"; then
+               AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation: the part isrf needs a hydro scheme with a gradient loop (phantom, gizmo-mfv, gizmo-mfm, shadowswift, remix, sphenix, gasoline or anarchy-pu), not $with_hydro.])
+            fi
+            AC_MSG_WARN([The GEAR subgrid radiation part isrf needs a hydro scheme with a gradient loop, not $with_hydro: it is not compiled. Set --with-subgrid-radiation to silence this warning.])
+            with_subgrid_radiation_isrf=no
+         fi
+      ;;
+   esac
+elif test "$subgrid_radiation_explicit" = "yes" -a "$with_subgrid_radiation" != "none"; then
+   AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation needs --with-feedback=GEAR or GEAR-mechanical_*: no other feedback model has the GEAR subgrid radiation])
+fi
+
+with_subgrid_radiation_name=""
+if test "$with_subgrid_radiation_rp" = "yes"; then
+   AC_DEFINE([GEAR_SUBGRID_RADIATION_PRESSURE], [1], [GEAR subgrid radiation pressure])
+   with_subgrid_radiation_name="$with_subgrid_radiation_name rp"
+fi
+if test "$with_subgrid_radiation_hii" = "yes"; then
+   AC_DEFINE([GEAR_SUBGRID_RADIATION_HII], [1], [GEAR subgrid HII regions])
+   with_subgrid_radiation_name="$with_subgrid_radiation_name hii"
+fi
+if test "$with_subgrid_radiation_isrf" = "yes"; then
+   AC_DEFINE([GEAR_SUBGRID_RADIATION_ISRF], [1], [GEAR subgrid local LW/PE radiation field])
+   with_subgrid_radiation_name="$with_subgrid_radiation_name isrf"
+fi
+if test -n "$with_subgrid_radiation_name"; then
+   AC_DEFINE([GEAR_SUBGRID_RADIATION], [1], [At least one part of the GEAR subgrid radiation])
+else
+   with_subgrid_radiation_name=" none"
+fi
+AM_CONDITIONAL([HAVEGEARRADIATIONPRESSURE], [test "$with_subgrid_radiation_rp" = "yes"])
+AM_CONDITIONAL([HAVEGEARRADIATIONHII], [test "$with_subgrid_radiation_hii" = "yes"])
+AM_CONDITIONAL([HAVEGEARRADIATIONISRF], [test "$with_subgrid_radiation_isrf" = "yes"])
+
 
 # Black hole model.
 AC_ARG_WITH([black-holes],
@@ -3535,9 +3630,10 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
-# Define GEAR_COOLING if a GEAR feedback module and grackle cooling are
-# selected: the subgrid radiation of both modules acts through it
-AS_IF([test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical" && test "$with_cooling" = "grackle"],
+# Define GEAR_COOLING if a GEAR feedback module, grackle cooling and the HII
+# regions or the ISRF of the subgrid radiation are selected: these two parts
+# act on the gas through it
+AS_IF([test "$with_feedback" = "GEAR" -o "$with_feedback" = "GEAR-mechanical" && test "$with_cooling" = "grackle" && test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"],
   [AC_DEFINE([GEAR_COOLING], [1], [Use GEAR cooling subgrid logic])]
 )
 
@@ -3700,6 +3796,7 @@ AC_MSG_RESULT([
    Stellar model        : $with_stars
    Star formation model : $with_star_formation
    Star feedback model  : $with_feedback_name
+   Subgrid radiation    :$with_subgrid_radiation_name
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt

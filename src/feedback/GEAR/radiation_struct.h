@@ -133,6 +133,11 @@ struct feedback_isrf_moment_data {
   /*! Artificial-dissipation source term from the force loop. Scratch. */
   float dissipation_u;
 
+  /*! Artificial-dissipation rate of the reduced flux, same pair coefficient
+      as #dissipation_u. Zero unless #feedback_part_data.ISRF_flux_dissipation
+      is set. Scratch. */
+  float dissipation_flux[3];
+
   /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
       loop, per physical length. Scratch. */
   float grad_u[3];
@@ -150,6 +155,11 @@ struct feedback_isrf_moment_data {
   /*! Dissipation amount owed by finer neighbours, divided by c_hyp and
       weighted by their phi. Same life cycle as #pending_transport_u. */
   float pending_dissipation_u;
+
+  /*! Reduced-flux dissipation amount owed by finer neighbours, divided by
+      c_hyp and weighted by their phi. Same life cycle as
+      #pending_transport_u. */
+  float pending_dissipation_flux[3];
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Most negative #u at the end of an update since the previous snapshot,
@@ -222,9 +232,12 @@ struct feedback_xpart_HII_region_data {
  */
 struct feedback_spart_radiation_data {
 
+#ifdef GEAR_SUBGRID_RADIATION_PRESSURE
   /*! Bolometric luminosity (physical units) from the stellar evolution */
   double L_bol;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Ionizing photon rate of each active pixel (physical units): the star's
       total, split evenly. Double, since the value is huge. A pure rate,
       never debited. */
@@ -261,14 +274,22 @@ struct feedback_spart_radiation_data {
       Anchors the interval dt_back. */
   double HII_region_last_attempt;
 
+  /*! Number of HII passes made by this star, the clock of the cone frame
+      redraw. */
+  int HII_pass_count;
+
   /*! Mean photon energy above 13.6 eV, cached once per HII rebuild pass, in
       erg. Only set with GEARFeedback:HII_couple_ionization_rate. */
   float mean_excess_photon_energy_HI;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Moment luminosity (physical units) by #radiation_isrf_moment, from the
       radiation table. 0 unless the interstellar radiation field is on. */
   double L_band[ISRF_MOMENT_COUNT];
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION
   /*! Photospheric effective temperature (internal units), a diagnostic no
       feedback channel uses. For a population particle, the hottest
       surviving star. 0 without a "Teff" table dataset. */
@@ -281,6 +302,7 @@ struct feedback_spart_radiation_data {
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Integer time at the start of the step #Delta_t was cached for. */
   integertime_t Delta_t_cached_ti_begin;
+#endif
 #endif
 };
 

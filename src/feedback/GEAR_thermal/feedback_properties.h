@@ -20,6 +20,7 @@
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
 #include "../GEAR/radiation_isrf.h"
+#include "../GEAR/radiation_selection.h"
 #include "../GEAR/radiation_struct.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"
@@ -134,6 +135,10 @@ struct feedback_props {
    * value. */
   float ISRF_dissipation_alpha_pin_for_debugging;
 
+  /*! Also damp the reduced flux with the pair dissipation coefficient of u?
+   * Experimental, off by default. */
+  char ISRF_flux_dissipation;
+
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
 
@@ -147,6 +152,15 @@ struct feedback_props {
    * probabilistic, 1 = always ionize it. */
   char HII_deterministic_boundary_ionization;
 
+  /*! Rotate each star's HEALPix cone frame by a rotation set by its ID and,
+   * with HII_cone_frame_redraw_period > 0, by its pass epoch (1), or keep the
+   * cones fixed to the box axes (0). */
+  char HII_random_cone_frame_per_star;
+
+  /*! Number of the star's own HII passes between two draws of its cone
+   * frame; 0 keeps the frame for the star's life. */
+  int HII_cone_frame_redraw_period;
+
   /*! Floor on the interval the photon budget is integrated over. */
   float HII_rebuild_floor_Myr;
 
@@ -157,6 +171,10 @@ struct feedback_props {
 
   /*! Do stellar wind feedback? */
   char with_stellar_wind_feedback;
+
+  /*! Correct the momentum and the thermal energy of a gas particle that
+     several events reach in one timestep, so that the energy is conserved */
+  char enable_multiple_SN_momentum_correction_factor;
 };
 
 /* The shared radiation parameters read the fields above. */
@@ -233,6 +251,21 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           feedback_props->with_stellar_wind_feedback ? "ON" : "OFF");
   message("Stellar winds efficiency                                   = %.2g",
           feedback_props->winds_efficiency);
+  message("Multiple-event correction                                  = %s",
+          feedback_props->enable_multiple_SN_momentum_correction_factor
+              ? "ON"
+              : "OFF");
+
+  message(
+      "Subgrid radiation parts compiled (--with-subgrid-radiation) =%s%s%s%s",
+      RADIATION_COMPILED_PRESSURE ? " rp" : "",
+      RADIATION_COMPILED_HII ? " hii" : "",
+      RADIATION_COMPILED_ISRF ? " isrf" : "",
+      radiation_selection_absent_mask() ==
+              (RADIATION_SELECTION_BIT_PRESSURE | RADIATION_SELECTION_BIT_HII |
+               RADIATION_SELECTION_BIT_ISRF)
+          ? " none"
+          : "");
 
   feedback_props_print_radiation(feedback_props);
 }
@@ -306,6 +339,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         w_efficiency);
 
   fp->winds_efficiency = w_efficiency;
+
+  /* Correct the gas particles that several events reach in one timestep? */
+  fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
+      params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
 
   /* filename of the chemistry tables. */
   parser_get_param_string(params, "GEARFeedback:yields_table",
