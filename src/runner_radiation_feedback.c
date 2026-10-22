@@ -574,10 +574,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (spart_is_inhibited(si, e)) continue;
     if (!spart_is_active(si, e)) continue;
     if (!feedback_is_HII_ionization_active(si, e)) continue;
-
-    /* The mass is rebuilt from zero by this pass. A gas-free cell skips the
-       search below and correctly leaves the star holding nothing. */
-    feedback_reset_star_HII_mass(si);
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     message("Star %lld can do ionization! r_hii = %e", si->id,
             si->h_hii * kernel_gamma);
@@ -631,6 +627,10 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       feedback_resync_star_ionizing_photon_rate_cache(si);
       continue;
     }
+
+    /* This pass recounts all the gas the star holds, so restart from zero.
+       The gas-free skip above does not rebuild, and keeps the last mass. */
+    feedback_reset_star_HII_mass(si);
 
     /* Photons are budgeted as a count over the interval this pass actually
        covers, so that slicing a run into more (or fewer) rebuild passes

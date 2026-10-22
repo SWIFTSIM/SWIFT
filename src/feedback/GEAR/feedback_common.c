@@ -1217,8 +1217,9 @@ void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp) {
 /**
  * @brief Clear the ionized mass accumulated by the previous HII rebuild.
  *
- * Called at the start of the star's rebuild pass, so that the value read by a
- * snapshot is always that of the last completed rebuild.
+ * Called at the start of a rebuild pass that reaches the gas search, just
+ * before the pass recounts the gas the star holds. A snapshot then reads the
+ * last rebuild that ran. A pass skipped for lack of gas leaves the mass as is.
  *
  * @param sp The star.
  */
