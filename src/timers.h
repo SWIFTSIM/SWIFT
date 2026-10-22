@@ -150,11 +150,6 @@ enum {
   timer_do_rt_collect_times,
   timer_do_sync,
   timer_neutrino_weighting,
-  timer_doself_chemistry_fct_prep,
-  timer_dopair_chemistry_fct_prep,
-  timer_dosub_self_chemistry_fct_prep,
-  timer_dosub_pair_chemistry_fct_prep,
-  timer_do_chemistry_fct_ghost,
   timer_doself_hydro_aperture_prep_sink_formation,
   timer_dopair_hydro_aperture_prep_sink_formation,
   timer_dosub_self_hydro_aperture_prep_sink_formation,
@@ -163,6 +158,11 @@ enum {
   timer_dopair_hydro_sink_aperture_prep_sink_formation_sink,
   timer_dosub_self_hydro_sink_aperture_prep_sink_formation_sink,
   timer_dosub_pair_hydro_sink_aperture_prep_sink_formation_sink,
+  timer_doself_chemistry_fct_prep,
+  timer_dopair_chemistry_fct_prep,
+  timer_dosub_self_chemistry_fct_prep,
+  timer_dosub_pair_chemistry_fct_prep,
+  timer_do_chemistry_fct_ghost,
   timer_count,
 };
 

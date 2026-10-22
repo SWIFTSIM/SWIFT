@@ -127,6 +127,26 @@ runner_iact_nonsym_mhd_chemistry_fct_prep(const float r2, const float dx[3],
 #define runner_iact_chemistry_flux_exchange \
   runner_iact_chemistry_flux_exchange_fct_prep
 
+/* The ISRF dissipation also sits in the force-loop block of the template. It
+   accumulates into the particles, so it must run in the force loop only. */
+__attribute__((always_inline)) INLINE static void
+runner_iact_isrf_dissipation_fct_prep(const float r2, const float dx[3],
+                                      const float hi, const float hj,
+                                      struct part *restrict pi,
+                                      struct part *restrict pj, const float a,
+                                      const float H) {}
+
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_dissipation_fct_prep(const float r2, const float dx[3],
+                                             const float hi, const float hj,
+                                             struct part *restrict pi,
+                                             struct part *restrict pj,
+                                             const float a, const float H) {}
+
+#define runner_iact_isrf_dissipation runner_iact_isrf_dissipation_fct_prep
+#define runner_iact_nonsym_isrf_dissipation \
+  runner_iact_nonsym_isrf_dissipation_fct_prep
+
 /* Import the chemistry FCT prep loop functions. */
 #define FUNCTION chemistry_fct_prep
 #define FUNCTION_TASK_LOOP TASK_LOOP_FORCE
@@ -136,5 +156,7 @@ runner_iact_nonsym_mhd_chemistry_fct_prep(const float r2, const float dx[3],
 #undef runner_iact_diffusion
 #undef runner_iact_nonsym_diffusion
 #undef runner_iact_chemistry_flux_exchange
+#undef runner_iact_isrf_dissipation
+#undef runner_iact_nonsym_isrf_dissipation
 
 #endif /* GEAR FVPM diffusion chemistry */

@@ -888,9 +888,11 @@ GEARFeedback:
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5                             # Time between HII region rebuilds (Myr); also a star timestep constraint. Negative: every step. (Default: 0.5)
   HII_angular_nside:             0                        # HEALPix nside of the angular budget split: 0 = spherical, N>=1 = 12*N^2 pixels. Needs --with-chealpix and --with-number-of-hii-angular-pixels. (Default: 0)
-  HII_deterministic_boundary_ionization: 0                # Last partly ionizable particle: 0 = probabilistic, 1 = always ionize it. (Default: 0)
+  HII_random_cone_frame_per_star: 0                       # 1: rotate each star's HEALPix cone frame by a random rotation set by its ID (and, with HII_cone_frame_redraw_period > 0, by its pass epoch), 0: cones fixed to the box axes. Removes the alignment of cones between stars (the X pattern in galaxy-wide ionised gas). The shape of a single region changes little: it does not become rounder. Ignored for HII_angular_nside 0. (Default: 0)
+  HII_cone_frame_redraw_period:   0                       # Used only with HII_random_cone_frame_per_star 1. N > 0: every star draws a new frame, independent of the other stars, every N of its own HII passes (a pass is one rebuild attempt, counted from the star's first pass, so each star changes frame at its own age). 0: the frame is kept for the star's life. A cone's budget never goes below zero, and each pass opens with its own photons, so nothing carries over to the new cones. (Default: 0)
+  HII_deterministic_boundary_ionization: 0                # First gas a cone cannot afford, where the cone stops: 0 = claimed on a roll with p = budget/cost (for all such gas, however fast it recombines), else it absorbs the rest of the budget (Hopkins et al. 2018, Appendix E); 1 = always ionize it. (Default: 0)
   HII_rebuild_floor_Myr:  1e-4                            # Minimum rebuild interval (Myr). (Default: 1e-4)
-  HII_couple_ionization_rate: 0                           # 1: couple the HII rate into the Grackle RT fields, 0: flag-and-floor scheme. Needs COOLING_GRACKLE_MODE >= 1. (Default: 0)
+  HII_couple_ionization_rate: 0                           # 1: couple the HII rate into the Grackle RT fields, 0: flag-and-floor scheme. Needs COOLING_GRACKLE_MODE >= 1. One MPI rank only. (Default: 0)
 
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation; --with-subgrid-radiation part isrf)
   with_interstellar_radiation_field: 0                    # Master switch of the ISRF module (photoelectric heating, H2 photodissociation). H2 photodissociation needs COOLING_GRACKLE_MODE > 1. (Default: 0)
@@ -908,6 +910,7 @@ GEARFeedback:
   ISRF_dissipation_floor_h_over_lambda: 0.5                # (optional) Screening-length error budget eps_lambda: the floor decays as (eps_lambda/(h*kappa))^4 above this h/lambda. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_floor_relaxation_residual: 0.40         # (optional) Threshold eps_R, in [0, 1], of the gate that lowers the floor where the flux is already settled. 0 disables the gate. Needs ISRF_propagation. (Default: 0.40)
   ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug only) When positive, hold the dissipation coefficient at this value and bypass the trigger. Never set in a production run. (Default: 0)
+  ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well. Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
 
   # Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
@@ -1216,6 +1219,7 @@ GEARSink:
 GEARRT:
   f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
+  slope_limiter: minmod                             # (Optional) slope limiter of the radiation state at particle interfaces: minmod, gizmo (cell limiter plus the Hopkins 2015 face limiter) or cell (cell limiter only). gizmo and cell are experimental. (Default: minmod)
   f_limit_cooling_time: 0.6                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.

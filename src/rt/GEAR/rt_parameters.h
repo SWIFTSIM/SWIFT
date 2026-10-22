@@ -28,11 +28,27 @@
 extern struct rt_parameters rt_params;
 
 /**
+ * @brief Slope limiters for the reconstruction of the radiation state at the
+ * particle interfaces.
+ */
+enum rt_slope_limiter_type {
+  /*! minmod of the two extrapolations to the interface (default). */
+  rt_slope_limiter_minmod = 0,
+  /*! Cell limiter, then the Hopkins (2015) face limiter, as for Gizmo hydro. */
+  rt_slope_limiter_gizmo,
+  /*! Cell limiter only, no face limiter. */
+  rt_slope_limiter_cell,
+};
+
+/**
  * Some global RT related parameters.
  */
 struct rt_parameters {
   float reduced_speed_of_light;
   float reduced_speed_of_light_inverse;
+
+  /*! Slope limiter, one of #rt_slope_limiter_type. */
+  int slope_limiter;
 };
 
 #endif /* SWIFT_GEAR_RT_PARAMETERS_H */

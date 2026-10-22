@@ -166,6 +166,55 @@ radiation_dissipation_force_accumulate_band(
 }
 
 /**
+ * @brief The artificial dissipation of
+ * #radiation_dissipation_force_accumulate_band applied to each component of
+ * the reduced flux, with the same pair coefficient. It damps short-wavelength
+ * flux ripples. Used only with GEARFeedback:ISRF_flux_dissipation.
+ *
+ * @param wi_dr See #radiation_divergence_accumulate_band.
+ * @param wj_dr See #radiation_divergence_accumulate_band.
+ * @param mi Particle i's mass.
+ * @param mj Particle j's mass.
+ * @param rho_i Particle i's cached comoving density snapshot.
+ * @param rho_j Particle j's cached comoving density snapshot.
+ * @param c_i Particle i's #feedback_part_data.c_hyp.
+ * @param c_j Particle j's #feedback_part_data.c_hyp.
+ * @param alpha_trigger_i Particle i's
+ * #feedback_isrf_operator_data.dissipation_alpha_trigger (this band).
+ * @param alpha_trigger_j Particle j's, same field.
+ * @param alpha_floor_i Particle i's
+ * #feedback_isrf_operator_data.dissipation_alpha_floor (this band).
+ * @param alpha_floor_j Particle j's, same field.
+ * @param F_i Particle i's reduced specific flux (this band).
+ * @param F_j Particle j's reduced specific flux (this band).
+ * @param a_factor_comoving_to_physical `1/a`.
+ * @param dissipation_flux_i (return, accumulated) Particle i's accumulator.
+ * @param dissipation_flux_j (return, accumulated) Particle j's accumulator.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_flux_dissipation_force_accumulate_band(
+    float wi_dr, float wj_dr, float mi, float mj, float rho_i, float rho_j,
+    float c_i, float c_j, float alpha_trigger_i, float alpha_trigger_j,
+    float alpha_floor_i, float alpha_floor_j, const float F_i[3],
+    const float F_j[3], float a_factor_comoving_to_physical,
+    float dissipation_flux_i[3], float dissipation_flux_j[3]) {
+
+  const float alpha_trigger_ij = max(alpha_trigger_i, alpha_trigger_j);
+  const float alpha_floor_ij = max(alpha_floor_i, alpha_floor_j);
+  const float alpha_ij = max(alpha_trigger_ij, alpha_floor_ij);
+  if (alpha_ij <= 0.f) return;
+
+  const float Wbar_ij = 0.5f * (wi_dr + wj_dr);
+  const float fac = Wbar_ij / (rho_i * rho_j) * a_factor_comoving_to_physical;
+
+  for (int k = 0; k < 3; k++) {
+    const float shape_k = (rho_i * F_i[k] - rho_j * F_j[k]) * fac;
+    dissipation_flux_i[k] += mj * (alpha_ij * c_i * shape_k);
+    dissipation_flux_j[k] += -mi * (alpha_ij * c_j * shape_k);
+  }
+}
+
+/**
  * @brief M1 closure coefficients for one particle, one band, from its own `(u,
  * F, c_M)`; `c_M` normalises the flux (1 for the reduced flux).
  *
@@ -635,6 +684,65 @@ __attribute__((always_inline)) INLINE static void radiation_cross_bin_pair_band(
 }
 
 /**
+ * @brief The reduced-flux dissipation of an unequal-step pair, all bands: the
+ * finer member may take its rate, the coarser one gets its share as pending,
+ * with the weights of #radiation_cross_bin_pair_band. The held share is added
+ * later without the coarser member's absorption, unlike the energy share.
+ * Out of line and apart from the energy booking, whose code generation it
+ * leaves unchanged.
+ *
+ * @param wi_dr See #radiation_divergence_accumulate_band.
+ * @param wj_dr See #radiation_divergence_accumulate_band.
+ * @param mi Particle i's mass.
+ * @param mj Particle j's mass.
+ * @param fdi Particle i's feedback data.
+ * @param fdj Particle j's feedback data.
+ * @param a_factor_comoving_to_physical `1/a`.
+ * @param i_is_fine 1 if particle i has the shorter step.
+ * @param fine_rate 1 to add the finer member's rate here.
+ * @param dt_fine The finer member's step.
+ */
+__attribute__((noinline)) static void radiation_cross_bin_flux_pair(
+    float wi_dr, float wj_dr, float mi, float mj,
+    struct feedback_part_data *fdi, struct feedback_part_data *fdj,
+    float a_factor_comoving_to_physical, int i_is_fine, int fine_rate,
+    float dt_fine) {
+
+  const float c_i = fdi->c_hyp;
+  const float c_j = fdj->c_hyp;
+  const float cf_i = i_is_fine ? c_i : 1.f;
+  const float cf_j = i_is_fine ? 1.f : c_j;
+  const float c_fine = i_is_fine ? c_i : c_j;
+  const int f = i_is_fine ? 0 : 1;
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    const struct feedback_isrf_operator_data *op_i = &fdi->isrf_operator[o];
+    const struct feedback_isrf_operator_data *op_j = &fdj->isrf_operator[o];
+    struct feedback_isrf_moment_data *moment_i = &fdi->isrf_moment[m];
+    struct feedback_isrf_moment_data *moment_j = &fdj->isrf_moment[m];
+    const float kappa_fine = i_is_fine ? op_i->kappa : op_j->kappa;
+    const double phi_fine = radiation_relaxation_phi_factor_double(
+        (double)c_fine * (double)kappa_fine * (double)dt_fine);
+
+    float dflux[2][3] = {{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
+    radiation_flux_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, fdi->rho_prev, fdj->rho_prev, cf_i, cf_j,
+        op_i->dissipation_alpha_trigger, op_j->dissipation_alpha_trigger,
+        op_i->dissipation_alpha_floor, op_j->dissipation_alpha_floor,
+        moment_i->specific_flux, moment_j->specific_flux,
+        a_factor_comoving_to_physical, dflux[0], dflux[1]);
+
+    struct feedback_isrf_moment_data *fine = i_is_fine ? moment_i : moment_j;
+    struct feedback_isrf_moment_data *coarse = i_is_fine ? moment_j : moment_i;
+    if (fine_rate)
+      for (int k = 0; k < 3; k++) fine->dissipation_flux[k] += dflux[f][k];
+    for (int k = 0; k < 3; k++)
+      coarse->pending_dissipation_flux[k] +=
+          (float)((double)dflux[1 - f][k] * (double)dt_fine * phi_fine);
+  }
+}
+
+/**
  * @brief All bands of an unequal-step pair (#radiation_cross_bin_pair_band).
  * Out of line, so the same-step path keeps its code generation.
  *
@@ -666,6 +774,46 @@ __attribute__((noinline)) static void radiation_cross_bin_pair(
         &fdi->isrf_moment[m], &fdj->isrf_moment[m], &fdi->isrf_operator[o],
         &fdj->isrf_operator[o], c_i, c_j, a_factor_comoving_to_physical,
         i_is_fine, fine_rate, dt_fine);
+  }
+
+  if (fdi->ISRF_flux_dissipation)
+    radiation_cross_bin_flux_pair(wi_dr, wj_dr, mi, mj, fdi, fdj,
+                                  a_factor_comoving_to_physical, i_is_fine,
+                                  fine_rate, dt_fine);
+}
+
+/**
+ * @brief The reduced-flux dissipation of a same-step pair, all bands
+ * (#radiation_flux_dissipation_force_accumulate_band). Out of line, so the
+ * energy terms keep their code generation.
+ *
+ * @param wi_dr See #radiation_divergence_accumulate_band.
+ * @param wj_dr See #radiation_divergence_accumulate_band.
+ * @param mi Particle i's mass.
+ * @param mj Particle j's mass.
+ * @param fdi Particle i's feedback data.
+ * @param fdj Particle j's feedback data, written only if @p symmetric.
+ * @param a_factor_comoving_to_physical `1/a`.
+ * @param symmetric 1 to update both particles, 0 for particle i only.
+ */
+__attribute__((noinline)) static void radiation_flux_dissipation_pair(
+    float wi_dr, float wj_dr, float mi, float mj,
+    struct feedback_part_data *fdi, struct feedback_part_data *fdj,
+    float a_factor_comoving_to_physical, int symmetric) {
+
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+    const enum radiation_isrf_operator o = radiation_isrf_moment_to_operator[m];
+    float unused_dissipation_flux[3] = {0.f, 0.f, 0.f};
+    radiation_flux_dissipation_force_accumulate_band(
+        wi_dr, wj_dr, mi, mj, fdi->rho_prev, fdj->rho_prev, fdi->c_hyp,
+        fdj->c_hyp, fdi->isrf_operator[o].dissipation_alpha_trigger,
+        fdj->isrf_operator[o].dissipation_alpha_trigger,
+        fdi->isrf_operator[o].dissipation_alpha_floor,
+        fdj->isrf_operator[o].dissipation_alpha_floor,
+        fdi->isrf_moment[m].specific_flux, fdj->isrf_moment[m].specific_flux,
+        a_factor_comoving_to_physical, fdi->isrf_moment[m].dissipation_flux,
+        symmetric ? fdj->isrf_moment[m].dissipation_flux
+                  : unused_dissipation_flux);
   }
 }
 
@@ -747,6 +895,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_dissipation(
         moment_i->u, moment_j->u, a_factor_comoving_to_physical,
         &moment_i->dissipation_u, &moment_j->dissipation_u);
   }
+
+  if (fdi->ISRF_flux_dissipation)
+    radiation_flux_dissipation_pair(wi_dr, wj_dr, mi, mj, fdi, fdj,
+                                    a_factor_comoving_to_physical,
+                                    /*symmetric=*/1);
 }
 
 /**
@@ -838,6 +991,12 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
         moment_i->u, moment_j->u, a_factor_comoving_to_physical,
         &moment_i->dissipation_u, &unused_dissipation_u);
   }
+
+  if (fdi->ISRF_flux_dissipation)
+    radiation_flux_dissipation_pair(wi_dr, wj_dr, mi, mj, fdi,
+                                    &pj->feedback_data,
+                                    a_factor_comoving_to_physical,
+                                    /*symmetric=*/0);
 }
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */

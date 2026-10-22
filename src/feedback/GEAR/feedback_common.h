@@ -77,19 +77,23 @@ double feedback_get_star_ionization_budget(const struct spart *sp, int pixel);
 double feedback_get_star_ionization_budget_max(const struct spart *sp);
 double feedback_get_star_ionization_budget_total(const struct spart *sp);
 int feedback_get_star_HII_pixel_count(const struct spart *sp);
+int feedback_get_HII_random_cone_frame(
+    const struct feedback_props *feedback_props);
+int feedback_get_HII_cone_frame_redraw_period(
+    const struct feedback_props *feedback_props);
+int64_t feedback_count_star_HII_pass(struct spart *sp);
 double feedback_get_star_HII_last_rebuild(const struct spart *sp);
 double feedback_get_star_HII_nominal_interval(
     const struct feedback_props *feedback_props, const double dt_enrichment);
 void feedback_open_star_ionizing_photon_budget(struct spart *sp,
                                                double dt_back);
 void feedback_resync_star_ionizing_photon_rate_cache(struct spart *sp);
+void feedback_reset_star_HII_mass(struct spart *sp);
 void feedback_set_star_HII_last_rebuild(struct spart *sp,
                                         double star_age_beg_step);
 double feedback_get_star_HII_last_attempt(const struct spart *sp);
 void feedback_set_star_HII_last_attempt(struct spart *sp,
                                         double star_age_beg_step);
-
-float feedback_get_star_HII_mass(const struct spart *sp);
 #else
 /* Without the part: the star carries no HII state. */
 __attribute__((always_inline)) INLINE static void
@@ -101,11 +105,9 @@ __attribute__((always_inline)) INLINE static double
 feedback_get_star_HII_last_rebuild(const struct spart *sp) {
   return 0.;
 }
-__attribute__((always_inline)) INLINE static float feedback_get_star_HII_mass(
-    const struct spart *sp) {
-  return 0.f;
-}
 #endif /* GEAR_SUBGRID_RADIATION_HII */
+
+float feedback_get_star_HII_mass(const struct spart *sp);
 double feedback_get_star_L_PE(const struct spart *sp);
 double feedback_get_star_L_LW(const struct spart *sp);
 float feedback_get_star_teff(const struct spart *sp);
@@ -120,8 +122,12 @@ void feedback_first_init_spart(struct spart *sp,
 float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
 
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
- * pending fields at a = 0 only, 3 phi-weighted pending at any a. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 3
+ * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
+ * reduced-flux dissipation fields, 5 HII random cone frame flag in
+ * #feedback_props, 6 HII cone frame redraw period in #feedback_props, 7 HII
+ * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
+ * cone claim rule removed from #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 10
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts
@@ -130,6 +136,9 @@ float feedback_get_comoving_gas_density_at_star(const struct spart *sp);
 
 /**
  * @brief The particle layout marker this build writes to its restart files.
+ *
+ * @return #FEEDBACK_RESTART_ISRF_PART_LAYOUT plus
+ * #FEEDBACK_RESTART_SELECTION_FACTOR times the absent-part mask.
  */
 __attribute__((always_inline)) INLINE static int
 feedback_restart_particle_layout(void) {

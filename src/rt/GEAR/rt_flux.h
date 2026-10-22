@@ -71,8 +71,8 @@ __attribute__((always_inline)) INLINE static void rt_compute_flux(
   /* Unphysical check not necessary here.
    * It's done in gradients_predict as well. */
 
-  const float FLnorm = sqrtf(UL[1] * UL[1] + UL[2] * UL[2] + UL[3] * UL[3]);
-  const float FRnorm = sqrtf(UR[1] * UR[1] + UR[2] * UR[2] + UR[3] * UR[3]);
+  const float FLnorm = rt_flux_norm(&UL[1]);
+  const float FRnorm = rt_flux_norm(&UR[1]);
 
   /* Get the fluxes in the hyperbolic conservation law sense. */
   float hyperFluxL[4][3];

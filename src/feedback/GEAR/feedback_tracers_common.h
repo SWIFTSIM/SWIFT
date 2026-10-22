@@ -67,7 +67,7 @@ feedback_tracers_pending_add_SW(struct xpart *xp, const float dp_mag,
  * tracers.
  *
  * @param xp The #xpart.
- * @param hit_by_SN Did the particle receive a supernova event?
+ * @param hit_by_SN Did the particle receive supernova energy?
  * @param hit_by_winds Did the particle receive a stellar wind event?
  * @param f_corr The momentum correction factor (1 if there is none).
  * @param u_residual The physical specific residual thermal energy (0 if there
@@ -139,7 +139,7 @@ feedback_tracers_pending_add_SW(struct xpart *xp, const float dp_mag,
  * the feedback fields.
  *
  * @param xp The #xpart.
- * @param hit_by_SN Did the particle receive a supernova event?
+ * @param hit_by_SN Did the particle receive supernova energy?
  * @param hit_by_winds Did the particle receive a stellar wind event?
  * @param f_corr The momentum correction factor (1 if there is none).
  * @param u_residual The physical specific residual thermal energy (0 if there

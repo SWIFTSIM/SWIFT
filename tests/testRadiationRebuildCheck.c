@@ -182,6 +182,94 @@ int main(int argc, char *argv[]) {
           "(dmin=0.25) sits in the cj argument slot instead of ci.");
   }
 
+  /* Case 5c: a split next to a cell that cannot split. The splitting cell's
+   * progeny then pair with the coarse neighbour, whose reach the criterion
+   * tests against the progeny width. Right after a rebuild (no drift) that
+   * test must stay silent, or engine_rebuild() aborts. Here the coarse
+   * cell's reach (0.278) fits its own width (0.5) but not the progeny width
+   * (0.25), while the neighbour's own reach would let it split. */
+  {
+    struct cell coarse, parent, progeny;
+    bzero(&coarse, sizeof(struct cell));
+    bzero(&parent, sizeof(struct cell));
+    bzero(&progeny, sizeof(struct cell));
+    coarse.split = parent.split = 1;
+    coarse.hydro.count = parent.hydro.count = progeny.hydro.count = 1000;
+    coarse.dmin = parent.dmin = 0.5f;
+    progeny.dmin = 0.25f;
+    coarse.loc[0] = 0.;
+    parent.loc[0] = 0.5;
+    coarse.stars.h_hii_max = 0.119576f;
+    parent.stars.h_hii_max = 0.0484152f;
+    progeny.stars.h_hii_max = 0.0484152f;
+    coarse.hydro.h_max = parent.hydro.h_max = progeny.hydro.h_max = 0.0347f;
+    coarse.top = &coarse;
+    parent.top = &parent;
+    progeny.top = &parent;
+
+    const int cdim[3] = {2, 1, 1};
+    const float reach[2] = {coarse.stars.h_hii_max, parent.stars.h_hii_max};
+    float reach_neighbours[2];
+    space_radiation_neighbour_reach_for(reach, cdim, /*periodic=*/0,
+                                        reach_neighbours);
+    coarse.stars.h_reach_max_neighbours = reach_neighbours[0];
+    parent.stars.h_reach_max_neighbours = reach_neighbours[1];
+
+    if (cell_can_split_pair_radiation_subgrid_task(&coarse))
+      error("Case 5c: the coarse cell's own reach must stop its split.");
+    if (cell_can_split_pair_radiation_subgrid_task(&parent) &&
+        cell_need_rebuild_for_radiation_pair(&coarse, &progeny))
+      error(
+          "Case 5c: a cell split next to a coarse neighbour whose reach "
+          "exceeds the progeny width; the rebuild criterion fires with no "
+          "drift, so no rebuild can satisfy it.");
+
+    /* Control: with a small neighbour the same cell must still split. */
+    const float reach_small[2] = {0.01f, parent.stars.h_hii_max};
+    space_radiation_neighbour_reach_for(reach_small, cdim, /*periodic=*/0,
+                                        reach_neighbours);
+    parent.stars.h_reach_max_neighbours = reach_neighbours[1];
+    if (!cell_can_split_pair_radiation_subgrid_task(&parent))
+      error("Case 5c: a split was refused with no large reach nearby.");
+  }
+
+  /* Case 5d: a cell held coarse only by a big-reach star in a neighbouring
+   * top cell, next to a cell that split two levels deeper. The coarse cell's
+   * gas kernel support (0.35) fits its own width (1.0) but not the progeny
+   * width (0.25). The HII search is centred on the star and never selects gas
+   * by the gas's own smoothing length, so with no drift the rebuild check
+   * must stay silent for this pair, in both directions. */
+  {
+    struct cell coarse, fine;
+    bzero(&coarse, sizeof(struct cell));
+    bzero(&fine, sizeof(struct cell));
+    coarse.split = 1;
+    coarse.hydro.count = fine.hydro.count = 1000;
+    coarse.dmin = 1.0f;
+    fine.dmin = 0.25f;
+    coarse.hydro.h_max = 0.35f / kernel_gamma;
+    coarse.stars.h_hii_max = 0.01f;
+    fine.stars.h_hii_max = 0.01f;
+    fine.hydro.h_max = 0.01f;
+    coarse.top = &coarse;
+    coarse.stars.h_reach_max_neighbours = 0.3f;
+
+    if (!cell_can_split_pair_hydro_task(&coarse, /*r_cut=*/0.f))
+      error("Case 5d: the coarse cell's own gas must allow a hydro split.");
+    if (cell_can_split_pair_radiation_subgrid_task(&coarse))
+      error("Case 5d: the neighbour reach must stop the coarse cell's split.");
+    if (cell_need_rebuild_for_radiation_pair(&fine, &coarse) ||
+        cell_need_rebuild_for_radiation_pair(&coarse, &fine))
+      error(
+          "Case 5d: the rebuild check fired on the coarse cell's gas "
+          "smoothing length with no drift; no rebuild can satisfy it.");
+
+    /* Control: gas drift beyond the progeny width must still fire. */
+    fine.hydro.dx_max_part = 0.3f;
+    if (!cell_need_rebuild_for_radiation_pair(&coarse, &fine))
+      error("Case 5d: a gas drift beyond the progeny width was missed.");
+  }
+
   /* Now check cell_can_split_pair/self_radiation_subgrid_task(): radiation
    * must NEVER split once the cell is at or below a hydro attach point
    * (cell_flag_at_or_below_hydro_attach set), for any combination of the

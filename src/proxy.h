@@ -124,6 +124,8 @@ void proxy_addcell_in(struct proxy *p, struct cell *c, int type);
 void proxy_addcell_out(struct proxy *p, struct cell *c, int type);
 void proxy_cells_exchange(struct proxy *proxies, int num_proxies,
                           struct space *s, int with_gravity);
+void proxy_hydro_attach_exchange(struct proxy *proxies, int num_proxies,
+                                 struct space *s);
 void proxy_tags_exchange(struct proxy *proxies, int num_proxies,
                          struct space *s);
 void proxy_grid_extra_exchange(struct proxy *proxies, int num_proxies,

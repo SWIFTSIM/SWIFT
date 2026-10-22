@@ -146,15 +146,17 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       0.f, xparts, tracers_data.feedback_cumulative.energy_winds,
       /*can convert to comoving=*/0,
       "Cumulative specific internal energy received from stellar winds. "
-      "A conservation residual, not strictly positive: can go negative "
-      "when the gas was already moving towards the star before the kick.");
+      "Not negative: each event gives the kinetic energy dissipated when the "
+      "ejecta merge with the gas (the wind energy itself if no mass is "
+      "ejected).");
 
   list[num++] = io_make_physical_output_field(
       "MaxKickVelocityFromSupernovae", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,
       tracers_data.feedback_cumulative.max_kick_velocity_supernovae,
       /*can convert to comoving=*/0,
-      "Largest single-event kick velocity this particle received from "
-      "supernovae (outflow diagnostic).");
+      "Largest kick velocity of one supernova event this particle received "
+      "(its momentum over the mass of the particle at the end of the step; "
+      "outflow diagnostic).");
 
   list[num++] = io_make_physical_output_field(
       "MaxKickVelocityFromWinds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, xparts,

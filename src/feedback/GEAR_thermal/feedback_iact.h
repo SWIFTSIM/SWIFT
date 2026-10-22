@@ -245,9 +245,8 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
-      /* Lifetime-cumulative tracer, using this branch's own locally-computed
-         momentum/energy (not the shared feedback_data.delta_p/delta_E_th,
-         which the SN branch below can also add to this same step). The
+      /* Tracer uses this branch's own momentum and energy, not the shared
+         delta_p and delta_E_th, which the SN branch can also change. The
          momentum is the one applied, m_f |dv|, in the frame of the gas as for
          the SN. The GEAR tracers get the sums at the update, with the final
          mass. */
