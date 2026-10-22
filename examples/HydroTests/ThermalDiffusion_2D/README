@@ -1,0 +1,25 @@
+Thermal discontinuity in pressure equilibrium (2D)
+--------------------------------------------------
+
+A cold, dense slab (density contrast 4, the middle half of a 2 x 1 periodic
+box made of two copies of a 2D glass) in pressure equilibrium with the hot
+gas around it, at rest. The particles keep the spacing of the glass and carry
+the contrast in their masses; their internal energies are set from the SPH
+density of the particle set (Wendland C4, eta 1.5), so that the pressure is
+uniform at the start to the accuracy of the kernel-sum density.
+
+The exact solution is static, so every change is numerical:
+
+  - the growth of the width sigma of the u profile at the two interfaces
+    (erf profiles, sigma^2 = sigma0^2 + 2 kappa_eff t) measures the
+    artificial thermal conduction of the scheme at a contact,
+  - the pressure blip at the interfaces (max |P / P0 - 1|) and the velocities
+    it drives (max |v| / cs, rms v) measure what the conduction is there to
+    remove: the spurious surface tension of the density estimate across an
+    entropy jump,
+  - the total energy must be conserved.
+
+makeIC.py: --contrast, --ncopies, --eta, --nominal (u from the step density,
+i.e. with the initial pressure blip of a naive set-up).
+
+The code needs to be compiled with --with-hydro-dimension=2.

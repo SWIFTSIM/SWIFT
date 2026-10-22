@@ -17,6 +17,8 @@
 #
 ##############################################################################
 
+import argparse
+
 import h5py
 from numpy import *
 
@@ -33,6 +35,14 @@ v_R = 0.0  # Velocity right state
 P_L = 1.0  # Pressure left state
 P_R = 0.1  # Pressure right state
 fileName = "sodShock.hdf5"
+
+# Optional: other right-state pressures (the densities are set by the two
+# glasses, 1 : 0.125 with equal particle masses): a weaker or stronger shock
+# and a different entropy jump at the contact.
+parser = argparse.ArgumentParser(description="3D Sod shock ICs")
+parser.add_argument("--P-right", type=float, default=P_R, help="pressure of the right state (default 0.1)")
+args = parser.parse_args()
+P_R = args.P_right
 
 
 # ---------------------------------------------------
@@ -89,6 +99,7 @@ file = h5py.File(fileName, "w")
 # Header
 grp = file.create_group("/Header")
 grp.attrs["BoxSize"] = [boxSize, 0.5, 0.5]
+grp.attrs["SodShockStates"] = [rho_L, v_L, P_L, rho_R, v_R, P_R]
 grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
 grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
