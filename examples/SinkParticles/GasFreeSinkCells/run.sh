@@ -3,6 +3,8 @@
 # make run.sh fail if a subcommand fails
 set -e
 
+GEAR_SCRIPTS=../../GEAR_ICs_and_SCRIPTS # Shared GEAR table download scripts
+
 n_ranks=${n_ranks:=0}      # Number of ranks to use
 n_threads=${n_threads:=8}  # Number of threads to use
 level=${level:=5}  # Nominal gas resolution before carving out the corner: N = 2^(3*level)
@@ -36,13 +38,13 @@ fi
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $GEAR_SCRIPTS/getGrackleCoolingTable.sh
 fi
 
 if [ ! -e POPIIsw.h5 ]
 then
     echo "Fetching the chemistry tables..."
-    ./getChemistryTable.sh
+    $GEAR_SCRIPTS/getChemistryTable.sh
 fi
 
 # Create output directory

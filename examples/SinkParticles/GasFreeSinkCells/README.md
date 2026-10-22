@@ -90,8 +90,9 @@ gas -> sink formation happening elsewhere in the box.
   is not supported (GEAR star formation combined with sinks has never been
   tested). ICs carry sink particles directly, and `--sinks` must always be
   passed to ensure they are read.
-- `getGrackleCoolingTable.sh`, `getChemistryTable.sh`: copied
-  unmodified from `HomogeneousBox` (same cooling/feedback tables).
+- The Grackle cooling and GEAR feedback tables are fetched by `run.sh` with
+  `examples/GEAR_ICs_and_SCRIPTS/getGrackleCoolingTable.sh` and
+  `getChemistryTable.sh`.
 
 ## Running
 
