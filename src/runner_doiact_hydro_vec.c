@@ -646,7 +646,8 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself1_density_vec(struct runner *r, const struct cell *restrict c) {
+void runner_doself1_density_vec(struct runner *r,
+                                const struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -881,9 +882,11 @@ void runner_doself1_density_vec(struct runner *r, const struct cell *restrict c)
  * @param ind The list of indices of particles in @c c to interact with.
  * @param pi_count The number of particles in @c ind.
  */
-void runner_doself_subset_density_vec(struct runner *r, const struct cell *restrict c,
+void runner_doself_subset_density_vec(struct runner *r,
+                                      const struct cell *restrict c,
                                       struct part *restrict parts,
-                                      const int *restrict ind, const int pi_count) {
+                                      const int *restrict ind,
+                                      const int pi_count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
