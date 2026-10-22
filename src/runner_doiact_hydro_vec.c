@@ -580,7 +580,7 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
  */
 __attribute__((always_inline)) INLINE static int populate_max_index_subset(
     const int count_i, const int count_j, struct part *restrict parts_i,
-    int *restrict ind, const double *total_ci_shift, const float dxj,
+    const int *restrict ind, const double *total_ci_shift, const float dxj,
     const double di_shift_correction, const double runner_shift_x,
     const double runner_shift_y, const double runner_shift_z,
     const struct sort_entry *restrict sort_j, int *max_index_i,
@@ -646,7 +646,7 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
+void runner_doself1_density_vec(struct runner *r, const struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -881,9 +881,9 @@ void runner_doself1_density_vec(struct runner *r, struct cell *restrict c) {
  * @param ind The list of indices of particles in @c c to interact with.
  * @param pi_count The number of particles in @c ind.
  */
-void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
+void runner_doself_subset_density_vec(struct runner *r, const struct cell *restrict c,
                                       struct part *restrict parts,
-                                      int *restrict ind, int pi_count) {
+                                      const int *restrict ind, const int pi_count) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1112,7 +1112,7 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
+void runner_doself2_force_vec(struct runner *r, const struct cell *restrict c) {
 
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
 
@@ -1302,7 +1302,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
+void runner_dopair1_density_vec(struct runner *r, const struct cell *ci,
                                 struct cell *cj, const int sid,
                                 const double *shift) {
 
@@ -1715,9 +1715,9 @@ void runner_dopair1_density_vec(struct runner *r, struct cell *ci,
  * @param shift The shift vector to apply to the particles in ci.
  */
 void runner_dopair_subset_density_vec(struct runner *r,
-                                      struct cell *restrict ci,
+                                      const struct cell *restrict ci,
                                       struct part *restrict parts_i,
-                                      int *restrict ind, int count,
+                                      const int *restrict ind, int count,
                                       struct cell *restrict cj, const int sid,
                                       const int flipped, const double *shift) {
 
@@ -1750,9 +1750,6 @@ void runner_dopair_subset_density_vec(struct runner *r,
   const double di_shift_correction = ci->loc[0] * runner_shift_x +
                                      ci->loc[1] * runner_shift_y +
                                      ci->loc[2] * runner_shift_z;
-
-  double rshift = 0.0;
-  for (int k = 0; k < 3; k++) rshift += shift[k] * runner_shift[sid][k];
 
   int *restrict max_index_i SWIFT_CACHE_ALIGN;
   max_index_i = r->ci_cache.max_index;
@@ -2056,7 +2053,7 @@ void runner_dopair_subset_density_vec(struct runner *r,
  * @param sid The direction of the pair
  * @param shift The shift vector to apply to the particles in ci.
  */
-void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
+void runner_dopair2_force_vec(struct runner *r, const struct cell *ci,
                               struct cell *cj, const int sid,
                               const double *shift) {
 

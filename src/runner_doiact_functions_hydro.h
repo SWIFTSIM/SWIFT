@@ -25,6 +25,8 @@
    runner_iact_FUNCTION. */
 
 #include "runner_doiact_hydro.h"
+#include "runner.h"
+#include "engine.h"
 
 /**
  * @brief Compute the interactions between a cell pair (non-symmetric case).
