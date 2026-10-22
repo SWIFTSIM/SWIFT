@@ -628,7 +628,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       continue;
     }
 
-    /* This pass recounts all the gas the star holds, so restart from zero.
+    /* This pass recounts the gas the star ionizes, so restart from zero.
        The gas-free skip above does not rebuild, and keeps the last mass. */
     feedback_reset_star_HII_mass(si);
 
