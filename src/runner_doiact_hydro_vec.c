@@ -390,6 +390,13 @@ __attribute__((always_inline)) INLINE static void populate_max_index_density(
   *init_pj = last_pj;
 }
 
+/* Share the force-pair index calculation between the Gadget2 and SPHENIX
+ * vector force loops. */
+#endif /* WITH_VECTORIZATION && GADGET2_SPH */
+
+#if defined(WITH_VECTORIZATION) && \
+    (defined(GADGET2_SPH) || defined(SPHENIX_SPH))
+
 /**
  * @brief Populates the arrays max_index_i and max_index_j with the maximum
  * indices of
@@ -554,6 +561,10 @@ __attribute__((always_inline)) INLINE static void populate_max_index_force(
   *init_pj = last_pj;
 }
 
+#endif /* WITH_VECTORIZATION && (GADGET2_SPH || SPHENIX_SPH) */
+
+#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+
 /**
  * @brief Populates the array max_index_i with the maximum
  * index of
@@ -638,6 +649,10 @@ __attribute__((always_inline)) INLINE static int populate_max_index_subset(
 }
 
 #endif /* WITH_VECTORIZATION && GADGET2_SPH */
+
+#if defined(WITH_VECTORIZATION) && defined(SPHENIX_SPH)
+static const vector kernel_gamma2_vec = FILL_VEC(kernel_gamma2);
+#endif
 
 /**
  * @brief Compute the cell self-interaction (non-symmetric) using vector
@@ -1112,9 +1127,11 @@ void runner_doself_subset_density_vec(struct runner *r, struct cell *restrict c,
  * @param r The #runner.
  * @param c The #cell.
  */
-void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
+void runner_doself2_force_vec(struct runner *r,
+                              const struct cell *restrict c) {
 
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+#if defined(WITH_VECTORIZATION) && \
+    (defined(GADGET2_SPH) || defined(SPHENIX_SPH))
 
   const struct engine *e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -1172,6 +1189,13 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     const vector v_pOrhoi2 = vector_set1(cell_cache->pOrho2[pid]);
     const vector v_balsara_i = vector_set1(cell_cache->balsara[pid]);
     const vector v_ci = vector_set1(cell_cache->soundspeed[pid]);
+#if defined(SPHENIX_SPH)
+      const vector v_viscosity_alpha_i =
+          vector_set1(cell_cache->viscosity_alpha[pid]);
+      const vector v_diffusion_alpha_i =
+          vector_set1(cell_cache->diffusion_alpha[pid]);
+      const vector v_ui = vector_set1(cell_cache->u[pid]);
+#endif
 
     /* Some useful powers of h */
     const float hi = cell_cache->h[pid];
@@ -1184,7 +1208,9 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     vector v_a_hydro_ySum = vector_setzero();
     vector v_a_hydro_zSum = vector_setzero();
     vector v_h_dtSum = vector_setzero();
+#if defined(GADGET2_SPH)
     vector v_sigSum = vector_set1(pi->force.v_sig);
+#endif
     vector v_entropy_dtSum = vector_setzero();
 
     /* Find all of particle pi's interacions and store needed values in the
@@ -1260,6 +1286,7 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
          * operations sequence. */
         v_r2.v = vec_add(v_r2.v, vec_set1(FLT_MIN));
 
+#if defined(GADGET2_SPH)
         runner_iact_nonsym_1_vec_force(
             &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi, v_grad_hi,
             v_pOrhoi2, v_balsara_i, v_ci, &cell_cache->vx[pjd],
@@ -1269,6 +1296,20 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
             &cell_cache->m[pjd], v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum,
             &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum,
             &v_entropy_dtSum, v_doi_mask);
+#else
+        runner_iact_nonsym_1_vec_force(
+            &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi,
+            v_pOrhoi2, v_grad_hi, v_balsara_i, v_ci, v_viscosity_alpha_i,
+            v_diffusion_alpha_i, v_ui, pi->mass, &cell_cache->vx[pjd],
+            &cell_cache->vy[pjd], &cell_cache->vz[pjd], &cell_cache->rho[pjd],
+            &cell_cache->pOrho2[pjd], &cell_cache->grad_h[pjd],
+            &cell_cache->balsara[pjd], &cell_cache->soundspeed[pjd],
+            &cell_cache->viscosity_alpha[pjd],
+            &cell_cache->diffusion_alpha[pjd], &cell_cache->u[pjd],
+            &cell_cache->m[pjd], v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum,
+            &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum, &v_entropy_dtSum,
+            v_doi_mask);
+#endif
       }
 
     } /* Loop over all other particles. */
@@ -1277,9 +1318,12 @@ void runner_doself2_force_vec(struct runner *r, struct cell *restrict c) {
     VEC_HADD(v_a_hydro_ySum, pi->a_hydro[1]);
     VEC_HADD(v_a_hydro_zSum, pi->a_hydro[2]);
     VEC_HADD(v_h_dtSum, pi->force.h_dt);
+#if defined(GADGET2_SPH)
     VEC_HADD(v_entropy_dtSum, pi->entropy_dt);
-
     VEC_HMAX(v_sigSum, pi->force.v_sig);
+#else
+    VEC_HADD(v_entropy_dtSum, pi->u_dt);
+#endif
 
   } /* loop over all particles. */
 
@@ -2060,7 +2104,8 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               struct cell *cj, const int sid,
                               const double *shift) {
 
-#if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
+#if defined(WITH_VECTORIZATION) && \
+    (defined(GADGET2_SPH) || defined(SPHENIX_SPH))
 
   const struct engine *restrict e = r->e;
   const struct cosmology *restrict cosmo = e->cosmology;
@@ -2215,6 +2260,13 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       const vector v_pOrhoi2 = vector_set1(ci_cache->pOrho2[ci_cache_idx]);
       const vector v_balsara_i = vector_set1(ci_cache->balsara[ci_cache_idx]);
       const vector v_ci = vector_set1(ci_cache->soundspeed[ci_cache_idx]);
+#if defined(SPHENIX_SPH)
+      const vector v_viscosity_alpha_i =
+          vector_set1(ci_cache->viscosity_alpha[ci_cache_idx]);
+      const vector v_diffusion_alpha_i =
+          vector_set1(ci_cache->diffusion_alpha[ci_cache_idx]);
+      const vector v_ui = vector_set1(ci_cache->u[ci_cache_idx]);
+#endif
 
       const float hig2 = hi * hi * kernel_gamma2;
       const vector v_hig2 = vector_set1(hig2);
@@ -2227,7 +2279,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       vector v_a_hydro_ySum = vector_setzero();
       vector v_a_hydro_zSum = vector_setzero();
       vector v_h_dtSum = vector_setzero();
+#if defined(GADGET2_SPH)
       vector v_sigSum = vector_set1(pi->force.v_sig);
+#endif
       vector v_entropy_dtSum = vector_setzero();
 
       /* Loop over the parts in cj. Making sure to perform an iteration of the
@@ -2302,6 +2356,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         if (vec_is_mask_true(v_doi_mask)) {
           vector v_hj_inv = vec_reciprocal(v_hj);
 
+#if defined(GADGET2_SPH)
           runner_iact_nonsym_1_vec_force(
               &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi,
               v_grad_hi, v_pOrhoi2, v_balsara_i, v_ci,
@@ -2313,6 +2368,22 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               v_hi_inv, v_hj_inv, a, H, &v_a_hydro_xSum, &v_a_hydro_ySum,
               &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
               v_doi_mask);
+#else
+          runner_iact_nonsym_1_vec_force(
+              &v_r2, &v_dx, &v_dy, &v_dz, v_vix, v_viy, v_viz, v_rhoi,
+              v_pOrhoi2, v_grad_hi, v_balsara_i, v_ci, v_viscosity_alpha_i,
+              v_diffusion_alpha_i, v_ui, pi->mass,
+              &cj_cache->vx[cj_cache_idx], &cj_cache->vy[cj_cache_idx],
+              &cj_cache->vz[cj_cache_idx], &cj_cache->rho[cj_cache_idx],
+              &cj_cache->pOrho2[cj_cache_idx], &cj_cache->grad_h[cj_cache_idx],
+              &cj_cache->balsara[cj_cache_idx],
+              &cj_cache->soundspeed[cj_cache_idx],
+              &cj_cache->viscosity_alpha[cj_cache_idx],
+              &cj_cache->diffusion_alpha[cj_cache_idx], &cj_cache->u[cj_cache_idx],
+              &cj_cache->m[cj_cache_idx], v_hi_inv, v_hj_inv, a, H,
+              &v_a_hydro_xSum, &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum,
+              &v_entropy_dtSum, v_doi_mask);
+#endif
         }
 
       } /* loop over the parts in cj. */
@@ -2322,8 +2393,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       VEC_HADD(v_a_hydro_ySum, pi->a_hydro[1]);
       VEC_HADD(v_a_hydro_zSum, pi->a_hydro[2]);
       VEC_HADD(v_h_dtSum, pi->force.h_dt);
+#if defined(GADGET2_SPH)
       VEC_HMAX(v_sigSum, pi->force.v_sig);
       VEC_HADD(v_entropy_dtSum, pi->entropy_dt);
+#else
+      VEC_HADD(v_entropy_dtSum, pi->u_dt);
+#endif
 
     } /* loop over the parts in ci. */
   }
@@ -2362,6 +2437,13 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       const vector v_pOrhoj2 = vector_set1(cj_cache->pOrho2[cj_cache_idx]);
       const vector v_balsara_j = vector_set1(cj_cache->balsara[cj_cache_idx]);
       const vector v_cj = vector_set1(cj_cache->soundspeed[cj_cache_idx]);
+#if defined(SPHENIX_SPH)
+      const vector v_viscosity_alpha_j =
+          vector_set1(cj_cache->viscosity_alpha[cj_cache_idx]);
+      const vector v_diffusion_alpha_j =
+          vector_set1(cj_cache->diffusion_alpha[cj_cache_idx]);
+      const vector v_uj = vector_set1(cj_cache->u[cj_cache_idx]);
+#endif
 
       const float hjg2 = hj * hj * kernel_gamma2;
       const vector v_hjg2 = vector_set1(hjg2);
@@ -2374,7 +2456,9 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       vector v_a_hydro_ySum = vector_setzero();
       vector v_a_hydro_zSum = vector_setzero();
       vector v_h_dtSum = vector_setzero();
+#if defined(GADGET2_SPH)
       vector v_sigSum = vector_set1(pj->force.v_sig);
+#endif
       vector v_entropy_dtSum = vector_setzero();
 
       /* Convert exit iteration to cache indices. */
@@ -2453,6 +2537,7 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
         if (vec_is_mask_true(v_doj_mask)) {
           vector v_hi_inv = vec_reciprocal(v_hi);
 
+#if defined(GADGET2_SPH)
           runner_iact_nonsym_1_vec_force(
               &v_r2, &v_dx, &v_dy, &v_dz, v_vjx, v_vjy, v_vjz, v_rhoj,
               v_grad_hj, v_pOrhoj2, v_balsara_j, v_cj,
@@ -2464,6 +2549,22 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
               v_hj_inv, v_hi_inv, a, H, &v_a_hydro_xSum, &v_a_hydro_ySum,
               &v_a_hydro_zSum, &v_h_dtSum, &v_sigSum, &v_entropy_dtSum,
               v_doj_mask);
+#else
+          runner_iact_nonsym_1_vec_force(
+              &v_r2, &v_dx, &v_dy, &v_dz, v_vjx, v_vjy, v_vjz, v_rhoj,
+              v_pOrhoj2, v_grad_hj, v_balsara_j, v_cj,
+              v_viscosity_alpha_j, v_diffusion_alpha_j, v_uj, pj->mass,
+              &ci_cache->vx[ci_cache_idx], &ci_cache->vy[ci_cache_idx],
+              &ci_cache->vz[ci_cache_idx], &ci_cache->rho[ci_cache_idx],
+              &ci_cache->pOrho2[ci_cache_idx], &ci_cache->grad_h[ci_cache_idx],
+              &ci_cache->balsara[ci_cache_idx],
+              &ci_cache->soundspeed[ci_cache_idx],
+              &ci_cache->viscosity_alpha[ci_cache_idx],
+              &ci_cache->diffusion_alpha[ci_cache_idx], &ci_cache->u[ci_cache_idx],
+              &ci_cache->m[ci_cache_idx], v_hj_inv, v_hi_inv, a, H,
+              &v_a_hydro_xSum, &v_a_hydro_ySum, &v_a_hydro_zSum, &v_h_dtSum,
+              &v_entropy_dtSum, v_doj_mask);
+#endif
         }
       } /* loop over the parts in ci. */
 
@@ -2472,8 +2573,12 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
       VEC_HADD(v_a_hydro_ySum, pj->a_hydro[1]);
       VEC_HADD(v_a_hydro_zSum, pj->a_hydro[2]);
       VEC_HADD(v_h_dtSum, pj->force.h_dt);
+#if defined(GADGET2_SPH)
       VEC_HMAX(v_sigSum, pj->force.v_sig);
       VEC_HADD(v_entropy_dtSum, pj->entropy_dt);
+#else
+      VEC_HADD(v_entropy_dtSum, pj->u_dt);
+#endif
 
     } /* loop over the parts in cj. */
 

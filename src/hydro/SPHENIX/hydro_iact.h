@@ -33,6 +33,11 @@
 #include "minmax.h"
 #include "signal_velocity.h"
 
+#ifdef WITH_VECTORIZATION
+#include "vector.h"
+#include "dimension.h"
+#endif
+
 /**
  * @brief Density interaction between two particles.
  *
@@ -630,5 +635,161 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   pi->N_force++;
 #endif
 }
+
+#if defined(WITH_VECTORIZATION) && !defined(ADAPTIVE_SOFTENING) && \
+    !defined(SWIFT_HYDRO_DENSITY_CHECKS)
+/**
+ * @brief Vectorized non-symmetric SPHENIX force interaction.
+ *
+ * The cache arrays contain the j-particle quantities. Only the i particle is
+ * updated, matching runner_iact_nonsym_force().
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_1_vec_force(
+    vector *r2, vector *dx, vector *dy, vector *dz, vector vix, vector viy,
+    vector viz, vector rhoi, vector pressurei, vector fi, vector balsara_i,
+    vector ci, vector viscosity_alpha_i, vector diffusion_alpha_i, vector ui,
+    const float mi, float *Vjx, float *Vjy, float *Vjz, float *Rhoj,
+    float *Pressurej, float *Fj, float *Balsara_j, float *Cj,
+    float *Viscosity_alpha_j, float *Diffusion_alpha_j, float *Uj, float *Mj,
+    vector hi_inv, vector hj_inv, const float a, const float H,
+    vector *a_hydro_xSum, vector *a_hydro_ySum, vector *a_hydro_zSum,
+    vector *h_dtSum, vector *u_dtSum, mask_t mask) {
+
+  const vector vjx = vector_load(Vjx);
+  const vector vjy = vector_load(Vjy);
+  const vector vjz = vector_load(Vjz);
+  const vector rhoj = vector_load(Rhoj);
+  const vector pressurej = vector_load(Pressurej);
+  const vector fj = vector_load(Fj);
+  const vector balsara_j = vector_load(Balsara_j);
+  const vector cj = vector_load(Cj);
+  const vector viscosity_alpha_j = vector_load(Viscosity_alpha_j);
+  const vector diffusion_alpha_j = vector_load(Diffusion_alpha_j);
+  const vector uj = vector_load(Uj);
+  const vector mj = vector_load(Mj);
+
+  const vector ri = vec_reciprocal_sqrt(*r2);
+  const vector radius = { .v = vec_mul(r2->v, ri.v) };
+  const vector hid_inv = pow_dimension_plus_one_vec(hi_inv);
+  const vector hjd_inv = pow_dimension_plus_one_vec(hj_inv);
+  vector xi = { .v = vec_mul(radius.v, hi_inv.v) };
+  vector xj = { .v = vec_mul(radius.v, hj_inv.v) };
+  vector wi_dx, wj_dx;
+  kernel_eval_dWdx_force_vec(&xi, &wi_dx);
+  kernel_eval_dWdx_force_vec(&xj, &wj_dx);
+  const vector wi_dr = { .v = vec_mul(hid_inv.v, wi_dx.v) };
+  const vector wj_dr = { .v = vec_mul(hjd_inv.v, wj_dx.v) };
+
+  const vector dvx = { .v = vec_sub(vix.v, vjx.v) };
+  const vector dvy = { .v = vec_sub(viy.v, vjy.v) };
+  const vector dvz = { .v = vec_sub(viz.v, vjz.v) };
+  const vector dvdr = {
+      .v = vec_fma(dvz.v, dz->v,
+                   vec_fma(dvy.v, dy->v, vec_mul(dvx.v, dx->v)))};
+  const float a2_Hubble = a * a * H;
+  const float fac_mu = pow_three_gamma_minus_five_over_two(a);
+  const vector dvdr_Hubble = {
+      .v = vec_add(dvdr.v, vec_mul(vec_set1(a2_Hubble), r2->v))};
+  const vector mu_ij = {
+      .v = vec_mul(vec_set1(fac_mu),
+                   vec_mul(ri.v, vec_fmin(dvdr_Hubble.v, vec_setzero())))};
+  const vector v_sig = {
+      .v = vec_fnma(vec_set1(const_viscosity_beta), mu_ij.v,
+                    vec_add(ci.v, cj.v))};
+
+  const vector f_ij = {
+      .v = vec_sub(vec_set1(1.f),
+                   vec_mul(fi.v, vec_reciprocal(mj).v))};
+  const vector f_ji = {
+      .v = vec_sub(vec_set1(1.f),
+                   vec_mul(fj.v, vec_set1(1.f / mi)))};
+  const vector rho_ij = { .v = vec_add(rhoi.v, rhoj.v) };
+  const vector balsara = { .v = vec_add(balsara_i.v, balsara_j.v) };
+  const vector alpha = {
+      .v = vec_add(viscosity_alpha_i.v, viscosity_alpha_j.v)};
+  const vector rhoi_inv = vec_reciprocal(rhoi);
+  const vector rhoj_inv = vec_reciprocal(rhoj);
+  const vector rhoij_inv = vec_reciprocal(rho_ij);
+  const vector visc = {
+      .v = vec_mul(vec_set1(-0.25f),
+                   vec_mul(alpha.v,
+                           vec_mul(vec_mul(v_sig.v, mu_ij.v),
+                                   vec_mul(balsara.v, rhoij_inv.v))))};
+  const vector visc_acc = {
+      .v = vec_mul(vec_set1(0.5f),
+                   vec_mul(visc.v,
+                           vec_mul(vec_add(vec_mul(wi_dr.v, f_ij.v),
+                                           vec_mul(wj_dr.v, f_ji.v)),
+                                   ri.v)))};
+
+  const vector p_over_rho2_i = {
+      .v = vec_mul(vec_mul(pressurei.v,
+                           vec_mul(rhoi_inv.v, rhoi_inv.v)),
+                   f_ij.v)};
+  const vector p_over_rho2_j = {
+      .v = vec_mul(vec_mul(pressurej.v,
+                           vec_mul(rhoj_inv.v, rhoj_inv.v)),
+                   f_ji.v)};
+  const vector sph_acc = {
+      .v = vec_mul(vec_add(vec_mul(p_over_rho2_i.v, wi_dr.v),
+                           vec_mul(p_over_rho2_j.v, wj_dr.v)),
+                   ri.v)};
+  const vector acc = { .v = vec_add(sph_acc.v, visc_acc.v) };
+
+  const vector a_x = {
+      .v = vec_mul(mj.v, vec_mul(acc.v, dx->v))};
+  const vector a_y = {
+      .v = vec_mul(mj.v, vec_mul(acc.v, dy->v))};
+  const vector a_z = {
+      .v = vec_mul(mj.v, vec_mul(acc.v, dz->v))};
+  const vector sph_du = {
+      .v = vec_mul(p_over_rho2_i.v,
+                   vec_mul(dvdr.v, vec_mul(ri.v, wi_dr.v)))};
+  const vector visc_du = {
+      .v = vec_mul(vec_set1(0.5f),
+                   vec_mul(visc_acc.v, dvdr_Hubble.v))};
+  const vector pressure_sum = { .v = vec_add(pressurei.v, pressurej.v) };
+  const vector alpha_diff = {
+      .v = vec_mul(vec_add(vec_mul(pressurei.v, diffusion_alpha_i.v),
+                           vec_mul(pressurej.v, diffusion_alpha_j.v)),
+                   vec_reciprocal(pressure_sum).v)};
+  const vector pressure_delta = {
+      .v = vec_sub(pressurei.v, pressurej.v)};
+  const vector abs_pressure_delta = {
+      .v = vec_fmax(pressure_delta.v,
+                    vec_sub(vec_setzero(), pressure_delta.v))};
+  const vector pressure_diff = {
+      .v = vec_mul(vec_set1(2.f),
+                   vec_mul(abs_pressure_delta.v, rhoij_inv.v))};
+  const vector hubble_mu = {
+      .v = vec_mul(vec_set1(fac_mu), vec_mul(ri.v, dvdr_Hubble.v))};
+  const vector v_diff = {
+      .v = vec_mul(vec_mul(alpha_diff.v, vec_set1(0.5f)),
+                   vec_add(vec_sqrt(pressure_diff.v),
+                           vec_fmax(hubble_mu.v,
+                                    vec_sub(vec_setzero(), hubble_mu.v))))};
+  const vector diff_du = {
+      .v = vec_mul(v_diff.v,
+                   vec_mul(vec_sub(ui.v, uj.v),
+                           vec_add(vec_mul(vec_mul(f_ij.v, wi_dr.v),
+                                           rhoi_inv.v),
+                                   vec_mul(vec_mul(f_ji.v, wj_dr.v),
+                                           rhoj_inv.v))))};
+  const vector du_dt = {
+      .v = vec_mul(mj.v,
+                   vec_add(vec_add(sph_du.v, visc_du.v), diff_du.v))};
+  const vector h_dt = {
+      .v = vec_mul(mj.v,
+                   vec_mul(dvdr.v,
+                           vec_mul(vec_mul(ri.v, wi_dr.v), rhoj_inv.v)))};
+
+  a_hydro_xSum->v = vec_mask_sub(a_hydro_xSum->v, a_x.v, mask);
+  a_hydro_ySum->v = vec_mask_sub(a_hydro_ySum->v, a_y.v, mask);
+  a_hydro_zSum->v = vec_mask_sub(a_hydro_zSum->v, a_z.v, mask);
+  h_dtSum->v = vec_mask_sub(h_dtSum->v, h_dt.v, mask);
+  u_dtSum->v = vec_mask_add(u_dtSum->v, du_dt.v, mask);
+}
+#endif
 
 #endif /* SWIFT_SPHENIX_HYDRO_IACT_H */

@@ -2283,7 +2283,10 @@ void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
 
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS
   DOPAIR2_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
-#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
+#elif defined(WITH_VECTORIZATION) && \
+    (defined(GADGET2_SPH) ||                                           \
+     (defined(SPHENIX_SPH) && !defined(ADAPTIVE_SOFTENING) &&           \
+      !defined(SWIFT_HYDRO_DENSITY_CHECKS))) &&                         \
     (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
   if (!sort_is_corner(sid))
     runner_dopair2_force_vec(r, ci, cj, sid, shift);
@@ -2918,7 +2921,10 @@ void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOSELF2_NAIVE(r, c, limit_min_h, limit_max_h);
-#elif defined(WITH_VECTORIZATION) && defined(GADGET2_SPH) && \
+#elif defined(WITH_VECTORIZATION) && \
+    (defined(GADGET2_SPH) ||                                           \
+     (defined(SPHENIX_SPH) && !defined(ADAPTIVE_SOFTENING) &&           \
+      !defined(SWIFT_HYDRO_DENSITY_CHECKS))) &&                         \
     (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
   runner_doself2_force_vec(r, c);
 #else
