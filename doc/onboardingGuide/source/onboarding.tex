@@ -117,7 +117,7 @@
 % Add header image
 \tikz[remember picture,overlay]
     \node[opacity=1.0,inner sep=0pt, anchor=north] at (current page.north)
-    {\includegraphics[width=\paperwidth,height=5cm]{header_page1.jpg}};
+    {\includegraphics[width=\paperwidth,height=5cm]{source/header_page1.jpg}};
 
 % for whatever reason, an ugly spacing is added.  Remove it here.
 \vspace{-1.8\baselineskip}
@@ -128,15 +128,15 @@
 % Actual content
 % -----------------------
 
-\include*{what_swift_can_do}
-\include*{getting_the_code}
-\include*{getting_help}
-\include*{initial_setup}
+\include*{source/what_swift_can_do}
+\include*{source/getting_the_code}
+\include*{source/getting_help}
+\include*{source/initial_setup}
 
 % fill column.
 \columnbreak
 
-\include*{dependencies}
+\include*{source/dependencies}
 
 % fill column and end page
 \columnbreak
@@ -145,20 +145,20 @@
 % Add background image
 \tikz[remember picture,overlay]
    \node[opacity=1.0,inner sep=0pt, anchor=north] at (current page.north)
-   {\includegraphics[width=\paperwidth,height=5cm]{header_page2.jpg}};
+   {\includegraphics[width=\paperwidth,height=5cm]{source/header_page2.jpg}};
 
 % Add logo
 \tikz[remember picture,overlay]
    \node[below left = -1.9cm and -1.5cm] at (current page.north)
-   {\includegraphics[height=8cm]{logo/BirdW.pdf}};
+   {\includegraphics[height=8cm]{source/logo/BirdW.pdf}};
 
 % for whatever reason, an ugly spacing is added.  Remove it here.
 \vspace{-3.3\baselineskip}
 
-\include*{useful_configuration_flags}
-\include*{runtime_options}
-\include*{running_example}
-\include*{submission_script}
+\include*{source/useful_configuration_flags}
+\include*{source/runtime_options}
+\include*{source/running_example}
+\include*{source/submission_script}
 
 
 
