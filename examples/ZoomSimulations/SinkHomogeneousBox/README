@@ -75,16 +75,14 @@ embed 8:
 
 - level5 (default): time_end 0.5, a snapshot every 0.01.
 - local: time_end 0.1.
-- level8: restart files every 2 hours, a snapshot every 0.05 (49 Myr).
-  - ICs: 2 minutes, 6.9 GB of memory, a 3.7 GB file (measured on a
-    laptop).
+- level8: restart files every 2 hours, a snapshot every 0.05 (49 Myr), or
+  every factor 1.1 in scale factor with cosmological=1.
+  - ICs: about 2 minutes, 6.9 GB of memory, a 3.7 GB file.
   - Particles: 16777216 gas (50 Msun), 16777216 PartType1 (268 Msun),
     3 x 14680064 PartType2 (2544, 2.035e4 and 1.628e5 Msun): 77.6 million.
-  - Memory (estimate): 19.7 GB for the particles, 30 to 40 GB in total.
-  - Cost (estimate): 2e6 core seconds to time_end, that is 7 hours on 72
-    cores with perfect scaling, and 3 to 10 times more with deep time-step
-    bins. This scales a local level-4 run (t = 0.055 in 46 core seconds)
-    linearly in particle number and time.
+  - Memory: 19.7 GB for the particles, about 30 to 40 GB in total.
+  - Cost: about 2e6 core seconds to time_end, that is 7 hours on 72 cores
+    with perfect scaling, and 3 to 10 times more with deep time-step bins.
 
 Initial temperature: at fixed jeans_length it grows as L^2, so it grows
 with the level and as gas_mass^(2/3). It is 16 K at level 5 and about
@@ -162,8 +160,8 @@ How it is built
   - Gravity:mesh_side_length: 2^(level+1), at least 32.
   makeIC.py --h-max MUST equal SPH:h_max. run.sh passes the same value
   to both.
-- Cosmological variant (cosmological=1; only start-up and 20 steps were
-  run): comoving ICs. a_begin makes the mean matter density equal to
+- Cosmological variant (cosmological=1; tested at level 3 for the first 20
+  steps only): comoving ICs. a_begin makes the mean matter density equal to
   Omega_m rho_crit_0 (a_begin = 0.0136, z = 72, with the defaults). The box
   follows the Hubble flow, so the physics is not that of the default run.
   SWIFT stops on zero velocities in cosmological runs, so the ICs get

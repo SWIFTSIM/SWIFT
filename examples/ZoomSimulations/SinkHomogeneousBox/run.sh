@@ -3,23 +3,29 @@
 set -e
 set -o pipefail
 
-# run_case: level5 (default, production), local (level 3, laptop test), level8 (Jed)
+# run_case: level5 (default, production), local (level 3, laptop test), level8 (one cluster node)
 run_case=${run_case:=level5}
 case $run_case in
 	level5)
 		level=${level:=5}
 		n_threads=${n_threads:=8}
 		case_params=""
+		snapshot_params=""
+		snapshot_params_cosmo=""
 		;;
 	local)
 		level=${level:=3}
 		n_threads=${n_threads:=2}
 		case_params="-P TimeIntegration:time_end:0.1"
+		snapshot_params=""
+		snapshot_params_cosmo=""
 		;;
 	level8)
 		level=${level:=8}
 		n_threads=${n_threads:=72}
-		case_params="-P Restarts:delta_hours:2 -P Snapshots:delta_time:0.05"
+		case_params="-P Restarts:delta_hours:2"
+		snapshot_params="-P Snapshots:delta_time:0.05"
+		snapshot_params_cosmo="-P Snapshots:delta_time:1.1" # Ratio of scale factors
 		;;
 	*)
 		echo "Unknown run_case $run_case (level5, local or level8)"
@@ -33,7 +39,7 @@ dm_ratio=${dm_ratio:=5.36}                    # Dark matter to gas density ratio
 delta=${delta:=0}                             # Density contrast of the gas box
 jeans_length=${jeans_length:=0.250}           # Jeans wavelength in gas box units (sets the temperature)
 with_star_formation=${with_star_formation:=0} # 1: GEAR star formation instead of sinks
-cosmological=${cosmological:=0}               # 1: comoving ICs and --cosmology (not tested)
+cosmological=${cosmological:=0}               # 1: comoving ICs and --cosmology (tested at level 3 for the first 20 steps only)
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -51,6 +57,7 @@ mass_params="$mass_params -P Gravity:max_physical_DM_softening:$softening"
 if [ "$cosmological" -eq 1 ]; then
 	ic_params="$ic_params --cosmological"
 	cosmo_flag="--cosmology"
+	snapshot_params=$snapshot_params_cosmo
 else
 	# makeIC.py writes the comoving SPH:h_max in cosmological runs
 	mass_params="$mass_params -P SPH:h_max:$h_max"
@@ -85,4 +92,4 @@ mkdir snap
 
 ../../../swift --hydro $runtime_params --stars --self-gravity --feedback \
 	--cooling --sync --limiter --zoom $cosmo_flag --threads=$n_threads \
-	$(cat zoom_runtime_params.txt) $mass_params $case_params $parameter_file 2>&1 | tee output.log
+	$(cat zoom_runtime_params.txt) $mass_params $case_params $snapshot_params $parameter_file 2>&1 | tee output.log
