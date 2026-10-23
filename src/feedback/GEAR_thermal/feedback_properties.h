@@ -88,6 +88,28 @@ enum isrf_c_hyp_scheme {
 #define isrf_c_hyp_scheme_name_kernel_local "kernel_local"
 
 /**
+ * @brief Transport of the ISRF bands (GEARFeedback:ISRF_transport). The
+ * integer values go to the restart file.
+ */
+enum isrf_transport {
+  /*! Two-moment M1 transport of `u` and the reduced flux. Default. */
+  isrf_transport_M1 = 0,
+  /*! Packets of energy and photon number hop from each particle to its
+   * downstream neighbours once per own step. */
+  isrf_transport_packet_hop = 1,
+};
+
+/*! Value of GEARFeedback:ISRF_transport that selects #isrf_transport_M1. */
+#define isrf_transport_name_M1 "M1"
+
+/*! Value of GEARFeedback:ISRF_transport that selects
+ * #isrf_transport_packet_hop. */
+#define isrf_transport_name_packet_hop "packet_hop"
+
+/*! Default power of the soft transmission cone of the packet transport. */
+#define default_ISRF_packet_cone_power 4.f
+
+/**
  * @brief Convert a GEARFeedback:ISRF_c_hyp_scheme value to #isrf_c_hyp_scheme.
  *
  * @param name The parameter value.
@@ -242,6 +264,13 @@ struct feedback_props {
   /*! Also damp the reduced flux with the pair dissipation coefficient of u?
    * Experimental, off by default. */
   char ISRF_flux_dissipation;
+
+  /*! Transport of the ISRF bands, a #isrf_transport. */
+  int ISRF_transport;
+
+  /*! Power `p` of the soft transmission cone `W max(0, mu)^p` of the packet
+   * transport. */
+  float ISRF_packet_cone_power;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -410,7 +439,13 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
   if (do_photoelectric_heating) {
     message("ISRF propagation                                           = %s",
             feedback_props->ISRF_propagation ? "ON" : "OFF (injection only)");
-    if (feedback_props->ISRF_propagation) {
+    if (feedback_props->ISRF_propagation &&
+        feedback_props->ISRF_transport == isrf_transport_packet_hop) {
+      message("ISRF transport                                             = %s",
+              isrf_transport_name_packet_hop);
+      message("ISRF packet transmission cone power                        = %g",
+              feedback_props->ISRF_packet_cone_power);
+    } else if (feedback_props->ISRF_propagation) {
       message("ISRF propagation speed margin (C_hyp)                      = %g",
               feedback_props->ISRF_c_hyp_margin);
       message(
@@ -947,6 +982,43 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:ISRF_flux_dissipation needs "
           "GEARFeedback:ISRF_propagation: 1.");
     fp->ISRF_flux_dissipation = (char)flux_dissipation;
+
+    char transport[PARSER_MAX_LINE_SIZE];
+    parser_get_opt_param_string(params, "GEARFeedback:ISRF_transport",
+                                transport, isrf_transport_name_M1);
+    if (strcmp(transport, isrf_transport_name_M1) == 0)
+      fp->ISRF_transport = isrf_transport_M1;
+    else if (strcmp(transport, isrf_transport_name_packet_hop) == 0)
+      fp->ISRF_transport = isrf_transport_packet_hop;
+    else
+      error("GEARFeedback:ISRF_transport must be %s or %s, got '%s'.",
+            isrf_transport_name_M1, isrf_transport_name_packet_hop, transport);
+
+    fp->ISRF_packet_cone_power = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_cone_power",
+        default_ISRF_packet_cone_power);
+
+    if (fp->ISRF_transport == isrf_transport_packet_hop) {
+      if (!fp->ISRF_propagation)
+        error(
+            "GEARFeedback:ISRF_transport: %s needs "
+            "GEARFeedback:ISRF_propagation: 1.",
+            isrf_transport_name_packet_hop);
+#ifndef HAVE_CHEALPIX
+      error(
+          "GEARFeedback:ISRF_transport: %s needs the HEALPix C library for "
+          "the emission cones of the stars. Configure with --with-chealpix.",
+          isrf_transport_name_packet_hop);
+#endif
+      if (fp->ISRF_flux_dissipation)
+        error(
+            "GEARFeedback:ISRF_flux_dissipation acts on the M1 flux and has "
+            "no meaning under GEARFeedback:ISRF_transport: %s.",
+            isrf_transport_name_packet_hop);
+      if (!(fp->ISRF_packet_cone_power >= 1.f))
+        error("GEARFeedback:ISRF_packet_cone_power must be >= 1 (got %g).",
+              fp->ISRF_packet_cone_power);
+    }
 
     if (fp->ISRF_propagation) {
       /* The IC metallicity is not visible here, so warn unconditionally. */

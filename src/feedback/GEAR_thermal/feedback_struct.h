@@ -183,6 +183,110 @@ struct feedback_isrf_operator_data {
 };
 
 /**
+ * @brief One band of the radiation packet a gas particle holds under the
+ * packet transport (#isrf_transport_packet_hop).
+ *
+ * Photon numbers are stored as `N E_lo`, the number times the band's lower
+ * edge photon energy, in energy units: a raw count overflows a float. The
+ * mean photon energy is then `E_lo energy / photons`. Ledger terms are double
+ * so that small shares are not lost against a large total.
+ */
+struct feedback_isrf_packet_band_data {
+
+  /*! Energy held, sent downstream at this particle's next active step. */
+  float energy;
+
+  /*! Photon number held, as `N E_lo`. */
+  float photons;
+
+  /*! Energy received since the last active step. */
+  float inbox_energy;
+
+  /*! Photon number received since the last active step, as `N E_lo`. */
+  float inbox_photons;
+
+  /*! Energy received from coarser senders, released over their step. */
+  float reservoir_energy;
+
+  /*! Photon number in the reservoir, as `N E_lo`. */
+  float reservoir_photons;
+
+  /*! Own field: specific energy of the band read off the held packet. */
+  float field_energy;
+
+  /*! Own field of the photon number, as `N E_lo` per unit mass. */
+  float field_photons;
+
+  /*! Kernel-mean accumulator of the neighbours' #field_energy. Scratch. */
+  float ngb_mean_field_energy;
+
+  /*! Kernel-mean accumulator of the neighbours' #field_photons. Scratch. */
+  float ngb_mean_field_photons;
+
+  /*! Energy absorbed by dust in this particle, cumulative. */
+  double absorbed_energy;
+
+  /*! Photon number absorbed by dust in this particle, as `N E_lo`. */
+  double absorbed_photons;
+
+  /*! Energy of packets with no downstream neighbour, cumulative. */
+  double escaped_energy;
+
+  /*! Photon number escaped, as `N E_lo`. */
+  double escaped_photons;
+
+  /*! Energy carried away when the gas particle was converted or swallowed. */
+  double removed_energy;
+
+  /*! Photon number removed, as `N E_lo`. */
+  double removed_photons;
+};
+
+/**
+ * @brief Radiation packet of a gas particle under the packet transport: one
+ * direction and origin shared by all bands.
+ */
+struct feedback_isrf_packet_data {
+
+  /*! Per-band contents, indexed by #radiation_isrf_operator. */
+  struct feedback_isrf_packet_band_data band[ISRF_OPERATOR_COUNT];
+
+  /*! Unit direction of propagation, away from the origin. */
+  float direction[3];
+
+  /*! Comoving distance from the origin to this particle. */
+  float origin_distance;
+
+  /*! Sum over the inbox shares of their energy times the comoving offset
+      from this particle to their origin. */
+  float inbox_origin_offset[3];
+
+  /*! Same sum as #inbox_origin_offset, over the reservoir. */
+  float reservoir_origin_offset[3];
+
+  /*! Sum of the transmission weights over the downstream neighbours, from
+      the gradient loop. */
+  float weight_sum;
+
+  /*! Weighted mean comoving advance along #direction per hop, from the
+      gradient loop. */
+  float forward_advance;
+
+  /*! Copy of #feedback_props.ISRF_packet_cone_power, set with
+      #feedback_part_data.ISRF_packet_transport. */
+  float cone_power;
+
+  /*! Integer time by which the reservoir is fully released. */
+  integertime_t reservoir_end_ti;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /*! Number of non-zero shares booked into this particle since the counter
+      was last reset by a test. */
+  int shares_received;
+#endif
+};
+
+/**
  * @brief Feedback fields carried by each hydro particle.
  *
  * Lives in #part, not #xpart, so the HII tag follows MPI exchange and
@@ -291,6 +395,10 @@ struct feedback_part_data {
       extra ghost, so the force pairs read it without the engine. */
   char ISRF_flux_dissipation;
 
+  /*! Is #feedback_props.ISRF_transport the packet transport? Copied like
+      #ISRF_flux_dissipation. */
+  char ISRF_packet_transport;
+
   /*! Cross-bin pair booking state: < 0 inactive (may receive pending), > 0
       active (equals #dt_prev), 0 legacy (every pair booked as before). */
   float dt_active;
@@ -305,6 +413,9 @@ struct feedback_part_data {
       #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
       every star touch. Set to -1 at first init. */
   integertime_t ISRF_reservoir_end_ti;
+
+  /*! Radiation packet of the packet transport. Zero under M1. */
+  struct feedback_isrf_packet_data isrf_packet;
 #endif
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS

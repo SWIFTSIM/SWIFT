@@ -182,8 +182,9 @@ void feedback_first_init_spart(struct spart *sp,
  * reduced-flux dissipation fields, 5 HII random cone frame flag in
  * #feedback_props, 6 HII cone frame redraw period in #feedback_props, 7 HII
  * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
- * cone claim rule removed from #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 10
+ * cone claim rule removed from #feedback_props, 11 radiation packet in the
+ * gas and transport keys in #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 11
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

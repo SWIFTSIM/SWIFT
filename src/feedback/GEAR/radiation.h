@@ -118,6 +118,10 @@
 #define RADIATION_PE_BAND_LOWER_EDGE_EV 6.0
 #define RADIATION_LW_BAND_LOWER_EDGE_EV 11.2
 
+/*! LW band upper edge, eV: the HI ionisation threshold. The PE upper edge is
+    #RADIATION_LW_BAND_LOWER_EDGE_EV. */
+#define RADIATION_LW_BAND_UPPER_EDGE_EV 13.6
+
 /*! The band lower edges in erg (1 eV = 1.602176634e-12 erg), hardcoded because
     eV is not an internal unit. They enter only a dimensionless ratio. */
 #define RADIATION_PE_BAND_LOWER_EDGE_CGS 9.6130598e-12
