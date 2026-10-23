@@ -264,7 +264,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
       }
 
       /* Recurse */
-      engine_do_unskip_gravity(c->progeny[k], e);
+      engine_do_unskip_gravity(cp, e);
     }
   }
 
