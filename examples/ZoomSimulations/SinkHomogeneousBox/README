@@ -49,13 +49,15 @@ Known problems
 
 - Release builds stop with a segmentation fault in
   space_reorder_extra_sparts_mapper after about one to two free-fall times
-  (measured: t = 0.055 at level 4, t = 0.118 at level 3).
+  (measured with 2 threads: t = 0.065 at level 4, t = 0.121 at level 3).
 - Builds with debugging checks stop at the first rebuild:
   - with --star-formation, in cell_check_multipole on a background cell
     that holds one particle;
   - with --sinks, in the sink cell index check of space_rebuild.c. The fix
     is on the branch darwin/fix_zoom_sink_cell_index, not on this branch.
 - Sinks do not run with MPI.
+- Only level 3 and level 4 were run. Level 5 and level 8 were not run. No
+  sink has formed in any run so far.
 
 Cases and resolution
 --------------------
@@ -83,10 +85,12 @@ embed 8:
     cores with perfect scaling, and 3 to 10 times more with deep time-step
     bins. This scales a local level-4 run (t = 0.055 in 46 core seconds)
     linearly in particle number and time.
-  - The initial temperature grows as L^2 at fixed jeans_length: 16 K at
-    level 5, about 1000 K at level 8. Use jeans_length=0.03125 at level 8
-    to keep the level-5 temperature. Cooling changes the temperature
-    during the run.
+
+Initial temperature: at fixed jeans_length it grows as L^2, so it grows
+with the level and as gas_mass^(2/3). It is 16 K at level 5 and about
+1000 K at level 8 (50 Msun). To keep the temperature of level 5 at 50 Msun,
+scale jeans_length as 1/L: 0.03125 at level 8, 0.25 (50 / gas_mass)^(1/3)
+at level 5. Cooling changes the temperature during the run.
 
 Gas particle mass
 -----------------
@@ -99,8 +103,8 @@ The gas density stays 0.1 atom/cm^3. With s = (gas_mass / 50)^(1/3):
 
 - The gas box side L = (N m / rho)^(1/3), the mean spacing (m / rho)^(1/3)
   and h (1.2348 times the spacing) grow as s.
-- run.sh passes SPH:h_max = 0.08 s kpc to makeIC.py and to swift. h stays
-  below h_max, and the zoom grid (bkg_top_level_cells,
+- run.sh passes SPH:h_max = 0.08 s kpc to makeIC.py and to swift. The initial h
+  stays below h_max, and the zoom grid (bkg_top_level_cells,
   zoom_top_level_depth, mesh_side_length) stays the same as for 50 Msun.
   Without this scaling, a mass below about 47 Msun gives a smaller zoom
   depth, and makeIC.py stops at level 3.
@@ -119,11 +123,10 @@ These values do not scale with the gas mass: the density and temperature
 thresholds of sink and star formation, the time-step limits (dt_max and the
 limits of sinks and stars in Myr), the feedback parameters,
 stellar_particle_mass_Msun (50 Msun, a choice of IMF sampling) and the
-spare particles per cell (Scheduler block).
-
-At fixed jeans_length, the initial temperature grows as L^2, that is as
-gas_mass^(2/3). To keep the 50 Msun temperature, set jeans_length to
-0.25 (50 / gas_mass)^(1/3).
+spare particles per cell (Scheduler block). The GEAR star particle mass
+(gas mass / n_stars_per_particle) and the pressure floor (set by h) follow
+the gas mass by themselves. For jeans_length, see "Initial temperature"
+above.
 
 How it is built
 ---------------
