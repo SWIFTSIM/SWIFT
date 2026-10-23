@@ -542,28 +542,11 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
   struct hii_neighbor ngb_buffer[max_ngbs];
 
-  /* Floor on the wired 27-cell radiation_in stencil's reach beyond this
-   * pass's interaction_limit: a star at c's own edge still has at least a
-   * full neighbour cell width of wired gas past it in every wired
-   * direction. Under asymmetric pairs a partner can rest FINER than c, so
-   * its wired coverage past the shared boundary is only its OWN (smaller)
-   * width -- use the tightest margin among c and every linked partner, not
-   * c->dmin alone, or the retry loop could grow past a thinner partner's
-   * wired coverage and gather an incomplete, anisotropic shell. The gather
-   * only visits wired cells whatever dynamic_search_radius says, so
-   * stopping here at worst defers an outer shell to the next rebuild pass
-   * rather than losing it. */
-  float reach_floor_dmin = c->dmin;
-  for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
-       l = l->next) {
-    if (l->t->type == task_type_self)
-      continue; /* Self is not an outward margin. */
-    struct cell *partner =
-        (l->t->ci == c->stars.radiation_level) ? l->t->cj : l->t->ci;
-    reach_floor_dmin = min(reach_floor_dmin, partner->dmin);
-  }
+  /* The gather only visits wired cells whatever the search radius says, so
+   * the radius stops at this margin. A star stopped there asks for a wider
+   * reach (h_hii_request) rather than waiting for an unrelated rebuild. */
   const float max_reachable_search_radius =
-      interaction_limit + reach_floor_dmin;
+      interaction_limit + cell_radiation_neighbour_margin(c);
 
   for (int i = 0; i < scount; i++) {
 
@@ -631,6 +614,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     /* This pass recounts the gas the star ionizes, so restart from zero.
        The gas-free skip above does not rebuild, and keeps the last mass. */
     feedback_reset_star_HII_mass(si);
+    si->h_hii_request = 0.f;
 
     /* Photons are budgeted as a count over the interval this pass actually
        covers, so that slicing a run into more (or fewer) rebuild passes
@@ -926,42 +910,40 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         num_empty_expansions = 0;
       } else {
         /* Case 2: genuinely nothing left within the current radius, but
-         * photons remain -- expand the radius, bounded by the configured
-         * ceiling. If we're already at that ceiling, expanding again
-         * would just re-search the identical volume, so stop. */
-        if (num_radius_expansions >= max_radius_expansion_tries) break;
-        if (dynamic_search_radius >= max_search_radius) break;
-        if (dynamic_search_radius >= max_reachable_search_radius) {
+         * photons remain: expand the radius unless one of the limits in
+         * runner_hii_search_stop() binds. */
+        const enum hii_search_stop stop = runner_hii_search_stop(
+            dynamic_search_radius, max_search_radius,
+            max_reachable_search_radius, num_radius_expansions,
+            max_radius_expansion_tries, count_found, count_held,
+            num_empty_expansions);
+
+        if (stop == hii_search_stop_margin) {
+          /* Only the cell layout stops this star, so ask the next passes,
+             and the rebuild check once the radius outgrows the wired
+             neighbours, for the radius it would have tried next. */
+          si->h_hii_request = runner_hii_requested_radius(
+                                  dynamic_search_radius,
+                                  radius_expansion_factor, max_search_radius) /
+                              (radiation_search_radius_factor * kernel_gamma);
 #ifdef SWIFT_DEBUG_CHECKS
-          /* A nonzero rate means a star's physical front is waiting on the
-           * next rebuild to re-level its task, rather than being
-           * reach-limited by configuration. */
           atomic_inc(&e->radiation_reach_clamp_count);
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
           message(
               "Star %lld: radius expansion clamped at the reachable stencil "
-              "bound (dynamic_search_radius = %e, max_reachable = %e) -- "
-              "further growth cannot find gas the 27-cell radiation_in "
-              "stencil never wired as a neighbour.",
-              si->id, dynamic_search_radius, max_reachable_search_radius);
+              "bound (dynamic_search_radius = %e, max_reachable = %e), "
+              "requesting %e.",
+              si->id, dynamic_search_radius, max_reachable_search_radius,
+              kernel_gamma * si->h_hii_request);
 #endif
 #endif
-          break;
         }
+        if (stop != hii_search_grow) break;
 
-        /* A star already holding an equilibrium region gets one probe past
-           it and no more: a pixel left with a sliver of budget never trips
-           the exhaustion break above, so it would otherwise burn every
-           allowed expansion searching ever-larger empty volumes. A star
-           holding nothing keeps its full configured reach -- that is the
-           case the parameter exists for (a fresh star, or one sitting in a
-           cavity whose nearest gas is several expansions away). */
-        if (count_found == 0 && count_held > 0) {
-          if (num_empty_expansions >= 1) break;
+        if (count_found == 0 && count_held > 0)
           ++num_empty_expansions;
-        } else {
+        else
           num_empty_expansions = 0;
-        }
 
         dynamic_search_radius =
             min3(dynamic_search_radius * radius_expansion_factor,
@@ -1006,8 +988,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     }
 #endif
 
-    c->stars.h_hii_max = max(c->stars.h_hii_max, si->h_hii);
-    c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, si->h_hii);
+    const float h_search = stars_get_hii_search_length(si);
+    c->stars.h_hii_max = max(c->stars.h_hii_max, h_search);
+    c->stars.h_hii_max_active = max(c->stars.h_hii_max_active, h_search);
 
     /*****************************************/
     /* Update the star after HII ionization */
