@@ -45,8 +45,7 @@ Configure
 
 ./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 \
   --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR \
-  --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening \
-  --with-grackle=path/to/grackle
+  --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 
 Sinks do not run with MPI, so build and run without MPI.
 
@@ -137,7 +136,7 @@ file, give the same value to makeIC.py --h-max.
 Softening
 ---------
 
-Gas and PartType1: 5 pc (max_physical_baryon_softening and
+Gas, stars, sinks and PartType1: 5 pc (max_physical_baryon_softening and
 max_physical_DM_softening). PartType2: softening_ratio_background (0.2)
 times the mean spacing of particles of its mass at the mean matter density
 of the box. Without cosmology, the mean matter density is the total matter
