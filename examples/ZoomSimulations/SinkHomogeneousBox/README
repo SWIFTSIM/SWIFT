@@ -34,30 +34,14 @@ mass"), embed, dm_ratio, delta, jeans_length, cosmological.
 What to expect
 --------------
 
-- Local test: a few seconds on a laptop (release build). No sink or star
-  forms before t = 0.1 (98 Myr).
+- Local test: a few seconds (release build). No sink or star forms before
+  t = 0.1 (98 Myr).
 - With the dark matter, the free-fall time is about 65 Myr (0.066 in
   internal units) instead of 163 Myr in the gas-only example. The whole
   uniform medium, inside and outside the gas box, collapses into clumps on
   that time scale. The run does not reproduce the fragmentation of the
   original example.
-- time_end is 0.5 (489 Myr), the value of the original example. Today the
-  runs stop before that time (see "Known problems").
-
-Known problems
---------------
-
-- Release builds stop with a segmentation fault in
-  space_reorder_extra_sparts_mapper after about one to two free-fall times
-  (measured with 2 threads: t = 0.065 at level 4, t = 0.121 at level 3).
-- Builds with debugging checks stop at the first rebuild:
-  - with --star-formation, in cell_check_multipole on a background cell
-    that holds one particle;
-  - with --sinks, in the sink cell index check of space_rebuild.c. The fix
-    is on the branch darwin/fix_zoom_sink_cell_index, not on this branch.
-- Sinks do not run with MPI.
-- Only level 3 and level 4 were run. Level 5 and level 8 were not run. No
-  sink has formed in any run so far.
+- time_end is 0.5 (489 Myr), the value of the original example.
 
 Cases and resolution
 --------------------
