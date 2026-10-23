@@ -109,6 +109,48 @@ int main(int argc, char *argv[]) {
   if (fabs(eps - eps_expected) > 1e-6 * eps_expected)
     error("Softening %.9e, expected %.9e", eps, eps_expected);
 
+  /* Total matter mass of a space: live gparts of all types but neutrinos */
+  const int n_types = swift_type_count;
+  const int n_gparts = n_types + 2;
+  struct gpart *gparts = (struct gpart *)calloc(n_gparts, sizeof(struct gpart));
+  if (gparts == NULL) error("Failed to allocate the gparts");
+  const double unit_mass = 0x1p100;
+  double mass_expected = 0.;
+  for (int i = 0; i < n_gparts; ++i) {
+    gparts[i].mass = unit_mass * (double)(1 << i);
+    gparts[i].time_bin = 0;
+    gparts[i].type = i < n_types ? (enum part_type)i : swift_type_dark_matter;
+    if (i < n_types && i != swift_type_neutrino)
+      mass_expected += gparts[i].mass;
+  }
+  gparts[n_types].time_bin = time_bin_inhibited;
+  gparts[n_types + 1].time_bin = time_bin_not_created;
+
+  struct space s;
+  bzero(&s, sizeof(struct space));
+  s.gparts = gparts;
+  s.nr_gparts = n_gparts;
+  memcpy(s.dim, dim, sizeof(dim));
+
+  const double mass_space = space_get_total_matter_mass(&s);
+  if (mass_space != mass_expected)
+    error("Total matter mass %.17e, expected %.17e", mass_space, mass_expected);
+
+  struct gravity_props p_space;
+  bzero(&p_space, sizeof(struct gravity_props));
+  gravity_props_init(&p_space, &params, &phys_const, &no_cosmo,
+                     /*with_cosmology=*/0, /*with_external_potential=*/0,
+                     /*has_baryons=*/1, /*has_DM=*/1, /*has_neutrinos=*/0,
+                     /*is_zoom_simulation=*/1, mass_space, /*dry_run=*/0,
+                     /*periodic=*/1, s.dim, cdim);
+  const float fac_space_expected = kernel_gravity_softening_plummer_equivalent *
+                                   ratio * cbrt(volume / mass_expected);
+  if (fabsf(p_space.epsilon_background_fac - fac_space_expected) >
+      1e-6f * fac_space_expected)
+    error("Factor from the space %.9e, expected %.9e",
+          p_space.epsilon_background_fac, fac_space_expected);
+  free(gparts);
+
   message("Background softening factor: cosmo %.9e, no cosmo %.9e. OK.",
           p_cosmo.epsilon_background_fac, p_no_cosmo.epsilon_background_fac);
 
