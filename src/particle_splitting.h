@@ -165,8 +165,8 @@ INLINE static int particle_splitting_write_sparticles(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
       split_data.progenitor_id,
       "ProgenitorParticleIDs value of the gas particle that became "
-      "this star. Note that ParticleIDs contains the ID of the gas particle "
-      "that became this star.");
+      "this star. Note this star has the same ParticleIDs value as the gas "
+      "particle it formed from.");
 
   list[1] = io_make_output_field(
       "SplitCounts", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, sparts,
@@ -199,8 +199,8 @@ INLINE static int particle_splitting_write_bparticles(
       "ProgenitorParticleIDs", LONGLONG, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
       split_data.progenitor_id,
       "ProgenitorParticleIDs value of the gas particle that became "
-      "the seed BH. Note that ParticleIDs contains the ID of the gas particle "
-      "that became the seed BH.");
+      "the seed BH. Note this BH has the same ParticleIDs value as the gas "
+      "particle it was seeded from.");
 
   list[1] = io_make_output_field(
       "SplitCounts", UINT8, 1, UNIT_CONV_NO_UNITS, 0.f, bparts,
