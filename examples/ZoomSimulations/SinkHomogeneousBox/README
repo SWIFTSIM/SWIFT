@@ -5,8 +5,10 @@ What it is
 ----------
 
 The gas box of examples/SinkParticles/HomogeneousBox, embedded at the centre
-of a larger periodic box and run with the zoom region (--zoom). The run is
-not cosmological.
+of a larger periodic box and run with the zoom region (--zoom). The example
+offers a non-cosmological run (default) and a cosmological run (run.sh
+variable cosmological=1, makeIC.py option --cosmological, see "Cosmological
+ICs").
 
 - Gas box: side L, uniform random gas (PartType0), 50 Msun per particle,
   density 0.1 atom/cm^3, zero velocity, internal energy u = sigma^2 with the
@@ -51,23 +53,14 @@ Sinks do not run with MPI, so build and run without MPI.
 Run
 ---
 
-run.sh has three cases (variable run_case). Each case makes the ICs, then
-runs swift. Add with_star_formation=1 for GEAR star formation instead of
-sinks.
+run.sh has three cases (variable run_case, default level5). Each case makes
+the ICs, then runs swift. Add with_star_formation=1 for GEAR star formation
+instead of sinks.
 
-1. Local test (default): level 3, 2 threads, time_end 0.1 (98 Myr).
+1. Production, level 5 (default): 32768 gas particles, 8 threads, time_end 0.5.
 
      ./run.sh
      with_star_formation=1 ./run.sh
-
-   It takes a few seconds on a laptop (release build). The run stops at
-   t = 0.1, before the crash given in "Expected behaviour". No sink or star
-   forms in this time.
-
-2. Production, level 5 (32768 gas particles), 8 threads, time_end 0.5.
-
-     run_case=level5 ./run.sh
-     run_case=level5 with_star_formation=1 ./run.sh
 
    Sink formation (params_sinks.yml, GEARSink) and star formation
    (params_star_formation.yml, GEARStarFormation) use the thresholds of
@@ -77,6 +70,15 @@ sinks.
    first sinks form at t = 0.26. Here the dark matter makes the box
    collapse faster (free-fall time 65 Myr instead of 163 Myr), so the
    first sinks are expected before t = 0.26. This is not measured.
+
+2. Local test: level 3, 2 threads, time_end 0.1 (98 Myr).
+
+     run_case=local ./run.sh
+     run_case=local with_star_formation=1 ./run.sh
+
+   It takes a few seconds on a laptop (release build). The run stops at
+   t = 0.1, before the crash given in "Expected behaviour". No sink or star
+   forms in this time.
 
 3. Large region, level 8 (16.8 million gas particles), 72 threads.
 
@@ -104,6 +106,8 @@ sinks.
    The gas temperature grows as L^2 at fixed jeans_length (makeIC.py
    --lJ, in gas box units): 16 K at level 5, about 1000 K at level 8. Use
    jeans_length=0.03125 to keep the level-5 temperature at level 8.
+   The gas cools during the run (cooling is on), so the temperature set by
+   jeans_length is only the starting value.
 
 Other run.sh variables: level, n_threads, embed, dm_ratio, delta,
 jeans_length, cosmological. Run "python3 makeIC.py --help" for all IC

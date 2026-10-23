@@ -3,18 +3,18 @@
 set -e
 set -o pipefail
 
-# run_case: local (level 3, laptop test), level5 (production), level8 (Jed)
-run_case=${run_case:=local}
+# run_case: level5 (default, production), local (level 3, laptop test), level8 (Jed)
+run_case=${run_case:=level5}
 case $run_case in
-	local)
-		level=${level:=3}
-		n_threads=${n_threads:=2}
-		case_params="-P TimeIntegration:time_end:0.1"
-		;;
 	level5)
 		level=${level:=5}
 		n_threads=${n_threads:=8}
 		case_params=""
+		;;
+	local)
+		level=${level:=3}
+		n_threads=${n_threads:=2}
+		case_params="-P TimeIntegration:time_end:0.1"
 		;;
 	level8)
 		level=${level:=8}
@@ -22,7 +22,7 @@ case $run_case in
 		case_params="-P Restarts:delta_hours:2 -P Snapshots:delta_time:0.05"
 		;;
 	*)
-		echo "Unknown run_case $run_case (local, level5 or level8)"
+		echo "Unknown run_case $run_case (level5, local or level8)"
 		exit 1
 		;;
 esac
