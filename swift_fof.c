@@ -597,10 +597,15 @@ int main(int argc, char *argv[]) {
 
   /* Initialise the gravity scheme */
   bzero(&gravity_properties, sizeof(struct gravity_props));
+  const double total_matter_mass =
+      (with_DM_background_particles && !with_cosmology)
+          ? space_get_total_matter_mass(&s)
+          : 0.;
   gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                      with_cosmology, /*with_external_gravity=*/0,
                      with_baryon_particles, with_DM_particles, with_neutrinos,
-                     with_DM_background_particles, periodic, s.dim, s.cdim);
+                     with_DM_background_particles, total_matter_mass, periodic,
+                     s.dim, s.cdim);
 
   /* Initialise the long-range gravity mesh */
   if (periodic) {

@@ -679,6 +679,7 @@ void space_generate_gas(struct space *s, const struct cosmology *cosmo,
 void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
                            const int with_hydro, const int rank,
                            const int check_neutrinos);
+double space_get_total_matter_mass(const struct space *s);
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
