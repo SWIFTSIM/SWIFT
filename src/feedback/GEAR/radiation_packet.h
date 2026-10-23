@@ -45,8 +45,16 @@
 /*! Optical depth above which a share is fully absorbed. */
 #define RADIATION_PACKET_MAX_OPTICAL_DEPTH 80.f
 
+/*! Photon number (as `N E_lo`) below which a share is booked as absorbed:
+    near the float minimum 1.2e-38 the number would flush to zero before the
+    energy, and the mean photon energy would leave the band. */
+#define RADIATION_PACKET_MIN_PHOTONS 1e-35f
+
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
                                            const float n[3], const float power);
+void radiation_packet_merge(struct part *p, const integertime_t ti_current,
+                            const integertime_t ti_step,
+                            const double time_base);
 void radiation_packet_end_gradient(struct part *p);
 void radiation_packet_end_force(struct part *p);
 
@@ -82,17 +90,85 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
   if (w == 0.f) return;
 
   pk->weight_sum += w;
-  pk->forward_advance += w * (dx[0] * pk->direction[0] +
-                              dx[1] * pk->direction[1] +
-                              dx[2] * pk->direction[2]);
+  pk->forward_advance +=
+      w * (dx[0] * pk->direction[0] + dx[1] * pk->direction[1] +
+           dx[2] * pk->direction[2]);
+}
+
+/**
+ * @brief Deliver one share to a receiver: dust absorption over the path, then
+ * the inbox, or the reservoir when the source has the coarser step.
+ *
+ * Energy and photon number lose the same fraction, so the mean photon energy
+ * of a band is unchanged.
+ *
+ * @param r The receiver.
+ * @param energy Energy of the share per band, before absorption.
+ * @param photons Photon number of the share per band, as `N E_lo`.
+ * @param offset Comoving offset from the receiver to the share's origin.
+ * @param path_phys Physical path length over which the share is absorbed.
+ * @param to_reservoir Is the source's step coarser than the receiver's?
+ * @param source_step_end_ti End of the source's step.
+ */
+__attribute__((always_inline)) INLINE static void radiation_packet_deliver(
+    struct part *restrict r, const float energy[ISRF_OPERATOR_COUNT],
+    const float photons[ISRF_OPERATOR_COUNT], const float offset[3],
+    const float path_phys, const int to_reservoir,
+    const integertime_t source_step_end_ti) {
+
+  struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
+  float delivered_energy = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_band_data *dst = &pk_r->band[b];
+
+    const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
+    float absorbed_fraction = 1.f;
+    if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
+      absorbed_fraction = -expm1f(-tau);
+
+    float absorbed_energy = energy[b] * absorbed_fraction;
+    float absorbed_photons = photons[b] * absorbed_fraction;
+    float transmitted_energy = energy[b] - absorbed_energy;
+    float transmitted_photons = photons[b] - absorbed_photons;
+    if (transmitted_photons < RADIATION_PACKET_MIN_PHOTONS) {
+      absorbed_energy = energy[b];
+      absorbed_photons = photons[b];
+      transmitted_energy = 0.f;
+      transmitted_photons = 0.f;
+    }
+
+    if (to_reservoir) {
+      dst->reservoir_energy += transmitted_energy;
+      dst->reservoir_photons += transmitted_photons;
+    } else {
+      dst->inbox_energy += transmitted_energy;
+      dst->inbox_photons += transmitted_photons;
+    }
+    dst->absorbed_energy += (double)absorbed_energy;
+    dst->absorbed_photons += (double)absorbed_photons;
+    delivered_energy += transmitted_energy;
+  }
+
+  if (to_reservoir) {
+    for (int k = 0; k < 3; k++)
+      pk_r->reservoir_origin_offset[k] += delivered_energy * offset[k];
+    if (source_step_end_ti > pk_r->reservoir_end_ti)
+      pk_r->reservoir_end_ti = source_step_end_ti;
+  } else {
+    for (int k = 0; k < 3; k++)
+      pk_r->inbox_origin_offset[k] += delivered_energy * offset[k];
+  }
+
+#ifdef SWIFT_DEBUG_CHECKS
+  pk_r->shares_received++;
+#endif
 }
 
 /**
  * @brief Force loop: book the sender's share for one receiver.
  *
- * The share is attenuated by the receiver's dust rate over the increase of
- * the distance to the sender's origin. Energy and photon number lose the
- * same fraction, so the mean photon energy of a band is unchanged.
+ * The share is absorbed over the increase of the distance to the sender's
+ * origin, so path lengths telescope along a chain of hops.
  *
  * @param dx Comoving vector from the sender to the receiver.
  * @param h_s Comoving smoothing length of the sender.
@@ -107,8 +183,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
   const struct feedback_isrf_packet_data *pk_s = &s->feedback_data.isrf_packet;
   if (radiation_packet_is_empty(pk_s)) return;
 
-  const float w = radiation_packet_transmission_weight(
-      dx, h_s, pk_s->direction, pk_s->cone_power);
+  const float w = radiation_packet_transmission_weight(dx, h_s, pk_s->direction,
+                                                       pk_s->cone_power);
   if (w == 0.f) return;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -118,7 +194,6 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 #endif
   const float fraction = w / pk_s->weight_sum;
 
-  /* Offset from the receiver to the sender's origin. */
   const float d_s = pk_s->origin_distance;
   const float offset[3] = {-dx[0] - d_s * pk_s->direction[0],
                            -dx[1] - d_s * pk_s->direction[1],
@@ -127,38 +202,15 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
                           offset[2] * offset[2]);
   float path = d_r - d_s;
   if (path < 0.f) path = 0.f;
-  const float path_phys = a * path;
 
-  struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
-  float delivered_energy = 0.f;
+  float energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    const struct feedback_isrf_packet_band_data *src = &pk_s->band[b];
-    struct feedback_isrf_packet_band_data *dst = &pk_r->band[b];
-
-    const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
-    float absorbed_fraction = 1.f;
-    if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
-      absorbed_fraction = -expm1f(-tau);
-
-    const float share_energy = src->energy * fraction;
-    const float share_photons = src->photons * fraction;
-    const float absorbed_energy = share_energy * absorbed_fraction;
-    const float absorbed_photons = share_photons * absorbed_fraction;
-    const float transmitted_energy = share_energy - absorbed_energy;
-
-    dst->inbox_energy += transmitted_energy;
-    dst->inbox_photons += share_photons - absorbed_photons;
-    dst->absorbed_energy += (double)absorbed_energy;
-    dst->absorbed_photons += (double)absorbed_photons;
-    delivered_energy += transmitted_energy;
+    energy[b] = pk_s->band[b].energy * fraction;
+    photons[b] = pk_s->band[b].photons * fraction;
   }
 
-  for (int k = 0; k < 3; k++)
-    pk_r->inbox_origin_offset[k] += delivered_energy * offset[k];
-
-#ifdef SWIFT_DEBUG_CHECKS
-  pk_r->shares_received++;
-#endif
+  radiation_packet_deliver(r, energy, photons, offset, a * path,
+                           s->time_bin > r->time_bin, pk_s->step_end_ti);
 }
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */

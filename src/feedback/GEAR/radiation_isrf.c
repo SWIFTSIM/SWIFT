@@ -248,6 +248,17 @@ void radiation_snapshot_part_propagation(struct part *p,
   }
   p->feedback_data.dt_prev = dt_phys;
 
+  /* The drift runs for inactive particles too: they keep their inbox. */
+  if (p->feedback_data.ISRF_packet_transport) {
+    if (with_cosmology)
+      error(
+          "GEARFeedback:ISRF_transport: %s does not support cosmological "
+          "runs.",
+          isrf_transport_name_packet_hop);
+    if (part_is_active(p, e))
+      radiation_packet_merge(p, e->ti_current, ti_step, e->time_base);
+  }
+
   /* Drawdown for active particles only. #radiation_part_has_no_neighbours
    * refunds `u_source_rate * dt_prev`, so the rate must use the same raw
    * dt_phys. At dt_phys == 0 nothing is drawn and the dose is kept. */

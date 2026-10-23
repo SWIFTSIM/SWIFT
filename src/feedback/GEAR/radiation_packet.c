@@ -62,6 +62,89 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
 }
 
 /**
+ * @brief Start of an active step: the inbox and the due part of the
+ * reservoir become the held packet.
+ *
+ * The origin is the energy-weighted mean of the arriving origins and the
+ * direction points from it to the particle. The reservoir releases the part
+ * due in the step that starts now, `dt / t_rem`, all of it once `t_rem <= dt`.
+ *
+ * @param p The particle, active.
+ * @param ti_current Start of the particle's new step.
+ * @param ti_step Length of the particle's step.
+ * @param time_base Physical length of one integer time step.
+ */
+void radiation_packet_merge(struct part *p, const integertime_t ti_current,
+                            const integertime_t ti_step,
+                            const double time_base) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!radiation_packet_is_empty(pk))
+    error("Particle %lld still holds a packet at its merge.", p->id);
+#endif
+  pk->step_end_ti = ti_current + ti_step;
+
+  float release = 1.f;
+  if (pk->reservoir_end_ti > ti_current) {
+    const double t_rem =
+        (double)(pk->reservoir_end_ti - ti_current) * time_base;
+    const double dt = (double)ti_step * time_base;
+    if (t_rem > dt) release = (float)(dt / t_rem);
+  }
+
+  float total_energy = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_band_data *band = &pk->band[b];
+    float res_energy = band->reservoir_energy;
+    float res_photons = band->reservoir_photons;
+    if (release < 1.f &&
+        res_photons * release >= RADIATION_PACKET_MIN_PHOTONS) {
+      res_energy *= release;
+      res_photons *= release;
+      band->reservoir_energy -= res_energy;
+      band->reservoir_photons -= res_photons;
+    } else {
+      band->reservoir_energy = 0.f;
+      band->reservoir_photons = 0.f;
+    }
+    band->energy = band->inbox_energy + res_energy;
+    band->photons = band->inbox_photons + res_photons;
+    band->inbox_energy = 0.f;
+    band->inbox_photons = 0.f;
+    total_energy += band->energy;
+  }
+
+  float offset[3];
+  for (int k = 0; k < 3; k++) {
+    float res_offset = pk->reservoir_origin_offset[k];
+    if (release < 1.f) {
+      res_offset *= release;
+      pk->reservoir_origin_offset[k] -= res_offset;
+    } else {
+      pk->reservoir_origin_offset[k] = 0.f;
+    }
+    offset[k] = pk->inbox_origin_offset[k] + res_offset;
+    pk->inbox_origin_offset[k] = 0.f;
+  }
+
+  if (!(total_energy > 0.f)) return;
+
+  for (int k = 0; k < 3; k++) offset[k] /= total_energy;
+  const float d = sqrtf(offset[0] * offset[0] + offset[1] * offset[1] +
+                        offset[2] * offset[2]);
+  pk->origin_distance = d;
+  if (d > 0.f) {
+    for (int k = 0; k < 3; k++) pk->direction[k] = -offset[k] / d;
+  } else {
+    /* Source on the particle: any direction is as good. */
+    pk->direction[0] = 0.f;
+    pk->direction[1] = 0.f;
+    pk->direction[2] = 1.f;
+  }
+}
+
+/**
  * @brief End of the gradient loop: normalise the forward advance, or let a
  * packet with no downstream neighbour escape into the ledger.
  *

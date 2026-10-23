@@ -279,6 +279,10 @@ struct feedback_isrf_packet_data {
   /*! Integer time by which the reservoir is fully released. */
   integertime_t reservoir_end_ti;
 
+  /*! End of this particle's current step, set at its merge. A finer
+      receiver releases this particle's shares by then. */
+  integertime_t step_end_ti;
+
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Number of non-zero shares booked into this particle since the counter
       was last reset by a test. */
