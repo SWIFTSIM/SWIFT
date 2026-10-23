@@ -259,7 +259,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
       /* Don't recurse if we are running a zoom and are at the void-zoom
        * boundary. Zoom cells are handled on their own and recursing here would
        * unskip them twice. */
-      if (c->subtype == cell_subtype_void && c->type == cell_type_zoom) {
+      if (c->subtype == cell_subtype_void && cp->type == cell_type_zoom) {
         continue;
       }
 
