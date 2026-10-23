@@ -576,6 +576,9 @@ static int space_need_regrid(const struct space *s, const int new_cdim[3]) {
  * @param cdim The new putative cell dimensions.
  * @param oldwidth The old cell width.
  * @param oldcdim The old cell dimensions.
+ * @param old_zoom_width The old zoom cell width.
+ * @param old_zoom_cdim The old zoom cell dimensions.
+ * @param old_zoom_lower The old zoom grid lower bounds.
  * @param oldnodeIDs The old node IDs.
  *
  * @return 1 if we are about to allocate new top-level cells without an existing
@@ -583,6 +586,9 @@ static int space_need_regrid(const struct space *s, const int new_cdim[3]) {
  */
 static int space_prepare_new_partition(const struct space *s, const int cdim[3],
                                        double oldwidth[3], double oldcdim[3],
+                                       double old_zoom_width[3],
+                                       int old_zoom_cdim[3],
+                                       double old_zoom_lower[3],
                                        int **oldnodeIDs) {
   /* Are we regridding? (We only want to trigger this code when we already
    * have cells defined: on the first call and on restart s->cells_top is
@@ -599,19 +605,20 @@ static int space_prepare_new_partition(const struct space *s, const int cdim[3],
     oldwidth[1] = s->width[1];
     oldwidth[2] = s->width[2];
 
+    if (s->with_zoom_region) {
+      for (int k = 0; k < 3; k++) {
+        old_zoom_width[k] = s->zoom_props->width[k];
+        old_zoom_cdim[k] = s->zoom_props->cdim[k];
+        old_zoom_lower[k] = s->zoom_props->region_lower_bounds[k];
+      }
+    }
+
     if ((*oldnodeIDs =
              (int *)swift_malloc("nodeIDs", sizeof(int) * s->nr_cells)) == NULL)
       error("Failed to allocate temporary nodeIDs.");
 
-    int cid = 0;
-    for (int i = 0; i < s->cdim[0]; i++) {
-      for (int j = 0; j < s->cdim[1]; j++) {
-        for (int k = 0; k < s->cdim[2]; k++) {
-          cid = cell_getid(oldcdim, i, j, k);
-          (*oldnodeIDs)[cid] = s->cells_top[cid].nodeID;
-        }
-      }
-    }
+    for (int cid = 0; cid < s->nr_cells; cid++)
+      (*oldnodeIDs)[cid] = s->cells_top[cid].nodeID;
   }
 
   /* Are we about to allocate new top level cells without a regrid?
@@ -825,11 +832,17 @@ static void uniform_construct_tl_cells(struct space *s,
  * @param oldnodeIDs The old node IDs.
  * @param oldwidth The old cell width.
  * @param oldcdim The old cell dimensions.
+ * @param old_zoom_width The old zoom cell width.
+ * @param old_zoom_cdim The old zoom cell dimensions.
+ * @param old_zoom_lower The old zoom grid lower bounds.
  * @param no_regrid Are we about to allocate new top-level cells without an
  *                  existing one?
  */
 static void space_partition_cells(struct space *s, int *oldnodeIDs,
                                   double oldwidth[3], double oldcdim[3],
+                                  const double old_zoom_width[3],
+                                  const int old_zoom_cdim[3],
+                                  const double old_zoom_lower[3],
                                   const int no_regrid) {
   if (oldnodeIDs != NULL) {
     /* We have changed the top-level cell dimension, so need to redistribute
@@ -840,16 +853,25 @@ static void space_partition_cells(struct space *s, int *oldnodeIDs,
           "Basic cell dimensions have increased - recalculating the "
           "global partition.");
 
-    /* The resampling assumes one uniform grid. The zoom grids need the zoom
-     * aware partitioners, which also place the void cells. */
-    if (s->with_zoom_region ||
-        !partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s)) {
+    int partitioned;
+    if (!s->with_zoom_region) {
 
-      /* Failed, try another technique that requires no settings. */
-      if (!s->with_zoom_region)
-        message("Failed to get a new partition, trying less optimal method");
-      struct partition initial_partition;
-      bzero(&initial_partition, sizeof(initial_partition));
+      /* Resample the old uniform grid onto the new uniform grid. */
+      partitioned = partition_space_to_space(oldwidth, oldcdim, oldnodeIDs, s);
+
+    } else {
+
+      /* Resample the old zoom and background grids onto their new grids. */
+      const int old_bkg_cdim[3] = {oldcdim[0], oldcdim[1], oldcdim[2]};
+      partitioned = zoom_partition_space_to_space(
+          oldwidth, old_bkg_cdim, old_zoom_width, old_zoom_cdim, old_zoom_lower,
+          oldnodeIDs, s);
+    }
+
+    if (!partitioned) {
+
+      message("Failed to resample the old partition, using a fresh partition");
+      struct partition initial_partition = {0};
 #if defined(HAVE_PARMETIS) || defined(HAVE_METIS)
       initial_partition.type =
           s->with_zoom_region ? INITPART_VECTORIZE : INITPART_METIS_NOWEIGHT;
@@ -942,9 +964,13 @@ void space_regrid(struct space *s, int verbose) {
    * Be prepared to do that. */
   double oldwidth[3] = {0., 0., 0.};
   double oldcdim[3] = {0., 0., 0.};
+  double old_zoom_width[3] = {0., 0., 0.};
+  int old_zoom_cdim[3] = {0, 0, 0};
+  double old_zoom_lower[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   const int no_regrid =
-      space_prepare_new_partition(s, cdim, oldwidth, oldcdim, &oldnodeIDs);
+      space_prepare_new_partition(s, cdim, oldwidth, oldcdim, old_zoom_width,
+                                  old_zoom_cdim, old_zoom_lower, &oldnodeIDs);
 #endif
 
   /* Do we need to re-build the upper-level cells? */
@@ -996,7 +1022,8 @@ void space_regrid(struct space *s, int verbose) {
 
 #ifdef WITH_MPI
     /* Partition the cells. */
-    space_partition_cells(s, oldnodeIDs, oldwidth, oldcdim, no_regrid);
+    space_partition_cells(s, oldnodeIDs, oldwidth, oldcdim, old_zoom_width,
+                          old_zoom_cdim, old_zoom_lower, no_regrid);
 #endif
 
   } /* re-build upper-level cells? */

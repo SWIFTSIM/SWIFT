@@ -198,7 +198,7 @@ void zoom_find_neighbouring_cells(struct space *s, const int verbose) {
         "delta_p=%d)",
         delta_cells, delta_m, delta_p);
 
-  /* Zero the neighbour cell count, a regrid calls this again. */
+  /* Reset the count before rebuilding the neighbour-cell array. */
   zoom_props->nr_neighbour_cells = 0;
 
   /* Allocate the indices of neighbour background cells. */
@@ -613,8 +613,7 @@ static void zoom_void_timestep_collect_recursive(struct cell *c) {
         zoom_void_timestep_collect_recursive(cp);
       }
 
-      /* Foreign and empty zoom cells hold no time-step data on this rank,
-       * as in zoom_void_split_recursive. */
+      /* Foreign and empty zoom cells have no local timestep information. */
       else if (cp->nodeID != engine_rank || cell_is_empty(cp)) {
         continue;
       }
