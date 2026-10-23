@@ -27,6 +27,7 @@
 #include "minmax.h"
 #include "part.h"
 #include "radiation.h"
+#include "radiation_packet.h"
 #include "runner_radiation_feedback.h"
 #include "stellar_evolution.h"
 #include "timeline.h"
@@ -1744,6 +1745,7 @@ void feedback_init_after_star_formation(
     const enum stellar_type star_type) {
 
   feedback_init_spart(sp);
+  radiation_packet_first_init_star(sp);
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -1778,6 +1780,7 @@ void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props) {
   /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
+  radiation_packet_first_init_star(sp);
 
   /* Zero energies and masses */
   sp->feedback_data.supernovae.energy_ejected = 0.0;

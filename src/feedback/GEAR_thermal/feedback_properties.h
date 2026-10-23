@@ -1018,6 +1018,15 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
       if (!(fp->ISRF_packet_cone_power >= 1.f))
         error("GEARFeedback:ISRF_packet_cone_power must be >= 1 (got %g).",
               fp->ISRF_packet_cone_power);
+      /* Stars emit energy and photon number from one spectrum per band. */
+      if (!fp->stellar_model.rad.has_mean_photon_energy_pe ||
+          (fp->metallicity_max_first_stars != -1 &&
+           !fp->stellar_model_first_stars.rad.has_mean_photon_energy_pe))
+        error(
+            "GEARFeedback:ISRF_transport: %s needs the datasets "
+            "MeanPhotonEnergyPE and Integrated_MeanPhotonEnergyPE in the "
+            "Data/Radiation group of every yields table.",
+            isrf_transport_name_packet_hop);
     }
 
     if (fp->ISRF_propagation) {

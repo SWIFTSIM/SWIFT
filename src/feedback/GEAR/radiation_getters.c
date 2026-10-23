@@ -642,6 +642,40 @@ double radiation_get_mean_photon_energy_lw_from_integral_2d(
 }
 
 /**
+ * @brief Get a single star's photon-number-weighted mean PE photon energy,
+ * dispatching on #rad->is_2d. Needs #radiation.has_mean_photon_energy_pe.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @return Mean PE photon energy, cgs erg.
+ */
+double radiation_get_star_mean_photon_energy_pe(const struct radiation *rad,
+                                                float log_m, float log_z) {
+  if (rad->is_2d)
+    return exp10(
+        interpolate_2d(&rad->raw.mean_photon_energy_pe_2d, log_z, log_m));
+  return exp10(interpolate_1d(&rad->raw.mean_photon_energy_pe, log_m));
+}
+
+/**
+ * @brief Get the mean PE photon energy of the population formed between the
+ * IMF's mass_min and @p log_m, dispatching on #rad->is_2d.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only by a 2D table.
+ * @param log_m Upper mass bound of the population, in log.
+ * @return Mean PE photon energy, cgs erg.
+ */
+double radiation_get_population_mean_photon_energy_pe(
+    const struct radiation *rad, float log_z, float log_m) {
+  if (rad->is_2d)
+    return exp10(interpolate_2d(&rad->integrated.mean_photon_energy_pe_2d,
+                                log_z, log_m));
+  return exp10(interpolate_1d(&rad->integrated.mean_photon_energy_pe, log_m));
+}
+
+/**
  * @brief Get the photospheric effective temperature at a given mass, from a
  * 1D (mass-only) table.
  *

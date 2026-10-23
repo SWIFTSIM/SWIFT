@@ -577,6 +577,7 @@ void feedback_init_spart(struct spart *sp) {
 
   sp->feedback_data.enrichment_weight = 0.f;
   sp->feedback_data.num_ngbs = 0;
+  radiation_packet_init_star_cones(sp);
 
   /* mass_HII_region is not reset here: the HII search only reruns on a
      rebuild step. It is reset in runner_dosub_stars_hii_ionization_feedback()
@@ -642,4 +643,8 @@ void feedback_prepare_feedback(struct spart *restrict sp,
   feedback_prepare_radiation_feedback(sp, feedback_props, cosmo, us, phys_const,
                                       star_age_beg_step, dt, time, ti_begin,
                                       with_cosmology);
+
+  if (feedback_props->ISRF_propagation &&
+      feedback_props->ISRF_transport == isrf_transport_packet_hop)
+    radiation_packet_star_book_escape(sp, (float)dt);
 }

@@ -1403,6 +1403,16 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
       radiation_set_star_band_luminosity(
           sp, ISRF_MOMENT_LW_PHOTON,
           radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW));
+
+      /* Photon numbers of the packet transport, from the same spectrum. */
+      if (sm->rad.has_mean_photon_energy_pe) {
+        radiation_set_star_packet_photon_fraction(
+            sp, ISRF_OPERATOR_PE,
+            radiation_get_star_mean_photon_energy_pe(&sm->rad, log_m, log_z));
+        radiation_set_star_packet_photon_fraction(
+            sp, ISRF_OPERATOR_LW,
+            radiation_get_star_mean_photon_energy_lw(&sm->rad, log_m, log_z));
+      }
     }
 
     /* Photospheric effective temperature, a diagnostic of the star's
@@ -1677,6 +1687,24 @@ void stellar_evolution_compute_preSN_feedback_spart(
       radiation_set_star_band_luminosity(
           sp, ISRF_MOMENT_LW_PHOTON,
           radiation_get_star_band_luminosity(sp, ISRF_MOMENT_LW));
+
+      /* The window starts at the IMF's mass_min, so the tabulated ratio of
+         cumulative integrals at its upper bound is the window's mean. */
+      if (sm->rad.has_mean_photon_energy_pe) {
+        const float log_z = radiation_get_log_metallicity(metallicity);
+        const float log_m_cap = log10f(m_sup_capped);
+        radiation_set_star_packet_photon_fraction(
+            sp, ISRF_OPERATOR_PE,
+            radiation_get_population_mean_photon_energy_pe(&sm->rad, log_z,
+                                                           log_m_cap));
+        radiation_set_star_packet_photon_fraction(
+            sp, ISRF_OPERATOR_LW,
+            sm->rad.is_2d
+                ? radiation_get_mean_photon_energy_lw_from_integral_2d(
+                      &sm->rad, log_z, log_m_cap)
+                : radiation_get_mean_photon_energy_lw_from_integral(&sm->rad,
+                                                                    log_m_cap));
+      }
     }
 
     /* Population counterpart of the individual-star effective temperature

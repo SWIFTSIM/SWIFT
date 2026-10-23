@@ -24,6 +24,11 @@
 /* Local includes. */
 #include "dimension.h"
 #include "kernel_hydro.h"
+#include "random.h"
+
+#if defined(HAVE_CHEALPIX)
+#include <chealpix.h>
+#endif
 
 #include <math.h>
 
@@ -59,6 +64,60 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
   float w;
   kernel_eval(r * h_inv, &w);
   return w * pow_dimension(h_inv) * powf(mu, power);
+}
+
+/**
+ * @brief Emission cone of a gas neighbour of a star: the HEALPix nside 1
+ * pixel of the direction from the star to the gas, in a random frame drawn
+ * from the star's ID and the start of its step.
+ *
+ * Kept out of line, so that the star density loop that sums the cones and
+ * the feedback loop that fills them, on any rank, use the same arithmetic.
+ *
+ * @param star_id ID of the star.
+ * @param ti_begin Start of the star's step.
+ * @param dx Comoving vector from the gas to the star (star - gas).
+ * @return The cone, in [0, RADIATION_PACKET_EMISSION_CONES).
+ */
+__attribute__((noinline)) int radiation_packet_emission_cone(
+    const long long star_id, const integertime_t ti_begin, const float dx[3]) {
+
+#if defined(HAVE_CHEALPIX)
+  if (dx[0] == 0.f && dx[1] == 0.f && dx[2] == 0.f) return 0;
+
+  const integertime_t ti = 3 * ti_begin;
+  const double u1 =
+      random_unit_interval(star_id, ti, random_number_ISRF_emission_frame);
+  const double u2 =
+      random_unit_interval(star_id, ti + 1, random_number_ISRF_emission_frame);
+  const double u3 =
+      random_unit_interval(star_id, ti + 2, random_number_ISRF_emission_frame);
+
+  /* Uniform random rotation from a unit quaternion (Shoemake 1992). */
+  const double a = sqrt(1.0 - u1);
+  const double b = sqrt(u1);
+  const double qx = a * sin(2.0 * M_PI * u2);
+  const double qy = a * cos(2.0 * M_PI * u2);
+  const double qz = b * sin(2.0 * M_PI * u3);
+  const double qw = b * cos(2.0 * M_PI * u3);
+
+  const double d0 = -(double)dx[0], d1 = -(double)dx[1], d2 = -(double)dx[2];
+  double dir[3];
+  dir[0] = (1.0 - 2.0 * (qy * qy + qz * qz)) * d0 +
+           2.0 * (qx * qy - qz * qw) * d1 + 2.0 * (qx * qz + qy * qw) * d2;
+  dir[1] = 2.0 * (qx * qy + qz * qw) * d0 +
+           (1.0 - 2.0 * (qx * qx + qz * qz)) * d1 +
+           2.0 * (qy * qz - qx * qw) * d2;
+  dir[2] = 2.0 * (qx * qz - qy * qw) * d0 + 2.0 * (qy * qz + qx * qw) * d1 +
+           (1.0 - 2.0 * (qx * qx + qy * qy)) * d2;
+
+  int64_t ipix = 0;
+  vec2pix_ring64(1, dir, &ipix);
+  return (int)ipix;
+#else
+  error("The ISRF packet emission needs the HEALPix C library.");
+  return 0;
+#endif
 }
 
 /**
@@ -179,5 +238,32 @@ void radiation_packet_end_force(struct part *p) {
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     pk->band[b].energy = 0.f;
     pk->band[b].photons = 0.f;
+  }
+}
+
+/**
+ * @brief Book the emission of a star's empty cones as escaped, once per
+ * feedback step, on the star's own rank.
+ *
+ * A star with no gas neighbour has 12 empty cones: all its light escapes.
+ *
+ * @param sp The star, after its density loop.
+ * @param Delta_t The star's feedback step.
+ */
+void radiation_packet_star_book_escape(struct spart *sp, const float Delta_t) {
+
+  int n_empty = 0;
+  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
+    n_empty += sp->feedback_data.radiation.packet.cone_weight[c] == 0.f;
+  if (n_empty == 0) return;
+
+  const double fraction = (double)n_empty / RADIATION_PACKET_EMISSION_CONES;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
+    const double E =
+        sp->feedback_data.radiation.L_band[m] * (double)Delta_t * fraction;
+    sp->feedback_data.radiation.packet.escaped_energy[b] += E;
+    sp->feedback_data.radiation.packet.escaped_photons[b] +=
+        E * sp->feedback_data.radiation.packet.photon_fraction[b];
   }
 }

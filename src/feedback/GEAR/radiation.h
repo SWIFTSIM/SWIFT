@@ -122,6 +122,9 @@
     #RADIATION_LW_BAND_LOWER_EDGE_EV. */
 #define RADIATION_LW_BAND_UPPER_EDGE_EV 13.6
 
+/*! #RADIATION_LW_BAND_UPPER_EDGE_EV in erg. */
+#define RADIATION_LW_BAND_UPPER_EDGE_CGS 2.1789602e-11
+
 /*! The band lower edges in erg (1 eV = 1.602176634e-12 erg), hardcoded because
     eV is not an internal unit. They enter only a dimensionless ratio. */
 #define RADIATION_PE_BAND_LOWER_EDGE_CGS 9.6130598e-12
@@ -374,6 +377,29 @@ radiation_get_star_band_luminosity(const struct spart *sp,
   return sp->feedback_data.radiation.L_band[m];
 }
 
+/**
+ * @brief Set the packet photon number a star emits per unit energy in one
+ * band, `E_lo / E_bar`, from its mean photon energy. A mean energy outside
+ * the band, possible only at a table edge, is moved to the nearest edge.
+ *
+ * @param sp The #spart.
+ * @param o The band, a #radiation_isrf_operator.
+ * @param E_bar_cgs Mean photon energy of the band, erg.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_packet_photon_fraction(struct spart *sp,
+                                          const enum radiation_isrf_operator o,
+                                          const double E_bar_cgs) {
+  const double E_lo = o == ISRF_OPERATOR_PE ? RADIATION_PE_BAND_LOWER_EDGE_CGS
+                                            : RADIATION_LW_BAND_LOWER_EDGE_CGS;
+  const double E_hi = o == ISRF_OPERATOR_PE ? RADIATION_LW_BAND_LOWER_EDGE_CGS
+                                            : RADIATION_LW_BAND_UPPER_EDGE_CGS;
+  double E = E_bar_cgs;
+  if (!(E >= E_lo)) E = E_lo;
+  if (E > E_hi) E = E_hi;
+  sp->feedback_data.radiation.packet.photon_fraction[o] = (float)(E_lo / E);
+}
+
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /* Without the part: the gas carries no LW/PE field. */
@@ -403,6 +429,9 @@ radiation_get_star_band_luminosity(const struct spart *sp,
                                    const enum radiation_isrf_moment m) {
   return 0.;
 }
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_packet_photon_fraction(struct spart *sp, const int o,
+                                          const double E_bar_cgs) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
@@ -589,6 +618,10 @@ double radiation_get_mean_photon_energy_lw_from_raw_2d(
     const struct radiation *rad, float log_z, float log_m);
 double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
                                                 float log_m, float log_z);
+double radiation_get_star_mean_photon_energy_pe(const struct radiation *rad,
+                                                float log_m, float log_z);
+double radiation_get_population_mean_photon_energy_pe(
+    const struct radiation *rad, float log_z, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral(
     const struct radiation *rad, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral_2d(
@@ -642,6 +675,9 @@ void radiation_read_luminosity_pe_array(
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
 void radiation_read_mean_photon_energy_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
+void radiation_read_mean_photon_energy_pe_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
 void radiation_read_luminosity_lw_array(

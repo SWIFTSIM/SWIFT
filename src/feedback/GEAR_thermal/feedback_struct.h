@@ -64,6 +64,10 @@ enum radiation_isrf_operator {
  *
  * Unsized, so that a missing initialiser fails the _Static_assert below.
  */
+/*! Equal solid-angle cones (HEALPix nside 1) a star splits its packet
+    emission into. */
+#define RADIATION_PACKET_EMISSION_CONES 12
+
 static const enum radiation_isrf_operator radiation_isrf_moment_to_operator[] =
     {ISRF_OPERATOR_PE, ISRF_OPERATOR_LW, ISRF_OPERATOR_LW};
 
@@ -704,6 +708,23 @@ struct feedback_spart_data {
     /*! Moment luminosity (physical units) by #radiation_isrf_moment, from the
         radiation table. 0 unless the interstellar radiation field is on. */
     double L_band[ISRF_MOMENT_COUNT];
+
+    /*! Emission of the ISRF packet transport. */
+    struct {
+      /*! Kernel-weighted gas mass in each emission cone, from the star
+          density loop. */
+      float cone_weight[RADIATION_PACKET_EMISSION_CONES];
+
+      /*! `E_lo / E_bar` per band, the photon number (as `N E_lo`) emitted
+          per unit energy. Indexed by #radiation_isrf_operator. */
+      float photon_fraction[ISRF_OPERATOR_COUNT];
+
+      /*! Emitted energy that found no gas in its cone, cumulative. */
+      double escaped_energy[ISRF_OPERATOR_COUNT];
+
+      /*! Emitted photon number (as `N E_lo`) that found no gas. */
+      double escaped_photons[ISRF_OPERATOR_COUNT];
+    } packet;
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION
