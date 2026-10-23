@@ -277,4 +277,45 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
                                     struct part *restrict pj, const float a,
                                     const float H) {}
 
+/**
+ * @brief Force-loop ISRF packet hop between two particles (symmetric).
+ * Nothing to do here.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi First particle.
+ * @param pj Second particle.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param book_i_to_j Book the share of i into j.
+ * @param book_j_to_i Book the share of j into i.
+ */
+__attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const int book_i_to_j, const int book_j_to_i) {}
+
+/**
+ * @brief Force-loop ISRF packet hop from particle i into j (non-symmetric).
+ * Nothing to do here.
+ *
+ * @param r2 Comoving square distance between the two particles.
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ * @param pi Sender.
+ * @param pj Receiver.
+ * @param a Current scale factor.
+ * @param H Current Hubble parameter.
+ * @param book Book the share.
+ */
+__attribute__((always_inline)) INLINE static void
+runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
+                                   const float hi, const float hj,
+                                   struct part *restrict pi,
+                                   struct part *restrict pj, const float a,
+                                   const float H, const int book) {}
+
 #endif /* SWIFT_AGORA_FEEDBACK_IACT_H */

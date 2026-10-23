@@ -41,11 +41,13 @@
 #include "physical_constants.h"
 #include "radiation.h"
 #include "radiation_isrf.h"
+#include "radiation_packet.h"
 #include "radiation_propagation_iact.h"
 #include "timeline.h"
 
 #include <float.h>
 #include <math.h>
+#include <string.h>
 
 /**
  * @brief First-init of a #part's LW/PE radiation-field state.
@@ -115,6 +117,8 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->dt_prev = 0.f;
   fd->dt_active = 0.f;
   fd->ISRF_reservoir_end_ti = -1;
+  fd->ISRF_packet_transport = 0;
+  memset(&fd->isrf_packet, 0, sizeof(struct feedback_isrf_packet_data));
   radiation_init_part_propagation(p);
   radiation_cache_m1_closure_part(p);
 }
@@ -136,6 +140,22 @@ static int radiation_cross_bin_booking_on(const struct engine *e) {
 #else
   return 0;
 #endif
+}
+
+/**
+ * @brief Copy the transport choice onto the particle, so the neighbour loops
+ * read it without the engine.
+ *
+ * @param p The #part.
+ * @param e The #engine.
+ */
+static void radiation_set_part_transport(struct part *p,
+                                         const struct engine *e) {
+  struct feedback_part_data *fd = &p->feedback_data;
+  fd->ISRF_packet_transport =
+      e->feedback_props->ISRF_propagation &&
+      e->feedback_props->ISRF_transport == isrf_transport_packet_hop;
+  fd->isrf_packet.cone_power = e->feedback_props->ISRF_packet_cone_power;
 }
 
 /**
@@ -173,6 +193,9 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.dt_active = radiation_cross_bin_booking_on(e) ? -1.f : 0.f;
   p->feedback_data.ISRF_flux_dissipation =
       e->feedback_props->ISRF_flux_dissipation;
+  radiation_set_part_transport(p, e);
+  p->feedback_data.isrf_packet.weight_sum = 0.f;
+  p->feedback_data.isrf_packet.forward_advance = 0.f;
 
   if (!e->feedback_props->ISRF_propagation) {
     p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa = 0.f;
@@ -273,6 +296,9 @@ float radiation_isrf_part_timestep(const struct part *restrict p,
    * makes f > 0 imply the fixed_fraction scheme. */
   if (f <= 0.f) return FLT_MAX;
   if (!e->feedback_props->ISRF_propagation) return FLT_MAX;
+  /* A packet makes one hop per own step: no speed to limit. */
+  if (e->feedback_props->ISRF_transport == isrf_transport_packet_hop)
+    return FLT_MAX;
   if (e->feedback_props->ISRF_c_hyp_timestep_term_off_for_debugging)
     return FLT_MAX;
 
@@ -563,6 +589,11 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
     error("Particle %lld: cross-bin state %e at end_force, dt_prev %e.", p->id,
           fd->dt_active, fd->dt_prev);
 #endif
+
+  if (fd->ISRF_packet_transport) {
+    radiation_packet_end_force(p);
+    return;
+  }
 
   const double dt = (double)fd->dt_prev;
   const double c_hyp = (double)fd->c_hyp;
@@ -871,6 +902,11 @@ void radiation_end_gradient_propagation(struct part *p,
   fd->dt_active = radiation_cross_bin_booking_on(e) ? fd->dt_prev : 0.f;
   /* Also set here: a cell may skip the drift before its first force loop. */
   fd->ISRF_flux_dissipation = e->feedback_props->ISRF_flux_dissipation;
+  radiation_set_part_transport(p, e);
+  if (fd->ISRF_packet_transport) {
+    radiation_packet_end_gradient(p);
+    return;
+  }
   const float dt = fd->dt_prev;
   const float c_hyp = fd->c_hyp;
   const float H = (float)e->cosmology->H;
