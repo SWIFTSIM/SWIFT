@@ -249,10 +249,22 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e) {
                                    c->grav.tasks_below_diff_grav_depth ||
                                    c->subtype == cell_subtype_void)) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
-        engine_do_unskip_gravity(cp, e);
+
+      /* Get the progeny cell. */
+      struct cell *cp = c->progeny[k];
+
+      /* Skip non-existent progeny cells. */
+      if (cp == NULL) continue;
+
+      /* Don't recurse if we are running a zoom and are at the void-zoom
+       * boundary. Zoom cells are handled on their own and recursing here would
+       * unskip them twice. */
+      if (c->subtype == cell_subtype_void && c->type == cell_type_zoom) {
+        continue;
       }
+
+      /* Recurse */
+      engine_do_unskip_gravity(c->progeny[k], e);
     }
   }
 
