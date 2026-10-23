@@ -5799,6 +5799,13 @@ void engine_maketasks(struct engine *e) {
   if (e->links != NULL) swift_free("links", e->links);
   e->size_links = e->sched.nr_tasks * e->links_per_tasks;
 
+#ifdef WITH_MPI
+  /* The time-step exchange links one task to each non-empty proxy cell,
+   * also on a rank that owns no particles and so has no tasks yet. */
+  for (int pid = 0; pid < e->nr_proxies; pid++)
+    e->size_links += e->proxies[pid].nr_cells_in + e->proxies[pid].nr_cells_out;
+#endif
+
   /* Make sure that we have space for more links than last time. */
   if (e->size_links < e->nr_links * engine_rebuild_link_alloc_margin)
     e->size_links = e->nr_links * engine_rebuild_link_alloc_margin;
