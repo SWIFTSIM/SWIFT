@@ -27,6 +27,7 @@ case $run_case in
 		;;
 esac
 
+gas_mass=${gas_mass:=50}                      # Gas particle mass in Msun
 embed=${embed:=8}                             # Periodic box side in gas box units (power of 2)
 dm_ratio=${dm_ratio:=5.36}                    # Dark matter to gas density ratio in the gas box
 delta=${delta:=0}                             # Density contrast of the gas box
@@ -36,11 +37,23 @@ cosmological=${cosmological:=0}               # 1: comoving ICs and --cosmology 
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
-ic_params=""
+# Lengths tied to the particle spacing scale as (gas_mass / 50)^(1/3).
+# The values in the parameter files are the ones for 50 Msun.
+length_scale=$(python3 -c "print(($gas_mass / 50.0) ** (1.0 / 3.0))")
+h_max=$(python3 -c "print(0.08 * $length_scale)")
+softening=$(python3 -c "print(0.005 * $length_scale)")
+cut_off_radius=$(python3 -c "print(0.005 * $length_scale)")
+
+ic_params="--mass $gas_mass --h-max $h_max --softening $softening"
 cosmo_flag=""
+mass_params="-P Gravity:max_physical_baryon_softening:$softening"
+mass_params="$mass_params -P Gravity:max_physical_DM_softening:$softening"
 if [ "$cosmological" -eq 1 ]; then
-	ic_params="--cosmological"
+	ic_params="$ic_params --cosmological"
 	cosmo_flag="--cosmology"
+else
+	# makeIC.py writes the comoving SPH:h_max in cosmological runs
+	mass_params="$mass_params -P SPH:h_max:$h_max"
 fi
 
 echo "Generating initial conditions for SinkHomogeneousBox (level $level)..."
@@ -61,6 +74,7 @@ fi
 if [ "$with_star_formation" -eq 0 ]; then
 	runtime_params="--sinks"
 	parameter_file="params_sinks.yml"
+	mass_params="$mass_params -P GEARSink:cut_off_radius:$cut_off_radius"
 else
 	runtime_params="--star-formation"
 	parameter_file="params_star_formation.yml"
@@ -71,4 +85,4 @@ mkdir snap
 
 ../../../swift --hydro $runtime_params --stars --self-gravity --feedback \
 	--cooling --sync --limiter --zoom $cosmo_flag --threads=$n_threads \
-	$(cat zoom_runtime_params.txt) $case_params $parameter_file 2>&1 | tee output.log
+	$(cat zoom_runtime_params.txt) $mass_params $case_params $parameter_file 2>&1 | tee output.log

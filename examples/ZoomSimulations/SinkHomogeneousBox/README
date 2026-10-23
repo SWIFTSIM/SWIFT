@@ -109,8 +109,9 @@ instead of sinks.
    The gas cools during the run (cooling is on), so the temperature set by
    jeans_length is only the starting value.
 
-Other run.sh variables: level, n_threads, embed, dm_ratio, delta,
-jeans_length, cosmological. Run "python3 makeIC.py --help" for all IC
+Other run.sh variables: level, n_threads, gas_mass, embed, dm_ratio, delta,
+jeans_length, cosmological. gas_mass (Msun, default 50) scales SPH:h_max,
+the softenings and the sink cut-off radius by (gas_mass / 50)^(1/3). Run "python3 makeIC.py --help" for all IC
 options.
 
 Parameter files: params_sinks.yml (with --sinks) and
