@@ -574,9 +574,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     sink_index = sink_ind_new;
   }
 
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
@@ -619,8 +616,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received sink to its cell. */
   for (size_t k = nr_sinks; k < s->nr_sinks; k++) {
     const struct sink *const sink = &s->sinks[k];
-    sink_index[k] = cell_getid(cdim, sink->x[0] * ih[0], sink->x[1] * ih[1],
-                               sink->x[2] * ih[2]);
+    sink_index[k] = cell_getid_from_pos(s, sink->x[0], sink->x[1], sink->x[2]);
     cell_sink_counts[sink_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[sink_index[k]].nodeID != local_nodeID)
@@ -739,8 +735,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
     /* New cell index */
     const int new_sink_ind =
-        cell_getid(s->cdim, sink->x[0] * s->iwidth[0],
-                   sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
+        cell_getid_from_pos(s, sink->x[0], sink->x[1], sink->x[2]);
 
     /* New cell of this sink */
     const struct cell *c = &s->cells_top[new_sink_ind];
