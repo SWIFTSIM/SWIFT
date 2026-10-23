@@ -167,6 +167,28 @@ INLINE static void convert_part_packet_escaped_photons(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter of a star's emitted packet energy per band, see
+ * #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_emitted_energy(const struct engine *e,
+                                                       const struct spart *sp,
+                                                       double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.emitted_energy[b];
+}
+
+/**
+ * @brief Snapshot converter of a star's emitted packet photon number per
+ * band, see #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_emitted_photons(const struct engine *e,
+                                                        const struct spart *sp,
+                                                        double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.emitted_photons[b];
+}
+
+/**
  * @brief Snapshot converter of a star's escaped packet energy per band, see
  * #feedback_write_sparticles.
  */
@@ -944,6 +966,18 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEmittedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_emitted_energy,
+      "Packet energy emitted by the star since its birth. Two components, PE "
+      "then LW. Zero unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEmittedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_emitted_photons,
+      "Photon number emitted by the star, times the band's lower-edge photon "
+      "energy (6.0 eV PE, 11.2 eV LW).");
+
   list[num++] = io_make_output_field_convert_spart(
       "PacketEscapedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, sparts, convert_spart_packet_escaped_energy,

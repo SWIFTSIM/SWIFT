@@ -242,15 +242,24 @@ void radiation_packet_end_force(struct part *p) {
 }
 
 /**
- * @brief Book the emission of a star's empty cones as escaped, once per
- * feedback step, on the star's own rank.
+ * @brief Book a star's emission of this feedback step, and the part of its
+ * empty cones as escaped, once per step on the star's own rank.
  *
  * A star with no gas neighbour has 12 empty cones: all its light escapes.
  *
  * @param sp The star, after its density loop.
  * @param Delta_t The star's feedback step.
  */
-void radiation_packet_star_book_escape(struct spart *sp, const float Delta_t) {
+void radiation_packet_star_book_emission(struct spart *sp,
+                                         const float Delta_t) {
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
+    const double E = sp->feedback_data.radiation.L_band[m] * (double)Delta_t;
+    sp->feedback_data.radiation.packet.emitted_energy[b] += E;
+    sp->feedback_data.radiation.packet.emitted_photons[b] +=
+        E * sp->feedback_data.radiation.packet.photon_fraction[b];
+  }
 
   int n_empty = 0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)

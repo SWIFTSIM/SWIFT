@@ -304,7 +304,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
                            si->time_bin > pj->time_bin, ti_current + ti_step);
 }
 
-void radiation_packet_star_book_escape(struct spart *sp, const float Delta_t);
+void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 
@@ -319,7 +319,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     const integertime_t ti_current) {}
 
 __attribute__((always_inline)) INLINE static void
-radiation_packet_star_book_escape(struct spart *sp, const float Delta_t) {}
+radiation_packet_star_book_emission(struct spart *sp, const float Delta_t) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 

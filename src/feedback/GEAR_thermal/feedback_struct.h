@@ -719,6 +719,12 @@ struct feedback_spart_data {
           per unit energy. Indexed by #radiation_isrf_operator. */
       float photon_fraction[ISRF_OPERATOR_COUNT];
 
+      /*! Energy emitted by the star, cumulative. */
+      double emitted_energy[ISRF_OPERATOR_COUNT];
+
+      /*! Photon number (as `N E_lo`) emitted by the star, cumulative. */
+      double emitted_photons[ISRF_OPERATOR_COUNT];
+
       /*! Emitted energy that found no gas in its cone, cumulative. */
       double escaped_energy[ISRF_OPERATOR_COUNT];
 

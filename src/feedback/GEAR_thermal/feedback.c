@@ -646,5 +646,5 @@ void feedback_prepare_feedback(struct spart *restrict sp,
 
   if (feedback_props->ISRF_propagation &&
       feedback_props->ISRF_transport == isrf_transport_packet_hop)
-    radiation_packet_star_book_escape(sp, (float)dt);
+    radiation_packet_star_book_emission(sp, (float)dt);
 }
