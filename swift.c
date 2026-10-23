@@ -1501,14 +1501,14 @@ int main(int argc, char *argv[]) {
     bzero(&gravity_properties, sizeof(struct gravity_props));
     if (with_self_gravity) {
       const double total_matter_mass =
-          (with_DM_background_particles && !with_cosmology)
+          (with_DM_background_particles && !with_cosmology && !dry_run)
               ? space_get_total_matter_mass(&s)
               : 0.;
       gravity_props_init(&gravity_properties, params, &prog_const, &cosmo,
                          with_cosmology, with_external_gravity,
                          with_baryon_particles, with_DM_particles,
                          with_neutrinos, with_DM_background_particles,
-                         total_matter_mass, periodic, s.dim, s.cdim);
+                         total_matter_mass, dry_run, periodic, s.dim, s.cdim);
     }
 
     /* Initialize the neutrino response if used */

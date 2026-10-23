@@ -51,8 +51,9 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
                         const int with_external_potential,
                         const int has_baryons, const int has_DM,
                         const int has_neutrinos, const int is_zoom_simulation,
-                        const double total_matter_mass, const int periodic,
-                        const double dim[3], const int cdim[3]) {
+                        const double total_matter_mass, const int dry_run,
+                        const int periodic, const double dim[3],
+                        const int cdim[3]) {
 
   /* Tree updates */
   p->rebuild_frequency =
@@ -255,16 +256,19 @@ void gravity_props_init(struct gravity_props *p, struct swift_params *params,
       const double ratio_background =
           parser_get_param_double(params, "Gravity:softening_ratio_background");
 
-      if (total_matter_mass <= 0.)
-        error("Invalid total matter mass (%e) for the background softening.",
-              total_matter_mass);
+      /* A dry run reads no masses, so the factor stays zero */
+      if (!dry_run) {
+        if (total_matter_mass <= 0.)
+          error("Invalid total matter mass (%e) for the background softening.",
+                total_matter_mass);
 
-      const double volume = dim[0] * dim[1] * dim[2];
-      const double mean_matter_density = total_matter_mass / volume;
+        const double volume = dim[0] * dim[1] * dim[2];
+        const double mean_matter_density = total_matter_mass / volume;
 
-      p->epsilon_background_fac = kernel_gravity_softening_plummer_equivalent *
-                                  ratio_background *
-                                  cbrt(1. / mean_matter_density);
+        p->epsilon_background_fac =
+            kernel_gravity_softening_plummer_equivalent * ratio_background *
+            cbrt(1. / mean_matter_density);
+      }
     }
   }
 

@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
                      /*with_cosmology=*/1, /*with_external_potential=*/0,
                      /*has_baryons=*/1, /*has_DM=*/1, /*has_neutrinos=*/0,
                      /*is_zoom_simulation=*/1, /*total_matter_mass=*/0.,
-                     /*periodic=*/1, dim, cdim);
+                     /*dry_run=*/0, /*periodic=*/1, dim, cdim);
   const float fac_cosmo_expected = kernel_gravity_softening_plummer_equivalent *
                                    ratio * cbrt(1. / rho_mean_cosmo);
   if (fabsf(p_cosmo.epsilon_background_fac - fac_cosmo_expected) >
@@ -84,8 +84,8 @@ int main(int argc, char *argv[]) {
   gravity_props_init(&p_no_cosmo, &params, &phys_const, &no_cosmo,
                      /*with_cosmology=*/0, /*with_external_potential=*/0,
                      /*has_baryons=*/1, /*has_DM=*/1, /*has_neutrinos=*/0,
-                     /*is_zoom_simulation=*/1, total_mass, /*periodic=*/1, dim,
-                     cdim);
+                     /*is_zoom_simulation=*/1, total_mass, /*dry_run=*/0,
+                     /*periodic=*/1, dim, cdim);
   const float fac_no_cosmo_expected =
       kernel_gravity_softening_plummer_equivalent * ratio *
       cbrt(volume / total_mass);
