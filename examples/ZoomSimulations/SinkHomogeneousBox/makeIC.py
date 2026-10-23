@@ -45,7 +45,7 @@ SPACE_STRETCH = 1.1
 def parse_options():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--level", type=int, default=5, help="Number of gas particles 2^(3 level)"
+        "--level", type=int, default=3, help="Number of gas particles 2^(3 level)"
     )
     parser.add_argument(
         "--lJ", type=float, default=0.25, help="Jeans wavelength in gas box units"
@@ -86,6 +86,12 @@ def parse_options():
         type=float,
         default=1.3,
         help="ZoomRegion:region_pad_factor",
+    )
+    parser.add_argument(
+        "--max-zoom-cdim",
+        type=int,
+        default=32,
+        help="Maximal number of zoom top-level cells per axis",
     )
     parser.add_argument(
         "--softening-ratio-background",
@@ -220,7 +226,10 @@ def zoom_geometry(opt, L):
     bkg_width = box_size / bkg_cdim
     min_zoom_width = SPACE_STRETCH * KERNEL_GAMMA * opt.h_max * KPC
     depth = 0
-    while bkg_width / 2 ** (depth + 1) > min_zoom_width:
+    while (
+        bkg_width / 2 ** (depth + 1) > min_zoom_width
+        and 2 ** (depth + 1) <= opt.max_zoom_cdim
+    ):
         depth += 1
     if depth < 1:
         raise ValueError(
@@ -286,6 +295,7 @@ def main():
     centre = 0.5 * box_size
 
     bkg_cdim, depth, bkg_width, zoom_width, min_zoom_width = zoom_geometry(opt, L)
+    mesh = max(32, 2 ** (opt.level + 1))
     pos_bg, m_bg, shell_bg = background_shells(opt, box, rng)
 
     # Checks
@@ -347,6 +357,7 @@ def main():
         f"ZoomRegion:bkg_top_level_cells:{bkg_cdim}",
         f"ZoomRegion:zoom_top_level_depth:{depth}",
         f"ZoomRegion:region_pad_factor:{opt.pad_factor}",
+        f"Gravity:mesh_side_length:{mesh}",
     ]
     if opt.cosmological:
         omega_b = opt.omega_m / (1.0 + opt.dm_ratio)
@@ -411,7 +422,8 @@ def main():
         f"Zoom grid                 : bkg_top_level_cells {bkg_cdim} "
         f"(width {bkg_width / pc:.1f} pc), zoom_top_level_depth {depth} "
         f"(zoom cell {zoom_width / pc:.1f} pc > 1.1 kernel_gamma h_max = "
-        f"{min_zoom_width / pc:.1f} pc), written to {opt.zoom_params_file}"
+        f"{min_zoom_width / pc:.1f} pc), mesh_side_length {mesh}, "
+        f"written to {opt.zoom_params_file}"
     )
     if opt.cosmological:
         print(f"Cosmological runtime parameters (also in {opt.zoom_params_file}):")

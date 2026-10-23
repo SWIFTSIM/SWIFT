@@ -36,6 +36,7 @@ grows as 2^level, the mean spacing (27.2 pc) and h (33.6 pc) do not change.
   3      512                 1344                 218     1744
   4      4096                10752                436     3488
   5      32768               86016                872     6976
+  8      16777216            44040192             6976    55805
 
 Configure
 ---------
@@ -50,33 +51,83 @@ Sinks do not run with MPI, so build and run without MPI.
 Run
 ---
 
-./run.sh                          # GEAR sinks, level 5, 8 threads
-with_star_formation=1 ./run.sh    # GEAR star formation, no sinks
-level=4 n_threads=2 ./run.sh      # smaller box
+run.sh has three cases (variable run_case). Each case makes the ICs, then
+runs swift. Add with_star_formation=1 for GEAR star formation instead of
+sinks.
 
-cosmological=1 ./run.sh           # comoving ICs, --cosmology (see below)
+1. Local test (default): level 3, 2 threads, time_end 0.1 (98 Myr).
 
-run.sh variables: level, n_threads, embed, dm_ratio, delta,
-with_star_formation, cosmological. Run "python3 makeIC.py --help" for all IC options
-(lJ, rho, mass, transition-width, h-max, pad-factor, seed, ...).
+     ./run.sh
+     with_star_formation=1 ./run.sh
+
+   It takes a few seconds on a laptop (release build). The run stops at
+   t = 0.1, before the crash given in "Expected behaviour". No sink or star
+   forms in this time.
+
+2. Production, level 5 (32768 gas particles), 8 threads, time_end 0.5.
+
+     run_case=level5 ./run.sh
+     run_case=level5 with_star_formation=1 ./run.sh
+
+   Sink formation (params_sinks.yml, GEARSink) and star formation
+   (params_star_formation.yml, GEARStarFormation) use the thresholds of
+   examples/SinkParticles/HomogeneousBox/params.yml: gas density above
+   10 atom/cm^3, temperature below 1000 K (sinks) or 3e4 K (stars), star
+   formation efficiency 0.01. In that example (gas only, grackle_0) the
+   first sinks form at t = 0.26. Here the dark matter makes the box
+   collapse faster (free-fall time 65 Myr instead of 163 Myr), so the
+   first sinks are expected before t = 0.26. This is not measured.
+
+3. Large region, level 8 (16.8 million gas particles), 72 threads.
+
+     run_case=level8 ./run.sh
+
+   This case is for a cluster node (for example Jed). It writes restart
+   files every 2 hours and a snapshot every 0.05 (49 Myr).
+   - ICs: makeIC.py --level 8 takes 2 minutes, 6.9 GB of memory and
+     writes a 3.7 GB file (measured on a laptop).
+   - Particles: 16777216 gas (50 Msun), 16777216 PartType1 (268 Msun),
+     3 x 14680064 PartType2 (2544, 2.035e4 and 1.628e5 Msun): 77.6 million.
+   - Zoom grid: 5 background cells (11.2 kpc), zoom depth 5 (32^3 zoom
+     cells of 349 pc), mesh_side_length 512 (mesh cell 109 pc, as at
+     level 5).
+   - Memory estimate: 19.7 GB for the particles (part, xpart and gpart:
+     680 bytes per gas particle, 136 bytes per dark matter particle), so
+     about 30 to 40 GB with cells, tasks, spare particles and the mesh.
+   - Sinks do not run with MPI: one rank, all cores of one node.
+   - Cost estimate: a local level-4 run reached t = 0.055 in 46 core
+     seconds. Linear scaling in the particle number (x 4096) and in time
+     (x 10 to time_end) gives about 2e6 core seconds, that is 7 hours on
+     72 cores if the scaling is perfect. Deeper time-step bins in the
+     clumps can make it 3 to 10 times longer. These are estimates, not
+     measurements.
+   The gas temperature grows as L^2 at fixed jeans_length (makeIC.py
+   --lJ, in gas box units): 16 K at level 5, about 1000 K at level 8. Use
+   jeans_length=0.03125 to keep the level-5 temperature at level 8.
+
+Other run.sh variables: level, n_threads, embed, dm_ratio, delta,
+jeans_length, cosmological. Run "python3 makeIC.py --help" for all IC
+options.
 
 Parameter files: params_sinks.yml (with --sinks) and
 params_star_formation.yml (with --star-formation). The physics blocks are
 the ones of examples/SinkParticles/HomogeneousBox/params.yml.
 
-Zoom grid
----------
+Zoom grid and mesh
+------------------
 
 makeIC.py writes zoom_runtime_params.txt, which run.sh passes with -P:
 - ZoomRegion:bkg_top_level_cells: the largest odd number not above
   embed / pad_factor, so that the padded gas box sits in the central
   background cell.
 - ZoomRegion:zoom_top_level_depth: the largest depth for which the zoom
-  cells stay wider than 1.1 kernel_gamma SPH:h_max.
+  cells stay wider than 1.1 kernel_gamma SPH:h_max, with at most
+  max_zoom_cdim (32) zoom cells per axis.
+- Gravity:mesh_side_length: 2^(level+1), at least 32.
 With the defaults (embed 8, pad 1.3, h_max 0.08 kpc) this gives 5 background
-cells and depth level - 2: the zoom cells are 174 pc wide at every level.
-If you change SPH:h_max in the parameter file, give the same value to
-makeIC.py --h-max.
+cells and 174 pc wide zoom cells up to level 7 (depth level - 2), and
+349 pc wide zoom cells at level 8. If you change SPH:h_max in the parameter
+file, give the same value to makeIC.py --h-max.
 
 Softening
 ---------
@@ -106,7 +157,8 @@ same parameter files run with --cosmology added to the swift command.
 Expected behaviour
 ------------------
 
-Measured locally (level 3 and 4, release build, 2 threads, a few minutes):
+Measured locally (level 3 and 4, release build, 2 threads, a few minutes).
+Level 5 and level 8 runs were not made.
 
 - The background softening is set without cosmology: PartType2 softenings
   10.9, 21.8 and 43.6 pc for the three shells, as makeIC.py predicts. A
@@ -142,4 +194,4 @@ What is not tested
 - The collapse time, the time of the first sinks and the cost to time_end.
 - MPI: sinks do not run with MPI.
 - The cosmological physics (only start-up and 20 steps were run).
-- Level 5 and above.
+- Level 5 and above (only the ICs and the level-5 zoom geometry).
