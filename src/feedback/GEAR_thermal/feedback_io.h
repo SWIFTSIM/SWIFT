@@ -47,6 +47,148 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 /**
+ * @brief Snapshot converter of the packet inbox energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_inbox_energy(const struct engine *e,
+                                                    const struct part *p,
+                                                    const struct xpart *xp,
+                                                    float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].inbox_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet inbox photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_inbox_photons(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].inbox_photons;
+}
+
+/**
+ * @brief Snapshot converter of the packet reservoir energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_reservoir_energy(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].reservoir_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet reservoir photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_reservoir_photons(const struct engine *e,
+                                                         const struct part *p,
+                                                         const struct xpart *xp,
+                                                         float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].reservoir_photons;
+}
+
+/**
+ * @brief Snapshot converter of the packet energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_energy(const struct engine *e,
+                                              const struct part *p,
+                                              const struct xpart *xp,
+                                              float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_photons(const struct engine *e,
+                                               const struct part *p,
+                                               const struct xpart *xp,
+                                               float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].photons;
+}
+
+/**
+ * @brief Snapshot converter of the packet absorbed energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_absorbed_energy(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].absorbed_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet absorbed photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_absorbed_photons(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].absorbed_photons;
+}
+
+/**
+ * @brief Snapshot converter of the packet escaped energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_escaped_energy(const struct engine *e,
+                                                      const struct part *p,
+                                                      const struct xpart *xp,
+                                                      double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].escaped_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet escaped photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_escaped_photons(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].escaped_photons;
+}
+
+/**
+ * @brief Snapshot converter of a star's escaped packet energy per band, see
+ * #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_escaped_energy(const struct engine *e,
+                                                       const struct spart *sp,
+                                                       double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.escaped_energy[b];
+}
+
+/**
+ * @brief Snapshot converter of a star's escaped packet photon number per
+ * band, see #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_escaped_photons(const struct engine *e,
+                                                        const struct spart *sp,
+                                                        double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.escaped_photons[b];
+}
+
+/**
  * @brief Snapshot converter for #PESpecificEnergy, see
  * #feedback_write_particles.
  */
@@ -678,6 +820,93 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       convert_part_pending_flux_LW_PHOTON,
       "Same as PEPendingSpecificFluxes, Lyman-Werner-band photon-number "
       "moment.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketInboxEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY, 0.f,
+      parts, xparts, convert_part_packet_inbox_energy,
+      "Packet energy received since the particle's last step, sent at its "
+      "next step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "Zero unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketInboxPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_inbox_photons,
+      "Photon number of the inbox times the band's lower-edge photon "
+      "energy, so in energy units: divide by 6.0 eV (PE) or 11.2 eV (LW) "
+      "for a count. Two components, PE (6-11.2 eV) then LW (11.2-13.6 "
+      "eV). Zero unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketReservoirEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_reservoir_energy,
+      "Packet energy from senders on longer steps, released over their "
+      "step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero "
+      "unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketReservoirPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_part_packet_reservoir_photons,
+      "Photon number of the reservoir, in the units of "
+      "PacketInboxPhotonNumbers. Two components, PE (6-11.2 eV) then LW "
+      "(11.2-13.6 eV). Zero unless GEARFeedback:ISRF_transport is "
+      "packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketHeldEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY, 0.f,
+      parts, xparts, convert_part_packet_energy,
+      "Packet energy held for sending this step; zero between steps. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketHeldPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_photons,
+      "Photon number held, in the units of PacketInboxPhotonNumbers. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketAbsorbedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_absorbed_energy,
+      "Packet energy absorbed by dust in the particle since the start of "
+      "the run. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "Zero unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketAbsorbedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_part_packet_absorbed_photons,
+      "Photon number absorbed, in the units of PacketInboxPhotonNumbers. "
+      "Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketEscapedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_escaped_energy,
+      "Packet energy that left the particle with no downstream neighbour, "
+      "since the start of the run. Two components, PE (6-11.2 eV) then LW "
+      "(11.2-13.6 eV). Zero unless GEARFeedback:ISRF_transport is "
+      "packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketEscapedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts, convert_part_packet_escaped_photons,
+      "Photon number escaped, in the units of PacketInboxPhotonNumbers. "
+      "Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field(
+      "PacketDirections", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, parts,
+      feedback_data.isrf_packet.direction,
+      "Unit direction of the packet, away from its origin. Zero unless "
+      "GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field(
+      "PacketOriginDistances", FLOAT, 1, UNIT_CONV_LENGTH, 1.f, parts,
+      feedback_data.isrf_packet.origin_distance,
+      "Co-moving distance from the packet's origin to the particle. Zero "
+      "unless GEARFeedback:ISRF_transport is packet_hop.");
 #endif
 
   return num;
@@ -712,6 +941,21 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
       "Ionized gas mass of the star particles' HII region before they die or "
       "were not eligible to form HII regions anymore. Same algorithm's "
       "bookkeeping caveat as the live HIIRegionMasses it is retired from.");
+#endif
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEscapedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_escaped_energy,
+      "Packet energy of the star's empty emission cones since its birth. "
+      "Two components, PE then LW. Zero unless GEARFeedback:ISRF_transport "
+      "is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEscapedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_escaped_photons,
+      "Photon number of the star's empty emission cones, times the band's "
+      "lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
 #endif
 
   return num;
