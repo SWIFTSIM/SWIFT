@@ -1,0 +1,145 @@
+Zoom homogeneous box with GEAR sinks
+=====================================
+
+What it is
+----------
+
+The gas box of examples/SinkParticles/HomogeneousBox, embedded at the centre
+of a larger periodic box and run with the zoom region (--zoom). The run is
+not cosmological.
+
+- Gas box: side L, uniform random gas (PartType0), 50 Msun per particle,
+  density 0.1 atom/cm^3, zero velocity, internal energy u = sigma^2 with the
+  velocity dispersion of the original example (Jeans wavelength lJ L).
+- Dark matter in the gas box (PartType1): one particle per gas particle.
+  Each pair comes from one random point split as in space_generate_gas()
+  (src/space.c), so gas and dark matter follow the same density field. The
+  dark matter density is dm_ratio times the gas density (default 5.36, the
+  Planck 2018 ratio of cold dark matter to baryons).
+- Background dark matter (PartType2): nested cube shells around the gas box.
+  Shell k spans the cube sides 2^(k-1) L to 2^k L, up to the box side
+  embed L. Each shell is a jittered grid with spacing 2^k times the mean gas
+  spacing, so the particle mass grows by 8 from one shell to the next and
+  every shell holds 7/8 of 2^(3 level) particles. No PartType2 particle is
+  inside the gas box.
+- By default the total matter density outside equals the one inside
+  (delta = 0): the large box is uniform. With delta > 0 the gas box is an overdensity
+  rho_in / rho_out = 1 + delta, with the profile
+  rho(r) = rho_out + (rho_in - rho_out) (1 - tanh((r - L/2) / w))
+  of the background dark matter, where r is the max-norm distance from the
+  centre. The gas stays a sharp cube.
+
+The resolution is set by level: 2^(3 level) gas particles. The gas box side
+grows as 2^level, the mean spacing (27.2 pc) and h (33.6 pc) do not change.
+
+  level  gas = DM particles  PartType2 particles  L [pc]  box [pc] (embed 8)
+  3      512                 1344                 218     1744
+  4      4096                10752                436     3488
+  5      32768               86016                872     6976
+
+Configure
+---------
+
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 \
+  --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR \
+  --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening \
+  --with-grackle=path/to/grackle
+
+Sinks do not run with MPI, so build and run without MPI.
+
+Run
+---
+
+./run.sh                          # GEAR sinks, level 5, 8 threads
+with_star_formation=1 ./run.sh    # GEAR star formation, no sinks
+level=4 n_threads=2 ./run.sh      # smaller box
+
+cosmological=1 ./run.sh           # comoving ICs, --cosmology (see below)
+
+run.sh variables: level, n_threads, embed, dm_ratio, delta,
+with_star_formation, cosmological. Run "python3 makeIC.py --help" for all IC options
+(lJ, rho, mass, transition-width, h-max, pad-factor, seed, ...).
+
+Parameter files: params_sinks.yml (with --sinks) and
+params_star_formation.yml (with --star-formation). The physics blocks are
+the ones of examples/SinkParticles/HomogeneousBox/params.yml.
+
+Zoom grid
+---------
+
+makeIC.py writes zoom_runtime_params.txt, which run.sh passes with -P:
+- ZoomRegion:bkg_top_level_cells: the largest odd number not above
+  embed / pad_factor, so that the padded gas box sits in the central
+  background cell.
+- ZoomRegion:zoom_top_level_depth: the largest depth for which the zoom
+  cells stay wider than 1.1 kernel_gamma SPH:h_max.
+With the defaults (embed 8, pad 1.3, h_max 0.08 kpc) this gives 5 background
+cells and depth level - 2: the zoom cells are 174 pc wide at every level.
+If you change SPH:h_max in the parameter file, give the same value to
+makeIC.py --h-max.
+
+Softening
+---------
+
+Gas and PartType1: 5 pc (max_physical_baryon_softening and
+max_physical_DM_softening). PartType2: softening_ratio_background (0.2)
+times the mean spacing of particles of its mass at the mean matter density
+of the box. Without cosmology, the mean matter density is the total matter
+mass over the box volume (src/gravity_properties.c). makeIC.py prints the
+softening of each shell.
+
+Cosmological ICs
+----------------
+
+makeIC.py --cosmological writes comoving ICs (lengths divided by a) and
+a_begin is chosen such that the comoving mean
+matter density equals Omega_m rho_crit_0, which SWIFT checks at start-up;
+Omega_b / Omega_m = 1 / (1 + dm_ratio). With the defaults this gives
+a_begin = 0.0136 (z = 72). The velocities are zero, which means the box
+follows the Hubble flow: it expands and the physics is not that of the
+non-cosmological run. SWIFT stops on zero velocities in cosmological runs,
+so these ICs get random velocities (--velocity-sigma, default 1 km/s).
+makeIC.py also writes the Cosmology block, the comoving softenings, the
+comoving SPH:h_max and the output times to zoom_runtime_params.txt, so the
+same parameter files run with --cosmology added to the swift command.
+
+Expected behaviour
+------------------
+
+Measured locally (level 3 and 4, release build, 2 threads, a few minutes):
+
+- The background softening is set without cosmology: PartType2 softenings
+  10.9, 21.8 and 43.6 pc for the three shells, as makeIC.py predicts. A
+  binary without this fix stops at the first step (zero time-step of the
+  PartType2 particles).
+- The time-step stays above zero. The dark matter velocities grow to about
+  3 km/s at t = 0.06 (59 Myr) at level 3 and level 4 alike.
+- The run does not reproduce the fragmentation of the original example.
+  With cold dark matter the total density is 0.636 m_p/cm^3 and the
+  free-fall time is about 65 Myr. The whole uniform medium, inside and
+  outside the gas box, collapses into clumps on that time scale:
+  high-resolution particles leave the gas box (rmax = 1.3 L at t = 0.11 at
+  level 3) and PartType2 particles enter it (15 to 49 at t = 0.06 to 0.11).
+- The zoom extent regrid then fires (level 4, t = 0.055) and the run stops
+  with a segmentation fault in space_reorder_extra_sparts_mapper (level 3
+  at t = 0.118, level 4 at t = 0.055). time_end = 0.5 is therefore far
+  beyond what runs today. It is the value of the original example and was
+  not tuned.
+- Cosmological ICs (--cosmological, 20 steps): the run starts and ends
+  without error.
+
+What is not tested
+------------------
+
+- Builds with debugging checks stop at the first rebuild:
+  - with --sinks, in the sink cell index check (space_rebuild.c), even
+    before any sink forms: the spare sink slots of the zoom cells get an
+    index from the zoom grid, the check uses the plain grid;
+  - with --star-formation, in cell_check_multipole on a background cell
+    with one particle. params_star_formation.yml sets
+    Scheduler:cell_extra_sinks to 0, which avoids the sink check.
+- Sink formation: no sink formed in the local runs.
+- The collapse time, the time of the first sinks and the cost to time_end.
+- MPI: sinks do not run with MPI.
+- The cosmological physics (only start-up and 20 steps were run).
+- Level 5 and above.
