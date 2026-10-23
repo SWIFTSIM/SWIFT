@@ -169,8 +169,9 @@ void engine_addlink(struct engine *e, struct link **l, struct task *t) {
   const size_t ind = atomic_inc(&e->nr_links);
   if (ind >= e->size_links) {
     error(
-        "Link table overflow. Increase the value of "
-        "`Scheduler:links_per_tasks`.");
+        "Link table overflow: link %zu requested, %zu allocated for %d "
+        "tasks. Increase the value of `Scheduler:links_per_tasks`.",
+        ind, e->size_links, e->sched.nr_tasks);
   }
   struct link *res = &e->links[ind];
 
