@@ -167,11 +167,13 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
       band->reservoir_energy = 0.f;
       band->reservoir_photons = 0.f;
     }
-    band->energy = band->inbox_energy + res_energy;
-    band->photons = band->inbox_photons + res_photons;
+    /* Added, not assigned: a packet still held would otherwise be lost. */
+    const float arriving = band->inbox_energy + res_energy;
+    band->energy += arriving;
+    band->photons += band->inbox_photons + res_photons;
     band->inbox_energy = 0.f;
     band->inbox_photons = 0.f;
-    total_energy += band->energy;
+    total_energy += arriving;
   }
 
   float offset[3];
