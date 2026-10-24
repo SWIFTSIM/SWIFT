@@ -230,6 +230,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
     sp->birth_time = stars_properties->spart_first_init_birth_time;
 
   sp->h_hii = 0.0;
+  sp->h_hii_request = 0.f;
   stars_init_spart(sp);
 }
 

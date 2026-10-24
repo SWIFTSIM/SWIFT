@@ -179,12 +179,14 @@ void space_split_finalise_leaf(struct space *s, struct cell *c) {
 
     /* Get the maximum smoothing length. */
     stars_h_max = max(stars_h_max, sparts[k].h);
-    stars_h_hii_max = max(stars_h_hii_max, sparts[k].h_hii);
+    stars_h_hii_max =
+        max(stars_h_hii_max, stars_get_hii_search_length(&sparts[k]));
 
     /* Get the maximum smoothing length of active particles. */
     if (spart_is_active(&sparts[k], e)) {
       stars_h_max_active = max(stars_h_max_active, sparts[k].h);
-      stars_h_hii_max_active = max(stars_h_hii_max_active, sparts[k].h_hii);
+      stars_h_hii_max_active = max(stars_h_hii_max_active,
+                                   stars_get_hii_search_length(&sparts[k]));
     }
 
     /* Set the depth of the particle in the cell. */

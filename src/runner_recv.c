@@ -262,12 +262,13 @@ void runner_do_recv_spart(struct runner *r, struct cell *c, int clear_sorts,
       time_bin_min = min(time_bin_min, sparts[k].time_bin);
       time_bin_max = max(time_bin_max, sparts[k].time_bin);
       h_max = max(h_max, sparts[k].h);
-      h_hii_max = max(h_hii_max, sparts[k].h_hii);
+      h_hii_max = max(h_hii_max, stars_get_hii_search_length(&sparts[k]));
       sparts[k].gpart = NULL;
       if (spart_is_active(&sparts[k], e) &&
           (feedback_is_active(&sparts[k], e) || with_rt)) {
         h_max_active = max(h_max_active, sparts[k].h);
-        h_hii_max_active = max(h_hii_max_active, sparts[k].h_hii);
+        h_hii_max_active =
+            max(h_hii_max_active, stars_get_hii_search_length(&sparts[k]));
       }
     }
 
