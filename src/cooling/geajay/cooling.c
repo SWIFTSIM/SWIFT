@@ -582,7 +582,10 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Thermal time = %g", cooling->thermal_time);
   message("Max geajay sub-steps = %d", cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
-  message("geajay energy change limit = %g", cooling->energy_change_limit);
+  message("geajay energy change limit = %g (0: the geajay default)",
+          cooling->energy_change_limit);
+  message("geajay cheap energy update = %d (0 explicit, 1 second order)",
+          cooling->chemistry_data.cheap_energy_update);
   if (cooling->cooling_density_max > 0.)
     message("Maximal density passed to geajay = %e (internal units)",
             cooling->cooling_density_max);
@@ -1716,6 +1719,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->max_iterations = cooling->max_step;
   chemistry->exit_after_iterations_exceeded = 1;
   chemistry->energy_change_limit = cooling->energy_change_limit;
+  if (cooling->cheap_energy_update >= 0)
+    chemistry->cheap_energy_update = cooling->cheap_energy_update;
 
   /* The options of "per_band" start from the parameters as set here */
   const geajay_chemistry_data chemistry_as_set = *chemistry;

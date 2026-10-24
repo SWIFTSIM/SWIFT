@@ -278,9 +278,16 @@ struct cooling_function_data {
   int subcycle_on_failure;
 
   /*! Largest fraction of the internal energy that one sub-step of the solver
-   * may change, in (0, 1] (GeajayCooling:energy_change_limit,
-   * chemistry_data.energy_change_limit). Grackle fixes 0.1. */
+   * may change, in (0, 1], or 0 for the geajay default (0.03 with the second
+   * order energy update, 0.1 with the explicit one)
+   * (GeajayCooling:energy_change_limit, chemistry_data.energy_change_limit).
+   * Grackle fixes 0.1. */
   double energy_change_limit;
+
+  /*! Energy update of the cheap solver: 0 explicit, 1 second order, -1 the
+   * geajay default (GeajayCooling:cheap_energy_update,
+   * chemistry_data.cheap_energy_update). */
+  int cheap_energy_update;
 
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;

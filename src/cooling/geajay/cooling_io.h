@@ -710,13 +710,21 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:subcycle_on_failure must be in [0, 20], got %d.",
           cooling->subcycle_on_failure);
 
-  /* Largest fraction of the internal energy that one sub-step may change */
+  /* Largest fraction of the internal energy that one sub-step may change;
+     0 keeps the geajay default */
   cooling->energy_change_limit = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:energy_change_limit", 0.1);
-  if (!(cooling->energy_change_limit > 0. &&
-        cooling->energy_change_limit <= 1.))
-    error("GeajayCooling:energy_change_limit must be in (0, 1], got %g.",
-          cooling->energy_change_limit);
+      parameter_file, "GeajayCooling:energy_change_limit", 0.);
+  if (!(cooling->energy_change_limit == 0. ||
+        (cooling->energy_change_limit > 0. &&
+         cooling->energy_change_limit <= 1.)))
+    error(
+        "GeajayCooling:energy_change_limit must be 0 (the geajay default) or "
+        "in (0, 1], got %g.",
+        cooling->energy_change_limit);
+
+  /* Energy update of the cheap solver; geajay checks the value */
+  cooling->cheap_energy_update = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:cheap_energy_update", -1);
 
   /* Thermal time */
   cooling->thermal_time =
