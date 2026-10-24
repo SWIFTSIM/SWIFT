@@ -17,7 +17,7 @@ n_field_stars=${n_field_stars:=1}   # Isolated stars
 nside=${nside:=1}                   # GEARFeedback:HII_angular_nside override: 0 (spherical) or 1 (12 cones)
 random_frame=${random_frame:=0}     # GEARFeedback:HII_random_cone_frame_per_star override:
                                     # 0 = cones fixed to the box axes, 1 = random rotation per star
-max_search_radius=${max_search_radius:=0.5} # Stars:HII_max_search_radius override (internal units, kpc); 0.05 for a 50 pc cap
+max_search_radius=${max_search_radius:=0.15} # Stars:HII_max_search_radius override (internal units, kpc); 0.5 for a 500 pc cap
 rebuild_time_myr=${rebuild_time_myr:=0.02} # GEARFeedback:HII_rebuild_time_Myr override
 initial_metallicity=${initial_metallicity:=0.02} # GEARChemistry:initial_metallicity override (Z/Zsun)
 time_end=${time_end:=1e-3}          # TimeIntegration:time_end override (internal units, 1e-3 = 0.98 Myr)

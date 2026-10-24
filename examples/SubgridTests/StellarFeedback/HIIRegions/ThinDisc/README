@@ -19,7 +19,7 @@ lengths.
 largest radius the HII search may reach around a star. It caps the size of
 an ionised region. With fixed cones the arms of the pattern described below
 extend up to this cap, so the strength of the pattern grows with it. Set it
-with e.g. `max_search_radius=0.15 ./run.sh`.
+with e.g. `max_search_radius=0.5 ./run.sh`. The default is 0.15 (150 pc).
 
 `HII_random_cone_frame_per_star: 0` keeps the 12 cones fixed to the box axes,
 so all stars share the same cone directions. `HII_random_cone_frame_per_star: 1`
