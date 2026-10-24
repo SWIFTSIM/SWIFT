@@ -298,9 +298,18 @@ radiation_packet_init_star_cones(struct spart *sp) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     sp->feedback_data.radiation.packet.cone_count[c] = 0;
+    sp->feedback_data.radiation.packet.cone_id_sum[c] = 0;
+    sp->feedback_data.radiation.packet.cone_r2_sum[c] = 0.0;
+    sp->feedback_data.radiation.packet.cone_mass_sum[c] = 0.0;
+    sp->feedback_data.radiation.packet.cone_weight_tolerance[c] = 0.0;
     sp->feedback_data.radiation.packet.cone_count_delivered[c] = 0;
+    sp->feedback_data.radiation.packet.cone_id_sum_delivered[c] = 0;
+    sp->feedback_data.radiation.packet.cone_r2_sum_delivered[c] = 0.0;
+    sp->feedback_data.radiation.packet.cone_mass_sum_delivered[c] = 0.0;
     sp->feedback_data.radiation.packet.cone_weight_delivered[c] = 0.f;
   }
+  sp->feedback_data.radiation.packet.h_density = sp->h;
+  sp->feedback_data.radiation.packet.h_feedback = 0.f;
   sp->feedback_data.radiation.packet.cones_booked = 0;
 #endif
 }
@@ -309,19 +318,41 @@ radiation_packet_init_star_cones(struct spart *sp) {
  * @brief Star density loop: add a gas neighbour to its emission cone.
  *
  * @param si The star.
+ * @param pj The gas neighbour.
  * @param dx Comoving vector from the gas to the star (si - pj).
  * @param weight Kernel weight times gas mass, as in the feedback loop.
  * @param ti_current Current integer time.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
-    struct spart *si, const float dx[3], const float weight,
-    const integertime_t ti_current) {
+    struct spart *si, const struct part *pj, const float dx[3],
+    const float weight, const integertime_t ti_current) {
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
   const int c = radiation_packet_emission_cone(si->id, ti_begin, dx);
   si->feedback_data.radiation.packet.cone_weight[c] += weight;
 #ifdef SWIFT_DEBUG_CHECKS
-  if (weight > 0.f) si->feedback_data.radiation.packet.cone_count[c]++;
+  if (weight > 0.f) {
+    const double r2 =
+        (double)dx[0] * dx[0] + (double)dx[1] * dx[1] + (double)dx[2] * dx[2];
+    const double q = sqrt(r2) / ((double)kernel_gamma * si->h);
+    /* Wendland C2: d ln W / d ln q = -20 q^2 / ((1 - q)(1 + 4 q)). A float
+       distance carries up to 64 FLT_EPSILON relative error from positions
+       taken against cell corners, and the product with the mass adds 4.
+       kernel_eval() sums its polynomial in float: an absolute error of up to
+       the sum of its coefficients' sizes (50) times FLT_EPSILON, which near
+       the support edge exceeds the kernel itself. */
+    const double slope =
+        20.0 * q * q / (fmax(1.0 - q, 1e-12) * (1.0 + 4.0 * q));
+    si->feedback_data.radiation.packet.cone_weight_tolerance[c] +=
+        (double)weight * (64.0 * slope + 4.0) * FLT_EPSILON +
+        (double)hydro_get_mass(pj) * 64.0 * FLT_EPSILON * kernel_constant *
+            kernel_gamma_inv_dim;
+    si->feedback_data.radiation.packet.cone_count[c]++;
+    si->feedback_data.radiation.packet.cone_id_sum[c] += pj->id;
+    si->feedback_data.radiation.packet.cone_r2_sum[c] += r2;
+    si->feedback_data.radiation.packet.cone_mass_sum[c] +=
+        (double)hydro_get_mass(pj);
+  }
 #endif
 }
 
@@ -359,8 +390,17 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   /* Several feedback tasks of one star may run at once. */
   struct spart *s_dbg = (struct spart *)si;
   atomic_inc(&s_dbg->feedback_data.radiation.packet.cone_count_delivered[c]);
+  atomic_add(&s_dbg->feedback_data.radiation.packet.cone_id_sum_delivered[c],
+             pj->id);
+  atomic_add_d(
+      &s_dbg->feedback_data.radiation.packet.cone_r2_sum_delivered[c],
+      (double)dx[0] * dx[0] + (double)dx[1] * dx[1] + (double)dx[2] * dx[2]);
+  atomic_add_d(
+      &s_dbg->feedback_data.radiation.packet.cone_mass_sum_delivered[c],
+      (double)hydro_get_mass(pj));
   atomic_add_f(&s_dbg->feedback_data.radiation.packet.cone_weight_delivered[c],
                weight);
+  atomic_max_f(&s_dbg->feedback_data.radiation.packet.h_feedback, si->h);
 #endif
   const double fraction =
       (double)weight / ((double)cone_weight * RADIATION_PACKET_EMISSION_CONES);
@@ -499,8 +539,8 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_init_star_cones(struct spart *sp) {}
 
 __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
-    struct spart *si, const float dx[3], const float weight,
-    const integertime_t ti_current) {}
+    struct spart *si, const struct part *pj, const float dx[3],
+    const float weight, const integertime_t ti_current) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_star_book_emission(struct spart *sp, const float Delta_t) {}

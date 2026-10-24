@@ -331,26 +331,75 @@ void radiation_packet_star_book_emission(struct spart *sp,
  * by cone, as the density loop that normalised the cones. A difference
  * creates or destroys light.
  *
+ * A different count or ID sum (membership) stops the run, and so does a
+ * weight difference beyond the rounding tolerance the density loop summed.
+ * Otherwise one line per star step reports the largest differences and the
+ * delivered fraction of the star's light minus one.
+ *
  * @param sp The star, after its feedback loop.
  * @param ti_current Current integer time, for the message.
  */
 void radiation_packet_check_star_cones(const struct spart *sp,
                                        const integertime_t ti_current) {
   if (!sp->feedback_data.radiation.packet.cones_booked) return;
+  double max_dw = 0.0, max_tol_use = 0.0, max_dr2 = 0.0, max_dm = 0.0;
+  double fraction = 0.0;
+  int worst = -1;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     const int n = sp->feedback_data.radiation.packet.cone_count[c];
     const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
-    const float w = sp->feedback_data.radiation.packet.cone_weight[c];
-    const float w_d =
+    const long long id = sp->feedback_data.radiation.packet.cone_id_sum[c];
+    const long long id_d =
+        sp->feedback_data.radiation.packet.cone_id_sum_delivered[c];
+    const double w = sp->feedback_data.radiation.packet.cone_weight[c];
+    const double w_d =
         sp->feedback_data.radiation.packet.cone_weight_delivered[c];
-    /* Float sums of the same terms in another order: n roundings at most. */
-    const float bar = 4.0f * (n + 1) * FLT_EPSILON * w;
-    if (n != n_d || fabsf(w - w_d) > bar)
+    const double r2 = sp->feedback_data.radiation.packet.cone_r2_sum[c];
+    const double r2_d =
+        sp->feedback_data.radiation.packet.cone_r2_sum_delivered[c];
+    const double m = sp->feedback_data.radiation.packet.cone_mass_sum[c];
+    const double m_d =
+        sp->feedback_data.radiation.packet.cone_mass_sum_delivered[c];
+    /* Two float sums of the same terms in any order, plus each weight's own
+       rounding. */
+    const double tol =
+        sp->feedback_data.radiation.packet.cone_weight_tolerance[c] +
+        4.0 * (n + 1) * FLT_EPSILON * w;
+    if (n != n_d || id != id_d)
       error(
-          "Star %lld, cone %d at ti_current %lld: the density loop counted %d "
-          "gas with weight %e, the feedback loop delivered to %d with weight "
-          "%e.",
-          sp->id, c, ti_current, n, w, n_d, w_d);
+          "Star %lld, cone %d at ti_current %lld: membership differs: the "
+          "density loop counted %d gas (ID sum %lld, weight %e), the feedback "
+          "loop delivered to %d (ID sum %lld, weight %e).",
+          sp->id, c, ti_current, n, id, w, n_d, id_d, w_d);
+    if (fabs(w - w_d) > tol)
+      error(
+          "Star %lld, cone %d at ti_current %lld: %d gas, the density loop "
+          "weight %e and the delivered weight %e differ by %e, beyond the "
+          "rounding tolerance %e; squared distances %e and %e, masses %e and "
+          "%e, h %e and %e.",
+          sp->id, c, ti_current, n, w, w_d, fabs(w - w_d), tol, r2, r2_d, m,
+          m_d, sp->feedback_data.radiation.packet.h_density,
+          sp->feedback_data.radiation.packet.h_feedback);
+    if (w > 0.0) {
+      fraction += w_d / w / RADIATION_PACKET_EMISSION_CONES;
+      const double dw = fabs(w - w_d) / w;
+      if (dw > max_dw) {
+        max_dw = dw;
+        worst = c;
+      }
+      if (tol > 0.0) max_tol_use = fmax(max_tol_use, fabs(w - w_d) / tol);
+      if (r2 > 0.0) max_dr2 = fmax(max_dr2, fabs(r2 - r2_d) / r2);
+      if (m > 0.0) max_dm = fmax(max_dm, fabs(m - m_d) / m);
+    } else {
+      fraction += 1.0 / RADIATION_PACKET_EMISSION_CONES;
+    }
   }
+  message(
+      "Packet cones of star %lld at ti_current %lld: largest relative weight "
+      "difference %e (cone %d, %.3f of its tolerance), squared distances %e, "
+      "masses %e, h %e and %e, delivered fraction minus one %e.",
+      sp->id, ti_current, max_dw, worst, max_tol_use, max_dr2, max_dm,
+      sp->feedback_data.radiation.packet.h_density,
+      sp->feedback_data.radiation.packet.h_feedback, fraction - 1.0);
 }
 #endif

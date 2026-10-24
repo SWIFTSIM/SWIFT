@@ -752,12 +752,25 @@ struct feedback_spart_data {
       struct feedback_isrf_packet_removed_data removed;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /*! Gas neighbours with a non-zero weight in each cone, density loop. */
+      /*! Per cone, density loop: gas with a non-zero weight, the sums of
+          their IDs, squared distances and masses, and the weight's rounding
+          tolerance. */
       int cone_count[RADIATION_PACKET_EMISSION_CONES];
+      long long cone_id_sum[RADIATION_PACKET_EMISSION_CONES];
+      double cone_r2_sum[RADIATION_PACKET_EMISSION_CONES];
+      double cone_mass_sum[RADIATION_PACKET_EMISSION_CONES];
+      double cone_weight_tolerance[RADIATION_PACKET_EMISSION_CONES];
 
-      /*! The same count and weight sum over the feedback loop's deliveries. */
+      /*! The same sums over the feedback loop's deliveries. */
       int cone_count_delivered[RADIATION_PACKET_EMISSION_CONES];
+      long long cone_id_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
+      double cone_r2_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
+      double cone_mass_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
       float cone_weight_delivered[RADIATION_PACKET_EMISSION_CONES];
+
+      /*! Smoothing length of the density loop and of the feedback loop. */
+      float h_density;
+      float h_feedback;
 
       /*! Was this step's emission booked, so the deliveries can be checked? */
       char cones_booked;
