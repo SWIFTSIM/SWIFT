@@ -190,8 +190,9 @@ void feedback_first_init_sink(struct sink *s);
  * cone claim rule removed from #feedback_props, 11 radiation packet in the
  * gas and transport keys in #feedback_props, 12 removed-gas packet ledger in
  * the star and the sink, 13 packet origin sums in double, 14 packet emission
- * by volume weight in the star. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 14
+ * by volume weight in the star, 15 read mean time of the packet field in
+ * #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 15
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

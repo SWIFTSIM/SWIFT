@@ -77,8 +77,29 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
                             const integertime_t ti_step,
                             const double time_base);
 void radiation_packet_end_gradient(struct part *p, const float a, const float c,
-                                   const float dt);
+                                   const float dt, const float tau);
 void radiation_packet_end_force(struct part *p);
+
+/**
+ * @brief Exponential running mean of the own field over the time constant
+ * `tau`: `m + (x - m) dt / max(tau, dt)`.
+ *
+ * Only the field is averaged, never the packet, so the ledger is untouched.
+ * Explicit branches, not a clamp: under -ffast-math a NaN would not be
+ * absorbed, and `m + (x - m) * 1` is not bit-exact.
+ *
+ * @param m Mean at the particle's previous step.
+ * @param x Value of this step.
+ * @param dt Length of this step.
+ * @param tau Time constant. 0 or less is off: the mean is `x`.
+ * @return The new mean. A step of length 0 or less keeps `m`.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_read_mean(
+    const float m, const float x, const float dt, const float tau) {
+  if (!(tau > 0.f) || dt >= tau) return x;
+  if (!(dt > 0.f)) return m;
+  return m + (x - m) * (dt / tau);
+}
 
 /**
  * @brief Does the particle hold no energy in any band?

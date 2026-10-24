@@ -919,7 +919,8 @@ void radiation_end_gradient_propagation(struct part *p,
   if (fd->ISRF_packet_transport) {
     radiation_packet_end_gradient(
         p, (float)e->cosmology->a,
-        (float)e->physical_constants->const_speed_light_c, fd->dt_prev);
+        (float)e->physical_constants->const_speed_light_c, fd->dt_prev,
+        e->feedback_props->ISRF_packet_read_mean_time);
     return;
   }
   const float dt = fd->dt_prev;
