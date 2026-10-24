@@ -144,6 +144,7 @@ __attribute__((always_inline)) INLINE static void stars_first_init_spart(
 
   sp->time_bin = 0;
   sp->h_hii = 0.0;
+  sp->h_hii_request = 0.f;
   sp->f_E = -1.f;
   sp->count_since_last_enrichment = -1;
   sp->number_of_heating_events = 0.;
