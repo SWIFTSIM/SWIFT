@@ -22,10 +22,30 @@
 
 /**
  * @file strength/strength_state.h
- * @brief The state of a particle, as passed to the material strength methods.
+ * @brief The state of a particle, as passed to the material strength methods,
+ * and the damage of a particle.
  */
 
 #include "symmetric_matrix.h"
+
+/**
+ * @brief The damage of a particle.
+ */
+struct strength_damage {
+
+  /*! Total damage */
+  float total;
+
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  /*! Damage accumulated due to tension */
+  float tensile;
+#endif
+
+#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+  /*! Damage accumulated due to shear */
+  float shear;
+#endif
+};
 
 /**
  * @brief Particle properties used by the strength methods.
@@ -56,8 +76,8 @@ struct strength_state {
   /*! Temperature */
   float temperature;
 
-  /*! Total damage */
-  float damage;
+  /*! Damage */
+  struct strength_damage damage;
 
   /*! Deviatoric stress tensor */
   struct sym_matrix deviatoric_stress_tensor;

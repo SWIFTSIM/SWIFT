@@ -29,6 +29,7 @@
 #include "equation_of_state.h"
 #include "hydro_parameters.h"
 #include "math.h"
+#include "strength/strength_state.h"
 #include "symmetric_matrix.h"
 
 /**
@@ -48,17 +49,7 @@ struct strength_xpart_data {
 
   #ifdef STRENGTH_DAMAGE
     // Accumulated damage at the last full step
-    float damage_full;
-  #endif
-
-  #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
-    // Damage accumulated due to tension at the last full step
-    float tensile_damage_full;
-  #endif
-
-  #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
-    // Damage accumulated due to shear at the last full step
-    float shear_damage_full;
+    struct strength_damage damage_full;
   #endif
 
 };
@@ -98,27 +89,19 @@ struct strength_part_data {
 
 #ifdef STRENGTH_DAMAGE
   // Accumulated damage
-  float damage;
+  struct strength_damage damage;
 
   // Damage accumulation timescale
   float dt_damage;
 #endif
 
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
-  // Damage accumulated due to tension
-  float tensile_damage;
-
   // Number of flaws for tensile damage accumulation
   int number_of_flaws;
 
   // Activation thresholds of flaws for tensile damage accumulation
   // ### Work out how to set the length of this
   float activation_thresholds[64];
-#endif
-
-#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
-  // Damage accumulated due to shear
-  float shear_damage;
 #endif
 
 #ifdef STRENGTH_OBJECT_IDS

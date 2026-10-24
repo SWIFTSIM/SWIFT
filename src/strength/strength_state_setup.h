@@ -53,7 +53,7 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
  * @param mass The mass.
  * @param density The density.
  * @param u The specific internal energy.
- * @param damage The total damage.
+ * @param damage The damage.
  * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param strain_rate_tensor The strain rate tensor.
  * @param mp The material parameters.
@@ -61,7 +61,8 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
 __attribute__((always_inline)) INLINE static void strength_state_init(
     struct strength_state *s, const enum eos_planetary_material_id mat_id,
     const int phase, const float mass, const float density, const float u,
-    const float damage, const struct sym_matrix deviatoric_stress_tensor,
+    const struct strength_damage damage,
+    const struct sym_matrix deviatoric_stress_tensor,
     const struct sym_matrix strain_rate_tensor, const struct mat_params *mp) {
 
   /* Properties of the particle. */

@@ -63,12 +63,12 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 
   /* Compute elements of damaged deviatoric stress tensor. */
   struct sym_matrix damaged_deviatoric_stress_tensor = deviatoric_stress_tensor;
-  damaged_deviatoric_stress_tensor.xx *= (1.f - s->damage);
-  damaged_deviatoric_stress_tensor.yy *= (1.f - s->damage);
-  damaged_deviatoric_stress_tensor.zz *= (1.f - s->damage);
-  damaged_deviatoric_stress_tensor.xy *= (1.f - s->damage);
-  damaged_deviatoric_stress_tensor.xz *= (1.f - s->damage);
-  damaged_deviatoric_stress_tensor.yz *= (1.f - s->damage);
+  damaged_deviatoric_stress_tensor.xx *= (1.f - s->damage.total);
+  damaged_deviatoric_stress_tensor.yy *= (1.f - s->damage.total);
+  damaged_deviatoric_stress_tensor.zz *= (1.f - s->damage.total);
+  damaged_deviatoric_stress_tensor.xy *= (1.f - s->damage.total);
+  damaged_deviatoric_stress_tensor.xz *= (1.f - s->damage.total);
+  damaged_deviatoric_stress_tensor.yz *= (1.f - s->damage.total);
 
   return damaged_deviatoric_stress_tensor;
 }

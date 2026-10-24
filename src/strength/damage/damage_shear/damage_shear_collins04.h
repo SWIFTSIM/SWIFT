@@ -30,46 +30,6 @@
 #include "math.h"
 
 /**
- * @brief Get shear damage of particle at last drift time.
- *
- * @param p The particle of interest.
- */
-__attribute__((always_inline)) INLINE static float damage_get_shear_damage(const struct part *restrict p) {
-
-  return p->strength_data.shear_damage;
-}
-
-/**
- * @brief Get shear damage of particle at last kick time.
- *
- * @param xp The extended data of the particle of interest.
- */
-__attribute__((always_inline)) INLINE static float damage_get_shear_damage_full(const struct xpart *restrict xp) {
-
-  return xp->strength_data.shear_damage_full;
-}
-
-/**
- * @brief Set drift-time shear damage of particle.
- *
- * @param p The particle of interest.
- */
-__attribute__((always_inline)) INLINE static void damage_set_shear_damage(struct part *restrict p, const float shear_damage) {
-
-  p->strength_data.shear_damage = shear_damage;
-}
-
-/**
- * @brief Set kick-time shear damage of particle.
- *
- * @param xp The extended data of the particle of interest.
- */
-__attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(struct xpart *restrict xp, const float shear_damage_full) {
-
-  xp->strength_data.shear_damage_full = shear_damage_full;
-}
-
-/**
  * @brief Sets the shear damage properties of the strength state from the particle.
  *
  * @param s The strength state of the particle.
@@ -188,22 +148,49 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
  *
  * Carries out all calculations required to step shear damage in time.
  *
- * @param shear_damage The shear damage.
+ * @param d The damage of the particle. Only the shear damage is changed.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  * @param dt_therm The time-step duration.
+ *
+ * @return The evolved shear damage.
  */
-__attribute__((always_inline)) INLINE static void damage_shear_evolve(
-    float *shear_damage, const struct strength_state *s,
+__attribute__((always_inline)) INLINE static float damage_shear_evolve(
+    struct strength_damage *d, const struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {
 
   float shear_dD_dt;
 
   /* Compute the rate of shear damage accumulation. */
-  damage_shear_compute_dD_dt(&shear_dD_dt, *shear_damage, s, mp);
+  damage_shear_compute_dD_dt(&shear_dD_dt, d->shear, s, mp);
 
   /* Update shear damage. */
-  damage_shear_apply_timestep_to_shear_damage(shear_damage, shear_dD_dt, s, mp, dt_therm);
+  damage_shear_apply_timestep_to_shear_damage(&d->shear, shear_dD_dt, s, mp, dt_therm);
+
+  return d->shear;
+}
+
+/**
+ * @brief Computes the rate of shear damage accumulation used to set the
+ * damage time-step.
+ *
+ * Shear damage evolves D directly, so this is just its rate.
+ *
+ * @param d The damage of the particle.
+ * @param damage_timestep_factor The growth in damage allowed per time-step.
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ *
+ * @return The rate of shear damage accumulation.
+ */
+__attribute__((always_inline)) INLINE static float damage_shear_compute_timestep_dD_dt(
+    const struct strength_damage *d, const float damage_timestep_factor,
+    const struct strength_state *s, const struct mat_params *mp) {
+
+  float shear_dD_dt;
+  damage_shear_compute_dD_dt(&shear_dD_dt, d->shear, s, mp);
+
+  return shear_dD_dt;
 }
 
 #endif /* SWIFT_DAMAGE_SHEAR_COLLINS04_H */

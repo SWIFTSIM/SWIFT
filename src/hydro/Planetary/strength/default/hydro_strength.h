@@ -316,7 +316,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   hydro_strength_state_init_kick(&s, p, xp, mp);
 
   /* Evolve damage. */
-  damage_kick_evolve(p, xp, &s, mp, dt_therm);
+  damage_kick_evolve(xp, &s, mp, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full,

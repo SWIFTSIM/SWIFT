@@ -29,40 +29,6 @@
 #include "math.h"
 
 /**
- * @brief Get shear damage of particle at last drift time.
- *
- * @param p The particle of interest.
- */
-__attribute__((always_inline)) INLINE static float damage_get_shear_damage(const struct part *restrict p) {
-
-  return 0.f;
-}
-
-/**
- * @brief Get shear damage of particle at last kick time.
- *
- * @param xp The extended data of the particle of interest.
- */
-__attribute__((always_inline)) INLINE static float damage_get_shear_damage_full(const struct xpart *restrict xp) {
-
-  return 0.f;
-}
-
-/**
- * @brief Set drift-time shear damage of particle.
- *
- * @param p The particle of interest.
- */
-__attribute__((always_inline)) INLINE static void damage_set_shear_damage(struct part *restrict p, const float shear_damage) {}
-
-/**
- * @brief Set kick-time shear damage of particle.
- *
- * @param xp The extended data of the particle of interest.
- */
-__attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(struct xpart *restrict xp, const float shear_damage_full) {}
-
-/**
  * @brief Sets the shear damage properties of the strength state from the particle.
  *
  * @param s The strength state of the particle.
@@ -106,13 +72,36 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
  *
  * Carries out all calculations required to step shear damage in time.
  *
- * @param shear_damage The shear damage.
+ * @param d The damage of the particle.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  * @param dt_therm The time-step duration.
+ *
+ * @return The shear damage, which is always zero.
  */
-__attribute__((always_inline)) INLINE static void damage_shear_evolve(
-    float *shear_damage, const struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {}
+__attribute__((always_inline)) INLINE static float damage_shear_evolve(
+    struct strength_damage *d, const struct strength_state *s,
+    const struct mat_params *mp, const float dt_therm) {
+
+  return 0.f;
+}
+
+/**
+ * @brief Computes the rate of shear damage accumulation used to set the
+ * damage time-step.
+ *
+ * @param d The damage of the particle.
+ * @param damage_timestep_factor The growth in damage allowed per time-step.
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ *
+ * @return The rate of shear damage accumulation, which is always zero.
+ */
+__attribute__((always_inline)) INLINE static float damage_shear_compute_timestep_dD_dt(
+    const struct strength_damage *d, const float damage_timestep_factor,
+    const struct strength_state *s, const struct mat_params *mp) {
+
+  return 0.f;
+}
 
 #endif /* SWIFT_DAMAGE_SHEAR_NONE_H */

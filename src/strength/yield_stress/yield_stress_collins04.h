@@ -81,7 +81,7 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
                                    const struct mat_params *mp) {
 
   /* Compute damaged yield stress, Collins+2004 Eqn. ### */
-  return (1.f - s->damage) * yield_stress_fully_intact + s->damage * yield_stress_fully_damaged;
+  return (1.f - s->damage.total) * yield_stress_fully_intact + s->damage.total * yield_stress_fully_damaged;
 }
 
 /**
