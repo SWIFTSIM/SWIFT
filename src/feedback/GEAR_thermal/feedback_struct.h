@@ -728,11 +728,9 @@ struct feedback_spart_data {
 
     /*! Emission of the ISRF packet transport. */
     struct {
-      /*! Sum of the receivers' volume weights, from the star density loop. */
-      double weight_sum;
-
-      /*! Does the emission cone hold a receiver? From the density loop. */
-      char cone_occupied[RADIATION_PACKET_EMISSION_CONES];
+      /*! Sum of the receivers' weights in each emission cone, from the star
+          density loop. */
+      double cone_weight[RADIATION_PACKET_EMISSION_CONES];
 
       /*! `E_lo / E_bar` per band, the photon number (as `N E_lo`) emitted
           per unit energy. Indexed by #radiation_isrf_operator. */
@@ -744,10 +742,10 @@ struct feedback_spart_data {
       /*! Photon number (as `N E_lo`) emitted by the star, cumulative. */
       double emitted_photons[ISRF_OPERATOR_COUNT];
 
-      /*! Emitted energy of the empty cones, cumulative. */
+      /*! Emitted energy that escapes the cones, cumulative. */
       double escaped_energy[ISRF_OPERATOR_COUNT];
 
-      /*! Emitted photon number (as `N E_lo`) of the empty cones. */
+      /*! Emitted photon number (as `N E_lo`) that escapes the cones. */
       double escaped_photons[ISRF_OPERATOR_COUNT];
 
       /*! Ledger of the gas particle the star was converted from. */
@@ -760,10 +758,10 @@ struct feedback_spart_data {
       long long cone_id_sum[RADIATION_PACKET_EMISSION_CONES];
       int cone_edge_count[RADIATION_PACKET_EMISSION_CONES];
 
-      /*! The same over the feedback loop's deliveries, and their weight sum. */
+      /*! The same over the feedback loop's deliveries, and their weights. */
       int cone_count_delivered[RADIATION_PACKET_EMISSION_CONES];
       long long cone_id_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
-      double weight_sum_delivered;
+      double cone_weight_delivered[RADIATION_PACKET_EMISSION_CONES];
 
       /*! Smoothing length of the density loop and of the feedback loop. */
       float h_density;

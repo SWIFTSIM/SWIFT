@@ -36,6 +36,7 @@
 #include "inline.h"
 #include "kernel_hydro.h"
 #include "part.h"
+#include "star_gas_weights.h"
 
 #include <math.h>
 #include <string.h>
@@ -58,10 +59,8 @@
 #define RADIATION_PACKET_MIN_PHOTONS 1e-35f
 
 /*! Distance over the star's kernel support below which a gas particle
-    receives the star's light and marks its emission cone as occupied. Kept
-    below 1 so that the runner's float admission of a pair at the support edge
-    cannot change which gas receives. */
-#define RADIATION_PACKET_EMISSION_EDGE 0.95
+    receives the star's light. */
+#define RADIATION_PACKET_EMISSION_EDGE STAR_GAS_WEIGHT_EDGE
 
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
                                            const float n[3], const float power);
@@ -304,9 +303,8 @@ radiation_packet_first_init_star(struct spart *sp) {
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_init_star_cones(struct spart *sp) {
-  sp->feedback_data.radiation.packet.weight_sum = 0.0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
-    sp->feedback_data.radiation.packet.cone_occupied[c] = 0;
+    sp->feedback_data.radiation.packet.cone_weight[c] = 0.0;
 #ifdef SWIFT_DEBUG_CHECKS
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     sp->feedback_data.radiation.packet.cone_count[c] = 0;
@@ -314,8 +312,8 @@ radiation_packet_init_star_cones(struct spart *sp) {
     sp->feedback_data.radiation.packet.cone_id_sum[c] = 0;
     sp->feedback_data.radiation.packet.cone_count_delivered[c] = 0;
     sp->feedback_data.radiation.packet.cone_id_sum_delivered[c] = 0;
+    sp->feedback_data.radiation.packet.cone_weight_delivered[c] = 0.0;
   }
-  sp->feedback_data.radiation.packet.weight_sum_delivered = 0.0;
   sp->feedback_data.radiation.packet.h_density = sp->h;
   sp->feedback_data.radiation.packet.h_feedback = 0.f;
   sp->feedback_data.radiation.packet.cones_booked = 0;
@@ -323,21 +321,20 @@ radiation_packet_init_star_cones(struct spart *sp) {
 }
 
 /**
- * @brief Number of a star's emission cones that hold a receiver.
+ * @brief Weight sum of one emission cone at which its light is fully
+ * delivered, for the star's current support.
  *
- * @param sp The #spart, after its density loop.
+ * @param sp The #spart.
  */
-__attribute__((always_inline)) INLINE static int
-radiation_packet_occupied_cones(const struct spart *sp) {
-  int n = 0;
-  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
-    n += sp->feedback_data.radiation.packet.cone_occupied[c] != 0;
-  return n;
+__attribute__((always_inline)) INLINE static double radiation_packet_cone_floor(
+    const struct spart *sp) {
+  return star_gas_cone_floor((double)kernel_gamma * (double)sp->h,
+                             RADIATION_PACKET_EMISSION_CONES);
 }
 
 /**
- * @brief Star density loop: add a gas neighbour's volume weight, and mark its
- * emission cone as occupied if it is a receiver.
+ * @brief Star density loop: add a gas neighbour's weight to the weight sum of
+ * its emission cone, if it is a receiver.
  *
  * @param si The star.
  * @param pj The gas neighbour.
@@ -352,10 +349,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
   double d[3], q, weight;
   const int c =
       radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
-  if (weight > 0.0) {
-    si->feedback_data.radiation.packet.weight_sum += weight;
-    si->feedback_data.radiation.packet.cone_occupied[c] = 1;
-  }
+  if (weight > 0.0) si->feedback_data.radiation.packet.cone_weight[c] += weight;
 #ifdef SWIFT_DEBUG_CHECKS
   if (weight > 0.0) {
     si->feedback_data.radiation.packet.cone_count[c]++;
@@ -369,9 +363,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 /**
  * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * The light of the occupied cones, `(1 - n_empty / 12) L dt`, is split
- * between the receivers in proportion to their volume weights. The share is
- * absorbed over the distance to the star.
+ * Each of the 12 cones holds `L dt / 12`. Its receivers share it in proportion
+ * to their weights, over the larger of the cone's weight sum and the cone
+ * floor; the rest of the cone escapes. The share is absorbed over the
+ * distance to the star.
  *
  * @param si The star.
  * @param pj The gas neighbour.
@@ -388,24 +383,25 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
   double d[3], q, weight;
-  radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+  const int c =
+      radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
   if (!(weight > 0.0)) return;
-  const double S = si->feedback_data.radiation.packet.weight_sum;
+  const double S = si->feedback_data.radiation.packet.cone_weight[c];
 #ifdef SWIFT_DEBUG_CHECKS
   /* Several feedback tasks of one star may run at once. */
   struct spart *s_dbg = (struct spart *)si;
-  const int c = radiation_packet_emission_cone(si->id, ti_begin, d);
   atomic_inc(&s_dbg->feedback_data.radiation.packet.cone_count_delivered[c]);
   atomic_add(&s_dbg->feedback_data.radiation.packet.cone_id_sum_delivered[c],
              pj->id);
-  atomic_add_d(&s_dbg->feedback_data.radiation.packet.weight_sum_delivered,
+  atomic_add_d(&s_dbg->feedback_data.radiation.packet.cone_weight_delivered[c],
                weight);
   atomic_max_f(&s_dbg->feedback_data.radiation.packet.h_feedback, si->h);
 #endif
   /* Possible only if this gas was not a receiver in the density loop. */
   if (!(S > 0.0)) return;
-  const double fraction = (double)radiation_packet_occupied_cones(si) /
-                          RADIATION_PACKET_EMISSION_CONES * weight / S;
+  const double fraction =
+      star_gas_cone_share(weight, S, radiation_packet_cone_floor(si),
+                          RADIATION_PACKET_EMISSION_CONES);
 
   double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {

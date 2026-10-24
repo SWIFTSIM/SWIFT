@@ -151,7 +151,7 @@ __attribute__((noinline)) int radiation_packet_emission_cone(
 }
 
 /**
- * @brief Emission cone and volume weight of a gas neighbour of a star.
+ * @brief Emission cone and weight of a gas neighbour of a star.
  *
  * The star-gas vector is taken in double from the absolute positions; the
  * runner's float @p dx only picks the periodic image, from which it differs
@@ -166,7 +166,7 @@ __attribute__((noinline)) int radiation_packet_emission_cone(
  * @param ti_begin Start of the star's step.
  * @param d (return) Comoving vector from the gas to the star, in double.
  * @param q (return) Distance over the star's kernel support.
- * @param weight (return) Volume weight, 0 when the gas is not a receiver:
+ * @param weight (return) Tent weight, 0 when the gas is not a receiver:
  * beyond #RADIATION_PACKET_EMISSION_EDGE or with no density.
  * @return The emission cone.
  */
@@ -192,8 +192,8 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
   *q = u * (double)kernel_gamma_inv;
   *weight = 0.0;
   if (*q < RADIATION_PACKET_EMISSION_EDGE)
-    *weight = star_gas_volume_weight(u, (double)hydro_get_mass(pj),
-                                     (double)hydro_get_comoving_density(pj));
+    *weight = star_gas_tent_weight(*q, (double)hydro_get_mass(pj),
+                                   (double)hydro_get_comoving_density(pj));
   return radiation_packet_emission_cone(si->id, ti_begin, d);
 }
 
@@ -362,11 +362,12 @@ void radiation_packet_end_force(struct part *p) {
 }
 
 /**
- * @brief Book a star's emission of this feedback step, and the twelfths of
- * the sky in its empty cones as escaped, once per step on the star's own
- * rank.
+ * @brief Book a star's emission of this feedback step, and the light of each
+ * cone that its receivers do not take as escaped, once per step on the star's
+ * own rank.
  *
- * A star with no receiver has 12 empty cones: all its light escapes.
+ * An empty cone loses its whole twelfth, so a star with no receiver loses all
+ * its light.
  *
  * @param sp The star, after its density loop.
  * @param Delta_t The star's feedback step.
@@ -385,11 +386,14 @@ void radiation_packet_star_book_emission(struct spart *sp,
         E * sp->feedback_data.radiation.packet.photon_fraction[b];
   }
 
-  const int n_empty =
-      RADIATION_PACKET_EMISSION_CONES - radiation_packet_occupied_cones(sp);
-  if (n_empty == 0) return;
+  const double floor = radiation_packet_cone_floor(sp);
+  double fraction = 0.0;
+  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
+    fraction +=
+        star_gas_cone_escape(sp->feedback_data.radiation.packet.cone_weight[c],
+                             floor, RADIATION_PACKET_EMISSION_CONES);
+  if (fraction == 0.0) return;
 
-  const double fraction = (double)n_empty / RADIATION_PACKET_EMISSION_CONES;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
     const double E =
@@ -403,15 +407,15 @@ void radiation_packet_star_book_emission(struct spart *sp,
 #ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Debugging checks: report whether the feedback loop delivered to the
- * same receivers as the density loop that summed the weights.
+ * same receivers as the density loop that summed the cone weights.
  *
  * Both loops take each weight from radiation_packet_star_gas_weight() on the
- * same positions, so the weight sums can differ only by summation order. One
- * line per star step reports the receivers, the empty cones and those of them
- * that hold gas beyond #RADIATION_PACKET_EMISSION_EDGE only, the relative
- * difference of the weight sums, the worst membership difference (density
- * minus feedback loop), the step's PE energy and the delivered fraction of the
- * star's light minus one.
+ * same positions, so the cone weight sums can differ only by summation order.
+ * One line per star step reports the receivers, the empty cones and those of
+ * them that hold gas beyond #RADIATION_PACKET_EMISSION_EDGE only, the largest
+ * relative difference of a cone weight sum, the worst membership difference
+ * (density minus feedback loop), the step's PE energy and the delivered plus
+ * escaped fraction of the star's light, minus one.
  *
  * @param sp The star, after its feedback loop.
  * @param ti_current Current integer time, for the message.
@@ -419,20 +423,31 @@ void radiation_packet_star_book_emission(struct spart *sp,
 void radiation_packet_check_star_cones(const struct spart *sp,
                                        const integertime_t ti_current) {
   if (!sp->feedback_data.radiation.packet.cones_booked) return;
+  const double floor = radiation_packet_cone_floor(sp);
   int n_receivers = 0, n_empty = 0, n_edge_only = 0, n_diff = 0;
   long long id_diff = 0;
+  double dS = 0.0, accounted = 0.0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     const int n = sp->feedback_data.radiation.packet.cone_count[c];
     const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
     const long long id = sp->feedback_data.radiation.packet.cone_id_sum[c];
     const long long id_d =
         sp->feedback_data.radiation.packet.cone_id_sum_delivered[c];
+    const double S = sp->feedback_data.radiation.packet.cone_weight[c];
+    const double S_d =
+        sp->feedback_data.radiation.packet.cone_weight_delivered[c];
     n_receivers += n;
-    if (!sp->feedback_data.radiation.packet.cone_occupied[c]) {
+    if (!(S > 0.0)) {
       n_empty++;
       if (sp->feedback_data.radiation.packet.cone_edge_count[c] > 0)
         n_edge_only++;
+    } else {
+      dS = fmax(dS, fabs(S_d - S) / S);
     }
+    /* The delivered shares are those of the feedback loop's weight sum. */
+    accounted +=
+        star_gas_cone_share(S_d, S, floor, RADIATION_PACKET_EMISSION_CONES) +
+        star_gas_cone_escape(S, floor, RADIATION_PACKET_EMISSION_CONES);
     /* The worst membership difference: the largest count difference, else
        a swap at the same count. */
     if (abs(n - n_d) > abs(n_diff) ||
@@ -441,21 +456,17 @@ void radiation_packet_check_star_cones(const struct spart *sp,
       id_diff = id - id_d;
     }
   }
-  const double S = sp->feedback_data.radiation.packet.weight_sum;
-  const double S_d = sp->feedback_data.radiation.packet.weight_sum_delivered;
-  const double dS = S > 0.0 ? (S_d - S) / S : 0.0;
-  const double covered = (double)(RADIATION_PACKET_EMISSION_CONES - n_empty) /
-                         RADIATION_PACKET_EMISSION_CONES;
   const double E_pe = sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
                       (double)sp->feedback_data.radiation.Delta_t;
   message(
       "Packet emission of star %lld at ti_current %lld: %d receivers, %d "
-      "empty cones (%d with edge gas only), weight sum relative difference "
-      "%e, h %e and %e, membership difference %d gas (ID sum %lld, density "
-      "minus feedback loop), PE energy %e, delivered fraction minus one %e.",
+      "empty cones (%d with edge gas only), cone weight sum largest relative "
+      "difference %e, h %e and %e, membership difference %d gas (ID sum %lld, "
+      "density minus feedback loop), PE energy %e, delivered fraction minus "
+      "one %e.",
       sp->id, ti_current, n_receivers, n_empty, n_edge_only, dS,
       sp->feedback_data.radiation.packet.h_density,
       sp->feedback_data.radiation.packet.h_feedback, n_diff, id_diff, E_pe,
-      covered * dS);
+      accounted - 1.0);
 }
 #endif
