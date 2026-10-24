@@ -1054,6 +1054,7 @@ INLINE static void sink_copy_properties_to_star(
   /* Sph smoothing length */
   sp->h = sink->h;
   sp->h_hii = 0.0;
+  sp->h_hii_request = 0.f;
 
   /* Feedback related initialisation */
   /* ------------------------------- */

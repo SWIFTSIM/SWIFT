@@ -352,7 +352,8 @@ void space_regrid(struct space *s, int verbose) {
         h_max_no_hii = space_regrid_star_h_max_no_hii_term_for(h_max_no_hii,
                                                                s->sparts[k].h);
         const float star_radiation_term = space_regrid_star_radiation_term_for(
-            s->sparts[k].h_hii, s->sparts[k].h, s->cell_max_width);
+            stars_get_hii_search_length(&s->sparts[k]), s->sparts[k].h,
+            s->cell_max_width);
         if (star_radiation_term > h_max_radiation)
           h_max_radiation = star_radiation_term;
       }
