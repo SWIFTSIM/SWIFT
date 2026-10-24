@@ -177,27 +177,29 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
     total_energy += arriving;
   }
 
-  float offset[3];
+  /* Double: the product of a share near the transmission cutoff with a small
+     offset component is below FLT_MIN and would flush to zero. */
+  double offset[3];
   for (int k = 0; k < 3; k++) {
-    float res_offset = pk->reservoir_origin_offset[k];
+    double res_offset = pk->reservoir_origin_offset[k];
     if (release < 1.f) {
-      res_offset *= release;
+      res_offset *= (double)release;
       pk->reservoir_origin_offset[k] -= res_offset;
     } else {
-      pk->reservoir_origin_offset[k] = 0.f;
+      pk->reservoir_origin_offset[k] = 0.;
     }
     offset[k] = pk->inbox_origin_offset[k] + res_offset;
-    pk->inbox_origin_offset[k] = 0.f;
+    pk->inbox_origin_offset[k] = 0.;
   }
 
   if (!(total_energy > 0.f)) return;
 
-  for (int k = 0; k < 3; k++) offset[k] /= total_energy;
-  const float d = sqrtf(offset[0] * offset[0] + offset[1] * offset[1] +
+  for (int k = 0; k < 3; k++) offset[k] /= (double)total_energy;
+  const double d = sqrt(offset[0] * offset[0] + offset[1] * offset[1] +
                         offset[2] * offset[2]);
-  pk->origin_distance = d;
-  if (d > 0.f) {
-    for (int k = 0; k < 3; k++) pk->direction[k] = -offset[k] / d;
+  pk->origin_distance = (float)d;
+  if (d > 0.) {
+    for (int k = 0; k < 3; k++) pk->direction[k] = (float)(-offset[k] / d);
   } else {
     /* Source on the particle: any direction is as good. */
     pk->direction[0] = 0.f;

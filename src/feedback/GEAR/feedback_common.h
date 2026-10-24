@@ -189,8 +189,8 @@ void feedback_first_init_sink(struct sink *s);
  * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
  * cone claim rule removed from #feedback_props, 11 radiation packet in the
  * gas and transport keys in #feedback_props, 12 removed-gas packet ledger in
- * the star and the sink. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 12
+ * the star and the sink, 13 packet origin sums in double. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 13
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

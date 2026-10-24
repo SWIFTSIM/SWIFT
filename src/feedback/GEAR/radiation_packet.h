@@ -165,12 +165,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
 
   if (to_reservoir) {
     for (int k = 0; k < 3; k++)
-      pk_r->reservoir_origin_offset[k] += delivered_energy * offset[k];
+      pk_r->reservoir_origin_offset[k] += (double)delivered_energy * offset[k];
     if (source_step_end_ti > pk_r->reservoir_end_ti)
       pk_r->reservoir_end_ti = source_step_end_ti;
   } else {
     for (int k = 0; k < 3; k++)
-      pk_r->inbox_origin_offset[k] += delivered_energy * offset[k];
+      pk_r->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS

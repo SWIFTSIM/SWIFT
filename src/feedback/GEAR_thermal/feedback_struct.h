@@ -258,10 +258,10 @@ struct feedback_isrf_packet_data {
 
   /*! Sum over the inbox shares of their energy times the comoving offset
       from this particle to their origin. */
-  float inbox_origin_offset[3];
+  double inbox_origin_offset[3];
 
   /*! Same sum as #inbox_origin_offset, over the reservoir. */
-  float reservoir_origin_offset[3];
+  double reservoir_origin_offset[3];
 
   /*! Sum of the transmission weights over the downstream neighbours, from
       the gradient loop. */
