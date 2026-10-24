@@ -210,6 +210,22 @@ INLINE static void safe_strcpy(char *restrict dst, const char *restrict src,
 }
 
 /**
+ * @brief Return a snapshot-output alias for legacy/singular IC field names.
+ *
+ * SWIFT follows GADGET-style singular names in ICs but writes plural field
+ * names in snapshots. Accepting these aliases lets a snapshot be reused as an
+ * IC without an external conversion step.
+ */
+INLINE static const char *io_get_input_field_alias(const char *name) {
+
+  if (strcmp(name, "SmoothingLength") == 0) return "SmoothingLengths";
+  if (strcmp(name, "InternalEnergy") == 0) return "InternalEnergies";
+  if (strcmp(name, "Density") == 0) return "Densities";
+
+  return NULL;
+}
+
+/**
  * @brief Constructs an #io_props from its parameters
  *
  * @param name The name of the field in the ICs.
