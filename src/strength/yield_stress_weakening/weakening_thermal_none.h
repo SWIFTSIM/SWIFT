@@ -28,19 +28,28 @@
 #include "math.h"
 
 /**
+ * @brief Sets the thermal weakening properties of the strength state from the particle.
+ *
+ * Nothing extra is needed in the state for this method.
+ *
+ * @param s The strength state of the particle.
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_state(
+    struct strength_state *s, const struct part *restrict p) {}
+
+/**
  * @brief Apply thermal weakening to the yield stress.
  *
  * Empty function when configuring without thermal weakening.
  *
  * @param Y The yield stress to be weakened.
- * @param density The density.
- * @param u The specific internal energy.
- * @param mat_id The material ID.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
-yield_weakening_apply_temperature_to_yield_stress(float *Y, const float density,
-                                                  const float u, const int mat_id,
+yield_weakening_apply_temperature_to_yield_stress(float *Y,
+                                                  const struct strength_state *s,
                                                   const struct mat_params *mp) {}
 
 #endif /* SWIFT_WEAKENING_THERMAL_NONE_H */

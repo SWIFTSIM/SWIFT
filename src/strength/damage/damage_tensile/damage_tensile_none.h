@@ -63,26 +63,31 @@ __attribute__((always_inline)) INLINE static void damage_set_tensile_damage(stru
 __attribute__((always_inline)) INLINE static void damage_set_tensile_damage_full(struct xpart *restrict xp, const float tensile_damage_full) {}
 
 /**
+ * @brief Sets the tensile damage properties of the strength state from the particle.
+ *
+ * @param s The strength state of the particle.
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void damage_tensile_set_state(
+    struct strength_state *s, const struct part *restrict p) {}
+
+/**
  * @brief Calculates the rate of cbrt(damage) accumulation due to tension.
  *
  * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.
  * @param number_of_activated_flaws The number of currently-active flaws.
- * @param p The particle of interest.
- * @param stress_tensor The stress tensor.
- * @param mass The particle mass.
- * @param density The density.
- * @param damage The damage.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
-    float *tensile_cbrtD_dt, int *number_of_activated_flaws, struct part *restrict p,
-    const struct sym_matrix stress_tensor, const float mass, const float density,
-    const float damage, const struct mat_params *mp) {
+    float *tensile_cbrtD_dt, int *number_of_activated_flaws,
+    const struct strength_state *s, const struct mat_params *mp) {
 
-      /* Set the rate of tensile cbrt(damage) accumulation to zero and number of activated flaws to zero */
-      *tensile_cbrtD_dt = 0.f;
-      *number_of_activated_flaws = 0;
-    }
+  /* Set the rate of tensile cbrt(damage) accumulation and the number of
+   * activated flaws to zero. */
+  *tensile_cbrtD_dt = 0.f;
+  *number_of_activated_flaws = 0;
+}
 
 /**
  * @brief Steps tensile damage by applying time-step to a tensile_cbrtD_dt.
@@ -90,30 +95,25 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
  * @param tensile_damage The tensile damage.
  * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.
  * @param number_of_activated_flaws The number of currently-active flaws.
- * @param number_of_flaws The total number of flaws.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_to_tensile_damage(
     float *tensile_damage, const float tensile_cbrtD_dt,
-    const int number_of_activated_flaws, const int number_of_flaws,
+    const int number_of_activated_flaws, const struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
  * @brief Evolves tensile damage.
  *
  * @param tensile_damage The tensile damage.
- * @param p The particle of interest.
- * @param stress_tensor The stress tensor.
- * @param mass The particle mass.
- * @param density The density.
- * @param damage The damage.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_evolve(
-    float *tensile_damage, struct part *restrict p, const struct sym_matrix stress_tensor,
-    const float mass, const float density, const float damage,
+    float *tensile_damage, const struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 #endif /* SWIFT_DAMAGE_TENSILE_NONE_H */

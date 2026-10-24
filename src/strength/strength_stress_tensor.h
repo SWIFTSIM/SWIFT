@@ -36,23 +36,22 @@
  * the stress can change in one time-step.
  *
  * @param dt_cfl The hydro (+ strength) time-step.
- * @param p The particle of interest.
- * @param hydro_properties The hydro properties.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
+ * @param hydro_properties The hydro properties.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
-    float *dt_cfl, const struct part *restrict p,
-    const struct hydro_props *restrict hydro_properties,
-    const struct mat_params *mp) {
+    float *dt_cfl, const struct strength_state *s, const struct mat_params *mp,
+    const struct hydro_props *restrict hydro_properties) {
 
   /* Only solid particles accumulate deviatoric stress. */
-  if (p->phase != mat_phase_solid) {
+  if (s->phase != mat_phase_solid) {
     return;
   }
 
   /* Measure of strain rate. */
   const float strain_rate_invariant =
-      sqrtf(strength_compute_sym_matrix_J_2(p->strength_data.strain_rate_tensor));
+      sqrtf(strength_compute_sym_matrix_J_2(s->strain_rate_tensor));
 
   if (strain_rate_invariant > 0.f) {
     const float dt_strain = hydro_properties->CFL_condition / strain_rate_invariant;
@@ -89,23 +88,23 @@ strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct pa
  * and hydrostatic pressure. Applies any method-specific modifications,
  * such due to the accumulation of damage.
  *
- * @param p The particle of interest.
- * @param pressure The pressure.
+ * @param stress_tensor The stress tensor to be computed.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor(
-    struct part *restrict p, const float pressure, const struct mat_params *mp) {
+    struct sym_matrix *stress_tensor, const struct strength_state *s,
+    const struct mat_params *mp) {
 
   /* Construct stress tensor. */
-  p->strength_data.stress_tensor = p->strength_data.deviatoric_stress_tensor;
-  p->strength_data.stress_tensor.xx -= pressure;
-  p->strength_data.stress_tensor.yy -= pressure;
-  p->strength_data.stress_tensor.zz -= pressure;
+  *stress_tensor = s->deviatoric_stress_tensor;
+  stress_tensor->xx -= s->pressure;
+  stress_tensor->yy -= s->pressure;
+  stress_tensor->zz -= s->pressure;
 
   /* Apply modifications due to damage. */
-  const float damage = strength_get_damage(p);
-  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(p->strength_data.deviatoric_stress_tensor, damage, mp);
-  damage_compute_stress_tensor(&p->strength_data.stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage, mp);
+  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(s->deviatoric_stress_tensor, s, mp);
+  damage_compute_stress_tensor(stress_tensor, damaged_deviatoric_stress_tensor, s, mp);
 }
 
 /**
@@ -166,21 +165,25 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  *
  * ### Description of how this ties in with Hooke's law
  *
- * @param p The particle of interest.
- * @param strain_rate_tensor The strain rate tensor.
+ * @param dS_dt The time derivative of the deviatoric stress tensor.
  * @param rotation_rate_tensor The rotation rate tensor.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
-    struct part *restrict p, const float strain_rate_tensor[3][3],
-    const float rotation_rate_tensor[3][3], const struct mat_params *mp) {
+    struct sym_matrix *dS_dt, const float rotation_rate_tensor[3][3],
+    const struct strength_state *s, const struct mat_params *mp) {
 
   const float shear_mod = mp->shear_mod;
+
+  /* Convert strain rate to 3x3 float. */
+  float strain_rate_tensor[3][3];
+  get_matrix_from_sym_matrix(strain_rate_tensor, &s->strain_rate_tensor);
 
   /* Convert deviatoric stress to 3x3 float to compute the rotation term . */
   float deviatoric_stress_tensor[3][3];
   get_matrix_from_sym_matrix(deviatoric_stress_tensor,
-                             &p->strength_data.deviatoric_stress_tensor);
+                             &s->deviatoric_stress_tensor);
 
   /* Compute rotation term. */
   float rotation_term[3][3];
@@ -188,64 +191,65 @@ __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
                                  deviatoric_stress_tensor);
 
   /* Compute time derivative of the deviatoric stress tensor (Hooke's law). */
-  float dS_dt[3][3];
-  dS_dt[0][0] = 2.0f * shear_mod * strain_rate_tensor[0][0];
-  dS_dt[0][1] = 2.0f * shear_mod * strain_rate_tensor[0][1];
-  dS_dt[0][2] = 2.0f * shear_mod * strain_rate_tensor[0][2];
-  dS_dt[1][0] = 2.0f * shear_mod * strain_rate_tensor[1][0];
-  dS_dt[1][1] = 2.0f * shear_mod * strain_rate_tensor[1][1];
-  dS_dt[1][2] = 2.0f * shear_mod * strain_rate_tensor[1][2];
-  dS_dt[2][0] = 2.0f * shear_mod * strain_rate_tensor[2][0];
-  dS_dt[2][1] = 2.0f * shear_mod * strain_rate_tensor[2][1];
-  dS_dt[2][2] = 2.0f * shear_mod * strain_rate_tensor[2][2];
+  float dS_dt_matrix[3][3];
+  dS_dt_matrix[0][0] = 2.0f * shear_mod * strain_rate_tensor[0][0];
+  dS_dt_matrix[0][1] = 2.0f * shear_mod * strain_rate_tensor[0][1];
+  dS_dt_matrix[0][2] = 2.0f * shear_mod * strain_rate_tensor[0][2];
+  dS_dt_matrix[1][0] = 2.0f * shear_mod * strain_rate_tensor[1][0];
+  dS_dt_matrix[1][1] = 2.0f * shear_mod * strain_rate_tensor[1][1];
+  dS_dt_matrix[1][2] = 2.0f * shear_mod * strain_rate_tensor[1][2];
+  dS_dt_matrix[2][0] = 2.0f * shear_mod * strain_rate_tensor[2][0];
+  dS_dt_matrix[2][1] = 2.0f * shear_mod * strain_rate_tensor[2][1];
+  dS_dt_matrix[2][2] = 2.0f * shear_mod * strain_rate_tensor[2][2];
 
   /* Subtract trace from diagonal elements. */
   const float trace = strain_rate_tensor[0][0] + strain_rate_tensor[1][1] + strain_rate_tensor[2][2];
-  dS_dt[0][0] -= 2.0f * shear_mod * trace / 3.f;
-  dS_dt[1][1] -= 2.0f * shear_mod * trace / 3.f;
-  dS_dt[2][2] -= 2.0f * shear_mod * trace / 3.f;
+  dS_dt_matrix[0][0] -= 2.0f * shear_mod * trace / 3.f;
+  dS_dt_matrix[1][1] -= 2.0f * shear_mod * trace / 3.f;
+  dS_dt_matrix[2][2] -= 2.0f * shear_mod * trace / 3.f;
 
   /* Add rotation terms. */
-  dS_dt[0][0] += rotation_term[0][0];
-  dS_dt[0][1] += rotation_term[0][1];
-  dS_dt[0][2] += rotation_term[0][2];
-  dS_dt[1][0] += rotation_term[1][0];
-  dS_dt[1][1] += rotation_term[1][1];
-  dS_dt[1][2] += rotation_term[1][2];
-  dS_dt[2][0] += rotation_term[2][0];
-  dS_dt[2][1] += rotation_term[2][1];
-  dS_dt[2][2] += rotation_term[2][2];
+  dS_dt_matrix[0][0] += rotation_term[0][0];
+  dS_dt_matrix[0][1] += rotation_term[0][1];
+  dS_dt_matrix[0][2] += rotation_term[0][2];
+  dS_dt_matrix[1][0] += rotation_term[1][0];
+  dS_dt_matrix[1][1] += rotation_term[1][1];
+  dS_dt_matrix[1][2] += rotation_term[1][2];
+  dS_dt_matrix[2][0] += rotation_term[2][0];
+  dS_dt_matrix[2][1] += rotation_term[2][1];
+  dS_dt_matrix[2][2] += rotation_term[2][2];
 
-  /* Update sym_matrix particle property. */
-  get_sym_matrix_from_matrix(&p->strength_data.dS_dt, dS_dt);
+  /* Convert to sym_matrix. */
+  get_sym_matrix_from_matrix(dS_dt, dS_dt_matrix);
 }
 
 /**
  * @brief Evolve the deviatoric stress tensor.
  *
- * @param deviatoric_stress_tensor the deviatoric stress.
- * @param p The particle of interest.
- * @param phase The phase state.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor to be evolved.
+ * @param dS_dt The time derivative of the deviatoric stress tensor.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  * @param dt_therm The time-step.
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatoric_stress_tensor(
-    struct sym_matrix *deviatoric_stress_tensor, struct part *restrict p, const int phase,
-    const struct mat_params *mp, float dt_therm) {
+    struct sym_matrix *deviatoric_stress_tensor, const struct sym_matrix dS_dt,
+    const struct strength_state *s, const struct mat_params *mp,
+    const float dt_therm) {
 
   /* Set to sym_matrix with all elements 0.f if the material is not solid. */
-  if (phase != mat_phase_solid) {
+  if (s->phase != mat_phase_solid) {
     zero_sym_matrix(deviatoric_stress_tensor);
     return;
   }
 
   /* Evolve deviatoric stress. */
-  deviatoric_stress_tensor->xx += p->strength_data.dS_dt.xx * dt_therm;
-  deviatoric_stress_tensor->yy += p->strength_data.dS_dt.yy * dt_therm;
-  deviatoric_stress_tensor->zz += p->strength_data.dS_dt.zz * dt_therm;
-  deviatoric_stress_tensor->xy += p->strength_data.dS_dt.xy * dt_therm;
-  deviatoric_stress_tensor->xz += p->strength_data.dS_dt.xz * dt_therm;
-  deviatoric_stress_tensor->yz += p->strength_data.dS_dt.yz * dt_therm;
+  deviatoric_stress_tensor->xx += dS_dt.xx * dt_therm;
+  deviatoric_stress_tensor->yy += dS_dt.yy * dt_therm;
+  deviatoric_stress_tensor->zz += dS_dt.zz * dt_therm;
+  deviatoric_stress_tensor->xy += dS_dt.xy * dt_therm;
+  deviatoric_stress_tensor->xz += dS_dt.xz * dt_therm;
+  deviatoric_stress_tensor->yz += dS_dt.yz * dt_therm;
 }
 
 /**

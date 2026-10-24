@@ -29,6 +29,9 @@
 #include "./strength/strength_utilities.h"
 #include "./strength/strength_interaction.h"
 
+// State of a particle
+#include "./strength/strength_state.h"
+
 // Strength models
 #include "./strength/strength_artificial_stress.h"
 #include "./strength/strength_damage.h"
@@ -38,6 +41,9 @@
 // Stress tensor, combining strength models
 #include "./strength/strength_stress_tensor.h"
 #include "./strength/strength_extra.h"
+
+// Setting up the strength state, which uses the strength models
+#include "./strength/strength_state_setup.h"
 #endif /* MATERIAL_STRENGTH */
 
 /* Hydro functions */

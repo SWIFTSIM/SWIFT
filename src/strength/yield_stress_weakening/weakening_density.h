@@ -28,6 +28,17 @@
 #include "math.h"
 
 /**
+ * @brief Sets the density weakening properties of the strength state from the particle.
+ *
+ * Nothing extra is needed in the state for this method.
+ *
+ * @param s The strength state of the particle.
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void yield_weakening_density_set_state(
+    struct strength_state *s, const struct part *restrict p) {}
+
+/**
  * @brief Apply density weakening to the yield stress.
  *
  * Weaken the material's yield stress as its density decreases below a certain
@@ -42,17 +53,19 @@
  *     yield_weakening_density_pow_param: Density weakening power factor (default 4).
  *
  * @param Y The yield stress to be weakened.
- * @param density The density.
+ * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
-yield_weakening_apply_density_to_yield_stress(float *Y, const float density,
+yield_weakening_apply_density_to_yield_stress(float *Y,
+                                              const struct strength_state *s,
                                               const struct mat_params *mp) {
 
   /* Method parameters. */
   const float rho_0 = mp->rho_0;
   const float a = mp->yield_weakening_density_mult_param;
   const float rho_weak = a * rho_0;
+  const float density = s->density;
 
   /* Only apply weakening below a density threshold. */
   if (density < rho_weak) {

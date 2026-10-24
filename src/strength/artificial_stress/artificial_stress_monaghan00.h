@@ -29,6 +29,18 @@
 #include "math.h"
 
 /**
+ * @brief Sets the artificial stress properties of the strength state from the
+ * particle.
+ *
+ * Nothing extra is needed in the state for this method.
+ *
+ * @param s The strength state of the particle.
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void artif_stress_set_state(
+    struct strength_state *s, const struct part *restrict p) {}
+
+/**
  * @brief Apply artificial stress to pairwise stress tensors.
  *
  * Adds a negative factor to positive elements of the stress tensor. These

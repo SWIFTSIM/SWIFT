@@ -43,14 +43,12 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * drifting. At beginning of hydro function, before hydro quantities have been drifted.
  *
  * @param p The particle to act upon
- * @param density The density.
- * @param u The specific internal energy.
- * @param yield_stress The yield stress.
+ * @param s The strength state of the particle, from its drifted values.
  * @param mp The material parameters.
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void strength_predict_extra_beginning(
-    struct part *restrict p, const float density, const float u, const float yield_stress,
+    struct part *restrict p, const struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
@@ -62,15 +60,14 @@ __attribute__((always_inline)) INLINE static void strength_predict_extra_beginni
  *
  * @param p The particle to act upon.
  * @param xp The particle extended data to act upon.
- * @param density The density.
- * @param u The specific internal energy.
- * @param yield_stress The yield stress.
+ * @param s The strength state of the particle, from its kicked values.
  * @param mp The material parameters.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void strength_kick_extra_beginning(
-    struct part *restrict p, struct xpart *restrict xp, const float density, const float u,
-    const float yield_stress, const struct mat_params *mp, const float dt_therm) {}
+    struct part *restrict p, struct xpart *restrict xp,
+    const struct strength_state *s, const struct mat_params *mp,
+    const float dt_therm) {}
 
 /**
  * @brief Initialises the extra stress properties for the first time
