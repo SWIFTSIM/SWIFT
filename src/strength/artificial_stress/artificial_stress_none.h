@@ -38,10 +38,13 @@
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
+ * @param mp_i The material parameters of the first particle.
+ * @param mp_j The material parameters of the second particle.
  */
 __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
-    const float r) {}
+    const float r,
+    const struct mat_params *mp_i, const struct mat_params *mp_j) {}
 
 #endif /* SWIFT_ARTIFICIAL_STRESS_NONE_H */

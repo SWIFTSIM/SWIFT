@@ -37,9 +37,13 @@
  *
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param p The particle of interest.
+ * @param hydro_properties The hydro properties.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
-    float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {
+    float *dt_cfl, const struct part *restrict p,
+    const struct hydro_props *restrict hydro_properties,
+    const struct mat_params *mp) {
 
   /* Only solid particles accumulate deviatoric stress. */
   if (p->phase != mat_phase_solid) {
@@ -65,12 +69,15 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
  * @param p The particle of interest.
  * @param soundspeed The sound speed.
  * @param density The sound density.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
-strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
+strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct part *restrict p,
+                                              const float soundspeed, const float density,
+                                              const struct mat_params *mp) {
   if (p->phase == mat_phase_solid) {
     /* Speed of longitudinal elastic wave. */
-    const float shear_mod = material_shear_mod(p->mat_id);
+    const float shear_mod = mp->shear_mod;
     *wave_speed = sqrtf(soundspeed * soundspeed + (4.f / 3.f) * shear_mod / density);
   }
 }
@@ -84,9 +91,10 @@ strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct pa
  *
  * @param p The particle of interest.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor(
-    struct part *restrict p, const float pressure) {
+    struct part *restrict p, const float pressure, const struct mat_params *mp) {
 
   /* Construct stress tensor. */
   p->strength_data.stress_tensor = p->strength_data.deviatoric_stress_tensor;
@@ -96,8 +104,8 @@ __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor
 
   /* Apply modifications due to damage. */
   const float damage = strength_get_damage(p);
-  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(p->strength_data.deviatoric_stress_tensor, damage);
-  damage_compute_stress_tensor(&p->strength_data.stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
+  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(p->strength_data.deviatoric_stress_tensor, damage, mp);
+  damage_compute_stress_tensor(&p->strength_data.stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage, mp);
 }
 
 /**
@@ -113,13 +121,17 @@ __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
+ * @param mp_i The material parameters of the first particle.
+ * @param mp_j The material parameters of the second particle.
  */
 __attribute__((always_inline)) INLINE static void
 strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
                                      float pairwise_stress_tensor_j[3][3],
                                      const struct part *restrict pi,
                                      const struct part *restrict pj,
-                                     const float r) {
+                                     const float r,
+                                     const struct mat_params *mp_i,
+                                     const struct mat_params *mp_j) {
 
   /* Only overwrite the fluid pairwise stress tensors for interactions with strength. */
   if (!strength_is_strengthless_interaction(pi, pj)) {
@@ -130,7 +142,8 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
 
     /* Apply artificial stress. */
     artif_stress_apply_artif_stress_to_pairwise_stress_tensors(pairwise_stress_tensor_i,
-                                                               pairwise_stress_tensor_j, pi, pj, r);
+                                                               pairwise_stress_tensor_j, pi, pj, r,
+                                                               mp_i, mp_j);
   }
 }
 
@@ -141,7 +154,8 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
  *
  * @param p The particle of interest.
  * @param xp The extended data of this particle.
- */__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_stress_tensor(
+ */
+__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_stress_tensor(
     struct part *restrict p, const struct xpart *restrict xp) {
 
   p->strength_data.deviatoric_stress_tensor = xp->strength_data.deviatoric_stress_tensor_full;
@@ -155,12 +169,13 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
  * @param p The particle of interest.
  * @param strain_rate_tensor The strain rate tensor.
  * @param rotation_rate_tensor The rotation rate tensor.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
     struct part *restrict p, const float strain_rate_tensor[3][3],
-    const float rotation_rate_tensor[3][3]) {
+    const float rotation_rate_tensor[3][3], const struct mat_params *mp) {
 
-  const float shear_mod = material_shear_mod(p->mat_id);
+  const float shear_mod = mp->shear_mod;
 
   /* Convert deviatoric stress to 3x3 float to compute the rotation term . */
   float deviatoric_stress_tensor[3][3];
@@ -211,11 +226,12 @@ __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
  * @param deviatoric_stress_tensor the deviatoric stress.
  * @param p The particle of interest.
  * @param phase The phase state.
+ * @param mp The material parameters.
  * @param dt_therm The time-step.
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatoric_stress_tensor(
     struct sym_matrix *deviatoric_stress_tensor, struct part *restrict p, const int phase,
-    float dt_therm) {
+    const struct mat_params *mp, float dt_therm) {
 
   /* Set to sym_matrix with all elements 0.f if the material is not solid. */
   if (phase != mat_phase_solid) {

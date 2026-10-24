@@ -46,10 +46,12 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param density The density.
  * @param u The specific internal energy.
  * @param yield_stress The yield stress.
+ * @param mp The material parameters.
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void strength_predict_extra_beginning(
-    struct part *restrict p, const float density, const float u, const float yield_stress,  const float dt_therm) {}
+    struct part *restrict p, const float density, const float u, const float yield_stress,
+    const struct mat_params *mp, const float dt_therm) {}
 
 /**
  * @brief Kick the additional particle strength extra properties.
@@ -63,10 +65,12 @@ __attribute__((always_inline)) INLINE static void strength_predict_extra_beginni
  * @param density The density.
  * @param u The specific internal energy.
  * @param yield_stress The yield stress.
+ * @param mp The material parameters.
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void strength_kick_extra_beginning(
-    struct part *restrict p, struct xpart *restrict xp,  const float density, const float u, const float yield_stress, const float dt_therm) {}
+    struct part *restrict p, struct xpart *restrict xp, const float density, const float u,
+    const float yield_stress, const struct mat_params *mp, const float dt_therm) {}
 
 /**
  * @brief Initialises the extra stress properties for the first time

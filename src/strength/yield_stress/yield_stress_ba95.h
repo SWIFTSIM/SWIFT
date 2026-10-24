@@ -44,9 +44,11 @@
 
  * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  * @param damage The damage.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(
-    struct sym_matrix deviatoric_stress_tensor, const float damage) {
+    struct sym_matrix deviatoric_stress_tensor, const float damage,
+    const struct mat_params *mp) {
 
   /* Compute elements of damaged deviatoric stress tensor. */
   struct sym_matrix damaged_deviatoric_stress_tensor = deviatoric_stress_tensor;
@@ -69,9 +71,12 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
  * @param yield_stress_fully_intact The yield stress for fully intact material.
  * @param yield_stress_fully_damaged The yield stress for fully damaged material.
  * @param damage The damage.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float
-yield_compute_damaged_yield_stress(const float yield_stress_fully_intact, const float yield_stress_fully_damaged, const float damage) {
+yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
+                                   const float yield_stress_fully_damaged,
+                                   const float damage, const struct mat_params *mp) {
 
   return yield_stress_fully_intact;
 }
@@ -85,12 +90,12 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact, const 
  * YieldStress:
  *    Y_0: Constant yield stress (Pa).
  *
- * @param mat_id The material ID.
  * @param phase The phase ID.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_intact(
-    const int mat_id, const int phase, const float pressure) {
+    const int phase, const float pressure, const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
   if (phase != mat_phase_solid) {
@@ -98,7 +103,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   }
 
   /* Return constant yield stress, Y_0. */
-  return material_Y_0(mat_id);
+  return mp->Y_0;
 }
 
 /**
@@ -107,15 +112,15 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * With the Benz&Asphaug95 yield stress method, damage does not affect the yield
  * stress. Damage is instead applied to the deviatoric stress tensor.
  *
- * @param mat_id The material ID.
  * @param phase The phase ID.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
-    const int mat_id, const int phase, const float pressure) {
+    const int phase, const float pressure, const struct mat_params *mp) {
 
   /* Damage does not affect the yield stress. */
-  return yield_compute_yield_stress_fully_intact(mat_id, phase, pressure);
+  return yield_compute_yield_stress_fully_intact(phase, pressure, mp);
 }
 
 /**
@@ -124,15 +129,17 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * Calculates the yield stress that combines all relevant methods e.g. damage
  * and weakening.
  *
- * @param mat_id The material ID.
  * @param phase The phase ID.
  * @param density The density.
  * @param pressure The pressure.
  * @param u The specific internal energy.
  * @param damage The damage.
+ * @param mat_id The material ID, for the temperature from the EoS.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const int mat_id, const int phase, const float density, const float pressure, const float u, const float damage) {
+    const int phase, const float density, const float pressure, const float u,
+    const float damage, const int mat_id, const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
   if (phase != mat_phase_solid) {
@@ -140,11 +147,11 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
   }
 
   /* Get constant yield stress. */
-  float yield_stress = yield_compute_yield_stress_fully_intact(mat_id, phase, pressure);
+  float yield_stress = yield_compute_yield_stress_fully_intact(phase, pressure, mp);
 
   /* Apply weakening to yield stress. */
-  yield_weakening_apply_density_to_yield_stress(&yield_stress, mat_id, density);
-  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, mat_id, density, u);
+  yield_weakening_apply_density_to_yield_stress(&yield_stress, density, mp);
+  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, density, u, mat_id, mp);
 
   return yield_stress;
 }
@@ -157,9 +164,11 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
  *
  * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param yield_stress The yield stress.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
-    struct sym_matrix deviatoric_stress_tensor, const float yield_stress) {
+    struct sym_matrix deviatoric_stress_tensor, const float yield_stress,
+    const struct mat_params *mp) {
 
   const float J_2 =
       strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
@@ -177,11 +186,13 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  * @param density The density.
  * @param u The specific internal energy.
  * @param yield_stress The yield stress.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_sym_matrix(
     struct sym_matrix *M, struct sym_matrix deviatoric_stress_tensor,
-    const float density, const float u, const float yield_stress) {
+    const float density, const float u, const float yield_stress,
+    const struct mat_params *mp) {
 
   /* Calculate the J_2 invariant of the deviatoric stress tensor. */
   float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);

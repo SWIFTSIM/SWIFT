@@ -52,7 +52,11 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
                                            const struct part *restrict pj,
                                            const float r) {
 
-  strength_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
+  const struct mat_params *mp_i = material_params(pi->mat_id);
+  const struct mat_params *mp_j = material_params(pj->mat_id);
+
+  strength_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r,
+                                       mp_i, mp_j);
 }
 
 

@@ -111,133 +111,16 @@ material_phase_from_internal_energy(
 
 #ifdef MATERIAL_STRENGTH
 
-// Material parameters
-
-/** @brief Returns the shear modulus of a material */
-__attribute__((always_inline)) INLINE static float material_shear_mod(
-    const enum eos_planetary_material_id mat_id) {
+/**
+ * @brief Returns the material parameters of a material.
+ *
+ * @param mat_id The material ID.
+ */
+__attribute__((always_inline)) INLINE static const struct mat_params *
+material_params(const enum eos_planetary_material_id mat_id) {
   const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].shear_mod;
+  return &eos.all_mat_params[mat_index];
 }
-
-/** @brief Returns the bulk modulus of a material */
-__attribute__((always_inline)) INLINE static float material_bulk_mod(
-    const enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].bulk_mod;
-}
-
-/** @brief Returns the melting temperature of a material */
-__attribute__((always_inline)) INLINE static float material_T_melt(
-    const enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].T_melt;
-}
-
-/** @brief Returns the rho_0 of a material */
-__attribute__((always_inline)) INLINE static float material_rho_0(
-    const enum eos_planetary_material_id mat_id) {
-  const int mat_index = material_index_from_mat_id(mat_id);
-  return eos.all_mat_params[mat_index].rho_0;
-}
-
-#if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-  /** @brief Returns the Y_0 of a material */
-  __attribute__((always_inline)) INLINE static float material_Y_0(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].Y_0;
-  }
-#elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-  /** @brief Returns the Y_0 of a material */
-  __attribute__((always_inline)) INLINE static float material_Y_0(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].Y_0;
-  }
-
-  /** @brief Returns the Y_M of a material */
-  __attribute__((always_inline)) INLINE static float material_Y_M(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].Y_M;
-  }
-
-  /** @brief Returns the mu_i of a material */
-  __attribute__((always_inline)) INLINE static float material_mu_i(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].mu_i;
-  }
-
-  /** @brief Returns the mu_d of a material */
-  __attribute__((always_inline)) INLINE static float material_mu_d(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].mu_d;
-  }
-#endif
-
-#if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-  /** @brief Returns the brittle to ductile transition pressure of a material */
-  __attribute__((always_inline)) INLINE static float
-  material_brittle_to_ductile_pressure(const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].brittle_to_ductile_pressure;
-  }
-
-  /** @brief Returns the brittle to plastic transition pressure of a material */
-  __attribute__((always_inline)) INLINE static float
-  material_brittle_to_plastic_pressure(const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].brittle_to_plastic_pressure;
-  }
-#endif
-
-// Method-specific material parameters
-
-#if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
-  /** @brief Returns the yield stress thermal weakening parameter of a material */
-  __attribute__((always_inline)) INLINE static float
-  material_yield_weakening_thermal_xi(const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].yield_weakening_thermal_xi;
-  }
-#endif /* STRENGTH_YIELD_STRESS_WEAKENING_THERMAL */
-
-#if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
-  /** @brief Returns the yield stress density weakening multiplication parameter
-   * of a material */
-  __attribute__((always_inline)) INLINE static float
-  material_yield_weakening_density_mult_param(const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].yield_weakening_density_mult_param;
-  }
-
-  /** @brief Returns the yield stress density weakening exponent parameter of a
-   * material */
-  __attribute__((always_inline)) INLINE static float
-  material_yield_weakening_density_pow_param(const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].yield_weakening_density_pow_param;
-  }
-#endif /* STRENGTH_YIELD_STRESS_WEAKENING_DENSITY */
-
-#if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-  /** @brief Returns the artificial stress n parameter of a material */
-  __attribute__((always_inline)) INLINE static float material_artif_stress_n(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].artif_stress_n;
-  }
-
-  /** @brief Returns the artificial stress epsilon parameter of a material */
-  __attribute__((always_inline)) INLINE static float material_artif_stress_epsilon(
-      const enum eos_planetary_material_id mat_id) {
-    const int mat_index = material_index_from_mat_id(mat_id);
-    return eos.all_mat_params[mat_index].artif_stress_epsilon;
-  }
-#endif /* STRENGTH_ARTIFICIAL_STRESS_MON2000 */
 
 #endif /* MATERIAL_STRENGTH */
 

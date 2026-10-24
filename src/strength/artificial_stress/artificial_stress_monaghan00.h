@@ -49,17 +49,20 @@
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
+ * @param mp_i The material parameters of the first particle.
+ * @param mp_j The material parameters of the second particle.
  */
 __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
-    const float r) {
+    const float r,
+    const struct mat_params *mp_i, const struct mat_params *mp_j) {
 
   /* Material parameters of each particle. */
-  const float artif_stress_n_i = material_artif_stress_n(pi->mat_id);
-  const float artif_stress_n_j = material_artif_stress_n(pj->mat_id);
-  const float artif_stress_epsilon_i = material_artif_stress_epsilon(pi->mat_id);
-  const float artif_stress_epsilon_j = material_artif_stress_epsilon(pj->mat_id);
+  const float artif_stress_n_i = mp_i->artif_stress_n;
+  const float artif_stress_n_j = mp_j->artif_stress_n;
+  const float artif_stress_epsilon_i = mp_i->artif_stress_epsilon;
+  const float artif_stress_epsilon_j = mp_j->artif_stress_epsilon;
 
   /* Calculate the expected separation of closest neighbour, delta_p.
    * Note that the expression for delta_p differs from the one used in other

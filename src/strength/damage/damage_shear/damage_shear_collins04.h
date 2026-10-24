@@ -77,17 +77,18 @@ __attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(s
  *     brittle_to_ductile_pressure: brittle--ductile transition pressure (Pa).
  *     brittle_to_plastic_pressure: brittle--plastic transition pressure (Pa).
  *
- * @param mat_id The material ID.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float
-damage_shear_compute_plastic_strain_at_failure(const int mat_id, const float pressure) {
+damage_shear_compute_plastic_strain_at_failure(const float pressure,
+                                               const struct mat_params *mp) {
 
   /* Method parameters. */
   const float brittle_to_ductile_pressure =
-      material_brittle_to_ductile_pressure(mat_id);
+      mp->brittle_to_ductile_pressure;
   const float brittle_to_plastic_pressure =
-      material_brittle_to_plastic_pressure(mat_id);
+      mp->brittle_to_plastic_pressure;
 
   float slope, intercept;
   if (pressure <= 0.f) {
@@ -120,13 +121,13 @@ damage_shear_compute_plastic_strain_at_failure(const int mat_id, const float pre
  * @param shear_dD_dt The rate of shear damage accumulation.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param strain_rate_tensor The strain rate tensor.
- * @param mat_id The material ID.
  * @param pressure The pressure.
  * @param shear_damage The shear damage.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
     float *shear_dD_dt, const int is_above_yield_criterion, const struct sym_matrix strain_rate_tensor,
-    const int mat_id, const float pressure, const float shear_damage) {
+    const float pressure, const float shear_damage, const struct mat_params *mp) {
 
   *shear_dD_dt = 0.f;
 
@@ -146,7 +147,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
 
   /* Calculate the plastic strain at failure. */
   const float plastic_strain_at_failure =
-      damage_shear_compute_plastic_strain_at_failure(mat_id, pressure);
+      damage_shear_compute_plastic_strain_at_failure(pressure, mp);
 
   /* Calculate the rate of shear damage accumulation. */
   *shear_dD_dt = E_dot / plastic_strain_at_failure;
@@ -157,10 +158,12 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
  *
  * @param shear_damage The shear damage.
  * @param shear_dD_dt The rate of shear damage accumulation.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
-    float *shear_damage, const float shear_dD_dt, const float dt_therm) {
+    float *shear_damage, const float shear_dD_dt, const struct mat_params *mp,
+    const float dt_therm) {
 
   if (shear_dD_dt <= 0.f) {
     return;
@@ -178,21 +181,21 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
  * @param shear_damage The shear damage.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param strain_rate_tensor The strain rate tensor.
- * @param mat_id The material ID.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_evolve(
     float *shear_damage, const int is_above_yield_criterion, const struct sym_matrix strain_rate_tensor,
-    const int mat_id, const float pressure, const float dt_therm) {
+    const float pressure, const struct mat_params *mp, const float dt_therm) {
 
   float shear_dD_dt;
 
   /* Compute the rate of shear damage accumulation. */
-  damage_shear_compute_dD_dt(&shear_dD_dt, is_above_yield_criterion, strain_rate_tensor, mat_id, pressure, *shear_damage);
+  damage_shear_compute_dD_dt(&shear_dD_dt, is_above_yield_criterion, strain_rate_tensor, pressure, *shear_damage, mp);
 
   /* Update shear damage. */
-  damage_shear_apply_timestep_to_shear_damage(shear_damage, shear_dD_dt, dt_therm);
+  damage_shear_apply_timestep_to_shear_damage(shear_damage, shear_dD_dt, mp, dt_therm);
 }
 
 #endif /* SWIFT_DAMAGE_SHEAR_COLLINS04_H */

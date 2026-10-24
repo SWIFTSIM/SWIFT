@@ -41,16 +41,19 @@
  *     yield_weakening_thermal_xi: Thermal weakening xi factor (default 1.2).
  *
  * @param Y The yield stress to be weakened.
- * @param mat_id The material ID.
+ * @param density The density.
  * @param u The specific internal energy.
+ * @param mat_id The material ID.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
-yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
-                                   const float density, const float u) {
+yield_weakening_apply_temperature_to_yield_stress(float *Y, const float density,
+                                                  const float u, const int mat_id,
+                                                  const struct mat_params *mp) {
 #ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
   /* Method parameters. */
-  const float xi = material_yield_weakening_thermal_xi(mat_id);
-  const float T_melt = material_T_melt(mat_id);
+  const float xi = mp->yield_weakening_thermal_xi;
+  const float T_melt = mp->T_melt;
   const float temperature = gas_temperature_from_internal_energy(density, u, mat_id);
 
   /* Apply weakening. */
@@ -77,21 +80,21 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y, const int mat_id,
  *     yield_weakening_density_pow_param: Density weakening power factor (default 4).
  *
  * @param Y The yield stress to be weakened.
- * @param mat_id The material ID.
  * @param density The density.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
-yield_weakening_apply_density_to_yield_stress(float *Y, const int mat_id,
-                               const float density) {
+yield_weakening_apply_density_to_yield_stress(float *Y, const float density,
+                                              const struct mat_params *mp) {
 #ifdef STRENGTH_YIELD_STRESS_WEAKENING_DENSITY
   /* Method parameters. */
-  const float rho_0 = material_rho_0(mat_id);
-  const float a = material_yield_weakening_density_mult_param(mat_id);
+  const float rho_0 = mp->rho_0;
+  const float a = mp->yield_weakening_density_mult_param;
   const float rho_weak = a * rho_0;
 
   /* Only apply weakening below a density threshold. */
   if (density < rho_weak) {
-    const float b = material_yield_weakening_density_pow_param(mat_id);
+    const float b = mp->yield_weakening_density_pow_param;
 
     /* Apply weakening. */
     *Y *= powf(density / rho_weak, b);

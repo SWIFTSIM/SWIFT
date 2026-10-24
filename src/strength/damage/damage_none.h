@@ -82,9 +82,11 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
  * @param damaged_deviatoric_stress_tensor The damaged_deviatoric stress tensor, already modified by damage.
  * @param pressure The pressure.
  * @param damage The damage.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
-    struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor, const float pressure, const float damage) {}
+    struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor,
+    const float pressure, const float damage, const struct mat_params *mp) {}
 
 /**
  * @brief Sets the values of additional particle damage properties at a
@@ -106,18 +108,18 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param stress_tensor The stress tensor.
  * @param strain_rate_tensor The strain rate tensor.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
- * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
     float *damage, float *tensile_damage, float *shear_damage, struct part *restrict p,
     const struct sym_matrix stress_tensor, const struct sym_matrix strain_rate_tensor,
     const int is_above_yield_criterion,
-    const int mat_id, const float mass, const float density, const float pressure,
-    const float dt_therm) {}
+    const float mass, const float density, const float pressure,
+    const struct mat_params *mp, const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the drift
@@ -126,17 +128,17 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
  * @param stress_tensor The stress tensor.
  * @param strain_rate_tensor The strain rate tensor.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
- * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
     struct part *restrict p, const struct sym_matrix stress_tensor,
     const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
-    const int mat_id, const float mass, const float density, const float pressure,
-    const float dt_therm) {}
+    const float mass, const float density, const float pressure,
+    const struct mat_params *mp, const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the kick
@@ -146,17 +148,17 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
  * @param stress_tensor The stress tensor.
  * @param strain_rate_tensor The strain rate tensor.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
- * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
     struct part *restrict p, struct xpart *restrict xp, const struct sym_matrix stress_tensor,
     const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
-    const int mat_id, const float mass, const float density, const float pressure,
-    const float dt_therm) {}
+    const float mass, const float density, const float pressure,
+    const struct mat_params *mp, const float dt_therm) {}
 
 /**
  * @brief Calculate the damage time-step.
@@ -165,15 +167,16 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
  * @param stress_tensor The stress tensor.
  * @param strain_rate_tensor The strain rate tensor.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
- * @param mat_id The material ID.
  * @param mass The particle mass.
  * @param density The density.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     struct part *restrict p, const struct sym_matrix stress_tensor,
     const struct sym_matrix strain_rate_tensor, const int is_above_yield_criterion,
-    const int mat_id, const float mass, const float density, const float pressure) {}
+    const float mass, const float density, const float pressure,
+    const struct mat_params *mp) {}
 /**
  * @brief Initialises the damage properties for the first time
  *

@@ -66,15 +66,15 @@ __attribute__((always_inline)) INLINE static void damage_set_shear_damage_full(s
  * @brief Compute the rate of shear damage accumulation.
  *
  * @param shear_dD_dt The rate of shear damage accumulation.
- * @param is_above_yield_criterion Whether the yield criterion is reached.s
+ * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param strain_rate_tensor The strain rate tensor.
- * @param mat_id The material ID.
  * @param pressure The pressure.
  * @param shear_damage The shear damage.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
     float *shear_dD_dt, const int is_above_yield_criterion, const struct sym_matrix strain_rate_tensor,
-    const int mat_id, const float pressure, const float shear_damage) {
+    const float pressure, const float shear_damage, const struct mat_params *mp) {
 
   /* Set the rate of shear damage accumulation to zero. */
   *shear_dD_dt = 0.f;
@@ -85,10 +85,12 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
  *
  * @param shear_damage The shear damage.
  * @param shear_dD_dt The rate of shear damage accumulation.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
-    float *shear_damage, const float shear_dD_dt, const float dt_therm) {}
+    float *shear_damage, const float shear_dD_dt, const struct mat_params *mp,
+    const float dt_therm) {}
 
 /**
  * @brief Evolves shear damage.
@@ -98,12 +100,12 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
  * @param shear_damage The shear damage.
  * @param is_above_yield_criterion Whether the yield criterion is reached.
  * @param strain_rate_tensor The strain rate tensor.
- * @param mat_id The material ID.
  * @param pressure The pressure.
+ * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_evolve(
     float *shear_damage, const int is_above_yield_criterion, const struct sym_matrix strain_rate_tensor,
-    const int mat_id, const float pressure, const float dt_therm) {}
+    const float pressure, const struct mat_params *mp, const float dt_therm) {}
 
 #endif /* SWIFT_DAMAGE_SHEAR_NONE_H */
