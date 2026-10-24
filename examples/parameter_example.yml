@@ -79,7 +79,7 @@ Stars:
   min_star_timestep_Myr:                1e-4         # (Optional) Floor (in Myr) applied to the star's non-event-anchored time-step terms (dt_cfl, dt_evolution_ssp, dt_age). Guards against a near-zero remainder violating dt_min. (Default: 1e-4)
   CFL_condition:                        0.1          # (Optional) CFL condition for the star's dt_cfl criterion (gas neighbours' sound speed/velocity), mirroring GEARSink:CFL_condition. (Default: 0.1)
   luminosity_filename:                  ./photometry # In the EAGLE model, directory where the photometry tables are stored.
-  HII_max_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (comoving internal units; physical reach = a * this value).
+  HII_max_search_radius: 0.1                    # Maximal search radius for the Fire-like HII ionization algorithm (comoving internal units; physical reach = a * this value). Required only with GEARFeedback:with_photoionization (Default: 0 otherwise).
   HII_max_retry_full_buffer: 10                 # (Optional) Number of full-buffer retries (at a fixed search radius) allowed per HII search pass, before giving up. (Default: 10)
   HII_max_radius_expansion_tries: 5              # (Optional) Number of times the HII search radius is allowed to expand within a single pass. (Default: 5)
   HII_radius_expansion_factor: 1.1               # (Optional) Growth factor applied to the HII search radius at each expansion try. (Default: 1.1)
