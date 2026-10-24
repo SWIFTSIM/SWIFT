@@ -1768,6 +1768,51 @@ void feedback_init_after_star_formation(
 }
 
 /**
+ * @brief A gas particle is converted into a star: book what the gas's
+ * feedback carried to the star. Called after
+ * feedback_init_after_star_formation().
+ *
+ * @param p The converted #part.
+ * @param sp The new #spart.
+ */
+void feedback_book_removed_gas_to_spart(const struct part *p,
+                                        struct spart *sp) {
+  radiation_packet_book_removed_gas_to_star(p, sp);
+}
+
+/**
+ * @brief A gas particle is converted into or swallowed by a sink: book what
+ * the gas's feedback carried to the sink.
+ *
+ * @param p The removed #part.
+ * @param s The #sink.
+ */
+void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s) {
+  radiation_packet_book_removed_gas_to_sink(p, s);
+}
+
+/**
+ * @brief A sink swallows another: the survivor takes the feedback ledger of
+ * the swallowed sink.
+ *
+ * @param si The surviving #sink.
+ * @param sj The swallowed #sink.
+ */
+void feedback_book_sink_merger(struct sink *si, const struct sink *sj) {
+  radiation_packet_sink_merger(si, sj);
+}
+
+/**
+ * @brief Zero the feedback fields of a sink, after the ICs are read or when
+ * the sink is formed.
+ *
+ * @param s The #sink.
+ */
+void feedback_first_init_sink(struct sink *s) {
+  radiation_packet_first_init_sink(s);
+}
+
+/**
  * @brief Initialises the s-particles feedback props for the first time
  *
  * This function is called only once just after the ICs have been

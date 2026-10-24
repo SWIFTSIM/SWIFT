@@ -145,4 +145,9 @@ struct feedback_spart_data {
   struct ray_data_extra SNII_rays_ext_mirr[eagle_SNII_feedback_num_of_rays];
 };
 
+/**
+ * @brief Feedback fields carried by each sink particle. Empty here.
+ */
+struct feedback_sink_data {};
+
 #endif /* SWIFT_FEEDBACK_STRUCT_EAGLE_KINETIC_H */

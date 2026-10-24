@@ -83,4 +83,20 @@ INLINE static int feedback_read_sparticles(struct spart *sparts,
   return 0;
 }
 
+/**
+ * @brief Specifies which sink particle fields to write to a dataset. Nothing
+ * to write here.
+ *
+ * @param sinks The sink particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int feedback_write_sinkparticles(const struct sink *sinks,
+                                               struct io_props *list,
+                                               const int with_cosmology) {
+  return 0;
+}
+
 #endif /* SWIFT_FEEDBACK_IO_EAGLE_KINETIC_H */

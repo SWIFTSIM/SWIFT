@@ -767,4 +767,40 @@ feedback_unpack_hii_state_update(struct part *restrict p,
                                  const struct hii_state_update *restrict data) {
 }
 
+/**
+ * @brief A gas particle is converted into a star. Nothing to do here.
+ *
+ * @param p The converted #part.
+ * @param sp The new #spart.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp) {}
+
+/**
+ * @brief A gas particle is converted into or swallowed by a sink. Nothing to
+ * do here.
+ *
+ * @param p The removed #part.
+ * @param s The #sink.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s) {}
+
+/**
+ * @brief A sink swallows another. Nothing to do here.
+ *
+ * @param si The surviving #sink.
+ * @param sj The swallowed #sink.
+ */
+__attribute__((always_inline)) INLINE static void feedback_book_sink_merger(
+    struct sink *si, const struct sink *sj) {}
+
+/**
+ * @brief Zero the feedback fields of a sink. Nothing to do here.
+ *
+ * @param s The #sink.
+ */
+__attribute__((always_inline)) INLINE static void feedback_first_init_sink(
+    struct sink *s) {}
+
 #endif /* SWIFT_FEEDBACK_EAGLE_THERMAL_H */

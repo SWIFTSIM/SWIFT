@@ -257,6 +257,93 @@ INLINE static void convert_spart_packet_escaped_photons(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter of the energy in flight in the removed gas per
+ * band, see #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_removed_energy(const struct engine *e,
+                                                       const struct spart *sp,
+                                                       double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.removed.removed_energy[b];
+}
+
+/**
+ * @brief Snapshot converter of the photon number in flight in the removed gas
+ * per band, see #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_removed_photons(const struct engine *e,
+                                                        const struct spart *sp,
+                                                        double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.removed.removed_photons[b];
+}
+
+/**
+ * @brief Snapshot converter of the absorbed and escaped energy of the removed
+ * gas per band, see #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_inherited_energy(const struct engine *e,
+                                                         const struct spart *sp,
+                                                         double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.removed.inherited_energy[b];
+}
+
+/**
+ * @brief Snapshot converter of the absorbed and escaped photon number of the
+ * removed gas per band, see #feedback_write_sparticles.
+ */
+INLINE static void convert_spart_packet_inherited_photons(
+    const struct engine *e, const struct spart *sp, double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = sp->feedback_data.radiation.packet.removed.inherited_photons[b];
+}
+
+/**
+ * @brief Snapshot converter of the energy in flight in the removed gas per
+ * band, see #feedback_write_sinkparticles.
+ */
+INLINE static void convert_sink_packet_removed_energy(const struct engine *e,
+                                                      const struct sink *s,
+                                                      double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = s->feedback_data.isrf_packet.removed_energy[b];
+}
+
+/**
+ * @brief Snapshot converter of the photon number in flight in the removed gas
+ * per band, see #feedback_write_sinkparticles.
+ */
+INLINE static void convert_sink_packet_removed_photons(const struct engine *e,
+                                                       const struct sink *s,
+                                                       double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = s->feedback_data.isrf_packet.removed_photons[b];
+}
+
+/**
+ * @brief Snapshot converter of the absorbed and escaped energy of the removed
+ * gas per band, see #feedback_write_sinkparticles.
+ */
+INLINE static void convert_sink_packet_inherited_energy(const struct engine *e,
+                                                        const struct sink *s,
+                                                        double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = s->feedback_data.isrf_packet.inherited_energy[b];
+}
+
+/**
+ * @brief Snapshot converter of the absorbed and escaped photon number of the
+ * removed gas per band, see #feedback_write_sinkparticles.
+ */
+INLINE static void convert_sink_packet_inherited_photons(const struct engine *e,
+                                                         const struct sink *s,
+                                                         double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = s->feedback_data.isrf_packet.inherited_photons[b];
+}
+
+/**
  * @brief Snapshot converter for #PESpecificEnergy, see
  * #feedback_write_particles.
  */
@@ -1066,6 +1153,75 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
       UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_escaped_photons,
       "Photon number of the star's empty emission cones, times the band's "
       "lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketRemovedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_removed_energy,
+      "Packet energy in flight in the gas particle the star was converted "
+      "from, lost with it. Two components, PE then LW.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketRemovedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_removed_photons,
+      "Photon number in flight in the gas particle the star was converted "
+      "from, in the units of PacketEmittedPhotonNumbers.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketInheritedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_inherited_energy,
+      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies of the gas "
+      "particle the star was converted from. Two components, PE then LW.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketInheritedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_inherited_photons,
+      "Absorbed plus escaped photon number of the gas particle the star was "
+      "converted from, in the units of PacketEmittedPhotonNumbers.");
+#endif
+
+  return num;
+}
+
+/**
+ * @brief Specifies which sink particle fields to write to a dataset.
+ *
+ * @param sinks The sink particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int feedback_write_sinkparticles(const struct sink *sinks,
+                                               struct io_props *list,
+                                               const int with_cosmology) {
+
+  int num = 0;
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketRemovedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sinks, convert_sink_packet_removed_energy,
+      "Packet energy in flight in the gas the sink formed from or swallowed, "
+      "and in the sinks it merged with, lost with it. Two components, PE then "
+      "LW. Zero unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketRemovedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sinks, convert_sink_packet_removed_photons,
+      "Photon number in flight in the gas the sink formed from or swallowed, "
+      "times the band's lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
+
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketInheritedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sinks, convert_sink_packet_inherited_energy,
+      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies of the gas the "
+      "sink formed from or swallowed. Two components, PE then LW.");
+
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketInheritedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sinks, convert_sink_packet_inherited_photons,
+      "Absorbed plus escaped photon number of the gas the sink formed from or "
+      "swallowed, in the units of PacketRemovedPhotonNumbers.");
 #endif
 
   return num;

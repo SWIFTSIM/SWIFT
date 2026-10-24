@@ -177,14 +177,20 @@ void feedback_init_after_star_formation(
 void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
+void feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp);
+void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s);
+void feedback_book_sink_merger(struct sink *si, const struct sink *sj);
+void feedback_first_init_sink(struct sink *s);
+
 /*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
  * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
  * reduced-flux dissipation fields, 5 HII random cone frame flag in
  * #feedback_props, 6 HII cone frame redraw period in #feedback_props, 7 HII
  * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
  * cone claim rule removed from #feedback_props, 11 radiation packet in the
- * gas and transport keys in #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 11
+ * gas and transport keys in #feedback_props, 12 removed-gas packet ledger in
+ * the star and the sink. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 12
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

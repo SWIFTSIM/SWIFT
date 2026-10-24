@@ -239,12 +239,6 @@ struct feedback_isrf_packet_band_data {
 
   /*! Photon number escaped, as `N E_lo`. */
   double escaped_photons;
-
-  /*! Energy carried away when the gas particle was converted or swallowed. */
-  double removed_energy;
-
-  /*! Photon number removed, as `N E_lo`. */
-  double removed_photons;
 };
 
 /**
@@ -296,6 +290,25 @@ struct feedback_isrf_packet_data {
       was last reset by a test. */
   int shares_received;
 #endif
+};
+
+/**
+ * @brief Packet ledger of the gas a star or a sink formed from or swallowed,
+ * per band, indexed by #radiation_isrf_operator.
+ */
+struct feedback_isrf_packet_removed_data {
+
+  /*! Energy in flight in the gas when it was removed, lost with it. */
+  double removed_energy[ISRF_OPERATOR_COUNT];
+
+  /*! Photon number in flight when the gas was removed, as `N E_lo`. */
+  double removed_photons[ISRF_OPERATOR_COUNT];
+
+  /*! Absorbed and escaped energy of the gas's own ledger, carried over. */
+  double inherited_energy[ISRF_OPERATOR_COUNT];
+
+  /*! Absorbed and escaped photon number of the gas, as `N E_lo`. */
+  double inherited_photons[ISRF_OPERATOR_COUNT];
 };
 
 /**
@@ -734,6 +747,9 @@ struct feedback_spart_data {
 
       /*! Emitted photon number (as `N E_lo`) that found no gas. */
       double escaped_photons[ISRF_OPERATOR_COUNT];
+
+      /*! Ledger of the gas particle the star was converted from. */
+      struct feedback_isrf_packet_removed_data removed;
     } packet;
 #endif
 
@@ -754,6 +770,18 @@ struct feedback_spart_data {
 #endif
 
   } radiation;
+};
+
+/**
+ * @brief Feedback fields carried by each sink particle.
+ */
+struct feedback_sink_data {
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  /*! Packet ledger of the gas the sink formed from and swallowed, and of the
+      sinks it merged with. */
+  struct feedback_isrf_packet_removed_data isrf_packet;
+#endif
 };
 
 #endif /* SWIFT_FEEDBACK_STRUCT_GEAR_H */

@@ -123,6 +123,11 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     const float path_phys, const int to_reservoir,
     const integertime_t source_step_end_ti) {
 
+#ifdef SWIFT_DEBUG_CHECKS
+  if (r->time_bin == time_bin_inhibited)
+    error("Packet share booked into the removed gas particle %lld.", r->id);
+#endif
+
   struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
   float delivered_energy = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -352,7 +357,113 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);
 
+/**
+ * @brief Book the packet of a gas particle that leaves the gas, converted
+ * into or swallowed by another particle, into that particle's ledger.
+ *
+ * The light in flight (held, inbox and reservoir) is lost with the gas and is
+ * booked as removed. The gas's absorbed and escaped ledgers are carried over.
+ *
+ * @param p The gas particle.
+ * @param l The ledger of the star or sink.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas(const struct part *p,
+                                  struct feedback_isrf_packet_removed_data *l) {
+  const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    const struct feedback_isrf_packet_band_data *d = &pk->band[b];
+    l->removed_energy[b] += (double)d->energy + (double)d->inbox_energy +
+                            (double)d->reservoir_energy;
+    l->removed_photons[b] += (double)d->photons + (double)d->inbox_photons +
+                             (double)d->reservoir_photons;
+    l->inherited_energy[b] += d->absorbed_energy + d->escaped_energy;
+    l->inherited_photons[b] += d->absorbed_photons + d->escaped_photons;
+  }
+}
+
+/**
+ * @brief Add the ledger of a swallowed sink to the sink that swallows it.
+ *
+ * @param l The ledger of the surviving sink.
+ * @param l_swallowed The ledger of the swallowed sink.
+ */
+__attribute__((always_inline)) INLINE static void radiation_packet_add_removed(
+    struct feedback_isrf_packet_removed_data *l,
+    const struct feedback_isrf_packet_removed_data *l_swallowed) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    l->removed_energy[b] += l_swallowed->removed_energy[b];
+    l->removed_photons[b] += l_swallowed->removed_photons[b];
+    l->inherited_energy[b] += l_swallowed->inherited_energy[b];
+    l->inherited_photons[b] += l_swallowed->inherited_photons[b];
+  }
+}
+
+/**
+ * @brief Gas converted into a star: book its packet to the star, after the
+ * star's #radiation_packet_first_init_star.
+ *
+ * @param p The gas particle.
+ * @param sp The new star.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas_to_star(const struct part *p,
+                                          struct spart *sp) {
+  radiation_packet_book_removed_gas(
+      p, &sp->feedback_data.radiation.packet.removed);
+}
+
+/**
+ * @brief Gas converted into or swallowed by a sink: book its packet to the
+ * sink.
+ *
+ * @param p The gas particle.
+ * @param s The sink.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas_to_sink(const struct part *p,
+                                          struct sink *s) {
+  radiation_packet_book_removed_gas(p, &s->feedback_data.isrf_packet);
+}
+
+/**
+ * @brief A sink swallows another: the survivor takes its ledger.
+ *
+ * @param si The surviving sink.
+ * @param sj The swallowed sink.
+ */
+__attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
+    struct sink *si, const struct sink *sj) {
+  radiation_packet_add_removed(&si->feedback_data.isrf_packet,
+                               &sj->feedback_data.isrf_packet);
+}
+
+/**
+ * @brief Zero a sink's ledger, at its creation or first initialisation.
+ *
+ * @param s The sink.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_first_init_sink(struct sink *s) {
+  memset(&s->feedback_data.isrf_packet, 0,
+         sizeof(s->feedback_data.isrf_packet));
+}
+
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas_to_star(const struct part *p,
+                                          struct spart *sp) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas_to_sink(const struct part *p,
+                                          struct sink *s) {}
+
+__attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
+    struct sink *si, const struct sink *sj) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_first_init_sink(struct sink *s) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_star(struct spart *sp) {}
