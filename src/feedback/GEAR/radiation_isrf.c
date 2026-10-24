@@ -255,8 +255,10 @@ void radiation_snapshot_part_propagation(struct part *p,
           "GEARFeedback:ISRF_transport: %s does not support cosmological "
           "runs.",
           isrf_transport_name_packet_hop);
-    if (part_is_active(p, e))
+    if (part_is_active(p, e)) {
       radiation_packet_merge(p, e->ti_current, ti_step, e->time_base);
+      radiation_packet_reset_field_mean(p);
+    }
   }
 
   /* Drawdown for active particles only. #radiation_part_has_no_neighbours
@@ -915,7 +917,9 @@ void radiation_end_gradient_propagation(struct part *p,
   fd->ISRF_flux_dissipation = e->feedback_props->ISRF_flux_dissipation;
   radiation_set_part_transport(p, e);
   if (fd->ISRF_packet_transport) {
-    radiation_packet_end_gradient(p);
+    radiation_packet_end_gradient(
+        p, (float)e->cosmology->a,
+        (float)e->physical_constants->const_speed_light_c, fd->dt_prev);
     return;
   }
   const float dt = fd->dt_prev;

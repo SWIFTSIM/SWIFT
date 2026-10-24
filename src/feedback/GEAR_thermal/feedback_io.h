@@ -167,6 +167,52 @@ INLINE static void convert_part_packet_escaped_photons(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter of the packet field energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_field_energy(const struct engine *e,
+                                                    const struct part *p,
+                                                    const struct xpart *xp,
+                                                    float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].field_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet field photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_field_photons(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].field_photons;
+}
+
+/**
+ * @brief Snapshot converter of the packet ngb mean field energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_ngb_mean_field_energy(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].ngb_mean_field_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet ngb mean field photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_ngb_mean_field_photons(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].ngb_mean_field_photons;
+}
+
+/**
  * @brief Snapshot converter of a star's emitted packet energy per band, see
  * #feedback_write_sparticles.
  */
@@ -917,6 +963,36 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Photon number escaped, in the units of PacketInboxPhotonNumbers. "
       "Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
       "GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketSpecificEnergies", FLOAT, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_packet_field_energy,
+      "Own field of the packet transport, (E / m) l_par / (c dt), the specific "
+      "energy of the light that crosses the particle in one step. Two "
+      "components, PE then LW. Zero unless GEARFeedback:ISRF_transport is "
+      "packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketSpecificPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_packet_field_photons,
+      "Own field of the photon number, per unit mass, times the band's "
+      "lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketKernelMeanSpecificEnergies", FLOAT, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_packet_ngb_mean_field_energy,
+      "Mass- and kernel-weighted mean of PacketSpecificEnergies over the "
+      "particle's support, itself included, at its last step.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketKernelMeanSpecificPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+      convert_part_packet_ngb_mean_field_photons,
+      "Kernel mean of PacketSpecificPhotonNumbers, as "
+      "PacketKernelMeanSpecificEnergies.");
 
   list[num++] = io_make_output_field(
       "PacketDirections", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f, parts,

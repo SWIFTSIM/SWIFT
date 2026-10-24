@@ -32,7 +32,9 @@
  */
 
 #include "error.h"
+#include "hydro.h"
 #include "inline.h"
+#include "kernel_hydro.h"
 #include "part.h"
 
 #include <math.h>
@@ -59,7 +61,8 @@ int radiation_packet_emission_cone(const long long star_id,
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
                             const integertime_t ti_step,
                             const double time_base);
-void radiation_packet_end_gradient(struct part *p);
+void radiation_packet_end_gradient(struct part *p, const float a, const float c,
+                                   const float dt);
 void radiation_packet_end_force(struct part *p);
 
 /**
@@ -215,6 +218,49 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 
   radiation_packet_deliver(r, energy, photons, offset, a * path,
                            s->time_bin > r->time_bin, pk_s->step_end_ti);
+}
+
+/**
+ * @brief Zero the kernel-mean accumulators of an active particle.
+ *
+ * @param p The particle.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_reset_field_mean(struct part *p) {
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  pk->ngb_field_weight_sum = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    pk->band[b].ngb_mean_field_energy = 0.f;
+    pk->band[b].ngb_mean_field_photons = 0.f;
+  }
+}
+
+/**
+ * @brief Force loop: add a neighbour's own field to the kernel mean of the
+ * particle updated in this visit.
+ *
+ * @param r2 Comoving square distance.
+ * @param h Comoving smoothing length of the updated particle.
+ * @param pi The updated particle.
+ * @param pj The neighbour.
+ */
+__attribute__((always_inline)) INLINE static void radiation_packet_gather_field(
+    const float r2, const float h, struct part *restrict pi,
+    const struct part *restrict pj) {
+
+  const float u = sqrtf(r2) / h;
+  if (!(u < kernel_gamma)) return;
+  float w;
+  kernel_eval(u, &w);
+  w *= hydro_get_mass(pj);
+  struct feedback_isrf_packet_data *pk = &pi->feedback_data.isrf_packet;
+  pk->ngb_field_weight_sum += w;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    pk->band[b].ngb_mean_field_energy +=
+        w * pj->feedback_data.isrf_packet.band[b].field_energy;
+    pk->band[b].ngb_mean_field_photons +=
+        w * pj->feedback_data.isrf_packet.band[b].field_photons;
+  }
 }
 
 /**

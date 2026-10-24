@@ -221,10 +221,11 @@ struct feedback_isrf_packet_band_data {
   /*! Own field of the photon number, as `N E_lo` per unit mass. */
   float field_photons;
 
-  /*! Kernel-mean accumulator of the neighbours' #field_energy. Scratch. */
+  /*! Kernel mean of #field_energy over the neighbours and the particle,
+      accumulated in the force loop and normalised at its end. */
   float ngb_mean_field_energy;
 
-  /*! Kernel-mean accumulator of the neighbours' #field_photons. Scratch. */
+  /*! Kernel mean of #field_photons, as #ngb_mean_field_energy. */
   float ngb_mean_field_photons;
 
   /*! Energy absorbed by dust in this particle, cumulative. */
@@ -275,6 +276,9 @@ struct feedback_isrf_packet_data {
   /*! Weighted mean comoving advance along #direction per hop, from the
       gradient loop. */
   float forward_advance;
+
+  /*! Sum of the kernel weights of the field mean. Scratch. */
+  float ngb_field_weight_sum;
 
   /*! Copy of #feedback_props.ISRF_packet_cone_power, set with
       #feedback_part_data.ISRF_packet_transport. */

@@ -1019,7 +1019,7 @@ runner_iact_nonsym_isrf_dissipation(const float r2, const float dx[3],
 
 /**
  * @brief Force-loop packet hop between two particles both updated by this
- * visit: each books its share into the other.
+ * visit: each books its share into the other and gathers the other's field.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -1042,10 +1042,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
   if (book_i_to_j) radiation_packet_book_share(dx_ij, hi, pi, pj, a);
   if (book_j_to_i) radiation_packet_book_share(dx, hj, pj, pi, a);
+  radiation_packet_gather_field(r2, hi, pi, pj);
+  radiation_packet_gather_field(r2, hj, pj, pi);
 }
 
 /**
- * @brief Force-loop packet hop from the updated particle i into j.
+ * @brief Force-loop packet hop from the updated particle i into j; j's own
+ * field joins the kernel mean of i.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
@@ -1064,8 +1067,10 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    struct part *restrict pj, const float a,
                                    const float H, const int book) {
 
-  if (!book || !pi->feedback_data.ISRF_packet_transport) return;
+  if (!pi->feedback_data.ISRF_packet_transport) return;
 
+  radiation_packet_gather_field(r2, hi, pi, pj);
+  if (!book) return;
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
   radiation_packet_book_share(dx_ij, hi, pi, pj, a);
 }

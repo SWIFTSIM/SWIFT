@@ -23,6 +23,7 @@
 
 /* Local includes. */
 #include "dimension.h"
+#include "hydro.h"
 #include "kernel_hydro.h"
 #include "random.h"
 
@@ -206,20 +207,40 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 }
 
 /**
- * @brief End of the gradient loop: normalise the forward advance, or let a
- * packet with no downstream neighbour escape into the ledger.
+ * @brief End of the gradient loop: normalise the forward advance and read the
+ * own field off the held packet, or let a packet with no downstream neighbour
+ * escape into the ledger.
+ *
+ * The held packet is the light that crosses the particle in one step, over
+ * the forward advance, so its specific energy density is
+ * `(E / m) l_par / (c dt)`.
  *
  * @param p The particle.
+ * @param a Current scale factor.
+ * @param c Speed of light.
+ * @param dt Physical length of the particle's step.
  */
-void radiation_packet_end_gradient(struct part *p) {
+void radiation_packet_end_gradient(struct part *p, const float a, const float c,
+                                   const float dt) {
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   if (pk->weight_sum > 0.f) {
     pk->forward_advance /= pk->weight_sum;
+    float factor = 0.f;
+    const float m = hydro_get_mass(p);
+    if (dt > 0.f && m > 0.f) factor = a * pk->forward_advance / (m * c * dt);
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      pk->band[b].field_energy = pk->band[b].energy * factor;
+      pk->band[b].field_photons = pk->band[b].photons * factor;
+    }
     return;
   }
 
   pk->forward_advance = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    pk->band[b].field_energy = 0.f;
+    pk->band[b].field_photons = 0.f;
+  }
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];
     band->escaped_energy += (double)band->energy;
@@ -230,16 +251,26 @@ void radiation_packet_end_gradient(struct part *p) {
 }
 
 /**
- * @brief End of the force loop: the held packet has left in shares.
+ * @brief End of the force loop: the held packet has left in shares, and the
+ * kernel mean of the own fields is completed with the particle's own term.
  *
  * @param p The particle.
  */
 void radiation_packet_end_force(struct part *p) {
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  float w_self;
+  kernel_eval(0.f, &w_self);
+  const float mw = hydro_get_mass(p) * w_self;
+  const float norm = 1.f / (pk->ngb_field_weight_sum + mw);
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    pk->band[b].energy = 0.f;
-    pk->band[b].photons = 0.f;
+    struct feedback_isrf_packet_band_data *band = &pk->band[b];
+    band->energy = 0.f;
+    band->photons = 0.f;
+    band->ngb_mean_field_energy =
+        (band->ngb_mean_field_energy + mw * band->field_energy) * norm;
+    band->ngb_mean_field_photons =
+        (band->ngb_mean_field_photons + mw * band->field_photons) * norm;
   }
 }
 
