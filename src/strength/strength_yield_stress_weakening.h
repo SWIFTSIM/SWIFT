@@ -22,84 +22,19 @@
 
 /**
  * @file strength/strength_yield_stress_weakening.h
- * @brief Methods for applying weakening to the yield stress.
+ * @brief Selects yield stress weakening methods based on configuration options.
  */
 
-#include "math.h"
-
-/**
- * @brief Apply thermal weakening to the yield stress.
- *
- * Weaken the material's yield stress as its temperature approaches the
- * melting temperature. This method is presented by Ohnaka1995, and
- * is used by e.g. Collins+2004 and Emsenhuber+2018.
- *
- * Method parameters needed in material parameter file:
- * Strength:
- *     T_melt: Melting temperature (K).
- * YieldStress:
- *     yield_weakening_thermal_xi: Thermal weakening xi factor (default 1.2).
- *
- * @param Y The yield stress to be weakened.
- * @param density The density.
- * @param u The specific internal energy.
- * @param mat_id The material ID.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static void
-yield_weakening_apply_temperature_to_yield_stress(float *Y, const float density,
-                                                  const float u, const int mat_id,
-                                                  const struct mat_params *mp) {
-#ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
-  /* Method parameters. */
-  const float xi = mp->yield_weakening_thermal_xi;
-  const float T_melt = mp->T_melt;
-  const float temperature = gas_temperature_from_internal_energy(density, u, mat_id);
-
-  /* Apply weakening. */
-  if (temperature > 0.f && temperature < T_melt) {
-    *Y *= tanhf(xi * (T_melt / temperature - 1.f));
-  } else if (temperature >= T_melt) {
-    *Y = 0.f;
-  }
+#if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
+#include "yield_stress_weakening/weakening_thermal.h"
+#else
+#include "yield_stress_weakening/weakening_thermal_none.h"
 #endif /* STRENGTH_YIELD_STRESS_WEAKENING_THERMAL */
-}
 
-/**
- * @brief Apply density weakening to the yield stress.
- *
- * Weaken the material's yield stress as its density decreases below a certain
- * point. This method is discussed by Luther+2022, where it is described in the
- * context of its implementation in iSALE.
- *
- * Method parameters needed in material parameter file:
- * Strength:
- *     rho_0: Material rho_0 (kg m^-3).
- * YieldStress:
- *     yield_weakening_density_mult_param: Density weakening muliplication factor (default 0.85).
- *     yield_weakening_density_pow_param: Density weakening power factor (default 4).
- *
- * @param Y The yield stress to be weakened.
- * @param density The density.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static void
-yield_weakening_apply_density_to_yield_stress(float *Y, const float density,
-                                              const struct mat_params *mp) {
-#ifdef STRENGTH_YIELD_STRESS_WEAKENING_DENSITY
-  /* Method parameters. */
-  const float rho_0 = mp->rho_0;
-  const float a = mp->yield_weakening_density_mult_param;
-  const float rho_weak = a * rho_0;
-
-  /* Only apply weakening below a density threshold. */
-  if (density < rho_weak) {
-    const float b = mp->yield_weakening_density_pow_param;
-
-    /* Apply weakening. */
-    *Y *= powf(density / rho_weak, b);
-  }
+#if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
+#include "yield_stress_weakening/weakening_density.h"
+#else
+#include "yield_stress_weakening/weakening_density_none.h"
 #endif /* STRENGTH_YIELD_STRESS_WEAKENING_DENSITY */
-}
 
 #endif /* SWIFT_STRENGTH_YIELD_STRESS_WEAKENING_H */
