@@ -750,6 +750,18 @@ struct feedback_spart_data {
 
       /*! Ledger of the gas particle the star was converted from. */
       struct feedback_isrf_packet_removed_data removed;
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /*! Gas neighbours with a non-zero weight in each cone, density loop. */
+      int cone_count[RADIATION_PACKET_EMISSION_CONES];
+
+      /*! The same count and weight sum over the feedback loop's deliveries. */
+      int cone_count_delivered[RADIATION_PACKET_EMISSION_CONES];
+      float cone_weight_delivered[RADIATION_PACKET_EMISSION_CONES];
+
+      /*! Was this step's emission booked, so the deliveries can be checked? */
+      char cones_booked;
+#endif
     } packet;
 #endif
 

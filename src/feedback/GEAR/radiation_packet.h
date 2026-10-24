@@ -40,6 +40,10 @@
 #include <math.h>
 #include <string.h>
 
+#ifdef SWIFT_DEBUG_CHECKS
+#include "atomic.h"
+#endif
+
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /*! Cosine below which the transmission weight is exactly zero. */
@@ -291,6 +295,14 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_init_star_cones(struct spart *sp) {
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
     sp->feedback_data.radiation.packet.cone_weight[c] = 0.f;
+#ifdef SWIFT_DEBUG_CHECKS
+  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
+    sp->feedback_data.radiation.packet.cone_count[c] = 0;
+    sp->feedback_data.radiation.packet.cone_count_delivered[c] = 0;
+    sp->feedback_data.radiation.packet.cone_weight_delivered[c] = 0.f;
+  }
+  sp->feedback_data.radiation.packet.cones_booked = 0;
+#endif
 }
 
 /**
@@ -308,6 +320,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
       get_integer_time_begin(ti_current, si->time_bin);
   const int c = radiation_packet_emission_cone(si->id, ti_begin, dx);
   si->feedback_data.radiation.packet.cone_weight[c] += weight;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (weight > 0.f) si->feedback_data.radiation.packet.cone_count[c]++;
+#endif
 }
 
 /**
@@ -340,6 +355,13 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   /* Possible only at the kernel edge, where the weight underflows in one loop
      and not the other: that cone's light was booked as escaped. */
   if (!(cone_weight > 0.f)) return;
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Several feedback tasks of one star may run at once. */
+  struct spart *s_dbg = (struct spart *)si;
+  atomic_inc(&s_dbg->feedback_data.radiation.packet.cone_count_delivered[c]);
+  atomic_add_f(&s_dbg->feedback_data.radiation.packet.cone_weight_delivered[c],
+               weight);
+#endif
   const double fraction =
       (double)weight / ((double)cone_weight * RADIATION_PACKET_EMISSION_CONES);
 
@@ -357,6 +379,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);
+#ifdef SWIFT_DEBUG_CHECKS
+void radiation_packet_check_star_cones(const struct spart *sp,
+                                       const integertime_t ti_current);
+#endif
 
 /**
  * @brief Book the packet of a gas particle that leaves the gas, converted

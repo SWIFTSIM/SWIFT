@@ -274,6 +274,10 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin) {
 
+#if defined(SWIFT_DEBUG_CHECKS) && defined(GEAR_SUBGRID_RADIATION_ISRF)
+  radiation_packet_check_star_cones(sp, ti_current);
+#endif
+
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
   sp->feedback_data.winds.energy_ejected = 0;

@@ -31,6 +31,7 @@
 #include <chealpix.h>
 #endif
 
+#include <float.h>
 #include <math.h>
 
 /**
@@ -287,6 +288,9 @@ void radiation_packet_end_force(struct part *p) {
  */
 void radiation_packet_star_book_emission(struct spart *sp,
                                          const float Delta_t) {
+#ifdef SWIFT_DEBUG_CHECKS
+  sp->feedback_data.radiation.packet.cones_booked = 1;
+#endif
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
@@ -311,3 +315,33 @@ void radiation_packet_star_book_emission(struct spart *sp,
         E * sp->feedback_data.radiation.packet.photon_fraction[b];
   }
 }
+
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Debugging checks: the feedback loop delivered to the same gas, cone
+ * by cone, as the density loop that normalised the cones. A difference
+ * creates or destroys light.
+ *
+ * @param sp The star, after its feedback loop.
+ * @param ti_current Current integer time, for the message.
+ */
+void radiation_packet_check_star_cones(const struct spart *sp,
+                                       const integertime_t ti_current) {
+  if (!sp->feedback_data.radiation.packet.cones_booked) return;
+  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
+    const int n = sp->feedback_data.radiation.packet.cone_count[c];
+    const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
+    const float w = sp->feedback_data.radiation.packet.cone_weight[c];
+    const float w_d =
+        sp->feedback_data.radiation.packet.cone_weight_delivered[c];
+    /* Float sums of the same terms in another order: n roundings at most. */
+    const float bar = 4.f * (n + 1) * FLT_EPSILON * w;
+    if (n != n_d || fabsf(w - w_d) > bar)
+      error(
+          "Star %lld, cone %d at ti_current %lld: the density loop counted %d "
+          "gas with weight %e, the feedback loop delivered to %d with weight "
+          "%e.",
+          sp->id, c, ti_current, n, w, n_d, w_d);
+  }
+}
+#endif
