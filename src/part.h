@@ -32,6 +32,7 @@
 
 /* Local headers. */
 #include "align.h"
+#include "inline.h"
 #include "part_type.h"
 
 /* Pre-declarations */
@@ -130,6 +131,17 @@ struct threadpool;
 #else
 #error "Invalid choice of star particle"
 #endif
+
+/**
+ * @brief Length / gamma_k the radiation search of a star must cover: its HII
+ * radius, or the larger search its last HII pass requested.
+ *
+ * @param sp The #spart.
+ */
+__attribute__((always_inline)) INLINE static float stars_get_hii_search_length(
+    const struct spart *sp) {
+  return sp->h_hii_request > sp->h_hii ? sp->h_hii_request : sp->h_hii;
+}
 
 /* Import the right black hole particle definition */
 #if defined(BLACK_HOLES_NONE)

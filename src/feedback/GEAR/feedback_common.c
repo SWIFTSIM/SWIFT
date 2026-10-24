@@ -482,6 +482,9 @@ void feedback_will_do_HII_ionization(
     sp->h_hii = 0.0;
     sp->feedback_data.radiation.mass_HII_region = 0.f;
   }
+
+  /* A star with no region can still hold a search request. */
+  if (sp->feedback_data.is_dead || !is_HII_eligible) sp->h_hii_request = 0.f;
 }
 
 #endif /* GEAR_SUBGRID_RADIATION_HII */

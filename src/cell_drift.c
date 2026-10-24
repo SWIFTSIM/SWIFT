@@ -937,7 +937,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, sp->h);
-      cell_h_hii_max = max(cell_h_hii_max, sp->h_hii);
+      cell_h_hii_max = max(cell_h_hii_max, stars_get_hii_search_length(sp));
 
       /* Get ready for a density calculation */
       if (init_particles && spart_is_active(sp, e)) {
@@ -948,7 +948,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
         /* Update the maximal active smoothing length in the cell */
         if (feedback_is_active(sp, e) || with_rt) {
           cell_h_max_active = max(cell_h_max_active, sp->h);
-          cell_h_hii_max_active = max(cell_h_hii_max_active, sp->h_hii);
+          cell_h_hii_max_active =
+              max(cell_h_hii_max_active, stars_get_hii_search_length(sp));
         }
       }
     }
