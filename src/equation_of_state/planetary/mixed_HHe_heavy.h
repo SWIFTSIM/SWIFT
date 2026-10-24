@@ -56,6 +56,10 @@ struct single_mixedHHeHeavy_params {
 struct mixedHHeHeavy_params {
   struct single_mixedHHeHeavy_params *single_params;
   int num_mat;
+  float *table_mix;
+  float *table_log_rho;
+  float *table_log_T;
+  int num_mix, num_rho, num_T, num_rho_T;
   enum eos_planetary_material_id mat_id;
 };
 
@@ -153,6 +157,37 @@ INLINE static void prepare_table_mixedHHeHeavy(struct single_mixedHHeHeavy_param
     }
   }
 }
+INLINE static void prepare_mixedHHeHeavy(struct mixedHHeHeavy_params *mat) {
+  // Same array dimensions for all mix components
+  mat->num_mix = mat->single_params[0].num_mix;
+  mat->num_rho = mat->single_params[0].num_rho;
+  mat->num_T = mat->single_params[0].num_T;
+  mat->num_rho_T = mat->single_params[0].num_rho_T;
+
+  // Check
+  for (int i = 1; i < mat->num_mat; i++) {
+    if (mat->num_mix != mat->single_params[i].num_mix)
+      error("Mixed EoS mix-table dimensions don't match");
+    if (mat->num_rho != mat->single_params[i].num_rho)
+      error("Mixed EoS density-table dimensions don't match");
+    if (mat->num_T != mat->single_params[i].num_T)
+      error("Mixed EoS temperature-table dimensions don't match");
+  }
+
+  // Same 1D axis arrays for all mix components
+  mat->table_mix = (float *)malloc(mat->num_mix * sizeof(float));
+  mat->table_log_rho = (float *)malloc(mat->num_rho * sizeof(float));
+  mat->table_log_T = (float *)malloc(mat->num_T * sizeof(float));
+  for (int i = 0; i < mat->num_mix; i++) {
+    mat->table_mix[i] = mat->single_params[0].table_mix[i];
+  }
+  for (int i = 0; i < mat->num_rho; i++) {
+    mat->table_log_rho[i] = mat->single_params[0].table_log_rho[i];
+  }
+  for (int i = 0; i < mat->num_T; i++) {
+    mat->table_log_T[i] = mat->single_params[0].table_log_T[i];
+  }
+}
 
 // Convert to internal units
 INLINE static void convert_units_mixedHHeHeavy(struct single_mixedHHeHeavy_params *mat,
@@ -204,11 +239,169 @@ INLINE static void convert_units_mixedHHeHeavy(struct single_mixedHHeHeavy_param
 INLINE static float mixedHHeHeavy_internal_energy_from_entropy(
     const float density, const float entropy, const float *mixes, const struct mixedHHeHeavy_params *mat) {
 
-  error("This EOS function is not yet implemented!");
+  if (entropy <= 0.f) {
+    return 0.f;
+  }
 
-  return 0.f;
+  // Mix fraction with respect to HHe rather than between each heavy component
+  float mix_tot = 0.f;
+  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
+    mix_tot += mixes[i_mat];
+  }
+  
+  // 3D interpolation (linear with mix, log(rho), log(entropy)) to find P(mix, rho, entropy)
+  const float log_rho = logf(density);
+  const float log_s = logf(entropy);
+  
+  // Mix
+  int idx_mix;
+  float intp_mix;
+  if (mix_tot >= 0.9999f) {
+    idx_mix = mat->num_mix - 2;
+    intp_mix = 1.f;
+  } else {
+    idx_mix = find_value_in_monot_incr_array(mix_tot, mat->table_mix, mat->num_mix);
+    intp_mix = (mix_tot - mat->table_mix[idx_mix]) / 
+                (mat->table_mix[idx_mix + 1] - mat->table_mix[idx_mix]);
+  }
+  
+  // Density
+  int idx_rho =
+      find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
+  // If outside the table then extrapolate from the edge and edge-but-one values
+  if (idx_rho <= -1) {
+    idx_rho = 0;
+  } else if (idx_rho >= mat->num_rho) {
+    idx_rho = mat->num_rho - 2;
+  }
+  float intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
+                  (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
+  
+  // Do the mix interpolation and rho extraction to derive a single s(rho, T) array
+  float log_s_rho_T;
+  float subtable_log_s_rho_T[2 * mat->num_T];
+  for (int i_rho = 0; i_rho <= 1; i_rho++) {
+    for (int i_T = 0; i_T < mat->num_T; i_T++) {
+
+      // Add each mix-component contribution
+      if (mix_tot == 0.f) {
+
+        int idx = (idx_rho + i_rho) * mat->num_T + i_T;
+
+        log_s_rho_T = mat->single_params[0].table_log_s_mix_rho_T[idx] / mat->num_mat;
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_s_rho_T += mat->single_params[i_mat].table_log_s_mix_rho_T[idx] / mat->num_mat;
+        }
+
+      } else if (mix_tot >= 0.9999f) {
+
+        int idx = (mat->num_mix - 1) * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        
+        log_s_rho_T = mixes[0] / mix_tot * mat->single_params[0].table_log_s_mix_rho_T[idx];
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_s_rho_T += mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_s_mix_rho_T[idx];
+        }
+
+      }
+      else {
+
+        // Mix interpolation
+        int idx_1 = idx_mix * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        int idx_2 = (idx_mix + 1) * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        
+        log_s_rho_T = 
+          (1 - intp_mix) * mixes[0] / mix_tot * mat->single_params[0].table_log_s_mix_rho_T[idx_1]
+          + intp_mix * mixes[0] / mix_tot * mat->single_params[0].table_log_s_mix_rho_T[idx_2];
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_s_rho_T += 
+            (1 - intp_mix) * mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_s_mix_rho_T[idx_1]
+            + intp_mix * mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_s_mix_rho_T[idx_2];
+
+        }
+
+      }
+
+      subtable_log_s_rho_T[i_rho * mat->num_T + i_T] = log_s_rho_T;
+    }
+  }
+
+  // Sp. int. energy in each density slice
+  int idx_s_1 = find_value_in_monot_incr_array(log_s, subtable_log_s_rho_T, mat->num_T);
+  int idx_s_2 = find_value_in_monot_incr_array(
+    log_s, subtable_log_s_rho_T + mat->num_T, mat->num_T);
+
+  // If outside the table then extrapolate from the edge and edge-but-one values
+  if (idx_s_1 <= -1) {
+    idx_s_1 = 0;
+  } else if (idx_s_1 >= mat->num_T) {
+    idx_s_1 = mat->num_T - 2;
+  }
+  if (idx_s_2 <= -1) {
+    idx_s_2 = 0;
+  } else if (idx_s_2 >= mat->num_T) {
+    idx_s_2 = mat->num_T - 2;
+  }
+  
+  // Sp. int. energy in each density slice
+  float intp_s_1, intp_s_2;
+  intp_s_1 = (log_s - subtable_log_s_rho_T[idx_s_1]) /
+              (subtable_log_s_rho_T[idx_s_1 + 1] - subtable_log_s_rho_T[idx_s_1]);
+  intp_s_2 = (log_s - subtable_log_s_rho_T[mat->num_T + idx_s_2]) /
+              (subtable_log_s_rho_T[mat->num_T + idx_s_2 + 1] 
+                - subtable_log_s_rho_T[mat->num_T + idx_s_2]);
+  
+  // If below the minimum u at this rho then just use the lowest table values
+  if ((idx_rho > 0.f) && ((intp_s_1 < 0.f) || (intp_s_2 < 0.f))) {
+    intp_s_1 = 0.f;
+    intp_s_2 = 0.f;
+  }
+  
+  // Table values
+  int idx_s_1_mix_1_rho_T = idx_mix * mat->num_rho_T + idx_rho * mat->num_T + idx_s_1;
+  int idx_s_2_mix_1_rho_T = idx_mix * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_s_2;
+  int idx_s_1_mix_2_rho_T = (idx_mix + 1) * mat->num_rho_T + idx_rho * mat->num_T + idx_s_1;
+  int idx_s_2_mix_2_rho_T = (idx_mix + 1) * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_s_2;
+  float log_u_1 = 0.f;
+  float log_u_2 = 0.f;
+  float log_u_3 = 0.f;
+  float log_u_4 = 0.f;
+  float f_mix;
+  // Combine each mix-component contribution
+  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
+    if (mix_tot == 0.f) {
+      f_mix = 1.f / mat->num_mat;
+    } else {
+      f_mix = mixes[i_mat] / mix_tot;
+    }
+
+    // Mix interpolation
+    log_u_1 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_1_mix_1_rho_T]
+        + intp_mix * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_1_mix_2_rho_T]);
+    log_u_2 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_1_mix_1_rho_T + 1]
+        + intp_mix * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_1_mix_2_rho_T + 1]);
+    log_u_3 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_2_mix_1_rho_T]
+        + intp_mix * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_2_mix_2_rho_T]);
+    log_u_4 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_2_mix_1_rho_T + 1]
+        + intp_mix * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_s_2_mix_2_rho_T + 1]);
+  }
+
+  // Interpolate
+  float log_u_1_2 = (1.f - intp_s_1) * log_u_1 + intp_s_1 * log_u_2;
+  float log_u_3_4 = (1.f - intp_s_2) * log_u_3 + intp_s_2 * log_u_4;
+
+  float log_u = (1.f - intp_rho) * log_u_1_2 + intp_rho * log_u_3_4;
+  
+  // Convert back from log
+  float u = expf(log_u);
+  if (u < 0.f) u = 0.f;
+
+  return u;
 }
-
+    
 // gas_pressure_from_entropy
 INLINE static float mixedHHeHeavy_pressure_from_entropy(
     const float density, const float entropy, const float *mixes, const struct mixedHHeHeavy_params *mat) {
@@ -245,31 +438,36 @@ INLINE static float mixedHHeHeavy_entropy_from_internal_energy(
 }
 
 // gas_pressure_from_internal_energy
-INLINE static float single_mixedHHeHeavy_pressure_from_internal_energy(
-    const float density, const float u, const float mix, 
-    const struct single_mixedHHeHeavy_params *mat) {
+INLINE static float mixedHHeHeavy_pressure_from_internal_energy(
+    const float density, const float u, const float *mixes, 
+    const struct mixedHHeHeavy_params *mat) {
 
   if (u <= 0.f) {
     return 0.f;
   }
 
+  // Mix fraction with respect to HHe rather than between each heavy component
+  float mix_tot = 0.f;
+  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
+    mix_tot += mixes[i_mat];
+  }
+  
+  // 3D interpolation (linear with mix, log(rho), log(u)) to find P(mix, rho, u)
   const float log_rho = logf(density);
   const float log_u = logf(u);
-
-  // 3D interpolation (linear with mix, log(rho), log(u)) to find P(mix, rho, u)
 
   // Mix
   int idx_mix;
   float intp_mix;
-  if (mix >= 0.9999f) {
-    idx_mix = mat->num_mix - 1;
-    intp_mix = 0.f;
+  if (mix_tot >= 0.9999f) {
+    idx_mix = mat->num_mix - 2;
+    intp_mix = 1.f;
   } else {
-    idx_mix = find_value_in_monot_incr_array(mix, mat->table_mix, mat->num_mix);
-    intp_mix = (mix - mat->table_mix[idx_mix]) / 
+    idx_mix = find_value_in_monot_incr_array(mix_tot, mat->table_mix, mat->num_mix);
+    intp_mix = (mix_tot - mat->table_mix[idx_mix]) / 
                (mat->table_mix[idx_mix + 1] - mat->table_mix[idx_mix]);
   }
-
+  
   // Density
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
@@ -281,16 +479,59 @@ INLINE static float single_mixedHHeHeavy_pressure_from_internal_energy(
   }
   float intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
                   (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
+                  
+  // Do the mix interpolation and rho extraction to derive a single u(rho, T) array
+  float log_u_rho_T;
+  float subtable_log_u_rho_T[2 * mat->num_T];
+  for (int i_rho = 0; i_rho <= 1; i_rho++) {
+    for (int i_T = 0; i_T < mat->num_T; i_T++) {
 
-  // 2D interpolate within first single-mix subtable
+      // Add each mix-component contribution
+      if (mix_tot == 0.f) {
 
-  // Sp. int. energy at this and the next density (in relevant slice of each u array)
-  int idx_u_1 = find_value_in_monot_incr_array(
-      log_u, mat->table_log_u_mix_rho_T + idx_mix * mat->num_rho_T
-            + idx_rho * mat->num_T, mat->num_T);
+        int idx = (idx_rho + i_rho) * mat->num_T + i_T;
+
+        log_u_rho_T = mat->single_params[0].table_log_u_mix_rho_T[idx] / mat->num_mat;
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_u_rho_T += mat->single_params[i_mat].table_log_u_mix_rho_T[idx] / mat->num_mat;
+        }
+
+      } else if (mix_tot >= 0.9999f) {
+
+        int idx = (mat->num_mix - 1) * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        
+        log_u_rho_T = mixes[0] / mix_tot * mat->single_params[0].table_log_u_mix_rho_T[idx];
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_u_rho_T += mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_u_mix_rho_T[idx];
+        }
+
+      }
+      else {
+
+        // Mix interpolation
+        int idx_1 = idx_mix * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        int idx_2 = (idx_mix + 1) * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        
+        log_u_rho_T = 
+          (1 - intp_mix) * mixes[0] / mix_tot * mat->single_params[0].table_log_u_mix_rho_T[idx_1]
+          + intp_mix * mixes[0] / mix_tot * mat->single_params[0].table_log_u_mix_rho_T[idx_2];
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_u_rho_T += 
+            (1 - intp_mix) * mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_1]
+            + intp_mix * mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_2];
+
+        }
+
+      }
+
+      subtable_log_u_rho_T[i_rho * mat->num_T + i_T] = log_u_rho_T;
+    }
+  }
+
+  // Sp. int. energy in each density slice
+  int idx_u_1 = find_value_in_monot_incr_array(log_u, subtable_log_u_rho_T, mat->num_T);
   int idx_u_2 = find_value_in_monot_incr_array(
-      log_u, mat->table_log_u_mix_rho_T + idx_mix * mat->num_rho_T 
-            + (idx_rho + 1) * mat->num_T, mat->num_T);
+    log_u, subtable_log_u_rho_T + mat->num_T, mat->num_T);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_u_1 <= -1) {
@@ -304,135 +545,72 @@ INLINE static float single_mixedHHeHeavy_pressure_from_internal_energy(
     idx_u_2 = mat->num_T - 2;
   }
   
-  // Sp. int. energy, for each density slice
+  // Sp. int. energy in each density slice
   float intp_u_1, intp_u_2;
-  int idx_u_1_mix_rho_T = idx_mix * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
-  int idx_u_2_mix_rho_T = idx_mix * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
-  intp_u_1 = (log_u - mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]) /
-              (mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T + 1] -
-              mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]);
-  intp_u_2 = (log_u - mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]) /
-              (mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T + 1] -
-              mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
+  intp_u_1 = (log_u - subtable_log_u_rho_T[idx_u_1]) /
+              (subtable_log_u_rho_T[idx_u_1 + 1] - subtable_log_u_rho_T[idx_u_1]);
+  intp_u_2 = (log_u - subtable_log_u_rho_T[mat->num_T + idx_u_2]) /
+              (subtable_log_u_rho_T[mat->num_T + idx_u_2 + 1] 
+                - subtable_log_u_rho_T[mat->num_T + idx_u_2]);
+  
+  // If below the minimum u at this rho then just use the lowest table values
+  if ((idx_rho > 0.f) && ((intp_u_1 < 0.f) || (intp_u_2 < 0.f))) {
+    intp_u_1 = 0.f;
+    intp_u_2 = 0.f;
+  }
   
   // Table values
-  float P_1 = mat->table_P_mix_rho_T[idx_u_1_mix_rho_T];
-  float P_2 = mat->table_P_mix_rho_T[idx_u_1_mix_rho_T + 1];
-  float P_3 = mat->table_P_mix_rho_T[idx_u_2_mix_rho_T];
-  float P_4 = mat->table_P_mix_rho_T[idx_u_2_mix_rho_T + 1];
+  int idx_u_1_mix_1_rho_T = idx_mix * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
+  int idx_u_2_mix_1_rho_T = idx_mix * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
+  int idx_u_1_mix_2_rho_T = (idx_mix + 1) * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
+  int idx_u_2_mix_2_rho_T = (idx_mix + 1) * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
+  float log_P_1 = 0.f;
+  float log_P_2 = 0.f;
+  float log_P_3 = 0.f;
+  float log_P_4 = 0.f;
+  float f_mix;
+  // Combine each mix-component contribution
+  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
+    if (mix_tot == 0.f) {
+      f_mix = 1.f / mat->num_mat;
+    } else {
+      f_mix = mixes[i_mat] / mix_tot;
+    }
 
-  // If below the minimum u at this rho then just use the lowest table values
-  if ((idx_rho > 0.f) &&
-      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (P_1 > P_2) || (P_3 > P_4))) {
-    intp_u_1 = 0;
-    intp_u_2 = 0;
+    // Avoid log(-ve) -- though that shouldn't occur in these tables
+    float P_1_1 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_1_mix_1_rho_T];
+    float P_1_2 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_1_mix_2_rho_T];
+    float P_2_1 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_1_mix_1_rho_T + 1];
+    float P_2_2 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_1_mix_2_rho_T + 1];
+    float P_3_1 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_2_mix_1_rho_T];
+    float P_3_2 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_2_mix_2_rho_T];
+    float P_4_1 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_2_mix_1_rho_T + 1];
+    float P_4_2 = mat->single_params[i_mat].table_P_mix_rho_T[idx_u_2_mix_2_rho_T + 1];
+    if (P_1_1 <= 0.f) P_1_1 = FLT_MIN;
+    if (P_1_2 <= 0.f) P_1_2 = FLT_MIN;
+    if (P_2_1 <= 0.f) P_2_1 = FLT_MIN;
+    if (P_2_2 <= 0.f) P_2_2 = FLT_MIN;
+    if (P_3_1 <= 0.f) P_3_1 = FLT_MIN;
+    if (P_3_2 <= 0.f) P_3_2 = FLT_MIN;
+    if (P_4_1 <= 0.f) P_4_1 = FLT_MIN;
+    if (P_4_2 <= 0.f) P_4_2 = FLT_MIN;
+
+    // Mix interpolation
+    log_P_1 += f_mix * ((1 - intp_mix) * logf(P_1_1) + intp_mix * logf(P_1_2));
+    log_P_2 += f_mix * ((1 - intp_mix) * logf(P_2_1) + intp_mix * logf(P_2_2));
+    log_P_3 += f_mix * ((1 - intp_mix) * logf(P_3_1) + intp_mix * logf(P_3_2));
+    log_P_4 += f_mix * ((1 - intp_mix) * logf(P_4_1) + intp_mix * logf(P_4_2));
   }
+  
+  // Interpolate
+  float log_P_1_2 = (1.f - intp_u_1) * log_P_1 + intp_u_1 * log_P_2;
+  float log_P_3_4 = (1.f - intp_u_2) * log_P_3 + intp_u_2 * log_P_4;
 
-  // Interpolate with the log values
-  P_1 = logf(P_1);
-  P_2 = logf(P_2);
-  P_3 = logf(P_3);
-  P_4 = logf(P_4);
-  float P_1_2 = (1.f - intp_u_1) * P_1 + intp_u_1 * P_2;
-  float P_3_4 = (1.f - intp_u_2) * P_3 + intp_u_2 * P_4;
-
-  float P = (1.f - intp_rho) * P_1_2 + intp_rho * P_3_4;
-
-  // 2D interpolate within second single-mix table, then combine
-  // (todo: tidy into a generalised function!)
-  if ((mix > 0.f) && (mix < 1.f)) {
-    // Sp. int. energy at this and the next density (in relevant slice of each u array)
-    idx_u_1 = find_value_in_monot_incr_array(
-        log_u, mat->table_log_u_mix_rho_T + (idx_mix + 1) * mat->num_rho_T
-              + idx_rho * mat->num_T, mat->num_T);
-    idx_u_2 = find_value_in_monot_incr_array(
-        log_u, mat->table_log_u_mix_rho_T + (idx_mix + 1) * mat->num_rho_T 
-              + (idx_rho + 1) * mat->num_T, mat->num_T);
-
-    // If outside the table then extrapolate from the edge and edge-but-one values
-    if (idx_u_1 <= -1) {
-      idx_u_1 = 0;
-    } else if (idx_u_1 >= mat->num_T) {
-      idx_u_1 = mat->num_T - 2;
-    }
-    if (idx_u_2 <= -1) {
-      idx_u_2 = 0;
-    } else if (idx_u_2 >= mat->num_T) {
-      idx_u_2 = mat->num_T - 2;
-    }
-
-    // Check for duplicates in the table before interpolation
-    idx_u_1_mix_rho_T = (idx_mix + 1) * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
-    idx_u_2_mix_rho_T = (idx_mix + 1) * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
-    intp_u_1 = (log_u - mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]) /
-                (mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T + 1] -
-                mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]);
-    intp_u_2 = (log_u - mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]) /
-                (mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T + 1] -
-                mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
-
-    // Table values
-    P_1 = mat->table_P_mix_rho_T[idx_u_1_mix_rho_T];
-    P_2 = mat->table_P_mix_rho_T[idx_u_1_mix_rho_T + 1];
-    P_3 = mat->table_P_mix_rho_T[idx_u_2_mix_rho_T];
-    P_4 = mat->table_P_mix_rho_T[idx_u_2_mix_rho_T + 1];
-
-    // If below the minimum u at this rho then just use the lowest table values
-    if ((idx_rho > 0.f) &&
-        ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (P_1 > P_2) || (P_3 > P_4))) {
-      intp_u_1 = 0;
-      intp_u_2 = 0;
-    }
-
-    // Interpolate with the log values
-    P_1 = logf(P_1);
-    P_2 = logf(P_2);
-    P_3 = logf(P_3);
-    P_4 = logf(P_4);
-    P_1_2 = (1.f - intp_u_1) * P_1 + intp_u_1 * P_2;
-    P_3_4 = (1.f - intp_u_2) * P_3 + intp_u_2 * P_4;
-
-    const float P_mix2 = (1.f - intp_rho) * P_1_2 + intp_rho * P_3_4;
-
-    // Interpolate between mix values
-    P = (1 - intp_mix) * P + intp_mix * P_mix2;
-  }
-
+  float log_P = (1.f - intp_rho) * log_P_1_2 + intp_rho * log_P_3_4;
+  
   // Convert back from log
-  return expf(P);
-}
-
-INLINE static float mixedHHeHeavy_pressure_from_internal_energy(
-    const float density, const float u, const float *mixes, 
-    const struct mixedHHeHeavy_params *mat) {
-
-  if (u <= 0.f) {
-    return 0.f;
-  }
-
-  float mix_tot = 0.f;
-  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
-    mix_tot += mixes[i_mat];
-  }
-
-  // No heavy-element fraction
-  if (mix_tot == 0.f) {
-    return single_mixedHHeHeavy_pressure_from_internal_energy(
-      density, u, 0.f, &mat->single_params[0]);
-  }
-
-  // Accumulate contribution from each non-zero mix
-  float P = 0.f;
-  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
-    float mix = mixes[i_mat];
-    if (mix > 0.f) {
-      // Evaluate for this single heavy--HHe mix (total HHe fraction stays fixed)
-      float P_mat = single_mixedHHeHeavy_pressure_from_internal_energy(
-        density, u, mix_tot, &mat->single_params[i_mat]);
-
-      P += P_mat * mix / mix_tot;
-    }
-  }
+  float P = expf(log_P);
+  if (P < 0.f) P = 0.f;
 
   return P;
 }
@@ -447,31 +625,36 @@ INLINE static float mixedHHeHeavy_internal_energy_from_pressure(
 }
 
 // gas_soundspeed_from_internal_energy
-INLINE static float single_mixedHHeHeavy_soundspeed_from_internal_energy(
-    const float density, const float u, const float mix, 
-    const struct single_mixedHHeHeavy_params *mat) {
+INLINE static float mixedHHeHeavy_soundspeed_from_internal_energy(
+    const float density, const float u, const float *mixes, 
+    const struct mixedHHeHeavy_params *mat) {
 
   if (u <= 0.f) {
     return 0.f;
   }
 
+  // Mix fraction with respect to HHe rather than between each heavy component
+  float mix_tot = 0.f;
+  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
+    mix_tot += mixes[i_mat];
+  }
+  
+  // 3D interpolation (linear with mix, log(rho), log(u)) to find c(mix, rho, u)
   const float log_rho = logf(density);
   const float log_u = logf(u);
 
-  // 3D interpolation (linear with mix, log(rho), log(u)) to find c(mix, rho, u)
-
-  // Mix  
+  // Mix
   int idx_mix;
   float intp_mix;
-  if (mix >= 0.9999f) {
-    idx_mix = mat->num_mix - 1;
-    intp_mix = 0.f;
+  if (mix_tot >= 0.9999f) {
+    idx_mix = mat->num_mix - 2;
+    intp_mix = 1.f;
   } else {
-    idx_mix = find_value_in_monot_incr_array(mix, mat->table_mix, mat->num_mix);
-    intp_mix = (mix - mat->table_mix[idx_mix]) / 
-               (mat->table_mix[idx_mix + 1] - mat->table_mix[idx_mix]);
+    idx_mix = find_value_in_monot_incr_array(mix_tot, mat->table_mix, mat->num_mix);
+    intp_mix = (mix_tot - mat->table_mix[idx_mix]) / 
+                (mat->table_mix[idx_mix + 1] - mat->table_mix[idx_mix]);
   }
-
+  
   // Density
   int idx_rho =
       find_value_in_monot_incr_array(log_rho, mat->table_log_rho, mat->num_rho);
@@ -483,16 +666,59 @@ INLINE static float single_mixedHHeHeavy_soundspeed_from_internal_energy(
   }
   float intp_rho = (log_rho - mat->table_log_rho[idx_rho]) /
                   (mat->table_log_rho[idx_rho + 1] - mat->table_log_rho[idx_rho]);
+                  
+  // Do the mix interpolation and rho extraction to derive a single u(rho, T) array
+  float log_u_rho_T;
+  float subtable_log_u_rho_T[2 * mat->num_T];
+  for (int i_rho = 0; i_rho <= 1; i_rho++) {
+    for (int i_T = 0; i_T < mat->num_T; i_T++) {
 
-  // 2D interpolate within first single-mix subtable
+      // Add each mix-component contribution
+      if (mix_tot == 0.f) {
 
-  // Sp. int. energy at this and the next density (in relevant slice of each u array)
-  int idx_u_1 = find_value_in_monot_incr_array(
-      log_u, mat->table_log_u_mix_rho_T + idx_mix * mat->num_rho_T
-            + idx_rho * mat->num_T, mat->num_T);
+        int idx = (idx_rho + i_rho) * mat->num_T + i_T;
+
+        log_u_rho_T = mat->single_params[0].table_log_u_mix_rho_T[idx] / mat->num_mat;
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_u_rho_T += mat->single_params[i_mat].table_log_u_mix_rho_T[idx] / mat->num_mat;
+        }
+
+      } else if (mix_tot >= 0.9999f) {
+
+        int idx = (mat->num_mix - 1) * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        
+        log_u_rho_T = mixes[0] / mix_tot * mat->single_params[0].table_log_u_mix_rho_T[idx];
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_u_rho_T += mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_u_mix_rho_T[idx];
+        }
+
+      }
+      else {
+
+        // Mix interpolation
+        int idx_1 = idx_mix * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        int idx_2 = (idx_mix + 1) * mat->num_rho_T + (idx_rho + i_rho) * mat->num_T + i_T;
+        
+        log_u_rho_T = 
+          (1 - intp_mix) * mixes[0] / mix_tot * mat->single_params[0].table_log_u_mix_rho_T[idx_1]
+          + intp_mix * mixes[0] / mix_tot * mat->single_params[0].table_log_u_mix_rho_T[idx_2];
+        for (int i_mat = 1; i_mat < mat->num_mat; i_mat++) {
+          log_u_rho_T += 
+            (1 - intp_mix) * mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_1]
+            + intp_mix * mixes[i_mat] / mix_tot * mat->single_params[i_mat].table_log_u_mix_rho_T[idx_2];
+
+        }
+
+      }
+
+      subtable_log_u_rho_T[i_rho * mat->num_T + i_T] = log_u_rho_T;
+    }
+  }
+
+  // Sp. int. energy in each density slice
+  int idx_u_1 = find_value_in_monot_incr_array(log_u, subtable_log_u_rho_T, mat->num_T);
   int idx_u_2 = find_value_in_monot_incr_array(
-      log_u, mat->table_log_u_mix_rho_T + idx_mix * mat->num_rho_T 
-            + (idx_rho + 1) * mat->num_T, mat->num_T);
+    log_u, subtable_log_u_rho_T + mat->num_T, mat->num_T);
 
   // If outside the table then extrapolate from the edge and edge-but-one values
   if (idx_u_1 <= -1) {
@@ -505,128 +731,63 @@ INLINE static float single_mixedHHeHeavy_soundspeed_from_internal_energy(
   } else if (idx_u_2 >= mat->num_T) {
     idx_u_2 = mat->num_T - 2;
   }
-
-  // Check for duplicates in the table before interpolation
+  
+  // Sp. int. energy in each density slice
   float intp_u_1, intp_u_2;
-  int idx_u_1_mix_rho_T = idx_mix * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
-  int idx_u_2_mix_rho_T = idx_mix * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
-  intp_u_1 = (log_u - mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]) /
-              (mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T + 1] -
-              mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]);
-  intp_u_2 = (log_u - mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]) /
-              (mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T + 1] -
-              mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
-
-  // Table values
-  float log_c_1 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T];
-  float log_c_2 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T + 1];
-  float log_c_3 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T];
-  float log_c_4 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T + 1];
-
+  intp_u_1 = (log_u - subtable_log_u_rho_T[idx_u_1]) /
+              (subtable_log_u_rho_T[idx_u_1 + 1] - subtable_log_u_rho_T[idx_u_1]);
+  intp_u_2 = (log_u - subtable_log_u_rho_T[mat->num_T + idx_u_2]) /
+              (subtable_log_u_rho_T[mat->num_T + idx_u_2 + 1] 
+                - subtable_log_u_rho_T[mat->num_T + idx_u_2]);
+  
   // If below the minimum u at this rho then just use the lowest table values
-  if ((idx_rho > 0.f) &&
-      ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (log_c_1 > log_c_2) || (log_c_3 > log_c_4))) {
-    intp_u_1 = 0;
-    intp_u_2 = 0;
+  if ((idx_rho > 0.f) && ((intp_u_1 < 0.f) || (intp_u_2 < 0.f))) {
+    intp_u_1 = 0.f;
+    intp_u_2 = 0.f;
+  }
+  
+  // Table values
+  int idx_u_1_mix_1_rho_T = idx_mix * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
+  int idx_u_2_mix_1_rho_T = idx_mix * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
+  int idx_u_1_mix_2_rho_T = (idx_mix + 1) * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
+  int idx_u_2_mix_2_rho_T = (idx_mix + 1) * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
+  float log_c_1 = 0.f;
+  float log_c_2 = 0.f;
+  float log_c_3 = 0.f;
+  float log_c_4 = 0.f;
+  float f_mix;
+  // Combine each mix-component contribution
+  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
+    if (mix_tot == 0.f) {
+      f_mix = 1.f / mat->num_mat;
+    } else {
+      f_mix = mixes[i_mat] / mix_tot;
+    }
+    
+    // Mix interpolation
+    log_c_1 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_1_mix_1_rho_T]
+        + intp_mix * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_1_mix_2_rho_T]);
+    log_c_2 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_1_mix_1_rho_T + 1]
+        + intp_mix * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_1_mix_2_rho_T + 1]);
+    log_c_3 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_2_mix_1_rho_T]
+        + intp_mix * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_2_mix_2_rho_T]);
+    log_c_4 += f_mix * (
+      (1 - intp_mix) * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_2_mix_1_rho_T + 1]
+        + intp_mix * mat->single_params[i_mat].table_log_c_mix_rho_T[idx_u_2_mix_2_rho_T + 1]);
   }
 
-  // Interpolate with the log values
+  // Interpolate
   float log_c_1_2 = (1.f - intp_u_1) * log_c_1 + intp_u_1 * log_c_2;
   float log_c_3_4 = (1.f - intp_u_2) * log_c_3 + intp_u_2 * log_c_4;
 
   float log_c = (1.f - intp_rho) * log_c_1_2 + intp_rho * log_c_3_4;
-
-  // 2D interpolate within second single-mix table, then combine
-  // (todo: tidy into a generalised function!)
-  if ((mix > 0.f) && (mix < 1.f)) {
-    // Sp. int. energy at this and the next density (in relevant slice of each u array)
-    idx_u_1 = find_value_in_monot_incr_array(
-        log_u, mat->table_log_u_mix_rho_T + (idx_mix + 1) * mat->num_rho_T
-              + idx_rho * mat->num_T, mat->num_T);
-    idx_u_2 = find_value_in_monot_incr_array(
-        log_u, mat->table_log_u_mix_rho_T + (idx_mix + 1) * mat->num_rho_T 
-              + (idx_rho + 1) * mat->num_T, mat->num_T);
-
-    // If outside the table then extrapolate from the edge and edge-but-one values
-    if (idx_u_1 <= -1) {
-      idx_u_1 = 0;
-    } else if (idx_u_1 >= mat->num_T) {
-      idx_u_1 = mat->num_T - 2;
-    }
-    if (idx_u_2 <= -1) {
-      idx_u_2 = 0;
-    } else if (idx_u_2 >= mat->num_T) {
-      idx_u_2 = mat->num_T - 2;
-    }
-
-    // Check for duplicates in the table before interpolation
-    idx_u_1_mix_rho_T = (idx_mix + 1) * mat->num_rho_T + idx_rho * mat->num_T + idx_u_1;
-    idx_u_2_mix_rho_T = (idx_mix + 1) * mat->num_rho_T + (idx_rho + 1) * mat->num_T + idx_u_2;
-    intp_u_1 = (log_u - mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]) /
-                (mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T + 1] -
-                mat->table_log_u_mix_rho_T[idx_u_1_mix_rho_T]);
-    intp_u_2 = (log_u - mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]) /
-                (mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T + 1] -
-                mat->table_log_u_mix_rho_T[idx_u_2_mix_rho_T]);
-
-    // Table values
-    log_c_1 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T];
-    log_c_2 = mat->table_log_c_mix_rho_T[idx_u_1_mix_rho_T + 1];
-    log_c_3 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T];
-    log_c_4 = mat->table_log_c_mix_rho_T[idx_u_2_mix_rho_T + 1];
-
-    // If below the minimum u at this rho then just use the lowest table values
-    if ((idx_rho > 0.f) &&
-        ((intp_u_1 < 0.f) || (intp_u_2 < 0.f) || (log_c_1 > log_c_2) || (log_c_3 > log_c_4))) {
-      intp_u_1 = 0;
-      intp_u_2 = 0;
-    }
-
-    // Interpolate with the log values
-    log_c_1_2 = (1.f - intp_u_1) * log_c_1 + intp_u_1 * log_c_2;
-    log_c_3_4 = (1.f - intp_u_2) * log_c_3 + intp_u_2 * log_c_4;
-
-    const float log_c_mix2 = (1.f - intp_rho) * log_c_1_2 + intp_rho * log_c_3_4;
-
-    // Interpolate between mix values
-    log_c = (1 - intp_mix) * log_c + intp_mix * log_c_mix2;
-  }
-
+  
   // Convert back from log
-  return expf(log_c);
-}
-  
-INLINE static float mixedHHeHeavy_soundspeed_from_internal_energy(
-    const float density, const float u, const float *mixes, 
-    const struct mixedHHeHeavy_params *mat) {
-
-  if (u <= 0.f) {
-    return 0.f;
-  }
-
-  float mix_tot = 0.f;
-  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
-    mix_tot += mixes[i_mat];
-  }
-  
-  // No heavy-element fraction
-  if (mix_tot == 0.f) {
-    return single_mixedHHeHeavy_soundspeed_from_internal_energy(
-      density, u, 0.f, &mat->single_params[0]);
-  }
-
-  // Accumulate contribution from each non-zero mix
-  float c = 0.f;
-  for (int i_mat = 0; i_mat < mat->num_mat; i_mat++) {
-    float mix = mixes[i_mat];
-    if (mix > 0.f) {
-      // Evaluate for this single heavy--HHe mix (total HHe fraction stays fixed)
-      float c_mat = single_mixedHHeHeavy_soundspeed_from_internal_energy(
-        density, u, mix_tot, &mat->single_params[i_mat]);
-
-      c += c_mat * mix / mix_tot;
-    }
-  }
+  float c = expf(log_c);
+  if (c < 0.f) c = 0.f;
 
   return c;
 }

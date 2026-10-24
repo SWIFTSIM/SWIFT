@@ -2961,6 +2961,9 @@ __attribute__((always_inline)) INLINE static void eos_init(
     load_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2], mixed_HHe_iron_table_file);
     prepare_table_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2]);
     convert_units_mixedHHeHeavy(&e->mixed_HHe_heavy.single_params[2], us);
+
+    // Top-level material arrays
+    prepare_mixedHHeHeavy(&e->mixed_HHe_heavy);
   }
 
   // Custom generic tables -- using SESAME-style tables

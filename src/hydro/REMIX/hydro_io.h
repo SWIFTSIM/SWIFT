@@ -67,9 +67,9 @@ INLINE static void hydro_read_particles(struct part *parts,
   list[9] = io_make_input_field("MaterialMixes", FLOAT, eos_planetary_mixed_num_mat, 
                                 OPTIONAL, UNIT_CONV_NO_UNITS, parts, mat_data.mixes);
 #ifdef PLANETARY_FIXED_ENTROPY
-  list[9] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
-                                s_fixed);
+  list[10] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
+                                 UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
+                                 s_fixed);
   *num_fields += 1; 
 #endif
 }
