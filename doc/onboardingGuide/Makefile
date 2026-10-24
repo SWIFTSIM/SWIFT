@@ -11,6 +11,7 @@ clean:
 
 pdf: source/onboarding.tex
 	pdflatex source/onboarding.tex
+	pdflatex source/onboarding.tex
 
 .PHONY: help Makefile clean
 
