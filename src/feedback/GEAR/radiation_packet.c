@@ -331,10 +331,12 @@ void radiation_packet_star_book_emission(struct spart *sp,
  * by cone, as the density loop that normalised the cones. A difference
  * creates or destroys light.
  *
- * A different count or ID sum (membership) stops the run, and so does a
- * weight difference beyond the rounding tolerance the density loop summed.
- * Otherwise one line per star step reports the largest differences and the
- * delivered fraction of the star's light minus one.
+ * A weight difference beyond the rounding tolerance the density loop summed
+ * stops the run. A different count or ID sum (membership) does not: at the
+ * support edge a rounding step can flip a weight between zero and non-zero.
+ * One line per star step reports the largest differences, the worst
+ * membership difference, the step's PE energy and the delivered fraction of
+ * the star's light minus one.
  *
  * @param sp The star, after its feedback loop.
  * @param ti_current Current integer time, for the message.
@@ -344,7 +346,8 @@ void radiation_packet_check_star_cones(const struct spart *sp,
   if (!sp->feedback_data.radiation.packet.cones_booked) return;
   double max_dw = 0.0, max_tol_use = 0.0, max_dr2 = 0.0, max_dm = 0.0;
   double fraction = 0.0;
-  int worst = -1;
+  int worst = -1, n_diff = 0;
+  long long id_diff = 0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     const int n = sp->feedback_data.radiation.packet.cone_count[c];
     const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
@@ -365,12 +368,13 @@ void radiation_packet_check_star_cones(const struct spart *sp,
     const double tol =
         sp->feedback_data.radiation.packet.cone_weight_tolerance[c] +
         4.0 * (n + 1) * FLT_EPSILON * w;
-    if (n != n_d || id != id_d)
-      error(
-          "Star %lld, cone %d at ti_current %lld: membership differs: the "
-          "density loop counted %d gas (ID sum %lld, weight %e), the feedback "
-          "loop delivered to %d (ID sum %lld, weight %e).",
-          sp->id, c, ti_current, n, id, w, n_d, id_d, w_d);
+    /* The worst membership difference: the largest count difference, else
+       a swap at the same count. */
+    if (abs(n - n_d) > abs(n_diff) ||
+        (n_diff == 0 && id_diff == 0 && id != id_d)) {
+      n_diff = n - n_d;
+      id_diff = id - id_d;
+    }
     if (fabs(w - w_d) > tol)
       error(
           "Star %lld, cone %d at ti_current %lld: %d gas, the density loop "
@@ -394,12 +398,16 @@ void radiation_packet_check_star_cones(const struct spart *sp,
       fraction += 1.0 / RADIATION_PACKET_EMISSION_CONES;
     }
   }
+  const double E_pe = sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
+                      (double)sp->feedback_data.radiation.Delta_t;
   message(
       "Packet cones of star %lld at ti_current %lld: largest relative weight "
       "difference %e (cone %d, %.3f of its tolerance), squared distances %e, "
-      "masses %e, h %e and %e, delivered fraction minus one %e.",
+      "masses %e, h %e and %e, membership difference %d gas (ID sum %lld), "
+      "PE energy %e, delivered fraction minus one %e.",
       sp->id, ti_current, max_dw, worst, max_tol_use, max_dr2, max_dm,
       sp->feedback_data.radiation.packet.h_density,
-      sp->feedback_data.radiation.packet.h_feedback, fraction - 1.0);
+      sp->feedback_data.radiation.packet.h_feedback, n_diff, id_diff, E_pe,
+      fraction - 1.0);
 }
 #endif

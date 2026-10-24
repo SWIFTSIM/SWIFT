@@ -338,9 +338,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     /* Wendland C2: d ln W / d ln q = -20 q^2 / ((1 - q)(1 + 4 q)). A float
        distance carries up to 64 FLT_EPSILON relative error from positions
        taken against cell corners, and the product with the mass adds 4.
-       kernel_eval() sums its polynomial in float: an absolute error of up to
-       the sum of its coefficients' sizes (50) times FLT_EPSILON, which near
-       the support edge exceeds the kernel itself. */
+       kernel_eval() sums its polynomial in float: an absolute error,
+       measured at most 12 FLT_EPSILON of the central value (64 with
+       margin), which near the support edge exceeds the kernel itself. */
     const double slope =
         20.0 * q * q / (fmax(1.0 - q, 1e-12) * (1.0 + 4.0 * q));
     si->feedback_data.radiation.packet.cone_weight_tolerance[c] +=
