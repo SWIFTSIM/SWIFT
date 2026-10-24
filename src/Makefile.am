@@ -550,6 +550,7 @@ nobase_noinst_HEADERS += feedback/GEAR/initial_mass_function.h feedback/GEAR/sup
 nobase_noinst_HEADERS += feedback/GEAR/radiation.h feedback/GEAR/radiation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_isrf.h feedback/GEAR/radiation_propagation_iact.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_packet.h
+nobase_noinst_HEADERS += feedback/GEAR/star_gas_weights.h
 nobase_noinst_HEADERS += feedback/GEAR/radiation_selection.h
 nobase_noinst_HEADERS += feedback/GEAR/lifetime.h feedback/GEAR/hdf5_functions.h feedback/GEAR/interpolation.h
 nobase_noinst_HEADERS += feedback/GEAR/feedback_common.h feedback/GEAR/stellar_wind.h

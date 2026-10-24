@@ -273,14 +273,7 @@ radiation_iact_nonsym_feedback_apply(
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
   if (fb_props->ISRF_transport == isrf_transport_packet_hop) {
-    /* Same weight as the star density loop, which summed the cones. */
-    const float r_cone = sqrtf(r2);
-    const float hi_inv_cone = 1.0f / hi;
-    const float ui_cone = r_cone * hi_inv_cone;
-    float wi_cone;
-    kernel_eval(ui_cone, &wi_cone);
-    radiation_packet_star_emit(si, pj, dx, r_cone, mj * wi_cone, Delta_t,
-                               cosmo->a, ti_current);
+    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, ti_current);
   } else if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
              si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
     /* L_band is zero unless with_interstellar_radiation_field is on. */

@@ -72,7 +72,7 @@ runner_iact_nonsym_feedback_density(
   si->feedback_data.enrichment_weight += mj * wi;
 
   if (fb_props->ISRF_transport == isrf_transport_packet_hop)
-    radiation_packet_star_density(si, pj, dx, mj * wi, ti_current);
+    radiation_packet_star_density(si, pj, dx, ti_current);
 
   /* Contribution to the number of neighbours */
   si->feedback_data.num_ngbs += 1;

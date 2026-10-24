@@ -57,11 +57,21 @@
     energy, and the mean photon energy would leave the band. */
 #define RADIATION_PACKET_MIN_PHOTONS 1e-35f
 
+/*! Distance over the star's kernel support below which a gas particle
+    receives the star's light and marks its emission cone as occupied. Kept
+    below 1 so that the runner's float admission of a pair at the support edge
+    cannot change which gas receives. */
+#define RADIATION_PACKET_EMISSION_EDGE 0.95
+
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
                                            const float n[3], const float power);
 int radiation_packet_emission_cone(const long long star_id,
                                    const integertime_t ti_begin,
-                                   const float dx[3]);
+                                   const double dx[3]);
+int radiation_packet_star_gas_weight(const struct spart *si,
+                                     const struct part *pj, const float dx[3],
+                                     const integertime_t ti_begin, double d[3],
+                                     double *q, double *weight);
 void radiation_packet_set_box(const double dim[3], const int periodic);
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
                             const integertime_t ti_step,
@@ -288,27 +298,24 @@ radiation_packet_first_init_star(struct spart *sp) {
 }
 
 /**
- * @brief Zero a star's emission-cone weights before its density loop.
+ * @brief Zero a star's emission weights before its density loop.
  *
  * @param sp The #spart.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_init_star_cones(struct spart *sp) {
+  sp->feedback_data.radiation.packet.weight_sum = 0.0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
-    sp->feedback_data.radiation.packet.cone_weight[c] = 0.f;
+    sp->feedback_data.radiation.packet.cone_occupied[c] = 0;
 #ifdef SWIFT_DEBUG_CHECKS
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     sp->feedback_data.radiation.packet.cone_count[c] = 0;
+    sp->feedback_data.radiation.packet.cone_edge_count[c] = 0;
     sp->feedback_data.radiation.packet.cone_id_sum[c] = 0;
-    sp->feedback_data.radiation.packet.cone_r2_sum[c] = 0.0;
-    sp->feedback_data.radiation.packet.cone_mass_sum[c] = 0.0;
-    sp->feedback_data.radiation.packet.cone_weight_tolerance[c] = 0.0;
     sp->feedback_data.radiation.packet.cone_count_delivered[c] = 0;
     sp->feedback_data.radiation.packet.cone_id_sum_delivered[c] = 0;
-    sp->feedback_data.radiation.packet.cone_r2_sum_delivered[c] = 0.0;
-    sp->feedback_data.radiation.packet.cone_mass_sum_delivered[c] = 0.0;
-    sp->feedback_data.radiation.packet.cone_weight_delivered[c] = 0.f;
   }
+  sp->feedback_data.radiation.packet.weight_sum_delivered = 0.0;
   sp->feedback_data.radiation.packet.h_density = sp->h;
   sp->feedback_data.radiation.packet.h_feedback = 0.f;
   sp->feedback_data.radiation.packet.cones_booked = 0;
@@ -316,95 +323,89 @@ radiation_packet_init_star_cones(struct spart *sp) {
 }
 
 /**
- * @brief Star density loop: add a gas neighbour to its emission cone.
+ * @brief Number of a star's emission cones that hold a receiver.
+ *
+ * @param sp The #spart, after its density loop.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_packet_occupied_cones(const struct spart *sp) {
+  int n = 0;
+  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
+    n += sp->feedback_data.radiation.packet.cone_occupied[c] != 0;
+  return n;
+}
+
+/**
+ * @brief Star density loop: add a gas neighbour's volume weight, and mark its
+ * emission cone as occupied if it is a receiver.
  *
  * @param si The star.
  * @param pj The gas neighbour.
  * @param dx Comoving vector from the gas to the star (si - pj).
- * @param weight Kernel weight times gas mass, as in the feedback loop.
  * @param ti_current Current integer time.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     struct spart *si, const struct part *pj, const float dx[3],
-    const float weight, const integertime_t ti_current) {
+    const integertime_t ti_current) {
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
-  const int c = radiation_packet_emission_cone(si->id, ti_begin, dx);
-  si->feedback_data.radiation.packet.cone_weight[c] += weight;
+  double d[3], q, weight;
+  const int c =
+      radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+  if (weight > 0.0) {
+    si->feedback_data.radiation.packet.weight_sum += weight;
+    si->feedback_data.radiation.packet.cone_occupied[c] = 1;
+  }
 #ifdef SWIFT_DEBUG_CHECKS
-  if (weight > 0.f) {
-    const double r2 =
-        (double)dx[0] * dx[0] + (double)dx[1] * dx[1] + (double)dx[2] * dx[2];
-    const double q = sqrt(r2) / ((double)kernel_gamma * si->h);
-    /* Wendland C2: d ln W / d ln q = -20 q^2 / ((1 - q)(1 + 4 q)). A float
-       distance carries up to 64 FLT_EPSILON relative error from positions
-       taken against cell corners, and the product with the mass adds 4.
-       kernel_eval() sums its polynomial in float: an absolute error,
-       measured at most 12 FLT_EPSILON of the central value (64 with
-       margin), which near the support edge exceeds the kernel itself. */
-    const double slope =
-        20.0 * q * q / (fmax(1.0 - q, 1e-12) * (1.0 + 4.0 * q));
-    si->feedback_data.radiation.packet.cone_weight_tolerance[c] +=
-        (double)weight * (64.0 * slope + 4.0) * FLT_EPSILON +
-        (double)hydro_get_mass(pj) * 64.0 * FLT_EPSILON * kernel_constant *
-            kernel_gamma_inv_dim;
+  if (weight > 0.0) {
     si->feedback_data.radiation.packet.cone_count[c]++;
     si->feedback_data.radiation.packet.cone_id_sum[c] += pj->id;
-    si->feedback_data.radiation.packet.cone_r2_sum[c] += r2;
-    si->feedback_data.radiation.packet.cone_mass_sum[c] +=
-        (double)hydro_get_mass(pj);
+  } else if (q < 1.0) {
+    si->feedback_data.radiation.packet.cone_edge_count[c]++;
   }
 #endif
 }
 
 /**
- * @brief Feedback loop: give a gas neighbour its share of the star's cone.
+ * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * The star's energy of this step is split equally between the cones, and
- * within a cone by #radiation_packet_star_density's weight. The share is
+ * The light of the occupied cones, `(1 - n_empty / 12) L dt`, is split
+ * between the receivers in proportion to their volume weights. The share is
  * absorbed over the distance to the star.
  *
  * @param si The star.
  * @param pj The gas neighbour.
  * @param dx Comoving vector from the gas to the star (si - pj).
- * @param r Comoving distance.
- * @param weight Kernel weight times gas mass, as in the density loop.
  * @param Delta_t The star's feedback step.
  * @param a Current scale factor.
  * @param ti_current Current integer time.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
-    const struct spart *si, struct part *pj, const float dx[3], const float r,
-    const float weight, const float Delta_t, const float a,
-    const integertime_t ti_current) {
+    const struct spart *si, struct part *pj, const float dx[3],
+    const float Delta_t, const float a, const integertime_t ti_current) {
 
-  if (weight == 0.f) return;
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
-  const int c = radiation_packet_emission_cone(si->id, ti_begin, dx);
-  const float cone_weight = si->feedback_data.radiation.packet.cone_weight[c];
-  /* Possible only at the kernel edge, where the weight underflows in one loop
-     and not the other: that cone's light was booked as escaped. */
-  if (!(cone_weight > 0.f)) return;
+  double d[3], q, weight;
+  radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+  if (!(weight > 0.0)) return;
+  const double S = si->feedback_data.radiation.packet.weight_sum;
 #ifdef SWIFT_DEBUG_CHECKS
   /* Several feedback tasks of one star may run at once. */
   struct spart *s_dbg = (struct spart *)si;
+  const int c = radiation_packet_emission_cone(si->id, ti_begin, d);
   atomic_inc(&s_dbg->feedback_data.radiation.packet.cone_count_delivered[c]);
   atomic_add(&s_dbg->feedback_data.radiation.packet.cone_id_sum_delivered[c],
              pj->id);
-  atomic_add_d(
-      &s_dbg->feedback_data.radiation.packet.cone_r2_sum_delivered[c],
-      (double)dx[0] * dx[0] + (double)dx[1] * dx[1] + (double)dx[2] * dx[2]);
-  atomic_add_d(
-      &s_dbg->feedback_data.radiation.packet.cone_mass_sum_delivered[c],
-      (double)hydro_get_mass(pj));
-  atomic_add_f(&s_dbg->feedback_data.radiation.packet.cone_weight_delivered[c],
+  atomic_add_d(&s_dbg->feedback_data.radiation.packet.weight_sum_delivered,
                weight);
   atomic_max_f(&s_dbg->feedback_data.radiation.packet.h_feedback, si->h);
 #endif
-  const double fraction =
-      (double)weight / ((double)cone_weight * RADIATION_PACKET_EMISSION_CONES);
+  /* Possible only if this gas was not a receiver in the density loop. */
+  if (!(S > 0.0)) return;
+  const double fraction = (double)radiation_packet_occupied_cones(si) /
+                          RADIATION_PACKET_EMISSION_CONES * weight / S;
 
   double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -415,7 +416,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
         energy[b] * si->feedback_data.radiation.packet.photon_fraction[b];
   }
 
-  radiation_packet_deliver(pj, energy, photons, dx, a * r,
+  const float offset[3] = {(float)d[0], (float)d[1], (float)d[2]};
+  const float r = (float)sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  radiation_packet_deliver(pj, energy, photons, offset, a * r,
                            si->time_bin > pj->time_bin, ti_current + ti_step);
 }
 
@@ -541,7 +544,7 @@ radiation_packet_init_star_cones(struct spart *sp) {}
 
 __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     struct spart *si, const struct part *pj, const float dx[3],
-    const float weight, const integertime_t ti_current) {}
+    const integertime_t ti_current) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_star_book_emission(struct spart *sp, const float Delta_t) {}

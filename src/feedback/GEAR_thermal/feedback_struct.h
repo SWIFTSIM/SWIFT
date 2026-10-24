@@ -728,9 +728,11 @@ struct feedback_spart_data {
 
     /*! Emission of the ISRF packet transport. */
     struct {
-      /*! Kernel-weighted gas mass in each emission cone, from the star
-          density loop. */
-      float cone_weight[RADIATION_PACKET_EMISSION_CONES];
+      /*! Sum of the receivers' volume weights, from the star density loop. */
+      double weight_sum;
+
+      /*! Does the emission cone hold a receiver? From the density loop. */
+      char cone_occupied[RADIATION_PACKET_EMISSION_CONES];
 
       /*! `E_lo / E_bar` per band, the photon number (as `N E_lo`) emitted
           per unit energy. Indexed by #radiation_isrf_operator. */
@@ -742,31 +744,26 @@ struct feedback_spart_data {
       /*! Photon number (as `N E_lo`) emitted by the star, cumulative. */
       double emitted_photons[ISRF_OPERATOR_COUNT];
 
-      /*! Emitted energy that found no gas in its cone, cumulative. */
+      /*! Emitted energy of the empty cones, cumulative. */
       double escaped_energy[ISRF_OPERATOR_COUNT];
 
-      /*! Emitted photon number (as `N E_lo`) that found no gas. */
+      /*! Emitted photon number (as `N E_lo`) of the empty cones. */
       double escaped_photons[ISRF_OPERATOR_COUNT];
 
       /*! Ledger of the gas particle the star was converted from. */
       struct feedback_isrf_packet_removed_data removed;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      /*! Per cone, density loop: gas with a non-zero weight, the sums of
-          their IDs, squared distances and masses, and the weight's rounding
-          tolerance. */
+      /*! Per cone, density loop: receivers, the sum of their IDs, and gas
+          inside the kernel beyond the emission edge. */
       int cone_count[RADIATION_PACKET_EMISSION_CONES];
       long long cone_id_sum[RADIATION_PACKET_EMISSION_CONES];
-      double cone_r2_sum[RADIATION_PACKET_EMISSION_CONES];
-      double cone_mass_sum[RADIATION_PACKET_EMISSION_CONES];
-      double cone_weight_tolerance[RADIATION_PACKET_EMISSION_CONES];
+      int cone_edge_count[RADIATION_PACKET_EMISSION_CONES];
 
-      /*! The same sums over the feedback loop's deliveries. */
+      /*! The same over the feedback loop's deliveries, and their weight sum. */
       int cone_count_delivered[RADIATION_PACKET_EMISSION_CONES];
       long long cone_id_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
-      double cone_r2_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
-      double cone_mass_sum_delivered[RADIATION_PACKET_EMISSION_CONES];
-      float cone_weight_delivered[RADIATION_PACKET_EMISSION_CONES];
+      double weight_sum_delivered;
 
       /*! Smoothing length of the density loop and of the feedback loop. */
       float h_density;
