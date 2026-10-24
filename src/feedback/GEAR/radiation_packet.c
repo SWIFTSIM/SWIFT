@@ -23,6 +23,7 @@
 
 /* Local includes. */
 #include "dimension.h"
+#include "engine.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
 #include "random.h"
@@ -33,6 +34,32 @@
 
 #include <float.h>
 #include <math.h>
+
+/* The periodic box, set once at start-up by radiation_packet_set_box(). */
+static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
+static int radiation_packet_box_periodic = 0;
+static int radiation_packet_box_is_set = 0;
+
+/**
+ * @brief Give the star emission the box it needs to wrap star-gas vectors.
+ *
+ * @param dim The box size.
+ * @param periodic Is the box periodic?
+ */
+void radiation_packet_set_box(const double dim[3], const int periodic) {
+  for (int k = 0; k < 3; k++) radiation_packet_box_dim[k] = dim[k];
+  radiation_packet_box_periodic = periodic;
+  radiation_packet_box_is_set = 1;
+}
+
+/**
+ * @brief Start-up of the packet emission, from engine_config().
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_startup(const struct engine *e) {
+  radiation_packet_set_box(e->s->dim, e->s->periodic);
+}
 
 /**
  * @brief Transmission weight `W(r, h_s) max(0, mu)^p` of a sender towards

@@ -62,6 +62,7 @@ float radiation_packet_transmission_weight(const float dx[3], const float h_s,
 int radiation_packet_emission_cone(const long long star_id,
                                    const integertime_t ti_begin,
                                    const float dx[3]);
+void radiation_packet_set_box(const double dim[3], const int periodic);
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
                             const integertime_t ti_step,
                             const double time_base);

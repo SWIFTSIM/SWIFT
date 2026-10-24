@@ -228,12 +228,17 @@ runner_hii_part_passes_gather_filter(const struct part *pj,
 }
 
 /**
- * @brief Print startup warnings about the HII search-radius / box-size
+ * @brief Start-up of the subgrid radiation: hand the box to the ISRF packet
+ * emission, and print warnings about the HII search-radius / box-size
  * relationship.
  *
  * @param e The #engine.
  */
 void feedback_radiation_startup_diagnostics(const struct engine *e) {
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  radiation_packet_startup(e);
+#endif
 
   /* Stars:HII_max_search_radius exceeding the periodic box's half-width is
      not itself fatal -- the search radius just never gets to expand that
