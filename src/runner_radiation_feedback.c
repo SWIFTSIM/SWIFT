@@ -235,7 +235,7 @@ runner_hii_part_passes_gather_filter(const struct part *pj,
  */
 void feedback_radiation_startup_diagnostics(const struct engine *e) {
 
-  /* Both warnings concern the HII search only. */
+  /* Both warnings concern the HII search only */
   if (!(e->feedback_props->radiation_policy & radiation_policy_photoionization))
     return;
 
