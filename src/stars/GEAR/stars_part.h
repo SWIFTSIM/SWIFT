@@ -65,6 +65,10 @@ struct spart {
   /*! Particle ionization radius / gamma_k. */
   float h_hii;
 
+  /*! HII search length / gamma_k that a search stopped by the neighbour
+   * cell margin asks the next passes and rebuilds to cover. */
+  float h_hii_request;
+
   struct {
 
     /* Number of neighbours. */

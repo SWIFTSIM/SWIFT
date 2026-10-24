@@ -167,6 +167,80 @@ __attribute__((always_inline)) INLINE static int runner_hii_upkeep_renewed(
   return random_number < paid / owed;
 }
 
+/**
+ * @brief Limit that ends the radius growth of an HII pass.
+ */
+enum hii_search_stop {
+
+  /*! No limit binds: the radius grows again. */
+  hii_search_grow = 0,
+
+  /*! Stars:HII_max_radius_expansion_tries is used up. */
+  hii_search_stop_tries = 1,
+
+  /*! The radius is at Stars:HII_max_search_radius. */
+  hii_search_stop_ceiling = 2,
+
+  /*! The radius is at the neighbour cell margin, and nothing else binds. */
+  hii_search_stop_margin = 3,
+
+  /*! A star that holds gas has had its one empty probe. */
+  hii_search_stop_one_probe = 4,
+};
+
+/**
+ * @brief Decide whether an HII pass whose search found no more candidates
+ * grows its radius, and if not, which limit stops it.
+ *
+ * A star already holding an equilibrium region gets one empty probe past it
+ * and no more: a pixel left with a sliver of budget never ends the pass, so
+ * it would otherwise spend every expansion on ever larger empty volumes. A
+ * star holding nothing keeps its full configured reach, the case the
+ * expansion exists for (a fresh star, or one in a cavity whose nearest gas is
+ * several expansions away). The neighbour cell margin is reported only when
+ * no other limit binds, so it marks a star that the cell layout alone holds
+ * back.
+ *
+ * @param radius The radius just searched.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ * @param max_reachable_radius The neighbour cell margin of this pass.
+ * @param num_expansions Expansions done so far in this pass.
+ * @param max_expansions Stars:HII_max_radius_expansion_tries.
+ * @param count_found Candidates found at @p radius.
+ * @param count_held Gas the star already held at the start of the pass.
+ * @param num_empty_expansions Consecutive empty probes of a star holding gas.
+ */
+__attribute__((always_inline)) INLINE static enum hii_search_stop
+runner_hii_search_stop(const float radius, const float max_search_radius,
+                       const float max_reachable_radius,
+                       const int num_expansions, const int max_expansions,
+                       const int count_found, const int count_held,
+                       const int num_empty_expansions) {
+
+  if (num_expansions >= max_expansions) return hii_search_stop_tries;
+  if (radius >= max_search_radius) return hii_search_stop_ceiling;
+  const int probe_used =
+      count_found == 0 && count_held > 0 && num_empty_expansions >= 1;
+  if (probe_used) return hii_search_stop_one_probe;
+  if (radius >= max_reachable_radius) return hii_search_stop_margin;
+  return hii_search_grow;
+}
+
+/**
+ * @brief Search radius a pass stopped by the neighbour cell margin asks for:
+ * the next radius it would have tried.
+ *
+ * @param radius The radius just searched.
+ * @param expansion_factor Stars:HII_radius_expansion_factor.
+ * @param max_search_radius Stars:HII_max_search_radius.
+ */
+__attribute__((always_inline)) INLINE static float runner_hii_requested_radius(
+    const float radius, const float expansion_factor,
+    const float max_search_radius) {
+  const float next = radius * expansion_factor;
+  return next < max_search_radius ? next : max_search_radius;
+}
+
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
  * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
  * feedback()). Sized to comfortably cover a single rebuild's typical new

@@ -715,9 +715,11 @@ void cell_sanitize(struct cell *c, int treated) {
     for (int i = 0; i < scount; ++i)
       stars_h_max_active = max(stars_h_max_active, sparts[i].h);
     for (int i = 0; i < scount; ++i)
-      stars_h_hii_max = max(stars_h_hii_max, sparts[i].h_hii);
+      stars_h_hii_max =
+          max(stars_h_hii_max, stars_get_hii_search_length(&sparts[i]));
     for (int i = 0; i < scount; ++i)
-      stars_h_hii_max_active = max(stars_h_hii_max_active, sparts[i].h_hii);
+      stars_h_hii_max_active =
+          max(stars_h_hii_max_active, stars_get_hii_search_length(&sparts[i]));
   }
 
   /* Record the change */

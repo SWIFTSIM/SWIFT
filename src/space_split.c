@@ -565,11 +565,13 @@ void space_split_recursive(struct space *s, struct cell *c,
       ti_stars_beg_max = max(ti_stars_beg_max, ti_beg);
 
       stars_h_max = max(stars_h_max, sparts[k].h);
-      stars_h_hii_max = max(stars_h_hii_max, sparts[k].h_hii);
+      stars_h_hii_max =
+          max(stars_h_hii_max, stars_get_hii_search_length(&sparts[k]));
 
       if (spart_is_active(&sparts[k], e)) {
         stars_h_max_active = max(stars_h_max_active, sparts[k].h);
-        stars_h_hii_max_active = max(stars_h_hii_max_active, sparts[k].h_hii);
+        stars_h_hii_max_active = max(stars_h_hii_max_active,
+                                     stars_get_hii_search_length(&sparts[k]));
       }
 
       cell_set_spart_h_depth(&sparts[k], c);
