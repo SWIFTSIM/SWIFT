@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     struct feedback_isrf_packet_band_data *dst = &pk_r->band[b];
 
     const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
-    double absorbed_fraction = 1.;
+    double absorbed_fraction = 1.0;
     if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
       absorbed_fraction = -expm1((double)-tau);
 

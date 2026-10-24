@@ -154,13 +154,22 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
     if (t_rem > dt) release = (float)(dt / t_rem);
   }
 
+  /* One decision for every band and the origin sum: a part below the photon
+     cutoff releases the whole reservoir, and its origin sum with it. */
+  int partial = release < 1.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT && partial; b++) {
+    const float res_photons = pk->band[b].reservoir_photons;
+    if (res_photons > 0.f &&
+        res_photons * release < RADIATION_PACKET_MIN_PHOTONS)
+      partial = 0;
+  }
+
   float total_energy = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];
     float res_energy = band->reservoir_energy;
     float res_photons = band->reservoir_photons;
-    if (release < 1.f &&
-        res_photons * release >= RADIATION_PACKET_MIN_PHOTONS) {
+    if (partial) {
       res_energy *= release;
       res_photons *= release;
       band->reservoir_energy -= res_energy;
@@ -183,14 +192,14 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   double offset[3];
   for (int k = 0; k < 3; k++) {
     double res_offset = pk->reservoir_origin_offset[k];
-    if (release < 1.f) {
+    if (partial) {
       res_offset *= (double)release;
       pk->reservoir_origin_offset[k] -= res_offset;
     } else {
-      pk->reservoir_origin_offset[k] = 0.;
+      pk->reservoir_origin_offset[k] = 0.0;
     }
     offset[k] = pk->inbox_origin_offset[k] + res_offset;
-    pk->inbox_origin_offset[k] = 0.;
+    pk->inbox_origin_offset[k] = 0.0;
   }
 
   if (!(total_energy > 0.f)) return;
@@ -199,7 +208,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   const double d = sqrt(offset[0] * offset[0] + offset[1] * offset[1] +
                         offset[2] * offset[2]);
   pk->origin_distance = (float)d;
-  if (d > 0.) {
+  if (d > 0.0) {
     for (int k = 0; k < 3; k++) pk->direction[k] = (float)(-offset[k] / d);
   } else {
     /* Source on the particle: any direction is as good. */
@@ -335,7 +344,7 @@ void radiation_packet_check_star_cones(const struct spart *sp,
     const float w_d =
         sp->feedback_data.radiation.packet.cone_weight_delivered[c];
     /* Float sums of the same terms in another order: n roundings at most. */
-    const float bar = 4.f * (n + 1) * FLT_EPSILON * w;
+    const float bar = 4.0f * (n + 1) * FLT_EPSILON * w;
     if (n != n_d || fabsf(w - w_d) > bar)
       error(
           "Star %lld, cone %d at ti_current %lld: the density loop counted %d "

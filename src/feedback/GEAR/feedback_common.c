@@ -274,7 +274,10 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin) {
 
-#if defined(SWIFT_DEBUG_CHECKS) && defined(GEAR_SUBGRID_RADIATION_ISRF)
+#if defined(SWIFT_DEBUG_CHECKS) && defined(GEAR_SUBGRID_RADIATION_ISRF) && \
+    !defined(WITH_MPI)
+  /* On several ranks the deliveries to foreign gas land on a copy of the star
+     on the gas's rank and never return, so the counts cannot be compared. */
   radiation_packet_check_star_cones(sp, ti_current);
 #endif
 
