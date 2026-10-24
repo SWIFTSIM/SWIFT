@@ -36,9 +36,11 @@
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void artif_stress_set_state(
-    struct strength_state *s, const struct part *restrict p) {}
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {}
 
 /**
  * @brief Apply artificial stress to pairwise stress tensors.

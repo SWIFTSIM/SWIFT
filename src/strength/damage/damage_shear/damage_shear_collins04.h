@@ -34,9 +34,11 @@
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_set_state(
-    struct strength_state *s, const struct part *restrict p) {}
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {}
 
 /**
  * @brief Compute the plastic strain at failure.
@@ -105,7 +107,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
   }
 
   /* Shear damage not accumulated if yield criterion is not reached. */
-  if (!s->is_above_yield_criterion) {
+  if (!yield_check_yield_criterion(s, mp)) {
     return;
   }
 

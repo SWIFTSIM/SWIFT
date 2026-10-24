@@ -54,12 +54,14 @@ __attribute__((always_inline)) INLINE static struct strength_damage strength_get
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_set_state(
-    struct strength_state *s, const struct part *restrict p) {
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {
 
-  damage_tensile_set_state(s, p);
-  damage_shear_set_state(s, p);
+  damage_tensile_set_state(s, p, mp);
+  damage_shear_set_state(s, p, mp);
 }
 
 /**

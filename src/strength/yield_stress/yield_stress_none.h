@@ -22,11 +22,10 @@
 
 /**
  * @file strength/yield_stress/yield_stress_none.h
- * @brief No yield stress method. If a yield stress is required for other
- * methods, functions return a yield stress of FLT_MAX.
+ * @brief No yield stress method. There is no yield surface, so the yield
+ * stress isn't computed or applied.
  */
 
-#include <float.h>
 #include "const.h"
 #include "math.h"
 
@@ -37,9 +36,11 @@
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void yield_set_state(
-    struct strength_state *s, const struct part *restrict p) {}
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {}
 
 /**
  * @brief Compute damaged deviatoric stress tensor.
@@ -76,97 +77,15 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 }
 
 /**
- * @brief Compute damaged yield stress.
- *
- * With no yield stress method, damage does not affect the yield stress. Damage
- * is instead applied to the deviatoric stress tensor.
- *
- * @param yield_stress_fully_intact The yield stress for fully intact material.
- * @param yield_stress_fully_damaged The yield stress for fully damaged material.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static float
-yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
-                                   const float yield_stress_fully_damaged,
-                                   const struct strength_state *s,
-                                   const struct mat_params *mp) {
-
-  return yield_stress_fully_intact;
-}
-
-/**
- * @brief Compute the yield stress of fully intact material.
- *
- * With no yield stress method, the yield stress of a fully intact solid is set
- * to FLT_MAX.
- *
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_intact(
-    const struct strength_state *s, const struct mat_params *mp) {
-
-  /* Return 0.f if the material is not solid. */
-  if (s->phase != mat_phase_solid) {
-    return 0.f;
-  }
-
-  /* Return constant yield stress, FLT_MAX. */
-  return FLT_MAX;
-}
-
-/**
- * @brief Compute the yield stress of fully damaged material.
- *
- * With no yield stress method, damage does not affect the yield stress. Damage
- * is instead applied to the deviatoric stress tensor.
- *
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
-    const struct strength_state *s, const struct mat_params *mp) {
-
-  /* Damage does not affect the yield stress i.e. it is still FLT_MAX. */
-  return yield_compute_yield_stress_fully_intact(s, mp);
-}
-
-/**
- * @brief Compute the yield stress.
- *
- * Calculates the yield stress that combines all relevant methods e.g. damage
- * and weakening.
- *
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const struct strength_state *s, const struct mat_params *mp) {
-
-  /* Return 0.f if the material is not solid. */
-  if (s->phase != mat_phase_solid) {
-    return 0.f;
-  }
-
-  /* Get constant yield stress, FLT_MAX. */
-  float yield_stress = yield_compute_yield_stress_fully_intact(s, mp);
-
-  return yield_stress;
-}
-
-/**
  * @brief Check the yield criterion.
  *
  * With no yield stress method, there is no yield surface.
  *
- * @param yield_stress The yield stress.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
-    const float yield_stress, const struct strength_state *s,
-    const struct mat_params *mp) {
+    const struct strength_state *s, const struct mat_params *mp) {
 
   return 0;
 }
@@ -177,13 +96,12 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  * Empty function when configuring without yield stress method.
  *
  * @param M The symmetric matrix to be modified.
- * @param yield_stress The yield stress.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_sym_matrix(
-    struct sym_matrix *M, const float yield_stress,
-    const struct strength_state *s, const struct mat_params *mp) {}
+    struct sym_matrix *M, const struct strength_state *s,
+    const struct mat_params *mp) {}
 
 #endif /* SWIFT_YIELD_STRESS_NONE_H */

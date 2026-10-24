@@ -33,9 +33,11 @@
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
-    struct strength_state *s, const struct part *restrict p) {
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {
 
   s->number_of_flaws = p->strength_data.number_of_flaws;
   s->activation_thresholds = p->strength_data.activation_thresholds;

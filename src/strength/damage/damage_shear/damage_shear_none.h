@@ -33,9 +33,11 @@
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_set_state(
-    struct strength_state *s, const struct part *restrict p) {}
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {}
 
 /**
  * @brief Compute the rate of shear damage accumulation.

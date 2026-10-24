@@ -31,17 +31,22 @@
  * @brief Sets the method-specific properties of the strength state from the
  * particle.
  *
+ * This is called after strength_state_init(), so the methods can use the rest
+ * of the state.
+ *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
+ * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_state_set_method_fields(
-    struct strength_state *s, const struct part *restrict p) {
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {
 
-  yield_set_state(s, p);
-  yield_weakening_thermal_set_state(s, p);
-  yield_weakening_density_set_state(s, p);
-  damage_set_state(s, p);
-  artif_stress_set_state(s, p);
+  yield_weakening_thermal_set_state(s, p, mp);
+  yield_weakening_density_set_state(s, p, mp);
+  yield_set_state(s, p, mp);
+  damage_set_state(s, p, mp);
+  artif_stress_set_state(s, p, mp);
 }
 
 /**
@@ -78,10 +83,7 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
 
   /* Quantities derived from the above. */
   s->J_2 = strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
-  s->yield_stress = yield_compute_yield_stress(s, mp);
   strength_compute_stress_tensor(&s->stress_tensor, s, mp);
-  s->is_above_yield_criterion =
-      yield_check_yield_criterion(s->yield_stress, s, mp);
 }
 
 #endif /* SWIFT_STRENGTH_STATE_SETUP_H */

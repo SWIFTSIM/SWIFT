@@ -98,14 +98,13 @@ struct strength_state {
   /*! J_2 invariant of the deviatoric stress tensor */
   float J_2;
 
+#ifdef STRENGTH_YIELD_STRESS
   /*! Yield stress, including damage and weakening */
   float yield_stress;
+#endif
 
   /*! Stress tensor, including the effects of damage */
   struct sym_matrix stress_tensor;
-
-  /*! Whether the deviatoric stress is on or beyond the yield surface */
-  int is_above_yield_criterion;
 };
 
 #endif /* SWIFT_STRENGTH_STATE_H */

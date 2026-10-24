@@ -42,12 +42,12 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_drif
     struct strength_state *s, const struct part *restrict p,
     const struct mat_params *mp) {
 
-  strength_state_set_method_fields(s, p);
   strength_state_init(s, p->mat_id, p->phase, p->mass,
                       p->rho_evol, p->u,
                       strength_get_damage(p),
                       p->strength_data.deviatoric_stress_tensor,
                       p->strength_data.strain_rate_tensor, mp);
+  strength_state_set_method_fields(s, p, mp);
 }
 
 /**
@@ -62,12 +62,12 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick
     struct strength_state *s, const struct part *restrict p,
     const struct xpart *restrict xp, const struct mat_params *mp) {
 
-  strength_state_set_method_fields(s, p);
   strength_state_init(s, p->mat_id, xp->phase_full, p->mass,
                       xp->rho_evol_full, xp->u_full,
                       strength_get_damage_full(xp),
                       xp->strength_data.deviatoric_stress_tensor_full,
                       p->strength_data.strain_rate_tensor, mp);
+  strength_state_set_method_fields(s, p, mp);
 }
 
 /**
@@ -187,12 +187,12 @@ hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
   /* Strength state from the drifted values. */
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
-  strength_state_set_method_fields(&s, p);
   strength_state_init(&s, p->mat_id, p->phase, p->mass,
                       density, u,
                       strength_get_damage(p),
                       p->strength_data.deviatoric_stress_tensor,
                       p->strength_data.strain_rate_tensor, mp);
+  strength_state_set_method_fields(&s, p, mp);
 
   /* Set stress tensor. */
   p->strength_data.stress_tensor = s.stress_tensor;
@@ -284,8 +284,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
                                                 p->strength_data.dS_dt, &s, mp, dt_therm);
 
   /* Apply yield stress to deviatoric stress tensor. */
-  yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor,
-                                         s.yield_stress, &s, mp);
+  yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor, &s, mp);
 
   strength_predict_extra_beginning(p, &s, mp, dt_therm);
 }
@@ -339,8 +338,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
                                                 p->strength_data.dS_dt, &s, mp, dt_therm);
 
   /* Apply yield stress to deviatoric stress tensor. */
-  yield_apply_yield_stress_to_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full,
-                                         s.yield_stress, &s, mp);
+  yield_apply_yield_stress_to_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full, &s, mp);
 
   strength_kick_extra_beginning(p, xp, &s, mp, dt_therm);
 }
