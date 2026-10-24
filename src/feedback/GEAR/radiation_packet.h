@@ -107,7 +107,9 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * the inbox, or the reservoir when the source has the coarser step.
  *
  * Energy and photon number lose the same fraction, so the mean photon energy
- * of a band is unchanged.
+ * of a band is unchanged. The share arrives and is split in double: a float
+ * product near 1e-38 flushes to zero under -ffast-math, which would leave an
+ * energy without its photon number.
  *
  * @param r The receiver.
  * @param energy Energy of the share per band, before absorption.
@@ -118,8 +120,8 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * @param source_step_end_ti End of the source's step.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
-    struct part *restrict r, const float energy[ISRF_OPERATOR_COUNT],
-    const float photons[ISRF_OPERATOR_COUNT], const float offset[3],
+    struct part *restrict r, const double energy[ISRF_OPERATOR_COUNT],
+    const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
     const float path_phys, const int to_reservoir,
     const integertime_t source_step_end_ti) {
 
@@ -134,14 +136,14 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     struct feedback_isrf_packet_band_data *dst = &pk_r->band[b];
 
     const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
-    float absorbed_fraction = 1.f;
+    double absorbed_fraction = 1.;
     if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
-      absorbed_fraction = -expm1f(-tau);
+      absorbed_fraction = -expm1((double)-tau);
 
-    float absorbed_energy = energy[b] * absorbed_fraction;
-    float absorbed_photons = photons[b] * absorbed_fraction;
-    float transmitted_energy = energy[b] - absorbed_energy;
-    float transmitted_photons = photons[b] - absorbed_photons;
+    double absorbed_energy = energy[b] * absorbed_fraction;
+    double absorbed_photons = photons[b] * absorbed_fraction;
+    float transmitted_energy = (float)(energy[b] - absorbed_energy);
+    float transmitted_photons = (float)(photons[b] - absorbed_photons);
     if (transmitted_photons < RADIATION_PACKET_MIN_PHOTONS) {
       absorbed_energy = energy[b];
       absorbed_photons = photons[b];
@@ -156,8 +158,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
       dst->inbox_energy += transmitted_energy;
       dst->inbox_photons += transmitted_photons;
     }
-    dst->absorbed_energy += (double)absorbed_energy;
-    dst->absorbed_photons += (double)absorbed_photons;
+    dst->absorbed_energy += absorbed_energy;
+    dst->absorbed_photons += absorbed_photons;
     delivered_energy += transmitted_energy;
   }
 
@@ -215,10 +217,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
   float path = d_r - d_s;
   if (path < 0.f) path = 0.f;
 
-  float energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
+  double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    energy[b] = pk_s->band[b].energy * fraction;
-    photons[b] = pk_s->band[b].photons * fraction;
+    energy[b] = (double)pk_s->band[b].energy * (double)fraction;
+    photons[b] = (double)pk_s->band[b].photons * (double)fraction;
   }
 
   radiation_packet_deliver(r, energy, photons, offset, a * path,
@@ -341,14 +343,13 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const double fraction =
       (double)weight / ((double)cone_weight * RADIATION_PACKET_EMISSION_CONES);
 
-  float energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
+  double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
-    const double E =
+    energy[b] =
         si->feedback_data.radiation.L_band[m] * (double)Delta_t * fraction;
-    energy[b] = (float)E;
     photons[b] =
-        (float)(E * si->feedback_data.radiation.packet.photon_fraction[b]);
+        energy[b] * si->feedback_data.radiation.packet.photon_fraction[b];
   }
 
   radiation_packet_deliver(pj, energy, photons, dx, a * r,
