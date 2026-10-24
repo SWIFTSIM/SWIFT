@@ -172,7 +172,8 @@ Scheduler:
   min_top_level_cells:       3         # (Optional) Minimal number of top-level cells in any dimension (this is the default value; must be at least 3 if periodic). space_regrid() will not coarsen the grid past this, regardless of what is driving the
                                        # coarsening (ordinary smoothing lengths or a star's HII search radius). A periodic run whose particle search radius outgrows the resulting cell width is stopped with an error.
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
-  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 25. Radiation runs on several ranks can need more: a 2-rank ISRF box overflowed at 25 and ran with 100.
+  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 25.
+                                       # Radiation runs on several ranks can need more, e.g. a 2-rank ISRF box overflowed at 25 and ran with 100.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
@@ -884,14 +885,19 @@ GEARFeedback:
 
   # HII regions (subgrid photoionization, Strömgren-sphere model; --with-subgrid-radiation part hii)
   with_photoionization:          0                        # 1: run the subgrid photoionization (Stromgren sphere) model, 0: do not. (Default: 0)
-  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The default suits cosmological runs; an idealised low-density box needs a lower value. (Default: 1)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5                             # Time between HII region rebuilds (Myr); also a star timestep constraint. Negative: every step. (Default: 0.5)
   HII_angular_nside:             0                        # HEALPix nside of the angular budget split: 0 = spherical, N>=1 = 12*N^2 pixels. Needs --with-chealpix and --with-number-of-hii-angular-pixels. (Default: 0)
-  HII_random_cone_frame_per_star: 1                       # 1: rotate each star's HEALPix cone frame by a random rotation set by its ID (and, with HII_cone_frame_redraw_period > 0, by its pass epoch), 0: cones fixed to the box axes. Removes the alignment of cones between stars (the X pattern in galaxy-wide ionised gas). The shape of a single region changes little: it does not become rounder. Ignored for HII_angular_nside 0. (Default: 1)
-  HII_cone_frame_redraw_period:   0                       # Used only with HII_random_cone_frame_per_star 1. N > 0: every star draws a new frame, independent of the other stars, every N of its own HII passes (a pass is one rebuild attempt, counted from the star's first pass, so each star changes frame at its own age). 0: the frame is kept for the star's life. A cone's budget never goes below zero, and each pass opens with its own photons, so nothing carries over to the new cones. (Default: 0)
-  HII_deterministic_boundary_ionization: 0                # First gas a cone cannot afford, where the cone stops: 0 = claimed on a roll with p = budget/cost (for all such gas, however fast it recombines), else it absorbs the rest of the budget (Hopkins et al. 2018, Appendix E); 1 = always ionize it. (Default: 0)
-  HII_rebuild_floor_Myr:  1e-4                            # Minimum rebuild interval (Myr). (Default: 1e-4)
+  HII_random_cone_frame_per_star: 1                       # 1: rotate each star's HEALPix cone frame by a random rotation set by its ID (and, with HII_cone_frame_redraw_period > 0, by its pass epoch),
+                                                          # 0: cones fixed to the box axes. Removes the alignment of cones between stars (the X pattern in galaxy-wide ionised gas).
+                                                          # The shape of a single region changes little: it does not become rounder. Ignored for HII_angular_nside 0. (Default: 1)
+  HII_cone_frame_redraw_period:   0                       # Used only with HII_random_cone_frame_per_star 1. N > 0: every star draws a new frame, independent of the other stars, every N of its own HII passes
+                                                          # (a pass is one rebuild attempt, counted from the star's first pass, so each star changes frame at its own age). 0: the frame is kept for the star's life.
+                                                          # A cone's budget never goes below zero, and each pass opens with its own photons, so nothing carries over to the new cones. (Default: 0)
+  HII_deterministic_boundary_ionization: 0                # First gas a cone cannot afford, where the cone stops: 0 = claimed on a roll with p = budget/cost (for all such gas, however fast it recombines),
+                                                          # else it absorbs the rest of the budget (Hopkins et al. 2018, Appendix E); 1 = always ionize it. (Default: 0)
+  HII_rebuild_floor_Myr:  1e-4                            # Photon-budget interval (Myr) of a star's first HII pass, and the star timestep when HII_rebuild_time_Myr is negative. Must be > 0. (Default: 1e-4)
   HII_couple_ionization_rate: 0                           # 1: couple the HII rate into the Grackle RT fields, 0: flag-and-floor scheme. Needs COOLING_GRACKLE_MODE >= 1. One MPI rank only. (Default: 0)
 
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation; --with-subgrid-radiation part isrf)
@@ -904,13 +910,15 @@ GEARFeedback:
   ISRF_c_hyp_margin: 0.5                                  # (optional) Stability margin C_hyp of the propagation speed; at most 1.69, 0.571 at the dissipation defaults. Needs ISRF_propagation. (Default: 0.5)
   ISRF_c_hyp_fixed_fraction_of_c: 0                        # (optional) Fraction f of the speed of light of the propagation speed, in [0, 1], fixed_fraction only (set f = v/c for a fixed speed v). Needs ISRF_propagation. (Default: 0)
   ISRF_c_hyp_timestep_term_off_for_debugging: 0            # (optional, debug only) Skip the timestep term of fixed_fraction. Never set in a production run. (Default: 0)
-  ISRF_dissipation_alpha_max: 0.5                         # (optional) Ceiling of the triggered conductivity; 0 disables it. Bounded jointly with alpha_floor and C_hyp: 6.2*max(alpha_max, alpha_floor)*C_hyp + 0.70*C_hyp^2 <= 2. Needs ISRF_propagation. (Default: 0.5)
+  ISRF_dissipation_alpha_max: 0.5                         # (optional) Ceiling of the triggered conductivity; 0 disables it. Bounded jointly with alpha_floor and C_hyp:
+                                                          # 6.2*max(alpha_max, alpha_floor)*C_hyp + 0.70*C_hyp^2 <= 2. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_negativity_threshold: 0.01              # (optional) Relative undershoot of the field below its neighbours' kernel mean at which the trigger reaches ISRF_dissipation_alpha_max. Needs ISRF_propagation. (Default: 0.01)
   ISRF_dissipation_alpha_floor: 0.5                       # (optional) Dissipation floor under the trigger; 0 disables it. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_floor_h_over_lambda: 0.5                # (optional) Screening-length error budget eps_lambda: the floor decays as (eps_lambda/(h*kappa))^4 above this h/lambda. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_floor_relaxation_residual: 0.40         # (optional) Threshold eps_R, in [0, 1], of the gate that lowers the floor where the flux is already settled. 0 disables the gate. Needs ISRF_propagation. (Default: 0.40)
   ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug only) When positive, hold the dissipation coefficient at this value and bypass the trigger. Never set in a production run. (Default: 0)
-  ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well. Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
+  ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well.
+                                                           # Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
 
 GEARRadiation:
   interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)
