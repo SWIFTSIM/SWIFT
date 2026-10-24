@@ -172,7 +172,7 @@ Scheduler:
   min_top_level_cells:       3         # (Optional) Minimal number of top-level cells in any dimension (this is the default value; must be at least 3 if periodic). space_regrid() will not coarsen the grid past this, regardless of what is driving the
                                        # coarsening (ordinary smoothing lengths or a star's HII search radius). A periodic run whose particle search radius outgrows the resulting cell width is stopped with an error.
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
-  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
+  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 25. Radiation runs on several ranks can need more: a 2-rank ISRF box overflowed at 25 and ran with 100.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
