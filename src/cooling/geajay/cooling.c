@@ -580,7 +580,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   }
 
   message("Thermal time = %g", cooling->thermal_time);
-  message("Max geajay sub-steps = %d", cooling->max_step);
+  message("Max geajay sub-steps = %d (0 in the parameters: the geajay default)",
+          cooling->max_step);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
   message("geajay energy change limit = %g (0: the geajay default)",
           cooling->energy_change_limit);

@@ -268,7 +268,8 @@ struct cooling_function_data {
    * the length handed to geajay is half this path. */
   float H2_self_shielding_path_in_kernel_radii;
 
-  /*! Maximal number of sub-cycle iterations per solve
+  /*! Maximal number of sub-cycle iterations per solve, or 0 for the geajay
+   * default (10000 x 0.1 / energy limit)
    * (GeajayCooling:max_substeps, chemistry_data.max_iterations). */
   int max_step;
 

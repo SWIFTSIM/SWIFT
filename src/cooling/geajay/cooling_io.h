@@ -694,9 +694,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   /* Sub-cycle iteration limit */
   cooling->max_step = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:max_substeps", 10000);
-  if (cooling->max_step < 1)
-    error("GeajayCooling:max_substeps must be >= 1, got %d.",
+      parameter_file, "GeajayCooling:max_substeps", 0);
+  if (cooling->max_step < 0)
+    error("GeajayCooling:max_substeps must be >= 0, got %d.",
           cooling->max_step);
 
   /* Retries of a failed solve, each one halving the sub-step. Default 2:

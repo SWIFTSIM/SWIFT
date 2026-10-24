@@ -714,7 +714,7 @@ GeajayCooling:
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  max_substeps: 10000                          # (optional) Maximal number of sub-steps of one solve (default: 10000)
+  max_substeps: 0                              # (optional) Maximal number of sub-steps of one solve, or 0 for the geajay default: 10000 x 0.1 / energy_change_limit, so 33333 at the limit 0.03 (default: 0)
   subcycle_on_failure: 2                       # (optional) Number of retries with a time-step split in smaller pieces after a failed solve (0 to 20, default: 2)
   energy_change_limit: 0                       # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1], or 0 for the geajay default: 0.03 with cheap_energy_update 1, 0.1 with 0 (the value Grackle fixes). Smaller values take more sub-steps (default: 0)
   cheap_energy_update: 1                       # (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order (default: the geajay default, 1)
