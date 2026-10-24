@@ -77,6 +77,7 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
   s->strain_rate_tensor = strain_rate_tensor;
 
   /* Quantities derived from the above. */
+  s->J_2 = strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
   s->yield_stress = yield_compute_yield_stress(s, mp);
   strength_compute_stress_tensor(&s->stress_tensor, s, mp);
   s->is_above_yield_criterion =

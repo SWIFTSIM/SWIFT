@@ -95,6 +95,9 @@ struct strength_state {
 
   /* Derived from the above */
 
+  /*! J_2 invariant of the deviatoric stress tensor */
+  float J_2;
+
   /*! Yield stress, including damage and weakening */
   float yield_stress;
 

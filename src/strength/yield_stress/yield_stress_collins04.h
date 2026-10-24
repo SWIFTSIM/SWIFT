@@ -204,10 +204,7 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
     const float yield_stress, const struct strength_state *s,
     const struct mat_params *mp) {
 
-  const float J_2 =
-      strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
-
-  return J_2 >= yield_stress * yield_stress;
+  return s->J_2 >= yield_stress * yield_stress;
 }
 
 /**
@@ -225,13 +222,10 @@ yield_apply_yield_stress_to_sym_matrix(
     struct sym_matrix *M, const float yield_stress,
     const struct strength_state *s, const struct mat_params *mp) {
 
-  /* Calculate the J_2 invariant of the deviatoric stress tensor. */
-  float J_2 = strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
-
   /* ### Comment with name of yield criterion */
   float f = 1.f;
-  if (J_2 > 0.f) {
-      f = fminf(yield_stress / sqrtf(J_2), 1.f);
+  if (s->J_2) {
+      f = fminf(yield_stress / sqrtf(s->J_2), 1.f);
   }
 
   /* Reduce elements of symmetric matrix based on yield stress */
