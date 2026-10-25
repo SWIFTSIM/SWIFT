@@ -62,15 +62,17 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * @param r The particle separation.
  * @param mp_i The material parameters of the first particle.
  * @param mp_j The material parameters of the second particle.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
     const float r,
-    const struct mat_params *mp_i, const struct mat_params *mp_j) {
+    const struct mat_params *mp_i, const struct mat_params *mp_j,
+    const struct strength_props *strength_props) {
 
  /* Calculate quantities needed for separation factor. */
-  const float eta_crit = 1.f / 1.487;//viscosity_global.eta_crit; // ### hardcoded for now so it works with Planetary (WC2)
+  const float eta_crit = 1.f / strength_props->eta_neighbours;
   const float eta_ab = fminf(r / pi->h, r / pj->h);
 
   /* No artificial stress is applied for scaled particle separations greater

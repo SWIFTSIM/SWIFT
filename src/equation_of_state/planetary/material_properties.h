@@ -122,6 +122,14 @@ material_params(const enum eos_planetary_material_id mat_id) {
   return &eos.all_mat_params[mat_index];
 }
 
+/**
+ * @brief Returns the material strength parameters that are loaded from the simulation YAML file.
+ */
+__attribute__((always_inline)) INLINE static const struct strength_props *
+strength_get_props(void) {
+  return &eos.strength_props;
+}
+
 #endif /* MATERIAL_STRENGTH */
 
 /**
@@ -434,5 +442,28 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
   // Check parameters
   check_material_params(mat_params, mat_id);
 }
+
+#ifdef MATERIAL_STRENGTH
+/**
+ * @brief Set the material strength parameters that are loaded from the simulation YAML file.
+ *
+ * @param sp The material strength parameters.
+ * @param params The main parameter file.
+ */
+INLINE static void set_strength_props(struct strength_props *sp,
+                                      struct swift_params *params) {
+
+  sp->strain_rate_timestep_factor = parser_get_opt_param_float(
+      params, "Strength:strain_rate_timestep_factor", 0.1f);
+  sp->damage_timestep_factor = parser_get_opt_param_float(
+      params, "Strength:damage_timestep_factor", 0.1f);
+  sp->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
+
+  if (sp->strain_rate_timestep_factor <= 0.f)
+    error("Strength:strain_rate_timestep_factor must be > 0");
+  if (sp->damage_timestep_factor <= 0.f)
+    error("Strength:damage_timestep_factor must be > 0");
+}
+#endif /* MATERIAL_STRENGTH */
 
 #endif /* SWIFT_PLANETARY_MATERIAL_PROPS_H */

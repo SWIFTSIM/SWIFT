@@ -297,6 +297,23 @@ struct mat_params {
 #endif /* MATERIAL_STRENGTH */
 };
 
+#ifdef MATERIAL_STRENGTH
+/**
+ * @brief Material strength parameters that are loaded from the simulation YAML file.
+ */
+struct strength_props {
+
+  /*! Time-step factor for the limit from the strain rate */
+  float strain_rate_timestep_factor;
+
+  /*! Maximum growth in damage per time-step */
+  float damage_timestep_factor;
+
+  /*! Target smoothing length in units of the mean inter-particle separation */
+  float eta_neighbours;
+};
+#endif /* MATERIAL_STRENGTH */
+
 /**
  * @brief Count the number of materials of each EoS type.
  */

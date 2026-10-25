@@ -45,3 +45,8 @@ EoS:
     planetary_use_linear_1:    1
     planetary_linear_1_param_file: ./solid_linear_eos_params.txt
     linear_1_mat_params_file: ./solid_linear_mat_params.yml
+
+# Parameters related to material strength
+Strength:
+    strain_rate_timestep_factor:    0.1    # Time-step limit from the strain rate: dt <= factor / sqrt(J_2 of the strain rate tensor).
+    damage_timestep_factor:         0.1    # Maximum growth in damage per time-step (only used with a damage model).

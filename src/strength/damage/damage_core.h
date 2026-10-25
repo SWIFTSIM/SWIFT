@@ -177,13 +177,15 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
  * @param p The particle of interest.
  * @param s The strength state of the particle, from its drifted values.
  * @param mp The material parameters.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp) {
+    const struct mat_params *mp,
+    const struct strength_props *strength_props) {
 
   /* Growth in damage used to set the time-step. */
-  const float damage_timestep_factor = 0.1f; // ### Hardcoded for now. Treat this similarly to CFL in yaml
+  const float damage_timestep_factor = strength_props->damage_timestep_factor;
 
   /* Damage at drift time. */
   const struct strength_damage *d = &p->strength_data.damage;

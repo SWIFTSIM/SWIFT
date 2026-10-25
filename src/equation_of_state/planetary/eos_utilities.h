@@ -53,6 +53,11 @@ struct eos_parameters {
 
   // Material parameters, for any EoS type
   struct mat_params all_mat_params[eos_count_total];
+
+#ifdef MATERIAL_STRENGTH
+  // Material strength parameters that are loaded from the simulation YAML file.
+  struct strength_props strength_props;
+#endif
 };
 
 /*! Primary EoS parameter struct */

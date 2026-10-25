@@ -138,10 +138,12 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
  * @param p The particle of interest.
  * @param s The strength state of the particle, from its drifted values.
  * @param mp The material parameters.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
     struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp) {}
+    const struct mat_params *mp,
+    const struct strength_props *strength_props) {}
 
 /**
  * @brief Initialises the damage properties for the first time

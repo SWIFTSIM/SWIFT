@@ -1175,6 +1175,11 @@ __attribute__((always_inline)) INLINE static void eos_init(
       set_material_params(e->all_mat_params, mat_id, mat_params_file, us);
     }
   }
+
+#ifdef MATERIAL_STRENGTH
+  // Material strength parameters that are loaded from the simulation YAML file.
+  set_strength_props(&e->strength_props, params);
+#endif
 }
 
 /**

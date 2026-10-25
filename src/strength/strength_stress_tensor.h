@@ -38,11 +38,11 @@
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
- * @param hydro_properties The hydro properties.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
     float *dt_cfl, struct strength_state *s, const struct mat_params *mp,
-    const struct hydro_props *restrict hydro_properties) {
+    const struct strength_props *strength_props) {
 
   /* Only solid particles accumulate deviatoric stress. */
   if (s->phase != mat_phase_solid) {
@@ -54,7 +54,8 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
       sqrtf(strength_state_get_strain_rate_J_2(s, mp));
 
   if (strain_rate_invariant > 0.f) {
-    const float dt_strain = hydro_properties->CFL_condition / strain_rate_invariant;
+    const float dt_strain =
+        strength_props->strain_rate_timestep_factor / strain_rate_invariant;
     if (dt_strain < *dt_cfl) {
       *dt_cfl = dt_strain;
     }
@@ -123,6 +124,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor
  * @param r The particle separation.
  * @param mp_i The material parameters of the first particle.
  * @param mp_j The material parameters of the second particle.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void
 strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
@@ -131,7 +133,8 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
                                      const struct part *restrict pj,
                                      const float r,
                                      const struct mat_params *mp_i,
-                                     const struct mat_params *mp_j) {
+                                     const struct mat_params *mp_j,
+                                     const struct strength_props *strength_props) {
 
   /* Only overwrite the fluid pairwise stress tensors for interactions with strength. */
   if (!strength_is_strengthless_interaction(pi, pj)) {
@@ -143,7 +146,7 @@ strength_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
     /* Apply artificial stress. */
     artif_stress_apply_artif_stress_to_pairwise_stress_tensors(pairwise_stress_tensor_i,
                                                                pairwise_stress_tensor_j, pi, pj, r,
-                                                               mp_i, mp_j);
+                                                               mp_i, mp_j, strength_props);
   }
 }
 

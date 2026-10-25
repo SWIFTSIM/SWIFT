@@ -65,12 +65,14 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * @param r The particle separation.
  * @param mp_i The material parameters of the first particle.
  * @param mp_j The material parameters of the second particle.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
     const float r,
-    const struct mat_params *mp_i, const struct mat_params *mp_j) {
+    const struct mat_params *mp_i, const struct mat_params *mp_j,
+    const struct strength_props *strength_props) {
 
   /* Material parameters of each particle. */
   const float artif_stress_n_i = mp_i->artif_stress_n;
@@ -82,7 +84,7 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
    * Note that the expression for delta_p differs from the one used in other
    * papers, so direct comparisons can't be made. */
   const float max_h = fmaxf(pi->h, pj->h);
-  const float delta_p = max_h / 1.487; // ### hardcoded kernel eta for now
+  const float delta_p = max_h / strength_props->eta_neighbours;
 
   /* Calculate separation factor, artif_stress_f. */
   float wij_delta_p, wij_r;

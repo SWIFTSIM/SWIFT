@@ -87,7 +87,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strengt
   hydro_strength_state_init_drift(&s, p, mp);
 
   /* Update dt_cfl with elastic contribution. */
-  strength_compute_timestep_stress_tensor(dt_cfl, &s, mp, hydro_properties);
+  strength_compute_timestep_stress_tensor(dt_cfl, &s, mp, strength_get_props());
 
   /* Update dt_cfl with damage contribution. */
   strength_compute_timestep_damage(dt_cfl, p);
@@ -241,7 +241,7 @@ hydro_end_force_strength(struct part *restrict p) {
   stress_tensor_compute_dS_dt(&p->strength_data.dS_dt, rotation_rate_tensor, &s, mp);
 
   /* Update damage accumulation timescale for timestep. */
-  damage_compute_timescale(p, &s, mp);
+  damage_compute_timescale(p, &s, mp, strength_get_props());
 }
 
 /**
