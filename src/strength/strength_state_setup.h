@@ -71,6 +71,7 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
     const struct sym_matrix strain_rate_tensor, const struct mat_params *mp) {
 
   /* Properties of the particle. */
+  s->mat_id = mat_id;
   s->phase = phase;
   s->mass = mass;
   s->density = density;
@@ -81,7 +82,6 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
 
   /* Quantities derived from the above. */
   s->pressure = gas_pressure_from_internal_energy(density, u, mat_id);
-  s->temperature = gas_temperature_from_internal_energy(density, u, mat_id);
   s->J_2 = strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
   strength_compute_stress_tensor(&s->stress_tensor, s, mp);
 }

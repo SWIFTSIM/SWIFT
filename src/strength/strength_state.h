@@ -58,6 +58,9 @@ struct strength_state {
 
   /* Set from the particle */
 
+  /*! Material ID */
+  enum eos_planetary_material_id mat_id;
+
   /*! Phase */
   int phase;
 
@@ -92,19 +95,21 @@ struct strength_state {
     /*! Pressure */
   float pressure;
 
-  /*! Temperature */
-  float temperature;
-
   /*! J_2 invariant of the deviatoric stress tensor */
   float J_2;
+
+  /*! Stress tensor, including the effects of damage */
+  struct sym_matrix stress_tensor;
+  
+#ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
+  /*! Temperature */
+  float temperature;
+#endif
 
 #ifdef STRENGTH_YIELD_STRESS
   /*! Yield stress, including damage and weakening */
   float yield_stress;
 #endif
-
-  /*! Stress tensor, including the effects of damage */
-  struct sym_matrix stress_tensor;
 };
 
 #endif /* SWIFT_STRENGTH_STATE_H */
