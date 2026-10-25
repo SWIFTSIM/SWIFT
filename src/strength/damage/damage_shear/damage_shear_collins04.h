@@ -47,6 +47,9 @@ __attribute__((always_inline)) INLINE static void damage_shear_set_state(
  * DamageShearCollins:
  *     brittle_to_ductile_pressure: brittle--ductile transition pressure (Pa).
  *     brittle_to_plastic_pressure: brittle--plastic transition pressure (Pa).
+ *     plastic_strain_at_failure: Plastic strain at failure at zero pressure,
+ *     at the two transition pressures, and at twice the brittle--plastic
+ *     transition pressure (default [0.01, 0.05, 0.1, 1]).
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -60,28 +63,29 @@ damage_shear_compute_plastic_strain_at_failure(struct strength_state *s,
       mp->brittle_to_ductile_pressure;
   const float brittle_to_plastic_pressure =
       mp->brittle_to_plastic_pressure;
+  const float *plastic_strain_at_failure = mp->plastic_strain_at_failure;
   const float pressure = strength_state_get_pressure(s, mp);
 
   float slope, intercept;
   if (pressure <= 0.f) {
     slope = 0.f;
-    intercept = 0.01f;
+    intercept = plastic_strain_at_failure[0];
 
   } else if (pressure < brittle_to_ductile_pressure) {
-    /* Transitions between 0.01 and 0.05 in brittle regime. */
-    slope = (0.05f - 0.01f) / brittle_to_ductile_pressure;
-    intercept = 0.01f;
+    /* Transitions between plastic_strain_at_failure[0] and plastic_strain_at_failure[1] in brittle regime. */
+    slope = (plastic_strain_at_failure[1] - plastic_strain_at_failure[0]) / brittle_to_ductile_pressure;
+    intercept = plastic_strain_at_failure[0];
 
   } else if (pressure < brittle_to_plastic_pressure) {
-    /* Transitions between 0.05 and 0.1 in semi-brittle regime. */
-    slope = (0.1f - 0.05f) /
+    /* Transitions between plastic_strain_at_failure[1] and plastic_strain_at_failure[2] in semi-brittle regime. */
+    slope = (plastic_strain_at_failure[2] - plastic_strain_at_failure[1]) /
             (brittle_to_plastic_pressure - brittle_to_ductile_pressure);
-    intercept = 0.05f - slope * brittle_to_ductile_pressure;
+    intercept = plastic_strain_at_failure[1] - slope * brittle_to_ductile_pressure;
 
   } else {
-    /* Transitions between 0.1 and 1 in plastic regime. */
-    slope = (1.f - 0.1f) / brittle_to_plastic_pressure;
-    intercept = 0.1f - slope * brittle_to_plastic_pressure;
+    /* Transitions between plastic_strain_at_failure[2] and plastic_strain_at_failure[3] in plastic regime. */
+    slope = (plastic_strain_at_failure[3] - plastic_strain_at_failure[2]) / brittle_to_plastic_pressure;
+    intercept = plastic_strain_at_failure[2] - slope * brittle_to_plastic_pressure;
   }
 
   return slope * pressure + intercept;

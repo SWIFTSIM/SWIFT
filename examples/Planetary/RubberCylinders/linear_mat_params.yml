@@ -26,6 +26,10 @@ YieldStress:
     yield_weakening_density_mult_param:  0
     yield_weakening_density_pow_param:   0
 
+DamageTensileBenzAsphaug:
+    crack_velocity_factor:  0.4    # Crack velocity as a fraction of the longitudinal wave speed
+
 DamageShearCollins:
     brittle_to_ductile_pressure:    0
     brittle_to_plastic_pressure:    0
+    plastic_strain_at_failure:      [0.01, 0.05, 0.1, 1.0]   # At zero pressure, the two transition pressures, and twice the brittle--plastic pressure

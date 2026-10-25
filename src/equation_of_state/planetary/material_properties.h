@@ -162,9 +162,17 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
     mat_params->yield_weakening_density_pow_param = 4.f;
   #endif
 
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    mat_params->crack_velocity_factor = 0.4f;
+  #endif
+
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
     mat_params->brittle_to_ductile_pressure = 0.f;
     mat_params->brittle_to_plastic_pressure = 0.f;
+    mat_params->plastic_strain_at_failure[0] = 0.01f;
+    mat_params->plastic_strain_at_failure[1] = 0.05f;
+    mat_params->plastic_strain_at_failure[2] = 0.1f;
+    mat_params->plastic_strain_at_failure[3] = 1.f;
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
@@ -235,6 +243,12 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
         mat_params->yield_weakening_density_pow_param);
   #endif
 
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    mat_params->crack_velocity_factor = parser_get_opt_param_float(
+        file_params, "DamageTensileBenzAsphaug:crack_velocity_factor",
+        mat_params->crack_velocity_factor);
+  #endif
+
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
     mat_params->brittle_to_ductile_pressure = parser_get_opt_param_float(
         file_params, "DamageShearCollins:brittle_to_ductile_pressure",
@@ -242,6 +256,9 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
     mat_params->brittle_to_plastic_pressure = parser_get_opt_param_float(
         file_params, "DamageShearCollins:brittle_to_plastic_pressure",
         mat_params->brittle_to_plastic_pressure);
+    parser_get_opt_param_float_array(
+        file_params, "DamageShearCollins:plastic_strain_at_failure", 4,
+        mat_params->plastic_strain_at_failure);
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
@@ -352,6 +369,9 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
     if (mat_params->bulk_mod <= 0.f)
       error("Material %d: tensile damage needs Strength:bulk_mod > 0", mat_id);
+    if (mat_params->crack_velocity_factor <= 0.f)
+      error("Material %d: tensile damage needs "
+            "DamageTensileBenzAsphaug:crack_velocity_factor > 0", mat_id);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
@@ -361,6 +381,16 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
       error("Material %d: shear damage needs 0 < "
             "DamageShearCollins:brittle_to_ductile_pressure < "
             "DamageShearCollins:brittle_to_plastic_pressure", mat_id);
+    if ((mat_params->plastic_strain_at_failure[0] <= 0.f) ||
+        (mat_params->plastic_strain_at_failure[1] <
+         mat_params->plastic_strain_at_failure[0]) ||
+        (mat_params->plastic_strain_at_failure[2] <
+         mat_params->plastic_strain_at_failure[1]) ||
+        (mat_params->plastic_strain_at_failure[3] <
+         mat_params->plastic_strain_at_failure[2]))
+      error("Material %d: shear damage needs "
+            "DamageShearCollins:plastic_strain_at_failure to be positive and "
+            "non-decreasing", mat_id);
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)

@@ -56,6 +56,9 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
  * Strength:
  *     shear_mod: Shear modulus (Pa).
  *     bulk_mod: Bulk modulus (Pa).
+ * DamageTensileBenzAsphaug:
+ *     crack_velocity_factor: Crack velocity as a fraction of the longitudinal
+ *     wave speed (default 0.4).
  *
  * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.
  * @param number_of_activated_flaws The number of currently-active flaws.
@@ -119,7 +122,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* Estimate the crack velocity based on the longitudinal wave speed,
    * Schäfer+2016 Eqn. 24. */
   const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - damage) * shear_mod) / density);
-  const float crack_velocity = 0.4f * longitudinal_wave_speed;
+  const float crack_velocity = mp->crack_velocity_factor * longitudinal_wave_speed;
 
   /* Compute the rate of cbrt(damage) accumulation due to tension,
    * Benz&Asphaug95 Eqn. 15. */

@@ -280,9 +280,14 @@ struct mat_params {
     float yield_weakening_density_pow_param;
   #endif
 
+  #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
+    float crack_velocity_factor;
+  #endif
+
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
     float brittle_to_ductile_pressure;
     float brittle_to_plastic_pressure;
+    float plastic_strain_at_failure[4];
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
