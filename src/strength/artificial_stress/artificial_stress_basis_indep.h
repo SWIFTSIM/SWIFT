@@ -55,6 +55,10 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * not require basis transformation of the stress tensor, and it is therefore
  * more simple and less computationally expensive.
  *
+ * Method parameters needed in material parameter file:
+ * ArtificialStress:
+ *     transition_factor: Steepness of the switch-on (default 5).
+ *
  * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
  * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
  * @param pi First particle.
@@ -81,10 +85,11 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
     return;
   }
 
-  /* Calculate separation factor, artif_stress_f. */
+  /* Calculate separation factors, artif_stress_f. */
   // ### note that I changed this from what was in the thesis, so that it is more simple
   // and it takes values 0 and 1 exactly
-  const float artif_stress_f = fmaxf(0.f, fminf(1.f, 5.f * (1.f - eta_ab / eta_crit)));
+  const float artif_stress_f_i = fmaxf(0.f, fminf(1.f, mp_i->artif_stress_transition_factor * (1.f - eta_ab / eta_crit)));
+  const float artif_stress_f_j = fmaxf(0.f, fminf(1.f, mp_j->artif_stress_transition_factor * (1.f - eta_ab / eta_crit)));
 
   /* Get max principal stresses for particles i and j. */
   const float max_principal_stress_i = fmaxf(pi->strength_data.principal_stress_eigen[0],
@@ -95,15 +100,15 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
 
   /* Apply artificial stress. */
   if (max_principal_stress_i > 0.f) {
-    pairwise_stress_tensor_i[0][0] -= artif_stress_f * max_principal_stress_i;
-    pairwise_stress_tensor_i[1][1] -= artif_stress_f * max_principal_stress_i;
-    pairwise_stress_tensor_i[2][2] -= artif_stress_f * max_principal_stress_i;
+    pairwise_stress_tensor_i[0][0] -= artif_stress_f_i * max_principal_stress_i;
+    pairwise_stress_tensor_i[1][1] -= artif_stress_f_i * max_principal_stress_i;
+    pairwise_stress_tensor_i[2][2] -= artif_stress_f_i * max_principal_stress_i;
   }
 
   if (max_principal_stress_j > 0.f) {
-    pairwise_stress_tensor_j[0][0] -= artif_stress_f * max_principal_stress_j;
-    pairwise_stress_tensor_j[1][1] -= artif_stress_f * max_principal_stress_j;
-    pairwise_stress_tensor_j[2][2] -= artif_stress_f * max_principal_stress_j;
+    pairwise_stress_tensor_j[0][0] -= artif_stress_f_j * max_principal_stress_j;
+    pairwise_stress_tensor_j[1][1] -= artif_stress_f_j * max_principal_stress_j;
+    pairwise_stress_tensor_j[2][2] -= artif_stress_f_j * max_principal_stress_j;
   }
 }
 

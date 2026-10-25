@@ -183,7 +183,9 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
     mat_params->plastic_strain_at_failure[3] = 1.f;
   #endif
 
-  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
+    mat_params->artif_stress_transition_factor = 5.f;
+  #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
     mat_params->artif_stress_n = 4.f;
     mat_params->artif_stress_epsilon = 0.2f;
   #endif
@@ -269,7 +271,11 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
         mat_params->plastic_strain_at_failure);
   #endif
 
-  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
+    mat_params->artif_stress_transition_factor = parser_get_opt_param_float(
+        file_params, "ArtificialStress:transition_factor",
+        mat_params->artif_stress_transition_factor);
+  #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
     mat_params->artif_stress_n = parser_get_opt_param_float(
         file_params, "ArtificialStress:n", mat_params->artif_stress_n);
     mat_params->artif_stress_epsilon = parser_get_opt_param_float(
@@ -401,7 +407,10 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
             "non-decreasing", mat_id);
   #endif
 
-  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
+    if (mat_params->artif_stress_transition_factor <= 0.f)
+      error("Material %d: ArtificialStress:transition_factor must be > 0", mat_id);
+  #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
     if ((mat_params->artif_stress_epsilon > 0.f) &&
         (mat_params->artif_stress_n <= 0.f))
       error("Material %d: ArtificialStress:n must be > 0", mat_id);

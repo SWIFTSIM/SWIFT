@@ -290,7 +290,9 @@ struct mat_params {
     float plastic_strain_at_failure[4];
   #endif
 
-  #if defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
+    float artif_stress_transition_factor;
+  #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
     float artif_stress_n;
     float artif_stress_epsilon;
   #endif

@@ -12,3 +12,4 @@ Strength:
 ArtificialStress:
     n:             4
     epsilon:       0.2
+    transition_factor: 5
