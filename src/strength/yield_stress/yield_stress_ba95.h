@@ -101,7 +101,7 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
  * Benz&Asphaug95 constant yield stress of solids.
  *
  * Method parameters needed in material parameter file:
- * YieldStress:
+ * YieldStressBenzAsphaug:
  *    Y_0: Constant yield stress (Pa).
  *
  * @param s The strength state of the particle.
@@ -116,7 +116,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   }
 
   /* Return constant yield stress, Y_0. */
-  return mp->Y_0;
+  return mp->yield_stress_ba95_Y_0;
 }
 
 /**

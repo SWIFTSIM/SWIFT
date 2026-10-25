@@ -122,7 +122,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* Estimate the crack velocity based on the longitudinal wave speed,
    * Schäfer+2016 Eqn. 24. */
   const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - damage) * shear_mod) / density);
-  const float crack_velocity = mp->crack_velocity_factor * longitudinal_wave_speed;
+  const float crack_velocity = mp->damage_tensile_ba95_crack_velocity_factor * longitudinal_wave_speed;
 
   /* Compute the rate of cbrt(damage) accumulation due to tension,
    * Benz&Asphaug95 Eqn. 15. */

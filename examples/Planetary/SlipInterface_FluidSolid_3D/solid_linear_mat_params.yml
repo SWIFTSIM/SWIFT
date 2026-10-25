@@ -9,7 +9,9 @@ Strength:
     shear_mod:      1e9     # Shear modulus (Pa)
 
 # Specific material-strength schemes
-ArtificialStress:
+ArtificialStressBasisIndep:
+    transition_factor: 5
+
+ArtificialStressMonaghan:
     n:             4
     epsilon:       0.2
-    transition_factor: 5

@@ -60,10 +60,10 @@ damage_shear_compute_plastic_strain_at_failure(struct strength_state *s,
 
   /* Method parameters. */
   const float brittle_to_ductile_pressure =
-      mp->brittle_to_ductile_pressure;
+      mp->damage_shear_collins04_brittle_to_ductile_pressure;
   const float brittle_to_plastic_pressure =
-      mp->brittle_to_plastic_pressure;
-  const float *plastic_strain_at_failure = mp->plastic_strain_at_failure;
+      mp->damage_shear_collins04_brittle_to_plastic_pressure;
+  const float *plastic_strain_at_failure = mp->damage_shear_collins04_plastic_strain_at_failure;
   const float pressure = strength_state_get_pressure(s, mp);
 
   float slope, intercept;

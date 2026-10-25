@@ -54,7 +54,7 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * so direct comparisons can't be made.
  *
  * Method parameters needed in material parameter file:
- * ArtificialStress:
+ * ArtificialStressMonaghan:
  *     n: Kernel exponent in particle separation factor (default 4).
  *     epsilon: Artificial stress multiplication factor (default 0.2).
  *
@@ -75,10 +75,10 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
     const struct strength_props *strength_props) {
 
   /* Material parameters of each particle. */
-  const float artif_stress_n_i = mp_i->artif_stress_n;
-  const float artif_stress_n_j = mp_j->artif_stress_n;
-  const float artif_stress_epsilon_i = mp_i->artif_stress_epsilon;
-  const float artif_stress_epsilon_j = mp_j->artif_stress_epsilon;
+  const float artif_stress_n_i = mp_i->artif_stress_monaghan00_n;
+  const float artif_stress_n_j = mp_j->artif_stress_monaghan00_n;
+  const float artif_stress_epsilon_i = mp_i->artif_stress_monaghan00_epsilon;
+  const float artif_stress_epsilon_j = mp_j->artif_stress_monaghan00_epsilon;
 
   /* Calculate the expected separation of closest neighbour, delta_p.
    * Note that the expression for delta_p differs from the one used in other

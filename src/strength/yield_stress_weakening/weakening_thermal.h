@@ -50,8 +50,8 @@ __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_st
  * Method parameters needed in material parameter file:
  * Strength:
  *     T_melt: Melting temperature (K).
- * YieldStress:
- *     yield_weakening_thermal_xi: Thermal weakening xi factor (default 1.2).
+ * YieldWeakeningThermal:
+ *     xi: Thermal weakening xi factor (default 1.2).
  *
  * @param Y The yield stress to be weakened.
  * @param s The strength state of the particle.

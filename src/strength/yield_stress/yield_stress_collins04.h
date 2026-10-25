@@ -92,7 +92,7 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
  * Collins+2004 pressure-dependent yield stress of fully intact solids.
  *
  * Method parameters needed in material parameter file:
- * YieldStress:
+ * YieldStressCollins:
  *    mu_i: ###.
  *    Y_0: ### (Pa).
  *    Y_M: ### (Pa).
@@ -109,9 +109,9 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   }
 
   /* Method parameters. */
-  const float mu_i = mp->mu_i;
-  const float Y_0 = mp->Y_0;
-  const float Y_M = mp->Y_M;
+  const float mu_i = mp->yield_stress_collins04_mu_i;
+  const float Y_0 = mp->yield_stress_collins04_Y_0;
+  const float Y_M = mp->yield_stress_collins04_Y_M;
   const float pressure = strength_state_get_pressure(s, mp);
 
   /* Compute yield stress of fully intact material, Collins+2004 Eqn. ### */
@@ -129,7 +129,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * Collins+2004 pressure-dependent yield stress of fully damaged solids.
  *
  * Method parameters needed in material parameter file:
- * YieldStress:
+ * YieldStressCollins:
  *    mu_i: ###.
  *    Y_0: ### (Pa).
  *    Y_M: ### (Pa).
@@ -150,7 +150,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   // ### yield_stress_fully_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
   const float pressure = strength_state_get_pressure(s, mp);
   if (pressure > 0.f) {
-    const float mu_d = mp->mu_d;
+    const float mu_d = mp->yield_stress_collins04_mu_d;
     const float yield_stress_fully_intact = yield_compute_yield_stress_fully_intact(s, mp);
     return fminf(mu_d * pressure, yield_stress_fully_intact);
   } else {

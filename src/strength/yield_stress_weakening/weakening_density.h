@@ -50,9 +50,9 @@ __attribute__((always_inline)) INLINE static void yield_weakening_density_set_st
  * Method parameters needed in material parameter file:
  * Strength:
  *     rho_0: Material rho_0.
- * YieldStress:
- *     yield_weakening_density_mult_param: Density weakening muliplication factor (default 0.85).
- *     yield_weakening_density_pow_param: Density weakening power factor (default 4).
+ * YieldWeakeningDensity:
+ *     mult_param: Density weakening muliplication factor (default 0.85).
+ *     pow_param: Density weakening power factor (default 4).
  *
  * @param Y The yield stress to be weakened.
  * @param s The strength state of the particle.

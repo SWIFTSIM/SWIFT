@@ -13,19 +13,28 @@ Strength:
 
 
 # Specific material-strength schemes
-ArtificialStress:
-    n:             4
-    epsilon:       0.2
+ArtificialStressBasisIndep:
     transition_factor: 5
 
-YieldStress:
+ArtificialStressMonaghan:
+    n:             4
+    epsilon:       0.2
+
+YieldStressBenzAsphaug:
+    Y_0:            0
+
+YieldStressCollins:
     Y_0:            0
     Y_M:            0
     mu_i:           0
     mu_d:           0
-    yield_weakening_thermal_xi:          0
-    yield_weakening_density_mult_param:  0
-    yield_weakening_density_pow_param:   0
+
+YieldWeakeningThermal:
+    xi:             0
+
+YieldWeakeningDensity:
+    mult_param:     0
+    pow_param:      0
 
 DamageTensileBenzAsphaug:
     crack_velocity_factor:  0.4    # Crack velocity as a fraction of the longitudinal wave speed

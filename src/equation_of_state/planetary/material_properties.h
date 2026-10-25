@@ -153,12 +153,12 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-    mat_params->Y_0 = 0.f;
+    mat_params->yield_stress_ba95_Y_0 = 0.f;
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    mat_params->Y_0 = 0.f;
-    mat_params->Y_M = 0.f;
-    mat_params->mu_i = 0.f;
-    mat_params->mu_d = 0.f;
+    mat_params->yield_stress_collins04_Y_0 = 0.f;
+    mat_params->yield_stress_collins04_Y_M = 0.f;
+    mat_params->yield_stress_collins04_mu_i = 0.f;
+    mat_params->yield_stress_collins04_mu_d = 0.f;
   #endif
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
@@ -171,23 +171,23 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-    mat_params->crack_velocity_factor = 0.4f;
+    mat_params->damage_tensile_ba95_crack_velocity_factor = 0.4f;
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    mat_params->brittle_to_ductile_pressure = 0.f;
-    mat_params->brittle_to_plastic_pressure = 0.f;
-    mat_params->plastic_strain_at_failure[0] = 0.01f;
-    mat_params->plastic_strain_at_failure[1] = 0.05f;
-    mat_params->plastic_strain_at_failure[2] = 0.1f;
-    mat_params->plastic_strain_at_failure[3] = 1.f;
+    mat_params->damage_shear_collins04_brittle_to_ductile_pressure = 0.f;
+    mat_params->damage_shear_collins04_brittle_to_plastic_pressure = 0.f;
+    mat_params->damage_shear_collins04_plastic_strain_at_failure[0] = 0.01f;
+    mat_params->damage_shear_collins04_plastic_strain_at_failure[1] = 0.05f;
+    mat_params->damage_shear_collins04_plastic_strain_at_failure[2] = 0.1f;
+    mat_params->damage_shear_collins04_plastic_strain_at_failure[3] = 1.f;
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
-    mat_params->artif_stress_transition_factor = 5.f;
+    mat_params->artif_stress_basis_indep_transition_factor = 5.f;
   #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-    mat_params->artif_stress_n = 4.f;
-    mat_params->artif_stress_epsilon = 0.2f;
+    mat_params->artif_stress_monaghan00_n = 4.f;
+    mat_params->artif_stress_monaghan00_epsilon = 0.2f;
   #endif
 #endif /* MATERIAL_STRENGTH */
 }
@@ -209,6 +209,12 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
       (struct swift_params *)malloc(sizeof(struct swift_params));
   parser_read_file(param_file, file_params);
 
+  // Method parameters are now in one section per method
+  if ((parser_get_section_id(file_params, "YieldStress") >= 0) ||
+      (parser_get_section_id(file_params, "ArtificialStress") >= 0))
+    error("%s: the YieldStress and ArtificialStress sections have been split "
+          "into one section per method, e.g. YieldStressCollins", param_file);
+
   // General properties
   mat_params->state_type = (enum mat_state_type)parser_get_opt_param_int(
       file_params, "Material:state_type", mat_params->state_type);
@@ -225,61 +231,61 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-    mat_params->Y_0 = parser_get_opt_param_float(
-        file_params, "YieldStress:Y_0", mat_params->Y_0);
+    mat_params->yield_stress_ba95_Y_0 = parser_get_opt_param_float(
+        file_params, "YieldStressBenzAsphaug:Y_0", mat_params->yield_stress_ba95_Y_0);
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    mat_params->Y_0 = parser_get_opt_param_float(
-        file_params, "YieldStress:Y_0", mat_params->Y_0);
-    mat_params->Y_M = parser_get_opt_param_float(
-        file_params, "YieldStress:Y_M", mat_params->Y_M);
-    mat_params->mu_i = parser_get_opt_param_float(
-        file_params, "YieldStress:mu_i", mat_params->mu_i);
-    mat_params->mu_d = parser_get_opt_param_float(
-        file_params, "YieldStress:mu_d", mat_params->mu_d);
+    mat_params->yield_stress_collins04_Y_0 = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:Y_0", mat_params->yield_stress_collins04_Y_0);
+    mat_params->yield_stress_collins04_Y_M = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:Y_M", mat_params->yield_stress_collins04_Y_M);
+    mat_params->yield_stress_collins04_mu_i = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:mu_i", mat_params->yield_stress_collins04_mu_i);
+    mat_params->yield_stress_collins04_mu_d = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:mu_d", mat_params->yield_stress_collins04_mu_d);
   #endif
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
     mat_params->yield_weakening_thermal_xi = parser_get_opt_param_float(
-        file_params, "YieldStress:yield_weakening_thermal_xi",
+        file_params, "YieldWeakeningThermal:xi",
         mat_params->yield_weakening_thermal_xi);
   #endif
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
     mat_params->yield_weakening_density_mult_param = parser_get_opt_param_float(
-        file_params, "YieldStress:yield_weakening_density_mult_param",
+        file_params, "YieldWeakeningDensity:mult_param",
         mat_params->yield_weakening_density_mult_param);
     mat_params->yield_weakening_density_pow_param = parser_get_opt_param_float(
-        file_params, "YieldStress:yield_weakening_density_pow_param",
+        file_params, "YieldWeakeningDensity:pow_param",
         mat_params->yield_weakening_density_pow_param);
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-    mat_params->crack_velocity_factor = parser_get_opt_param_float(
+    mat_params->damage_tensile_ba95_crack_velocity_factor = parser_get_opt_param_float(
         file_params, "DamageTensileBenzAsphaug:crack_velocity_factor",
-        mat_params->crack_velocity_factor);
+        mat_params->damage_tensile_ba95_crack_velocity_factor);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    mat_params->brittle_to_ductile_pressure = parser_get_opt_param_float(
+    mat_params->damage_shear_collins04_brittle_to_ductile_pressure = parser_get_opt_param_float(
         file_params, "DamageShearCollins:brittle_to_ductile_pressure",
-        mat_params->brittle_to_ductile_pressure);
-    mat_params->brittle_to_plastic_pressure = parser_get_opt_param_float(
+        mat_params->damage_shear_collins04_brittle_to_ductile_pressure);
+    mat_params->damage_shear_collins04_brittle_to_plastic_pressure = parser_get_opt_param_float(
         file_params, "DamageShearCollins:brittle_to_plastic_pressure",
-        mat_params->brittle_to_plastic_pressure);
+        mat_params->damage_shear_collins04_brittle_to_plastic_pressure);
     parser_get_opt_param_float_array(
         file_params, "DamageShearCollins:plastic_strain_at_failure", 4,
-        mat_params->plastic_strain_at_failure);
+        mat_params->damage_shear_collins04_plastic_strain_at_failure);
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
-    mat_params->artif_stress_transition_factor = parser_get_opt_param_float(
-        file_params, "ArtificialStress:transition_factor",
-        mat_params->artif_stress_transition_factor);
+    mat_params->artif_stress_basis_indep_transition_factor = parser_get_opt_param_float(
+        file_params, "ArtificialStressBasisIndep:transition_factor",
+        mat_params->artif_stress_basis_indep_transition_factor);
   #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-    mat_params->artif_stress_n = parser_get_opt_param_float(
-        file_params, "ArtificialStress:n", mat_params->artif_stress_n);
-    mat_params->artif_stress_epsilon = parser_get_opt_param_float(
-        file_params, "ArtificialStress:epsilon", mat_params->artif_stress_epsilon);
+    mat_params->artif_stress_monaghan00_n = parser_get_opt_param_float(
+        file_params, "ArtificialStressMonaghan:n", mat_params->artif_stress_monaghan00_n);
+    mat_params->artif_stress_monaghan00_epsilon = parser_get_opt_param_float(
+        file_params, "ArtificialStressMonaghan:epsilon", mat_params->artif_stress_monaghan00_epsilon);
   #endif
 
   free(file_params);
@@ -315,31 +321,31 @@ INLINE static void convert_units_material_params(struct mat_params *mat_params,
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     // SI to cgs
-    mat_params->Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_ba95_Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 
     // cgs to internal
-    mat_params->Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_ba95_Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
     // SI to cgs
-    mat_params->Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-    mat_params->Y_M *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins04_Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins04_Y_M *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 
     // cgs to internal
-    mat_params->Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-    mat_params->Y_M /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins04_Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins04_Y_M /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
     // SI to cgs
-    mat_params->brittle_to_ductile_pressure *=
+    mat_params->damage_shear_collins04_brittle_to_ductile_pressure *=
         units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-    mat_params->brittle_to_plastic_pressure *=
+    mat_params->damage_shear_collins04_brittle_to_plastic_pressure *=
         units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 
     // cgs to internal
-    mat_params->brittle_to_ductile_pressure /=
+    mat_params->damage_shear_collins04_brittle_to_ductile_pressure /=
         units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-    mat_params->brittle_to_plastic_pressure /=
+    mat_params->damage_shear_collins04_brittle_to_plastic_pressure /=
         units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   #endif
 #endif /* MATERIAL_STRENGTH */
@@ -371,7 +377,7 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
     if ((mat_params->T_melt <= 0.f) ||
         (mat_params->yield_weakening_thermal_xi <= 0.f))
       error("Material %d: thermal yield weakening needs Strength:T_melt > 0 "
-            "and YieldStress:yield_weakening_thermal_xi > 0", mat_id);
+            "and YieldWeakeningThermal:xi > 0", mat_id);
   #endif
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
@@ -383,37 +389,37 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
     if (mat_params->bulk_mod <= 0.f)
       error("Material %d: tensile damage needs Strength:bulk_mod > 0", mat_id);
-    if (mat_params->crack_velocity_factor <= 0.f)
+    if (mat_params->damage_tensile_ba95_crack_velocity_factor <= 0.f)
       error("Material %d: tensile damage needs "
             "DamageTensileBenzAsphaug:crack_velocity_factor > 0", mat_id);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    if ((mat_params->brittle_to_ductile_pressure <= 0.f) ||
-        (mat_params->brittle_to_plastic_pressure <=
-         mat_params->brittle_to_ductile_pressure))
+    if ((mat_params->damage_shear_collins04_brittle_to_ductile_pressure <= 0.f) ||
+        (mat_params->damage_shear_collins04_brittle_to_plastic_pressure <=
+         mat_params->damage_shear_collins04_brittle_to_ductile_pressure))
       error("Material %d: shear damage needs 0 < "
             "DamageShearCollins:brittle_to_ductile_pressure < "
             "DamageShearCollins:brittle_to_plastic_pressure", mat_id);
-    if ((mat_params->plastic_strain_at_failure[0] <= 0.f) ||
-        (mat_params->plastic_strain_at_failure[1] <
-         mat_params->plastic_strain_at_failure[0]) ||
-        (mat_params->plastic_strain_at_failure[2] <
-         mat_params->plastic_strain_at_failure[1]) ||
-        (mat_params->plastic_strain_at_failure[3] <
-         mat_params->plastic_strain_at_failure[2]))
+    if ((mat_params->damage_shear_collins04_plastic_strain_at_failure[0] <= 0.f) ||
+        (mat_params->damage_shear_collins04_plastic_strain_at_failure[1] <
+         mat_params->damage_shear_collins04_plastic_strain_at_failure[0]) ||
+        (mat_params->damage_shear_collins04_plastic_strain_at_failure[2] <
+         mat_params->damage_shear_collins04_plastic_strain_at_failure[1]) ||
+        (mat_params->damage_shear_collins04_plastic_strain_at_failure[3] <
+         mat_params->damage_shear_collins04_plastic_strain_at_failure[2]))
       error("Material %d: shear damage needs "
             "DamageShearCollins:plastic_strain_at_failure to be positive and "
             "non-decreasing", mat_id);
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
-    if (mat_params->artif_stress_transition_factor <= 0.f)
-      error("Material %d: ArtificialStress:transition_factor must be > 0", mat_id);
+    if (mat_params->artif_stress_basis_indep_transition_factor <= 0.f)
+      error("Material %d: ArtificialStressBasisIndep:transition_factor must be > 0", mat_id);
   #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-    if ((mat_params->artif_stress_epsilon > 0.f) &&
-        (mat_params->artif_stress_n <= 0.f))
-      error("Material %d: ArtificialStress:n must be > 0", mat_id);
+    if ((mat_params->artif_stress_monaghan00_epsilon > 0.f) &&
+        (mat_params->artif_stress_monaghan00_n <= 0.f))
+      error("Material %d: ArtificialStressMonaghan:n must be > 0", mat_id);
   #endif
 #endif /* MATERIAL_STRENGTH */
 }

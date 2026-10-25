@@ -263,12 +263,12 @@ struct mat_params {
   float rho_0;
 
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-    float Y_0;
+    float yield_stress_ba95_Y_0;
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    float Y_0;
-    float Y_M;
-    float mu_i;
-    float mu_d;
+    float yield_stress_collins04_Y_0;
+    float yield_stress_collins04_Y_M;
+    float yield_stress_collins04_mu_i;
+    float yield_stress_collins04_mu_d;
   #endif
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
@@ -281,20 +281,20 @@ struct mat_params {
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-    float crack_velocity_factor;
+    float damage_tensile_ba95_crack_velocity_factor;
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    float brittle_to_ductile_pressure;
-    float brittle_to_plastic_pressure;
-    float plastic_strain_at_failure[4];
+    float damage_shear_collins04_brittle_to_ductile_pressure;
+    float damage_shear_collins04_brittle_to_plastic_pressure;
+    float damage_shear_collins04_plastic_strain_at_failure[4];
   #endif
 
   #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
-    float artif_stress_transition_factor;
+    float artif_stress_basis_indep_transition_factor;
   #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-    float artif_stress_n;
-    float artif_stress_epsilon;
+    float artif_stress_monaghan00_n;
+    float artif_stress_monaghan00_epsilon;
   #endif
 #endif /* MATERIAL_STRENGTH */
 };
