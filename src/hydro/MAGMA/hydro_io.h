@@ -276,9 +276,9 @@ INLINE static void hydro_write_particles(const struct part *parts,
       force.convergence_fraction,
       "Convergence fraction of the local flow, (div v)^2 / ((div v)^2 + "
       "|S|^2) with S the traceless shear, from the matrix velocity gradient: "
-      "1 in pure compression, 0 in pure shear. Gates the distance cut-off of "
-      "the slope limiter (1 everywhere if the gate is switched off or the "
-      "particle has no valid gradient).");
+      "1 in pure compression, 0 in pure shear. Scales the distance cut-off "
+      "of the slope limiter (1 everywhere if the convergence switch is off "
+      "or the particle has no valid gradient).");
 
   list[18] = io_make_output_field(
       "ViscosityLimiter", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,

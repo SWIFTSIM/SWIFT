@@ -215,16 +215,17 @@ struct viscosity_global_data {
   /*! cos(angle_limit), pre-computed */
   float cos_angle_limit;
 
-  /*! Apply the distance cut-off of the slope limiter (eq. 21, eta_crit) in
-   * proportion to the convergence fraction of the flow (0 or 1, default 1).
+  /*! Binary switch (0 or 1, default 1): apply the distance cut-off of the
+   * slope limiter (eq. 21, eta_crit) in proportion to the convergence
+   * fraction of the flow.
    * The cut-off guards against particles converging past each other below
    * the resolution scale in a smooth compression; distance alone is a poor
    * proxy for that in shear flows, where close pairs approach along their
    * separation without ever colliding and the viscosity acting on their
    * un-reconstructed velocity difference dissipates the shear (differential
-   * rotation). With the gate, the cut-off keeps its full strength in
+   * rotation). With the switch on, the cut-off keeps its full strength in
    * compressions and is inactive in pure shear. */
-  int limiter_convergence_gate;
+  int limiter_convergence_switch;
 
   /*! Scale each particle's viscous pressure by its own Cullen & Dehnen
    * (2010) limiter (convergence fraction with the shock-presence boost):
@@ -241,9 +242,9 @@ struct viscosity_global_data {
    * 0.7; 0: always) */
   float limiter_mach;
 
-  /*! Time-dependent alpha (Cullen & Dehnen 2010): 0 constant alpha, 1 the
-   * per-particle alpha of part::alpha_visc on the linear term of Q
-   * (default 0) */
+  /*! Binary switch (0 or 1, default 0): time-dependent alpha (Cullen &
+   * Dehnen 2010): 0 the constant alpha, 1 the per-particle alpha of
+   * part::alpha_visc on the linear term of Q */
   int alpha_switch;
 
   /*! Floor of the time-dependent alpha (default 0.1) */
@@ -306,7 +307,7 @@ static INLINE void viscosity_set_defaults(
   viscosity->max_condition_number =
       hydro_props_default_gradient_max_condition_number;
   viscosity->angle_limit = hydro_props_default_gradient_angle_limit;
-  viscosity->limiter_convergence_gate = 1;
+  viscosity->limiter_convergence_switch = 1;
   viscosity->shear_limiter = hydro_props_default_viscosity_shear_limiter;
   viscosity->limiter_floor = hydro_props_default_viscosity_limiter_floor;
   viscosity->limiter_mach = hydro_props_default_viscosity_limiter_mach;
@@ -350,8 +351,8 @@ static INLINE void viscosity_init(struct swift_params *params,
   viscosity->angle_limit =
       parser_get_opt_param_float(params, "SPH:gradient_angle_limit",
                                  hydro_props_default_gradient_angle_limit);
-  viscosity->limiter_convergence_gate =
-      parser_get_opt_param_int(params, "SPH:limiter_convergence_gate", 1);
+  viscosity->limiter_convergence_switch =
+      parser_get_opt_param_int(params, "SPH:limiter_convergence_switch", 1);
   viscosity->shear_limiter =
       parser_get_opt_param_int(params, "SPH:viscosity_shear_limiter",
                                hydro_props_default_viscosity_shear_limiter);
@@ -386,8 +387,9 @@ static INLINE void viscosity_init(struct swift_params *params,
       viscosity->shear_limiter > 2 || viscosity->limiter_floor < 0.f ||
       viscosity->limiter_floor > 1.f || viscosity->limiter_mach < 0.f ||
       viscosity->alpha_switch < 0 || viscosity->alpha_switch > 1 ||
-      viscosity->alpha_min < 0.f || viscosity->alpha_min > viscosity->alpha ||
-      viscosity->length <= 0.f)
+      viscosity->limiter_convergence_switch < 0 ||
+      viscosity->limiter_convergence_switch > 1 || viscosity->alpha_min < 0.f ||
+      viscosity->alpha_min > viscosity->alpha || viscosity->length <= 0.f)
     error("Invalid MAGMA viscosity / gradient parameters.");
 
   viscosity->cos_angle_limit = cosf(viscosity->angle_limit);
@@ -429,8 +431,9 @@ static INLINE void viscosity_print(
       "(pair).",
       viscosity->max_condition_number, viscosity->angle_limit);
   message(
-      "Slope-limiter distance cut-off gated by the convergence fraction: %s.",
-      viscosity->limiter_convergence_gate ? "yes" : "no");
+      "Slope-limiter distance cut-off scaled by the convergence fraction "
+      "(binary switch): %s.",
+      viscosity->limiter_convergence_switch ? "on" : "off");
   if (viscosity->shear_limiter)
     message(
         "Viscous pressure scaled by the Cullen & Dehnen limiter (%s, floor "
@@ -466,8 +469,8 @@ static INLINE void viscosity_print_snapshot(
   io_write_attribute_i(h_grpsph, "Viscosity switch", viscosity->alpha_switch);
   io_write_attribute_f(h_grpsph, "Alpha viscosity (min)", viscosity->alpha_min);
   io_write_attribute_f(h_grpsph, "Viscosity decay length", viscosity->length);
-  io_write_attribute_i(h_grpsph, "Limiter convergence gate",
-                       viscosity->limiter_convergence_gate);
+  io_write_attribute_i(h_grpsph, "Limiter convergence switch",
+                       viscosity->limiter_convergence_switch);
   io_write_attribute_f(h_grpsph, "Gradient max condition number",
                        viscosity->max_condition_number);
   io_write_attribute_f(h_grpsph, "Gradient angle limit",
