@@ -40,6 +40,14 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
     const struct mat_params *mp) {}
 
 /**
+ * @brief Checks the flaws of a particle read from the ICs.
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void damage_tensile_first_init_part(
+    const struct part *restrict p) {}
+
+/**
  * @brief Calculates the rate of cbrt(damage) accumulation due to tension.
  *
  * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.

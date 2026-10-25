@@ -224,6 +224,8 @@ __attribute__((always_inline)) INLINE static void strength_first_init_part_damag
   const struct strength_damage no_damage = {0};
   p->strength_data.damage = no_damage;
   xp->strength_data.damage_full = no_damage;
+
+  damage_tensile_first_init_part(p);
 }
 
 #endif /* SWIFT_DAMAGE_H */

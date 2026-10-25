@@ -90,8 +90,7 @@ struct strength_part_data {
   int number_of_flaws;
 
   // Activation thresholds of flaws for tensile damage accumulation
-  // ### Work out how to set the length of this
-  float activation_thresholds[64];
+  float activation_thresholds[STRENGTH_MAX_FLAWS];
 #endif
 
 #ifdef STRENGTH_OBJECT_IDS

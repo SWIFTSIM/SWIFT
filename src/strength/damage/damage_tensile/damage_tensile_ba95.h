@@ -44,6 +44,27 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
 }
 
 /**
+ * @brief Checks the flaws of a particle read from the ICs.
+ *
+ * @param p The particle of interest.
+ */
+__attribute__((always_inline)) INLINE static void damage_tensile_first_init_part(
+    const struct part *restrict p) {
+
+  if (STRENGTH_MAX_FLAWS <= 0)
+    error("--with-strength-max-flaws must be a positive integer, not %d.",
+          STRENGTH_MAX_FLAWS);
+
+  if (p->strength_data.number_of_flaws > STRENGTH_MAX_FLAWS)
+    error("Particle %lld has %d flaws, but the code was configured with "
+          "--with-strength-max-flaws=%d. Reconfigure with "
+          "--with-strength-max-flaws=%d or more, and write the ICs' "
+          "ActivationThresholds with that size.",
+          p->id, p->strength_data.number_of_flaws, STRENGTH_MAX_FLAWS,
+          p->strength_data.number_of_flaws);
+}
+
+/**
  * @brief Calculates the rate of cbrt(damage) accumulation due to tension.
  *
  * Benz&Asphaug95 tensile fracture model. Each particle is initialised with a

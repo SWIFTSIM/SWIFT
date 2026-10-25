@@ -20,10 +20,10 @@ import h5py
 import numpy as np
 
 
-def seed_flaws(num_part, volume, m_flaw, k_flaw, hardcoded_max_flaws, seed, chunk_size):
+def seed_flaws(num_part, volume, m_flaw, k_flaw, max_flaws, seed, chunk_size):
     """Assign Weibull-distributed activation thresholds to particles, adding flaws until each particle has at least one flaw."""
     rng = np.random.default_rng(seed)
-    activation_thresholds = np.zeros((num_part, hardcoded_max_flaws))
+    activation_thresholds = np.zeros((num_part, max_flaws))
 
     # Use chunks to avoid memory issues because of storing (num_draws, num_part) arrays
     chunks = []
@@ -76,6 +76,11 @@ def seed_flaws(num_part, volume, m_flaw, k_flaw, hardcoded_max_flaws, seed, chun
         [np.arange(count) for count in np.bincount(sample_indices, minlength=num_part)]
     )
 
+    if prior_flaw_counts.max() >= max_flaws:
+        raise ValueError(
+            f"A particle has {prior_flaw_counts.max() + 1} flaws, more than max_flaws = {max_flaws}"
+        )
+
     # Fill in the thresholds and number of flaws for each particle in the right orther
     activation_thresholds[sample_indices, prior_flaw_counts] = thresholds
     N_flaws = np.bincount(sample_indices, minlength=num_part)
@@ -94,7 +99,7 @@ def generate_target(
     u_target,
     m_flaw_target,
     k_flaw_target,
-    hardcoded_max_flaws,
+    max_flaws,
     seed,
     chunk_size,
 ):
@@ -129,7 +134,7 @@ def generate_target(
         flaw_volume,
         m_flaw_target,
         k_flaw_target,
-        hardcoded_max_flaws,
+        max_flaws,
         seed,
         chunk_size,
     )
@@ -160,7 +165,7 @@ def generate_impactor(
     vx_impactor,
     impact_angle,
     target_radius,
-    hardcoded_max_flaws,
+    max_flaws,
 ):
     # Reuse the same grid resolution as the target
     coords = np.linspace(0, boxsize, L_target, endpoint=False)
@@ -199,7 +204,7 @@ def generate_impactor(
 
     # Impactor has no flaws
     A1_nflaws_impactor = np.zeros(num_impactor)
-    A2_thresh_impactor = np.zeros((num_impactor, hardcoded_max_flaws))
+    A2_thresh_impactor = np.zeros((num_impactor, max_flaws))
 
     return (
         A2_pos_impactor,
@@ -282,7 +287,7 @@ if __name__ == "__main__":
     k_flaw_target = 5e28 * 100**3  # cm^-3 => m^-3
     seed = 12345
     chunk_size = 100000  # to avoid memory issues with large arrays
-    hardcoded_max_flaws = 64 # ### Currently must match hardcoded max flaws in code
+    max_flaws = 34  # Must match --with-strength-max-flaws when configuring SWIFT
 
     # Impactor
     rho_impactor = 1180
@@ -307,7 +312,7 @@ if __name__ == "__main__":
         u_target,
         m_flaw_target,
         k_flaw_target,
-        hardcoded_max_flaws,
+        max_flaws,
         seed,
         chunk_size,
     )
@@ -323,7 +328,7 @@ if __name__ == "__main__":
         vx_impactor,
         impact_angle,
         target_radius,
-        hardcoded_max_flaws,
+        max_flaws,
     )
 
     save(fileOutputName, boxsize, target, impactor)
