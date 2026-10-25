@@ -70,12 +70,6 @@ struct strength_state {
   /*! Specific internal energy */
   float u;
 
-  /*! Pressure */
-  float pressure;
-
-  /*! Temperature */
-  float temperature;
-
   /*! Damage */
   struct strength_damage damage;
 
@@ -94,6 +88,12 @@ struct strength_state {
 #endif
 
   /* Derived from the above */
+
+    /*! Pressure */
+  float pressure;
+
+  /*! Temperature */
+  float temperature;
 
   /*! J_2 invariant of the deviatoric stress tensor */
   float J_2;

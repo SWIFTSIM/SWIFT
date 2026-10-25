@@ -75,13 +75,13 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
   s->mass = mass;
   s->density = density;
   s->u = u;
-  s->pressure = gas_pressure_from_internal_energy(density, u, mat_id);
-  s->temperature = gas_temperature_from_internal_energy(density, u, mat_id);
   s->damage = damage;
   s->deviatoric_stress_tensor = deviatoric_stress_tensor;
   s->strain_rate_tensor = strain_rate_tensor;
 
   /* Quantities derived from the above. */
+  s->pressure = gas_pressure_from_internal_energy(density, u, mat_id);
+  s->temperature = gas_temperature_from_internal_energy(density, u, mat_id);
   s->J_2 = strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
   strength_compute_stress_tensor(&s->stress_tensor, s, mp);
 }
