@@ -657,7 +657,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
   zero_sym_matrix(&p->gradient.c_matrix_inv);
   p->c_max_ngb = 0.f;
   p->alpha_visc_max_ngb = p->alpha_visc;
-  p->gradient.laplace_u = 0.f;
+  p->laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
@@ -700,7 +700,7 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
 
   /* Finish the SPH Laplacian of u (2 sum_j m_j (u_i - u_j) / rho_j
    * dW_ij/dr / r_ij, with the factors of h of dW/dr) */
-  p->gradient.laplace_u *= 2.f * h_inv_dim * h_inv;
+  p->laplace_u *= 2.f * h_inv_dim * h_inv;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
@@ -932,10 +932,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float H_D = kernel_gamma * p->h * cosmo->a;
   const float v_sig_phys =
       (soundspeed + p->c_max_ngb) * cosmo->a_factor_sound_speed;
-  const float source =
-      p->u > 0.f ? magma_diffusion.beta * H_D * p->gradient.laplace_u *
-                       cosmo->a_factor_sound_speed * cosmo->a2_inv / sqrtf(p->u)
-                 : 0.f;
+  const float source = p->u > 0.f ? magma_diffusion.beta * H_D * p->laplace_u *
+                                        cosmo->a_factor_sound_speed *
+                                        cosmo->a2_inv / sqrtf(p->u)
+                                  : 0.f;
   const float ratio = dt_alpha * v_sig_phys / H_D;
   float alpha =
       (p->alpha_diff + dt_alpha * source + ratio * magma_diffusion.alpha_min) /
@@ -955,6 +955,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   memcpy(&p->force.gradient_vy, gradient_vy, 3 * sizeof(float));
   memcpy(&p->force.gradient_vz, gradient_vz, 3 * sizeof(float));
   memcpy(&p->force.gradient_u, gradient_u, 3 * sizeof(float));
+  memcpy(&p->gradient_u_prev, gradient_u, 3 * sizeof(float));
   memcpy(&p->force.gradient_P, gradient_P, 3 * sizeof(float));
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
@@ -1234,7 +1235,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->alpha_diff = magma_diffusion.alpha_min;
   p->alpha_visc_max_ngb = p->alpha_visc;
   p->c_max_ngb = 0.f;
-  p->gradient.laplace_u = 0.f;
+  p->laplace_u = 0.f;
+  for (int i = 0; i < 3; ++i) p->gradient_u_prev[i] = 0.f;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

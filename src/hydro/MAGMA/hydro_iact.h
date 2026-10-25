@@ -121,8 +121,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     const float H) {
 
   /* Hottest neighbour (signal speed of the conduction coefficient's decay)
-   * and most viscous neighbour (its cap) */
-  pi->c_max_ngb = fmaxf(pi->c_max_ngb, pj->force.soundspeed);
+   * and most viscous neighbour (its cap). The sound speed comes from the
+   * equation of state: the force sub-structure shares its storage with the
+   * density and gradient ones and does not survive their loops. */
+  pi->c_max_ngb =
+      fmaxf(pi->c_max_ngb, gas_soundspeed_from_internal_energy(pj->rho, pj->u));
   pi->alpha_visc_max_ngb = fmaxf(pi->alpha_visc_max_ngb, pj->alpha_visc);
 
   /* Get r. */
@@ -134,9 +137,17 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   float w, w_dx;
   kernel_deval(ui, &w, &w_dx);
 
-  /* SPH estimate of the Laplacian of u (as SPHENIX; the factors of h are
-   * applied in hydro_end_gradient) */
-  pi->gradient.laplace_u += pj->mass * (pi->u - pj->u) * w_dx / (r * pj->rho);
+  /* SPH estimate of the Laplacian of u (Brookshaw form, as SPHENIX), with
+   * the linear part of the jump removed using the matrix gradient of u of
+   * the previous step: the estimator is then exactly zero across a smooth
+   * gradient on any particle distribution (the plain form errs by up to
+   * 0.4 |grad u| / h on disordered particles) and keeps its response to
+   * steps and hot spots. The factors of h are applied in
+   * hydro_end_gradient. */
+  const float du_lin = pi->gradient_u_prev[0] * dx[0] +
+                       pi->gradient_u_prev[1] * dx[1] +
+                       pi->gradient_u_prev[2] * dx[2];
+  pi->laplace_u += pj->mass * (pi->u - pj->u - du_lin) * w_dx / (r * pj->rho);
 
   /* Get the mass and density. */
   const float mj = pj->mass;

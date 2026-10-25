@@ -211,10 +211,6 @@ struct part {
        * their last gradient evaluation (viscosity limiter) */
       float shock_indicator;
 
-      /*! SPH estimate of the Laplacian of the internal energy (source of
-       * the conduction coefficient) */
-      float laplace_u;
-
     } gradient;
 
     /**
@@ -328,6 +324,18 @@ struct part {
    * itself (gradient loop): caps the conduction coefficient in shocks and
    * around a particle a feedback event has heated */
   float alpha_visc_max_ngb;
+
+  /*! SPH estimate of the Laplacian of the internal energy, accumulated in
+   * the gradient loop (source of the conduction coefficient). Outside the
+   * union above: as a field of the gradient sub-structure it sat at the
+   * offset of force.soundspeed. */
+  float laplace_u;
+
+  /*! Matrix gradient of the internal energy of the previous step (copied
+   * in hydro_prepare_force), read in the gradient loop to remove the linear
+   * part of the jump from the Laplacian estimate. Outside the union: the
+   * force sub-structure does not survive the density and gradient loops. */
+  float gradient_u_prev[3];
 
   /*! Largest sound speed among the neighbours (gradient loop): the signal
    * speed of the decay of the conduction coefficient is the sum of the
