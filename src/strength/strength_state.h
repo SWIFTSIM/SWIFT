@@ -73,6 +73,14 @@ struct strength_state_cache {
   bool stress_tensor_computed;
   struct sym_matrix stress_tensor;
 
+  /*! Principal stresses (eigenvalues of the stress tensor) */
+  bool principal_stresses_computed;
+  float principal_stresses[3];
+
+  /*! J_2 invariant of the strain rate tensor */
+  bool strain_rate_J_2_computed;
+  float strain_rate_J_2;
+
 #ifdef STRENGTH_YIELD_STRESS
   /*! Yield stress, including damage and weakening */
   bool yield_stress_computed;
@@ -144,6 +152,13 @@ __attribute__((always_inline)) INLINE static float strength_state_get_J_2(
 __attribute__((always_inline)) INLINE static struct sym_matrix
 strength_state_get_stress_tensor(struct strength_state *s,
                                  const struct mat_params *mp);
+
+__attribute__((always_inline)) INLINE static const float *
+strength_state_get_principal_stresses(struct strength_state *s,
+                                      const struct mat_params *mp);
+
+__attribute__((always_inline)) INLINE static float strength_state_get_strain_rate_J_2(
+    struct strength_state *s, const struct mat_params *mp);
 
 #ifdef STRENGTH_YIELD_STRESS
 __attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(

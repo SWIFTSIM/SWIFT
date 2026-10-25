@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
 
   /* Measure of strain rate. */
   const float strain_rate_invariant =
-      sqrtf(strength_compute_sym_matrix_J_2(s->strain_rate_tensor));
+      sqrtf(strength_state_get_strain_rate_J_2(s, mp));
 
   if (strain_rate_invariant > 0.f) {
     const float dt_strain = hydro_properties->CFL_condition / strain_rate_invariant;

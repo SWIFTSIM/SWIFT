@@ -149,6 +149,43 @@ strength_state_get_stress_tensor(struct strength_state *s,
   return s->cache.stress_tensor;
 }
 
+/**
+ * @brief Get the principal stresses, the eigenvalues of the stress tensor.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ *
+ * @return The three principal stresses.
+ */
+__attribute__((always_inline)) INLINE static const float *
+strength_state_get_principal_stresses(struct strength_state *s,
+                                      const struct mat_params *mp) {
+
+  if (!s->cache.principal_stresses_computed) {
+    sym_matrix_compute_eigenvalues(s->cache.principal_stresses,
+                                   strength_state_get_stress_tensor(s, mp));
+    s->cache.principal_stresses_computed = true;
+  }
+  return s->cache.principal_stresses;
+}
+
+/**
+ * @brief Get the J_2 invariant of the strain rate tensor.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_strain_rate_J_2(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.strain_rate_J_2_computed) {
+    s->cache.strain_rate_J_2 =
+        strength_compute_sym_matrix_J_2(s->strain_rate_tensor);
+    s->cache.strain_rate_J_2_computed = true;
+  }
+  return s->cache.strain_rate_J_2;
+}
+
 #ifdef STRENGTH_YIELD_STRESS
 /**
  * @brief Get the yield stress, including damage and weakening.

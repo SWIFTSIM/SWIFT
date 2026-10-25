@@ -158,7 +158,10 @@ hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
   p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
 
   /* Compute principal stresses. */
-  sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
+  const float *principal_stresses = strength_state_get_principal_stresses(&s, mp);
+  p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
+  p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
+  p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
 }
 
 /**
@@ -292,7 +295,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
 
   /* Compute updated principal stresses. */
-  sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
+  const float *principal_stresses = strength_state_get_principal_stresses(&s, mp);
+  p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
+  p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
+  p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
 }
 
 /**

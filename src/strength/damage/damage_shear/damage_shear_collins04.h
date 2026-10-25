@@ -113,7 +113,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
 
   /* Calculate invariant of strain rate tensor. While yielding, assume that the
    * plastic strain rate is approx. the total strain rate. */
-  const float E_dot = sqrtf(strength_compute_sym_matrix_J_2(s->strain_rate_tensor));
+  const float E_dot = sqrtf(strength_state_get_strain_rate_J_2(s, mp));
 
   /* Calculate the plastic strain at failure. */
   const float plastic_strain_at_failure =

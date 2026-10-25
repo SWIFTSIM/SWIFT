@@ -70,7 +70,6 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   *number_of_activated_flaws = 0;
 
   /* Particle properties. */
-  const struct sym_matrix stress_tensor = strength_state_get_stress_tensor(s, mp);
   const float mass = s->mass;
   const float density = s->density;
   const float damage = s->damage.total;
@@ -90,8 +89,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   }
 
   /* Calculate maximum principal stress. */
-  float principal_stress_eigen[3];
-  sym_matrix_compute_eigenvalues(principal_stress_eigen, stress_tensor);
+  const float *principal_stress_eigen = strength_state_get_principal_stresses(s, mp);
   const float max_principal_stress = fmaxf(principal_stress_eigen[0],
                                       fmaxf(principal_stress_eigen[1], principal_stress_eigen[2]));
 
