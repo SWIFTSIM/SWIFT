@@ -37,10 +37,10 @@
 /* Some standard headers. */
 #include <config.h>
 #include <float.h>
-#include <stdlib.h>
-#include <time.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
+#include <stdlib.h>
+#include <time.h>
 
 /* Includes. */
 #include "swift.h"
@@ -105,9 +105,8 @@ static gsl_integration_workspace *workspace;
 
 /* Direct quadrature of a cosmology.c integrand with the same settings as
  * cosmology_init_tables() */
-static double direct_integral(double (*f)(double, void *),
-                              struct cosmology *c, const double a1,
-                              const double a2) {
+static double direct_integral(double (*f)(double, void *), struct cosmology *c,
+                              const double a1, const double a2) {
   gsl_function F = {f, c};
   double result, abserr;
   const int status =
@@ -139,8 +138,8 @@ static const struct test_cosmology cosmologies[] = {
      1e-4},
     {"Planck-like, a = 0.1 -> 1",
      {"Cosmology:Omega_cdm:0.2589", "Cosmology:Omega_lambda:0.6910",
-      "Cosmology:Omega_b:0.0486", "Cosmology:h:0.6774",
-      "Cosmology:a_begin:0.1", "Cosmology:a_end:1.0", NULL},
+      "Cosmology:Omega_b:0.0486", "Cosmology:h:0.6774", "Cosmology:a_begin:0.1",
+      "Cosmology:a_end:1.0", NULL},
      1e-7},
     {"Planck-like, a = 1/128 -> 1.1",
      {"Cosmology:Omega_cdm:0.2589", "Cosmology:Omega_lambda:0.6910",
@@ -181,8 +180,7 @@ static void test_delta_time_from_scale_factors(struct cosmology *c) {
     const double a2 = exp(max(x1, x2));
     const double dt = cosmology_get_delta_time_from_scale_factors(c, a1, a2);
     if (dt < 0.)
-      error("Negative delta time %e for a_start=%.17g a_end=%.17g", dt, a1,
-            a2);
+      error("Negative delta time %e for a_start=%.17g a_end=%.17g", dt, a1, a2);
   }
 
   /* Adjacent doubles */
@@ -208,8 +206,8 @@ static void test_delta_time_from_scale_factors(struct cosmology *c) {
       const double dt3 =
           cosmology_get_delta_time_from_scale_factors(c, a_edge, hi);
       if (dt1 < 0. || dt2 < 0. || dt3 < 0.)
-        error("Negative delta time across table edge %d: %e %e %e", i, dt1,
-              dt2, dt3);
+        error("Negative delta time across table edge %d: %e %e %e", i, dt1, dt2,
+              dt3);
     }
   }
 
@@ -228,9 +226,10 @@ static void test_delta_time_from_scale_factors(struct cosmology *c) {
     const double a2 = nextafter(a1, 2.0);
     if (cosmology_get_time_since_big_bang(c, a2) <
         cosmology_get_time_since_big_bang(c, a1) * (1. - TOL_MONOTONIC))
-      error("Time since Big Bang decreasing between a=%.17g and the next "
-            "double",
-            a1);
+      error(
+          "Time since Big Bang decreasing between a=%.17g and the next "
+          "double",
+          a1);
   }
 
   /* Stars born before a_begin: result must be finite and non-negative
@@ -287,8 +286,7 @@ static void test_integer_time_operators(struct cosmology *c) {
         for (int f = 0; f < 5; f++) {
           const double v = fns[f](c, ti_edge + d, ti_edge + e);
           if (v < 0.)
-            error("Negative %s factor %e across table edge %d", names[f], v,
-                  i);
+            error("Negative %s factor %e across table edge %d", names[f], v, i);
         }
       }
     }
@@ -305,9 +303,10 @@ static void test_integer_time_operators(struct cosmology *c) {
     }
   }
 
-  message("  integer-time operators: no negative values, positive for bins "
-          ">= %d",
-          MIN_RESOLVED_BIN);
+  message(
+      "  integer-time operators: no negative values, positive for bins "
+      ">= %d",
+      MIN_RESOLVED_BIN);
 }
 
 /**
@@ -333,9 +332,8 @@ static void test_operator_accuracy(struct cosmology *c) {
 
       const double drift_ref = direct_integral(drift_integrand, c, a1, a2);
       const double time_ref = direct_integral(time_integrand, c, a1, a2);
-      const double err_drift =
-          fabs(cosmology_get_drift_factor(c, ti_start, ti_end) / drift_ref -
-               1.);
+      const double err_drift = fabs(
+          cosmology_get_drift_factor(c, ti_start, ti_end) / drift_ref - 1.);
       const double err_time =
           fabs(cosmology_get_delta_time(c, ti_start, ti_end) / time_ref - 1.);
       max_err_drift = max(max_err_drift, err_drift);
@@ -381,25 +379,25 @@ static void test_update_sweep(struct cosmology *c,
 
   /* Checks at a = 1 if the run reaches it */
   if (c->a_end >= 1.) {
-    const integertime_t ti_1 = (integertime_t)llround(-c->log_a_begin /
-                                                      c->time_base);
+    const integertime_t ti_1 =
+        (integertime_t)llround(-c->log_a_begin / c->time_base);
     cosmology_update(c, phys_const, ti_1);
     if (fabs(c->a - 1.) > 1e-12)
       error("Could not land on a=1 (got %.17g)", c->a);
 
     const double closure = fabs(c->H / c->H0 - 1.);
-    const double lookback = fabs(c->lookback_time) /
-                            c->universe_age_at_present_day;
-    const double age_err =
-        fabs(cosmology_get_time_since_big_bang(c, 1.) -
-             c->universe_age_at_present_day) /
-        c->universe_age_at_present_day;
+    const double lookback =
+        fabs(c->lookback_time) / c->universe_age_at_present_day;
+    const double age_err = fabs(cosmology_get_time_since_big_bang(c, 1.) -
+                                c->universe_age_at_present_day) /
+                           c->universe_age_at_present_day;
     const double dist_err = fabs(cosmology_get_comoving_distance(c, 1.)) /
                             cosmology_get_comoving_distance(c, c->a_begin);
 
-    message("  at a=1: |H/H0-1|=%.1e |lookback|/age=%.1e |t(1)-age|/age=%.1e "
-            "|r(1)|/r(a_begin)=%.1e",
-            closure, lookback, age_err, dist_err);
+    message(
+        "  at a=1: |H/H0-1|=%.1e |lookback|/age=%.1e |t(1)-age|/age=%.1e "
+        "|r(1)|/r(a_begin)=%.1e",
+        closure, lookback, age_err, dist_err);
     if (closure > TOL_CLOSURE) error("Density parameters do not close");
     if (lookback > TOL_AGE_AT_PRESENT || age_err > TOL_AGE_AT_PRESENT)
       error("Age at a=1 inconsistent with universe_age_at_present_day");
@@ -420,8 +418,8 @@ static void test_inverse_tables(struct cosmology *c,
   double r_prev = DBL_MAX;
 
   for (int k = 0; k <= N_SWEEP; k++) {
-    double a = exp(c->log_a_begin + (c->log_a_end - c->log_a_begin) * k /
-                                        (double)N_SWEEP);
+    double a = exp(c->log_a_begin +
+                   (c->log_a_end - c->log_a_begin) * k / (double)N_SWEEP);
     a = fmin(fmax(a, c->a_begin), c->a_end);
 
     /* a(t(a)) */
@@ -477,9 +475,9 @@ int main(int argc, char *argv[]) {
 
   /* Seed the random number generator with the time, or with the seed given
    * on the command line to reproduce an earlier run */
-  const unsigned int seed =
-      (argc > 1) ? (unsigned int)strtoul(argv[1], NULL, 10)
-                 : (unsigned int)time(NULL);
+  const unsigned int seed = (argc > 1)
+                                ? (unsigned int)strtoul(argv[1], NULL, 10)
+                                : (unsigned int)time(NULL);
   srand(seed);
   message("Random seed: %u (pass it as argument to reproduce this run)", seed);
 
@@ -517,6 +515,7 @@ int main(int argc, char *argv[]) {
 
   gsl_integration_workspace_free(workspace);
 
-  message("Everything seems fine with the accuracy of the cosmology functions.");
+  message(
+      "Everything seems fine with the accuracy of the cosmology functions.");
   return 0;
 }
