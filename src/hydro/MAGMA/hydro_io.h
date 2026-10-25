@@ -180,7 +180,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
                                          struct io_props *list,
                                          int *num_fields) {
 
-  *num_fields = 20;
+  *num_fields = 21;
 
   /* List what we want to write */
   list[0] = io_make_output_field_convert_part(
@@ -288,6 +288,14 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "scales the particle's viscous pressure (1 if switched off).");
 
   list[19] = io_make_output_field(
+      "DiffusionFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_diff,
+      "Per-particle coefficient of the artificial conduction terms: grows "
+      "where the internal energy has a local minimum, decays towards "
+      "diffusion_alpha_min over a kernel-support signal crossing time, and "
+      "is capped where the neighbours' viscosity coefficient is up (shocks, "
+      "and the surroundings of a particle a feedback event has heated)");
+
+  list[20] = io_make_output_field(
       "ViscosityAlpha", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_visc,
       "Time-dependent coefficient alpha of the linear viscosity term "
       "(Cullen & Dehnen 2010; the constant alpha if the viscosity switch is "

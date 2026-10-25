@@ -424,7 +424,14 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
  */
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part *p) {
-  /* This scheme has fixed alpha */
+
+  /* As in SPHENIX: the viscosity coefficient to its maximum and the
+   * conduction coefficient to zero. The raised viscosity coefficient is what
+   * lasts: through the cap of hydro_prepare_force() it keeps the conduction
+   * of the particle and of its neighbours off until it has decayed, by which
+   * time the injected energy has done work on the gas around it. */
+  p->alpha_visc = magma_viscosity.alpha;
+  p->alpha_diff = 0.f;
 }
 
 /**
@@ -648,6 +655,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *p) {
 
   zero_sym_matrix(&p->gradient.c_matrix_inv);
+  p->c_max_ngb = 0.f;
+  p->alpha_visc_max_ngb = p->alpha_visc;
+  p->gradient.laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vz[i] = 0.f;
@@ -687,6 +697,10 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
    * by multiplying in the factors of h coming from W */
   for (int i = 0; i < 3; ++i) p->gradient.gradient_u[i] *= h_inv_dim;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_P[i] *= h_inv_dim;
+
+  /* Finish the SPH Laplacian of u (2 sum_j m_j (u_i - u_j) / rho_j
+   * dW_ij/dr / r_ij, with the factors of h of dW/dr) */
+  p->gradient.laplace_u *= 2.f * h_inv_dim * h_inv;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
@@ -823,9 +837,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * cut-off). */
   float convergence_fraction = 1.f;
   float viscosity_limiter = 1.f;
-  if ((magma_viscosity.limiter_convergence_gate ||
-       magma_viscosity.shear_limiter || magma_viscosity.alpha_switch) &&
-      !res) {
+  if (!res) {
     const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
     /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
      * the d diagonal entries that exist in d dimensions (the absent ones
@@ -879,32 +891,63 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
      * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
      * up to alpha_loc and decays back towards it over H / (2 length c_s);
      * floored at alpha_min. Divergence and sound speed are physical. */
-    if (magma_viscosity.alpha_switch) {
-      const float H = kernel_gamma * p->h * cosmo->a;
-      const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
-      const float div_v_phys = div_v * cosmo->a2_inv;
-      const float div_v_dt =
-          dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
-      const float A = div_v_phys < 0.f
-                          ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
-                          : 0.f;
-      const float alpha_loc = magma_viscosity.alpha * A / (A + c_phys * c_phys);
-      float alpha = p->alpha_visc;
-      if (alpha_loc > alpha) {
-        alpha = alpha_loc;
-      } else {
-        /* Implicit decay, stable for any time step (Price et al. 2018),
-         * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
-         * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
-         * H, and with v_sig -> c_s: H / (2 l c_s). */
-        const float ratio =
-            dt_alpha * 2.f * magma_viscosity.length * c_phys / H;
-        alpha = (alpha + alpha_loc * ratio) / (1.f + ratio);
-      }
-      p->alpha_visc = fmaxf(alpha, magma_viscosity.alpha_min);
-      p->div_v_previous = div_v_phys;
+    /* Always evolved: the conduction coefficient uses the neighbours' alpha
+     * as its shock measure; the viscosity itself reads alpha_visc only with
+     * its own switch on. */
+    const float H = kernel_gamma * p->h * cosmo->a;
+    const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
+    const float div_v_phys = div_v * cosmo->a2_inv;
+    const float div_v_dt =
+        dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
+    const float A = div_v_phys < 0.f
+                        ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
+                        : 0.f;
+    const float alpha_loc = magma_viscosity.alpha * A / (A + c_phys * c_phys);
+    float alpha = p->alpha_visc;
+    if (alpha_loc > alpha) {
+      alpha = alpha_loc;
+    } else {
+      /* Implicit decay, stable for any time step (Price et al. 2018),
+       * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
+       * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
+       * H, and with v_sig -> c_s: H / (2 l c_s). */
+      const float ratio = dt_alpha * 2.f * magma_viscosity.length * c_phys / H;
+      alpha = (alpha + alpha_loc * ratio) / (1.f + ratio);
     }
+    p->alpha_visc = fmaxf(alpha, magma_viscosity.alpha_min);
+    p->div_v_previous = div_v_phys;
   }
+
+  /* Conduction coefficient (SPHENIX's, after Price 2008): grows where u has
+   * a local minimum (source beta H laplace(u) / sqrt(u), physical, with the
+   * 1/a^2 of the Laplacian), decays towards alpha_min over the signal
+   * crossing time of the kernel support (implicit, stable for any time
+   * step), and is capped by how viscous the neighbourhood is, so that it is
+   * off in a shock and around a feedback particle (whose viscosity the hook
+   * raises to alpha_max). The viscosity coefficient is read relative to its
+   * floor so that the cap is 1 in quiescent gas whatever the floor. The
+   * signal speed is the sum of the particle's and its hottest neighbour's
+   * sound speeds. With the default floor of 1 the source and the decay are
+   * inert and the coefficient is the cap alone. */
+  const float H_D = kernel_gamma * p->h * cosmo->a;
+  const float v_sig_phys =
+      (soundspeed + p->c_max_ngb) * cosmo->a_factor_sound_speed;
+  const float source =
+      p->u > 0.f ? magma_diffusion.beta * H_D * p->gradient.laplace_u *
+                       cosmo->a_factor_sound_speed * cosmo->a2_inv / sqrtf(p->u)
+                 : 0.f;
+  const float ratio = dt_alpha * v_sig_phys / H_D;
+  float alpha =
+      (p->alpha_diff + dt_alpha * source + ratio * magma_diffusion.alpha_min) /
+      (1.f + ratio);
+  alpha = fmaxf(alpha, magma_diffusion.alpha_min);
+  const float visc_range = magma_viscosity.alpha - magma_viscosity.alpha_min;
+  const float visc_frac =
+      visc_range > 0.f
+          ? (p->alpha_visc_max_ngb - magma_viscosity.alpha_min) / visc_range
+          : 1.f;
+  alpha = fminf(alpha, 1.f - fminf(1.f, fmaxf(0.f, visc_frac)));
+  p->alpha_diff = fminf(1.f, alpha);
 
   /* Finally, update the 'force' sub-structure' */
   memcpy(&p->force.c_matrix, &c_matrix, sizeof(struct sym_matrix));
@@ -1188,6 +1231,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   p->div_v = 0.f;
   p->div_v_previous = 0.f;
   p->alpha_visc = hydro_props_default_viscosity_alpha;
+  p->alpha_diff = magma_diffusion.alpha_min;
+  p->alpha_visc_max_ngb = p->alpha_visc;
+  p->c_max_ngb = 0.f;
+  p->gradient.laplace_u = 0.f;
 
   hydro_reset_acceleration(p);
   hydro_init_part(p, NULL);

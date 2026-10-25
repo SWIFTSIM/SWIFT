@@ -211,6 +211,10 @@ struct part {
        * their last gradient evaluation (viscosity limiter) */
       float shock_indicator;
 
+      /*! SPH estimate of the Laplacian of the internal energy (source of
+       * the conduction coefficient) */
+      float laplace_u;
+
     } gradient;
 
     /**
@@ -311,6 +315,24 @@ struct part {
   /*! Time-dependent viscosity coefficient alpha of the particle (Cullen &
    * Dehnen 2010); alpha_max when the switch is off */
   float alpha_visc;
+
+  /*! Coefficient of the conduction terms of this particle (SPHENIX's
+   * evolved coefficient): grows at beta H laplace(u) / sqrt(u) where u has a
+   * local minimum, decays towards diffusion_alpha_min over the signal
+   * crossing time of the kernel support, capped where the neighbours'
+   * viscosity coefficient is up. The pair term uses the pressure-weighted
+   * mean of the two particles' coefficients. */
+  float alpha_diff;
+
+  /*! Largest viscosity coefficient among the neighbours and the particle
+   * itself (gradient loop): caps the conduction coefficient in shocks and
+   * around a particle a feedback event has heated */
+  float alpha_visc_max_ngb;
+
+  /*! Largest sound speed among the neighbours (gradient loop): the signal
+   * speed of the decay of the conduction coefficient is the sum of the
+   * particle's and its hottest neighbour's sound speeds */
+  float c_max_ngb;
 
   /*! Why this particle interacts using base SPH (magma_fallback_none if it
    * does not, otherwise a combination of the #magma_fallback_reasons) */

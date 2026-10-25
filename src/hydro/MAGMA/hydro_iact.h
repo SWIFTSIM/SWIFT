@@ -120,14 +120,23 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H) {
 
+  /* Hottest neighbour (signal speed of the conduction coefficient's decay)
+   * and most viscous neighbour (its cap) */
+  pi->c_max_ngb = fmaxf(pi->c_max_ngb, pj->force.soundspeed);
+  pi->alpha_visc_max_ngb = fmaxf(pi->alpha_visc_max_ngb, pj->alpha_visc);
+
   /* Get r. */
   const float r = sqrtf(r2);
 
-  /* Compute the kernel function */
+  /* Compute the kernel function and its derivative */
   const float h_inv = 1.f / hi;
   const float ui = r * h_inv;
-  float w;
-  kernel_eval(ui, &w);
+  float w, w_dx;
+  kernel_deval(ui, &w, &w_dx);
+
+  /* SPH estimate of the Laplacian of u (as SPHENIX; the factors of h are
+   * applied in hydro_end_gradient) */
+  pi->gradient.laplace_u += pj->mass * (pi->u - pj->u) * w_dx / (r * pj->rho);
 
   /* Get the mass and density. */
   const float mj = pj->mass;
@@ -769,9 +778,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float v_sig_P =
       magma_diffusion.alpha_pressure * sqrtf(2.f * dP_eff / (rhoi + rhoj));
 
-  /* Diffusion term (eq. 24) */
-  pi->u_dt += -mj * delta_u * (magma_diffusion.alpha * v_sig_u + v_sig_P) *
-              norm_sum_G / (rhoi + rhoj);
+  /* Diffusion term (eq. 24), scaled by the pressure-weighted mean of the
+   * two particles' conduction coefficients, so that the hotter particle sets
+   * the rate at a hot-cold interface (SPHENIX's combination) */
+  const float alpha_diff =
+      (pressurei * pi->alpha_diff + pressurej * pj->alpha_diff) /
+      (pressurei + pressurej);
+  pi->u_dt += -mj * alpha_diff * delta_u *
+              (magma_diffusion.alpha * v_sig_u + v_sig_P) * norm_sum_G /
+              (rhoi + rhoj);
 
   /* Get the time derivative for h. */
   pi->force.h_dt -= mj * dvdr * r_inv / rhoj * wi_dx * hi_inv * hid_inv;
