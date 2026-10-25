@@ -86,7 +86,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
  */
 __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
     struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor,
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   /* How damage affects the deviatoric stress tensor depends on the yield stress
    * method used. */
@@ -94,7 +94,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
 
   /* Damage weakens negative pressures so that fully damaged material cannot be
    * in tension. */
-  const float pressure = s->pressure;
+  const float pressure = strength_state_get_pressure(s, mp);
   const float effective_pressure = pressure > 0.f ? pressure : (1.f - s->damage.total) * pressure;
   stress_tensor->xx -= effective_pressure;
   stress_tensor->yy -= effective_pressure;
@@ -123,7 +123,7 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct strength_damage *d, const struct strength_state *s,
+    struct strength_damage *d, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {
 
   /* Only solid particles accumulate damage. */
@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
-    struct part *restrict p, const struct strength_state *s,
+    struct part *restrict p, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {
 
   damage_evolve(&p->strength_data.damage, s, mp, dt_therm);
@@ -163,7 +163,7 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
-    struct xpart *restrict xp, const struct strength_state *s,
+    struct xpart *restrict xp, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {
 
   damage_evolve(&xp->strength_data.damage_full, s, mp, dt_therm);
@@ -179,7 +179,7 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
-    struct part *restrict p, const struct strength_state *s,
+    struct part *restrict p, struct strength_state *s,
     const struct mat_params *mp) {
 
   /* Growth in damage used to set the time-step. */

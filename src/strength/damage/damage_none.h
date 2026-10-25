@@ -84,7 +84,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
  */
 __attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
     struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor,
-    const struct strength_state *s, const struct mat_params *mp) {}
+    struct strength_state *s, const struct mat_params *mp) {}
 
 /**
  * @brief Sets the values of additional particle damage properties at a
@@ -105,7 +105,7 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct strength_damage *d, const struct strength_state *s,
+    struct strength_damage *d, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
@@ -117,7 +117,7 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
-    struct part *restrict p, const struct strength_state *s,
+    struct part *restrict p, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
@@ -129,7 +129,7 @@ __attribute__((always_inline)) INLINE static void damage_predict_evolve(
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
-    struct xpart *restrict xp, const struct strength_state *s,
+    struct xpart *restrict xp, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
@@ -140,7 +140,7 @@ __attribute__((always_inline)) INLINE static void damage_kick_evolve(
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_compute_timescale(
-    struct part *restrict p, const struct strength_state *s,
+    struct part *restrict p, struct strength_state *s,
     const struct mat_params *mp) {}
 
 /**

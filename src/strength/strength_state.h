@@ -26,6 +26,8 @@
  * and the damage of a particle.
  */
 
+#include <stdbool.h>
+
 #include "symmetric_matrix.h"
 
 /**
@@ -44,6 +46,37 @@ struct strength_damage {
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   /*! Damage accumulated due to shear */
   float shear;
+#endif
+};
+
+/**
+ * @brief Quantities derived from the strength state.
+ *
+ * Each one is computed the first time it is asked for, by its
+ * strength_state_get_*() function, and then reused.
+ */
+struct strength_state_cache {
+
+  /*! Pressure */
+  bool pressure_computed;
+  float pressure;
+
+  /*! Temperature */
+  bool temperature_computed;
+  float temperature;
+
+  /*! J_2 invariant of the deviatoric stress tensor */
+  bool J_2_computed;
+  float J_2;
+
+  /*! Stress tensor, including the effects of damage */
+  bool stress_tensor_computed;
+  struct sym_matrix stress_tensor;
+
+#ifdef STRENGTH_YIELD_STRESS
+  /*! Yield stress, including damage and weakening */
+  bool yield_stress_computed;
+  float yield_stress;
 #endif
 };
 
@@ -90,26 +123,32 @@ struct strength_state {
   const float *activation_thresholds;
 #endif
 
-  /* Derived from the above */
+  /*! Quantities derived from the above, only read through
+   * strength_state_get_*() */
+  struct strength_state_cache cache;
+};
 
-    /*! Pressure */
-  float pressure;
+/*
+ * Getters for the derived quantities. They are declared here so that any
+ * strength method can use them, and defined in strength_state_setup.h or, for
+ * quantities that depend on a method, in that method's file.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_pressure(
+    struct strength_state *s, const struct mat_params *mp);
 
-  /*! J_2 invariant of the deviatoric stress tensor */
-  float J_2;
+__attribute__((always_inline)) INLINE static float strength_state_get_temperature(
+    struct strength_state *s, const struct mat_params *mp);
 
-  /*! Stress tensor, including the effects of damage */
-  struct sym_matrix stress_tensor;
-  
-#ifdef STRENGTH_YIELD_STRESS_WEAKENING_THERMAL
-  /*! Temperature */
-  float temperature;
-#endif
+__attribute__((always_inline)) INLINE static float strength_state_get_J_2(
+    struct strength_state *s, const struct mat_params *mp);
+
+__attribute__((always_inline)) INLINE static struct sym_matrix
+strength_state_get_stress_tensor(struct strength_state *s,
+                                 const struct mat_params *mp);
 
 #ifdef STRENGTH_YIELD_STRESS
-  /*! Yield stress, including damage and weakening */
-  float yield_stress;
+__attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(
+    struct strength_state *s, const struct mat_params *mp);
 #endif
-};
 
 #endif /* SWIFT_STRENGTH_STATE_H */

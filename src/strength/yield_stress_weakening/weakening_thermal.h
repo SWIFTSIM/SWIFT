@@ -30,7 +30,7 @@
 /**
  * @brief Sets the thermal weakening properties of the strength state from the particle.
  *
- * Computes the temperature from the EoS.
+ * Nothing extra is needed in the state for this method.
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
@@ -38,11 +38,7 @@
  */
 __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_state(
     struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {
-
-  s->temperature =
-      gas_temperature_from_internal_energy(s->density, s->u, s->mat_id);
-}
+    const struct mat_params *mp) {}
 
 /**
  * @brief Apply thermal weakening to the yield stress.
@@ -63,13 +59,13 @@ __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_st
  */
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_temperature_to_yield_stress(float *Y,
-                                                  const struct strength_state *s,
+                                                  struct strength_state *s,
                                                   const struct mat_params *mp) {
 
   /* Method parameters. */
   const float xi = mp->yield_weakening_thermal_xi;
   const float T_melt = mp->T_melt;
-  const float temperature = s->temperature;
+  const float temperature = strength_state_get_temperature(s, mp);
 
   /* Apply weakening. */
   if (temperature > 0.f && temperature < T_melt) {

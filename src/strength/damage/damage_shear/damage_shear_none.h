@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_set_state(
  */
 __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
     float *shear_dD_dt, const float shear_damage,
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   /* Set the rate of shear damage accumulation to zero. */
   *shear_dD_dt = 0.f;
@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
  */
 __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
     float *shear_damage, const float shear_dD_dt,
-    const struct strength_state *s, const struct mat_params *mp,
+    struct strength_state *s, const struct mat_params *mp,
     const float dt_therm) {}
 
 /**
@@ -82,7 +82,7 @@ __attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to
  * @return The shear damage, which is always zero.
  */
 __attribute__((always_inline)) INLINE static float damage_shear_evolve(
-    struct strength_damage *d, const struct strength_state *s,
+    struct strength_damage *d, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {
 
   return 0.f;
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static float damage_shear_evolve(
  */
 __attribute__((always_inline)) INLINE static float damage_shear_compute_timestep_dD_dt(
     const struct strength_damage *d, const float damage_timestep_factor,
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   return 0.f;
 }

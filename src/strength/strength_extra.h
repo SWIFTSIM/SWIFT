@@ -48,7 +48,7 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
 __attribute__((always_inline)) INLINE static void strength_predict_extra_beginning(
-    struct part *restrict p, const struct strength_state *s,
+    struct part *restrict p, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static void strength_predict_extra_beginni
  */
 __attribute__((always_inline)) INLINE static void strength_kick_extra_beginning(
     struct part *restrict p, struct xpart *restrict xp,
-    const struct strength_state *s, const struct mat_params *mp,
+    struct strength_state *s, const struct mat_params *mp,
     const float dt_therm) {}
 
 /**

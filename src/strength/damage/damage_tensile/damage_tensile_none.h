@@ -49,7 +49,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
     float *tensile_cbrtD_dt, int *number_of_activated_flaws,
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   /* Set the rate of tensile cbrt(damage) accumulation and the number of
    * activated flaws to zero. */
@@ -69,7 +69,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_to_tensile_damage(
     float *tensile_damage, const float tensile_cbrtD_dt,
-    const int number_of_activated_flaws, const struct strength_state *s,
+    const int number_of_activated_flaws, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {}
 
 /**
@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
-    struct strength_damage *d, const struct strength_state *s,
+    struct strength_damage *d, struct strength_state *s,
     const struct mat_params *mp, const float dt_therm) {
 
   return 0.f;
@@ -100,7 +100,7 @@ __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
  */
 __attribute__((always_inline)) INLINE static float damage_tensile_compute_timestep_dD_dt(
     const struct strength_damage *d, const float damage_timestep_factor,
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   return 0.f;
 }

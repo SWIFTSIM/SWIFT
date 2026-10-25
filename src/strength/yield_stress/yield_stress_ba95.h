@@ -29,6 +29,19 @@
 #include "math.h"
 
 /**
+ * @brief Sets the yield stress properties of the strength state from the particle.
+ *
+ * Nothing extra is needed in the state for this method.
+ *
+ * @param s The strength state of the particle.
+ * @param p The particle of interest.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static void yield_set_state(
+    struct strength_state *s, const struct part *restrict p,
+    const struct mat_params *mp) {}
+
+/**
  * @brief Compute damaged deviatoric stress tensor.
  *
  * Yield stress method dependent way of adding contribution of damage to
@@ -47,7 +60,7 @@
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(
-    struct sym_matrix deviatoric_stress_tensor, const struct strength_state *s,
+    struct sym_matrix deviatoric_stress_tensor, struct strength_state *s,
     const struct mat_params *mp) {
 
   /* Compute elements of damaged deviatoric stress tensor. */
@@ -76,7 +89,7 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 __attribute__((always_inline)) INLINE static float
 yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
                                    const float yield_stress_fully_damaged,
-                                   const struct strength_state *s,
+                                   struct strength_state *s,
                                    const struct mat_params *mp) {
 
   return yield_stress_fully_intact;
@@ -95,7 +108,7 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_intact(
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
   if (s->phase != mat_phase_solid) {
@@ -116,7 +129,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   /* Damage does not affect the yield stress. */
   return yield_compute_yield_stress_fully_intact(s, mp);
@@ -132,7 +145,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
   if (s->phase != mat_phase_solid) {
@@ -150,19 +163,19 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
- * @brief Sets the yield stress properties of the strength state from the particle.
- *
- * Computes the yield stress, including damage and weakening.
+ * @brief Get the yield stress, including damage and weakening.
  *
  * @param s The strength state of the particle.
- * @param p The particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void yield_set_state(
-    struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(
+    struct strength_state *s, const struct mat_params *mp) {
 
-  s->yield_stress = yield_compute_yield_stress(s, mp);
+  if (!s->cache.yield_stress_computed) {
+    s->cache.yield_stress = yield_compute_yield_stress(s, mp);
+    s->cache.yield_stress_computed = true;
+  }
+  return s->cache.yield_stress;
 }
 
 /**
@@ -175,11 +188,11 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
-  const float yield_stress = s->yield_stress;
+  const float yield_stress = strength_state_get_yield_stress(s, mp);
 
-  return 3.f * s->J_2 >= yield_stress * yield_stress;
+  return 3.f * strength_state_get_J_2(s, mp) >= yield_stress * yield_stress;
 }
 
 /**
@@ -193,15 +206,16 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_sym_matrix(
-    struct sym_matrix *M, const struct strength_state *s,
+    struct sym_matrix *M, struct strength_state *s,
     const struct mat_params *mp) {
 
-  const float yield_stress = s->yield_stress;
+  const float yield_stress = strength_state_get_yield_stress(s, mp);
 
   /* ### Comment with name of yield criterion */
   float f = 1.f;
-  if (s->J_2 > 0.f) {
-      f = fminf((yield_stress * yield_stress) / (3.f * s->J_2), 1.f);
+  const float J_2 = strength_state_get_J_2(s, mp);
+  if (J_2 > 0.f) {
+      f = fminf((yield_stress * yield_stress) / (3.f * J_2), 1.f);
   }
 
   /* Reduce elements of symmetric matrix based on yield stress */

@@ -41,7 +41,7 @@
  * @param hydro_properties The hydro properties.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
-    float *dt_cfl, const struct strength_state *s, const struct mat_params *mp,
+    float *dt_cfl, struct strength_state *s, const struct mat_params *mp,
     const struct hydro_props *restrict hydro_properties) {
 
   /* Only solid particles accumulate deviatoric stress. */
@@ -93,14 +93,15 @@ strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct pa
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor(
-    struct sym_matrix *stress_tensor, const struct strength_state *s,
+    struct sym_matrix *stress_tensor, struct strength_state *s,
     const struct mat_params *mp) {
 
   /* Construct stress tensor. */
   *stress_tensor = s->deviatoric_stress_tensor;
-  stress_tensor->xx -= s->pressure;
-  stress_tensor->yy -= s->pressure;
-  stress_tensor->zz -= s->pressure;
+  const float pressure = strength_state_get_pressure(s, mp);
+  stress_tensor->xx -= pressure;
+  stress_tensor->yy -= pressure;
+  stress_tensor->zz -= pressure;
 
   /* Apply modifications due to damage. */
   const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(s->deviatoric_stress_tensor, s, mp);
@@ -172,7 +173,7 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
     struct sym_matrix *dS_dt, const float rotation_rate_tensor[3][3],
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   const float shear_mod = mp->shear_mod;
 
@@ -234,7 +235,7 @@ __attribute__((always_inline)) INLINE static void stress_tensor_compute_dS_dt(
  */
 __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatoric_stress_tensor(
     struct sym_matrix *deviatoric_stress_tensor, const struct sym_matrix dS_dt,
-    const struct strength_state *s, const struct mat_params *mp,
+    struct strength_state *s, const struct mat_params *mp,
     const float dt_therm) {
 
   /* Set to sym_matrix with all elements 0.f if the material is not solid. */

@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_st
  */
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_temperature_to_yield_stress(float *Y,
-                                                  const struct strength_state *s,
+                                                  struct strength_state *s,
                                                   const struct mat_params *mp) {}
 
 #endif /* SWIFT_WEAKENING_THERMAL_NONE_H */

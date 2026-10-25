@@ -31,9 +31,6 @@
  * @brief Sets the method-specific properties of the strength state from the
  * particle.
  *
- * This is called after strength_state_init(), so the methods can use the rest
- * of the state.
- *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
  * @param mp The material parameters.
@@ -80,10 +77,76 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
   s->deviatoric_stress_tensor = deviatoric_stress_tensor;
   s->strain_rate_tensor = strain_rate_tensor;
 
-  /* Quantities derived from the above. */
-  s->pressure = gas_pressure_from_internal_energy(density, u, mat_id);
-  s->J_2 = strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
-  strength_compute_stress_tensor(&s->stress_tensor, s, mp);
+  /* Quantities derived from the above are computed when first needed. */
+  s->cache = (struct strength_state_cache){0};
+}
+
+/**
+ * @brief Get the pressure, from the EoS.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_pressure(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.pressure_computed) {
+    s->cache.pressure =
+        gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
+    s->cache.pressure_computed = true;
+  }
+  return s->cache.pressure;
+}
+
+/**
+ * @brief Get the temperature, from the EoS.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_temperature(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.temperature_computed) {
+    s->cache.temperature =
+        gas_temperature_from_internal_energy(s->density, s->u, s->mat_id);
+    s->cache.temperature_computed = true;
+  }
+  return s->cache.temperature;
+}
+
+/**
+ * @brief Get the J_2 invariant of the deviatoric stress tensor.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_J_2(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.J_2_computed) {
+    s->cache.J_2 =
+        strength_compute_deviatoric_sym_matrix_J_2(s->deviatoric_stress_tensor);
+    s->cache.J_2_computed = true;
+  }
+  return s->cache.J_2;
+}
+
+/**
+ * @brief Get the stress tensor, including the effects of damage.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static struct sym_matrix
+strength_state_get_stress_tensor(struct strength_state *s,
+                                 const struct mat_params *mp) {
+
+  if (!s->cache.stress_tensor_computed) {
+    strength_compute_stress_tensor(&s->cache.stress_tensor, s, mp);
+    s->cache.stress_tensor_computed = true;
+  }
+  return s->cache.stress_tensor;
 }
 
 #endif /* SWIFT_STRENGTH_STATE_SETUP_H */

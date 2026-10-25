@@ -155,7 +155,7 @@ hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
   hydro_strength_state_init_drift(&s, p, mp);
 
   /* Set stress tensor. */
-  p->strength_data.stress_tensor = s.stress_tensor;
+  p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
 
   /* Compute principal stresses. */
   sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);
@@ -284,12 +284,12 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
 
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
-  p->force.pressure = s.pressure;
+  p->force.pressure = strength_state_get_pressure(&s, mp);
   p->force.soundspeed = soundspeed;
   p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
 
   /* Set updated stress tensor. */
-  p->strength_data.stress_tensor = s.stress_tensor;
+  p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
 
   /* Compute updated principal stresses. */
   sym_matrix_compute_eigenvalues(p->strength_data.principal_stress_eigen, p->strength_data.stress_tensor);

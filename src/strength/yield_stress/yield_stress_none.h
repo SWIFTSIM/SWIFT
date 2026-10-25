@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(
-    struct sym_matrix deviatoric_stress_tensor, const struct strength_state *s,
+    struct sym_matrix deviatoric_stress_tensor, struct strength_state *s,
     const struct mat_params *mp) {
 
   /* Compute elements of damaged deviatoric stress tensor. */
@@ -85,7 +85,7 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
-    const struct strength_state *s, const struct mat_params *mp) {
+    struct strength_state *s, const struct mat_params *mp) {
 
   return 0;
 }
@@ -101,7 +101,7 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_sym_matrix(
-    struct sym_matrix *M, const struct strength_state *s,
+    struct sym_matrix *M, struct strength_state *s,
     const struct mat_params *mp) {}
 
 #endif /* SWIFT_YIELD_STRESS_NONE_H */
