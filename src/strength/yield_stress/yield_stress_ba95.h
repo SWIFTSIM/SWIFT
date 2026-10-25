@@ -163,22 +163,6 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
- * @brief Get the yield stress, including damage and weakening.
- *
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(
-    struct strength_state *s, const struct mat_params *mp) {
-
-  if (!s->cache.yield_stress_computed) {
-    s->cache.yield_stress = yield_compute_yield_stress(s, mp);
-    s->cache.yield_stress_computed = true;
-  }
-  return s->cache.yield_stress;
-}
-
-/**
  * @brief Check the yield criterion.
  *
  * Yield criterion sqrt(3 J_2) >= Y, evaluated as 3 J_2 >= Y^2 (Y is positive).

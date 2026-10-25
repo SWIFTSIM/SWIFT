@@ -149,4 +149,22 @@ strength_state_get_stress_tensor(struct strength_state *s,
   return s->cache.stress_tensor;
 }
 
+#ifdef STRENGTH_YIELD_STRESS
+/**
+ * @brief Get the yield stress, including damage and weakening.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.yield_stress_computed) {
+    s->cache.yield_stress = yield_compute_yield_stress(s, mp);
+    s->cache.yield_stress_computed = true;
+  }
+  return s->cache.yield_stress;
+}
+#endif
+
 #endif /* SWIFT_STRENGTH_STATE_SETUP_H */

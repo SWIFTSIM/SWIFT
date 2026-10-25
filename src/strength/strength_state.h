@@ -130,8 +130,7 @@ struct strength_state {
 
 /*
  * Getters for the derived quantities. They are declared here so that any
- * strength method can use them, and defined in strength_state_setup.h or, for
- * quantities that depend on a method, in that method's file.
+ * strength method can use them, and defined in strength_state_setup.h.
  */
 __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     struct strength_state *s, const struct mat_params *mp);
