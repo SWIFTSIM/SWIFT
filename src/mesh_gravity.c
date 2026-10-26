@@ -960,9 +960,9 @@ void add_modified_gravity_contribution(struct engine *e, struct space *s, struct
   /* Update the relevant variables */
   MG->a = cosmo->a;
   MG->a3_inv = (1./(MG->a*MG->a*MG->a));
-  MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
-  MG->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
-  MG->R = (3.*MG->m*(MG->a3_inv + 4.*(MG->Omega_ratio)));
+  MG->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm + cosmo->Omega_nu_0);
+  MG->m2 = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm + cosmo->Omega_nu_0);
+  MG->R = (3.*MG->m2*(MG->a3_inv + 4.*(MG->Omega_ratio)));
   MG->c = e->physical_constants->const_speed_light_c;
   MG->G = e->physical_constants->const_newton_G;
   MG->h = cosmo->h;
@@ -1099,9 +1099,9 @@ void MG_init(struct MG_props *MG_props, struct swift_params *params, const struc
   /* Collect remaining parameters */
   MG_props->a = cosmo->a;
   MG_props->a3_inv = (1./(MG_props->a*MG_props->a*MG_props->a));
-  MG_props->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm);
-  MG_props->m = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm);
-  MG_props->R = (3.*MG_props->m*(MG_props->a3_inv + 4.*(MG_props->Omega_ratio)));
+  MG_props->Omega_ratio = cosmo->Omega_lambda/(cosmo->Omega_b + cosmo->Omega_cdm + cosmo->Omega_nu_0);
+  MG_props->m2 = cosmo->H0 * cosmo->H0 * (cosmo->Omega_b + cosmo->Omega_cdm + cosmo->Omega_nu_0);
+  MG_props->R = (3.*MG_props->m2*(MG_props->a3_inv + 4.*(MG_props->Omega_ratio)));
   MG_props->c = physical_constants->const_speed_light_c;
   MG_props->G = physical_constants->const_newton_G;
   MG_props->h = cosmo->h;
@@ -1638,7 +1638,7 @@ void modified_gravity_struct_dump(struct MG_props* MG, FILE* stream) {
   restart_write_blocks(&(MG->a3_inv), sizeof(double), 1, stream, "a3_inv", "a3_inv");
   restart_write_blocks(&(MG->fR_bar), sizeof(double), 1, stream, "fR_bar", "fR_bar");
   restart_write_blocks(&(MG->h), sizeof(double), 1, stream, "h", "h");
-  restart_write_blocks(&(MG->m), sizeof(double), 1, stream, "m", "m");
+  restart_write_blocks(&(MG->m2), sizeof(double), 1, stream, "m2", "m2");
   restart_write_blocks(&(MG->timing), sizeof(int), 1, stream, "timing", "timing");
   restart_write_blocks(&(MG->N_min), sizeof(int), 1, stream, "N_min", "N_min");
   restart_write_blocks(&(MG->tolerance), sizeof(double), 1, stream, "tolerance", "tolerance");
@@ -1662,7 +1662,7 @@ void modified_gravity_struct_restore(struct MG_props* MG, FILE* stream) {
   restart_read_blocks(&(MG->a3_inv), sizeof(double), 1, stream, NULL, "a3_inv");
   restart_read_blocks(&(MG->fR_bar), sizeof(double), 1, stream, NULL, "fR_bar");
   restart_read_blocks(&(MG->h), sizeof(double), 1, stream, NULL, "h");
-  restart_read_blocks(&(MG->m), sizeof(double), 1, stream, NULL, "m");
+  restart_read_blocks(&(MG->m2), sizeof(double), 1, stream, NULL, "m2");
   restart_read_blocks(&(MG->timing), sizeof(int), 1, stream, NULL, "timing");
   restart_read_blocks(&(MG->N_min), sizeof(int), 1, stream, NULL, "N_min");
   restart_read_blocks(&(MG->tolerance), sizeof(double), 1, stream, NULL, "tolerance");
