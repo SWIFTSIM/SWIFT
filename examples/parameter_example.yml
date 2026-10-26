@@ -173,7 +173,7 @@ Scheduler:
   min_top_level_cells:       3         # (Optional) Minimal number of top-level cells in any dimension (this is the default value; must be at least 3 if periodic). space_regrid() will not coarsen the grid past this, regardless of what is driving the
                                        # coarsening (ordinary smoothing lengths or a star's HII search radius). A periodic run whose particle search radius outgrows the resulting cell width is stopped with an error.
   tasks_per_cell:            0.0       # (Optional) The average number of tasks per cell. If not large enough the simulation will fail (means guess...).
-  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 10.
+  links_per_tasks:           25        # (Optional) The average number of links per tasks (before adding the communication tasks). If not large enough the simulation will fail (means guess...). Defaults to 25.
   mpi_message_limit:         4096      # (Optional) Maximum MPI task message size to send non-buffered, KB.
   engine_max_parts_per_ghost:    1000  # (Optional) Maximum number of parts per ghost.
   engine_max_sparts_per_ghost:   1000  # (Optional) Maximum number of sparts per ghost.
@@ -635,9 +635,12 @@ LambdaCooling:
 TREECOOLCooling:
   TREECOOL_file:                ./TREECOOL_UV_background.txt # Location of the TREECOOL table giving the UV background photo-ionization and photo-heating rates as a function of redshift (7 numbers per line, no header or comment lines)
   rapid_cooling_threshold:      0.333333            # (Optional) Switch to the rapid cooling regime for dt / t_cool above this threshold. Use a negative value to always use the slow-cooling regime. Default: 0.333333.
-  UV_background_start_redshift: 1e30                # (Optional) Redshift above which the UV background is switched off, to start it later than the highest redshift of the table. Default: no limit, i.e. the UV background starts at the highest redshift of the table.
+  UV_background_start_redshift: 1e30                # (Optional) Redshift above which the UV background is switched off, to start it later than the highest redshift
+                                                    # of the table. Default: no limit, i.e. the UV background starts at the highest redshift of the table.
   with_Compton_cooling:         1                   # (Optional) Include the inverse Compton cooling off the CMB (1, default) or not (0).
-  log10_T_min:                  1.0                 # (Optional) log10 of the lowest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully neutral below this. Should be at least one below log10(SPH:minimal_temperature). Default: 1.0.
+  log10_T_min:                  1.0                 # (Optional) log10 of the lowest temperature (in K) at which the rate coefficients are tabulated. The gas is
+                                                    # assumed to be fully neutral below this. Should be at least one below log10(SPH:minimal_temperature). Default:
+                                                    # 1.0.
   log10_T_max:                  9.0                 # (Optional) log10 of the highest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully ionized above this. Default: 9.0.
 
 # Parameters of the EAGLE cooling model (Wiersma+08 cooling tables).
@@ -678,7 +681,9 @@ PS2020Cooling:
 # Cooling with Grackle 3.0
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
-  primordial_chemistry: 0                      # (optional) Number of primordial species followed by the chemistry network: 0 = tabulated only, 1 = H/He, 2 = + H2, 3 = + D. Cannot exceed the value the binary was built with (--with-cooling=grackle_N). (Default: COOLING_GRACKLE_MODE)
+  primordial_chemistry: 0                      # (optional) Number of primordial species followed by the chemistry network: 0 = tabulated only, 1 = H/He, 2 = +
+                                               # H2, 3 = + D. Cannot exceed the value the binary was built with (--with-cooling=grackle_N). (Default:
+                                               # COOLING_GRACKLE_MODE)
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
@@ -694,7 +699,9 @@ GrackleCooling:
   H2_self_shielding_path: kernel_radius        # (optional) Mode 2 only: H2 column path, kernel_radius = kernel_gamma h or kernel_diameter = 2 kernel_gamma h. Any other value is an error. (Default: kernel_radius)
   cmb_temperature_floor: 1                     # (optional) Enable/disable Grackle's internal CMB temperature floor
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT rather than internally by Grackle)
-  maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure
+                                               # grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates
+                                               # this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
   use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
   RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
@@ -707,7 +714,9 @@ GrackleCooling:
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
   H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
-  H2_photodissociation_heating: 0              # (optional) Heating of 0.4 eV + 16 eV/(1 + n_crit/n) per H2 photodissociation (dissociation plus UV pumping, Kim et al. 2023 Eqs. 37-38, Omukai 2000 n_crit), using Grackle's shielded rate. Needs COOLING_GRACKLE_MODE >= 2
+  H2_photodissociation_heating: 0              # (optional) Heating of 0.4 eV + 16 eV/(1 + n_crit/n) per H2 photodissociation (dissociation plus UV pumping,
+                                               # Kim et al. 2023 Eqs. 37-38, Omukai 2000 n_crit), using Grackle's shielded rate. Needs COOLING_GRACKLE_MODE >=
+                                               # 2
                                                # and a Grackle build that provides it. 1: on, 0: off. (Default: 0)
   photoelectric_heating_efficiency: constant   # (optional) Photoelectric efficiency with the ISRF on: constant (0.05, Wolfire et al. 1995 Eq. 1), wolfire1995 (Eq. 2, depends on the electron density)
                                                # or density_dependent (Smith 2026 Eqs. A1-A2, needs a Grackle build that provides it). (Default: constant)
@@ -877,7 +886,9 @@ GEARFeedback:
   # Stellar winds
   with_stellar_wind_feedback: 1                            # activate the stellar wind feedback
   stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
-  enable_multiple_SN_momentum_correction_factor: 0         # Correct the momentum and the thermal energy of a gas particle that several supernovae or winds reach in one timestep, so that the energy is conserved. GEAR thermal rescales only the momentum that the winds direct away from the stars. (Default: 0)
+  enable_multiple_SN_momentum_correction_factor: 0         # Correct the momentum and the thermal energy of a gas particle that several supernovae or winds reach in one
+                                                           # timestep, so that the energy is conserved. GEAR thermal rescales only the momentum that the winds direct away
+                                                           # from the stars. (Default: 0)
 
   # Subgrid radiation. A channel left out by ./configure --with-subgrid-radiation has its keys ignored, with one warning.
   # Radiation pressure (--with-subgrid-radiation part rp)
@@ -886,14 +897,15 @@ GEARFeedback:
 
   # HII regions (subgrid photoionization, Strömgren-sphere model; --with-subgrid-radiation part hii)
   with_photoionization:          0                        # 1: run the subgrid photoionization (Stromgren sphere) model, 0: do not. (Default: 0)
-  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
+  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The default suits cosmological runs; an idealised low-density box needs a lower value. (Default: 1)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5                             # Time between HII region rebuilds (Myr); also a star timestep constraint. Negative: every step. (Default: 0.5)
   HII_angular_nside:             0                        # HEALPix nside of the angular budget split: 0 = spherical, N>=1 = 12*N^2 pixels. Needs --with-chealpix and --with-number-of-hii-angular-pixels. (Default: 0)
-  HII_random_cone_frame_per_star: 1                       # 1: rotate each star's HEALPix cone frame by a random rotation set by its ID (and, with HII_cone_frame_redraw_period > 0, by its pass epoch), 0: cones fixed to the box axes. Removes the alignment of cones between stars (the X pattern in galaxy-wide ionised gas). The shape of a single region changes little: it does not become rounder. Ignored for HII_angular_nside 0. (Default: 1)
-  HII_cone_frame_redraw_period:   0                       # Used only with HII_random_cone_frame_per_star 1. N > 0: every star draws a new frame, independent of the other stars, every N of its own HII passes (a pass is one rebuild attempt, counted from the star's first pass, so each star changes frame at its own age). 0: the frame is kept for the star's life. A cone's budget never goes below zero, and each pass opens with its own photons, so nothing carries over to the new cones. (Default: 0)
-  HII_deterministic_boundary_ionization: 0                # First gas a cone cannot afford, where the cone stops: 0 = claimed on a roll with p = budget/cost (for all such gas, however fast it recombines), else it absorbs the rest of the budget (Hopkins et al. 2018, Appendix E); 1 = always ionize it. (Default: 0)
-  HII_rebuild_floor_Myr:  1e-4                            # Minimum rebuild interval (Myr). (Default: 1e-4)
+  HII_random_cone_frame_per_star: 1                       # 1: rotate each star's HEALPix cone frame randomly, set by its ID, 0: cones fixed to the box axes. Ignored for HII_angular_nside 0. (Default: 1)
+  HII_cone_frame_redraw_period:   0                       # With HII_random_cone_frame_per_star 1: N > 0 draws a new random frame every N HII passes of each star, 0 keeps the frame for the star's life. (Default: 0)
+  HII_deterministic_boundary_ionization: 0                # First gas a cone cannot afford, where the cone stops: 0 = claimed on a roll with p = budget/cost (for all such gas, however fast it recombines),
+                                                          # else it absorbs the rest of the budget (Hopkins et al. 2018, Appendix E); 1 = always ionize it. (Default: 0)
+  HII_rebuild_floor_Myr:  1e-4                            # Photon-budget interval (Myr) of a star's first HII pass, and the star timestep when HII_rebuild_time_Myr is negative. Must be > 0. (Default: 1e-4)
   HII_couple_ionization_rate: 0                           # 1: couple the HII rate into the Grackle RT fields, 0: flag-and-floor scheme. Needs COOLING_GRACKLE_MODE >= 1. One MPI rank only. (Default: 0)
 
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation; --with-subgrid-radiation part isrf)
@@ -906,13 +918,15 @@ GEARFeedback:
   ISRF_c_hyp_margin: 0.5                                  # (optional) Stability margin C_hyp of the propagation speed; at most 1.69, 0.571 at the dissipation defaults. Needs ISRF_propagation. (Default: 0.5)
   ISRF_c_hyp_fixed_fraction_of_c: 0                        # (optional) Fraction f of the speed of light of the propagation speed, in [0, 1], fixed_fraction only (set f = v/c for a fixed speed v). Needs ISRF_propagation. (Default: 0)
   ISRF_c_hyp_timestep_term_off_for_debugging: 0            # (optional, debug only) Skip the timestep term of fixed_fraction. Never set in a production run. (Default: 0)
-  ISRF_dissipation_alpha_max: 0.5                         # (optional) Ceiling of the triggered conductivity; 0 disables it. Bounded jointly with alpha_floor and C_hyp: 6.2*max(alpha_max, alpha_floor)*C_hyp + 0.70*C_hyp^2 <= 2. Needs ISRF_propagation. (Default: 0.5)
+  ISRF_dissipation_alpha_max: 0.5                         # (optional) Ceiling of the triggered conductivity; 0 disables it. Bounded jointly with alpha_floor and C_hyp:
+                                                          # 6.2*max(alpha_max, alpha_floor)*C_hyp + 0.70*C_hyp^2 <= 2. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_negativity_threshold: 0.01              # (optional) Relative undershoot of the field below its neighbours' kernel mean at which the trigger reaches ISRF_dissipation_alpha_max. Needs ISRF_propagation. (Default: 0.01)
   ISRF_dissipation_alpha_floor: 0.5                       # (optional) Dissipation floor under the trigger; 0 disables it. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_floor_h_over_lambda: 0.5                # (optional) Screening-length error budget eps_lambda: the floor decays as (eps_lambda/(h*kappa))^4 above this h/lambda. Needs ISRF_propagation. (Default: 0.5)
   ISRF_dissipation_floor_relaxation_residual: 0.40         # (optional) Threshold eps_R, in [0, 1], of the gate that lowers the floor where the flux is already settled. 0 disables the gate. Needs ISRF_propagation. (Default: 0.40)
   ISRF_dissipation_alpha_pin_for_debugging: 0              # (optional, debug only) When positive, hold the dissipation coefficient at this value and bypass the trigger. Never set in a production run. (Default: 0)
-  ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well. Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
+  ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well.
+                                                           # Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
 
   # Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
@@ -1022,7 +1036,9 @@ SPINJETAGN:
   use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
   min_gas_mass_for_nibbling_Msun:     9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_delta_T_model:                  Constant   # How the AGN heating temperature is set. If 'Constant', the value of AGN_delta_T_K is used. If 'Local', the heating temperature follows the Dalla Vecchia & Schaye (2012) condition scaled by delta_T_xi and bounded by delta_T_min_K and delta_T_max_K.
+  AGN_delta_T_model:                  Constant   # How the AGN heating temperature is set. If 'Constant', the value of AGN_delta_T_K is used. If 'Local', the
+                                                 # heating temperature follows the Dalla Vecchia & Schaye (2012) condition scaled by delta_T_xi and bounded by
+                                                 # delta_T_min_K and delta_T_max_K.
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, if 'AGN_heating_temperature_model' is 'Constant'.
   delta_T_xi:                         1.         # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not
                                                  # rescaled.
@@ -1063,7 +1079,8 @@ SPINJETAGN:
   v_jet_mass_loading:                 10.        # Jet mass loading factor used to set the jet velocity if 'AGN_jet_velocity_model' is 'MassLoading'.
   v_jet_xi:                           1.         # Numerical multiplier by which the local jet velocity formula is scaled if 'AGN_jet_velocity_model' is 'Local'. A value of 1 uses the formula as derived.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
-  N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of
+  N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure
+                                                 # approximate momentum conservation (we always kick particles in pairs, one from each 'side' of
                                                  # the BH, relative to the spin vector).
   AGN_jet_feedback_model:             MinimumDistance # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
@@ -1085,7 +1102,9 @@ SPINJETAGN:
   include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
   use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
-  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
+  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while
+                                                 # '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal
+                                                 # isotropic feedback channel.
 
 # GEAR AGN model
 # The numerical values below are carried over from the EAGLEAGN example above
@@ -1221,7 +1240,8 @@ GEARSink:
 GEARRT:
   f_reduce_c: 1e-3                                  # reduce the speed of light for the RT solver by multiplying c with this factor
   CFL_condition: 0.9                                # CFL condition for RT, independent of hydro
-  slope_limiter: minmod                             # (Optional) slope limiter of the radiation state at particle interfaces: minmod, gizmo (cell limiter plus the Hopkins 2015 face limiter) or cell (cell limiter only). gizmo and cell are experimental. (Default: minmod)
+  slope_limiter: minmod                             # (Optional) slope limiter of the radiation state at particle interfaces: minmod, gizmo (cell limiter plus the
+                                                    # Hopkins 2015 face limiter) or cell (cell limiter only). gizmo and cell are experimental. (Default: minmod)
   f_limit_cooling_time: 0.6                         # (Optional) multiply the cooling time by this factor when estimating maximal next time step. Set to 0.0 to turn computation of cooling time off.
   photon_groups_Hz: [3.288e15, 5.945e15, 13.157e15] # Lower photon frequency group bin edges in Hz. Needs to have exactly N elements, where N is the configured number of bins --with-RT=GEAR_N
   stellar_luminosity_model: const                   # Which model to use to determine the stellar luminosities.
