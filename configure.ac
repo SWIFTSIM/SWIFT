@@ -140,6 +140,8 @@ if test "$enable_ipo" = "yes"; then
       AC_CHECK_PROGS([AR], [xiar])
       AC_CHECK_PROGS([RANLIB], [llvm-ranlib])
       AC_MSG_RESULT([added oneapi interprocedural optimization support])
+   elif test "$ax_cv_c_compiler_vendor" = "nvhpc"; then
+      AC_MSG_RESULT([explicit nvhpc interprocedural optimization is deprecated])
    elif test "$ax_cv_c_compiler_vendor" = "gnu"; then
       CFLAGS="$CFLAGS -flto"
       LDFLAGS="$LDFLAGS -flto"
@@ -262,6 +264,8 @@ if test "x$ax_enable_debug" = "xyes"; then
       CFLAGS="$CFLAGS -debug inline-debug-info"
    elif test "$ax_cv_c_compiler_vendor" = "oneapi"; then
       CFLAGS="$CFLAGS -debug inline-debug-info"
+   elif test "$ax_cv_c_compiler_vendor" = "nvhpc"; then
+      CFLAGS="$CFLAGS -g -Memit-dwarf-inlined"
    fi
 fi
 
@@ -1980,7 +1984,7 @@ if test "$enable_warn" != "no"; then
     # AX_CFLAGS_WARN_ALL does not give good warning flags for the Intel compiler
     # We will do this by hand instead and only default to the macro for unknown compilers
     case "$ax_cv_c_compiler_vendor" in
-          gnu | clang | oneapi)
+          gnu | clang | oneapi | nvhpc)
              CFLAGS="$CFLAGS -Wall -Wextra -Wno-unused-parameter -Wshadow"
           ;;
 	  intel)
@@ -1995,7 +1999,7 @@ if test "$enable_warn" != "no"; then
     # Add a "choke on warning" flag if it exists
     if test "$enable_warn" = "error"; then
        case "$ax_cv_c_compiler_vendor" in
-          intel | clang | oneapi)
+          intel | clang | oneapi | nvhpc)
              CFLAGS="$CFLAGS -Werror"
 	  ;;
 	  gnu)

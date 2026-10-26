@@ -13,6 +13,22 @@ configuration flag.
 A description of the available options of the below flags can be found by using
 ``./configure  --help``.
 
+``--enable-portable-binary``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+By default the compiler flags target the machine ``configure`` runs on, which
+can produce a binary that will not run on a different model of node. This
+option keeps the tuning but restricts the instruction set, for GCC and clang,
+and omits the ``-x`` flag altogether for the Intel compilers. See
+:doc:`compiling_code` for when this matters.
+
+``--with-gcc-arch=<arch>``
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Name the target architecture explicitly, for example
+``--with-gcc-arch=cascadelake``, instead of letting ``configure`` detect the
+build machine. Useful when the compute nodes differ from the login node. Read
+by the GCC and clang paths only; it has no effect with ``icc`` or ``icx``,
+where the equivalent is to pass ``-x...`` in ``CFLAGS``.
+
 ``--with-hydro=sphenix``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 There are several hydrodynamical schemes available in SWIFT. You can choose
