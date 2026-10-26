@@ -28,13 +28,13 @@
 #if defined(STRENGTH_DAMAGE)
 
 #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-#include "damage/damage_shear/damage_shear_collins04.h"
+#include "damage/damage_shear/damage_shear_collins.h"
 #else
 #include "damage/damage_shear/damage_shear_none.h"
 #endif /* STRENGTH_DAMAGE_SHEAR_COLLINS */
 
 #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-#include "damage/damage_tensile/damage_tensile_ba95.h"
+#include "damage/damage_tensile/damage_tensile_benz_asphaug.h"
 #else
 #include "damage/damage_tensile/damage_tensile_none.h"
 #endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */

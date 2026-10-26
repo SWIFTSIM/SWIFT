@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_WEAKENING_DENSITY_H
-#define SWIFT_WEAKENING_DENSITY_H
+#ifndef SWIFT_YIELD_STRESS_WEAKENING_DENSITY_NONE_H
+#define SWIFT_YIELD_STRESS_WEAKENING_DENSITY_NONE_H
 
 /**
- * @file strength/yield_stress_weakening/weakening_density.h
- * @brief Density weakening of the yield stress.
+ * @file strength/yield_stress_weakening/yield_stress_weakening_density_none.h
+ * @brief No density weakening of the yield stress.
  */
 
 #include "math.h"
@@ -43,16 +43,7 @@ __attribute__((always_inline)) INLINE static void yield_weakening_density_set_st
 /**
  * @brief Apply density weakening to the yield stress.
  *
- * Weaken the material's yield stress as its density decreases below a certain
- * point. This method is discussed by Luther+2022, where it is described in the
- * context of its implementation in iSALE.
- *
- * Method parameters needed in material parameter file:
- * Strength:
- *     rho_0: Material rho_0.
- * YieldWeakeningDensity:
- *     mult_param: Density weakening muliplication factor (default 0.85).
- *     pow_param: Density weakening power factor (default 4).
+ * Empty function when configuring without density weakening.
  *
  * @param Y The yield stress to be weakened.
  * @param s The strength state of the particle.
@@ -61,21 +52,6 @@ __attribute__((always_inline)) INLINE static void yield_weakening_density_set_st
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_density_to_yield_stress(float *Y,
                                               struct strength_state *s,
-                                              const struct mat_params *mp) {
+                                              const struct mat_params *mp) {}
 
-  /* Method parameters. */
-  const float rho_0 = mp->rho_0;
-  const float a = mp->yield_weakening_density_mult_param;
-  const float rho_weak = a * rho_0;
-  const float density = s->density;
-
-  /* Only apply weakening below a density threshold. */
-  if (density < rho_weak) {
-    const float b = mp->yield_weakening_density_pow_param;
-
-    /* Apply weakening. */
-    *Y *= powf(density / rho_weak, b);
-  }
-}
-
-#endif /* SWIFT_WEAKENING_DENSITY_H */
+#endif /* SWIFT_YIELD_STRESS_WEAKENING_DENSITY_NONE_H */

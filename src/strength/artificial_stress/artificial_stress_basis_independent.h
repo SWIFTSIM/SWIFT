@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_ARTIFICIAL_STRESS_BASIS_INDEP_H
-#define SWIFT_ARTIFICIAL_STRESS_BASIS_INDEP_H
+#ifndef SWIFT_ARTIFICIAL_STRESS_BASIS_INDEPENDENT_H
+#define SWIFT_ARTIFICIAL_STRESS_BASIS_INDEPENDENT_H
 
 /**
- * @file strength/artificial_stress/artificial_stress_basis_indep.h
- * @brief Basis independent artificial stress method.
+ * @file strength/artificial_stress/artificial_stress_basis_independent.h
+ * @brief Basis-independent artificial stress method.
  */
 
 #include "const.h"
@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * more simple and less computationally expensive.
  *
  * Method parameters needed in material parameter file:
- * ArtificialStressBasisIndep:
+ * ArtificialStressBasisIndependent:
  *     transition_factor: Steepness of the switch-on (default 5).
  *
  * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
@@ -88,8 +88,8 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   /* Calculate separation factors, artif_stress_f. */
   // ### note that I changed this from what was in the thesis, so that it is more simple
   // and it takes values 0 and 1 exactly
-  const float artif_stress_f_i = fmaxf(0.f, fminf(1.f, mp_i->artif_stress_basis_indep_transition_factor * (1.f - eta_ab / eta_crit)));
-  const float artif_stress_f_j = fmaxf(0.f, fminf(1.f, mp_j->artif_stress_basis_indep_transition_factor * (1.f - eta_ab / eta_crit)));
+  const float artif_stress_f_i = fmaxf(0.f, fminf(1.f, mp_i->artif_stress_basis_independent_transition_factor * (1.f - eta_ab / eta_crit)));
+  const float artif_stress_f_j = fmaxf(0.f, fminf(1.f, mp_j->artif_stress_basis_independent_transition_factor * (1.f - eta_ab / eta_crit)));
 
   /* Get max principal stresses for particles i and j. */
   const float max_principal_stress_i = fmaxf(pi->strength_data.principal_stress_eigen[0],
@@ -112,4 +112,4 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   }
 }
 
-#endif /* SWIFT_ARTIFICIAL_STRESS_BASIS_INDEP_H */
+#endif /* SWIFT_ARTIFICIAL_STRESS_BASIS_INDEPENDENT_H */

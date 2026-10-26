@@ -26,9 +26,9 @@
  */
 
 #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-#include "yield_stress/yield_stress_ba95.h"
+#include "yield_stress/yield_stress_benz_asphaug.h"
 #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-#include "yield_stress/yield_stress_collins04.h"
+#include "yield_stress/yield_stress_collins.h"
 #else
 #include "yield_stress/yield_stress_none.h"
 #endif

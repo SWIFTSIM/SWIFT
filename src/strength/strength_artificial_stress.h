@@ -25,10 +25,10 @@
  * @brief Selects artificial stress method based on configuration options.
  */
 
-#if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
-#include "artificial_stress/artificial_stress_basis_indep.h"
-#elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-#include "artificial_stress/artificial_stress_monaghan00.h"
+#if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDEPENDENT)
+#include "artificial_stress/artificial_stress_basis_independent.h"
+#elif defined(STRENGTH_ARTIFICIAL_STRESS_CARTESIAN_COMPONENTS)
+#include "artificial_stress/artificial_stress_cartesian_components.h"
 #else
 #include "artificial_stress/artificial_stress_none.h"
 #endif

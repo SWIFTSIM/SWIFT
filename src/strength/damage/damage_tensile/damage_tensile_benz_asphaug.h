@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DAMAGE_TENSILE_BA95_H
-#define SWIFT_DAMAGE_TENSILE_BA95_H
+#ifndef SWIFT_DAMAGE_TENSILE_BENZ_ASPHAUG_H
+#define SWIFT_DAMAGE_TENSILE_BENZ_ASPHAUG_H
 
 /**
- * @file strength/damage/damage_tensile/damage_tensile_ba95.h
+ * @file strength/damage/damage_tensile/damage_tensile_benz_asphaug.h
  * Benz&Asphaug95 tensile fracture model.
  */
 
@@ -143,7 +143,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* Estimate the crack velocity based on the longitudinal wave speed,
    * Schäfer+2016 Eqn. 24. */
   const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - damage) * shear_mod) / density);
-  const float crack_velocity = mp->damage_tensile_ba95_crack_velocity_factor * longitudinal_wave_speed;
+  const float crack_velocity = mp->damage_tensile_benz_asphaug_crack_velocity_factor * longitudinal_wave_speed;
 
   /* Compute the rate of cbrt(damage) accumulation due to tension,
    * Benz&Asphaug95 Eqn. 15. */
@@ -254,4 +254,4 @@ __attribute__((always_inline)) INLINE static float damage_tensile_compute_timest
   return damage_timestep_factor * tensile_cbrtD_dt / Delta_cbrtD;
 }
 
-#endif /* SWIFT_DAMAGE_TENSILE_BA95_H */
+#endif /* SWIFT_DAMAGE_TENSILE_BENZ_ASPHAUG_H */

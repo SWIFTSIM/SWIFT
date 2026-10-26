@@ -263,38 +263,38 @@ struct mat_params {
   float rho_0;
 
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
-    float yield_stress_ba95_Y_0;
+    float yield_stress_benz_asphaug_Y_0;
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    float yield_stress_collins04_Y_0;
-    float yield_stress_collins04_Y_M;
-    float yield_stress_collins04_mu_i;
-    float yield_stress_collins04_mu_d;
+    float yield_stress_collins_Y_0;
+    float yield_stress_collins_Y_M;
+    float yield_stress_collins_mu_i;
+    float yield_stress_collins_mu_d;
   #endif
 
-  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL)
-    float yield_weakening_thermal_xi;
+  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT)
+    float yield_weakening_thermal_tanh_melt_xi;
   #endif
 
-  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY)
-    float yield_weakening_density_mult_param;
-    float yield_weakening_density_pow_param;
+  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY_POWER_LAW)
+    float yield_weakening_density_power_law_mult_param;
+    float yield_weakening_density_power_law_pow_param;
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
-    float damage_tensile_ba95_crack_velocity_factor;
+    float damage_tensile_benz_asphaug_crack_velocity_factor;
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
-    float damage_shear_collins04_brittle_to_ductile_pressure;
-    float damage_shear_collins04_brittle_to_plastic_pressure;
-    float damage_shear_collins04_plastic_strain_at_failure[4];
+    float damage_shear_collins_brittle_to_ductile_pressure;
+    float damage_shear_collins_brittle_to_plastic_pressure;
+    float damage_shear_collins_plastic_strain_at_failure[4];
   #endif
 
-  #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP)
-    float artif_stress_basis_indep_transition_factor;
-  #elif defined(STRENGTH_ARTIFICIAL_STRESS_MON2000)
-    float artif_stress_monaghan00_n;
-    float artif_stress_monaghan00_epsilon;
+  #if defined(STRENGTH_ARTIFICIAL_STRESS_BASIS_INDEPENDENT)
+    float artif_stress_basis_independent_transition_factor;
+  #elif defined(STRENGTH_ARTIFICIAL_STRESS_CARTESIAN_COMPONENTS)
+    float artif_stress_cartesian_components_n;
+    float artif_stress_cartesian_components_epsilon;
   #endif
 #endif /* MATERIAL_STRENGTH */
 };

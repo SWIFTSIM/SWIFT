@@ -13,10 +13,10 @@ Strength:
 
 
 # Specific material-strength schemes
-ArtificialStressBasisIndep:
+ArtificialStressBasisIndependent:
     transition_factor: 5
 
-ArtificialStressMonaghan:
+ArtificialStressCartesianComponents:
     n:             4
     epsilon:       0.2
     
@@ -29,10 +29,10 @@ YieldStressCollins:
     mu_i:           0
     mu_d:           0
 
-YieldWeakeningThermal:
+YieldStressWeakeningThermalTanhMelt:
     xi:             0
 
-YieldWeakeningDensity:
+YieldStressWeakeningDensityPowerLaw:
     mult_param:     0
     pow_param:      0
 

@@ -17,12 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_WEAKENING_THERMAL_H
-#define SWIFT_WEAKENING_THERMAL_H
+#ifndef SWIFT_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT_H
+#define SWIFT_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT_H
 
 /**
- * @file strength/yield_stress_weakening/weakening_thermal.h
- * @brief Thermal weakening of the yield stress.
+ * @file strength/yield_stress_weakening/yield_stress_weakening_thermal_tanh_melt.h
+ * @brief Tanh-melt thermal weakening of the yield stress.
  */
 
 #include "math.h"
@@ -50,7 +50,7 @@ __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_st
  * Method parameters needed in material parameter file:
  * Strength:
  *     T_melt: Melting temperature (K).
- * YieldWeakeningThermal:
+ * YieldStressWeakeningThermalTanhMelt:
  *     xi: Thermal weakening xi factor (default 1.2).
  *
  * @param Y The yield stress to be weakened.
@@ -63,7 +63,7 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y,
                                                   const struct mat_params *mp) {
 
   /* Method parameters. */
-  const float xi = mp->yield_weakening_thermal_xi;
+  const float xi = mp->yield_weakening_thermal_tanh_melt_xi;
   const float T_melt = mp->T_melt;
   const float temperature = strength_state_get_temperature(s, mp);
 
@@ -75,4 +75,4 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y,
   }
 }
 
-#endif /* SWIFT_WEAKENING_THERMAL_H */
+#endif /* SWIFT_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT_H */

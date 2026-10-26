@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_DAMAGE_SHEAR_COLLINS04_H
-#define SWIFT_DAMAGE_SHEAR_COLLINS04_H
+#ifndef SWIFT_DAMAGE_SHEAR_COLLINS_H
+#define SWIFT_DAMAGE_SHEAR_COLLINS_H
 
 /**
- * @file strength/damage/damage_shear/damage_shear_collins04.h
+ * @file strength/damage/damage_shear/damage_shear_collins.h
  * Collins+2004 shear fracture model.
  */
 
@@ -60,10 +60,10 @@ damage_shear_compute_plastic_strain_at_failure(struct strength_state *s,
 
   /* Method parameters. */
   const float brittle_to_ductile_pressure =
-      mp->damage_shear_collins04_brittle_to_ductile_pressure;
+      mp->damage_shear_collins_brittle_to_ductile_pressure;
   const float brittle_to_plastic_pressure =
-      mp->damage_shear_collins04_brittle_to_plastic_pressure;
-  const float *plastic_strain_at_failure = mp->damage_shear_collins04_plastic_strain_at_failure;
+      mp->damage_shear_collins_brittle_to_plastic_pressure;
+  const float *plastic_strain_at_failure = mp->damage_shear_collins_plastic_strain_at_failure;
   const float pressure = strength_state_get_pressure(s, mp);
 
   float slope, intercept;
@@ -199,4 +199,4 @@ __attribute__((always_inline)) INLINE static float damage_shear_compute_timestep
   return shear_dD_dt;
 }
 
-#endif /* SWIFT_DAMAGE_SHEAR_COLLINS04_H */
+#endif /* SWIFT_DAMAGE_SHEAR_COLLINS_H */

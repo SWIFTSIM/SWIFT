@@ -17,11 +17,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_WEAKENING_THERMAL_NONE_H
-#define SWIFT_WEAKENING_THERMAL_NONE_H
+#ifndef SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H
+#define SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H
 
 /**
- * @file strength/yield_stress_weakening/weakening_thermal_none.h
+ * @file strength/yield_stress_weakening/yield_stress_weakening_thermal_none.h
  * @brief No thermal weakening of the yield stress.
  */
 
@@ -54,4 +54,4 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y,
                                                   struct strength_state *s,
                                                   const struct mat_params *mp) {}
 
-#endif /* SWIFT_WEAKENING_THERMAL_NONE_H */
+#endif /* SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H */
