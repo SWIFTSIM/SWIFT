@@ -1,8 +1,9 @@
 # Tier 1 ("identity"): ../StromgrenSphere's own setup with cosmology turned
-# on, confined to a tiny scale-factor span at a~=1 (Delta ln(a) = 1.35e-3)
+# on, confined to a tiny scale-factor span at a~=1 (Delta ln(a) = 2.1e-4)
 # so cosmological dilution is negligible. Must reproduce the non-cosmological
-# control run's r_hii(t) to tight tolerance -- any missing/spurious a-factor
-# shows up as a deviation even though the physics is unchanged.
+# control run pass by pass. Catches time-variable errors and factors of order
+# one; a single missing or extra power of a changes the result by only about
+# 0.135 per cent here, which the z~=9 tier (params_highz.yml) is for.
 
 InternalUnitSystem:
   UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
@@ -22,9 +23,9 @@ Restarts:
 # a(t) relation used by the cosmological time integration, not any force.
 Cosmology:
   h:              0.6777
-  a_begin:        0.99865  # Delta ln(a) = 1.35e-3 over the run; elapsed
+  a_begin:        0.99865  # Delta ln(a) = 2.1e-4 over the run; elapsed
                            # physical time matches the control run's
-                           # time_end (2e-2 internal units = 19.56 Myr).
+                           # time_end (3.1e-3 internal units = 3.03 Myr).
   a_end:          0.99886  # ~3 Myr: the growth phase plus the onset of box
                            # saturation -- all the identity test can use
   Omega_lambda:   0.693
@@ -45,7 +46,7 @@ Gravity:
   comoving_baryon_softening:     0.005
   mesh_side_length:        32
 
-# dt_max bounds the per-step Delta ln(a); the run's total span is 1.35e-3.
+# dt_max bounds the per-step Delta ln(a); the run's total span is 2.1e-4.
 TimeIntegration:
   dt_min:            1e-12
   dt_max:            1e-5

@@ -23,7 +23,6 @@ dt_max=${dt_max:=1e-2} #TimeIntegration:dt_max override (internal units). Must s
                         #this if you shorten time_end below the default 1e-2.
 initial_metallicity=${initial_metallicity:=0} #GEARChemistry:initial_metallicity override
 rebuild_time_myr=${rebuild_time_myr:=0.5} #GEARFeedback:HII_rebuild_time_Myr override (Myr)
-max_retry_full_buffer=${max_retry_full_buffer:=10} #Stars:HII_max_retry_full_buffer override
 max_radius_expansion_tries=${max_radius_expansion_tries:=5} #Stars:HII_max_radius_expansion_tries override
 radius_expansion_factor=${radius_expansion_factor:=1.1} #Stars:HII_radius_expansion_factor override (see README)
 run_name=${run_name:=""}
@@ -88,7 +87,6 @@ if [ "$with_cooling" -eq 1 ]; then
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
 		   -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
-		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
 		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
 		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
 		   params.yml 2>&1 | tee output.log
@@ -99,7 +97,6 @@ else
 	       -P TimeIntegration:dt_max:$dt_max \
 	       -P GEARChemistry:initial_metallicity:$initial_metallicity \
 	       -P GEARFeedback:HII_rebuild_time_Myr:$rebuild_time_myr \
-		   -P Stars:HII_max_retry_full_buffer:$max_retry_full_buffer \
 		   -P Stars:HII_max_radius_expansion_tries:$max_radius_expansion_tries \
 		   -P Stars:HII_radius_expansion_factor:$radius_expansion_factor \
 		   params.yml 2>&1 | tee output.log
