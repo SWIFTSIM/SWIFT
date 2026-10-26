@@ -377,10 +377,13 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
  * @param ti_current Start of the particle's new step.
  * @param ti_step Length of the particle's step.
  * @param time_base Physical length of one integer time step.
+ * @param slot_index Index of the slot, for the debugging check.
+ * @param frame Octant frame, for the debugging check.
  */
 static void radiation_packet_merge_slot(
     struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
-    const integertime_t ti_step, const double time_base) {
+    const integertime_t ti_step, const double time_base, const int slot_index,
+    const float frame[9]) {
 
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
@@ -446,6 +449,22 @@ static void radiation_packet_merge_slot(
   sl->origin_distance = (float)d;
   if (d > 0.0) {
     for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
+#ifdef SWIFT_DEBUG_CHECKS
+    /* Every share of the slot came from its octant, an octant is convex, so
+       the mean origin lies in it too. A direction too close to a border may
+       flip by rounding to float. */
+    double q_min = 1.;
+    for (int k = 0; k < 3; k++) {
+      double q = 0.;
+      for (int j = 0; j < 3; j++)
+        q += (double)frame[3 * k + j] * (double)sl->direction[j];
+      if (fabs(q) < q_min) q_min = fabs(q);
+    }
+    if (q_min > 1e-5 &&
+        radiation_packet_octant(frame, sl->direction) != slot_index)
+      error("The direction of slot %d is in octant %d.", slot_index,
+            radiation_packet_octant(frame, sl->direction));
+#endif
   } else {
     /* Source on the particle: any direction is as good. It can lie outside
        the slot's octant, which is harmless: nothing was merged. */
@@ -479,7 +498,8 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   pk->step_end_ti = ti_current + ti_step;
 
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-    radiation_packet_merge_slot(&pk->slot[s], ti_current, ti_step, time_base);
+    radiation_packet_merge_slot(&pk->slot[s], ti_current, ti_step, time_base, s,
+                                pk->octant_frame);
 }
 
 /**
