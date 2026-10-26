@@ -4386,10 +4386,9 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     /* Let's not do post-smoothing if we have already diverged. Move on to the next loop.  */
     double residual_end = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     residual = residual_end;
-    V_cycles +=1;
-    message("After %d V-cycle(s) the residual is %E", V_cycles, residual);
     if (residual_end > residual_start || !isfinite(residual_end)) { //The algorithm did something weird, so let's try again with extra pre-smoothing
-      message("Restarting V-cycles!");
+      V_cycles +=1;
+      message("After %d V-cycle(s) the residual is %E. No post-smoothing, but restarting V-cycles!", V_cycles, residual);
       fine_steps_new += 10;
       /* Reset the guess */
       for (int i=0; i<N_max*N_max*N_max; i++) {

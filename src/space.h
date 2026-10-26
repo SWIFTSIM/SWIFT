@@ -404,7 +404,7 @@ struct MG_props {
   double a3_inv;
   double fR_bar;
   double h;
-  double m;
+  double m2;
   int timing;
   int N_min;
   double tolerance;
