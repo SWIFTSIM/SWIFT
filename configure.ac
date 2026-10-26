@@ -642,21 +642,6 @@ if test "$with_strength_damage_tensile" != "none" -o "$with_strength_damage_shea
    AC_DEFINE([STRENGTH_DAMAGE], [1], [Any strength damage])
 fi
 
-#  Strength: maximum number of flaws per particle, for benz-asphaug tensile damage
-AC_ARG_WITH([strength-max-flaws],
-   [AS_HELP_STRING([--with-strength-max-flaws=<N>],
-      [strength maximum number of flaws per particle, needed with benz-asphaug tensile damage]
-   )],
-   [with_strength_max_flaws="$withval"],
-   [with_strength_max_flaws="none"]
-)
-if test "$with_strength_damage_tensile" = "benz-asphaug"; then
-   if test "$with_strength_max_flaws" = "none"; then
-      AC_MSG_ERROR([--with-strength-damage-tensile=benz-asphaug needs --with-strength-max-flaws=<N>, the maximum number of flaws per particle in the ICs])
-   fi
-   AC_DEFINE_UNQUOTED([STRENGTH_MAX_FLAWS], [$with_strength_max_flaws], [Strength maximum number of flaws per particle])
-fi
-
 #  Strength: object IDs
 AC_ARG_ENABLE([strength-object-ids],
    [AS_HELP_STRING([--enable-strength-object-ids],

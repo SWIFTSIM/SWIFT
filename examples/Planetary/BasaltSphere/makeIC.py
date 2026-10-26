@@ -20,10 +20,12 @@ import h5py
 import numpy as np
 
 
-def seed_flaws(num_part, volume, m_flaw, k_flaw, max_flaws, seed, chunk_size):
-    """Assign Weibull-distributed activation thresholds to particles, adding flaws until each particle has at least one flaw."""
+def seed_flaws(num_part, volume, m_flaw, k_flaw, seed, chunk_size):
+    """Assign Weibull-distributed activation thresholds to particles, adding flaws until each particle has at least one flaw.
+
+    Returns the number of flaws of each particle and the activation thresholds of all the flaws, one particle after another.
+    """
     rng = np.random.default_rng(seed)
-    activation_thresholds = np.zeros((num_part, max_flaws))
 
     # Use chunks to avoid memory issues because of storing (num_draws, num_part) arrays
     chunks = []
@@ -69,20 +71,9 @@ def seed_flaws(num_part, volume, m_flaw, k_flaw, max_flaws, seed, chunk_size):
     flaw_numbers = np.arange(1, len(sample_indices) + 1)
     thresholds = (flaw_numbers / (k_flaw * volume)) ** (1.0 / m_flaw)
 
-    # For each draw, how many flaws did that particle already have
+    # Group the thresholds by particle, keeping each particle's flaws in the order they were drawn
     order = np.argsort(sample_indices, kind="stable")
-    prior_flaw_counts = np.empty(len(sample_indices), dtype=np.int32)
-    prior_flaw_counts[order] = np.concatenate(
-        [np.arange(count) for count in np.bincount(sample_indices, minlength=num_part)]
-    )
-
-    if prior_flaw_counts.max() >= max_flaws:
-        raise ValueError(
-            f"A particle has {prior_flaw_counts.max() + 1} flaws, more than max_flaws = {max_flaws}"
-        )
-
-    # Fill in the thresholds and number of flaws for each particle in the right orther
-    activation_thresholds[sample_indices, prior_flaw_counts] = thresholds
+    activation_thresholds = thresholds[order]
     N_flaws = np.bincount(sample_indices, minlength=num_part)
 
     return N_flaws, activation_thresholds
@@ -99,7 +90,6 @@ def generate_target(
     u_target,
     m_flaw_target,
     k_flaw_target,
-    max_flaws,
     seed,
     chunk_size,
 ):
@@ -129,12 +119,11 @@ def generate_target(
 
     # Add flaws
     flaw_volume = num_target * vol / numPart_grid
-    A1_nflaws_target, A2_thresh_target = seed_flaws(
+    A1_nflaws_target, A1_thresh_target = seed_flaws(
         num_target,
         flaw_volume,
         m_flaw_target,
         k_flaw_target,
-        max_flaws,
         seed,
         chunk_size,
     )
@@ -149,7 +138,7 @@ def generate_target(
         A1_rho_target,
         A1_u_target,
         A1_nflaws_target,
-        A2_thresh_target,
+        A1_thresh_target,
     )
 
 
@@ -165,7 +154,6 @@ def generate_impactor(
     vx_impactor,
     impact_angle,
     target_radius,
-    max_flaws,
 ):
     # Reuse the same grid resolution as the target
     coords = np.linspace(0, boxsize, L_target, endpoint=False)
@@ -203,8 +191,8 @@ def generate_impactor(
     A2_pos_impactor[:, 1] += impact_parameter
 
     # Impactor has no flaws
-    A1_nflaws_impactor = np.zeros(num_impactor)
-    A2_thresh_impactor = np.zeros((num_impactor, max_flaws))
+    A1_nflaws_impactor = np.zeros(num_impactor, dtype=int)
+    A1_thresh_impactor = np.zeros(0)
 
     return (
         A2_pos_impactor,
@@ -215,7 +203,7 @@ def generate_impactor(
         A1_rho_impactor,
         A1_u_impactor,
         A1_nflaws_impactor,
-        A2_thresh_impactor,
+        A1_thresh_impactor,
     )
 
 
@@ -230,7 +218,8 @@ def save(fileOutputName, boxsize, target, impactor):
     rho = np.concatenate([target[5], impactor[5]])
     u = np.concatenate([target[6], impactor[6]])
     nflaws = np.concatenate([target[7], impactor[7]])
-    thresholds = np.vstack([target[8], impactor[8]])
+    thresholds = np.concatenate([target[8], impactor[8]])
+    first_flaw_indices = np.cumsum(nflaws) - nflaws
     ids = np.arange(1, len(h) + 1)
 
     # Save
@@ -264,7 +253,13 @@ def save(fileOutputName, boxsize, target, impactor):
         grp.create_dataset("ParticleIDs", data=ids.reshape(-1, 1), dtype="L")
         grp.create_dataset("MaterialIDs", data=mat.reshape(-1, 1), dtype="i")
         grp.create_dataset("NumFlaws", data=nflaws.reshape(-1, 1), dtype="i")
-        grp.create_dataset("ActivationThresholds", data=thresholds, dtype="f")
+        grp.create_dataset(
+            "FirstFlawIndices", data=first_flaw_indices.reshape(-1, 1), dtype="i8"
+        )
+
+        # Activation thresholds of all the flaws, one particle after another
+        flaws = f.create_group("StrengthFlaws")
+        flaws.create_dataset("ActivationThresholds", data=thresholds, dtype="f")
 
 
 if __name__ == "__main__":
@@ -287,7 +282,6 @@ if __name__ == "__main__":
     k_flaw_target = 5e28 * 100**3  # cm^-3 => m^-3
     seed = 12345
     chunk_size = 100000  # to avoid memory issues with large arrays
-    max_flaws = 34  # Must match --with-strength-max-flaws when configuring SWIFT
 
     # Impactor
     rho_impactor = 1180
@@ -312,7 +306,6 @@ if __name__ == "__main__":
         u_target,
         m_flaw_target,
         k_flaw_target,
-        max_flaws,
         seed,
         chunk_size,
     )
@@ -328,7 +321,6 @@ if __name__ == "__main__":
         vx_impactor,
         impact_angle,
         target_radius,
-        max_flaws,
     )
 
     save(fileOutputName, boxsize, target, impactor)

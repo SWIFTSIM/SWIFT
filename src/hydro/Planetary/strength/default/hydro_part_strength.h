@@ -99,8 +99,8 @@ struct strength_part_data {
   // Number of flaws for tensile damage accumulation
   int number_of_flaws;
 
-  // Activation thresholds of flaws for tensile damage accumulation
-  float activation_thresholds[STRENGTH_MAX_FLAWS];
+  // Index of the particle's first flaw in the flaws loaded from the ICs
+  long long first_flaw_index;
 #endif
 
 #ifdef STRENGTH_OBJECT_IDS

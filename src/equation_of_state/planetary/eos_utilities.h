@@ -58,6 +58,11 @@ struct eos_parameters {
   // Material strength parameters that are loaded from the simulation YAML file.
   struct strength_props strength_props;
 #endif
+
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  // Flaws for tensile damage, loaded from the ICs.
+  struct strength_flaws strength_flaws;
+#endif
 };
 
 /*! Primary EoS parameter struct */

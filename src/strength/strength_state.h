@@ -108,7 +108,8 @@ struct strength_state {
   /*! Number of flaws for tensile damage accumulation */
   int number_of_flaws;
 
-  /*! Activation thresholds of the flaws (points to the particle's array) */
+  /*! Activation thresholds of the flaws (points into the flaws loaded from
+   * the ICs) */
   const float *activation_thresholds;
 #endif
 

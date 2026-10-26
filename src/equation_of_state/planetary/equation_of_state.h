@@ -1180,6 +1180,11 @@ __attribute__((always_inline)) INLINE static void eos_init(
   // Material strength parameters that are loaded from the simulation YAML file.
   set_strength_props(&e->strength_props, params);
 #endif
+
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  // Flaws for tensile damage, loaded from the ICs.
+  strength_flaws_init(&e->strength_flaws, params);
+#endif
 }
 
 /**

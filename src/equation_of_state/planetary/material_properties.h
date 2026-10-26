@@ -130,6 +130,16 @@ strength_get_props(void) {
   return &eos.strength_props;
 }
 
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+/**
+ * @brief Returns the flaws for tensile damage, loaded from the ICs.
+ */
+__attribute__((always_inline)) INLINE static const struct strength_flaws *
+strength_get_flaws(void) {
+  return &eos.strength_flaws;
+}
+#endif
+
 #endif /* MATERIAL_STRENGTH */
 
 /**
@@ -480,5 +490,48 @@ INLINE static void set_strength_props(struct strength_props *sp,
     error("Strength:damage_timestep_factor must be > 0");
 }
 #endif /* MATERIAL_STRENGTH */
+
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+/**
+ * @brief Load the flaws for tensile damage from the ICs.
+ *
+ * @param f The flaws.
+ * @param params The main parameter file.
+ */
+INLINE static void strength_flaws_init(struct strength_flaws *f,
+                                       struct swift_params *params) {
+
+#if defined(HAVE_HDF5)
+  char ic_file[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(params, "InitialConditions:file_name", ic_file);
+
+  /* Open the file and the group with the flaws */
+  const hid_t h_file = H5Fopen(ic_file, H5F_ACC_RDONLY, H5P_DEFAULT);
+  if (h_file < 0) error("Error opening the ICs '%s' to read the flaws", ic_file);
+  const hid_t h_grp = H5Gopen(h_file, "StrengthFlaws", H5P_DEFAULT);
+  if (h_grp < 0) error("The ICs '%s' have no StrengthFlaws group", ic_file);
+
+  /* Get the number of flaws */
+  const hid_t h_data = H5Dopen(h_grp, "ActivationThresholds", H5P_DEFAULT);
+  if (h_data < 0)
+    error("The ICs '%s' have no StrengthFlaws/ActivationThresholds", ic_file);
+  f->total_number_of_flaws = io_get_number_element_in_dataset(h_data);
+  H5Dclose(h_data);
+
+  /* Read the activation thresholds */
+  f->activation_thresholds =
+      (float *)malloc(f->total_number_of_flaws * sizeof(float));
+  if (f->total_number_of_flaws > 0 && f->activation_thresholds == NULL)
+    error("Failed to allocate %lld flaws", f->total_number_of_flaws);
+  io_read_array_dataset(h_grp, "ActivationThresholds", FLOAT,
+                        f->activation_thresholds, f->total_number_of_flaws);
+
+  H5Gclose(h_grp);
+  H5Fclose(h_file);
+#else
+  error("Reading the flaws for tensile damage needs HDF5");
+#endif
+}
+#endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
 
 #endif /* SWIFT_PLANETARY_MATERIAL_PROPS_H */

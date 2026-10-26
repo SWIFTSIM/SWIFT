@@ -40,7 +40,11 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
     const struct mat_params *mp) {
 
   s->number_of_flaws = p->strength_data.number_of_flaws;
-  s->activation_thresholds = p->strength_data.activation_thresholds;
+  const struct strength_flaws *all_flaws = strength_get_flaws();
+  /* View into all_flaws->activation_thresholds, so that this particle's flaws
+   * are s->activation_thresholds[0, ..., s->number_of_flaws - 1]. */
+  s->activation_thresholds =
+      &all_flaws->activation_thresholds[p->strength_data.first_flaw_index];
 }
 
 /**
@@ -51,17 +55,14 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
 __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part(
     const struct part *restrict p) {
 
-  if (STRENGTH_MAX_FLAWS <= 0)
-    error("--with-strength-max-flaws must be a positive integer, not %d.",
-          STRENGTH_MAX_FLAWS);
+  const long long first = p->strength_data.first_flaw_index;
+  const int number = p->strength_data.number_of_flaws;
+  const long long total = strength_get_flaws()->total_number_of_flaws;
 
-  if (p->strength_data.number_of_flaws > STRENGTH_MAX_FLAWS)
-    error("Particle %lld has %d flaws, but the code was configured with "
-          "--with-strength-max-flaws=%d. Reconfigure with "
-          "--with-strength-max-flaws=%d or more, and write the ICs' "
-          "ActivationThresholds with that size.",
-          p->id, p->strength_data.number_of_flaws, STRENGTH_MAX_FLAWS,
-          p->strength_data.number_of_flaws);
+  if ((number < 0) || (first < 0) || (first + number > total))
+    error("Particle %lld has %d flaws starting at index %lld, but the ICs "
+          "only have %lld flaws.",
+          p->id, number, first, total);
 }
 
 /**

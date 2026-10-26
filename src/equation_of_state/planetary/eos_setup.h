@@ -316,6 +316,24 @@ struct strength_props {
 };
 #endif /* MATERIAL_STRENGTH */
 
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+/**
+ * @brief Flaws for tensile damage, loaded from the ICs.
+ *
+ * The activation thresholds of every particle's flaws, one particle after
+ * another. Each particle stores the index of its first flaw and its number of
+ * flaws.
+ */
+struct strength_flaws {
+
+  /*! Total number of flaws */
+  long long total_number_of_flaws;
+
+  /*! Activation thresholds of all the flaws */
+  float *activation_thresholds;
+};
+#endif /* STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG */
+
 /**
  * @brief Count the number of materials of each EoS type.
  */
