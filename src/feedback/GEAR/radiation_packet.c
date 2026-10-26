@@ -36,6 +36,7 @@
 
 #include <float.h>
 #include <math.h>
+#include <stdint.h>
 
 /* The periodic box, set once at start-up by radiation_packet_set_box(). */
 static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
@@ -168,11 +169,11 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
 
   if (seed_offset > 0) {
     const double u1 =
-        random_unit_interval(seed_offset, 0, random_number_ISRF_emission_frame);
+        random_unit_interval(seed_offset, 0, random_number_ISRF_octant_frame);
     const double u2 =
-        random_unit_interval(seed_offset, 1, random_number_ISRF_emission_frame);
+        random_unit_interval(seed_offset, 1, random_number_ISRF_octant_frame);
     const double u3 =
-        random_unit_interval(seed_offset, 2, random_number_ISRF_emission_frame);
+        random_unit_interval(seed_offset, 2, random_number_ISRF_octant_frame);
     const double a = sqrt(1.0 - u1), b = sqrt(u1);
     const double qx = a * sin(2.0 * M_PI * u2), qy = a * cos(2.0 * M_PI * u2);
     const double qz = b * sin(2.0 * M_PI * u3), qw = b * cos(2.0 * M_PI * u3);
@@ -202,14 +203,18 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
  * A beam is 11 numbers: the lower and the upper corner of a box (3 + 3), its
  * direction (3) and the energy per particle in the PE and in the LW band
  * (2), all in internal units. Absent or with zero energy, a beam is off.
- * The direction is normalised.
+ * The direction is normalised. An active beam needs a box with upper corner
+ * above the lower one on every axis. Finiteness is tested on the bit pattern,
+ * which -ffinite-math-only cannot fold away.
  *
  * @param params The parameter file.
  * @param beams (return) The beams.
+ * @return The number of active beams.
  */
-void radiation_packet_read_test_beams(
+int radiation_packet_read_test_beams(
     struct swift_params *params, float beams[RADIATION_PACKET_TEST_BEAMS][11]) {
 
+  int n_active = 0;
   memset(beams, 0, sizeof(float) * 11 * RADIATION_PACKET_TEST_BEAMS);
   parser_get_opt_param_float_array(
       params, "GEARFeedback:ISRF_packet_test_beam_1", 11, beams[0]);
@@ -218,10 +223,14 @@ void radiation_packet_read_test_beams(
 
   for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
     float *bm = beams[i];
-    for (int k = 0; k < 11; k++)
-      if (!(fabsf(bm[k]) < FLT_MAX))
+    for (int k = 0; k < 11; k++) {
+      uint32_t bits;
+      memcpy(&bits, &bm[k], sizeof(bits));
+      volatile uint32_t opaque = bits;
+      if (((opaque >> 23) & 0xFFu) == 0xFFu)
         error("GEARFeedback:ISRF_packet_test_beam_%d: non-finite entry %d.",
               i + 1, k);
+    }
     if (bm[9] < 0.f || bm[10] < 0.f)
       error("GEARFeedback:ISRF_packet_test_beam_%d: negative energy.", i + 1);
     if (bm[9] == 0.f && bm[10] == 0.f) continue;
@@ -229,7 +238,20 @@ void radiation_packet_read_test_beams(
     if (!(norm > 0.f))
       error("GEARFeedback:ISRF_packet_test_beam_%d: zero direction.", i + 1);
     for (int k = 6; k < 9; k++) bm[k] /= norm;
+    for (int k = 0; k < 3; k++)
+      if (!(bm[3 + k] > bm[k]))
+        error(
+            "GEARFeedback:ISRF_packet_test_beam_%d: the box has upper corner "
+            "%g not above lower corner %g on axis %d.",
+            i + 1, bm[3 + k], bm[k], k);
+    n_active++;
+    message(
+        "ISRF packet test beam %d is ACTIVE: energy %g (PE) and %g (LW) per "
+        "particle in the box, injected once at each particle's first merge, "
+        "in no ledger.",
+        i + 1, bm[9], bm[10]);
   }
+  return n_active;
 }
 
 /**
@@ -466,8 +488,9 @@ static void radiation_packet_merge_slot(
             radiation_packet_octant(frame, sl->direction));
 #endif
   } else {
-    /* Source on the particle: any direction is as good. It can lie outside
-       the slot's octant, which is harmless: nothing was merged. */
+    /* Mean origin on the particle: any direction is as good. It can lie
+       outside the slot's octant, which is harmless: it is not a mean of
+       directions, and downstream shares are binned by their own geometry. */
     sl->direction[0] = 0.f;
     sl->direction[1] = 0.f;
     sl->direction[2] = 1.f;
@@ -524,6 +547,14 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   const float m = hydro_get_mass(p);
+
+  /* A zero frame copy would send every share to one slot. Once per step. */
+  float frame_norm = 0.f;
+  for (int k = 0; k < 9; k++)
+    frame_norm += pk->octant_frame[k] * pk->octant_frame[k];
+  if (!(fabsf(frame_norm - 3.f) < 1e-3f))
+    error("Particle %lld has an unset octant frame (norm %e) at its step.",
+          p->id, frame_norm);
 
   double field_energy[ISRF_OPERATOR_COUNT], field_photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {

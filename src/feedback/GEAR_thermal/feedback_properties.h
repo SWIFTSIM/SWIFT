@@ -1069,7 +1069,15 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     radiation_packet_build_octant_frame(frame_angles_deg, frame_seed_offset,
                                         fp->ISRF_packet_octant_frame);
 
-    radiation_packet_read_test_beams(params, fp->ISRF_packet_test_beam);
+    const int n_test_beams =
+        radiation_packet_read_test_beams(params, fp->ISRF_packet_test_beam);
+    if (n_test_beams > 0 && !(fp->ISRF_propagation &&
+                              fp->ISRF_transport == isrf_transport_packet_hop))
+      error(
+          "GEARFeedback:ISRF_packet_test_beam_* is set, but it acts only with "
+          "GEARFeedback:ISRF_propagation: 1 and GEARFeedback:ISRF_transport: "
+          "%s.",
+          isrf_transport_name_packet_hop);
 
     if (fp->ISRF_transport == isrf_transport_packet_hop) {
       if (!fp->ISRF_propagation)
