@@ -109,6 +109,10 @@ enum isrf_transport {
 /*! Default power of the soft transmission cone of the packet transport. */
 #define default_ISRF_packet_cone_power 4.f
 
+/*! Default time constant of the read mean of the packet field, in Myr. 0 is
+ * off. */
+#define default_ISRF_packet_read_mean_time_Myr 0.f
+
 /**
  * @brief Convert a GEARFeedback:ISRF_c_hyp_scheme value to #isrf_c_hyp_scheme.
  *
@@ -271,6 +275,10 @@ struct feedback_props {
   /*! Power `p` of the soft transmission cone `W max(0, mu)^p` of the packet
    * transport. */
   float ISRF_packet_cone_power;
+
+  /*! Time constant of the exponential mean of the own field of the packet
+   * transport, in internal units. 0 is off. */
+  float ISRF_packet_read_mean_time;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -445,6 +453,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
               isrf_transport_name_packet_hop);
       message("ISRF packet transmission cone power                        = %g",
               feedback_props->ISRF_packet_cone_power);
+      message("ISRF packet field read mean time (internal units, 0 = off) = %g",
+              feedback_props->ISRF_packet_read_mean_time);
     } else if (feedback_props->ISRF_propagation) {
       message("ISRF propagation speed margin (C_hyp)                      = %g",
               feedback_props->ISRF_c_hyp_margin);
@@ -997,6 +1007,14 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->ISRF_packet_cone_power = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_packet_cone_power",
         default_ISRF_packet_cone_power);
+    fp->ISRF_packet_read_mean_time = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_read_mean_time_Myr",
+        default_ISRF_packet_read_mean_time_Myr);
+    if (!(fp->ISRF_packet_read_mean_time >= 0.f))
+      error(
+          "GEARFeedback:ISRF_packet_read_mean_time_Myr must be >= 0 (got %g).",
+          fp->ISRF_packet_read_mean_time);
+    fp->ISRF_packet_read_mean_time *= Myr_internal_units;
 
     if (fp->ISRF_transport == isrf_transport_packet_hop) {
       if (!fp->ISRF_propagation)

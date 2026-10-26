@@ -1058,7 +1058,8 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Own field of the packet transport, (E / m) l_par / (c dt), the specific "
       "energy of the light that crosses the particle in one step. Two "
       "components, PE then LW. Zero unless GEARFeedback:ISRF_transport is "
-      "packet_hop.");
+      "packet_hop. Its running mean over "
+      "GEARFeedback:ISRF_packet_read_mean_time_Myr when that is above 0.");
 
   list[num++] = io_make_output_field_convert_part(
       "PacketSpecificPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,

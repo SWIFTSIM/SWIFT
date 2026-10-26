@@ -913,6 +913,7 @@ GEARFeedback:
   ISRF_flux_dissipation: 0                                 # (optional, experimental) Apply the artificial dissipation of the field energy, with the same pair coefficient, to the reduced flux as well. Damps short flux ripples only. Needs ISRF_propagation. (Default: 0)
   ISRF_transport: M1                                       # (optional, experimental) Transport of the bands: M1 (energy and flux moments) or packet_hop (each particle hands its packet of energy and photon number to its downstream neighbours once per own step). packet_hop needs ISRF_propagation and --with-chealpix. (Default: M1)
   ISRF_packet_cone_power: 4                                # (optional, experimental) Power p >= 1 of the soft transmission cone W(r) max(0, cos)^p of packet_hop; a larger p gives a narrower cone. (Default: 4)
+  ISRF_packet_read_mean_time_Myr: 0                        # (optional, experimental) Time constant in Myr of the running mean of the packet field; 0 turns it off. (Default: 0)
 
 GEARRadiation:
   interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)

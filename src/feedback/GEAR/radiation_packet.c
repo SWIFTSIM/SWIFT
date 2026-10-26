@@ -300,15 +300,18 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
  *
  * The held packet is the light that crosses the particle in one step, over
  * the forward advance, so its specific energy density is
- * `(E / m) l_par / (c dt)`.
+ * `(E / m) l_par / (c dt)`. The own field is the running mean over `tau` of
+ * that value (#radiation_packet_read_mean), so the kernel mean gathers the
+ * mean.
  *
  * @param p The particle.
  * @param a Current scale factor.
  * @param c Speed of light.
  * @param dt Physical length of the particle's step.
+ * @param tau Time constant of the running mean. 0 or less is off.
  */
 void radiation_packet_end_gradient(struct part *p, const float a, const float c,
-                                   const float dt) {
+                                   const float dt, const float tau) {
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   if (pk->weight_sum > 0.f) {
@@ -317,16 +320,20 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
     const float m = hydro_get_mass(p);
     if (dt > 0.f && m > 0.f) factor = a * pk->forward_advance / (m * c * dt);
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      pk->band[b].field_energy = pk->band[b].energy * factor;
-      pk->band[b].field_photons = pk->band[b].photons * factor;
+      pk->band[b].field_energy = radiation_packet_read_mean(
+          pk->band[b].field_energy, pk->band[b].energy * factor, dt, tau);
+      pk->band[b].field_photons = radiation_packet_read_mean(
+          pk->band[b].field_photons, pk->band[b].photons * factor, dt, tau);
     }
     return;
   }
 
   pk->forward_advance = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    pk->band[b].field_energy = 0.f;
-    pk->band[b].field_photons = 0.f;
+    pk->band[b].field_energy =
+        radiation_packet_read_mean(pk->band[b].field_energy, 0.f, dt, tau);
+    pk->band[b].field_photons =
+        radiation_packet_read_mean(pk->band[b].field_photons, 0.f, dt, tau);
   }
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];

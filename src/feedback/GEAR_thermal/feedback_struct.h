@@ -215,7 +215,8 @@ struct feedback_isrf_packet_band_data {
   /*! Photon number in the reservoir, as `N E_lo`. */
   float reservoir_photons;
 
-  /*! Own field: specific energy of the band read off the held packet. */
+  /*! Own field: specific energy of the band read off the held packet, or its
+      running mean over #feedback_props.ISRF_packet_read_mean_time. */
   float field_energy;
 
   /*! Own field of the photon number, as `N E_lo` per unit mass. */
