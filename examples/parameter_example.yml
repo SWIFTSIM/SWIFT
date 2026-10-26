@@ -914,6 +914,10 @@ GEARFeedback:
   ISRF_transport: M1                                       # (optional, experimental) Transport of the bands: M1 (energy and flux moments) or packet_hop (each particle hands its packet of energy and photon number to its downstream neighbours once per own step). packet_hop needs ISRF_propagation and --with-chealpix. (Default: M1)
   ISRF_packet_cone_power: 4                                # (optional, experimental) Power p >= 1 of the soft transmission cone W(r) max(0, cos)^p of packet_hop; a larger p gives a narrower cone. (Default: 4)
   ISRF_packet_read_mean_time_Myr: 0                        # (optional, experimental) Time constant in Myr of the running mean of the packet field; 0 turns it off. (Default: 0)
+  ISRF_packet_octant_frame_angles_deg: [37, 23, 61]        # (optional, experimental) Angles in degrees about x, y and z of the fixed frame whose 8 octants are the reception slots of the packet; keep it off the box axes. (Default: [37, 23, 61])
+  ISRF_packet_octant_frame_seed_offset: 0                  # (optional, experimental) Seed of an extra random rotation of the octant frame, for independent repeats; 0 gives the frame of the angles alone. (Default: 0)
+  ISRF_packet_test_beam_1: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0] # (optional, test only) Beam pulse of packet_hop: box corners lo (3) and hi (3), direction (3), energy per particle in the PE and LW band (2), internal units. Zero energy is off. (Default: off)
+  ISRF_packet_test_beam_2: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0] # (optional, test only) Second beam pulse, as ISRF_packet_test_beam_1. (Default: off)
 
 GEARRadiation:
   interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)

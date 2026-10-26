@@ -156,6 +156,9 @@ static void radiation_set_part_transport(struct part *p,
       e->feedback_props->ISRF_propagation &&
       e->feedback_props->ISRF_transport == isrf_transport_packet_hop;
   fd->isrf_packet.cone_power = e->feedback_props->ISRF_packet_cone_power;
+  memcpy(fd->isrf_packet.octant_frame,
+         e->feedback_props->ISRF_packet_octant_frame,
+         sizeof(fd->isrf_packet.octant_frame));
 }
 
 /**
@@ -194,8 +197,10 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.ISRF_flux_dissipation =
       e->feedback_props->ISRF_flux_dissipation;
   radiation_set_part_transport(p, e);
-  p->feedback_data.isrf_packet.weight_sum = 0.f;
-  p->feedback_data.isrf_packet.forward_advance = 0.f;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    p->feedback_data.isrf_packet.slot[s].weight_sum = 0.f;
+    p->feedback_data.isrf_packet.slot[s].forward_advance = 0.f;
+  }
 
   if (!e->feedback_props->ISRF_propagation) {
     p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa = 0.f;
@@ -256,6 +261,9 @@ void radiation_snapshot_part_propagation(struct part *p,
           "runs.",
           isrf_transport_name_packet_hop);
     if (part_is_active(p, e)) {
+      if (p->feedback_data.isrf_packet.step_end_ti == 0)
+        radiation_packet_inject_test_beams(
+            p, e->feedback_props->ISRF_packet_test_beam);
       radiation_packet_merge(p, e->ti_current, ti_step, e->time_base);
       radiation_packet_reset_field_mean(p);
     }
@@ -605,6 +613,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
 
   if (fd->ISRF_packet_transport) {
     radiation_packet_end_force(p);
+    radiation_packet_couple_field(p);
     return;
   }
 

@@ -113,6 +113,16 @@ enum isrf_transport {
  * off. */
 #define default_ISRF_packet_read_mean_time_Myr 0.f
 
+/*! Default angles in degrees of the fixed frame whose octants are the packet
+ * reception slots: a generic rotation, not aligned with the box. */
+#define default_ISRF_packet_octant_frame_angle_x_deg 37.f
+#define default_ISRF_packet_octant_frame_angle_y_deg 23.f
+#define default_ISRF_packet_octant_frame_angle_z_deg 61.f
+
+/*! Default seed offset of the packet octant frame. 0 is the frame of the
+ * angles alone. */
+#define default_ISRF_packet_octant_frame_seed_offset 0
+
 /**
  * @brief Convert a GEARFeedback:ISRF_c_hyp_scheme value to #isrf_c_hyp_scheme.
  *
@@ -279,6 +289,14 @@ struct feedback_props {
   /*! Time constant of the exponential mean of the own field of the packet
    * transport, in internal units. 0 is off. */
   float ISRF_packet_read_mean_time;
+
+  /*! Rotation matrix (row-major) from the box to the fixed frame whose octants
+   * are the reception slots of the packet transport. */
+  float ISRF_packet_octant_frame[9];
+
+  /*! Test beams of the packet transport, see
+   * #radiation_packet_inject_test_beams. */
+  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS][11];
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -455,6 +473,18 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
               feedback_props->ISRF_packet_cone_power);
       message("ISRF packet field read mean time (internal units, 0 = off) = %g",
               feedback_props->ISRF_packet_read_mean_time);
+      message(
+          "ISRF packet octant frame rotation (row-major)              = "
+          "%g %g %g, %g %g %g, %g %g %g",
+          feedback_props->ISRF_packet_octant_frame[0],
+          feedback_props->ISRF_packet_octant_frame[1],
+          feedback_props->ISRF_packet_octant_frame[2],
+          feedback_props->ISRF_packet_octant_frame[3],
+          feedback_props->ISRF_packet_octant_frame[4],
+          feedback_props->ISRF_packet_octant_frame[5],
+          feedback_props->ISRF_packet_octant_frame[6],
+          feedback_props->ISRF_packet_octant_frame[7],
+          feedback_props->ISRF_packet_octant_frame[8]);
     } else if (feedback_props->ISRF_propagation) {
       message("ISRF propagation speed margin (C_hyp)                      = %g",
               feedback_props->ISRF_c_hyp_margin);
@@ -1015,6 +1045,31 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:ISRF_packet_read_mean_time_Myr must be >= 0 (got %g).",
           fp->ISRF_packet_read_mean_time);
     fp->ISRF_packet_read_mean_time *= Myr_internal_units;
+
+    float frame_angles_deg[3] = {default_ISRF_packet_octant_frame_angle_x_deg,
+                                 default_ISRF_packet_octant_frame_angle_y_deg,
+                                 default_ISRF_packet_octant_frame_angle_z_deg};
+    parser_get_opt_param_float_array(
+        params, "GEARFeedback:ISRF_packet_octant_frame_angles_deg", 3,
+        frame_angles_deg);
+    const int frame_seed_offset = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_packet_octant_frame_seed_offset",
+        default_ISRF_packet_octant_frame_seed_offset);
+    if (frame_seed_offset < 0)
+      error(
+          "GEARFeedback:ISRF_packet_octant_frame_seed_offset must be >= 0 "
+          "(got %d).",
+          frame_seed_offset);
+    for (int k = 0; k < 3; k++)
+      if (!(fabsf(frame_angles_deg[k]) < 1e4f))
+        error(
+            "GEARFeedback:ISRF_packet_octant_frame_angles_deg must be finite "
+            "angles in degrees (got %g).",
+            frame_angles_deg[k]);
+    radiation_packet_build_octant_frame(frame_angles_deg, frame_seed_offset,
+                                        fp->ISRF_packet_octant_frame);
+
+    radiation_packet_read_test_beams(params, fp->ISRF_packet_test_beam);
 
     if (fp->ISRF_transport == isrf_transport_packet_hop) {
       if (!fp->ISRF_propagation)

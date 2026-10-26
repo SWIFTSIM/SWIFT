@@ -26,6 +26,7 @@
 #include "engine.h"
 #include "hydro.h"
 #include "kernel_hydro.h"
+#include "parser.h"
 #include "random.h"
 #include "star_gas_weights.h"
 
@@ -94,6 +95,173 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
   float w;
   kernel_eval(r * h_inv, &w);
   return w * pow_dimension(h_inv) * powf(mu, power);
+}
+
+/**
+ * @brief Octant of the fixed frame that holds a direction: the reception slot
+ * of the light that travels along it.
+ *
+ * Bit `k` of the result is set when the component `k` of the direction in the
+ * frame is zero or positive, so a direction on a border goes to the positive
+ * side whatever the sign of its zero. Directions more than 90 degrees apart
+ * are never in one octant; exactly 90 degrees can be. The octant of the
+ * opposite direction is `7 - octant`, except on a border. Kept out of line, so
+ * that every caller bins with the same compiled arithmetic. The components are
+ * formed in double.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame. Need not be a unit vector.
+ * @return The octant, in [0, RADIATION_PACKET_SLOTS).
+ */
+__attribute__((noinline)) int radiation_packet_octant(
+    const float frame[9], const float direction[3]) {
+
+  int octant = 0;
+  for (int k = 0; k < 3; k++) {
+    const double q = (double)frame[3 * k + 0] * (double)direction[0] +
+                     (double)frame[3 * k + 1] * (double)direction[1] +
+                     (double)frame[3 * k + 2] * (double)direction[2];
+    if (q >= 0.0) octant |= 1 << k;
+  }
+  return octant;
+}
+
+/**
+ * @brief Build the rotation matrix of the octant frame.
+ *
+ * The matrix is `Rz(a_z) Ry(a_y) Rx(a_x)` of the three angles. A positive
+ * seed offset composes it with a rotation drawn uniformly from that seed
+ * (Shoemake 1992), so that repeats of a run use independent frames. Offset 0
+ * is the frame of the angles alone.
+ *
+ * @param angles_deg Rotation angles about x, y and z, in degrees.
+ * @param seed_offset Seed of the extra rotation. 0 for none.
+ * @param frame (return) The matrix, row-major.
+ */
+void radiation_packet_build_octant_frame(const float angles_deg[3],
+                                         const int seed_offset,
+                                         float frame[9]) {
+
+  const double to_rad = M_PI / 180.0;
+  const double cx = cos(angles_deg[0] * to_rad),
+               sx = sin(angles_deg[0] * to_rad);
+  const double cy = cos(angles_deg[1] * to_rad),
+               sy = sin(angles_deg[1] * to_rad);
+  const double cz = cos(angles_deg[2] * to_rad),
+               sz = sin(angles_deg[2] * to_rad);
+
+  const double Rx[3][3] = {{1., 0., 0.}, {0., cx, -sx}, {0., sx, cx}};
+  const double Ry[3][3] = {{cy, 0., sy}, {0., 1., 0.}, {-sy, 0., cy}};
+  const double Rz[3][3] = {{cz, -sz, 0.}, {sz, cz, 0.}, {0., 0., 1.}};
+
+  double A[3][3], R[3][3];
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      A[i][j] = 0.;
+      for (int k = 0; k < 3; k++) A[i][j] += Ry[i][k] * Rx[k][j];
+    }
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) {
+      R[i][j] = 0.;
+      for (int k = 0; k < 3; k++) R[i][j] += Rz[i][k] * A[k][j];
+    }
+
+  if (seed_offset > 0) {
+    const double u1 =
+        random_unit_interval(seed_offset, 0, random_number_ISRF_emission_frame);
+    const double u2 =
+        random_unit_interval(seed_offset, 1, random_number_ISRF_emission_frame);
+    const double u3 =
+        random_unit_interval(seed_offset, 2, random_number_ISRF_emission_frame);
+    const double a = sqrt(1.0 - u1), b = sqrt(u1);
+    const double qx = a * sin(2.0 * M_PI * u2), qy = a * cos(2.0 * M_PI * u2);
+    const double qz = b * sin(2.0 * M_PI * u3), qw = b * cos(2.0 * M_PI * u3);
+    const double Q[3][3] = {
+        {1.0 - 2.0 * (qy * qy + qz * qz), 2.0 * (qx * qy - qz * qw),
+         2.0 * (qx * qz + qy * qw)},
+        {2.0 * (qx * qy + qz * qw), 1.0 - 2.0 * (qx * qx + qz * qz),
+         2.0 * (qy * qz - qx * qw)},
+        {2.0 * (qx * qz - qy * qw), 2.0 * (qy * qz + qx * qw),
+         1.0 - 2.0 * (qx * qx + qy * qy)}};
+    double C[3][3];
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 3; j++) {
+        C[i][j] = 0.;
+        for (int k = 0; k < 3; k++) C[i][j] += Q[i][k] * R[k][j];
+      }
+    memcpy(R, C, sizeof(R));
+  }
+
+  for (int i = 0; i < 3; i++)
+    for (int j = 0; j < 3; j++) frame[3 * i + j] = (float)R[i][j];
+}
+
+/**
+ * @brief Read the test beams of the packet transport.
+ *
+ * A beam is 11 numbers: the lower and the upper corner of a box (3 + 3), its
+ * direction (3) and the energy per particle in the PE and in the LW band
+ * (2), all in internal units. Absent or with zero energy, a beam is off.
+ * The direction is normalised.
+ *
+ * @param params The parameter file.
+ * @param beams (return) The beams.
+ */
+void radiation_packet_read_test_beams(
+    struct swift_params *params, float beams[RADIATION_PACKET_TEST_BEAMS][11]) {
+
+  memset(beams, 0, sizeof(float) * 11 * RADIATION_PACKET_TEST_BEAMS);
+  parser_get_opt_param_float_array(
+      params, "GEARFeedback:ISRF_packet_test_beam_1", 11, beams[0]);
+  parser_get_opt_param_float_array(
+      params, "GEARFeedback:ISRF_packet_test_beam_2", 11, beams[1]);
+
+  for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
+    float *bm = beams[i];
+    for (int k = 0; k < 11; k++)
+      if (!(fabsf(bm[k]) < FLT_MAX))
+        error("GEARFeedback:ISRF_packet_test_beam_%d: non-finite entry %d.",
+              i + 1, k);
+    if (bm[9] < 0.f || bm[10] < 0.f)
+      error("GEARFeedback:ISRF_packet_test_beam_%d: negative energy.", i + 1);
+    if (bm[9] == 0.f && bm[10] == 0.f) continue;
+    const float norm = sqrtf(bm[6] * bm[6] + bm[7] * bm[7] + bm[8] * bm[8]);
+    if (!(norm > 0.f))
+      error("GEARFeedback:ISRF_packet_test_beam_%d: zero direction.", i + 1);
+    for (int k = 6; k < 9; k++) bm[k] /= norm;
+  }
+}
+
+/**
+ * @brief Give the particles inside a test beam box their beam pulse, once.
+ *
+ * The pulse goes into the inbox of the slot of the beam direction, as a share
+ * whose origin lies one smoothing length behind the particle along the
+ * direction. Its photon number is its energy, which is the mean photon energy
+ * of the band at the lower edge. The energy is not in any ledger of the
+ * particle: a test adds it up from the parameters. Called before the merge of
+ * the first step of the particle.
+ *
+ * @param p The particle.
+ * @param beams The beams, see #radiation_packet_read_test_beams.
+ */
+void radiation_packet_inject_test_beams(
+    struct part *p, const float beams[RADIATION_PACKET_TEST_BEAMS][11]) {
+
+  for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
+    const float *bm = beams[i];
+    if (bm[9] == 0.f && bm[10] == 0.f) continue;
+    int inside = 1;
+    for (int k = 0; k < 3; k++)
+      if (!(p->x[k] >= (double)bm[k] && p->x[k] < (double)bm[3 + k]))
+        inside = 0;
+    if (!inside) continue;
+
+    const double energy[ISRF_OPERATOR_COUNT] = {bm[9], bm[10]};
+    const float offset[3] = {-p->h * bm[6], -p->h * bm[7], -p->h * bm[8]};
+    radiation_packet_deliver(p, p->feedback_data.isrf_packet.octant_frame,
+                             energy, energy, offset, 0.f, 0, 0);
+  }
 }
 
 /**
@@ -198,33 +366,26 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
 }
 
 /**
- * @brief Start of an active step: the inbox and the due part of the
- * reservoir become the held packet.
+ * @brief Start of an active step, for one slot: the inbox and the due part of
+ * the reservoir become the held packet.
  *
  * The origin is the energy-weighted mean of the arriving origins and the
  * direction points from it to the particle. The reservoir releases the part
  * due in the step that starts now, `dt / t_rem`, all of it once `t_rem <= dt`.
  *
- * @param p The particle, active.
+ * @param sl The slot.
  * @param ti_current Start of the particle's new step.
  * @param ti_step Length of the particle's step.
  * @param time_base Physical length of one integer time step.
  */
-void radiation_packet_merge(struct part *p, const integertime_t ti_current,
-                            const integertime_t ti_step,
-                            const double time_base) {
-
-  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
-#ifdef SWIFT_DEBUG_CHECKS
-  if (!radiation_packet_is_empty(pk))
-    error("Particle %lld still holds a packet at its merge.", p->id);
-#endif
-  pk->step_end_ti = ti_current + ti_step;
+static void radiation_packet_merge_slot(
+    struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
+    const integertime_t ti_step, const double time_base) {
 
   float release = 1.f;
-  if (pk->reservoir_end_ti > ti_current) {
+  if (sl->reservoir_end_ti > ti_current) {
     const double t_rem =
-        (double)(pk->reservoir_end_ti - ti_current) * time_base;
+        (double)(sl->reservoir_end_ti - ti_current) * time_base;
     const double dt = (double)ti_step * time_base;
     if (t_rem > dt) release = (float)(dt / t_rem);
   }
@@ -233,7 +394,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
      cutoff releases the whole reservoir, and its origin sum with it. */
   int partial = release < 1.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT && partial; b++) {
-    const float res_photons = pk->band[b].reservoir_photons;
+    const float res_photons = sl->band[b].reservoir_photons;
     if (res_photons > 0.f &&
         res_photons * release < RADIATION_PACKET_MIN_PHOTONS)
       partial = 0;
@@ -241,7 +402,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 
   float total_energy = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    struct feedback_isrf_packet_band_data *band = &pk->band[b];
+    struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
     float res_energy = band->reservoir_energy;
     float res_photons = band->reservoir_photons;
     if (partial) {
@@ -266,15 +427,15 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
      offset component is below FLT_MIN and would flush to zero. */
   double offset[3];
   for (int k = 0; k < 3; k++) {
-    double res_offset = pk->reservoir_origin_offset[k];
+    double res_offset = sl->reservoir_origin_offset[k];
     if (partial) {
       res_offset *= (double)release;
-      pk->reservoir_origin_offset[k] -= res_offset;
+      sl->reservoir_origin_offset[k] -= res_offset;
     } else {
-      pk->reservoir_origin_offset[k] = 0.0;
+      sl->reservoir_origin_offset[k] = 0.0;
     }
-    offset[k] = pk->inbox_origin_offset[k] + res_offset;
-    pk->inbox_origin_offset[k] = 0.0;
+    offset[k] = sl->inbox_origin_offset[k] + res_offset;
+    sl->inbox_origin_offset[k] = 0.0;
   }
 
   if (!(total_energy > 0.f)) return;
@@ -282,27 +443,55 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   for (int k = 0; k < 3; k++) offset[k] /= (double)total_energy;
   const double d = sqrt(offset[0] * offset[0] + offset[1] * offset[1] +
                         offset[2] * offset[2]);
-  pk->origin_distance = (float)d;
+  sl->origin_distance = (float)d;
   if (d > 0.0) {
-    for (int k = 0; k < 3; k++) pk->direction[k] = (float)(-offset[k] / d);
+    for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
   } else {
-    /* Source on the particle: any direction is as good. */
-    pk->direction[0] = 0.f;
-    pk->direction[1] = 0.f;
-    pk->direction[2] = 1.f;
+    /* Source on the particle: any direction is as good. It can lie outside
+       the slot's octant, which is harmless: nothing was merged. */
+    sl->direction[0] = 0.f;
+    sl->direction[1] = 0.f;
+    sl->direction[2] = 1.f;
   }
 }
 
 /**
- * @brief End of the gradient loop: normalise the forward advance and read the
- * own field off the held packet, or let a packet with no downstream neighbour
- * escape into the ledger.
+ * @brief Start of an active step: in every slot, the inbox and the due part of
+ * the reservoir become the held packet.
  *
- * The held packet is the light that crosses the particle in one step, over
- * the forward advance, so its specific energy density is
- * `(E / m) l_par / (c dt)`. The own field is the running mean over `tau` of
- * that value (#radiation_packet_read_mean), so the kernel mean gathers the
- * mean.
+ * Each share was binned into its slot when it arrived, so the slots stay
+ * apart here and merge nothing across octants.
+ *
+ * @param p The particle, active.
+ * @param ti_current Start of the particle's new step.
+ * @param ti_step Length of the particle's step.
+ * @param time_base Physical length of one integer time step.
+ */
+void radiation_packet_merge(struct part *p, const integertime_t ti_current,
+                            const integertime_t ti_step,
+                            const double time_base) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+#ifdef SWIFT_DEBUG_CHECKS
+  if (!radiation_packet_is_empty(pk))
+    error("Particle %lld still holds a packet at its merge.", p->id);
+#endif
+  pk->step_end_ti = ti_current + ti_step;
+
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    radiation_packet_merge_slot(&pk->slot[s], ti_current, ti_step, time_base);
+}
+
+/**
+ * @brief End of the gradient loop: normalise the forward advance of each slot
+ * and read the own field off the held packets, or let a slot with no
+ * downstream neighbour escape into the ledger.
+ *
+ * The held packet of a slot is the light that crosses the particle in one
+ * step, over the slot's forward advance, so its specific energy density is
+ * `(E / m) l_par / (c dt)`. The own field is the sum of that value over the
+ * slots, then its running mean over `tau` (#radiation_packet_read_mean), so
+ * the kernel mean gathers the mean.
  *
  * @param p The particle.
  * @param a Current scale factor.
@@ -314,38 +503,47 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
                                    const float dt, const float tau) {
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
-  if (pk->weight_sum > 0.f) {
-    pk->forward_advance /= pk->weight_sum;
-    float factor = 0.f;
-    const float m = hydro_get_mass(p);
-    if (dt > 0.f && m > 0.f) factor = a * pk->forward_advance / (m * c * dt);
-    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      pk->band[b].field_energy = radiation_packet_read_mean(
-          pk->band[b].field_energy, pk->band[b].energy * factor, dt, tau);
-      pk->band[b].field_photons = radiation_packet_read_mean(
-          pk->band[b].field_photons, pk->band[b].photons * factor, dt, tau);
-    }
-    return;
+  const float m = hydro_get_mass(p);
+
+  double field_energy[ISRF_OPERATOR_COUNT], field_photons[ISRF_OPERATOR_COUNT];
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    field_energy[b] = 0.;
+    field_photons[b] = 0.;
   }
 
-  pk->forward_advance = 0.f;
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    pk->band[b].field_energy =
-        radiation_packet_read_mean(pk->band[b].field_energy, 0.f, dt, tau);
-    pk->band[b].field_photons =
-        radiation_packet_read_mean(pk->band[b].field_photons, 0.f, dt, tau);
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct feedback_isrf_packet_slot_data *sl = &pk->slot[s];
+    if (sl->weight_sum > 0.f) {
+      sl->forward_advance /= sl->weight_sum;
+      float factor = 0.f;
+      if (dt > 0.f && m > 0.f) factor = a * sl->forward_advance / (m * c * dt);
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+        field_energy[b] += (double)(sl->band[b].energy * factor);
+        field_photons[b] += (double)(sl->band[b].photons * factor);
+      }
+      continue;
+    }
+
+    sl->forward_advance = 0.f;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
+      pk->band[b].escaped_energy += (double)band->energy;
+      pk->band[b].escaped_photons += (double)band->photons;
+      band->energy = 0.f;
+      band->photons = 0.f;
+    }
   }
+
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    struct feedback_isrf_packet_band_data *band = &pk->band[b];
-    band->escaped_energy += (double)band->energy;
-    band->escaped_photons += (double)band->photons;
-    band->energy = 0.f;
-    band->photons = 0.f;
+    pk->band[b].field_energy = radiation_packet_read_mean(
+        pk->band[b].field_energy, (float)field_energy[b], dt, tau);
+    pk->band[b].field_photons = radiation_packet_read_mean(
+        pk->band[b].field_photons, (float)field_photons[b], dt, tau);
   }
 }
 
 /**
- * @brief End of the force loop: the held packet has left in shares, and the
+ * @brief End of the force loop: the held packets have left in shares, and the
  * kernel mean of the own fields is completed with the particle's own term.
  *
  * @param p The particle.
@@ -357,15 +555,39 @@ void radiation_packet_end_force(struct part *p) {
   kernel_eval(0.f, &w_self);
   const float mw = hydro_get_mass(p) * w_self;
   const float norm = 1.f / (pk->ngb_field_weight_sum + mw);
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      pk->slot[s].band[b].energy = 0.f;
+      pk->slot[s].band[b].photons = 0.f;
+    }
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];
-    band->energy = 0.f;
-    band->photons = 0.f;
     band->ngb_mean_field_energy =
         (band->ngb_mean_field_energy + mw * band->field_energy) * norm;
     band->ngb_mean_field_photons =
         (band->ngb_mean_field_photons + mw * band->field_photons) * norm;
   }
+}
+
+/**
+ * @brief Write the kernel mean of the own field, summed over the slots, into
+ * the band moments that Grackle reads: PE to PE, LW to LW and the LW photon
+ * number (`N E_lo`) to LW_PHOTON.
+ *
+ * Overwrites the moments, including any value read from the initial
+ * conditions. Call after #radiation_packet_end_force, which completes the
+ * kernel mean.
+ *
+ * @param p The particle.
+ */
+void radiation_packet_couple_field(struct part *p) {
+
+  const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    p->feedback_data.isrf_moment[radiation_isrf_operator_owner[b]].u =
+        (double)pk->band[b].ngb_mean_field_energy;
+  p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
+      (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
 }
 
 /**

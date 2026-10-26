@@ -60,6 +60,13 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                                           const struct radiation *rad,
                                           const struct stellar_model *sm);
 
+struct swift_params;
+
+void radiation_packet_build_octant_frame(const float angles_deg[3],
+                                         const int seed_offset, float frame[9]);
+void radiation_packet_read_test_beams(
+    struct swift_params *params, float beams[RADIATION_PACKET_TEST_BEAMS][11]);
+
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /* The ISRF gradient pass runs in the extra hydro loop. Configure refuses a

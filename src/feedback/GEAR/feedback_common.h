@@ -191,13 +191,20 @@ void feedback_first_init_sink(struct sink *s);
  * gas and transport keys in #feedback_props, 12 removed-gas packet ledger in
  * the star and the sink, 13 packet origin sums in double, 14 packet emission
  * by volume weight in the star, 15 packet emission by cone weight sums in the
- * star, 16 read mean time of the packet field in #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 16
+ * star, 16 read mean time of the packet field in #feedback_props, 17 packet
+ * reception slots in the gas and the octant frame and test beams in
+ * #feedback_props. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 17
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts
     writes #FEEDBACK_RESTART_ISRF_PART_LAYOUT unchanged. */
 #define FEEDBACK_RESTART_SELECTION_FACTOR 32
+
+_Static_assert(FEEDBACK_RESTART_ISRF_PART_LAYOUT <
+                   FEEDBACK_RESTART_SELECTION_FACTOR,
+               "The absent-mask check of a restart file needs the layout "
+               "marker below the selection factor.");
 
 /**
  * @brief The particle layout marker this build writes to its restart files.

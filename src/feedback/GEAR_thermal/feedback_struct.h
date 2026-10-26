@@ -186,8 +186,16 @@ struct feedback_isrf_operator_data {
   float dissipation_alpha_floor;
 };
 
+/*! Number of test beams of the packet transport, see
+    #radiation_packet_inject_test_beams. */
+#define RADIATION_PACKET_TEST_BEAMS 2
+
+/*! Reception slots of the packet a gas particle holds: one per octant of the
+    fixed generic frame #feedback_props.ISRF_packet_octant_frame. */
+#define RADIATION_PACKET_SLOTS 8
+
 /**
- * @brief One band of the radiation packet a gas particle holds under the
+ * @brief One band of the own field and the ledger of a gas particle under the
  * packet transport (#isrf_transport_packet_hop).
  *
  * Photon numbers are stored as `N E_lo`, the number times the band's lower
@@ -197,26 +205,9 @@ struct feedback_isrf_operator_data {
  */
 struct feedback_isrf_packet_band_data {
 
-  /*! Energy held, sent downstream at this particle's next active step. */
-  float energy;
-
-  /*! Photon number held, as `N E_lo`. */
-  float photons;
-
-  /*! Energy received since the last active step. */
-  float inbox_energy;
-
-  /*! Photon number received since the last active step, as `N E_lo`. */
-  float inbox_photons;
-
-  /*! Energy received from coarser senders, released over their step. */
-  float reservoir_energy;
-
-  /*! Photon number in the reservoir, as `N E_lo`. */
-  float reservoir_photons;
-
-  /*! Own field: specific energy of the band read off the held packet, or its
-      running mean over #feedback_props.ISRF_packet_read_mean_time. */
+  /*! Own field: specific energy of the band read off the held packet, summed
+      over the slots, or its running mean over
+      #feedback_props.ISRF_packet_read_mean_time. */
   float field_energy;
 
   /*! Own field of the photon number, as `N E_lo` per unit mass. */
@@ -243,13 +234,38 @@ struct feedback_isrf_packet_band_data {
 };
 
 /**
- * @brief Radiation packet of a gas particle under the packet transport: one
- * direction and origin shared by all bands.
+ * @brief One band of one reception slot: the transported light.
  */
-struct feedback_isrf_packet_data {
+struct feedback_isrf_packet_slot_band_data {
+
+  /*! Energy held, sent downstream at this particle's next active step. */
+  float energy;
+
+  /*! Photon number held, as `N E_lo`. */
+  float photons;
+
+  /*! Energy received since the last active step. */
+  float inbox_energy;
+
+  /*! Photon number received since the last active step, as `N E_lo`. */
+  float inbox_photons;
+
+  /*! Energy received from coarser senders, released over their step. */
+  float reservoir_energy;
+
+  /*! Photon number in the reservoir, as `N E_lo`. */
+  float reservoir_photons;
+};
+
+/**
+ * @brief One reception slot of a gas particle under the packet transport: the
+ * light that arrived from one octant of the fixed frame, with one direction
+ * and origin shared by all bands.
+ */
+struct feedback_isrf_packet_slot_data {
 
   /*! Per-band contents, indexed by #radiation_isrf_operator. */
-  struct feedback_isrf_packet_band_data band[ISRF_OPERATOR_COUNT];
+  struct feedback_isrf_packet_slot_band_data band[ISRF_OPERATOR_COUNT];
 
   /*! Unit direction of propagation, away from the origin. */
   float direction[3];
@@ -272,6 +288,22 @@ struct feedback_isrf_packet_data {
       gradient loop. */
   float forward_advance;
 
+  /*! Integer time by which the reservoir is fully released. */
+  integertime_t reservoir_end_ti;
+};
+
+/**
+ * @brief Radiation packet of a gas particle under the packet transport: the
+ * reception slots, the own field and the ledger.
+ */
+struct feedback_isrf_packet_data {
+
+  /*! Per-band field and ledger, indexed by #radiation_isrf_operator. */
+  struct feedback_isrf_packet_band_data band[ISRF_OPERATOR_COUNT];
+
+  /*! Reception slots, indexed by octant (#radiation_packet_octant). */
+  struct feedback_isrf_packet_slot_data slot[RADIATION_PACKET_SLOTS];
+
   /*! Sum of the kernel weights of the field mean. Scratch. */
   float ngb_field_weight_sum;
 
@@ -279,8 +311,9 @@ struct feedback_isrf_packet_data {
       #feedback_part_data.ISRF_packet_transport. */
   float cone_power;
 
-  /*! Integer time by which the reservoir is fully released. */
-  integertime_t reservoir_end_ti;
+  /*! Copy of #feedback_props.ISRF_packet_octant_frame (row-major rotation
+      matrix), set with #cone_power. */
+  float octant_frame[9];
 
   /*! End of this particle's current step, set at its merge. A finer
       receiver releases this particle's shares by then. */
