@@ -286,8 +286,11 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor,
                                                 p->strength_data.dS_dt, &s, mp, dt_therm);
 
-  /* Apply yield stress to deviatoric stress tensor. */
-  yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor, &s, mp);
+  /* Apply yield stress to the stepped deviatoric stress tensor. The yield
+   * stress comes from the state, at the start of the step like the rates, but
+   * J_2 must be of the stepped tensor, since that is what gets limited. */
+  yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor,
+                                         p->strength_data.deviatoric_stress_tensor, &s, mp);
 
   strength_predict_extra_beginning(p, &s, mp, dt_therm);
 }
@@ -343,8 +346,11 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full,
                                                 p->strength_data.dS_dt, &s, mp, dt_therm);
 
-  /* Apply yield stress to deviatoric stress tensor. */
-  yield_apply_yield_stress_to_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full, &s, mp);
+  /* Apply yield stress to the stepped deviatoric stress tensor. The yield
+   * stress comes from the state, at the start of the step like the rates, but
+   * J_2 must be of the stepped tensor, since that is what gets limited. */
+  yield_apply_yield_stress_to_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full,
+                                         xp->strength_data.deviatoric_stress_tensor_full, &s, mp);
 
   strength_kick_extra_beginning(p, xp, &s, mp, dt_therm);
 }

@@ -185,19 +185,21 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  * ### Something about yield criterion
  *
  * @param M The symmetric matrix to be modified.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor to check
+ * against the yield stress.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_sym_matrix(
-    struct sym_matrix *M, struct strength_state *s,
-    const struct mat_params *mp) {
+    struct sym_matrix *M, const struct sym_matrix deviatoric_stress_tensor,
+    struct strength_state *s, const struct mat_params *mp) {
 
   const float yield_stress = strength_state_get_yield_stress(s, mp);
 
   /* ### Comment with name of yield criterion */
   float f = 1.f;
-  const float J_2 = strength_state_get_J_2(s, mp);
+  const float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
   if (J_2 > 0.f) {
       f = fminf((yield_stress * yield_stress) / (3.f * J_2), 1.f);
   }

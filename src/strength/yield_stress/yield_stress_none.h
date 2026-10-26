@@ -96,12 +96,14 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  * Empty function when configuring without yield stress method.
  *
  * @param M The symmetric matrix to be modified.
+ * @param deviatoric_stress_tensor The deviatoric stress tensor to check
+ * against the yield stress.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
 yield_apply_yield_stress_to_sym_matrix(
-    struct sym_matrix *M, struct strength_state *s,
-    const struct mat_params *mp) {}
+    struct sym_matrix *M, const struct sym_matrix deviatoric_stress_tensor,
+    struct strength_state *s, const struct mat_params *mp) {}
 
 #endif /* SWIFT_YIELD_STRESS_NONE_H */
