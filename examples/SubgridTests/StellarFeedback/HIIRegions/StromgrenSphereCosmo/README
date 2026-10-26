@@ -1,7 +1,7 @@
 # Intro
 Cosmological counterpart of `../StromgrenSphere/`: same homogeneous periodic box and single star, run with `Cosmology:` turned on instead of a purely hydrodynamical, non-expanding background. Two tiers, selected by the `tier` env var:
 
-- `tier=identity` (default): `../StromgrenSphere/`'s own box/density/star (0.05 kpc, 5 atom/cm3, 29.7 Msun), confined to a tiny scale-factor span at `a~=1` (`a_begin=0.99865`, `a_end=0.99886`, ~3 Myr) so cosmological dilution is negligible over the run. Checked directly against `../StromgrenSphere/`'s own `r_hii(t)`: any missing or spurious scale-factor conversion in the comoving/physical bookkeeping shows up as a deviation here even though the underlying physics is unchanged.
+- `tier=identity` (default): `../StromgrenSphere/`'s own box/density/star (0.05 kpc, 5 atom/cm3, 29.7 Msun), confined to a tiny scale-factor span at `a~=1` (`a_begin=0.99865`, `a_end=0.99886`, ~3 Myr) so cosmological dilution is negligible over the run. Checked directly against `../StromgrenSphere/`'s own run. It catches errors of order one, such as a proper-time interval used as an interval of `ln a`. It cannot see a single missing or extra power of `a`: at `a~=1` that changes the result by about 0.135 per cent. The `tier=highz` run tests those factors.
 - `tier=highz`: the same physical gas density and star, placed at `z~=9` (`a_begin=0.1`) and run for ~10 Myr, over which `a` changes by only ~1.2%. `makeIC.py` sizes the comoving box/density so the PHYSICAL density at `a_begin` matches `tier=identity`'s (see its docstring). The physical boxsize is larger here (0.15 kpc, gas particle mass scaled up to 2.7 Msun to keep the same particle count) so the equilibrium Stromgren radius actually fits inside it.
 
 # Configure
@@ -22,8 +22,9 @@ tier=highz ./run.sh
 See `run.sh` for the other overridable variables (`n_threads`, `gas_density`, `gas_mass`, `star_mass`, `boxsize`; all PHYSICAL values at `a_begin`). The non-cosmological control for `tier=identity` is `../StromgrenSphere`, run
 with the SAME binary and matching cadence/duration:
 ```
-cd ../StromgrenSphere && rebuild_time_myr=0.05 time_end=3.1e-3 dt_max=1e-3 ./run.sh
+cd ../StromgrenSphere && rebuild_time_myr=0.05 time_end=3.1e-3 dt_max=1.4747e-4 ./run.sh
 ```
+Every parameter must match the identity run except the cosmology switch. `dt_max=1.4747e-4` is the identity run's `dt_max` of `1e-5` in `ln a` converted to internal time units.
 Match the rebuild cadence between the two runs: the proper-time and d(ln a)
 integer timelines quantize a star's timestep differently, so a coarser
 cadence widens the discretization offset between the two runs' rebuild

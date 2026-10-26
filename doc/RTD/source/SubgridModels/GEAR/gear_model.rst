@@ -72,7 +72,7 @@ A similar behavior will be obtained if the parameter ``Stars:overwrite_birth_tim
 ``Stars:birth_time`` to -1.
 
 .. note::
-   ``Stars:HII_max_search_radius`` (comoving internal units) is a mandatory parameter for every GEAR feedback build that compiles the HII photoionization channel (the default, see ``--with-subgrid-radiation`` in :ref:`gear_radiation`), whether or not you switch the channel on: SWIFT stops at start-up if it is missing, and it has no default. See :ref:`gear_radiation_hii` for what it controls.
+   ``Stars:HII_max_search_radius`` (comoving internal units) is a mandatory parameter, with no default, for every run with ``GEARFeedback:with_photoionization`` set to 1: SWIFT stops at start-up if it is missing. A run with photoionization off does not need it. See :ref:`gear_radiation_hii` for what it controls.
 
 
 .. _gear_grackle_cooling:
