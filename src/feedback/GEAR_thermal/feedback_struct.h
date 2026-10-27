@@ -190,9 +190,45 @@ struct feedback_isrf_operator_data {
     #radiation_packet_inject_test_beams. */
 #define RADIATION_PACKET_TEST_BEAMS 2
 
-/*! Reception slots of the packet a gas particle holds: one per octant of the
-    fixed generic frame #feedback_props.ISRF_packet_octant_frame. */
+/*! Reception slots of the packet a gas particle holds: one per cell of an
+    equal-solid-angle partition of the directions, fixed in the generic frame
+    #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set at
+    configure time by `--with-isrf-packet-slots`: 8 (the octants of the
+    frame), 12 (the faces of a rhombic dodecahedron) or 16 (octants halved by
+    the plane `|x| = |y|` of the frame). Each slot costs `sizeof(struct
+    feedback_isrf_packet_slot_data)` bytes in every gas particle. */
+#ifndef RADIATION_PACKET_SLOTS
 #define RADIATION_PACKET_SLOTS 8
+#endif
+
+#if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
+    RADIATION_PACKET_SLOTS != 16
+#error "RADIATION_PACKET_SLOTS must be 8, 12 or 16."
+#endif
+
+/*! Text of the snapshot descriptions: what a reception slot is. */
+#if RADIATION_PACKET_SLOTS == 8
+#define RADIATION_PACKET_SLOT_TEXT                                         \
+  "8 reception slots at its last merge, away from its origin: slot 0 "     \
+  "first, then x, y, z. Slot k is the octant of the fixed frame with bit " \
+  "0 set for positive first frame coordinate, bit 1 for the second, bit "  \
+  "2 for the third."
+#elif RADIATION_PACKET_SLOTS == 12
+#define RADIATION_PACKET_SLOT_TEXT                                          \
+  "12 reception slots at its last merge, away from its origin: slot 0 "     \
+  "first, then x, y, z. Slot k = 4 m + 2 a + b is the face of a rhombic "   \
+  "dodecahedron in the fixed frame: m is the frame axis with the smallest " \
+  "absolute coordinate (the lowest axis on a tie), a and b are 1 for a "    \
+  "coordinate that is zero or positive on the two other axes, in axis "     \
+  "order."
+#else
+#define RADIATION_PACKET_SLOT_TEXT                                          \
+  "16 reception slots at its last merge, away from its origin: slot 0 "     \
+  "first, then x, y, z. Slot k = o + 8 h: o is the octant of the fixed "    \
+  "frame (bit 0 set for positive first frame coordinate, bit 1 for the "    \
+  "second, bit 2 for the third) and h is 1 when the absolute second frame " \
+  "coordinate exceeds the absolute first."
+#endif
 
 /**
  * @brief One band of the own field and the ledger of a gas particle under the
@@ -259,7 +295,7 @@ struct feedback_isrf_packet_slot_band_data {
 
 /**
  * @brief One reception slot of a gas particle under the packet transport: the
- * light that arrived from one octant of the fixed frame, with one direction
+ * light that arrived from one cell of the fixed frame, with one direction
  * and origin shared by all bands.
  */
 struct feedback_isrf_packet_slot_data {
@@ -301,7 +337,7 @@ struct feedback_isrf_packet_data {
   /*! Per-band field and ledger, indexed by #radiation_isrf_operator. */
   struct feedback_isrf_packet_band_data band[ISRF_OPERATOR_COUNT];
 
-  /*! Reception slots, indexed by octant (#radiation_packet_octant). */
+  /*! Reception slots, indexed by #radiation_packet_slot. */
   struct feedback_isrf_packet_slot_data slot[RADIATION_PACKET_SLOTS];
 
   /*! Sum of the kernel weights of the field mean. Scratch. */

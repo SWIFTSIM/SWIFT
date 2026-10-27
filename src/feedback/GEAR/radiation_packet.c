@@ -112,7 +112,7 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
  * @param direction Direction in the box frame. Need not be a unit vector.
- * @return The octant, in [0, RADIATION_PACKET_SLOTS).
+ * @return The octant, in [0, 8).
  */
 __attribute__((noinline)) int radiation_packet_octant(
     const float frame[9], const float direction[3]) {
@@ -125,6 +125,91 @@ __attribute__((noinline)) int radiation_packet_octant(
     if (q >= 0.0) octant |= 1 << k;
   }
   return octant;
+}
+
+/**
+ * @brief Reception slot that holds a direction: the cell of the partition of
+ * the sphere, fixed in the octant frame, that contains it.
+ *
+ * The cells have equal solid angle and are convex cones, so the mean of
+ * directions in one cell is in it. With 8 slots the cells are the octants
+ * (#radiation_packet_octant). With 12 they are the faces of a rhombic
+ * dodecahedron: slot `4 m + 2 a + b`, `m` the frame axis of smallest absolute
+ * coordinate (the lowest axis on a tie), `a` and `b` 1 for a coordinate that
+ * is zero or positive on the other two axes in axis order. With 16 slot
+ * `o + 8 h`, `o` the octant and `h` 1 when the absolute second frame
+ * coordinate exceeds the absolute first. A tie goes to the same side whatever
+ * the sign of a zero. Kept out of line, as #radiation_packet_octant.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame. Need not be a unit vector.
+ * @return The slot, in [0, RADIATION_PACKET_SLOTS).
+ */
+__attribute__((noinline)) int radiation_packet_slot(const float frame[9],
+                                                    const float direction[3]) {
+
+#if RADIATION_PACKET_SLOTS == 8
+  return radiation_packet_octant(frame, direction);
+#else
+  double q[3];
+  for (int k = 0; k < 3; k++)
+    q[k] = (double)frame[3 * k + 0] * (double)direction[0] +
+           (double)frame[3 * k + 1] * (double)direction[1] +
+           (double)frame[3 * k + 2] * (double)direction[2];
+#if RADIATION_PACKET_SLOTS == 16
+  int slot = 0;
+  for (int k = 0; k < 3; k++)
+    if (q[k] >= 0.0) slot |= 1 << k;
+  if (fabs(q[1]) > fabs(q[0])) slot |= 8;
+  return slot;
+#else
+  int m = 0;
+  if (fabs(q[1]) < fabs(q[m])) m = 1;
+  if (fabs(q[2]) < fabs(q[m])) m = 2;
+  const int i = (m == 0) ? 1 : 0;
+  const int j = (m == 2) ? 1 : 2;
+  return 4 * m + 2 * (q[i] >= 0.0) + (q[j] >= 0.0);
+#endif
+#endif
+}
+
+/**
+ * @brief Distance of a direction from the nearest border of its slot, as the
+ * sine of the angle to the nearest border plane.
+ *
+ * Used by the debug check of #radiation_packet_merge_slot to skip directions
+ * that rounding to float can move across a border. For 12 slots it is
+ * conservative: it takes the borders between every pair of absolute
+ * coordinates.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame.
+ * @return The distance, 0 on a border, at most 1.
+ */
+double radiation_packet_slot_border_distance(const float frame[9],
+                                             const float direction[3]) {
+
+  double a[3], norm2 = 0.0;
+  for (int k = 0; k < 3; k++) {
+    const double q = (double)frame[3 * k + 0] * (double)direction[0] +
+                     (double)frame[3 * k + 1] * (double)direction[1] +
+                     (double)frame[3 * k + 2] * (double)direction[2];
+    a[k] = fabs(q);
+    norm2 += q * q;
+  }
+  const double norm = sqrt(norm2);
+  if (!(norm > 0.0)) return 0.0;
+  double d = 1.0;
+#if RADIATION_PACKET_SLOTS == 8 || RADIATION_PACKET_SLOTS == 16
+  for (int k = 0; k < 3; k++) d = fmin(d, a[k]);
+#endif
+#if RADIATION_PACKET_SLOTS == 16
+  d = fmin(d, fabs(a[0] - a[1]) * M_SQRT1_2);
+#elif RADIATION_PACKET_SLOTS == 12
+  for (int k = 0; k < 3; k++)
+    d = fmin(d, fabs(a[k] - a[(k + 1) % 3]) * M_SQRT1_2);
+#endif
+  return d / norm;
 }
 
 /**
@@ -472,24 +557,17 @@ static void radiation_packet_merge_slot(
   if (d > 0.0) {
     for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Every share of the slot came from its octant, an octant is convex, so
-       the mean origin lies in it too. A direction too close to a border may
-       flip by rounding to float. */
-    double q_min = 1.;
-    for (int k = 0; k < 3; k++) {
-      double q = 0.;
-      for (int j = 0; j < 3; j++)
-        q += (double)frame[3 * k + j] * (double)sl->direction[j];
-      if (fabs(q) < q_min) q_min = fabs(q);
-    }
-    if (q_min > 1e-5 &&
-        radiation_packet_octant(frame, sl->direction) != slot_index)
-      error("The direction of slot %d is in octant %d.", slot_index,
-            radiation_packet_octant(frame, sl->direction));
+    /* Every share of the slot came from its cell, a cell is convex, so the
+       mean origin lies in it too. A direction too close to a border may flip
+       by rounding to float. */
+    if (radiation_packet_slot_border_distance(frame, sl->direction) > 1e-5 &&
+        radiation_packet_slot(frame, sl->direction) != slot_index)
+      error("The direction of slot %d is in slot %d.", slot_index,
+            radiation_packet_slot(frame, sl->direction));
 #endif
   } else {
     /* Mean origin on the particle: any direction is as good. It can lie
-       outside the slot's octant, which is harmless: it is not a mean of
+       outside the slot's cell, which is harmless: it is not a mean of
        directions, and downstream shares are binned by their own geometry. */
     sl->direction[0] = 0.f;
     sl->direction[1] = 0.f;
@@ -502,7 +580,7 @@ static void radiation_packet_merge_slot(
  * the reservoir become the held packet.
  *
  * Each share was binned into its slot when it arrived, so the slots stay
- * apart here and merge nothing across octants.
+ * apart here and merge nothing across slots.
  *
  * @param p The particle, active.
  * @param ti_current Start of the particle's new step.

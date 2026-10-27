@@ -79,6 +79,9 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
                                    const float dt, const float tau);
 void radiation_packet_end_force(struct part *p);
 int radiation_packet_octant(const float frame[9], const float direction[3]);
+int radiation_packet_slot(const float frame[9], const float direction[3]);
+double radiation_packet_slot_border_distance(const float frame[9],
+                                             const float direction[3]);
 void radiation_packet_couple_field(struct part *p);
 void radiation_packet_inject_test_beams(
     struct part *p, const float beams[RADIATION_PACKET_TEST_BEAMS][11]);
@@ -159,7 +162,7 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
 /**
  * @brief Deliver one share to a receiver: dust absorption over the path, then
  * the inbox, or the reservoir when the source has the coarser step, of the
- * slot of the octant that holds the direction from the share's origin to the
+ * slot that holds the direction from the share's origin to the
  * receiver.
  *
  * Energy and photon number lose the same fraction, so the mean photon energy
@@ -197,7 +200,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
   const float from_origin[3] = {-offset[0], -offset[1], -offset[2]};
   struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
   struct feedback_isrf_packet_slot_data *sl =
-      &pk_r->slot[radiation_packet_octant(frame, from_origin)];
+      &pk_r->slot[radiation_packet_slot(frame, from_origin)];
 
   float delivered_energy = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {

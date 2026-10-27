@@ -3041,6 +3041,20 @@ AC_ARG_WITH([number-of-hii-angular-pixels],
 	    [with_number_of_hii_angular_pixels="12"])
 AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels], [Maximum number of HealPix angular pixels the GEAR subgrid HII photoionization budget can be split across])
 
+# Reception slots of the GEAR ISRF packet transport: the number of cells of
+# the partition of directions in which a gas particle holds light. Each slot
+# adds 128 bytes to every gas particle, so only raise it for a run that needs
+# fewer merges of light from different directions.
+AC_ARG_WITH([isrf-packet-slots],
+	    [AS_HELP_STRING([--with-isrf-packet-slots=<N>], [Number of reception slots of the GEAR ISRF packet transport: 8 (octants of the frame), 12 (rhombic dodecahedron faces) or 16 (octants halved) @<:@default: 8@:>@])],
+	    [with_isrf_packet_slots="$withval"],
+	    [with_isrf_packet_slots="8"])
+case "$with_isrf_packet_slots" in
+   8|12|16) ;;
+   *) AC_MSG_ERROR([--with-isrf-packet-slots=$with_isrf_packet_slots: use 8, 12 or 16]) ;;
+esac
+AC_DEFINE_UNQUOTED([RADIATION_PACKET_SLOTS], [$with_isrf_packet_slots], [Number of reception slots of the GEAR ISRF packet transport])
+
 # Parts of the GEAR subgrid radiation compiled into a GEAR feedback build. A
 # part left out costs nothing at run time: no particle fields, no pair-loop
 # work and no tasks.
@@ -3759,6 +3773,7 @@ AC_MSG_RESULT([
    Star formation model : $with_star_formation
    Star feedback model  : $with_feedback_name
    Subgrid radiation    :$with_subgrid_radiation_name
+   ISRF packet slots    : $with_isrf_packet_slots
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt

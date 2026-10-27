@@ -1171,11 +1171,9 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "PacketSlotDirections", FLOAT, 3 * RADIATION_PACKET_SLOTS,
       UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
       convert_part_packet_slot_directions,
-      "Unit direction of the packet of each of the 8 reception slots at its "
-      "last merge, away from its origin: slot 0 first, then x, y, z. Slot k "
-      "is the octant of the fixed frame with bit 0 set for positive first "
-      "frame coordinate, bit 1 for the second, bit 2 for the third. Zero for "
-      "a slot never merged, and unless GEARFeedback:ISRF_transport is "
+      "Unit direction of the packet of each of the " RADIATION_PACKET_SLOT_TEXT
+      " Zero for a slot never merged, and unless GEARFeedback:ISRF_transport "
+      "is "
       "packet_hop.");
 
   list[num++] = io_make_output_field_convert_part(

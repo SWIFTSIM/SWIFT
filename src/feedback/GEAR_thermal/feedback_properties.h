@@ -113,7 +113,7 @@ enum isrf_transport {
  * off. */
 #define default_ISRF_packet_read_mean_time_Myr 0.f
 
-/*! Default angles in degrees of the fixed frame whose octants are the packet
+/*! Default angles in degrees of the fixed frame whose cells are the packet
  * reception slots: a generic rotation, not aligned with the box. */
 #define default_ISRF_packet_octant_frame_angle_x_deg 37.f
 #define default_ISRF_packet_octant_frame_angle_y_deg 23.f
@@ -290,7 +290,7 @@ struct feedback_props {
    * transport, in internal units. 0 is off. */
   float ISRF_packet_read_mean_time;
 
-  /*! Rotation matrix (row-major) from the box to the fixed frame whose octants
+  /*! Rotation matrix (row-major) from the box to the fixed frame whose cells
    * are the reception slots of the packet transport. */
   float ISRF_packet_octant_frame[9];
 
