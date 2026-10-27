@@ -1347,15 +1347,16 @@ INLINE static void black_holes_create_from_gas(
 
   /* Available mass check */
   if (bp->mass < (props->subgrid_seed_mass + props->nsc_seed_mass)) {
-    warning("Gas particle with ID %lld converting to BH seed does not have enough available mass"
-            "for both the black hole subgrid_mass and nsc_mass. Setting nsc_mass = 0", bp->id);
-    bp->nsc_mass = 0.f;
+    bp->nsc_mass = bp->mass - props->subgrid_seed_mass;
+    warning("Gas particle with ID %lld and mass %g (internal) converting to BH seed does not have enough available mass"
+            "for both the BH subgrid_mass and nsc_mass. Capping nsc_mass at max available mass of %g (internal)", bp->id, bp->mass, bp->nsc_mass);
   } else {
     /* Initial NSC seed mass */
     bp->nsc_mass = props->nsc_seed_mass;
   }
   /* Initial seed mass */
   bp->subgrid_mass = props->subgrid_seed_mass;
+  message("BH with ID %lld and dynamical mass %g (internal) was seeded with a subgrid mass of %g (internal) and an NSC mass of %g (internal)", bp->id, bp->mass, bp->subgrid_mass, bp->nsc_mass);
 
   /* We haven't accreted anything yet */
   bp->total_accreted_mass = 0.f;
