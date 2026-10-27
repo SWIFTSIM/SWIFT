@@ -38,6 +38,7 @@
 #include "error.h"
 #include "memswap.h"
 #include "memuse.h"
+#include "swift_intrinsics.h"
 
 /**
  * @brief Push the task at the given index up the heap until it is either at the
@@ -144,7 +145,7 @@ void queue_get_incoming(struct queue *q) {
     /* Re-heap by bubbling up the new (last) element. */
     queue_bubble_up(q, q->count - 1);
 
-#ifdef SWIFT_DEBUG_CHECK
+#ifdef SWIFT_DEBUG_CHECKS
     /* Check the queue's consistency. */
     for (int k = 1; k < q->count; k++)
       if (entries[(k - 1) / 2].weight < entries[k].weight)
@@ -165,6 +166,7 @@ void queue_insert(struct queue *q, struct task *t) {
 
   /* Spin until the new offset can be stored. */
   while (atomic_cas(&q->tid_incoming[ind], -1, t - q->tasks) != -1) {
+    cpu_relax();
 
     /* Try to get the queue lock, non-blocking, ensures that at
        least somebody is working on this queue. */
