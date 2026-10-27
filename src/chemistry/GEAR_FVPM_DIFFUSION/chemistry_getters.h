@@ -698,8 +698,10 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart *restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
-  error("No BH yet in GEAR");
-  return 0.f;
+
+  return bp->chemistry_data
+             .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] *
+         bp->mass;
 }
 
 /* Import the right chemistry_part_data definition */
