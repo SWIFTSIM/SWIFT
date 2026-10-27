@@ -82,6 +82,14 @@ struct tracers_xpart_data {
  */
 #define tracers_spart_data tracers_xpart_data
 
+/**
+ * @brief Properties of the tracers stored in the black hole particle data.
+ */
 struct tracers_bpart_data {};
+
+/**
+ * @brief Properties of the tracers stored in the sink particle data.
+ */
+struct tracers_sink_data {};
 
 #endif /* SWIFT_TRACERS_STRUCT_FLAMINGO_H */
