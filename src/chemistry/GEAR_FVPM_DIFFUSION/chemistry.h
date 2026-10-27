@@ -964,10 +964,10 @@ __attribute__((always_inline)) INLINE static void chemistry_add_part_to_bpart(
   const double bh_mass_new = bh_mass_old + gas_mass;
 
   for (int k = 0; k < GEAR_CHEMISTRY_ELEMENT_COUNT; k++) {
-    const double mk = bp_data->metal_mass_fraction[k] * bh_mass_old +
-                      chemistry_get_metal_mass_fraction_for_bpart(p_data, k,
-                                                                  gas_mass) *
-                          gas_mass;
+    const double mk =
+        bp_data->metal_mass_fraction[k] * bh_mass_old +
+        chemistry_get_metal_mass_fraction_for_bpart(p_data, k, gas_mass) *
+            gas_mass;
 
     bp_data->metal_mass_fraction[k] = mk / bh_mass_new;
   }
