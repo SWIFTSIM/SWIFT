@@ -31,6 +31,7 @@
  * receiver, once.
  */
 
+#include "cosmology.h"
 #include "error.h"
 #include "hydro.h"
 #include "inline.h"
@@ -72,9 +73,18 @@ int radiation_packet_star_gas_weight(const struct spart *si,
                                      const integertime_t ti_begin, double d[3],
                                      double *q, double *weight);
 void radiation_packet_set_box(const double dim[3], const int periodic);
+void radiation_packet_set_redshift(const double speed_of_light,
+                                   const double weight_pe,
+                                   const double weight_lw,
+                                   const double photon_weight_lw);
+void radiation_packet_redshift_share(const double H, const double path_phys,
+                                     double energy[ISRF_OPERATOR_COUNT],
+                                     double photons[ISRF_OPERATOR_COUNT],
+                                     double lost_energy[ISRF_OPERATOR_COUNT],
+                                     double lost_photons[ISRF_OPERATOR_COUNT]);
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
-                            const integertime_t ti_step,
-                            const double time_base);
+                            const integertime_t ti_step, const double time_base,
+                            const struct cosmology *cosmo);
 void radiation_packet_end_gradient(struct part *p, const float a, const float c,
                                    const float dt, const float tau);
 void radiation_packet_end_force(struct part *p);
@@ -165,10 +175,12 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * slot that holds the direction from the share's origin to the
  * receiver.
  *
- * Energy and photon number lose the same fraction, so the mean photon energy
- * of a band is unchanged. The share arrives and is split in double: a float
- * product near 1e-38 flushes to zero under -ffast-math, which would leave an
- * energy without its photon number.
+ * Energy and photon number lose the same fraction to dust, so the mean photon
+ * energy of a band is unchanged by it. In an expanding box the share first
+ * loses energy and photons to the expansion over the light travel time of its
+ * path, #radiation_packet_redshift_share. The share arrives and is split in
+ * double: a float product near 1e-38 flushes to zero under -ffast-math, which
+ * would leave an energy without its photon number.
  *
  * @param r The receiver.
  * @param frame Rotation matrix of the octant frame, as
@@ -177,6 +189,7 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * @param photons Photon number of the share per band, as `N E_lo`.
  * @param offset Comoving offset from the receiver to the share's origin.
  * @param path_phys Physical path length over which the share is absorbed.
+ * @param H Current Hubble rate. 0 or less for a static box.
  * @param to_reservoir Is the source's step coarser than the receiver's?
  * @param source_step_end_ti End of the source's step.
  */
@@ -184,7 +197,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     struct part *restrict r, const float frame[9],
     const double energy[ISRF_OPERATOR_COUNT],
     const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
-    const float path_phys, const int to_reservoir,
+    const float path_phys, const float H, const int to_reservoir,
     const integertime_t source_step_end_ti) {
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -202,6 +215,29 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
   struct feedback_isrf_packet_slot_data *sl =
       &pk_r->slot[radiation_packet_slot(frame, from_origin)];
 
+  /* In a static box the arrays are used as given. */
+  const double *en = energy;
+  const double *ph = photons;
+  double expanded_energy[ISRF_OPERATOR_COUNT];
+  double expanded_photons[ISRF_OPERATOR_COUNT];
+  double lost_energy[ISRF_OPERATOR_COUNT];
+  double lost_photons[ISRF_OPERATOR_COUNT];
+  if (H > 0.f) {
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      expanded_energy[b] = energy[b];
+      expanded_photons[b] = photons[b];
+    }
+    radiation_packet_redshift_share(H, path_phys, expanded_energy,
+                                    expanded_photons, lost_energy,
+                                    lost_photons);
+    en = expanded_energy;
+    ph = expanded_photons;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      pk_r->band[b].redshifted_energy += lost_energy[b];
+      pk_r->band[b].redshifted_photons += lost_photons[b];
+    }
+  }
+
   float delivered_energy = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_slot_band_data *dst = &sl->band[b];
@@ -212,13 +248,13 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
       absorbed_fraction = -expm1((double)-tau);
 
-    double absorbed_energy = energy[b] * absorbed_fraction;
-    double absorbed_photons = photons[b] * absorbed_fraction;
-    float transmitted_energy = (float)(energy[b] - absorbed_energy);
-    float transmitted_photons = (float)(photons[b] - absorbed_photons);
+    double absorbed_energy = en[b] * absorbed_fraction;
+    double absorbed_photons = ph[b] * absorbed_fraction;
+    float transmitted_energy = (float)(en[b] - absorbed_energy);
+    float transmitted_photons = (float)(ph[b] - absorbed_photons);
     if (transmitted_photons < RADIATION_PACKET_MIN_PHOTONS) {
-      absorbed_energy = energy[b];
-      absorbed_photons = photons[b];
+      absorbed_energy = en[b];
+      absorbed_photons = ph[b];
       transmitted_energy = 0.f;
       transmitted_photons = 0.f;
     }
@@ -263,10 +299,11 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * @param s The sender.
  * @param r The receiver.
  * @param a Current scale factor.
+ * @param H Current Hubble rate. 0 in a static box.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     const float dx[3], const float h_s, const struct part *restrict s,
-    struct part *restrict r, const float a) {
+    struct part *restrict r, const float a, const float H) {
 
   const struct feedback_isrf_packet_data *pk_s = &s->feedback_data.isrf_packet;
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
@@ -300,7 +337,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     }
 
     radiation_packet_deliver(r, pk_s->octant_frame, energy, photons, offset,
-                             a * path, s->time_bin > r->time_bin,
+                             a * path, H, s->time_bin > r->time_bin,
                              pk_s->step_end_ti);
   }
 }
@@ -437,14 +474,15 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
  * @param dx Comoving vector from the gas to the star (si - pj).
  * @param Delta_t The star's feedback step.
  * @param a Current scale factor.
+ * @param H Current Hubble rate. 0 in a static box.
  * @param ti_current Current integer time.
  * @param frame Rotation matrix of the octant frame, as
  * #feedback_props.ISRF_packet_octant_frame.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
     const struct spart *si, struct part *pj, const float dx[3],
-    const float Delta_t, const float a, const integertime_t ti_current,
-    const float frame[9]) {
+    const float Delta_t, const float a, const float H,
+    const integertime_t ti_current, const float frame[9]) {
 
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
   const integertime_t ti_begin =
@@ -481,7 +519,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 
   const float offset[3] = {(float)d[0], (float)d[1], (float)d[2]};
   const float r = (float)sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-  radiation_packet_deliver(pj, frame, energy, photons, offset, a * r,
+  radiation_packet_deliver(pj, frame, energy, photons, offset, a * r, H,
                            si->time_bin > pj->time_bin, ti_current + ti_step);
 }
 
@@ -516,8 +554,10 @@ radiation_packet_book_removed_gas(const struct part *p,
       l->removed_photons[b] += (double)t->photons + (double)t->inbox_photons +
                                (double)t->reservoir_photons;
     }
-    l->inherited_energy[b] += d->absorbed_energy + d->escaped_energy;
-    l->inherited_photons[b] += d->absorbed_photons + d->escaped_photons;
+    l->inherited_energy[b] +=
+        d->absorbed_energy + d->escaped_energy + d->redshifted_energy;
+    l->inherited_photons[b] +=
+        d->absorbed_photons + d->escaped_photons + d->redshifted_photons;
   }
 }
 

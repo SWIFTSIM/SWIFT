@@ -252,6 +252,29 @@ INLINE static void convert_part_packet_escaped_photons(const struct engine *e,
 }
 
 /**
+ * @brief Snapshot converter of the packet redshifted energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_redshifted_energy(const struct engine *e,
+                                                         const struct part *p,
+                                                         const struct xpart *xp,
+                                                         double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].redshifted_energy;
+}
+
+/**
+ * @brief Snapshot converter of the packet redshifted photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_redshifted_photons(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    double *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    ret[b] = p->feedback_data.isrf_packet.band[b].redshifted_photons;
+}
+
+/**
  * @brief Snapshot converter of the packet field energy per band, see
  * #feedback_write_particles.
  */
@@ -1137,6 +1160,24 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "GEARFeedback:ISRF_transport is packet_hop.");
 
   list[num++] = io_make_output_field_convert_part(
+      "PacketRedshiftedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_redshifted_energy,
+      "Packet energy removed from the band by the expansion in the shares "
+      "booked into the particle since the start of the run (redshift and "
+      "band-edge loss), minus the energy gained from the other band. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero in a static "
+      "box and unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketRedshiftedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_part_packet_redshifted_photons,
+      "Photon number removed from the band by the expansion, in the units of "
+      "PacketInboxPhotonNumbers, net of the gain from the other band. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero in a static "
+      "box and unless GEARFeedback:ISRF_transport is packet_hop.");
+
+  list[num++] = io_make_output_field_convert_part(
       "PacketSpecificEnergies", FLOAT, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
       convert_part_packet_field_energy,
@@ -1276,14 +1317,15 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
   list[num++] = io_make_output_field_convert_spart(
       "PacketInheritedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, sparts, convert_spart_packet_inherited_energy,
-      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies of the gas "
-      "particle the star was converted from. Two components, PE then LW.");
+      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies plus "
+      "PacketRedshiftedEnergies of the gas particle the star was converted "
+      "from. Two components, PE then LW.");
 
   list[num++] = io_make_output_field_convert_spart(
       "PacketInheritedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_inherited_photons,
-      "Absorbed plus escaped photon number of the gas particle the star was "
-      "converted from, in the units of PacketEmittedPhotonNumbers.");
+      "Absorbed, escaped and redshifted photon number of the gas particle the "
+      "star was converted from, in the units of PacketEmittedPhotonNumbers.");
 #endif
 
   return num;
@@ -1321,14 +1363,15 @@ INLINE static int feedback_write_sinkparticles(const struct sink *sinks,
   list[num++] = io_make_output_field_convert_sink(
       "PacketInheritedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, sinks, convert_sink_packet_inherited_energy,
-      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies of the gas the "
-      "sink formed from or swallowed. Two components, PE then LW.");
+      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies plus "
+      "PacketRedshiftedEnergies of the gas the sink formed from or swallowed. "
+      "Two components, PE then LW.");
 
   list[num++] = io_make_output_field_convert_sink(
       "PacketInheritedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY, 0.f, sinks, convert_sink_packet_inherited_photons,
-      "Absorbed plus escaped photon number of the gas the sink formed from or "
-      "swallowed, in the units of PacketRemovedPhotonNumbers.");
+      "Absorbed, escaped and redshifted photon number of the gas the sink "
+      "formed from or swallowed, in the units of PacketRemovedPhotonNumbers.");
 #endif
 
   return num;

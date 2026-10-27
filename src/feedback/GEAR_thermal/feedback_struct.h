@@ -267,6 +267,15 @@ struct feedback_isrf_packet_band_data {
 
   /*! Photon number escaped, as `N E_lo`. */
   double escaped_photons;
+
+  /*! Energy removed from this band by the expansion in the shares booked
+      into this particle, cumulative: redshift and band-edge loss, minus the
+      energy gained from the other band. Zero in a static box. */
+  double redshifted_energy;
+
+  /*! Photon number removed by the expansion, as `N E_lo`, net of the gain
+      from the other band. */
+  double redshifted_photons;
 };
 
 /**

@@ -1040,8 +1040,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  if (book_i_to_j) radiation_packet_book_share(dx_ij, hi, pi, pj, a);
-  if (book_j_to_i) radiation_packet_book_share(dx, hj, pj, pi, a);
+  if (book_i_to_j) radiation_packet_book_share(dx_ij, hi, pi, pj, a, H);
+  if (book_j_to_i) radiation_packet_book_share(dx, hj, pj, pi, a, H);
   radiation_packet_gather_field(r2, hi, pi, pj);
   radiation_packet_gather_field(r2, hj, pj, pi);
 }
@@ -1072,7 +1072,7 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
   radiation_packet_gather_field(r2, hi, pi, pj);
   if (!book) return;
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  radiation_packet_book_share(dx_ij, hi, pi, pj, a);
+  radiation_packet_book_share(dx_ij, hi, pi, pj, a, H);
 }
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */

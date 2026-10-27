@@ -255,16 +255,12 @@ void radiation_snapshot_part_propagation(struct part *p,
 
   /* The drift runs for inactive particles too: they keep their inbox. */
   if (p->feedback_data.ISRF_packet_transport) {
-    if (with_cosmology)
-      error(
-          "GEARFeedback:ISRF_transport: %s does not support cosmological "
-          "runs.",
-          isrf_transport_name_packet_hop);
     if (part_is_active(p, e)) {
       if (p->feedback_data.isrf_packet.step_end_ti == 0)
         radiation_packet_inject_test_beams(
             p, e->feedback_props->ISRF_packet_test_beam);
-      radiation_packet_merge(p, e->ti_current, ti_step, e->time_base);
+      radiation_packet_merge(p, e->ti_current, ti_step, e->time_base,
+                             with_cosmology ? e->cosmology : NULL);
       radiation_packet_reset_field_mean(p);
     }
   }

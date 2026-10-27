@@ -55,6 +55,36 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
   radiation_packet_box_is_set = 1;
 }
 
+/* The constants of the redshift of a share, set once at start-up by
+   radiation_packet_set_redshift(). */
+static double radiation_packet_speed_of_light = 0.0;
+static double radiation_packet_weight_energy[ISRF_OPERATOR_COUNT] = {1.0, 1.0};
+static double radiation_packet_weight_photon_lw = 0.0;
+static int radiation_packet_redshift_is_set = 0;
+
+/**
+ * @brief Give the redshift of a share the speed of light and the band-edge
+ * weights of the energy and of the LW photon number.
+ *
+ * @param speed_of_light The speed of light, internal units.
+ * @param weight_pe Band-edge weight of the PE energy,
+ * #feedback_props.band_edge_weight_pe.
+ * @param weight_lw Band-edge weight of the LW energy,
+ * #feedback_props.band_edge_weight_lw.
+ * @param photon_weight_lw Band-edge weight of the LW photon number,
+ * #feedback_props.band_edge_photon_weight_lw.
+ */
+void radiation_packet_set_redshift(const double speed_of_light,
+                                   const double weight_pe,
+                                   const double weight_lw,
+                                   const double photon_weight_lw) {
+  radiation_packet_speed_of_light = speed_of_light;
+  radiation_packet_weight_energy[ISRF_OPERATOR_PE] = weight_pe;
+  radiation_packet_weight_energy[ISRF_OPERATOR_LW] = weight_lw;
+  radiation_packet_weight_photon_lw = photon_weight_lw;
+  radiation_packet_redshift_is_set = 1;
+}
+
 /**
  * @brief Start-up of the packet emission, from engine_config().
  *
@@ -62,6 +92,79 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
  */
 void radiation_packet_startup(const struct engine *e) {
   radiation_packet_set_box(e->s->dim, e->s->periodic);
+  radiation_packet_set_redshift(e->physical_constants->const_speed_light_c,
+                                e->feedback_props->band_edge_weight_pe,
+                                e->feedback_props->band_edge_weight_lw,
+                                e->feedback_props->band_edge_photon_weight_lw);
+}
+
+/**
+ * @brief Redshift of a share over its path in an expanding box.
+ *
+ * The light travel time of the path is `path_phys / c`, so the redshift
+ * depth is `zeta = H path_phys / c`. Over it the energy of band `b` falls as
+ * `exp(-w_b zeta)` with `w_b` the band-edge weight of the band. The LW energy
+ * loses `w - 1` of its `w` parts through the 11.2 eV edge into the PE band,
+ * as the module's fluid transport does. The LW photon number falls as
+ * `exp(-w_N zeta)`, and the photons it loses enter the PE band in units of
+ * the PE lower edge. The PE photon number loses its band-edge photons at the
+ * rate `(w_PE - 1) E / (N E_lo)` of its own mean photon energy, which has no
+ * table value. Photons are `N E_lo`.
+ *
+ * @param H Current Hubble rate. 0 or less changes nothing.
+ * @param path_phys Physical path length of the share.
+ * @param energy (in/out) Energy of the share per band.
+ * @param photons (in/out) Photon number of the share per band, `N E_lo`.
+ * @param lost_energy (return) Energy removed from each band, minus the energy
+ * it gained from the other band.
+ * @param lost_photons (return) Photon number removed, as #lost_energy.
+ */
+void radiation_packet_redshift_share(const double H, const double path_phys,
+                                     double energy[ISRF_OPERATOR_COUNT],
+                                     double photons[ISRF_OPERATOR_COUNT],
+                                     double lost_energy[ISRF_OPERATOR_COUNT],
+                                     double lost_photons[ISRF_OPERATOR_COUNT]) {
+
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    lost_energy[b] = 0.0;
+    lost_photons[b] = 0.0;
+  }
+  if (!radiation_packet_redshift_is_set)
+    error("The packet redshift was not given the speed of light.");
+  const double zeta = H * path_phys / radiation_packet_speed_of_light;
+  if (!(zeta > 0.0)) return;
+
+  const double w_pe = radiation_packet_weight_energy[ISRF_OPERATOR_PE];
+  const double w_lw = radiation_packet_weight_energy[ISRF_OPERATOR_LW];
+
+  /* The PE photon rate is fixed by the energy and photons before the step. */
+  double loss_pe_photons = 0.0;
+  if (energy[ISRF_OPERATOR_PE] > 0.0 && photons[ISRF_OPERATOR_PE] > 0.0) {
+    const double w_n_pe =
+        (w_pe - 1.0) * energy[ISRF_OPERATOR_PE] / photons[ISRF_OPERATOR_PE];
+    loss_pe_photons = -photons[ISRF_OPERATOR_PE] * expm1(-w_n_pe * zeta);
+  }
+  const double loss_pe = -energy[ISRF_OPERATOR_PE] * expm1(-w_pe * zeta);
+  const double loss_lw = -energy[ISRF_OPERATOR_LW] * expm1(-w_lw * zeta);
+  const double loss_lw_photons =
+      -photons[ISRF_OPERATOR_LW] *
+      expm1(-radiation_packet_weight_photon_lw * zeta);
+
+  /* Gain of the PE band: what the LW band loses through its lower edge. */
+  const double gain_pe = loss_lw * (w_lw - 1.0) / w_lw;
+  const double gain_pe_photons =
+      loss_lw_photons *
+      (RADIATION_PE_BAND_LOWER_EDGE_CGS / RADIATION_LW_BAND_LOWER_EDGE_CGS);
+
+  energy[ISRF_OPERATOR_PE] += gain_pe - loss_pe;
+  energy[ISRF_OPERATOR_LW] -= loss_lw;
+  photons[ISRF_OPERATOR_PE] += gain_pe_photons - loss_pe_photons;
+  photons[ISRF_OPERATOR_LW] -= loss_lw_photons;
+
+  lost_energy[ISRF_OPERATOR_PE] = loss_pe - gain_pe;
+  lost_energy[ISRF_OPERATOR_LW] = loss_lw;
+  lost_photons[ISRF_OPERATOR_PE] = loss_pe_photons - gain_pe_photons;
+  lost_photons[ISRF_OPERATOR_LW] = loss_lw_photons;
 }
 
 /**
@@ -367,7 +470,7 @@ void radiation_packet_inject_test_beams(
     const double energy[ISRF_OPERATOR_COUNT] = {bm[9], bm[10]};
     const float offset[3] = {-p->h * bm[6], -p->h * bm[7], -p->h * bm[8]};
     radiation_packet_deliver(p, p->feedback_data.isrf_packet.octant_frame,
-                             energy, energy, offset, 0.f, 0, 0);
+                             energy, energy, offset, 0.f, 0.f, 0, 0);
   }
 }
 
@@ -483,20 +586,27 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
  * @param sl The slot.
  * @param ti_current Start of the particle's new step.
  * @param ti_step Length of the particle's step.
- * @param time_base Physical length of one integer time step.
+ * @param time_base Physical length of one integer time step. Under cosmology
+ * it is a step in `ln a`, so #cosmo is used instead.
+ * @param cosmo The cosmological model, or NULL in a static box.
  * @param slot_index Index of the slot, for the debugging check.
  * @param frame Octant frame, for the debugging check.
  */
 static void radiation_packet_merge_slot(
     struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
-    const integertime_t ti_step, const double time_base, const int slot_index,
-    const float frame[9]) {
+    const integertime_t ti_step, const double time_base,
+    const struct cosmology *cosmo, const int slot_index, const float frame[9]) {
 
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
-    const double t_rem =
-        (double)(sl->reservoir_end_ti - ti_current) * time_base;
-    const double dt = (double)ti_step * time_base;
+    double t_rem, dt;
+    if (cosmo != NULL) {
+      t_rem = cosmology_get_delta_time(cosmo, ti_current, sl->reservoir_end_ti);
+      dt = cosmology_get_delta_time(cosmo, ti_current, ti_current + ti_step);
+    } else {
+      t_rem = (double)(sl->reservoir_end_ti - ti_current) * time_base;
+      dt = (double)ti_step * time_base;
+    }
     if (t_rem > dt) release = (float)(dt / t_rem);
   }
 
@@ -585,11 +695,13 @@ static void radiation_packet_merge_slot(
  * @param p The particle, active.
  * @param ti_current Start of the particle's new step.
  * @param ti_step Length of the particle's step.
- * @param time_base Physical length of one integer time step.
+ * @param time_base Physical length of one integer time step. Under cosmology
+ * it is a step in `ln a`, so #cosmo is used instead.
+ * @param cosmo The cosmological model, or NULL in a static box.
  */
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
-                            const integertime_t ti_step,
-                            const double time_base) {
+                            const integertime_t ti_step, const double time_base,
+                            const struct cosmology *cosmo) {
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
 #ifdef SWIFT_DEBUG_CHECKS
@@ -599,8 +711,8 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   pk->step_end_ti = ti_current + ti_step;
 
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-    radiation_packet_merge_slot(&pk->slot[s], ti_current, ti_step, time_base, s,
-                                pk->octant_frame);
+    radiation_packet_merge_slot(&pk->slot[s], ti_current, ti_step, time_base,
+                                cosmo, s, pk->octant_frame);
 }
 
 /**

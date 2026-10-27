@@ -273,8 +273,8 @@ radiation_iact_nonsym_feedback_apply(
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
   if (fb_props->ISRF_transport == isrf_transport_packet_hop) {
-    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, ti_current,
-                               fb_props->ISRF_packet_octant_frame);
+    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, cosmo->H,
+                               ti_current, fb_props->ISRF_packet_octant_frame);
   } else if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
              si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
     /* L_band is zero unless with_interstellar_radiation_field is on. */
