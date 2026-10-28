@@ -58,6 +58,10 @@ struct strength_state_cache {
   bool rho_0_computed;
   float rho_0;
 
+  /*! Minimum pressure */
+  bool P_min_computed;
+  float P_min;
+
   /*! J_2 invariant of the deviatoric stress tensor */
   bool J_2_computed;
   float J_2;
@@ -144,6 +148,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_T_melt(
     struct strength_state *s, const struct mat_params *mp);
 
 __attribute__((always_inline)) INLINE static float strength_state_get_rho_0(
+    struct strength_state *s, const struct mat_params *mp);
+
+__attribute__((always_inline)) INLINE static float strength_state_get_P_min(
     struct strength_state *s, const struct mat_params *mp);
 
 __attribute__((always_inline)) INLINE static float strength_state_get_J_2(

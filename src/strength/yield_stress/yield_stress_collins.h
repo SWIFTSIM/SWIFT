@@ -114,10 +114,14 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
   const float Y_M = mp->yield_stress_collins_Y_M;
   const float pressure = strength_state_get_pressure(s, mp);
 
-  /* Compute yield stress of fully intact material, Collins+2004 Eqn. ### */
-  // ### Should be able to decrease if negative pressures until yield_stress=0? miluphcuda does this so maybe not wrong?
-  if (pressure > 0.f && Y_M != Y_0) {
-    return Y_0 + mu_i * pressure / (1.f + (mu_i * pressure) / (Y_M - Y_0));
+  /* Compute yield stress of fully intact material, Collins+2004 Eqn. ###.
+   * This also applies in tension, where it decreases to zero. */
+  if (Y_M != Y_0) {
+    const float denominator = 1.f + (mu_i * pressure) / (Y_M - Y_0);
+    if (denominator <= 0.f) {
+      return 0.f;
+    }
+    return fmaxf(Y_0 + mu_i * pressure / denominator, 0.f);
   } else {
     return Y_0;
   }

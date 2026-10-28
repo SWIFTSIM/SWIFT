@@ -130,7 +130,9 @@ hydro_get_drifted_physical_internal_energy(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
     const struct part *restrict p) {
 
-  return gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure =
+      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  return hydro_get_comoving_pressure_strength(p, pressure);
 }
 
 /**
@@ -145,8 +147,7 @@ __attribute__((always_inline)) INLINE static float hydro_get_comoving_pressure(
 __attribute__((always_inline)) INLINE static float hydro_get_physical_pressure(
     const struct part *restrict p, const struct cosmology *cosmo) {
 
-  return cosmo->a_factor_pressure *
-         gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  return cosmo->a_factor_pressure * hydro_get_comoving_pressure(p);
 }
 
 /**
@@ -411,8 +412,7 @@ hydro_set_drifted_physical_internal_energy(
   /* Now recompute the extra quantities */
 
   /* Compute the sound speed */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure = hydro_get_comoving_pressure(p);
   const float soundspeed = hydro_get_comoving_soundspeed(p);
 
   /* Update variables. */
@@ -722,8 +722,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float abs_div_physical_v = fabsf(div_physical_v);
 
   /* Compute the pressure */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure = hydro_get_comoving_pressure(p);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -831,8 +830,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   hydro_reset_predicted_values_strength(p, xp);
 
   /* Compute the pressure */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure = hydro_get_comoving_pressure(p);
 
   /* Compute the sound speed */
   const float soundspeed =
@@ -900,8 +898,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
     p->rho *= expf(w2);
 
   /* Compute the new pressure */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure = hydro_get_comoving_pressure(p);
 
   /* Compute the new sound speed */
   const float soundspeed =
@@ -999,8 +996,7 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
     const struct pressure_floor_props *pressure_floor) {
 
   /* Compute the pressure */
-  const float pressure =
-      gas_pressure_from_internal_energy(p->rho, p->u, p->mat_id);
+  const float pressure = hydro_get_comoving_pressure(p);
 
   /* Compute the sound speed */
   const float soundspeed =

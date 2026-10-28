@@ -267,6 +267,15 @@ enum rho_0_scheme {
   rho_0_scheme_constant = 1,
   rho_0_scheme_from_eos = 2,
 };
+
+/**
+ * @brief Schemes for the minimum pressure of a material.
+ */
+enum P_min_scheme {
+  P_min_scheme_none = 0,
+  P_min_scheme_constant = 1,
+  P_min_scheme_yield_envelope = 2,
+};
 #endif /* MATERIAL_STRENGTH */
 
 /**
@@ -282,6 +291,8 @@ struct mat_params {
   float T_melt_constant;
   enum rho_0_scheme rho_0_scheme;
   float rho_0_constant;
+  enum P_min_scheme P_min_scheme;
+  float P_min_constant;
 
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     float yield_stress_benz_asphaug_Y_0;

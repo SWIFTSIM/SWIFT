@@ -9,6 +9,8 @@ Material:
     T_melt_constant: 933        # Melting temperature for the constant scheme (K)
     rho_0_scheme:    2          # Reference density scheme: none=0, constant=1, from_eos=2
     rho_0_constant:  2700       # Reference density for the constant scheme (kg m^-3)
+    P_min_scheme:    1          # Minimum pressure scheme: none=0, constant=1, yield_envelope=2
+    P_min_constant:  -200e6     # Minimum pressure for the constant scheme (Pa)
 
 # Specific material-strength schemes
 ArtificialStressBasisIndependent:

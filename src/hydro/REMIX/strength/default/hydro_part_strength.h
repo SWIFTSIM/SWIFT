@@ -65,6 +65,9 @@ struct strength_part_data {
   // Principal stresses (Eigenvalues of stress_tensor)
   float principal_stress_eigen[3];
 
+  // Minimum pressure, from the strength state
+  float P_min;
+
   // Deviatoric stress tensor
   struct sym_matrix deviatoric_stress_tensor;
 

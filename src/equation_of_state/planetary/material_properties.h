@@ -47,6 +47,7 @@
 /* Schemes for material properties */
 #include "material_properties/T_melt.h"
 #include "material_properties/rho_0.h"
+#include "material_properties/P_min.h"
 
 #ifdef MATERIAL_STRENGTH
 
@@ -101,6 +102,7 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
   // Schemes for material properties
   material_T_melt_set_default(mat_params);
   material_rho_0_set_default(mat_params);
+  material_P_min_set_default(mat_params);
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
@@ -177,6 +179,7 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
   // Schemes for material properties
   material_T_melt_read(mat_params, file_params, param_file);
   material_rho_0_read(mat_params, file_params, param_file);
+  material_P_min_read(mat_params, file_params, param_file);
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
@@ -266,6 +269,7 @@ INLINE static void convert_units_material_params(struct mat_params *mat_params,
   // Schemes for material properties
   material_T_melt_convert_units(mat_params, us);
   material_rho_0_convert_units(mat_params, us);
+  material_P_min_convert_units(mat_params, us);
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)

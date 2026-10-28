@@ -25,6 +25,8 @@
  * @brief Setting up the strength state of a particle.
  */
 
+#include <float.h>
+
 #include "equation_of_state.h"
 
 /**
@@ -113,7 +115,7 @@ strength_state_get_phase(struct strength_state *s, const struct mat_params *mp) 
 }
 
 /**
- * @brief Get the pressure, from the EoS.
+ * @brief Get the pressure, from the EoS and no lower than the minimum pressure.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -122,8 +124,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     struct strength_state *s, const struct mat_params *mp) {
 
   if (!s->cache.pressure_computed) {
-    s->cache.pressure =
+    const float pressure =
         gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
+    s->cache.pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
     s->cache.pressure_computed = true;
   }
   return s->cache.pressure;
@@ -210,6 +213,40 @@ __attribute__((always_inline)) INLINE static float strength_state_get_rho_0(
     s->cache.rho_0_computed = true;
   }
   return s->cache.rho_0;
+}
+
+/**
+ * @brief Get the minimum pressure, from the material's scheme.
+ *
+ * The choice between options is made here, so that each option can use
+ * strength state quantities.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_P_min(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.P_min_computed) {
+    switch (mp->P_min_scheme) {
+      case P_min_scheme_none:
+        s->cache.P_min = -FLT_MAX;
+        break;
+
+      case P_min_scheme_constant:
+        s->cache.P_min = material_P_min_constant(mp);
+        break;
+
+      case P_min_scheme_yield_envelope:
+        s->cache.P_min = material_P_min_yield_envelope(mp, s->mat_id);
+        break;
+
+      default:
+        error("Unknown P_min scheme %d", mp->P_min_scheme);
+    }
+    s->cache.P_min_computed = true;
+  }
+  return s->cache.P_min;
 }
 
 /**

@@ -84,6 +84,7 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_store_dri
     const struct mat_params *mp) {
 
   p->phase = strength_state_get_phase(s, mp);
+  p->strength_data.P_min = strength_state_get_P_min(s, mp);
   p->strength_data.stress_tensor = strength_state_get_stress_tensor(s, mp);
 
   const float *principal_stresses = strength_state_get_principal_stresses(s, mp);
@@ -107,6 +108,20 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_store_kic
   xp->phase_full = strength_state_get_phase(s, mp);
 }
 
+
+/**
+ * @brief Applies the minimum pressure from the strength state to a pressure
+ * from the EoS.
+ *
+ * @param p The particle of interest.
+ * @param pressure The pressure from the EoS.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_pressure_strength(const struct part *restrict p,
+                                     const float pressure) {
+
+  return fmaxf(pressure, p->strength_data.P_min);
+}
 
 /**
  * @brief Updates the hydro (+ strength) time-step based on strength methods.

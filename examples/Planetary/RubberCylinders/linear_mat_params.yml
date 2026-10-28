@@ -3,12 +3,14 @@
 # General properties
 Material:
     state_type:      1          # Base phase state: fluid=0, solid=1, variable=2
-    shear_mod:       1.5969888e8# Shear modulus (Pa)
+    shear_mod:       1.5969888e8  # Shear modulus (Pa)
     bulk_mod:        0          # Bulk modulus (Pa)
     T_melt_scheme:   0          # Melting temperature scheme: none=0, constant=1
     T_melt_constant: 0          # Melting temperature for the constant scheme (K)
     rho_0_scheme:    2          # Reference density scheme: none=0, constant=1, from_eos=2
     rho_0_constant:  1000       # Reference density for the constant scheme (kg m^-3)
+    P_min_scheme:    0          # Minimum pressure scheme: none=0, constant=1, yield_envelope=2
+    P_min_constant:  0          # Minimum pressure for the constant scheme (Pa)
 
 # Specific material-strength schemes
 ArtificialStressBasisIndependent:

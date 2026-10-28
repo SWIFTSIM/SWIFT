@@ -32,6 +32,19 @@
 #include "strength.h"
 
 /**
+ * @brief Without strength, the pressure from the EoS is used unchanged.
+ *
+ * @param p The particle of interest.
+ * @param pressure The pressure from the EoS.
+ */
+__attribute__((always_inline)) INLINE static float
+hydro_get_comoving_pressure_strength(const struct part *restrict p,
+                                     const float pressure) {
+
+  return pressure;
+}
+
+/**
  * @brief Updates the hydro (+ strength) time-step based on strength methods.
  *
  *
