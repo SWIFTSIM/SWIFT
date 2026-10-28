@@ -168,24 +168,34 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
 }
 
 /**
- * @brief Transmission weight `W(r, h_s) max(0, mu)^p` of a sender towards
+ * @brief Transmission weight `V W(r, h_s) max(0, mu)^p` of a sender towards
  * one neighbour, with `mu` the cosine between the hop and the packet
- * direction.
+ * direction and `V = mass / rho` the comoving volume of the neighbour.
+ * The expansion factor of the comoving density is common to all neighbours
+ * of a sender and cancels in the shares.
+ *
+ * The sum of the weights over the neighbours is the SPH quadrature of the
+ * integral of `W mu^p` over the volume, so the share to a side of the sender
+ * follows the solid angle and not the number of neighbours there.
  *
  * Exactly 0 for `mu <= RADIATION_PACKET_MU_MIN`, for `r = 0` and beyond the
  * sender's kernel support. Kept out of line so that the gradient loop, which
  * sums the weights, and the force loop, which divides by that sum, evaluate
- * the same compiled arithmetic. The distance is computed here too: a caller's
- * `r2` may be contracted differently at each call site.
+ * the same compiled arithmetic, the division `mass / rho` included. The
+ * distance is computed here too: a caller's `r2` may be contracted differently
+ * at each call site.
  *
  * @param dx Comoving vector from the sender to the neighbour.
  * @param h_s Comoving smoothing length of the sender.
  * @param n Unit direction of the packet.
  * @param power Power `p` of the cone.
+ * @param mass Mass of the neighbour.
+ * @param rho Comoving density snapshot `rho_prev` of the neighbour.
  * @return The weight.
  */
 __attribute__((noinline)) float radiation_packet_transmission_weight(
-    const float dx[3], const float h_s, const float n[3], const float power) {
+    const float dx[3], const float h_s, const float n[3], const float power,
+    const float mass, const float rho) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float H2 = h_s * h_s * kernel_gamma2;
@@ -198,7 +208,7 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
   const float h_inv = 1.f / h_s;
   float w;
   kernel_eval(r * h_inv, &w);
-  return w * pow_dimension(h_inv) * powf(mu, power);
+  return (mass / rho) * w * pow_dimension(h_inv) * powf(mu, power);
 }
 
 /**
