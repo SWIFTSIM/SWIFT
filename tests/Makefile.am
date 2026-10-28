@@ -34,7 +34,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
-        testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
+        testCbrt testCosmologyAccuracy testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh test27cellsHydroSinks.sh testHydroMPIrules \
         testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
         testSinkApertureEdgeRounding testSinkDriftFlags \
@@ -57,7 +57,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
                  testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
                  testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
-		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
+		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
 		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
@@ -105,7 +105,7 @@ testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
 
-testCosmology_SOURCES = testCosmology.c
+testCosmologyAccuracy_SOURCES = testCosmologyAccuracy.c
 
 testOutputList_SOURCES = testOutputList.c
 
