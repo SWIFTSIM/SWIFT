@@ -271,8 +271,8 @@ struct cooling_function_data {
 
   /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
    * for "kernel_radius" (default), 2 for "kernel_diameter"
-   * (GeajayCooling:H2_self_shielding_path). The column is N_H2 = 2 n_H2 l, so
-   * the length handed to geajay is half this path. */
+   * (GeajayCooling:H2_self_shielding_path). The length handed to geajay is
+   * half this path, and geajay forms N_H2 = n_H2 l from it. */
   float H2_self_shielding_path_in_kernel_radii;
 
   /*! Maximal number of sub-cycle iterations per solve, or 0 for the geajay

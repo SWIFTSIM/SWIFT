@@ -777,9 +777,10 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
         cooling->RT_H2_dissociation_rate / (1. / time_units);
   }
 
-  /* The H2 column is N_H2 = 2 n_H2 l, so l = path / 2 gives the column
-     through the chosen path of H2_self_shielding_path_in_kernel_radii kernel
-     support radii H = kernel_gamma h. With comoving_coordinates = 0, a
+  /* The length is half the chosen path of
+     H2_self_shielding_path_in_kernel_radii kernel support radii H =
+     kernel_gamma h. geajay forms N_H2 = n_H2 l from it (src/h2.h of geajay), so
+     the column is n_H2 times half the path. With comoving_coordinates = 0, a
      physical length in length_units is expected. */
   if (cooling->H2_self_shielding == cooling_h2_shielding_length_given)
     inputs->H2_self_shielding_length =
