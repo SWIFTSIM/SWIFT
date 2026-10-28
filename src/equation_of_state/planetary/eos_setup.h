@@ -250,6 +250,24 @@ enum mat_phase {
   mat_phase_solid = 1,
 };
 
+#ifdef MATERIAL_STRENGTH
+/**
+ * @brief Schemes for the melting temperature of a material.
+ */
+enum T_melt_scheme {
+  T_melt_scheme_none = 0,
+  T_melt_scheme_constant = 1,
+};
+
+/**
+ * @brief Schemes for the reference density of a material.
+ */
+enum rho_0_scheme {
+  rho_0_scheme_none = 0,
+  rho_0_scheme_constant = 1,
+};
+#endif /* MATERIAL_STRENGTH */
+
 /**
  * @brief Struct of material parameters beyond the base EoS.
  */
@@ -259,8 +277,10 @@ struct mat_params {
 #ifdef MATERIAL_STRENGTH
   float shear_mod;
   float bulk_mod;
-  float T_melt;
-  float rho_0;
+  enum T_melt_scheme T_melt_scheme;
+  float T_melt_constant;
+  enum rho_0_scheme rho_0_scheme;
+  float rho_0_constant;
 
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     float yield_stress_benz_asphaug_Y_0;

@@ -75,7 +75,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part
  * and an estimate of the crack velocity.
  *
  * Method parameters needed in material parameter file:
- * Strength:
+ * Material:
  *     shear_mod: Shear modulus (Pa).
  *     bulk_mod: Bulk modulus (Pa).
  * DamageTensileBenzAsphaug:

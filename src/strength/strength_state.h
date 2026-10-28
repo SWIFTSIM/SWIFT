@@ -50,6 +50,14 @@ struct strength_state_cache {
   bool temperature_computed;
   float temperature;
 
+  /*! Melting temperature */
+  bool T_melt_computed;
+  float T_melt;
+
+  /*! Reference density */
+  bool rho_0_computed;
+  float rho_0;
+
   /*! J_2 invariant of the deviatoric stress tensor */
   bool J_2_computed;
   float J_2;
@@ -130,6 +138,12 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     struct strength_state *s, const struct mat_params *mp);
 
 __attribute__((always_inline)) INLINE static float strength_state_get_temperature(
+    struct strength_state *s, const struct mat_params *mp);
+
+__attribute__((always_inline)) INLINE static float strength_state_get_T_melt(
+    struct strength_state *s, const struct mat_params *mp);
+
+__attribute__((always_inline)) INLINE static float strength_state_get_rho_0(
     struct strength_state *s, const struct mat_params *mp);
 
 __attribute__((always_inline)) INLINE static float strength_state_get_J_2(

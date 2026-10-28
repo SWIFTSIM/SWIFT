@@ -95,7 +95,8 @@ strength_state_get_phase(struct strength_state *s, const struct mat_params *mp) 
         break;
 
       case mat_state_type_variable:
-        s->cache.phase = (strength_state_get_temperature(s, mp) > mp->T_melt)
+        s->cache.phase = (strength_state_get_temperature(s, mp) >
+                          strength_state_get_T_melt(s, mp))
                              ? mat_phase_fluid
                              : mat_phase_solid;
         break;
@@ -140,6 +141,62 @@ __attribute__((always_inline)) INLINE static float strength_state_get_temperatur
     s->cache.temperature_computed = true;
   }
   return s->cache.temperature;
+}
+
+/**
+ * @brief Get the melting temperature, from the material's scheme.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_T_melt(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.T_melt_computed) {
+    switch (mp->T_melt_scheme) {
+      case T_melt_scheme_none:
+        error("Material %d needs T_melt, but Material:T_melt_scheme is not set",
+              s->mat_id);
+        break;
+
+      case T_melt_scheme_constant:
+        s->cache.T_melt = material_T_melt_constant(mp);
+        break;
+
+      default:
+        error("Unknown T_melt scheme %d", mp->T_melt_scheme);
+    }
+    s->cache.T_melt_computed = true;
+  }
+  return s->cache.T_melt;
+}
+
+/**
+ * @brief Get the reference density, from the material's scheme.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static float strength_state_get_rho_0(
+    struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.rho_0_computed) {
+    switch (mp->rho_0_scheme) {
+      case rho_0_scheme_none:
+        error("Material %d needs rho_0, but Material:rho_0_scheme is not set",
+              s->mat_id);
+        break;
+
+      case rho_0_scheme_constant:
+        s->cache.rho_0 = material_rho_0_constant(mp);
+        break;
+
+      default:
+        error("Unknown rho_0 scheme %d", mp->rho_0_scheme);
+    }
+    s->cache.rho_0_computed = true;
+  }
+  return s->cache.rho_0;
 }
 
 /**

@@ -48,8 +48,8 @@ __attribute__((always_inline)) INLINE static void yield_weakening_density_set_st
  * context of its implementation in iSALE.
  *
  * Method parameters needed in material parameter file:
- * Strength:
- *     rho_0: Material rho_0.
+ * Material:
+ *     rho_0_scheme: Scheme for the reference density (must be set).
  * YieldStressWeakeningDensityPowerLaw:
  *     mult_param: Density weakening muliplication factor (default 0.85).
  *     pow_param: Density weakening power factor (default 4).
@@ -64,7 +64,7 @@ yield_weakening_apply_density_to_yield_stress(float *Y,
                                               const struct mat_params *mp) {
 
   /* Method parameters. */
-  const float rho_0 = mp->rho_0;
+  const float rho_0 = strength_state_get_rho_0(s, mp);
   const float a = mp->yield_weakening_density_power_law_mult_param;
   const float rho_weak = a * rho_0;
   const float density = s->density;

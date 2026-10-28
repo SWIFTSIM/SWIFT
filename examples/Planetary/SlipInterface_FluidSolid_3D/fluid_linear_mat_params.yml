@@ -2,4 +2,4 @@
 
 # General properties
 Material:
-    state_type:    0               # Base phase state: fluid=0, solid=1, variable=2
+    state_type:      0          # Base phase state: fluid=0, solid=1, variable=2

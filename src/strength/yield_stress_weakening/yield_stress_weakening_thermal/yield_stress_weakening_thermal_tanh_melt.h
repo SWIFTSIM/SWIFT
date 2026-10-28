@@ -48,8 +48,8 @@ __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_st
  * is used by e.g. Collins+2004 and Emsenhuber+2018.
  *
  * Method parameters needed in material parameter file:
- * Strength:
- *     T_melt: Melting temperature (K).
+ * Material:
+ *     T_melt_scheme: Scheme for the melting temperature (must be set).
  * YieldStressWeakeningThermalTanhMelt:
  *     xi: Thermal weakening xi factor (default 1.2).
  *
@@ -64,7 +64,7 @@ yield_weakening_apply_temperature_to_yield_stress(float *Y,
 
   /* Method parameters. */
   const float xi = mp->yield_weakening_thermal_tanh_melt_xi;
-  const float T_melt = mp->T_melt;
+  const float T_melt = strength_state_get_T_melt(s, mp);
   const float temperature = strength_state_get_temperature(s, mp);
 
   /* Apply weakening. */

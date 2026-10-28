@@ -44,6 +44,10 @@
 #include "restart.h"
 #include "units.h"
 
+/* Schemes for material properties */
+#include "material_properties/T_melt.h"
+#include "material_properties/rho_0.h"
+
 #ifdef MATERIAL_STRENGTH
 
 /**
@@ -93,8 +97,10 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
   // General material strength parameters
   mat_params->shear_mod = 0.f;
   mat_params->bulk_mod = 0.f;
-  mat_params->T_melt = 0.f;
-  mat_params->rho_0 = 0.f;
+
+  // Schemes for material properties
+  material_T_melt_set_default(mat_params);
+  material_rho_0_set_default(mat_params);
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
@@ -163,16 +169,14 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
   // General properties
   mat_params->state_type = (enum mat_state_type)parser_get_opt_param_int(
       file_params, "Material:state_type", mat_params->state_type);
-
-  // General material strength parameters
   mat_params->shear_mod = parser_get_opt_param_float(
-      file_params, "Strength:shear_mod", mat_params->shear_mod);
+      file_params, "Material:shear_mod", mat_params->shear_mod);
   mat_params->bulk_mod = parser_get_opt_param_float(
-      file_params, "Strength:bulk_mod", mat_params->bulk_mod);
-  mat_params->T_melt = parser_get_opt_param_float(
-      file_params, "Strength:T_melt", mat_params->T_melt);
-  mat_params->rho_0 = parser_get_opt_param_float(
-      file_params, "Strength:rho_0", mat_params->rho_0);
+      file_params, "Material:bulk_mod", mat_params->bulk_mod);
+
+  // Schemes for material properties
+  material_T_melt_read(mat_params, file_params, param_file);
+  material_rho_0_read(mat_params, file_params, param_file);
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
@@ -254,14 +258,14 @@ INLINE static void convert_units_material_params(struct mat_params *mat_params,
   // SI to cgs
   mat_params->shear_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
   mat_params->bulk_mod *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-  mat_params->T_melt *= units_cgs_conversion_factor(&si, UNIT_CONV_TEMPERATURE);
-  mat_params->rho_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_DENSITY);
 
   // cgs to internal
   mat_params->shear_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   mat_params->bulk_mod /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-  mat_params->T_melt /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
-  mat_params->rho_0 /= units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+
+  // Schemes for material properties
+  material_T_melt_convert_units(mat_params, us);
+  material_rho_0_convert_units(mat_params, us);
 
   // Specific constants for material-strength schemes
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
@@ -311,29 +315,17 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
 
   if (mat_params->shear_mod <= 0.f)
     error("Material %d: a solid or variable state_type needs "
-          "Strength:shear_mod > 0", mat_id);
-
-  if ((mat_params->state_type == mat_state_type_variable) &&
-      (mat_params->T_melt <= 0.f))
-    error("Material %d: a variable state_type needs Strength:T_melt > 0",
-          mat_id);
+          "Material:shear_mod > 0", mat_id);
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT)
-    if ((mat_params->T_melt <= 0.f) ||
-        (mat_params->yield_weakening_thermal_tanh_melt_xi <= 0.f))
-      error("Material %d: thermal yield weakening needs Strength:T_melt > 0 "
-            "and YieldStressWeakeningThermalTanhMelt:xi > 0", mat_id);
-  #endif
-
-  #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY_POWER_LAW)
-    if (mat_params->rho_0 <= 0.f)
-      error("Material %d: density yield weakening needs Strength:rho_0 > 0",
-            mat_id);
+    if (mat_params->yield_weakening_thermal_tanh_melt_xi <= 0.f)
+      error("Material %d: thermal yield weakening needs "
+            "YieldStressWeakeningThermalTanhMelt:xi > 0", mat_id);
   #endif
 
   #if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG)
     if (mat_params->bulk_mod <= 0.f)
-      error("Material %d: tensile damage needs Strength:bulk_mod > 0", mat_id);
+      error("Material %d: tensile damage needs Material:bulk_mod > 0", mat_id);
     if (mat_params->damage_tensile_benz_asphaug_crack_velocity_factor <= 0.f)
       error("Material %d: tensile damage needs "
             "DamageTensileBenzAsphaug:crack_velocity_factor > 0", mat_id);
