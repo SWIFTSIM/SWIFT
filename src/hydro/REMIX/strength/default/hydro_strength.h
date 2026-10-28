@@ -69,6 +69,44 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick
                       p->strength_data.strain_rate_tensor, mp);
   strength_state_set_method_fields(s, p, mp);
 }
+/**
+ * @brief Stores the quantities derived from the strength state on the particle.
+ *
+ * Every quantity on the particle that is derived from the strength state is set
+ * here, so that they always come from the same state.
+ *
+ * @param p The particle of interest.
+ * @param s The strength state of the particle, from its drifted values.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static void hydro_strength_state_store_drift(
+    struct part *restrict p, struct strength_state *s,
+    const struct mat_params *mp) {
+
+  p->phase = strength_state_get_phase(s, mp);
+  p->strength_data.stress_tensor = strength_state_get_stress_tensor(s, mp);
+
+  const float *principal_stresses = strength_state_get_principal_stresses(s, mp);
+  p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
+  p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
+  p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
+}
+
+/**
+ * @brief Stores the quantities derived from the strength state on the extended
+ * particle.
+ *
+ * @param xp The extended data of the particle of interest.
+ * @param s The strength state of the particle, from its kicked values.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static void hydro_strength_state_store_kick(
+    struct xpart *restrict xp, struct strength_state *s,
+    const struct mat_params *mp) {
+
+  xp->phase_full = strength_state_get_phase(s, mp);
+}
+
 
 /**
  * @brief Updates the hydro (+ strength) time-step based on strength methods.
@@ -194,17 +232,8 @@ hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
                       p->strength_data.strain_rate_tensor, mp);
   strength_state_set_method_fields(&s, p, mp);
 
-  /* Set phase. */
-  p->phase = strength_state_get_phase(&s, mp);
-
-  /* Set stress tensor. */
-  p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
-
-  /* Compute principal stresses. */
-  const float *principal_stresses = strength_state_get_principal_stresses(&s, mp);
-  p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
-  p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
-  p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
+  /* Store the quantities derived from the state. */
+  hydro_strength_state_store_drift(p, &s, mp);
 }
 
 /**
@@ -260,6 +289,12 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
   strength_reset_predicted_values_stress_tensor(p, xp);
   strength_reset_predicted_values_damage(p, xp);
   strength_reset_predicted_values_extra(p, xp);
+
+  /* Store the quantities derived from the state with the reset values. */
+  const struct mat_params *mp = material_params(p->mat_id);
+  struct strength_state s;
+  hydro_strength_state_init_drift(&s, p, mp);
+  hydro_strength_state_store_drift(p, &s, mp);
 }
 
 /**
@@ -313,17 +348,8 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
 
-  /* Set updated phase. */
-  p->phase = strength_state_get_phase(&s, mp);
-
-  /* Set updated stress tensor. */
-  p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
-
-  /* Compute updated principal stresses. */
-  const float *principal_stresses = strength_state_get_principal_stresses(&s, mp);
-  p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
-  p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
-  p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
+  /* Store the quantities derived from the state. */
+  hydro_strength_state_store_drift(p, &s, mp);
 }
 
 /**
@@ -380,8 +406,8 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
   struct strength_state s;
   hydro_strength_state_init_kick(&s, p, xp, mp);
 
-  /* Set updated phase. */
-  xp->phase_full = strength_state_get_phase(&s, mp);
+  /* Store the quantities derived from the state. */
+  hydro_strength_state_store_kick(xp, &s, mp);
 }
 
 /**
@@ -400,12 +426,13 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
   strength_first_init_part_stress_tensor(p, xp);
   strength_first_init_part_damage(p, xp);
 
-  /* Set the initial phase. */
+  /* Store the quantities derived from the initial state. */
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
-  p->phase = strength_state_get_phase(&s, mp);
-  xp->phase_full = p->phase;
+  hydro_strength_state_store_drift(p, &s, mp);
+  hydro_strength_state_init_kick(&s, p, xp, mp);
+  hydro_strength_state_store_kick(xp, &s, mp);
 }
 
 #endif /* SWIFT_REMIX_STRENGTH_DEFAULT_H */
