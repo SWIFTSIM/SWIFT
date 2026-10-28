@@ -507,8 +507,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
 
   if (pi->feedback_data.ISRF_packet_transport) {
     const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-    radiation_packet_gradient_accumulate(dx_ij, hi, pi);
-    radiation_packet_gradient_accumulate(dx, hj, pj);
+    radiation_packet_gradient_accumulate(dx_ij, hi, pi, pj);
+    radiation_packet_gradient_accumulate(dx, hj, pj, pi);
     return;
   }
 
@@ -570,7 +570,7 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
 
   if (pi->feedback_data.ISRF_packet_transport) {
     const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-    radiation_packet_gradient_accumulate(dx_ij, hi, pi);
+    radiation_packet_gradient_accumulate(dx_ij, hi, pi, pj);
     return;
   }
 

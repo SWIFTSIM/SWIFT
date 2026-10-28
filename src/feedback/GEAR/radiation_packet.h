@@ -25,7 +25,8 @@
  * its packet to its downstream neighbours, once per own step.
  *
  * The gradient loop sums the sender's transmission weights `S`, the force
- * loop books each share `w/S` into the receiver. Both loops call the one
+ * loop books each share `w/S` into the receiver. The weight carries the
+ * receiver's volume `mass/rho`, divided inside it. Both loops call the one
  * out-of-line #radiation_packet_transmission_weight, so the shares of a
  * sender sum to 1 up to rounding. A share is booked by the rank that owns the
  * receiver, once.
@@ -68,7 +69,8 @@
 extern int radiation_packet_light_speed_limited;
 
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
-                                           const float n[3], const float power);
+                                           const float n[3], const float power,
+                                           const float mass, const float rho);
 int radiation_packet_emission_cone(const long long star_id,
                                    const integertime_t ti_begin,
                                    const double dx[3]);
@@ -172,18 +174,21 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
  * @param dx Comoving vector from the sender to the neighbour.
  * @param h_s Comoving smoothing length of the sender.
  * @param s The sender.
+ * @param r The neighbour.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
-                                     struct part *restrict s) {
+                                     struct part *restrict s,
+                                     const struct part *restrict r) {
 
   struct feedback_isrf_packet_data *pk = &s->feedback_data.isrf_packet;
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
     if (radiation_packet_slot_is_empty(sl)) continue;
 
-    const float w = radiation_packet_transmission_weight(dx, h_s, sl->direction,
-                                                         pk->cone_power);
+    const float w = radiation_packet_transmission_weight(
+        dx, h_s, sl->direction, pk->cone_power, hydro_get_mass(r),
+        r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
     sl->weight_sum += w;
@@ -360,8 +365,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     const struct feedback_isrf_packet_slot_data *sl = &pk_s->slot[k];
     if (radiation_packet_slot_is_empty(sl)) continue;
 
-    const float w = radiation_packet_transmission_weight(dx, h_s, sl->direction,
-                                                         pk_s->cone_power);
+    const float w = radiation_packet_transmission_weight(
+        dx, h_s, sl->direction, pk_s->cone_power, hydro_get_mass(r),
+        r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -536,10 +542,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 /**
  * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * Each of the 12 cones holds `L dt / 12`. Its receivers share it in proportion
- * to their weights, over the larger of the cone's weight sum and the cone
- * floor; the rest of the cone escapes. The share is absorbed over the
- * distance to the star.
+ * Each of the 12 cones holds `L dt / 12`. A cone whose weight sum is below the
+ * cone floor lets the rest of its twelfth escape. The light that does not
+ * escape is shared by all receivers of the star in proportion to their
+ * weights. The share is absorbed over the distance to the star.
  *
  * @param si The star.
  * @param pj The gas neighbour.
@@ -582,9 +588,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 #endif
   /* Possible only if this gas was not a receiver in the density loop. */
   if (!(S > 0.0)) return;
-  const double fraction =
-      star_gas_cone_share(weight, S, radiation_packet_cone_floor(si),
-                          RADIATION_PACKET_EMISSION_CONES);
+  const double fraction = star_gas_global_share(
+      weight, si->feedback_data.radiation.packet.cone_weight,
+      radiation_packet_cone_floor(si), RADIATION_PACKET_EMISSION_CONES);
 
   double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -620,8 +626,8 @@ void radiation_packet_check_star_cones(const struct spart *sp,
  * into or swallowed by another particle, into that particle's ledger.
  *
  * The light in flight (held, inbox and reservoir, in every slot) is lost with
- * the gas and is booked as removed. The gas's absorbed and escaped ledgers are
- * carried over.
+ * the gas and is booked as removed. The gas's absorbed, escaped and redshifted
+ * ledgers are carried over.
  *
  * @param p The gas particle.
  * @param l The ledger of the star or sink.

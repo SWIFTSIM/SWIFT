@@ -283,24 +283,34 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
 }
 
 /**
- * @brief Transmission weight `W(r, h_s) max(0, mu)^p` of a sender towards
+ * @brief Transmission weight `V W(r, h_s) max(0, mu)^p` of a sender towards
  * one neighbour, with `mu` the cosine between the hop and the packet
- * direction.
+ * direction and `V = mass / rho` the comoving volume of the neighbour.
+ * The expansion factor of the comoving density is common to all neighbours
+ * of a sender and cancels in the shares.
+ *
+ * The sum of the weights over the neighbours is the SPH quadrature of the
+ * integral of `W mu^p` over the volume, so the share to a side of the sender
+ * follows the solid angle and not the number of neighbours there.
  *
  * Exactly 0 for `mu <= RADIATION_PACKET_MU_MIN`, for `r = 0` and beyond the
  * sender's kernel support. Kept out of line so that the gradient loop, which
  * sums the weights, and the force loop, which divides by that sum, evaluate
- * the same compiled arithmetic. The distance is computed here too: a caller's
- * `r2` may be contracted differently at each call site.
+ * the same compiled arithmetic, the division `mass / rho` included. The
+ * distance is computed here too: a caller's `r2` may be contracted differently
+ * at each call site.
  *
  * @param dx Comoving vector from the sender to the neighbour.
  * @param h_s Comoving smoothing length of the sender.
  * @param n Unit direction of the packet.
  * @param power Power `p` of the cone.
+ * @param mass Mass of the neighbour.
+ * @param rho Comoving density snapshot `rho_prev` of the neighbour.
  * @return The weight.
  */
 __attribute__((noinline)) float radiation_packet_transmission_weight(
-    const float dx[3], const float h_s, const float n[3], const float power) {
+    const float dx[3], const float h_s, const float n[3], const float power,
+    const float mass, const float rho) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float H2 = h_s * h_s * kernel_gamma2;
@@ -313,7 +323,7 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
   const float h_inv = 1.f / h_s;
   float w;
   kernel_eval(r * h_inv, &w);
-  return w * pow_dimension(h_inv) * powf(mu, power);
+  return (mass / rho) * w * pow_dimension(h_inv) * powf(mu, power);
 }
 
 /**
@@ -1773,11 +1783,9 @@ void radiation_packet_star_book_emission(struct spart *sp,
   }
 
   const double floor = radiation_packet_cone_floor(sp);
-  double fraction = 0.0;
-  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
-    fraction +=
-        star_gas_cone_escape(sp->feedback_data.radiation.packet.cone_weight[c],
-                             floor, RADIATION_PACKET_EMISSION_CONES);
+  const double fraction =
+      star_gas_escape_fraction(sp->feedback_data.radiation.packet.cone_weight,
+                               floor, RADIATION_PACKET_EMISSION_CONES);
   if (fraction == 0.0) return;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -1812,7 +1820,7 @@ void radiation_packet_check_star_cones(const struct spart *sp,
   const double floor = radiation_packet_cone_floor(sp);
   int n_receivers = 0, n_empty = 0, n_edge_only = 0, n_diff = 0;
   long long id_diff = 0;
-  double dS = 0.0, accounted = 0.0;
+  double dS = 0.0, S_d_sum = 0.0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     const int n = sp->feedback_data.radiation.packet.cone_count[c];
     const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
@@ -1830,10 +1838,7 @@ void radiation_packet_check_star_cones(const struct spart *sp,
     } else {
       dS = fmax(dS, fabs(S_d - S) / S);
     }
-    /* The delivered shares are those of the feedback loop's weight sum. */
-    accounted +=
-        star_gas_cone_share(S_d, S, floor, RADIATION_PACKET_EMISSION_CONES) +
-        star_gas_cone_escape(S, floor, RADIATION_PACKET_EMISSION_CONES);
+    S_d_sum += S_d;
     /* The worst membership difference: the largest count difference, else
        a swap at the same count. */
     if (abs(n - n_d) > abs(n_diff) ||
@@ -1842,6 +1847,13 @@ void radiation_packet_check_star_cones(const struct spart *sp,
       id_diff = id - id_d;
     }
   }
+  /* The delivered shares are those of the feedback loop's weight sum. */
+  const double accounted =
+      star_gas_global_share(S_d_sum,
+                            sp->feedback_data.radiation.packet.cone_weight,
+                            floor, RADIATION_PACKET_EMISSION_CONES) +
+      star_gas_escape_fraction(sp->feedback_data.radiation.packet.cone_weight,
+                               floor, RADIATION_PACKET_EMISSION_CONES);
   const double E_pe = sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
                       (double)sp->feedback_data.radiation.Delta_t;
   message(

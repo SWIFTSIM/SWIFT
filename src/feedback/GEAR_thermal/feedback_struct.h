@@ -451,10 +451,11 @@ struct feedback_isrf_packet_removed_data {
   /*! Photon number in flight when the gas was removed, as `N E_lo`. */
   double removed_photons[ISRF_OPERATOR_COUNT];
 
-  /*! Absorbed and escaped energy of the gas's own ledger, carried over. */
+  /*! Absorbed, escaped and redshifted energy of the gas's own ledger, carried
+      over. */
   double inherited_energy[ISRF_OPERATOR_COUNT];
 
-  /*! Absorbed and escaped photon number of the gas, as `N E_lo`. */
+  /*! Absorbed, escaped and redshifted photon number of the gas, as `N E_lo`. */
   double inherited_photons[ISRF_OPERATOR_COUNT];
 };
 
