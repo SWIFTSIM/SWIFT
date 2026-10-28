@@ -1372,6 +1372,77 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Compute the interactions between two progeny of a split self task.
+ *
+ * Split (multiplexed) self tasks interact the pairs of progeny directly, as we
+ * do not have the machinery to split sub-pairs and cannot sort cells on the
+ * fly. We use the sorted interactions if all the required sorts exist and
+ * are still valid, and fall back on the naive interactions otherwise.
+ *
+ * WARNING: Can only be called in a SELF recursion.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell (progeny of the self task's cell).
+ * @param cj The second #cell (progeny of the self task's cell).
+ * @param offset First particle to be treated.
+ * @param ntasks Interval between successive particles that are treated.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
+ */
+void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                           const int offset, const int ntasks,
+                           const int limit_min_h, const int limit_max_h) {
+
+  const struct engine *restrict e = r->e;
+
+#if !defined(SWIFT_USE_NAIVE_INTERACTIONS_STARS)
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+
+  const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+                    cell_is_active_stars(ci, e);
+  const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+                    cell_is_active_stars(cj, e);
+
+  /* Anything to do here? */
+  if (!do_ci && !do_cj) return;
+
+  /* Note: Reading the sort arrays is safe. The self task holds the lock on the
+   * parent cell's gas and stars, so no other task can sort these progeny
+   * concurrently, and the split tasks themselves never sort. */
+
+  /* Are all the sorts we need there and still valid? */
+  int sorted = 1;
+  if (do_ci) {
+    sorted = sorted && (ci->stars.sorted & (1 << sid)) &&
+             ci->stars.dx_max_sort_old <= space_maxreldx * ci->dmin &&
+             (cj->hydro.sorted & (1 << sid)) &&
+             cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin;
+  }
+  if (do_cj) {
+    sorted = sorted && (cj->stars.sorted & (1 << sid)) &&
+             cj->stars.dx_max_sort_old <= space_maxreldx * cj->dmin &&
+             (ci->hydro.sorted & (1 << sid)) &&
+             ci->hydro.dx_max_sort_old <= space_maxreldx * ci->dmin;
+  }
+
+  if (sorted) {
+    DO_SYM_PAIR1_STARS(r, ci, cj, offset, ntasks, limit_min_h, limit_max_h, sid,
+                       shift);
+    return;
+  }
+#endif
+
+  /* Naive interactions in both directions */
+  DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, offset, ntasks, limit_min_h,
+                              limit_max_h);
+  DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, offset, ntasks, limit_min_h,
+                              limit_max_h);
+}
+
+/**
  * @brief Compute grouped sub-cell interactions for pairs
  *
  * @param r The #runner.
@@ -1597,16 +1668,11 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, const int offset,
             } else {
 
               /* We don't have the machinery to do multi-plexed sub-pairs
-               * so we switch to interactions already here
-               * Note: we use the naive version as we are unsure of the sort
-               * status*/
-
-              DO_NONSYM_PAIR1_STARS_NAIVE(r, c->progeny[k], c->progeny[j],
-                                          offset, ntasks, /*limit_h_min=*/0,
-                                          recurse_below_h_max);
-              DO_NONSYM_PAIR1_STARS_NAIVE(r, c->progeny[j], c->progeny[k],
-                                          offset, ntasks, /*limit_h_min=*/0,
-                                          recurse_below_h_max);
+               * so we switch to interactions already here, using the sorted
+               * version if the sorts are available */
+              DOPAIR1_PROGENY_STARS(r, c->progeny[k], c->progeny[j], offset,
+                                    ntasks, /*limit_h_min=*/0,
+                                    recurse_below_h_max);
             }
           }
         }
