@@ -109,7 +109,7 @@
 
 /*! PE/LW band lower edges, eV. Photons redshift downward through these
     energies (fixed in physical energy). See
-    theory/GEAR/Radiation/02_fuv_isrf.tex. */
+    theory/GEAR/Radiation/04_isrf_packet_transport.tex. */
 #define RADIATION_PE_BAND_LOWER_EDGE_EV 6.0
 #define RADIATION_LW_BAND_LOWER_EDGE_EV 11.2
 
@@ -129,10 +129,10 @@
     initialise the #feedback_props band_edge weights and are used when the
     table's Integrated_L_PE or Integrated_L_LW denominator vanishes.
     lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (theory/GEAR/Radiation/
-    02_fuv_isrf.tex). The values are the young-population end of the spectral
-    family, which dominates the LW luminosity. An aged population's Lambda_LW
-    reaches about 18.3, 3x higher. The bias against a population average is
-    not sized. */
+    04_isrf_packet_transport.tex). The values are the young-population end of
+    the spectral family, which dominates the LW luminosity. An aged
+    population's Lambda_LW reaches about 18.3, 3x higher. The bias against a
+    population average is not sized. */
 #define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
 #define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
 #define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0
