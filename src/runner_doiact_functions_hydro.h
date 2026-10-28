@@ -1945,8 +1945,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
     defined(MPI_SYMMETRIC_FORCE_INTERACTION)
-      /* ISRF: a foreign active pi books into every local pj, r < h_i.
-       * Its packet goes to every local pj, active or not. */
+      /* ISRF: a foreign active pi books its packet into every local pj,
+       * active or not, for r < h_i. */
       if (!local_i && local_j && PART_IS_ACTIVE(pi, e) &&
           (depth_i >= min_depth) && (depth_i <= max_depth)) {
         for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
@@ -2253,8 +2253,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
     defined(MPI_SYMMETRIC_FORCE_INTERACTION)
-      /* ISRF: same for a foreign active pj, h_i <= r < h_j. Its packet
-       * goes to every local pi with r < h_j, active or not. */
+      /* ISRF: same for a foreign active pj and every local pi with
+       * r < h_j. */
       if (!local_j && local_i && PART_IS_ACTIVE(pj, e) &&
           (depth_j >= min_depth) && (depth_j <= max_depth)) {
         for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;

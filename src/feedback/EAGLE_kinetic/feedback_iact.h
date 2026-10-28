@@ -557,13 +557,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
  * @param pj Second particle (not updated).
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param pj_active Is j active in this step?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
                                  const float hi, const float hj,
                                  struct part *restrict pi,
                                  struct part *restrict pj, const float a,
-                                 const float H) {}
+                                 const float H, const int pj_active) {}
 
 /**
  * @brief Force-loop ISRF packet hop between two particles (symmetric).
@@ -598,12 +599,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  * @param book Book the share.
+ * @param pj_active Is j active in this step?
+ * @param reverse Book the outer part of the share of j into i.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    const float hi, const float hj,
                                    struct part *restrict pi,
                                    struct part *restrict pj, const float a,
-                                   const float H, const int book) {}
+                                   const float H, const int book,
+                                   const int pj_active, const int reverse) {}
 
 #endif /* SWIFT_EAGLE_FEEDBACK_KINETIC_IACT_H */
