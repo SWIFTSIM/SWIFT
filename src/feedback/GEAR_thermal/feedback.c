@@ -362,32 +362,6 @@ float feedback_compute_residual_internal_energy_for_multiple_sn_events(
 }
 
 /**
- * @brief Finishes the #part density calculation: caches the LW/PE
- * propagation speed, see #radiation_end_density_propagation.
- *
- * @param p The particle to act upon
- * @param xp The extra particle to act upon
- * @param e The #engine.
- */
-void feedback_end_density(struct part *p, struct xpart *xp,
-                          const struct engine *e) {
-  radiation_end_density_propagation(p, e);
-}
-
-/**
- * @brief Sets all particle fields to sensible values when the #part has 0
- * neighbours, see #radiation_part_has_no_neighbours.
- *
- * @param p The particle to act upon.
- * @param xp The extra particle to act upon.
- * @param e The #engine.
- */
-void feedback_part_has_no_neighbours(struct part *p, struct xpart *xp,
-                                     const struct engine *e) {
-  radiation_part_has_no_neighbours(p, e);
-}
-
-/**
  * @brief Finishes the #part gradient calculation, see
  * #radiation_end_gradient_propagation.
  *
@@ -427,25 +401,16 @@ float feedback_compute_part_timestep(const struct part *restrict p,
    * candidates in get_part_timestep(). */
   const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
   if (dt_isrf_scaled < e->dt_min) {
-    if (e->feedback_props->ISRF_transport == isrf_transport_packet_hop)
-      error(
-          "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
-          "the cosmology factor) below TimeIntegration:dt_min (%e): "
-          "GEARFeedback:ISRF_packet_light_speed=fixed with "
-          "GEARFeedback:ISRF_packet_light_speed_fraction_of_c=%g forces "
-          "dt_rad = C_hyp*a*h/(f*c) below dt_min for this particle's h. "
-          "Lower the fraction (dt_rad grows as 1/f), use the mode cap, or "
-          "lower dt_min.",
-          p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
-          e->feedback_props->ISRF_packet_light_speed_fraction_of_c);
     error(
         "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
         "the cosmology factor) below TimeIntegration:dt_min (%e): "
-        "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c=%g forces dt_rad = "
-        "C_hyp*h/(f*c) below dt_min for this particle's h. Lower the "
-        "fraction (dt_rad grows as 1/f), or lower dt_min.",
+        "GEARFeedback:ISRF_packet_light_speed=fixed with "
+        "GEARFeedback:ISRF_packet_light_speed_fraction_of_c=%g forces "
+        "dt_rad = C_hyp*a*h/(f*c) below dt_min for this particle's h. "
+        "Lower the fraction (dt_rad grows as 1/f), use the mode cap, or "
+        "lower dt_min.",
         p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
-        e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+        e->feedback_props->ISRF_packet_light_speed_fraction_of_c);
   }
   return dt_isrf;
 }
@@ -462,19 +427,6 @@ void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
   radiation_snapshot_part_propagation(p, e);
   radiation_reset_part_ISRF_illumination_tag(p, e);
-  /* Must stay after the tag reset: an expired tag can zero `u`. */
-  radiation_cache_m1_closure_part(p);
-}
-
-/**
- * @brief Re-initialise the feedback fields of a gas particle at the start of
- * each density h-iteration.
- *
- * @param p The particle.
- * @param e The #engine.
- */
-void feedback_init_part(struct part *p, const struct engine *e) {
-  radiation_init_part_propagation(p);
 }
 
 /**
@@ -656,7 +608,6 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                       star_age_beg_step, dt, time, ti_begin,
                                       with_cosmology);
 
-  if (feedback_props->ISRF_propagation &&
-      feedback_props->ISRF_transport == isrf_transport_packet_hop)
+  if (feedback_props->ISRF_propagation)
     radiation_packet_star_book_emission(sp, (float)dt);
 }

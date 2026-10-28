@@ -155,8 +155,6 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -172,7 +170,6 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
             /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
@@ -193,8 +190,6 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H, with_self_gravity,
@@ -210,7 +205,6 @@ void DOPAIR1_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
             /*local_first=*/local_j, /*local_second=*/local_i, a, H, time_base,
@@ -357,8 +351,6 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -374,7 +366,6 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H,
                                            local_j);
 #endif
@@ -393,8 +384,6 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H, with_self_gravity,
@@ -410,7 +399,6 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H,
                                            local_i);
 #endif
@@ -557,8 +545,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                     e->internal_units);
         runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity, cosmo,
@@ -574,7 +560,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                               t_current, cosmo, with_cosmology,
                               chemistry_properties);
-        runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
             /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -590,8 +575,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -607,7 +590,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
             /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -627,8 +609,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H, with_self_gravity,
@@ -644,7 +624,6 @@ void DOSELF1_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
             /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -768,8 +747,6 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                     e->internal_units);
         runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity, cosmo,
@@ -785,7 +762,6 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                               t_current, cosmo, with_cosmology,
                               chemistry_properties);
-        runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H, 1, 1);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
@@ -802,8 +778,6 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -819,7 +793,6 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H, 1);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
@@ -840,8 +813,6 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H, with_self_gravity,
@@ -857,7 +828,6 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
         runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
         runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H, 1);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
@@ -961,8 +931,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
         IACT_NONSYM_MHD(r2, dx, hi, pj->h, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, pj->h, pi, pj, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hi, pj->h, pi, pj, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, pj->h, pi, pj, a, H,
@@ -978,7 +946,6 @@ void DOPAIR_SUBSET_NAIVE(struct runner *r, const struct cell *restrict ci,
         runner_iact_nonsym_diffusion(r2, dx, hi, pj->h, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hi, pj->h, pi, pj, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, pj->h, pi, pj, /*both_updatable_here=*/0,
             /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
@@ -1088,8 +1055,6 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -1105,7 +1070,6 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
               /*local_first=*/local_i, /*local_second=*/local_j, a, H,
@@ -1167,8 +1131,6 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -1184,7 +1146,6 @@ void DOPAIR_SUBSET(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
               /*local_first=*/local_i, /*local_second=*/local_j, a, H,
@@ -1365,8 +1326,6 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
         IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
         runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-        runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                            e->internal_units);
         runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -1382,7 +1341,6 @@ void DOSELF_SUBSET(struct runner *r, const struct cell *c,
         runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                      t_current, cosmo, with_cosmology,
                                      chemistry_properties);
-        runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
         runner_iact_chemistry_flux_exchange(
             r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
             /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -1595,8 +1553,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -1612,7 +1568,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
               /*local_first=*/local_i, /*local_second=*/local_j, a, H,
@@ -1724,8 +1679,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
@@ -1741,7 +1694,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
               /*local_first=*/local_j, /*local_second=*/local_i, a, H,
@@ -1996,10 +1948,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 >= hig2) continue;
           if (!PART_IS_ACTIVE(pj, e))
-            runner_iact_nonsym_isrf_dissipation(r2, dx, hi, pj->h, pi, pj, a,
-                                                H);
-          runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, pj->h, pi, pj, a, H,
-                                             /*book=*/1);
+            runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, pj->h, pi, pj, a, H,
+                                               /*book=*/1);
         }
       }
 #endif
@@ -2079,8 +2029,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
@@ -2096,7 +2044,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H,
                                              local_i && local_j);
           runner_iact_chemistry_flux_exchange(
@@ -2191,8 +2138,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                         e->internal_units);
             runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -2208,7 +2153,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                   t_current, cosmo, with_cosmology,
                                   chemistry_properties);
-            runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H,
                                         local_i && local_j, local_i && local_j);
             runner_iact_chemistry_flux_exchange(
@@ -2227,8 +2171,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-            runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                                e->internal_units);
             runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -2245,7 +2187,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology, chemistry_properties);
-            runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
             runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H,
                                                local_i && local_j);
             runner_iact_chemistry_flux_exchange(
@@ -2311,10 +2252,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 >= hjg2) continue;
           if (!PART_IS_ACTIVE(pi, e) && r2 >= hig2)
-            runner_iact_nonsym_isrf_dissipation(r2, dx, hj, pi->h, pj, pi, a,
-                                                H);
-          runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, pi->h, pj, pi, a, H,
-                                             /*book=*/1);
+            runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, pi->h, pj, pi, a, H,
+                                               /*book=*/1);
         }
       }
 #endif
@@ -2394,8 +2333,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -2411,7 +2348,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H,
                                              local_i && local_j);
           runner_iact_chemistry_flux_exchange(
@@ -2506,8 +2442,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             IACT_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                         e->internal_units);
             runner_iact_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_star_formation(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_sink(r2, dx, hj, hi, pj, pi, a, H, with_self_gravity,
@@ -2523,7 +2457,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                   t_current, cosmo, with_cosmology,
                                   chemistry_properties);
-            runner_iact_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H,
                                         local_i && local_j, local_i && local_j);
             runner_iact_chemistry_flux_exchange(
@@ -2543,8 +2476,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
             runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-            runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                                e->internal_units);
             runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
@@ -2561,7 +2492,6 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
             runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H,
                                          time_base, t_current, cosmo,
                                          with_cosmology, chemistry_properties);
-            runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
             runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H,
                                                local_i && local_j);
             runner_iact_chemistry_flux_exchange(
@@ -2755,8 +2685,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
@@ -2772,7 +2700,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
               /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -2848,8 +2775,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                       e->internal_units);
           runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -2865,7 +2790,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                 t_current, cosmo, with_cosmology,
                                 chemistry_properties);
-          runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
               /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -2883,8 +2807,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -2900,7 +2822,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
               /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -2922,8 +2843,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
@@ -2939,7 +2858,6 @@ void DOSELF1(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
               /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
@@ -3119,8 +3037,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hj, hi, pj, pi, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hj, hi, pj, pi, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_sink(r2, dx, hj, hi, pj, pi, a, H,
@@ -3136,7 +3052,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_diffusion(r2, dx, hj, hi, pj, pi, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hj, hi, pj, pi, a, H);
           runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, hi, pj, pi, a, H, 1);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
@@ -3214,8 +3129,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                       e->internal_units);
           runner_iact_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_sink(r2, dx, hi, hj, pi, pj, a, H, with_self_gravity,
@@ -3231,7 +3144,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                 t_current, cosmo, with_cosmology,
                                 chemistry_properties);
-          runner_iact_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H, 1, 1);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
@@ -3251,8 +3163,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
           runner_iact_nonsym_chemistry(r2, dx, hi, hj, pi, pj, a, H);
-          runner_iact_nonsym_isrf_propagation(r2, dx, hi, hj, pi, pj, a, H,
-                                              e->internal_units);
           runner_iact_nonsym_pressure_floor(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_star_formation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_sink(r2, dx, hi, hj, pi, pj, a, H,
@@ -3268,7 +3178,6 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
           runner_iact_nonsym_diffusion(r2, dx, hi, hj, pi, pj, a, H, time_base,
                                        t_current, cosmo, with_cosmology,
                                        chemistry_properties);
-          runner_iact_nonsym_isrf_dissipation(r2, dx, hi, hj, pi, pj, a, H);
           runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, hj, pi, pj, a, H, 1);
           runner_iact_chemistry_flux_exchange(
               r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,

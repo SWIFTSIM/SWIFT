@@ -273,7 +273,7 @@ radiation_iact_nonsym_feedback_apply(
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-  if (fb_props->ISRF_transport == isrf_transport_packet_hop) {
+  if (fb_props->ISRF_propagation) {
     radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, cosmo->H,
                                ti_current, fb_props->ISRF_packet_octant_frame);
   } else if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
@@ -296,29 +296,17 @@ radiation_iact_nonsym_feedback_apply(
                     (double)extinction[radiation_isrf_moment_to_operator[m]];
     }
 
-    if (fb_props->ISRF_propagation) {
-      /* Pure accumulation, no reset, so stars on any time bin just add. The
-         fold-in happens in radiation_end_force_propagation(). */
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u_dose_reservoir +=
-            (float)(u_inject[m] / (double)mj);
-      }
-      pj->feedback_data.ISRF_reservoir_end_ti =
-          max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
+    /* Instantaneous field: reset on the first touch this step, then sum over
+     * the stars. */
+    if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
+      for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+        pj->feedback_data.isrf_moment[m].u = 0.f;
       pj->feedback_data.ISRF_last_touch_ti = ti_current;
-    } else {
-      /* Instantaneous field: reset on the first touch this step, then sum
-         over the stars. */
-      if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-          pj->feedback_data.isrf_moment[m].u = 0.f;
-        pj->feedback_data.ISRF_last_touch_ti = ti_current;
-      }
+    }
 
-      /* #u is double: no narrowing cast. */
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
-      }
+    /* #u is double: no narrowing cast. */
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
     }
 
     /* Renew the window on every touch. The expiry check runs once per step

@@ -49,11 +49,6 @@
     visit. */
 #define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
 
-/*! Decay length, in particle smoothing lengths, of the negativity-triggered
-    artificial-dissipation coefficient. Sets the transient, not the steady
-    state (ISRF_dissipation_alpha_max does that). */
-#define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
-
 /*! Ceiling, in rebuild cadences, on the interval the per-pass photon budget
     is integrated over. Photons emitted while the star's cell held no gas
     escaped and must not be handed to the next pass. */

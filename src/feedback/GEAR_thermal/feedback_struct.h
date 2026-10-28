@@ -50,8 +50,8 @@ enum radiation_isrf_moment {
 };
 
 /**
- * @brief The band operators (dust opacity, M1 closure, dissipation) a moment
- * is evaluated against. Indexes #feedback_part_data.isrf_operator.
+ * @brief The band operators (dust opacity) a moment is evaluated against.
+ * Indexes #feedback_part_data.isrf_operator.
  */
 enum radiation_isrf_operator {
   ISRF_OPERATOR_PE = 0,
@@ -96,68 +96,13 @@ _Static_assert(sizeof(radiation_isrf_operator_owner) /
                "ISRF_OPERATOR_COUNT.");
 
 /**
- * @brief Per-moment ISRF transport state of a hydro particle.
+ * @brief Per-moment ISRF state of a hydro particle.
  */
 struct feedback_isrf_moment_data {
 
   /*! Local specific radiation field of the band (physical, per unit mass).
-      Double: the per-step relaxation depth can be ~1e-8, too small for
-      `1 - a` in float. */
+      Double, as the field it is set from. */
   double u;
-
-  /*! Snapshot of #u taken once per step. Double, like #u. */
-  double u_prev;
-
-  /*! Reduced specific flux `F_true/c_hyp`, in the units of #u. */
-  float specific_flux[3];
-
-  /*! `(1/rho) div(rho F)` accumulated by the force loop. */
-  float div_specific_flux;
-
-  /*! Artificial-dissipation source term from the force loop. Scratch. */
-  float dissipation_u;
-
-  /*! Artificial-dissipation rate of the reduced flux, same pair coefficient
-      as #dissipation_u. Zero unless #feedback_part_data.ISRF_flux_dissipation
-      is set. Scratch. */
-  float dissipation_flux[3];
-
-  /*! M1 pressure-tensor divergence `(1/rho) div(D rho u)` from the gradient
-      loop, per physical length. Scratch. */
-  float grad_u[3];
-
-  /*! Mass-specific emission dose not yet injected into #u. */
-  float u_dose_reservoir;
-
-  /*! This step's source rate, drawn from #u_dose_reservoir. Scratch. */
-  float u_source_rate;
-
-  /*! Transport amount owed by finer neighbours, divided by c_hyp. Added and
-      zeroed by the next own update. */
-  float pending_transport_u;
-
-  /*! Dissipation amount owed by finer neighbours, divided by c_hyp and
-      weighted by their phi. Same life cycle as #pending_transport_u. */
-  float pending_dissipation_u;
-
-  /*! Reduced-flux dissipation amount owed by finer neighbours, divided by
-      c_hyp and weighted by their phi. Same life cycle as
-      #pending_transport_u. */
-  float pending_dissipation_flux[3];
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! Most negative #u at the end of an update since the previous snapshot,
-      0 if none. */
-  float u_min_since_snapshot;
-
-  /*! Cumulative dose handed to #u by the reservoir, rescaled by `c_hyp/c`
-      but not relaxed. */
-  float cumulative_injected;
-
-  /*! Cumulative energy lost to relaxation (dust absorption and redshift),
-      including transport and dissipation terms of optically thick steps. */
-  float cumulative_absorbed;
-#endif
 };
 
 /**
@@ -169,21 +114,6 @@ struct feedback_isrf_operator_data {
       the injection-side kappa of #radiation_get_part_ISRF_extinction_factors.
    */
   float kappa;
-
-  /*! M1 closure tensor `D(f)` of the owning moment. */
-  float m1_closure_D[3][3];
-
-  /*! Kernel mean of the neighbours' `|rho_prev*u_prev|`, the reference of the
-      negativity trigger. Scratch. */
-  float ngb_mean_abs_u_V;
-
-  /*! Reactive part of the dissipation coefficient, raised by the negativity
-      trigger and decayed otherwise. Dimensionless. */
-  float dissipation_alpha_trigger;
-
-  /*! Anticipatory part, the `h/lambda`-gated floor
-      (#radiation_dissipation_alpha_floor_band). */
-  float dissipation_alpha_floor;
 };
 
 /*! Number of test beams of the packet transport, see
@@ -241,8 +171,7 @@ struct feedback_isrf_operator_data {
 #endif
 
 /**
- * @brief One band of the own field and the ledger of a gas particle
- * (#isrf_transport_packet_hop).
+ * @brief One band of the own field and the ledger of a gas particle.
  *
  * Photon numbers are stored as `N E_lo`, the number times the lower edge photon
  * energy of the band: a raw count overflows a float. The mean photon energy is
@@ -469,13 +398,6 @@ struct feedback_part_data {
   char is_ionized;
 #endif
 
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-  /*! Largest #part.time_bin among this particle and its neighbours in the
-      ISRF density loop of this h-iteration. Drives #c_hyp. Sits in the
-      padding after #is_ionized, so #part does not grow. */
-  timebin_t max_ngb_time_bin;
-#endif
-
 #ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */
   long long star_id;
@@ -520,7 +442,7 @@ struct feedback_part_data {
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-  /*! Per-moment ISRF transport state, indexed by #radiation_isrf_moment. */
+  /*! Per-moment ISRF state, indexed by #radiation_isrf_moment. */
   struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
 
   /*! Per-operator ISRF band-physics coefficients, indexed by
@@ -528,27 +450,13 @@ struct feedback_part_data {
       #radiation_isrf_moment_to_operator. */
   struct feedback_isrf_operator_data isrf_operator[ISRF_OPERATOR_COUNT];
 
-  /*! Comoving density snapshot of the previous step, used by the gradient
-      and force loops so `grad` stays the adjoint of `div`. Seeded to 1 at
-      first init, never 0. */
+  /*! Comoving density snapshot of the previous step, read by the packet
+      transport. Seeded to 1 at first init, never 0. */
   float rho_prev;
-
-  /*! Hyperbolic propagation speed, shared by both bands. Under
-      #isrf_c_hyp_scheme_fixed_fraction it is `f*c`. Under
-      #isrf_c_hyp_scheme_kernel_local_reduced_flux it is
-      `min(C_hyp*h_i/dt_max(i), c)`, with `dt_max(i)` set by #max_ngb_time_bin.
-      The CFL condition is not guaranteed for pairs with `H_i <= r < H_j`. */
-  float c_hyp;
 
   /*! This particle's own physical timestep, cached once per step at the
       drift. */
   float dt_prev;
-
-#ifdef SWIFT_DEBUG_CHECKS
-  /*! #engine.snapshot_output_count at the last write of
-      #feedback_isrf_moment_data.u_min_since_snapshot. */
-  int u_min_snapshot_index;
-#endif
 
   /*! Step (#engine.ti_current) at which #feedback_isrf_moment_data.u was
       last written. With ISRF_propagation off, a match with the current step
@@ -561,17 +469,9 @@ struct feedback_part_data {
       is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
   char is_illuminated_ISRF;
 
-  /*! Copy of #feedback_props.ISRF_flux_dissipation, set at drift and in the
-      extra ghost, so the force pairs read it without the engine. */
-  char ISRF_flux_dissipation;
-
-  /*! Is #feedback_props.ISRF_transport the packet transport? Copied like
-      #ISRF_flux_dissipation. */
+  /*! Copy of #feedback_props.ISRF_propagation, set at drift and in the extra
+      ghost, so the neighbour loops read it without the engine. */
   char ISRF_packet_transport;
-
-  /*! Cross-bin pair booking state: < 0 inactive (may receive pending), > 0
-      active (equals #dt_prev), 0 legacy (every pair booked as before). */
-  float dt_active;
 
   /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
       every injection touch with a margin of
@@ -579,12 +479,7 @@ struct feedback_part_data {
       init. */
   integertime_t ISRF_illumination_end_ti;
 
-  /*! Integer time by which every dose in
-      #feedback_isrf_moment_data.u_dose_reservoir is fully drained, extended on
-      every star touch. Set to -1 at first init. */
-  integertime_t ISRF_reservoir_end_ti;
-
-  /*! Radiation packet of the packet transport. Zero under M1. */
+  /*! Radiation packet of the packet transport. */
   struct feedback_isrf_packet_data isrf_packet;
 #endif
 
