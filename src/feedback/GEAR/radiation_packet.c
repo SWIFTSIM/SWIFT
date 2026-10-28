@@ -874,11 +874,9 @@ void radiation_packet_star_book_emission(struct spart *sp,
   }
 
   const double floor = radiation_packet_cone_floor(sp);
-  double fraction = 0.0;
-  for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
-    fraction +=
-        star_gas_cone_escape(sp->feedback_data.radiation.packet.cone_weight[c],
-                             floor, RADIATION_PACKET_EMISSION_CONES);
+  const double fraction =
+      star_gas_escape_fraction(sp->feedback_data.radiation.packet.cone_weight,
+                               floor, RADIATION_PACKET_EMISSION_CONES);
   if (fraction == 0.0) return;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -913,7 +911,7 @@ void radiation_packet_check_star_cones(const struct spart *sp,
   const double floor = radiation_packet_cone_floor(sp);
   int n_receivers = 0, n_empty = 0, n_edge_only = 0, n_diff = 0;
   long long id_diff = 0;
-  double dS = 0.0, accounted = 0.0;
+  double dS = 0.0, S_d_sum = 0.0;
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     const int n = sp->feedback_data.radiation.packet.cone_count[c];
     const int n_d = sp->feedback_data.radiation.packet.cone_count_delivered[c];
@@ -931,10 +929,7 @@ void radiation_packet_check_star_cones(const struct spart *sp,
     } else {
       dS = fmax(dS, fabs(S_d - S) / S);
     }
-    /* The delivered shares are those of the feedback loop's weight sum. */
-    accounted +=
-        star_gas_cone_share(S_d, S, floor, RADIATION_PACKET_EMISSION_CONES) +
-        star_gas_cone_escape(S, floor, RADIATION_PACKET_EMISSION_CONES);
+    S_d_sum += S_d;
     /* The worst membership difference: the largest count difference, else
        a swap at the same count. */
     if (abs(n - n_d) > abs(n_diff) ||
@@ -943,6 +938,13 @@ void radiation_packet_check_star_cones(const struct spart *sp,
       id_diff = id - id_d;
     }
   }
+  /* The delivered shares are those of the feedback loop's weight sum. */
+  const double accounted =
+      star_gas_global_share(S_d_sum,
+                            sp->feedback_data.radiation.packet.cone_weight,
+                            floor, RADIATION_PACKET_EMISSION_CONES) +
+      star_gas_escape_fraction(sp->feedback_data.radiation.packet.cone_weight,
+                               floor, RADIATION_PACKET_EMISSION_CONES);
   const double E_pe = sp->feedback_data.radiation.L_band[ISRF_MOMENT_PE] *
                       (double)sp->feedback_data.radiation.Delta_t;
   message(
