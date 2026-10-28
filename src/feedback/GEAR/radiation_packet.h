@@ -68,6 +68,16 @@
    energy and the mean photon energy would leave the band. */
 #define RADIATION_PACKET_MIN_PHOTONS 1e-35f
 
+/*! Relative cut of both radii of the reach of a sender
+   (#radiation_packet_in_reach). About 100 float ulp of the square distance. */
+#define RADIATION_PACKET_REACH_GUARD 1e-5f
+
+/*! Parts of the reach of a sender: its own kernel support, the rest of the
+    kernel support of an active receiver, or both. */
+#define RADIATION_PACKET_REACH_INNER 0
+#define RADIATION_PACKET_REACH_OUTER 1
+#define RADIATION_PACKET_REACH_ALL 2
+
 /*! Distance over the star's kernel support below which a gas particle
     receives the star's light. */
 #define RADIATION_PACKET_EMISSION_EDGE STAR_GAS_WEIGHT_EDGE
@@ -141,8 +151,10 @@ __attribute__((always_inline)) INLINE static double radiation_packet_time_later(
 }
 
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
-                                           const float n[3], const float power,
-                                           const float mass, const float rho);
+                                           const float h_r, const int r_active,
+                                           const int want, const float n[3],
+                                           const float power, const float mass,
+                                           const float rho);
 int radiation_packet_emission_cone(const long long star_id,
                                    const integertime_t ti_begin,
                                    const double dx[3]);
@@ -336,12 +348,17 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
  *
  * @param dx Comoving vector from the sender to the neighbour.
  * @param h_s Comoving smoothing length of the sender.
+ * @param h_r Comoving smoothing length of the neighbour.
+ * @param r_active Is the neighbour active in this step?
+ * @param want The part of the reach to add (#RADIATION_PACKET_REACH_INNER and
+ * so on).
  * @param s The sender.
  * @param r The neighbour.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
-                                     struct part *restrict s,
+                                     const float h_r, const int r_active,
+                                     const int want, struct part *restrict s,
                                      const struct part *restrict r) {
 
   struct feedback_isrf_packet_data *pk = &s->feedback_data.isrf_packet;
@@ -350,8 +367,8 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
     if (radiation_packet_slot_is_empty(sl)) continue;
 
     const float w = radiation_packet_transmission_weight(
-        dx, h_s, sl->direction, pk->cone_power, hydro_get_mass(r),
-        r->feedback_data.rho_prev);
+        dx, h_s, h_r, r_active, want, sl->direction, pk->cone_power,
+        hydro_get_mass(r), r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
     sl->weight_sum = radiation_packet_add_stochastic(
@@ -563,14 +580,19 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  *
  * @param dx Comoving vector from the sender to the receiver.
  * @param h_s Comoving smoothing length of the sender.
+ * @param h_r Comoving smoothing length of the receiver.
+ * @param r_active Is the receiver active in this step?
+ * @param want The part of the reach to book (#RADIATION_PACKET_REACH_INNER and
+ * so on).
  * @param s The sender.
  * @param r The receiver.
  * @param a Current scale factor.
  * @param H Current Hubble rate. 0 in a static box.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
-    const float dx[3], const float h_s, const struct part *restrict s,
-    struct part *restrict r, const float a, const float H) {
+    const float dx[3], const float h_s, const float h_r, const int r_active,
+    const int want, const struct part *restrict s, struct part *restrict r,
+    const float a, const float H) {
 
   const struct feedback_isrf_packet_data *pk_s = &s->feedback_data.isrf_packet;
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
@@ -578,8 +600,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     if (radiation_packet_slot_is_empty(sl)) continue;
 
     const float w = radiation_packet_transmission_weight(
-        dx, h_s, sl->direction, pk_s->cone_power, hydro_get_mass(r),
-        r->feedback_data.rho_prev);
+        dx, h_s, h_r, r_active, want, sl->direction, pk_s->cone_power,
+        hydro_get_mass(r), r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS

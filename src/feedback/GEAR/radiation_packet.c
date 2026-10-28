@@ -349,24 +349,59 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
 }
 
 /**
- * @brief Transmission weight `V W(r, h_s) max(0, mu)^p` of a sender towards
+ * @brief Is a receiver in the reach of a sender, and in which part of it?
+ *
+ * The inner part is the kernel support of the sender. The outer part is the
+ * rest of the kernel support of the receiver, and it counts only for an
+ * active receiver: the gradient loop reaches it from the visit of that
+ * receiver, which exists only when the receiver is updated. Both radii are
+ * cut by #RADIATION_PACKET_REACH_GUARD so that every caller's own filter, which
+ * may round `r2` differently, contains the reach.
+ *
+ * @param r2 Square distance, computed in the caller of this function from the
+ * one `dx`.
+ * @param h_s Comoving smoothing length of the sender.
+ * @param h_r Comoving smoothing length of the receiver.
+ * @param r_active Is the receiver active in this step?
+ * @param want The part asked for: #RADIATION_PACKET_REACH_INNER,
+ * #RADIATION_PACKET_REACH_OUTER or #RADIATION_PACKET_REACH_ALL.
+ * @return 1 if the receiver is in the part asked for.
+ */
+__attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
+    const float r2, const float h_s, const float h_r, const int r_active,
+    const int want) {
+
+  const float cut = (1.f - RADIATION_PACKET_REACH_GUARD) * kernel_gamma2;
+  const int inner = r2 < cut * h_s * h_s;
+  const int outer = !inner && r_active && r2 < cut * h_r * h_r;
+  if (want == RADIATION_PACKET_REACH_INNER) return inner;
+  if (want == RADIATION_PACKET_REACH_OUTER) return outer;
+  return inner || outer;
+}
+
+/**
+ * @brief Transmission weight `V W(r, H) max(0, mu)^p` of a sender towards
  * one neighbour, with `mu` the cosine between the hop and the packet
- * direction and `V = mass / rho` the comoving volume of the neighbour. The
- * expansion factor of the comoving density is common to all neighbours and
- * cancels in the shares.
+ * direction, `V = mass / rho` the comoving volume of the neighbour and
+ * `H = max(h_s, h_r)`. The expansion factor of the comoving density is common
+ * to all neighbours and cancels in the shares.
  *
  * The sum over the neighbours is the SPH quadrature of the integral of
  * `W mu^p`, so the share to a side follows the solid angle and not the number
  * of neighbours there.
  *
- * Exactly 0 for `mu <= RADIATION_PACKET_MU_MIN`, for `r = 0` and beyond the
- * kernel support of the sender. Kept out of line so that the gradient loop and
- * the force loop evaluate the same compiled arithmetic, `mass / rho` and the
- * distance included: a caller's `r2` may be contracted differently at each
- * call site.
+ * Exactly 0 for `mu <= RADIATION_PACKET_MU_MIN`, for `r = 0` and outside the
+ * part of the reach asked for (#radiation_packet_in_reach). The kernel does not
+ * depend on the activity of the receiver: only the membership of the outer part
+ * does. Kept out of line so that the gradient loop and the force loop evaluate
+ * the same compiled arithmetic, `mass / rho` and the distance included: a
+ * caller's `r2` may be contracted differently at each call site.
  *
  * @param dx Comoving vector from the sender to the neighbour.
  * @param h_s Comoving smoothing length of the sender.
+ * @param h_r Comoving smoothing length of the neighbour.
+ * @param r_active Is the neighbour active in this step?
+ * @param want The part of the reach asked for.
  * @param n Unit direction of the packet.
  * @param power Power `p` of the cone.
  * @param mass Mass of the neighbour.
@@ -374,18 +409,19 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
  * @return The weight.
  */
 __attribute__((noinline)) float radiation_packet_transmission_weight(
-    const float dx[3], const float h_s, const float n[3], const float power,
-    const float mass, const float rho) {
+    const float dx[3], const float h_s, const float h_r, const int r_active,
+    const int want, const float n[3], const float power, const float mass,
+    const float rho) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-  const float H2 = h_s * h_s * kernel_gamma2;
-  if (!(r2 > 0.f) || r2 >= H2) return 0.f;
+  if (!(r2 > 0.f) || !radiation_packet_in_reach(r2, h_s, h_r, r_active, want))
+    return 0.f;
 
   const float r = sqrtf(r2);
   const float mu = (dx[0] * n[0] + dx[1] * n[1] + dx[2] * n[2]) / r;
   if (mu <= RADIATION_PACKET_MU_MIN) return 0.f;
 
-  const float h_inv = 1.f / h_s;
+  const float h_inv = 1.f / fmaxf(h_s, h_r);
   float w;
   kernel_eval(r * h_inv, &w);
   return (mass / rho) * w * pow_dimension(h_inv) * powf(mu, power);

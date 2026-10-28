@@ -30,6 +30,20 @@
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
+/* The reach of a sender is its own kernel support (inner part) and, for an
+   active receiver, the rest of the kernel support of the receiver (outer
+   part). With a one-sided gradient loop, the gradient loop adds the outer
+   part of a sender in the visit of the receiver. With a two-sided gradient
+   loop the visit of the sender reaches every receiver, so the activity of the
+   receiver plays no role. */
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+#define RADIATION_PACKET_RECEIVER_ACTIVE(active) 1
+#define RADIATION_PACKET_GRADIENT_WANT RADIATION_PACKET_REACH_ALL
+#else
+#define RADIATION_PACKET_RECEIVER_ACTIVE(active) (active)
+#define RADIATION_PACKET_GRADIENT_WANT RADIATION_PACKET_REACH_INNER
+#endif
+
 /**
  * @brief Gradient-loop interaction between two particles (symmetric): the
  * gradient accumulators of the packet transport of both are updated.
@@ -51,34 +65,47 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  radiation_packet_gradient_accumulate(dx_ij, hi, pi, pj);
-  radiation_packet_gradient_accumulate(dx, hj, pj, pi);
+  radiation_packet_gradient_accumulate(dx_ij, hi, hj, 1,
+                                       RADIATION_PACKET_REACH_ALL, pi, pj);
+  radiation_packet_gradient_accumulate(dx, hj, hi, 1,
+                                       RADIATION_PACKET_REACH_ALL, pj, pi);
 }
 
 /**
  * @brief Gradient-loop interaction between two particles (non-symmetric):
- * only particle i's accumulators are updated.
+ * particle i is updated and gathers its inner part of the reach. If j is
+ * active, its outer part of the reach, which this visit of i is the only one to
+ * see, is added to the accumulators of j.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
  * @param hj Comoving smoothing-length of particle j.
  * @param pi First particle.
- * @param pj Second particle (its own accumulators not updated).
+ * @param pj Second particle (only its outer part is added, if active).
  * @param a Current scale factor (unused, kept for interface conformance).
  * @param H Current Hubble parameter (unused, same reason).
+ * @param pj_active Is j active in this step?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
                                  const float hi, const float hj,
                                  struct part *restrict pi,
                                  struct part *restrict pj, const float a,
-                                 const float H) {
+                                 const float H, const int pj_active) {
 
-  if (!pi->feedback_data.ISRF_packet_transport) return;
+  if (pi->feedback_data.ISRF_packet_transport) {
+    const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
+    radiation_packet_gradient_accumulate(
+        dx_ij, hi, hj, RADIATION_PACKET_RECEIVER_ACTIVE(pj_active),
+        RADIATION_PACKET_GRADIENT_WANT, pi, pj);
+  }
 
-  const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  radiation_packet_gradient_accumulate(dx_ij, hi, pi, pj);
+#ifndef EXTRA_HYDRO_LOOP_TYPE2
+  if (pj_active && pj->feedback_data.ISRF_packet_transport)
+    radiation_packet_gradient_accumulate(dx, hj, hi, 1,
+                                         RADIATION_PACKET_REACH_OUTER, pj, pi);
+#endif
 }
 
 /**
@@ -104,8 +131,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  if (book_i_to_j) radiation_packet_book_share(dx_ij, hi, pi, pj, a, H);
-  if (book_j_to_i) radiation_packet_book_share(dx, hj, pj, pi, a, H);
+  if (book_i_to_j)
+    radiation_packet_book_share(dx_ij, hi, hj, 1, RADIATION_PACKET_REACH_ALL,
+                                pi, pj, a, H);
+  if (book_j_to_i)
+    radiation_packet_book_share(dx, hj, hi, 1, RADIATION_PACKET_REACH_ALL, pj,
+                                pi, a, H);
   radiation_packet_gather_field(r2, hi, pi, pj);
   radiation_packet_gather_field(r2, hj, pj, pi);
 }
@@ -123,20 +154,34 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  * @param book Book the share (j is local and this is its booking visit).
+ * @param pj_active Is j active in this step? It decides whether the outer part
+ * of the reach of i is booked.
+ * @param reverse Book the outer part of the share of j into i. For a sender j
+ * that is active and foreign: the rank of i is the only one that books it.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    const float hi, const float hj,
                                    struct part *restrict pi,
                                    struct part *restrict pj, const float a,
-                                   const float H, const int book) {
+                                   const float H, const int book,
+                                   const int pj_active, const int reverse) {
 
-  if (!pi->feedback_data.ISRF_packet_transport) return;
+  if (pi->feedback_data.ISRF_packet_transport) {
+    radiation_packet_gather_field(r2, hi, pi, pj);
+    if (book) {
+      const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
+      radiation_packet_book_share(dx_ij, hi, hj,
+                                  RADIATION_PACKET_RECEIVER_ACTIVE(pj_active),
+                                  RADIATION_PACKET_REACH_ALL, pi, pj, a, H);
+    }
+  }
 
-  radiation_packet_gather_field(r2, hi, pi, pj);
-  if (!book) return;
-  const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  radiation_packet_book_share(dx_ij, hi, pi, pj, a, H);
+#ifndef EXTRA_HYDRO_LOOP_TYPE2
+  if (reverse && pj->feedback_data.ISRF_packet_transport)
+    radiation_packet_book_share(dx, hj, hi, 1, RADIATION_PACKET_REACH_OUTER, pj,
+                                pi, a, H);
+#endif
 }
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
@@ -153,7 +198,7 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
                                  const float hi, const float hj,
                                  struct part *restrict pi,
                                  struct part *restrict pj, const float a,
-                                 const float H) {}
+                                 const float H, const int pj_active) {}
 
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
     const float r2, const float dx[3], const float hi, const float hj,
@@ -165,7 +210,8 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    const float hi, const float hj,
                                    struct part *restrict pi,
                                    struct part *restrict pj, const float a,
-                                   const float H, const int book) {}
+                                   const float H, const int book,
+                                   const int pj_active, const int reverse) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
