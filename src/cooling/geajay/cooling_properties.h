@@ -165,6 +165,10 @@ struct cooling_function_data {
   /*! UV rates file of "per_band"; empty: the Cloudy table file. */
   char uv_rates_file[200];
 
+  /*! Files of single bands of "per_band" (ionising, Lyman-Werner, G_0); empty:
+   * uv_rates_file. */
+  char ionising_rates_file[200], lw_rates_file[200], isrf_rates_file[200];
+
   /*! Constant LW background J21 (Grackle LWbackground_intensity); negative:
    * the library default. */
   double lw_background_j21;

@@ -436,6 +436,9 @@ INLINE static void cooling_read_background_parameters(
   cooling->dust_background_attenuation =
       GEAJAY_DUST_BACKGROUND_ATTENUATION_NONE;
   cooling->uv_rates_file[0] = '\0';
+  cooling->ionising_rates_file[0] = '\0';
+  cooling->lw_rates_file[0] = '\0';
+  cooling->isrf_rates_file[0] = '\0';
   cooling->dust_cross_section_lw_cgs = 0.;
   cooling->dust_cross_section_pe_cgs = 0.;
 
@@ -447,7 +450,10 @@ INLINE static void cooling_read_background_parameters(
       "GeajayCooling:dust_background_attenuation",
       "GeajayCooling:dust_cross_section_lw_cm2",
       "GeajayCooling:dust_cross_section_pe_cm2",
-      "GeajayCooling:uv_rates_file"};
+      "GeajayCooling:uv_rates_file",
+      "GeajayCooling:ionising_rates_file",
+      "GeajayCooling:lw_rates_file",
+      "GeajayCooling:isrf_rates_file"};
   if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) return;
 
   cooling->ionising_background_model = cooling_read_choice(
@@ -469,6 +475,15 @@ INLINE static void cooling_read_background_parameters(
   if (parser_does_param_exist(parameter_file, per_band_keys[7]))
     parser_get_param_string(parameter_file, per_band_keys[7],
                             cooling->uv_rates_file);
+  if (parser_does_param_exist(parameter_file, per_band_keys[8]))
+    parser_get_param_string(parameter_file, per_band_keys[8],
+                            cooling->ionising_rates_file);
+  if (parser_does_param_exist(parameter_file, per_band_keys[9]))
+    parser_get_param_string(parameter_file, per_band_keys[9],
+                            cooling->lw_rates_file);
+  if (parser_does_param_exist(parameter_file, per_band_keys[10]))
+    parser_get_param_string(parameter_file, per_band_keys[10],
+                            cooling->isrf_rates_file);
 
   if (cooling->table_density_edge != GEAJAY_TABLE_EDGE_EXTRAPOLATE)
     error(

@@ -607,10 +607,19 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
         cooling->ionising_background_model, cooling->lw_background_model,
         cooling->isrf_background_model, cooling->isrf_background_habing,
         cooling->dust_cross_section_lw_cgs, cooling->dust_cross_section_pe_cgs);
-  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
-    message("UV rates file = %s", cooling->uv_rates_file[0] != '\0'
-                                      ? cooling->uv_rates_file
-                                      : cooling->cloudy_table);
+  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND) {
+    const char *main_file = cooling->uv_rates_file[0] != '\0'
+                                ? cooling->uv_rates_file
+                                : cooling->cloudy_table;
+    message("UV rates file = %s", main_file);
+    message(
+        "Band files: ionising = %s, LW = %s, G_0 = %s",
+        cooling->ionising_rates_file[0] != '\0' ? cooling->ionising_rates_file
+                                                : main_file,
+        cooling->lw_rates_file[0] != '\0' ? cooling->lw_rates_file : main_file,
+        cooling->isrf_rates_file[0] != '\0' ? cooling->isrf_rates_file
+                                            : main_file);
+  }
   const geajay_cosmic_ray_settings *cr = &cooling->cosmic_ray_settings;
   message("Cosmic rays = %s",
           geajay_cosmic_ray_choice_name("cosmic_rays", cr->network));
@@ -1634,6 +1643,12 @@ static geajay_context *cooling_create_per_band_context(
   options.dust_background_attenuation = cooling->dust_background_attenuation;
   if (cooling->uv_rates_file[0] != '\0')
     options.uv_rates_file = cooling->uv_rates_file;
+  if (cooling->ionising_rates_file[0] != '\0')
+    options.ionising_rates_file = cooling->ionising_rates_file;
+  if (cooling->lw_rates_file[0] != '\0')
+    options.lw_rates_file = cooling->lw_rates_file;
+  if (cooling->isrf_rates_file[0] != '\0')
+    options.isrf_rates_file = cooling->isrf_rates_file;
 
   return geajay_context_create_from_options(&options, &cooling->units,
                                             context_error);
