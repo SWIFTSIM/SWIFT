@@ -13,7 +13,7 @@ Young stars produce a local, non-ionizing ultraviolet radiation field that heats
 
 Each star carries a band luminosity interpolated from the radiation datasets of its yields table (``GEARFeedback:yields_table``), as a function of its mass, metallicity and age. The luminosity is deposited on the gas particles inside the star's SPH kernel. Every receiving gas particle then attenuates the field it sees by a dust extinction factor :math:`\exp(-\kappa_\mathrm{eff} \Sigma)`, with the column :math:`\Sigma = \rho \, \ell` built from the particle's own density and a path :math:`\ell` set by the receiver-side extinction mechanism (see below; by default, the star-to-particle separation). The dust opacity scales with the particle's metallicity, so a metal-free gas particle is not shielded.
 
-Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the deposited field is then transported away from the sources with a hyperbolic moment (M1) scheme under a reduced speed of light, so that the radiation reaches gas beyond the source kernels at a finite, controllable propagation speed instead of instantaneously.
+Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the light of each star is instead handed from particle to particle by a packet hop, so that the radiation reaches gas beyond the source kernels at a finite speed and is shadowed by the gas in between.
 
 The resulting per-particle field is handed to Grackle every step. The Lyman-Werner band alone sets the :math:`\mathrm{H}_2` photodissociation rate (Grackle mode 2 or 3 only; see :ref:`gear_radiation`'s Grackle cooling mode paragraph). Photoelectric heating uses a different field, the Habing field :math:`G_0`. The Habing band spans 6 to 13.6 eV, so :math:`G_0` sums the PE and Lyman-Werner band energies. Lyman-Werner energy therefore still feeds photoelectric heating at every Grackle mode, including below mode 2.
 
@@ -50,42 +50,27 @@ With ``with_interstellar_radiation_field: 1`` and everything else left at its de
 Propagation
 -----------
 
-Set ``GEARFeedback:ISRF_propagation: 1`` to transport the injected field away from the sources, at a reduced speed of light :math:`c_\mathrm{hyp}`. This is what makes the transport affordable: the true speed of light would force a prohibitively small time step.
+Set ``GEARFeedback:ISRF_propagation: 1`` to transport the light of the stars with the packet hop. The default, ``0``, adds the dose of a star to the gas inside its kernel at once.
 
-The radiation update rides the gas particle's existing time step rather than running on a separate clock: for the default ``ISRF_c_hyp_scheme`` (``kernel_local``), :math:`c_\mathrm{hyp}` is derived from whatever time step the particle and its neighbours would already take, so it never constrains it further. Only the ``fixed_fraction`` scheme (a fixed fraction of :math:`c`, set by ``ISRF_c_hyp_fixed_fraction_of_c``) fixes the propagation speed first; the particle's time step is then constrained to keep the receiver-side stability condition satisfied, the same way ``HII_rebuild_time_Myr`` constrains a star's time step (see :ref:`gear_radiation_hii`).
+With the packet hop, a star splits its band luminosity into emission cones and hands each cone to the gas particles it reaches. Each gas particle gathers the light that reaches it in reception slots, cells of equal solid angle fixed in a rotated frame (see ``--with-isrf-packet-slots`` in :ref:`gear_radiation`). Once per own time step it absorbs a part of the light in its dust, and hands the rest to its downstream neighbours with a transmission cone :math:`W \max(0, \mu)^p`. The field that Grackle reads is the kernel mean of the light that the particle holds. The transport rides the time step of the gas: there is no separate radiation clock. It needs ``--with-chealpix`` and a yields table with the datasets ``MeanPhotonEnergyPE`` and ``Integrated_MeanPhotonEnergyPE`` in the ``Data/Radiation`` group. SWIFT stops at start-up if one is missing. A restart file can only be resumed by a build with the same number of slots.
 
-``GEARFeedback:ISRF_c_hyp_scheme`` (the string ``kernel_local`` or ``fixed_fraction``) selects how the propagation speed is set on each particle. Both schemes carry the flux as the reduced flux :math:`F/c_\mathrm{hyp}` and use the same pairwise transport operators. Use the default (``kernel_local``: a kernel-local speed) unless you have a specific reason not to. The alternative is ``fixed_fraction``, a fixed fraction of the speed of light, useful when you want a propagation speed that does not vary with resolution or time step. To run at one fixed propagation speed :math:`v`, set ``ISRF_c_hyp_fixed_fraction_of_c`` to :math:`v/c`. Any other value stops SWIFT at start-up. A restart file written with another value, or by an earlier version of the code, cannot be resumed: rerun the simulation. ``ISRF_c_hyp_fixed_fraction_of_c`` must be positive when ``ISRF_c_hyp_scheme`` is ``fixed_fraction`` and must be zero when it is ``kernel_local``; SWIFT stops at start-up on either mismatch.
+``GEARFeedback:ISRF_packet_light_speed`` (default ``cap``)
+  Speed limit of the light. ``cap``: a share arrives no earlier than the separation divided by the limit speed, in the frame of the gas. ``fixed``: as ``cap``, and the time step of each gas particle is bounded by :math:`C_\mathrm{hyp}\,a\,h / v`, so that the light moves at the limit speed. ``unlimited``: a share arrives at the next step of its receiver, and the light can move faster than :math:`c` (debugging only, SWIFT warns at start-up).
 
-``GEARFeedback:ISRF_c_hyp_margin`` sets the stability-margin coefficient that, in turn, sets the radiation time step: larger values propagate the field faster and cost more steps. Its admissible range is tied to the dissipation coefficients below through a joint stability bound, so raising it requires lowering them. With the dissipation switched off the margin must lie in :math:`(0, \sqrt{2/0.70}] \approx (0, 1.69]`. With the default dissipation coefficients (both ``0.5``) the joint bound caps it at :math:`0.571`. SWIFT checks the bound at start-up: if your margin and dissipation coefficients together violate it, the error message reports the exact admissible number for your own settings, rather than a fixed cutoff you would otherwise have to look up.
+``GEARFeedback:ISRF_packet_light_speed_fraction_of_c`` (default ``0.99``)
+  Limit speed :math:`v` as a fraction of :math:`c`, in :math:`(0, 1]`. Read by ``cap`` and ``fixed``.
 
-.. note::
-   ``ISRF_propagation`` is a numerical transport model, not a free physical parameter. Leaving it off is a legitimate choice, but a run that turns it on should keep the propagation parameters at their defaults unless it has a specific reason to change them.
+``GEARFeedback:ISRF_c_hyp_margin`` (default ``0.5``)
+  Margin :math:`C_\mathrm{hyp}` of the time step bound of ``fixed``, in :math:`(0, 1.69]`. Above about :math:`0.8` the bulk of the light lags behind the limit speed while its front keeps it.
 
-Artificial dissipation
-----------------------
+``GEARFeedback:ISRF_packet_cone_power`` (default ``4``)
+  Power :math:`p \geq 1` of the transmission cone. A larger value is narrower.
 
-The hyperbolic update can produce small negative undershoots of the band energy behind a front. A pairwise artificial dissipation, with five parameters (``ISRF_dissipation_alpha_max``, ``ISRF_dissipation_negativity_threshold``, ``ISRF_dissipation_alpha_floor``, ``ISRF_dissipation_floor_h_over_lambda`` and ``ISRF_dissipation_floor_relaxation_residual``) and one debugging pin, suppresses them. The five default to values suited to a production run. ``ISRF_dissipation_alpha_max`` and ``ISRF_dissipation_alpha_floor`` enter the same joint stability bound as ``ISRF_c_hyp_margin`` above, :math:`6.2\,\alpha\,C_\mathrm{hyp} + 0.70\,C_\mathrm{hyp}^2 \leq 2` (the constants 6.2 and 0.70 are the lattice constants of the Wendland-C2 kernel), with :math:`\alpha = \max(\alpha_\mathrm{max}, \alpha_\mathrm{floor})`.
+``GEARFeedback:ISRF_packet_read_mean_time_Myr`` (default ``0``)
+  Time constant of a running mean of the field that a particle reads. ``0`` switches it off.
 
-``ISRF_dissipation_alpha_max``
-  Ceiling of the negativity-triggered coefficient. ``0`` disables the trigger.
-
-``ISRF_dissipation_negativity_threshold``
-  Relative undershoot of a particle's field below its neighbours' kernel mean at which the trigger reaches ``ISRF_dissipation_alpha_max``.
-
-``ISRF_dissipation_alpha_floor``
-  A floor under the trigger. The trigger fires only on negativity, so it is exactly zero on the positive front of an optically thin pulse and cannot damp the dispersive wake there. The floor supplies dissipation in that case, and the larger of the two is used. ``0`` disables the floor and recovers the trigger-only behaviour.
-
-``ISRF_dissipation_floor_h_over_lambda``
-  The screening-length error budget :math:`\epsilon_\lambda`. The floor is :math:`\alpha_\mathrm{floor} / (1 + (h \kappa / \epsilon_\lambda)^4)`, so it rolls off once :math:`h/\lambda` exceeds this value and stays negligible where absorption or the trigger's own decay already dominates.
-
-``ISRF_dissipation_floor_relaxation_residual``
-  The threshold :math:`\epsilon_R`, in :math:`[0, 1]`, of a gate that lowers the floor where the stored flux is already at the scheme's discrete steady state. The residual :math:`R` is 0 there and about 1 on a genuine front, and the floor is multiplied by :math:`\min(1, (R/\epsilon_R)^2)`. The gate can only lower the floor, so it does not enter the stability bound. ``0`` disables it. Raise it toward 1 if a resolved static field still shows floor-driven smearing, and lower it toward 0 if negative undershoots appear in optically thin gas.
-
-``ISRF_dissipation_alpha_pin_for_debugging``
-  Debugging only. When positive, holds every particle's coefficient at this value and bypasses the trigger. It is not clamped to the stability bound: SWIFT only warns if it exceeds it.
-
-``ISRF_flux_dissipation`` (default ``0``)
-  Experimental. ``1`` applies the same pairwise dissipation, with the same coefficient :math:`\alpha`, to each component of the reduced flux as well as to the band energy. It damps flux ripples a few smoothing lengths long and leaves a uniform flux untouched. It does not damp long-wavelength modes, and it is not a stability fix. The joint bound above was derived for the dissipation of the band energy only and has not been re-derived with this term. On a pair of particles with unequal time steps, the share of the particle on the longer step is held and added at its next update, as for the energy. That held flux share is added without the absorption of that update, while the held energy share is absorbed, so the two agree only in dust-free gas (:math:`\kappa = 0`). Needs ``ISRF_propagation``. A run restarted from a restart file keeps the value it started with: the parameter file is not read again for it.
+``GEARFeedback:ISRF_packet_octant_frame_angles_deg`` (default ``[24, 36, 66]``) and ``ISRF_packet_octant_frame_seed_offset`` (default ``0``)
+  Rotation of the frame of the reception slots, in degrees about x, y and z, and the seed of an extra random rotation.
 
 Grackle coupling
 ----------------
@@ -95,7 +80,7 @@ Three ``GrackleCooling`` parameters control how the field is turned into heating
 ``GrackleCooling:H2_self_shielding`` (default ``0``)
   How :math:`\mathrm{H}_2` shields itself from the Lyman-Werner field. ``0`` means no shielding, ``2`` sets the shielding column from the kernel support radius (see ``H2_self_shielding_path``), and ``3`` uses Grackle's own local Jeans length. Mode ``1`` is rejected: its length is read from neighbouring Cartesian grid cells, and SWIFT calls Grackle one particle at a time.
 
-  **The default of 0 is the wrong choice for an ISRF run that tracks** :math:`\mathbf{H}_2`. Unshielded, the local Lyman-Werner rate dissociates molecular gas that a real cloud would keep. Set ``3`` unless you have a reason to prefer ``2``; the shipped ``ISRFCosmology`` and ``ISRFH2Photodissociation`` examples both set ``3``. SWIFT emits a start-up warning if the module is on, :math:`\mathrm{H}_2` is tracked and this is still ``0``.
+  **The default of 0 is the wrong choice for an ISRF run that tracks** :math:`\mathbf{H}_2`. Unshielded, the local Lyman-Werner rate dissociates molecular gas that a real cloud would keep. Set ``3`` unless you have a reason to prefer ``2``; the shipped ``ISRFH2Photodissociation`` example sets ``3``. SWIFT emits a start-up warning if the module is on, :math:`\mathrm{H}_2` is tracked and this is still ``0``.
 
 ``GrackleCooling:H2_self_shielding_path`` (default ``kernel_radius``)
   Used by mode ``2`` only. ``kernel_radius`` sets the shielding column path to one kernel support radius, ``kernel_diameter`` to twice the kernel support radius. Any other value stops SWIFT at start-up.
@@ -127,27 +112,23 @@ Two earlier defaults cannot be recovered without setting the mechanism and ``ISR
 Complete parameter list
 -----------------------
 
-The ISRF section of the ``GEARFeedback`` block, with every parameter at its default. The last three are for tests and diagnostics only and must stay at their defaults in a production run; ``ISRF_flux_dissipation`` is experimental:
+The ISRF section of the ``GEARFeedback`` block, with every parameter at its default:
 
 .. code:: YAML
 
    GEARFeedback:
      with_interstellar_radiation_field: 0                    # Master switch of the ISRF module
-     ISRF_propagation: 0                                     # Transport the injected field with the hyperbolic scheme
+     ISRF_propagation: 0                                     # Transport the light with the packet hop
      ISRF_extinction_path: pair_separation                   # Receiver-side dust column path mechanism
      ISRF_extinction_path_in_kernel_radii: 1.0               # Path R in kernel support radii, constant_kernel_path only
      ISRF_extinction_jeans_temperature_cap_K: 40             # Jeans-length temperature cap, temperature_capped_jeans only
-     ISRF_c_hyp_scheme: kernel_local                         # Propagation-speed scheme: kernel_local or fixed_fraction
-     ISRF_c_hyp_margin: 0.5                                  # Stability-margin coefficient C_hyp
-     ISRF_c_hyp_fixed_fraction_of_c: 0                       # Reduced speed of light as a fraction of c, fixed_fraction only
-     ISRF_dissipation_alpha_max: 0.5                         # Ceiling of the triggered dissipation coefficient
-     ISRF_dissipation_negativity_threshold: 0.01             # Relative undershoot at which the trigger saturates
-     ISRF_dissipation_alpha_floor: 0.5                       # Dissipation floor under the trigger
-     ISRF_dissipation_floor_h_over_lambda: 0.5               # Knee of the floor's roll-off
-     ISRF_dissipation_floor_relaxation_residual: 0.40        # Relaxation-residual gate of the floor
-     ISRF_flux_dissipation: 0                                # Experimental: also damp the reduced flux
-     ISRF_c_hyp_timestep_term_off_for_debugging: 0           # Debugging only, leave at 0
-     ISRF_dissipation_alpha_pin_for_debugging: 0             # Debugging only, leave at 0
+     ISRF_c_hyp_margin: 0.5                                  # Margin C_hyp of the time step bound, ISRF_packet_light_speed fixed only
+     ISRF_packet_light_speed: cap                            # Speed limit of the light: cap, fixed or unlimited
+     ISRF_packet_light_speed_fraction_of_c: 0.99             # Limit speed as a fraction of c
+     ISRF_packet_cone_power: 4                               # Power of the transmission cone
+     ISRF_packet_read_mean_time_Myr: 0                       # Running mean time of the field read, 0 is off
+     ISRF_packet_octant_frame_angles_deg: [24, 36, 66]       # Rotation of the frame of the reception slots
+     ISRF_packet_octant_frame_seed_offset: 0                 # Seed of an extra random rotation of the frame
 
 and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\mathrm{H}_2` (these are not Grackle's own defaults; see :ref:`gear_grackle_cooling` for the full block and its actual defaults):
 
@@ -163,7 +144,7 @@ and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\
 Initial conditions
 ------------------
 
-Six optional gas fields let an initial-conditions file seed the radiation field and its reduced flux directly, for a test setup that starts with a field already in place rather than with a star that produces one. All six are singular, following SWIFT's convention that distinguishes input from output fields, and all six are for test and diagnostic use, not a normal production IC.
+Three optional gas fields let an initial-conditions file seed the radiation field directly, for a test setup that starts with a field already in place rather than with a star that produces one. All three are singular, following SWIFT's convention that distinguishes input from output fields, and all three are for test and diagnostic use, not a normal production IC. With ``ISRF_propagation: 1`` the field is rewritten from the packet at every step.
 
 .. list-table::
    :header-rows: 1
@@ -181,17 +162,8 @@ Six optional gas fields let an initial-conditions file seed the radiation field 
    * - ``LWPhotonSpecificEnergy``
      - Initial Lyman-Werner-band photon-number moment, energy-equivalent at a fixed reference photon energy, not a photon count
      - [U_L^2 U_T^{-2}]
-   * - ``PEReducedSpecificFlux``
-     - Initial reduced PE-band flux :math:`\mathbf{F}/c_\mathrm{hyp}`, 3 components. :math:`|\mathbf{F}|/c_\mathrm{hyp}` equal to ``PESpecificEnergy`` is free streaming. Not the snapshot's ``PESpecificFluxes``, which is :math:`c_\mathrm{hyp}` times larger
-     - [U_L^2 U_T^{-2}]
-   * - ``LWReducedSpecificFlux``
-     - Same, Lyman-Werner band
-     - [U_L^2 U_T^{-2}]
-   * - ``LWPhotonReducedSpecificFlux``
-     - Same, Lyman-Werner-band photon-number moment
-     - [U_L^2 U_T^{-2}]
 
-An initial-conditions file without any of them is unaffected: every field and flux starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init, per particle: on any particle where one of the two is zero and the other is not, SWIFT sets the zero one equal to the other, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. A particle with a nonzero ``LWSpecificEnergy`` therefore always carries a photon moment: to start with no photon moment, set ``LWSpecificEnergy`` to zero as well.
+An initial-conditions file without any of them is unaffected: every field starts at zero. ``LWSpecificEnergy`` and ``LWPhotonSpecificEnergy`` are coupled at first init, per particle: on any particle where one of the two is zero and the other is not, SWIFT sets the zero one equal to the other, since a Lyman-Werner field with no accompanying photon moment is by definition at the reference photon energy. A particle with a nonzero ``LWSpecificEnergy`` therefore always carries a photon moment: to start with no photon moment, set ``LWSpecificEnergy`` to zero as well.
 
 Snapshot outputs
 ------------------

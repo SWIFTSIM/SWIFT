@@ -14,8 +14,7 @@ sum_j(LWSpecificEnergies_j  * mass_j) == Delta_t * LWLuminosities_star
 
 This is an exact conservation identity (the injection formula's own
 kernel-weight normalization, `sum_j weight_j = 1`), not an approximate
-physics comparison like `ISRFHyperbolicPropagation`'s profile fit. The
-check tolerance is correspondingly tight.
+physics comparison. The check tolerance is correspondingly tight.
 
 ## Metallicity
 `initial_metallicity: 0` in `params.yml` is what makes the receiver-side dust
@@ -61,8 +60,8 @@ receiver.
 
 ## Propagation
 `ISRF_propagation: 0` isolates the injection step itself: with
-propagation on, the neighbour-mixing/decay update would redistribute
-energy between particles and confound this check. With it off, each star
+propagation on, the packet transport would carry the energy between
+particles and confound this check. With it off, each star
 feedback pass resets and fully re-injects `PESpecificEnergies`/
 `LWSpecificEnergies` from scratch, so the last snapshot is a clean,
 self-contained record of one injection pass regardless of how many passes
@@ -135,27 +134,3 @@ under `pair_separation` the separation covers the whole kernel support, so
 that bracket is wide by construction and a G1 pass there says little on its
 own.
 
-`isrf_ledger_check.py` ships next to it and checks a different identity,
-the running energy ledger:
-
-```
-python3 isrf_ledger_check.py -s '<run>/snap/snapshot_*.hdf5'
-```
-Per band and per snapshot it gates `|E + Abs - Inj| / |Inj|` against
-`--tol` (default 1e-3), where `E` is the band specific energy plus its
-`PendingSpecificEnergies` (the energy finer neighbours owe a particle on a
-longer step), and `Inj` and `Abs` are the cumulative injected and absorbed
-specific energies. It needs a run with
-`GEARFeedback:ISRF_propagation: 1`, since only the propagation update
-writes those two fields, and a binary configured with
-`--enable-debugging-checks`, which is what makes them anything but zero.
-Both configurations of this example run with propagation off, so `run.sh`
-does not invoke it; pointed here it fails on `Inj = 0`, which is the same
-signal it gives on a run whose star never became a source. Its home is
-`ISRFHyperbolicPropagation`, whose `run.sh` runs it on a
-`--enable-debugging-checks` build; point it at any other propagation run's
-snapshots with `-s` as above.
-
-Add `--require-live-absorption` on a run that carries dust or runs with
-cosmology, where `Abs` cannot legitimately be zero on every particle and
-so reports a broken opacity.

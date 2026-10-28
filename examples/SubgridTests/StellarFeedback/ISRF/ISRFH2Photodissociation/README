@@ -1,8 +1,8 @@
 # Intro
 A single 29.7 Msun star at the centre of a uniform, periodic box of cold
-(50 K), zero-metallicity gas at 1e3 atom/cm^3, with ISRF propagation on and
-Grackle's H2 network. The star's Lyman-Werner (LW) band propagates through
-the box and photodissociates the H2. The check compares every gas
+(50 K), zero-metallicity gas at 1e3 atom/cm^3, with the packet transport of
+the ISRF on (`ISRF_propagation: 1`) and Grackle's H2 network. The star's
+Lyman-Werner (LW) band propagates through the box and photodissociates the H2. The check compares every gas
 particle's H2 abundance history against the shielded photodissociation rate
 `k_diss,0 * f_shield(N_H2)`, predicted from that particle's own LW field.
 The shielding function is Grackle's: the Draine and Bertoldi (1996, Eq. 37)
@@ -50,7 +50,7 @@ does not bias the comparison.
 
 # Configure
 ```
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_2 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_2 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --with-chealpix=path/to/chealpix
 make -j
 ```
 `--with-cooling=grackle_2` (or `grackle_3`) is required, because H2 is only
