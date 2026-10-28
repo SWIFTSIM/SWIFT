@@ -4,10 +4,14 @@ from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
-results_directory_name = "test_results/"
-tau_max = 70  # 30 #70
-take_last = int(40 / (5e-2))  # int(10 / (5e-2)) #int(40 / (5e-2))
+plt.rcParams.update({
+    "font.family": "serif",
+    "mathtext.fontset": "cm",    # Computer Modern
+})
 
+results_directory_name = "test_results/"
+Time_max = 70 # maximal time
+Time_growth = 40 # growth interval measurement
 
 def load_test_run_parameters():
     run_data = pd.read_csv("test_run_parameters.csv", sep="\t")
@@ -20,7 +24,6 @@ def load_test_run_parameters():
     mask = run_data["Status"] == "done"
     run_data = run_data[mask]
     return run_data
-
 
 def select_runs_to_plot(run_data, the_key):
     if the_key["Scheme"] != "All":
@@ -40,15 +43,10 @@ def select_runs_to_plot(run_data, the_key):
         run_data = run_data[mask]
     return run_data
 
-
-def find_growth_rate(the_time, B_field, nlast=take_last):
-    l = len(B_field)
-    B_field_cut = B_field[l - 1 - nlast : -1]
-    time_cut = the_time[l - 1 - nlast : -1]
-    # print(time_cut,B_field_cut)
-    res = np.polyfit(time_cut, B_field_cut, 1)[0]
-    return np.round(res, 3)
-
+def find_growth_rate(time, B_field):
+    res, cov = np.polyfit(time, np.log(B_field), 1,cov=True)
+    std_err = np.sqrt(np.diag(cov))
+    return res, cov, std_err
 
 def process_info(run_data, the_key, toplot=True, tosave=True):
     if toplot:
@@ -73,13 +71,11 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
     growth_rate_errors = []
     divergence_errors = []
     divergence_errors_err = []
+    legend_font_size = min([14, int(14*(5/len(run_data)))])
     for i in range(len(run_data)):
         run_data_slice = run_data.iloc[[i]]
         # print(run_data_slice)
         Rm = run_data_slice["Rm"].values[0]
-        # print(run_data_slice)
-        # print(t_c)
-        # print(i,run_data_slice['Run #'])
         the_addr = (
             results_directory_name
             + str(run_data_slice["Run #"].values[0])
@@ -87,69 +83,78 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         )
         the_statistics = np.transpose(np.loadtxt(the_addr))
         Time = np.array(the_statistics[1])
-        B = np.array(the_statistics[38])
-        B = B / B[0]
+        B = np.array(the_statistics[39])
+        B /= B[0]
         divB = np.abs(np.array(the_statistics[35]))
 
-        mask = Time <= tau_max
-        Time = Time[mask]
-        B = B[mask]
-        divB = divB[mask]
+        mask_B = Time <= Time_max
+        mask_growth = ( (Time <= min([Time_max,Time[-1]])) & (Time >= min([Time_max,Time[-1]]) - Time_growth) )
 
-        dBdt = np.diff(B) / np.diff(Time)
-        cut_B = B[1:].copy()
-        local_growth_rate = dBdt[-take_last:] / cut_B[-take_last:]
-        cut_timestamps = Time[-take_last:]
+        Time_cut = Time[mask_growth]
+        dBdt = np.diff(B[mask_growth]) / np.diff(Time_cut)
+        cut_B = 0.5*(B[mask_growth][1:]+B[mask_growth][:-1])
 
-        growth_rate = np.mean(local_growth_rate)
-        growth_rate_err_2sigma = 2 * np.std(local_growth_rate)
+        local_growth_rate = dBdt / cut_B
+        T_mean_cut = 0.5*(Time[mask_growth][1:] + Time[mask_growth][:-1])
+        divB = divB[mask_growth]
+
+        res,cov,std_err = find_growth_rate(Time[mask_growth], B[mask_growth])
+
+        # one can choose growth rates as mean of the local growth rate or as a linear fit in log space
+        growth_rate = res[0] #np.mean(local_growth_rate)
+        growth_rate_err_2sigma = std_err[0] #2 * np.std(local_growth_rate)
         growth_rate_str = (
             str(np.round(growth_rate, 5))
             + "$\pm$"
             + str(np.round(growth_rate_err_2sigma, 5))
         )
 
-        the_name = (
-            "#"
-            + str(run_data_slice["Run #"].values[0])
-            + "_"
-            + str(run_data_slice["Scheme"].values[0])
-            + "_"
-            + str(run_data_slice["IAfile"].values[0])
-            + "_$\eta$="
-            + str(run_data_slice["eta"].values[0])
-            + "_<s>="
-            + growth_rate_str
-        )
-        print(the_name)
+        the_name = str(run_data_slice["Run #"].values[0])
+
         if toplot:
-            ax[0].plot(Time, B)
-            # ax[1].plot(Time, divB, label=the_name)
-            ax[1].plot(cut_timestamps, local_growth_rate, label=the_name)
+            ax[0].plot(Time[mask_B], B[mask_B])
+            ax[1].plot(T_mean_cut, local_growth_rate, label=the_name)
 
         growth_rates.append(growth_rate)
         growth_rate_errors.append(growth_rate_err_2sigma)
-        divergence_errors.append(np.mean(divB[-take_last:]))
-        divergence_errors_err.append(2 * np.std(divB[-take_last:]))
+        divergence_errors.append(np.mean(divB))
+        divergence_errors_err.append(2 * np.std(divB))
 
+    from matplotlib.ticker import AutoMinorLocator
+    for a in ax.flat:
+        # Ticks on all four sides
+        a.tick_params(axis='both',
+                      which='major',
+                      direction='in',
+                      top=True,
+                      right=True,
+                      length=7,
+                      width=1.2,
+                      labelsize=14)
+    
+        a.tick_params(axis='both',
+                      which='minor',
+                      direction='in',
+                      top=True,
+                      right=True,
+                      length=4,
+                      width=1.0)
+    
+        # Add minor ticks
+        a.xaxis.set_minor_locator(AutoMinorLocator())
+        a.yaxis.set_minor_locator(AutoMinorLocator())
+ 
     if toplot:
-        ax[0].set_xlabel("time", fontsize=8)
-        # ax[1].set_xlabel("t$", fontsize=8)
-        ax[1].set_xlabel("time", fontsize=8)
-        ax[0].set_ylabel("$B_{rms}$/$B_{rms}$(0)", fontsize=8)
-        # ax[1].set_ylabel("<divB*h/B>", fontsize=8)
-        ax[1].set_ylabel("d(LnB)/dt", fontsize=8)
-        ax[1].legend(loc="best", fontsize=8)
+        ax[0].set_xlabel("time", fontsize=16)
+        ax[1].set_xlabel("time", fontsize=16)
+        ax[0].set_ylabel(r"$ B_{\rm rms}^{\rm norm}$", fontsize=16)
+        ax[1].set_ylabel(r"$d(\log B_{\rm rms}^{\rm norm})/dt$", fontsize=16)
+        ax[1].legend(loc="best", fontsize=legend_font_size)
         ax[0].set_yscale("log")
-        # ax[1].set_yscale("log")
-        # ax[0].set_ylim(1e-2,1e3)
-        # ax[1].set_ylim(-0.15,0.15)
         ax[0].grid()
         ax[1].grid()
-        # ax[0].set_xlim(0,10)
-        # ax[1].set_ylim(1e-4,1)
-        # ax[0].set_aspect('equal')
-        # ax[1].set_aspect('equal')
+        #ax[0].set_aspect('equal')
+        #ax[1].set_aspect('equal')
         plt.savefig(results_directory_name + name_of_the_plot + ".png", dpi=100)
     if tosave:
         run_data["growth_rate"] = growth_rates
@@ -166,35 +171,17 @@ def sort_and_plot(run_data, the_key):
 
 
 sort_key1 = {"Scheme": "All", "IAfile": "All", "v0": "All", "eta": "All", "Rm": "All"}
-# sort_key2 = {"Scheme": "FDI", "IAfile": "All", "v0": "All", "eta": "All", "Rm": "All"}
-# sort_key3 = {"Scheme": "ODI", "IAfile": "All", "v0": "All", "eta": "All", "Rm": "All"}
-# sort_key4 = {"Scheme": "VP", "IAfile": "All", "v0": "All", "eta": "All", "Rm": "All"}
 
 run_data = load_test_run_parameters()
 # type selected runs to plot
 # selected_runs = [
-#'16r1',
-#'16r2',
-#'16r3',
-#'16r4',
-#'16r1t2',
-#'16r2t2',
-#'16r3t2',
-#'16r4t2',
+#'test1',
+#'test2',
 # ]
 # mask = run_data['Run #'].isin(selected_runs)
 # run_data = run_data[mask]
 
 # fill selected range of runs to plot
-run_data = run_data[:]  # 36:126]
+run_data = run_data[:]  # 36:126
 print(run_data)
 sort_and_plot(run_data, sort_key1)
-# sort_and_plot(run_data, sort_key2)
-# sort_and_plot(run_data, sort_key3)
-# sort_and_plot(run_data, sort_key4)
-# sort_and_plot(run_data, sort_key5)
-# sort_and_plot(run_data, sort_key6)
-# sort_and_plot(run_data, sort_key7)
-# sort_and_plot(run_data, sort_key8)
-# sort_and_plot(run_data, sort_key9)
-# sort_and_plot(run_data, sort_key10)
