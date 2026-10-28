@@ -76,24 +76,6 @@ __attribute__((always_inline)) INLINE static double star_gas_cone_floor(
 }
 
 /**
- * @brief Fraction of the star's light that one receiver gets: its weight over
- * `n_cones` times the larger of the cone's weight sum and the cone floor.
- *
- * @param weight Weight of the receiver.
- * @param cone_sum Weight sum of the receiver's cone.
- * @param floor The cone floor, see star_gas_cone_floor().
- * @param n_cones Number of emission cones.
- * @return The fraction, 0 if the larger sum is not positive.
- */
-__attribute__((always_inline)) INLINE static double star_gas_cone_share(
-    const double weight, const double cone_sum, const double floor,
-    const int n_cones) {
-  const double S = cone_sum > floor ? cone_sum : floor;
-  if (!(S > 0.0)) return 0.0;
-  return weight / (n_cones * S);
-}
-
-/**
  * @brief Fraction of the star's light that escapes through one cone: the
  * cone's `1 / n_cones` minus the shares of its receivers.
  *
@@ -107,6 +89,48 @@ __attribute__((always_inline)) INLINE static double star_gas_cone_escape(
     const double cone_sum, const double floor, const int n_cones) {
   if (!(floor > cone_sum)) return cone_sum > 0.0 ? 0.0 : 1.0 / n_cones;
   return (1.0 - cone_sum / floor) / n_cones;
+}
+
+/**
+ * @brief Fraction of the star's light that escapes: the sum of the escape of
+ * its cones.
+ *
+ * @param cone_sums Weight sum of each cone.
+ * @param floor The cone floor, see star_gas_cone_floor().
+ * @param n_cones Number of emission cones.
+ * @return The fraction, 1 for a star with no receiver.
+ */
+__attribute__((always_inline)) INLINE static double star_gas_escape_fraction(
+    const double cone_sums[], const double floor, const int n_cones) {
+  double escape = 0.0;
+  for (int c = 0; c < n_cones; c++)
+    escape += star_gas_cone_escape(cone_sums[c], floor, n_cones);
+  return escape;
+}
+
+/**
+ * @brief Fraction of the star's light that one receiver gets.
+ *
+ * The light that does not escape, `1 - sum_c escape_c`, is shared by all
+ * receivers of the star in proportion to their weights. The fractions of the
+ * receivers sum to that delivered light, and a deficit of receivers in one
+ * cone does not raise the share of the receivers there.
+ *
+ * @param weight Weight of the receiver.
+ * @param cone_sums Weight sum of each cone.
+ * @param floor The cone floor, see star_gas_cone_floor().
+ * @param n_cones Number of emission cones.
+ * @return The fraction, 0 if no cone holds a weight.
+ */
+__attribute__((always_inline)) INLINE static double star_gas_global_share(
+    const double weight, const double cone_sums[], const double floor,
+    const int n_cones) {
+  double total = 0.0;
+  for (int c = 0; c < n_cones; c++) total += cone_sums[c];
+  if (!(total > 0.0)) return 0.0;
+  const double delivered =
+      1.0 - star_gas_escape_fraction(cone_sums, floor, n_cones);
+  return delivered > 0.0 ? delivered * weight / total : 0.0;
 }
 
 #endif /* SWIFT_STAR_GAS_WEIGHTS_GEAR_H */

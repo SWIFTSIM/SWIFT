@@ -332,13 +332,8 @@ be the weight sum of the cell, and
 \end{equation}
 the cell floor. $S_{\rm floor}$ is $f_0$ times the value of $S_c$ for a uniform gas, because
 $\int_0^{r_{\max}}4\pi r^2(1-r/r_{\max})\,dr=\pi r_{\max}^3/3$ with $r_{\max}=q_{\rm e}\gamma h_\star$.
-Receiver $j$ gets the fraction of the star's light
-\begin{equation}
-  \varphi_j = \frac{w_j}{n_c\,\max(S_c,S_{\rm floor})}
-  \label{eq:packet-emit-share}
-\end{equation}
-and the star's light that no receiver takes escapes. The escaping fraction of
-cell $c$ is
+Each cell holds $1/n_c$ of the star's light. The part of it that no receiver takes
+escapes, with the escaping fraction of cell $c$
 \begin{equation}
   \varepsilon_c =
   \begin{cases}
@@ -348,9 +343,16 @@ cell $c$ is
   \end{cases}
   \label{eq:packet-escape}
 \end{equation}
-In each cell the delivered and the escaping fractions sum to $1/n_c$: for $S_c\ge S_{\rm floor}$
-the receivers take $S_c/(n_cS_c)$, and for $S_c<S_{\rm floor}$ they take $S_c/(n_cS_{\rm floor})$.
-A star with no receiver loses all its light. The energy of receiver $j$ in
+The delivered fraction $D=1-\sum_c\varepsilon_c$ is shared by all receivers of the star
+in proportion to their weights: receiver $j$ gets the fraction of the star's light
+\begin{equation}
+  \varphi_j = D\,\frac{w_j}{S_{\rm tot}}, \qquad S_{\rm tot}=\sum_c S_c,
+  \label{eq:packet-emit-share}
+\end{equation}
+so $\sum_j\varphi_j=D$. A cell with fewer emitters than its volume needs does not raise
+the share of its receivers, because the shares do not depend on the cell of the receiver. A cell
+with a real hole ($S_c<S_{\rm floor}$) still lets its part escape. A star with no receiver loses all its light, $D=0$.
+The energy of receiver $j$ in
 band $b$ is $L_b\Delta t_\star\,\varphi_j$ and its photon number is
 $f_b$ times that energy (Eq.~\eqref{eq:packet-photonfrac}). The share arrives
 with the offset $\boldsymbol{o}=\boldsymbol{x}_\star-\boldsymbol{x}_j$ of the origin at
@@ -376,10 +378,12 @@ number of cells is \code{RADIATION\_PACKET\_EMISSION\_CONES}
 \code{star\_gas\_tent\_weight} (\code{star\_gas\_weights.h:54-58}),
 Eq.~\eqref{eq:packet-floor} is \code{star\_gas\_cone\_floor} (:71-76, with $f_0$ the
 \code{STAR\_GAS\_CONE\_FLOOR\_FRACTION} of :38), Eq.~\eqref{eq:packet-emit-share}
-is \code{star\_gas\_cone\_share} (:88-94) and Eq.~\eqref{eq:packet-escape} is
-\code{star\_gas\_cone\_escape} (:106-110). The cone sum is read at
-\code{radiation\_packet.h:456}, the floor at :393-397 (called at :470), the energy and the photon
-number at :473-480, and the delivery at :482-485. The star zeroes its cone
+is \code{star\_gas\_global\_share} (\code{star\_gas\_weights.h:125-134}), which takes
+$D$ from \code{star\_gas\_escape\_fraction} (:103-109), the sum over the cells of
+Eq.~\eqref{eq:packet-escape}, \code{star\_gas\_cone\_escape} (:88-92). It is called in
+\code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:507-509}) with the 12 cell sums
+and the floor (\code{radiation\_packet\_cone\_floor}, :430). The energy and the photon number
+follow from the fraction, then the delivery. The star zeroes its cone
 sums before the density loop (\code{radiation\_packet\_init\_star\_cones}, called
 at \code{src/feedback/GEAR\_thermal/feedback.c:580}).
 

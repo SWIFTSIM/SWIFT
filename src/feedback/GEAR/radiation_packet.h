@@ -464,10 +464,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 /**
  * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * Each of the 12 cones holds `L dt / 12`. Its receivers share it in proportion
- * to their weights, over the larger of the cone's weight sum and the cone
- * floor; the rest of the cone escapes. The share is absorbed over the
- * distance to the star.
+ * Each of the 12 cones holds `L dt / 12`. A cone whose weight sum is below the
+ * cone floor lets the rest of its twelfth escape. The light that does not
+ * escape is shared by all receivers of the star in proportion to their
+ * weights. The share is absorbed over the distance to the star.
  *
  * @param si The star.
  * @param pj The gas neighbour.
@@ -504,9 +504,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 #endif
   /* Possible only if this gas was not a receiver in the density loop. */
   if (!(S > 0.0)) return;
-  const double fraction =
-      star_gas_cone_share(weight, S, radiation_packet_cone_floor(si),
-                          RADIATION_PACKET_EMISSION_CONES);
+  const double fraction = star_gas_global_share(
+      weight, si->feedback_data.radiation.packet.cone_weight,
+      radiation_packet_cone_floor(si), RADIATION_PACKET_EMISSION_CONES);
 
   double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
