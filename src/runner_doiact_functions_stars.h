@@ -1737,8 +1737,7 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
     h_subset_max = max(h_subset_max, sparts[ind[k]].h);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_subset(ci, h_subset_max) &&
-      cell_can_recurse_in_pair_stars_task(cj)) {
+  if (cell_can_recurse_in_pair_stars_subset(ci, cj, h_subset_max)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
