@@ -4,14 +4,17 @@ from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
 
-plt.rcParams.update({
-    "font.family": "serif",
-    "mathtext.fontset": "cm",    # Computer Modern
-})
+plt.rcParams.update(
+    {
+        "font.family": "serif",
+        "mathtext.fontset": "cm",  # Computer Modern
+    }
+)
 
 results_directory_name = "test_results/"
-Time_max = 70 # maximal time
-Time_growth = 40 # growth interval measurement
+Time_max = 70  # maximal time
+Time_growth = 40  # growth interval measurement
+
 
 def load_test_run_parameters():
     run_data = pd.read_csv("test_run_parameters.csv", sep="\t")
@@ -24,6 +27,7 @@ def load_test_run_parameters():
     mask = run_data["Status"] == "done"
     run_data = run_data[mask]
     return run_data
+
 
 def select_runs_to_plot(run_data, the_key):
     if the_key["Scheme"] != "All":
@@ -43,10 +47,12 @@ def select_runs_to_plot(run_data, the_key):
         run_data = run_data[mask]
     return run_data
 
+
 def find_growth_rate(time, B_field):
-    res, cov = np.polyfit(time, np.log(B_field), 1,cov=True)
+    res, cov = np.polyfit(time, np.log(B_field), 1, cov=True)
     std_err = np.sqrt(np.diag(cov))
     return res, cov, std_err
+
 
 def process_info(run_data, the_key, toplot=True, tosave=True):
     if toplot:
@@ -71,7 +77,7 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
     growth_rate_errors = []
     divergence_errors = []
     divergence_errors_err = []
-    legend_font_size = min([14, int(14*(5/len(run_data)))])
+    legend_font_size = min([14, int(14 * (5 / len(run_data)))])
     for i in range(len(run_data)):
         run_data_slice = run_data.iloc[[i]]
         # print(run_data_slice)
@@ -88,21 +94,23 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         divB = np.abs(np.array(the_statistics[35]))
 
         mask_B = Time <= Time_max
-        mask_growth = ( (Time <= min([Time_max,Time[-1]])) & (Time >= min([Time_max,Time[-1]]) - Time_growth) )
+        mask_growth = (Time <= min([Time_max, Time[-1]])) & (
+            Time >= min([Time_max, Time[-1]]) - Time_growth
+        )
 
         Time_cut = Time[mask_growth]
         dBdt = np.diff(B[mask_growth]) / np.diff(Time_cut)
-        cut_B = 0.5*(B[mask_growth][1:]+B[mask_growth][:-1])
+        cut_B = 0.5 * (B[mask_growth][1:] + B[mask_growth][:-1])
 
         local_growth_rate = dBdt / cut_B
-        T_mean_cut = 0.5*(Time[mask_growth][1:] + Time[mask_growth][:-1])
+        T_mean_cut = 0.5 * (Time[mask_growth][1:] + Time[mask_growth][:-1])
         divB = divB[mask_growth]
 
-        res,cov,std_err = find_growth_rate(Time[mask_growth], B[mask_growth])
+        res, cov, std_err = find_growth_rate(Time[mask_growth], B[mask_growth])
 
         # one can choose growth rates as mean of the local growth rate or as a linear fit in log space
-        growth_rate = res[0] #np.mean(local_growth_rate)
-        growth_rate_err_2sigma = std_err[0] #2 * np.std(local_growth_rate)
+        growth_rate = res[0]  # np.mean(local_growth_rate)
+        growth_rate_err_2sigma = std_err[0]  # 2 * np.std(local_growth_rate)
         growth_rate_str = (
             str(np.round(growth_rate, 5))
             + "$\pm$"
@@ -121,29 +129,34 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         divergence_errors_err.append(2 * np.std(divB))
 
     from matplotlib.ticker import AutoMinorLocator
+
     for a in ax.flat:
         # Ticks on all four sides
-        a.tick_params(axis='both',
-                      which='major',
-                      direction='in',
-                      top=True,
-                      right=True,
-                      length=7,
-                      width=1.2,
-                      labelsize=14)
-    
-        a.tick_params(axis='both',
-                      which='minor',
-                      direction='in',
-                      top=True,
-                      right=True,
-                      length=4,
-                      width=1.0)
-    
+        a.tick_params(
+            axis="both",
+            which="major",
+            direction="in",
+            top=True,
+            right=True,
+            length=7,
+            width=1.2,
+            labelsize=14,
+        )
+
+        a.tick_params(
+            axis="both",
+            which="minor",
+            direction="in",
+            top=True,
+            right=True,
+            length=4,
+            width=1.0,
+        )
+
         # Add minor ticks
         a.xaxis.set_minor_locator(AutoMinorLocator())
         a.yaxis.set_minor_locator(AutoMinorLocator())
- 
+
     if toplot:
         ax[0].set_xlabel("time", fontsize=16)
         ax[1].set_xlabel("time", fontsize=16)
@@ -153,8 +166,8 @@ def process_info(run_data, the_key, toplot=True, tosave=True):
         ax[0].set_yscale("log")
         ax[0].grid()
         ax[1].grid()
-        #ax[0].set_aspect('equal')
-        #ax[1].set_aspect('equal')
+        # ax[0].set_aspect('equal')
+        # ax[1].set_aspect('equal')
         plt.savefig(results_directory_name + name_of_the_plot + ".png", dpi=100)
     if tosave:
         run_data["growth_rate"] = growth_rates

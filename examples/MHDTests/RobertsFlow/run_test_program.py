@@ -56,19 +56,19 @@ IA_dict = {
     "s256": "stacked_256.hdf5",
     "c32": "c32.hdf5",
     "c64": "c64.hdf5",
-    "bcc16":"BCCcube_16_16_16.hdf5",
-    "bcc24":"BCCcube_24_24_24.hdf5",
-    "bcc32":"BCCcube_32_32_32.hdf5",
-    "bcc48":"BCCcube_48_48_48.hdf5",
-    "bcc64":"BCCcube_64_64_64.hdf5",
-    "bcc20":"BCCcube_20_20_20.hdf5",
-    "bcc30":"BCCcube_30_30_30.hdf5",
-    "bcc40":"BCCcube_40_40_40.hdf5",
-    "bcc60":"BCCcube_60_60_60.hdf5",
-    "bcc80":"BCCcube_80_80_80.hdf5",
-    "bcc22":"BCCcube_22_22_22.hdf5",
-    "bcc45":"BCCcube_45_45_45.hdf5",
-    "bcc90":"BCCcube_90_90_90.hdf5",
+    "bcc16": "BCCcube_16_16_16.hdf5",
+    "bcc24": "BCCcube_24_24_24.hdf5",
+    "bcc32": "BCCcube_32_32_32.hdf5",
+    "bcc48": "BCCcube_48_48_48.hdf5",
+    "bcc64": "BCCcube_64_64_64.hdf5",
+    "bcc20": "BCCcube_20_20_20.hdf5",
+    "bcc30": "BCCcube_30_30_30.hdf5",
+    "bcc40": "BCCcube_40_40_40.hdf5",
+    "bcc60": "BCCcube_60_60_60.hdf5",
+    "bcc80": "BCCcube_80_80_80.hdf5",
+    "bcc22": "BCCcube_22_22_22.hdf5",
+    "bcc45": "BCCcube_45_45_45.hdf5",
+    "bcc90": "BCCcube_90_90_90.hdf5",
 }
 
 # full names of forcing types
@@ -82,6 +82,7 @@ results_directory_name = "test_results"
 
 # funcions
 ###################################################################################################
+
 
 # Function that reads parameter dataframe
 def read_parameter_csv(addr_to_csv):
@@ -193,9 +194,8 @@ def make_IC(phys_parameters, IAfile):
         Nper = " --nper_box=" + str(int(phys_parameters["Nper"].values[0]))
         LparMul = " --lparmultiplier=" + str(int(phys_parameters["LparMul"].values[0]))
         LperMul = " --lpermultiplier=" + str(int(phys_parameters["LperMul"].values[0]))
-        
+
         ICMF_type = " --field_type=" + phys_parameters["ICMF_type"].values[0]
-        
 
         # Construct command to make ICs with selected parameters
         command = (
@@ -294,7 +294,7 @@ def run_simulation(phys_parameters, threads):
 
     # Construct string command to set up internal energy (equation of state)
     eos_pref = " -P EoS:"
-    set_u = eos_pref + "isothermal_internal_energy:"+str(U)
+    set_u = eos_pref + "isothermal_internal_energy:" + str(U)
     set_eos_par = set_u
 
     # Construct string command to set up forcing options
@@ -392,7 +392,7 @@ def run_simulation(phys_parameters, threads):
         result = subprocess.run(
             command, shell=True, capture_output=True, check=True, text=True
         )
-        #print(result.stdout)
+        # print(result.stdout)
         print("SWIFT run complete")
         move_res = True
     except subprocess.CalledProcessError as e:

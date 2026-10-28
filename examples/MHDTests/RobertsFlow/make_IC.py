@@ -12,12 +12,13 @@
 
 import h5py
 import numpy as np
-#import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 
 # Parameters
 rho0 = 1.0
-cs2 = 1.0 #3025.0
+cs2 = 1.0  # 3025.0
 gamma = 5.0 / 3.0
 u0 = cs2 / (gamma * (gamma - 1))
 Bi_fraction = 1e-6
@@ -25,19 +26,20 @@ Bi_fraction = 1e-6
 # output file
 fileOutputName = "RobertsFlow.hdf5"
 
+
 def spectrum_powerlaw(k, n, kmin, kmax):
     """
     Spectral amplitude shape.
     The overall normalization does not matter.
     """
 
-    if n!=0:
+    if n != 0:
         P = np.zeros_like(k)
-        mask = ( ( k >= kmin) & (k <= kmax) )
-        P[mask] = k[mask]**n
+        mask = (k >= kmin) & (k <= kmax)
+        P[mask] = k[mask] ** n
     else:
         P = np.zeros_like(k)
-        mask = ( (k >= kmin) & (k <= kmax))
+        mask = (k >= kmin) & (k <= kmax)
         P[mask] = 1.0
 
     print(k, kmin, kmax)
@@ -121,9 +123,7 @@ def generate_random_magnetic_field_from_spectra(
     ky = 2.0 * np.pi * np.fft.fftfreq(Ny, d=dx[1])
     kz = 2.0 * np.pi * np.fft.fftfreq(Nz, d=dx[2])
 
-    KX, KY, KZ = np.meshgrid(
-        kx, ky, kz, indexing="ij"
-    )
+    KX, KY, KZ = np.meshgrid(kx, ky, kz, indexing="ij")
 
     K2 = KX**2 + KY**2 + KZ**2
     K = np.sqrt(K2)
@@ -134,19 +134,12 @@ def generate_random_magnetic_field_from_spectra(
 
     # Independent real Gaussian random fields.
     # The FFT of a real field has Hermitian symmetry.
-    noise = rng.normal(
-        size=(Nx, Ny, Nz, 3)
-    )
+    noise = rng.normal(size=(Nx, Ny, Nz, 3))
 
-    Bk = np.empty(
-        (Nx, Ny, Nz, 3),
-        dtype=complex
-    )
+    Bk = np.empty((Nx, Ny, Nz, 3), dtype=complex)
 
     for component in range(3):
-        Bk[..., component] = np.fft.fftn(
-            noise[..., component]
-        )
+        Bk[..., component] = np.fft.fftn(noise[..., component])
 
     # --------------------------------------------------
     # 3. Apply desired spectral amplitude
@@ -178,11 +171,7 @@ def generate_random_magnetic_field_from_spectra(
     #
     # This guarantees k dot B_perp = 0.
 
-    dot = (
-        KX * Bk[..., 0]
-        + KY * Bk[..., 1]
-        + KZ * Bk[..., 2]
-    )
+    dot = KX * Bk[..., 0] + KY * Bk[..., 1] + KZ * Bk[..., 2]
 
     Bk[..., 0] -= KX * dot / np.where(K2 == 0, 1.0, K2)
     Bk[..., 1] -= KY * dot / np.where(K2 == 0, 1.0, K2)
@@ -190,11 +179,10 @@ def generate_random_magnetic_field_from_spectra(
 
     Bk[K2 == 0] = 0.0
 
-
     # --------------------------------------------------
     # 5. Construct vector potential in Coulomb gauge
     # --------------------------------------------------
-    
+
     # B_k = i k x A_k
     #
     # Therefore:
@@ -206,19 +194,19 @@ def generate_random_magnetic_field_from_spectra(
     # k . A_k = 0
     #
     # i k x A_k = B_k
-    
+
     K_cross_B_x = KY * Bk[..., 2] - KZ * Bk[..., 1]
     K_cross_B_y = KZ * Bk[..., 0] - KX * Bk[..., 2]
     K_cross_B_z = KX * Bk[..., 1] - KY * Bk[..., 0]
-    
+
     Ak = np.empty_like(Bk)
-    
+
     K2_safe = np.where(K2 == 0.0, 1.0, K2)
-    
+
     Ak[..., 0] = 1j * K_cross_B_x / K2_safe
     Ak[..., 1] = 1j * K_cross_B_y / K2_safe
     Ak[..., 2] = 1j * K_cross_B_z / K2_safe
-    
+
     # No k=0 vector-potential mode
     Ak[K2 == 0] = 0.0
 
@@ -226,36 +214,22 @@ def generate_random_magnetic_field_from_spectra(
     # 6. Transform to real space
     # --------------------------------------------------
 
-    B_grid = np.empty(
-        (Nx, Ny, Nz, 3),
-        dtype=float
-    )
-    A_grid = np.empty(
-        (Nx, Ny, Nz, 3),
-        dtype=float
-    )
+    B_grid = np.empty((Nx, Ny, Nz, 3), dtype=float)
+    A_grid = np.empty((Nx, Ny, Nz, 3), dtype=float)
 
     for component in range(3):
-        B_grid[..., component] = np.fft.ifftn(
-            Bk[..., component]
-        ).real
-        A_grid[..., component] = np.fft.ifftn(
-            Ak[..., component]
-        ).real
-
+        B_grid[..., component] = np.fft.ifftn(Bk[..., component]).real
+        A_grid[..., component] = np.fft.ifftn(Ak[..., component]).real
 
     # --------------------------------------------------
     # 7. Normalize to desired Brms
     # --------------------------------------------------
 
-    current_Brms = np.sqrt(
-        np.mean(np.sum(B_grid**2, axis=-1))
-    )
+    current_Brms = np.sqrt(np.mean(np.sum(B_grid**2, axis=-1)))
 
     if current_Brms == 0.0:
         raise ValueError(
-            "Generated field has zero RMS. "
-            "Check the spectrum and k limits."
+            "Generated field has zero RMS. " "Check the spectrum and k limits."
         )
 
     B_grid *= Brms / current_Brms
@@ -272,9 +246,7 @@ def generate_random_magnetic_field_from_spectra(
     ]
 
     # Periodic wrapping
-    positions_wrapped = np.mod(
-        positions, boxsize
-    )
+    positions_wrapped = np.mod(positions, boxsize)
 
     B_particles = np.empty_like(positions)
 
@@ -292,11 +264,7 @@ def generate_random_magnetic_field_from_spectra(
         # Extend one grid point by periodic wrapping.
         field = B_grid[..., component]
 
-        field_ext = np.pad(
-            field,
-            ((0, 1), (0, 1), (0, 1)),
-            mode="wrap"
-        )
+        field_ext = np.pad(field, ((0, 1), (0, 1), (0, 1)), mode="wrap")
 
         axes_ext = [
             np.append(grid_axes[0], boxsize[0]),
@@ -312,44 +280,35 @@ def generate_random_magnetic_field_from_spectra(
             fill_value=None,
         )
 
-        B_particles[:, component] = interpolator(
-            positions_wrapped
-        )
+        B_particles[:, component] = interpolator(positions_wrapped)
 
     # --------------------------------------------------
     # 9. Interpolate A_grid to SPH particles
     # --------------------------------------------------
-    
+
     grid_axes = [
         np.arange(Nx) * dx[0],
         np.arange(Ny) * dx[1],
         np.arange(Nz) * dx[2],
     ]
-    
-    positions_wrapped = np.mod(
-        positions,
-        boxsize
-    )
-    
+
+    positions_wrapped = np.mod(positions, boxsize)
+
     A_particles = np.empty_like(positions)
-    
+
     for component in range(3):
-    
+
         field = A_grid[..., component]
-    
+
         # Periodic extension
-        field_ext = np.pad(
-            field,
-            ((0, 1), (0, 1), (0, 1)),
-            mode="wrap"
-        )
-    
+        field_ext = np.pad(field, ((0, 1), (0, 1), (0, 1)), mode="wrap")
+
         axes_ext = [
             np.append(grid_axes[0], boxsize[0]),
             np.append(grid_axes[1], boxsize[1]),
             np.append(grid_axes[2], boxsize[2]),
         ]
-    
+
         interpolator = RegularGridInterpolator(
             axes_ext,
             field_ext,
@@ -357,18 +316,15 @@ def generate_random_magnetic_field_from_spectra(
             bounds_error=False,
             fill_value=None,
         )
-    
-        A_particles[:, component] = interpolator(
-            positions_wrapped
-        )
 
-    print('Random magnetic field spectrum added')
+        A_particles[:, component] = interpolator(positions_wrapped)
+
+    print("Random magnetic field spectrum added")
 
     if return_grid:
         return B_particles, B_grid, A_particles, A_grid
 
     return B_particles, A_particles
-
 
 
 ############################################################### Random B and A vector field generator
@@ -388,7 +344,7 @@ def generate_random_vectors(N_of_vectors, randomize_length=True):
 
 def normalize_Magnetic_Field(A, B, B0):
     norms = np.linalg.norm(B, axis=1)
-    normalization_factor = B0 / np.sqrt(np.sum(norms ** 2))
+    normalization_factor = B0 / np.sqrt(np.sum(norms**2))
     return A * normalization_factor, B * normalization_factor
 
 
@@ -405,10 +361,10 @@ def open_IAfile(path_to_file):
 def add_other_particle_properties(
     pos, h, V0, kb, kv, Vz_factor, Lbox, L, field_type, Flow_kind
 ):
-    # One can start from any .hdf5 outputs of the simulation 
+    # One can start from any .hdf5 outputs of the simulation
     if field_type != "load_from_file":
-        Lx,Ly,Lz = Lbox
-        V = Lx*Ly*Lz
+        Lx, Ly, Lz = Lbox
+        V = Lx * Ly * Lz
         N = len(pos)
 
         # initializing arrays with particle properties
@@ -420,8 +376,8 @@ def add_other_particle_properties(
         u = np.ones(N) * u0
 
         # setting constants
-        kv0 = 2 * np.pi / np.max([Lx,Ly]) * kv
-        kb0 = 2 * np.pi / np.max([Lx,Ly]) * kb
+        kv0 = 2 * np.pi / np.max([Lx, Ly]) * kv
+        kb0 = 2 * np.pi / np.max([Lx, Ly]) * kb
         Beq0 = np.sqrt(rho0) * V0
         B0 = Bi_fraction * Beq0
 
@@ -470,8 +426,8 @@ def add_other_particle_properties(
             B[:, 1] = -(np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2]))
             B[:, 2] = -(np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0]))
             B *= B0
-            meanB = np.mean(B,axis=0)
-            B -= meanB[None,:]
+            meanB = np.mean(B, axis=0)
+            B -= meanB[None, :]
             A[:, 0] = np.sin(kb0 * pos[:, 2]) - np.cos(kb0 * pos[:, 1])
             A[:, 1] = np.sin(kb0 * pos[:, 0]) - np.cos(kb0 * pos[:, 2])
             A[:, 2] = np.sin(kb0 * pos[:, 1]) - np.cos(kb0 * pos[:, 0])
@@ -480,41 +436,41 @@ def add_other_particle_properties(
 
         if field_type == "BxSin":
             B[:, 0] = np.sin(kb0 * pos[:, 2])
-            meanB = np.mean(B,axis=0)
-            B -= meanB[None,:]
+            meanB = np.mean(B, axis=0)
+            B -= meanB[None, :]
             B *= B0
-            A[:, 1] = - np.cos(kb0 * pos[:, 2])
+            A[:, 1] = -np.cos(kb0 * pos[:, 2])
             A0 = B0 / kb0
             A *= A0
- 
+
         elif field_type == "spectrum":
 
             # generate magnetic field with k^-3 spectrum and a cutoff at the Nyquist scale,
             # with d_res = kernel cutoff radius
             nB = -3.0
-            oversampling = 2 #4
+            oversampling = 2  # 4
             B, A = generate_random_magnetic_field_from_spectra(
                 positions=pos,
                 boxsize=np.array(Lbox),
-                Ngrid = (np.array(Lbox) * (N/V)**(1/3) * oversampling).astype(int),
+                Ngrid=(np.array(Lbox) * (N / V) ** (1 / 3) * oversampling).astype(int),
                 Brms=B0,
                 spectrum=lambda k: spectrum_powerlaw(
                     k,
                     n=nB,
-                    kmin = 2.0 * np.pi / np.max(Lbox),
-                    kmax = np.pi / (2.5*np.max(h))
+                    kmin=2.0 * np.pi / np.max(Lbox),
+                    kmax=np.pi / (2.5 * np.max(h)),
                 ),
                 seed=1234,
                 return_grid=False,
-                )
+            )
 
         else:
             print("Error: wrong field type. Should be one_mode or random")
 
-    # One can start from any .hdf5 outputs of the simulation 
+    # One can start from any .hdf5 outputs of the simulation
     else:
         # Put path to IC snapshots here
-        filename ="./ICfiles/rf2d_o1_npar2_g64_randB_withVP.hdf5"
+        filename = "./ICfiles/rf2d_o1_npar2_g64_randB_withVP.hdf5"
         # read the variables of interest from the snapshot file
         pos = None
         h = None
@@ -534,7 +490,7 @@ def add_other_particle_properties(
             try:
                 A = handle["PartType0/MagneticVectorPotentials"][:]
             except:
-                print('No VP, continue')
+                print("No VP, continue")
                 A = np.zeros(B.shape)
             ids = handle["PartType0/ParticleIDs"][:]
 
@@ -548,14 +504,15 @@ def add_other_particle_properties(
 
     return pos, h, v, B, A, ids, m, u
 
-def stack_boxes(pos,h,npar,nper):
+
+def stack_boxes(pos, h, npar, nper):
     h_stack = []
     pos_stack = []
     for i in range(npar):
         for j in range(npar):
             for k in range(nper):
                 h_stack.append(h[:])
-                pos_stack.append(pos[:]+np.array([i,j,k])[None,:]) 
+                pos_stack.append(pos[:] + np.array([i, j, k])[None, :])
 
     pos_stack = np.concatenate(pos_stack)
     h_stack = np.concatenate(h_stack)
@@ -563,12 +520,13 @@ def stack_boxes(pos,h,npar,nper):
     return pos_stack, h_stack
 
 
-def deform_boxes(pos,h,Lparmul,Lpermul):
-    pos[:,0]*=Lparmul
-    pos[:,1]*=Lparmul
-    pos[:,2]*=Lpermul
-    h[:]*= np.sqrt(2*Lparmul**2+Lpermul**2)
-    return pos,h 
+def deform_boxes(pos, h, Lparmul, Lpermul):
+    pos[:, 0] *= Lparmul
+    pos[:, 1] *= Lparmul
+    pos[:, 2] *= Lpermul
+    h[:] *= np.sqrt(2 * Lparmul**2 + Lpermul**2)
+    return pos, h
+
 
 if __name__ == "__main__":
 
@@ -622,7 +580,7 @@ if __name__ == "__main__":
         "-ft",
         "--field_type",
         help="How to generate a field: one_mode, several_modes or random",
-        default="spectrum",#"BxSin",#"one_mode",#"load_from_file",
+        default="spectrum",  # "BxSin",#"one_mode",#"load_from_file",
         type=str,
     )
     parser.add_argument(
@@ -679,12 +637,7 @@ if __name__ == "__main__":
         args.nper_box,
     )
 
-    pos, h = deform_boxes(
-        pos,
-        h,
-        args.lparmultiplier,
-        args.lpermultiplier
-    )
+    pos, h = deform_boxes(pos, h, args.lparmultiplier, args.lpermultiplier)
 
     # Find unique rows and their counts
     unique_pos, counts = np.unique(pos, axis=0, return_counts=True)
@@ -694,11 +647,11 @@ if __name__ == "__main__":
 
     # Calculate box geometry
     L = args.boxsize
-    cpar = args.npar_box*args.lparmultiplier
-    cper = args.nper_box*args.lpermultiplier
-    Lbox = [L*cpar, L*cpar, L*cper]
+    cpar = args.npar_box * args.lparmultiplier
+    cper = args.nper_box * args.lpermultiplier
+    Lbox = [L * cpar, L * cpar, L * cper]
     N = len(h)
- 
+
     pos, h, v, B, A, ids, m, u = add_other_particle_properties(
         pos,
         h,
@@ -752,7 +705,7 @@ if __name__ == "__main__":
         print("Error: " + str(e))
 
     # Save particle arrangement to .vtk file to open with paraview
-    if args.to_vtk==1:
+    if args.to_vtk == 1:
         import vtk
 
         vtk_points = vtk.vtkPoints()
@@ -764,5 +717,3 @@ if __name__ == "__main__":
         writer.SetFileName("output.vtk")
         writer.SetInputData(poly_data)
         writer.Write()  # one can use paraview to watch how particles are arranged
-
-
