@@ -581,11 +581,16 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
  *
  * The origin is the energy-weighted mean of the arriving origins and the
  * direction points from it to the particle. The reservoir releases the part
- * due in the step that starts now, `dt / t_rem`, all of it once `t_rem <= dt`.
+ * due in the step that ends now, `dt / t_rem`, with `dt` and `t_rem` measured
+ * from the start of that step and all released once `t_rem <= dt`. A share
+ * booked at the start of the receiver's step, with `n dt` to run, is met by
+ * `n` merges that release `1/n`, `1/(n-1)` of the rest, ..., so each takes
+ * `1/n` of it and the last takes the remainder. Under cosmology the same
+ * holds with proper-time steps, as the remainders telescope.
  *
  * @param sl The slot.
- * @param ti_current Start of the particle's new step.
- * @param ti_step Length of the particle's step.
+ * @param ti_current Time of the merge, the end of the particle's last step.
+ * @param ti_step Length of that last step.
  * @param time_base Physical length of one integer time step. Under cosmology
  * it is a step in `ln a`, so #cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.
@@ -599,12 +604,13 @@ static void radiation_packet_merge_slot(
 
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
+    const integertime_t ti_begin = ti_current - ti_step;
     double t_rem, dt;
     if (cosmo != NULL) {
-      t_rem = cosmology_get_delta_time(cosmo, ti_current, sl->reservoir_end_ti);
-      dt = cosmology_get_delta_time(cosmo, ti_current, ti_current + ti_step);
+      t_rem = cosmology_get_delta_time(cosmo, ti_begin, sl->reservoir_end_ti);
+      dt = cosmology_get_delta_time(cosmo, ti_begin, ti_current);
     } else {
-      t_rem = (double)(sl->reservoir_end_ti - ti_current) * time_base;
+      t_rem = (double)(sl->reservoir_end_ti - ti_begin) * time_base;
       dt = (double)ti_step * time_base;
     }
     if (t_rem > dt) release = (float)(dt / t_rem);
@@ -693,8 +699,9 @@ static void radiation_packet_merge_slot(
  * apart here and merge nothing across slots.
  *
  * @param p The particle, active.
- * @param ti_current Start of the particle's new step.
- * @param ti_step Length of the particle's step.
+ * @param ti_current Time of the merge, the end of the particle's last step.
+ * @param ti_step Length of the particle's last step. It sets the release of
+ * the reservoir and stands in for the next step in `step_end_ti`.
  * @param time_base Physical length of one integer time step. Under cosmology
  * it is a step in `ln a`, so #cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.

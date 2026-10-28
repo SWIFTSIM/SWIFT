@@ -452,17 +452,18 @@ sender's time bin is not coarser than the receiver's. If the sender's bin is
 coarser (its step is longer), the share goes into a reservoir of the slot
 instead, with the same origin sum, and the time $T_{\rm end}$, the time of the booking plus one step of the source's current time bin, is recorded
 (the latest over all shares of the slot). The reservoir is released in equal
-parts over the sender's step. At each merge of the receiver, at time $t$ and after a step of length $\Delta t$ (the step that ends now), the fraction
+parts over the sender's step. At each merge of the receiver, at time $t$ and after a step of length $\Delta t$ (the step that ends now, which began at $t-\Delta t$), the fraction
 \begin{equation}
   f_{{\rm rel},k} = \begin{cases}
-    \Delta t/(T_{\rm end}-t), & T_{\rm end}-t>\Delta t,\\
+    \Delta t/(T_{\rm end}-t+\Delta t), & T_{\rm end}>t,\\
     1, & \text{otherwise}
   \end{cases}
   \label{eq:packet-release}
 \end{equation}
-of the reservoir, of its energy, its photon number and its origin sum alike, joins the arrivals
+of the reservoir, measured from the start of the step that ends now (under cosmology $\Delta t$ and $T_{\rm end}-t+\Delta t$ are proper times), of its energy, its photon number and its origin sum alike, joins the arrivals
 of the merge (Eq.~\eqref{eq:packet-merge-E}). With equal receiver steps the parts
-are equal. If the release of the fraction $f_{{\rm rel},k}$ would leave the photon
+are equal: a share booked at the start of a receiver step, with $n\Delta t$ to run, is released
+in $n$ merges of $1/n$ each, and the last merge releases the rest. If the release of the fraction $f_{{\rm rel},k}$ would leave the photon
 number of a band below $10^{-35}$, the whole reservoir is released. A star
 sends to the reservoir of a receiver whose bin is finer than its own, with
 $T_{\rm end}$ equal to the time of the emission plus one step of its time bin. This reservoir is a transport buffer for
@@ -471,15 +472,15 @@ unequal steps, and it is not the dose reservoir of the M1 injection
 
 \paragraph{Implementation.} The choice between the inbox and the reservoir is
 the argument \code{to\_reservoir} of \code{radiation\_packet\_deliver}
-(\code{radiation\_packet.h:226-246}); it is
-\code{s->time\_bin > r->time\_bin} at :303 for a hop, and
-\code{si->time\_bin > pj->time\_bin} at :485 for a star, with
-\code{source\_step\_end\_ti} (:241-242) the end of the sender's step
-(\code{step\_end\_ti}, set at \code{radiation\_packet.c:599} as \code{ti\_current + ti\_step}, and
-\code{ti\_current + ti\_step} for a star, \code{radiation\_packet.h:485}). Eq.~\eqref{eq:packet-release} is
-\code{radiation\_packet\_merge\_slot} (\code{radiation\_packet.c:495-501}); the
-cutoff rule is at :503-511, and the release of the energy, the photon number and the
-origin sum at :513-549.
+(\code{radiation\_packet.h:196-278}); it is
+\code{s->time\_bin > r->time\_bin} at :340 for a hop, and
+\code{si->time\_bin > pj->time\_bin} at :523 for a star, with
+\code{source\_step\_end\_ti} (:194, :277-278) the end of the sender's step
+(\code{step\_end\_ti}, set at \code{radiation\_packet.c:718} as \code{ti\_current + ti\_step}, and
+\code{ti\_current + ti\_step} for a star, \code{radiation\_packet.h:523}). Eq.~\eqref{eq:packet-release} is
+\code{radiation\_packet\_merge\_slot} (\code{radiation\_packet.c:605-616}); the
+cutoff rule is at :619-627, and the release of the energy, the photon number and the
+origin sum at :629-665.
 
 \subsection{The field that the gas sees}
 \label{sec:packet-field}
