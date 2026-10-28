@@ -24,12 +24,10 @@
  * @brief Packet transport of the ISRF bands: each active gas particle hands
  * its packet to its downstream neighbours, once per own step.
  *
- * The gradient loop sums the sender's transmission weights `S`, the force
- * loop books each share `w/S` into the receiver. The weight carries the
- * receiver's volume `mass/rho`, divided inside it. Both loops call the one
- * out-of-line #radiation_packet_transmission_weight, so the shares of a
- * sender sum to 1 up to rounding. A share is booked by the rank that owns the
- * receiver, once.
+ * The gradient loop sums the transmission weights `S` of the sender, the force
+ * loop books the share `w/S` into each receiver. Both call
+ * #radiation_packet_transmission_weight, so the shares sum to 1 up to
+ * rounding. The rank that owns the receiver books each share, once.
  */
 
 #include "cosmology.h"
@@ -57,7 +55,7 @@
 
 /*! Photon number (as `N E_lo`) below which a share is booked as absorbed:
     near the float minimum 1.2e-38 the number would flush to zero before the
-    energy, and the mean photon energy would leave the band. */
+   energy and the mean photon energy would leave the band. */
 #define RADIATION_PACKET_MIN_PHOTONS 1e-35f
 
 /*! Distance over the star's kernel support below which a gas particle
@@ -102,9 +100,9 @@ void radiation_packet_inject_test_beams(
  * @brief Exponential running mean of the own field over the time constant
  * `tau`: `m + (x - m) dt / max(tau, dt)`.
  *
- * Only the field is averaged, never the packet, so the ledger is untouched.
- * Explicit branches, not a clamp: under -ffast-math a NaN would not be
- * absorbed, and `m + (x - m) * 1` is not bit-exact.
+ * Only the field is averaged, never the packet. Explicit branches, not a
+ * clamp: under -ffast-math a NaN would not be absorbed and `m + (x - m) * 1`
+ * is not bit-exact.
  *
  * @param m Mean at the particle's previous step.
  * @param x Value of this step.
@@ -144,7 +142,7 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
 }
 
 /**
- * @brief Gradient loop: add one downstream neighbour to the weight sum and
+ * @brief Gradient loop: add one downstream neighbour to the weight sum and the
  * forward advance of each non-empty slot of the sender.
  *
  * @param dx Comoving vector from the sender to the neighbour.
@@ -175,21 +173,18 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
 }
 
 /**
- * @brief Deliver one share to a receiver: dust absorption over the path, then
- * the inbox, or the reservoir when the source has the coarser step, of the
- * slot that holds the direction from the share's origin to the
- * receiver.
+ * @brief Deliver one share to a receiver: absorb it in dust over the path, then
+ * add it to the inbox (the reservoir, if the source has the coarser step) of
+ * the slot that holds the direction from the share's origin.
  *
- * Energy and photon number lose the same fraction to dust, so the mean photon
- * energy of a band is unchanged by it. In an expanding box the share first
- * loses energy and photons to the expansion over the light travel time of its
- * path, #radiation_packet_redshift_share. The share arrives and is split in
- * double: a float product near 1e-38 flushes to zero under -ffast-math, which
- * would leave an energy without its photon number.
+ * Energy and photons lose the same fraction to dust, so the mean photon energy
+ * of a band is unchanged by it. In an expanding box the
+ * share first redshifts over its path (#radiation_packet_redshift_share). It
+ * is split in double: a float product near 1e-38 flushes to zero under
+ * -ffast-math and would leave an energy without its photon number.
  *
  * @param r The receiver.
- * @param frame Rotation matrix of the octant frame, as
- * #feedback_props.ISRF_packet_octant_frame.
+ * @param frame Octant frame, #feedback_props.ISRF_packet_octant_frame.
  * @param energy Energy of the share per band, before absorption.
  * @param photons Photon number of the share per band, as `N E_lo`.
  * @param offset Comoving offset from the receiver to the share's origin.
@@ -295,9 +290,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * @brief Force loop: book the shares of each non-empty slot of the sender for
  * one receiver.
  *
- * Each share is absorbed over the increase of the distance to the slot's
- * origin, so path lengths telescope along a chain of hops. The octant frame
- * is the sender's copy.
+ * A share is absorbed over the increase of the distance to the slot's origin,
+ * so the paths telescope along a chain of hops. The frame is the sender's copy.
  *
  * @param dx Comoving vector from the sender to the receiver.
  * @param h_s Comoving smoothing length of the sender.
@@ -429,7 +423,7 @@ radiation_packet_init_star_cones(struct spart *sp) {
 
 /**
  * @brief Weight sum of one emission cone at which its light is fully
- * delivered, for the star's current support.
+ * delivered.
  *
  * @param sp The #spart.
  */
@@ -470,10 +464,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 /**
  * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * Each of the 12 cones holds `L dt / 12`. A cone whose weight sum is below the
- * cone floor lets the rest of its twelfth escape. The light that does not
- * escape is shared by all receivers of the star in proportion to their
- * weights. The share is absorbed over the distance to the star.
+ * Each of the 12 cones holds `L dt / 12`. A cone with a weight sum below the
+ * cone floor lets the rest of its twelfth escape. Receivers share the rest
+ * by weight.
  *
  * @param si The star.
  * @param pj The gas neighbour.
@@ -482,8 +475,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
  * @param a Current scale factor.
  * @param H Current Hubble rate. 0 in a static box.
  * @param ti_current Current integer time.
- * @param frame Rotation matrix of the octant frame, as
- * #feedback_props.ISRF_packet_octant_frame.
+ * @param frame Octant frame, #feedback_props.ISRF_packet_octant_frame.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
     const struct spart *si, struct part *pj, const float dx[3],
@@ -539,9 +531,9 @@ void radiation_packet_check_star_cones(const struct spart *sp,
  * @brief Book the packet of a gas particle that leaves the gas, converted
  * into or swallowed by another particle, into that particle's ledger.
  *
- * The light in flight (held, inbox and reservoir, in every slot) is lost with
- * the gas and is booked as removed. The gas's absorbed, escaped and redshifted
- * ledgers are carried over.
+ * The light in flight (held, inbox and reservoir, in every slot) is booked as
+ * removed. The absorbed, escaped and redshifted ledgers of the gas are carried
+ * over.
  *
  * @param p The gas particle.
  * @param l The ledger of the star or sink.

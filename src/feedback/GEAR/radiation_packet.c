@@ -38,13 +38,13 @@
 #include <math.h>
 #include <stdint.h>
 
-/* The periodic box, set once at start-up by radiation_packet_set_box(). */
+/* The periodic box, set at start-up by radiation_packet_set_box(). */
 static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
 static int radiation_packet_box_periodic = 0;
 static int radiation_packet_box_is_set = 0;
 
 /**
- * @brief Give the star emission the box it needs to wrap star-gas vectors.
+ * @brief Give the star emission the box, to wrap star-gas vectors.
  *
  * @param dim The box size.
  * @param periodic Is the box periodic?
@@ -55,8 +55,8 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
   radiation_packet_box_is_set = 1;
 }
 
-/* The constants of the redshift of a share, set once at start-up by
-   radiation_packet_set_redshift(). */
+/* The redshift constants, set at start-up by radiation_packet_set_redshift().
+ */
 static double radiation_packet_speed_of_light = 0.0;
 static double radiation_packet_weight_energy[ISRF_OPERATOR_COUNT] = {1.0, 1.0};
 static double radiation_packet_weight_photon_lw = 0.0;
@@ -64,15 +64,12 @@ static int radiation_packet_redshift_is_set = 0;
 
 /**
  * @brief Give the redshift of a share the speed of light and the band-edge
- * weights of the energy and of the LW photon number.
+ * weights.
  *
  * @param speed_of_light The speed of light, internal units.
- * @param weight_pe Band-edge weight of the PE energy,
- * #feedback_props.band_edge_weight_pe.
- * @param weight_lw Band-edge weight of the LW energy,
- * #feedback_props.band_edge_weight_lw.
- * @param photon_weight_lw Band-edge weight of the LW photon number,
- * #feedback_props.band_edge_photon_weight_lw.
+ * @param weight_pe #feedback_props.band_edge_weight_pe.
+ * @param weight_lw #feedback_props.band_edge_weight_lw.
+ * @param photon_weight_lw #feedback_props.band_edge_photon_weight_lw.
  */
 void radiation_packet_set_redshift(const double speed_of_light,
                                    const double weight_pe,
@@ -101,15 +98,13 @@ void radiation_packet_startup(const struct engine *e) {
 /**
  * @brief Redshift of a share over its path in an expanding box.
  *
- * The light travel time of the path is `path_phys / c`, so the redshift
- * depth is `zeta = H path_phys / c`. Over it the energy of band `b` falls as
- * `exp(-w_b zeta)` with `w_b` the band-edge weight of the band. The LW energy
- * loses `w - 1` of its `w` parts through the 11.2 eV edge into the PE band,
- * as the module's fluid transport does. The LW photon number falls as
- * `exp(-w_N zeta)`, and the photons it loses enter the PE band in units of
- * the PE lower edge. The PE photon number loses its band-edge photons at the
- * rate `(w_PE - 1) E / (N E_lo)` of its own mean photon energy, which has no
- * table value. Photons are `N E_lo`.
+ * With the redshift depth `zeta = H path_phys / c`, the energy of band `b`
+ * falls as `exp(-w_b zeta)`, `w_b` the band-edge weight. The LW energy loses `w
+ * - 1` of its `w` parts through the 11.2 eV edge into the PE band, as the fluid
+ * transport does. The LW photon number falls as `exp(-w_N zeta)` and the
+ * photons it loses enter the PE band in units of the PE lower edge. The PE
+ * photon number loses photons at the rate `(w_PE - 1) E / (N E_lo)`, from its
+ * own mean photon energy, which has no table value. Photons are `N E_lo`.
  *
  * @param H Current Hubble rate. 0 or less changes nothing.
  * @param path_phys Physical path length of the share.
@@ -170,20 +165,19 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
 /**
  * @brief Transmission weight `V W(r, h_s) max(0, mu)^p` of a sender towards
  * one neighbour, with `mu` the cosine between the hop and the packet
- * direction and `V = mass / rho` the comoving volume of the neighbour.
- * The expansion factor of the comoving density is common to all neighbours
- * of a sender and cancels in the shares.
+ * direction and `V = mass / rho` the comoving volume of the neighbour. The
+ * expansion factor of the comoving density is common to all neighbours and
+ * cancels in the shares.
  *
- * The sum of the weights over the neighbours is the SPH quadrature of the
- * integral of `W mu^p` over the volume, so the share to a side of the sender
- * follows the solid angle and not the number of neighbours there.
+ * The sum over the neighbours is the SPH quadrature of the integral of
+ * `W mu^p`, so the share to a side follows the solid angle and not the number
+ * of neighbours there.
  *
  * Exactly 0 for `mu <= RADIATION_PACKET_MU_MIN`, for `r = 0` and beyond the
- * sender's kernel support. Kept out of line so that the gradient loop, which
- * sums the weights, and the force loop, which divides by that sum, evaluate
- * the same compiled arithmetic, the division `mass / rho` included. The
- * distance is computed here too: a caller's `r2` may be contracted differently
- * at each call site.
+ * kernel support of the sender. Kept out of line so that the gradient loop and
+ * the force loop evaluate the same compiled arithmetic, `mass / rho` and the
+ * distance included: a caller's `r2` may be contracted differently at each
+ * call site.
  *
  * @param dx Comoving vector from the sender to the neighbour.
  * @param h_s Comoving smoothing length of the sender.
@@ -217,10 +211,10 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
  *
  * Bit `k` of the result is set when the component `k` of the direction in the
  * frame is zero or positive, so a direction on a border goes to the positive
- * side whatever the sign of its zero. Directions more than 90 degrees apart
- * are never in one octant; exactly 90 degrees can be. The octant of the
- * opposite direction is `7 - octant`, except on a border. Kept out of line, so
- * that every caller bins with the same compiled arithmetic. The components are
+ * side whatever the sign of its zero. Directions more than 90 degrees apart are
+ * never in one octant; exactly 90 degrees can be. The octant of the opposite
+ * direction is `7 - octant`, except on a border. Kept out of line, so that
+ * every caller bins with the same compiled arithmetic. The components are
  * formed in double.
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
@@ -248,11 +242,11 @@ __attribute__((noinline)) int radiation_packet_octant(
  * directions in one cell is in it. With 8 slots the cells are the octants
  * (#radiation_packet_octant). With 12 they are the faces of a rhombic
  * dodecahedron: slot `4 m + 2 a + b`, `m` the frame axis of smallest absolute
- * coordinate (the lowest axis on a tie), `a` and `b` 1 for a coordinate that
- * is zero or positive on the other two axes in axis order. With 16 slot
- * `o + 8 h`, `o` the octant and `h` 1 when the absolute second frame
- * coordinate exceeds the absolute first. A tie goes to the same side whatever
- * the sign of a zero. Kept out of line, as #radiation_packet_octant.
+ * coordinate (the lowest on a tie), `a` and `b` 1 for a coordinate that is zero
+ * or positive on the other two axes in axis order. With 16 slot `o + 8 h`, `o`
+ * the octant and `h` 1 when the absolute second frame coordinate exceeds the
+ * absolute first. A tie goes to the same side whatever the sign of a zero.
+ * Kept out of line, as #radiation_packet_octant.
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
  * @param direction Direction in the box frame. Need not be a unit vector.
@@ -292,8 +286,7 @@ __attribute__((noinline)) int radiation_packet_slot(const float frame[9],
  *
  * Used by the debug check of #radiation_packet_merge_slot to skip directions
  * that rounding to float can move across a border. For 12 slots it is
- * conservative: it takes the borders between every pair of absolute
- * coordinates.
+ * conservative: it takes the border between every pair of absolute coordinates.
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
  * @param direction Direction in the box frame.
@@ -328,10 +321,9 @@ double radiation_packet_slot_border_distance(const float frame[9],
 /**
  * @brief Build the rotation matrix of the octant frame.
  *
- * The matrix is `Rz(a_z) Ry(a_y) Rx(a_x)` of the three angles. A positive
- * seed offset composes it with a rotation drawn uniformly from that seed
- * (Shoemake 1992), so that repeats of a run use independent frames. Offset 0
- * is the frame of the angles alone.
+ * The matrix is `Rz(a_z) Ry(a_y) Rx(a_x)`. A positive seed offset composes it
+ * with a rotation drawn uniformly from that seed (Shoemake 1992), so that
+ * repeats of a run use independent frames.
  *
  * @param angles_deg Rotation angles about x, y and z, in degrees.
  * @param seed_offset Seed of the extra rotation. 0 for none.
@@ -398,12 +390,11 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
 /**
  * @brief Read the test beams of the packet transport.
  *
- * A beam is 11 numbers: the lower and the upper corner of a box (3 + 3), its
- * direction (3) and the energy per particle in the PE and in the LW band
- * (2), all in internal units. Absent or with zero energy, a beam is off.
- * The direction is normalised. An active beam needs a box with upper corner
- * above the lower one on every axis. Finiteness is tested on the bit pattern,
- * which -ffinite-math-only cannot fold away.
+ * A beam is 11 numbers in internal units: the lower and upper corner of a box
+ * (3 + 3), its direction (3) and the energy per particle in the PE and LW band
+ * (2). Absent or with zero energy, a beam is off. The direction is normalised.
+ * Finiteness is tested on the bit pattern, which -ffinite-math-only cannot
+ * fold away.
  *
  * @param params The parameter file.
  * @param beams (return) The beams.
@@ -456,11 +447,10 @@ int radiation_packet_read_test_beams(
  * @brief Give the particles inside a test beam box their beam pulse, once.
  *
  * The pulse goes into the inbox of the slot of the beam direction, as a share
- * whose origin lies one smoothing length behind the particle along the
- * direction. Its photon number is its energy, which is the mean photon energy
- * of the band at the lower edge. The energy is not in any ledger of the
- * particle: a test adds it up from the parameters. Called before the merge of
- * the first step of the particle.
+ * whose origin lies one smoothing length behind the particle. Its photon number
+ * is its energy (mean photon energy at the band lower edge). The energy is in
+ * no ledger: a test adds it up from the parameters. Called before the first
+ * merge of the particle.
  *
  * @param p The particle.
  * @param beams The beams, see #radiation_packet_read_test_beams.
@@ -489,8 +479,8 @@ void radiation_packet_inject_test_beams(
  * pixel of the direction from the star to the gas, in a random frame drawn
  * from the star's ID and the start of its step.
  *
- * Kept out of line, so that the star density loop that sums the cones and
- * the feedback loop that fills them, on any rank, use the same arithmetic.
+ * Kept out of line, so that the density loop and the feedback loop of the star,
+ * on any rank, use the same arithmetic.
  *
  * @param star_id ID of the star.
  * @param ti_begin Start of the star's step.
@@ -542,11 +532,9 @@ __attribute__((noinline)) int radiation_packet_emission_cone(
  * @brief Emission cone and weight of a gas neighbour of a star.
  *
  * The star-gas vector is taken in double from the absolute positions; the
- * runner's float @p dx only picks the periodic image, from which it differs
- * by about 0 or about one box length. Both star loops call this one
- * out-of-line function on the same positions, so they agree bit for bit on
- * the cone, on the weight and on which gas is a receiver, whatever path the
- * runner took to each pair.
+ * float @p dx of the runner only picks the periodic image. Both star loops call
+ * this out-of-line function on the same positions, so they agree bit for bit on
+ * the cone, the weight and the receivers, whatever path the runner took.
  *
  * @param si The star.
  * @param pj The gas neighbour.
@@ -590,19 +578,17 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
  * the reservoir become the held packet.
  *
  * The origin is the energy-weighted mean of the arriving origins and the
- * direction points from it to the particle. The reservoir releases the part
- * due in the step that ends now, `dt / t_rem`, with `dt` and `t_rem` measured
- * from the start of that step and all released once `t_rem <= dt`. A share
- * booked at the start of the receiver's step, with `n dt` to run, is met by
- * `n` merges that release `1/n`, `1/(n-1)` of the rest, ..., so each takes
- * `1/n` of it and the last takes the remainder. Under cosmology the same
- * holds with proper-time steps, as the remainders telescope.
+ * direction points from it to the particle. The reservoir releases the part due
+ * in the step that ends now, `dt / t_rem`, with `dt` and `t_rem` measured from
+ * the start of that step, and all of it once `t_rem <= dt`. A share with `n dt`
+ * to run is met by `n` merges that release `1/n`, `1/(n-1)` of the rest, ...,
+ * so each takes `1/n` of it. Same with proper-time steps.
  *
  * @param sl The slot.
  * @param ti_current Time of the merge, the end of the particle's last step.
  * @param ti_step Length of that last step.
  * @param time_base Physical length of one integer time step. Under cosmology
- * it is a step in `ln a`, so #cosmo is used instead.
+ * it is a step in `ln a`, so @p cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.
  * @param slot_index Index of the slot, for the debugging check.
  * @param frame Octant frame, for the debugging check.
@@ -683,9 +669,8 @@ static void radiation_packet_merge_slot(
   if (d > 0.0) {
     for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Every share of the slot came from its cell, a cell is convex, so the
-       mean origin lies in it too. A direction too close to a border may flip
-       by rounding to float. */
+    /* A cell is convex, so the mean origin of its shares lies in it too. A
+       direction near a border may flip by rounding to float. */
     if (radiation_packet_slot_border_distance(frame, sl->direction) > 1e-5 &&
         radiation_packet_slot(frame, sl->direction) != slot_index)
       error("The direction of slot %d is in slot %d.", slot_index,
@@ -693,8 +678,8 @@ static void radiation_packet_merge_slot(
 #endif
   } else {
     /* Mean origin on the particle: any direction is as good. It can lie
-       outside the slot's cell, which is harmless: it is not a mean of
-       directions, and downstream shares are binned by their own geometry. */
+       outside the cell of the slot, which is harmless: shares are binned by
+       their own geometry. */
     sl->direction[0] = 0.f;
     sl->direction[1] = 0.f;
     sl->direction[2] = 1.f;
@@ -705,15 +690,15 @@ static void radiation_packet_merge_slot(
  * @brief Start of an active step: in every slot, the inbox and the due part of
  * the reservoir become the held packet.
  *
- * Each share was binned into its slot when it arrived, so the slots stay
- * apart here and merge nothing across slots.
+ * Each share was binned into its slot on arrival, so nothing merges across
+ * slots.
  *
  * @param p The particle, active.
  * @param ti_current Time of the merge, the end of the particle's last step.
  * @param ti_step Length of the particle's last step. It sets the release of
  * the reservoir and stands in for the next step in `step_end_ti`.
  * @param time_base Physical length of one integer time step. Under cosmology
- * it is a step in `ln a`, so #cosmo is used instead.
+ * it is a step in `ln a`, so @p cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.
  */
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
@@ -738,10 +723,9 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
  * downstream neighbour escape into the ledger.
  *
  * The held packet of a slot is the light that crosses the particle in one
- * step, over the slot's forward advance, so its specific energy density is
- * `(E / m) l_par / (c dt)`. The own field is the sum of that value over the
- * slots, then its running mean over `tau` (#radiation_packet_read_mean), so
- * the kernel mean gathers the mean.
+ * step, over the forward advance of the slot, so its specific energy density is
+ * `(E / m) l_par / (c dt)`. The own field is the sum over the slots, then its
+ * running mean over `tau` (#radiation_packet_read_mean).
  *
  * @param p The particle.
  * @param a Current scale factor.
@@ -828,13 +812,12 @@ void radiation_packet_end_force(struct part *p) {
 }
 
 /**
- * @brief Write the kernel mean of the own field, summed over the slots, into
- * the band moments that Grackle reads: PE to PE, LW to LW and the LW photon
- * number (`N E_lo`) to LW_PHOTON.
+ * @brief Write the kernel mean of the own field into the band moments that
+ * Grackle reads: PE to PE, LW to LW and the LW photon number (`N E_lo`) to
+ * LW_PHOTON.
  *
- * Overwrites the moments, including any value read from the initial
- * conditions. Call after #radiation_packet_end_force, which completes the
- * kernel mean.
+ * Overwrites the moments, including any value from the initial conditions. Call
+ * after #radiation_packet_end_force.
  *
  * @param p The particle.
  */
@@ -849,12 +832,10 @@ void radiation_packet_couple_field(struct part *p) {
 }
 
 /**
- * @brief Book a star's emission of this feedback step, and the light of each
- * cone that its receivers do not take as escaped, once per step on the star's
- * own rank.
+ * @brief Book the emission of a star for this feedback step, and as escaped the
+ * light that its receivers do not take, once per step on the rank of the star.
  *
- * An empty cone loses its whole twelfth, so a star with no receiver loses all
- * its light.
+ * An empty cone loses its whole twelfth.
  *
  * @param sp The star, after its density loop.
  * @param Delta_t The star's feedback step.
@@ -896,11 +877,11 @@ void radiation_packet_star_book_emission(struct spart *sp,
  *
  * Both loops take each weight from radiation_packet_star_gas_weight() on the
  * same positions, so the cone weight sums can differ only by summation order.
- * One line per star step reports the receivers, the empty cones and those of
- * them that hold gas beyond #RADIATION_PACKET_EMISSION_EDGE only, the largest
- * relative difference of a cone weight sum, the worst membership difference
- * (density minus feedback loop), the step's PE energy and the delivered plus
- * escaped fraction of the star's light, minus one.
+ * One line per star step reports the receivers, the empty cones (and those
+ * with gas beyond #RADIATION_PACKET_EMISSION_EDGE only), the largest relative
+ * difference of a cone weight sum, the worst membership difference (density
+ * minus feedback loop), the PE energy of the step and the delivered plus
+ * escaped fraction of the light, minus one.
  *
  * @param sp The star, after its feedback loop.
  * @param ti_current Current integer time, for the message.

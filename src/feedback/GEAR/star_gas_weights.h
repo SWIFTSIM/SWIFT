@@ -42,8 +42,8 @@
  * double.
  *
  * Summed over the neighbours of one emission cone, the weights sample the
- * cone's volume whatever the gas density on that side. The weight is zero at
- * `q = q_edge`, so it is continuous across the receiver boundary.
+ * volume of the cone whatever the gas density. It is zero at `q = q_edge`, so
+ * it is continuous across the receiver boundary.
  *
  * @param q Distance over the star's kernel support radius.
  * @param mass Mass of the gas particle.
@@ -58,11 +58,10 @@ __attribute__((always_inline)) INLINE static double star_gas_tent_weight(
 }
 
 /**
- * @brief Weight sum of one emission cone at which the cone's light is fully
- * delivered.
+ * @brief Weight sum of one emission cone at which its light is fully delivered.
  *
- * It is #STAR_GAS_CONE_FLOOR_FRACTION times the cone's share of the integral
- * of the weight over a uniform gas, `(pi / 3) (q_edge H)^3 / n_cones`.
+ * It is #STAR_GAS_CONE_FLOOR_FRACTION times the share of the cone of the
+ * integral of the weight over a uniform gas, `(pi / 3) (q_edge H)^3 / n_cones`.
  *
  * @param support Comoving kernel support radius `H` of the star.
  * @param n_cones Number of emission cones.
@@ -76,8 +75,8 @@ __attribute__((always_inline)) INLINE static double star_gas_cone_floor(
 }
 
 /**
- * @brief Fraction of the star's light that escapes through one cone: the
- * cone's `1 / n_cones` minus the shares of its receivers.
+ * @brief Fraction of the light of the star that escapes through one cone: its
+ * `1 / n_cones` minus the shares of its receivers.
  *
  * @param cone_sum Weight sum of the cone.
  * @param floor The cone floor, see star_gas_cone_floor().
@@ -92,8 +91,8 @@ __attribute__((always_inline)) INLINE static double star_gas_cone_escape(
 }
 
 /**
- * @brief Fraction of the star's light that escapes: the sum of the escape of
- * its cones.
+ * @brief Fraction of the light of the star that escapes: the sum over the
+ * cones.
  *
  * @param cone_sums Weight sum of each cone.
  * @param floor The cone floor, see star_gas_cone_floor().
@@ -109,12 +108,11 @@ __attribute__((always_inline)) INLINE static double star_gas_escape_fraction(
 }
 
 /**
- * @brief Fraction of the star's light that one receiver gets.
+ * @brief Fraction of the light of the star that one receiver gets.
  *
  * The light that does not escape, `1 - sum_c escape_c`, is shared by all
- * receivers of the star in proportion to their weights. The fractions of the
- * receivers sum to that delivered light, and a deficit of receivers in one
- * cone does not raise the share of the receivers there.
+ * receivers of the star in proportion to their weights, so a deficit of
+ * receivers in one cone does not raise the share of the receivers there.
  *
  * @param weight Weight of the receiver.
  * @param cone_sums Weight sum of each cone.

@@ -106,15 +106,14 @@ enum isrf_transport {
  * #isrf_transport_packet_hop. */
 #define isrf_transport_name_packet_hop "packet_hop"
 
-/*! Default power of the soft transmission cone of the packet transport. */
+/*! Default power of the soft transmission cone. */
 #define default_ISRF_packet_cone_power 4.f
 
-/*! Default time constant of the read mean of the packet field, in Myr. 0 is
- * off. */
+/*! Default time constant of the running mean of the packet field, in Myr. */
 #define default_ISRF_packet_read_mean_time_Myr 0.f
 
-/*! Default angles in degrees of the fixed frame whose cells are the packet
- * reception slots: a generic rotation, not aligned with the box. */
+/*! Default angles in degrees of the frame of the packet reception slots: a
+ * generic rotation, not aligned with the box. */
 #define default_ISRF_packet_octant_frame_angle_x_deg 24.f
 #define default_ISRF_packet_octant_frame_angle_y_deg 36.f
 #define default_ISRF_packet_octant_frame_angle_z_deg 66.f
@@ -282,20 +281,18 @@ struct feedback_props {
   /*! Transport of the ISRF bands, a #isrf_transport. */
   int ISRF_transport;
 
-  /*! Power `p` of the soft transmission cone `W max(0, mu)^p` of the packet
-   * transport. */
+  /*! Power `p` of the transmission cone `W max(0, mu)^p`. */
   float ISRF_packet_cone_power;
 
-  /*! Time constant of the exponential mean of the own field of the packet
-   * transport, in internal units. 0 is off. */
+  /*! Time constant of the running mean of the packet field, internal units. 0
+   * is off. */
   float ISRF_packet_read_mean_time;
 
-  /*! Rotation matrix (row-major) from the box to the fixed frame whose cells
-   * are the reception slots of the packet transport. */
+  /*! Rotation matrix (row-major) from the box to the frame of the packet
+   * reception slots. */
   float ISRF_packet_octant_frame[9];
 
-  /*! Test beams of the packet transport, see
-   * #radiation_packet_inject_test_beams. */
+  /*! Test beams, see #radiation_packet_inject_test_beams. */
   float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS][11];
 
   /*! Minimal density to consider a particle eligible for HII ionization */

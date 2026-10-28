@@ -190,12 +190,12 @@ struct feedback_isrf_operator_data {
     #radiation_packet_inject_test_beams. */
 #define RADIATION_PACKET_TEST_BEAMS 2
 
-/*! Reception slots of the packet a gas particle holds: one per cell of an
-    equal-solid-angle partition of the directions, fixed in the generic frame
-    #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set at
-    configure time by `--with-isrf-packet-slots`: 12 (rhombic dodecahedron
-    faces, the default), 8 (the octants of the frame) or 16 (octants halved by
-    the plane `|x| = |y|`). Each slot costs `sizeof(struct
+/*! Reception slots of the packet of a gas particle: one per cell of an
+    equal-solid-angle partition of the directions, fixed in the frame
+    #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set by
+    `--with-isrf-packet-slots`: 12 (the default),
+    8 (the octants of the frame) or 16 (octants halved by the plane
+    `|x| = |y|`). Each slot costs `sizeof(struct
     feedback_isrf_packet_slot_data)` bytes in every gas particle. */
 #ifndef RADIATION_PACKET_SLOTS
 #define RADIATION_PACKET_SLOTS 12
@@ -231,18 +231,17 @@ struct feedback_isrf_operator_data {
 #endif
 
 /**
- * @brief One band of the own field and the ledger of a gas particle under the
- * packet transport (#isrf_transport_packet_hop).
+ * @brief One band of the own field and the ledger of a gas particle
+ * (#isrf_transport_packet_hop).
  *
- * Photon numbers are stored as `N E_lo`, the number times the band's lower
- * edge photon energy, in energy units: a raw count overflows a float. The
- * mean photon energy is then `E_lo energy / photons`. Ledger terms are double
- * so that small shares are not lost against a large total.
+ * Photon numbers are stored as `N E_lo`, the number times the lower edge photon
+ * energy of the band: a raw count overflows a float. The mean photon energy is
+ * then `E_lo energy / photons`. Ledger terms are double.
  */
 struct feedback_isrf_packet_band_data {
 
-  /*! Own field: specific energy of the band read off the held packet, summed
-      over the slots, or its running mean over
+  /*! Own field: specific energy read off the held packet, summed over the
+      slots, or its running mean over
       #feedback_props.ISRF_packet_read_mean_time. */
   float field_energy;
 
@@ -268,9 +267,9 @@ struct feedback_isrf_packet_band_data {
   /*! Photon number escaped, as `N E_lo`. */
   double escaped_photons;
 
-  /*! Energy removed from this band by the expansion in the shares booked
-      into this particle, cumulative: redshift and band-edge loss, minus the
-      energy gained from the other band. Zero in a static box. */
+  /*! Energy removed from this band by the expansion in the shares booked into
+      this particle, cumulative: redshift and band-edge loss, minus the gain
+      from the other band. Zero in a static box. */
   double redshifted_energy;
 
   /*! Photon number removed by the expansion, as `N E_lo`, net of the gain
@@ -303,9 +302,8 @@ struct feedback_isrf_packet_slot_band_data {
 };
 
 /**
- * @brief One reception slot of a gas particle under the packet transport: the
- * light that arrived from one cell of the fixed frame, with one direction
- * and origin shared by all bands.
+ * @brief One reception slot of a gas particle: the light that arrived from one
+ * cell of the fixed frame, with one direction and origin for all bands.
  */
 struct feedback_isrf_packet_slot_data {
 
@@ -338,8 +336,8 @@ struct feedback_isrf_packet_slot_data {
 };
 
 /**
- * @brief Radiation packet of a gas particle under the packet transport: the
- * reception slots, the own field and the ledger.
+ * @brief Radiation packet of a gas particle: the reception slots, the own field
+ * and the ledger.
  */
 struct feedback_isrf_packet_data {
 
@@ -360,20 +358,19 @@ struct feedback_isrf_packet_data {
       matrix), set with #cone_power. */
   float octant_frame[9];
 
-  /*! End of this particle's current step, set at its merge. A finer
-      receiver releases this particle's shares by then. */
+  /*! End of the current step of the particle, set at its merge. A finer
+      receiver releases its shares by then. */
   integertime_t step_end_ti;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  /*! Number of non-zero shares booked into this particle since the counter
-      was last reset by a test. */
+  /*! Number of non-zero shares booked into this particle, reset by a test. */
   int shares_received;
 #endif
 };
 
 /**
- * @brief Packet ledger of the gas a star or a sink formed from or swallowed,
- * per band, indexed by #radiation_isrf_operator.
+ * @brief Packet ledger of the gas that a star or a sink formed from or
+ * swallowed, per band (#radiation_isrf_operator).
  */
 struct feedback_isrf_packet_removed_data {
 
