@@ -1934,7 +1934,7 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
 
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) && defined(WITH_MPI) && \
     defined(MPI_SYMMETRIC_FORCE_INTERACTION)
-      /* ISRF: a foreign active pi books into inactive local pj, r < h_i.
+      /* ISRF: a foreign active pi books into every local pj, r < h_i.
        * Its packet goes to every local pj, active or not. */
       if (!local_i && local_j && PART_IS_ACTIVE(pi, e) &&
           (depth_i >= min_depth) && (depth_i <= max_depth)) {
@@ -1947,9 +1947,8 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
           const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 >= hig2) continue;
-          if (!PART_IS_ACTIVE(pj, e))
-            runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, pj->h, pi, pj, a, H,
-                                               /*book=*/1);
+          runner_iact_nonsym_isrf_packet_hop(r2, dx, hi, pj->h, pi, pj, a, H,
+                                             /*book=*/1);
         }
       }
 #endif
@@ -2244,16 +2243,14 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
              pid--) {
           struct part *pi = &parts_i[sort_i[pid].i];
           if (part_is_inhibited(pi, e)) continue;
-          const float hig2 = pi->h * pi->h * kernel_gamma2;
           const float pix = pi->x[0] - shift_i[0];
           const float piy = pi->x[1] - shift_i[1];
           const float piz = pi->x[2] - shift_i[2];
           const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
           const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
           if (r2 >= hjg2) continue;
-          if (!PART_IS_ACTIVE(pi, e) && r2 >= hig2)
-            runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, pi->h, pj, pi, a, H,
-                                               /*book=*/1);
+          runner_iact_nonsym_isrf_packet_hop(r2, dx, hj, pi->h, pj, pi, a, H,
+                                             /*book=*/1);
         }
       }
 #endif
