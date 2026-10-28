@@ -27,6 +27,9 @@
 #include <geajay_cosmic_ray.h>
 #include <geajay_particle.h>
 
+/* PARSER_MAX_LINE_SIZE */
+#include "parser.h"
+
 /**
  * @file src/cooling/geajay/cooling_properties.h
  * @brief Properties of the cooling with the geajay library.
@@ -166,11 +169,13 @@ struct cooling_function_data {
   int dust_background_attenuation;
 
   /*! UV rates file of "per_band"; empty: the Cloudy table file. */
-  char uv_rates_file[200];
+  char uv_rates_file[PARSER_MAX_LINE_SIZE];
 
   /*! Files of single bands of "per_band" (ionising, Lyman-Werner, G_0); empty:
    * uv_rates_file. */
-  char ionising_rates_file[200], lw_rates_file[200], isrf_rates_file[200];
+  char ionising_rates_file[PARSER_MAX_LINE_SIZE],
+      lw_rates_file[PARSER_MAX_LINE_SIZE],
+      isrf_rates_file[PARSER_MAX_LINE_SIZE];
 
   /*! Constant LW background J21 (Grackle LWbackground_intensity); negative:
    * the library default. */
