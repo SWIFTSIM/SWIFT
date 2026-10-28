@@ -106,6 +106,39 @@ enum isrf_transport {
  * #isrf_transport_packet_hop. */
 #define isrf_transport_name_packet_hop "packet_hop"
 
+/**
+ * @brief Speed limit of the light of the packet transport
+ * (GEARFeedback:ISRF_packet_light_speed). The integer values go to the restart
+ * file.
+ */
+enum isrf_packet_light_speed {
+  /*! A share arrives at the next step of its receiver, whatever the distance.
+   * The light can move faster than c. For debugging only. */
+  isrf_packet_light_speed_unlimited = 0,
+  /*! A share arrives no earlier than its path divided by the limit speed,
+   * in the frame of the gas: gas that moves away from the sender faster than
+   * 0.99 of the limit speed gets its light early. Default of the packet_hop
+   * transport. */
+  isrf_packet_light_speed_cap = 1,
+  /*! As the cap, and the time step is bounded so that the light moves at the
+   * limit speed. */
+  isrf_packet_light_speed_fixed = 2,
+};
+
+/*! Values of GEARFeedback:ISRF_packet_light_speed. */
+#define isrf_packet_light_speed_name_unlimited "unlimited"
+#define isrf_packet_light_speed_name_cap "cap"
+#define isrf_packet_light_speed_name_fixed "fixed"
+
+/*! Default limit speed of the packet transport, as a fraction of the speed of
+ * light. A share to a receiver that moves away from the sender at the speed
+ * `u` arrives after the separation over `v - u`, at most 100 times the
+ * separation over `v`. The limit holds in the frame of the gas: a sender that
+ * moves towards the receiver between its stamp and its booking, or a receiver
+ * that speeds up after it, can make the front move at up to `v + u` in the
+ * frame of the box, which is harmless for `v` near `c`. */
+#define default_ISRF_packet_light_speed_fraction_of_c 0.99f
+
 /*! Default power of the soft transmission cone. */
 #define default_ISRF_packet_cone_power 4.f
 
@@ -281,7 +314,16 @@ struct feedback_props {
   /*! Transport of the ISRF bands, a #isrf_transport. */
   int ISRF_transport;
 
-  /*! Power `p` of the transmission cone `W max(0, mu)^p`. */
+  /*! Speed limit of the light of the packet transport, a
+   * #isrf_packet_light_speed. */
+  int ISRF_packet_light_speed;
+
+  /*! Limit speed of the packet transport as a fraction of the speed of light.
+   * Read only when #ISRF_packet_light_speed is not unlimited. */
+  float ISRF_packet_light_speed_fraction_of_c;
+
+  /*! Power `p` of the soft transmission cone `W max(0, mu)^p` of the packet
+   * transport. */
   float ISRF_packet_cone_power;
 
   /*! Time constant of the running mean of the packet field, internal units. 0
@@ -468,6 +510,24 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
               isrf_transport_name_packet_hop);
       message("ISRF packet transmission cone power                        = %g",
               feedback_props->ISRF_packet_cone_power);
+      message("ISRF packet light speed limit                              = %s",
+              feedback_props->ISRF_packet_light_speed ==
+                      isrf_packet_light_speed_fixed
+                  ? isrf_packet_light_speed_name_fixed
+              : feedback_props->ISRF_packet_light_speed ==
+                      isrf_packet_light_speed_cap
+                  ? isrf_packet_light_speed_name_cap
+                  : isrf_packet_light_speed_name_unlimited);
+      if (feedback_props->ISRF_packet_light_speed !=
+          isrf_packet_light_speed_unlimited)
+        message(
+            "ISRF packet limit speed (fraction of c)                    = %g",
+            feedback_props->ISRF_packet_light_speed_fraction_of_c);
+      if (feedback_props->ISRF_packet_light_speed ==
+          isrf_packet_light_speed_fixed)
+        message(
+            "ISRF packet step bound margin C_hyp                        = %g",
+            feedback_props->ISRF_c_hyp_margin);
       message("ISRF packet field read mean time (internal units, 0 = off) = %g",
               feedback_props->ISRF_packet_read_mean_time);
       message(
@@ -601,6 +661,88 @@ feedback_check_isrf_operator_owner_map(
           "does.",
           o, (int)owner[o], o, first);
   }
+}
+
+/**
+ * @brief Read and check the speed limit of the light of the packet transport
+ * (GEARFeedback:ISRF_packet_light_speed and
+ * GEARFeedback:ISRF_packet_light_speed_fraction_of_c).
+ *
+ * A key left out gives the mode cap when the transport is packet_hop with
+ * ISRF_propagation, and unlimited otherwise. Writes a warning for the mode
+ * unlimited, for which light can move faster than c, and for a fraction above
+ * 0.99, for which gas faster than `(1 - fraction) c` can push the front above
+ * c. A limited mode also prints a message that the limit applies in the gas
+ * frame, so that gas which moves away faster than 0.99 of the limit speed gets
+ * its light early. Stops the run on an unknown mode, on a fraction outside (0,
+ * 1] and on a limit without ISRF_propagation and the packet_hop transport,
+ * which must already be set in #fp.
+ *
+ * @param params The parameter file.
+ * @param fp The #feedback_props, with ISRF_propagation and ISRF_transport set.
+ */
+INLINE static void feedback_props_read_packet_light_speed(
+    struct swift_params *params, struct feedback_props *fp) {
+
+  const int packet_hop =
+      fp->ISRF_propagation && fp->ISRF_transport == isrf_transport_packet_hop;
+  char light_speed[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(
+      params, "GEARFeedback:ISRF_packet_light_speed", light_speed,
+      packet_hop ? isrf_packet_light_speed_name_cap
+                 : isrf_packet_light_speed_name_unlimited);
+  if (strcmp(light_speed, isrf_packet_light_speed_name_unlimited) == 0)
+    fp->ISRF_packet_light_speed = isrf_packet_light_speed_unlimited;
+  else if (strcmp(light_speed, isrf_packet_light_speed_name_cap) == 0)
+    fp->ISRF_packet_light_speed = isrf_packet_light_speed_cap;
+  else if (strcmp(light_speed, isrf_packet_light_speed_name_fixed) == 0)
+    fp->ISRF_packet_light_speed = isrf_packet_light_speed_fixed;
+  else
+    error(
+        "GEARFeedback:ISRF_packet_light_speed must be %s, %s or %s, got '%s'.",
+        isrf_packet_light_speed_name_unlimited,
+        isrf_packet_light_speed_name_cap, isrf_packet_light_speed_name_fixed,
+        light_speed);
+  fp->ISRF_packet_light_speed_fraction_of_c = parser_get_opt_param_float(
+      params, "GEARFeedback:ISRF_packet_light_speed_fraction_of_c",
+      default_ISRF_packet_light_speed_fraction_of_c);
+  if (fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
+      !(fp->ISRF_packet_light_speed_fraction_of_c > 0.f &&
+        fp->ISRF_packet_light_speed_fraction_of_c <= 1.f))
+    error(
+        "GEARFeedback:ISRF_packet_light_speed_fraction_of_c must be in "
+        "(0, 1] (got %g).",
+        fp->ISRF_packet_light_speed_fraction_of_c);
+  if (fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
+      !(fp->ISRF_propagation &&
+        fp->ISRF_transport == isrf_transport_packet_hop))
+    error(
+        "GEARFeedback:ISRF_packet_light_speed: %s acts only with "
+        "GEARFeedback:ISRF_propagation: 1 and GEARFeedback:ISRF_transport: "
+        "%s.",
+        light_speed, isrf_transport_name_packet_hop);
+  if (packet_hop &&
+      fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
+    warning(
+        "GEARFeedback:ISRF_packet_light_speed: unlimited lets the light of "
+        "the packet transport move faster than c. Use it for debugging only.");
+  if (packet_hop &&
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited)
+    message(
+        "GEARFeedback:ISRF_packet_light_speed: %s limits the light in the "
+        "frame of the gas. Light is delivered early, at 100 times the light "
+        "time of the separation, to gas that moves away from the sender "
+        "faster than 0.99 of the limit speed. The deliveries are counted "
+        "in the packet diagnostics of each step.",
+        light_speed);
+  if (packet_hop &&
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
+      fp->ISRF_packet_light_speed_fraction_of_c > 0.99f)
+    warning(
+        "GEARFeedback:ISRF_packet_light_speed_fraction_of_c = %g: gas that "
+        "moves faster than (1 - fraction) c can make the light front move "
+        "faster than c in the frame of the box.",
+        fp->ISRF_packet_light_speed_fraction_of_c);
 }
 
 /**
@@ -1030,6 +1172,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     else
       error("GEARFeedback:ISRF_transport must be %s or %s, got '%s'.",
             isrf_transport_name_M1, isrf_transport_name_packet_hop, transport);
+
+    feedback_props_read_packet_light_speed(params, fp);
 
     fp->ISRF_packet_cone_power = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_packet_cone_power",

@@ -426,7 +426,18 @@ float feedback_compute_part_timestep(const struct part *restrict p,
   /* Compared to dt_min after the cosmology factor, like the other
    * candidates in get_part_timestep(). */
   const float dt_isrf_scaled = dt_isrf * e->cosmology->time_step_factor;
-  if (dt_isrf_scaled < e->dt_min)
+  if (dt_isrf_scaled < e->dt_min) {
+    if (e->feedback_props->ISRF_transport == isrf_transport_packet_hop)
+      error(
+          "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
+          "the cosmology factor) below TimeIntegration:dt_min (%e): "
+          "GEARFeedback:ISRF_packet_light_speed=fixed with "
+          "GEARFeedback:ISRF_packet_light_speed_fraction_of_c=%g forces "
+          "dt_rad = C_hyp*a*h/(f*c) below dt_min for this particle's h. "
+          "Lower the fraction (dt_rad grows as 1/f), use the mode cap, or "
+          "lower dt_min.",
+          p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
+          e->feedback_props->ISRF_packet_light_speed_fraction_of_c);
     error(
         "part (id=%lld) wants an ISRF radiation time-step (%e, %e after "
         "the cosmology factor) below TimeIntegration:dt_min (%e): "
@@ -435,6 +446,7 @@ float feedback_compute_part_timestep(const struct part *restrict p,
         "fraction (dt_rad grows as 1/f), or lower dt_min.",
         p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
         e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+  }
   return dt_isrf;
 }
 

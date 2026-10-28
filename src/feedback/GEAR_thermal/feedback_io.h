@@ -47,6 +47,30 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 /**
+ * @brief Energy waiting in the arrival bins of one band of a slot.
+ *
+ * @param t The band of the slot.
+ */
+INLINE static double packet_bins_energy(
+    const struct feedback_isrf_packet_slot_band_data *t) {
+  double sum = 0.;
+  for (int i = 0; i < RADIATION_PACKET_BINS; i++) sum += t->bin_energy[i];
+  return sum;
+}
+
+/**
+ * @brief Photon number waiting in the arrival bins of one band of a slot.
+ *
+ * @param t The band of the slot.
+ */
+INLINE static double packet_bins_photons(
+    const struct feedback_isrf_packet_slot_band_data *t) {
+  double sum = 0.;
+  for (int i = 0; i < RADIATION_PACKET_BINS; i++) sum += t->bin_photons[i];
+  return sum;
+}
+
+/**
  * @brief Snapshot converter of the packet inbox energy per band, see
  * #feedback_write_particles.
  */
@@ -57,7 +81,7 @@ INLINE static void convert_part_packet_inbox_energy(const struct engine *e,
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     double sum = 0.;
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      sum += p->feedback_data.isrf_packet.slot[s].band[b].inbox_energy;
+      sum += packet_bins_energy(&p->feedback_data.isrf_packet.slot[s].band[b]);
     ret[b] = (float)sum;
   }
 }
@@ -73,7 +97,7 @@ INLINE static void convert_part_packet_inbox_photons(const struct engine *e,
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     double sum = 0.;
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      sum += p->feedback_data.isrf_packet.slot[s].band[b].inbox_photons;
+      sum += packet_bins_photons(&p->feedback_data.isrf_packet.slot[s].band[b]);
     ret[b] = (float)sum;
   }
 }
@@ -88,8 +112,17 @@ INLINE static void convert_part_packet_reservoir_energy(const struct engine *e,
                                                         float *ret) {
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     double sum = 0.;
-    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      sum += p->feedback_data.isrf_packet.slot[s].band[b].reservoir_energy;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+      const struct feedback_isrf_packet_slot_band_data *t =
+          &p->feedback_data.isrf_packet.slot[s].band[b];
+      if (e->feedback_props->ISRF_packet_light_speed !=
+          isrf_packet_light_speed_unlimited) {
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+          sum += t->far_energy[c];
+      } else {
+        sum += t->reservoir_energy;
+      }
+    }
     ret[b] = (float)sum;
   }
 }
@@ -104,8 +137,17 @@ INLINE static void convert_part_packet_reservoir_photons(const struct engine *e,
                                                          float *ret) {
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     double sum = 0.;
-    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      sum += p->feedback_data.isrf_packet.slot[s].band[b].reservoir_photons;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+      const struct feedback_isrf_packet_slot_band_data *t =
+          &p->feedback_data.isrf_packet.slot[s].band[b];
+      if (e->feedback_props->ISRF_packet_light_speed !=
+          isrf_packet_light_speed_unlimited) {
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+          sum += t->far_photons[c];
+      } else {
+        sum += t->reservoir_photons;
+      }
+    }
     ret[b] = (float)sum;
   }
 }
@@ -145,7 +187,7 @@ INLINE static void convert_part_packet_slot_inbox_energy(const struct engine *e,
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
       ret[ISRF_OPERATOR_COUNT * s + b] =
-          p->feedback_data.isrf_packet.slot[s].band[b].inbox_energy;
+          packet_bins_energy(&p->feedback_data.isrf_packet.slot[s].band[b]);
 }
 
 /**
@@ -160,7 +202,7 @@ INLINE static void convert_part_packet_slot_inbox_directions(
         &p->feedback_data.isrf_packet.slot[s];
     double energy = 0., norm = 0.;
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-      energy += sl->band[b].inbox_energy;
+      energy += packet_bins_energy(&sl->band[b]);
     for (int k = 0; k < 3; k++)
       norm += sl->inbox_origin_offset[k] * sl->inbox_origin_offset[k];
     norm = sqrt(norm);
@@ -1102,9 +1144,11 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
   list[num++] = io_make_output_field_convert_part(
       "PacketReservoirEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, parts, xparts, convert_part_packet_reservoir_energy,
-      "Packet energy from senders on longer steps, released over their "
-      "step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero "
-      "unless GEARFeedback:ISRF_transport is packet_hop.");
+      "Packet energy that waits beyond the arrival bins of the inbox: with "
+      "a speed limit, light that arrives more than three steps ahead; "
+      "without one, energy from senders on longer steps, released over "
+      "their step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "Zero unless GEARFeedback:ISRF_transport is packet_hop.");
 
   list[num++] = io_make_output_field_convert_part(
       "PacketReservoirPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
