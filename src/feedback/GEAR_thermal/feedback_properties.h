@@ -131,10 +131,12 @@ enum isrf_packet_light_speed {
 #define isrf_packet_light_speed_name_fixed "fixed"
 
 /*! Default limit speed of the packet transport, as a fraction of the speed of
- * light. The gas moves while a share waits for its receiver, and the front
- * then moves at the limit speed plus the speed of the gas away from the
- * origin. The fraction must stay below `1 - u_max / c`, with `u_max` the
- * largest speed of the gas: 0.99 allows 3000 km/s. */
+ * light. A share to a receiver that moves away from the sender at the speed
+ * `u` arrives after the separation over `v - u`, at most 100 times the
+ * separation over `v`. The limit holds in the frame of the gas: a sender that
+ * moves towards the receiver between its stamp and its booking, or a receiver
+ * that speeds up after it, can make the front move at up to `v + u` in the
+ * frame of the box, which is harmless for `v` near `c`. */
 #define default_ISRF_packet_light_speed_fraction_of_c 0.99f
 
 /*! Default power of the soft transmission cone of the packet transport. */
@@ -672,11 +674,11 @@ feedback_check_isrf_operator_owner_map(
  * ISRF_propagation, and unlimited otherwise. Writes a warning for the mode
  * unlimited, for which light can move faster than c, and for a fraction above
  * 0.99, for which gas faster than `(1 - fraction) c` can push the front above
- * c. A limited mode also warns that the limit applies in the gas frame, so
- * that gas which moves away faster than 0.99 of the limit speed gets its light
- * early. Stops the run on an unknown mode,
- * on a fraction outside (0, 1] and on a limit without ISRF_propagation and the
- * packet_hop transport, which must already be set in #fp.
+ * c. A limited mode also prints a message that the limit applies in the gas
+ * frame, so that gas which moves away faster than 0.99 of the limit speed gets
+ * its light early. Stops the run on an unknown mode, on a fraction outside (0,
+ * 1] and on a limit without ISRF_propagation and the packet_hop transport,
+ * which must already be set in #fp.
  *
  * @param params The parameter file.
  * @param fp The #feedback_props, with ISRF_propagation and ISRF_transport set.
@@ -728,7 +730,7 @@ INLINE static void feedback_props_read_packet_light_speed(
         "the packet transport move faster than c. Use it for debugging only.");
   if (packet_hop &&
       fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited)
-    warning(
+    message(
         "GEARFeedback:ISRF_packet_light_speed: %s limits the light in the "
         "frame of the gas. Light is delivered early, at 100 times the light "
         "time of the separation, to gas that moves away from the sender "
@@ -740,8 +742,8 @@ INLINE static void feedback_props_read_packet_light_speed(
       fp->ISRF_packet_light_speed_fraction_of_c > 0.99f)
     warning(
         "GEARFeedback:ISRF_packet_light_speed_fraction_of_c = %g: gas that "
-        "moves away from the origin faster than (1 - fraction) c lets the "
-        "light front move faster than c.",
+        "moves faster than (1 - fraction) c can make the light front move "
+        "faster than c in the frame of the box.",
         fp->ISRF_packet_light_speed_fraction_of_c);
 }
 

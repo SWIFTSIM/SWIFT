@@ -40,6 +40,7 @@
 #include "part.h"
 #include "star_gas_weights.h"
 
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
@@ -67,6 +68,19 @@
 /*! Is the speed of the light of a share limited? Set by
     #radiation_packet_set_light_speed. */
 extern int radiation_packet_light_speed_limited;
+
+/**
+ * @brief A time that is the sum of two doubles, rounded up where the double
+ * cannot hold every integer time (from 2^53 on, a rounding to the nearest can
+ * make the time several ticks early). Below that, the sum of integers is exact
+ * and is returned as it is.
+ *
+ * @param t The sum.
+ */
+__attribute__((always_inline)) INLINE static double radiation_packet_time_later(
+    const double t) {
+  return t >= 9007199254740992.0 ? nextafter(t, DBL_MAX) : t;
+}
 
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
                                            const float n[3], const float power,
@@ -211,11 +225,14 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * double: a float product near 1e-38 flushes to zero under -ffast-math, which
  * would leave an energy without its photon number.
  *
- * The receiver may drift while a share waits in its inbox. The offset to the
- * origin and the arrival time are fixed at the delivery, so for a receiver
- * that moves away from the origin at the speed `u` the light front moves at
- * `v + u`. The limit speed `v` is therefore taken as a fraction of `c` below
- * `1 - u_max / c`, with `u_max` the largest speed of the gas.
+ * The arrival time is fixed at the booking. For a receiver that moves away
+ * from the sender at the speed `u` at that time, the delay is the separation
+ * over `v - u` (#radiation_packet_arrival_delay_receding), at most 100 times
+ * the separation over `v`. The limit holds in the frame of the gas: a sender
+ * that moves towards the receiver between its stamp and its booking, or a
+ * receiver that speeds up after it, can make the front move at up to `v + u`
+ * in the frame of the box. That is harmless for `v` near `c`; for a limit of a
+ * few km/s in moving gas it is not.
  *
  * @param r The receiver.
  * @param frame Rotation matrix of the octant frame, as
@@ -408,11 +425,14 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
         closing = ((double)r->v[0] * dx[0] + (double)r->v[1] * dx[1] +
                    (double)r->v[2] * dx[2]) /
                   (separation * (double)a);
-      arrival = sl->arrival + radiation_packet_arrival_delay_receding(
-                                  a * separation, H, closing);
-      arrival_last = s->time_bin > r->time_bin
-                         ? arrival + (double)get_integer_timestep(s->time_bin)
-                         : arrival;
+      arrival = radiation_packet_time_later(
+          sl->arrival +
+          radiation_packet_arrival_delay_receding(a * separation, H, closing));
+      arrival_last =
+          s->time_bin > r->time_bin
+              ? radiation_packet_time_later(
+                    arrival + (double)get_integer_timestep(s->time_bin))
+              : arrival;
     }
     radiation_packet_deliver(r, pk_s->octant_frame, energy, photons, offset,
                              a * path, H, s->time_bin > r->time_bin,
@@ -605,14 +625,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const float r = (float)sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
   const double delay = radiation_packet_arrival_delay(a * r, H);
   /* Without a limit the reservoir spreads the light over the star's next
-     step. */
-  const integertime_t window_end =
-      ti_current + (radiation_packet_light_speed_limited ? 0 : ti_step) +
-      (integertime_t)ceil(delay);
-  radiation_packet_deliver(pj, frame, energy, photons, offset, a * r, H,
-                           si->time_bin > pj->time_bin, window_end,
-                           (double)(ti_current - ti_step) + delay,
-                           (double)ti_current + delay);
+     step; with one, the arrival times below are used. */
+  radiation_packet_deliver(
+      pj, frame, energy, photons, offset, a * r, H, si->time_bin > pj->time_bin,
+      ti_current + ti_step,
+      radiation_packet_time_later((double)(ti_current - ti_step) + delay),
+      radiation_packet_time_later((double)ti_current + delay));
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);
