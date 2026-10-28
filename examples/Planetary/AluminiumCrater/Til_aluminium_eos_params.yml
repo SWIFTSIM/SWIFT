@@ -1,0 +1,20 @@
+# EoS parameters -- Tillotson aluminium
+
+Tillotson:
+    rho_0:           2700.0     # (kg m^-3)
+    a:               0.5
+    b:               1.63
+    A:               75.2e9     # (Pa)
+    B:               65e9       # (Pa)
+    u_0:             5.0e6      # (J kg^-1)
+    u_iv:            3.0e6      # (J kg^-1)
+    u_cv:            13.9e6     # (J kg^-1)
+    alpha:           5.0
+    beta:            5.0
+    eta_min:         0.925
+    eta_zero:        0.875
+    C_V:             900.0      # (J kg^-1 K^-1)
+    rho_cold_min:    100.0      # (kg m^-3)
+    rho_cold_max:    1.0e5      # (kg m^-3)
+    rho_min:         1.0        # (kg m^-3)
+    rho_max:         1.0e5      # (kg m^-3)

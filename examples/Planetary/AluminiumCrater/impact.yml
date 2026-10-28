@@ -41,7 +41,7 @@ Scheduler:
       
 EoS:
     planetary_use_Til_custom_0:    1
-    planetary_Til_custom_0_param_file: ./Til_aluminium_eos_params.txt
+    planetary_Til_custom_0_param_file: ./Til_aluminium_eos_params.yml
     Til_custom_0_mat_params_file: ./Til_aluminium_mat_params.yml
 
 BoundaryParticles:

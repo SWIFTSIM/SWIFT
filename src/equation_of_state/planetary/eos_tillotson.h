@@ -29,7 +29,9 @@
  */
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
+#include <stdlib.h>
 
 /* Local headers. */
 #include "adiabatic_index.h"
@@ -37,6 +39,7 @@
 #include "eos_setup.h"
 #include "equation_of_state.h"
 #include "inline.h"
+#include "parser.h"
 #include "physical_constants.h"
 #include "units.h"
 #include "utilities.h"
@@ -184,46 +187,64 @@ INLINE static void set_Til_ice(struct Til_params *Til,
 }
 
 /*
-    Read the parameters from a file.
+    Read the parameters from a YAML file.
 
     File contents
     -------------
-    # header (5 lines)
-    rho_0 (kg/m3)  a (-)  b (-)  A (Pa)  B (Pa)
-    u_0 (J)  u_iv (J)  u_cv (J)  alpha (-)  beta (-)
-    eta_min (-)  eta_zero (-)  P_min (Pa)  C_V (J kg^-1 K^-1)
-    rho_cold_min (kg/m3)  rho_cold_max (kg/m3)  rho_min (kg/m3)  rho_max (kg/m3)
+    Tillotson:
+        rho_0:          (kg m^-3)
+        a:              (-)
+        b:              (-)
+        A:              (Pa)
+        B:              (Pa)
+        u_0:            (J kg^-1)
+        u_iv:           (J kg^-1)
+        u_cv:           (J kg^-1)
+        alpha:          (-)
+        beta:           (-)
+        eta_min:        (-)
+        eta_zero:       (-)
+        P_min:          (Pa) Optional, default -FLT_MAX
+        C_V:            (J kg^-1 K^-1)
+        rho_cold_min:   (kg m^-3)
+        rho_cold_max:   (kg m^-3)
+        rho_min:        (kg m^-3)
+        rho_max:        (kg m^-3)
 */
 INLINE static void set_Til_custom(struct Til_params *Til,
                                   enum eos_planetary_material_id mat_id,
                                   char *param_file) {
   Til->mat_id = mat_id;
 
-  // Load table contents from file
-  FILE *f = fopen(param_file, "r");
-  if (f == NULL)
-    error("Failed to open the Tillotson EoS file '%s'", param_file);
-
-  // Skip header lines
-  skip_lines(f, 5);
+  // Load parameter file
+  struct swift_params *file_params =
+      (struct swift_params *)malloc(sizeof(struct swift_params));
+  parser_read_file(param_file, file_params);
 
   // Read parameters (SI)
-  int c;
-  c = fscanf(f, "%f %f %f %f %f", &Til->rho_0, &Til->a, &Til->b, &Til->A,
-             &Til->B);
-  if (c != 5) error("Failed to read the Tillotson EoS file %s", param_file);
+  Til->rho_0 = parser_get_param_float(file_params, "Tillotson:rho_0");
+  Til->a = parser_get_param_float(file_params, "Tillotson:a");
+  Til->b = parser_get_param_float(file_params, "Tillotson:b");
+  Til->A = parser_get_param_float(file_params, "Tillotson:A");
+  Til->B = parser_get_param_float(file_params, "Tillotson:B");
+  Til->u_0 = parser_get_param_float(file_params, "Tillotson:u_0");
+  Til->u_iv = parser_get_param_float(file_params, "Tillotson:u_iv");
+  Til->u_cv = parser_get_param_float(file_params, "Tillotson:u_cv");
+  Til->alpha = parser_get_param_float(file_params, "Tillotson:alpha");
+  Til->beta = parser_get_param_float(file_params, "Tillotson:beta");
+  Til->eta_min = parser_get_param_float(file_params, "Tillotson:eta_min");
+  Til->eta_zero = parser_get_param_float(file_params, "Tillotson:eta_zero");
+  Til->P_min =
+      parser_get_opt_param_float(file_params, "Tillotson:P_min", -FLT_MAX);
+  Til->C_V = parser_get_param_float(file_params, "Tillotson:C_V");
+  Til->rho_cold_min =
+      parser_get_param_float(file_params, "Tillotson:rho_cold_min");
+  Til->rho_cold_max =
+      parser_get_param_float(file_params, "Tillotson:rho_cold_max");
+  Til->rho_min = parser_get_param_float(file_params, "Tillotson:rho_min");
+  Til->rho_max = parser_get_param_float(file_params, "Tillotson:rho_max");
 
-  c = fscanf(f, "%f %f %f %f %f", &Til->u_0, &Til->u_iv, &Til->u_cv,
-             &Til->alpha, &Til->beta);
-  if (c != 5) error("Failed to read the Tillotson EoS file %s", param_file);
-
-  c = fscanf(f, "%f %f %f %f", &Til->eta_min, &Til->eta_zero, &Til->P_min,
-             &Til->C_V);
-  if (c != 4) error("Failed to read the Tillotson EoS file %s", param_file);
-
-  c = fscanf(f, "%f %f %f %f", &Til->rho_cold_min, &Til->rho_cold_max,
-             &Til->rho_min, &Til->rho_max);
-  if (c != 4) error("Failed to read the Tillotson EoS file %s", param_file);
+  free(file_params);
 }
 
 // Convert to internal units
