@@ -102,6 +102,26 @@ struct spart {
   /*! Radiative Transfer data */
   struct rt_spart_data rt_data;
 
+  struct {
+
+    /* Smoothing length for sidm */
+    float h;
+
+    struct {
+
+      /* Number of neighbours. */
+      float wcount;
+
+      /* Number of neighbours spatial derivative. */
+      float wcount_dh;
+
+    } density;
+
+    /*! Tree-depth at which size / 2 <= h * gamma < size */
+    char depth_h;
+
+  } sidm;
+
 #ifdef WITH_CSDS
   /* Additional data for the particle csds */
   struct csds_part_data csds_data;

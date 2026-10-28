@@ -26,6 +26,8 @@
 #include "./stars/None/stars_io.h"
 #elif defined(STARS_BASIC)
 #include "./stars/Basic/stars_io.h"
+#elif defined(STARS_TEST_DF)
+#include "./stars/test_df/stars_io.h"
 #elif defined(STARS_EAGLE)
 #include "./stars/EAGLE/stars_io.h"
 #elif defined(STARS_GEAR)
