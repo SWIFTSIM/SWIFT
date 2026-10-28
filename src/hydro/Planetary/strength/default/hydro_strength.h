@@ -42,7 +42,7 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_drif
     struct strength_state *s, const struct part *restrict p,
     const struct mat_params *mp) {
 
-  strength_state_init(s, p->mat_id, p->phase, p->mass,
+  strength_state_init(s, p->mat_id, p->mass,
                       p->strength_data.rho_evol, p->u,
                       strength_get_damage(p),
                       p->strength_data.deviatoric_stress_tensor,
@@ -62,7 +62,7 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick
     struct strength_state *s, const struct part *restrict p,
     const struct xpart *restrict xp, const struct mat_params *mp) {
 
-  strength_state_init(s, p->mat_id, xp->phase_full, p->mass,
+  strength_state_init(s, p->mat_id, p->mass,
                       xp->strength_data.rho_evol_full, xp->u_full,
                       strength_get_damage_full(xp),
                       xp->strength_data.deviatoric_stress_tensor_full,
@@ -153,6 +153,9 @@ hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
+
+  /* Set phase. */
+  p->phase = strength_state_get_phase(&s, mp);
 
   /* Set stress tensor. */
   p->strength_data.stress_tensor = strength_state_get_stress_tensor(&s, mp);
@@ -279,14 +282,14 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   /* Overwrite stored hydro qunatities with those calculated based on evolved density. */
   p->strength_data.rho_evol = max(p->strength_data.rho_evol, min_rho);
   p->rho = p->strength_data.rho_evol;
-  p->phase =
-    (enum mat_phase)material_phase_from_internal_energy(
-     p->rho, p->u, p->mat_id);
 
   /* Strength state from the drifted values, with the evolved density. */
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
+
+  /* Set updated phase. */
+  p->phase = strength_state_get_phase(&s, mp);
 
   const float soundspeed =
       gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
@@ -370,10 +373,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
     p->strength_data.drho_dt = 0.f;
   }
 
-  /* Overwrite based on evolved density. */
-  xp->phase_full =
-    (enum mat_phase)material_phase_from_internal_energy(
-     xp->strength_data.rho_evol_full, xp->u_full, p->mat_id);
+  /* Strength state from the kicked values. */
+  const struct mat_params *mp = material_params(p->mat_id);
+  struct strength_state s;
+  hydro_strength_state_init_kick(&s, p, xp, mp);
+
+  /* Set updated phase. */
+  xp->phase_full = strength_state_get_phase(&s, mp);
 }
 
 /**
@@ -394,6 +400,13 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
 
   strength_first_init_part_stress_tensor(p, xp);
   strength_first_init_part_damage(p, xp);
+
+  /* Set the initial phase. */
+  const struct mat_params *mp = material_params(p->mat_id);
+  struct strength_state s;
+  hydro_strength_state_init_drift(&s, p, mp);
+  p->phase = strength_state_get_phase(&s, mp);
+  xp->phase_full = p->phase;
 }
 
 #endif /* SWIFT_PLANETARY_STRENGTH_DEFAULT_H */

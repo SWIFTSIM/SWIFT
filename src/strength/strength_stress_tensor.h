@@ -45,7 +45,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
     const struct strength_props *strength_props) {
 
   /* Only solid particles accumulate deviatoric stress. */
-  if (s->phase != mat_phase_solid) {
+  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
     return;
   }
 
@@ -242,7 +242,7 @@ __attribute__((always_inline)) INLINE static void stress_tensor_evolve_deviatori
     const float dt_therm) {
 
   /* Set to sym_matrix with all elements 0.f if the material is not solid. */
-  if (s->phase != mat_phase_solid) {
+  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
     zero_sym_matrix(deviatoric_stress_tensor);
     return;
   }

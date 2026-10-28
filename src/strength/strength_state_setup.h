@@ -50,7 +50,6 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
  *
  * @param s The strength state to be initialised.
  * @param mat_id The material ID, for the EoS.
- * @param phase The phase.
  * @param mass The mass.
  * @param density The density.
  * @param u The specific internal energy.
@@ -61,14 +60,13 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
  */
 __attribute__((always_inline)) INLINE static void strength_state_init(
     struct strength_state *s, const enum eos_planetary_material_id mat_id,
-    const int phase, const float mass, const float density, const float u,
+    const float mass, const float density, const float u,
     const struct strength_damage damage,
     const struct sym_matrix deviatoric_stress_tensor,
     const struct sym_matrix strain_rate_tensor, const struct mat_params *mp) {
 
   /* Properties of the particle. */
   s->mat_id = mat_id;
-  s->phase = phase;
   s->mass = mass;
   s->density = density;
   s->u = u;
@@ -78,6 +76,36 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
 
   /* Quantities derived from the above are computed when first needed. */
   s->cache = (struct strength_state_cache){0};
+}
+
+/**
+ * @brief Get the phase, from the material's state type and, for a variable
+ * state type, its temperature and melting temperature.
+ *
+ * @param s The strength state of the particle.
+ * @param mp The material parameters.
+ */
+__attribute__((always_inline)) INLINE static enum mat_phase
+strength_state_get_phase(struct strength_state *s, const struct mat_params *mp) {
+
+  if (!s->cache.phase_computed) {
+    switch (mp->state_type) {
+      case mat_state_type_solid:
+        s->cache.phase = mat_phase_solid;
+        break;
+
+      case mat_state_type_variable:
+        s->cache.phase = (strength_state_get_temperature(s, mp) > mp->T_melt)
+                             ? mat_phase_fluid
+                             : mat_phase_solid;
+        break;
+
+      default:
+        s->cache.phase = mat_phase_fluid;
+    }
+    s->cache.phase_computed = true;
+  }
+  return s->cache.phase;
 }
 
 /**

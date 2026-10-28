@@ -710,10 +710,6 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   hydro_prepare_force_strength(p, xp, p->rho, p->u);
 
-  p->phase =
-    (enum mat_phase)material_phase_from_internal_energy(
-     p->rho, p->u, p->mat_id);
-
   const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
   /* Compute the norm of the curl */
@@ -919,10 +915,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho);
   p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
 
-  p->phase =
-    (enum mat_phase)material_phase_from_internal_energy(
-     p->rho, p->u, p->mat_id);
-
  hydro_predict_strength_end(p, dt_therm);
 }
 
@@ -986,10 +978,6 @@ __attribute__((always_inline)) INLINE static void hydro_kick_extra(
     p->u_dt = 0.f;
   }
 
-  xp->phase_full =
-    (enum mat_phase)material_phase_from_internal_energy(
-     p->rho, xp->u_full, p->mat_id);
-
   hydro_kick_strength_end(p, xp, dt_therm);
 }
 
@@ -1040,11 +1028,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   xp->v_full[1] = p->v[1];
   xp->v_full[2] = p->v[2];
   xp->u_full = p->u;
-
-  p->phase =
-    (enum mat_phase)material_phase_from_internal_energy(
-     p->rho, p->u, p->mat_id);
-  xp->phase_full = p->phase;
 
   hydro_first_init_part_strength(p, xp);
 

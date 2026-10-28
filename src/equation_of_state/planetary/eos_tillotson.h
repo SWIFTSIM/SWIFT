@@ -957,35 +957,4 @@ INLINE static float Til_density_from_pressure_and_internal_energy(
   return rho_sph;
 }
 
-// material_phase_from_internal_energy
-INLINE static float Til_phase_from_internal_energy(
-    const float density, const float u, const struct mat_params *Til,
-    const struct Til_params *Til_eos) {
-
-#ifdef MATERIAL_STRENGTH
-  switch (Til->state_type) {
-    case mat_state_type_fluid:
-      return mat_phase_fluid;
-
-    case mat_state_type_solid:
-      return mat_phase_solid;
-
-    case mat_state_type_variable: {
-      const float T = Til_temperature_from_internal_energy(density, u, Til_eos);
-
-      if (T > Til->T_melt) {
-        return mat_phase_fluid;
-      } else {
-        return mat_phase_solid;
-      }
-    }
-
-    default:
-      return mat_phase_fluid;
-  }
-#else
-  return mat_phase_fluid;
-#endif /* MATERIAL_STRENGTH */
-}
-
 #endif /* SWIFT_TILLOTSON_EQUATION_OF_STATE_H */

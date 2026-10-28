@@ -38,6 +38,10 @@
  */
 struct strength_state_cache {
 
+  /*! Phase */
+  bool phase_computed;
+  enum mat_phase phase;
+
   /*! Pressure */
   bool pressure_computed;
   float pressure;
@@ -83,9 +87,6 @@ struct strength_state {
   /*! Material ID */
   enum eos_planetary_material_id mat_id;
 
-  /*! Phase */
-  int phase;
-
   /*! Mass */
   float mass;
 
@@ -122,6 +123,9 @@ struct strength_state {
  * Getters for the derived quantities. They are declared here so that any
  * strength method can use them, and defined in strength_state_setup.h.
  */
+__attribute__((always_inline)) INLINE static enum mat_phase
+strength_state_get_phase(struct strength_state *s, const struct mat_params *mp);
+
 __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     struct strength_state *s, const struct mat_params *mp);
 

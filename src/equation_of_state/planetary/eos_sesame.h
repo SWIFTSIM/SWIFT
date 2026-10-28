@@ -1313,14 +1313,4 @@ INLINE static float SESAME_density_from_pressure_and_internal_energy(
   return rho_sph;
 }
 
-// material_phase_from_internal_energy
-INLINE static float SESAME_phase_from_internal_energy(
-    const float density, const float u, const struct mat_params *SESAME,
-    const struct SESAME_params *SESAME_eos) {
-
-  error("This EOS function is not yet implemented!");
-
-  return 0.f;
-}
-
 #endif /* SWIFT_SESAME_EQUATION_OF_STATE_H */

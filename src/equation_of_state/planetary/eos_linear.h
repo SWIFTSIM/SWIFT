@@ -253,21 +253,4 @@ INLINE static float linear_density_from_pressure_and_internal_energy(
   return 0.f;
 }
 
-// material_phase_from_internal_energy
-INLINE static float linear_phase_from_internal_energy(
-    const float density, const float u, const struct mat_params *linear,
-    const struct linear_params *linear_eos) {
-
-  switch (linear->state_type) {
-    case mat_state_type_fluid:
-      return mat_phase_fluid;
-
-    case mat_state_type_solid:
-      return mat_phase_solid;
-
-    default:
-      return mat_phase_fluid;
-  }
-}
-
 #endif /* SWIFT_LINEAR_EQUATION_OF_STATE_H */

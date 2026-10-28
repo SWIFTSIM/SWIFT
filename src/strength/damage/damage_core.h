@@ -127,7 +127,7 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
     const struct mat_params *mp, const float dt_therm) {
 
   /* Only solid particles accumulate damage. */
-  if (s->phase != mat_phase_solid) {
+  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
     return;
   }
 
@@ -193,7 +193,7 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
   p->strength_data.dt_damage = FLT_MAX;
 
   /* Only solid particles that are not fully damaged can accumulate damage. */
-  if ((s->phase != mat_phase_solid) || (d->total >= 1.f)) {
+  if ((strength_state_get_phase(s, mp) != mat_phase_solid) || (d->total >= 1.f)) {
     return;
   }
 

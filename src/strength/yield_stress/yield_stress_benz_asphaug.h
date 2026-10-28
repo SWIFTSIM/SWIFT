@@ -111,7 +111,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
     struct strength_state *s, const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
-  if (s->phase != mat_phase_solid) {
+  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
     return 0.f;
   }
 
@@ -148,7 +148,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
     struct strength_state *s, const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
-  if (s->phase != mat_phase_solid) {
+  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
     return 0.f;
   }
 
