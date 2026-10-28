@@ -60,6 +60,23 @@ INLINE static void calculate_SPH_grad_error(const struct engine *e, const struct
   ret[2] = p->mhd_data.mean_grad_SPH_err[2] * p->h;
 }
 
+INLINE static void calculate_dB_over_rho_dt_times_rho(const struct engine *e, const struct part *p,
+                                                      const struct xpart *xp, float *ret) {
+
+  ret[0] = p->mhd_data.B_over_rho_dt[0] * p->rho;
+  ret[1] = p->mhd_data.B_over_rho_dt[1] * p->rho;
+  ret[2] = p->mhd_data.B_over_rho_dt[2] * p->rho;
+}
+
+INLINE static void calculate_dB_over_rho_dt_AR_times_rho(const struct engine *e, const struct part *p,
+                                                         const struct xpart *xp, float *ret) {
+
+  ret[0] = p->mhd_data.B_over_rho_dt_AR[0] * p->rho;
+  ret[1] = p->mhd_data.B_over_rho_dt_AR[1] * p->rho;
+  ret[2] = p->mhd_data.B_over_rho_dt_AR[2] * p->rho;
+}
+
+
 
 /**
  * @brief Compute the R0 error.
@@ -519,10 +536,10 @@ INLINE static int mhd_write_particles(const struct part *parts,
                                  "Time derivative of Dedner scalars over "
                                  "cleaning speeds of the particles");
 
-  list[4] = io_make_output_field(
-      "MagneticFluxDensitiesdt", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
-      1.f, parts, mhd_data.B_over_rho_dt,
-      "Time derivative of Magnetic flux densities of the particles");
+  list[4] = io_make_output_field_convert_part(
+      "MagneticFluxDensitiesOverRhodtTimesRho", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
+      -1.5f * hydro_gamma, parts, xparts, calculate_dB_over_rho_dt_times_rho,
+      "Time derivative of the ratio of Magnetic flux densities to particle density multiplied by the density");
 
   list[5] = io_make_output_field(
       "MagneticFluxCurl", FLOAT, 3, UNIT_CONV_MAGNETIC_CURL,
@@ -533,11 +550,10 @@ INLINE static int mhd_write_particles(const struct part *parts,
       "AlphaAR", FLOAT, 1, UNIT_CONV_NO_UNITS, 1.f, parts, mhd_data.alpha_AR,
       "Artificial resistivity switch of the particles");
 
-  list[7] = io_make_output_field(
-      "MagneticFluxDensitiesdtAR", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
-      -1.5f * hydro_gamma + 3.f, parts, mhd_data.B_over_rho_dt_AR,
-      "AR contribution to time derivative of Magnetic flux densities of the "
-      "particles");
+  list[7] = io_make_output_field_convert_part(
+      "MagneticFluxDensitiesOverRhodtTimesRhoAR", FLOAT, 3, UNIT_CONV_MAGNETIC_FIELD_PER_TIME,
+      -1.5f * hydro_gamma, parts, xparts, calculate_dB_over_rho_dt_AR_times_rho,
+      "AR contribution to time derivative of the ratio of Magnetic flux densities to particle density multiplied by the density");
 
   list[8] = io_make_output_field(
       "ThermalEnergiesdtAR", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME,
