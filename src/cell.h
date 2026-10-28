@@ -1119,8 +1119,8 @@ cell_can_recurse_in_pair_stars_subset(const struct cell *ci,
   /* the gas of cj have moved smaller than the sub-cell sizes ? */
   /* Note: We use the _old values as these might have been updated by a drift */
   return ci->split && cj->split &&
-         ((kernel_gamma * h_subset_max + ci->stars.dx_max_part_old +
-           cj->hydro.dx_max_part_old) < 0.5f * min(ci->dmin, cj->dmin));
+         ((kernel_gamma * h_subset_max + ci->stars.dx_max_part +
+           cj->hydro.dx_max_part) < 0.5f * min(ci->dmin, cj->dmin));
 }
 
 /**
