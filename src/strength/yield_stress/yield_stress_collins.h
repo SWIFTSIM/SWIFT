@@ -66,6 +66,18 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 }
 
 /**
+ * @brief Apply damage to the pressure.
+ *
+ * Damage does not weaken the pressure. Tension is instead limited by the
+ * minimum pressure.
+ *
+ * @param pressure The pressure.
+ * @param damage The total damage.
+ */
+__attribute__((always_inline)) INLINE static void yield_apply_damage_to_pressure(
+    float *pressure, const float damage) {}
+
+/**
  * @brief Compute damaged yield stress.
  *
  * With the Collins+2004 yield stress method, damage acts to linearly transition
@@ -82,20 +94,20 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
                                    struct strength_state *s,
                                    const struct mat_params *mp) {
 
-  /* Compute damaged yield stress, Collins+2004 Eqn. ### */
   return (1.f - s->damage.total) * yield_stress_fully_intact + s->damage.total * yield_stress_fully_damaged;
 }
 
 /**
  * @brief Compute the yield stress of fully intact material.
  *
- * Collins+2004 pressure-dependent yield stress of fully intact solids.
+ * Pressure-dependent yield stress, iSALE-Dellen manual Eqn. 4.68. This also
+ * applies in tension, down to Y=0.
  *
  * Method parameters needed in material parameter file:
  * YieldStressCollins:
- *    mu_i: ###.
- *    Y_0: ### (Pa).
- *    Y_M: ### (Pa).
+ *    Y_0i: Cohesion (yield stress at zero pressure) of intact material.
+ *    Y_Mi: Limiting yield stress at high pressure of intact material.
+ *    mu_i: Coefficient of internal friction of intact material.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -110,33 +122,38 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
 
   /* Method parameters. */
   const float mu_i = mp->yield_stress_collins_mu_i;
-  const float Y_0 = mp->yield_stress_collins_Y_0;
-  const float Y_M = mp->yield_stress_collins_Y_M;
+  const float Y_0i = mp->yield_stress_collins_Y_0i;
+  const float Y_Mi = mp->yield_stress_collins_Y_Mi;
   const float pressure = strength_state_get_pressure(s, mp);
 
-  /* Compute yield stress of fully intact material, Collins+2004 Eqn. ###.
-   * This also applies in tension, where it decreases to zero. */
-  if (Y_M != Y_0) {
-    const float denominator = 1.f + (mu_i * pressure) / (Y_M - Y_0);
-    if (denominator <= 0.f) {
-      return 0.f;
-    }
-    return fmaxf(Y_0 + mu_i * pressure / denominator, 0.f);
-  } else {
-    return Y_0;
+  /* Constant yield stress case. */
+  if ((Y_Mi <= Y_0i) || (mu_i == 0.f)) {
+    return Y_0i;
   }
+
+  /* The yield stress reaches zero at pressure_zero in tension, and is zero
+   * below it. */
+  const float pressure_zero = -Y_0i * (Y_Mi - Y_0i) / (mu_i * Y_Mi);
+  if (pressure <= pressure_zero) {
+    return 0.f;
+  }
+
+  return Y_0i + mu_i * pressure / (1.f + mu_i * pressure / (Y_Mi - Y_0i));
 }
 
 /**
  * @brief Compute the yield stress of fully damaged material.
  *
- * Collins+2004 pressure-dependent yield stress of fully damaged solids.
+ * Pressure-dependent yield stress, iSALE-Dellen manual Eqn. 4.67, capped at
+ * the intact yield stress. It is left negative in tension, so that the
+ * combined yield stress interpolates smoothly between the intact and damaged
+ * profiles. The combined value is then limited to zero or above.
  *
  * Method parameters needed in material parameter file:
  * YieldStressCollins:
- *    mu_i: ###.
- *    Y_0: ### (Pa).
- *    Y_M: ### (Pa).
+ *    Y_0d: Cohesion (yield stress at zero pressure) of damaged material.
+ *    Y_Md: Limiting yield stress at high pressure of damaged material.
+ *    mu_d: Coefficient of internal friction of damaged material.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -144,22 +161,17 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
 __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
     struct strength_state *s, const struct mat_params *mp) {
 
-  /* Return 0.f if the material is not solid. */
-  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
-    return 0.f;
-  }
-
-  /* Compute yield stress of fully damaged material, Collins+2004 Eqn. ### */
-  // ### Maybe yield_stress_damaged also needs have a max value indep of
-  // ### yield_stress_fully_intact? See e.g. Güldemeister et al. 2015; Winkler et al. 2018
+  /* Method parameters. */
+  const float mu_d = mp->yield_stress_collins_mu_d;
+  const float Y_0d = mp->yield_stress_collins_Y_0d;
+  const float Y_Md = mp->yield_stress_collins_Y_Md;
   const float pressure = strength_state_get_pressure(s, mp);
-  if (pressure > 0.f) {
-    const float mu_d = mp->yield_stress_collins_mu_d;
-    const float yield_stress_fully_intact = yield_compute_yield_stress_fully_intact(s, mp);
-    return fminf(mu_d * pressure, yield_stress_fully_intact);
-  } else {
-    return 0.f;
-  }
+
+  /* Damaged material cannot be stronger than intact material. */
+  const float yield_stress_fully_intact =
+      yield_compute_yield_stress_fully_intact(s, mp);
+
+  return fminf(fminf(Y_0d + mu_d * pressure, Y_Md), yield_stress_fully_intact);
 }
 
 /**
@@ -186,8 +198,10 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
       yield_compute_yield_stress_fully_damaged(s, mp);
 
   /* Combine yield stresses based on how damaged the material is. */
-  float yield_stress =
-      yield_compute_damaged_yield_stress(yield_stress_fully_intact, yield_stress_fully_damaged, s, mp);
+  float yield_stress = fmaxf(
+      yield_compute_damaged_yield_stress(yield_stress_fully_intact,
+                                         yield_stress_fully_damaged, s, mp),
+      0.f);
 
   /* Apply weakening to yield stress. */
   yield_weakening_apply_to_yield_stress(&yield_stress, s, mp);
@@ -215,7 +229,8 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
 /**
  * @brief Apply the yield stress to a symmetric matrix.
  *
- * ### Something about yield criterion
+ * Scales the matrix back by Y / sqrt(J_2) when sqrt(J_2) exceeds the yield
+ * stress.
  *
  * @param M The symmetric matrix to be modified.
  * @param deviatoric_stress_tensor The deviatoric stress tensor to check
@@ -230,10 +245,10 @@ yield_apply_yield_stress_to_sym_matrix(
 
   const float yield_stress = strength_state_get_yield_stress(s, mp);
 
-  /* ### Comment with name of yield criterion */
+  /* Yield criterion sqrt(J_2) >= Y. */
   float f = 1.f;
   const float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
-  if (J_2) {
+  if (J_2 > 0.f) {
       f = fminf(yield_stress / sqrtf(J_2), 1.f);
   }
 

@@ -25,6 +25,9 @@
  * @brief Schemes for the minimum pressure of a material.
  */
 
+#include <float.h>
+#include <math.h>
+
 #include "../eos_setup.h"
 #include "error.h"
 #include "parser.h"
@@ -45,26 +48,49 @@ __attribute__((always_inline)) INLINE static float material_P_min_constant(
 
 /**
  * @brief The yield-envelope scheme for the minimum pressure, which uses the
- * pressure at which the intact yield stress reaches zero in tension.
- *
- * Only for the Collins yield stress with mu_i > 0 and Y_M > Y_0, since
- * otherwise the yield stress does not depend on pressure.
+ * pressure at which the yield stress reaches zero in tension.
  *
  * @param mp The material parameters.
+ * @param damage The total damage.
  * @param mat_id The material ID.
  */
 __attribute__((always_inline)) INLINE static float material_P_min_yield_envelope(
-    const struct mat_params *mp, const enum eos_planetary_material_id mat_id) {
+    const struct mat_params *mp, const float damage,
+    const enum eos_planetary_material_id mat_id) {
 
 #if defined(STRENGTH_YIELD_STRESS_COLLINS)
-  const float Y_0 = mp->yield_stress_collins_Y_0;
-  const float Y_M = mp->yield_stress_collins_Y_M;
+  const float Y_0i = mp->yield_stress_collins_Y_0i;
+  const float Y_Mi = mp->yield_stress_collins_Y_Mi;
   const float mu_i = mp->yield_stress_collins_mu_i;
-  if ((mu_i <= 0.f) || (Y_M <= Y_0))
-    error("Material %d: P_min_scheme yield_envelope needs "
-          "YieldStressCollins:mu_i > 0 and Y_M > Y_0", mat_id);
+  const float Y_0d = mp->yield_stress_collins_Y_0d;
+  const float mu_d = mp->yield_stress_collins_mu_d;
+  const float D = damage;
 
-  return -Y_0 * (Y_M - Y_0) / (mu_i * Y_M);
+  if (mu_d <= 0.f)
+    error("Material %d: P_min_scheme yield_envelope needs "
+          "YieldStressCollins:mu_d > 0", mat_id);
+
+  /* The yield stress is Y = (1 - D) Y_i + D Y_d, with Y_d not capped at zero.
+   * Find the pressure at which Y is zero. */
+
+  /* Constant Y_i = Y_0i, when it does not depend on pressure. Intact material
+   * then never reaches zero, and otherwise the zero is linear in P. */
+  if ((Y_Mi <= Y_0i) || (mu_i == 0.f)) {
+    if (D <= 0.f) {
+      return -FLT_MAX;
+    }
+    return -((1.f - D) * Y_0i + D * Y_0d) / (D * mu_d);
+  }
+
+  /* Solve quadratic equation for P. */
+  const float k = mu_i / (Y_Mi - Y_0i);
+  const float a = D * mu_d * k;
+  const float b = (1.f - D) * (mu_i + Y_0i * k) + D * (mu_d + Y_0d * k);
+  const float c = (1.f - D) * Y_0i + D * Y_0d;
+
+  /* Use the larger root, the first zero reached in tension down from P = 0:
+   * (-b + sqrt(b^2 - 4 a c)) / (2 a), rewritten to avoid dividing by a. */
+  return -2.f * c / (b + sqrtf(fmaxf(b * b - 4.f * a * c, 0.f)));
 #else
   error("Material %d: P_min_scheme yield_envelope needs the Collins yield "
         "stress", mat_id);

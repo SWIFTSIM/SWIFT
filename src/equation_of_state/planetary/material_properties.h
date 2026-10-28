@@ -28,6 +28,7 @@
  */
 
 /* Some standard headers. */
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -108,9 +109,11 @@ INLINE static void set_material_params_default(struct mat_params *mat_params) {
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     mat_params->yield_stress_benz_asphaug_Y_0 = 0.f;
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    mat_params->yield_stress_collins_Y_0 = 0.f;
-    mat_params->yield_stress_collins_Y_M = 0.f;
+    mat_params->yield_stress_collins_Y_0i = 0.f;
+    mat_params->yield_stress_collins_Y_Mi = 0.f;
     mat_params->yield_stress_collins_mu_i = 0.f;
+    mat_params->yield_stress_collins_Y_0d = 0.f;
+    mat_params->yield_stress_collins_Y_Md = FLT_MAX;
     mat_params->yield_stress_collins_mu_d = 0.f;
   #endif
 
@@ -186,12 +189,16 @@ INLINE static void set_material_params_from_file(struct mat_params *mat_params,
     mat_params->yield_stress_benz_asphaug_Y_0 = parser_get_opt_param_float(
         file_params, "YieldStressBenzAsphaug:Y_0", mat_params->yield_stress_benz_asphaug_Y_0);
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    mat_params->yield_stress_collins_Y_0 = parser_get_opt_param_float(
-        file_params, "YieldStressCollins:Y_0", mat_params->yield_stress_collins_Y_0);
-    mat_params->yield_stress_collins_Y_M = parser_get_opt_param_float(
-        file_params, "YieldStressCollins:Y_M", mat_params->yield_stress_collins_Y_M);
+    mat_params->yield_stress_collins_Y_0i = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:Y_0i", mat_params->yield_stress_collins_Y_0i);
+    mat_params->yield_stress_collins_Y_Mi = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:Y_Mi", mat_params->yield_stress_collins_Y_Mi);
     mat_params->yield_stress_collins_mu_i = parser_get_opt_param_float(
         file_params, "YieldStressCollins:mu_i", mat_params->yield_stress_collins_mu_i);
+    mat_params->yield_stress_collins_Y_0d = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:Y_0d", mat_params->yield_stress_collins_Y_0d);
+    mat_params->yield_stress_collins_Y_Md = parser_get_opt_param_float(
+        file_params, "YieldStressCollins:Y_Md", mat_params->yield_stress_collins_Y_Md);
     mat_params->yield_stress_collins_mu_d = parser_get_opt_param_float(
         file_params, "YieldStressCollins:mu_d", mat_params->yield_stress_collins_mu_d);
   #endif
@@ -280,12 +287,16 @@ INLINE static void convert_units_material_params(struct mat_params *mat_params,
     mat_params->yield_stress_benz_asphaug_Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
     // SI to cgs
-    mat_params->yield_stress_collins_Y_0 *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
-    mat_params->yield_stress_collins_Y_M *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_0i *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_Mi *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_0d *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_Md *= units_cgs_conversion_factor(&si, UNIT_CONV_PRESSURE);
 
     // cgs to internal
-    mat_params->yield_stress_collins_Y_0 /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
-    mat_params->yield_stress_collins_Y_M /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_0i /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_Mi /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_0d /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
+    mat_params->yield_stress_collins_Y_Md /= units_cgs_conversion_factor(us, UNIT_CONV_PRESSURE);
   #endif
 
   #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
@@ -320,6 +331,13 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
   if (mat_params->shear_mod <= 0.f)
     error("Material %d: a solid or variable state_type needs "
           "Material:shear_mod > 0", mat_id);
+
+  #if defined(STRENGTH_YIELD_STRESS_COLLINS)
+    if ((mat_params->yield_stress_collins_Y_Mi < mat_params->yield_stress_collins_Y_0i) ||
+        (mat_params->yield_stress_collins_Y_Md < mat_params->yield_stress_collins_Y_0d))
+      error("Material %d: Collins yield stress needs YieldStressCollins:Y_Mi >= Y_0i "
+            "and Y_Md >= Y_0d", mat_id);
+  #endif
 
   #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT)
     if (mat_params->yield_weakening_thermal_tanh_melt_xi <= 0.f)

@@ -77,6 +77,23 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 }
 
 /**
+ * @brief Apply damage to the pressure.
+ *
+ * Damage weakens negative pressures, so that fully damaged material cannot be
+ * in tension.
+ *
+ * @param pressure The pressure, to be weakened.
+ * @param damage The total damage.
+ */
+__attribute__((always_inline)) INLINE static void yield_apply_damage_to_pressure(
+    float *pressure, const float damage) {
+
+  if (*pressure < 0.f) {
+    *pressure *= 1.f - damage;
+  }
+}
+
+/**
  * @brief Check the yield criterion.
  *
  * With no yield stress method, there is no yield surface.

@@ -115,7 +115,8 @@ strength_state_get_phase(struct strength_state *s, const struct mat_params *mp) 
 }
 
 /**
- * @brief Get the pressure, from the EoS and no lower than the minimum pressure.
+ * @brief Get the pressure, from the EoS, with tension limited by the minimum
+ * pressure and by damage, depending on the yield stress method.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
@@ -124,9 +125,11 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     struct strength_state *s, const struct mat_params *mp) {
 
   if (!s->cache.pressure_computed) {
-    const float pressure =
+    float pressure =
         gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
-    s->cache.pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
+    pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
+    yield_apply_damage_to_pressure(&pressure, s->damage.total);
+    s->cache.pressure = pressure;
     s->cache.pressure_computed = true;
   }
   return s->cache.pressure;
@@ -238,7 +241,7 @@ __attribute__((always_inline)) INLINE static float strength_state_get_P_min(
         break;
 
       case P_min_scheme_yield_envelope:
-        s->cache.P_min = material_P_min_yield_envelope(mp, s->mat_id);
+        s->cache.P_min = material_P_min_yield_envelope(mp, s->damage.total, s->mat_id);
         break;
 
       default:

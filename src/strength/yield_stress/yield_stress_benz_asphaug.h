@@ -76,6 +76,23 @@ __attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_dam
 }
 
 /**
+ * @brief Apply damage to the pressure.
+ *
+ * Damage weakens negative pressures, so that fully damaged material cannot be
+ * in tension.
+ *
+ * @param pressure The pressure, to be weakened.
+ * @param damage The total damage.
+ */
+__attribute__((always_inline)) INLINE static void yield_apply_damage_to_pressure(
+    float *pressure, const float damage) {
+
+  if (*pressure < 0.f) {
+    *pressure *= 1.f - damage;
+  }
+}
+
+/**
  * @brief Compute damaged yield stress.
  *
  * With the Benz&Asphaug95 yield stress method, damage does not affect the yield
@@ -102,7 +119,7 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
  *
  * Method parameters needed in material parameter file:
  * YieldStressBenzAsphaug:
- *    Y_0: Constant yield stress (Pa).
+ *    Y_0: Constant yield stress.
  *
  * @param s The strength state of the particle.
  * @param mp The material parameters.

@@ -24,9 +24,11 @@ YieldStressBenzAsphaug:
     Y_0:            0
 
 YieldStressCollins:
-    Y_0:            0
-    Y_M:            0
+    Y_0i:           0
+    Y_Mi:           0
     mu_i:           0
+    Y_0d:           0
+    Y_Md:           0
     mu_d:           0
 
 YieldStressWeakeningThermalTanhMelt:

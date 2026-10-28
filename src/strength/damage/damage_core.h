@@ -77,31 +77,6 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
 }
 
 /**
- * @brief Computes the damage-modified stress tensor.
- *
- * @param stress_tensor The stress tensor.
- * @param damaged_deviatoric_stress_tensor The damaged_deviatoric stress tensor, already modified by damage.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static void damage_compute_stress_tensor(
-    struct sym_matrix *stress_tensor, const struct sym_matrix damaged_deviatoric_stress_tensor,
-    struct strength_state *s, const struct mat_params *mp) {
-
-  /* How damage affects the deviatoric stress tensor depends on the yield stress
-   * method used. */
-  *stress_tensor = damaged_deviatoric_stress_tensor;
-
-  /* Damage weakens negative pressures so that fully damaged material cannot be
-   * in tension. */
-  const float pressure = strength_state_get_pressure(s, mp);
-  const float effective_pressure = pressure > 0.f ? pressure : (1.f - s->damage.total) * pressure;
-  stress_tensor->xx -= effective_pressure;
-  stress_tensor->yy -= effective_pressure;
-  stress_tensor->zz -= effective_pressure;
-}
-
-/**
  * @brief Sets the values of additional particle damage properties at a
  * kick time
  *

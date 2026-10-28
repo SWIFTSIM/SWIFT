@@ -297,9 +297,11 @@ struct mat_params {
   #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
     float yield_stress_benz_asphaug_Y_0;
   #elif defined(STRENGTH_YIELD_STRESS_COLLINS)
-    float yield_stress_collins_Y_0;
-    float yield_stress_collins_Y_M;
+    float yield_stress_collins_Y_0i;
+    float yield_stress_collins_Y_Mi;
     float yield_stress_collins_mu_i;
+    float yield_stress_collins_Y_0d;
+    float yield_stress_collins_Y_Md;
     float yield_stress_collins_mu_d;
   #endif
 

@@ -97,16 +97,16 @@ __attribute__((always_inline)) INLINE static void strength_compute_stress_tensor
     struct sym_matrix *stress_tensor, struct strength_state *s,
     const struct mat_params *mp) {
 
-  /* Construct stress tensor. */
-  *stress_tensor = s->deviatoric_stress_tensor;
+  /* How damage acts on the deviatoric stress tensor depends on the yield
+   * stress method. Damage is already applied to the pressure, if at all. */
+  *stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(
+      s->deviatoric_stress_tensor, s, mp);
   const float pressure = strength_state_get_pressure(s, mp);
+
+  /* Construct stress tensor. */
   stress_tensor->xx -= pressure;
   stress_tensor->yy -= pressure;
   stress_tensor->zz -= pressure;
-
-  /* Apply modifications due to damage. */
-  const struct sym_matrix damaged_deviatoric_stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(s->deviatoric_stress_tensor, s, mp);
-  damage_compute_stress_tensor(stress_tensor, damaged_deviatoric_stress_tensor, s, mp);
 }
 
 /**

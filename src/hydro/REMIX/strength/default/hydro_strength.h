@@ -110,8 +110,8 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_store_kic
 
 
 /**
- * @brief Applies the minimum pressure from the strength state to a pressure
- * from the EoS.
+ * @brief Limits the tension of a pressure from the EoS, by the minimum pressure
+ * from the strength state and by damage, depending on the yield stress method.
  *
  * @param p The particle of interest.
  * @param pressure The pressure from the EoS.
@@ -120,7 +120,11 @@ __attribute__((always_inline)) INLINE static float
 hydro_get_comoving_pressure_strength(const struct part *restrict p,
                                      const float pressure) {
 
-  return fmaxf(pressure, p->strength_data.P_min);
+  float limited_pressure = fmaxf(pressure, p->strength_data.P_min);
+  yield_apply_damage_to_pressure(&limited_pressure,
+                                 strength_get_damage(p).total);
+
+  return limited_pressure;
 }
 
 /**
