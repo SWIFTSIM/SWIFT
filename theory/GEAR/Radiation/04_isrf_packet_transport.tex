@@ -120,8 +120,8 @@ $90^\circ$, so for $K=8$ light from opposite sides is never put in one slot.
   \label{eq:packet-frame}
 \end{equation}
 with $\theta_x,\theta_y,\theta_z$ the angles of
-\code{ISRF\_packet\_octant\_frame\_angles\_deg}, default $(37^\circ,23^\circ,61^\circ)$.
-The angles keep the cell borders off the box axes. A positive seed offset
+\code{ISRF\_packet\_octant\_frame\_angles\_deg}, default $(24^\circ,36^\circ,66^\circ)$.
+The default keeps every cell border at least $10^\circ$ from the six box axes for $K=12$ ($19^\circ$ for $K=8$, $6^\circ$ for $K=16$). Box diagonals can lie on a border: the $(1,1,1)$ directions are $0.01^\circ$ from one at $K=12$. A source or beam exactly along a box diagonal then gets an arbitrary but deterministic slot; rotate the frame with \code{ISRF\_packet\_octant\_frame\_angles\_deg} for such a fixture. A positive seed offset
 \code{ISRF\_packet\_octant\_frame\_seed\_offset} multiplies $R$ on the left by
 a rotation drawn uniformly from that seed \citep{Shoemake1992}, so that repeats of a
 run use independent frames. The frame is the same for every particle.
@@ -130,7 +130,7 @@ run use independent frames. The frame is the same for every particle.
 numbers are from branch \code{darwin/feat/isrf\_cone}; where lines move, find
 the construct by name. The slot count is
 \code{RADIATION\_PACKET\_SLOTS}, set by \code{--with-isrf-packet-slots=<N>}
-(\code{configure.ac:3048-3056}, default 8; \code{N} other than 8, 12 or 16
+(\code{configure.ac:3048-3056}, default 12; \code{N} other than 8, 12 or 16
 is an error; the default and the check are repeated at
 \code{src/feedback/GEAR\_thermal/feedback\_struct.h:200-207}). The slot
 struct is \code{feedback\_isrf\_packet\_slot\_data}

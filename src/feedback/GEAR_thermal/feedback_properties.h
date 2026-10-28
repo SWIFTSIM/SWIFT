@@ -115,9 +115,9 @@ enum isrf_transport {
 
 /*! Default angles in degrees of the fixed frame whose cells are the packet
  * reception slots: a generic rotation, not aligned with the box. */
-#define default_ISRF_packet_octant_frame_angle_x_deg 37.f
-#define default_ISRF_packet_octant_frame_angle_y_deg 23.f
-#define default_ISRF_packet_octant_frame_angle_z_deg 61.f
+#define default_ISRF_packet_octant_frame_angle_x_deg 24.f
+#define default_ISRF_packet_octant_frame_angle_y_deg 36.f
+#define default_ISRF_packet_octant_frame_angle_z_deg 66.f
 
 /*! Default seed offset of the packet octant frame. 0 is the frame of the
  * angles alone. */

@@ -193,12 +193,12 @@ struct feedback_isrf_operator_data {
 /*! Reception slots of the packet a gas particle holds: one per cell of an
     equal-solid-angle partition of the directions, fixed in the generic frame
     #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set at
-    configure time by `--with-isrf-packet-slots`: 8 (the octants of the
-    frame), 12 (the faces of a rhombic dodecahedron) or 16 (octants halved by
-    the plane `|x| = |y|` of the frame). Each slot costs `sizeof(struct
+    configure time by `--with-isrf-packet-slots`: 12 (rhombic dodecahedron
+    faces, the default), 8 (the octants of the frame) or 16 (octants halved by
+    the plane `|x| = |y|`). Each slot costs `sizeof(struct
     feedback_isrf_packet_slot_data)` bytes in every gas particle. */
 #ifndef RADIATION_PACKET_SLOTS
-#define RADIATION_PACKET_SLOTS 8
+#define RADIATION_PACKET_SLOTS 12
 #endif
 
 #if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
