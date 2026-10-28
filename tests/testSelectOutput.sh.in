@@ -1,10 +1,13 @@
 #!/bin/bash
 
+# crash if anything in this script fails
+set -euo pipefail
+
 echo "Creating initial conditions"
 python3 @srcdir@/makeInput.py
 
 echo "Generating output"
-./testSelectOutput 2>&1 | tee select_output.log
+./testSelectOutput selectOutputParameters.yml 2>&1 | tee select_output.log
 
 echo "Checking output"
 python3 @srcdir@/testSelectOutput.py

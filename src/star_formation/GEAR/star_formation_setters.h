@@ -84,8 +84,8 @@ star_formation_set_spart_progenitor_id(struct spart *restrict sp,
  */
 __attribute__((always_inline)) INLINE void
 star_formation_set_spart_birth_time_or_scale_factor(
-    struct spart *restrict sp, const float birth_time,
-    const float birth_scale_factor, const int with_cosmology) {
+    struct spart *restrict sp, const double birth_time,
+    const double birth_scale_factor, const int with_cosmology) {
   if (with_cosmology) {
     sp->birth_scale_factor = birth_scale_factor;
   } else {

@@ -10,16 +10,26 @@ be downloaded when launching the run script (see below).
 
 To run this example with the GEAR model, SWIFT must be configured with the following options:
 
-./configure --with-subgrid=GEAR --with-grackle=${GRACKLE_ROOT}
+./configure --with-subgrid=GEAR --with-grackle=$GRACKLE_ROOT
 
 To start the simulation with the GEAR model:
 
 ./run.sh
 
-# Sink particles
-
-Sink particles are already included in the option `--with-subgrid=GEAR`.
-
 To start the simulation with the sink particles, type:
 
-./run_sink.sh
+with_sinks=1 ./run.sh
+
+To start the simulation with a central seed black hole (via GEAR's BLACK_HOLES_GEAR
+model), configure SWIFT with the GEAR-BH subgrid model instead:
+
+./configure --with-subgrid=GEAR-BH --with-grackle=$GRACKLE_ROOT
+
+then run:
+
+with_bh=1 ./run.sh
+
+This inserts one black hole particle at the gas centre of mass of the ICs
+(see add_black_hole.py) and adds --black-holes to the swift invocation. The
+GEARAGN parameters in params.yml are illustrative EAGLE carry-overs, not
+tuned for this galaxy. with_bh can be combined with with_sinks.
