@@ -73,11 +73,11 @@ fetch() {
 if [ "$WITH_WINDS" = true ]; then
     echo "========================================"
     echo "Downloading feedback tables WITH stellar winds..."
-    echo "Source: UniGe Astro servers"
+    echo "Source: Cosma Durham web storage"
     echo "========================================"
 
-    fetch POPII.hdf5 https://obswww.unige.ch/~revazy/DATA/Swift/PreSNeTables/POPII.hdf5
-    fetch POPIII_PISNe.hdf5 https://obswww.unige.ch/~revazy/DATA/Swift/PreSNeTables/POPIII_PISNe.hdf5
+    fetch POPII.hdf5 https://virgodb.cosma.dur.ac.uk/swift-webstorage/FeedbackTables/POPII.hdf5
+    fetch POPIII_PISNe.hdf5 https://virgodb.cosma.dur.ac.uk/swift-webstorage/FeedbackTables/POPIII_PISNe.hdf5
 
 else
     echo "========================================"

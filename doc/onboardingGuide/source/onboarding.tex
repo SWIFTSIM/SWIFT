@@ -1,0 +1,166 @@
+\documentclass[a4paper,10pt,english]{article}
+
+\usepackage[top=6.1cm, bottom=1cm, left=0.6cm, right=0.6cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage{cmap}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amstext}
+\usepackage{babel}
+
+
+% Define colors
+\usepackage{xcolor}
+
+% TitleColor={rgb}{0.40,0.00,0.33},
+\definecolor{OuterLinkColor}{rgb}{0., 0.40, 0.27}
+\definecolor{HeadingColor}{rgb}{0.40, 0.00, 0.33}
+\definecolor{inlineVerbatimBorderColor}{rgb}{0.90, 1.00, 0.95}
+\definecolor{CodeBlockColor}{rgb}{0.90, 1.00, 0.95}
+
+% Select font
+\usepackage[sfdefault]{AlegreyaSans} %% Option 'black' gives heavier bold face
+\renewcommand*\oldstylenums[1]{{\AlegreyaSansOsF #1}}
+
+% turn off indents
+\setlength{\parindent}{0pt}
+
+% for code blocks
+\usepackage{listings}
+
+\lstdefinestyle{codeblock}
+{
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=2,
+  language=bash,
+  backgroundcolor=\color{CodeBlockColor}
+}
+
+% Helper functions
+\protect\newcommand{\inlinecode}[1]{\colorbox{inlineVerbatimBorderColor}{\texttt{#1}}}
+% \protect\newcommand{\columnbreak}{\vfill\null}
+
+
+
+
+% Include hyperref last.
+\usepackage{hyperref}
+% Fix anchor placement for figures with captions.
+% \usepackage{hypcap}% it must be loaded after hyperref.
+% Set up styles of URL: it should be placed after hyperref.
+\urlstyle{same}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=OuterLinkColor,
+    urlcolor=OuterLinkColor
+    }
+
+
+\usepackage{multicol} % use two columns throughout the document
+\usepackage{newclude}
+
+\setcounter{secnumdepth}{0} % turn off chapter numbering
+
+
+% Reduce spacing after headings
+%------------------------------------
+% https://tex.stackexchange.com/questions/53338/reducing-spacing-after-headings
+\usepackage{titlesec}
+
+\titlespacing\title{0pt}{0pt plus 0pt minus 0pt}{0pt plus 0pt minus 0pt}
+\titlespacing\chapter{0pt}{0pt plus 0pt minus 0pt}{0pt plus 0pt minus 0pt}
+\titlespacing\section{0pt}{4pt plus 0pt minus 8pt}{4pt plus 0pt minus 4pt}
+\titlespacing\subsection{0pt}{2pt plus 0pt minus 4pt}{2pt plus 0pt minus 8pt}
+% \titlespacing\subsubsection{0pt}{1pt plus 0pt minus 2pt}{0pt plus 0pt minus 8pt}
+
+
+% Reduce section font sizes and add colour
+%-----------------------------------------
+
+
+
+
+% Drawing and image positioning
+%---------------------------------
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+
+
+% Reduce space between \item
+%----------------------------------
+
+\let\tempone\itemize
+\let\temptwo\enditemize
+\renewenvironment{itemize}{\tempone\addtolength{\itemsep}{-0.5\baselineskip}}{\temptwo}
+
+
+\title{SWIFT Onboarding Guide}
+\date{}
+\author{SWIFT Collaboration}
+
+\begin{document}
+
+% Change heading colours and sizes (needs to be done after \begin{document})
+\titleformat*{\section}{\color{HeadingColor}\Large\bfseries}
+\titleformat*{\subsection}{\color{HeadingColor}\normalsize\bfseries}
+\titleformat*{\subsubsection}{\color{HeadingColor}\small\bfseries}
+
+
+% remove all headers/footers
+\pagestyle{empty}
+
+\begin{multicols}{2} % make two columns
+
+% Add header image
+\tikz[remember picture,overlay]
+    \node[opacity=1.0,inner sep=0pt, anchor=north] at (current page.north)
+    {\includegraphics[width=\paperwidth,height=5cm]{source/header_page1.jpg}};
+
+% for whatever reason, an ugly spacing is added.  Remove it here.
+\vspace{-1.8\baselineskip}
+
+
+
+% -----------------------
+% Actual content
+% -----------------------
+
+\include*{source/what_swift_can_do}
+\include*{source/getting_the_code}
+\include*{source/getting_help}
+\include*{source/initial_setup}
+
+% fill column.
+\columnbreak
+
+\include*{source/dependencies}
+
+% fill column and end page
+\columnbreak
+\newpage
+
+% Add background image
+\tikz[remember picture,overlay]
+   \node[opacity=1.0,inner sep=0pt, anchor=north] at (current page.north)
+   {\includegraphics[width=\paperwidth,height=5cm]{source/header_page2.jpg}};
+
+% Add logo
+\tikz[remember picture,overlay]
+   \node[below left = -1.9cm and -1.5cm] at (current page.north)
+   {\includegraphics[height=8cm]{source/logo/BirdW.pdf}};
+
+% for whatever reason, an ugly spacing is added.  Remove it here.
+\vspace{-3.3\baselineskip}
+
+\include*{source/useful_configuration_flags}
+\include*{source/runtime_options}
+\include*{source/running_example}
+\include*{source/submission_script}
+
+
+
+\end{multicols}
+\end{document}

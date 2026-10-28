@@ -706,12 +706,11 @@ void stellar_evolution_compute_preSN_properties(
   const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
       sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
 
-  /* Data/SW is now indexed by absolute Z, not Z/Zsun; floor as
-   * radiation_get_log_metallicity() does to avoid log10(0). */
+  /* Data/SW is indexed by absolute Z, not Z/Zsun; floor to avoid log10(0). */
   const float metallicity =
       chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
   const double metallicity_floored =
-      max((double)metallicity, RADIATION_LOG_FLOOR_CGS);
+      max((double)metallicity, STELLAR_WIND_LOG_FLOOR);
   const float log_metallicity = (float)log10(metallicity_floored);
   const float log_m = log10(m_sup);
 
@@ -728,7 +727,7 @@ void stellar_evolution_compute_preSN_properties(
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
-        "Star_type=single init_mass[M_odot]=%g metallicity[Z_odot]=%g "
+        "Star_type=single init_mass[M_odot]=%g metallicity[mass_fraction]=%g "
         "Energy[erg/yr]=%g Mass_ejected[Msol/yr]=%g",
         m_init, exp10(log_metallicity), energy_per_unit_time,
         mass_ejected_per_unit_time);
@@ -777,7 +776,8 @@ void stellar_evolution_compute_preSN_properties(
 
 #if defined(SWIFT_TEST_STELLAR_WIND)
     message(
-        "Star_type=continuous init_mass[M_odot]=%g metallicity[Z_odot]=%g "
+        "Star_type=continuous init_mass[M_odot]=%g "
+        "metallicity[mass_fraction]=%g "
         "Energy_per_progenitor_mass[erg/yr/Msol]=%g "
         "Mass_ejected_per_progenitor_mass[Msol/yr/Msol]=%g",
         m_init, exp10(log_metallicity),
