@@ -95,6 +95,7 @@
 #include "restart.h"
 #include "rt_properties.h"
 #include "runner.h"
+#include "runner_radiation_feedback.h"
 #include "sink_properties.h"
 #include "sort_part.h"
 #include "star_formation.h"
@@ -2771,6 +2772,8 @@ int engine_step(struct engine *e) {
         e->min_active_bin, e->max_active_bin, e->updates, e->g_updates,
         e->s_updates, e->sink_updates, e->b_updates, e->wallclock_time,
         e->step_props, dead_time);
+    radiation_packet_step_diagnostics(e);
+
 #ifdef SWIFT_DEBUG_CHECKS
     fflush(stdout);
 #endif

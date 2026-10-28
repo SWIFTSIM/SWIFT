@@ -258,7 +258,7 @@ void radiation_snapshot_part_propagation(struct part *p,
     if (part_is_active(p, e)) {
       if (p->feedback_data.isrf_packet.step_end_ti == 0)
         radiation_packet_inject_test_beams(
-            p, e->feedback_props->ISRF_packet_test_beam);
+            p, e->feedback_props->ISRF_packet_test_beam, e->ti_current);
       radiation_packet_merge(p, e->ti_current, ti_step, e->time_base,
                              with_cosmology ? e->cosmology : NULL);
       radiation_packet_reset_field_mean(p);
@@ -302,20 +302,40 @@ void radiation_snapshot_part_propagation(struct part *p,
  * off-switch is set, or the particle is not near a field. Near a field means
  * it is illuminated, any band's u != 0, or any band's `ngb_mean_abs_u_V > 0`.
  *
+ * Under the packet transport the M1 rules do not apply. The bound is
+ * `C_hyp a h_i / v`, with `v` the limit speed
+ * (#feedback_props.ISRF_packet_light_speed_fraction_of_c times c), for every
+ * gas particle and only in the `fixed` mode. The cap and the unlimited mode
+ * give FLT_MAX. The debug off-switch and the near-field test act only on the
+ * M1 bound. Above `C_hyp` of about 0.8 the bulk of the light lags behind `v`
+ * while its front keeps the speed.
+ *
  * @param p The #part to consider.
  * @param e The #engine.
  * @return The radiation timestep bound, or FLT_MAX if none applies.
  */
 float radiation_isrf_part_timestep(const struct part *restrict p,
                                    const struct engine *e) {
+  if (e->feedback_props->ISRF_propagation &&
+      e->feedback_props->ISRF_transport == isrf_transport_packet_hop) {
+    /* A packet makes one hop per own step, so its light is too slow unless the
+     * step is short. Only the fixed limit speed asks for that. */
+    if (e->feedback_props->ISRF_packet_light_speed !=
+        isrf_packet_light_speed_fixed)
+      return FLT_MAX;
+    const float h_hop = (float)e->cosmology->a * p->h;
+    if (h_hop <= 0.f) return FLT_MAX;
+    const float c_limit =
+        e->feedback_props->ISRF_packet_light_speed_fraction_of_c *
+        (float)e->physical_constants->const_speed_light_c;
+    return e->feedback_props->ISRF_c_hyp_margin * h_hop / c_limit;
+  }
+
   const float f = e->feedback_props->ISRF_c_hyp_fixed_fraction_of_c;
   /* Gating on f alone is safe because feedback_props_check_c_hyp_scheme()
    * makes f > 0 imply the fixed_fraction scheme. */
   if (f <= 0.f) return FLT_MAX;
   if (!e->feedback_props->ISRF_propagation) return FLT_MAX;
-  /* A packet makes one hop per own step: no speed to limit. */
-  if (e->feedback_props->ISRF_transport == isrf_transport_packet_hop)
-    return FLT_MAX;
   if (e->feedback_props->ISRF_c_hyp_timestep_term_off_for_debugging)
     return FLT_MAX;
 

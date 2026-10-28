@@ -201,6 +201,16 @@ struct feedback_isrf_operator_data {
 #define RADIATION_PACKET_SLOTS 8
 #endif
 
+/*! Near arrival bins per slot, one step wide each, on the receiver's own step
+    lattice. */
+#ifndef RADIATION_PACKET_BINS
+#define RADIATION_PACKET_BINS 4
+#endif
+
+/*! Far arrival cells per slot, for light that arrives beyond the near bins.
+    Their width is a power of two times the step. */
+#define RADIATION_PACKET_FAR_CELLS 2
+
 #if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
     RADIATION_PACKET_SLOTS != 16
 #error "RADIATION_PACKET_SLOTS must be 8, 12 or 16."
@@ -289,17 +299,34 @@ struct feedback_isrf_packet_slot_band_data {
   /*! Photon number held, as `N E_lo`. */
   float photons;
 
-  /*! Energy received since the last active step. */
-  float inbox_energy;
+  /*! Energy received and not yet released, per near arrival bin (see
+      #RADIATION_PACKET_BINS). Without a speed limit everything is in bin 0. */
+  float bin_energy[RADIATION_PACKET_BINS];
 
-  /*! Photon number received since the last active step, as `N E_lo`. */
-  float inbox_photons;
+  /*! Photon number in the near arrival bins, as `N E_lo`. */
+  float bin_photons[RADIATION_PACKET_BINS];
 
-  /*! Energy received from coarser senders, released over their step. */
-  float reservoir_energy;
+  /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
+      or not, for the whole run, so the two sets of fields below share their
+      bytes. */
+  union {
+    struct {
+      /*! Energy in the far arrival cells (see #RADIATION_PACKET_FAR_CELLS),
+          with a speed limit. */
+      float far_energy[RADIATION_PACKET_FAR_CELLS];
 
-  /*! Photon number in the reservoir, as `N E_lo`. */
-  float reservoir_photons;
+      /*! Photon number in the far arrival cells, as `N E_lo`. */
+      float far_photons[RADIATION_PACKET_FAR_CELLS];
+    };
+    struct {
+      /*! Energy received from coarser senders, released over their step,
+          without a speed limit. */
+      float reservoir_energy;
+
+      /*! Photon number in the reservoir, as `N E_lo`. */
+      float reservoir_photons;
+    };
+  };
 };
 
 /**
@@ -322,9 +349,6 @@ struct feedback_isrf_packet_slot_data {
       from this particle to their origin. */
   double inbox_origin_offset[3];
 
-  /*! Same sum as #inbox_origin_offset, over the reservoir. */
-  double reservoir_origin_offset[3];
-
   /*! Sum of the transmission weights over the downstream neighbours, from
       the gradient loop. */
   float weight_sum;
@@ -333,8 +357,44 @@ struct feedback_isrf_packet_slot_data {
       gradient loop. */
   float forward_advance;
 
-  /*! Integer time by which the reservoir is fully released. */
-  integertime_t reservoir_end_ti;
+  /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
+      or not, for the whole run, so the two sets of fields below share their
+      bytes. */
+  union {
+    struct {
+      /*! Same sum as #inbox_origin_offset, over the reservoir, without a speed
+          limit. */
+      double reservoir_origin_offset[3];
+
+      /*! Integer time by which the reservoir is fully released, without a
+          speed limit. */
+      integertime_t reservoir_end_ti;
+    };
+    struct {
+      /*! Latest arrival time of the light of each near arrival bin, as the
+          distance below the end of the bin. Rounded so that the time is
+          later, never earlier. Valid for a bin that holds energy. */
+      float bin_stamp_below_end[RADIATION_PACKET_BINS];
+
+      /*! Distance from the end of each far cell down to the first arrival
+          time of its light, when the cell holds the light of one share, which
+          arrives evenly between this time and the one of #far_last_below. A
+          negative value marks a cell that holds the light of several shares.
+          Rounded so that the time is later. */
+      float far_first_below[RADIATION_PACKET_FAR_CELLS];
+
+      /*! Distance from the end of each far cell down to the latest arrival
+          time of its light, rounded so that the time is later. Negative for
+          light that arrives beyond the end of the last cell. Valid for a cell
+          that holds energy. */
+      float far_last_below[RADIATION_PACKET_FAR_CELLS];
+
+      /*! Latest arrival time of the light in the held packet. A share booked
+          from it arrives its path over the limit speed after this time, so
+          that no part of the packet moves faster than the limit. */
+      double arrival;
+    };
+  };
 };
 
 /**
@@ -360,9 +420,17 @@ struct feedback_isrf_packet_data {
       matrix), set with #cone_power. */
   float octant_frame[9];
 
+  /*! The width of the far arrival cells is the length of the step times two
+      to this power (#radiation_packet_far_end). Placed before the 8-byte
+      members, where it fills padding. */
+  unsigned char far_scale;
+
   /*! End of this particle's current step, set at its merge. A finer
       receiver releases this particle's shares by then. */
   integertime_t step_end_ti;
+
+  /*! Length of this particle's current step, set at its merge. */
+  integertime_t step_ti;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /*! Number of non-zero shares booked into this particle since the counter

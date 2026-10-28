@@ -63,6 +63,10 @@
     receives the star's light. */
 #define RADIATION_PACKET_EMISSION_EDGE STAR_GAS_WEIGHT_EDGE
 
+/*! Is the speed of the light of a share limited? Set by
+    #radiation_packet_set_light_speed. */
+extern int radiation_packet_light_speed_limited;
+
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
                                            const float n[3], const float power);
 int radiation_packet_emission_cone(const long long star_id,
@@ -77,6 +81,25 @@ void radiation_packet_set_redshift(const double speed_of_light,
                                    const double weight_pe,
                                    const double weight_lw,
                                    const double photon_weight_lw);
+void radiation_packet_set_light_speed(const double limit_speed,
+                                      const double time_base,
+                                      const int cosmological);
+double radiation_packet_arrival_delay(const double path_phys, const double H);
+double radiation_packet_arrival_delay_receding(const double path_phys,
+                                               const double H,
+                                               const double closing_speed);
+integertime_t radiation_packet_bin_end(
+    const struct feedback_isrf_packet_data *pk, const int j);
+integertime_t radiation_packet_far_end(
+    const struct feedback_isrf_packet_data *pk, const int c);
+void radiation_packet_step_diagnostics(const struct engine *e);
+void radiation_packet_bin_counters(long long *widened, long long *beyond,
+                                   long long *clamped);
+void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
+                              struct feedback_isrf_packet_slot_data *sl,
+                              const float energy[ISRF_OPERATOR_COUNT],
+                              const float photons[ISRF_OPERATOR_COUNT],
+                              const double first, const double last);
 void radiation_packet_redshift_share(const double H, const double path_phys,
                                      double energy[ISRF_OPERATOR_COUNT],
                                      double photons[ISRF_OPERATOR_COUNT],
@@ -94,7 +117,8 @@ double radiation_packet_slot_border_distance(const float frame[9],
                                              const float direction[3]);
 void radiation_packet_couple_field(struct part *p);
 void radiation_packet_inject_test_beams(
-    struct part *p, const float beams[RADIATION_PACKET_TEST_BEAMS][11]);
+    struct part *p, const float beams[RADIATION_PACKET_TEST_BEAMS][11],
+    const integertime_t ti_current);
 
 /**
  * @brief Exponential running mean of the own field over the time constant
@@ -182,6 +206,12 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * double: a float product near 1e-38 flushes to zero under -ffast-math, which
  * would leave an energy without its photon number.
  *
+ * The receiver may drift while a share waits in its inbox. The offset to the
+ * origin and the arrival time are fixed at the delivery, so for a receiver
+ * that moves away from the origin at the speed `u` the light front moves at
+ * `v + u`. The limit speed `v` is therefore taken as a fraction of `c` below
+ * `1 - u_max / c`, with `u_max` the largest speed of the gas.
+ *
  * @param r The receiver.
  * @param frame Rotation matrix of the octant frame, as
  * #feedback_props.ISRF_packet_octant_frame.
@@ -191,14 +221,23 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * @param path_phys Physical path length over which the share is absorbed.
  * @param H Current Hubble rate. 0 or less for a static box.
  * @param to_reservoir Is the source's step coarser than the receiver's?
- * @param source_step_end_ti End of the source's step.
+ * @param source_step_end_ti End of the source's step. Read only without a
+ * speed limit: the reservoir is released over it.
+ * @param arrival Integer time at which the first light of the share reaches
+ * the receiver. Read only when the speed of the light is limited: the share
+ * then waits in its arrival bin (#radiation_packet_deposit) until the
+ * receiver's merge at or after the end of the bin.
+ * @param arrival_last Integer time at which the last light of the share
+ * reaches the receiver. The light arrives evenly in between. The same as
+ * @p arrival for a pulse.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     struct part *restrict r, const float frame[9],
     const double energy[ISRF_OPERATOR_COUNT],
     const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
     const float path_phys, const float H, const int to_reservoir,
-    const integertime_t source_step_end_ti) {
+    const integertime_t source_step_end_ti, const double arrival,
+    const double arrival_last) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (r->time_bin == time_bin_inhibited)
@@ -238,9 +277,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     }
   }
 
+  float transmitted_energy_b[ISRF_OPERATOR_COUNT];
+  float transmitted_photons_b[ISRF_OPERATOR_COUNT];
   float delivered_energy = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    struct feedback_isrf_packet_slot_band_data *dst = &sl->band[b];
     struct feedback_isrf_packet_band_data *ledger = &pk_r->band[b];
 
     const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
@@ -258,25 +298,35 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
       transmitted_energy = 0.f;
       transmitted_photons = 0.f;
     }
-
-    if (to_reservoir) {
-      dst->reservoir_energy += transmitted_energy;
-      dst->reservoir_photons += transmitted_photons;
-    } else {
-      dst->inbox_energy += transmitted_energy;
-      dst->inbox_photons += transmitted_photons;
-    }
+    transmitted_energy_b[b] = transmitted_energy;
+    transmitted_photons_b[b] = transmitted_photons;
     ledger->absorbed_energy += absorbed_energy;
     ledger->absorbed_photons += absorbed_photons;
     delivered_energy += transmitted_energy;
   }
 
-  if (to_reservoir) {
+  if (radiation_packet_light_speed_limited) {
+    /* The light waits in its arrival bin until the receiver's merge at or
+       after the end of the bin. */
+    if (delivered_energy > 0.f)
+      radiation_packet_deposit(pk_r, sl, transmitted_energy_b,
+                               transmitted_photons_b, arrival, arrival_last);
+    for (int k = 0; k < 3; k++)
+      sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
+  } else if (to_reservoir) {
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      sl->band[b].reservoir_energy += transmitted_energy_b[b];
+      sl->band[b].reservoir_photons += transmitted_photons_b[b];
+    }
     for (int k = 0; k < 3; k++)
       sl->reservoir_origin_offset[k] += (double)delivered_energy * offset[k];
     if (source_step_end_ti > sl->reservoir_end_ti)
       sl->reservoir_end_ti = source_step_end_ti;
   } else {
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      sl->band[b].bin_energy[0] += transmitted_energy_b[b];
+      sl->band[b].bin_photons[0] += transmitted_photons_b[b];
+    }
     for (int k = 0; k < 3; k++)
       sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
   }
@@ -336,9 +386,31 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
       photons[b] = (double)sl->band[b].photons * (double)fraction;
     }
 
+    /* With a limit, the light of a coarser sender is spread over one step of
+       the sender from its first arrival time. The delay is the light time of
+       the separation of the two particles: by the triangle inequality the
+       light cannot reach the receiver sooner, whatever the mean origin of
+       the packet. */
+    double arrival = 0., arrival_last = 0.;
+    const integertime_t source_end_ti = pk_s->step_end_ti;
+    if (radiation_packet_light_speed_limited) {
+      const double separation =
+          sqrt((double)dx[0] * dx[0] + (double)dx[1] * dx[1] +
+               (double)dx[2] * dx[2]);
+      double closing = 0.;
+      if (separation > 0.)
+        closing = ((double)r->v[0] * dx[0] + (double)r->v[1] * dx[1] +
+                   (double)r->v[2] * dx[2]) /
+                  (separation * (double)a);
+      arrival = sl->arrival + radiation_packet_arrival_delay_receding(
+                                  a * separation, H, closing);
+      arrival_last = s->time_bin > r->time_bin
+                         ? arrival + (double)get_integer_timestep(s->time_bin)
+                         : arrival;
+    }
     radiation_packet_deliver(r, pk_s->octant_frame, energy, photons, offset,
                              a * path, H, s->time_bin > r->time_bin,
-                             pk_s->step_end_ti);
+                             source_end_ti, arrival, arrival_last);
   }
 }
 
@@ -472,10 +544,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
  * @param si The star.
  * @param pj The gas neighbour.
  * @param dx Comoving vector from the gas to the star (si - pj).
- * @param Delta_t The star's feedback step.
+ * @param Delta_t The star's feedback step. It is the step that has just
+ * ended: the feedback of a step is applied at its end, and #compute_time gives
+ * the begin of the step that finished at @p ti_current
+ * (#feedback_prepare_radiation_feedback caches that step). The light was
+ * emitted over `[ti_current - ti_step, ti_current]`, so it reaches a receiver
+ * at the distance `r` evenly between `ti_current - ti_step + delay` and
+ * `ti_current + delay`, with `delay` the light time of `r`.
  * @param a Current scale factor.
  * @param H Current Hubble rate. 0 in a static box.
- * @param ti_current Current integer time.
+ * @param ti_current Current integer time, the end of the star's step.
  * @param frame Rotation matrix of the octant frame, as
  * #feedback_props.ISRF_packet_octant_frame.
  */
@@ -519,8 +597,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 
   const float offset[3] = {(float)d[0], (float)d[1], (float)d[2]};
   const float r = (float)sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+  const double delay = radiation_packet_arrival_delay(a * r, H);
+  /* Without a limit the reservoir spreads the light over the star's next
+     step. */
+  const integertime_t window_end =
+      ti_current + (radiation_packet_light_speed_limited ? 0 : ti_step) +
+      (integertime_t)ceil(delay);
   radiation_packet_deliver(pj, frame, energy, photons, offset, a * r, H,
-                           si->time_bin > pj->time_bin, ti_current + ti_step);
+                           si->time_bin > pj->time_bin, window_end,
+                           (double)(ti_current - ti_step) + delay,
+                           (double)ti_current + delay);
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);
@@ -549,10 +635,22 @@ radiation_packet_book_removed_gas(const struct part *p,
     for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
       const struct feedback_isrf_packet_slot_band_data *t =
           &pk->slot[k].band[b];
-      l->removed_energy[b] += (double)t->energy + (double)t->inbox_energy +
-                              (double)t->reservoir_energy;
-      l->removed_photons[b] += (double)t->photons + (double)t->inbox_photons +
-                               (double)t->reservoir_photons;
+      double waiting_energy = 0., waiting_photons = 0.;
+      for (int i = 0; i < RADIATION_PACKET_BINS; i++) {
+        waiting_energy += (double)t->bin_energy[i];
+        waiting_photons += (double)t->bin_photons[i];
+      }
+      if (radiation_packet_light_speed_limited) {
+        for (int i = 0; i < RADIATION_PACKET_FAR_CELLS; i++) {
+          waiting_energy += (double)t->far_energy[i];
+          waiting_photons += (double)t->far_photons[i];
+        }
+      } else {
+        waiting_energy += (double)t->reservoir_energy;
+        waiting_photons += (double)t->reservoir_photons;
+      }
+      l->removed_energy[b] += (double)t->energy + waiting_energy;
+      l->removed_photons[b] += (double)t->photons + waiting_photons;
     }
     l->inherited_energy[b] +=
         d->absorbed_energy + d->escaped_energy + d->redshifted_energy;
