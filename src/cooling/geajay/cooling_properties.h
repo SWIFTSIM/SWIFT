@@ -35,7 +35,8 @@
 /**
  * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
  *
- * The values 0 to 3 are those of geajay_uv_self_shielding.
+ * The values 0 to 3 are those of geajay_uv_self_shielding. geajay has no
+ * column-based method yet.
  */
 enum cooling_uv_self_shielding {
   /*! Density threshold, handled by SWIFT (option "density_threshold") */

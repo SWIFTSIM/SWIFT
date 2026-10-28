@@ -662,10 +662,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   const int uv_shielding = cooling_read_choice(
       parameter_file, "GeajayCooling:uv_self_shielding", "uv_self_shielding", 0,
       "density_threshold", cooling_uv_self_shielding_density_threshold);
-  if (uv_shielding < cooling_uv_self_shielding_density_threshold ||
-      uv_shielding > cooling_uv_self_shielding_HI_HeI_no_HeII)
-    error("GeajayCooling:uv_self_shielding must be -1 to 3, got %d.",
-          uv_shielding);
+  switch (uv_shielding) {
+    case cooling_uv_self_shielding_density_threshold:
+    case cooling_uv_self_shielding_none:
+    case cooling_uv_self_shielding_HI:
+    case cooling_uv_self_shielding_HI_HeI:
+    case cooling_uv_self_shielding_HI_HeI_no_HeII:
+      break;
+    default:
+      error("GeajayCooling:uv_self_shielding must be -1, 0, 1, 2 or 3, got %d.",
+            uv_shielding);
+  }
   cooling->self_shielding_method = (enum cooling_uv_self_shielding)uv_shielding;
 
   if (cooling->self_shielding_method ==
@@ -687,10 +694,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "Sobolev-like length reads neighbouring grid cells, and SWIFT calls "
         "geajay one particle at a time. Use 2 or given_length (kernel "
         "support radius), or 3 or Jeans (local Jeans length).");
-  if (h2_shielding < cooling_h2_shielding_length_none ||
-      h2_shielding > cooling_h2_shielding_length_Jeans)
-    error("GeajayCooling:h2_shielding_length_method must be 0, 2 or 3, got %d.",
+  switch (h2_shielding) {
+    case cooling_h2_shielding_length_none:
+    case cooling_h2_shielding_length_given:
+    case cooling_h2_shielding_length_Jeans:
+      break;
+    default:
+      error(
+          "GeajayCooling:h2_shielding_length_method must be 0, 2 or 3, got "
+          "%d.",
           h2_shielding);
+  }
   cooling->H2_self_shielding = (enum cooling_h2_shielding_length)h2_shielding;
 
   char H2_path[PARSER_MAX_LINE_SIZE];

@@ -1719,10 +1719,20 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
         "heating rates, not both");
 
   /* self shielding */
-  if (cooling->self_shielding_method <= cooling_uv_self_shielding_none)
-    chemistry->self_shielding_method = GEAJAY_UV_SHIELDING_NONE;
-  else
-    chemistry->self_shielding_method = (int)cooling->self_shielding_method;
+  switch (cooling->self_shielding_method) {
+    case cooling_uv_self_shielding_density_threshold:
+    case cooling_uv_self_shielding_none:
+      chemistry->self_shielding_method = GEAJAY_UV_SHIELDING_NONE;
+      break;
+    case cooling_uv_self_shielding_HI:
+    case cooling_uv_self_shielding_HI_HeI:
+    case cooling_uv_self_shielding_HI_HeI_no_HeII:
+      chemistry->self_shielding_method = (int)cooling->self_shielding_method;
+      break;
+    default:
+      error("Unknown self-shielding method %d.",
+            (int)cooling->self_shielding_method);
+  }
 
   chemistry->H2_self_shielding = (int)cooling->H2_self_shielding;
 
