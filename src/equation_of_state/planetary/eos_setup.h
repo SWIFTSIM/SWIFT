@@ -265,6 +265,7 @@ enum T_melt_scheme {
 enum rho_0_scheme {
   rho_0_scheme_none = 0,
   rho_0_scheme_constant = 1,
+  rho_0_scheme_from_eos = 2,
 };
 #endif /* MATERIAL_STRENGTH */
 

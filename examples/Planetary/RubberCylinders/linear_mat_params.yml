@@ -7,7 +7,7 @@ Material:
     bulk_mod:        0          # Bulk modulus (Pa)
     T_melt_scheme:   0          # Melting temperature scheme: none=0, constant=1
     T_melt_constant: 0          # Melting temperature for the constant scheme (K)
-    rho_0_scheme:    1          # Reference density scheme: none=0, constant=1
+    rho_0_scheme:    2          # Reference density scheme: none=0, constant=1, from_eos=2
     rho_0_constant:  1000       # Reference density for the constant scheme (kg m^-3)
 
 # Specific material-strength schemes

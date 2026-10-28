@@ -82,6 +82,9 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
  * @brief Get the phase, from the material's state type and, for a variable
  * state type, its temperature and melting temperature.
  *
+ * The choice between options is made here, so that each option can use
+ * strength state quantities.
+ *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
@@ -146,6 +149,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_temperatur
 /**
  * @brief Get the melting temperature, from the material's scheme.
  *
+ * The choice between options is made here, so that each option can use
+ * strength state quantities.
+ *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
@@ -174,6 +180,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_T_melt(
 /**
  * @brief Get the reference density, from the material's scheme.
  *
+ * The choice between options is made here, so that each option can use
+ * strength state quantities.
+ *
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
@@ -189,6 +198,10 @@ __attribute__((always_inline)) INLINE static float strength_state_get_rho_0(
 
       case rho_0_scheme_constant:
         s->cache.rho_0 = material_rho_0_constant(mp);
+        break;
+
+      case rho_0_scheme_from_eos:
+        s->cache.rho_0 = material_rho_0_from_eos(s->mat_id);
         break;
 
       default:

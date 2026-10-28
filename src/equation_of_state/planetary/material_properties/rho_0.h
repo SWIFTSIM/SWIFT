@@ -26,6 +26,7 @@
  */
 
 #include "../eos_setup.h"
+#include "../eos_utilities.h"
 #include "error.h"
 #include "parser.h"
 #include "units.h"
@@ -41,6 +42,36 @@ __attribute__((always_inline)) INLINE static float material_rho_0_constant(
     const struct mat_params *mp) {
 
   return mp->rho_0_constant;
+}
+
+/**
+ * @brief The from-EoS scheme for the reference density, which uses the rho_0
+ * parameter of the material's EoS.
+ *
+ * @param mat_id The material ID.
+ */
+__attribute__((always_inline)) INLINE static float material_rho_0_from_eos(
+    const enum eos_planetary_material_id mat_id) {
+
+  const enum eos_planetary_type_id type =
+      (enum eos_planetary_type_id)(mat_id / eos_type_factor);
+  const int unit_id = mat_id % eos_type_factor;
+
+  switch (type) {
+    case eos_type_Til:
+      return eos.all_Til[unit_id].rho_0;
+
+    case eos_type_Til_custom:
+      return eos.all_Til_custom[unit_id].rho_0;
+
+    case eos_type_linear:
+      return eos.all_linear[unit_id].rho_0;
+
+    default:
+      error("Material %d: rho_0_scheme from_eos is not compatible with EoS type %d",
+            mat_id, type);
+      return 0.f;
+  }
 }
 
 /**
@@ -80,6 +111,9 @@ INLINE static void material_rho_0_read(struct mat_params *mp,
       mp->rho_0_constant = parser_get_param_float(file_params, "Material:rho_0_constant");
       if (mp->rho_0_constant <= 0.f)
         error("%s: Material:rho_0_constant must be > 0", param_file);
+      break;
+
+    case rho_0_scheme_from_eos:
       break;
 
     default:
