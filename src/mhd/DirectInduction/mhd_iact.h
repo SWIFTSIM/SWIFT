@@ -166,12 +166,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_gradient(
   }
 
   /* Calculate SPH error */
-  pi->mhd_data.mean_SPH_err += mj * wi;
-  pj->mhd_data.mean_SPH_err += mi * wj;
+  pi->mhd_data.mean_SPH_err += mj / rhoj * wi;
+  pj->mhd_data.mean_SPH_err += mi / rhoi * wj;
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.mean_grad_SPH_err[k] +=
+    pi->mhd_data.mean_grad_SPH_err[k] -=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
-    pj->mhd_data.mean_grad_SPH_err[k] -=
+    pj->mhd_data.mean_grad_SPH_err[k] +=
         mi * over_rho_j * wj_dr * r_inv * dx[k];
   }
 }
@@ -267,11 +267,12 @@ runner_iact_nonsym_mhd_gradient(const float r2, const float dx[3],
   }
 
   /* Calculate SPH error */
-  pi->mhd_data.mean_SPH_err += mj * wi;
+  pi->mhd_data.mean_SPH_err += mj / rhoj * wi;
   for (int k = 0; k < 3; k++) {
-    pi->mhd_data.mean_grad_SPH_err[k] +=
+    pi->mhd_data.mean_grad_SPH_err[k] -=
         mj * over_rho_i * wi_dr * r_inv * dx[k];
   }
+
 }
 
 /**
@@ -590,9 +591,9 @@ __attribute__((always_inline)) INLINE static void runner_iact_mhd_force(
     pi->mhd_data.Adv_B_source[i] -= mj * grad_psi * dx[i];
     pj->mhd_data.Adv_B_source[i] += mi * grad_psi * dx[i];
     pi->mhd_data.Diff_B_source[i] +=
-        mj * resistive_eta_i * mj * dB_dt_pref_PR * dB[i];
+        mj * resistive_eta_i * dB_dt_pref_PR * dB[i];
     pj->mhd_data.Diff_B_source[i] -=
-        mi * resistive_eta_j * mi * dB_dt_pref_PR * dB[i];
+        mi * resistive_eta_j * dB_dt_pref_PR * dB[i];
     pi->mhd_data.Diff_B_source[i] += mj * art_diff_pref * dB[i];
     pj->mhd_data.Diff_B_source[i] -= mi * art_diff_pref * dB[i];
     pi->mhd_data.Delta_B[i] += mj * dB_dt_pref_Lap_i * wi_dr * dB[i];

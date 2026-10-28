@@ -46,6 +46,21 @@ INLINE static void convert_B(const struct engine *e, const struct part *p,
   ret[2] = p->mhd_data.B_over_rho[2] * p->rho;
 }
 
+INLINE static void calculate_SPH_norm_error(const struct engine *e, const struct part *p,
+                                            const struct xpart *xp, float *ret) {
+
+  ret[0] = 1.0f - p->mhd_data.mean_SPH_err;
+}
+
+INLINE static void calculate_SPH_grad_error(const struct engine *e, const struct part *p,
+                                            const struct xpart *xp, float *ret) {
+
+  ret[0] = p->mhd_data.mean_grad_SPH_err[0] * p->h;
+  ret[1] = p->mhd_data.mean_grad_SPH_err[1] * p->h;
+  ret[2] = p->mhd_data.mean_grad_SPH_err[2] * p->h;
+}
+
+
 /**
  * @brief Compute the R0 error.
  *
@@ -584,8 +599,16 @@ INLINE static int mhd_write_particles(const struct part *parts,
       "Timestep_DeltaPsi", FLOAT, 1, UNIT_CONV_TIME, 0.f, parts, xparts,
       compute_dt_deltaPsi,
       "Change in divergence cleaning scalar time-step size");
+  list[19] = io_make_output_field_convert_part(
+      "SPHNormError", FLOAT, 1, UNIT_CONV_NO_UNITS,
+      0.f, parts, xparts, calculate_SPH_norm_error,
+      "Error in SPH sum normalization: 1 - sum_b m_b/rho_b w_ab");
+  list[20] = io_make_output_field_convert_part(
+      "SPHGradError", FLOAT, 3, UNIT_CONV_NO_UNITS,
+      0.f, parts, xparts, calculate_SPH_grad_error,
+      "Error in SPH sum normalization: sum_b m_b/rho_b (r_b-r_a) w_ab");
 
-  return 19;
+  return 21;
 }
 
 /**
