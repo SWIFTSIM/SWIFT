@@ -100,9 +100,11 @@ struct cooling_function_data {
   /*! Flag to enable heating from H2 photodissociation and UV pumping */
   int H2_photodissociation_heating;
 
-  /*! Compton heating by the X-ray background
+  /*! Compton exchange with the X-ray background, k_X (T_x - T) per electron
    * (GeajayCooling:compton_xray_heating, chemistry_data.Compton_xray_heating).
-   */
+   * It is the term of Madau & Efstathiou (1999). Grackle's term is 1e4 to 1e6
+   * times larger at T = 1e4 K, z = 0 to 3, so the two codes differ with the
+   * flag on. */
   int compton_xray_heating;
 
   /*! The ratio of total dust mass to gas mass in the local Universe. */

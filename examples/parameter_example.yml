@@ -727,7 +727,7 @@ GeajayCooling:
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate (the line of the end cell, as Grackle) or edge (the value at the edge) (default: extrapolate)
   maximal_density_Hpcm3: -1                    # (optional) Largest density passed to geajay, as n_H = rho / m_p [cm^-3], as GrackleCooling:maximal_density_Hpcm3. Zero or negative: no cap (default: -1)
-  hydrogen_mass_fraction: -1                   # (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's: 0.76 in modes 1 to 3, the Cloudy abundances' 0.716 in mode 0, which accepts no other value (default: -1)
+  hydrogen_mass_fraction: -1                   # (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's: 0.76 in modes 1 to 3, X of the Cloudy table (about 0.716) in mode 0, which refuses any other value (default: -1)
   use_radiative_transfer_fields: 0             # (optional) Arrays of ionization and heating rates are provided (default: 0)
   RT_heating_rate_cgs    : 0                   # (optional) Heating rate in units of / nHI_cgs
   RT_HI_ionization_rate_cgs  : 0               # (optional) HI ionization rate in cgs [1/s]
@@ -740,7 +740,7 @@ GeajayCooling:
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   h2_formation_on_dust: 0                      # (optional) Enable/disable H2 formation on dust grains (default: 0)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
-  compton_xray_heating: 0                      # (optional) Enable/disable the Compton heating by the X-ray background (Grackle Compton_xray_heating) (default: 0)
+  compton_xray_heating: 0                      # (optional) Enable/disable the Compton exchange with the X-ray background, k_X (T_x - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)
   initial_nHII_to_nH_ratio: -1                 # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_nHeI_to_nH_ratio: -1                 # (optional) Initial nHeI to nH ratio (number density ratio). Ignored if -1 (default: -1)
@@ -762,7 +762,7 @@ GeajayCooling:
   cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Read only with cosmic_ray_input: energy_density, then required. Hadronic loss coefficient [cm^3 s^-1]
   cosmic_ray_heating: atomic_molecular_fit     # (optional) Read only with cosmic_rays: reduced. Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
   cosmic_ray_heat_per_ionisation: 20           # (optional) Read only with cosmic_ray_heating: fixed_energy. Heat per ionisation [eV] (default: 20)
-  lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default (default: -1)
+  lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default. Above 0 it replaces the table k31 and adds to RT_H2_dissociation_rate_cgs (default: -1)
   isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field) (default: 0)
   # With background_mode: grackle the cooling passes the library value of interstellar_radiation_field (1.7 Habing) for every particle.
   # With per_band it passes 0, the local field only, to which the background G_0 is added.
