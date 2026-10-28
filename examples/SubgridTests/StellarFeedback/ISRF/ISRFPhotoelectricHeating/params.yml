@@ -126,8 +126,8 @@ GEARFeedback:
   # ISRF
   with_interstellar_radiation_field: 1                             # ISRF feedback master switch
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
-  ISRF_propagation: 0                                       # Transport the field with the packet hop (default: 0, the dose of a star is added to the receivers at once)
-  ISRF_c_hyp_margin: 0.5                                    # Margin C_hyp of the packet step bound, used with ISRF_packet_light_speed: fixed (default)
+  ISRF_propagation: 0                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
+  ISRF_c_hyp_margin: 0.5                                    # Margin of the time step bound with ISRF_packet_light_speed fixed
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.

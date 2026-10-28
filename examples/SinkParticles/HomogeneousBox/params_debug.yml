@@ -104,10 +104,10 @@ GEARFeedback:
   with_radiation_pressure: 0                               # Radiation-pressure momentum channel. The efficiency below is read only when this is 1. (Default: 0)
   radiation_pressure_efficiency: 0                         # Radiation pressure efficiency to boost the radiation pressure momentum injection. (Default: 0.0)
   with_interstellar_radiation_field: 0                     # ISRF master switch: photoelectric heating + dust chemistry (any Grackle mode); H2 photodissociation additionally needs COOLING_GRACKLE_MODE > 1 (grackle_2 or grackle_3). 1: on, 0: off. (Default: 0)
-  ISRF_propagation: 0                                       # Transport the field with the packet hop (needs --with-chealpix). 0: a star adds its dose to the receivers at once
+  ISRF_propagation: 0                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_extinction_path_in_kernel_radii: 1.0                 # Extinction path length, in kernel support radii. Read only when ISRF_extinction_path is constant_kernel_path. (Default: 1.0)
-  ISRF_c_hyp_margin: 0.5                                    # Margin C_hyp of the packet step bound, used with ISRF_packet_light_speed: fixed
+  ISRF_c_hyp_margin: 0.5                                    # Margin of the time step bound with ISRF_packet_light_speed fixed
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
   HII_min_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
