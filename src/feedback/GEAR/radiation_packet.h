@@ -534,8 +534,8 @@ void radiation_packet_check_star_cones(const struct spart *sp,
  * into or swallowed by another particle, into that particle's ledger.
  *
  * The light in flight (held, inbox and reservoir, in every slot) is lost with
- * the gas and is booked as removed. The gas's absorbed and escaped ledgers are
- * carried over.
+ * the gas and is booked as removed. The gas's absorbed, escaped and redshifted
+ * ledgers are carried over.
  *
  * @param p The gas particle.
  * @param l The ledger of the star or sink.
