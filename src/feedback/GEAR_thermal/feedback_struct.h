@@ -423,8 +423,8 @@ struct feedback_isrf_packet_data {
       members, where it fills padding. */
   unsigned char far_scale;
 
-  /*! End of this particle's current step, set at its merge. A finer
-      receiver releases this particle's shares by then. */
+  /*! End of the current step of the particle, set at its merge. A finer
+      receiver releases its shares by then. */
   integertime_t step_end_ti;
 
   /*! Length of this particle's current step, set at its merge. */

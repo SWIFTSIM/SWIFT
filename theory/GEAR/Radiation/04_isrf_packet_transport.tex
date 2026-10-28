@@ -143,7 +143,7 @@ Eq.~\eqref{eq:packet-photonfrac} is
 (\code{src/feedback/GEAR/radiation.h:389-401}, the clamp at :398-399, the ratio at :400). The transport stops at
 start-up if a yields table lacks \code{MeanPhotonEnergyPE} or
 \code{Integrated\_MeanPhotonEnergyPE}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:1243-1251}).
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:1242-1250}).
 Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
 (\code{src/feedback/GEAR/radiation\_packet.c:339-350}), and
 Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot16} are
@@ -237,7 +237,7 @@ $S_{i,k}$ and the numerator of Eq.~\eqref{eq:packet-advance} in
 \code{runner\_iact\_isrf\_gradient} and its non-symmetric twin
 (\code{src/feedback/GEAR/radiation\_propagation\_iact.h:510-511}, :573). The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
-\code{radiation\_packet.c:1713}. The share $\phi_{ij,k}$ is
+\code{radiation\_packet.c:1712}. The share $\phi_{ij,k}$ is
 \code{fraction} in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:389}), and Eq.~\eqref{eq:packet-offset} is its
 \code{offset} (:392-394). The receiving slot is chosen in
@@ -248,11 +248,11 @@ $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
 (\code{radiation\_propagation\_iact.h:1043-1044}, :1075). The vector
 \code{dx\_ij} passed to it points from sender to receiver. The sender's held
 energy is set to zero at the end of the force loop
-(\code{radiation\_packet\_end\_force}, \code{radiation\_packet.c:1755-1758}). The
-escape of a slot with $S_{i,k}=0$ is at \code{radiation\_packet.c:1723-1730}. The parameter $p$ is
+(\code{radiation\_packet\_end\_force}, \code{radiation\_packet.c:1754-1757}). The
+escape of a slot with $S_{i,k}=0$ is at \code{radiation\_packet.c:1722-1729}. The parameter $p$ is
 copied to each particle at \code{radiation\_isrf.c:158}, and
 \code{ISRF\_packet\_cone\_power} is parsed at
-\code{src/feedback/GEAR\_thermal/feedback\_properties.h:1178-1180}.
+\code{src/feedback/GEAR\_thermal/feedback\_properties.h:1177-1179}.
 
 \subsection{The merge}
 \label{sec:packet-merge}
@@ -296,17 +296,17 @@ in one convex cone, so it lies in that cone, and the direction $\boldsymbol{n}_k
 of its slot, apart from the case $d_k=0$.
 
 \paragraph{Implementation.} The merge of one slot without a speed limit is
-\code{radiation\_packet\_merge\_slot\_unlimited} (\code{radiation\_packet.c:1373-1442}), called
-for every slot by \code{radiation\_packet\_merge} (:1637-1672), which
+\code{radiation\_packet\_merge\_slot\_unlimited} (\code{radiation\_packet.c:1372-1441}), called
+for every slot by \code{radiation\_packet\_merge} (:1636-1671), which
 \code{radiation\_snapshot\_part\_propagation} calls for active particles
 (\code{radiation\_isrf.c:257-266}). Eq.~\eqref{eq:packet-merge-E} is at
-\code{radiation\_packet.c:1419-1421}. The sums of Eq.~\eqref{eq:packet-merge-origin} are
+\code{radiation\_packet.c:1416-1418}. The sums of Eq.~\eqref{eq:packet-merge-origin} are
 formed in \code{radiation\_packet\_deliver} as \code{inbox\_origin\_offset}
 (\code{radiation\_packet.h:347-348}, weight \code{delivered\_energy}, summed
 over the bands at :322); the division by $\sum_s e_s$ is at
 \code{radiation\_packet.c:1323} in \code{radiation\_packet\_set\_origin}, $d_k$ at :1324-1326, $\boldsymbol{n}_k$ at :1327-1328, and the
-fallback direction at :1341-1348. The merge returns before any change of origin
-when the slot received no energy (:1440). The fields of
+fallback direction at :1340-1347. The merge returns before any change of origin
+when the slot received no energy (:1439). The fields of
 Eq.~\eqref{eq:packet-merge-origin} are \code{origin\_distance},
 \code{direction} and \code{inbox\_origin\_offset} in
 \code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:340-348}).
@@ -463,7 +463,7 @@ redshift ledger and the absorbed ledger differ by a term of order $\zeta\tau E$.
 
 \paragraph{Implementation.} The constants are set at start-up by
 \code{radiation\_packet\_startup} (\code{radiation\_packet.c:196-211}, called at
-\code{src/runner\_radiation\_feedback.c:355}) through
+\code{src/runner\_radiation\_feedback.c:240}) through
 \code{radiation\_packet\_set\_redshift} (:74-83), from the band-edge weights
 \code{band\_edge\_weight\_pe}, \code{band\_edge\_weight\_lw} and
 \code{band\_edge\_photon\_weight\_lw}
@@ -582,11 +582,11 @@ the argument \code{to\_reservoir} of \code{radiation\_packet\_deliver}
 \code{s->time\_bin > r->time\_bin} at :432 for a hop, and
 \code{si->time\_bin > pj->time\_bin} at :622 for a star, with
 \code{source\_step\_end\_ti} (:256, :340-341) the end of the sender's step
-(\code{step\_end\_ti}, set at \code{radiation\_packet.c:1648} and :1668 as \code{ti\_current + ti\_step}, and
+(\code{step\_end\_ti}, set at \code{radiation\_packet.c:1647} and :1667 as \code{ti\_current + ti\_step}, and
 \code{ti\_current + ti\_step} for a star, \code{radiation\_packet.h:622-623}). Eq.~\eqref{eq:packet-release} is
-\code{radiation\_packet\_merge\_slot\_unlimited} (\code{radiation\_packet.c:1373-1442}); the
-release fraction is at :1378-1390, the cutoff rule at :1392-1400, and the release of the energy, the photon number and the
-origin sum at :1402-1438.
+\code{radiation\_packet\_merge\_slot\_unlimited} (\code{radiation\_packet.c:1372-1441}); the
+release fraction is at :1377-1389, the cutoff rule at :1391-1399, and the release of the energy, the photon number and the
+origin sum at :1401-1437.
 
 \subsection{The field that the gas sees}
 \label{sec:packet-field}
@@ -625,18 +625,18 @@ band moments that Grackle reads: PE to PE, LW to LW and the photon number
 of LW to the LW photon-number moment, in place of any value that was there. The photon number of PE is not coupled.
 
 \paragraph{Implementation.} Eq.~\eqref{eq:packet-field} is
-\code{radiation\_packet\_end\_gradient} (\code{radiation\_packet.c:1690-1739}, the
-sum over slots at :1710-1731, the factor at :1715); it is called from
+\code{radiation\_packet\_end\_gradient} (\code{radiation\_packet.c:1689-1738}, the
+sum over slots at :1709-1730, the factor at :1714); it is called from
 \code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:944-950}).
 Eq.~\eqref{eq:packet-runmean} is \code{radiation\_packet\_read\_mean}
 (\code{radiation\_packet.h:151-156}), applied at
-\code{radiation\_packet.c:1733-1738}. The sums of
+\code{radiation\_packet.c:1732-1737}. The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:461-478}, called at
 \code{radiation\_propagation\_iact.h:1045-1046}, :1072), and the self term and the
-division are \code{radiation\_packet\_end\_force} (\code{radiation\_packet.c:1747-1766}),
+division are \code{radiation\_packet\_end\_force} (\code{radiation\_packet.c:1746-1765}),
 called at \code{radiation\_isrf.c:631}. The write into the moments is
-\code{radiation\_packet\_couple\_field} (\code{radiation\_packet.c:1778-1786}, called at
+\code{radiation\_packet\_couple\_field} (\code{radiation\_packet.c:1777-1785}, called at
 \code{radiation\_isrf.c:632}). The packet transport sets no timestep limit from a
 propagation speed (\code{radiation\_isrf.c:316-318}), except in the light speed mode \code{fixed}
 (Section~\ref{sec:packet-lightspeed}).
@@ -691,7 +691,7 @@ neighbours (a hop to the kernel edge is 3.9 receiver steps, up to 7.7 with the b
 5 km/s gives lumps of 0 to 3, a cap of 30 km/s none.
 
 \paragraph{Memory and restart.} The slot grows from 128 to 200 bytes and the gas particle from 2048 to
-2624 bytes (8 slots). The fields of the two modes share their bytes. The restart layout marker is 18.
+2624 bytes (8 slots), and from 2560 to 3424 bytes at the default of 12 slots. The fields of the two modes share their bytes. The restart layout marker is 18.
 
 \subsection{The frame of reference of the light}
 \label{sec:packet-frame}
@@ -747,10 +747,10 @@ move the offsets with the velocity gradient, for 192 to 384\,B per gas
 particle.
 
 \paragraph{Implementation.} The merged origin is set in
-\code{radiation\_packet\_set\_origin} (\code{radiation\_packet.c:1323-1348}), called by the merge, at the
+\code{radiation\_packet\_set\_origin} (\code{radiation\_packet.c:1323-1347}), called by the merge, at the
 drift, \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:257-266}). The hop
 reads it in \code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:386-388}).
-An empty slot keeps its old origin (\code{radiation\_packet.c:1440}), but the
+An empty slot keeps its old origin (\code{radiation\_packet.c:1439}), but the
 gradient and the hop skip empty slots (\code{radiation\_packet.h:199, :377}). The
 inbox and reservoir sums are booked at \code{radiation\_packet.h:338-348}. In
 the M1 chapter the advection is at \code{02\_fuv\_isrf.tex:457-468} (Eq.~\eqref{eq:fuv-lagr-line2}) and the
@@ -811,13 +811,13 @@ without a star, are in no ledger and are not part of Eq.~\eqref{eq:packet-balanc
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
 (\code{feedback\_struct.h:874-918}). The emission is booked by
-\code{radiation\_packet\_star\_book\_emission} (\code{radiation\_packet.c:1797-1825}:
-emitted at :1803-1809, escaped at :1817-1824, $\sum_c\varepsilon_c$ at
-:1811-1814), called at \code{src/feedback/GEAR\_thermal/feedback.c:661}. The
+\code{radiation\_packet\_star\_book\_emission} (\code{radiation\_packet.c:1796-1824}:
+emitted at :1802-1808, escaped at :1816-1823, $\sum_c\varepsilon_c$ at
+:1810-1813), called at \code{src/feedback/GEAR\_thermal/feedback.c:661}. The
 removal is \code{radiation\_packet\_book\_removed\_gas}
 (\code{radiation\_packet.h:645-676}, the inherited sum with the redshift ledger at :671-674), reached from
 \code{feedback\_book\_removed\_gas\_to\_spart},
 \code{feedback\_book\_removed\_gas\_to\_sink} and
 \code{feedback\_book\_sink\_merger} (\code{src/feedback/GEAR/feedback\_common.c:1785-1810}).
 The escape of a slot with no downstream neighbour is at
-\code{radiation\_packet.c:1723-1730}.
+\code{radiation\_packet.c:1722-1729}.

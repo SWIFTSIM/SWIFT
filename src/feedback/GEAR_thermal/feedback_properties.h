@@ -322,8 +322,7 @@ struct feedback_props {
    * Read only when #ISRF_packet_light_speed is not unlimited. */
   float ISRF_packet_light_speed_fraction_of_c;
 
-  /*! Power `p` of the soft transmission cone `W max(0, mu)^p` of the packet
-   * transport. */
+  /*! Power `p` of the transmission cone `W max(0, mu)^p`. */
   float ISRF_packet_cone_power;
 
   /*! Time constant of the running mean of the packet field, internal units. 0

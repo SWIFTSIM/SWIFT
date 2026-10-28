@@ -1327,9 +1327,8 @@ static void radiation_packet_set_origin(
   if (d > 0.0) {
     for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
 #ifdef SWIFT_DEBUG_CHECKS
-    /* Every share of the slot came from its cell, a cell is convex, so the
-       mean origin lies in it too. A direction too close to a border may flip
-       by rounding to float. */
+    /* A cell is convex, so the mean origin of its shares lies in it too. A
+       direction near a border may flip by rounding to float. */
     if (radiation_packet_slot_border_distance(frame, sl->direction) > 1e-5 &&
         radiation_packet_slot(frame, sl->direction) != slot_index)
       error("The direction of slot %d is in slot %d.", slot_index,
@@ -1340,8 +1339,8 @@ static void radiation_packet_set_origin(
 #endif
   } else {
     /* Mean origin on the particle: any direction is as good. It can lie
-       outside the slot's cell, which is harmless: it is not a mean of
-       directions, and downstream shares are binned by their own geometry. */
+       outside the cell of the slot, which is harmless: shares are binned by
+       their own geometry. */
     sl->direction[0] = 0.f;
     sl->direction[1] = 0.f;
     sl->direction[2] = 1.f;
