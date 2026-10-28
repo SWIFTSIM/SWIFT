@@ -16,6 +16,9 @@ The transported field is an M1 (first-moment, variable-Eddington-tensor) system,
 two bands, three moments, one band-edge coupling between the two bands, and two
 couplings out to the gas through Grackle. The scheme is \textbf{M1}, not a P1
 relaxation.
+\code{GEARFeedback:ISRF\_transport} (default \code{M1}) selects the packet-hop
+transport of Section~\ref{sec:packet} instead; the rest of this section is about
+the M1 transport.
 
 \paragraph{Order within one SWIFT step, per gas particle.} The discretisation of
 Section~\ref{sec:isrf-eqdisc-disc} is staggered across four task-graph stages, so
