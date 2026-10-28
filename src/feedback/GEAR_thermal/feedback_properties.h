@@ -542,11 +542,8 @@ INLINE static void feedback_props_read_packet_light_speed(
   if (packet_hop &&
       fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited)
     message(
-        "GEARFeedback:ISRF_packet_light_speed: %s limits the light in the "
-        "frame of the gas. Light is delivered early, at 100 times the light "
-        "time of the separation, to gas that moves away from the sender "
-        "faster than 0.99 of the limit speed. The deliveries are counted "
-        "in the packet diagnostics of each step.",
+        "GEARFeedback:ISRF_packet_light_speed: %s, light limited to v = f c "
+        "in the gas frame.",
         light_speed);
   if (packet_hop &&
       fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
