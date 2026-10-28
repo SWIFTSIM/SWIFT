@@ -1,7 +1,7 @@
 /*******************************************************************************
  * This file is part of SWIFT.
- * Copyright (c) 2025 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
- *               2025 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
+ * Copyright (c) 2026 Thomas Sandnes (thomas.d.sandnes@durham.ac.uk)
+ *               2026 Jacob Kegerreis (jacob.kegerreis@durham.ac.uk)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published
@@ -17,41 +17,43 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H
-#define SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H
+#ifndef SWIFT_YIELD_STRESS_WEAKENING_CORE_H
+#define SWIFT_YIELD_STRESS_WEAKENING_CORE_H
 
 /**
- * @file strength/yield_stress_weakening/yield_stress_weakening_thermal_none.h
- * @brief No thermal weakening of the yield stress.
+ * @file strength/yield_stress_weakening/yield_stress_weakening_core.h
+ * @brief Core yield stress weakening scheme.
  */
 
-#include "math.h"
-
 /**
- * @brief Sets the thermal weakening properties of the strength state from the particle.
- *
- * Nothing extra is needed in the state for this method.
+ * @brief Sets the yield stress weakening properties of the strength state from
+ * the particle.
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_state(
+__attribute__((always_inline)) INLINE static void yield_weakening_set_state(
     struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {}
+    const struct mat_params *mp) {
+
+  yield_weakening_thermal_set_state(s, p, mp);
+  yield_weakening_density_set_state(s, p, mp);
+}
 
 /**
- * @brief Apply thermal weakening to the yield stress.
- *
- * Empty function when configuring without thermal weakening.
+ * @brief Apply the thermal and density weakening to the yield stress.
  *
  * @param Y The yield stress to be weakened.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
-yield_weakening_apply_temperature_to_yield_stress(float *Y,
-                                                  struct strength_state *s,
-                                                  const struct mat_params *mp) {}
+yield_weakening_apply_to_yield_stress(float *Y, struct strength_state *s,
+                                      const struct mat_params *mp) {
 
-#endif /* SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H */
+  yield_weakening_apply_density_to_yield_stress(Y, s, mp);
+  yield_weakening_apply_temperature_to_yield_stress(Y, s, mp);
+}
+
+#endif /* SWIFT_YIELD_STRESS_WEAKENING_CORE_H */

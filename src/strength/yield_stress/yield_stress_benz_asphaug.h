@@ -156,8 +156,7 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
   float yield_stress = yield_compute_yield_stress_fully_intact(s, mp);
 
   /* Apply weakening to yield stress. */
-  yield_weakening_apply_density_to_yield_stress(&yield_stress, s, mp);
-  yield_weakening_apply_temperature_to_yield_stress(&yield_stress, s, mp);
+  yield_weakening_apply_to_yield_stress(&yield_stress, s, mp);
 
   return yield_stress;
 }

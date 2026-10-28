@@ -26,15 +26,17 @@
  */
 
 #if defined(STRENGTH_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT)
-#include "yield_stress_weakening/yield_stress_weakening_thermal_tanh_melt.h"
+#include "yield_stress_weakening/yield_stress_weakening_thermal/yield_stress_weakening_thermal_tanh_melt.h"
 #else
-#include "yield_stress_weakening/yield_stress_weakening_thermal_none.h"
+#include "yield_stress_weakening/yield_stress_weakening_thermal/yield_stress_weakening_thermal_none.h"
 #endif /* STRENGTH_YIELD_STRESS_WEAKENING_THERMAL_TANH_MELT */
 
 #if defined(STRENGTH_YIELD_STRESS_WEAKENING_DENSITY_POWER_LAW)
-#include "yield_stress_weakening/yield_stress_weakening_density_power_law.h"
+#include "yield_stress_weakening/yield_stress_weakening_density/yield_stress_weakening_density_power_law.h"
 #else
-#include "yield_stress_weakening/yield_stress_weakening_density_none.h"
+#include "yield_stress_weakening/yield_stress_weakening_density/yield_stress_weakening_density_none.h"
 #endif /* STRENGTH_YIELD_STRESS_WEAKENING_DENSITY_POWER_LAW */
+
+#include "yield_stress_weakening/yield_stress_weakening_core.h"
 
 #endif /* SWIFT_STRENGTH_YIELD_STRESS_WEAKENING_H */

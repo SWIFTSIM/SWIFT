@@ -39,8 +39,7 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
     struct strength_state *s, const struct part *restrict p,
     const struct mat_params *mp) {
 
-  yield_weakening_thermal_set_state(s, p, mp);
-  yield_weakening_density_set_state(s, p, mp);
+  yield_weakening_set_state(s, p, mp);
   yield_set_state(s, p, mp);
   damage_set_state(s, p, mp);
   artif_stress_set_state(s, p, mp);
