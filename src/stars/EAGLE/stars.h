@@ -117,6 +117,7 @@ __attribute__((always_inline)) INLINE static void stars_init_spart(
 #ifdef SWIFT_STARS_DENSITY_CHECKS
   sp->N_density = 0;
   sp->N_density_exact = 0;
+  sp->N_density_exact_edge = 0;
   sp->rho = 0.f;
   sp->rho_exact = 0.f;
   sp->n = 0.f;
