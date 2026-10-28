@@ -19,7 +19,7 @@ lengths.
 largest radius the HII search may reach around a star. It caps the size of
 an ionised region. With fixed cones the arms of the pattern described below
 extend up to this cap, so the strength of the pattern grows with it. Set it
-with e.g. `max_search_radius=0.5 ./run.sh`. The default is 0.15 (150 pc).
+with e.g. `max_search_radius=0.5 ./run.sh`. This example uses 0.15 (150 pc).
 
 `HII_random_cone_frame_per_star: 0` keeps the 12 cones fixed to the box axes,
 so all stars share the same cone directions. `HII_random_cone_frame_per_star: 1`
@@ -29,8 +29,9 @@ the two settings with `run_name` (see Run).
 # What to expect
 With fixed cones the ionised region of the cluster is a square aligned with
 the box axes, with lobes along the diagonals (an "X"). With
-`random_frame=1` the region is round. The face-on panel of the figure shows
-the difference.
+`random_frame=1` the stars' cones point in different directions, so the
+cluster's region shows no X and no box-aligned square. Each star's own region
+keeps its cone shape. The face-on panel of the figure shows the difference.
 
 # Configure
 ```
