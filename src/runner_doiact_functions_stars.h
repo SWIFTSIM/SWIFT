@@ -1665,8 +1665,13 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
+  /* Largest smoothing length of the stars of the subset (all in ci) */
+  float h_subset_max = 0.f;
+  for (int k = 0; k < scount; k++)
+    h_subset_max = max(h_subset_max, sparts[ind[k]].h);
+
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci) &&
+  if (cell_can_recurse_in_pair_stars_subset(ci, h_subset_max) &&
       cell_can_recurse_in_pair_stars_task(cj)) {
 
     /* Find in which sub-cell of ci the particles are */
@@ -1710,8 +1715,13 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
+  /* Largest smoothing length of the stars of the subset */
+  float h_subset_max = 0.f;
+  for (int k = 0; k < scount; k++)
+    h_subset_max = max(h_subset_max, sparts[ind[k]].h);
+
   /* Recurse? */
-  if (ci->split && cell_can_recurse_in_self_stars_task(ci)) {
+  if (cell_can_recurse_in_self_stars_subset(ci, h_subset_max)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
