@@ -382,6 +382,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("ISRF propagation                                           = %s",
             feedback_props->ISRF_propagation ? "ON" : "OFF (injection only)");
     if (feedback_props->ISRF_propagation) {
+      message(
+          "ISRF transport                                             = packet "
+          "hop (the only scheme)");
       message("ISRF packet transmission cone power                        = %g",
               feedback_props->ISRF_packet_cone_power);
       message("ISRF packet light speed limit                              = %s",
@@ -582,7 +585,8 @@ static const char *const feedback_props_retired_ISRF_keys[] = {
 INLINE static void feedback_props_read_retired_ISRF_keys(
     struct swift_params *params) {
 
-  char found[PARSER_MAX_LINE_SIZE] = "";
+  /* Holds the names of all the retired keys (344 characters). */
+  char found[1024] = "";
   char value[PARSER_MAX_LINE_SIZE];
 
   if (parser_does_param_exist(params, "GEARFeedback:ISRF_transport")) {
