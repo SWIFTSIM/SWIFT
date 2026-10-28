@@ -48,8 +48,9 @@ $h_i$ & length & smoothing length of sender $i$; kernel support $\gamma h_i$ \\
 $W,\gamma$ & length$^{-3}$, -- & hydro kernel of the build and its support in units of $h$ \\
 $p$ & -- & power of the hop cone, \code{ISRF\_packet\_cone\_power} (default 4) \\
 $\mu_{ij,k}$ & -- & cosine between $\boldsymbol{\Delta x}_{ij}$ and $\boldsymbol{n}_k$ \\
-$w_{ij,k}$ & length$^{-3}$ & hop weight of slot $k$ towards $j$ \\
-$S_{i,k}$ & length$^{-3}$ & sum of the hop weights of slot $k$ over the neighbours of $i$ \\
+$V_j$ & length$^3$ & comoving volume $m_j/\rho_j$ of receiver $j$ \\
+$w_{ij,k}$ & -- & hop weight of slot $k$ towards $j$ \\
+$S_{i,k}$ & -- & sum of the hop weights of slot $k$ over the neighbours of $i$ \\
 $\kappa_b$ & 1/length & linear dust absorption rate of band $b$ at the receiver, physical \\
 $\lambda_E(b)$, $\lambda_N$ & -- & band-edge weight of the energy of band $b$, and of the LW photon number (Section~\ref{sec:packet-transfer}) \\
 $H$, $\zeta$ & 1/time, -- & Hubble rate, and redshift depth of a share, $\zeta=H\,\ell_{\rm phys}/c$ \\
@@ -162,12 +163,16 @@ neighbour $j$ the fraction
 \begin{equation}
   \phi_{ij,k} = \frac{w_{ij,k}}{S_{i,k}}, \qquad
   S_{i,k}=\sum_{j'} w_{ij',k}, \qquad
-  w_{ij,k}=W(r_{ij},h_i)\,\mu_{ij,k}^{\,p},
+  w_{ij,k}=V_j\,W(r_{ij},h_i)\,\mu_{ij,k}^{\,p},
   \label{eq:packet-share}
 \end{equation}
 where $r_{ij}=|\boldsymbol{\Delta x}_{ij}|$ and
-$\mu_{ij,k}=\boldsymbol{\Delta x}_{ij}\!\cdot\!\boldsymbol{n}_k/r_{ij}$. The weight
-$w_{ij,k}$ is zero if $r_{ij}=0$, if $r_{ij}\ge\gamma h_i$, or if
+$\mu_{ij,k}=\boldsymbol{\Delta x}_{ij}\!\cdot\!\boldsymbol{n}_k/r_{ij}$. The sum
+$S_{i,k}$ is the SPH quadrature of $\int W\mu^p\,\mathrm{d}V$, so across a density
+gradient the shares follow the solid angle and not the number of neighbours on
+each side. The density is the previous-step snapshot read by the gradient and the
+force loop alike; the one out-of-line function divides $m_j$ by $\rho_j$ for both loops. Its expansion factor is common to all receivers and cancels in
+$\phi_{ij,k}$. The weight $w_{ij,k}$ is zero if $r_{ij}=0$, if $r_{ij}\ge\gamma h_i$, or if
 $\mu_{ij,k}\le\mu_{\rm min}=10^{-3}$. The sum runs over all neighbours with
 non-zero weight. The sender's weights are equal in the gradient loop that
 forms $S_{i,k}$ and in the force loop that books the shares, because one
@@ -188,7 +193,7 @@ For the Wendland-C2 kernel of the canonical build (three dimensions),
 which is the polynomial $4q^5-15q^4+20q^3-10q^2+1$, equal to $(1-q)^4(1+4q)$
 \citep{Wendland1995}. Other kernels give their own $W$. The normalisation and the factor
 $h_i^{-3}$ are the same for every neighbour of $i$, so they cancel in
-$\phi_{ij,k}$: only the shape of $W$ and the factor $\mu^p$ matter. A larger $p$
+$\phi_{ij,k}$: only the shape of $W$, the volume $V_j$ and the factor $\mu^p$ matter. A larger $p$
 gives a narrower cone.
 
 The share is placed in the slot of the receiver that holds the direction from
@@ -216,33 +221,33 @@ $S_{i,k}=0$, it has no downstream neighbour, and its light is booked as escaped
 
 \paragraph{Implementation.} The weight, Eq.~\eqref{eq:packet-share} third
 formula, is \code{radiation\_packet\_transmission\_weight}
-(\code{radiation\_packet.c:187-202}): the zero cases at :192 (which holds the kernel reach) and :196, $\mu$ at :195,
-$W$ at :198-200, the factor $\mu^p$ at :201. The cutoff
+(\code{radiation\_packet.c:196-212}): the zero cases at :202 and :206, $\mu$ at :205,
+$W$ at :208-210, the volume $V_j=m_j/\rho_j$ and the factor $\mu^p$ at :211. The cutoff
 $\mu_{\rm min}$ is \code{RADIATION\_PACKET\_MU\_MIN}
-(\code{src/feedback/GEAR/radiation\_packet.h:52}). The function is out of line, so both loops
-use the same compiled arithmetic. The coefficients of
+(\code{src/feedback/GEAR/radiation\_packet.h:53}). The function is out of line and divides
+$m_j$ by $\rho_j$ inside, so both loops use the same compiled arithmetic. The coefficients of
 Eq.~\eqref{eq:packet-kernel} are \code{kernel\_coeffs}, \code{kernel\_constant}
-and \code{kernel\_gamma} in \code{src/kernel\_hydro.h:121-146}, evaluated by
+and \code{kernel\_gamma} in \code{src/kernel\_hydro.h:137-146}, evaluated by
 \code{kernel\_eval} (\code{kernel\_hydro.h:297-318}). The gradient loop sums
 $S_{i,k}$ and the numerator of Eq.~\eqref{eq:packet-advance} in
 \code{radiation\_packet\_gradient\_accumulate}
-(\code{radiation\_packet.h:152-170}), called from
+(\code{radiation\_packet.h:155-175}), called from
 \code{runner\_iact\_isrf\_gradient} and its non-symmetric twin
-(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:509-511}, :573). The division by
+(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:510-511}, :573). The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
-\code{radiation\_packet.c:765}. The share $\phi_{ij,k}$ is
+\code{radiation\_packet.c:775}. The share $\phi_{ij,k}$ is
 \code{fraction} in \code{radiation\_packet\_book\_share}
-(\code{radiation\_packet.h:322}), and Eq.~\eqref{eq:packet-offset} is its
-\code{offset} (:325-327). The receiving slot is chosen in
+(\code{radiation\_packet.h:328}), and Eq.~\eqref{eq:packet-offset} is its
+\code{offset} (:331-333). The receiving slot is chosen in
 \code{radiation\_packet\_deliver} from the vector \code{from\_origin}
-(\code{radiation\_packet.h:213-216}). The force loop calls
+(\code{radiation\_packet.h:218}). The force loop calls
 \code{radiation\_packet\_book\_share} from
 \code{runner\_iact\_isrf\_packet\_hop} and its non-symmetric twin
 (\code{radiation\_propagation\_iact.h:1043-1044}, :1075). The vector
 \code{dx\_ij} passed to it points from sender to receiver. The sender's held
 energy is set to zero at the end of the force loop
-(\code{radiation\_packet\_end\_force}, \code{radiation\_packet.c:806-810}). The
-escape of a slot with $S_{i,k}=0$ is at :775-782. The parameter $p$ is
+(\code{radiation\_packet\_end\_force}, \code{radiation\_packet.c:817-820}). The
+escape of a slot with $S_{i,k}=0$ is at \code{radiation\_packet.c:785-792}. The parameter $p$ is
 copied to each particle at \code{radiation\_isrf.c:158}, and
 \code{ISRF\_packet\_cone\_power} is parsed at
 \code{src/feedback/GEAR\_thermal/feedback\_properties.h:1037-1039}.
