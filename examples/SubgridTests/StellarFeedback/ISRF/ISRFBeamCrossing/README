@@ -1,0 +1,63 @@
+# Intro
+Two beams of light cross at the centre of a periodic box of uniform gas
+(1e3 atom/cm^3, 0.1 Msun particles, 262144 particles, 51.8 smoothing lengths
+on a side). The gas is nearly transparent (Z = 1e-3 Zsun). Each beam is a cubic
+pulse of 10 smoothing lengths, injected into the gas that lies in the cube at
+the first step, and it travels along a fixed direction. The beams meet at an
+angle of 180, 90 or 60 degrees, set by `angle`.
+
+The example shows what ISRF transport does with light that arrives from
+several directions at once. A gas particle holds the light in reception
+slots, one per direction cell, so two pulses that reach a particle from
+different directions are kept apart and each one continues on its way. The
+directions of the beams lie at least 15 degrees from the borders of the
+slots, for the default frame of the slots and 12 slots, so that each beam
+fills one slot.
+
+The pulses are injected by the test parameters
+`GEARFeedback:ISRF_packet_test_beam_1` and `_2` (box corners, direction and
+energy per particle). They are meant for tests, not for production runs.
+`makeIC.py` writes their values to `beam_args.txt` and `run.sh` passes them
+to swift. There is no star in this example.
+
+`params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`): the gas stays at
+rest and the maps show the light only. `GEARFeedback:ISRF_packet_light_speed:
+cap` limits the speed of the light to 0.99 c, a limit that the fixed step
+never reaches. A packet makes one hop of about one smoothing length per step,
+so the light moves at about one smoothing length per step, much slower than
+c, and the run lasts a few tens of steps.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. The number of reception
+slots is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table that carries MeanPhotonEnergyPE (see the
+ISRF documentation). `run.sh` takes `PopII_parsec_spectral_with_pe_photon_energy.hdf5`
+from this directory, from `$GEAR_RADIATION_TABLE` or from `~/programs/pychem`,
+in that order. `radiation_table=<file>` selects another table.
+
+# Run
+```
+angle=180 ./run.sh
+angle=90 ./run.sh
+angle=60 ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_angle<angle>`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`angle` (180, 90 or 60), `n_steps` (last step of the run), `swift_exe`, `run_dir`, `run_analysis`
+(0 skips the plot) and `extra_args` (further swift arguments).
+
+# Plot
+`run.sh` calls `plotBeamCrossing.py` from the run directory. It reads
+`geometry.json` and `snap/snapshot_*.hdf5` and writes `beam_crossing.png`:
+four snapshots of the specific energy of the PE-band light (the snapshot
+field `PacketSpecificEnergies`) on the gas that lies within 1.5 smoothing
+lengths of the plane that holds both beams. Beam 1 runs along the horizontal
+axis.
