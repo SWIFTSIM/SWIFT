@@ -1389,19 +1389,24 @@ void fof_search_pair_cells_foreign(
       /* Hit or miss? */
       if (r2 < l_x2) {
 
-        /* Check that the links have not already been added to the list. */
-        for (size_t l = 0; l < local_link_count; l++) {
-          if (local_group_links[l].group_i == root_i &&
-              local_group_links[l].group_j == pj->fof_data.group_id) {
-            continue;
+        /* Check that the links have not already been added to the list.
+         * Search backwards as the most recent links are the most likely
+         * duplicates. */
+        int found = 0;
+        for (size_t l = local_link_count; l > 0; l--) {
+          if (local_group_links[l - 1].group_i == root_i &&
+              local_group_links[l - 1].group_j == pj->fof_data.group_id) {
+            found = 1;
+            break;
           }
         }
 
         /* Add a possible link to the list */
-        add_foreign_link_to_list(
-            &local_link_count, group_links_size, group_links,
-            &local_group_links, root_i, pj->fof_data.group_id,
-            group_size[root_i - node_offset], pj->fof_data.group_size);
+        if (!found)
+          add_foreign_link_to_list(
+              &local_link_count, group_links_size, group_links,
+              &local_group_links, root_i, pj->fof_data.group_id,
+              group_size[root_i - node_offset], pj->fof_data.group_size);
       }
     }
   }
