@@ -101,7 +101,8 @@ struct threadpool;
 #error "Invalid choice of SPH variant"
 #endif
 
-/* The GEAR ISRF books a pair share into the inactive member, on its rank. */
+/* The GEAR ISRF books the share of a foreign sender into each local receiver,
+   on the receiver's rank. */
 #if defined(WITH_MPI) && defined(FEEDBACK_GEAR) &&                       \
     defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(EXTRA_HYDRO_LOOP) && \
     !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
