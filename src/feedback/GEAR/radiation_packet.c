@@ -89,6 +89,7 @@ static double radiation_packet_arrival_per_length = 0.0;
 static double radiation_packet_limit_speed = 0.0;
 static int radiation_packet_ticks_are_ln_a = 0;
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /*! Number of times the far cells of a particle became wider, of pieces of
     light that fell beyond the widest far cells, and of deliveries to a
     receiver that moves away faster than the clamp allows, since the last
@@ -108,6 +109,11 @@ static void radiation_packet_count_overflow(void) {
 static void radiation_packet_count_clamp(void) {
   __sync_fetch_and_add(&radiation_packet_clamp_count, 1);
 }
+#else
+static void radiation_packet_count_coarsening(void) {}
+static void radiation_packet_count_overflow(void) {}
+static void radiation_packet_count_clamp(void) {}
+#endif
 
 /**
  * @brief Limit the speed of the light of a share, or lift the limit.
@@ -691,6 +697,7 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
   return radiation_packet_emission_cone(si->id, ti_begin, d);
 }
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Counters of the arrival bins since the last report, for tests.
  *
@@ -738,6 +745,7 @@ void radiation_packet_step_diagnostics(const struct engine *e) {
         "light is delivered early).",
         e->step, counts[0], counts[1], counts[2]);
 }
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 /**
  * @brief Largest float not above a distance, for a stored distance below the

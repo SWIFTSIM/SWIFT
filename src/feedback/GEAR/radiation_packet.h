@@ -157,9 +157,11 @@ __attribute__((always_inline)) INLINE static float radiation_packet_read_mean(
 
 /**
  * @brief Does the slot hold no energy in any band?
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
  *
  * @param sl The slot.
  */
+#endif
 __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
     const struct feedback_isrf_packet_slot_data *sl) {
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
