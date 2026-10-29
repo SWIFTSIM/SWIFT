@@ -23,7 +23,7 @@
 /**
  * @file strength/damage/damage_data.h
  * @brief The damage of a particle, stored on the particle and in the strength
- * state.
+ * state, and its rates of accumulation.
  */
 
 /**
@@ -44,5 +44,26 @@ struct strength_damage {
   float shear;
 #endif
 };
+
+#ifdef STRENGTH_DAMAGE
+/**
+ * @brief The rates of damage accumulation of a particle.
+ */
+struct strength_damage_rates {
+
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  /*! Rate of cbrt(tensile damage) accumulation */
+  float tensile_cbrtD_dt;
+
+  /*! Maximum tensile damage, the fraction of flaws that are activated */
+  float tensile_max;
+#endif
+
+#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+  /*! Rate of shear damage accumulation */
+  float shear_dD_dt;
+#endif
+};
+#endif
 
 #endif /* SWIFT_DAMAGE_DATA_H */

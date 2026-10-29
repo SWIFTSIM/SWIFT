@@ -342,8 +342,11 @@ struct strength_props {
   /*! Time-step factor for the limit from the strain rate */
   float strain_rate_timestep_factor;
 
-  /*! Maximum growth in damage per time-step */
-  float damage_timestep_factor;
+  /*! Maximum growth in cbrt(tensile damage) per time-step */
+  float damage_tensile_timestep_factor;
+
+  /*! Maximum growth in shear damage per time-step */
+  float damage_shear_timestep_factor;
 
   /*! Target smoothing length in units of the mean inter-particle separation */
   float eta_neighbours;

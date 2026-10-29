@@ -84,8 +84,8 @@ struct strength_part_data {
   // Accumulated damage
   struct strength_damage damage;
 
-  // Damage accumulation timescale
-  float dt_damage;
+  // Rates of damage accumulation
+  struct strength_damage_rates damage_rates;
 #endif
 
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG

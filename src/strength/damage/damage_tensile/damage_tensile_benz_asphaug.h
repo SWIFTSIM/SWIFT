@@ -82,22 +82,17 @@ __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part
  *     crack_velocity_factor: Crack velocity as a fraction of the longitudinal
  *     wave speed (default 0.4).
  *
- * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.
- * @param number_of_activated_flaws The number of currently-active flaws.
+ * @param damage_rates The rates of damage accumulation.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
-    float *tensile_cbrtD_dt, int *number_of_activated_flaws,
-    struct strength_state *s, const struct mat_params *mp) {
-
-  *tensile_cbrtD_dt = 0.f;
-  *number_of_activated_flaws = 0;
+    struct strength_damage_rates *damage_rates, struct strength_state *s,
+    const struct mat_params *mp) {
 
   /* Particle properties. */
   const float mass = s->mass;
   const float density = s->density;
-  const float damage = s->damage.total;
 
   /* Particle flaws and their thresholds. */
   const int number_of_flaws = s->number_of_flaws;
@@ -109,7 +104,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   }
 
   /* If damage is already 1, no accumulation. */
-  if (damage == 1.f) {
+  if (s->damage.total >= 1.f || s->damage.tensile >= 1.f) {
     return;
   }
 
@@ -129,130 +124,85 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   const float E = 9.f * bulk_mod * shear_mod / (3.f * bulk_mod + shear_mod);
 
   /* Compute local scalar strain, Benz&Asphaug95 Eqn. 21. */
-  const float local_scalar_strain = max_principal_stress / ((1.f - damage) * E);
+  const float local_scalar_strain = max_principal_stress / ((1.f - s->damage.total) * E);
 
   /* The number of activated flaws is defined as the number of flaws for which
    * the local scalar strain has reached or exceeded the flaw's activation
    * threshold. */
   // ### this can be done nicer if we sort thresholds in order and then break in this loop
+  int number_of_activated_flaws = 0;
   for (int i = 0; i < number_of_flaws; i++) {
     if (local_scalar_strain > activation_thresholds[i]) {
-      *number_of_activated_flaws += 1;
+      number_of_activated_flaws += 1;
     }
   }
 
+  /* Tensile damage is limited by the fraction of activated to total flaws. */
+  damage_rates->tensile_max = (float)number_of_activated_flaws / (float)number_of_flaws;
+
   /* Estimate the crack velocity based on the longitudinal wave speed,
    * Schäfer+2016 Eqn. 24. */
-  const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - damage) * shear_mod) / density);
+  const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - s->damage.total) * shear_mod) / density);
   const float crack_velocity = mp->damage_tensile_benz_asphaug_crack_velocity_factor * longitudinal_wave_speed;
 
   /* Compute the rate of cbrt(damage) accumulation due to tension,
    * Benz&Asphaug95 Eqn. 15. */
-  *tensile_cbrtD_dt = (float)*number_of_activated_flaws * crack_velocity * cbrtf(density / mass);
-}
-
-/**
- * @brief Steps tensile damage by applying time-step to a tensile_cbrtD_dt.
- *
- * @param tensile_damage The tensile damage.
- * @param tensile_cbrtD_dt The rate of tensile cbrt(damage) accumulation.
- * @param number_of_activated_flaws The number of currently-active flaws.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- * @param dt_therm The time-step duration.
- */
-__attribute__((always_inline)) INLINE static void damage_tensile_apply_timestep_to_tensile_damage(
-    float *tensile_damage, const float tensile_cbrtD_dt,
-    const int number_of_activated_flaws, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {
-
-  /* Tensile damage only accumulates if the particle has flaws and a positive
-   * rate. */
-  const int number_of_flaws = s->number_of_flaws;
-  if (number_of_flaws == 0 || tensile_cbrtD_dt <= 0.f) {
-    return;
-  }
-
-  /* Apply time-step. */
-  float Delta_cbrtD = tensile_cbrtD_dt * dt_therm;
-
-  /* Tensile damage is limited by the fraction of activated to total flaws. */
-  /* See B&A99 and also Schafer16 for correction of cbrt placement here */
-  const float max_cbrtD =
-      cbrtf((float)number_of_activated_flaws / (float)number_of_flaws);
-  const float max_Delta_cbrtD =
-      fmaxf(0.f, max_cbrtD - cbrtf(*tensile_damage));
-  if (Delta_cbrtD > max_Delta_cbrtD){
-    Delta_cbrtD = max_Delta_cbrtD;
-  }
-
-  /* Update tensile damage. */
-  const float evolved_D_cbrt = fmaxf(cbrtf(*tensile_damage) + Delta_cbrtD, 0.f);
-  *tensile_damage = fminf(powf(evolved_D_cbrt, 3.f), 1.f);
+  damage_rates->tensile_cbrtD_dt = (float)number_of_activated_flaws * crack_velocity * cbrtf(density / mass);
 }
 
 /**
  * @brief Evolves tensile damage.
  *
- * Carries out all calculations required to step tensile damage in time.
- *
- * @param d The damage of the particle. Only the tensile damage is changed.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
+ * @param d The damage of the particle.
+ * @param damage_rates The rates of damage accumulation.
  * @param dt_therm The time-step duration.
  *
  * @return The evolved tensile damage.
  */
 __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
-    struct strength_damage *d, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {
+    struct strength_damage *d, const struct strength_damage_rates *damage_rates,
+    const float dt_therm) {
 
-  float tensile_cbrtD_dt;
-  int number_of_activated_flaws = 0;
+  /* Tensile damage only accumulates with a positive rate. */
+  if (damage_rates->tensile_cbrtD_dt <= 0.f) {
+    return d->tensile;
+  }
 
-  /* Compute the rate of cbrt(damage) accumulation due to tension. */
-  damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws, s, mp);
+  /* Apply time-step. */
+  float Delta_cbrtD = damage_rates->tensile_cbrtD_dt * dt_therm;
+
+  /* Tensile damage is limited by the fraction of activated to total flaws. */
+  /* See B&A99 and also Schafer16 for correction of cbrt placement here */
+  const float max_cbrtD = cbrtf(damage_rates->tensile_max);
+  const float max_Delta_cbrtD =
+      fmaxf(0.f, max_cbrtD - cbrtf(d->tensile));
+  if (Delta_cbrtD > max_Delta_cbrtD){
+    Delta_cbrtD = max_Delta_cbrtD;
+  }
 
   /* Update tensile damage. */
-  damage_tensile_apply_timestep_to_tensile_damage(&d->tensile, tensile_cbrtD_dt, number_of_activated_flaws, s, mp, dt_therm);
+  const float evolved_cbrtD = fmaxf(cbrtf(d->tensile) + Delta_cbrtD, 0.f);
+  d->tensile = fminf(powf(evolved_cbrtD, 3.f), 1.f);
 
   return d->tensile;
 }
 
 /**
- * @brief Computes the rate of tensile damage accumulation used to set the
- * damage time-step.
+ * @brief Limits the time-step by the growth of cbrt(tensile damage).
  *
- * @param d The damage of the particle.
- * @param damage_timestep_factor The growth in damage allowed per time-step.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- *
- * @return The rate of tensile damage accumulation.
+ * @param dt_cfl The hydro + strength time-step.
+ * @param damage_rates The rates of damage accumulation.
+ * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static float damage_tensile_compute_timestep_dD_dt(
-    const struct strength_damage *d, const float damage_timestep_factor,
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void damage_tensile_compute_timestep(
+    float *dt_cfl, const struct strength_damage_rates *damage_rates,
+    const struct strength_props *strength_props) {
 
-  const float tensile_damage = d->tensile;
-
-  /* If tensile damage is already 1, no accumulation. */
-  if (tensile_damage >= 1.f) {
-    return 0.f;
+  /* Time for cbrt(tensile damage) to grow by damage_tensile_timestep_factor. */
+  if (damage_rates->tensile_cbrtD_dt > 0.f) {
+    *dt_cfl = fminf(*dt_cfl, strength_props->damage_tensile_timestep_factor /
+                                 damage_rates->tensile_cbrtD_dt);
   }
-
-  float tensile_cbrtD_dt = 0.f;
-  int number_of_activated_flaws = 0;
-  damage_tensile_compute_cbrtD_dt(&tensile_cbrtD_dt, &number_of_activated_flaws,
-                                  s, mp); // ### Should this use damage or tensile_damage?
-
-  if (tensile_cbrtD_dt <= 0.f) {
-    return 0.f;
-  }
-
-  const float Delta_cbrtD =
-      cbrtf(tensile_damage + damage_timestep_factor) - cbrtf(tensile_damage);
-  return damage_timestep_factor * tensile_cbrtD_dt / Delta_cbrtD;
 }
 
 #endif /* SWIFT_DAMAGE_TENSILE_BENZ_ASPHAUG_H */

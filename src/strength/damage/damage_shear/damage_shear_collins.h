@@ -94,19 +94,16 @@ damage_shear_compute_plastic_strain_at_failure(struct strength_state *s,
 /**
  * @brief Compute the rate of shear damage accumulation.
  *
- * @param shear_dD_dt The rate of shear damage accumulation.
- * @param shear_damage The shear damage.
+ * @param damage_rates The rates of damage accumulation.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
-    float *shear_dD_dt, const float shear_damage,
-    struct strength_state *s, const struct mat_params *mp) {
+    struct strength_damage_rates *damage_rates, struct strength_state *s,
+    const struct mat_params *mp) {
 
-  *shear_dD_dt = 0.f;
-
-  /* If shear damage is already 1, no accumulation. */
-  if (shear_damage >= 1.f) {
+  /* If damage is already 1, no accumulation. */
+  if (s->damage.total >= 1.f || s->damage.shear >= 1.f) {
     return;
   }
 
@@ -124,79 +121,48 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
       damage_shear_compute_plastic_strain_at_failure(s, mp);
 
   /* Calculate the rate of shear damage accumulation. */
-  *shear_dD_dt = E_dot / plastic_strain_at_failure;
-}
-
-/**
- * @brief Steps shear damage by applying time-step to a shear_dD_dt.
- *
- * @param shear_damage The shear damage.
- * @param shear_dD_dt The rate of shear damage accumulation.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- * @param dt_therm The time-step duration.
- */
-__attribute__((always_inline)) INLINE static void damage_shear_apply_timestep_to_shear_damage(
-    float *shear_damage, const float shear_dD_dt,
-    struct strength_state *s, const struct mat_params *mp,
-    const float dt_therm) {
-
-  if (shear_dD_dt <= 0.f) {
-    return;
-  }
-
-  /* Update shear damage. */
-  *shear_damage = fminf(fmaxf(*shear_damage + shear_dD_dt * dt_therm, 0.f), 1.f);
+  damage_rates->shear_dD_dt = E_dot / plastic_strain_at_failure;
 }
 
 /**
  * @brief Evolves shear damage.
  *
- * Carries out all calculations required to step shear damage in time.
- *
- * @param d The damage of the particle. Only the shear damage is changed.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
+ * @param d The damage of the particle.
+ * @param damage_rates The rates of damage accumulation.
  * @param dt_therm The time-step duration.
  *
  * @return The evolved shear damage.
  */
 __attribute__((always_inline)) INLINE static float damage_shear_evolve(
-    struct strength_damage *d, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {
+    struct strength_damage *d, const struct strength_damage_rates *damage_rates,
+    const float dt_therm) {
 
-  float shear_dD_dt;
-
-  /* Compute the rate of shear damage accumulation. */
-  damage_shear_compute_dD_dt(&shear_dD_dt, d->shear, s, mp);
+  if (damage_rates->shear_dD_dt <= 0.f) {
+    return d->shear;
+  }
 
   /* Update shear damage. */
-  damage_shear_apply_timestep_to_shear_damage(&d->shear, shear_dD_dt, s, mp, dt_therm);
+  d->shear = fminf(fmaxf(d->shear + damage_rates->shear_dD_dt * dt_therm, 0.f), 1.f);
 
   return d->shear;
 }
 
 /**
- * @brief Computes the rate of shear damage accumulation used to set the
- * damage time-step.
+ * @brief Limits the time-step by the growth of shear damage.
  *
- * Shear damage evolves D directly, so this is just its rate.
- *
- * @param d The damage of the particle.
- * @param damage_timestep_factor The growth in damage allowed per time-step.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- *
- * @return The rate of shear damage accumulation.
+ * @param dt_cfl The hydro + strength time-step.
+ * @param damage_rates The rates of damage accumulation.
+ * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static float damage_shear_compute_timestep_dD_dt(
-    const struct strength_damage *d, const float damage_timestep_factor,
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void damage_shear_compute_timestep(
+    float *dt_cfl, const struct strength_damage_rates *damage_rates,
+    const struct strength_props *strength_props) {
 
-  float shear_dD_dt;
-  damage_shear_compute_dD_dt(&shear_dD_dt, d->shear, s, mp);
-
-  return shear_dD_dt;
+  /* Time for shear damage to grow by damage_shear_timestep_factor. */
+  if (damage_rates->shear_dD_dt > 0.f) {
+    *dt_cfl = fminf(*dt_cfl, strength_props->damage_shear_timestep_factor /
+                                 damage_rates->shear_dD_dt);
+  }
 }
 
 #endif /* SWIFT_DAMAGE_SHEAR_COLLINS_H */

@@ -35,8 +35,7 @@
  */
 __attribute__((always_inline)) INLINE static struct strength_damage strength_get_damage(const struct part *restrict p) {
 
-  const struct strength_damage no_damage = {0};
-  return no_damage;
+  return (struct strength_damage){0};
 }
 
 /**
@@ -46,8 +45,7 @@ __attribute__((always_inline)) INLINE static struct strength_damage strength_get
  */
 __attribute__((always_inline)) INLINE static struct strength_damage strength_get_damage_full(const struct xpart *restrict xp) {
 
-  const struct strength_damage no_damage = {0};
-  return no_damage;
+  return (struct strength_damage){0};
 }
 
 /**
@@ -70,9 +68,11 @@ __attribute__((always_inline)) INLINE static void damage_set_state(
  *
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param p The particle of interest.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
-    float *dt_cfl, const struct part *restrict p) {}
+    float *dt_cfl, const struct part *restrict p,
+    const struct strength_props *strength_props) {}
 
 /**
  * @brief Sets the values of additional particle damage properties at a
@@ -85,53 +85,35 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
     struct part *restrict p, const struct xpart *restrict xp) {}
 
 /**
- * @brief Evolves particle damage.
- *
- * @param d The damage, to be evolved.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- * @param dt_therm The time-step duration.
- */
-__attribute__((always_inline)) INLINE static void damage_evolve(
-    struct strength_damage *d, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {}
-
-/**
  * @brief Evolves particle damage in the drift
  *
  * @param p The particle of interest.
- * @param s The strength state of the particle, from its drifted values.
- * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
-    struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {}
+    struct part *restrict p, const float dt_therm) {}
 
 /**
  * @brief Evolves particle damage in the kick
  *
+ * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
- * @param s The strength state of the particle, from its kicked values.
- * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
-    struct xpart *restrict xp, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {}
+    const struct part *restrict p, struct xpart *restrict xp,
+    const float dt_therm) {}
 
 /**
- * @brief Calculate the damage time-step.
+ * @brief Computes the rates of damage accumulation.
  *
  * @param p The particle of interest.
  * @param s The strength state of the particle, from its drifted values.
  * @param mp The material parameters.
- * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void damage_compute_timescale(
+__attribute__((always_inline)) INLINE static void damage_compute_rates(
     struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp,
-    const struct strength_props *strength_props) {}
+    const struct mat_params *mp) {}
 
 /**
  * @brief Initialises the damage properties for the first time

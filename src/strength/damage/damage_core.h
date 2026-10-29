@@ -65,15 +65,20 @@ __attribute__((always_inline)) INLINE static void damage_set_state(
 }
 
 /**
- * @brief Limits the time-step by the damage time-step.
+ * @brief Limits the time-step by the growth of each source of damage.
  *
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param p The particle of interest.
+ * @param strength_props The material strength parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
-    float *dt_cfl, const struct part *restrict p) {
+    float *dt_cfl, const struct part *restrict p,
+    const struct strength_props *strength_props) {
 
-  *dt_cfl = fminf(*dt_cfl, p->strength_data.dt_damage);
+  const struct strength_damage_rates *damage_rates = &p->strength_data.damage_rates;
+
+  damage_tensile_compute_timestep(dt_cfl, damage_rates, strength_props);
+  damage_shear_compute_timestep(dt_cfl, damage_rates, strength_props);
 }
 
 /**
@@ -93,22 +98,16 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
  * @brief Evolves particle damage.
  *
  * @param d The damage, to be evolved.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
+ * @param damage_rates The rates of damage accumulation.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_evolve(
-    struct strength_damage *d, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {
-
-  /* Only solid particles accumulate damage. */
-  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
-    return;
-  }
+    struct strength_damage *d, const struct strength_damage_rates *damage_rates,
+    const float dt_therm) {
 
   /* Evolve each source of damage. */
-  const float tensile_damage = damage_tensile_evolve(d, s, mp, dt_therm);
-  const float shear_damage = damage_shear_evolve(d, s, mp, dt_therm);
+  const float tensile_damage = damage_tensile_evolve(d, damage_rates, dt_therm);
+  const float shear_damage = damage_shear_evolve(d, damage_rates, dt_therm);
 
   /* Combine sources of damage. */
   d->total = fminf(tensile_damage + shear_damage, 1.f);
@@ -118,69 +117,56 @@ __attribute__((always_inline)) INLINE static void damage_evolve(
  * @brief Evolves particle damage in the drift
  *
  * @param p The particle of interest.
- * @param s The strength state of the particle, from its drifted values.
- * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_predict_evolve(
-    struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {
+    struct part *restrict p, const float dt_therm) {
 
-  damage_evolve(&p->strength_data.damage, s, mp, dt_therm);
+  damage_evolve(&p->strength_data.damage, &p->strength_data.damage_rates,
+                dt_therm);
 }
 
 /**
  * @brief Evolves particle damage in the kick
  *
+ * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
- * @param s The strength state of the particle, from its kicked values.
- * @param mp The material parameters.
  * @param dt_therm The time-step duration.
  */
 __attribute__((always_inline)) INLINE static void damage_kick_evolve(
-    struct xpart *restrict xp, struct strength_state *s,
-    const struct mat_params *mp, const float dt_therm) {
+    const struct part *restrict p, struct xpart *restrict xp,
+    const float dt_therm) {
 
-  damage_evolve(&xp->strength_data.damage_full, s, mp, dt_therm);
+  damage_evolve(&xp->strength_data.damage_full, &p->strength_data.damage_rates,
+                dt_therm);
 }
 
 /**
- * @brief Calculate the damage time-step.
+ * @brief Computes the rates of damage accumulation.
  *
- * The time for damage to grow by damage_timestep_factor.
+ * Computed once at the end of the force calculation, from the drifted values,
+ * and used to evolve damage in the drift and kicks.
  *
  * @param p The particle of interest.
  * @param s The strength state of the particle, from its drifted values.
  * @param mp The material parameters.
- * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void damage_compute_timescale(
+__attribute__((always_inline)) INLINE static void damage_compute_rates(
     struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp,
-    const struct strength_props *strength_props) {
+    const struct mat_params *mp) {
 
-  /* Growth in damage used to set the time-step. */
-  const float damage_timestep_factor = strength_props->damage_timestep_factor;
-
-  /* Damage at drift time. */
-  const struct strength_damage *d = &p->strength_data.damage;
-
-  p->strength_data.dt_damage = FLT_MAX;
+  struct strength_damage_rates *damage_rates = &p->strength_data.damage_rates;
+  *damage_rates = (struct strength_damage_rates){0};
 
   /* Only solid particles that are not fully damaged can accumulate damage. */
-  if ((strength_state_get_phase(s, mp) != mat_phase_solid) || (d->total >= 1.f)) {
+  if ((strength_state_get_phase(s, mp) != mat_phase_solid) ||
+      (s->damage.total >= 1.f)) {
     return;
   }
 
-  /* Combined rate of total damage from both sources. */
-  const float dD_dt =
-      damage_tensile_compute_timestep_dD_dt(d, damage_timestep_factor, s, mp) +
-      damage_shear_compute_timestep_dD_dt(d, damage_timestep_factor, s, mp);
-
-  /* Time for total damage to grow by damage_timestep_factor. */
-  if (dD_dt > 0.f) {
-    p->strength_data.dt_damage = damage_timestep_factor / dD_dt;
-  }
+  /* Rate of each source of damage. */
+  damage_tensile_compute_cbrtD_dt(damage_rates, s, mp);
+  damage_shear_compute_dD_dt(damage_rates, s, mp);
 }
 
 /**
@@ -196,9 +182,9 @@ __attribute__((always_inline)) INLINE static void damage_compute_timescale(
 __attribute__((always_inline)) INLINE static void strength_first_init_part_damage(
     struct part *restrict p, struct xpart *restrict xp) {
 
-  const struct strength_damage no_damage = {0};
-  p->strength_data.damage = no_damage;
-  xp->strength_data.damage_full = no_damage;
+  p->strength_data.damage = (struct strength_damage){0};
+  xp->strength_data.damage_full = (struct strength_damage){0};
+  p->strength_data.damage_rates = (struct strength_damage_rates){0};
 
   damage_tensile_first_init_part(p);
 }

@@ -147,7 +147,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strengt
   strength_compute_timestep_stress_tensor(dt_cfl, &s, mp, strength_get_props());
 
   /* Update dt_cfl with damage contribution. */
-  strength_compute_timestep_damage(dt_cfl, p);
+  strength_compute_timestep_damage(dt_cfl, p, strength_get_props());
 }
 
 /**
@@ -252,8 +252,8 @@ hydro_end_force_strength(struct part *restrict p) {
   /* Update dS/dt for timestep. */
   stress_tensor_compute_dS_dt(&p->strength_data.dS_dt, rotation_rate_tensor, &s, mp);
 
-  /* Update damage accumulation timescale for timestep. */
-  damage_compute_timescale(p, &s, mp, strength_get_props());
+  /* Rates of damage accumulation, for the drift, kicks and time-step. */
+  damage_compute_rates(p, &s, mp);
 }
 
 /**
@@ -290,9 +290,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
 __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginning(
     struct part *restrict p, const float dt_therm) {
 
-  // ### FOR LEAPFROG: dS_dt is calculated similarly to e.g. du_dt and S is updated similarly to u
-  // ### dDamage_dt does not depend on positions or velocities of particle neighbours, only on properties
-  // ### of the particle itself. Therefore dDamage_dt is recalculated each time damage is updated.
+  // ### FOR LEAPFROG: dS_dt and the damage rates are calculated similarly to e.g. du_dt, and S and damage are updated similarly to u
   // ## Damage depends on S and S can depend on damage through Y makes.
 
   /* Strength state from the drifted values, before they are evolved. */
@@ -301,7 +299,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   hydro_strength_state_init_drift(&s, p, mp);
 
   /* Evolve damage. */
-  damage_predict_evolve(p, &s, mp, dt_therm);
+  damage_predict_evolve(p, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor,
@@ -372,7 +370,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   hydro_strength_state_init_kick(&s, p, xp, mp);
 
   /* Evolve damage. */
-  damage_kick_evolve(xp, &s, mp, dt_therm);
+  damage_kick_evolve(p, xp, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
   stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full,
