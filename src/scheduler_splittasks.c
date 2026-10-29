@@ -440,6 +440,10 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 /**
  * @brief Split a FOF task if too large.
  *
+ * Both the linking (fof_self) and attaching (fof_attach_self) self tasks are
+ * split into self tasks on the progeny and pair tasks between them, of the
+ * same kind as the original. Pair tasks are not split.
+ *
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
@@ -453,7 +457,10 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_fof_pair && t->cj == NULL) ||
+    if ((t->ci == NULL) ||
+        ((t->type == task_type_fof_pair ||
+          t->type == task_type_fof_attach_pair) &&
+         t->cj == NULL) ||
         t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
@@ -464,10 +471,16 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
     }
 
     /* Self-interaction? */
-    if (t->type == task_type_fof_self) {
+    if (t->type == task_type_fof_self || t->type == task_type_fof_attach_self) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
+
+      /* Linking or attaching? The progeny tasks are of the same kind. */
+      const enum task_types self_type = t->type;
+      const enum task_types pair_type = (t->type == task_type_fof_self)
+                                            ? task_type_fof_pair
+                                            : task_type_fof_attach_pair;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -488,7 +501,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
         for (int k = first_child + 1; k < 8; k++)
           if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
             scheduler_splittask_fof(
-                scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
+                scheduler_addtask(s, self_type, t->subtype, 0, 0,
                                   ci->progeny[k], NULL),
                 s);
 
@@ -498,7 +511,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
             for (int k = j + 1; k < 8; k++)
               if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
                 scheduler_splittask_fof(
-                    scheduler_addtask(s, task_type_fof_pair, t->subtype, 0, 0,
+                    scheduler_addtask(s, pair_type, t->subtype, 0, 0,
                                       ci->progeny[j], ci->progeny[k]),
                     s);
       } /* Cell is split */
@@ -525,7 +538,8 @@ void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
     struct task *t = &tasks[ind];
 
     /* Invoke the correct splitting strategy */
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair ||
+        t->type == task_type_fof_attach_self) {
       scheduler_splittask_fof(t, s);
     }
   }
