@@ -248,6 +248,13 @@ void cooling_update(const struct phys_const *phys_const,
         "their previous state; %lld of them on a species that became NaN or "
         "infinite), %lld recovered by retrying.",
         failed, not_finite, recovered);
+
+  const long long accuracy_bound = cooling_pop_geajay_accuracy_bound_count();
+  if (accuracy_bound > 0)
+    message(
+        "geajay solves in the previous step that ended with the accuracy "
+        "bound exceeded: %lld (the results are stored).",
+        accuracy_bound);
 }
 
 /**
@@ -1866,8 +1873,14 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
     cooling->context = cooling_create_options_context(
         cooling, &chemistry_as_set, &context_error);
   if (cooling->context == NULL)
-    error("geajay refused the chemistry parameters (error %d): %s",
-          (int)context_error, geajay_last_error_message());
+    error("geajay refused the chemistry parameters (error %d)%s: %s",
+          (int)context_error,
+          cooling->self_shielding_method ==
+                  cooling_uv_self_shielding_HI_HeI_HeII_column
+              ? " (with GeajayCooling:uv_self_shielding: HI_HeI_HeII_column, "
+                "see the keys GeajayCooling:uv_shielding_*)"
+              : "",
+          geajay_last_error_message());
 
   if (cooling->redshift != -1 &&
       geajay_context_set_redshift(cooling->context, cooling->redshift) ==
