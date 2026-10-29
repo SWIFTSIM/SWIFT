@@ -38,7 +38,12 @@
  */
 __attribute__((always_inline)) INLINE static void damage_shear_set_state(
     struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {}
+    const struct mat_params *mp) {
+
+  /* Whether the yield stress limited S in the last drift. Only set in the
+   * drift, like the damage rates, which are computed from the drifted values. */
+  s->is_yielding = p->strength_data.is_yielding;
+}
 
 /**
  * @brief Compute the plastic strain at failure.
@@ -107,13 +112,14 @@ __attribute__((always_inline)) INLINE static void damage_shear_compute_dD_dt(
     return;
   }
 
-  /* Shear damage not accumulated if yield criterion is not reached. */
-  if (!yield_check_yield_criterion(s, mp)) {
+  /* Shear damage only accumulates if the yield stress limited the deviatoric
+   * stress tensor in the last drift. */
+  if (!s->is_yielding) {
     return;
   }
 
-  /* Calculate invariant of strain rate tensor. While yielding, assume that the
-   * plastic strain rate is approx. the total strain rate. */
+  /* Strain rate invariant, Collins+2004 Eqn. A7. While yielding, assume that
+   * all of the deviatoric strain rate is plastic. */
   const float E_dot = sqrtf(strength_state_get_strain_rate_J_2(s, mp));
 
   /* Calculate the plastic strain at failure. */

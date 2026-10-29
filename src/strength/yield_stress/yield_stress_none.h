@@ -94,20 +94,6 @@ __attribute__((always_inline)) INLINE static void yield_apply_damage_to_pressure
 }
 
 /**
- * @brief Check the yield criterion.
- *
- * With no yield stress method, there is no yield surface.
- *
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
-    struct strength_state *s, const struct mat_params *mp) {
-
-  return 0;
-}
-
-/**
  * @brief Apply the yield stress to a symmetric matrix.
  *
  * Empty function when configuring without yield stress method.
@@ -117,10 +103,15 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  * against the yield stress.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
+ *
+ * @return 0, since there is no yield surface.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline)) INLINE static int
 yield_apply_yield_stress_to_sym_matrix(
     struct sym_matrix *M, const struct sym_matrix deviatoric_stress_tensor,
-    struct strength_state *s, const struct mat_params *mp) {}
+    struct strength_state *s, const struct mat_params *mp) {
+
+  return 0;
+}
 
 #endif /* SWIFT_YIELD_STRESS_NONE_H */

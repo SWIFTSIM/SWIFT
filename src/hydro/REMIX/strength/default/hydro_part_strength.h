@@ -71,6 +71,9 @@ struct strength_part_data {
   // Deviatoric stress tensor
   struct sym_matrix deviatoric_stress_tensor;
 
+  // Whether the yield stress limited the deviatoric stress tensor in the last drift
+  int is_yielding;
+
   // Time derivative of deviatoric stress tensor
   struct sym_matrix dS_dt;
 

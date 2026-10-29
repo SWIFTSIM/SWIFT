@@ -308,8 +308,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   /* Apply yield stress to the stepped deviatoric stress tensor. The yield
    * stress comes from the state, at the start of the step like the rates, but
    * J_2 must be of the stepped tensor, since that is what gets limited. */
-  yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor,
-                                         p->strength_data.deviatoric_stress_tensor, &s, mp);
+  p->strength_data.is_yielding =
+      yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor,
+                                             p->strength_data.deviatoric_stress_tensor, &s, mp);
 
   strength_predict_extra_beginning(p, &s, mp, dt_therm);
 }

@@ -210,23 +210,6 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 }
 
 /**
- * @brief Check the yield criterion.
- *
- * Yield sqrt(J_2) >= Y, evaluated as J_2 >= Y^2 (Y is positive).
- * Returns 1 if the stress is on or beyond the yield surface, 0 if it is inside.
- *
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
-    struct strength_state *s, const struct mat_params *mp) {
-
-  const float yield_stress = strength_state_get_yield_stress(s, mp);
-
-  return strength_state_get_J_2(s, mp) >= yield_stress * yield_stress;
-}
-
-/**
  * @brief Apply the yield stress to a symmetric matrix.
  *
  * Scales the matrix back by Y / sqrt(J_2) when sqrt(J_2) exceeds the yield
@@ -237,8 +220,11 @@ __attribute__((always_inline)) INLINE static int yield_check_yield_criterion(
  * against the yield stress.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
+ *
+ * @return 1 if the yield stress limited the matrix, i.e. the particle is
+ * yielding, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static void
+__attribute__((always_inline)) INLINE static int
 yield_apply_yield_stress_to_sym_matrix(
     struct sym_matrix *M, const struct sym_matrix deviatoric_stress_tensor,
     struct strength_state *s, const struct mat_params *mp) {
@@ -252,6 +238,11 @@ yield_apply_yield_stress_to_sym_matrix(
       f = fminf(yield_stress / sqrtf(J_2), 1.f);
   }
 
+  /* If the yield stress is not limiting, early return 0. */
+  if (f >= 1.f) {
+    return 0;
+  }
+
   /* Reduce elements of symmetric matrix based on yield stress */
   M->xx *= f;
   M->yy *= f;
@@ -259,6 +250,8 @@ yield_apply_yield_stress_to_sym_matrix(
   M->xy *= f;
   M->xz *= f;
   M->yz *= f;
+
+  return f < 1.f;
 }
 
 #endif /* SWIFT_YIELD_STRESS_COLLINS_H */

@@ -272,6 +272,7 @@ __attribute__((always_inline)) INLINE static void strength_first_init_part_stres
   zero_sym_matrix(&p->strength_data.dS_dt);
   zero_sym_matrix(&p->strength_data.deviatoric_stress_tensor);
   zero_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full);
+  p->strength_data.is_yielding = 0;
 }
 
 #endif /* SWIFT_STRENGTH_STRESS_TENSOR_H */

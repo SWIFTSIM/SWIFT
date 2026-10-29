@@ -117,6 +117,12 @@ struct strength_state {
   /*! Strain rate tensor */
   struct sym_matrix strain_rate_tensor;
 
+#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+  /*! Whether the yield stress limited the deviatoric stress tensor in the
+   * last drift */
+  int is_yielding;
+#endif
+
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
   /*! Number of flaws for tensile damage accumulation */
   int number_of_flaws;
