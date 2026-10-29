@@ -1718,9 +1718,9 @@ static void radiation_packet_release_far_cell(
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     if (diag_overflow) {
       radiation_packet_diag(rpd_overflow_released, (double)e);
-      radiation_packet_diag_add_double(&radiation_packet_diag_delay[0],
-                                       (double)e * (now - end) /
-                                           (double)old_width);
+      radiation_packet_diag_add_double(
+          &radiation_packet_diag_delay[0],
+          (double)e * (now - end) / (double)old_width);
     }
 #endif
   }
