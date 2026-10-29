@@ -40,7 +40,8 @@
 #ifdef WITH_MPI
 /* The packet hop is compiled without its reverse booking here, so the outer
    part of a foreign sender would be lost. */
-#error "The ISRF packet transport with a two-sided gradient loop needs a single rank."
+#error \
+    "The ISRF packet transport with a two-sided gradient loop needs a single rank."
 #endif
 #define RADIATION_PACKET_RECEIVER_ACTIVE(active) 1
 #define RADIATION_PACKET_GRADIENT_WANT RADIATION_PACKET_REACH_ALL
