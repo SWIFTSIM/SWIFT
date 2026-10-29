@@ -20,7 +20,7 @@ Gravity:
 
 # Parameters governing the time integration. time_end and dt_max set the
 # step: the largest time_end / 2^k below dt_max, 9.375e-6. run.sh stops the
-# run after step n_steps.
+# run after n_steps steps.
 TimeIntegration:
   time_begin:        0.
   time_end:          2.4e-3

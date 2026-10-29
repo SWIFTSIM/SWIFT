@@ -11,7 +11,7 @@ gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
 gas_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
 clump=${clump:=1} #1: absorbing clump, 0: the same box without it
 star_mass=${star_mass:=29.7} #Star mass (Msun)
-n_steps=${n_steps:=64} #Index of the last time step
+n_steps=${n_steps:=64} #Number of time steps to run
 run_analysis=${run_analysis:=1} #Plot the result when the run ends
 radiation_table=${radiation_table:=PopII_parsec_spectral_with_pe_photon_energy.hdf5} #Table with MeanPhotonEnergyPE
 swift_exe=${swift_exe:="$PWD/../../../../../swift"} #swift binary
@@ -31,16 +31,28 @@ then
     "$scripts_location"/getGrackleCoolingTable.sh
 fi
 
-"$scripts_location"/getRadiationTable.sh "$radiation_table" || exit 1
-"$scripts_location"/checkRadiationTable.sh "$radiation_table" --with-isrf || exit 1
+# The table is not downloadable: build it with the pychem table generator.
+if [ ! -f "$radiation_table" ]
+then
+    echo "Radiation table '$radiation_table' not found. Set radiation_table=/path/to/table.hdf5." >&2
+    echo "It must carry MeanPhotonEnergyPE and Integrated_MeanPhotonEnergyPE in Data/Radiation (see README)." >&2
+    exit 1
+fi
+radiation_path=$(realpath "$radiation_table")
+radiation_table=$(basename "$radiation_path")
+
+"$scripts_location"/checkRadiationTable.sh "$radiation_path" --with-isrf || exit 1
 
 # The packet transport needs the mean photon energy of the PE band.
-python3 -c "
+for dataset in MeanPhotonEnergyPE Integrated_MeanPhotonEnergyPE
+do
+    python3 -c "
 import sys, h5py
-sys.exit(0 if 'MeanPhotonEnergyPE' in h5py.File(sys.argv[1], 'r')['Data/Radiation'] else 1)" "$radiation_table" || {
-    echo "$radiation_table has no MeanPhotonEnergyPE dataset. See the ISRF documentation." >&2
-    exit 1
-}
+sys.exit(0 if sys.argv[2] in h5py.File(sys.argv[1], 'r')['Data/Radiation'] else 1)" "$radiation_path" "$dataset" || {
+        echo "$radiation_path has no $dataset dataset in Data/Radiation (see README)." >&2
+        exit 1
+    }
+done
 
 here=$PWD
 if [ -d "$run_dir" ]
@@ -50,7 +62,7 @@ then
 fi
 mkdir -p "$run_dir/snap"
 cd "$run_dir"
-ln -s "$here/$glass_file" "$here/CloudyData_UVB=HM2012.h5" "$here/$radiation_table" .
+ln -s "$here/$glass_file" "$here/CloudyData_UVB=HM2012.h5" "$radiation_path" .
 cp "$here/params.yml" .
 
 echo "Generating initial conditions to run the example..."

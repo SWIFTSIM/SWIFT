@@ -4,20 +4,18 @@ transparent gas (1e3 atom/cm^3, 0.1 Msun particles, 262144 particles, 51.8
 smoothing lengths on a side, Z = 0.01 Zsun). The absorption length in the PE
 band is 32.6 pc, about 160 smoothing lengths and three times the box side.
 
-In transparent gas the light of one star dilutes as 1/r^2, so the field
-times r^2 does not change with r. The example runs the star for a few tens of
+In transparent gas the light of one star dilutes as 1/r^2. The example runs the star for a few tens of
 steps, so that the front of the light, which moves at about one smoothing
-length per step, crosses the box. Beyond the front the field is zero; light
-that leaves the box through a face re-enters through the opposite face,
-because the box is periodic.
+length per step, crosses the box. Beyond the front the field is zero. The box is periodic, so light that
+leaves through a face re-enters through the opposite face.
 
 `params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
-off (`GrackleCooling:disable_cooling_for_debugging: 1`): the gas stays at
-rest and the maps show the light only. `GEARFeedback:ISRF_packet_light_speed:
-cap` limits the speed of the light to 0.99 c, a limit that the fixed step
-never reaches. A packet makes one hop of about one smoothing length per step,
-so the light moves at about one smoothing length per step, much slower than
-c, and the run lasts a few tens of steps.
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
+the light only. The light is deliberately slow: its speed is set by the time
+step, not by c. A packet (the light that a particle hands on to its
+neighbours) makes one hop of about one smoothing length per step, which is
+about 20 km/s here. `GEARFeedback:ISRF_packet_light_speed` keeps its default
+(`cap`, 0.99 c). The run lasts a few tens of steps.
 
 # Configure
 ```
@@ -25,12 +23,17 @@ c, and the run lasts a few tens of steps.
 make -j
 ```
 `--with-chealpix` is required by the ISRF transport. The number of reception
-slots is the default of `--with-isrf-packet-slots` (12).
+slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
 
-The example needs a radiation table that carries MeanPhotonEnergyPE (see the
-ISRF documentation). `run.sh` takes `PopII_parsec_spectral_with_pe_photon_energy.hdf5`
-from this directory, from `$GEAR_RADIATION_TABLE` or from `~/programs/pychem`,
-in that order. `radiation_table=<file>` selects another table.
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table (see
+the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
+the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
 
 # Run
 ```
@@ -40,11 +43,11 @@ in that order. `radiation_table=<file>` selects another table.
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run`, which it empties first. Override a setting with an environment
 variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
-`star_mass` (Msun), `n_steps` (last step of the run), `swift_exe`, `run_dir`, `run_analysis`
+`star_mass` (Msun), `n_steps` (number of time steps), `swift_exe`, `run_dir`, `run_analysis`
 (0 skips the plot) and `extra_args` (further swift arguments).
 
 # Plot
 `run.sh` calls `plotThinBox.py` from the run directory. It writes
 `thin_box.png` from four snapshots: the median of the kernel-mean PE field
 times r^2 in bins of 1 smoothing length, normalised at r < 5 smoothing
-lengths, against r.
+lengths, against r. A flat curve means a pure 1/r^2 dilution.

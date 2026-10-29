@@ -6,27 +6,26 @@ pulse of 10 smoothing lengths, injected into the gas that lies in the cube at
 the first step, and it travels along a fixed direction. The beams meet at an
 angle of 180, 90 or 60 degrees, set by `angle`.
 
-The example shows what ISRF transport does with light that arrives from
-several directions at once. A gas particle holds the light in reception
-slots, one per direction cell, so two pulses that reach a particle from
-different directions are kept apart and each one continues on its way. The
-directions of the beams lie at least 15 degrees from the borders of the
-slots, for the default frame of the slots and 12 slots, so that each beam
-fills one slot.
+The example shows two pulses of light that travel in different directions and
+cross at the centre of the box. `angle` is the only setting that differs
+between the three runs. The beam directions lie away from the borders of the
+reception slots (defined under Configure), for the default frame of the slots
+and 12 slots.
 
 The pulses are injected by the test parameters
 `GEARFeedback:ISRF_packet_test_beam_1` and `_2` (box corners, direction and
-energy per particle). They are meant for tests, not for production runs.
+energy per particle in internal units; the layout of the 11 numbers is in
+`examples/parameter_example.yml`). They are meant for tests, not for production runs.
 `makeIC.py` writes their values to `beam_args.txt` and `run.sh` passes them
 to swift. There is no star in this example.
 
 `params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
-off (`GrackleCooling:disable_cooling_for_debugging: 1`): the gas stays at
-rest and the maps show the light only. `GEARFeedback:ISRF_packet_light_speed:
-cap` limits the speed of the light to 0.99 c, a limit that the fixed step
-never reaches. A packet makes one hop of about one smoothing length per step,
-so the light moves at about one smoothing length per step, much slower than
-c, and the run lasts a few tens of steps.
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
+the light only. The light is deliberately slow: its speed is set by the time
+step, not by c. A packet (the light that a particle hands on to its
+neighbours) makes one hop of about one smoothing length per step, which is
+about 20 km/s here. `GEARFeedback:ISRF_packet_light_speed` keeps its default
+(`cap`, 0.99 c). The run lasts a few tens of steps.
 
 # Configure
 ```
@@ -34,12 +33,17 @@ c, and the run lasts a few tens of steps.
 make -j
 ```
 `--with-chealpix` is required by the ISRF transport. The number of reception
-slots is the default of `--with-isrf-packet-slots` (12).
+slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
 
-The example needs a radiation table that carries MeanPhotonEnergyPE (see the
-ISRF documentation). `run.sh` takes `PopII_parsec_spectral_with_pe_photon_energy.hdf5`
-from this directory, from `$GEAR_RADIATION_TABLE` or from `~/programs/pychem`,
-in that order. `radiation_table=<file>` selects another table.
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table (see
+the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
+the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
 
 # Run
 ```
@@ -51,7 +55,7 @@ angle=60 ./run.sh
 `run.sh` builds the initial conditions and runs swift in its own directory,
 `run_angle<angle>`, which it empties first. Override a setting with an environment
 variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
-`angle` (180, 90 or 60), `n_steps` (last step of the run), `swift_exe`, `run_dir`, `run_analysis`
+`angle` (180, 90 or 60), `n_steps` (number of time steps), `swift_exe`, `run_dir`, `run_analysis`
 (0 skips the plot) and `extra_args` (further swift arguments).
 
 # Plot

@@ -51,7 +51,7 @@ def main():
         common, i1, i0 = np.intersect1d(ids, ids0, return_indices=True)
         x, q, q0 = x[i1], q[i1], c0[i0]
     except OSError:
-        pass
+        print("No control run ../run_clump0: only the first panel is plotted.")
     r = (x - star) / h0
     dist = np.linalg.norm(r, axis=1)
     keep = (np.abs(r @ n) < 1.5) & (dist > 2.0)
