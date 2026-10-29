@@ -148,7 +148,9 @@ struct feedback_isrf_operator_data {
 
 /*! Far arrival cells per slot, for light that arrives beyond the near bins.
     Their width is a power of two times the step. */
+#ifndef RADIATION_PACKET_FAR_CELLS
 #define RADIATION_PACKET_FAR_CELLS 2
+#endif
 
 #if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
     RADIATION_PACKET_SLOTS != 16

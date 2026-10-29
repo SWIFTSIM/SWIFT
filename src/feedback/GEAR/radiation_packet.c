@@ -119,6 +119,65 @@ static void radiation_packet_count_overflow(void) {}
 static void radiation_packet_count_clamp(void) {}
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+/*! Counters of the arrival containers, per step and since the start. */
+enum radiation_packet_diag {
+  rpd_placed_new,
+  rpd_placed_again,
+  rpd_overflow_inside_new,
+  rpd_overflow_inside_again,
+  rpd_overflow_after_end_new,
+  rpd_overflow_after_end_again,
+  rpd_overflow_before_end_new,
+  rpd_overflow_before_end_again,
+  rpd_past_end_taken,
+  rpd_past_end_due,
+  rpd_overflow_released,
+  rpd_scale_at_limit,
+  rpd_overflow_waiting,
+  rpd_far_waiting,
+  rpd_near_waiting,
+  rpd_emitted,
+  rpd_count
+};
+static const char *radiation_packet_diag_name[rpd_count] = {
+    "placed_new",         "placed_again",
+    "ovf_inside_new",     "ovf_inside_again",
+    "ovf_after_end_new",  "ovf_after_end_again",
+    "ovf_before_end_new", "ovf_before_end_again",
+    "past_end_taken",     "past_end_due",
+    "ovf_released",       "scale_at_limit",
+    "ovf_waiting",        "far_waiting",
+    "near_waiting",       "emitted"};
+static long long radiation_packet_diag_n[2][rpd_count];
+static double radiation_packet_diag_e[2][rpd_count];
+static double radiation_packet_diag_delay[2];
+
+/*! Is the current placing a re-placement of waiting light? */
+static _Thread_local int radiation_packet_diag_again = 0;
+
+static void radiation_packet_diag_add_double(double *x, const double v) {
+  double old, sum;
+  __atomic_load(x, &old, __ATOMIC_RELAXED);
+  do {
+    sum = old + v;
+  } while (!__atomic_compare_exchange(x, &old, &sum, 0, __ATOMIC_RELAXED,
+                                      __ATOMIC_RELAXED));
+}
+
+static double radiation_packet_diag_sum(const float e[ISRF_OPERATOR_COUNT]) {
+  double sum = 0.;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) sum += (double)e[b];
+  return sum;
+}
+
+static void radiation_packet_diag(const enum radiation_packet_diag k,
+                                  const double energy) {
+  __sync_fetch_and_add(&radiation_packet_diag_n[0][k], 1);
+  radiation_packet_diag_add_double(&radiation_packet_diag_e[0][k], energy);
+}
+#endif
+
 /**
  * @brief Limit the speed of the light of a share, or lift the limit.
  *
@@ -772,6 +831,32 @@ void radiation_packet_step_diagnostics(const struct engine *e) {
         "light is delivered early).",
         e->step, counts[0], counts[1], counts[2],
         1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
+  /* Per rank, the step before e->step. */
+  for (int k = 0; k < rpd_count; k++) {
+    radiation_packet_diag_n[1][k] += radiation_packet_diag_n[0][k];
+    radiation_packet_diag_e[1][k] += radiation_packet_diag_e[0][k];
+  }
+  radiation_packet_diag_delay[1] += radiation_packet_diag_delay[0];
+  for (int t = 0; t < 2; t++) {
+    char line[2048];
+    int len =
+        snprintf(line, sizeof(line), "rpd %s rank %d step %d time %.9e",
+                 t == 0 ? "step" : "total", e->nodeID, e->step - 1, e->time);
+    for (int k = 0; k < rpd_count && len < (int)sizeof(line); k++)
+      len +=
+          snprintf(line + len, sizeof(line) - len, " %s %lld %.6e",
+                   radiation_packet_diag_name[k], radiation_packet_diag_n[t][k],
+                   radiation_packet_diag_e[t][k]);
+    if (len < (int)sizeof(line))
+      snprintf(line + len, sizeof(line) - len, " ovf_delay_e_steps %.6e",
+               radiation_packet_diag_delay[t]);
+    message("%s", line);
+  }
+  for (int k = 0; k < rpd_count; k++) {
+    radiation_packet_diag_n[0][k] = 0;
+    radiation_packet_diag_e[0][k] = 0.;
+  }
+  radiation_packet_diag_delay[0] = 0.;
 }
 #endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
@@ -1034,6 +1119,11 @@ static int radiation_packet_take_bin(struct feedback_isrf_packet_slot_data *sl,
   rec->last = radiation_packet_time_later((double)end -
                                           (double)sl->bin_stamp_below_end[j]);
   rec->first = rec->last;
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  if (occupied && sl->bin_stamp_below_end[j] >= 0.f && rec->last > (double)end)
+    radiation_packet_diag(rpd_past_end_taken,
+                          radiation_packet_diag_sum(rec->energy));
+#endif
   sl->bin_stamp_below_end[j] = 0.f;
   return occupied;
 }
@@ -1066,6 +1156,11 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
                    ? radiation_packet_time_later((double)end -
                                                  (double)sl->far_first_below[c])
                    : rec->last;
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  if (occupied && sl->far_last_below[c] >= 0.f && rec->last > (double)end)
+    radiation_packet_diag(rpd_past_end_taken,
+                          radiation_packet_diag_sum(rec->energy));
+#endif
   sl->far_first_below[c] = 0.f;
   sl->far_last_below[c] = 0.f;
   return occupied;
@@ -1163,6 +1258,28 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
       if (pe[b] != 0.f || pn[b] != 0.f) any = 1;
     }
     if (!any) continue;
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+    {
+      double piece = 0.;
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) piece += (double)pe[b];
+      const int again = radiation_packet_diag_again;
+      radiation_packet_diag(again ? rpd_placed_again : rpd_placed_new, piece);
+      if (j == n) {
+        if (last <= ub[n - 1])
+          radiation_packet_diag(
+              again ? rpd_overflow_inside_again : rpd_overflow_inside_new,
+              piece);
+        else if (last >= (double)max_nr_timesteps)
+          radiation_packet_diag(
+              again ? rpd_overflow_after_end_again : rpd_overflow_after_end_new,
+              piece);
+        else
+          radiation_packet_diag(again ? rpd_overflow_before_end_again
+                                      : rpd_overflow_before_end_new,
+                                piece);
+      }
+    }
+#endif
     if (j < RADIATION_PACKET_BINS) {
       const double stamp = fmin(last, ub[j]);
       radiation_packet_add_to_bin(sl, j, pe, pn,
@@ -1273,9 +1390,15 @@ static void radiation_packet_regrid(
       for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
         if (radiation_packet_take_far(sl, c, old_far_end[c], &rec[count]))
           count++;
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+    radiation_packet_diag_again = 1;
+#endif
     for (int i = 0; i < count; i++)
       radiation_packet_place(sl, ub, rec[i].energy, rec[i].photons,
                              rec[i].first, rec[i].last);
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+    radiation_packet_diag_again = 0;
+#endif
   }
 }
 
@@ -1494,6 +1617,7 @@ static void radiation_packet_merge_slot_unlimited(
  * @param ledger The ledger of the particle, per band.
  * @param c The far cell.
  * @param far_end End of the far cell on the previous lattice.
+ * @param old_width Width of the near bins of the previous step.
  * @param now Time of the merge.
  * @param total_energy (in, out) Energy released to the held packet, summed.
  * @param stamp (in, out) Latest arrival time of what is released.
@@ -1501,8 +1625,8 @@ static void radiation_packet_merge_slot_unlimited(
 static void radiation_packet_release_far_cell(
     struct feedback_isrf_packet_slot_data *sl,
     struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
-    const int c, const integertime_t far_end, const double now,
-    float *total_energy, double *stamp) {
+    const int c, const integertime_t far_end, const integertime_t old_width,
+    const double now, float *total_energy, double *stamp) {
 
   float cell_total = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
@@ -1516,6 +1640,11 @@ static void radiation_packet_release_far_cell(
   const double first =
       single ? radiation_packet_time_later(end - (double)sl->far_first_below[c])
              : last;
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  if (sl->far_last_below[c] >= 0.f && now >= end && now < last)
+    radiation_packet_diag(rpd_past_end_due, (double)cell_total);
+  const int diag_overflow = sl->far_last_below[c] < 0.f;
+#endif
   double f = 0.;
   if (now >= last)
     f = 1.;
@@ -1564,6 +1693,14 @@ static void radiation_packet_release_far_cell(
   if (e > 0.f) {
     *total_energy += e;
     *stamp = fmax(*stamp, fmin(last, now));
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+    if (diag_overflow) {
+      radiation_packet_diag(rpd_overflow_released, (double)e);
+      radiation_packet_diag_add_double(&radiation_packet_diag_delay[0],
+                                       (double)e * (now - end) /
+                                           (double)old_width);
+    }
+#endif
   }
   if (all) {
     sl->far_first_below[c] = 0.f;
@@ -1657,8 +1794,8 @@ static void radiation_packet_merge_slot_limited(
 
   /* The far cells. */
   for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
-    radiation_packet_release_far_cell(sl, ledger, c, old_far_end[c], now,
-                                      &total_energy, &stamp);
+    radiation_packet_release_far_cell(sl, ledger, c, old_far_end[c], old_width,
+                                      now, &total_energy, &stamp);
 
   /* Origin: the mean origin of everything that waited. */
   double offset[3] = {0., 0., 0.};
@@ -1727,6 +1864,26 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
     old_far_end[c] = radiation_packet_far_end(pk, c);
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  {
+    double far = 0., near = 0., ovf = 0.;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+        for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+          near += (double)pk->slot[s].band[b].bin_energy[j];
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++) {
+          far += (double)pk->slot[s].band[b].far_energy[c];
+          if (pk->slot[s].far_last_below[c] < 0.f)
+            ovf += (double)pk->slot[s].band[b].far_energy[c];
+        }
+      }
+    if (near > 0.) radiation_packet_diag(rpd_near_waiting, near);
+    if (far > 0.) radiation_packet_diag(rpd_far_waiting, far);
+    if (ovf > 0.) radiation_packet_diag(rpd_overflow_waiting, ovf);
+    if (far > 0. && old_scale >= radiation_packet_far_scale_limit(old_width))
+      radiation_packet_diag(rpd_scale_at_limit, far);
+  }
+#endif
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
     radiation_packet_merge_slot_limited(&pk->slot[s], pk->band, old_first,
                                         old_width, old_far_end, ti_current, s,
@@ -1875,6 +2032,9 @@ void radiation_packet_star_book_emission(struct spart *sp,
     sp->feedback_data.radiation.packet.emitted_energy[b] += E;
     sp->feedback_data.radiation.packet.emitted_photons[b] +=
         E * sp->feedback_data.radiation.packet.photon_fraction[b];
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+    radiation_packet_diag(rpd_emitted, E);
+#endif
   }
 
   const double floor = radiation_packet_cone_floor(sp);
