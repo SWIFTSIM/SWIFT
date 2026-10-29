@@ -759,6 +759,9 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
   p->phase = xp->phase_full;
+  
+  /* Do strength resets before computing new values */
+  hydro_reset_predicted_values_strength(p, xp);
 
   /* Compute the pressure */
   const float pressure = hydro_get_comoving_pressure(p);
@@ -770,12 +773,10 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  /* Set signal velocity based on max wave speed. */
+  /* Set signal velocity based on max wave speed */
   float max_wave_speed;
   hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
   p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
-
-  hydro_reset_predicted_values_strength(p, xp);
 }
 
 /**
@@ -833,6 +834,9 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   const float floor_u = FLT_MIN;
   p->u = max(p->u, floor_u);
 
+  /* Do strength updates before computing new values */
+  hydro_predict_strength_end(p, dt_therm);
+
   /* Compute the new pressure */
   const float pressure = hydro_get_comoving_pressure(p);
 
@@ -843,12 +847,10 @@ __attribute__((always_inline)) INLINE static void hydro_predict_extra(
   p->force.pressure = pressure;
   p->force.soundspeed = soundspeed;
 
-  /* Set signal velocity based on max wave speed. */
+  /* Set signal velocity based on max wave speed */
   float max_wave_speed;
   hydro_compute_max_wave_speed(&max_wave_speed, p, soundspeed, p->rho_evol);
   p->force.v_sig = max(p->force.v_sig, 2.f * max_wave_speed);
-
-  hydro_predict_strength_end(p, dt_therm);
 }
 
 /**

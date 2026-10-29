@@ -341,12 +341,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
 
-  const float soundspeed =
-      gas_soundspeed_from_internal_energy(p->rho, p->u, p->mat_id);
-  p->force.pressure = strength_state_get_pressure(&s, mp);
-  p->force.soundspeed = soundspeed;
-  p->force.v_sig = max(p->force.v_sig, 2.f * soundspeed);
-
   /* Store the quantities derived from the state. */
   hydro_strength_state_store_drift(p, &s, mp);
 }
