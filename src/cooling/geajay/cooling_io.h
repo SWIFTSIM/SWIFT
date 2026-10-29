@@ -526,6 +526,137 @@ INLINE static void cooling_read_background_parameters(
 }
 
 /**
+ * @brief Read the options of the column shielding of the UV background.
+ *
+ * The options are read with the method uv_self_shielding: HI_HeI_HeII_column.
+ * Any of them set without it stops the run, so that none is ignored silently.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param cooling The cooling properties to initialize.
+ */
+INLINE static void cooling_read_column_shielding_parameters(
+    struct swift_params *parameter_file,
+    struct cooling_function_data *cooling) {
+
+  static const char *keys[] = {"GeajayCooling:uv_shielding_table_file",
+                               "GeajayCooling:uv_shielding_length_method",
+                               "GeajayCooling:uv_shielding_length_factor",
+                               "GeajayCooling:uv_shielding_path"};
+
+  cooling->uv_shielding_length_method = GEAJAY_UV_SHIELDING_LENGTH_NONE;
+  cooling->uv_shielding_length_factor = 1.;
+  cooling->uv_shielding_path_in_kernel_radii = 1.0f;
+  cooling->uv_shielding_table_file[0] = '\0';
+
+  if (cooling->self_shielding_method !=
+      cooling_uv_self_shielding_HI_HeI_HeII_column) {
+    if (parser_does_param_exist(parameter_file, keys[0]))
+      error(
+          "%s is set, but GeajayCooling:uv_self_shielding is not "
+          "HI_HeI_HeII_column.",
+          keys[0]);
+    if (cooling_read_choice(parameter_file, keys[1],
+                            "uv_shielding_length_method",
+                            GEAJAY_UV_SHIELDING_LENGTH_NONE, NULL,
+                            0) != GEAJAY_UV_SHIELDING_LENGTH_NONE)
+      error(
+          "%s is set, but GeajayCooling:uv_self_shielding is not "
+          "HI_HeI_HeII_column.",
+          keys[1]);
+    if (parser_get_opt_param_double(parameter_file, keys[2], 1.) != 1.)
+      error(
+          "%s is set, but GeajayCooling:uv_self_shielding is not "
+          "HI_HeI_HeII_column.",
+          keys[2]);
+    char path[PARSER_MAX_LINE_SIZE];
+    parser_get_opt_param_string(parameter_file, keys[3], path, "kernel_radius");
+    if (strcmp(path, "kernel_radius") != 0)
+      error(
+          "%s is set, but GeajayCooling:uv_self_shielding is not "
+          "HI_HeI_HeII_column.",
+          keys[3]);
+    return;
+  }
+
+#if COOLING_GEAJAY_MODE >= 1
+  if (cooling->primordial_chemistry < 1)
+    error(
+        "GeajayCooling:uv_self_shielding: HI_HeI_HeII_column needs a species "
+        "network (H_He or above): GeajayCooling:primordial_chemistry_network "
+        "is %d.",
+        cooling->primordial_chemistry);
+#else
+  error(
+      "GeajayCooling:uv_self_shielding: HI_HeI_HeII_column needs a species "
+      "network: this SWIFT was compiled with COOLING_GEAJAY_MODE 0.");
+#endif
+
+  /* The method shields the UV background, which must exist */
+  const int ionising_background_on =
+      cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND
+          ? (cooling->ionising_background_model ==
+                 GEAJAY_IONISING_BACKGROUND_UV_TABLE ||
+             (cooling->ionising_background_model ==
+                  GEAJAY_IONISING_BACKGROUND_DEFAULT &&
+              cooling->with_uv_background))
+          : cooling->with_uv_background;
+  if (!ionising_background_on)
+    error(
+        "GeajayCooling:uv_self_shielding: HI_HeI_HeII_column shields the UV "
+        "background, but none is loaded. Set GeajayCooling:with_UV_background: "
+        "1 (background_mode: grackle), or ionising_background_model: "
+        "uv_table (background_mode: per_band).");
+
+  if (!parser_does_param_exist(parameter_file, keys[0]))
+    error(
+        "GeajayCooling:uv_self_shielding: HI_HeI_HeII_column needs "
+        "GeajayCooling:uv_shielding_table_file, the column file of the UV "
+        "background.");
+  parser_get_param_string(parameter_file, keys[0],
+                          cooling->uv_shielding_table_file);
+  FILE *column_file = fopen(cooling->uv_shielding_table_file, "r");
+  if (column_file == NULL)
+    error("%s: cannot open '%s'.", keys[0], cooling->uv_shielding_table_file);
+  fclose(column_file);
+
+  cooling->uv_shielding_length_method =
+      cooling_read_choice(parameter_file, keys[1], "uv_shielding_length_method",
+                          GEAJAY_UV_SHIELDING_LENGTH_NONE, NULL, 0);
+  if (cooling->uv_shielding_length_method != GEAJAY_UV_SHIELDING_LENGTH_GIVEN &&
+      cooling->uv_shielding_length_method != GEAJAY_UV_SHIELDING_LENGTH_JEANS)
+    error(
+        "%s must be given_length or Jeans (or %d or %d) with "
+        "uv_self_shielding: HI_HeI_HeII_column, got %d.",
+        keys[1], (int)GEAJAY_UV_SHIELDING_LENGTH_GIVEN,
+        (int)GEAJAY_UV_SHIELDING_LENGTH_JEANS,
+        cooling->uv_shielding_length_method);
+
+  cooling->uv_shielding_length_factor =
+      parser_get_opt_param_double(parameter_file, keys[2], 1.);
+  if (!(cooling->uv_shielding_length_factor > 0.) ||
+      !(cooling->uv_shielding_length_factor < 1e300))
+    error("%s must be finite and above 0, got %g.", keys[2],
+          cooling->uv_shielding_length_factor);
+
+  char path[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file, keys[3], path, "kernel_radius");
+  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_JEANS) {
+    if (strcmp(path, "kernel_radius") != 0)
+      error("%s is set, but %s is Jeans: geajay computes the length.", keys[3],
+            keys[1]);
+    return;
+  }
+
+  if (strcmp(path, "kernel_radius") == 0)
+    cooling->uv_shielding_path_in_kernel_radii = 1.0f;
+  else if (strcmp(path, "kernel_diameter") == 0)
+    cooling->uv_shielding_path_in_kernel_radii = 2.0f;
+  else
+    error("%s must be kernel_radius or kernel_diameter, got '%s'.", keys[3],
+          path);
+}
+
+/**
  * @brief Parser the parameter file and initialize the #cooling_function_data
  *
  * @param parameter_file The parser parameter file
@@ -668,10 +799,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     case cooling_uv_self_shielding_HI:
     case cooling_uv_self_shielding_HI_HeI:
     case cooling_uv_self_shielding_HI_HeI_no_HeII:
+    case cooling_uv_self_shielding_HI_HeI_HeII_column:
       break;
     default:
-      error("GeajayCooling:uv_self_shielding must be -1, 0, 1, 2 or 3, got %d.",
-            uv_shielding);
+      error(
+          "GeajayCooling:uv_self_shielding must be -1, 0, 1, 2, 3 or 4, got "
+          "%d.",
+          uv_shielding);
   }
   cooling->self_shielding_method = (enum cooling_uv_self_shielding)uv_shielding;
 
@@ -784,6 +918,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling_read_cosmic_ray_parameters(parameter_file, cooling);
   cooling_read_background_parameters(parameter_file, cooling, us);
+  cooling_read_column_shielding_parameters(parameter_file, cooling);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */

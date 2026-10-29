@@ -566,6 +566,18 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Compton X-ray heating = %d",
           cooling->chemistry_data.Compton_xray_heating);
   message("Self Shielding = %i", (int)cooling->self_shielding_method);
+  if (cooling->self_shielding_method ==
+      cooling_uv_self_shielding_HI_HeI_HeII_column) {
+    message("Column shielding file = %s", cooling->uv_shielding_table_file);
+    message(
+        "Column shielding length = %s, factor = %g",
+        cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN
+            ? (cooling->uv_shielding_path_in_kernel_radii == 1.0f
+                   ? "given, one kernel support radius"
+                   : "given, one kernel support diameter")
+            : "Jeans",
+        cooling->uv_shielding_length_factor);
+  }
   message(
       "Cloudy table density range = [%g, %g] cm^-3, beyond it the lookup %s",
       cooling->table_density_min_Hpcm3, cooling->table_density_max_Hpcm3,
@@ -1615,7 +1627,8 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
 }
 
 /**
- * @brief Create the context of background_mode "per_band" from the options.
+ * @brief Create the context from the options, for background_mode "per_band"
+ * or the column shielding of the UV background.
  *
  * The context owns a second copy of the rate storage, filled from the same
  * parameters as #cooling_function_data.chemistry_rates.
@@ -1625,7 +1638,7 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
  * @param context_error (return) The reason of a refusal.
  * @return The context, or NULL.
  */
-static geajay_context *cooling_create_per_band_context(
+static geajay_context *cooling_create_options_context(
     const struct cooling_function_data *cooling,
     const geajay_chemistry_data *chemistry,
     geajay_context_error *context_error) {
@@ -1650,6 +1663,14 @@ static geajay_context *cooling_create_per_band_context(
     options.lw_rates_file = cooling->lw_rates_file;
   if (cooling->isrf_rates_file[0] != '\0')
     options.isrf_rates_file = cooling->isrf_rates_file;
+
+  if (cooling->self_shielding_method ==
+      cooling_uv_self_shielding_HI_HeI_HeII_column) {
+    options.uv_self_shielding = GEAJAY_UV_SHIELDING_COLUMN;
+    options.uv_shielding_length_method = cooling->uv_shielding_length_method;
+    options.uv_shielding_length_factor = cooling->uv_shielding_length_factor;
+    options.uv_shielding_table_file = cooling->uv_shielding_table_file;
+  }
 
   return geajay_context_create_from_options(&options, &cooling->units,
                                             context_error);
@@ -1723,6 +1744,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   switch (cooling->self_shielding_method) {
     case cooling_uv_self_shielding_density_threshold:
     case cooling_uv_self_shielding_none:
+    case cooling_uv_self_shielding_HI_HeI_HeII_column:
+      /* The column method is passed through the options of the context */
       chemistry->self_shielding_method = GEAJAY_UV_SHIELDING_NONE;
       break;
     case cooling_uv_self_shielding_HI:
@@ -1784,12 +1807,14 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
         (int)GEAJAY_RATE_NCHANNELS);
 
   geajay_context_error context_error;
-  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_GRACKLE)
+  if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_GRACKLE &&
+      cooling->self_shielding_method !=
+          cooling_uv_self_shielding_HI_HeI_HeII_column)
     cooling->context = geajay_context_create(&cooling->chemistry_data,
                                              &cooling->chemistry_rates,
                                              &cooling->units, &context_error);
   else
-    cooling->context = cooling_create_per_band_context(
+    cooling->context = cooling_create_options_context(
         cooling, &chemistry_as_set, &context_error);
   if (cooling->context == NULL)
     error("geajay refused the chemistry parameters (error %d): %s",

@@ -719,7 +719,12 @@ GeajayCooling:
   energy_change_limit: 0                       # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1], or 0 for the geajay default: 0.03 with cheap_energy_update 1, 0.1 with 0 (the value Grackle fixes). Smaller values take more sub-steps (default: 0)
   cheap_energy_update: 1                       # (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order (default: the geajay default, 1)
   thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
-  uv_self_shielding: none                      # (optional) Self shielding: none, HI, HI_HeI or HI_HeI_no_HeII (the library's methods, or 0 to 3), or density_threshold (or -1) for the threshold below (default: none)
+  uv_self_shielding: none                      # (optional) Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or HI_HeI_HeII_column (the library's methods, or 0 to 4), or density_threshold (or -1) for the threshold below (default: none)
+  # Column shielding of the UV background, read only with uv_self_shielding: HI_HeI_HeII_column (setting any of the four keys otherwise stops the run). It needs a species network (H_He or above) and a UV background: with_UV_background: 1, or ionising_background_model: uv_table under background_mode: per_band. The factors come from the column file, built from the spectrum of the UV rates file in use; geajay refuses a file of another spectrum or redshift grid.
+  # uv_shielding_table_file: FG20_column_shielding.h5 # Required with HI_HeI_HeII_column. Column file of the UV background. No default
+  uv_shielding_length_method: none             # Required with HI_HeI_HeII_column: given_length (the proper length path * kernel_gamma * h * a) or Jeans (local Jeans length); none is refused there (default: none)
+  uv_shielding_length_factor: 1                # (optional) Factor R_sh on the length, above 0 (default: 1)
+  uv_shielding_path: kernel_radius             # (optional) Read only with uv_shielding_length_method: given_length. Path in kernel support radii: kernel_radius or kernel_diameter (default: kernel_radius)
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Density threshold of the self shielding
   h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (kernel support radius) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported.
   H2_self_shielding_path: kernel_radius        # (optional) Path length for method 2: kernel_radius or kernel_diameter

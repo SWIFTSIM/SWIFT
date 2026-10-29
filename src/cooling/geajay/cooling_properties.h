@@ -38,8 +38,7 @@
 /**
  * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
  *
- * The values 0 to 3 are those of geajay_uv_self_shielding. geajay has no
- * column-based method yet.
+ * The values 0 to 4 are those of geajay_uv_self_shielding.
  */
 enum cooling_uv_self_shielding {
   /*! Density threshold, handled by SWIFT (option "density_threshold") */
@@ -51,7 +50,10 @@ enum cooling_uv_self_shielding {
   /*! HI and HeI, HeII thin */
   cooling_uv_self_shielding_HI_HeI = 2,
   /*! HI and HeI, no HeII ionisation and heating */
-  cooling_uv_self_shielding_HI_HeI_no_HeII = 3
+  cooling_uv_self_shielding_HI_HeI_no_HeII = 3,
+  /*! Factors from the H I, He I and He II columns, read from a column file
+   * (option "HI_HeI_HeII_column") */
+  cooling_uv_self_shielding_HI_HeI_HeII_column = 4
 };
 
 /**
@@ -256,7 +258,7 @@ struct cooling_function_data {
   /*! initial nHDI to nH ratio (number density ratio) */
   float initial_nHDI_to_nH_ratio;
 
-  /*! Self shielding method (1 -> 3 for the library's ones, 0 for none and -1
+  /*! Self shielding method (1 -> 4 for the library's ones, 0 for none and -1
    * for a density threshold) */
   enum cooling_uv_self_shielding self_shielding_method;
 
@@ -279,6 +281,23 @@ struct cooling_function_data {
    * (GeajayCooling:H2_self_shielding_path). The length handed to geajay is
    * half this path, and geajay forms N_H2 = n_H2 l from it. */
   float H2_self_shielding_path_in_kernel_radii;
+
+  /*! Source of the length of the column shielding, with the method 4
+   * (GeajayCooling:uv_shielding_length_method):
+   * GEAJAY_UV_SHIELDING_LENGTH_GIVEN or GEAJAY_UV_SHIELDING_LENGTH_JEANS. */
+  int uv_shielding_length_method;
+
+  /*! Factor that multiplies the length of the column shielding, applied by
+   * geajay (GeajayCooling:uv_shielding_length_factor). */
+  double uv_shielding_length_factor;
+
+  /*! Path of the column shielding with a given length, in kernel support
+   * radii kernel_gamma * h: 1 for "kernel_radius" (default), 2 for
+   * "kernel_diameter" (GeajayCooling:uv_shielding_path). */
+  float uv_shielding_path_in_kernel_radii;
+
+  /*! Column file of the UV background of the method 4; empty otherwise. */
+  char uv_shielding_table_file[PARSER_MAX_LINE_SIZE];
 
   /*! Maximal number of sub-cycle iterations per solve, or 0 for the geajay
    * default (10000 x 0.1 / energy limit)
