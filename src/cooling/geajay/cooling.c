@@ -77,6 +77,11 @@ static long long cooling_geajay_not_finite_solves = 0;
  * retry since the last report. */
 static long long cooling_geajay_recovered_solves = 0;
 
+/*! geajay solves on this rank that ended with the accuracy bound exceeded
+ * (GEAJAY_FLAG_ACCURACY_BOUND_EXCEEDED) since the last report. The solve
+ * succeeded and its result is stored. */
+static long long cooling_geajay_accuracy_bound_solves = 0;
+
 /*! Set by the first particle above the density range of the Cloudy table. */
 static int cooling_geajay_table_edge_warned = 0;
 
@@ -128,6 +133,35 @@ const char *cooling_rate_channel_name(const int channel) {
   return channel < GEAJAY_RATE_NCHANNELS
              ? geajay_rate_channel_name(channel)
              : geajay_cosmic_ray_rate_channel_name(channel);
+}
+
+/**
+ * @brief Return the number of geajay solves on this rank that ended with the
+ * accuracy bound exceeded since the last call, and reset it to zero.
+ *
+ * @return The number of solves.
+ */
+long long cooling_pop_geajay_accuracy_bound_count(void) {
+  return atomic_swap(&cooling_geajay_accuracy_bound_solves, 0);
+}
+
+/**
+ * @brief Count a solve that ended with the accuracy bound exceeded.
+ *
+ * @param p The particle.
+ * @param status What happened in the solve.
+ */
+static void cooling_count_accuracy_bound(const struct part *p,
+                                         const geajay_particle_status *status) {
+  if (!(status->flags & GEAJAY_FLAG_ACCURACY_BOUND_EXCEEDED)) return;
+  atomic_inc(&cooling_geajay_accuracy_bound_solves);
+#ifdef SWIFT_DEBUG_CHECKS
+  message(
+      "Particle %lld: the geajay solve ended with the accuracy bound exceeded.",
+      p->id);
+#else
+  (void)p;
+#endif
 }
 
 /**
@@ -931,6 +965,7 @@ static double cooling_new_energy_cosmic_rays(
 
   cooling_set_cosmic_ray_loss(xp, output.cosmic_ray_energy_loss_rate);
   if (status->retries > 0) atomic_inc(&cooling_geajay_recovered_solves);
+  cooling_count_accuracy_bound(p, status);
 
   return output.internal_energy;
 }
@@ -1060,6 +1095,7 @@ static geajay_float cooling_new_energy_or_keep_previous(
   }
 
   if (status.retries > 0) atomic_inc(&cooling_geajay_recovered_solves);
+  cooling_count_accuracy_bound(p, &status);
 
   return output.internal_energy;
 }

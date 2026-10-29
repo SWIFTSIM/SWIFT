@@ -44,6 +44,8 @@ struct phys_const;
 struct unit_system;
 struct swift_params;
 
+long long cooling_pop_geajay_accuracy_bound_count(void);
+
 void cooling_pop_geajay_solve_failure_counts(long long *failed,
                                              long long *not_finite,
                                              long long *recovered);
