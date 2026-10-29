@@ -157,6 +157,10 @@ struct feedback_isrf_operator_data {
 #error "RADIATION_PACKET_SLOTS must be 8, 12 or 16."
 #endif
 
+#if RADIATION_PACKET_FAR_CELLS < 1
+#error "RADIATION_PACKET_FAR_CELLS must be at least 1."
+#endif
+
 /*! Text of the snapshot descriptions: what a reception slot is. */
 #if RADIATION_PACKET_SLOTS == 8
 #define RADIATION_PACKET_SLOT_TEXT                                         \

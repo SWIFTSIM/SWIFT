@@ -1067,6 +1067,24 @@ static void radiation_packet_piece_ends(
     ub[RADIATION_PACKET_BINS + c] = (double)(f0 + (integertime_t)c * width);
 }
 
+/**
+ * @brief Time of a stamp stored as a distance below the end of a near bin or
+ * a far cell.
+ *
+ * A distance of zero or more is a time at or before the end. From 2^53 on the
+ * rounding up of #radiation_packet_time_later would put a time that the
+ * double holds exactly, such as the end itself, past the end, and the light
+ * would leave one bin or cell late. Such a time is capped at the end.
+ *
+ * @param end The end of the bin or the cell.
+ * @param below The distance below the end.
+ */
+static double radiation_packet_time_below_end(const double end,
+                                              const float below) {
+  const double t = radiation_packet_time_later(end - (double)below);
+  return below >= 0.f ? fmin(t, end) : t;
+}
+
 /*! Light of one container (a near bin or a far cell) that waits to be
     placed again: it arrives evenly between `first` and `last`. */
 struct radiation_packet_record {
@@ -1116,8 +1134,8 @@ static int radiation_packet_take_bin(struct feedback_isrf_packet_slot_data *sl,
     band->bin_energy[j] = 0.f;
     band->bin_photons[j] = 0.f;
   }
-  rec->last = radiation_packet_time_later((double)end -
-                                          (double)sl->bin_stamp_below_end[j]);
+  rec->last =
+      radiation_packet_time_below_end((double)end, sl->bin_stamp_below_end[j]);
   rec->first = rec->last;
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
   if (occupied && sl->bin_stamp_below_end[j] >= 0.f && rec->last > (double)end)
@@ -1151,11 +1169,11 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
     band->far_photons[c] = 0.f;
   }
   rec->last =
-      radiation_packet_time_later((double)end - (double)sl->far_last_below[c]);
-  rec->first = sl->far_first_below[c] >= 0.f
-                   ? radiation_packet_time_later((double)end -
-                                                 (double)sl->far_first_below[c])
-                   : rec->last;
+      radiation_packet_time_below_end((double)end, sl->far_last_below[c]);
+  rec->first =
+      sl->far_first_below[c] >= 0.f
+          ? radiation_packet_time_below_end((double)end, sl->far_first_below[c])
+          : rec->last;
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
   if (occupied && sl->far_last_below[c] >= 0.f && rec->last > (double)end)
     radiation_packet_diag(rpd_past_end_taken,
@@ -1205,9 +1223,13 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
     while (j < n && ub[j] < first) j++;
     for (int i = 0; i <= n; i++) cum[i] = i >= j ? 1. : 0.;
   } else {
+    /* A piece that ends at or after the last arrival holds the rest exactly:
+       under -freciprocal-math the quotient can be one rounding below 1. */
     const double length = last - first;
     for (int i = 0; i < n; i++)
-      cum[i] = fmin(1., fmax(0., (fmin(last, ub[i]) - first) / length));
+      cum[i] = ub[i] >= last
+                   ? 1.
+                   : fmin(1., fmax(0., (fmin(last, ub[i]) - first) / length));
     cum[n] = 1.;
   }
   int last_piece = n;
@@ -1635,10 +1657,10 @@ static void radiation_packet_release_far_cell(
 
   const double end = (double)far_end;
   const double last =
-      radiation_packet_time_later(end - (double)sl->far_last_below[c]);
+      radiation_packet_time_below_end(end, sl->far_last_below[c]);
   const int single = sl->far_first_below[c] >= 0.f;
   const double first =
-      single ? radiation_packet_time_later(end - (double)sl->far_first_below[c])
+      single ? radiation_packet_time_below_end(end, sl->far_first_below[c])
              : last;
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
   if (sl->far_last_below[c] >= 0.f && now >= end && now < last)
@@ -1786,9 +1808,8 @@ static void radiation_packet_merge_slot_limited(
     }
     if (e > 0.f) {
       total_energy += e;
-      stamp =
-          fmax(stamp, radiation_packet_time_later(
-                          (double)end - (double)sl->bin_stamp_below_end[j]));
+      stamp = fmax(stamp, radiation_packet_time_below_end(
+                              (double)end, sl->bin_stamp_below_end[j]));
     }
   }
 
