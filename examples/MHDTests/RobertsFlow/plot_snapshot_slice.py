@@ -108,6 +108,8 @@ R1 = data.gas.r1.value
 R2 = data.gas.r2.value
 R3 = data.gas.r3.value
 
+print(np.mean(R0), np.max(R0))
+
 # Get RMS values
 Brms = rms_vec(B)
 vrms = rms_vec(v)
