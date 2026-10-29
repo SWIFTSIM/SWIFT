@@ -529,7 +529,8 @@ INLINE static void cooling_read_background_parameters(
  * @brief Read the options of the column shielding of the UV background.
  *
  * The options are read with the method uv_self_shielding: HI_HeI_HeII_column.
- * Any of them set without it stops the run, so that none is ignored silently.
+ * A key set to a non-default value without it stops the run, so that none is
+ * ignored silently.
  *
  * @param parameter_file The parser parameter file.
  * @param cooling The cooling properties to initialize.
@@ -643,6 +644,19 @@ INLINE static void cooling_read_column_shielding_parameters(
       !(cooling->uv_shielding_length_factor < 1e300))
     error("%s must be finite and above 0, got %g.", keys[2],
           cooling->uv_shielding_length_factor);
+
+#ifdef SINK_GEAR
+  /* The birth of a sink calls the equilibrium mean molecular weight, which has
+     no smoothing length for a given length. GEARSink:cut_off_radius is
+     required by every run with sinks. */
+  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN &&
+      parser_does_param_exist(parameter_file, "GEARSink:cut_off_radius"))
+    error(
+        "%s: given_length cannot be used with sinks (GEARSink): the "
+        "equilibrium mean molecular weight at the birth of a sink has no "
+        "smoothing length. Use Jeans.",
+        keys[1]);
+#endif
 
   char path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file, keys[3], path, "kernel_radius");
