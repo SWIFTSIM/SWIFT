@@ -9,6 +9,12 @@ The shielding function is Grackle's: the Draine and Bertoldi (1996, Eq. 37)
 form with the Wolcott-Green and Haiman (2019) exponent. The derivation, with
 equation numbers, is in the check script's docstring.
 
+The transport is the packet hop: a star splits its light into emission cones
+and each gas particle hands what it receives on to its downstream neighbours.
+Its keys are `ISRF_propagation` (on here), `ISRF_packet_light_speed` (the speed
+limit of the light, default `cap`) and `ISRF_packet_cone_power`; see
+`examples/parameter_example.yml`.
+
 ## Configurations
 `config=thin` and `config=thick` differ only in the initial H2 abundance
 (`GrackleCooling:initial_nH2I_to_nH_ratio` 5e-10 and 3.1e-5). Grackle does
