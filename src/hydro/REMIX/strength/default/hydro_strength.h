@@ -93,21 +93,6 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_store_dri
   p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
 }
 
-/**
- * @brief Stores the quantities derived from the strength state on the extended
- * particle.
- *
- * @param xp The extended data of the particle of interest.
- * @param s The strength state of the particle, from its kicked values.
- * @param mp The material parameters.
- */
-__attribute__((always_inline)) INLINE static void hydro_strength_state_store_kick(
-    struct xpart *restrict xp, struct strength_state *s,
-    const struct mat_params *mp) {
-
-  xp->phase_full = strength_state_get_phase(s, mp);
-}
-
 
 /**
  * @brief Limits the tension of a pressure from the EoS, by the minimum pressure
@@ -412,16 +397,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
  * @param dt_therm The time-step for this kick (for thermodynamic quantities).
  */
 __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
-    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {
-
-  /* Strength state from the kicked values. */
-  const struct mat_params *mp = material_params(p->mat_id);
-  struct strength_state s;
-  hydro_strength_state_init_kick(&s, p, xp, mp);
-
-  /* Store the quantities derived from the state. */
-  hydro_strength_state_store_kick(xp, &s, mp);
-}
+    struct part *restrict p, struct xpart *restrict xp, const float dt_therm) {}
 
 /**
  * @brief Initialises the strength properties for the first time
@@ -444,8 +420,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
   struct strength_state s;
   hydro_strength_state_init_drift(&s, p, mp);
   hydro_strength_state_store_drift(p, &s, mp);
-  hydro_strength_state_init_kick(&s, p, xp, mp);
-  hydro_strength_state_store_kick(xp, &s, mp);
 }
 
 #endif /* SWIFT_REMIX_STRENGTH_DEFAULT_H */

@@ -68,9 +68,6 @@ struct xpart {
   /*! Evolved density at the last full step. */
   float rho_evol_full;
 
-  /*! Phase state flag at the last full step. */
-  enum mat_phase phase_full;
- 
   /*! Additional data used by the strength scheme */
   struct strength_xpart_data strength_data;
 

@@ -230,7 +230,6 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part_strength
 
   /* Without strength, all material is fluid. */
   p->phase = mat_phase_fluid;
-  xp->phase_full = mat_phase_fluid;
 }
 
 #endif /* SWIFT_REMIX_STRENGTH_NONE_H */

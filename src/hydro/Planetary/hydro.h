@@ -826,7 +826,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
 
   /* Re-set the internal energy */
   p->u = xp->u_full;
-  p->phase = xp->phase_full;
 
   /* Do strength resets before computing new values */
   hydro_reset_predicted_values_strength(p, xp);

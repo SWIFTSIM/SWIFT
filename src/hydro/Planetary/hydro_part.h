@@ -73,9 +73,6 @@ struct xpart {
   /*! Internal energy at the last full step. */
   float u_full;
 
-  /*! Phase flag at the last full step. */
-  enum mat_phase phase_full;
-
   /*! Additional data used by the strength scheme */
   struct strength_xpart_data strength_data;
 
