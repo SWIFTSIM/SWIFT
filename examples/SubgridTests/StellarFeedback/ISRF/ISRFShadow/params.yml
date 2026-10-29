@@ -58,7 +58,6 @@ SPH:
   resolution_eta:        1.2348
   CFL_condition:         0.1
   minimal_temperature:   1
-  initial_temperature:   1000
 
 GEARChemistry:
   # -1 reads the metal mass fractions of each particle from the ICs.
