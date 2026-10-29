@@ -215,284 +215,108 @@ INLINE static void convert_part_packet_slot_inbox_directions(
 }
 
 /**
- * @brief Snapshot converter of the packet energy per band, see
- * #feedback_write_particles.
+ * @brief Define a snapshot converter that copies a per-band member of the
+ * packet ledger or field of a gas particle, see #feedback_write_particles.
  */
-INLINE static void convert_part_packet_energy(const struct engine *e,
-                                              const struct part *p,
-                                              const struct xpart *xp,
-                                              float *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    double sum = 0.;
-    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      sum += p->feedback_data.isrf_packet.slot[s].band[b].energy;
-    ret[b] = (float)sum;
+#define FEEDBACK_PART_PACKET_BAND_CONVERTER(name, type, member)         \
+  INLINE static void name(const struct engine *e, const struct part *p, \
+                          const struct xpart *xp, type *ret) {          \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)                       \
+      ret[b] = p->feedback_data.isrf_packet.band[b].member;             \
   }
-}
 
 /**
- * @brief Snapshot converter of the packet photons per band, see
- * #feedback_write_particles.
+ * @brief Define a snapshot converter that sums a member of the slots of a
+ * gas particle per band, see #feedback_write_particles.
  */
-INLINE static void convert_part_packet_photons(const struct engine *e,
-                                               const struct part *p,
-                                               const struct xpart *xp,
-                                               float *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    double sum = 0.;
-    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      sum += p->feedback_data.isrf_packet.slot[s].band[b].photons;
-    ret[b] = (float)sum;
+#define FEEDBACK_PART_PACKET_SLOT_SUM_CONVERTER(name, member)           \
+  INLINE static void name(const struct engine *e, const struct part *p, \
+                          const struct xpart *xp, float *ret) {         \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {                     \
+      double sum = 0.;                                                  \
+      for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)                  \
+        sum += p->feedback_data.isrf_packet.slot[s].band[b].member;     \
+      ret[b] = (float)sum;                                              \
+    }                                                                   \
   }
-}
 
 /**
- * @brief Snapshot converter of the packet absorbed energy per band, see
- * #feedback_write_particles.
+ * @brief Define a snapshot converter that copies an array of the packet
+ * ledger of a star, see #feedback_write_sparticles.
  */
-INLINE static void convert_part_packet_absorbed_energy(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].absorbed_energy;
-}
+#define FEEDBACK_SPART_PACKET_CONVERTER(name, member)                     \
+  INLINE static void name(const struct engine *e, const struct spart *sp, \
+                          double *ret) {                                  \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)                         \
+      ret[b] = sp->feedback_data.radiation.packet.member[b];              \
+  }
 
 /**
- * @brief Snapshot converter of the packet absorbed photons per band, see
- * #feedback_write_particles.
+ * @brief Define a snapshot converter that copies an array of the packet
+ * ledger of a sink, see #feedback_write_sinkparticles.
  */
-INLINE static void convert_part_packet_absorbed_photons(const struct engine *e,
-                                                        const struct part *p,
-                                                        const struct xpart *xp,
-                                                        double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].absorbed_photons;
-}
+#define FEEDBACK_SINK_PACKET_CONVERTER(name, member)                    \
+  INLINE static void name(const struct engine *e, const struct sink *s, \
+                          double *ret) {                                \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)                       \
+      ret[b] = s->feedback_data.isrf_packet.member[b];                  \
+  }
 
-/**
- * @brief Snapshot converter of the packet escaped energy per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_escaped_energy(const struct engine *e,
-                                                      const struct part *p,
-                                                      const struct xpart *xp,
-                                                      double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].escaped_energy;
-}
+/* Gas: energy and photon number held per band. */
+FEEDBACK_PART_PACKET_SLOT_SUM_CONVERTER(convert_part_packet_energy, energy)
+FEEDBACK_PART_PACKET_SLOT_SUM_CONVERTER(convert_part_packet_photons, photons)
 
-/**
- * @brief Snapshot converter of the packet escaped photons per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_escaped_photons(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].escaped_photons;
-}
+/* Gas: field, kernel mean of the field, and the ledger. */
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_field_energy, float,
+                                    field_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_field_photons, float,
+                                    field_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_ngb_mean_field_energy,
+                                    float, ngb_mean_field_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_ngb_mean_field_photons,
+                                    float, ngb_mean_field_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_absorbed_energy, double,
+                                    absorbed_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_absorbed_photons,
+                                    double, absorbed_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_escaped_energy, double,
+                                    escaped_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_escaped_photons, double,
+                                    escaped_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_redshifted_energy,
+                                    double, redshifted_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_redshifted_photons,
+                                    double, redshifted_photons)
 
-/**
- * @brief Snapshot converter of the packet redshifted energy per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_redshifted_energy(const struct engine *e,
-                                                         const struct part *p,
-                                                         const struct xpart *xp,
-                                                         double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].redshifted_energy;
-}
+/* Stars: energy and photon number emitted, escaped, in flight in the removed
+ * gas, and inherited from it. */
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_emitted_energy,
+                                emitted_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_emitted_photons,
+                                emitted_photons)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_escaped_energy,
+                                escaped_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_escaped_photons,
+                                escaped_photons)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_removed_energy,
+                                removed.removed_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_removed_photons,
+                                removed.removed_photons)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_inherited_energy,
+                                removed.inherited_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_inherited_photons,
+                                removed.inherited_photons)
 
-/**
- * @brief Snapshot converter of the packet redshifted photons per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_redshifted_photons(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].redshifted_photons;
-}
+/* Sinks: the same for the removed gas. */
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_removed_energy,
+                               removed_energy)
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_removed_photons,
+                               removed_photons)
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_inherited_energy,
+                               inherited_energy)
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_inherited_photons,
+                               inherited_photons)
 
-/**
- * @brief Snapshot converter of the packet field energy per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_field_energy(const struct engine *e,
-                                                    const struct part *p,
-                                                    const struct xpart *xp,
-                                                    float *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].field_energy;
-}
-
-/**
- * @brief Snapshot converter of the packet field photons per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_field_photons(const struct engine *e,
-                                                     const struct part *p,
-                                                     const struct xpart *xp,
-                                                     float *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].field_photons;
-}
-
-/**
- * @brief Snapshot converter of the packet ngb mean field energy per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_ngb_mean_field_energy(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].ngb_mean_field_energy;
-}
-
-/**
- * @brief Snapshot converter of the packet ngb mean field photons per band, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_packet_ngb_mean_field_photons(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = p->feedback_data.isrf_packet.band[b].ngb_mean_field_photons;
-}
-
-/**
- * @brief Snapshot converter of a star's emitted packet energy per band, see
- * #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_emitted_energy(const struct engine *e,
-                                                       const struct spart *sp,
-                                                       double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.emitted_energy[b];
-}
-
-/**
- * @brief Snapshot converter of a star's emitted packet photon number per
- * band, see #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_emitted_photons(const struct engine *e,
-                                                        const struct spart *sp,
-                                                        double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.emitted_photons[b];
-}
-
-/**
- * @brief Snapshot converter of a star's escaped packet energy per band, see
- * #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_escaped_energy(const struct engine *e,
-                                                       const struct spart *sp,
-                                                       double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.escaped_energy[b];
-}
-
-/**
- * @brief Snapshot converter of a star's escaped packet photon number per
- * band, see #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_escaped_photons(const struct engine *e,
-                                                        const struct spart *sp,
-                                                        double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.escaped_photons[b];
-}
-
-/**
- * @brief Snapshot converter of the energy in flight in the removed gas per
- * band, see #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_removed_energy(const struct engine *e,
-                                                       const struct spart *sp,
-                                                       double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.removed.removed_energy[b];
-}
-
-/**
- * @brief Snapshot converter of the photon number in flight in the removed gas
- * per band, see #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_removed_photons(const struct engine *e,
-                                                        const struct spart *sp,
-                                                        double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.removed.removed_photons[b];
-}
-
-/**
- * @brief Snapshot converter of the absorbed and escaped energy of the removed
- * gas per band, see #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_inherited_energy(const struct engine *e,
-                                                         const struct spart *sp,
-                                                         double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.removed.inherited_energy[b];
-}
-
-/**
- * @brief Snapshot converter of the absorbed and escaped photon number of the
- * removed gas per band, see #feedback_write_sparticles.
- */
-INLINE static void convert_spart_packet_inherited_photons(
-    const struct engine *e, const struct spart *sp, double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = sp->feedback_data.radiation.packet.removed.inherited_photons[b];
-}
-
-/**
- * @brief Snapshot converter of the energy in flight in the removed gas per
- * band, see #feedback_write_sinkparticles.
- */
-INLINE static void convert_sink_packet_removed_energy(const struct engine *e,
-                                                      const struct sink *s,
-                                                      double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = s->feedback_data.isrf_packet.removed_energy[b];
-}
-
-/**
- * @brief Snapshot converter of the photon number in flight in the removed gas
- * per band, see #feedback_write_sinkparticles.
- */
-INLINE static void convert_sink_packet_removed_photons(const struct engine *e,
-                                                       const struct sink *s,
-                                                       double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = s->feedback_data.isrf_packet.removed_photons[b];
-}
-
-/**
- * @brief Snapshot converter of the absorbed and escaped energy of the removed
- * gas per band, see #feedback_write_sinkparticles.
- */
-INLINE static void convert_sink_packet_inherited_energy(const struct engine *e,
-                                                        const struct sink *s,
-                                                        double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = s->feedback_data.isrf_packet.inherited_energy[b];
-}
-
-/**
- * @brief Snapshot converter of the absorbed and escaped photon number of the
- * removed gas per band, see #feedback_write_sinkparticles.
- */
-INLINE static void convert_sink_packet_inherited_photons(const struct engine *e,
-                                                         const struct sink *s,
-                                                         double *ret) {
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    ret[b] = s->feedback_data.isrf_packet.inherited_photons[b];
-}
 #endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 /**
