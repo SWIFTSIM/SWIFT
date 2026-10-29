@@ -98,14 +98,18 @@ static long long radiation_packet_coarsening_count = 0;
 static long long radiation_packet_overflow_count = 0;
 static long long radiation_packet_clamp_count = 0;
 
+/*! Count one widening of the far cells of a particle. */
 static void radiation_packet_count_coarsening(void) {
   __sync_fetch_and_add(&radiation_packet_coarsening_count, 1);
 }
 
+/*! Count one piece of light that fell beyond the widest far cells. */
 static void radiation_packet_count_overflow(void) {
   __sync_fetch_and_add(&radiation_packet_overflow_count, 1);
 }
 
+/*! Count one delivery to a receiver that moves away faster than the clamp
+    allows. */
 static void radiation_packet_count_clamp(void) {
   __sync_fetch_and_add(&radiation_packet_clamp_count, 1);
 }
@@ -169,8 +173,9 @@ double radiation_packet_arrival_delay(const double path_phys, const double H) {
  * A receiver that moves away at the speed `u` along the path is reached by
  * the front at the speed `v - u`, so the delay is the one of
  * #radiation_packet_arrival_delay times `v / (v - u)`. A receiver that moves
- * towards the sender is treated as at rest. The factor is limited to 100: when
- * the receiver moves away faster than 0.99 `v`, the light is delivered at that
+ * towards the sender is treated as at rest. The factor is limited to
+ * #RADIATION_PACKET_RECEDING_MAX_FACTOR: when the receiver moves away faster
+ * than the fraction 1 - 1 / factor of `v`, the light is delivered at that
  * delay, which is earlier than the front reaches the receiver in the frame of
  * the origin. The limit applies in the gas frame. Each such delivery is
  * counted and reported by #radiation_packet_step_diagnostics.
@@ -187,9 +192,9 @@ double radiation_packet_arrival_delay_receding(const double path_phys,
   const double base = radiation_packet_arrival_delay(path_phys, H);
   if (!(closing_speed > 0.0)) return base;
   const double v = radiation_packet_limit_speed;
-  if (v - closing_speed < 0.01 * v) {
+  if (v - closing_speed < (1. / RADIATION_PACKET_RECEDING_MAX_FACTOR) * v) {
     radiation_packet_count_clamp();
-    return base * 100.;
+    return base * RADIATION_PACKET_RECEDING_MAX_FACTOR;
   }
   return base * v / (v - closing_speed);
 }
@@ -511,29 +516,40 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
 /**
  * @brief Read the test beams of the packet transport.
  *
- * A beam is 11 numbers in internal units: the lower and upper corner of a box
- * (3 + 3), its direction (3) and the energy per particle in the PE and LW band
- * (2). Absent or with zero energy, a beam is off. The direction is normalised.
- * Finiteness is tested on the bit pattern, which -ffinite-math-only cannot
- * fold away.
+ * A beam is #RADIATION_PACKET_TEST_BEAM_FIELDS numbers in internal units, in
+ * the order of the RADIATION_PACKET_TEST_BEAM_* offsets. Absent or with zero
+ * energy, a beam is off. The direction is normalised. Finiteness is tested on
+ * the bit pattern, which -ffinite-math-only cannot fold away.
  *
  * @param params The parameter file.
  * @param beams (return) The beams.
  * @return The number of active beams.
  */
 int radiation_packet_read_test_beams(
-    struct swift_params *params, float beams[RADIATION_PACKET_TEST_BEAMS][11]) {
+    struct swift_params *params,
+    float beams[RADIATION_PACKET_TEST_BEAMS]
+               [RADIATION_PACKET_TEST_BEAM_FIELDS]) {
 
   int n_active = 0;
-  memset(beams, 0, sizeof(float) * 11 * RADIATION_PACKET_TEST_BEAMS);
-  parser_get_opt_param_float_array(
-      params, "GEARFeedback:ISRF_packet_test_beam_1", 11, beams[0]);
-  parser_get_opt_param_float_array(
-      params, "GEARFeedback:ISRF_packet_test_beam_2", 11, beams[1]);
+  memset(beams, 0,
+         sizeof(float) * RADIATION_PACKET_TEST_BEAM_FIELDS *
+             RADIATION_PACKET_TEST_BEAMS);
+  parser_get_opt_param_float_array(params,
+                                   "GEARFeedback:ISRF_packet_test_beam_1",
+                                   RADIATION_PACKET_TEST_BEAM_FIELDS, beams[0]);
+  parser_get_opt_param_float_array(params,
+                                   "GEARFeedback:ISRF_packet_test_beam_2",
+                                   RADIATION_PACKET_TEST_BEAM_FIELDS, beams[1]);
 
   for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
     float *bm = beams[i];
-    for (int k = 0; k < 11; k++) {
+    float *lower = &bm[RADIATION_PACKET_TEST_BEAM_LOWER];
+    float *upper = &bm[RADIATION_PACKET_TEST_BEAM_UPPER];
+    float *direction = &bm[RADIATION_PACKET_TEST_BEAM_DIRECTION];
+    const float energy_PE = bm[RADIATION_PACKET_TEST_BEAM_ENERGY_PE];
+    const float energy_LW = bm[RADIATION_PACKET_TEST_BEAM_ENERGY_LW];
+
+    for (int k = 0; k < RADIATION_PACKET_TEST_BEAM_FIELDS; k++) {
       uint32_t bits;
       memcpy(&bits, &bm[k], sizeof(bits));
       volatile uint32_t opaque = bits;
@@ -541,25 +557,27 @@ int radiation_packet_read_test_beams(
         error("GEARFeedback:ISRF_packet_test_beam_%d: non-finite entry %d.",
               i + 1, k);
     }
-    if (bm[9] < 0.f || bm[10] < 0.f)
+    if (energy_PE < 0.f || energy_LW < 0.f)
       error("GEARFeedback:ISRF_packet_test_beam_%d: negative energy.", i + 1);
-    if (bm[9] == 0.f && bm[10] == 0.f) continue;
-    const float norm = sqrtf(bm[6] * bm[6] + bm[7] * bm[7] + bm[8] * bm[8]);
+    if (energy_PE == 0.f && energy_LW == 0.f) continue;
+    const float norm =
+        sqrtf(direction[0] * direction[0] + direction[1] * direction[1] +
+              direction[2] * direction[2]);
     if (!(norm > 0.f))
       error("GEARFeedback:ISRF_packet_test_beam_%d: zero direction.", i + 1);
-    for (int k = 6; k < 9; k++) bm[k] /= norm;
+    for (int k = 0; k < 3; k++) direction[k] /= norm;
     for (int k = 0; k < 3; k++)
-      if (!(bm[3 + k] > bm[k]))
+      if (!(upper[k] > lower[k]))
         error(
             "GEARFeedback:ISRF_packet_test_beam_%d: the box has upper corner "
             "%g not above lower corner %g on axis %d.",
-            i + 1, bm[3 + k], bm[k], k);
+            i + 1, upper[k], lower[k], k);
     n_active++;
     message(
         "ISRF packet test beam %d is ACTIVE: energy %g (PE) and %g (LW) per "
         "particle in the box, injected once at each particle's first merge, "
         "in no ledger.",
-        i + 1, bm[9], bm[10]);
+        i + 1, energy_PE, energy_LW);
   }
   return n_active;
 }
@@ -578,20 +596,29 @@ int radiation_packet_read_test_beams(
  * @param ti_current Current integer time, the arrival time of the pulse.
  */
 void radiation_packet_inject_test_beams(
-    struct part *p, const float beams[RADIATION_PACKET_TEST_BEAMS][11],
+    struct part *p,
+    const float beams[RADIATION_PACKET_TEST_BEAMS]
+                     [RADIATION_PACKET_TEST_BEAM_FIELDS],
     const integertime_t ti_current) {
 
   for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
     const float *bm = beams[i];
-    if (bm[9] == 0.f && bm[10] == 0.f) continue;
+    const float *lower = &bm[RADIATION_PACKET_TEST_BEAM_LOWER];
+    const float *upper = &bm[RADIATION_PACKET_TEST_BEAM_UPPER];
+    const float *direction = &bm[RADIATION_PACKET_TEST_BEAM_DIRECTION];
+    const double energy[ISRF_OPERATOR_COUNT] = {
+        bm[RADIATION_PACKET_TEST_BEAM_ENERGY_PE],
+        bm[RADIATION_PACKET_TEST_BEAM_ENERGY_LW]};
+    if (energy[0] == 0. && energy[1] == 0.) continue;
+
     int inside = 1;
     for (int k = 0; k < 3; k++)
-      if (!(p->x[k] >= (double)bm[k] && p->x[k] < (double)bm[3 + k]))
+      if (!(p->x[k] >= (double)lower[k] && p->x[k] < (double)upper[k]))
         inside = 0;
     if (!inside) continue;
 
-    const double energy[ISRF_OPERATOR_COUNT] = {bm[9], bm[10]};
-    const float offset[3] = {-p->h * bm[6], -p->h * bm[7], -p->h * bm[8]};
+    const float offset[3] = {-p->h * direction[0], -p->h * direction[1],
+                             -p->h * direction[2]};
     radiation_packet_deliver(p, p->feedback_data.isrf_packet.octant_frame,
                              energy, energy, offset, 0.f, 0.f, 0, 0,
                              (double)ti_current, (double)ti_current);
@@ -741,9 +768,10 @@ void radiation_packet_step_diagnostics(const struct engine *e) {
     message(
         "ISRF packet arrival, step %d: far cells widened %lld times, %lld "
         "pieces of light beyond the widest far cells, %lld deliveries to a "
-        "receiver that moves away faster than 0.99 of the limit speed (the "
+        "receiver that moves away faster than %g of the limit speed (the "
         "light is delivered early).",
-        e->step, counts[0], counts[1], counts[2]);
+        e->step, counts[0], counts[1], counts[2],
+        1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
 }
 #endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
@@ -874,6 +902,10 @@ integertime_t radiation_packet_bin_end(
 /*! Largest width of a far cell, in integer times. */
 #define RADIATION_PACKET_MAX_FAR_WIDTH ((integertime_t)1 << 60)
 
+/*! Largest far scale: the shift `s + 1` stays below the width of an integer
+    time. */
+#define RADIATION_PACKET_MAX_FAR_SCALE (8 * (int)sizeof(integertime_t) - 2)
+
 /**
  * @brief Largest far scale for a step: the width stays below
  * #RADIATION_PACKET_MAX_FAR_WIDTH.
@@ -882,7 +914,9 @@ integertime_t radiation_packet_bin_end(
  */
 static int radiation_packet_far_scale_limit(const integertime_t w) {
   int s = 0;
-  while (s < 62 && w <= (RADIATION_PACKET_MAX_FAR_WIDTH >> (s + 1))) s++;
+  while (s < RADIATION_PACKET_MAX_FAR_SCALE &&
+         w <= (RADIATION_PACKET_MAX_FAR_WIDTH >> (s + 1)))
+    s++;
   return s;
 }
 
@@ -1704,7 +1738,7 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
   float frame_norm = 0.f;
   for (int k = 0; k < 9; k++)
     frame_norm += pk->octant_frame[k] * pk->octant_frame[k];
-  if (!(fabsf(frame_norm - 3.f) < 1e-3f))
+  if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
     error("Particle %lld has an unset octant frame (norm %e) at its step.",
           p->id, frame_norm);
 

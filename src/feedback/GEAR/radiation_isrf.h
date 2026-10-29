@@ -67,7 +67,9 @@ struct swift_params;
 void radiation_packet_build_octant_frame(const float angles_deg[3],
                                          const int seed_offset, float frame[9]);
 int radiation_packet_read_test_beams(
-    struct swift_params *params, float beams[RADIATION_PACKET_TEST_BEAMS][11]);
+    struct swift_params *params,
+    float beams[RADIATION_PACKET_TEST_BEAMS]
+               [RADIATION_PACKET_TEST_BEAM_FIELDS]);
 
 /* The ISRF gradient pass runs in the extra hydro loop. Configure refuses a
    hydro scheme without it; this is the backstop. */
@@ -109,8 +111,10 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_build_octant_frame(const float angles_deg[3],
                                     const int seed_offset, float frame[9]) {}
 __attribute__((always_inline)) INLINE static int
-radiation_packet_read_test_beams(struct swift_params *params,
-                                 float beams[RADIATION_PACKET_TEST_BEAMS][11]) {
+radiation_packet_read_test_beams(
+    struct swift_params *params,
+    float beams[RADIATION_PACKET_TEST_BEAMS]
+               [RADIATION_PACKET_TEST_BEAM_FIELDS]) {
   return 0;
 }
 

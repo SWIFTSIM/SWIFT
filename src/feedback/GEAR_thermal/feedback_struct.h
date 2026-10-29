@@ -120,6 +120,15 @@ struct feedback_isrf_operator_data {
     #radiation_packet_inject_test_beams. */
 #define RADIATION_PACKET_TEST_BEAMS 2
 
+/*! Numbers of a test beam: the lower and the upper corner of the box (3 + 3),
+    the direction (3) and the energy per particle in the PE and LW band (2). */
+#define RADIATION_PACKET_TEST_BEAM_FIELDS 11
+#define RADIATION_PACKET_TEST_BEAM_LOWER 0
+#define RADIATION_PACKET_TEST_BEAM_UPPER 3
+#define RADIATION_PACKET_TEST_BEAM_DIRECTION 6
+#define RADIATION_PACKET_TEST_BEAM_ENERGY_PE 9
+#define RADIATION_PACKET_TEST_BEAM_ENERGY_LW 10
+
 /*! Reception slots of the packet of a gas particle: one per cell of an
     equal-solid-angle partition of the directions, fixed in the frame
     #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set by

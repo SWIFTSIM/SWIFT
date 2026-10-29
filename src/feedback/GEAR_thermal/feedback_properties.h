@@ -212,7 +212,8 @@ struct feedback_props {
   float ISRF_packet_octant_frame[9];
 
   /*! Test beams, see #radiation_packet_inject_test_beams. */
-  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS][11];
+  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS]
+                             [RADIATION_PACKET_TEST_BEAM_FIELDS];
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
