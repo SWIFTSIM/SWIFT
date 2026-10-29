@@ -40,6 +40,7 @@
 
 #include <float.h>
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -174,7 +175,8 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                               struct feedback_isrf_packet_slot_data *sl,
                               const float energy[ISRF_OPERATOR_COUNT],
                               const float photons[ISRF_OPERATOR_COUNT],
-                              const double first, const double last);
+                              const double first, const double last,
+                              const uint32_t salt);
 void radiation_packet_redshift_share(const double H, const double path_phys,
                                      double energy[ISRF_OPERATOR_COUNT],
                                      double photons[ISRF_OPERATOR_COUNT],
@@ -196,6 +198,85 @@ void radiation_packet_inject_test_beams(
     const float beams[RADIATION_PACKET_TEST_BEAMS]
                      [RADIATION_PACKET_TEST_BEAM_FIELDS],
     const integertime_t ti_current);
+
+/**
+ * @brief Float sum `a + b` with stochastic rounding: the float below or above
+ * the exact sum, with the probabilities that make it exact on average.
+ *
+ * A float running sum rounded to the nearest drops the terms below half a
+ * step of the sum. The transmission weights and the shares have a long tail
+ * of such terms, so both the weight sum and the inbox would come out low and
+ * create or lose a fixed fraction of the light in flight per step. Here the
+ * exact sum is formed in double and a hash of the bits of the two operands and
+ * of a salt is added to the 29 bits that the float cannot hold before they
+ * are cut. The hash keeps no state. The salt must change from one add to the
+ * next: equal terms into a sum that does not move would otherwise round the
+ * same way each time. A sum that a float holds is returned exactly.
+ *
+ * @param a The running sum.
+ * @param b The term.
+ * @param salt Bits that differ between the adds into one sum.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_packet_add_stochastic(const float a, const float b,
+                                const uint32_t salt) {
+  const double sum = (double)a + (double)b;
+  uint64_t bits;
+  uint32_t ua, ub;
+  memcpy(&bits, &sum, sizeof(bits));
+  memcpy(&ua, &a, sizeof(ua));
+  memcpy(&ub, &b, sizeof(ub));
+  uint32_t h = (ua * 0x9e3779b9u) ^ ub ^ (salt * 0x85ebca77u);
+  h ^= h >> 16;
+  h *= 0x85ebca6bu;
+  h ^= h >> 13;
+  h *= 0xc2b2ae35u;
+  h ^= h >> 16;
+  bits = (bits + (uint64_t)(h >> 3)) & ~((UINT64_C(1) << 29) - 1);
+  double rounded;
+  memcpy(&rounded, &bits, sizeof(rounded));
+  return (float)rounded;
+}
+
+/**
+ * @brief Salt for #radiation_packet_add_stochastic from a particle ID and a
+ * time. The time makes a fixture whose sums repeat each step round differently
+ * from one step to the next.
+ *
+ * @param id ID of the particle.
+ * @param ti Integer time, such as the end of the sender's step.
+ */
+__attribute__((always_inline)) INLINE static uint32_t radiation_packet_salt(
+    const long long id, const integertime_t ti) {
+  const unsigned long long u = (unsigned long long)id;
+  const unsigned long long t = (unsigned long long)ti;
+  return ((uint32_t)u ^ (uint32_t)(u >> 32)) * 0x9e3779b9u ^ (uint32_t)t ^
+         (uint32_t)(t >> 32);
+}
+
+/**
+ * @brief Salt for #radiation_packet_add_stochastic of a share: the receiver,
+ * the end of the sender's step and the bits of the share in double, which a
+ * float does not hold.
+ *
+ * Built only from the share and the two particles, so that a sum gets the
+ * same bits whichever way the share reaches it.
+ *
+ * @param energy Energy of the share per band, in double.
+ * @param id ID of the receiver.
+ * @param ti End of the sender's step.
+ */
+__attribute__((always_inline)) INLINE static uint32_t
+radiation_packet_share_salt(const double energy[ISRF_OPERATOR_COUNT],
+                            const long long id, const integertime_t ti) {
+  uint32_t salt = radiation_packet_salt(id, ti);
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    uint64_t bits;
+    memcpy(&bits, &energy[b], sizeof(bits));
+    salt = (salt * 0x9e3779b9u) ^ (uint32_t)(bits ^ (bits >> 32));
+  }
+  return salt;
+}
 
 /**
  * @brief Exponential running mean of the own field over the time constant
@@ -266,7 +347,8 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
         r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
-    sl->weight_sum += w;
+    sl->weight_sum = radiation_packet_add_stochastic(
+        sl->weight_sum, w, radiation_packet_salt(r->id, pk->step_end_ti));
     sl->forward_advance +=
         w * (dx[0] * sl->direction[0] + dx[1] * sl->direction[1] +
              dx[2] * sl->direction[2]);
@@ -372,8 +454,8 @@ radiation_packet_absorb_in_dust(
  * @param path_phys Physical path length over which the share is absorbed.
  * @param H Current Hubble rate. 0 or less for a static box.
  * @param to_reservoir Is the source's step coarser than the receiver's?
- * @param source_step_end_ti End of the source's step. Read only without a
- * speed limit: the reservoir is released over it.
+ * @param source_step_end_ti End of the source's step. Without a speed limit
+ * the reservoir is released over it. It also salts the rounding of the sums.
  * @param arrival Integer time at which the first light of the share reaches
  * the receiver. Read only when the speed of the light is limited: the share
  * then waits in its arrival bin (#radiation_packet_deposit) until the
@@ -427,18 +509,23 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
   const float delivered_energy = radiation_packet_absorb_in_dust(
       r, en, ph, path_phys, transmitted_energy_b, transmitted_photons_b);
 
+  const uint32_t salt =
+      radiation_packet_share_salt(en, r->id, source_step_end_ti);
   if (radiation_packet_light_speed_limited) {
     /* The light waits in its arrival bin until the receiver's merge at or
        after the end of the bin. */
     if (delivered_energy > 0.f)
       radiation_packet_deposit(pk_r, sl, transmitted_energy_b,
-                               transmitted_photons_b, arrival, arrival_last);
+                               transmitted_photons_b, arrival, arrival_last,
+                               salt);
     for (int k = 0; k < 3; k++)
       sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
   } else if (to_reservoir) {
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      sl->band[b].reservoir_energy += transmitted_energy_b[b];
-      sl->band[b].reservoir_photons += transmitted_photons_b[b];
+      sl->band[b].reservoir_energy = radiation_packet_add_stochastic(
+          sl->band[b].reservoir_energy, transmitted_energy_b[b], salt);
+      sl->band[b].reservoir_photons = radiation_packet_add_stochastic(
+          sl->band[b].reservoir_photons, transmitted_photons_b[b], salt);
     }
     for (int k = 0; k < 3; k++)
       sl->reservoir_origin_offset[k] += (double)delivered_energy * offset[k];
@@ -446,8 +533,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
       sl->reservoir_end_ti = source_step_end_ti;
   } else {
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      sl->band[b].bin_energy[0] += transmitted_energy_b[b];
-      sl->band[b].bin_photons[0] += transmitted_photons_b[b];
+      sl->band[b].bin_energy[0] = radiation_packet_add_stochastic(
+          sl->band[b].bin_energy[0], transmitted_energy_b[b], salt);
+      sl->band[b].bin_photons[0] = radiation_packet_add_stochastic(
+          sl->band[b].bin_photons[0], transmitted_photons_b[b], salt);
     }
     for (int k = 0; k < 3; k++)
       sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
