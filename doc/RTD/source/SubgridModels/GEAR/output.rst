@@ -395,4 +395,63 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
      - [U_L^2 U_T^{-2}]
      - Diagnostic only: no heating or dissociation rate reads it.
 
+.. _gear_output_isrf_packet:
+
+With ``ISRF_propagation: 1`` the transport writes more fields, all zero otherwise. Every two-component field holds the PE band, then the Lyman-Werner band. "Ledger" fields close the energy budget of a run: they are the only way to check energy conservation from a snapshot. "Diagnostic" fields are for debugging the transport and are not needed for science. Switch fields off with the output selection (see :ref:`Output_selection_label`); the names carry the particle type as a suffix, for example ``PacketSlotDirections_Gas``. With 12 slots, the diagnostic gas fields are about 460 bytes per gas particle against 24 bytes for the three fields above.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 40 15 15
+
+   * - Name
+     - Description
+     - Units
+     - Kind
+   * - ``PacketKernelMeanSpecificEnergies``, ``PacketKernelMeanSpecificPhotonNumbers``
+     - Kernel mean of the own field of the packet. Same values as ``PESpecificEnergies`` and ``LWSpecificEnergies``
+     - [U_L^2 U_T^{-2}]
+     - Diagnostic (duplicate). Gas.
+   * - ``PacketSpecificEnergies``, ``PacketSpecificPhotonNumbers``
+     - Own field of the particle before the kernel mean. Two components
+     - [U_L^2 U_T^{-2}]
+     - Diagnostic. Gas.
+   * - ``PacketSlotDirections``
+     - Unit direction of the packet of each reception slot (three numbers per slot)
+     - none
+     - Diagnostic. Gas.
+   * - ``PacketSlotOriginDistances``
+     - Comoving distance from the origin of the packet to the particle, per slot
+     - [U_L]
+     - Diagnostic. Gas.
+   * - ``PacketSlotInboxEnergies``, ``PacketSlotInboxDirections``
+     - Energy and direction in the inbox of each slot
+     - [U_M U_L^2 U_T^{-2}], none
+     - Diagnostic. Gas.
+   * - ``PacketInboxEnergies``, ``PacketInboxPhotonNumbers``
+     - Energy received since the last step of the particle
+     - [U_M U_L^2 U_T^{-2}]
+     - Ledger. Gas.
+   * - ``PacketReservoirEnergies``, ``PacketReservoirPhotonNumbers``
+     - Energy that waits beyond the arrival bins of the inbox
+     - [U_M U_L^2 U_T^{-2}]
+     - Ledger. Gas.
+   * - ``PacketHeldEnergies``, ``PacketHeldPhotonNumbers``
+     - Energy held for sending this step; zero between steps
+     - [U_M U_L^2 U_T^{-2}]
+     - Ledger. Gas.
+   * - ``PacketAbsorbedEnergies``, ``PacketEscapedEnergies``, ``PacketRedshiftedEnergies`` and the ``...PhotonNumbers`` twins
+     - Cumulative energy absorbed by dust, left with no downstream neighbour, and removed by the cosmological expansion
+     - [U_M U_L^2 U_T^{-2}]
+     - Ledger. Gas.
+   * - ``PacketEmittedEnergies``, ``PacketEscapedEnergies``, ``PacketRemovedEnergies``, ``PacketInheritedEnergies`` and the ``...PhotonNumbers`` twins
+     - Cumulative energy emitted, put in empty emission cones, removed with a swallowed gas particle and inherited, per star
+     - [U_M U_L^2 U_T^{-2}]
+     - Ledger. Star.
+   * - ``PacketRemovedEnergies``, ``PacketInheritedEnergies`` and the ``...PhotonNumbers`` twins
+     - As for stars
+     - [U_M U_L^2 U_T^{-2}]
+     - Ledger. Sink.
+
+The photon-number fields are in energy units: the photon number times the lower edge energy of the band (6.0 eV for PE, 11.2 eV for Lyman-Werner).
+
 Three optional gas input fields let an initial-conditions file seed the local field directly; see :ref:`gear_isrf` for their use.

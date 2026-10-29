@@ -13,7 +13,7 @@ Young stars produce a local, non-ionizing ultraviolet radiation field that heats
 
 Each star carries a band luminosity interpolated from the radiation datasets of its yields table (``GEARFeedback:yields_table``), as a function of its mass, metallicity and age. The luminosity is deposited on the gas particles inside the star's SPH kernel. Every receiving gas particle then attenuates the field it sees by a dust extinction factor :math:`\exp(-\kappa_\mathrm{eff} \Sigma)`, with the column :math:`\Sigma = \rho \, \ell` built from the particle's own density and a path :math:`\ell` set by the receiver-side extinction mechanism (see below; by default, the star-to-particle separation). The dust opacity scales with the particle's metallicity, so a metal-free gas particle is not shielded.
 
-Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the light of each star is instead handed from particle to particle by a packet hop, so that the radiation reaches gas beyond the source kernels at a finite speed and is shadowed by the gas in between.
+Injection alone illuminates only the stars' immediate neighbourhoods. Optionally, the light of each star is instead handed from particle to particle by a packet-hop transport, so that the radiation reaches gas beyond the source kernels at a finite speed and is shadowed by the gas in between. This is the only transport scheme of the module.
 
 The resulting per-particle field is handed to Grackle every step. The Lyman-Werner band alone sets the :math:`\mathrm{H}_2` photodissociation rate (Grackle mode 2 or 3 only; see :ref:`gear_radiation`'s Grackle cooling mode paragraph). Photoelectric heating uses a different field, the Habing field :math:`G_0`. The Habing band spans 6 to 13.6 eV, so :math:`G_0` sums the PE and Lyman-Werner band energies. Lyman-Werner energy therefore still feeds photoelectric heating at every Grackle mode, including below mode 2.
 
@@ -52,25 +52,59 @@ Propagation
 
 Set ``GEARFeedback:ISRF_propagation: 1`` to transport the light of the stars with the packet hop. The default, ``0``, adds the dose of a star to the gas inside its kernel at once.
 
-With the packet hop, a star splits its band luminosity into emission cones and hands each cone to the gas particles it reaches. Each gas particle gathers the light that reaches it in reception slots, cells of equal solid angle fixed in a rotated frame (see ``--with-isrf-packet-slots`` in :ref:`gear_radiation`). Once per own time step it absorbs a part of the light in its dust, and hands the rest to its downstream neighbours with a transmission cone :math:`W \max(0, \mu)^p`. The field that Grackle reads is the kernel mean of the light that the particle holds. The transport rides the time step of the gas: there is no separate radiation clock. It needs ``--with-chealpix`` and a yields table with the datasets ``MeanPhotonEnergyPE`` and ``Integrated_MeanPhotonEnergyPE`` in the ``Data/Radiation`` group. SWIFT stops at start-up if one is missing. A restart file can only be resumed by a build with the same number of slots.
+A star splits its band luminosity into emission cones and hands each cone to the gas particles it reaches. Each gas particle gathers the light that reaches it in reception slots, which are cells of equal solid angle fixed in a rotated frame. Once per own time step the particle absorbs a part of the light in its dust and hands the rest to its downstream neighbours with a transmission cone :math:`W \max(0, \mu)^p`. The field that Grackle reads is the kernel mean of the light that the particle holds. The transport rides the time step of the gas: there is no separate radiation clock.
+
+The transport needs ``--with-chealpix`` and a yields table with the datasets ``MeanPhotonEnergyPE`` and ``Integrated_MeanPhotonEnergyPE`` in the ``Data/Radiation`` group (see :ref:`gear_radiation_tables`). SWIFT stops at start-up if one is missing. Without a dust loss, the light of gas at zero metallicity is never absorbed, so check the initial metallicity of the gas.
 
 ``GEARFeedback:ISRF_packet_light_speed`` (default ``cap``)
   Speed limit of the light. ``cap``: a share arrives no earlier than the separation divided by the limit speed, in the frame of the gas. ``fixed``: as ``cap``, and the time step of each gas particle is bounded by :math:`C_\mathrm{hyp}\,a\,h / v`, so that the light moves at the limit speed. ``unlimited``: a share arrives at the next step of its receiver, and the light can move faster than :math:`c` (debugging only, SWIFT warns at start-up).
 
 ``GEARFeedback:ISRF_packet_light_speed_fraction_of_c`` (default ``0.99``)
-  Limit speed :math:`v` as a fraction of :math:`c`, in :math:`(0, 1]`. Read by ``cap`` and ``fixed``.
+  Limit speed :math:`v` as a fraction of :math:`c`, in :math:`(0, 1]`. Read by ``cap`` and ``fixed``. Raise it only to approach :math:`c`; lower it to slow the light on purpose.
 
 ``GEARFeedback:ISRF_c_hyp_margin`` (default ``0.5``)
-  Margin :math:`C_\mathrm{hyp}` of the time step bound of ``fixed``, in :math:`(0, 1.69]`. Above about :math:`0.8` the bulk of the light lags behind the limit speed while its front keeps it.
+  Margin :math:`C_\mathrm{hyp}` of the time step bound of ``fixed``, in :math:`(0, 1.69]`. A smaller value gives smaller time steps and a light front that follows the limit speed more closely. A value above about :math:`0.8` lets the bulk of the light lag behind the limit speed, while its front keeps it. It is parsed in every mode but acts only with ``fixed``.
 
 ``GEARFeedback:ISRF_packet_cone_power`` (default ``4``)
-  Power :math:`p \geq 1` of the transmission cone. A larger value is narrower.
+  Power :math:`p \geq 1` of the transmission cone. A larger value gives a narrower beam and less lateral spread.
 
 ``GEARFeedback:ISRF_packet_read_mean_time_Myr`` (default ``0``)
-  Time constant of a running mean of the field that a particle reads. ``0`` switches it off.
+  Time constant of a running mean of the field that a particle reads. ``0`` switches it off. Use a few time steps' worth to smooth step-to-step noise of the field.
 
 ``GEARFeedback:ISRF_packet_octant_frame_angles_deg`` (default ``[24, 36, 66]``) and ``ISRF_packet_octant_frame_seed_offset`` (default ``0``)
-  Rotation of the frame of the reception slots, in degrees about x, y and z, and the seed of an extra random rotation.
+  Rotation of the frame of the reception slots, in degrees about x, y and z, and the seed of an extra random rotation (``0``: none). The defaults avoid alignment of the slot boundaries with the axes of a box. Change them only to test that a result does not depend on the frame.
+
+``GEARFeedback:ISRF_packet_test_beam_1`` and ``ISRF_packet_test_beam_2`` (default: off)
+  Inject a test pulse of light into the gas. They are for tests, act only with ``ISRF_propagation: 1`` and are described in ``examples/parameter_example.yml``.
+
+Compile-time options
+--------------------
+
+``--with-isrf-packet-slots=<N>``
+  Number of reception slots of each gas particle: 12 (default), 8 or 16. More slots keep the directions of incoming light apart better and cost memory in every gas particle. See :ref:`gear_radiation` for the shapes of the partitions.
+
+``RADIATION_PACKET_BINS`` (default 4) and ``RADIATION_PACKET_FAR_CELLS`` (fixed at 2)
+  Number of near arrival bins per slot, one time step wide, and of far arrival cells per slot, for light that arrives later. Set the first with ``CFLAGS="-DRADIATION_PACKET_BINS=<n>"`` at configure time. The defaults are enough for ``cap`` and ``fixed``.
+
+``--with-chealpix``
+  Needed for the emission cones of the stars.
+
+Memory
+~~~~~~
+
+The transport adds 200 bytes per reception slot to every gas particle at the default number of bins. A gas particle is 3072 bytes with 12 slots and 2272 bytes with 8 slots (``sizeof(struct part)`` of a GEAR build with ``grackle_0``). The 16-slot build is larger by the same amount per slot. A snapshot can be large too, see :ref:`gear_output_isrf`.
+
+Restart and MPI
+---------------
+
+A restart file carries a layout marker. SWIFT refuses a restart file written by another code version, another number of slots or another ``--with-subgrid-radiation`` selection. Rerun from the initial conditions instead of resuming across versions.
+
+The transport works with MPI: a star of a foreign rank hands its light to the local receivers. MPI support of the radiation model is still being tested, so check a multi-rank run against a single-rank one.
+
+Limits
+------
+
+The light moves at most at the chosen speed in the frame of the gas, and no faster than :math:`c`. The transport is a hop between neighbouring gas particles, not a ray trace. Light that crosses a region of few particles spreads laterally by the transmission cone, and each reception slot merges all the light that arrives from one cell of directions into one packet with one direction.
 
 Grackle coupling
 ----------------
@@ -168,4 +202,4 @@ An initial-conditions file without any of them is unaffected: every field starts
 Snapshot outputs
 ------------------
 
-The star and gas fields this channel writes are documented on the :ref:`gear_output_isrf` section of the :ref:`gear_output_fields` page.
+The star and gas fields this channel writes are documented on the :ref:`gear_output_isrf` section of the :ref:`gear_output_fields` page. Only three gas fields are needed for an analysis: ``PESpecificEnergies``, ``LWSpecificEnergies`` and ``LWPhotonSpecificEnergies``. The ``Packet*`` fields are energy ledgers and diagnostics. Switch them off with the output selection of :ref:`Output_selection_label` to save space.
