@@ -59,6 +59,27 @@ INLINE static void hydro_read_particles_strength(struct part* parts,
 #endif
 }
 
+#ifdef STRENGTH_YIELD_STRESS
+/**
+ * @brief Computes the yield stress of a particle for the snapshot output.
+ *
+ * @param e The #engine.
+ * @param p The particle.
+ * @param xp The extended particle.
+ * @param ret The yield stress.
+ */
+INLINE static void convert_yield_stress(const struct engine* e,
+                                        const struct part* p,
+                                        const struct xpart* xp, float* ret) {
+
+  const struct mat_params *mp = material_params(p->mat_id);
+  struct strength_state s;
+  hydro_strength_state_init_drift(&s, p, mp);
+
+  ret[0] = strength_state_get_yield_stress(&s, mp);
+}
+#endif
+
 /**
  * @brief Specifies which particle strength fields to write to a dataset
  *
@@ -78,22 +99,26 @@ INLINE static void hydro_write_particles_strength(const struct part* parts,
       "Deviatoric stress tensors of the particles (xx, yy, zz, xy, xz, yz)");
   *num_fields += 1;
 
+#ifdef STRENGTH_YIELD_STRESS
+  list[*num_fields] = io_make_output_field_convert_part(
+      "YieldStresses", FLOAT, 1, UNIT_CONV_PRESSURE, -3.f * hydro_gamma, parts,
+      xparts, convert_yield_stress, "Yield stresses of the particles");
+  *num_fields += 1;
+#endif
 #ifdef STRENGTH_DAMAGE
   list[*num_fields] = io_make_output_field(
       "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, strength_data.damage.total, "Damage of the particles");
   *num_fields += 1;
 #endif
-#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+/* The damage from each source, only needed if both contribute to the total. */
+#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) && defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
   list[*num_fields] = io_make_output_field(
       "TensileDamage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
       strength_data.damage.tensile, "Damage of the particles due to tension");
-  *num_fields += 1;
-#endif
-#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
-  list[*num_fields] = io_make_output_field(
+  list[*num_fields + 1] = io_make_output_field(
       "ShearDamage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
       strength_data.damage.shear, "Damage of the particles due to shear");
-  *num_fields += 1;
+  *num_fields += 2;
 #endif
 #ifdef STRENGTH_OBJECT_IDS
   list[*num_fields] = io_make_output_field(
