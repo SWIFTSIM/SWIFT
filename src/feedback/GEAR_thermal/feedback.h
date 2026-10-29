@@ -29,6 +29,10 @@
 #include "timestep_sync_part.h"
 #include "units.h"
 
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+#include "../GEAR/radiation_packet.h"
+#endif
+
 #include <string.h>
 #include <strings.h>
 
@@ -79,7 +83,9 @@ void feedback_prepare_feedback(struct spart *restrict sp,
                                const int with_cosmology);
 
 /**
- * @brief Writes the current model of feedback to the file
+ * @brief Writes the current model of feedback to the file. With
+ * SWIFT_DEBUG_CHECKS_ISRF, also the packet ledger of the gas that left the
+ * box, summed over the ranks, PE then LW, in snapshot units.
  *
  * @param feedback The #feedback_props.
  * @param h_grp The HDF5 group in which to write
@@ -88,6 +94,26 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
                                           hid_t h_grp) {
 
   io_write_attribute_s(h_grp, "Feedback Model", "GEAR");
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+  struct feedback_isrf_packet_removed_data l;
+  double f;
+  radiation_packet_left_box_total(&l, &f);
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    l.removed_energy[b] *= f;
+    l.removed_photons[b] *= f;
+    l.inherited_energy[b] *= f;
+    l.inherited_photons[b] *= f;
+  }
+  io_write_attribute(h_grp, "PacketLeftBoxEscapedEnergies", DOUBLE,
+                     l.removed_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketLeftBoxEscapedPhotonNumbers", DOUBLE,
+                     l.removed_photons, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketLeftBoxInheritedEnergies", DOUBLE,
+                     l.inherited_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketLeftBoxInheritedPhotonNumbers", DOUBLE,
+                     l.inherited_photons, ISRF_OPERATOR_COUNT);
+#endif
 };
 
 /**

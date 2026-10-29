@@ -28,6 +28,7 @@
 #include "kernel_hydro.h"
 #include "parser.h"
 #include "random.h"
+#include "restart.h"
 #include "star_gas_weights.h"
 
 #if defined(HAVE_CHEALPIX)
@@ -799,17 +800,112 @@ void radiation_packet_bin_counters(long long *widened, long long *beyond,
   *clamped = radiation_packet_clamp_count;
 }
 
+/*! Packet ledger of the gas that left a non-periodic box on this rank, since
+    the start: the light in flight at the exit, which escapes, and the
+    absorbed, escaped and redshifted ledgers of the gas. Written under
+    `e->s->lock`. */
+static struct feedback_isrf_packet_removed_data radiation_packet_left_box;
+
+/*! #radiation_packet_left_box summed over the ranks at the last
+    #radiation_packet_reduce_left_box, and the factor from internal to
+    snapshot energy units. */
+static struct feedback_isrf_packet_removed_data radiation_packet_left_box_sum;
+static double radiation_packet_left_box_to_snapshot = 1.0;
+
+_Static_assert(sizeof(struct feedback_isrf_packet_removed_data) ==
+                   4 * ISRF_OPERATOR_COUNT * sizeof(double),
+               "The left-box ledger is reduced as an array of doubles.");
+
+/**
+ * @brief A gas particle leaves a non-periodic box: book its packet to the
+ * ledger of the gas that left the box. Called with `e->s->lock` held.
+ *
+ * @param p The gas particle.
+ */
+void radiation_packet_book_gas_left_box(const struct part *p) {
+  radiation_packet_book_removed_gas(p, &radiation_packet_left_box);
+}
+
+/**
+ * @brief Sum the ledger of the gas that left the box over the ranks.
+ * Collective.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_reduce_left_box(const struct engine *e) {
+#ifdef WITH_MPI
+  MPI_Allreduce(&radiation_packet_left_box, &radiation_packet_left_box_sum,
+                4 * ISRF_OPERATOR_COUNT, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
+  radiation_packet_left_box_sum = radiation_packet_left_box;
+#endif
+  radiation_packet_left_box_to_snapshot = units_conversion_factor(
+      e->internal_units, e->snapshot_units, UNIT_CONV_ENERGY);
+}
+
+/**
+ * @brief Ledger of the gas that left the box, summed over the ranks at the
+ * last #radiation_packet_reduce_left_box, in internal units.
+ *
+ * @param l (return) The ledger.
+ * @param to_snapshot_units (return) Factor from internal to snapshot energy
+ * units.
+ */
+void radiation_packet_left_box_total(
+    struct feedback_isrf_packet_removed_data *l, double *to_snapshot_units) {
+  *l = radiation_packet_left_box_sum;
+  *to_snapshot_units = radiation_packet_left_box_to_snapshot;
+}
+
+/**
+ * @brief Write this rank's ledger of the gas that left the box to a restart
+ * file.
+ *
+ * @param stream The restart file.
+ */
+void radiation_packet_left_box_dump(FILE *stream) {
+  restart_write_blocks(&radiation_packet_left_box,
+                       sizeof(radiation_packet_left_box), 1, stream,
+                       "isrf_left_box", "ISRF ledger of the gas that left");
+}
+
+/**
+ * @brief Read this rank's ledger of the gas that left the box from a restart
+ * file.
+ *
+ * @param stream The restart file.
+ */
+void radiation_packet_left_box_restore(FILE *stream) {
+  restart_read_blocks(&radiation_packet_left_box,
+                      sizeof(radiation_packet_left_box), 1, stream, NULL,
+                      "ISRF ledger of the gas that left");
+}
+
 /**
  * @brief Print, once per step, how many times the far arrival cells had to
  * widen, how many pieces of light were beyond the widest far cells and how
  * many deliveries went to a receiver that moved away faster than the clamp of
  * the delay allows, summed over the ranks, then reset the counters of every
- * rank. Prints nothing if all are zero. Collective: called by every rank from
+ * rank. Prints nothing if all are zero. Also prints the ledger of the gas that
+ * left the box when it changed. Collective: called by every rank from
  * engine_step().
  *
  * @param e The #engine.
  */
 void radiation_packet_step_diagnostics(const struct engine *e) {
+  static struct feedback_isrf_packet_removed_data printed;
+  radiation_packet_reduce_left_box(e);
+  const struct feedback_isrf_packet_removed_data *l =
+      &radiation_packet_left_box_sum;
+  if (e->nodeID == 0 && memcmp(l, &printed, sizeof(printed)) != 0)
+    message(
+        "ISRF packet light of the gas that left the box, step %d: in flight at "
+        "the exit (escaped) %.9e %.9e, inherited ledgers %.9e %.9e (energy, PE "
+        "then LW, internal units).",
+        e->step, l->removed_energy[0], l->removed_energy[1],
+        l->inherited_energy[0], l->inherited_energy[1]);
+  printed = *l;
+
   if (!radiation_packet_light_speed_limited) return;
   long long counts[3] = {radiation_packet_coarsening_count,
                          radiation_packet_overflow_count,

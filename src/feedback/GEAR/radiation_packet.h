@@ -169,6 +169,12 @@ integertime_t radiation_packet_far_end(
 void radiation_packet_step_diagnostics(const struct engine *e);
 void radiation_packet_bin_counters(long long *widened, long long *beyond,
                                    long long *clamped);
+void radiation_packet_book_gas_left_box(const struct part *p);
+void radiation_packet_reduce_left_box(const struct engine *e);
+void radiation_packet_left_box_total(
+    struct feedback_isrf_packet_removed_data *l, double *to_snapshot_units);
+void radiation_packet_left_box_dump(FILE *stream);
+void radiation_packet_left_box_restore(FILE *stream);
 #endif
 void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                               struct feedback_isrf_packet_slot_data *sl,
@@ -864,6 +870,15 @@ __attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_sink(struct sink *s) {}
 
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_gas_left_box(const struct part *p) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_left_box_dump(FILE *stream) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_left_box_restore(FILE *stream) {}
+
 #endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
@@ -881,6 +896,15 @@ __attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_sink(struct sink *s) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_gas_left_box(const struct part *p) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_left_box_dump(FILE *stream) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_left_box_restore(FILE *stream) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_star(struct spart *sp) {}

@@ -473,6 +473,14 @@ __attribute__((always_inline)) INLINE static void feedback_book_sink_merger(
     struct sink *si, const struct sink *sj) {}
 
 /**
+ * @brief A gas particle leaves a non-periodic box. Nothing to do here.
+ *
+ * @param p The removed #part.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_left_box(const struct part *p) {}
+
+/**
  * @brief Zero the feedback fields of a sink. Nothing to do here.
  *
  * @param s The #sink.
