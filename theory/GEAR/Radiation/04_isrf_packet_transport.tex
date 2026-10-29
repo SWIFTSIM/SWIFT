@@ -190,7 +190,7 @@ light. The gradient loop of the default hydro scheme visits a pair only inside t
 kernel support of the updated particle, so it sees the part of the reach beyond the
 sender's kernel from the visit of the receiver, which exists only when the receiver is
 active; the force loop uses the same membership test, so the shares of a sender sum to 1.
-With a hydro scheme whose gradient loop is two-sided, the activity of the receiver plays
+With a hydro scheme whose gradient loop is two-sided (a single rank only), the activity of the receiver plays
 no role. The reach is a geometric bound and not a
 light travel distance. The step of the sender does not limit it. The speed of
 light limits when a share arrives, not how far it reaches
@@ -248,7 +248,7 @@ $S_{i,k}$ and the numerator of Eq.~\eqref{eq:packet-advance} in
 \code{radiation\_packet\_gradient\_accumulate}
 (\code{radiation\_packet.h:207-228}), called from
 \code{runner\_iact\_isrf\_gradient} and its non-symmetric twin
-(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:68-70}, :99-106, the latter
+(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:73-75}, :104-111, the latter
 also adding the part of the reach of an active receiver). The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
 \code{radiation\_packet.c:1748}. The share $\phi_{ij,k}$ is
@@ -259,7 +259,7 @@ $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
 (\code{radiation\_packet.h:286}). The force loop calls
 \code{radiation\_packet\_book\_share} from
 \code{runner\_iact\_isrf\_packet\_hop} and its non-symmetric twin
-(\code{radiation\_propagation\_iact.h:135-138}, :174-183, the latter also
+(\code{radiation\_propagation\_iact.h:140-143}, :179-188, the latter also
 booking the part of the reach of a foreign active sender). The vector
 \code{dx\_ij} passed to it points from sender to receiver. The sender's held
 energy is set to zero at the end of the force loop
@@ -490,8 +490,8 @@ $\zeta$ at :244, $\nu$ at :253-254, the PE photon loss at :255, the losses at :2
 (\code{radiation\_packet.h:298-311}; fields at \code{feedback\_struct.h:212-216}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:454} for
 a hop, :644 for a star), and $H$ comes from
-\code{runner\_iact\_isrf\_packet\_hop} (\code{radiation\_propagation\_iact.h:135-138},
-:174) and from \code{radiation\_iact.h:277-278}.
+\code{runner\_iact\_isrf\_packet\_hop} (\code{radiation\_propagation\_iact.h:140-143},
+:179) and from \code{radiation\_iact.h:277-278}.
 
 \subsection{Dust absorption}
 \label{sec:packet-absorption}
@@ -642,7 +642,7 @@ Eq.~\eqref{eq:packet-runmean} is \code{radiation\_packet\_read\_mean}
 \code{radiation\_packet.c:1768-1773}. The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:483-500}, called at
-\code{radiation\_propagation\_iact.h:140-141}, :171), and the self term and the
+\code{radiation\_propagation\_iact.h:145-146}, :176), and the self term and the
 division are \code{radiation\_packet\_end\_force} (\code{radiation\_packet.c:1782-1801}),
 called at \code{radiation\_isrf.c:221}. The write into the moments is
 \code{radiation\_packet\_couple\_field} (\code{radiation\_packet.c:1813-1821}, called at
