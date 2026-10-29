@@ -14,13 +14,13 @@ An optically thick clump absorbs the light that crosses it. A second run
 without the clump (`clump=0`) gives the reference for the ratio map.
 
 `InitialConditions:periodic: 0`: the light that reaches a face of the box
-leaves, and no image of the star feeds the shadow. The gas within one kernel
-support of a face has fewer neighbours, and its kernel-mean field reads about
-two to three times higher than further in: leave that layer out when you
-measure the field. The initial conditions give the gas an internal energy of
-1 (km/s)^2 per unit mass, which `SPH:initial_temperature: 1000` replaces by
-that of 1000 K. The gas at the faces then expands out of the box: about 2 % of
-the particles leave in the first 4 steps.
+leaves, and no image of the star feeds the shadow. The field of the gas within
+one kernel support of a face reads about two to three times higher than
+further in: leave that layer out when you measure the field. The initial
+conditions give the gas an internal energy of 1 (km/s)^2 per unit mass, which
+`SPH:initial_temperature: 1000` replaces by that of 1000 K. The gas at the
+faces then expands out of the box: about 2 % of the particles leave in the
+first 4 steps.
 
 `params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
 off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
