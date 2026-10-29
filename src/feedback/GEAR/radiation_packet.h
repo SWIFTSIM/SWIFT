@@ -273,6 +273,77 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
   }
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Stop if a share is booked into a removed particle or with an unset
+ * octant frame.
+ *
+ * @param r The receiver.
+ * @param frame Octant frame of the share.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_deliver(const struct part *restrict r,
+                               const float frame[9]) {
+  if (r->time_bin == time_bin_inhibited)
+    error("Packet share booked into the removed gas particle %lld.", r->id);
+  float frame_norm = 0.f;
+  for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
+  if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
+    error("Packet share booked with an unset octant frame (norm %e).",
+          frame_norm);
+}
+#endif
+
+/**
+ * @brief Absorb a share in the dust of the receiver over its path, band by
+ * band, and book the absorbed part in the ledger.
+ *
+ * A transmitted photon number below #RADIATION_PACKET_MIN_PHOTONS is
+ * absorbed with its energy.
+ *
+ * @param r The receiver.
+ * @param en Energy of the share per band, before absorption.
+ * @param ph Photon number of the share per band, before absorption.
+ * @param path_phys Physical path length over which the share is absorbed.
+ * @param transmitted_energy (return) Energy that is left, per band.
+ * @param transmitted_photons (return) Photon number that is left, per band.
+ * @return The energy that is left, summed over the bands.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_packet_absorb_in_dust(
+    struct part *restrict r, const double en[ISRF_OPERATOR_COUNT],
+    const double ph[ISRF_OPERATOR_COUNT], const float path_phys,
+    float transmitted_energy_b[ISRF_OPERATOR_COUNT],
+    float transmitted_photons_b[ISRF_OPERATOR_COUNT]) {
+
+  struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
+  float delivered_energy = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_band_data *ledger = &pk_r->band[b];
+
+    const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
+    double absorbed_fraction = 1.0;
+    if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
+      absorbed_fraction = -expm1((double)-tau);
+
+    double absorbed_energy = en[b] * absorbed_fraction;
+    double absorbed_photons = ph[b] * absorbed_fraction;
+    float transmitted_energy = (float)(en[b] - absorbed_energy);
+    float transmitted_photons = (float)(ph[b] - absorbed_photons);
+    if (transmitted_photons < RADIATION_PACKET_MIN_PHOTONS) {
+      absorbed_energy = en[b];
+      absorbed_photons = ph[b];
+      transmitted_energy = 0.f;
+      transmitted_photons = 0.f;
+    }
+    transmitted_energy_b[b] = transmitted_energy;
+    transmitted_photons_b[b] = transmitted_photons;
+    radiation_packet_ledger_absorbed(ledger, absorbed_energy, absorbed_photons);
+    delivered_energy += transmitted_energy;
+  }
+  return delivered_energy;
+}
+
 /**
  * @brief Deliver one share to a receiver: absorb it in dust over the path, then
  * add it to the inbox (the reservoir, if the source has the coarser step) of
@@ -320,13 +391,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     const double arrival_last) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (r->time_bin == time_bin_inhibited)
-    error("Packet share booked into the removed gas particle %lld.", r->id);
-  float frame_norm = 0.f;
-  for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
-  if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
-    error("Packet share booked with an unset octant frame (norm %e).",
-          frame_norm);
+  radiation_packet_check_deliver(r, frame);
 #endif
 
   const float from_origin[3] = {-offset[0], -offset[1], -offset[2]};
@@ -359,30 +424,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
 
   float transmitted_energy_b[ISRF_OPERATOR_COUNT];
   float transmitted_photons_b[ISRF_OPERATOR_COUNT];
-  float delivered_energy = 0.f;
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    struct feedback_isrf_packet_band_data *ledger = &pk_r->band[b];
-
-    const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
-    double absorbed_fraction = 1.0;
-    if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
-      absorbed_fraction = -expm1((double)-tau);
-
-    double absorbed_energy = en[b] * absorbed_fraction;
-    double absorbed_photons = ph[b] * absorbed_fraction;
-    float transmitted_energy = (float)(en[b] - absorbed_energy);
-    float transmitted_photons = (float)(ph[b] - absorbed_photons);
-    if (transmitted_photons < RADIATION_PACKET_MIN_PHOTONS) {
-      absorbed_energy = en[b];
-      absorbed_photons = ph[b];
-      transmitted_energy = 0.f;
-      transmitted_photons = 0.f;
-    }
-    transmitted_energy_b[b] = transmitted_energy;
-    transmitted_photons_b[b] = transmitted_photons;
-    radiation_packet_ledger_absorbed(ledger, absorbed_energy, absorbed_photons);
-    delivered_energy += transmitted_energy;
-  }
+  const float delivered_energy = radiation_packet_absorb_in_dust(
+      r, en, ph, path_phys, transmitted_energy_b, transmitted_photons_b);
 
   if (radiation_packet_light_speed_limited) {
     /* The light waits in its arrival bin until the receiver's merge at or
