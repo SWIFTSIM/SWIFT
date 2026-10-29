@@ -37,6 +37,11 @@
    loop the visit of the sender reaches every receiver, so the activity of the
    receiver plays no role. */
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
+#ifdef WITH_MPI
+/* The packet hop is compiled without its reverse booking here, so the outer
+   part of a foreign sender would be lost. */
+#error "The ISRF packet transport with a two-sided gradient loop needs a single rank."
+#endif
 #define RADIATION_PACKET_RECEIVER_ACTIVE(active) 1
 #define RADIATION_PACKET_GRADIENT_WANT RADIATION_PACKET_REACH_ALL
 #else
