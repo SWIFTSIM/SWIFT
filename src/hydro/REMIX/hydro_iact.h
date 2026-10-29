@@ -418,7 +418,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
 
   /* Strength. */
   hydro_runner_iact_force_strength(pi, pj, dx, Gi_linear, Gj_linear);
-  
+
   if ((pi->is_h_max) || (pj->is_h_max)) {
     /* Do not add diffusion or normalising terms if either particle has h=h_max
      */

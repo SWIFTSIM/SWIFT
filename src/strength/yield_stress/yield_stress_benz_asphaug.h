@@ -210,7 +210,7 @@ yield_apply_yield_stress_to_sym_matrix(
   if (f >= 1.f) {
     return 0;
   }
-  
+
   /* Reduce elements of symmetric matrix based on yield stress */
   M->xx *= f;
   M->yy *= f;

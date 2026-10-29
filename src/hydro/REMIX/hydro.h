@@ -759,7 +759,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->rho = xp->rho_evol_full;
   p->rho_evol = xp->rho_evol_full;
   p->phase = xp->phase_full;
-  
+
   /* Do strength resets before computing new values */
   hydro_reset_predicted_values_strength(p, xp);
 

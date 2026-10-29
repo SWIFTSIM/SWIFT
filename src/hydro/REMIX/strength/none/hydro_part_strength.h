@@ -41,7 +41,7 @@
 struct strength_xpart_data {};
 
 /**
- * @brief Particle srength fields for the SPH particles
+ * @brief Particle strength fields for the SPH particles
  *
  * The density and force substructures are used to contain variables only used
  * within the density and force loops over neighbours. All more permanent

@@ -48,8 +48,8 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * Adds a negative factor to diagonal elements of the stress tensor if any of
  * the principal stresses are positive. The same factor is used for each of the
  * diagonal elements, and it consists of the maximum principal stress multiplied
- * by a function that increases from 0 to 1 with reduced particle separation. 
- * Adding the same constant to all diagonal elemenets is equivalent in any basis:
+ * by a function that increases from 0 to 1 with reduced particle separation.
+ * Adding the same constant to all diagonal elements is equivalent in any basis:
  * M + c*I = P (M + c*I) P^-1 = P M P^-1 + P (c*I) P^-1 = P M P^-1 + c*I
  * Unlike the basis independent method presented by Gray+2001, this method does
  * not require basis transformation of the stress tensor, and it is therefore

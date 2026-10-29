@@ -44,7 +44,7 @@ struct strength_xpart_data {
   /*! Evolved density at the last full step. */
   float rho_evol_full;
 
-  // Stress tensor
+  // Deviatoric stress tensor at the last full step
   struct sym_matrix deviatoric_stress_tensor_full;
 
   #ifdef STRENGTH_DAMAGE
@@ -55,7 +55,7 @@ struct strength_xpart_data {
 };
 
 /**
- * @brief Particle srength fields for the SPH particles
+ * @brief Particle strength fields for the SPH particles
  *
  * The density and force substructures are used to contain variables only used
  * within the density and force loops over neighbours. All more permanent
@@ -63,7 +63,7 @@ struct strength_xpart_data {
  */
 struct strength_part_data {
 
-  /*! Particle evolved density (primary density for REMIX equations). */
+  /*! Evolved density, used in place of the SPH density with strength. */
   float rho_evol;
 
   /*! Time derivative of the evolved density. */
@@ -90,7 +90,7 @@ struct strength_part_data {
   // Strain rate tensor
   struct sym_matrix strain_rate_tensor;
 
-  // Gradient of velocity, calculated using linear-order reproducing kernel.
+  // Gradient of velocity, calculated using the kernel gradient in the force loop.
   float dv_force_loop[3][3];
 
 #ifdef STRENGTH_DAMAGE

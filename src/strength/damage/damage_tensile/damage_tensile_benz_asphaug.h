@@ -71,7 +71,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part
  * Benz&Asphaug95 tensile fracture model. Each particle is initialised with a
  * number of flaws, each with a corresponding activation threshold. A flaw is
  * activated if the local strain exceeds its activation threshold. Tensile
- * damage accumulates in a particle based on the number of curently-active flaws
+ * damage accumulates in a particle based on the number of currently-active flaws
  * and an estimate of the crack velocity.
  *
  * Method parameters needed in material parameter file:

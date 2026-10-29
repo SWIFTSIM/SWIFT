@@ -181,7 +181,7 @@ hydro_visc_no_reconstruction_strength(const struct part *restrict pi,
 }
 
 /**
- * @brief Whether material strength excludes a pair of particles from the 
+ * @brief Whether material strength excludes a pair of particles from the
  * artificial diffusion of u and rho.
  *
  * @param pi First particle.
@@ -307,7 +307,6 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
 
   strength_reset_predicted_values_stress_tensor(p, xp);
   strength_reset_predicted_values_damage(p, xp);
-  strength_reset_predicted_values_extra(p, xp);
 
   /* Store the quantities derived from the state with the reset values. */
   const struct mat_params *mp = material_params(p->mat_id);
@@ -347,8 +346,6 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   p->strength_data.is_yielding =
       yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor,
                                              p->strength_data.deviatoric_stress_tensor, &s, mp);
-
-  strength_predict_extra_beginning(p, &s, mp, dt_therm);
 }
 
 /**
@@ -374,7 +371,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
  * @brief Kick the additional particle strength properties.
  * At beginning of hydro function, before hydro quantities have been kicked.
  *
- * Additional hydrodynamic quantites are kicked forward in time here. These
+ * Additional hydrodynamic quantities are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle to act upon.
@@ -401,15 +398,13 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
    * J_2 must be of the stepped tensor, since that is what gets limited. */
   yield_apply_yield_stress_to_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full,
                                          xp->strength_data.deviatoric_stress_tensor_full, &s, mp);
-
-  strength_kick_extra_beginning(p, xp, &s, mp, dt_therm);
 }
 
 /**
  * @brief Kick the additional particle strength properties
  * At end of hydro function, after hydro quantities have been kicked.
  *
- * Additional hydrodynamic quantites are kicked forward in time here. These
+ * Additional hydrodynamic quantities are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle to act upon.

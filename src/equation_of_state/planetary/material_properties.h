@@ -332,7 +332,16 @@ INLINE static void check_material_params(const struct mat_params *mat_params,
     error("Material %d: a solid or variable state_type needs "
           "Material:shear_mod > 0", mat_id);
 
+  #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
+    if (mat_params->yield_stress_benz_asphaug_Y_0 < 0.f)
+      error("Material %d: Benz-Asphaug yield stress needs "
+            "YieldStressBenzAsphaug:Y_0 >= 0", mat_id);
+  #endif
+
   #if defined(STRENGTH_YIELD_STRESS_COLLINS)
+    if (mat_params->yield_stress_collins_Y_0i < 0.f)
+      error("Material %d: Collins yield stress needs YieldStressCollins:Y_0i >= 0",
+            mat_id);
     if ((mat_params->yield_stress_collins_Y_Mi < mat_params->yield_stress_collins_Y_0i) ||
         (mat_params->yield_stress_collins_Y_Md < mat_params->yield_stress_collins_Y_0d))
       error("Material %d: Collins yield stress needs YieldStressCollins:Y_Mi >= Y_0i "

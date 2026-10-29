@@ -40,7 +40,6 @@
 
 // Stress tensor, combining strength models
 #include "./strength/strength_stress_tensor.h"
-#include "./strength/strength_extra.h"
 
 // Setting up the strength state, which uses the strength models
 #include "./strength/strength_state_setup.h"

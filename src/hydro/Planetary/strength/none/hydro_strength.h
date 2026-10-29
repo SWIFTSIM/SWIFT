@@ -146,7 +146,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
  * @brief Kick the additional particle strength properties
  * At beginning of hydro function, before hydro quantities have been kicked.
  *
- * Additional hydrodynamic quantites are kicked forward in time here. These
+ * Additional hydrodynamic quantities are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle to act upon.
@@ -160,7 +160,7 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
  * @brief Kick the additional particle strength properties
  * At end of hydro function, after hydro quantities have been kicked.
  *
- * Additional hydrodynamic quantites are kicked forward in time here. These
+ * Additional hydrodynamic quantities are kicked forward in time here. These
  * include thermal quantities (thermal energy or total energy or entropy, ...).
  *
  * @param p The particle to act upon.

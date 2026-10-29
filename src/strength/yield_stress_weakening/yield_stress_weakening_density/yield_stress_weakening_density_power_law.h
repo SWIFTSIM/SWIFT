@@ -51,7 +51,7 @@ __attribute__((always_inline)) INLINE static void yield_weakening_density_set_st
  * Material:
  *     rho_0_scheme: Scheme for the reference density (must be set).
  * YieldStressWeakeningDensityPowerLaw:
- *     mult_param: Density weakening muliplication factor (default 0.85).
+ *     mult_param: Density weakening multiplication factor (default 0.85).
  *     pow_param: Density weakening power factor (default 4).
  *
  * @param Y The yield stress to be weakened.

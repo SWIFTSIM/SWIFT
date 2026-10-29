@@ -48,8 +48,8 @@ INLINE static void hydro_read_particles_strength(struct part* parts,
                                 UNIT_CONV_NO_UNITS, parts, strength_data.number_of_flaws);
   list[*num_fields+1] = io_make_input_field("FirstFlawIndices", LONGLONG, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, strength_data.first_flaw_index);
-  
-  *num_fields += 2;  
+
+  *num_fields += 2;
 #endif
 #ifdef STRENGTH_OBJECT_IDS
   list[*num_fields] = io_make_input_field("ObjectIDs", INT, 1, COMPULSORY,
@@ -71,11 +71,29 @@ INLINE static void hydro_write_particles_strength(const struct part* parts,
                                          const struct xpart* xparts,
                                          struct io_props* list,
                                          int* num_fields) {
+
+  list[*num_fields] = io_make_output_field(
+      "DeviatoricStressTensors", FLOAT, 6, UNIT_CONV_PRESSURE, -3.f * hydro_gamma,
+      parts, strength_data.deviatoric_stress_tensor,
+      "Deviatoric stress tensors of the particles (xx, yy, zz, xy, xz, yz)");
+  *num_fields += 1;
+
 #ifdef STRENGTH_DAMAGE
-   list[*num_fields] = io_make_output_field(
-       "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, strength_data.damage.total, "Damage of the particles");
-  
-  *num_fields += 1;  
+  list[*num_fields] = io_make_output_field(
+      "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, strength_data.damage.total, "Damage of the particles");
+  *num_fields += 1;
+#endif
+#ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
+  list[*num_fields] = io_make_output_field(
+      "TensileDamage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      strength_data.damage.tensile, "Damage of the particles due to tension");
+  *num_fields += 1;
+#endif
+#ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
+  list[*num_fields] = io_make_output_field(
+      "ShearDamage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      strength_data.damage.shear, "Damage of the particles due to shear");
+  *num_fields += 1;
 #endif
 #ifdef STRENGTH_OBJECT_IDS
   list[*num_fields] = io_make_output_field(
