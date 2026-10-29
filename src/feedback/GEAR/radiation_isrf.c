@@ -177,15 +177,15 @@ void radiation_snapshot_part_propagation(struct part *p,
 }
 
 /**
- * @brief Radiation timestep bound `m a h_i / v` of the packet transport,
- * with `m` the time step margin
+ * @brief Radiation timestep bound `f_dt a h_i / v` of the packet transport,
+ * with `f_dt` the time step margin
  * (#feedback_props.ISRF_packet_light_speed_time_step_margin) and `v` the limit
  * speed (#feedback_props.ISRF_packet_light_speed_fraction_of_c times c).
  *
  * A packet makes one hop per own step, so its light is too slow unless the
  * step is short. Only the `fixed` light speed mode asks for that, for every
  * gas particle. The cap and the unlimited mode give FLT_MAX, and so does
- * ISRF_propagation off. Above `m` of about 0.8 the bulk of the light lags
+ * ISRF_propagation off. Above `f_dt` of about 0.8 the bulk of the light lags
  * behind `v` while its front keeps the speed.
  *
  * @param p The #part to consider.

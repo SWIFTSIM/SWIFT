@@ -188,7 +188,7 @@ struct feedback_props {
   /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans. */
   float ISRF_extinction_jeans_temperature_cap_K;
 
-  /*! Margin `m` of the step bound `m a h_i / v` of the packet transport
+  /*! Margin `f_dt` of the step bound `f_dt a h_i / v` of the packet transport
    * with the fixed light speed, see feedback_props_init() for its range. */
   float ISRF_packet_light_speed_time_step_margin;
 

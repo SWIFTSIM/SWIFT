@@ -56,16 +56,16 @@ With the packet hop, a star splits its band luminosity into emission cones and h
 
 In a cosmological run the light redshifts along its path. A band edge is fixed in physical energy, so the energy of a band falls and part of the Lyman-Werner light enters the photoelectric band; the photon numbers change at their own rates. The loss is taken once, when a share is booked, before the dust absorbs. A static box has no redshift.
 
-Light held by a gas particle with no downstream neighbour escapes and leaves the transport. Light held by a gas particle that becomes a star, or that a sink swallows, leaves with it and is booked to that star or sink as removed. ``./configure --enable-isrf-debugging-checks`` keeps these energy ledgers and writes them to the snapshot (see :ref:`gear_radiation`).
+Light held by a gas particle with no downstream neighbour escapes and leaves the transport. A star counts the light that its emission cones send to no gas as escaped too. Light held by a gas particle that becomes a star, or that a sink swallows, leaves with it and is booked to that star or sink as removed. ``./configure --enable-isrf-debugging-checks`` keeps these energy ledgers and writes them to the snapshot (see :ref:`gear_radiation`).
 
 ``GEARFeedback:ISRF_packet_light_speed`` (default ``cap``)
-  Speed limit of the light. ``cap``: a share arrives no earlier than the separation divided by the limit speed, in the frame of the gas. ``fixed``: as ``cap``, and the time step of each gas particle is bounded by :math:`\mu\,a\,h / v`, so that the light moves at the limit speed. ``unlimited``: a share arrives at the next step of its receiver, and the light can move faster than :math:`c` (debugging only, SWIFT warns at start-up).
+  Speed limit of the light. ``cap``: a share arrives no earlier than the separation divided by the limit speed, in the frame of the gas. ``fixed``: as ``cap``, and the time step of each gas particle is bounded by :math:`f_{\Delta t}\,a\,h / v`, so that the light moves at the limit speed. ``unlimited``: a share arrives at the next step of its receiver, and the light can move faster than :math:`c` (debugging only, SWIFT warns at start-up).
 
 ``GEARFeedback:ISRF_packet_light_speed_fraction_of_c`` (default ``0.99``)
   Limit speed :math:`v` as a fraction of :math:`c`, in :math:`(0, 1]`. Read by ``cap`` and ``fixed``.
 
 ``GEARFeedback:ISRF_packet_light_speed_time_step_margin`` (default ``0.5``)
-  Margin :math:`\mu` of the time step bound of ``fixed``, in :math:`(0, 1.69]`. Above about :math:`0.8` the bulk of the light lags behind the limit speed while its front keeps it.
+  Margin :math:`f_{\Delta t}` of the time step bound of ``fixed``, in :math:`(0, 1.69]`. Above about :math:`0.8` the bulk of the light lags behind the limit speed while its front keeps it.
 
 ``GEARFeedback:ISRF_packet_cone_power`` (default ``4``)
   Power :math:`p \geq 1` of the transmission cone. A larger value is narrower.
@@ -126,7 +126,7 @@ The ISRF section of the ``GEARFeedback`` block, with every parameter at its defa
      ISRF_extinction_path: pair_separation                   # Receiver-side dust column path mechanism
      ISRF_extinction_path_in_kernel_radii: 1.0               # Path R in kernel support radii, constant_kernel_path only
      ISRF_extinction_jeans_temperature_cap_K: 40             # Jeans-length temperature cap, temperature_capped_jeans only
-     ISRF_packet_light_speed_time_step_margin: 0.5                                  # Margin of the time step bound, ISRF_packet_light_speed fixed only
+     ISRF_packet_light_speed_time_step_margin: 0.5           # Margin of the time step bound, ISRF_packet_light_speed fixed only
      ISRF_packet_light_speed: cap                            # Speed limit of the light: cap, fixed or unlimited
      ISRF_packet_light_speed_fraction_of_c: 0.99             # Limit speed as a fraction of c
      ISRF_packet_cone_power: 4                               # Power of the transmission cone

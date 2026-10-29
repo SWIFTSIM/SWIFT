@@ -644,8 +644,8 @@ the light of its held packet) to a receiver at the separation $s_{ij}$ arrives a
 $\tau_i + s_{ij}/(v-\max(0,\mathbf{u}_j\cdot\hat{\mathbf{s}}))$, with $\mathbf{u}_j$ the
 physical velocity of the receiver at the booking. The factor $v/(v-u)$ is limited to
 100. Under cosmology the delay is $H s/v$ ticks of $\ln a$ at the rate of the start of the hop.
-The mode \code{fixed} also bounds the step of every gas particle by $m\,a h/v$, with the margin
-$m=$ \code{ISRF\_packet\_light\_speed\_time\_step\_margin} (default 0.5, range $(0,1.69]$). Light never moves
+The mode \code{fixed} also bounds the step of every gas particle by $f_{\Delta t}\,a h/v$, with the margin
+$f_{\Delta t}=$ \code{ISRF\_packet\_light\_speed\_time\_step\_margin} (default 0.5, range $(0,1.69]$). Light never moves
 faster than $v$ in the frame of the gas. A sender that moves towards the receiver
 between its stamp and its booking, or a receiver that speeds up after it, can make the
 front move at up to $v+u$ in the frame of the box; this is harmless for $v$ near $c$

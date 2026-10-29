@@ -305,8 +305,8 @@ radiation_packet_check_deliver(const struct part *restrict r,
  * @param en Energy of the share per band, before absorption.
  * @param ph Photon number of the share per band, before absorption.
  * @param path_phys Physical path length over which the share is absorbed.
- * @param transmitted_energy (return) Energy that is left, per band.
- * @param transmitted_photons (return) Photon number that is left, per band.
+ * @param transmitted_energy_b (return) Energy that is left, per band.
+ * @param transmitted_photons_b (return) Photon number that is left, per band.
  * @return The energy that is left, summed over the bands.
  */
 __attribute__((always_inline)) INLINE static float
