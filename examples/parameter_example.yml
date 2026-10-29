@@ -901,7 +901,7 @@ GEARFeedback:
   ISRF_extinction_path_in_kernel_radii: 1.0                # Path in kernel support radii, constant_kernel_path only. (Default: 1.0)
   ISRF_extinction_jeans_temperature_cap_K: 40              # Temperature cap in K of the Jeans length, temperature_capped_jeans only. (Default: 40)
   ISRF_c_hyp_margin: 0.5                                  # Margin of the time step bound with ISRF_packet_light_speed fixed, in (0, 1.69]. (Default: 0.5)
-  ISRF_packet_light_speed: cap                             # Speed limit of the light: cap, fixed or unlimited (debugging only). (Default: cap)
+  ISRF_packet_light_speed: cap                             # Speed limit of the light: cap, fixed or unlimited (debugging only). (Default: cap with ISRF_propagation: 1, unlimited otherwise)
   ISRF_packet_light_speed_fraction_of_c: 0.99              # Limit speed as a fraction of c, in (0, 1]. (Default: 0.99)
   ISRF_packet_cone_power: 4                                # Power p >= 1 of the transmission cone, larger is narrower. (Default: 4)
   ISRF_packet_read_mean_time_Myr: 0                        # Time constant in Myr of the running mean of the field, 0 is off. (Default: 0)

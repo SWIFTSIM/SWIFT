@@ -397,7 +397,7 @@ The remaining fields are gas fields registered by the GEAR feedback module's own
 
 .. _gear_output_isrf_packet:
 
-With ``ISRF_propagation: 1`` the transport writes more fields, all zero otherwise. Every two-component field holds the PE band, then the Lyman-Werner band. "Ledger" fields close the energy budget of a run: they are the only way to check energy conservation from a snapshot. "Diagnostic" fields are for debugging the transport and are not needed for science. Switch fields off with the output selection (see :ref:`Output_selection_label`); the names carry the particle type as a suffix, for example ``PacketSlotDirections_Gas``. With 12 slots, the diagnostic gas fields are about 460 bytes per gas particle against 24 bytes for the three fields above.
+With ``ISRF_propagation: 1`` the transport writes more fields, all zero otherwise. Every two-component field holds the PE band, then the Lyman-Werner band. "Ledger" fields close the energy budget of a run: they are the only way to check energy conservation from a snapshot. "Diagnostic" fields are for debugging the transport and are not needed for science. Switch fields off with the output selection (see :ref:`Output_selection_label`); the names carry the particle type as a suffix, for example ``PacketSlotDirections_Gas``. With 12 slots, the diagnostic and duplicate gas fields take 464 bytes per gas particle and the ledger gas fields 144 bytes, against 24 bytes for the three fields above (all double precision). The slot fields (432 bytes) scale with the number of slots.
 
 .. list-table::
    :header-rows: 1
