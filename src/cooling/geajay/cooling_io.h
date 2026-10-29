@@ -607,6 +607,12 @@ INLINE static void cooling_read_column_shielding_parameters(
         "1 (background_mode: grackle), or ionising_background_model: "
         "uv_table (background_mode: per_band).");
 
+  /* The context owns its tables, which the edge setting does not reach */
+  if (cooling->table_density_edge != GEAJAY_TABLE_EDGE_EXTRAPOLATE)
+    error(
+        "GeajayCooling:table_density_edge: edge cannot be used with "
+        "uv_self_shielding: HI_HeI_HeII_column: the context owns its tables.");
+
   if (!parser_does_param_exist(parameter_file, keys[0]))
     error(
         "GeajayCooling:uv_self_shielding: HI_HeI_HeII_column needs "
