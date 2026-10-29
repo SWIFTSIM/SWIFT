@@ -3141,33 +3141,42 @@ void fof_search_foreign_cells(struct fof_props *props, const struct space *s) {
   props->group_links_size = fof_props_default_group_link_size;
 
   int num_cells_out = 0;
-  int num_cells_in = 0;
+  size_t cell_pair_size = 0;
 
   /* Find the maximum no. of cell pairs that can communicate. */
   for (int i = 0; i < e->nr_proxies; i++) {
 
+    int proxy_cells_out = 0;
     for (int j = 0; j < e->proxies[i].nr_cells_out; j++) {
 
       /* Only include gravity cells. */
       if (e->proxies[i].cells_out_type[j] & proxy_cell_type_gravity)
-        num_cells_out++;
+        proxy_cells_out++;
     }
 
+    int proxy_cells_in = 0;
     for (int j = 0; j < e->proxies[i].nr_cells_in; j++) {
 
       /* Only include gravity cells. */
       if (e->proxies[i].cells_in_type[j] & proxy_cell_type_gravity)
-        num_cells_in++;
+        proxy_cells_in++;
     }
+
+    num_cells_out += proxy_cells_out;
+
+    /* Pairs are only made within a proxy and only on the lower rank */
+    if (engine_rank == min(engine_rank, e->proxies[i].nodeID))
+      cell_pair_size += (size_t)proxy_cells_out * (size_t)proxy_cells_in;
   }
+
+  if (cell_pair_size > INT_MAX)
+    error("Too many FOF cell pairs (%zu) for an int counter.", cell_pair_size);
 
   if (verbose)
     message(
         "Finding max no. of cells + offset IDs"
         "took: %.3f %s.",
         clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  const int cell_pair_size = num_cells_in * num_cells_out;
 
   /* Allocate memory for all the possible cell links */
   if (swift_memalign("fof_group_links", (void **)&props->group_links,
