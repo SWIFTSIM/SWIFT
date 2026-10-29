@@ -63,6 +63,12 @@ make -j
 tracked in these modes. `--with-tracers=GEAR` registers the
 `LWSpecificEnergies` snapshot output.
 
+`--with-chealpix` is required by the ISRF transport. The yields table named
+by `GEARFeedback:yields_table` must carry, in its `Data/Radiation` group, the
+datasets of the ISRF and `MeanPhotonEnergyPE` with its `Integrated_` twin (see
+the documentation of the GEAR stellar evolution table). SWIFT stops at
+start-up if one is missing. The pychem table generator produces such a table.
+
 # Run
 ```
 config=thin  run_name=thin  ./run.sh

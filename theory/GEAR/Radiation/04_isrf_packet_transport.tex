@@ -10,8 +10,9 @@ lengths and the field that the gas sees are physical.
 A packet is a quantity of band energy with a photon number and a direction.
 A star hands its light to the gas around it. Each gas particle holds the light
 it received, and hands it on to its downstream neighbours once per own step.
-The transport has no propagation speed: one hop is one step of the sending
-particle, whatever the distance. The sections below give the packet
+One hop is one step of the sending particle. The speed of the light is limited
+by default (Section~\ref{sec:packet-lightspeed}); the hop description of the
+sections below holds without a limit unless the text says otherwise. The sections below give the packet
 (Section~\ref{sec:packet-state}), the hop (\ref{sec:packet-hop}), the merge
 (\ref{sec:packet-merge}), the emission by a star (\ref{sec:packet-emission}),
 the redshift and the band-edge transfer (\ref{sec:packet-transfer}), the dust
@@ -683,8 +684,9 @@ $v=0.99c$, nor in the mode \code{fixed} with $m=0.5$ except for the outermost
 neighbours (a hop to the kernel edge is 3.9 receiver steps, up to 7.7 with the bin rounding). A cap of
 5 km/s gives lumps of 0 to 3, a cap of 30 km/s none.
 
-\paragraph{Memory and restart.} The slot grows from 128 to 200 bytes and the gas particle from 2048 to
-2624 bytes (8 slots), and from 2560 to 3424 bytes at the default of 12 slots. The fields of the two modes share their bytes. The restart layout marker is 18.
+\paragraph{Memory and restart.} A slot takes 200 bytes. Without \code{--enable-isrf-debugging-checks} the gas particle is
+2176 bytes with 8 slots, 2976 bytes with 12 slots (the default) and 3776 bytes with 16 slots; with the option it is 96 bytes larger.
+The fields of the two light speed modes share their bytes. The restart layout marker is 19.
 
 \subsection{The frame of reference of the light}
 \label{sec:packet-frame}
