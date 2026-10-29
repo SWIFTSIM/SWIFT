@@ -555,73 +555,6 @@ INLINE static void feedback_props_read_packet_light_speed(
         fp->ISRF_packet_light_speed_fraction_of_c);
 }
 
-/*! Keys of the removed moment (M1) transport of the ISRF. They are read and
- * ignored, and one message lists those found in the parameter file. */
-static const char *const feedback_props_retired_ISRF_keys[] = {
-    "GEARFeedback:ISRF_c_hyp_scheme",
-    "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c",
-    "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging",
-    "GEARFeedback:ISRF_dissipation_alpha_max",
-    "GEARFeedback:ISRF_dissipation_negativity_threshold",
-    "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging",
-    "GEARFeedback:ISRF_dissipation_alpha_floor",
-    "GEARFeedback:ISRF_dissipation_floor_h_over_lambda",
-    "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
-    "GEARFeedback:ISRF_flux_dissipation"};
-
-/**
- * @brief Read the keys of the removed moment transport of the ISRF, so that an
- * old parameter file still runs.
- *
- * GEARFeedback:ISRF_transport: M1 (or m1) stops the run. packet_hop is ignored,
- * as is every key of #feedback_props_retired_ISRF_keys. One warning lists the
- * keys found.
- *
- * @param params The parameter file.
- */
-INLINE static void feedback_props_read_retired_ISRF_keys(
-    struct swift_params *params) {
-
-  /* Holds the names of all the retired keys (344 characters). */
-  char found[1024] = "";
-  char value[PARSER_MAX_LINE_SIZE];
-
-  if (parser_does_param_exist(params, "GEARFeedback:ISRF_transport")) {
-    parser_get_opt_param_string(params, "GEARFeedback:ISRF_transport", value,
-                                "packet_hop");
-    if (strcasecmp(value, "m1") == 0)
-      error(
-          "GEARFeedback:ISRF_transport: %s was removed: the packet hop is the "
-          "only transport of the ISRF. The M1 solver is on the branch "
-          "darwin/archive/isrf_m1 (tag isrf-m1-last).",
-          value);
-    if (strcmp(value, "packet_hop") != 0)
-      error("GEARFeedback:ISRF_transport must be packet_hop, got '%s'.", value);
-    strcat(found, " ISRF_transport");
-  }
-
-  const int n_retired = sizeof(feedback_props_retired_ISRF_keys) /
-                        sizeof(feedback_props_retired_ISRF_keys[0]);
-  for (int i = 0; i < n_retired; i++) {
-    if (!parser_does_param_exist(params, feedback_props_retired_ISRF_keys[i]))
-      continue;
-    parser_get_opt_param_string(params, feedback_props_retired_ISRF_keys[i],
-                                value, "");
-    if (strlen(found) + strlen(feedback_props_retired_ISRF_keys[i]) + 2 <
-        sizeof(found)) {
-      strcat(found, " ");
-      strcat(found,
-             feedback_props_retired_ISRF_keys[i] + strlen("GEARFeedback:"));
-    }
-  }
-
-  if (found[0] != '\0')
-    warning(
-        "These GEARFeedback keys belong to the removed M1 transport of the "
-        "ISRF and are ignored:%s. The packet hop is the only transport.",
-        found);
-}
-
 /**
  * @brief Initialize the global properties of the feedback scheme.
  *
@@ -884,8 +817,6 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
-
-    feedback_props_read_retired_ISRF_keys(params);
 
     /* Parsed even with ISRF_propagation off. */
     fp->ISRF_c_hyp_margin = parser_get_opt_param_float(
