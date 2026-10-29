@@ -1,0 +1,48 @@
+# Intro
+A 4 x 4 x 4 lattice of identical stars (29.7 Msun) in a periodic box of
+uniform, nearly transparent gas (1e3 atom/cm^3, 0.1 Msun particles, 32768
+particles, 25.9 smoothing lengths on a side, Z = 0.01 Zsun). The stars sit at the
+centres of the 64 sub-cubes of the box, 6.5 smoothing lengths apart.
+
+The example shows the light of many sources whose directions at a gas
+particle cover the whole sphere. The light that a particle holds comes from
+several slots at once, and the field in the box is the sum of the fields of
+the stars and of their periodic images.
+
+`params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`): the gas stays at
+rest and the maps show the light only. `GEARFeedback:ISRF_packet_light_speed:
+cap` limits the speed of the light to 0.99 c, a limit that the fixed step
+never reaches. A packet makes one hop of about one smoothing length per step,
+so the light moves at about one smoothing length per step, much slower than
+c, and the run lasts a few tens of steps.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. The number of reception
+slots is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table that carries MeanPhotonEnergyPE (see the
+ISRF documentation). `run.sh` takes `PopII_parsec_spectral_with_pe_photon_energy.hdf5`
+from this directory, from `$GEAR_RADIATION_TABLE` or from `~/programs/pychem`,
+in that order. `radiation_table=<file>` selects another table.
+
+# Run
+```
+./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`star_mass` (Msun), `n_steps` (last step of the run), `swift_exe`, `run_dir`, `run_analysis`
+(0 skips the plot) and `extra_args` (further swift arguments).
+
+# Plot
+`run.sh` calls `plotStarLattice.py` from the run directory. It writes
+`star_lattice.png` from the last snapshot: the kernel-mean PE field on the
+gas within 1.5 smoothing lengths of the layer of stars at z = 3/8 of the
+box, with the stars of that layer marked.

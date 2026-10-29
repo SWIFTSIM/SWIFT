@@ -1,0 +1,50 @@
+# Intro
+One star (29.7 Msun) at the centre of a periodic box of uniform, nearly
+transparent gas (1e3 atom/cm^3, 0.1 Msun particles, 262144 particles, 51.8
+smoothing lengths on a side, Z = 0.01 Zsun). The absorption length in the PE
+band is 32.6 pc, about 160 smoothing lengths and three times the box side.
+
+In transparent gas the light of one star dilutes as 1/r^2, so the field
+times r^2 does not change with r. The example runs the star for a few tens of
+steps, so that the front of the light, which moves at about one smoothing
+length per step, crosses the box. Beyond the front the field is zero; light
+that leaves the box through a face re-enters through the opposite face,
+because the box is periodic.
+
+`params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`): the gas stays at
+rest and the maps show the light only. `GEARFeedback:ISRF_packet_light_speed:
+cap` limits the speed of the light to 0.99 c, a limit that the fixed step
+never reaches. A packet makes one hop of about one smoothing length per step,
+so the light moves at about one smoothing length per step, much slower than
+c, and the run lasts a few tens of steps.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. The number of reception
+slots is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table that carries MeanPhotonEnergyPE (see the
+ISRF documentation). `run.sh` takes `PopII_parsec_spectral_with_pe_photon_energy.hdf5`
+from this directory, from `$GEAR_RADIATION_TABLE` or from `~/programs/pychem`,
+in that order. `radiation_table=<file>` selects another table.
+
+# Run
+```
+./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`star_mass` (Msun), `n_steps` (last step of the run), `swift_exe`, `run_dir`, `run_analysis`
+(0 skips the plot) and `extra_args` (further swift arguments).
+
+# Plot
+`run.sh` calls `plotThinBox.py` from the run directory. It writes
+`thin_box.png` from four snapshots: the median of the kernel-mean PE field
+times r^2 in bins of 1 smoothing length, normalised at r < 5 smoothing
+lengths, against r.
