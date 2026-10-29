@@ -68,6 +68,57 @@
 extern int radiation_packet_light_speed_limited;
 
 /**
+ * @brief Add to the cumulative absorbed ledger of a band. Does nothing without
+ * SWIFT_DEBUG_CHECKS_ISRF.
+ *
+ * @param l The band of the particle's ledger.
+ * @param energy Absorbed energy.
+ * @param photons Absorbed photon number, as `N E_lo`.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_ledger_absorbed(struct feedback_isrf_packet_band_data *l,
+                                 const double energy, const double photons) {
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  l->absorbed_energy += energy;
+  l->absorbed_photons += photons;
+#endif
+}
+
+/**
+ * @brief Add to the cumulative escaped ledger of a band, see
+ * #radiation_packet_ledger_absorbed.
+ *
+ * @param l The band of the particle's ledger.
+ * @param energy Escaped energy.
+ * @param photons Escaped photon number, as `N E_lo`.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_ledger_escaped(struct feedback_isrf_packet_band_data *l,
+                                const double energy, const double photons) {
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  l->escaped_energy += energy;
+  l->escaped_photons += photons;
+#endif
+}
+
+/**
+ * @brief Add to the cumulative redshifted ledger of a band, see
+ * #radiation_packet_ledger_absorbed.
+ *
+ * @param l The band of the particle's ledger.
+ * @param energy Energy removed by the expansion.
+ * @param photons Photon number removed by the expansion, as `N E_lo`.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_ledger_redshifted(struct feedback_isrf_packet_band_data *l,
+                                   const double energy, const double photons) {
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+  l->redshifted_energy += energy;
+  l->redshifted_photons += photons;
+#endif
+}
+
+/**
  * @brief A time that is the sum of two doubles, rounded up where the double
  * cannot hold every integer time (from 2^53 on, a rounding to the nearest can
  * make the time several ticks early). Below that, the sum of integers is exact
@@ -106,9 +157,11 @@ integertime_t radiation_packet_bin_end(
     const struct feedback_isrf_packet_data *pk, const int j);
 integertime_t radiation_packet_far_end(
     const struct feedback_isrf_packet_data *pk, const int c);
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 void radiation_packet_step_diagnostics(const struct engine *e);
 void radiation_packet_bin_counters(long long *widened, long long *beyond,
                                    long long *clamped);
+#endif
 void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                               struct feedback_isrf_packet_slot_data *sl,
                               const float energy[ISRF_OPERATOR_COUNT],
@@ -157,11 +210,9 @@ __attribute__((always_inline)) INLINE static float radiation_packet_read_mean(
 
 /**
  * @brief Does the slot hold no energy in any band?
-#ifdef SWIFT_DEBUG_CHECKS_ISRF
  *
  * @param sl The slot.
  */
-#endif
 __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
     const struct feedback_isrf_packet_slot_data *sl) {
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
@@ -291,8 +342,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     en = expanded_energy;
     ph = expanded_photons;
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      pk_r->band[b].redshifted_energy += lost_energy[b];
-      pk_r->band[b].redshifted_photons += lost_photons[b];
+      radiation_packet_ledger_redshifted(&pk_r->band[b], lost_energy[b],
+                                         lost_photons[b]);
     }
   }
 
@@ -319,8 +370,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     }
     transmitted_energy_b[b] = transmitted_energy;
     transmitted_photons_b[b] = transmitted_photons;
-    ledger->absorbed_energy += absorbed_energy;
-    ledger->absorbed_photons += absorbed_photons;
+    radiation_packet_ledger_absorbed(ledger, absorbed_energy, absorbed_photons);
     delivered_energy += transmitted_energy;
   }
 
@@ -633,6 +683,7 @@ void radiation_packet_check_star_cones(const struct spart *sp,
                                        const integertime_t ti_current);
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Book the packet of a gas particle that leaves the gas, converted
  * into or swallowed by another particle, into that particle's ledger.
@@ -743,6 +794,24 @@ radiation_packet_first_init_sink(struct sink *s) {
   memset(&s->feedback_data.isrf_packet, 0,
          sizeof(s->feedback_data.isrf_packet));
 }
+
+#else /* SWIFT_DEBUG_CHECKS_ISRF */
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas_to_star(const struct part *p,
+                                          struct spart *sp) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_removed_gas_to_sink(const struct part *p,
+                                          struct sink *s) {}
+
+__attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
+    struct sink *si, const struct sink *sj) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_first_init_sink(struct sink *s) {}
+
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 

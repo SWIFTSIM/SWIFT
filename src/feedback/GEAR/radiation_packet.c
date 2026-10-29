@@ -1308,8 +1308,7 @@ static void radiation_packet_absorb_below_cutoff(
   /* A negative value cannot be released either. */
   if ((*photons != 0.f || *energy != 0.f) &&
       *photons < RADIATION_PACKET_MIN_PHOTONS) {
-    ledger->absorbed_energy += (double)*energy;
-    ledger->absorbed_photons += (double)*photons;
+    radiation_packet_ledger_absorbed(ledger, (double)*energy, (double)*photons);
     *energy = 0.f;
     *photons = 0.f;
   }
@@ -1563,8 +1562,9 @@ static void radiation_packet_merge_slot_limited(
         if (ph * fb < (double)RADIATION_PACKET_MIN_PHOTONS)
           fb = 0.;
         else if (ph * (1. - fb) < (double)RADIATION_PACKET_MIN_PHOTONS) {
-          ledger[b].absorbed_energy += (double)band->far_energy[c] * (1. - fb);
-          ledger[b].absorbed_photons += ph * (1. - fb);
+          radiation_packet_ledger_absorbed(
+              &ledger[b], (double)band->far_energy[c] * (1. - fb),
+              ph * (1. - fb));
           fb = 1.;
           band->far_energy[c] =
               radiation_packet_round_down((double)band->far_energy[c] * f);
@@ -1730,8 +1730,8 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
     sl->forward_advance = 0.f;
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
-      pk->band[b].escaped_energy += (double)band->energy;
-      pk->band[b].escaped_photons += (double)band->photons;
+      radiation_packet_ledger_escaped(&pk->band[b], (double)band->energy,
+                                      (double)band->photons);
       band->energy = 0.f;
       band->photons = 0.f;
     }
@@ -1795,6 +1795,8 @@ void radiation_packet_couple_field(struct part *p) {
 /**
  * @brief Book the emission of a star for this feedback step, and as escaped the
  * light that its receivers do not take, once per step on the rank of the star.
+ * Only the ledger is booked, so this does nothing without
+ * SWIFT_DEBUG_CHECKS_ISRF.
  *
  * An empty cone loses its whole twelfth.
  *
@@ -1807,6 +1809,7 @@ void radiation_packet_star_book_emission(struct spart *sp,
   sp->feedback_data.radiation.packet.cones_booked = 1;
 #endif
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
     const double E = sp->feedback_data.radiation.L_band[m] * (double)Delta_t;
@@ -1829,6 +1832,7 @@ void radiation_packet_star_book_emission(struct spart *sp,
     sp->feedback_data.radiation.packet.escaped_photons[b] +=
         E * sp->feedback_data.radiation.packet.photon_fraction[b];
   }
+#endif
 }
 
 #ifdef SWIFT_DEBUG_CHECKS

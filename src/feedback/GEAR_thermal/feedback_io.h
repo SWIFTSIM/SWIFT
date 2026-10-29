@@ -46,6 +46,7 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Energy waiting in the arrival bins of one band of a slot.
  *
@@ -492,6 +493,7 @@ INLINE static void convert_sink_packet_inherited_photons(const struct engine *e,
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     ret[b] = s->feedback_data.isrf_packet.inherited_photons[b];
 }
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 /**
  * @brief Snapshot converter for #PESpecificEnergy, see
@@ -611,6 +613,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "RT schemes' PhotonEnergies, which are raw per-group energies, not "
       "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
   list[num++] = io_make_output_field_convert_part(
       "PacketInboxEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY, 0.f,
       parts, xparts, convert_part_packet_inbox_energy,
@@ -769,6 +772,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "Unit direction from the energy-weighted mean origin of the inbox of "
       "each reception slot to the particle: slot 0 first, then x, y, z. Zero "
       "for an empty inbox.");
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 #endif
 
   return num;
@@ -805,7 +809,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
       "bookkeeping caveat as the live HIIRegionMasses it is retired from.");
 #endif
 
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
   list[num++] = io_make_output_field_convert_spart(
       "PacketEmittedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, sparts, convert_spart_packet_emitted_energy,
@@ -875,7 +879,7 @@ INLINE static int feedback_write_sinkparticles(const struct sink *sinks,
 
   int num = 0;
 
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
   list[num++] = io_make_output_field_convert_sink(
       "PacketRemovedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, sinks, convert_sink_packet_removed_energy,

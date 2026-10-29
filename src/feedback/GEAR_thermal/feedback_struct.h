@@ -171,7 +171,8 @@ struct feedback_isrf_operator_data {
 #endif
 
 /**
- * @brief One band of the own field and the ledger of a gas particle.
+ * @brief One band of the own field and, with SWIFT_DEBUG_CHECKS_ISRF, the
+ * ledger of a gas particle.
  *
  * Photon numbers are stored as `N E_lo`, the number times the lower edge photon
  * energy of the band: a raw count overflows a float. The mean photon energy is
@@ -194,6 +195,7 @@ struct feedback_isrf_packet_band_data {
   /*! Kernel mean of #field_photons, as #ngb_mean_field_energy. */
   float ngb_mean_field_photons;
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
   /*! Energy absorbed by dust in this particle, cumulative. */
   double absorbed_energy;
 
@@ -214,6 +216,7 @@ struct feedback_isrf_packet_band_data {
   /*! Photon number removed by the expansion, as `N E_lo`, net of the gain
       from the other band. */
   double redshifted_photons;
+#endif
 };
 
 /**
@@ -365,6 +368,7 @@ struct feedback_isrf_packet_data {
 #endif
 };
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Packet ledger of the gas that a star or a sink formed from or
  * swallowed, per band (#radiation_isrf_operator).
@@ -384,6 +388,7 @@ struct feedback_isrf_packet_removed_data {
   /*! Absorbed, escaped and redshifted photon number of the gas, as `N E_lo`. */
   double inherited_photons[ISRF_OPERATOR_COUNT];
 };
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 /**
  * @brief Feedback fields carried by each hydro particle.
@@ -776,6 +781,7 @@ struct feedback_spart_data {
           per unit energy. Indexed by #radiation_isrf_operator. */
       float photon_fraction[ISRF_OPERATOR_COUNT];
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
       /*! Energy emitted by the star, cumulative. */
       double emitted_energy[ISRF_OPERATOR_COUNT];
 
@@ -790,6 +796,7 @@ struct feedback_spart_data {
 
       /*! Ledger of the gas particle the star was converted from. */
       struct feedback_isrf_packet_removed_data removed;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
       /*! Per cone, density loop: receivers, the sum of their IDs, and gas
@@ -837,7 +844,7 @@ struct feedback_spart_data {
  */
 struct feedback_sink_data {
 
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
   /*! Packet ledger of the gas the sink formed from and swallowed, and of the
       sinks it merged with. */
   struct feedback_isrf_packet_removed_data isrf_packet;
