@@ -1260,7 +1260,7 @@ static void radiation_packet_regrid(
  * its own step is 0 for delays up to 6 receiver steps, 1 at 7, 3 at 8, 7 at
  * 10, 31 at 25 and 63 at 40; for a sender 2 or 4 times coarser it is 0 up to 4
  * steps, about 1 at 4.5 to 6 and up to 3 at 7 to 8. It does not occur at the
- * default limit of 0.99 c, nor in the fixed mode with C_hyp 0.5 except for the
+ * default limit of 0.99 c, nor in the fixed mode with margin 0.5 except for the
  * outermost neighbours.
  *
  * @param pk The packet of the receiver.

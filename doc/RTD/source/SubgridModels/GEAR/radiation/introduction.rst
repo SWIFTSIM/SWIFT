@@ -98,7 +98,7 @@ Timestep criteria
 
 A star still young enough to do photoionization (below ``HII_max_age_Myr``) has its timestep bounded by ``GEARFeedback:HII_rebuild_time_Myr``, so it rebuilds its HII region on schedule; see :ref:`gear_radiation_hii`. Every star, whatever channel it runs, also has its event-anchored timestep terms floored by ``GEARFeedback:event_dt_floor_Myr``, and a Single Stellar Population or continuous-IMF star additionally has its own timestep tightened while young by ``GEARFeedback:dt_evolution_factor_max``; see :ref:`gear_stellar_evolution_and_feedback`.
 
-On the gas side, a particle generally rides its own hydrodynamic timestep: no radiation channel adds a general CFL-like bound to it. The one exception is the ISRF's ``ISRF_packet_light_speed: fixed`` mode, where ``GEARFeedback:ISRF_c_hyp_margin`` sets a bound on the time step of every gas particle; see :ref:`gear_isrf`. A gas particle freshly ionized or freshly illuminated is synced onto a shorter time bin on the step it is first touched, but this is a one-off wake-up, not sub-cycling: it then rides its own step like any other particle.
+On the gas side, a particle generally rides its own hydrodynamic timestep: no radiation channel adds a general CFL-like bound to it. The one exception is the ISRF's ``ISRF_packet_light_speed: fixed`` mode, where ``GEARFeedback:ISRF_packet_light_speed_time_step_margin`` sets a bound on the time step of every gas particle; see :ref:`gear_isrf`. A gas particle freshly ionized or freshly illuminated is synced onto a shorter time bin on the step it is first touched, but this is a one-off wake-up, not sub-cycling: it then rides its own step like any other particle.
 
 Checking a run
 ----------------

@@ -406,7 +406,7 @@ float feedback_compute_part_timestep(const struct part *restrict p,
         "the cosmology factor) below TimeIntegration:dt_min (%e): "
         "GEARFeedback:ISRF_packet_light_speed=fixed with "
         "GEARFeedback:ISRF_packet_light_speed_fraction_of_c=%g forces "
-        "dt_rad = C_hyp*a*h/(f*c) below dt_min for this particle's h. "
+        "dt_rad = margin*a*h/(f*c) below dt_min for this particle's h. "
         "Lower the fraction (dt_rad grows as 1/f), use the mode cap, or "
         "lower dt_min.",
         p->id, dt_isrf, dt_isrf_scaled, e->dt_min,
