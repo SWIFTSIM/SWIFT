@@ -799,6 +799,12 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
         0.5f * cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma *
         p->h * cosmo->a;
 
+  /* Proper length in length_units for the column shielding of the UV
+     background; SWIFT runs with comoving_coordinates = 0. */
+  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN)
+    inputs->uv_shielding_length = cooling->uv_shielding_path_in_kernel_radii *
+                                  kernel_gamma * p->h * cosmo->a;
+
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
      ratio scaled by Z / Z_sun as geajay does. */
@@ -1476,6 +1482,13 @@ double cooling_get_equilibrium_mean_molecular_weight(
   inputs.internal_energy = u;
   inputs.has_metal = 1;
   inputs.metal = metal_mass_fraction * rho;
+
+  /* The gas has no smoothing length here, for the given length */
+  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN)
+    error(
+        "The equilibrium mean molecular weight (the birth of a sink) has no "
+        "smoothing length: GeajayCooling:uv_shielding_length_method: "
+        "given_length cannot serve it. Use Jeans.");
 
   if (cooling->with_uv_background &&
       cooling->self_shielding_method ==
