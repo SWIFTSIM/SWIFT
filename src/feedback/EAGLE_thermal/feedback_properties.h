@@ -338,9 +338,6 @@ struct feedback_props {
   /* the magnetic moment, for the constant orientation model */
   float magnetic_moment[3];
 
-  /* dipole softening length */
-  float r_softening;
-
   /* current loop radius divider */
   float r_fact_currentloop;
 
