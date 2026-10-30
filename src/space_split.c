@@ -51,10 +51,6 @@ static int space_split_cell_needs_split(const struct space *s,
  * @brief Create the progeny of a cell and distribute its particles among
  * them. Progeny without any particle are recycled straight away.
  *
- * The progeny's properties are not set: this is done by
- * space_split_recursive() or space_split_leaf() once they are themselves
- * split, and then by space_split_collect_progeny() for this cell.
- *
  * @param s The #space in which the cell lives.
  * @param c The #cell to split.
  * @param buff A buffer for particle sorting, of size at least c->hydro.count
