@@ -38,6 +38,7 @@
  * @param u Internal energy in physical units
  * @param rho_physical Physical gas density (not used by this module).
  * @param metal_mass_fraction Metal mass fraction (not used by this module).
+ * @param shielding_length Physical shielding length (not used by this module).
  * @param phys_const Physical constants.
  * @param hydro_properties The #hydro_props.
  * @param cooling The #cooling_function_data used in the run.
@@ -46,7 +47,7 @@
 __attribute__((always_inline)) INLINE static double
 cooling_get_equilibrium_mean_molecular_weight(
     const float u, const double rho_physical, const double metal_mass_fraction,
-    const struct phys_const *phys_const,
+    const double shielding_length, const struct phys_const *phys_const,
     const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
@@ -106,7 +107,7 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double u = hydro_get_drifted_physical_internal_energy(p, cosmo);
   const double mu = cooling_get_equilibrium_mean_molecular_weight(
       u, hydro_get_physical_density(p, cosmo),
-      chemistry_get_total_metal_mass_fraction_for_cooling(p), phys_const,
+      chemistry_get_total_metal_mass_fraction_for_cooling(p), -1., phys_const,
       hydro_props, cooling);
   return mu;
 

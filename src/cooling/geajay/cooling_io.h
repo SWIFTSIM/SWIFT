@@ -645,19 +645,6 @@ INLINE static void cooling_read_column_shielding_parameters(
     error("%s must be finite and above 0, got %g.", keys[2],
           cooling->uv_shielding_length_factor);
 
-#ifdef SINK_GEAR
-  /* The birth of a sink calls the equilibrium mean molecular weight, which has
-     no smoothing length for a given length. GEARSink:cut_off_radius is
-     required by every run with sinks. */
-  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN &&
-      parser_does_param_exist(parameter_file, "GEARSink:cut_off_radius"))
-    error(
-        "%s: given_length cannot be used with sinks (GEARSink): the "
-        "equilibrium mean molecular weight at the birth of a sink has no "
-        "smoothing length. Use Jeans.",
-        keys[1]);
-#endif
-
   char path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file, keys[3], path, "kernel_radius");
   if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_JEANS) {

@@ -140,6 +140,8 @@ double cooling_get_internal_energy_from_temperature(
  * @param u Internal energy in physical units.
  * @param rho_physical Physical gas density.
  * @param metal_mass_fraction Metal mass fraction of the gas.
+ * @param shielding_length Physical shielding length in internal units, used
+ * with uv_shielding_length_method: given_length.
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
  * @param cooling The #cooling_function_data used in the run.
@@ -147,7 +149,8 @@ double cooling_get_internal_energy_from_temperature(
  */
 double cooling_get_equilibrium_mean_molecular_weight(
     const float u, const double rho_physical, const double metal_mass_fraction,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const double shielding_length, const struct phys_const *phys_const,
+    const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling);
 
 /**

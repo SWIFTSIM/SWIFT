@@ -993,7 +993,11 @@ INLINE static void sink_star_formation_give_new_velocity(
  * A sink without gas neighbours keeps rho_gas = 0 and an energy of -FLT_MAX.
  * It has no state to equilibrate, so the neutral weight is returned.
  *
+ * The shielding length is the physical cut-off radius: a sink stands for an
+ * unresolved clump of that size.
+ *
  * @param sink The #sink particle.
+ * @param sink_props The sink properties to use.
  * @param cosmo The cosmological model.
  * @param phys_const The physical constants in internal units.
  * @param hydro_props The properties of the hydro scheme.
@@ -1001,8 +1005,9 @@ INLINE static void sink_star_formation_give_new_velocity(
  */
 __attribute__((always_inline)) INLINE static double
 sink_get_birth_mean_molecular_weight(
-    const struct sink *sink, const struct cosmology *cosmo,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const struct sink *sink, const struct sink_props *sink_props,
+    const struct cosmology *cosmo, const struct phys_const *phys_const,
+    const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
   const float internal_energy_gas = sink->to_collect.internal_energy_gas;
@@ -1011,10 +1016,14 @@ sink_get_birth_mean_molecular_weight(
   if (!(rho_gas_physical > 0.) || !(internal_energy_gas >= 0.f))
     return hydro_props->mu_neutral;
 
+  const double cut_off_radius = sink_props->use_fixed_r_cut
+                                    ? sink_props->cut_off_radius
+                                    : kernel_gamma * sink->h;
+
   return cooling_get_equilibrium_mean_molecular_weight(
       internal_energy_gas, rho_gas_physical,
-      chemistry_get_sink_total_metal_mass_fraction(sink), phys_const,
-      hydro_props, cooling);
+      chemistry_get_sink_total_metal_mass_fraction(sink),
+      cut_off_radius * cosmo->a, phys_const, hydro_props, cooling);
 }
 
 /**
@@ -1074,7 +1083,7 @@ INLINE static void sink_copy_properties_to_star(
   const double k_b = phys_const->const_boltzmann_k;
   const float internal_energy_gas = sink->to_collect.internal_energy_gas;
   const double mu = sink_get_birth_mean_molecular_weight(
-      sink, cosmo, phys_const, hydro_props, cooling);
+      sink, sink_props, cosmo, phys_const, hydro_props, cooling);
   const float T_gas = cooling_temperature_from_internal_energy(
       internal_energy_gas, mu, k_b, m_p);
 

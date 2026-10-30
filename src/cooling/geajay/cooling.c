@@ -1507,13 +1507,16 @@ double cooling_get_internal_energy_from_temperature(
  * @param u Physical specific internal energy.
  * @param rho_physical Physical gas density.
  * @param metal_mass_fraction Metal mass fraction of the gas.
+ * @param shielding_length Physical shielding length in internal units, passed
+ * as the UV shielding length with given_length.
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
  * @param cooling #cooling_function_data struct.
  */
 double cooling_get_equilibrium_mean_molecular_weight(
     const float u, const double rho_physical, const double metal_mass_fraction,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
+    const double shielding_length, const struct phys_const *phys_const,
+    const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
   geajay_particle_inputs inputs;
@@ -1526,12 +1529,15 @@ double cooling_get_equilibrium_mean_molecular_weight(
   inputs.has_metal = 1;
   inputs.metal = metal_mass_fraction * rho;
 
-  /* The gas has no smoothing length here, for the given length */
-  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN)
-    error(
-        "The equilibrium mean molecular weight (the birth of a sink) has no "
-        "smoothing length: GeajayCooling:uv_shielding_length_method: "
-        "given_length cannot serve it. Use Jeans.");
+  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN) {
+    if (!(shielding_length > 0.))
+      error(
+          "The equilibrium mean molecular weight needs a positive shielding "
+          "length with GeajayCooling:uv_shielding_length_method: "
+          "given_length, got %e.",
+          shielding_length);
+    inputs.uv_shielding_length = shielding_length;
+  }
 
   if (cooling->with_uv_background &&
       cooling->self_shielding_method ==
