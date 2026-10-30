@@ -135,7 +135,7 @@ struct feedback_spart_data {
     /* chosen magnetic moment */
     float m[3];
 
-    /* normalisation magnetic field (used if injecting all neighbours) */
+    /* total magnetic field energy if not normalised */
     float ngb_B_inj;
 
   } to_collect_mhd;
