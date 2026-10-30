@@ -22,6 +22,112 @@
 #include <float.h>
 
 /**
+ * @brief Sets the physical magnetic field of a particle
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param cosmo Cosmology data structure
+ * @param B The (physical) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_field (
+    const struct part *p, struct xpart *xp, const struct cosmology *cosmo, 
+    const float B[3]) {
+
+  const float a_fact = pow(cosmo->a, -1.f * mhd_comoving_factor);
+
+  xp->mhd_data.Bfld_full[0] = a_fact * B[0];
+  xp->mhd_data.Bfld_full[1] = a_fact * B[1];
+  xp->mhd_data.Bfld_full[2] = a_fact * B[2];
+}
+
+/**
+ * @brief Sets the comoving magnetic field of a particle
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param B The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_set_comoving_magnetic_field (
+    const struct part *p, struct xpart *xp, const float B[3]) {
+
+  xp->mhd_data.Bfld_full[0] = B[0];
+  xp->mhd_data.Bfld_full[1] = B[1];
+  xp->mhd_data.Bfld_full[2] = B[2];
+}
+
+/**
+ * @brief Returns the physical magnetic field of a particle at the last
+ * time the particle was kicked
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param cosmo Cosmology data structure
+ * @param B (return) The (physical) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_field (
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo, 
+    float *B) {
+
+  const float a_fact = pow(cosmo->a, mhd_comoving_factor);
+
+  B[0] = a_fact * xp->mhd_data.Bfld_full[0];
+  B[1] = a_fact * xp->mhd_data.Bfld_full[1];
+  B[2] = a_fact * xp->mhd_data.Bfld_full[2];
+}
+
+/**
+ * @brief Returns the comoving magnetic field of a particle at the last
+ * time the particle was kicked
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param B (return) The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_get_comoving_magnetic_field (
+    const struct part *p, const struct xpart *xp, float *B) {
+
+  B[0] = xp->mhd_data.Bfld_full[0];
+  B[1] = xp->mhd_data.Bfld_full[1];
+  B[2] = xp->mhd_data.Bfld_full[2];
+}
+
+/**
+ * @brief Returns the comoving magnetic field of a particle drifted
+ * to the current time
+ *
+ * @param p the #part.
+ * @param B (return) The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void 
+  mhd_get_drifted_comoving_magnetic_field (
+    const struct part *p, float *B) {
+
+  B[0] = p->mhd_data.BPred[0];
+  B[1] = p->mhd_data.BPred[1];
+  B[2] = p->mhd_data.BPred[2];
+}
+
+/**
+ * @brief Returns the physical magnetic field of a particle drifted
+ * to the current time
+ *
+ * @param p the #part.
+ * @param cosmo Cosmology data structure
+ * @param B (return) The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void 
+  mhd_get_drifted_physical_magnetic_field (
+    const struct part *p, const struct cosmology *cosmo,
+    float *B) {
+
+  const float a_fact = pow(cosmo->a, mhd_comoving_factor);
+
+  B[0] = a_fact * p->mhd_data.BPred[0];
+  B[1] = a_fact * p->mhd_data.BPred[1];
+  B[2] = a_fact * p->mhd_data.BPred[2];
+}
+
+/**
  * @brief Returns the magnetic energy contained in the particle.
  *
  * @param p the #part.
@@ -355,7 +461,7 @@ __attribute__((always_inline)) INLINE static void mhd_reset_gradient(
  * @param p The particle to act upon.
  */
 __attribute__((always_inline)) INLINE static void mhd_end_gradient(
-    struct part *p) {
+    struct part *p, const float mu_0) {
   /* Add self contribution */
   p->mhd_data.mean_SPH_err += p->mass * kernel_root;
   /* Finish SPH_1 calculation*/
