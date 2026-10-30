@@ -745,14 +745,15 @@ void radiation_packet_check_star_cones(const struct spart *sp,
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Book the packet of a gas particle that leaves the gas, converted
- * into or swallowed by another particle, into that particle's ledger.
+ * into or swallowed by another particle or removed at the edge of a
+ * non-periodic box, into that particle's ledger or the box ledger.
  *
  * The light in flight (held, inbox and reservoir, in every slot) is booked as
  * removed. The absorbed, escaped and redshifted ledgers of the gas are carried
  * over.
  *
  * @param p The gas particle.
- * @param l The ledger of the star or sink.
+ * @param l The ledger of the star, the sink or the box.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_removed_gas(const struct part *p,

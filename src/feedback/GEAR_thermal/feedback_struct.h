@@ -386,7 +386,10 @@ struct feedback_isrf_packet_data {
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Packet ledger of the gas that a star or a sink formed from or
- * swallowed, per band (#radiation_isrf_operator).
+ * swallowed, or that left a non-periodic box, per band
+ * (#radiation_isrf_operator).
+ *
+ * The light in flight is booked as escaped, the gas's own ledgers as inherited.
  */
 struct feedback_isrf_packet_removed_data {
 
