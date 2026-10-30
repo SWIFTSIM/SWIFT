@@ -140,7 +140,7 @@ INLINE float compute_magnetic_injection_field_strength (
 
       break;
     }
-    case SNII_magnetic_kernel_softened_actual_toroidal_injection:{
+    case SNII_magnetic_kernel_softened_toroidal_injection:{
 
       B_inj[0] = dx[1]*m[2] - dx[2]*m[1];
       B_inj[1] = dx[2]*m[0] - dx[0]*m[2];
@@ -234,7 +234,7 @@ INLINE void compute_magnetic_injection_field(
 
       break;
     }
-    case SNII_magnetic_kernel_softened_actual_toroidal_injection:{
+    case SNII_magnetic_kernel_softened_toroidal_injection:{
 
       /* toroidal direction */
       B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
@@ -986,9 +986,9 @@ void feedback_props_init(struct feedback_props *fp,
     if (strcmp(B_injection_model, "toroid") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_toroidal_injection;
     }
-    else if (strcmp(B_injection_model, "kernel_actual_toroid") == 0) {
+    else if (strcmp(B_injection_model, "kernel_toroid") == 0) {
       fp->magnetic_injection_model = 
-        SNII_magnetic_kernel_softened_actual_toroidal_injection;
+        SNII_magnetic_kernel_softened_toroidal_injection;
     }
     else if (strcmp(B_injection_model, "current_loop") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_current_loop_injection;
