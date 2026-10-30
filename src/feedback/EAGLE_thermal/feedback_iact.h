@@ -115,7 +115,7 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
             si->id, eagle_SNII_feedback_num_of_rays, ti_current,
             random_number_isotropic_SNII_feedback_ray_theta);
       const double rand_phi_m = random_unit_interval_part_ID_and_index(
-            si->id, eagle_SNII_feedback_num_of_rays + 1, ti_current,
+            si->id, eagle_SNII_feedback_num_of_rays, ti_current,
             random_number_isotropic_SNII_feedback_ray_phi);
 
       /* convert [0,1[ interval to [-1, 1[*/
