@@ -259,8 +259,9 @@ __attribute__((always_inline)) INLINE static uint32_t radiation_packet_salt(
  * the end of the sender's step and the bits of the share in double, which a
  * float does not hold.
  *
- * Built only from the share and the two particles, so that a sum gets the
- * same bits whichever way the share reaches it.
+ * Built only from the share, the receiver and the end of the sender's step
+ * (the sender enters through its step end only, not its ID), so that a sum
+ * gets the same bits whichever way the share reaches it.
  *
  * @param energy Energy of the share per band, in double.
  * @param id ID of the receiver.
