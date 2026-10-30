@@ -1478,6 +1478,16 @@ void feedback_book_sink_merger(struct sink *si, const struct sink *sj) {
 }
 
 /**
+ * @brief A gas particle leaves a non-periodic box and is removed: book what
+ * its feedback carried. Called with the space lock held.
+ *
+ * @param p The removed #part.
+ */
+void feedback_book_removed_gas_left_box(const struct part *p) {
+  radiation_packet_book_gas_left_box(p);
+}
+
+/**
  * @brief Zero the feedback fields of a sink, after the ICs are read or when
  * the sink is formed.
  *
@@ -1558,6 +1568,8 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_dump(&feedback->stellar_model_first_stars, stream);
   }
+
+  radiation_packet_left_box_dump(stream);
 }
 
 /**
@@ -1592,7 +1604,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (packet transport only, HII random cone frame flag, redraw period "
-        "and star pass count, packet reception slots). "
+        "and star pass count, packet reception slots, ledger of the gas that "
+        "left the box). "
         "A restart written by another code version cannot be resumed: rerun "
         "the simulation from its initial conditions.",
         layout, feedback_restart_particle_layout());
@@ -1658,6 +1671,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                               feedback->with_stellar_wind_feedback,
                               with_radiation, us, phys_const);
   }
+
+  radiation_packet_left_box_restore(stream);
 }
 
 /**

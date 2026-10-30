@@ -3055,6 +3055,20 @@ case "$with_isrf_packet_slots" in
 esac
 AC_DEFINE_UNQUOTED([RADIATION_PACKET_SLOTS], [$with_isrf_packet_slots], [Number of reception slots of the GEAR ISRF packet transport])
 
+# Debugging data of the GEAR ISRF packet transport: the energy ledgers of gas,
+# stars and sinks, their snapshot fields, the snapshot fields that duplicate or
+# expose the transport state, and the arrival counters with their message.
+AC_ARG_ENABLE([isrf-debugging-checks],
+   [AS_HELP_STRING([--enable-isrf-debugging-checks],
+     [Keep the ISRF packet energy ledgers, the debugging snapshot fields and the arrival counter message @<:@yes/no@:>@]
+   )],
+   [enable_isrf_debugging_checks="$enableval"],
+   [enable_isrf_debugging_checks="no"]
+)
+if test "$enable_isrf_debugging_checks" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_CHECKS_ISRF],1,[Keep the ISRF packet energy ledgers and debugging output])
+fi
+
 # Parts of the GEAR subgrid radiation compiled into a GEAR feedback build. A
 # part left out costs nothing at run time: no particle fields, no pair-loop
 # work and no tasks.
@@ -3774,6 +3788,7 @@ AC_MSG_RESULT([
    Star feedback model  : $with_feedback_name
    Subgrid radiation    :$with_subgrid_radiation_name
    ISRF packet slots    : $with_isrf_packet_slots
+   ISRF debugging checks: $enable_isrf_debugging_checks
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt

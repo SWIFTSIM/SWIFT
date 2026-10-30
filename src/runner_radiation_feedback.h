@@ -283,17 +283,26 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                         int timer) {}
 #endif
 
-/* The packet light: the speed limit is set at start-up, without stars as well,
-   and the arrival bin counters are reported once per step. Empty when the ISRF
-   part is not compiled. */
+/* The packet light: the speed limit is set at start-up, without stars as well.
+   Empty when the ISRF part is not compiled. */
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 void radiation_packet_startup(const struct engine *e);
-void radiation_packet_step_diagnostics(const struct engine *e);
 #else
 __attribute__((always_inline)) INLINE static void radiation_packet_startup(
     const struct engine *e) {}
+#endif
+
+/* The arrival bin counters are reported once per step, and the ledger of the
+   gas that left the box is summed over the ranks before each snapshot. Empty
+   unless the ISRF part is compiled with SWIFT_DEBUG_CHECKS_ISRF. */
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+void radiation_packet_step_diagnostics(const struct engine *e);
+void radiation_packet_reduce_left_box(const struct engine *e);
+#else
 __attribute__((always_inline)) INLINE static void
 radiation_packet_step_diagnostics(const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_packet_reduce_left_box(const struct engine *e) {}
 #endif
 
 /**

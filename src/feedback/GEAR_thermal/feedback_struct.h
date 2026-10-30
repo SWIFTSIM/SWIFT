@@ -120,6 +120,15 @@ struct feedback_isrf_operator_data {
     #radiation_packet_inject_test_beams. */
 #define RADIATION_PACKET_TEST_BEAMS 2
 
+/*! Numbers of a test beam: the lower and the upper corner of the box (3 + 3),
+    the direction (3) and the energy per particle in the PE and LW band (2). */
+#define RADIATION_PACKET_TEST_BEAM_FIELDS 11
+#define RADIATION_PACKET_TEST_BEAM_LOWER 0
+#define RADIATION_PACKET_TEST_BEAM_UPPER 3
+#define RADIATION_PACKET_TEST_BEAM_DIRECTION 6
+#define RADIATION_PACKET_TEST_BEAM_ENERGY_PE 9
+#define RADIATION_PACKET_TEST_BEAM_ENERGY_LW 10
+
 /*! Reception slots of the packet of a gas particle: one per cell of an
     equal-solid-angle partition of the directions, fixed in the frame
     #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set by
@@ -139,11 +148,17 @@ struct feedback_isrf_operator_data {
 
 /*! Far arrival cells per slot, for light that arrives beyond the near bins.
     Their width is a power of two times the step. */
+#ifndef RADIATION_PACKET_FAR_CELLS
 #define RADIATION_PACKET_FAR_CELLS 2
+#endif
 
 #if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
     RADIATION_PACKET_SLOTS != 16
 #error "RADIATION_PACKET_SLOTS must be 8, 12 or 16."
+#endif
+
+#if RADIATION_PACKET_FAR_CELLS < 1
+#error "RADIATION_PACKET_FAR_CELLS must be at least 1."
 #endif
 
 /*! Text of the snapshot descriptions: what a reception slot is. */
@@ -171,7 +186,8 @@ struct feedback_isrf_operator_data {
 #endif
 
 /**
- * @brief One band of the own field and the ledger of a gas particle.
+ * @brief One band of the own field and, with SWIFT_DEBUG_CHECKS_ISRF, the
+ * ledger of a gas particle.
  *
  * Photon numbers are stored as `N E_lo`, the number times the lower edge photon
  * energy of the band: a raw count overflows a float. The mean photon energy is
@@ -194,6 +210,7 @@ struct feedback_isrf_packet_band_data {
   /*! Kernel mean of #field_photons, as #ngb_mean_field_energy. */
   float ngb_mean_field_photons;
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
   /*! Energy absorbed by dust in this particle, cumulative. */
   double absorbed_energy;
 
@@ -214,6 +231,7 @@ struct feedback_isrf_packet_band_data {
   /*! Photon number removed by the expansion, as `N E_lo`, net of the gain
       from the other band. */
   double redshifted_photons;
+#endif
 };
 
 /**
@@ -365,9 +383,13 @@ struct feedback_isrf_packet_data {
 #endif
 };
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
  * @brief Packet ledger of the gas that a star or a sink formed from or
- * swallowed, per band (#radiation_isrf_operator).
+ * swallowed, or that left a non-periodic box, per band
+ * (#radiation_isrf_operator).
+ *
+ * The light in flight is booked as escaped, the gas's own ledgers as inherited.
  */
 struct feedback_isrf_packet_removed_data {
 
@@ -384,6 +406,7 @@ struct feedback_isrf_packet_removed_data {
   /*! Absorbed, escaped and redshifted photon number of the gas, as `N E_lo`. */
   double inherited_photons[ISRF_OPERATOR_COUNT];
 };
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 /**
  * @brief Feedback fields carried by each hydro particle.
@@ -776,6 +799,7 @@ struct feedback_spart_data {
           per unit energy. Indexed by #radiation_isrf_operator. */
       float photon_fraction[ISRF_OPERATOR_COUNT];
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
       /*! Energy emitted by the star, cumulative. */
       double emitted_energy[ISRF_OPERATOR_COUNT];
 
@@ -790,6 +814,7 @@ struct feedback_spart_data {
 
       /*! Ledger of the gas particle the star was converted from. */
       struct feedback_isrf_packet_removed_data removed;
+#endif
 
 #ifdef SWIFT_DEBUG_CHECKS
       /*! Per cone, density loop: receivers, the sum of their IDs, and gas
@@ -837,7 +862,7 @@ struct feedback_spart_data {
  */
 struct feedback_sink_data {
 
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
   /*! Packet ledger of the gas the sink formed from and swallowed, and of the
       sinks it merged with. */
   struct feedback_isrf_packet_removed_data isrf_packet;

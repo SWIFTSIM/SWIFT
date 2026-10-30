@@ -188,9 +188,9 @@ struct feedback_props {
   /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans. */
   float ISRF_extinction_jeans_temperature_cap_K;
 
-  /*! Margin C_hyp of the step bound `C_hyp a h_i / v` of the packet transport
+  /*! Margin `f_dt` of the step bound `f_dt a h_i / v` of the packet transport
    * with the fixed light speed, see feedback_props_init() for its range. */
-  float ISRF_c_hyp_margin;
+  float ISRF_packet_light_speed_time_step_margin;
 
   /*! Speed limit of the light of the packet transport, a
    * #isrf_packet_light_speed. */
@@ -212,7 +212,8 @@ struct feedback_props {
   float ISRF_packet_octant_frame[9];
 
   /*! Test beams, see #radiation_packet_inject_test_beams. */
-  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS][11];
+  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS]
+                             [RADIATION_PACKET_TEST_BEAM_FIELDS];
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -403,8 +404,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
       if (feedback_props->ISRF_packet_light_speed ==
           isrf_packet_light_speed_fixed)
         message(
-            "ISRF packet step bound margin C_hyp                        = %g",
-            feedback_props->ISRF_c_hyp_margin);
+            "ISRF packet light speed time step margin                   = %g",
+            feedback_props->ISRF_packet_light_speed_time_step_margin);
       message("ISRF packet field read mean time (internal units, 0 = off) = %g",
               feedback_props->ISRF_packet_read_mean_time);
       message(
@@ -819,16 +820,20 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:ISRF_propagation", 0);
 
     /* Parsed even with ISRF_propagation off. */
-    fp->ISRF_c_hyp_margin = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_c_hyp_margin", 0.5f);
+    fp->ISRF_packet_light_speed_time_step_margin = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_light_speed_time_step_margin", 0.5f);
 
     /* Largest accepted margin. */
-    const float ISRF_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
+    const float ISRF_time_step_margin_bound = sqrtf(2.f / 0.70f);
 
-    if (fp->ISRF_c_hyp_margin <= 0.f ||
-        fp->ISRF_c_hyp_margin > ISRF_c_hyp_absolute_bound)
-      error("GEARFeedback:ISRF_c_hyp_margin must lie in (0, %g] (got %g).",
-            ISRF_c_hyp_absolute_bound, fp->ISRF_c_hyp_margin);
+    if (fp->ISRF_packet_light_speed_time_step_margin <= 0.f ||
+        fp->ISRF_packet_light_speed_time_step_margin >
+            ISRF_time_step_margin_bound)
+      error(
+          "GEARFeedback:ISRF_packet_light_speed_time_step_margin must lie in "
+          "(0, %g] (got %g).",
+          ISRF_time_step_margin_bound,
+          fp->ISRF_packet_light_speed_time_step_margin);
 
     feedback_props_read_packet_light_speed(params, fp);
 

@@ -40,6 +40,7 @@
 #include "line_of_sight.h"
 #include "parallel_io.h"
 #include "power_spectrum.h"
+#include "runner_radiation_feedback.h"
 #include "serial_io.h"
 #include "single_io.h"
 #include "tracers.h"
@@ -342,6 +343,9 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
 
   /* Finalize the recording periods */
   engine_finalize_trigger_recordings(e);
+
+  /* Collective: the header holds the sum over the ranks. */
+  radiation_packet_reduce_left_box(e);
 
   /* Get time-step since the last mesh kick */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {

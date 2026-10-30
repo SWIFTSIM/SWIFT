@@ -155,12 +155,14 @@ void feedback_first_init_spart(struct spart *sp,
 void feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp);
 void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s);
 void feedback_book_sink_merger(struct sink *si, const struct sink *sj);
+void feedback_book_removed_gas_left_box(const struct part *p);
 void feedback_first_init_sink(struct sink *s);
 
 /*! ISRF layout marker written ahead of #feedback_props. It changes whenever
- * the layout of the gas, the star, the sink or #feedback_props changes, so
- * that a restart file of another layout is refused. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 19
+ * the layout of the gas, the star, the sink, #feedback_props or the feedback
+ * restart blocks changes, so that a restart file of another layout is
+ * refused. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 20
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts
