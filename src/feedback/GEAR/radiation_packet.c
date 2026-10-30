@@ -981,17 +981,21 @@ static float radiation_packet_round_down(const double x) {
  * @param photons Photon number of the piece per band.
  * @param below_end Distance from the end of the bin to the latest arrival time
  * of the piece, rounded down.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
  */
 static void radiation_packet_add_to_bin(
     struct feedback_isrf_packet_slot_data *sl, const int j,
     const float energy[ISRF_OPERATOR_COUNT],
-    const float photons[ISRF_OPERATOR_COUNT], const float below_end) {
+    const float photons[ISRF_OPERATOR_COUNT], const float below_end,
+    const uint32_t salt) {
   float held = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     held += sl->band[b].bin_energy[j];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    sl->band[b].bin_energy[j] += energy[b];
-    sl->band[b].bin_photons[j] += photons[b];
+    sl->band[b].bin_energy[j] = radiation_packet_add_stochastic(
+        sl->band[b].bin_energy[j], energy[b], salt);
+    sl->band[b].bin_photons[j] = radiation_packet_add_stochastic(
+        sl->band[b].bin_photons[j], photons[b], salt);
   }
   sl->bin_stamp_below_end[j] =
       held > 0.f ? fminf(sl->bin_stamp_below_end[j], below_end) : below_end;
@@ -1016,18 +1020,21 @@ static void radiation_packet_add_to_bin(
  * @param lo First arrival time of the piece.
  * @param hi Last arrival time of the piece.
  * @param end End of the cell.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
  */
 static void radiation_packet_add_to_far(
     struct feedback_isrf_packet_slot_data *sl, const int c,
     const float energy[ISRF_OPERATOR_COUNT],
     const float photons[ISRF_OPERATOR_COUNT], const double lo, const double hi,
-    const double end) {
+    const double end, const uint32_t salt) {
   float held = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     held += sl->band[b].far_energy[c];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    sl->band[b].far_energy[c] += energy[b];
-    sl->band[b].far_photons[c] += photons[b];
+    sl->band[b].far_energy[c] = radiation_packet_add_stochastic(
+        sl->band[b].far_energy[c], energy[b], salt);
+    sl->band[b].far_photons[c] = radiation_packet_add_stochastic(
+        sl->band[b].far_photons[c], photons[b], salt);
   }
   const float last_below = radiation_packet_round_down(end - hi);
   if (held > 0.f) {
@@ -1303,12 +1310,14 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
  * @param photons Photon number of the share per band.
  * @param first First arrival time of the share.
  * @param last Last arrival time of the share.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
  */
 static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                    const double ub[RADIATION_PACKET_PIECES],
                                    const float energy[ISRF_OPERATOR_COUNT],
                                    const float photons[ISRF_OPERATOR_COUNT],
-                                   const double first, const double last) {
+                                   const double first, const double last,
+                                   const uint32_t salt) {
 
   const int n = RADIATION_PACKET_PIECES;
 
@@ -1401,14 +1410,16 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
     if (j < RADIATION_PACKET_BINS) {
       const double stamp = fmin(last, ub[j]);
       radiation_packet_add_to_bin(sl, j, pe, pn,
-                                  radiation_packet_round_down(ub[j] - stamp));
+                                  radiation_packet_round_down(ub[j] - stamp),
+                                  salt ^ ((uint32_t)j * 0xc2b2ae35u));
     } else if (j < n) {
       radiation_packet_add_to_far(sl, j - RADIATION_PACKET_BINS, pe, pn,
                                   fmax(first, ub[j - 1]), fmin(last, ub[j]),
-                                  ub[j]);
+                                  ub[j], salt ^ ((uint32_t)j * 0xc2b2ae35u));
     } else {
       radiation_packet_add_to_far(sl, RADIATION_PACKET_FAR_CELLS - 1, pe, pn,
-                                  fmax(first, ub[n - 1]), last, ub[n - 1]);
+                                  fmax(first, ub[n - 1]), last, ub[n - 1],
+                                  salt ^ ((uint32_t)j * 0xc2b2ae35u));
       radiation_packet_count_overflow();
     }
   }
@@ -1434,12 +1445,13 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
  * @param old_scale The previous far scale.
  * @param extra_last Last arrival time of a share about to be placed, or a
  * negative value for none.
+ * @param salt Salt of the roundings (#radiation_packet_salt).
  */
 static void radiation_packet_regrid(
     struct feedback_isrf_packet_data *pk, const integertime_t old_first,
     const integertime_t old_width,
     const integertime_t old_far_end[RADIATION_PACKET_FAR_CELLS],
-    const int old_scale, const double extra_last) {
+    const int old_scale, const double extra_last, const uint32_t salt) {
 
   const int n = RADIATION_PACKET_BINS;
   const integertime_t w = radiation_packet_step_width(pk);
@@ -1513,7 +1525,8 @@ static void radiation_packet_regrid(
 #endif
     for (int i = 0; i < count; i++)
       radiation_packet_place(sl, ub, rec[i].energy, rec[i].photons,
-                             rec[i].first, rec[i].last);
+                             rec[i].first, rec[i].last,
+                             salt ^ ((uint32_t)i * 0x9e3779b9u));
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     radiation_packet_diag_again = 0;
 #endif
@@ -1544,12 +1557,14 @@ static void radiation_packet_regrid(
  * @param photons Photon number of the share per band.
  * @param first First arrival time of the share.
  * @param last Last arrival time of the share.
+ * @param salt Salt of the share (#radiation_packet_share_salt).
  */
 void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                               struct feedback_isrf_packet_slot_data *sl,
                               const float energy[ISRF_OPERATOR_COUNT],
                               const float photons[ISRF_OPERATOR_COUNT],
-                              const double first, const double last) {
+                              const double first, const double last,
+                              const uint32_t salt) {
 
   double ub[RADIATION_PACKET_PIECES];
   radiation_packet_piece_ends(pk, ub);
@@ -1562,11 +1577,11 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
       old_far_end[c] = radiation_packet_far_end(pk, c);
     radiation_packet_regrid(pk, radiation_packet_bin_end(pk, 0),
                             radiation_packet_step_width(pk), old_far_end,
-                            pk->far_scale, last);
+                            pk->far_scale, last, salt);
     radiation_packet_count_coarsening();
     radiation_packet_piece_ends(pk, ub);
   }
-  radiation_packet_place(sl, ub, energy, photons, first, last);
+  radiation_packet_place(sl, ub, energy, photons, first, last, salt);
 }
 
 /**
@@ -1650,11 +1665,13 @@ static void radiation_packet_set_origin(
  * @param cosmo The cosmological model, or NULL in a static box.
  * @param slot_index Index of the slot, for the debugging check.
  * @param frame Octant frame, for the debugging check.
+ * @param salt Salt of the roundings of the slot (#radiation_packet_salt).
  */
 static void radiation_packet_merge_slot_unlimited(
     struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
     const integertime_t ti_step, const double time_base,
-    const struct cosmology *cosmo, const int slot_index, const float frame[9]) {
+    const struct cosmology *cosmo, const int slot_index, const float frame[9],
+    const uint32_t salt) {
 
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
@@ -1695,9 +1712,15 @@ static void radiation_packet_merge_slot_unlimited(
       band->reservoir_photons = 0.f;
     }
     /* Added, not assigned: a packet still held would otherwise be lost. */
-    const float arriving = band->bin_energy[0] + res_energy;
-    band->energy += arriving;
-    band->photons += band->bin_photons[0] + res_photons;
+    const float arriving =
+        radiation_packet_add_stochastic(band->bin_energy[0], res_energy, salt);
+    band->energy =
+        radiation_packet_add_stochastic(band->energy, arriving, salt);
+    band->photons = radiation_packet_add_stochastic(
+        band->photons,
+        radiation_packet_add_stochastic(band->bin_photons[0], res_photons,
+                                        salt),
+        salt);
     band->bin_energy[0] = 0.f;
     band->bin_photons[0] = 0.f;
     total_energy += arriving;
@@ -1737,6 +1760,7 @@ static void radiation_packet_merge_slot_unlimited(
  * @param far_end End of the far cell on the previous lattice.
  * @param old_width Width of the near bins of the previous step.
  * @param now Time of the merge.
+ * @param salt Salt of the roundings (#radiation_packet_salt).
  * @param total_energy (in, out) Energy released to the held packet, summed.
  * @param stamp (in, out) Latest arrival time of what is released.
  */
@@ -1744,7 +1768,7 @@ static void radiation_packet_release_far_cell(
     struct feedback_isrf_packet_slot_data *sl,
     struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
     const int c, const integertime_t far_end, const integertime_t old_width,
-    const double now, float *total_energy, double *stamp) {
+    const double now, const uint32_t salt, float *total_energy, double *stamp) {
 
   float cell_total = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
@@ -1804,8 +1828,11 @@ static void radiation_packet_release_far_cell(
     }
     band->far_energy[c] -= re;
     band->far_photons[c] -= rp;
-    band->energy += re;
-    band->photons += rp;
+    const uint32_t cell_salt =
+        salt ^ ((uint32_t)(c + RADIATION_PACKET_BINS) * 0x9e3779b9u);
+    band->energy = radiation_packet_add_stochastic(band->energy, re, cell_salt);
+    band->photons =
+        radiation_packet_add_stochastic(band->photons, rp, cell_salt);
     e += re;
   }
   if (e > 0.f) {
@@ -1854,14 +1881,15 @@ static void radiation_packet_release_far_cell(
  * @param ti_current Time of the merge, the end of the particle's last step.
  * @param slot_index Index of the slot, for the debugging check.
  * @param frame Octant frame, for the debugging check.
+ * @param salt Salt of the roundings of the slot (#radiation_packet_salt).
  */
 static void radiation_packet_merge_slot_limited(
     struct feedback_isrf_packet_slot_data *sl,
     struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
     const integertime_t old_first, const integertime_t old_width,
     const integertime_t old_far_end[RADIATION_PACKET_FAR_CELLS],
-    const integertime_t ti_current, const int slot_index,
-    const float frame[9]) {
+    const integertime_t ti_current, const int slot_index, const float frame[9],
+    const uint32_t salt) {
 
   const int n = RADIATION_PACKET_BINS;
   const double now = (double)ti_current;
@@ -1896,8 +1924,12 @@ static void radiation_packet_merge_slot_limited(
     float e = 0.f;
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
-      band->energy += band->bin_energy[j];
-      band->photons += band->bin_photons[j];
+      const uint32_t bin_salt =
+          salt ^ ((uint32_t)j * 0x9e3779b9u) ^ ((uint32_t)b * 0x85ebca6bu);
+      band->energy = radiation_packet_add_stochastic(
+          band->energy, band->bin_energy[j], bin_salt);
+      band->photons = radiation_packet_add_stochastic(
+          band->photons, band->bin_photons[j], bin_salt);
       e += band->bin_energy[j];
       band->bin_energy[j] = 0.f;
       band->bin_photons[j] = 0.f;
@@ -1912,7 +1944,7 @@ static void radiation_packet_merge_slot_limited(
   /* The far cells. */
   for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
     radiation_packet_release_far_cell(sl, ledger, c, old_far_end[c], old_width,
-                                      now, &total_energy, &stamp);
+                                      now, salt, &total_energy, &stamp);
 
   /* Origin: the mean origin of everything that waited. */
   double offset[3] = {0., 0., 0.};
@@ -1959,6 +1991,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
                             const struct cosmology *cosmo) {
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  const uint32_t salt = radiation_packet_salt(p->id, ti_current);
 #ifdef SWIFT_DEBUG_CHECKS
   if (!radiation_packet_is_empty(pk))
     error("Particle %lld still holds a packet at its merge.", p->id);
@@ -1968,9 +2001,9 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
     pk->step_end_ti = ti_current + ti_step;
     pk->step_ti = ti_step;
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-      radiation_packet_merge_slot_unlimited(&pk->slot[s], ti_current, ti_step,
-                                            time_base, cosmo, s,
-                                            pk->octant_frame);
+      radiation_packet_merge_slot_unlimited(
+          &pk->slot[s], ti_current, ti_step, time_base, cosmo, s,
+          pk->octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
     return;
   }
 
@@ -2002,13 +2035,13 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   }
 #endif
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-    radiation_packet_merge_slot_limited(&pk->slot[s], pk->band, old_first,
-                                        old_width, old_far_end, ti_current, s,
-                                        pk->octant_frame);
+    radiation_packet_merge_slot_limited(
+        &pk->slot[s], pk->band, old_first, old_width, old_far_end, ti_current,
+        s, pk->octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
   pk->step_end_ti = ti_current + ti_step;
   pk->step_ti = ti_step;
-  radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale,
-                          -1.);
+  radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale, -1.,
+                          salt);
 }
 
 /**
