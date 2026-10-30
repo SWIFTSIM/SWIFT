@@ -52,7 +52,7 @@ case "$table" in
     # file, not the spectral one above.
     radiation_fits_popII.hdf5)
 	share_id="2bdJyajQjwHnEeB"
-	sha256="5594f359bf3431c1832d44aa609767f74349313c35f9cb734d47a8cdcde201a6"
+	sha256="fac599f674d0e45edf8533e0449b7d90ea54e00e0414e50cf307e8730ecce723"
 	;;
     *)
 	share_id=""
