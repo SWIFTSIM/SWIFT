@@ -791,10 +791,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
   /* Diffusion term (eq. 24), scaled by the pressure-weighted mean of the
    * two particles' conduction coefficients, so that the hotter particle sets
-   * the rate at a hot-cold interface (SPHENIX's combination) */
+   * the rate at a hot-cold interface (SPHENIX's combination). Plain mean if
+   * both pressures vanish. */
+  const float P_sum = pressurei + pressurej;
   const float alpha_diff =
-      (pressurei * pi->alpha_diff + pressurej * pj->alpha_diff) /
-      (pressurei + pressurej);
+      P_sum > 0.f
+          ? (pressurei * pi->alpha_diff + pressurej * pj->alpha_diff) / P_sum
+          : 0.5f * (pi->alpha_diff + pj->alpha_diff);
   pi->u_dt += -mj * alpha_diff * delta_u *
               (magma_diffusion.alpha * v_sig_u + v_sig_P) * norm_sum_G /
               (rhoi + rhoj);
