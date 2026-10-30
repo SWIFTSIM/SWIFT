@@ -49,11 +49,9 @@ enum SNII_energy_scalings {
  * @brief Mode of magnetic injection field
  */
 enum SNII_magnetic_injection_model {
-  SNII_magnetic_kernel_softened_toroidal_injection,
+  SNII_magnetic_toroidal_injection,
   SNII_magnetic_kernel_softened_actual_toroidal_injection,
-  SNII_magnetic_dipole_injection,          /*< (softened) dipole injection */
-  SNII_magnetic_current_loop_injection,
-  SNII_magnetic_toroidal_injection
+  SNII_magnetic_current_loop_injection
 };
 
 /**
