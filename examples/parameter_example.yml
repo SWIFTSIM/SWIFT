@@ -34,7 +34,7 @@ Cosmology:
 
 # Parameters for the hydrodynamics scheme
 SPH:
-  resolution_eta:                      1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
+  resolution_eta:                      1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel). (MAGMA: 1.5 with the quintic spline kernel, --with-kernel=quintic-spline, is the recommended combination.)
   CFL_condition:                       0.1      # Courant-Friedrich-Levy condition for time integration. (MAGMA: 0.2 is stable on the whole scheme-comparison suite and 25 per cent cheaper; 0.3 is not.)
   use_mass_weighted_num_ngb:           0        # (Optional) Are we using the mass-weighted definition of the number of neighbours?
   h_tolerance:                         1e-4     # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths.

@@ -22,6 +22,18 @@
 /**
  * @file MAGMA/hydro.h
  * @brief MAGMA2 implementation of SPH (Non-neighbour loop equations)
+ *
+ * Recommended configuration: the quintic spline kernel
+ * (--with-kernel=quintic-spline) with SPH:resolution_eta 1.5 (149
+ * neighbours in 3D) and SPH:CFL_condition 0.2. The kernel study of
+ * 2026-10 at eta 1.5 found the quintic spline the most accurate on
+ * densities and shocks at the lowest cost: the cubic and quartic splines
+ * pair at this neighbour number, the Wendland C2/C4/C6 kernels carry a
+ * density bias of 0.3-2 per cent without the Dehnen & Aly (2012)
+ * correction, and feedback tests are kernel-independent. The quintic's
+ * one weakness is a slow loosening of a quiescent glass (its weak
+ * instability window below ~180 neighbours); Wendland C6 is the choice
+ * when the smoothest velocity field matters more than cost.
  */
 
 #include "adiabatic_index.h"
