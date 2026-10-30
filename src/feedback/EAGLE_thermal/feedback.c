@@ -112,6 +112,21 @@ double eagle_feedback_energy_fraction(const struct spart *sp,
   return f_th;
 }
 
+/**
+ * @brief computes the magnitude of the injected magnetic field
+ * as if the normalisation constant is 1
+ *
+ * This function is called in the density loop to calculate
+ * how much energy we would inject if we did not normalise.
+ * The neighbour contributions are summed to calculate the 
+ * desired normalisation
+ *
+ * @param dx the seperation vector (spi - pj)
+ * @param m the magnetic moment vector
+ * @param feedback_props the properties of the feedback model
+ * @param wi the kernel of the star particle spi
+ * @param sp_h the smoothing length of the star particle spi
+ */
 INLINE float compute_magnetic_injection_field_strength (
     const float dx[3], const float m[3], 
     const struct feedback_props *feedback_props,
