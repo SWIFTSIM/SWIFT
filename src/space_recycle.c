@@ -280,7 +280,10 @@ void space_recycle(struct space *s, struct cell *c) {
 }
 
 /**
- * @brief Return a list of used cells to the buffer of unused sub-cells.
+ * @brief Return a list of used cells to the buffers of unused sub-cells.
+ *
+ * Each cell, with its multipole, returns to the buffer of the thread it was
+ * taken from.
  *
  * @param s The #space.
  * @param cell_list_begin Pointer to the first #cell in the linked list of
@@ -322,21 +325,55 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     count += 1;
   }
 
+  /* Sort the cells by the buffer they were taken from (their tpid), such
+   * that each returns to its own buffer. The multipoles were taken from the
+   * same buffer as their cell and come in the same order in their list. */
+  const int nr_buffers = s->e->nr_pool_threads + 1;
+  struct cell *cells_begin[nr_buffers], *cells_end[nr_buffers];
+  struct gravity_tensors *multipoles_begin[nr_buffers],
+      *multipoles_end[nr_buffers];
+  for (int k = 0; k < nr_buffers; k++) {
+    cells_begin[k] = NULL;
+    cells_end[k] = NULL;
+    multipoles_begin[k] = NULL;
+    multipoles_end[k] = NULL;
+  }
+
+  struct gravity_tensors *m = multipole_list_begin;
+  for (struct cell *c = cell_list_begin; c != NULL;) {
+    struct cell *c_next = c->next;
+    short int tpid = c->tpid;
+    if (tpid < 0 || tpid >= nr_buffers) tpid = 0;
+
+    c->next = cells_begin[tpid];
+    cells_begin[tpid] = c;
+    if (cells_end[tpid] == NULL) cells_end[tpid] = c;
+
+    if (s->with_self_gravity) {
+      struct gravity_tensors *m_next = m->next;
+      m->next = multipoles_begin[tpid];
+      multipoles_begin[tpid] = m;
+      if (multipoles_end[tpid] == NULL) multipoles_end[tpid] = m;
+      m = m_next;
+    }
+
+    c = c_next;
+  }
+
   /* Lock the space. */
   lock_lock(&s->lock);
 
-  /* Hook the cells into the buffer keeping tpid if we can. */
-  short int tpid = cell_list_begin->tpid;
-  if (tpid < 0) tpid = 0;
-  cell_list_end->next = s->cells_sub[tpid];
-  s->cells_sub[tpid] = cell_list_begin;
-  atomic_sub(&s->tot_cells, count);
-
-  /* Hook the multipoles into the buffer. */
-  if (s->with_self_gravity) {
-    multipole_list_end->next = s->multipoles_sub[tpid];
-    s->multipoles_sub[tpid] = multipole_list_begin;
+  /* Hook the cells and multipoles into their buffers. */
+  for (int tpid = 0; tpid < nr_buffers; tpid++) {
+    if (cells_begin[tpid] == NULL) continue;
+    cells_end[tpid]->next = s->cells_sub[tpid];
+    s->cells_sub[tpid] = cells_begin[tpid];
+    if (s->with_self_gravity) {
+      multipoles_end[tpid]->next = s->multipoles_sub[tpid];
+      s->multipoles_sub[tpid] = multipoles_begin[tpid];
+    }
   }
+  atomic_sub(&s->tot_cells, count);
 
   /* Unlock the space. */
   lock_unlock_blind(&s->lock);
