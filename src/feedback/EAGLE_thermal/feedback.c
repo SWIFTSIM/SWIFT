@@ -130,14 +130,6 @@ INLINE float compute_magnetic_injection_field_strength (
     
   switch (feedback_props->magnetic_injection_model) {
 
-    case SNII_magnetic_const_toroidal_injection:{
-
-      /* for this mode the magnetic field has constant 
-       * strength in the toroid */
-      B_inj_abs = 1.;
-
-      break;
-    }  
     case SNII_magnetic_kernel_softened_toroidal_injection:{
 
       /* for this mode the magnetic field has a strength 
@@ -260,25 +252,6 @@ INLINE void compute_magnetic_injection_field(
     
   switch (feedback_props->magnetic_injection_model) {
 
-    case SNII_magnetic_const_toroidal_injection:{
-
-      /* toroidal direction */
-      B_inj_temp[0] = dx[1]*m[2] - dx[2]*m[1];
-      B_inj_temp[1] = dx[2]*m[0] - dx[0]*m[2];
-      B_inj_temp[2] = dx[0]*m[1] - dx[1]*m[0];
-
-      /* for this mode the magnetic field has constant 
-       * strength in the toroid */
-      B_inj_rescale = 1.f / sqrtf(B_inj_temp[0]*B_inj_temp[0] + 
-                                  B_inj_temp[1]*B_inj_temp[1] + 
-                                  B_inj_temp[2]*B_inj_temp[2]);
-        
-      for (size_t i = 0; i < 3; i++){
-        B_inj_temp[i] *= B_inj_rescale;
-      }
-
-      break;
-    }  
     case SNII_magnetic_kernel_softened_toroidal_injection:{
 
 	    /* toroidal direction */
@@ -1065,10 +1038,8 @@ void feedback_props_init(struct feedback_props *fp,
     parser_get_param_string(params,
         "EAGLEFeedback:SNII_magnetic_injection_model",
         B_injection_model);
-    if (strcmp(B_injection_model, "const_toroid") == 0) {
-      fp->magnetic_injection_model = SNII_magnetic_const_toroidal_injection;
-    }  
-    else if (strcmp(B_injection_model, "toroid") == 0) {
+        
+    if (strcmp(B_injection_model, "toroid") == 0) {
       fp->magnetic_injection_model = SNII_magnetic_toroidal_injection;
     }
     else if (strcmp(B_injection_model, "kernel_toroid") == 0) {
