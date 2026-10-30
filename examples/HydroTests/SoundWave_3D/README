@@ -1,0 +1,30 @@
+Linear sound wave (3D)
+----------------------
+
+A plane sound wave of relative amplitude A = 1e-3 along x in a periodic unit
+box filled with a 3D glass (32^3 particles, i.e. 32 particles per wavelength
+for one wavelength across the box). rho0 = 1 and P0 = 1 / gamma give a sound
+speed of 1 and a period of 1. The density perturbation is imposed by the
+Lagrangian displacement of the glass particles, the pressure follows the
+adiabatic relation.
+
+Two variants (makeIC.py options):
+
+  travelling wave (default): v_x = A cs cos kx. The complex amplitude of the
+      k mode, Z(t) = (2 / M) sum_i m_i v_x,i exp(-i k x_i), rotates at the
+      frequency cs k with a constant modulus: the measured phase speed gives
+      the numerical dispersion error, the decay of |Z| the damping.
+  --standing: v = 0. The mode oscillates in place; the energy of the mode,
+      |Z_v|^2 + cs^2 |Z_rho|^2, is constant for the exact solution and its
+      decay over many periods gives the damping rate. Run it longer
+      (time_end 10) with the suite.
+
+--nwave n puts n wavelengths across the box (32 / n particles per wavelength),
+--boost adds a bulk velocity (Galilean invariance). The amplitude 1e-3 keeps
+the wave linear for ~100 periods (the shock-formation time is
+2 / ((gamma + 1) A cs k)); the mode projection averages the glass noise out.
+
+plotSolution.py reads all snapshots and prints the measured phase speed,
+frequency and damping rate per period.
+
+The code needs to be compiled with --with-hydro-dimension=3 (the default).

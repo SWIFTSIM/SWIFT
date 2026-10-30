@@ -32,6 +32,25 @@
 #include "hydro_properties.h"
 #include "version.h"
 
+#ifdef MAGMA_SPH
+/* Run-time parameters of the MAGMA scheme, accessible to the interaction
+ * functions (which have no access to the #hydro_props). They are set from
+ * the parameter file in viscosity_init() / diffusion_init(); the values here
+ * are the defaults used when no initialisation happens (unit tests). */
+struct viscosity_global_data magma_viscosity = {
+    .alpha = hydro_props_default_viscosity_alpha,
+    .beta = hydro_props_default_viscosity_beta,
+    .epsilon = hydro_props_default_viscosity_epsilon,
+    /* The automatic limiter settings, resolved for eta_neighbours = 1.2348 */
+    .eta_crit = 1.f / 1.2348f,
+    .limiter_width = 0.1f * kernel_gamma,
+    .max_condition_number = hydro_props_default_gradient_max_condition_number,
+    .angle_limit = hydro_props_default_gradient_angle_limit,
+    .cos_angle_limit = 0.87758256f /* cos(0.5) */};
+struct diffusion_global_data magma_diffusion = {
+    .alpha = hydro_props_default_diffusion_alpha};
+#endif
+
 struct exact_density_data {
   const struct engine *e;
   const struct space *s;
@@ -254,7 +273,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
   const float h_max = e->hydro_properties->h_max;
   const float h_min = e->hydro_properties->h_min;
   const double N_ngb_target =
-      (4. / 3.) * M_PI * pow_dimension(kernel_gamma * eta);
+      hydro_dimension_unit_sphere * pow_dimension(kernel_gamma * eta);
   const double N_ngb_max =
       N_ngb_target + 5. * e->hydro_properties->delta_neighbours;
   const double N_ngb_min =
@@ -287,8 +306,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
     const long long id = pi->id;
     if (pi->limited_part) continue;
 
-    const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * pi->h * pi->h * pi->h * pi->n_density;
+    const double N_ngb = hydro_dimension_unit_sphere *
+                         pow_dimension(kernel_gamma * pi->h) * pi->n_density;
 
     if (id % SWIFT_HYDRO_DENSITY_CHECKS == 0 && part_is_starting(pi, e)) {
 
@@ -349,8 +368,8 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
 
       counter++;
 
-      const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                           kernel_gamma * pi->h * pi->h * pi->h *
+      const double N_ngb = hydro_dimension_unit_sphere *
+                           pow_dimension(kernel_gamma * pi->h) *
                            pi->n_density_exact;
 
       fprintf(file_exact,
@@ -373,7 +392,7 @@ void hydro_exact_density_check(struct space *s, const struct engine *e,
                 h_max_limited);
         wrong_rho++;
       }
-#if defined(SPHENIX_SPH)
+#if defined(SPHENIX_SPH) || defined(MAGMA_SPH)
       if (check_force && !found_inhibited &&
           (fabsf(pi->n_gradient / pi->n_gradient_exact - 1.f) > rel_tol ||
            fabsf(pi->n_gradient_exact / pi->n_gradient - 1.f) > rel_tol)) {

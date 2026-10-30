@@ -27,7 +27,8 @@ endif
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(COMMON_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
+TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
+        testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
@@ -38,21 +39,22 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline  # testMatrixInversion
+        testLog testDistance testTimeline testSymmetricMatrix
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-         testKernel testFFT testInteractions testMaths testRandom testExp \
+         testKernel testKernelAccuracy testFFT testInteractions testMaths \
+         testRandom testExp \
          testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
          testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-         testRiemannHLLC testMatrixInversion testDump testCSDS \
+         testRiemannHLLC testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline
+		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrix
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -117,6 +119,8 @@ testParser_SOURCES = testParser.c
 
 testKernel_SOURCES = testKernel.c
 
+testKernelAccuracy_SOURCES = testKernelAccuracy.c
+
 testKernelLongGrav_SOURCES = testKernelLongGrav.c
 
 testFFT_SOURCES = testFFT.c
@@ -131,7 +135,7 @@ testRiemannTRRS_SOURCES = testRiemannTRRS.c
 
 testRiemannHLLC_SOURCES = testRiemannHLLC.c
 
-testMatrixInversion_SOURCES = testMatrixInversion.c
+testSymmetricMatrix_SOURCES = testSymmetricMatrix.c
 
 testThreadpool_SOURCES = testThreadpool.c
 

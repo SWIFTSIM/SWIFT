@@ -1,0 +1,418 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2024 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_MAGMA_HYDRO_PART_H
+#define SWIFT_MAGMA_HYDRO_PART_H
+
+/**
+ * @file MAGMA/hydro_part.h
+ * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
+ * definition)
+ *
+ * The thermal variable is the internal energy (u). MI1 or MI2 formulation of
+ * the equations of motion (selected at configure time via
+ * --with-hydro=magma2-MI1 / magma2-MI2), using only 1st-order reconstruction
+ * of v and u at the interface and a diffusion signal velocity compatible with
+ * gravity.
+ */
+
+#ifdef ADAPTIVE_SOFTENING
+#error "Adaptive softening is not implemented for the MAGMA SPH scheme."
+#endif
+
+#include "black_holes_struct.h"
+#include "chemistry_struct.h"
+#include "cooling_struct.h"
+#include "feedback_struct.h"
+#include "forcing_struct.h"
+#include "mhd_struct.h"
+#include "particle_splitting_struct.h"
+#include "rt_struct.h"
+#include "sink_struct.h"
+#include "star_formation_struct.h"
+#include "symmetric_matrix.h"
+#include "timestep_limiter_struct.h"
+#include "tracers_struct.h"
+
+/**
+ * @brief Particle-level reasons for falling back to standard SPH gradients.
+ *
+ * Bit flags: a particle can fall back for several reasons at once. Stored in
+ * part::fallback_flags.
+ *
+ * magma_fallback_regularised is a diagnostic only: the C-matrix was
+ * ill-conditioned (planar or filamentary neighbourhood) and its inverse was
+ * regularised in the degenerate directions; the particle still uses the
+ * matrix-inversion gradient functions. Only the bits in
+ * magma_fallback_base_sph_mask switch a particle to standard SPH gradients.
+ */
+enum magma_fallback_reasons {
+  magma_fallback_none = 0,
+  magma_fallback_condition_number = (1 << 0),
+  magma_fallback_h_max = (1 << 1),
+  magma_fallback_regularised = (1 << 2),
+  magma_fallback_base_sph_mask =
+      magma_fallback_condition_number | magma_fallback_h_max,
+};
+
+/**
+ * @brief Particle fields not needed during the SPH loops over neighbours.
+ *
+ * This structure contains the particle fields that are not used in the
+ * density or force loops. Quantities should be used in the kick, drift and
+ * potentially ghost tasks only.
+ */
+struct xpart {
+
+  /*! Offset between current position and position at last tree rebuild. */
+  float x_diff[3];
+
+  /*! Offset between the current position and position at the last sort. */
+  float x_diff_sort[3];
+
+  /*! Velocity at the last full step. */
+  float v_full[3];
+
+  /*! Gravitational acceleration at the end of the last step */
+  float a_grav[3];
+
+  /*! Internal energy at the last full step. */
+  float u_full;
+
+  /*! Additional data used to record particle splits */
+  struct particle_splitting_data split_data;
+
+  /*! Additional data used to record cooling information */
+  struct cooling_xpart_data cooling_data;
+
+  /* Additional data used by the tracers */
+  struct tracers_xpart_data tracers_data;
+
+  /* Additional data used by the tracers */
+  struct star_formation_xpart_data sf_data;
+
+  /*! Additional data used by the feedback */
+  struct feedback_xpart_data feedback_data;
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_xpart_data mhd_data;
+
+  /*! Additional data used by the forcing terms */
+  struct forcing_xpart_data forcing_data;
+
+} SWIFT_STRUCT_ALIGN;
+
+/**
+ * @brief Particle fields for the SPH particles
+ *
+ * The density and force substructures are used to contain variables only used
+ * within the density and force loops over neighbours. All more permanent
+ * variables should be declared in the main part of the part structure,
+ */
+struct part {
+
+  /*! Particle unique ID. */
+  long long id;
+
+  /*! Pointer to corresponding gravity part. */
+  struct gpart *gpart;
+
+  /*! Particle position. */
+  double x[3];
+
+  /*! Particle predicted velocity. */
+  float v[3];
+
+  /*! Particle acceleration. */
+  float a_hydro[3];
+
+  /*! Particle mass. */
+  float mass;
+
+  /*! Particle smoothing length. */
+  float h;
+
+  /*! Particle internal energy. */
+  float u;
+
+  /*! Time derivative of the internal energy. */
+  float u_dt;
+
+  /*! Particle density. */
+  float rho;
+
+  union {
+
+    /**
+     * @brief Structure for the variables only used in the density loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the density
+     * loop over neighbours and the ghost task.
+     */
+    struct {
+
+      /*! Neighbour number count. */
+      float wcount;
+
+      /*! Derivative of the neighbour number with respect to h. */
+      float wcount_dh;
+
+      /*! Derivative of density with respect to h */
+      float rho_dh;
+
+    } density;
+
+    /**
+     * @brief Structure for the variables only used in the gradient loop over
+     * neighbours.
+     *
+     * Quantities should only be accessed in the gradient loop over neighbours
+     * and the extra ghost task.
+     */
+    struct {
+
+      /*! The inverse of 'correction matrix' (e.q. 6) - It's symmetric */
+      struct sym_matrix c_matrix_inv;
+
+      /*! Gradient of the x-component of the velocity */
+      float gradient_vx[3];
+
+      /*! Gradient of the y-component of the velocity */
+      float gradient_vy[3];
+
+      /*! Gradient of the z-component of the velocity */
+      float gradient_vz[3];
+
+      /*! Gradient of the internal energy */
+      float gradient_u[3];
+
+      /*! Gradient of the pressure (conduction signal speed from the
+       * reconstructed pressure residual) */
+      float gradient_P[3];
+
+      /*! Shock-presence sum of Cullen & Dehnen (2010, eq. 17):
+       * sum_j sign(div v_j) m_j W_ij, with the neighbours' divergence from
+       * their last gradient evaluation (viscosity limiter) */
+      float shock_indicator;
+
+    } gradient;
+
+    /**
+     * @brief Structure for the variables only used in the force loop over
+     * neighbours.
+     *
+     * Quantities in this sub-structure should only be accessed in the force
+     * loop over neighbours, the extra ghost, drift and kick tasks.
+     */
+    struct {
+
+      /*! The 'correction matrix' (e.q. 6) - It's symmetric */
+      struct sym_matrix c_matrix;
+
+      /*! Gradient of the x-component of the velocity */
+      float gradient_vx[3];
+
+      /*! Gradient of the y-component of the velocity */
+      float gradient_vy[3];
+
+      /*! Gradient of the z-component of the velocity */
+      float gradient_vz[3];
+
+      /*! Gradient of the internal energy */
+      float gradient_u[3];
+
+      /*! Gradient of the pressure */
+      float gradient_P[3];
+
+      /*! Particle pressure. */
+      float pressure;
+
+      /*! Particle soundspeed. */
+      float soundspeed;
+
+      /*! Particle signal velocity */
+      float mu_tilde;
+
+      /*! Time derivative of smoothing length  */
+      float h_dt;
+
+      /*! Signal speed of the Courant condition: maximal sound speed of the
+       * particle and its neighbours, only ever raised until the next force
+       * loop (e.g. by heating). */
+      float c_sig;
+
+      /*! Number of neighbour pairs in which the gradient functions were
+       * replaced by kernel gradients during the last force loop (diagnostic) */
+      int n_pair_fallbacks;
+
+      /*! Convergence fraction of the local flow, (div v)^2 / ((div v)^2 +
+       * |S|^2) with S the traceless shear (Cullen & Dehnen 2010, eq. 18
+       * without the shock term): 1 in pure compression, 0 in pure shear.
+       * Scales the distance cut-off of the slope limiter. */
+      float convergence_fraction;
+
+      /*! Viscosity limiter (Cullen & Dehnen 2010, eq. 18 with
+       * the shock-presence boost of eq. 17): scales this particle's viscous
+       * pressure, 1 when the limiter is switched off */
+      float viscosity_limiter;
+
+    } force;
+  };
+
+  /*! Additional data used by the MHD scheme */
+  struct mhd_part_data mhd_data;
+
+  /*! Chemistry information */
+  struct chemistry_part_data chemistry_data;
+
+  /*! Cooling information */
+  struct cooling_part_data cooling_data;
+
+  /*! Additional data used by the feedback */
+  struct feedback_part_data feedback_data;
+
+  /*! Black holes information (e.g. swallowing ID) */
+  struct black_holes_part_data black_holes_data;
+
+  /*! Sink information (e.g. swallowing ID) */
+  struct sink_part_data sink_data;
+
+  /*! Additional Radiative Transfer Data */
+  struct rt_part_data rt_data;
+
+  /*! RT sub-cycling time stepping data */
+  struct rt_timestepping_data rt_time_data;
+
+  /*! Velocity divergence from the last gradient evaluation (matrix
+   * gradient); read by the neighbours in the next gradient loop for the
+   * shock-presence sum (viscosity limiter) */
+  float div_v;
+
+  /*! Velocity divergence of the previous force preparation, for the time
+   * derivative driving the time-dependent alpha (viscosity switch) */
+  float div_v_previous;
+
+  /*! Time-dependent viscosity coefficient alpha of the particle (Cullen &
+   * Dehnen 2010); alpha_max when the switch is off */
+  float alpha_visc;
+
+  /*! Coefficient of the conduction terms of this particle (SPHENIX's
+   * evolved coefficient): grows at beta H laplace(u) / sqrt(u) where u has a
+   * local minimum, decays towards diffusion_alpha_min over the signal
+   * crossing time of the kernel support, capped where the neighbours'
+   * viscosity coefficient is up. The pair term uses the pressure-weighted
+   * mean of the two particles' coefficients. */
+  float alpha_diff;
+
+  /*! Largest viscosity coefficient among the neighbours and the particle
+   * itself (gradient loop): caps the conduction coefficient in shocks and
+   * around a particle a feedback event has heated */
+  float alpha_visc_max_ngb;
+
+  /*! SPH estimate of the Laplacian of the internal energy, accumulated in
+   * the gradient loop (source of the conduction coefficient). Outside the
+   * union above: as a field of the gradient sub-structure it sat at the
+   * offset of force.soundspeed. */
+  float laplace_u;
+
+  /*! Matrix gradient of the internal energy of the previous step (copied
+   * in hydro_prepare_force), read in the gradient loop to remove the linear
+   * part of the jump from the Laplacian estimate. Outside the union: the
+   * force sub-structure does not survive the density and gradient loops. */
+  float gradient_u_prev[3];
+
+  /*! Largest sound speed among the neighbours (gradient loop): the signal
+   * speed of the decay of the conduction coefficient is the sum of the
+   * particle's and its hottest neighbour's sound speeds */
+  float c_max_ngb;
+
+  /*! Why this particle interacts using base SPH (magma_fallback_none if it
+   * does not, otherwise a combination of the #magma_fallback_reasons) */
+  char fallback_flags;
+
+  /*! Tree-depth at which size / 2 <= h * gamma < size */
+  char depth_h;
+
+  /*! Time-step length */
+  timebin_t time_bin;
+
+  /*! Time-step limiter information */
+  struct timestep_limiter_data limiter_data;
+
+#ifdef SWIFT_HYDRO_DENSITY_CHECKS
+
+  /* Integer number of neighbours in the density loop */
+  int N_density;
+
+  /* Exact integer number of neighbours in the density loop */
+  int N_density_exact;
+
+  /* Integer number of neighbours in the gradient loop */
+  int N_gradient;
+
+  /* Exact integer number of neighbours in the gradient loop */
+  int N_gradient_exact;
+
+  /* Integer number of neighbours in the force loop */
+  int N_force;
+
+  /* Exact integer number of neighbours in the force loop */
+  int N_force_exact;
+
+  /*! Exact value of the density field obtained via brute-force loop */
+  float rho_exact;
+
+  /*! Weighted number of neighbours in the density loop */
+  float n_density;
+
+  /*! Exact value of the weighted number of neighbours in the density loop */
+  float n_density_exact;
+
+  /*! Weighted number of neighbours in the gradient loop */
+  float n_gradient;
+
+  /*! Exact value of the weighted number of neighbours in the gradient loop */
+  float n_gradient_exact;
+
+  /*! Weighted number of neighbours in the force loop */
+  float n_force;
+
+  /*! Exact value of the weighted number of neighbours in the force loop */
+  float n_force_exact;
+
+  /*! Has this particle interacted with any inhibited neighbour? */
+  char inhibited_exact;
+
+  /*! Has this particle been woken up by the limiter? */
+  char limited_part;
+#endif
+
+#ifdef SWIFT_DEBUG_CHECKS
+
+  /* Time of the last drift */
+  integertime_t ti_drift;
+
+  /* Time of the last kick */
+  integertime_t ti_kick;
+
+#endif
+
+} SWIFT_STRUCT_ALIGN;
+
+#endif /* SWIFT_MAGMA_HYDRO_PART_H */
