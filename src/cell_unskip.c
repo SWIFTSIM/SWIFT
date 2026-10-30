@@ -31,6 +31,52 @@
 #include "feedback.h"
 #include "space_getsid.h"
 
+/**
+ * @brief Has there been too much motion in a pair of cells for the stars of
+ * ci to find their gas neighbours in cj, considering only the stars that
+ * interact with their neighbours (via feedback_is_active) in this step?
+ *
+ * @param e The #engine.
+ * @param ci The #cell holding the stars.
+ * @param cj The #cell holding the gas.
+ */
+static int cell_need_rebuild_for_stars_pair_feedback(const struct engine *e,
+                                                     const struct cell *ci,
+                                                     const struct cell *cj) {
+
+  const int with_rt = e->policy & engine_policy_rt;
+
+  /* Conservative test using all the stars */
+  if (!cell_need_rebuild_for_stars_pair(ci, cj)) return 0;
+
+  /* cell_need_rebuild_for_stars_pair() uses the largest smoothing length of
+   * all the stars of ci. Only the active stars doing feedback (or all the
+   * active stars when running with RT) take part in the stars loops of the
+   * step, so the motion part of the test only needs to hold for them. Stars
+   * with a large smoothing length that are inactive, or old stars between two
+   * of their (sparse) enrichment events, then no longer trigger rebuilds. */
+
+  /* Are the smoothing lengths alone too large? */
+  if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) > cj->dmin) return 1;
+
+  /* We do not know which stars of a foreign cell are active */
+  if (ci->nodeID != e->nodeID) return 1;
+
+  /* Largest smoothing length of the stars interacting in this step */
+  float h_max = 0.f;
+  for (int k = 0; k < ci->stars.count; k++) {
+    const struct spart *sp = &ci->stars.parts[k];
+    if (spart_is_inhibited(sp, e) || !spart_is_active(sp, e)) continue;
+    if (!feedback_is_active(sp, e) && !with_rt) continue;
+    h_max = max(h_max, sp->h);
+  }
+
+  /* Same test as cell_need_rebuild_for_stars_pair() with these stars only */
+  return kernel_gamma * max(h_max, cj->hydro.h_max) + ci->stars.dx_max_part +
+             cj->hydro.dx_max_part >
+         cj->dmin;
+}
+
 extern int engine_star_resort_task_depth;
 
 /**
@@ -2272,8 +2318,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (t->type == task_type_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair_feedback(e, ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair_feedback(e, cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
