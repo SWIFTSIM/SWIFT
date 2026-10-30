@@ -65,6 +65,6 @@ variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
 `run.sh` calls `plotBeamCrossing.py` from the run directory. It reads
 `geometry.json` and `snap/snapshot_*.hdf5` and writes `beam_crossing.png`:
 four snapshots of the specific energy of the PE-band light (the snapshot
-field `PacketSpecificEnergies`) on the gas that lies within 1.5 smoothing
+field `PESpecificEnergies`, the kernel mean of the light that crosses each particle) on the gas that lies within 1.5 smoothing
 lengths of the plane that holds both beams. Beam 1 runs along the horizontal
 axis.

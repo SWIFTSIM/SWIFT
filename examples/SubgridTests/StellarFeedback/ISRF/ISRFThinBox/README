@@ -51,7 +51,7 @@ variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
 
 # Plot
 `run.sh` calls `plotThinBox.py` from the run directory. It writes
-`thin_box.png` from four snapshots: the median of the kernel-mean PE field
+`thin_box.png` from four snapshots: the median of the PE field (`PESpecificEnergies`)
 times r^2 in bins of 1 smoothing length, normalised at r < 5 smoothing
 lengths, against r. Inside the light front, a pure 1/r^2 dilution gives a
 flat curve, lowered by the absorption of the gas, exp(-r / 32.6 pc), by 13 % at

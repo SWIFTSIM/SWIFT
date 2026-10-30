@@ -21,18 +21,18 @@ def snapshots(pattern="snap/snapshot_*.hdf5"):
     return files
 
 
-def load(path, field="PacketSpecificEnergies"):
-    """Return time, gas positions, gas ids and the PE-band value of a packet field."""
+def load(path):
+    """Return time, gas positions, gas ids and the PE-band specific energy of the gas."""
     with h5py.File(path, "r") as f:
         t = float(np.ravel(f["Header"].attrs["Time"])[0])
         x = f["PartType0/Coordinates"][:]
         ids = f["PartType0/ParticleIDs"][:]
-        q = f[f"PartType0/{field}"][:][:, 0]
+        q = np.ravel(f["PartType0/PESpecificEnergies"][:])
     return t, x, ids, q
 
 
 def main():
-    t, x, _, q = load(snapshots()[-1], "PacketKernelMeanSpecificEnergies")
+    t, x, _, q = load(snapshots()[-1])
     with h5py.File(snapshots()[-1], "r") as f:
         box = float(f["Header"].attrs["BoxSize"][0])
         stars = f["PartType4/Coordinates"][:]
@@ -40,7 +40,15 @@ def main():
     z_layer = 3.0 * box / 8.0
     ok = (np.abs(x[:, 2] - z_layer) < 1.5 * h0) & (q > 0)
     fig, ax = plt.subplots(figsize=(5.2, 4.4), constrained_layout=True)
-    im = ax.scatter(x[ok, 0] / box, x[ok, 1] / box, c=np.log10(q[ok]), s=3, marker="s", cmap="inferno", rasterized=True)
+    im = ax.scatter(
+        x[ok, 0] / box,
+        x[ok, 1] / box,
+        c=np.log10(q[ok]),
+        s=3,
+        marker="s",
+        cmap="inferno",
+        rasterized=True,
+    )
     layer = np.abs(stars[:, 2] - z_layer) < 0.5 * h0
     ax.plot(stars[layer, 0] / box, stars[layer, 1] / box, "w*", ms=8, mec="k")
     fig.colorbar(im, label="log10 PE specific energy (internal units)")

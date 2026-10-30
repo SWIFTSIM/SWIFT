@@ -21,13 +21,13 @@ def snapshots(pattern="snap/snapshot_*.hdf5"):
     return files
 
 
-def load(path, field="PacketSpecificEnergies"):
-    """Return time, gas positions, gas ids and the PE-band value of a packet field."""
+def load(path):
+    """Return time, gas positions, gas ids and the PE-band specific energy of the gas."""
     with h5py.File(path, "r") as f:
         t = float(np.ravel(f["Header"].attrs["Time"])[0])
         x = f["PartType0/Coordinates"][:]
         ids = f["PartType0/ParticleIDs"][:]
-        q = f[f"PartType0/{field}"][:][:, 0]
+        q = np.ravel(f["PartType0/PESpecificEnergies"][:])
     return t, x, ids, q
 
 
@@ -43,7 +43,13 @@ def main():
     e2 = np.cross(n, e1)
     files = snapshots()[1:]
     files = [files[i] for i in np.unique(np.linspace(0, len(files) - 1, 4).astype(int))]
-    fig, axes = plt.subplots(1, len(files), figsize=(3.2 * len(files), 3.6), squeeze=False, constrained_layout=True)
+    fig, axes = plt.subplots(
+        1,
+        len(files),
+        figsize=(3.2 * len(files), 3.6),
+        squeeze=False,
+        constrained_layout=True,
+    )
     data = []
     for fn in files:
         t, x, _, q = load(fn)
@@ -54,10 +60,24 @@ def main():
         data.append((t, r[keep] @ e1, r[keep] @ e2, q[keep]))
     vmax = max(d[3].max() for d in data)
     for ax, (t, u, v, q) in zip(axes[0], data):
-        im = ax.scatter(u, v, c=q, s=2, marker="s", vmin=0, vmax=vmax, cmap="inferno", rasterized=True)
+        im = ax.scatter(
+            u,
+            v,
+            c=q,
+            s=2,
+            marker="s",
+            vmin=0,
+            vmax=vmax,
+            cmap="inferno",
+            rasterized=True,
+        )
         ax.set(aspect="equal", title=f"t = {t:.3g}", xlabel="along beam 1 [h]")
     axes[0][0].set_ylabel("in the beam plane [h]")
-    fig.colorbar(im, ax=axes[0].tolist(), label="PE specific energy of the light (internal units)")
+    fig.colorbar(
+        im,
+        ax=axes[0].tolist(),
+        label="PE specific energy of the light (internal units)",
+    )
     fig.savefig("beam_crossing.png", dpi=150)
     print("beam_crossing.png written")
 

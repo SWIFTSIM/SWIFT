@@ -15,14 +15,13 @@ without the clump (`clump=0`) gives the reference for the ratio map.
 
 `InitialConditions:periodic: 0`: the light that reaches a face of the box
 leaves, and no image of the star feeds the shadow. The gas has an internal
-energy of 1 (km/s)^2 per unit mass. The gas at the faces expands out of the
-box, and swift removes each particle that leaves. The light that such a
-particle holds, has absorbed or has sent out of the box goes with it and is
-in no ledger, so the energy in the snapshots falls below the emitted energy
-once the light reaches the faces. The field is a specific energy (per unit
-mass): where the expanding gas at a face thins out, its field reads higher
-than further in. Leave the gas within one kernel support of a face out when
-you measure the field.
+energy of 1 (km/s)^2 per unit mass, so the gas at the faces expands out of the
+box. Swift removes each particle that leaves, and the light that the particle
+holds goes with it. With `--enable-isrf-debugging-checks` the snapshots carry
+the ledger of that light, in the `SubgridScheme` header group. The field is a
+specific energy (per unit mass): within one kernel support of a face, the
+one-sided kernel and the thinned gas make it read higher than
+further in. Leave that layer out when you measure the field.
 
 `params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
 off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show

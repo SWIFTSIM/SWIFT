@@ -50,6 +50,6 @@ variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
 
 # Plot
 `run.sh` calls `plotStarLattice.py` from the run directory. It writes
-`star_lattice.png` from the last snapshot: the kernel-mean PE field on the
+`star_lattice.png` from the last snapshot: the PE field (`PESpecificEnergies`) on the
 gas within 1.5 smoothing lengths of the layer of stars at z = 3/8 of the
 box, with the stars of that layer marked.

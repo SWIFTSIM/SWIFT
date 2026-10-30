@@ -21,18 +21,18 @@ def snapshots(pattern="snap/snapshot_*.hdf5"):
     return files
 
 
-def load(path, field="PacketSpecificEnergies"):
-    """Return time, gas positions, gas ids and the PE-band value of a packet field."""
+def load(path):
+    """Return time, gas positions, gas ids and the PE-band specific energy of the gas."""
     with h5py.File(path, "r") as f:
         t = float(np.ravel(f["Header"].attrs["Time"])[0])
         x = f["PartType0/Coordinates"][:]
         ids = f["PartType0/ParticleIDs"][:]
-        q = f[f"PartType0/{field}"][:][:, 0]
+        q = np.ravel(f["PartType0/PESpecificEnergies"][:])
     return t, x, ids, q
 
 
 def main():
-    t, x, _, q = load(snapshots()[-1], "PacketKernelMeanSpecificEnergies")
+    t, x, _, q = load(snapshots()[-1])
     with h5py.File(snapshots()[-1], "r") as f:
         box = float(f["Header"].attrs["BoxSize"][0])
         h0 = float(f["PartType0/SmoothingLengths"][:].mean())
@@ -40,12 +40,24 @@ def main():
     c = x - 0.5 * box
     slab = np.abs(c[:, 2]) < 1.5 * h0
     ok = slab & (q > 0)
-    im = axes[0].scatter(c[ok, 0] / box, c[ok, 1] / box, c=np.log10(q[ok]), s=1, marker="s", cmap="inferno", rasterized=True)
+    im = axes[0].scatter(
+        c[ok, 0] / box,
+        c[ok, 1] / box,
+        c=np.log10(q[ok]),
+        s=1,
+        marker="s",
+        cmap="inferno",
+        rasterized=True,
+    )
     fig.colorbar(im, ax=axes[0], label="log10 PE specific energy (internal units)")
-    axes[0].set(aspect="equal", xlabel="x / box", ylabel="y / box", title=f"t = {t:.3g}")
+    axes[0].set(
+        aspect="equal", xlabel="x / box", ylabel="y / box", title=f"t = {t:.3g}"
+    )
     cut = slab & (np.abs(c[:, 1]) < 1.5 * h0) & (q > 0)
     axes[1].semilogy(c[cut, 0] / box, q[cut], ".", ms=2)
-    axes[1].set(xlabel="x / box", ylabel="PE specific energy", title="cut through both stars")
+    axes[1].set(
+        xlabel="x / box", ylabel="PE specific energy", title="cut through both stars"
+    )
     fig.savefig("two_stars.png", dpi=150)
     print("two_stars.png written")
 

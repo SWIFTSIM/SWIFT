@@ -21,13 +21,13 @@ def snapshots(pattern="snap/snapshot_*.hdf5"):
     return files
 
 
-def load(path, field="PacketSpecificEnergies"):
-    """Return time, gas positions, gas ids and the PE-band value of a packet field."""
+def load(path):
+    """Return time, gas positions, gas ids and the PE-band specific energy of the gas."""
     with h5py.File(path, "r") as f:
         t = float(np.ravel(f["Header"].attrs["Time"])[0])
         x = f["PartType0/Coordinates"][:]
         ids = f["PartType0/ParticleIDs"][:]
-        q = f[f"PartType0/{field}"][:][:, 0]
+        q = np.ravel(f["PartType0/PESpecificEnergies"][:])
     return t, x, ids, q
 
 
@@ -44,10 +44,10 @@ def main():
     axis, e2, n = plane(geo)
     star = np.array(geo["star_kpc"])
     last = snapshots()[-1]
-    t, x, ids, q = load(last, "PacketKernelMeanSpecificEnergies")
+    t, x, ids, q = load(last)
     q0 = None
     try:  # control run: same gas, matched by particle id; gas that left the box is dropped
-        _, _, ids0, c0 = load("../run_clump0/snap/" + last.split("/")[-1], "PacketKernelMeanSpecificEnergies")
+        _, _, ids0, c0 = load("../run_clump0/snap/" + last.split("/")[-1])
         common, i1, i0 = np.intersect1d(ids, ids0, return_indices=True)
         x, q, q0 = x[i1], q[i1], c0[i0]
     except OSError:
@@ -58,20 +58,53 @@ def main():
     u, v = r[keep] @ axis, r[keep] @ e2
     flux = q * dist**2  # removes the 1/r^2 dilution
     ncol = 1 if q0 is None else 2
-    fig, axes = plt.subplots(1, ncol, figsize=(4.6 * ncol, 4.2), squeeze=False, constrained_layout=True)
+    fig, axes = plt.subplots(
+        1, ncol, figsize=(4.6 * ncol, 4.2), squeeze=False, constrained_layout=True
+    )
     ok = flux[keep] > 0
-    im = axes[0][0].scatter(u[ok], v[ok], c=np.log10(flux[keep][ok]), s=2, marker="s", cmap="inferno", rasterized=True)
+    im = axes[0][0].scatter(
+        u[ok],
+        v[ok],
+        c=np.log10(flux[keep][ok]),
+        s=2,
+        marker="s",
+        cmap="inferno",
+        rasterized=True,
+    )
     im.set_clim(np.log10(flux[keep][ok]).max() - 4.0, None)
     fig.colorbar(im, ax=axes[0][0], label="log10 (field x r^2), with clump")
     if q0 is not None:
         ratio = q[keep] / np.where(q0[keep] > 0, q0[keep], np.nan)
-        im = axes[0][1].scatter(u, v, c=ratio, s=2, marker="s", vmin=0, vmax=1.2, cmap="viridis", rasterized=True)
+        im = axes[0][1].scatter(
+            u,
+            v,
+            c=ratio,
+            s=2,
+            marker="s",
+            vmin=0,
+            vmax=1.2,
+            cmap="viridis",
+            rasterized=True,
+        )
         fig.colorbar(im, ax=axes[0][1], label="field with clump / without")
     clump = (np.array(geo["clump_centre_kpc"]) - star) / h0
     for ax in axes[0]:
-        ax.add_patch(plt.Circle((clump @ axis, clump @ e2), geo["clump_radius_kpc"] / h0, fill=False, ec="w", ls="--"))
+        ax.add_patch(
+            plt.Circle(
+                (clump @ axis, clump @ e2),
+                geo["clump_radius_kpc"] / h0,
+                fill=False,
+                ec="w",
+                ls="--",
+            )
+        )
         ax.plot(0, 0, "w*", ms=8)
-        ax.set(aspect="equal", xlabel="along the star-clump axis [h]", ylabel="across [h]", title=f"t = {t:.3g}")
+        ax.set(
+            aspect="equal",
+            xlabel="along the star-clump axis [h]",
+            ylabel="across [h]",
+            title=f"t = {t:.3g}",
+        )
     fig.savefig("shadow.png", dpi=150)
     print("shadow.png written")
 

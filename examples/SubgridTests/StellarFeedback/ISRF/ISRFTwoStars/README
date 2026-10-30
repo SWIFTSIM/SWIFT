@@ -50,5 +50,5 @@ variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
 
 # Plot
 `run.sh` calls `plotTwoStars.py` from the run directory. It writes
-`two_stars.png` from the last snapshot: the kernel-mean PE field in the
+`two_stars.png` from the last snapshot: the PE field (`PESpecificEnergies`) in the
 plane of the stars, and its values along the line through both stars.
