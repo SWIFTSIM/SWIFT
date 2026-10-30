@@ -136,7 +136,6 @@ GEARFeedback:
   ISRF_propagation: 0                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_extinction_path_in_kernel_radii: 1.0                 # Extinction path length, in kernel support radii. Read only when ISRF_extinction_path is constant_kernel_path. (Default: 1.0)
-  ISRF_packet_light_speed_time_step_margin: 0.5             # Margin of the time step bound with ISRF_packet_light_speed fixed
   with_photoionization:          0                         # Whether to run with the subgrid photoionization model to mimick Strömgren sphere. 1: Run with photoionization, 0: Run without. (Default: 0)
   HII_min_density_Hpcm3: 1                  # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)

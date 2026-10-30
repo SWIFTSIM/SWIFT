@@ -1,0 +1,75 @@
+# Intro
+A star behind which an absorbing clump casts a shadow, in a box that is NOT
+periodic. A star (29.7 Msun) and a spherical clump of 5 smoothing lengths
+radius lie on a diagonal of a cube of gas at Z = 0.01 Zsun, with
+262144 particles (1e3 atom/cm^3, 0.1 Msun, 51.8 smoothing lengths on a side).
+The star is 18 smoothing lengths from the centre of the clump. The clump is
+the gas of higher metallicity: its dust makes it optically thick, with an
+optical depth of 10 across its diameter in the PE band (the photoelectric heating band of the radiation field). `makeIC.py` sets
+that metallicity from the dust cross-section and writes the metal mass
+fractions to the initial conditions, so `params.yml` reads them with
+`GEARChemistry:initial_metallicity: -1`.
+
+An optically thick clump absorbs the light that crosses it. A second run
+without the clump (`clump=0`) gives the reference for the ratio map.
+
+`InitialConditions:periodic: 0`: the light that reaches a face of the box
+leaves, and no image of the star feeds the shadow. The gas has an internal
+energy of 1 (km/s)^2 per unit mass, so the gas at the faces expands out of the
+box. Swift removes each particle that leaves, and the light that the particle
+holds goes with it. With `--enable-isrf-debugging-checks` the snapshots carry
+the ledger of that light, in the `SubgridScheme` header group. The field is a
+specific energy (per unit mass): within one kernel support of a face, the
+one-sided kernel and the thinned gas make it read higher than
+further in. Leave that layer out when you measure the field.
+
+`params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
+the light only. The light is deliberately slow: its speed is set by the time
+step, not by c. A packet (the light that a particle hands on to its
+neighbours) makes one hop of about one smoothing length per step, which is
+about 20 km/s here. `GEARFeedback:ISRF_packet_light_speed` keeps its default
+(`cap`, 0.99 c). The run lasts a few tens of steps.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. The number of reception
+slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table from
+its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
+(see the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). The published table that
+`getRadiationTable.sh` downloads predates the two datasets, so no download is
+provided. Pass the file with `radiation_table=/path/to/table.hdf5 ./run.sh`;
+the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+
+# Run
+```
+clump=0 ./run.sh
+clump=1 ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_clump<clump>`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`star_mass` (Msun), `clump` (1 or 0), `n_steps` (number of time steps), `swift_exe`, `run_dir`, `run_analysis`
+(0 skips the plot) and `extra_args` (further swift arguments).
+
+# Plot
+`run.sh` calls `plotShadow.py` from the run directory. It reads
+`geometry.json` and the last snapshot, and writes `shadow.png`: the
+kernel-mean PE field times the squared distance to the star, on the gas
+within 1.5 smoothing lengths of the plane that holds the star-clump axis, and
+the ratio of the field with the clump to the field without it. The ratio
+needs both runs; `run_clump1` finds `../run_clump0`, so run `clump=0` first.
+If `run_clump0` is missing, the plot has the first panel only and says so. To
+re-plot after the second run, run `python3 ../plotShadow.py` inside `run_clump1`.

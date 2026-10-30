@@ -1,0 +1,54 @@
+# Intro
+Two identical stars (29.7 Msun) 3 pc apart on the x axis, at the centre of a
+periodic box of uniform gas (1e3 atom/cm^3, 0.1 Msun particles, 262144
+particles, 51.8 smoothing lengths on a side). The gas has Z = 0.01 Zsun, an
+absorption length of 32.6 pc in the PE band (the photoelectric heating band of the radiation field), so it is nearly transparent
+over the box.
+
+The example shows the light of two sources that are close to each other. The
+plot shows the total PE field in a slab through both stars.
+
+`params.yml` fixes the time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
+the light only. The light is deliberately slow: its speed is set by the time
+step, not by c. A packet (the light that a particle hands on to its
+neighbours) makes one hop of about one smoothing length per step, which is
+about 20 km/s here. `GEARFeedback:ISRF_packet_light_speed` keeps its default
+(`cap`, 0.99 c). The run lasts a few tens of steps.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. The number of reception
+slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table from
+its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
+(see the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). The published table that
+`getRadiationTable.sh` downloads predates the two datasets, so no download is
+provided. Pass the file with `radiation_table=/path/to/table.hdf5 ./run.sh`;
+the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+
+# Run
+```
+./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`star_mass` (Msun), `distance_pc`, `n_steps` (number of time steps), `swift_exe`, `run_dir`, `run_analysis`
+(0 skips the plot) and `extra_args` (further swift arguments).
+
+# Plot
+`run.sh` calls `plotTwoStars.py` from the run directory. It writes
+`two_stars.png` from the last snapshot: the PE field (`PESpecificEnergies`) in the
+plane of the stars, and its values along the line through both stars.

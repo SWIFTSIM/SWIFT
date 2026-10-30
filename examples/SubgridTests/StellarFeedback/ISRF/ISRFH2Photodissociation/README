@@ -60,8 +60,18 @@ does not bias the comparison.
 make -j
 ```
 `--with-cooling=grackle_2` (or `grackle_3`) is required, because H2 is only
-tracked in these modes. `--with-tracers=GEAR` registers the
-`LWSpecificEnergies` snapshot output.
+tracked in these modes. The GEAR feedback module registers the
+`LWSpecificEnergies` snapshot output. The packet transport needs a radiation
+table whose `Data/Radiation` group carries `MeanPhotonEnergyPE` and
+`Integrated_MeanPhotonEnergyPE`. The pychem table generator produces such a
+table from its parameter file
+`params/chimieparam_radiation_parsec_spectral_popII.py` (see the section
+"Where each Radiation field comes from" of the pychem page "How to generate a
+Chemistry Table for GEAR"). The published table that `run.sh` downloads
+predates the two datasets. Copy the generated table to this directory as
+`PopII_parsec_spectral.hdf5` and run with
+`GEAR_RADIATION_TABLE_ALLOW_MISMATCH=1`, which lets `getRadiationTable.sh`
+accept a local file that differs from the published checksum.
 
 `--with-chealpix` is required by the ISRF transport. The yields table named
 by `GEARFeedback:yields_table` must carry, in its `Data/Radiation` group, the
