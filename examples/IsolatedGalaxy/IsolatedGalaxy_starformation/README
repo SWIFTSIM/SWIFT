@@ -10,11 +10,11 @@ results of SD08.
 The code can also be run for other situations to check to verify the law using
 different parameters, changes that were done in SD08 are given by:
  - gas fraction of 10% instead of 30%, change the IC to f10.hdf5, see getIC.sh,
-   should reproduce something similar to Figure 4 left hand pannel. Requires 
-   change of fg=.1
+   should reproduce something similar to Figure 4 left hand pannel. You should
+   NOT change the 'gas_fraction' parameter in EAGLEStarFormation!
  - gas fraction of 90% instead of 30%, change the IC to f90.hdf5, see getIC.sh,
-   should reproduce something similar to Figure 4 right hand pannel. Requires 
-   change of fg=.9
+   should reproduce something similar to Figure 4 right hand pannel. You should
+   NOT change the 'gas_fraction' parameter in EAGLEStarFormation!
  - Changing the effective equation of state to adiabatic, Jeans_gamma_effective 
    = 1.666667. Should result in something similar to Figure 5 left hand pannel
    of SD08.
