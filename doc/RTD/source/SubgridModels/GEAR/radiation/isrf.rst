@@ -93,7 +93,7 @@ Test beams
 Two optional parameters inject a pulse of light without a star. They exist to validate the transport and are not meant for a production run.
 
 ``GEARFeedback:ISRF_packet_test_beam_1`` and ``GEARFeedback:ISRF_packet_test_beam_2`` (default: off)
-  Each is a list of 11 numbers in internal units: the lower corner of a box (3), the upper corner of the box (3), the direction of the beam (3), and the energy given to each gas particle in the PE band and in the Lyman-Werner band (2). Every gas particle inside the box receives that energy once, at its first step, as light that travels along the direction (it is normalised). The pulse then propagates like any other light. A beam with zero energy in both bands is off.
+  Each is a list of 11 numbers in internal units: the lower corner of a box (3), the upper corner of the box (3), the direction of the beam (3), and the energy given to each gas particle in the PE band and in the Lyman-Werner band (2). Every gas particle inside the box receives that energy once, at its first step, as light that travels along the direction (it is normalised). The pulse then propagates like any other light. A beam with zero energy in both bands is off. The energy is an energy, not a specific energy, in the internal energy unit of the run (internal mass unit times the square of the internal velocity unit). For example, with the units of the example parameter file (:math:`10^{10}\,\mathrm{M}_\odot`, 1 kpc, 1 km/s), one internal energy unit is :math:`1.988\times10^{53}` erg, so a pulse of :math:`10^{45}` erg in the PE band is written as :math:`10^{45} / 1.988\times10^{53} = 5.03\times10^{-9}`.
 
 The injected energy is in no ledger, so a test adds it up from the parameters. SWIFT prints one message for each active beam, stops if an energy is negative, the direction is zero or the upper corner is not above the lower one, and stops if a beam is set with ``ISRF_propagation: 0``. In a cosmological run the corners are comoving coordinates.
 
@@ -122,7 +122,7 @@ Accuracy.
 Which mode?
 ~~~~~~~~~~~
 
-Use the default (no transport) when only the gas inside the source kernels matters, for instance for photoelectric heating in a well-resolved interstellar medium. Use ``ISRF_propagation: 1`` when the light must reach gas beyond the kernels of its stars, be shadowed by the gas in between, or arrive after a delay. The transport costs memory in every gas particle (see below). The run-time cost has not been measured. With ``ISRF_packet_light_speed: fixed`` the time step of the gas is also bounded, which can make the run slower.
+Use the default (no transport) when only the gas inside the source kernels matters, for instance for photoelectric heating in a well-resolved interstellar medium. Use ``ISRF_propagation: 1`` when the light must reach gas beyond the kernels of its stars, be shadowed by the gas in between, or arrive after a delay. The transport costs memory in every gas particle (see below). Measured on one fixture (32768 gas particles in a periodic box, one star, all gas in one time bin, 12 slots, one thread, Grackle cooling on), a step with the transport costs 1.21 times a step without it during the first steps (steps 2 to 8, 904 against 749 ms). The cost then grows as the light fills the box and is 3.92 times the cost without transport from step 40 on (2946 against 752 ms). The cost follows the number of pairs of a particle and a non-empty slot, so a run with many stars reaches this plateau at once, and a fixture with more expensive cooling shows a smaller ratio. Runs with MPI, with several time bins or with many stars were not measured. With ``ISRF_packet_light_speed: fixed`` the time step of the gas is also bounded, which can make the run slower.
 
 .. _gear_isrf_glossary:
 
@@ -141,6 +141,10 @@ Inbox
   Light received by a particle since its last step.
 Reservoir
   Light that waits beyond the arrival bins.
+Downstream neighbour
+  For one reception slot of a gas particle: a gas neighbour inside the smoothing kernel of the particle (distance below :math:`\gamma_K h`) that lies ahead of the direction of the slot, with the cosine of the angle to that direction above :math:`10^{-3}`. Only these neighbours receive light from that slot. A slot without one lets its light escape.
+Kernel mean
+  The mean of the field of the neighbours of a particle, weighted by mass times the smoothing kernel :math:`W(r/h)`, with the particle itself included. This is the field that Grackle reads.
 Ledger
   Snapshot fields that close the energy budget of a run (see :ref:`the packet fields <gear_output_isrf_packet>`).
 

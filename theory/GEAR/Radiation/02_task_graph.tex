@@ -36,7 +36,7 @@ implementation splits the work into two different kinds of task:
     \code{\_out}} (self and pair): created once at the
     \emph{top-level} cell grid (27-neighbour stencil,
     \code{engine\_make\_radiationloop\_tasks\_mapper},
-    \code{engine\_maketasks.c:4327}), \textbf{as implicit tasks}
+    \code{engine\_maketasks.c:4891-4964}), \textbf{as implicit tasks}
     (\code{implicit=1} in \code{scheduler\_addtask}): they run no
     compute code at all (no case for them in \code{runner\_main.c}'s
     dispatch switch). Their only job is to exist as dependency nodes:
@@ -50,16 +50,16 @@ implementation splits the work into two different kinds of task:
     runs (they are created afterward, once the hydro-attach flags
     their split criterion depends on are available), so a separate,
     dedicated pass, \code{scheduler\_splittasks\_radiation}
-    (\code{scheduler\_splittasks.c:966}), walks exactly the
+    (\code{scheduler\_splittasks.c:985-989}), walks exactly the
     newly-created \code{radiation\_in} tasks and hands each to
     \code{scheduler\_splittask\_radiation\_subgrid}.
   \item \textbf{\code{task\_type\_stars\_hii\_ionization\_feedback}}
     (subtype \code{none}): a \emph{single, coarse-grained} task
     created once per \code{radiation\_level} cell
     (\code{engine\_make\_hierarchical\_tasks\_radiation\_subgrid},
-    \code{engine\_maketasks.c:2118}). This is the only task that
+    \code{engine\_maketasks.c:2547-2601}). This is the only task that
     actually runs code (\code{runner\_do\_stars\_hii\_\allowbreak
-    ionization\_feedback}, dispatched at \code{runner\_main.c:582}).
+    ionization\_feedback}, dispatched at \code{runner\_main.c:663}).
     It performs its own manual, run-time recursion down to the
     ``Working Level'' and its own per-star neighbour search internally;
     see Section~\ref{sec:runtime}. From the scheduler's point of
@@ -71,7 +71,7 @@ implementation splits the work into two different kinds of task:
 
 \code{cell\_can\_split\_pair\_radiation\_subgrid\_task} /
 \code{cell\_can\_split\_self\_radiation\_subgrid\_task}
-(\code{cell.h:1362}, \code{1421}) are radiation's own splitting
+(\code{cell.h:1362-1412}, \code{1421-1440}) are radiation's own splitting
 criteria, structurally identical to the hydro ones but with an extra
 term: a cell stops splitting (and \code{radiation\_level} is pinned
 there) once
@@ -87,7 +87,7 @@ search radius expands, \code{radiation\_level} can sit strictly
 several \code{hydro.super} subtrees at once. When $h_{\rm hii}$ is
 small this term is inert and
 \texttt{radiation\_level\allowbreak{} == hydro.super} for free. \code{cell\_set\_super\_radiation\_subgrid}
-(\code{cell.c:1368}) walks the tree and stamps
+(\code{cell.c:1389-1427}) walks the tree and stamps
 \code{c->stars.radiation\_level} to the shallowest ancestor holding
 a \code{radiation\_in} link.
 
@@ -107,7 +107,7 @@ enumerating that side's facing progeny geometrically against the
 other, coarser side rather than forcing both to a shared depth, so
 each cell always settles at its \emph{own} \code{radiation\_level} and
 never leaves a link stranded above it. A \code{SWIFT\_DEBUG\_CHECKS}
-assertion (\code{cell.c:1393}) is kept as a live regression tripwire
+assertion (\code{cell.c:1398-1420}) is kept as a live regression tripwire
 for this invariant.
 
 \subsection{Dependency wiring}
@@ -115,10 +115,10 @@ for this invariant.
 For every \code{radiation\_in} self/pair task \code{t} covering
 cell(s) \code{ci}/\code{cj}, \code{engine\_\allowbreak
 make\_extra\_radiationloop\_tasks\_mapper}
-(\code{engine\_maketasks.c:3713}) creates the matching
+(\code{engine\_maketasks.c:4343-4489}) creates the matching
 \code{radiation\_out} task and wires, via
 \code{engine\_radiation\_wire\_super\_deps}
-(\code{engine\_maketasks.c:3649}, which recurses down to every
+(\code{engine\_maketasks.c:4279-4300}, which recurses down to every
 \code{hydro.super} beneath a coarse \code{radiation\_level} cell,
 visiting each disjoint subtree exactly once), the dependency chain
 shown in Figure~\ref{fig:dep-chain}: for every \code{hydro.super}
@@ -164,14 +164,14 @@ is active).
 
 A \code{SWIFT\_DEBUG\_CHECKS} invariant enforces that a
 \code{radiation\_in} pair task always connects two \emph{distinct}
-\code{radiation\_level} regions (\code{engine\_maketasks.c:3799}):
+\code{radiation\_level} regions (\code{engine\_maketasks.c:4429}):
 otherwise both sides would wire identical unlocks onto the same
 \code{hii\_ionization\_feedback} task, a duplicate-unlock error.
 
 \subsection{Activation (unskip)}
 \label{sec:unskip}
 
-\code{cell\_unskip\_radiation\_tasks} (\code{cell\_unskip.c:2328})
+\code{cell\_unskip\_radiation\_tasks} (\code{cell\_unskip.c:2378-2589})
 walks \code{c->stars.radiation\_in} and \code{radiation\_out}
 each timestep. For every active task it also activates
 drift/sync/\code{stars\_in} (or \code{stars\_out}) over
@@ -188,17 +188,17 @@ document); the ordinary \code{cell\_need\_rebuild\_for\_stars\_pair}
 is blind to $h_{\rm hii}$ growth and would under-trigger the tree
 rebuild.
 \code{c->stars.hii\_ionization\_feedback} itself is activated by
-\code{cell\_radiation\_activate\_hii} (\code{cell\_unskip.c:2294}) together with
+\code{cell\_radiation\_activate\_hii} (\code{cell\_unskip.c:2344-2347}) together with
 the \code{radiation\_in} tasks that unlock it, and not by the cell's own star or
-gas activity (\code{cell\_unskip.c:2878}). A starless region that a neighbour's
+gas activity (\code{cell\_unskip.c:2942-2946}). A starless region that a neighbour's
 active star searches into therefore still runs the task.
 
 \subsection{Locking}
 
 \code{hii\_ionization\_feedback}'s search reads and writes gas across
 \code{ci}'s own subtree plus every neighbouring region reachable
-through \code{ci->stars.radiation\_in} (\code{task.c:808}, lock;
-\code{task.c:577}, unlock). Locking proceeds in
+through \code{ci->stars.radiation\_in} (\code{task.c:767}, lock;
+\code{task.c:554}, unlock). Locking proceeds in
 \code{radiation\_in}'s link order: \code{ci}'s own star and hydro
 trees first, then each linked pair task's ``other'' cell's hydro tree
 (locking a region's tree also blocks its descendants/ancestors via
@@ -218,13 +218,13 @@ lock-order contention between neighbours is possible under load.
 
 Once \code{hii\_ionization\_feedback} actually runs
 (\code{runner\_do\_stars\_hii\_ionization\_feedback},
-\code{runner\_radiation\_feedback.c:285}), it manually recurses down
+\code{runner\_radiation\_feedback.c:290-403}), it manually recurses down
 \code{c->progeny} (mirroring what \code{scheduler\_splittasks}
 would have done for an ordinary task, but at run time inside a single
 task) until it reaches the ``Working Level'': a cell no smaller than
 needed to contain the current interaction limit: then hands off to
 \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{runner\_radiation\_feedback.c:510}).
+(\code{runner\_radiation\_feedback.c:515}).
 
 \begin{figure}[h]
   \centering
@@ -274,7 +274,7 @@ For each active star at that level:
     \code{Stars:HII\_max\_radius\_expansion\_tries} times, bounded by
     \code{Stars:HII\_max\_search\_radius}. These two retry kinds are
     genuinely different failure modes and must not be conflated (see
-    the comment at \code{runner\_radiation\_feedback.c:910}); the
+    the comment at \code{runner\_radiation\_feedback.c:684-692}); the
     loop breaks once the budget is exhausted or both retry budgets run
     out.
 \end{enumerate}
@@ -606,4 +606,4 @@ Separately, any run requesting \code{GEARFeedback:HII\_angular\_nside
 \code{--with-chealpix}: the angular pixel assignment itself goes
 through the HEALPix C API, and without it the code errors at start-up
 rather than silently falling back to the spherical ($\text{nside}=0$)
-case (\code{radiation.c:327-332}).
+case (\code{radiation.c:330-336}).
