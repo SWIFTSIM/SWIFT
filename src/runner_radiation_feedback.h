@@ -357,16 +357,44 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
                                         int timer) {}
 #endif
 
+/* The packet light: the speed limit is set at start-up, without stars as well.
+   Empty when the ISRF part is not compiled. */
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+void radiation_packet_startup(const struct engine *e);
+#else
+__attribute__((always_inline)) INLINE static void radiation_packet_startup(
+    const struct engine *e) {}
+#endif
+
+/* The arrival bin counters are reported once per step, and the ledger of the
+   gas that left the box is summed over the ranks before each snapshot. Empty
+   unless the ISRF part is compiled with SWIFT_DEBUG_CHECKS_ISRF. */
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+void radiation_packet_step_diagnostics(const struct engine *e);
+void radiation_packet_reduce_left_box(const struct engine *e);
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_packet_step_diagnostics(const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_packet_reduce_left_box(const struct engine *e) {}
+#endif
+
 /**
- * @brief Print startup warnings about the HII search-radius / box-size
- * relationship, called unconditionally from engine_config().
+ * @brief Start-up of the subgrid radiation, called unconditionally from
+ * engine_config(): hands the box to the ISRF packet emission and prints
+ * warnings about the HII search-radius / box-size relationship.
  *
- * A no-op when GEAR ionization feedback is compiled out.
+ * A no-op when neither the HII loop nor the ISRF part is compiled.
  *
  * @param e The #engine.
  */
 #ifdef IONIZATION_FEEDBACK_LOOP
 void feedback_radiation_startup_diagnostics(const struct engine *e);
+#elif defined(GEAR_SUBGRID_RADIATION_ISRF)
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_startup_diagnostics(const struct engine *e) {
+  radiation_packet_startup(e);
+}
 #else
 __attribute__((always_inline)) INLINE static void
 feedback_radiation_startup_diagnostics(const struct engine *e) {}

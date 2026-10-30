@@ -1127,6 +1127,32 @@ void radiation_read_mean_photon_energy_lw_array(
 }
 
 /**
+ * @brief Read the MeanPhotonEnergyPE / Integrated_MeanPhotonEnergyPE arrays,
+ * the PE twin of #radiation_read_mean_photon_energy_lw_array, in cgs erg.
+ *
+ * @param rad The #radiation model.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ */
+void radiation_read_mean_photon_energy_pe_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid,
+    const struct stellar_model *sm) {
+
+  radiation_build_tables(
+      group_id, "MeanPhotonEnergyPE", grid, sm, rad->interpolation_size, 1., 1.,
+      "erg", &rad->raw.mean_photon_energy_pe, NULL,
+      &rad->raw.mean_photon_energy_pe_2d, NULL, boundary_condition_const);
+
+  radiation_build_tables(group_id, "Integrated_MeanPhotonEnergyPE", grid, sm,
+                         rad->interpolation_size, 1., 1., "erg",
+                         &rad->integrated.mean_photon_energy_pe, NULL,
+                         &rad->integrated.mean_photon_energy_pe_2d, NULL,
+                         boundary_condition_const);
+}
+
+/**
  * @brief Read the main-sequence lifetime table (2D "M,Z" tables only).
  *
  * MainSequenceLifetime has no 1D analogue, so @p grid must be 2D.
@@ -1547,6 +1573,14 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
   /* Validated above to exist. */
   radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
+
+  /* Optional: only the ISRF packet transport needs it, and checks for it. */
+  rad->has_mean_photon_energy_pe =
+      (char)(H5Lexists(group_id, "MeanPhotonEnergyPE", H5P_DEFAULT) > 0 &&
+             H5Lexists(group_id, "Integrated_MeanPhotonEnergyPE", H5P_DEFAULT) >
+                 0);
+  if (rad->has_mean_photon_energy_pe)
+    radiation_read_mean_photon_energy_pe_array(rad, group_id, &grid, sm);
 
   /* These datasets exist only for 2D tables. */
   if (grid.is_2d) {

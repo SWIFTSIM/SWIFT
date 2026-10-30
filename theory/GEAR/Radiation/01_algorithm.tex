@@ -77,8 +77,8 @@ Section~\ref{sec:front-radius} relies on. ``Tagged'' below always
 means holding an active (not yet lapsed) claim.
 
 \paragraph{Implementation.} The tag is applied by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:500}) and reset by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:522}),
+(\code{src/feedback/GEAR/radiation\_gas.c:500-514}) and reset by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:522-526}),
 which leaves the star id in place.
 
 \subsubsection{Candidate Gating and the Recombination Rate}
@@ -114,7 +114,7 @@ identical in form to Hu et al.'s $N_H\beta n_H$ (their $N_H$ is called
 Smith et al.'s $R_{\rm rec}=\beta m \rho (X_H/m_p)^2$. 
 
 \paragraph{Implementation.} The candidate filter is \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:726}).
+(\code{src/feedback/GEAR/feedback\_common.c:725-759}).
 
 \subsubsection{Claim Cost vs.\ Maintenance Rate}
 
@@ -151,7 +151,7 @@ electrons are already stripped, so there is no neutral-hydrogen term to
 pay again.
 
 \paragraph{Implementation.} $N_{HI,b}$ is \code{radiation\_get\_part\_number\_neutral\_hydrogen\_atoms}
-(\code{src/feedback/GEAR/radiation\_gas.c:107}).
+(\code{src/feedback/GEAR/radiation\_gas.c:109-160}).
 
 \subsubsection{Implicit Region Growth}
 
@@ -255,7 +255,7 @@ Neither Hu et al.\ nor Smith et al.\ have a metallicity-dependent floor
 at all: both simply clamp ionized gas to a flat $10^4\,$K.
 
 \paragraph{Implementation.} The floor is set in \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62}), called from the
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62-124}), called from the
 cooling task.
 
 \subsubsection{Applying the Floor: Energy Accounting}
@@ -313,15 +313,15 @@ evaluated at it whenever $u_{\rm collisional} < \Delta u_{\rm
 ionized}$).
 
 \paragraph{Implementation.} \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62}) returns $u_{\rm new}$ to
-\code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1261}), which
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62-124}) returns $u_{\rm new}$ to
+\code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1280-1292}), which
 skips Grackle's \code{local\_solve\_chemistry} on a tagged particle. The
 cooling step that applies Eq.~\ref{eq:cool-dudt} and records the radiated
-energy is \code{cooling\_cool\_part} (\code{src/cooling/grackle/cooling.c:1479}).
+energy is \code{cooling\_cool\_part} (\code{src/cooling/grackle/cooling.c:1498-1610}).
 The fit of
 Eq.~\ref{eq:tcollisional} is \code{radiation\_get\_T\_collisional\_K}
-(\code{src/feedback/GEAR/radiation\_gas.c:145}), with the
-$Z \ge 10^{-3}Z_\odot$ guard at line 155 and the base-10 logarithm at line 157.
+(\code{src/feedback/GEAR/radiation\_gas.c:172-190}), with the
+$Z \ge 10^{-3}Z_\odot$ guard at line 182 and the base-10 logarithm at line 184.
 
 \subsection{Temperature dependence of $\beta$}
 \label{sec:beta-temperature}
@@ -378,12 +378,12 @@ highest.
 \code{src/rt/SPHM1RT/rt\_cooling\_rates.h}, with $\lambda = 315614\,{\rm K}/T$
 at lines 169 and 262. In this model,
 \code{radiation\_get\_case\_b\_recombination\_coefficient\_cgs}
-(\code{src/feedback/GEAR/radiation\_gas.c:218}) implements
+(\code{src/feedback/GEAR/radiation\_gas.c:288-293}) implements
 Eq.~\ref{eq:alphaB-huignedin}, and
 \code{radiation\_get\_part\_ionized\_internal\_energy}
-(\code{radiation\_gas.c:182}) is shared by
+(\code{radiation\_gas.c:252-278}) is shared by
 \code{radiation\_get\_part\_rate\_to\_fully\_ionize}
-(\code{radiation\_gas.c:238}) and \code{cooling\_ionize\_part\_subgrid}, to
+(\code{radiation\_gas.c:308}) and \code{cooling\_ionize\_part\_subgrid}, to
 guarantee the two never disagree.
 
 \subsection{Applying a tag: flag-and-floor vs.\ rate-coupled}
@@ -450,16 +450,16 @@ differently; see Section~\ref{sec:front-radius}.
 
 \paragraph{Implementation.} The flag is read in
 \code{cooling\_ionize\_part\_subgrid}
-(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62}) inside
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62-124}) inside
 \code{\#if COOLING\_GRACKLE\_MODE > 0}, at lines 73-74; the same compile-time
 gate recurs at line 97. The rate-coupled branch starts at line 74 and leaves the energy alone.
 $\Gamma_{\rm HI}$ is
 \code{radiation\_get\_photoionization\_rate\_coefficient\_from\_flux\_HI}
-(\code{src/feedback/GEAR/radiation\_gas.c:657}); the excess photon energy is
+(\code{src/feedback/GEAR/radiation\_gas.c:658-667}); the excess photon energy is
 \code{radiation\_get\_star\_mean\_excess\_photon\_energy\_HI}
-(\code{src/feedback/GEAR/radiation\_getters.c:543}); the fields are handed to
+(\code{src/feedback/GEAR/radiation\_getters.c:543-550}); the fields are handed to
 Grackle by \code{cooling\_get\_rate\_coupled\_RT\_fields\_subgrid}
-(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:229}).
+(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:229-254}).
 
 \subsection{Per-cone photon budget (angular splitting)}
 \label{sec:angular-splitting}
@@ -547,7 +547,7 @@ never averages against a stale rate.
 
 \paragraph{Implementation.} The nominal cadence and its floor are
 \code{feedback\_get\_star\_HII\_nominal\_interval}
-(\code{src/feedback/GEAR/feedback\_common.c:1188}).
+(\code{src/feedback/GEAR/feedback\_common.c:1187-1198}).
 
 \subsubsection{Sequential Spend Within a Pass}
 
@@ -621,8 +621,8 @@ the stars are identical, not because the code enforces it.
 
 \paragraph{Implementation.} The per-star rebuild schedule is decided in
 \code{feedback\_will\_do\_HII\_ionization}
-(\code{src/feedback/GEAR/feedback\_common.c:419}), from
-\code{HII\_rebuild\_time} at lines 436-467.
+(\code{src/feedback/GEAR/feedback\_common.c:427-495}), from
+\code{HII\_rebuild\_time} at lines 440-475.
 
 \subsubsection{Maintenance: Renewing Gas Already Held Ionized}
 
@@ -647,12 +647,12 @@ ionized for ever, and a pixel whose Strömgren mass is below one
 particle would hold a whole particle permanently.
 
 \paragraph{Implementation.} The gather is in \code{runner\_dosub\_stars\_hii\_ionization\_feedback}
-(\code{src/runner\_radiation\_feedback.c:510}), exempt from
+(\code{src/runner\_radiation\_feedback.c:515}), exempt from
 \code{feedback\_part\_can\_be\_ionized}
-(\code{src/feedback/GEAR/feedback\_common.c:726}). The charge and renewal are
+(\code{src/feedback/GEAR/feedback\_common.c:725-759}). The charge and renewal are
 \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{feedback\_common.c:929}), called at
-\code{src/runner\_radiation\_feedback.c:754}.
+(\code{feedback\_common.c:928-996}), called at
+\code{src/runner\_radiation\_feedback.c:763}.
 
 \subsubsection{Maintenance Order: A Receding Front Recedes from the
 Outside In}
@@ -690,10 +690,10 @@ same rule governs every pixel a star's maintenance and new-candidate
 spending draw from.
 
 \paragraph{Implementation.} \code{feedback\_iact\_HII\_maintain\_ionized\_part}
-(\code{src/feedback/GEAR/feedback\_common.c:929}) passes the pixel index found
+(\code{src/feedback/GEAR/feedback\_common.c:928-996}) passes the pixel index found
 for the particle's current direction when it was gathered to
 \code{radiation\_consume\_ionizing\_photons}
-(\code{src/feedback/GEAR/radiation\_gas.c:471}).
+(\code{src/feedback/GEAR/radiation\_gas.c:471-482}).
 
 \subsection{Front-radius measure}
 \label{sec:front-radius}
@@ -735,8 +735,8 @@ historical-extent measure would instead freeze at the historical
 maximum once the region starts to recede.
 
 \paragraph{Implementation.} The id is written by \code{radiation\_tag\_part\_as\_ionized}
-(\code{src/feedback/GEAR/radiation\_gas.c:500}) and is left in place by
-\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:522}).
+(\code{src/feedback/GEAR/radiation\_gas.c:500-514}) and is left in place by
+\code{radiation\_reset\_part\_ionized\_tag} (\code{radiation\_gas.c:522-526}).
 
 \subsubsection{Robust Historical Extent: Gap-Aware Outlier Rejection}
 

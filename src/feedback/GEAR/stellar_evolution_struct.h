@@ -312,6 +312,17 @@ struct radiation {
       struct interpolation_2d mean_photon_energy_lw_2d;
     };
 
+    union {
+      /*! Photon-number-weighted mean PE photon energy of a single star,
+          L_PE/Q_PE over 6-11.2 eV, from the optional "MeanPhotonEnergyPE"
+          dataset (#has_mean_photon_energy_pe). In cgs erg, stored like
+          #mean_photon_energy_lw. */
+      struct interpolation_1d mean_photon_energy_pe;
+
+      /*! #mean_photon_energy_pe, mass x metallicity variant. */
+      struct interpolation_2d mean_photon_energy_pe_2d;
+    };
+
     /*! Main-sequence duration (TAMS age minus ZAMS age), mass x
         metallicity, 2D-only. Stored as log10(Myr), NOT log10(internal
         units) like the fields above: it is only ever compared against a
@@ -424,6 +435,15 @@ struct radiation {
       /*! #mean_photon_energy_lw, mass x metallicity variant. */
       struct interpolation_2d mean_photon_energy_lw_2d;
     };
+
+    union {
+      /*! PE counterpart of #mean_photon_energy_lw, from the optional
+          "Integrated_MeanPhotonEnergyPE" dataset. */
+      struct interpolation_1d mean_photon_energy_pe;
+
+      /*! #mean_photon_energy_pe, mass x metallicity variant. */
+      struct interpolation_2d mean_photon_energy_pe_2d;
+    };
   } integrated;
 
   /*! Is this a mass x metallicity ("M,Z") table rather than mass-only
@@ -477,6 +497,10 @@ struct radiation {
       none, and must still load: every read of #raw.teff is gated on this
       flag. */
   char has_teff;
+
+  /*! Does the table carry MeanPhotonEnergyPE and its integrated twin? Probed
+      on every read like #has_teff. The ISRF packet transport needs them. */
+  char has_mean_photon_energy_pe;
 
   /*! The radiation table's own provenance attributes, one entry per key in
       #radiation_table_source_keys and in that order. GEARFeedback:yields_table

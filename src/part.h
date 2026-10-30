@@ -102,11 +102,19 @@ struct threadpool;
 #error "Invalid choice of SPH variant"
 #endif
 
-/* The GEAR ISRF books a pair share into the inactive member, on its rank. */
-#if defined(WITH_MPI) && defined(FEEDBACK_GEAR) &&                       \
+/* The GEAR ISRF books the share of a foreign sender into each local receiver,
+   on the receiver's rank. */
+#if defined(WITH_MPI) &&                                                 \
+    (defined(FEEDBACK_GEAR) || defined(FEEDBACK_GEAR_MECHANICAL)) &&     \
     defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(EXTRA_HYDRO_LOOP) && \
     !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
 #define MPI_SYMMETRIC_FORCE_INTERACTION
+#endif
+
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_ISRF) && \
+    defined(EXTRA_HYDRO_LOOP) && !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+#error \
+    "The ISRF packet transport with MPI needs MPI_SYMMETRIC_FORCE_INTERACTION: add the feedback module to the guard above."
 #endif
 
 /* Import the right gravity particle definition */

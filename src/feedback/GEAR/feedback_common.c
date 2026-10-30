@@ -27,6 +27,7 @@
 #include "minmax.h"
 #include "part.h"
 #include "radiation.h"
+#include "radiation_packet.h"
 #include "runner_radiation_feedback.h"
 #include "stellar_evolution.h"
 #include "timeline.h"
@@ -272,6 +273,13 @@ void feedback_will_do_feedback(
     const struct unit_system *us, const struct phys_const *phys_const,
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin) {
+
+#if defined(SWIFT_DEBUG_CHECKS) && defined(GEAR_SUBGRID_RADIATION_ISRF) && \
+    !defined(WITH_MPI)
+  /* On several ranks the deliveries to foreign gas land on a copy of the star
+     on the gas's rank and never return, so the counts cannot be compared. */
+  radiation_packet_check_star_cones(sp, ti_current);
+#endif
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -1305,338 +1313,6 @@ double feedback_get_part_u_LW_PHOTON(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
 }
 
-/**
- * @brief Negativity-triggered artificial-dissipation coefficient, see
- * #feedback_part_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_trigger
- * and
- * #feedback_part_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_floor.
- * Thin dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
- *
- * Per-particle SUMMARY for I/O only: the coefficient the force loop uses is
- * the per-pair `alpha_ij = max(trigger_i, trigger_j, floor_i, floor_j)`,
- * which has no single-particle representation. This returns the value the
- * particle would contribute against an identical partner.
- *
- * @param p The #part to query.
- * @return Negativity-triggered artificial-dissipation coefficient, PE band.
- */
-float feedback_get_part_dissipation_alpha_PE(const struct part *p) {
-  return max(
-      p->feedback_data.isrf_operator[ISRF_OPERATOR_PE]
-          .dissipation_alpha_trigger,
-      p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].dissipation_alpha_floor);
-}
-
-/**
- * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @return Negativity-triggered artificial-dissipation coefficient,
- * Lyman-Werner band.
- */
-float feedback_get_part_dissipation_alpha_LW(const struct part *p) {
-  return max(
-      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW]
-          .dissipation_alpha_trigger,
-      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].dissipation_alpha_floor);
-}
-
-/**
- * @brief See #feedback_get_part_dissipation_alpha_PE, Lyman-Werner-band
- * photon-number moment. Decorative: this moment shares #ISRF_OPERATOR_LW
- * with #ISRF_MOMENT_LW, so it reads the identical operator state as
- * #feedback_get_part_dissipation_alpha_LW.
- *
- * @param p The #part to query.
- * @return Negativity-triggered artificial-dissipation coefficient,
- * Lyman-Werner-band photon-number moment.
- */
-float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p) {
-  return max(
-      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW]
-          .dissipation_alpha_trigger,
-      p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].dissipation_alpha_floor);
-}
-
-/**
- * @brief `(1/rho) div(rho F)` accumulator, see
- * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].div_specific_flux. Thin
- * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
- *
- * @param p The #part to query.
- * @return `(1/rho) div(rho F)` accumulator, PE band.
- */
-float feedback_get_part_div_specific_flux_PE(const struct part *p) {
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].div_specific_flux;
-}
-
-/**
- * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @return `(1/rho) div(rho F)` accumulator, Lyman-Werner band.
- */
-float feedback_get_part_div_specific_flux_LW(const struct part *p) {
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].div_specific_flux;
-}
-
-/**
- * @brief See #feedback_get_part_div_specific_flux_PE, Lyman-Werner-band
- * photon-number moment.
- *
- * @param p The #part to query.
- * @return `(1/rho) div(rho F)` accumulator, Lyman-Werner-band photon-number
- * moment.
- */
-float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p) {
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].div_specific_flux;
-}
-
-/**
- * @brief Tracked specific flux moment, see
- * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].specific_flux, returned as
- * the true physical flux `F_true`. The stored field is the reduced flux
- * `Ft = F_true/c_hyp` (radiation_propagation_iact.h's file header), so this
- * getter rescales it back (`F_true = c_hyp*Ft`) before returning: the io
- * field's meaning (PESpecificFluxes, feedback_io.h) and every downstream
- * consumer (the ISRFHyperbolicPropagation check scripts included) do not
- * depend on this internal representation. A multiply, never a division: no
- * zero-denominator hazard.
- *
- * @param p The #part to query.
- * @param ret (return) The three components.
- */
-void feedback_get_part_specific_flux_PE(const struct part *p, float *ret) {
-  const float rescale = p->feedback_data.c_hyp;
-  ret[0] =
-      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[0];
-  ret[1] =
-      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[1];
-  ret[2] =
-      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux[2];
-}
-
-/**
- * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @param ret (return) The three components.
- */
-void feedback_get_part_specific_flux_LW(const struct part *p, float *ret) {
-  const float rescale = p->feedback_data.c_hyp;
-  ret[0] =
-      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[0];
-  ret[1] =
-      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[1];
-  ret[2] =
-      rescale * p->feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux[2];
-}
-
-/**
- * @brief See #feedback_get_part_specific_flux_PE, Lyman-Werner-band
- * photon-number moment.
- *
- * @param p The #part to query.
- * @param ret (return) The three components.
- */
-void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
-                                               float *ret) {
-  const float rescale = p->feedback_data.c_hyp;
-  ret[0] = rescale *
-           p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[0];
-  ret[1] = rescale *
-           p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[1];
-  ret[2] = rescale *
-           p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux[2];
-}
-
-/**
- * @brief Most negative PE-band specific energy written since the previous
- * snapshot, see
- * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].u_min_since_snapshot.
- *
- * Values stamped with an older snapshot index belong to an interval that
- * saw no update of this particle, so they read as 0. Always 0 without
- * SWIFT_DEBUG_CHECKS.
- *
- * @param p The #part to query.
- * @param e The #engine.
- * @return Most negative PE-band specific energy since the previous
- * snapshot, or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
-                                                const struct engine *e) {
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
-    return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].u_min_since_snapshot;
-#endif
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @param e The #engine.
- * @return Most negative Lyman-Werner-band specific energy since the
- * previous snapshot, or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
-                                                const struct engine *e) {
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
-    return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].u_min_since_snapshot;
-#endif
-  return 0.f;
-}
-
-/**
- * @brief See #feedback_get_part_u_min_since_snapshot_PE, Lyman-Werner-band
- * photon-number moment.
- *
- * @param p The #part to query.
- * @param e The #engine.
- * @return Most negative Lyman-Werner-band photon-number moment since the
- * previous snapshot, or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
-                                                       const struct engine *e) {
-#ifdef SWIFT_DEBUG_CHECKS
-  if (p->feedback_data.u_min_snapshot_index == e->snapshot_output_count)
-    return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON]
-        .u_min_since_snapshot;
-#endif
-  return 0.f;
-}
-
-/**
- * @brief Cumulative PE-band raw injected dose since first init, see
- * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].cumulative_injected. Always 0
- * without SWIFT_DEBUG_CHECKS.
- *
- * @param p The #part to query.
- * @return Cumulative PE-band raw injected dose since first init, or 0
- * without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_cumulative_injected_PE(const struct part *p) {
-#ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].cumulative_injected;
-#else
-  return 0.f;
-#endif
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @return Cumulative Lyman-Werner-band raw injected dose since first init,
- * or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_cumulative_injected_LW(const struct part *p) {
-#ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_injected;
-#else
-  return 0.f;
-#endif
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_injected_PE, Lyman-Werner-band
- * photon-number moment.
- *
- * @param p The #part to query.
- * @return Cumulative Lyman-Werner-band photon-number moment raw injected
- * dose since first init, or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p) {
-#ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON]
-      .cumulative_injected;
-#else
-  return 0.f;
-#endif
-}
-
-/**
- * @brief Cumulative PE-band absorbed/transport-and-dissipation-attributed
- * specific energy since first init, see
- * #feedback_part_data.isrf_moment[ISRF_MOMENT_PE].cumulative_absorbed. Always 0
- * without SWIFT_DEBUG_CHECKS.
- *
- * @param p The #part to query.
- * @return Cumulative PE-band absorbed/dissipation-attributed specific
- * energy since first init, or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_cumulative_absorbed_PE(const struct part *p) {
-#ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_PE].cumulative_absorbed;
-#else
-  return 0.f;
-#endif
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner band.
- *
- * @param p The #part to query.
- * @return Cumulative Lyman-Werner-band absorbed/dissipation-attributed
- * specific energy since first init, or 0 without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_cumulative_absorbed_LW(const struct part *p) {
-#ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW].cumulative_absorbed;
-#else
-  return 0.f;
-#endif
-}
-
-/**
- * @brief See #feedback_get_part_cumulative_absorbed_PE, Lyman-Werner-band
- * photon-number moment.
- *
- * @param p The #part to query.
- * @return Cumulative Lyman-Werner-band photon-number moment
- * absorbed/dissipation-attributed specific energy since first init, or 0
- * without SWIFT_DEBUG_CHECKS.
- */
-float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p) {
-#ifdef SWIFT_DEBUG_CHECKS
-  return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON]
-      .cumulative_absorbed;
-#else
-  return 0.f;
-#endif
-}
-
-/**
- * @brief Hyperbolic propagation speed, see #feedback_part_data.c_hyp. Thin
- * dispatch wrapper, same reasoning as #feedback_get_part_u_PE.
- *
- * Shared by both bands, and physical: a physical speed, whichever scheme
- * (#isrf_c_hyp_scheme) set it.
- *
- * @param p The #part to query.
- * @return Hyperbolic propagation speed.
- */
-float feedback_get_part_c_hyp(const struct part *p) {
-  return p->feedback_data.c_hyp;
-}
-
-/**
- * @brief Specific energy owed to a moment by finer neighbours, added by the
- * particle's next update: `c_hyp` times the two pending amounts.
- *
- * @param p The #part to query.
- * @param m The #radiation_isrf_moment.
- * @return The pending specific energy.
- */
-float feedback_get_part_pending_specific_energy(const struct part *p, int m) {
-  const struct feedback_isrf_moment_data *mo = &p->feedback_data.isrf_moment[m];
-  return p->feedback_data.c_hyp *
-         (mo->pending_transport_u + mo->pending_dissipation_u);
-}
-
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**
@@ -1747,6 +1423,7 @@ void feedback_init_after_star_formation(
     const enum stellar_type star_type) {
 
   feedback_init_spart(sp);
+  radiation_packet_first_init_star(sp);
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -1769,6 +1446,61 @@ void feedback_init_after_star_formation(
 }
 
 /**
+ * @brief A gas particle is converted into a star: book what the gas's
+ * feedback carried to the star. Called after
+ * feedback_init_after_star_formation().
+ *
+ * @param p The converted #part.
+ * @param sp The new #spart.
+ */
+void feedback_book_removed_gas_to_spart(const struct part *p,
+                                        struct spart *sp) {
+  radiation_packet_book_removed_gas_to_star(p, sp);
+}
+
+/**
+ * @brief A gas particle is converted into or swallowed by a sink: book what
+ * the gas's feedback carried to the sink.
+ *
+ * @param p The removed #part.
+ * @param s The #sink.
+ */
+void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s) {
+  radiation_packet_book_removed_gas_to_sink(p, s);
+}
+
+/**
+ * @brief A sink swallows another: the survivor takes the feedback ledger of
+ * the swallowed sink.
+ *
+ * @param si The surviving #sink.
+ * @param sj The swallowed #sink.
+ */
+void feedback_book_sink_merger(struct sink *si, const struct sink *sj) {
+  radiation_packet_sink_merger(si, sj);
+}
+
+/**
+ * @brief A gas particle leaves a non-periodic box and is removed: book what
+ * its feedback carried. Called with the space lock held.
+ *
+ * @param p The removed #part.
+ */
+void feedback_book_removed_gas_left_box(const struct part *p) {
+  radiation_packet_book_gas_left_box(p);
+}
+
+/**
+ * @brief Zero the feedback fields of a sink, after the ICs are read or when
+ * the sink is formed.
+ *
+ * @param s The #sink.
+ */
+void feedback_first_init_sink(struct sink *s) {
+  radiation_packet_first_init_sink(s);
+}
+
+/**
  * @brief Initialises the s-particles feedback props for the first time
  *
  * This function is called only once just after the ICs have been
@@ -1781,6 +1513,7 @@ void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props) {
   /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
+  radiation_packet_first_init_star(sp);
 
   /* Zero energies and masses */
   sp->feedback_data.supernovae.energy_ejected = 0.0;
@@ -1796,15 +1529,14 @@ void feedback_first_init_spart(struct spart *sp,
 }
 
 /* Printed by restart_read_blocks() when the marker block is missing, i.e.
-   when the restart file was written by a code version older than the
-   reduced-flux representation. */
-#define ISRF_FLUX_FORM_RESTART_DESCRIPTION                                \
-  "ISRF flux-form marker (absent from the restart files of earlier code " \
+   when the restart file was written by a code version older than the marker. */
+#define ISRF_LAYOUT_RESTART_DESCRIPTION                                \
+  "ISRF layout marker (absent from the restart files of earlier code " \
   "versions, which cannot be resumed: rerun the simulation)"
 
 /**
  * @brief Write a feedback struct to the given FILE as a stream of bytes,
- * preceded by the ISRF flux-form marker block
+ * preceded by the ISRF layout marker block
  * (#FEEDBACK_RESTART_ISRF_PART_LAYOUT).
  *
  * @param feedback the struct
@@ -1825,11 +1557,11 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
   /* Written first, so that a restart file of an earlier version, whose first
      block is the (much larger) #feedback_props block, fails the block-length
-     check of restart_read_blocks() instead of being read with the wrong flux
-     form. The description string is what that error prints. */
-  const int flux_form = feedback_restart_particle_layout();
-  restart_write_blocks((void *)&flux_form, sizeof(int), 1, stream,
-                       "isrf_flux_form", ISRF_FLUX_FORM_RESTART_DESCRIPTION);
+     check of restart_read_blocks() instead of being read with the wrong
+     layout. The description string is what that error prints. */
+  const int layout = feedback_restart_particle_layout();
+  restart_write_blocks((void *)&layout, sizeof(int), 1, stream, "isrf_layout",
+                       ISRF_LAYOUT_RESTART_DESCRIPTION);
 
   restart_write_blocks((void *)&feedback_copy, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
@@ -1839,12 +1571,14 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
   if (feedback->metallicity_max_first_stars != -1) {
     stellar_evolution_dump(&feedback->stellar_model_first_stars, stream);
   }
+
+  radiation_packet_left_box_dump(stream);
 }
 
 /**
  * @brief Restore a feedback struct from the given FILE as a stream of
- * bytes. Stops with error() if the ISRF flux-form marker block is missing or
- * differs, or if the restored ISRF c_hyp scheme is not a valid one.
+ * bytes. Stops with error() if the ISRF layout marker block is missing or
+ * differs.
  *
  * @param feedback the struct
  * @param stream the file stream
@@ -1855,29 +1589,29 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                              const struct unit_system *us,
                              const struct phys_const *phys_const) {
 
-  int flux_form = 0;
-  restart_read_blocks(&flux_form, sizeof(int), 1, stream, NULL,
-                      ISRF_FLUX_FORM_RESTART_DESCRIPTION);
-  if (flux_form % FEEDBACK_RESTART_SELECTION_FACTOR ==
+  int layout = 0;
+  restart_read_blocks(&layout, sizeof(int), 1, stream, NULL,
+                      ISRF_LAYOUT_RESTART_DESCRIPTION);
+  if (layout % FEEDBACK_RESTART_SELECTION_FACTOR ==
           FEEDBACK_RESTART_ISRF_PART_LAYOUT &&
-      flux_form != feedback_restart_particle_layout())
+      layout != feedback_restart_particle_layout())
     error(
         "The restart file was written by a build with the subgrid radiation "
         "parts absent-mask %d, but this build has absent-mask %d (bit 1 rp, "
         "2 hii, 4 isrf; ./configure --with-subgrid-radiation). The particles "
         "differ in layout: resume with a build of the same selection, or "
         "rerun the simulation from its initial conditions.",
-        flux_form / FEEDBACK_RESTART_SELECTION_FACTOR,
+        layout / FEEDBACK_RESTART_SELECTION_FACTOR,
         radiation_selection_absent_mask());
-  if (flux_form != feedback_restart_particle_layout())
+  if (layout != feedback_restart_particle_layout())
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
-        "%d (reduced flux, phi-weighted cross-bin pending fields, reduced-flux "
-        "dissipation fields, HII random cone frame flag, redraw period and "
-        "star pass count). "
+        "%d (packet transport only, HII random cone frame flag, redraw period "
+        "and star pass count, packet reception slots, ledger of the gas that "
+        "left the box). "
         "A restart written by another code version cannot be resumed: rerun "
         "the simulation from its initial conditions.",
-        flux_form, feedback_restart_particle_layout());
+        layout, feedback_restart_particle_layout());
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");
@@ -1895,23 +1629,6 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
   feedback_check_isrf_operator_owner_map(
       radiation_isrf_moment_to_operator, ISRF_MOMENT_COUNT,
       radiation_isrf_operator_owner, ISRF_OPERATOR_COUNT);
-
-  /* The flat block read above bypasses feedback_props_init()'s parse-time
-   * check of the scheme, so a restart written by a run that used a removed
-   * scheme would otherwise resume with a speed rule nothing sets. The field
-   * is only meaningful, and only validated at parse time, when the
-   * interstellar radiation field is on. */
-  if ((feedback->radiation_policy & radiation_policy_isrf) &&
-      feedback->ISRF_c_hyp_scheme != isrf_c_hyp_scheme_fixed_fraction &&
-      feedback->ISRF_c_hyp_scheme !=
-          isrf_c_hyp_scheme_kernel_local_reduced_flux)
-    error(
-        "The restart file holds GEARFeedback:ISRF_c_hyp_scheme = %d (internal "
-        "value), which is neither fixed_fraction (2) nor kernel_local (4). A "
-        "restart written with a removed scheme cannot be resumed. Rerun the "
-        "simulation from its initial conditions with fixed_fraction or "
-        "kernel_local.",
-        feedback->ISRF_c_hyp_scheme);
 
   /* radiation_policy is a plain scalar in feedback_props, so it is already
    * restored by the flat block read above. Photoionization, radiation
@@ -1957,6 +1674,8 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                               feedback->with_stellar_wind_feedback,
                               with_radiation, us, phys_const);
   }
+
+  radiation_packet_left_box_restore(stream);
 }
 
 /**

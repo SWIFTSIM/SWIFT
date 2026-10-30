@@ -560,7 +560,8 @@ radiation_get_part_ionized_end_time(const struct part *p,
  * window has lapsed. Called once per step per particle (feedback_reset_part).
  *
  * With LW/PE propagation off, the band u values are also zeroed: nothing else
- * decays them. With propagation on, its own per-step update does.
+ * decays them. With propagation on, the packet transport rewrites them every
+ * step.
  *
  * @param p The particle.
  * @param e The #engine.

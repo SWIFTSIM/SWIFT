@@ -46,6 +46,279 @@ INLINE static void convert_part_HII_star_id(const struct engine *e,
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
+/**
+ * @brief Energy waiting in the arrival bins of one band of a slot.
+ *
+ * @param t The band of the slot.
+ */
+INLINE static double packet_bins_energy(
+    const struct feedback_isrf_packet_slot_band_data *t) {
+  double sum = 0.;
+  for (int i = 0; i < RADIATION_PACKET_BINS; i++) sum += t->bin_energy[i];
+  return sum;
+}
+
+/**
+ * @brief Photon number waiting in the arrival bins of one band of a slot.
+ *
+ * @param t The band of the slot.
+ */
+INLINE static double packet_bins_photons(
+    const struct feedback_isrf_packet_slot_band_data *t) {
+  double sum = 0.;
+  for (int i = 0; i < RADIATION_PACKET_BINS; i++) sum += t->bin_photons[i];
+  return sum;
+}
+
+/**
+ * @brief Snapshot converter of the packet inbox energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_inbox_energy(const struct engine *e,
+                                                    const struct part *p,
+                                                    const struct xpart *xp,
+                                                    float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    double sum = 0.;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+      sum += packet_bins_energy(&p->feedback_data.isrf_packet.slot[s].band[b]);
+    ret[b] = (float)sum;
+  }
+}
+
+/**
+ * @brief Snapshot converter of the packet inbox photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_inbox_photons(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    double sum = 0.;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+      sum += packet_bins_photons(&p->feedback_data.isrf_packet.slot[s].band[b]);
+    ret[b] = (float)sum;
+  }
+}
+
+/**
+ * @brief Snapshot converter of the packet reservoir energy per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_reservoir_energy(const struct engine *e,
+                                                        const struct part *p,
+                                                        const struct xpart *xp,
+                                                        float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    double sum = 0.;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+      const struct feedback_isrf_packet_slot_band_data *t =
+          &p->feedback_data.isrf_packet.slot[s].band[b];
+      if (e->feedback_props->ISRF_packet_light_speed !=
+          isrf_packet_light_speed_unlimited) {
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+          sum += t->far_energy[c];
+      } else {
+        sum += t->reservoir_energy;
+      }
+    }
+    ret[b] = (float)sum;
+  }
+}
+
+/**
+ * @brief Snapshot converter of the packet reservoir photons per band, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_reservoir_photons(const struct engine *e,
+                                                         const struct part *p,
+                                                         const struct xpart *xp,
+                                                         float *ret) {
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    double sum = 0.;
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+      const struct feedback_isrf_packet_slot_band_data *t =
+          &p->feedback_data.isrf_packet.slot[s].band[b];
+      if (e->feedback_props->ISRF_packet_light_speed !=
+          isrf_packet_light_speed_unlimited) {
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+          sum += t->far_photons[c];
+      } else {
+        sum += t->reservoir_photons;
+      }
+    }
+    ret[b] = (float)sum;
+  }
+}
+
+/**
+ * @brief Snapshot converter of the packet direction of each reception slot,
+ * see #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_slot_directions(const struct engine *e,
+                                                       const struct part *p,
+                                                       const struct xpart *xp,
+                                                       float *ret) {
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    for (int k = 0; k < 3; k++)
+      ret[3 * s + k] = p->feedback_data.isrf_packet.slot[s].direction[k];
+}
+
+/**
+ * @brief Snapshot converter of the origin distance of each reception slot,
+ * see #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_slot_origin_distances(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    ret[s] = p->feedback_data.isrf_packet.slot[s].origin_distance;
+}
+
+/**
+ * @brief Snapshot converter of the inbox energy of each reception slot and
+ * band, see #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_slot_inbox_energy(const struct engine *e,
+                                                         const struct part *p,
+                                                         const struct xpart *xp,
+                                                         float *ret) {
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+      ret[ISRF_OPERATOR_COUNT * s + b] =
+          packet_bins_energy(&p->feedback_data.isrf_packet.slot[s].band[b]);
+}
+
+/**
+ * @brief Snapshot converter of the direction of the inbox light of each
+ * reception slot, see #feedback_write_particles.
+ */
+INLINE static void convert_part_packet_slot_inbox_directions(
+    const struct engine *e, const struct part *p, const struct xpart *xp,
+    float *ret) {
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    const struct feedback_isrf_packet_slot_data *sl =
+        &p->feedback_data.isrf_packet.slot[s];
+    double energy = 0., norm = 0.;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+      energy += packet_bins_energy(&sl->band[b]);
+    for (int k = 0; k < 3; k++)
+      norm += sl->inbox_origin_offset[k] * sl->inbox_origin_offset[k];
+    norm = sqrt(norm);
+    for (int k = 0; k < 3; k++)
+      ret[3 * s + k] = (energy > 0. && norm > 0.)
+                           ? (float)(-sl->inbox_origin_offset[k] / norm)
+                           : 0.f;
+  }
+}
+
+/**
+ * @brief Define a snapshot converter that copies a per-band member of the
+ * packet ledger or field of a gas particle, see #feedback_write_particles.
+ */
+#define FEEDBACK_PART_PACKET_BAND_CONVERTER(name, type, member)         \
+  INLINE static void name(const struct engine *e, const struct part *p, \
+                          const struct xpart *xp, type *ret) {          \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)                       \
+      ret[b] = p->feedback_data.isrf_packet.band[b].member;             \
+  }
+
+/**
+ * @brief Define a snapshot converter that sums a member of the slots of a
+ * gas particle per band, see #feedback_write_particles.
+ */
+#define FEEDBACK_PART_PACKET_SLOT_SUM_CONVERTER(name, member)           \
+  INLINE static void name(const struct engine *e, const struct part *p, \
+                          const struct xpart *xp, float *ret) {         \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {                     \
+      double sum = 0.;                                                  \
+      for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)                  \
+        sum += p->feedback_data.isrf_packet.slot[s].band[b].member;     \
+      ret[b] = (float)sum;                                              \
+    }                                                                   \
+  }
+
+/**
+ * @brief Define a snapshot converter that copies an array of the packet
+ * ledger of a star, see #feedback_write_sparticles.
+ */
+#define FEEDBACK_SPART_PACKET_CONVERTER(name, member)                     \
+  INLINE static void name(const struct engine *e, const struct spart *sp, \
+                          double *ret) {                                  \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)                         \
+      ret[b] = sp->feedback_data.radiation.packet.member[b];              \
+  }
+
+/**
+ * @brief Define a snapshot converter that copies an array of the packet
+ * ledger of a sink, see #feedback_write_sinkparticles.
+ */
+#define FEEDBACK_SINK_PACKET_CONVERTER(name, member)                    \
+  INLINE static void name(const struct engine *e, const struct sink *s, \
+                          double *ret) {                                \
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)                       \
+      ret[b] = s->feedback_data.isrf_packet.member[b];                  \
+  }
+
+/* Gas: energy and photon number held per band. */
+FEEDBACK_PART_PACKET_SLOT_SUM_CONVERTER(convert_part_packet_energy, energy)
+FEEDBACK_PART_PACKET_SLOT_SUM_CONVERTER(convert_part_packet_photons, photons)
+
+/* Gas: field, kernel mean of the field, and the ledger. */
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_field_energy, float,
+                                    field_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_field_photons, float,
+                                    field_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_ngb_mean_field_energy,
+                                    float, ngb_mean_field_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_ngb_mean_field_photons,
+                                    float, ngb_mean_field_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_absorbed_energy, double,
+                                    absorbed_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_absorbed_photons,
+                                    double, absorbed_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_escaped_energy, double,
+                                    escaped_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_escaped_photons, double,
+                                    escaped_photons)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_redshifted_energy,
+                                    double, redshifted_energy)
+FEEDBACK_PART_PACKET_BAND_CONVERTER(convert_part_packet_redshifted_photons,
+                                    double, redshifted_photons)
+
+/* Stars: energy and photon number emitted, escaped, in flight in the removed
+ * gas, and inherited from it. */
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_emitted_energy,
+                                emitted_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_emitted_photons,
+                                emitted_photons)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_escaped_energy,
+                                escaped_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_escaped_photons,
+                                escaped_photons)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_removed_energy,
+                                removed.removed_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_removed_photons,
+                                removed.removed_photons)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_inherited_energy,
+                                removed.inherited_energy)
+FEEDBACK_SPART_PACKET_CONVERTER(convert_spart_packet_inherited_photons,
+                                removed.inherited_photons)
+
+/* Sinks: the same for the removed gas. */
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_removed_energy,
+                               removed_energy)
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_removed_photons,
+                               removed_photons)
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_inherited_energy,
+                               inherited_energy)
+FEEDBACK_SINK_PACKET_CONVERTER(convert_sink_packet_inherited_photons,
+                               inherited_photons)
+
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
+
 /**
  * @brief Snapshot converter for #PESpecificEnergy, see
  * #feedback_write_particles.
@@ -75,305 +348,6 @@ INLINE static void convert_part_u_LW_PHOTON(const struct engine *e,
                                             const struct xpart *xp,
                                             double *ret) {
   ret[0] = feedback_get_part_u_LW_PHOTON(p);
-}
-
-/**
- * @brief Snapshot converter for #PEArtificialDissipationCoefficients, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_dissipation_alpha_PE(const struct engine *e,
-                                                     const struct part *p,
-                                                     const struct xpart *xp,
-                                                     float *ret) {
-  ret[0] = feedback_get_part_dissipation_alpha_PE(p);
-}
-
-/**
- * @brief Snapshot converter for #LWArtificialDissipationCoefficients, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_dissipation_alpha_LW(const struct engine *e,
-                                                     const struct part *p,
-                                                     const struct xpart *xp,
-                                                     float *ret) {
-  ret[0] = feedback_get_part_dissipation_alpha_LW(p);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonArtificialDissipationCoefficients, see
- * #feedback_write_particles.
- *
- * Reads the same operator field as #convert_part_dissipation_alpha_LW.
- */
-INLINE static void convert_part_dissipation_alpha_LW_PHOTON(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  ret[0] = feedback_get_part_dissipation_alpha_LW_PHOTON(p);
-}
-
-/**
- * @brief Snapshot converter for #PESpecificFluxDivergences, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_div_specific_flux_PE(const struct engine *e,
-                                                     const struct part *p,
-                                                     const struct xpart *xp,
-                                                     float *ret) {
-  ret[0] = feedback_get_part_div_specific_flux_PE(p);
-}
-
-/**
- * @brief Snapshot converter for #LWSpecificFluxDivergences, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_div_specific_flux_LW(const struct engine *e,
-                                                     const struct part *p,
-                                                     const struct xpart *xp,
-                                                     float *ret) {
-  ret[0] = feedback_get_part_div_specific_flux_LW(p);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonSpecificFluxDivergences, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_div_specific_flux_LW_PHOTON(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  ret[0] = feedback_get_part_div_specific_flux_LW_PHOTON(p);
-}
-
-/**
- * @brief Snapshot converter for #PESpecificFluxes, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_specific_flux_PE(const struct engine *e,
-                                                 const struct part *p,
-                                                 const struct xpart *xp,
-                                                 float *ret) {
-  feedback_get_part_specific_flux_PE(p, ret);
-}
-
-/**
- * @brief Snapshot converter for #LWSpecificFluxes, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_specific_flux_LW(const struct engine *e,
-                                                 const struct part *p,
-                                                 const struct xpart *xp,
-                                                 float *ret) {
-  feedback_get_part_specific_flux_LW(p, ret);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonSpecificFluxes, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_specific_flux_LW_PHOTON(const struct engine *e,
-                                                        const struct part *p,
-                                                        const struct xpart *xp,
-                                                        float *ret) {
-  feedback_get_part_specific_flux_LW_PHOTON(p, ret);
-}
-
-/**
- * @brief Snapshot converter for #PEMinimumSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_u_min_since_snapshot_PE(const struct engine *e,
-                                                        const struct part *p,
-                                                        const struct xpart *xp,
-                                                        float *ret) {
-  ret[0] = feedback_get_part_u_min_since_snapshot_PE(p, e);
-}
-
-/**
- * @brief Snapshot converter for #LWMinimumSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_u_min_since_snapshot_LW(const struct engine *e,
-                                                        const struct part *p,
-                                                        const struct xpart *xp,
-                                                        float *ret) {
-  ret[0] = feedback_get_part_u_min_since_snapshot_LW(p, e);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonMinimumSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_u_min_since_snapshot_LW_PHOTON(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  ret[0] = feedback_get_part_u_min_since_snapshot_LW_PHOTON(p, e);
-}
-
-/**
- * @brief Snapshot converter for #PECumulativeInjectedSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_cumulative_injected_PE(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       float *ret) {
-  ret[0] = feedback_get_part_cumulative_injected_PE(p);
-}
-
-/**
- * @brief Snapshot converter for #LWCumulativeInjectedSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_cumulative_injected_LW(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       float *ret) {
-  ret[0] = feedback_get_part_cumulative_injected_LW(p);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonCumulativeInjectedSpecificEnergies,
- * see #feedback_write_particles.
- */
-INLINE static void convert_part_cumulative_injected_LW_PHOTON(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  ret[0] = feedback_get_part_cumulative_injected_LW_PHOTON(p);
-}
-
-/**
- * @brief Snapshot converter for #PECumulativeAbsorbedSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_cumulative_absorbed_PE(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       float *ret) {
-  ret[0] = feedback_get_part_cumulative_absorbed_PE(p);
-}
-
-/**
- * @brief Snapshot converter for #LWCumulativeAbsorbedSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_cumulative_absorbed_LW(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       float *ret) {
-  ret[0] = feedback_get_part_cumulative_absorbed_LW(p);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonCumulativeAbsorbedSpecificEnergies,
- * see #feedback_write_particles.
- */
-INLINE static void convert_part_cumulative_absorbed_LW_PHOTON(
-    const struct engine *e, const struct part *p, const struct xpart *xp,
-    float *ret) {
-  ret[0] = feedback_get_part_cumulative_absorbed_LW_PHOTON(p);
-}
-
-/**
- * @brief Snapshot converter for #HyperbolicPropagationSpeeds, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_c_hyp(const struct engine *e,
-                                      const struct part *p,
-                                      const struct xpart *xp, float *ret) {
-  ret[0] = feedback_get_part_c_hyp(p);
-}
-
-/**
- * @brief Snapshot converter for #PEPendingSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_pending_PE(const struct engine *e,
-                                           const struct part *p,
-                                           const struct xpart *xp, float *ret) {
-  ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_PE);
-}
-
-/**
- * @brief Snapshot converter for #LWPendingSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_pending_LW(const struct engine *e,
-                                           const struct part *p,
-                                           const struct xpart *xp, float *ret) {
-  ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_LW);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonPendingSpecificEnergies, see
- * #feedback_write_particles.
- */
-INLINE static void convert_part_pending_LW_PHOTON(const struct engine *e,
-                                                  const struct part *p,
-                                                  const struct xpart *xp,
-                                                  float *ret) {
-  ret[0] = feedback_get_part_pending_specific_energy(p, ISRF_MOMENT_LW_PHOTON);
-}
-
-/**
- * @brief True flux owed to a moment by finer neighbours: `c_hyp^2` times the
- * pending amount, in the units of #PESpecificFluxes.
- *
- * @param p The #part to query.
- * @param m The #radiation_isrf_moment.
- * @param ret (return) The pending specific flux, 3 components.
- */
-INLINE static void convert_part_pending_flux(const struct part *p, int m,
-                                             float *ret) {
-  const float c2 = p->feedback_data.c_hyp * p->feedback_data.c_hyp;
-  for (int k = 0; k < 3; k++)
-    ret[k] = c2 * p->feedback_data.isrf_moment[m].pending_dissipation_flux[k];
-}
-
-/**
- * @brief Snapshot converter for #PEPendingSpecificFluxes, see
- * #feedback_write_particles.
- *
- * @param e The #engine (unused).
- * @param p The #part to query.
- * @param xp The #xpart (unused).
- * @param ret (return) The pending specific flux, 3 components.
- */
-INLINE static void convert_part_pending_flux_PE(const struct engine *e,
-                                                const struct part *p,
-                                                const struct xpart *xp,
-                                                float *ret) {
-  convert_part_pending_flux(p, ISRF_MOMENT_PE, ret);
-}
-
-/**
- * @brief Snapshot converter for #LWPendingSpecificFluxes, see
- * #feedback_write_particles.
- *
- * @param e The #engine (unused).
- * @param p The #part to query.
- * @param xp The #xpart (unused).
- * @param ret (return) The pending specific flux, 3 components.
- */
-INLINE static void convert_part_pending_flux_LW(const struct engine *e,
-                                                const struct part *p,
-                                                const struct xpart *xp,
-                                                float *ret) {
-  convert_part_pending_flux(p, ISRF_MOMENT_LW, ret);
-}
-
-/**
- * @brief Snapshot converter for #LWPhotonPendingSpecificFluxes, see
- * #feedback_write_particles.
- *
- * @param e The #engine (unused).
- * @param p The #part to query.
- * @param xp The #xpart (unused).
- * @param ret (return) The pending specific flux, 3 components.
- */
-INLINE static void convert_part_pending_flux_LW_PHOTON(const struct engine *e,
-                                                       const struct part *p,
-                                                       const struct xpart *xp,
-                                                       float *ret) {
-  convert_part_pending_flux(p, ISRF_MOMENT_LW_PHOTON, ret);
 }
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
@@ -406,22 +380,7 @@ INLINE static int feedback_read_particles(struct part *parts,
                           UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
                           feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u);
 
-  /* Stored reduced flux Ft = F / c_hyp, units of u: |Ft| = u is free
-     streaming. Not the snapshot's PESpecificFluxes, which is c_hyp Ft. */
-  list[3] = io_make_input_field(
-      "PEReducedSpecificFlux", FLOAT, 3, OPTIONAL,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-      feedback_data.isrf_moment[ISRF_MOMENT_PE].specific_flux);
-  list[4] = io_make_input_field(
-      "LWReducedSpecificFlux", FLOAT, 3, OPTIONAL,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-      feedback_data.isrf_moment[ISRF_MOMENT_LW].specific_flux);
-  list[5] = io_make_input_field(
-      "LWPhotonReducedSpecificFlux", FLOAT, 3, OPTIONAL,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, parts,
-      feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].specific_flux);
-
-  return 6;
+  return 3;
 #else
   return 0;
 #endif
@@ -462,127 +421,13 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       parts, xparts, convert_part_u_PE,
       "Local specific PE-band (6-11.2 eV) interstellar radiation field. "
       "Physical, mass-specific: no scale-factor exponent of its own. "
-      "DOUBLE: see feedback_isrf_moment_data.u's own doxygen.");
+      "DOUBLE.");
 
   list[num++] = io_make_output_field_convert_part(
       "LWSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
       parts, xparts, convert_part_u_LW,
       "Local specific Lyman-Werner-band (11.2-13.6 eV) interstellar "
       "radiation field. DOUBLE: see PESpecificEnergies.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "PEArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-      parts, xparts, convert_part_dissipation_alpha_PE,
-      "Negativity-triggered artificial-dissipation coefficient of the "
-      "PE-band hyperbolic propagation, in "
-      "[0, max(ISRF_dissipation_alpha_max, ISRF_dissipation_alpha_floor)]. "
-      "Only meaningful when ISRF_propagation is on.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
-      parts, xparts, convert_part_dissipation_alpha_LW,
-      "Same as PEArtificialDissipationCoefficients, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "PESpecificFluxDivergences", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
-      convert_part_div_specific_flux_PE,
-      "`(1/rho) div(rho F)` accumulator of the PE-band hyperbolic "
-      "propagation, accumulated in the force loop from the step's relaxed "
-      "flux. Physical, like the "
-      "specific energy it is a rate of change of. Only meaningful when "
-      "ISRF_propagation is on.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWSpecificFluxDivergences", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
-      convert_part_div_specific_flux_LW,
-      "Same as PESpecificFluxDivergences, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "PESpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
-      0.f, parts, xparts, convert_part_specific_flux_PE,
-      "Tracked specific flux moment of the PE-band hyperbolic propagation, "
-      "mass-specific like PESpecificEnergies. Physical: no scale-factor "
-      "exponent of its own. Only meaningful when ISRF_propagation is on.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWSpecificFluxes", FLOAT, 3, UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY,
-      0.f, parts, xparts, convert_part_specific_flux_LW,
-      "Same as PESpecificFluxes, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "PEMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      0.f, parts, xparts, convert_part_u_min_since_snapshot_PE,
-      "Most negative PESpecificEnergies value the propagation update wrote "
-      "since the previous snapshot, 0 if none was negative. The number of "
-      "nonzero entries is the count of particles that undershot. The "
-      "interval is since the last increment of engine.snapshot_output_count, "
-      "which also happens when a FOF seeding catalogue is dumped "
-      "(FOF:dump_catalogue_when_seeding), not only at a real snapshot. "
-      "Always 0 unless the code is configured with --enable-debugging-checks.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWMinimumSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      0.f, parts, xparts, convert_part_u_min_since_snapshot_LW,
-      "Same as PEMinimumSpecificEnergies, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "PECumulativeInjectedSpecificEnergies", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_cumulative_injected_PE,
-      "Cumulative mass-specific PE-band dose this particle has drawn from "
-      "the dose reservoir since first init, rescaled by c_hyp/c exactly as "
-      "PESpecificEnergies' own update rescales it, but not relaxed by the "
-      "per-step phi factor: the raw amount attempted every step, summed. "
-      "Energy-conservation diagnostic (with "
-      "PECumulativeAbsorbedSpecificEnergies and PESpecificEnergies); "
-      "always 0 unless the code is configured with "
-      "--enable-debugging-checks.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWCumulativeInjectedSpecificEnergies", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_cumulative_injected_LW,
-      "Same as PECumulativeInjectedSpecificEnergies, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "PECumulativeAbsorbedSpecificEnergies", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_cumulative_absorbed_PE,
-      "Cumulative mass-specific PE-band energy PESpecificEnergies' own "
-      "exact-relaxation update has attributed to decay (dust absorption "
-      "and the cosmological redshift term) plus the fraction of each "
-      "step's source and transport terms that never reached the field "
-      "because the step was optically thick, summed since first init. "
-      "Energy-conservation diagnostic: PESpecificEnergies plus this field "
-      "minus PECumulativeInjectedSpecificEnergies isolates the transport "
-      "and artificial-dissipation residual the closed-form split does not "
-      "attribute to either term, which the SPH divergence's kernel-sum "
-      "identity and the dissipation's pairwise antisymmetry drive towards "
-      "0 when summed over every particle. Always 0 unless the code is "
-      "configured with --enable-debugging-checks.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_cumulative_absorbed_LW,
-      "Same as PECumulativeAbsorbedSpecificEnergies, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "HyperbolicPropagationSpeeds", FLOAT, 1, UNIT_CONV_SPEED, 0.f, parts,
-      xparts, convert_part_c_hyp,
-      "Hyperbolic propagation speed the band updates and the "
-      "pairwise transport operators ran with, shared by both bands. "
-      "Physical, so no scale-factor exponent of its own: a fixed fraction "
-      "of the speed of light (ISRF_c_hyp_scheme fixed_fraction) or built from "
-      "the physical smoothing length and a physical timestep "
-      "(ISRF_c_hyp_scheme kernel_local). The conserved "
-      "ledger of the pairwise transport operators is `sum m u / c_hyp` "
-      "rather than `sum m u` (proportional where c_hyp is uniform), which "
-      "is what this field makes measurable from a snapshot. Only "
-      "meaningful when "
-      "ISRF_propagation is on.");
 
   list[num++] = io_make_output_field_convert_part(
       "LWPhotonSpecificEnergies", DOUBLE, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
@@ -592,92 +437,166 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "RT schemes' PhotonEnergies, which are raw per-group energies, not "
       "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
 
+#ifdef SWIFT_DEBUG_CHECKS_ISRF
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonArtificialDissipationCoefficients", FLOAT, 1, UNIT_CONV_NO_UNITS,
-      0.f, parts, xparts, convert_part_dissipation_alpha_LW_PHOTON,
-      "Same as LWArtificialDissipationCoefficients: the photon-number "
-      "moment shares the Lyman-Werner operator, so these two fields always "
-      "read numerically identical.");
+      "PacketInboxEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY, 0.f,
+      parts, xparts, convert_part_packet_inbox_energy,
+      "Packet energy received since the particle's last step, sent at its "
+      "next step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "Zero unless GEARFeedback:ISRF_propagation is on.");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonSpecificFluxDivergences", FLOAT, 1,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_PER_TIME, 0.f, parts, xparts,
-      convert_part_div_specific_flux_LW_PHOTON,
-      "Same as LWSpecificFluxDivergences, Lyman-Werner-band photon-number "
-      "moment.");
+      "PacketInboxPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_inbox_photons,
+      "Photon number of the inbox times the band's lower-edge photon "
+      "energy, so in energy units: divide by 6.0 eV (PE) or 11.2 eV (LW) "
+      "for a count. Two components, PE (6-11.2 eV) then LW (11.2-13.6 "
+      "eV). Zero unless GEARFeedback:ISRF_propagation is on.");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonSpecificFluxes", FLOAT, 3,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
-      convert_part_specific_flux_LW_PHOTON,
-      "Same as LWSpecificFluxes, Lyman-Werner-band photon-number moment. "
-      "Distinct from the RT schemes' PhotonFluxes, which are raw per-group "
-      "fluxes, not mass-specific and not band-prefixed.");
+      "PacketReservoirEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_reservoir_energy,
+      "Packet energy that waits beyond the arrival bins of the inbox: with "
+      "a speed limit, light that arrives more than three steps ahead; "
+      "without one, energy from senders on longer steps, released over "
+      "their step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "Zero unless GEARFeedback:ISRF_propagation is on.");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonMinimumSpecificEnergies", FLOAT, 1,
+      "PacketReservoirPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_part_packet_reservoir_photons,
+      "Photon number of the reservoir, in the units of "
+      "PacketInboxPhotonNumbers. Two components, PE (6-11.2 eV) then LW "
+      "(11.2-13.6 eV). Zero unless GEARFeedback:ISRF_propagation is "
+      "on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketHeldEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY, 0.f,
+      parts, xparts, convert_part_packet_energy,
+      "Packet energy held for sending this step; zero between steps. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketHeldPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_photons,
+      "Photon number held, in the units of PacketInboxPhotonNumbers. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketAbsorbedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_absorbed_energy,
+      "Packet energy absorbed by dust in the particle since the start of "
+      "the run. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "Zero unless GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketAbsorbedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_part_packet_absorbed_photons,
+      "Photon number absorbed, in the units of PacketInboxPhotonNumbers. "
+      "Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketEscapedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_escaped_energy,
+      "Packet energy that left the particle with no downstream neighbour, "
+      "since the start of the run. Two components, PE (6-11.2 eV) then LW "
+      "(11.2-13.6 eV). Zero unless GEARFeedback:ISRF_propagation is "
+      "on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketEscapedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts, convert_part_packet_escaped_photons,
+      "Photon number escaped, in the units of PacketInboxPhotonNumbers. "
+      "Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero unless "
+      "GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketRedshiftedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, parts, xparts, convert_part_packet_redshifted_energy,
+      "Packet energy removed from the band by the expansion in the shares "
+      "booked into the particle since the start of the run (redshift and "
+      "band-edge loss), minus the energy gained from the other band. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero in a static "
+      "box and unless GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketRedshiftedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, parts, xparts,
+      convert_part_packet_redshifted_photons,
+      "Photon number removed from the band by the expansion, in the units of "
+      "PacketInboxPhotonNumbers, net of the gain from the other band. Two "
+      "components, PE (6-11.2 eV) then LW (11.2-13.6 eV). Zero in a static "
+      "box and unless GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketSpecificEnergies", FLOAT, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_u_min_since_snapshot_LW_PHOTON,
-      "Same as LWMinimumSpecificEnergies, Lyman-Werner-band photon-number "
-      "moment. Always 0 unless the code is configured with "
-      "--enable-debugging-checks.");
+      convert_part_packet_field_energy,
+      "Own field of the packet transport, (E / m) l_par / (c dt), the specific "
+      "energy of the light that crosses the particle in one step. Two "
+      "components, PE then LW. Zero unless GEARFeedback:ISRF_propagation is "
+      "on. Its running mean over "
+      "GEARFeedback:ISRF_packet_read_mean_time_Myr when that is above 0.");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonCumulativeInjectedSpecificEnergies", FLOAT, 1,
+      "PacketSpecificPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_cumulative_injected_LW_PHOTON,
-      "Same as LWCumulativeInjectedSpecificEnergies, Lyman-Werner-band "
-      "photon-number moment. Always 0 unless the code is configured with "
-      "--enable-debugging-checks.");
+      convert_part_packet_field_photons,
+      "Own field of the photon number, per unit mass, times the band's "
+      "lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonCumulativeAbsorbedSpecificEnergies", FLOAT, 1,
+      "PacketKernelMeanSpecificEnergies", FLOAT, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_cumulative_absorbed_LW_PHOTON,
-      "Same as LWCumulativeAbsorbedSpecificEnergies, Lyman-Werner-band "
-      "photon-number moment. Always 0 unless the code is configured with "
-      "--enable-debugging-checks.");
+      convert_part_packet_ngb_mean_field_energy,
+      "Mass- and kernel-weighted mean of PacketSpecificEnergies over the "
+      "particle's support, itself included, at its last step.");
 
   list[num++] = io_make_output_field_convert_part(
-      "PEPendingSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      0.f, parts, xparts, convert_part_pending_PE,
-      "PE-band specific energy owed by neighbours on shorter time steps, "
-      "added by the particle's next update. Add it to PESpecificEnergies "
-      "for an energy sum at a time when not all particles are synchronised.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWPendingSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS,
-      0.f, parts, xparts, convert_part_pending_LW,
-      "Same as PEPendingSpecificEnergies, Lyman-Werner band.");
-
-  list[num++] = io_make_output_field_convert_part(
-      "LWPhotonPendingSpecificEnergies", FLOAT, 1,
+      "PacketKernelMeanSpecificPhotonNumbers", FLOAT, ISRF_OPERATOR_COUNT,
       UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
-      convert_part_pending_LW_PHOTON,
-      "Same as PEPendingSpecificEnergies, Lyman-Werner-band photon-number "
-      "moment.");
+      convert_part_packet_ngb_mean_field_photons,
+      "Kernel mean of PacketSpecificPhotonNumbers, as "
+      "PacketKernelMeanSpecificEnergies.");
 
   list[num++] = io_make_output_field_convert_part(
-      "PEPendingSpecificFluxes", FLOAT, 3,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
-      convert_part_pending_flux_PE,
-      "PE-band specific flux owed by neighbours on shorter time steps, added "
-      "by the particle's next update. Add it to PESpecificFluxes for a flux "
-      "sum at a time when not all particles are synchronised. Zero unless "
-      "ISRF_flux_dissipation is on.");
+      "PacketSlotDirections", FLOAT, 3 * RADIATION_PACKET_SLOTS,
+      UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_packet_slot_directions,
+      "Unit direction of the packet of each of the " RADIATION_PACKET_SLOT_TEXT
+      " Zero for a slot never merged, and unless GEARFeedback:ISRF_propagation "
+      "is "
+      "on.");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPendingSpecificFluxes", FLOAT, 3,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
-      convert_part_pending_flux_LW,
-      "Same as PEPendingSpecificFluxes, Lyman-Werner band.");
+      "PacketSlotOriginDistances", FLOAT, RADIATION_PACKET_SLOTS,
+      UNIT_CONV_LENGTH, 1.f, parts, xparts,
+      convert_part_packet_slot_origin_distances,
+      "Co-moving distance from the packet's origin to the particle, per "
+      "reception slot. Zero unless GEARFeedback:ISRF_propagation is "
+      "on.");
 
   list[num++] = io_make_output_field_convert_part(
-      "LWPhotonPendingSpecificFluxes", FLOAT, 3,
-      UNIT_CONV_ENERGY_PER_UNIT_MASS_VELOCITY, 0.f, parts, xparts,
-      convert_part_pending_flux_LW_PHOTON,
-      "Same as PEPendingSpecificFluxes, Lyman-Werner-band photon-number "
-      "moment.");
+      "PacketSlotInboxEnergies", FLOAT,
+      RADIATION_PACKET_SLOTS * ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY, 0.f,
+      parts, xparts, convert_part_packet_slot_inbox_energy,
+      "Packet energy in the inbox of each reception slot: slot 0 first, "
+      "then PE (6-11.2 eV) and LW (11.2-13.6 eV). Sums over the slots to "
+      "PacketInboxEnergies.");
+
+  list[num++] = io_make_output_field_convert_part(
+      "PacketSlotInboxDirections", FLOAT, 3 * RADIATION_PACKET_SLOTS,
+      UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+      convert_part_packet_slot_inbox_directions,
+      "Unit direction from the energy-weighted mean origin of the inbox of "
+      "each reception slot to the particle: slot 0 first, then x, y, z. Zero "
+      "for an empty inbox.");
+#endif /* SWIFT_DEBUG_CHECKS_ISRF */
 #endif
 
   return num;
@@ -712,6 +631,104 @@ __attribute__((always_inline)) INLINE static int feedback_write_sparticles(
       "Ionized gas mass of the star particles' HII region before they die or "
       "were not eligible to form HII regions anymore. Same algorithm's "
       "bookkeeping caveat as the live HIIRegionMasses it is retired from.");
+#endif
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEmittedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_emitted_energy,
+      "Packet energy emitted by the star since its birth. Two components, PE "
+      "then LW. Zero unless GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEmittedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_emitted_photons,
+      "Photon number emitted by the star, times the band's lower-edge photon "
+      "energy (6.0 eV PE, 11.2 eV LW).");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEscapedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_escaped_energy,
+      "Packet energy of the star's empty emission cones since its birth. "
+      "Two components, PE then LW. Zero unless GEARFeedback:ISRF_propagation "
+      "is on.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketEscapedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_escaped_photons,
+      "Photon number of the star's empty emission cones, times the band's "
+      "lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketRemovedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_removed_energy,
+      "Packet energy in flight in the gas particle the star was converted "
+      "from, lost with it. Two components, PE then LW.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketRemovedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_removed_photons,
+      "Photon number in flight in the gas particle the star was converted "
+      "from, in the units of PacketEmittedPhotonNumbers.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketInheritedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sparts, convert_spart_packet_inherited_energy,
+      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies plus "
+      "PacketRedshiftedEnergies of the gas particle the star was converted "
+      "from. Two components, PE then LW.");
+
+  list[num++] = io_make_output_field_convert_spart(
+      "PacketInheritedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sparts, convert_spart_packet_inherited_photons,
+      "Absorbed, escaped and redshifted photon number of the gas particle the "
+      "star was converted from, in the units of PacketEmittedPhotonNumbers.");
+#endif
+
+  return num;
+}
+
+/**
+ * @brief Specifies which sink particle fields to write to a dataset.
+ *
+ * @param sinks The sink particle array.
+ * @param list The list of i/o properties to write.
+ * @param with_cosmology Are we running with cosmology switched on?
+ *
+ * @return Returns the number of fields to write.
+ */
+INLINE static int feedback_write_sinkparticles(const struct sink *sinks,
+                                               struct io_props *list,
+                                               const int with_cosmology) {
+
+  int num = 0;
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketRemovedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sinks, convert_sink_packet_removed_energy,
+      "Packet energy in flight in the gas the sink formed from or swallowed, "
+      "and in the sinks it merged with, lost with it. Two components, PE then "
+      "LW. Zero unless GEARFeedback:ISRF_propagation is on.");
+
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketRemovedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sinks, convert_sink_packet_removed_photons,
+      "Photon number in flight in the gas the sink formed from or swallowed, "
+      "times the band's lower-edge photon energy (6.0 eV PE, 11.2 eV LW).");
+
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketInheritedEnergies", DOUBLE, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
+      0.f, sinks, convert_sink_packet_inherited_energy,
+      "Gas PacketAbsorbedEnergies plus PacketEscapedEnergies plus "
+      "PacketRedshiftedEnergies of the gas the sink formed from or swallowed. "
+      "Two components, PE then LW.");
+
+  list[num++] = io_make_output_field_convert_sink(
+      "PacketInheritedPhotonNumbers", DOUBLE, ISRF_OPERATOR_COUNT,
+      UNIT_CONV_ENERGY, 0.f, sinks, convert_sink_packet_inherited_photons,
+      "Absorbed, escaped and redshifted photon number of the gas the sink "
+      "formed from or swallowed, in the units of PacketRemovedPhotonNumbers.");
 #endif
 
   return num;

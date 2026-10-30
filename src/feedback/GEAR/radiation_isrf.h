@@ -21,8 +21,8 @@
 
 /**
  * @file src/feedback/GEAR/radiation_isrf.h
- * @brief Receiver-side LW/PE dust extinction and hyperbolic-relaxation
- * propagation physics for GEAR: opacity, extinction and absorption.
+ * @brief Receiver-side LW/PE dust extinction and per-step hooks of the packet
+ * transport of the ISRF for GEAR: opacity, extinction and absorption.
  */
 
 #include "feedback_struct.h"
@@ -60,7 +60,16 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                                           const struct radiation *rad,
                                           const struct stellar_model *sm);
 
+struct swift_params;
+
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
+
+void radiation_packet_build_octant_frame(const float angles_deg[3],
+                                         const int seed_offset, float frame[9]);
+int radiation_packet_read_test_beams(
+    struct swift_params *params,
+    float beams[RADIATION_PACKET_TEST_BEAMS]
+               [RADIATION_PACKET_TEST_BEAM_FIELDS]);
 
 /* The ISRF gradient pass runs in the extra hydro loop. Configure refuses a
    hydro scheme without it; this is the backstop. */
@@ -72,9 +81,6 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
 void radiation_first_init_part(struct part *restrict p);
 void radiation_snapshot_part_propagation(struct part *p,
                                          const struct engine *e);
-void radiation_init_part_propagation(struct part *p);
-void radiation_end_density_propagation(struct part *p, const struct engine *e);
-void radiation_part_has_no_neighbours(struct part *p, const struct engine *e);
 void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
 void radiation_end_force_propagation(struct part *p, const struct engine *e);
 float radiation_isrf_part_timestep(const struct part *restrict p,
@@ -94,7 +100,6 @@ void radiation_get_part_ISRF_extinction_factors(
 float radiation_get_part_linear_absorption_rate(
     const struct unit_system *us, const struct phys_const *phys_const, float Z,
     float rho_p, float sigma_d_band_cgs, float local_dust_to_gas_ratio);
-float radiation_relaxation_phi_factor(float a);
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 
@@ -102,16 +107,21 @@ float radiation_relaxation_phi_factor(float a);
 
 /* Without the part: no ISRF state, so every hook does nothing. */
 
+__attribute__((always_inline)) INLINE static void
+radiation_packet_build_octant_frame(const float angles_deg[3],
+                                    const int seed_offset, float frame[9]) {}
+__attribute__((always_inline)) INLINE static int
+radiation_packet_read_test_beams(
+    struct swift_params *params,
+    float beams[RADIATION_PACKET_TEST_BEAMS]
+               [RADIATION_PACKET_TEST_BEAM_FIELDS]) {
+  return 0;
+}
+
 __attribute__((always_inline)) INLINE static void radiation_first_init_part(
     struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void
 radiation_snapshot_part_propagation(struct part *p, const struct engine *e) {}
-__attribute__((always_inline)) INLINE static void
-radiation_init_part_propagation(struct part *p) {}
-__attribute__((always_inline)) INLINE static void
-radiation_end_density_propagation(struct part *p, const struct engine *e) {}
-__attribute__((always_inline)) INLINE static void
-radiation_part_has_no_neighbours(struct part *p, const struct engine *e) {}
 __attribute__((always_inline)) INLINE static void
 radiation_end_gradient_propagation(struct part *p, const struct engine *e) {}
 __attribute__((always_inline)) INLINE static void

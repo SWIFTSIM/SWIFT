@@ -63,65 +63,52 @@ enum radiation_policy {
 };
 
 /**
- * @brief Scheme that sets the ISRF propagation speed `c_hyp_i`.
- *
- * The parameter file uses the names #isrf_c_hyp_scheme_name_fixed_fraction and
- * #isrf_c_hyp_scheme_name_kernel_local. The integer values are internal and
- * go to the restart file.
+ * @brief Speed limit of the light of the packet transport
+ * (GEARFeedback:ISRF_packet_light_speed). The integer values go to the restart
+ * file.
  */
-enum isrf_c_hyp_scheme {
-  /*! `c_hyp_i = ISRF_c_hyp_fixed_fraction_of_c * c` for every particle. A
-   * timestep term enforces the CFL condition. Parameter value
-   * `fixed_fraction`. */
-  isrf_c_hyp_scheme_fixed_fraction = 2,
-  /*! `c_hyp_i = min(C_hyp*h_i/dt_max(i), c)`, `dt_max(i)` the longest
-   * timestep in the kernel of i. Default. Parameter value `kernel_local`. */
-  isrf_c_hyp_scheme_kernel_local_reduced_flux = 4,
+enum isrf_packet_light_speed {
+  /*! A share arrives at the next step of its receiver, whatever the distance.
+   * The light can move faster than c. For debugging only. */
+  isrf_packet_light_speed_unlimited = 0,
+  /*! A share arrives no earlier than its path divided by the limit speed,
+   * in the frame of the gas: gas that moves away from the sender faster than
+   * 0.99 of the limit speed gets its light early. Default. */
+  isrf_packet_light_speed_cap = 1,
+  /*! As the cap, and the time step is bounded so that the light moves at the
+   * limit speed. */
+  isrf_packet_light_speed_fixed = 2,
 };
 
-/*! Value of GEARFeedback:ISRF_c_hyp_scheme that selects
- * #isrf_c_hyp_scheme_fixed_fraction. */
-#define isrf_c_hyp_scheme_name_fixed_fraction "fixed_fraction"
+/*! Values of GEARFeedback:ISRF_packet_light_speed. */
+#define isrf_packet_light_speed_name_unlimited "unlimited"
+#define isrf_packet_light_speed_name_cap "cap"
+#define isrf_packet_light_speed_name_fixed "fixed"
 
-/*! Value of GEARFeedback:ISRF_c_hyp_scheme that selects
- * #isrf_c_hyp_scheme_kernel_local_reduced_flux. */
-#define isrf_c_hyp_scheme_name_kernel_local "kernel_local"
+/*! Default limit speed of the packet transport, as a fraction of the speed of
+ * light. A share to a receiver that moves away from the sender at the speed
+ * `u` arrives after the separation over `v - u`, at most 100 times the
+ * separation over `v`. The limit holds in the frame of the gas: a sender that
+ * moves towards the receiver between its stamp and its booking, or a receiver
+ * that speeds up after it, can make the front move at up to `v + u` in the
+ * frame of the box, which is harmless for `v` near `c`. */
+#define default_ISRF_packet_light_speed_fraction_of_c 0.99f
 
-/**
- * @brief Convert a GEARFeedback:ISRF_c_hyp_scheme value to #isrf_c_hyp_scheme.
- *
- * @param name The parameter value.
- *
- * @return The scheme, or -1 if @p name is neither
- * #isrf_c_hyp_scheme_name_fixed_fraction nor
- * #isrf_c_hyp_scheme_name_kernel_local.
- */
-__attribute__((always_inline)) INLINE static int
-feedback_props_c_hyp_scheme_from_name(const char *name) {
-  if (strcmp(name, isrf_c_hyp_scheme_name_fixed_fraction) == 0)
-    return isrf_c_hyp_scheme_fixed_fraction;
-  if (strcmp(name, isrf_c_hyp_scheme_name_kernel_local) == 0)
-    return isrf_c_hyp_scheme_kernel_local_reduced_flux;
-  return -1;
-}
+/*! Default power of the soft transmission cone. */
+#define default_ISRF_packet_cone_power 4.f
 
-/**
- * @brief Convert a #isrf_c_hyp_scheme to its GEARFeedback:ISRF_c_hyp_scheme
- * value.
- *
- * @param scheme The scheme.
- *
- * @return The parameter value, or "invalid" if @p scheme is not a valid
- * #isrf_c_hyp_scheme.
- */
-__attribute__((always_inline)) INLINE static const char *
-feedback_props_c_hyp_scheme_name(int scheme) {
-  if (scheme == isrf_c_hyp_scheme_fixed_fraction)
-    return isrf_c_hyp_scheme_name_fixed_fraction;
-  if (scheme == isrf_c_hyp_scheme_kernel_local_reduced_flux)
-    return isrf_c_hyp_scheme_name_kernel_local;
-  return "invalid";
-}
+/*! Default time constant of the running mean of the packet field, in Myr. */
+#define default_ISRF_packet_read_mean_time_Myr 0.f
+
+/*! Default angles in degrees of the frame of the packet reception slots: a
+ * generic rotation, not aligned with the box. */
+#define default_ISRF_packet_octant_frame_angle_x_deg 24.f
+#define default_ISRF_packet_octant_frame_angle_y_deg 36.f
+#define default_ISRF_packet_octant_frame_angle_z_deg 66.f
+
+/*! Default seed offset of the packet octant frame. 0 is the frame of the
+ * angles alone. */
+#define default_ISRF_packet_octant_frame_seed_offset 0
 
 /**
  * @brief Dust extinction path of the LW/PE bands
@@ -180,7 +167,8 @@ struct feedback_props {
   /*! Radiation pressure momentum effectively injected */
   float radiation_pressure_efficiency;
 
-  /*! Run the hyperbolic M1 propagation update? Only meaningful when
+  /*! Transport the ISRF with the packet hop? With 0, a star adds its dose to
+   * the field of the receivers at once. Only meaningful when
    * radiation_policy_isrf is set. */
   char ISRF_propagation;
 
@@ -200,48 +188,32 @@ struct feedback_props {
   /*! Temperature cap in K of #isrf_extinction_path_temperature_capped_jeans. */
   float ISRF_extinction_jeans_temperature_cap_K;
 
-  /*! Stability margin C_hyp in `c_hyp_i = C_hyp*h_i/dt_max(i)`, see
-   * feedback_props_init() for its range. */
-  float ISRF_c_hyp_margin;
+  /*! Margin `f_dt` of the step bound `f_dt a h_i / v` of the packet transport
+   * with the fixed light speed, see feedback_props_init() for its range. */
+  float ISRF_packet_light_speed_time_step_margin;
 
-  /*! Active #isrf_c_hyp_scheme, parsed from a string and stored as an
-   * integer. 0 (not a valid scheme) when the ISRF is off. */
-  int ISRF_c_hyp_scheme;
+  /*! Speed limit of the light of the packet transport, a
+   * #isrf_packet_light_speed. */
+  int ISRF_packet_light_speed;
 
-  /*! Fraction f with `c_hyp_i = f*c`, fixed_fraction scheme only. 0 when
-   * unused. */
-  float ISRF_c_hyp_fixed_fraction_of_c;
+  /*! Limit speed of the packet transport as a fraction of the speed of light.
+   * Read only when #ISRF_packet_light_speed is not unlimited. */
+  float ISRF_packet_light_speed_fraction_of_c;
 
-  /*! Debug only: skip the timestep term `C_hyp*h_i/(f*c)` of the
-   * fixed_fraction scheme. */
-  char ISRF_c_hyp_timestep_term_off_for_debugging;
+  /*! Power `p` of the transmission cone `W max(0, mu)^p`. */
+  float ISRF_packet_cone_power;
 
-  /*! Ceiling of the negativity-triggered dissipation coefficient. 0 disables
-   * it. The allowed range depends on #ISRF_c_hyp_margin. */
-  float ISRF_dissipation_alpha_max;
+  /*! Time constant of the running mean of the packet field, internal units. 0
+   * is off. */
+  float ISRF_packet_read_mean_time;
 
-  /*! Relative undershoot of `rho_prev*u` below the neighbours' kernel mean
-   * at which the trigger reaches #ISRF_dissipation_alpha_max. */
-  float ISRF_dissipation_negativity_threshold;
+  /*! Rotation matrix (row-major) from the box to the frame of the packet
+   * reception slots. */
+  float ISRF_packet_octant_frame[9];
 
-  /*! Floor `alpha_floor/(1+(h*kappa/eps_lambda)^4)` under the trigger,
-   * combined with it by a max. 0 disables it. */
-  float ISRF_dissipation_alpha_floor;
-
-  /*! Screening-length budget `eps_lambda` of the floor roll-off. */
-  float ISRF_dissipation_floor_h_over_lambda;
-
-  /*! Threshold `eps_R` in [0, 1] of the flux-relaxation residual gate on
-   * the floor. 0 disables it. */
-  float ISRF_dissipation_floor_relaxation_residual;
-
-  /*! Debug only: when positive, pin every dissipation coefficient to this
-   * value. */
-  float ISRF_dissipation_alpha_pin_for_debugging;
-
-  /*! Also damp the reduced flux with the pair dissipation coefficient of u?
-   * Experimental, off by default. */
-  char ISRF_flux_dissipation;
+  /*! Test beams, see #radiation_packet_inject_test_beams. */
+  float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS]
+                             [RADIATION_PACKET_TEST_BEAM_FIELDS];
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -411,67 +383,45 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("ISRF propagation                                           = %s",
             feedback_props->ISRF_propagation ? "ON" : "OFF (injection only)");
     if (feedback_props->ISRF_propagation) {
-      message("ISRF propagation speed margin (C_hyp)                      = %g",
-              feedback_props->ISRF_c_hyp_margin);
       message(
-          "ISRF c_hyp scheme                                          = %s",
-          feedback_props_c_hyp_scheme_name(feedback_props->ISRF_c_hyp_scheme));
-      if (feedback_props->ISRF_c_hyp_fixed_fraction_of_c > 0.f) {
+          "ISRF transport                                             = packet "
+          "hop (the only scheme)");
+      message("ISRF packet transmission cone power                        = %g",
+              feedback_props->ISRF_packet_cone_power);
+      message("ISRF packet light speed limit                              = %s",
+              feedback_props->ISRF_packet_light_speed ==
+                      isrf_packet_light_speed_fixed
+                  ? isrf_packet_light_speed_name_fixed
+              : feedback_props->ISRF_packet_light_speed ==
+                      isrf_packet_light_speed_cap
+                  ? isrf_packet_light_speed_name_cap
+                  : isrf_packet_light_speed_name_unlimited);
+      if (feedback_props->ISRF_packet_light_speed !=
+          isrf_packet_light_speed_unlimited)
         message(
-            "ISRF c_hyp fixed fraction of c                             = %g",
-            feedback_props->ISRF_c_hyp_fixed_fraction_of_c);
+            "ISRF packet limit speed (fraction of c)                    = %g",
+            feedback_props->ISRF_packet_light_speed_fraction_of_c);
+      if (feedback_props->ISRF_packet_light_speed ==
+          isrf_packet_light_speed_fixed)
         message(
-            "ISRF c_hyp fixed fraction timestep term                    = %s",
-            feedback_props->ISRF_c_hyp_timestep_term_off_for_debugging
-                ? "OFF for debugging (diagnostic only, not a supported "
-                  "configuration)"
-                : "ON");
-      }
-      message("ISRF dissipation alpha_max                                 = %g",
-              feedback_props->ISRF_dissipation_alpha_max);
-      message("ISRF dissipation negativity threshold                      = %g",
-              feedback_props->ISRF_dissipation_negativity_threshold);
-      message("ISRF dissipation alpha_floor                               = %g",
-              feedback_props->ISRF_dissipation_alpha_floor);
-      message("ISRF dissipation floor h/lambda budget (eps_lambda)        = %g",
-              feedback_props->ISRF_dissipation_floor_h_over_lambda);
-      message("ISRF dissipation floor relaxation-residual gate (eps_R)    = %g",
-              feedback_props->ISRF_dissipation_floor_relaxation_residual);
-      if (feedback_props->ISRF_dissipation_alpha_pin_for_debugging > 0.f)
-        message(
-            "ISRF dissipation alpha pinned for debugging                = %g",
-            feedback_props->ISRF_dissipation_alpha_pin_for_debugging);
-      message("ISRF reduced-flux dissipation (experimental)               = %s",
-              feedback_props->ISRF_flux_dissipation ? "ON" : "OFF");
+            "ISRF packet light speed time step margin                   = %g",
+            feedback_props->ISRF_packet_light_speed_time_step_margin);
+      message("ISRF packet field read mean time (internal units, 0 = off) = %g",
+              feedback_props->ISRF_packet_read_mean_time);
+      message(
+          "ISRF packet octant frame rotation (row-major)              = "
+          "%g %g %g, %g %g %g, %g %g %g",
+          feedback_props->ISRF_packet_octant_frame[0],
+          feedback_props->ISRF_packet_octant_frame[1],
+          feedback_props->ISRF_packet_octant_frame[2],
+          feedback_props->ISRF_packet_octant_frame[3],
+          feedback_props->ISRF_packet_octant_frame[4],
+          feedback_props->ISRF_packet_octant_frame[5],
+          feedback_props->ISRF_packet_octant_frame[6],
+          feedback_props->ISRF_packet_octant_frame[7],
+          feedback_props->ISRF_packet_octant_frame[8]);
     }
   }
-}
-
-/**
- * @brief Enforce that #feedback_props.ISRF_c_hyp_scheme and
- * #feedback_props.ISRF_c_hyp_fixed_fraction_of_c are a matched pair.
- *
- * The two schemes are alternatives. Standalone so a unit test can call it.
- *
- * @param scheme #feedback_props.ISRF_c_hyp_scheme's parsed value.
- * @param fixed_fraction #feedback_props.ISRF_c_hyp_fixed_fraction_of_c's
- * parsed value.
- */
-__attribute__((always_inline)) INLINE static void
-feedback_props_check_c_hyp_scheme(int scheme, float fixed_fraction) {
-  if (scheme == isrf_c_hyp_scheme_fixed_fraction && fixed_fraction <= 0.f)
-    error(
-        "GEARFeedback:ISRF_c_hyp_scheme is set to fixed_fraction "
-        "but GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is 0: there is "
-        "nothing to select. Set a positive fraction.");
-  if (scheme != isrf_c_hyp_scheme_fixed_fraction && fixed_fraction > 0.f)
-    error(
-        "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c is set (%g) but "
-        "GEARFeedback:ISRF_c_hyp_scheme is %s, not fixed_fraction: "
-        "the two speed schemes are alternatives, not layers. Set "
-        "ISRF_c_hyp_scheme to fixed_fraction to use this fraction, or leave "
-        "it at 0 if it was set by mistake.",
-        fixed_fraction, feedback_props_c_hyp_scheme_name(scheme));
 }
 
 /**
@@ -529,6 +479,81 @@ feedback_check_isrf_operator_owner_map(
           "does.",
           o, (int)owner[o], o, first);
   }
+}
+
+/**
+ * @brief Read and check the speed limit of the light of the packet transport
+ * (GEARFeedback:ISRF_packet_light_speed and
+ * GEARFeedback:ISRF_packet_light_speed_fraction_of_c).
+ *
+ * A key left out gives the mode cap with ISRF_propagation, and unlimited
+ * otherwise. Writes a warning for the mode unlimited, for which light can move
+ * faster than c, and for a fraction above 0.99, for which gas faster than `(1
+ * - fraction) c` can push the front above c. A limited mode also prints a
+ * message that the limit applies in the gas frame, so that gas which moves
+ * away faster than 0.99 of the limit speed gets its light early. Stops the run
+ * on an unknown mode, on a fraction outside (0, 1] and on a limit without
+ * ISRF_propagation, which must already be set in #fp.
+ *
+ * @param params The parameter file.
+ * @param fp The #feedback_props, with ISRF_propagation set.
+ */
+INLINE static void feedback_props_read_packet_light_speed(
+    struct swift_params *params, struct feedback_props *fp) {
+
+  const int packet_hop = fp->ISRF_propagation;
+  char light_speed[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(
+      params, "GEARFeedback:ISRF_packet_light_speed", light_speed,
+      packet_hop ? isrf_packet_light_speed_name_cap
+                 : isrf_packet_light_speed_name_unlimited);
+  if (strcmp(light_speed, isrf_packet_light_speed_name_unlimited) == 0)
+    fp->ISRF_packet_light_speed = isrf_packet_light_speed_unlimited;
+  else if (strcmp(light_speed, isrf_packet_light_speed_name_cap) == 0)
+    fp->ISRF_packet_light_speed = isrf_packet_light_speed_cap;
+  else if (strcmp(light_speed, isrf_packet_light_speed_name_fixed) == 0)
+    fp->ISRF_packet_light_speed = isrf_packet_light_speed_fixed;
+  else
+    error(
+        "GEARFeedback:ISRF_packet_light_speed must be %s, %s or %s, got '%s'.",
+        isrf_packet_light_speed_name_unlimited,
+        isrf_packet_light_speed_name_cap, isrf_packet_light_speed_name_fixed,
+        light_speed);
+  fp->ISRF_packet_light_speed_fraction_of_c = parser_get_opt_param_float(
+      params, "GEARFeedback:ISRF_packet_light_speed_fraction_of_c",
+      default_ISRF_packet_light_speed_fraction_of_c);
+  if (fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
+      !(fp->ISRF_packet_light_speed_fraction_of_c > 0.f &&
+        fp->ISRF_packet_light_speed_fraction_of_c <= 1.f))
+    error(
+        "GEARFeedback:ISRF_packet_light_speed_fraction_of_c must be in "
+        "(0, 1] (got %g).",
+        fp->ISRF_packet_light_speed_fraction_of_c);
+  if (fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
+      !fp->ISRF_propagation)
+    error(
+        "GEARFeedback:ISRF_packet_light_speed: %s acts only with "
+        "GEARFeedback:ISRF_propagation: 1.",
+        light_speed);
+  if (packet_hop &&
+      fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
+    warning(
+        "GEARFeedback:ISRF_packet_light_speed: unlimited lets the light of "
+        "the packet transport move faster than c. Use it for debugging only.");
+  if (packet_hop &&
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited)
+    message(
+        "GEARFeedback:ISRF_packet_light_speed: %s, light limited to v = f c "
+        "in the gas frame.",
+        light_speed);
+  if (packet_hop &&
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
+      fp->ISRF_packet_light_speed_fraction_of_c > 0.99f)
+    warning(
+        "GEARFeedback:ISRF_packet_light_speed_fraction_of_c = %g: gas that "
+        "moves faster than (1 - fraction) c can make the light front move "
+        "faster than c in the frame of the box.",
+        fp->ISRF_packet_light_speed_fraction_of_c);
 }
 
 /**
@@ -794,159 +819,84 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
 
-    /* Parsed even with ISRF_propagation off, so validation runs can set it.
-     * Default is kernel_local. */
-    char c_hyp_scheme[PARSER_MAX_LINE_SIZE];
-    parser_get_opt_param_string(params, "GEARFeedback:ISRF_c_hyp_scheme",
-                                c_hyp_scheme,
-                                isrf_c_hyp_scheme_name_kernel_local);
-    fp->ISRF_c_hyp_scheme = feedback_props_c_hyp_scheme_from_name(c_hyp_scheme);
-    if (fp->ISRF_c_hyp_scheme < 0)
+    /* Parsed even with ISRF_propagation off. */
+    fp->ISRF_packet_light_speed_time_step_margin = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_light_speed_time_step_margin", 0.5f);
+
+    /* Largest accepted margin. */
+    const float ISRF_time_step_margin_bound = sqrtf(2.f / 0.70f);
+
+    if (fp->ISRF_packet_light_speed_time_step_margin <= 0.f ||
+        fp->ISRF_packet_light_speed_time_step_margin >
+            ISRF_time_step_margin_bound)
       error(
-          "GEARFeedback:ISRF_c_hyp_scheme must be one of %s (kernel-local "
-          "speed) or %s (fixed fraction of c), got '%s'. The integer values "
-          "are no longer accepted.",
-          isrf_c_hyp_scheme_name_kernel_local,
-          isrf_c_hyp_scheme_name_fixed_fraction, c_hyp_scheme);
+          "GEARFeedback:ISRF_packet_light_speed_time_step_margin must lie in "
+          "(0, %g] (got %g).",
+          ISRF_time_step_margin_bound,
+          fp->ISRF_packet_light_speed_time_step_margin);
 
-    /* 0 disables it. Only valid with the fixed_fraction scheme, enforced
-     * below. */
-    fp->ISRF_c_hyp_fixed_fraction_of_c = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c", 0.0f);
-    fp->ISRF_c_hyp_timestep_term_off_for_debugging =
-        (char)parser_get_opt_param_int(
-            params, "GEARFeedback:ISRF_c_hyp_timestep_term_off_for_debugging",
-            0);
+    feedback_props_read_packet_light_speed(params, fp);
 
-    if (fp->ISRF_c_hyp_fixed_fraction_of_c < 0.f ||
-        fp->ISRF_c_hyp_fixed_fraction_of_c > 1.f)
+    fp->ISRF_packet_cone_power = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_cone_power",
+        default_ISRF_packet_cone_power);
+    fp->ISRF_packet_read_mean_time = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_read_mean_time_Myr",
+        default_ISRF_packet_read_mean_time_Myr);
+    if (!(fp->ISRF_packet_read_mean_time >= 0.f))
       error(
-          "GEARFeedback:ISRF_c_hyp_fixed_fraction_of_c must lie in [0, 1] "
-          "(got %g): it is a fraction of the true speed of light c. 0 "
-          "disables it.",
-          fp->ISRF_c_hyp_fixed_fraction_of_c);
+          "GEARFeedback:ISRF_packet_read_mean_time_Myr must be >= 0 (got %g).",
+          fp->ISRF_packet_read_mean_time);
+    fp->ISRF_packet_read_mean_time *= Myr_internal_units;
 
-    /* The two speed schemes are alternatives. */
-    feedback_props_check_c_hyp_scheme(fp->ISRF_c_hyp_scheme,
-                                      fp->ISRF_c_hyp_fixed_fraction_of_c);
-
-    /* Parsed even with ISRF_propagation off, like the dissipation
-     * coefficients below. */
-    fp->ISRF_c_hyp_margin = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_c_hyp_margin", 0.5f);
-
-    /* Loosest case of the joint bound below, at alpha = 0:
-     * C_hyp <= sqrt(2/0.70) ~ 1.6903. */
-    const float ISRF_c_hyp_absolute_bound = sqrtf(2.f / 0.70f);
-
-    if (fp->ISRF_c_hyp_margin <= 0.f ||
-        fp->ISRF_c_hyp_margin > ISRF_c_hyp_absolute_bound)
+    float frame_angles_deg[3] = {default_ISRF_packet_octant_frame_angle_x_deg,
+                                 default_ISRF_packet_octant_frame_angle_y_deg,
+                                 default_ISRF_packet_octant_frame_angle_z_deg};
+    parser_get_opt_param_float_array(
+        params, "GEARFeedback:ISRF_packet_octant_frame_angles_deg", 3,
+        frame_angles_deg);
+    const int frame_seed_offset = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_packet_octant_frame_seed_offset",
+        default_ISRF_packet_octant_frame_seed_offset);
+    if (frame_seed_offset < 0)
       error(
-          "GEARFeedback:ISRF_c_hyp_margin must lie in "
-          "(0, %g] (got %g): above this bound the staggered "
-          "exact-relaxation scheme is no longer stable for every "
-          "lambda/h at this project's kernel/eta_neighbours choice, even "
-          "with dissipation (ISRF_dissipation_alpha_max/alpha_floor) "
-          "fully disabled (6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2 at "
-          "alpha = 0).",
-          ISRF_c_hyp_absolute_bound, fp->ISRF_c_hyp_margin);
+          "GEARFeedback:ISRF_packet_octant_frame_seed_offset must be >= 0 "
+          "(got %d).",
+          frame_seed_offset);
+    for (int k = 0; k < 3; k++)
+      if (!(fabsf(frame_angles_deg[k]) < 1e4f))
+        error(
+            "GEARFeedback:ISRF_packet_octant_frame_angles_deg must be finite "
+            "angles in degrees (got %g).",
+            frame_angles_deg[k]);
+    radiation_packet_build_octant_frame(frame_angles_deg, frame_seed_offset,
+                                        fp->ISRF_packet_octant_frame);
 
-    /* Negativity-triggered artificial dissipation. */
-    fp->ISRF_dissipation_alpha_max = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_dissipation_alpha_max", 0.5f);
-    fp->ISRF_dissipation_negativity_threshold = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_dissipation_negativity_threshold", 0.01f);
-    fp->ISRF_dissipation_alpha_pin_for_debugging = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging", 0.0f);
-
-    if (fp->ISRF_dissipation_alpha_max < 0.f)
-      error("GEARFeedback:ISRF_dissipation_alpha_max must be >= 0 (got %g).",
-            fp->ISRF_dissipation_alpha_max);
-
-    if (fp->ISRF_dissipation_negativity_threshold <= 0.f ||
-        fp->ISRF_dissipation_negativity_threshold > 1.f)
+    const int n_test_beams =
+        radiation_packet_read_test_beams(params, fp->ISRF_packet_test_beam);
+    if (n_test_beams > 0 && !fp->ISRF_propagation)
       error(
-          "GEARFeedback:ISRF_dissipation_negativity_threshold must lie "
-          "in (0, 1] (got %g).",
-          fp->ISRF_dissipation_negativity_threshold);
-
-    /* Diffuse-phase floor under the trigger. */
-    fp->ISRF_dissipation_alpha_floor = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_dissipation_alpha_floor", 0.5f);
-    fp->ISRF_dissipation_floor_h_over_lambda = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_dissipation_floor_h_over_lambda", 0.5f);
-
-    if (fp->ISRF_dissipation_alpha_floor < 0.f)
-      error(
-          "GEARFeedback:ISRF_dissipation_alpha_floor must be >= 0 (got "
-          "%g).",
-          fp->ISRF_dissipation_alpha_floor);
-
-    if (fp->ISRF_dissipation_floor_h_over_lambda <= 0.f)
-      error(
-          "GEARFeedback:ISRF_dissipation_floor_h_over_lambda must be > 0 "
-          "(got %g).",
-          fp->ISRF_dissipation_floor_h_over_lambda);
-
-    /* Flux-relaxation residual gate: 0 disables it. */
-    fp->ISRF_dissipation_floor_relaxation_residual = parser_get_opt_param_float(
-        params, "GEARFeedback:ISRF_dissipation_floor_relaxation_residual",
-        0.40f);
-
-    if (fp->ISRF_dissipation_floor_relaxation_residual < 0.f ||
-        fp->ISRF_dissipation_floor_relaxation_residual > 1.f)
-      error(
-          "GEARFeedback:ISRF_dissipation_floor_relaxation_residual must "
-          "lie in [0, 1] (got %g): the residual R it gates is itself bounded "
-          "to [0, 1] by the triangle inequality, so a value above 1 would "
-          "scale the floor down on every particle, fronts included. 0 "
-          "disables the gate.",
-          fp->ISRF_dissipation_floor_relaxation_residual);
-
-    /* Joint stability bound: 6.2 = 2*I_W and 0.70 = nu_max_coeff^2/2, the
-     * Wendland-C2 lattice constants (I_W = 3.10, nu_max_coeff = 1.18). The
-     * floor is not gated on negativity, so check max(alpha_max,
-     * alpha_floor). */
-    const float C_hyp = fp->ISRF_c_hyp_margin;
-    const float alpha_bound = (2.f - 0.70f * C_hyp * C_hyp) / (6.2f * C_hyp);
-    const float alpha_joint_ceiling =
-        max(fp->ISRF_dissipation_alpha_max, fp->ISRF_dissipation_alpha_floor);
-    if (alpha_joint_ceiling > 0.f && alpha_joint_ceiling > alpha_bound)
-      error(
-          "max(GEARFeedback:ISRF_dissipation_alpha_max, "
-          "GEARFeedback:ISRF_dissipation_alpha_floor) = %g exceeds the "
-          "stability bound %g at GEARFeedback:ISRF_c_hyp_margin = %g "
-          "(6.2*alpha*C_hyp + 0.70*C_hyp^2 <= 2). alpha_max = %g, "
-          "alpha_floor = %g. Lower GEARFeedback:ISRF_c_hyp_margin to "
-          "raise the bound, or lower alpha_max/alpha_floor to fit it.",
-          alpha_joint_ceiling, alpha_bound, C_hyp,
-          fp->ISRF_dissipation_alpha_max, fp->ISRF_dissipation_alpha_floor);
-
-    if (fp->ISRF_dissipation_alpha_pin_for_debugging < 0.f)
-      error(
-          "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging must be "
-          ">= 0 (got %g).",
-          fp->ISRF_dissipation_alpha_pin_for_debugging);
-
-    if (fp->ISRF_dissipation_alpha_pin_for_debugging > 0.f &&
-        fp->ISRF_dissipation_alpha_pin_for_debugging > alpha_bound)
-      warning(
-          "GEARFeedback:ISRF_dissipation_alpha_pin_for_debugging (%g) "
-          "exceeds the stability bound %g at the run's C_hyp: not itself "
-          "clamped (debug/test only). Never use this in a production run.",
-          fp->ISRF_dissipation_alpha_pin_for_debugging, alpha_bound);
-
-    /* Experimental: damp the reduced flux with the pair coefficient of u. */
-    const int flux_dissipation = parser_get_opt_param_int(
-        params, "GEARFeedback:ISRF_flux_dissipation", 0);
-    if (flux_dissipation != 0 && flux_dissipation != 1)
-      error("GEARFeedback:ISRF_flux_dissipation must be 0 or 1 (got %d).",
-            flux_dissipation);
-    if (flux_dissipation && !fp->ISRF_propagation)
-      error(
-          "GEARFeedback:ISRF_flux_dissipation needs "
+          "GEARFeedback:ISRF_packet_test_beam_* is set, but it acts only with "
           "GEARFeedback:ISRF_propagation: 1.");
-    fp->ISRF_flux_dissipation = (char)flux_dissipation;
+
+    if (fp->ISRF_propagation) {
+#ifndef HAVE_CHEALPIX
+      error(
+          "GEARFeedback:ISRF_propagation: 1 needs the HEALPix C library for "
+          "the emission cones of the stars. Configure with --with-chealpix.");
+#endif
+      if (!(fp->ISRF_packet_cone_power >= 1.f))
+        error("GEARFeedback:ISRF_packet_cone_power must be >= 1 (got %g).",
+              fp->ISRF_packet_cone_power);
+      /* Stars emit energy and photon number from one spectrum per band. */
+      if (!fp->stellar_model.rad.has_mean_photon_energy_pe ||
+          (fp->metallicity_max_first_stars != -1 &&
+           !fp->stellar_model_first_stars.rad.has_mean_photon_energy_pe))
+        error(
+            "GEARFeedback:ISRF_propagation: 1 needs the datasets "
+            "MeanPhotonEnergyPE and Integrated_MeanPhotonEnergyPE in the "
+            "Data/Radiation group of every yields table.");
+    }
 
     if (fp->ISRF_propagation) {
       /* The IC metallicity is not visible here, so warn unconditionally. */

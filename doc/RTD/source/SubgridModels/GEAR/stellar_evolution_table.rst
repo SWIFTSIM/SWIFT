@@ -43,6 +43,8 @@ If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``)
 * ``L_PE``/``Integrated_L_PE`` and ``L_LW``/``Integrated_L_LW`` (erg/s and erg/s/Msun): the photoelectric and Lyman-Werner band luminosities.
 * ``SpectralPhotonRateAtPEEdge``/``Integrated_SpectralPhotonRateAtPEEdge`` and ``SpectralPhotonRateAtLWEdge``/``Integrated_SpectralPhotonRateAtLWEdge`` (1/s/erg): the spectral photon rate density at each band's own lower edge (6 eV for PE, 11.2 eV for LW). SWIFT uses these to move each band's own redshift-driven loss across that edge: the Lyman-Werner band's lower edge is the PE band's upper edge, so the Lyman-Werner loss becomes a PE gain; the PE band's own 6 eV loss has no such destination and is a genuine sink.
 
+* ``MeanPhotonEnergyPE``/``Integrated_MeanPhotonEnergyPE`` (erg): photon-number-weighted mean photon energy of the PE band, :math:`L_\mathrm{PE}/Q_\mathrm{PE}`. Needed only with ``GEARFeedback:ISRF_propagation: 1``. The pychem table generator writes them (see its ``GenerateChemistryTable`` documentation section on the radiation datasets); check a table with ``h5ls -r <table.h5> | grep MeanPhotonEnergyPE``.
+
 ``Teff`` (photospheric effective temperature, K) is optional and has no ``Integrated_`` counterpart; it is read if present and otherwise simply unavailable.
 
 Getting a table

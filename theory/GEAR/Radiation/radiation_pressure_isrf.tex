@@ -67,8 +67,11 @@ this same directory) since they are largely self-contained: the
 (Section~\ref{sec:radiation-pressure}, branch
 \code{darwin/gear\_radiation}), and the
 \textbf{FUV/ISRF} channel for photoelectric heating and
-H$_2$ photodissociation (Section~\ref{sec:fuv-isrf}). It
-describes the current design and physics only;
+H$_2$ photodissociation (Section~\ref{sec:packet}). It
+describes the current design and physics only. The theory of the removed
+M1 solver of the ISRF is archived in the \code{swift-gear} repository
+(\code{theory/radiation\_m1\_archive/}), for the code at the tag
+\code{isrf-m1-last};
 dated bug history and open-item tracking for both channels live in the
 \textbf{GEAR radiation logbook} (\code{swift-gear} repository,
 \code{theory/radiation/}), alongside the HII photoionization model's
@@ -87,8 +90,7 @@ channel in \code{src/feedback/GEAR/radiation\_isrf.c} and related files.
 \tableofcontents
 
 \input{01_radiation_pressure}
-\input{02_fuv_isrf}
-\input{03_isrf_equations_and_discretisation}
+\input{04_isrf_packet_transport}
 
 \bibliography{bibliography}
 

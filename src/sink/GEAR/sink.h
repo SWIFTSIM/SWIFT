@@ -193,6 +193,7 @@ __attribute__((always_inline)) INLINE static void sink_first_init_sink(
   sp->has_IMF_changed_from_popIII_to_popII = 0;
 
   sink_mark_sink_as_not_swallowed(&sp->merger_data);
+  feedback_first_init_sink(sp);
 
   /* Bug fix: Setup the target mass for sink formation after reading the
      ICs. Otherwise sink->target_mass_Msun = 0.0 and a sink present in the IC
@@ -699,6 +700,9 @@ INLINE static void sink_copy_properties(
   /* Copy the chemistry properties */
   chemistry_copy_sink_properties(p, xp, sink);
 
+  feedback_first_init_sink(sink);
+  feedback_book_removed_gas_to_sink(p, sink);
+
   /* Note, we do not need to update sp->mass_tot_before_star_spawning because
      it is performed within the 'sink_init_sink()' function. */
 
@@ -786,6 +790,7 @@ __attribute__((always_inline)) INLINE static void sink_swallow_part(
 
   /* Update the sink metal masses fraction */
   chemistry_add_part_to_sink(sp, p, msp_old);
+  feedback_book_removed_gas_to_sink(p, sp);
 
   /* This sink swallowed a gas particle */
   sp->number_of_gas_swallows++;
@@ -849,6 +854,8 @@ __attribute__((always_inline)) INLINE static void sink_swallow_sink(
 
   /* Update the sink metal masses fraction */
   chemistry_add_sink_to_sink(spi, spj, mi_old);
+
+  feedback_book_sink_merger(spi, spj);
 
   /* This sink swallowed a sink particle */
   spi->number_of_sink_swallows++;

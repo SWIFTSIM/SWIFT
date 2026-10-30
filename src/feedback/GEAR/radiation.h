@@ -49,11 +49,6 @@
     visit. */
 #define RADIATION_ISRF_TAG_LIFETIME_INTERVALS 2
 
-/*! Decay length, in particle smoothing lengths, of the negativity-triggered
-    artificial-dissipation coefficient. Sets the transient, not the steady
-    state (ISRF_dissipation_alpha_max does that). */
-#define RADIATION_ISRF_DISSIPATION_DECAY_LENGTH 5.0f
-
 /*! Ceiling, in rebuild cadences, on the interval the per-pass photon budget
     is integrated over. Photons emitted while the star's cell held no gas
     escaped and must not be handed to the next pass. */
@@ -114,9 +109,16 @@
 
 /*! PE/LW band lower edges, eV. Photons redshift downward through these
     energies (fixed in physical energy). See
-    theory/GEAR/Radiation/02_fuv_isrf.tex. */
+    theory/GEAR/Radiation/04_isrf_packet_transport.tex. */
 #define RADIATION_PE_BAND_LOWER_EDGE_EV 6.0
 #define RADIATION_LW_BAND_LOWER_EDGE_EV 11.2
+
+/*! LW band upper edge, eV: the HI ionisation threshold. The PE upper edge is
+    #RADIATION_LW_BAND_LOWER_EDGE_EV. */
+#define RADIATION_LW_BAND_UPPER_EDGE_EV 13.6
+
+/*! #RADIATION_LW_BAND_UPPER_EDGE_EV in erg. */
+#define RADIATION_LW_BAND_UPPER_EDGE_CGS 2.1789602e-11
 
 /*! The band lower edges in erg (1 eV = 1.602176634e-12 erg), hardcoded because
     eV is not an internal unit. They enter only a dimensionless ratio. */
@@ -127,10 +129,10 @@
     initialise the #feedback_props band_edge weights and are used when the
     table's Integrated_L_PE or Integrated_L_LW denominator vanishes.
     lambda_E(b) = 1 + Lambda_b * E_lo(b)/<E>_b (theory/GEAR/Radiation/
-    02_fuv_isrf.tex). The values are the young-population end of the spectral
-    family, which dominates the LW luminosity. An aged population's Lambda_LW
-    reaches about 18.3, 3x higher. The bias against a population average is
-    not sized. */
+    04_isrf_packet_transport.tex). The values are the young-population end of
+    the spectral family, which dominates the LW luminosity. An aged
+    population's Lambda_LW reaches about 18.3, 3x higher. The bias against a
+    population average is not sized. */
 #define RADIATION_BAND_EDGE_WEIGHT_PE_DEFAULT 2.154
 #define RADIATION_BAND_EDGE_WEIGHT_LW_DEFAULT 6.508
 #define RADIATION_BAND_EDGE_PHOTON_WEIGHT_LW_DEFAULT 6.0
@@ -370,6 +372,29 @@ radiation_get_star_band_luminosity(const struct spart *sp,
   return sp->feedback_data.radiation.L_band[m];
 }
 
+/**
+ * @brief Set the packet photon number a star emits per unit energy in one
+ * band, `E_lo / E_bar`, from its mean photon energy. A mean energy outside
+ * the band, possible only at a table edge, is moved to the nearest edge.
+ *
+ * @param sp The #spart.
+ * @param o The band, a #radiation_isrf_operator.
+ * @param E_bar_cgs Mean photon energy of the band, erg.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_packet_photon_fraction(struct spart *sp,
+                                          const enum radiation_isrf_operator o,
+                                          const double E_bar_cgs) {
+  const double E_lo = o == ISRF_OPERATOR_PE ? RADIATION_PE_BAND_LOWER_EDGE_CGS
+                                            : RADIATION_LW_BAND_LOWER_EDGE_CGS;
+  const double E_hi = o == ISRF_OPERATOR_PE ? RADIATION_LW_BAND_LOWER_EDGE_CGS
+                                            : RADIATION_LW_BAND_UPPER_EDGE_CGS;
+  double E = E_bar_cgs;
+  if (!(E >= E_lo)) E = E_lo;
+  if (E > E_hi) E = E_hi;
+  sp->feedback_data.radiation.packet.photon_fraction[o] = (float)(E_lo / E);
+}
+
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /* Without the part: the gas carries no LW/PE field. */
@@ -399,6 +424,9 @@ radiation_get_star_band_luminosity(const struct spart *sp,
                                    const enum radiation_isrf_moment m) {
   return 0.;
 }
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_packet_photon_fraction(struct spart *sp, const int o,
+                                          const double E_bar_cgs) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
@@ -585,6 +613,10 @@ double radiation_get_mean_photon_energy_lw_from_raw_2d(
     const struct radiation *rad, float log_z, float log_m);
 double radiation_get_star_mean_photon_energy_lw(const struct radiation *rad,
                                                 float log_m, float log_z);
+double radiation_get_star_mean_photon_energy_pe(const struct radiation *rad,
+                                                float log_m, float log_z);
+double radiation_get_population_mean_photon_energy_pe(
+    const struct radiation *rad, float log_z, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral(
     const struct radiation *rad, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral_2d(
@@ -638,6 +670,9 @@ void radiation_read_luminosity_pe_array(
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);
 void radiation_read_mean_photon_energy_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
+void radiation_read_mean_photon_energy_pe_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
 void radiation_read_luminosity_lw_array(

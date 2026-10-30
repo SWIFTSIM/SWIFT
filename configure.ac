@@ -3041,6 +3041,34 @@ AC_ARG_WITH([number-of-hii-angular-pixels],
 	    [with_number_of_hii_angular_pixels="12"])
 AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels], [Maximum number of HealPix angular pixels the GEAR subgrid HII photoionization budget can be split across])
 
+# Reception slots of the GEAR ISRF packet transport: the number of cells of
+# the partition of directions in which a gas particle holds light. Each slot
+# adds 200 bytes to every gas particle. 12 merges fewer directions of light than
+# 8 and costs 800 bytes more per gas particle.
+AC_ARG_WITH([isrf-packet-slots],
+	    [AS_HELP_STRING([--with-isrf-packet-slots=<N>], [Number of reception slots of the GEAR ISRF packet transport: 8 (octants of the frame), 12 (rhombic dodecahedron faces) or 16 (octants halved) @<:@default: 12@:>@])],
+	    [with_isrf_packet_slots="$withval"],
+	    [with_isrf_packet_slots="12"])
+case "$with_isrf_packet_slots" in
+   8|12|16) ;;
+   *) AC_MSG_ERROR([--with-isrf-packet-slots=$with_isrf_packet_slots: use 8, 12 or 16]) ;;
+esac
+AC_DEFINE_UNQUOTED([RADIATION_PACKET_SLOTS], [$with_isrf_packet_slots], [Number of reception slots of the GEAR ISRF packet transport])
+
+# Debugging data of the GEAR ISRF packet transport: the energy ledgers of gas,
+# stars and sinks, their snapshot fields, the snapshot fields that duplicate or
+# expose the transport state, and the arrival counters with their message.
+AC_ARG_ENABLE([isrf-debugging-checks],
+   [AS_HELP_STRING([--enable-isrf-debugging-checks],
+     [Keep the ISRF packet energy ledgers, the debugging snapshot fields and the arrival counter message @<:@yes/no@:>@]
+   )],
+   [enable_isrf_debugging_checks="$enableval"],
+   [enable_isrf_debugging_checks="no"]
+)
+if test "$enable_isrf_debugging_checks" = "yes"; then
+   AC_DEFINE([SWIFT_DEBUG_CHECKS_ISRF],1,[Keep the ISRF packet energy ledgers and debugging output])
+fi
+
 # Parts of the GEAR subgrid radiation compiled into a GEAR feedback build. A
 # part left out costs nothing at run time: no particle fields, no pair-loop
 # work and no tasks.
@@ -3759,6 +3787,8 @@ AC_MSG_RESULT([
    Star formation model : $with_star_formation
    Star feedback model  : $with_feedback_name
    Subgrid radiation    :$with_subgrid_radiation_name
+   ISRF packet slots    : $with_isrf_packet_slots
+   ISRF debugging checks: $enable_isrf_debugging_checks
    Sink particle model  : $with_sink
    Black holes model    : $with_black_holes
    Radiative transfer   : $with_rt

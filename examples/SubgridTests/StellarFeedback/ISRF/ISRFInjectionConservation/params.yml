@@ -10,7 +10,7 @@ Restarts:
   enable: 0
 
 # No Potential: block, since --external-gravity (run.sh) is a no-op force,
-# matching the sibling ISRFHyperbolicPropagation/StromgrenSphere* examples'
+# matching the sibling StromgrenSphere* examples'
 # idiom for "no gravity".
 Gravity:
   MAC:                           adaptive
@@ -128,14 +128,8 @@ GEARFeedback:
   # ISRF
   with_interstellar_radiation_field: 1                             # ISRF feedback master switch
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
-  ISRF_propagation: 0                                       # Run the hyperbolic ISRF propagation update (default)
-  ISRF_c_hyp_margin: 0.5                                    # Propagation-speed stability margin C_hyp (default)
-  ISRF_dissipation_alpha_max: 0.5                           # Artificial-dissipation trigger ceiling (default)
-  ISRF_dissipation_negativity_threshold: 0.01               # Negativity trigger threshold, relative (default)
-  ISRF_dissipation_alpha_floor: 0.5                         # Dissipation floor near the front (default)
-  ISRF_dissipation_floor_h_over_lambda: 0.5                 # Floor's h/lambda knee, eps_lambda (default)
-  ISRF_dissipation_floor_relaxation_residual: 0.40          # Floor's relaxation-residual gate, eps_R (default)
-  ISRF_dissipation_alpha_pin_for_debugging: 0               # Debug: fixed dissipation coefficient (default)
+  ISRF_propagation: 0                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
+  ISRF_packet_light_speed_time_step_margin: 0.5             # Margin of the time step bound with ISRF_packet_light_speed fixed
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.

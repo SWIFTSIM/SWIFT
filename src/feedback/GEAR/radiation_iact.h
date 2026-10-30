@@ -32,6 +32,7 @@
 #include "feedback_properties.h"
 #include "minmax.h"
 #include "radiation.h"
+#include "radiation_packet.h"
 #include "timestep_sync_part.h"
 #include "tracers.h"
 
@@ -113,7 +114,8 @@ radiation_iact_nonsym_feedback_density(
  *
  * Cached so the per-pair loop avoids the cosmological lookup. @p dt must be
  * the star's own step, as GEAR's feedback_get_enrichment_timestep() returns.
- * Under cosmology it is d(ln a), as in compute_time() of feedback_common.c.
+ * Under cosmology it is a proper time, as in compute_time() of
+ * feedback_common.c.
  *
  * @param sp The #spart to update.
  * @param dt Length of the star's feedback step, in internal units.
@@ -271,9 +273,12 @@ radiation_iact_nonsym_feedback_apply(
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-  /* L_band is zero unless with_interstellar_radiation_field is on. */
-  if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
-      si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
+  if (fb_props->ISRF_propagation) {
+    radiation_packet_star_emit(si, pj, dx, Delta_t, cosmo->a, cosmo->H,
+                               ti_current, fb_props->ISRF_packet_octant_frame);
+  } else if (si->feedback_data.radiation.L_band[ISRF_MOMENT_PE] != 0.0 ||
+             si->feedback_data.radiation.L_band[ISRF_MOMENT_LW] != 0.0) {
+    /* L_band is zero unless with_interstellar_radiation_field is on. */
 
     const float Z_j = chemistry_get_total_metal_mass_fraction_for_cooling(pj);
     float extinction[ISRF_OPERATOR_COUNT];
@@ -291,29 +296,17 @@ radiation_iact_nonsym_feedback_apply(
                     (double)extinction[radiation_isrf_moment_to_operator[m]];
     }
 
-    if (fb_props->ISRF_propagation) {
-      /* Pure accumulation, no reset, so stars on any time bin just add. The
-         fold-in happens in radiation_end_force_propagation(). */
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u_dose_reservoir +=
-            (float)(u_inject[m] / (double)mj);
-      }
-      pj->feedback_data.ISRF_reservoir_end_ti =
-          max(pj->feedback_data.ISRF_reservoir_end_ti, ti_current + ti_step);
+    /* Instantaneous field: reset on the first touch this step, then sum over
+     * the stars. */
+    if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
+      for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+        pj->feedback_data.isrf_moment[m].u = 0.f;
       pj->feedback_data.ISRF_last_touch_ti = ti_current;
-    } else {
-      /* Instantaneous field: reset on the first touch this step, then sum
-         over the stars. */
-      if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
-        for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-          pj->feedback_data.isrf_moment[m].u = 0.f;
-        pj->feedback_data.ISRF_last_touch_ti = ti_current;
-      }
+    }
 
-      /* #u is double: no narrowing cast. */
-      for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
-        pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
-      }
+    /* #u is double: no narrowing cast. */
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
+      pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
     }
 
     /* Renew the window on every touch. The expiry check runs once per step

@@ -71,6 +71,9 @@ runner_iact_nonsym_feedback_density(
   /* The normalization by 1 / h^d is done in feedback.h */
   si->feedback_data.enrichment_weight += mj * wi;
 
+  if (fb_props->ISRF_propagation)
+    radiation_packet_star_density(si, pj, dx, ti_current);
+
   /* Contribution to the number of neighbours */
   si->feedback_data.num_ngbs += 1;
 

@@ -11,11 +11,9 @@ heating rate against Wolfire et al. (1995) Eq. 1 (see
 ## Propagation
 `ISRF_propagation: 0`: this example is about the thermal response to
 whatever field a particle receives directly from the star, not about
-propagation numerics (see the sibling `ISRFHyperbolicPropagation` for
-that). Only gas within the star's own SPH kernel is illuminated.
+the transport of the field. Only gas within the star's own SPH kernel is illuminated.
 
 ## Cooling
-Unlike `ISRFHyperbolicPropagation`,
 `GrackleCooling:disable_cooling_for_debugging` is `0`: this example's whole
 point is to measure the gas's actual thermal response, so cooling and
 heating are both fully active.

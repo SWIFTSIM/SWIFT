@@ -407,6 +407,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_2d_free(&rad->raw.l_edge_pe_2d);
     interpolate_2d_free(&rad->raw.l_edge_lw_2d);
     interpolate_2d_free(&rad->raw.mean_photon_energy_lw_2d);
+    interpolate_2d_free(&rad->raw.mean_photon_energy_pe_2d);
     interpolate_2d_free(&rad->integrated.luminosities_2d);
     interpolate_2d_free(&rad->integrated.dot_N_ion_2d);
     interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
@@ -415,6 +416,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_2d_free(&rad->integrated.l_edge_pe_2d);
     interpolate_2d_free(&rad->integrated.l_edge_lw_2d);
     interpolate_2d_free(&rad->integrated.mean_photon_energy_lw_2d);
+    interpolate_2d_free(&rad->integrated.mean_photon_energy_pe_2d);
   } else {
     interpolate_1d_free(&rad->raw.luminosities);
     interpolate_1d_free(&rad->raw.dot_N_ion);
@@ -425,6 +427,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->raw.l_edge_pe);
     interpolate_1d_free(&rad->raw.l_edge_lw);
     interpolate_1d_free(&rad->raw.mean_photon_energy_lw);
+    interpolate_1d_free(&rad->raw.mean_photon_energy_pe);
     interpolate_1d_free(&rad->integrated.luminosities);
     interpolate_1d_free(&rad->integrated.dot_N_ion);
     interpolate_1d_free(&rad->integrated.dot_E_excess);
@@ -433,6 +436,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->integrated.l_edge_pe);
     interpolate_1d_free(&rad->integrated.l_edge_lw);
     interpolate_1d_free(&rad->integrated.mean_photon_energy_lw);
+    interpolate_1d_free(&rad->integrated.mean_photon_energy_pe);
   }
 
   /* No 1D counterpart: always freed. */
@@ -455,6 +459,7 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->age_max_myr = 0.f;
   rad->with_ISRF = 0;
   rad->has_teff = 0;
+  rad->has_mean_photon_energy_pe = 0;
   for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++)
     rad->table_source[i][0] = '\0';
   rad->table_mass_min = 0.f;

@@ -143,31 +143,6 @@ float feedback_get_star_teff(const struct spart *sp);
 double feedback_get_part_u_PE(const struct part *p);
 double feedback_get_part_u_LW(const struct part *p);
 double feedback_get_part_u_LW_PHOTON(const struct part *p);
-float feedback_get_part_dissipation_alpha_PE(const struct part *p);
-float feedback_get_part_dissipation_alpha_LW(const struct part *p);
-float feedback_get_part_dissipation_alpha_LW_PHOTON(const struct part *p);
-float feedback_get_part_div_specific_flux_PE(const struct part *p);
-float feedback_get_part_div_specific_flux_LW(const struct part *p);
-float feedback_get_part_div_specific_flux_LW_PHOTON(const struct part *p);
-void feedback_get_part_specific_flux_PE(const struct part *p, float *ret);
-void feedback_get_part_specific_flux_LW(const struct part *p, float *ret);
-void feedback_get_part_specific_flux_LW_PHOTON(const struct part *p,
-                                               float *ret);
-struct engine;
-float feedback_get_part_u_min_since_snapshot_PE(const struct part *p,
-                                                const struct engine *e);
-float feedback_get_part_u_min_since_snapshot_LW(const struct part *p,
-                                                const struct engine *e);
-float feedback_get_part_u_min_since_snapshot_LW_PHOTON(const struct part *p,
-                                                       const struct engine *e);
-float feedback_get_part_cumulative_injected_PE(const struct part *p);
-float feedback_get_part_cumulative_injected_LW(const struct part *p);
-float feedback_get_part_cumulative_injected_LW_PHOTON(const struct part *p);
-float feedback_get_part_cumulative_absorbed_PE(const struct part *p);
-float feedback_get_part_cumulative_absorbed_LW(const struct part *p);
-float feedback_get_part_cumulative_absorbed_LW_PHOTON(const struct part *p);
-float feedback_get_part_c_hyp(const struct part *p);
-float feedback_get_part_pending_specific_energy(const struct part *p, int m);
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 void feedback_init_after_star_formation(
@@ -177,18 +152,27 @@ void feedback_init_after_star_formation(
 void feedback_first_init_spart(struct spart *sp,
                                const struct feedback_props *feedback_props);
 
-/*! ISRF layout marker written ahead of #feedback_props: 1 reduced flux, 2
- * pending fields at a = 0 only, 3 phi-weighted pending at any a, 4
- * reduced-flux dissipation fields, 5 HII random cone frame flag in
- * #feedback_props, 6 HII cone frame redraw period in #feedback_props, 7 HII
- * pass count in the star, 8 HII cone claim rule in #feedback_props, 10 HII
- * cone claim rule removed from #feedback_props. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 10
+void feedback_book_removed_gas_to_spart(const struct part *p, struct spart *sp);
+void feedback_book_removed_gas_to_sink(const struct part *p, struct sink *s);
+void feedback_book_sink_merger(struct sink *si, const struct sink *sj);
+void feedback_book_removed_gas_left_box(const struct part *p);
+void feedback_first_init_sink(struct sink *s);
+
+/*! ISRF layout marker written ahead of #feedback_props. It changes whenever
+ * the layout of the gas, the star, the sink, #feedback_props or the feedback
+ * restart blocks changes, so that a restart file of another layout is
+ * refused. */
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 20
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts
     writes #FEEDBACK_RESTART_ISRF_PART_LAYOUT unchanged. */
-#define FEEDBACK_RESTART_SELECTION_FACTOR 16
+#define FEEDBACK_RESTART_SELECTION_FACTOR 32
+
+_Static_assert(FEEDBACK_RESTART_ISRF_PART_LAYOUT <
+                   FEEDBACK_RESTART_SELECTION_FACTOR,
+               "The absent-mask check of a restart file needs the layout "
+               "marker below the selection factor.");
 
 /**
  * @brief The particle layout marker this build writes to its restart files.

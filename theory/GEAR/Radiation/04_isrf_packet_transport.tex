@@ -1,0 +1,856 @@
+\section{ISRF channel: packet-hop transport}
+\label{sec:packet}
+
+This section describes the packet-hop transport of the two ISRF bands, which
+\code{GEARFeedback:ISRF\_propagation: 1} selects. It needs the HEALPix C library. It runs in static and in cosmological boxes. Positions,
+offsets, smoothing lengths and path lengths are comoving, and a physical length
+is $a$ times the comoving one. Dust absorption, the redshift of the light, the step
+lengths and the field that the gas sees are physical.
+
+A packet is a quantity of band energy with a photon number and a direction.
+A star hands its light to the gas around it. Each gas particle holds the light
+it received, and hands it on to its downstream neighbours once per own step.
+One hop is one step of the sending particle. The speed of the light is limited
+by default (Section~\ref{sec:packet-lightspeed}); the hop description of the
+sections below holds without a limit unless the text says otherwise. The sections below give the packet
+(Section~\ref{sec:packet-state}), the hop (\ref{sec:packet-hop}), the merge
+(\ref{sec:packet-merge}), the emission by a star (\ref{sec:packet-emission}),
+the redshift and the band-edge transfer (\ref{sec:packet-transfer}), the dust
+absorption (\ref{sec:packet-absorption}), the treatment of unequal
+time bins (\ref{sec:packet-reservoir}), the field that the gas sees
+(\ref{sec:packet-field}), the frame of reference of the light
+(\ref{sec:packet-frame}) and the ledgers (\ref{sec:packet-ledger}).
+
+\subsection{Symbols and conventions}
+\label{sec:packet-symbols}
+
+Bands are $b\in\{{\rm PE},{\rm LW}\}$. The band lower edges are
+$E_{{\rm lo},{\rm PE}}=6.0$\,eV and $E_{{\rm lo},{\rm LW}}=11.2$\,eV, and the
+upper edges $E_{{\rm hi},b}$ are $11.2$\,eV (PE) and $13.6$\,eV (LW). Slots are numbered by $k$,
+sending particles by $i$, receiving particles by $j$. Lengths are comoving unless
+marked physical.
+
+\begin{center}
+\begin{tabular}{p{1.9cm}p{3.4cm}p{8.6cm}}
+\hline
+symbol & units & meaning \\
+\hline
+$E_{k,b}$ & energy & band energy held in slot $k$ of a particle \\
+$N_{k,b}$ & energy & photon number of slot $k$, stored as $N E_{{\rm lo},b}$ (number of photons times the lower edge energy) \\
+$\bar E_b$ & energy & mean photon energy of the band, $E_{{\rm lo},b}\,E_{k,b}/N_{k,b}$ \\
+$f_b$ & -- & photon number per unit energy of a star, $E_{{\rm lo},b}/\bar E_b$ \\
+$\boldsymbol{n}_k$ & -- & unit direction of travel of slot $k$ \\
+$d_k$ & length & distance from the origin of slot $k$ to the particle \\
+$\boldsymbol{o}$ & length & offset from a particle to the origin of a packet \\
+$\boldsymbol{\Delta x}_{ij}$ & length & vector from sender $i$ to receiver $j$ \\
+$h_i$ & length & smoothing length of sender $i$; kernel support $\gamma h_i$ \\
+$H_{ij}$ & length & $\max(h_i,h_j)$, the length of the kernel in the weight of sender $i$ and receiver $j$ \\
+$W,\gamma$ & length$^{-3}$, -- & hydro kernel of the build and its support in units of $h$ \\
+$p$ & -- & power of the hop cone, \code{ISRF\_packet\_cone\_power} (default 4) \\
+$\mu_{ij,k}$ & -- & cosine between $\boldsymbol{\Delta x}_{ij}$ and $\boldsymbol{n}_k$ \\
+$V_j$ & length$^3$ & comoving volume $m_j/\rho_j$ of receiver $j$ \\
+$w_{ij,k}$ & -- & hop weight of slot $k$ towards $j$ \\
+$S_{i,k}$ & -- & sum of the hop weights of slot $k$ over the neighbours of $i$ \\
+$\kappa_b$ & 1/length & linear dust absorption rate of band $b$ at the receiver, physical \\
+$\lambda_E(b)$, $\lambda_N$ & -- & band-edge weight of the energy of band $b$, and of the LW photon number (Section~\ref{sec:packet-transfer}) \\
+$H$, $\zeta$ & 1/time, -- & Hubble rate, and redshift depth of a share, $\zeta=H\,\ell_{\rm phys}/c$ \\
+$\ell_{\rm phys}$ & length & physical path length of a share, $\ell_{\rm phys}=a\,\Delta\ell$ \\
+$\nu$ & -- & rate per unit $\zeta$ at which the PE photon number crosses $6$\,eV \\
+$R$ & -- & rotation matrix of the slot frame \\
+$E_{{\rm hi},b}$ & energy & upper edge of band $b$ \\
+$L_b$ & energy/time & band luminosity of a star, physical \\
+$\Delta t_\star$ & time & feedback step of the star, proper time \\
+$m_j$, $\rho_j$ & mass, mass/length$^3$ & mass and (comoving) density of gas particle $j$ \\
+$a$ & -- & scale factor, 1 in a static box \\
+$f_{{\rm rel},k}$ & -- & fraction of the reservoir of slot $k$ released at a merge \\
+$B_{k,b}$ & energy & reservoir of slot $k$ (light from sources with a longer step) \\
+$S_{\rm floor}$ & length$^3$ & cell floor of a star's emission \\
+$E_{\rm fl}$ & energy & light in flight \\
+$Y$ & energy & cumulative energy removed by the expansion from the shares booked into a gas particle, net of the gain from the other band (Section~\ref{sec:packet-transfer}) \\
+$I_{\rm inh}$ & energy & inherited ledger of a star or a sink \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{The packet and its reception slots}
+\label{sec:packet-state}
+
+A gas particle holds one packet per reception slot. The slots are the cells of a
+partition of the sphere of directions into $K$ cells of equal solid angle. The
+cells are convex cones fixed in a rotated frame, so the mean of any set of
+directions of one cell lies in that cell. Each slot holds, for both bands, the
+energy $E_{k,b}$ and the photon number $N_{k,b}$, and for both bands together
+one direction $\boldsymbol{n}_k$ and one distance $d_k$ to its origin. The mean photon energy
+of a band follows from the pair,
+\begin{equation}
+  \bar E_b = E_{{\rm lo},b}\,\frac{E_{k,b}}{N_{k,b}}.
+  \label{eq:packet-meanE}
+\end{equation}
+A star sets the photon number of its emission from the mean photon energy
+of its spectrum in the band, clamped to the band,
+\begin{equation}
+  N = f_b\,E, \qquad f_b=\frac{E_{{\rm lo},b}}{\bar E_b}, \qquad
+  E_{{\rm lo},b}\le \bar E_b\le E_{{\rm hi},b}.
+  \label{eq:packet-photonfrac}
+\end{equation}
+
+\paragraph{The slot function.} Let $\boldsymbol{y}=R\,\boldsymbol{x}$ be a
+direction $\boldsymbol{x}$ in the frame, $R$ a rotation matrix. The slot of
+a direction depends on the number $K$ of slots, a compile-time option.
+\begin{align}
+  K=8:&\quad k=\sum_{m=0}^{2} 2^m\,[\,y_m\ge 0\,], \label{eq:packet-slot8}\\
+  K=12:&\quad k=4m+2\,[\,y_{i}\ge0\,]+[\,y_{j}\ge0\,], \quad
+  m=\arg\min_{m'} |y_{m'}|, \label{eq:packet-slot12}\\
+  K=16:&\quad k=\sum_{m=0}^{2} 2^m\,[\,y_m\ge 0\,]+8\,[\,|y_1|>|y_0|\,],
+  \label{eq:packet-slot16}
+\end{align}
+with $[\cdot]$ equal to 1 if the condition holds and 0 otherwise. In
+Eq.~\eqref{eq:packet-slot12}, $m$ is the axis of the smallest $|y|$, the lowest axis on a tie, and $(i,j)$ are the two
+other axes in axis order (here $i$ and $j$ are axis indices): $(1,2)$ for $m=0$, $(0,2)$ for $m=1$ and $(0,1)$ for
+$m=2$. For $K=8$ the cells are the octants of the frame. For $K=12$
+they are the faces of a rhombic dodecahedron. For $K=16$ they are the octants
+halved by the plane $|y_0|=|y_1|$; a tie $|y_0|=|y_1|$ goes to the lower half. A direction on a border goes to the cell
+with the positive coordinate, whatever the sign of a zero. A
+direction in the same octant as another differs from it by at most
+$90^\circ$, so for $K=8$ light from opposite sides is never put in one slot.
+
+\paragraph{The frame.} The matrix is
+\begin{equation}
+  R = R_z(\theta_z)\,R_y(\theta_y)\,R_x(\theta_x),
+  \label{eq:packet-frame}
+\end{equation}
+with $\theta_x,\theta_y,\theta_z$ the angles of
+\code{ISRF\_packet\_octant\_frame\_angles\_deg}, default $(24^\circ,36^\circ,66^\circ)$.
+The default keeps every cell border at least $10^\circ$ from the six box axes for $K=12$ ($19^\circ$ for $K=8$, $6^\circ$ for $K=16$). Box diagonals can lie on a border: the $(1,1,1)$ directions are $0.01^\circ$ from one at $K=12$. A source or beam exactly along a box diagonal then gets an arbitrary but deterministic slot; rotate the frame with \code{ISRF\_packet\_octant\_frame\_angles\_deg} for such a fixture. A positive seed offset
+\code{ISRF\_packet\_octant\_frame\_seed\_offset} multiplies $R$ on the left by
+a rotation drawn uniformly from that seed \citep{Shoemake1992}, so that repeats of a
+run use independent frames. The frame is the same for every particle.
+
+\paragraph{Implementation.} All locations are in the repository root. Line
+numbers refer to the source of this document; where lines move, find
+the construct by name. The slot count is
+\code{RADIATION\_PACKET\_SLOTS}, set by \code{--with-isrf-packet-slots=<N>}
+(\code{configure.ac:3048-3056}, default 12; \code{N} other than 8, 12 or 16
+is an error; the default and the check are repeated at
+\code{src/feedback/GEAR\_thermal/feedback\_struct.h:139-158}). The slot
+struct is \code{feedback\_isrf\_packet\_slot\_data}
+(\code{feedback\_struct.h:282-343}); the packet is
+\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:349-384}).
+Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:189-196}).
+Eq.~\eqref{eq:packet-photonfrac} is
+\code{radiation\_set\_star\_packet\_photon\_fraction}
+(\code{src/feedback/GEAR/radiation.h:385-396}, the ratio at :395). The transport stops at
+start-up if a yields table lacks \code{MeanPhotonEnergyPE} or
+\code{Integrated\_MeanPhotonEnergyPE}
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:886-899}).
+Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
+(\code{src/feedback/GEAR/radiation\_packet.c:446-457}), and
+Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot16} are
+\code{radiation\_packet\_slot} (\code{radiation\_packet.c:477-503}).
+Eq.~\eqref{eq:packet-frame} is
+\code{radiation\_packet\_build\_octant\_frame}
+(\code{radiation\_packet.c:554-610}). The frame is copied onto each particle by
+\code{radiation\_set\_part\_transport} (\code{radiation\_isrf.c:99-107}).
+
+\subsection{The hop}
+\label{sec:packet-hop}
+
+Once per own step, every active sender $i$ hands the energy and the photon
+number held in each non-empty slot $k$ to its neighbours. Slot $k$ sends to
+neighbour $j$ the fraction
+\begin{equation}
+  \phi_{ij,k} = \frac{w_{ij,k}}{S_{i,k}}, \qquad
+  S_{i,k}=\sum_{j'} w_{ij',k}, \qquad
+  w_{ij,k}=V_j\,W(r_{ij},H_{ij})\,\mu_{ij,k}^{\,p},\qquad
+  H_{ij}=\max(h_i,h_j),
+  \label{eq:packet-share}
+\end{equation}
+where $r_{ij}=|\boldsymbol{\Delta x}_{ij}|$ and
+$\mu_{ij,k}=\boldsymbol{\Delta x}_{ij}\!\cdot\!\boldsymbol{n}_k/r_{ij}$. The sum
+$S_{i,k}$ is the SPH quadrature of $\int W\mu^p\,\mathrm{d}V$, so across a density
+gradient the shares follow the solid angle and not the number of neighbours on
+each side. The density is the previous-step snapshot read by the gradient and the
+force loop alike; the one out-of-line function divides $m_j$ by $\rho_j$ for both loops. Its expansion factor is common to all receivers and cancels in
+$\phi_{ij,k}$. The weight $w_{ij,k}$ is zero if $r_{ij}=0$, if $j$ is not in the reach of $i$
+(below), or if $\mu_{ij,k}\le\mu_{\rm min}=10^{-3}$. The sum runs over all neighbours with
+non-zero weight. The sender's weights are equal in the gradient loop that
+forms $S_{i,k}$ and in the force loop that books the shares, because one
+function computes both, so $\sum_j\phi_{ij,k}=1$ up to float rounding. The
+hop hands on the whole of each slot: nothing is kept by the sender.
+
+The reach of a hop is the kernel support of the sender, $r_{ij}<\gamma h_i$, and, for a
+receiver $j$ that is active in this step, the kernel support of the receiver,
+$r_{ij}<\gamma h_j$. Both radii are cut by the factor $1-\varepsilon$,
+$\varepsilon=10^{-5}$, so that the filter of each loop, whose square distance may round
+differently, contains the reach. The weight uses the larger of the two lengths,
+$H_{ij}$, for every receiver in the reach, so that it does not depend on the activity
+of the receiver. An inactive receiver beyond the kernel support of the sender gets no
+light. The gradient loop of the default hydro scheme visits a pair only inside the
+kernel support of the updated particle, so it sees the part of the reach beyond the
+sender's kernel from the visit of the receiver, which exists only when the receiver is
+active; the force loop uses the same membership test, so the shares of a sender sum to 1.
+With a hydro scheme whose gradient loop is two-sided (a single rank only), the activity of the receiver plays
+no role. The reach is a geometric bound and not a
+light travel distance. The step of the sender does not limit it. The speed of
+light limits when a share arrives, not how far it reaches
+(Section~\ref{sec:packet-lightspeed}); only the mode \code{fixed} bounds the
+time step.
+
+For the Wendland-C2 kernel of the canonical build (three dimensions),
+\begin{equation}
+  W(r,h) = \frac{21}{2\pi\,\gamma^{3}h^{3}}\,(1-q)^4\,(1+4q), \qquad
+  q=\frac{r}{\gamma h},\quad \gamma=1.936492,
+  \label{eq:packet-kernel}
+\end{equation}
+which is the polynomial $4q^5-15q^4+20q^3-10q^2+1$, equal to $(1-q)^4(1+4q)$
+\citep{Wendland1995}. Other kernels give their own $W$. The normalisation and the factor
+$h_i^{-3}$ are the same for every neighbour of $i$, so they cancel in
+$\phi_{ij,k}$: only the shape of $W$, the volume $V_j$ and the factor $\mu^p$ matter. A larger $p$
+gives a narrower cone.
+
+The share is placed in the slot of the receiver that holds the direction from
+the packet's origin to the receiver. Seen from the receiver, the origin lies at
+\begin{equation}
+  \boldsymbol{o}_{j} = -\boldsymbol{\Delta x}_{ij} - d_{i,k}\,\boldsymbol{n}_{i,k},
+  \label{eq:packet-offset}
+\end{equation}
+because the origin is $d_{i,k}$ behind the sender along its direction. The slot of the
+receiver is the slot function of Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot16}
+applied to $-\boldsymbol{o}_j$. The slot is
+chosen from this geometry and not from the slot index of the sender. The share
+carries the energy $\phi_{ij,k}E_{i,k,b}$ and the photon number $\phi_{ij,k}N_{i,k,b}$
+of each band $b$, changed by the redshift and the band-edge transfer of Section~\ref{sec:packet-transfer} and reduced by the absorption of Section~\ref{sec:packet-absorption}.
+
+The gradient loop also forms the mean advance of the slot along its direction,
+\begin{equation}
+  l_{i,k} = \frac{1}{S_{i,k}}\sum_{j} w_{ij,k}\,
+  \boldsymbol{\Delta x}_{ij}\!\cdot\!\boldsymbol{n}_{i,k},
+  \label{eq:packet-advance}
+\end{equation}
+which Section~\ref{sec:packet-field} uses. If a non-empty slot has
+$S_{i,k}=0$, it has no downstream neighbour, and its light is booked as escaped
+(Section~\ref{sec:packet-ledger}).
+
+\paragraph{Implementation.} The weight, Eq.~\eqref{eq:packet-share} third
+formula, is \code{radiation\_packet\_transmission\_weight}
+(\code{radiation\_packet.c:411-428}). The membership
+test of the reach is \code{radiation\_packet\_in\_reach} (:370-380) and the cut
+$\varepsilon$ is \code{RADIATION\_PACKET\_REACH\_GUARD} (\code{radiation\_packet.h:73}). The cutoff
+$\mu_{\rm min}$ is \code{RADIATION\_PACKET\_MU\_MIN}
+(\code{src/feedback/GEAR/radiation\_packet.h:53}). The function is out of line and divides
+$m_j$ by $\rho_j$ inside, so both loops use the same compiled arithmetic. The coefficients of
+Eq.~\eqref{eq:packet-kernel} are \code{kernel\_coeffs}, \code{kernel\_constant}
+and \code{kernel\_gamma} in \code{src/kernel\_hydro.h} (one block per kernel; the
+Wendland C2 block is at :121-150), evaluated by
+\code{kernel\_eval} (\code{kernel\_hydro.h:297-318}). The gradient loop sums
+$S_{i,k}$ and the numerator of Eq.~\eqref{eq:packet-advance} in
+\code{radiation\_packet\_gradient\_accumulate}
+(\code{radiation\_packet.h:359-380}), called from
+\code{runner\_iact\_isrf\_gradient} and its non-symmetric twin
+(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:74-76}, :105-112, the latter
+also adding the part of the reach of an active receiver). The division by
+$S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
+\code{radiation\_packet.c:2122}. The share $\phi_{ij,k}$ is
+\code{fraction} in \code{radiation\_packet\_book\_share}
+(\code{radiation\_packet.h:592-658}, \code{fraction} at :612), and
+Eq.~\eqref{eq:packet-offset} is its
+\code{offset} (:615-617). The receiving slot is chosen in
+\code{radiation\_packet\_deliver} from the vector \code{from\_origin}
+(\code{radiation\_packet.h:491-572}, \code{from\_origin} at :503). The force loop calls
+\code{radiation\_packet\_book\_share} from
+\code{runner\_iact\_isrf\_packet\_hop} and its non-symmetric twin
+(\code{radiation\_propagation\_iact.h:141-144}, :180-189, the latter also
+booking the part of the reach of a foreign active sender). The vector
+\code{dx\_ij} passed to it points from sender to receiver. The sender's held
+energy is set to zero at the end of the force loop
+(\code{radiation\_packet\_end\_force}, \code{radiation\_packet.c:2156-2175}). The
+escape of a slot with $S_{i,k}=0$ is at \code{radiation\_packet.c:2132-2139}. The parameter $p$ is
+copied to each particle at \code{radiation\_isrf.c:103}, and
+\code{ISRF\_packet\_cone\_power} is parsed at
+\code{src/feedback/GEAR\_thermal/feedback\_properties.h:840-842} and checked at :887-890.
+
+\subsection{The merge}
+\label{sec:packet-merge}
+
+At each active step of the particle, when its previous step has ended, in each slot, the energy and the photon
+number that have arrived since the last active step become the held packet.
+Let $I_{k,b}$ be the energy that arrived in the inbox of slot $k$, and
+$f_{{\rm rel},k} B_{k,b}$ the part of the reservoir of Section~\ref{sec:packet-reservoir}
+that is due. Then
+\begin{equation}
+  E_{k,b} \leftarrow E_{k,b} + I_{k,b} + f_{{\rm rel},k} B_{k,b},
+  \label{eq:packet-merge-E}
+\end{equation}
+and the photon number $N_{k,b}$ is updated in the same way. Each arriving share
+brought an offset $\boldsymbol{o}_s$ (Eq.~\eqref{eq:packet-offset}, or the star-to-gas
+vector of Section~\ref{sec:packet-emission}) and a transmitted energy
+$e_s=\sum_b e_{s,b}$ summed over both bands. The slot takes the
+energy-weighted mean origin of its arrivals,
+\begin{equation}
+  \boldsymbol{o}_k = \frac{\sum_s e_s\,\boldsymbol{o}_s}{\sum_s e_s},
+  \qquad d_k=|\boldsymbol{o}_k|, \qquad
+  \boldsymbol{n}_k = -\frac{\boldsymbol{o}_k}{d_k},
+  \label{eq:packet-merge-origin}
+\end{equation}
+for $d_k>0$. For $d_k=0$ the direction is $\boldsymbol{n}_k=(0,0,1)$. One origin and
+one direction serve both bands. A slot that received no energy keeps its origin and direction. The energy held
+before the merge is not part of the mean: the slot is empty at the merge,
+because the force loop sent its content.
+
+Every share was placed in its slot by its own geometry, so slots never merge
+with each other. Within a slot, the merge conserves the energy and the photon
+number of each band exactly (they are sums). It does not conserve the
+directions: the individual directions of the arriving shares are replaced by
+one mean direction, and the angular spread of the slot is lost. Because
+$|\sum e_s\boldsymbol{o}_s|\le\sum e_s|\boldsymbol{o}_s|$, the merged distance $d_k$ is not
+larger than the energy-weighted mean of the distances of the shares. The redshift
+and the dust absorption of the later hops are computed from the merged origin
+(Sections~\ref{sec:packet-transfer} and \ref{sec:packet-absorption}), not from the sum of the separate paths.
+The vector $-\boldsymbol{o}_k$ is a positive combination of the vectors $-\boldsymbol{o}_s$, which all lie
+in one convex cone, so it lies in that cone, and the direction $\boldsymbol{n}_k$ is in the cell
+of its slot, apart from the case $d_k=0$.
+
+\paragraph{Implementation.} The merge of one slot without a speed limit is
+\code{radiation\_packet\_merge\_slot\_unlimited} (\code{radiation\_packet.c:1706-1782}), called
+for every slot by \code{radiation\_packet\_merge} (:2025-2081), which
+\code{radiation\_snapshot\_part\_propagation} calls for active particles
+(\code{radiation\_isrf.c:119-177}, the call at :173). Eq.~\eqref{eq:packet-merge-E} is at
+\code{radiation\_packet.c:1751-1759}. The sums of Eq.~\eqref{eq:packet-merge-origin} are
+formed in \code{radiation\_packet\_deliver} as \code{inbox\_origin\_offset}
+(\code{radiation\_packet.h:546} and :566, weight \code{delivered\_energy}, summed
+over the bands inside \code{radiation\_packet\_absorb\_in\_dust}, :419-451); the
+division by $\sum_s e_s$ is at
+\code{radiation\_packet.c:1656} in \code{radiation\_packet\_set\_origin} (:1653-1681), $d_k$ at :1657-1659, $\boldsymbol{n}_k$ at :1661, and the
+fallback direction at :1677-1679. The merge returns before any change of origin
+when the slot received no energy (:1780). The fields of
+Eq.~\eqref{eq:packet-merge-origin} are \code{origin\_distance},
+\code{direction} and \code{inbox\_origin\_offset} in
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:282-343}).
+
+\subsection{Limit: merged slots break the linearity of the superposition}
+\label{sec:packet-superposition}
+
+The transport is linear in the energy that each source emits, as long as every
+source keeps its own slots. It is not exactly linear when two sources send light
+into the same slot of a receiver. The slot then keeps one mean origin and one
+direction (Eq.~\eqref{eq:packet-merge-origin}), and the later hops use that merged
+direction. The field of two sources is then not the sum of the fields that each source gives alone.
+Two cases fall under this limit: two beams or stars whose light reaches a gas
+particle from directions less than about one slot apart, and the spread of the
+transmission cone, which carries a part of a beam into the neighbouring slots. For
+two beams at $60^\circ$, $87.6\,\%$ of the light of the first beam arrives in one slot
+of the receivers, and $8.4\,\%$ of the light of the second beam arrives in the same slot.
+
+Measured on a gas box with 12 slots and two test beams (Section~\ref{sec:packet-state}
+describes the slots), the field after 24 steps of the two beams together differs from the
+sum of the fields of the two single-beam runs by a fraction $5.4\times10^{-2}$ of the
+field for beams at $60^\circ$. For beams at $180^\circ$ the fraction is $3.7\times10^{-6}$,
+the rounding of the single precision sums, because the beams then use opposite slots
+and never mix. For two stars in a low-resolution box the total light summed over
+all gas particles after 64 steps differs from the sum of the two single-star runs
+by a fraction $1.3\times10^{-4}$. The light of a single gas particle differs by
+$13\,\%$. The scheme conserves the energy of each band exactly in every case
+(Section~\ref{sec:packet-merge}); what it loses is the exact additivity of the
+directions.
+
+This is an accepted limit of the scheme. It affects the direction of the light that
+reaches a particle from several sources, not the total energy. The effect of the
+number of slots on it has not been measured.
+
+\subsection{Emission by a star}
+\label{sec:packet-emission}
+
+A star gives its light of one feedback step, $L_b\Delta t_\star$ per band, to the
+gas particles around it. These particles are the receivers: gas with
+$q<q_{\rm e}$, where $q=r/(\gamma h_\star)$ is the distance to the star over the kernel
+support radius, $q_{\rm e}=0.95$, and a positive density. The star
+The receivers are sorted into $n_c=12$ emission cells, the
+pixels of a HEALPix map with \code{nside}$=1$. These cells have equal solid angle
+$4\pi/12$. Their frame is a uniform random rotation $Q$ that depends on the ID of the star and on
+the start $t_{\rm b}$ of its step, so the cell pattern changes at each step. With three
+uniform numbers $u_1,u_2,u_3\in[0,1)$ drawn from a counter-based generator keyed by
+the star ID and by $3t_{\rm b}+0$, $+1$, $+2$, the unit quaternion
+$(q_x,q_y,q_z,q_w)$ is \citep{Shoemake1992}
+\begin{align}
+  q_x&=\sqrt{1-u_1}\,\sin 2\pi u_2, & q_y&=\sqrt{1-u_1}\,\cos 2\pi u_2,\nonumber\\
+  q_z&=\sqrt{u_1}\,\sin 2\pi u_3, & q_w&=\sqrt{u_1}\,\cos 2\pi u_3,
+  \label{eq:packet-quat}
+\end{align}
+and the cell $c$ of a gas particle is the pixel \citep{Gorski2005} that contains $Q\,\hat{\boldsymbol{d}}$,
+with $\hat{\boldsymbol{d}}$ the unit vector from the star to the gas.
+
+Each receiver $j$ in cell $c$ has the weight
+\begin{equation}
+  w_j = \frac{m_j}{\rho_j}\Big(1-\frac{q_j}{q_{\rm e}}\Big),
+  \label{eq:packet-tent}
+\end{equation}
+which is the comoving volume of the particle times a linear (tent) function of
+$q$ that falls to zero at $q_{\rm e}$. The weight is zero beyond $q_{\rm e}$, so
+a pair near the edge of the support cannot change a share. Let $S_c=\sum_{j\in c}w_j$
+be the weight sum of the cell, and
+\begin{equation}
+  S_{\rm floor} = f_0\,\frac{\pi}{3}\,\frac{(q_{\rm e}\gamma h_\star)^3}{n_c},
+  \qquad f_0=\tfrac12,
+  \label{eq:packet-floor}
+\end{equation}
+the cell floor. $S_{\rm floor}$ is $f_0$ times the value of $S_c$ for a uniform gas, because
+$\int_0^{r_{\max}}4\pi r^2(1-r/r_{\max})\,dr=\pi r_{\max}^3/3$ with $r_{\max}=q_{\rm e}\gamma h_\star$.
+Each cell holds $1/n_c$ of the star's light. The part of it that no receiver takes
+escapes, with the escaping fraction of cell $c$
+\begin{equation}
+  \varepsilon_c =
+  \begin{cases}
+    0, & S_c\ge S_{\rm floor},\\
+    (1-S_c/S_{\rm floor})/n_c, & 0<S_c<S_{\rm floor},\\
+    1/n_c, & S_c=0.
+  \end{cases}
+  \label{eq:packet-escape}
+\end{equation}
+The delivered fraction $D=1-\sum_c\varepsilon_c$ is shared by all receivers of the star
+in proportion to their weights: receiver $j$ gets the fraction of the star's light
+\begin{equation}
+  \varphi_j = D\,\frac{w_j}{S_{\rm tot}}, \qquad S_{\rm tot}=\sum_c S_c,
+  \label{eq:packet-emit-share}
+\end{equation}
+so $\sum_j\varphi_j=D$. A cell with fewer emitters than its volume needs does not raise
+the share of its receivers, because the shares do not depend on the cell of the receiver. A cell
+with a real hole ($S_c<S_{\rm floor}$) still lets its part escape. A star with no receiver loses all its light, $D=0$.
+The energy of receiver $j$ in
+band $b$ is $L_b\Delta t_\star\,\varphi_j$ and its photon number is
+$f_b$ times that energy (Eq.~\eqref{eq:packet-photonfrac}). The share arrives
+with the offset $\boldsymbol{o}=\boldsymbol{x}_\star-\boldsymbol{x}_j$ of the origin at
+the star, and it is absorbed along the distance $r=|\boldsymbol{o}|$
+(Section~\ref{sec:packet-absorption}). The weight sums $S_c$ come from the star's
+density loop and the shares from its feedback loop, which use the same function.
+
+\paragraph{Implementation.} The star's density loop calls
+\code{radiation\_packet\_star\_density} (\code{radiation\_packet.h:760-777}, called at
+\code{src/feedback/GEAR\_thermal/feedback\_iact.h:75}), which adds the weight
+to \code{cone\_weight[c]} (\code{radiation\_packet.h:768}). The feedback loop
+calls \code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:801-849}, called at
+\code{src/feedback/GEAR/radiation\_iact.h:277}). Both loops take $c$, $q$ and $w_j$ from
+\code{radiation\_packet\_star\_gas\_weight} (\code{radiation\_packet.c:796-821}).
+The cell is \code{radiation\_packet\_emission\_cone}
+(\code{radiation\_packet.c:737-776}). The
+number of cells is \code{RADIATION\_PACKET\_EMISSION\_CONES}
+(\code{feedback\_struct.h:69}) and $q_{\rm e}$ is \code{STAR\_GAS\_WEIGHT\_EDGE}
+(\code{src/feedback/GEAR/star\_gas\_weights.h:34}). Eq.~\eqref{eq:packet-tent} is
+\code{star\_gas\_tent\_weight} (\code{star\_gas\_weights.h:54-58}),
+Eq.~\eqref{eq:packet-floor} is \code{star\_gas\_cone\_floor} (:70-75, with $f_0$ the
+\code{STAR\_GAS\_CONE\_FLOOR\_FRACTION} of :38), Eq.~\eqref{eq:packet-emit-share}
+is \code{star\_gas\_global\_share} (\code{star\_gas\_weights.h:123-132}), which takes
+$D$ from \code{star\_gas\_escape\_fraction} (:102-108), the sum over the cells of
+Eq.~\eqref{eq:packet-escape}, \code{star\_gas\_cone\_escape} (:87-91). It is called in
+\code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:826-828}) with the 12 cell sums
+and the floor (\code{radiation\_packet\_cone\_floor}, :745-749). The energy and the photon number
+follow from the fraction (:830-837), then the delivery (:844-848). The star zeroes its cone
+sums before the density loop (\code{radiation\_packet\_init\_star\_cones},
+\code{radiation\_packet.h:721-737}, called
+at \code{src/feedback/GEAR\_thermal/feedback.c:544}).
+
+\subsection{Redshift and band-edge transfer}
+\label{sec:packet-transfer}
+
+In an expanding box a share loses energy to the expansion along its path. The
+loss is taken once, when the share is booked, and before the dust acts
+(Section~\ref{sec:packet-absorption}). A band edge is fixed in physical
+energy, so a band loses photons through its lower edge: the energy of band $b$
+falls with the band-edge weight $\lambda_E(b)\ge1$, and the part that crosses
+the $11.2$\,eV edge from LW enters PE. With $\ell_{\rm phys}$ the physical path of the share
+(Eq.~\eqref{eq:packet-path} times $a$), $H$ the Hubble rate and $c$ the speed of light, the redshift
+depth is
+\begin{equation}
+  \zeta = \frac{H\,\ell_{\rm phys}}{c}.
+  \label{eq:packet-zeta}
+\end{equation}
+The energy of the share in LW and PE, before ($e$) and after ($e'$), is
+\begin{align}
+  e'_{\rm LW} &= e_{\rm LW}\,e^{-\lambda_E({\rm LW})\,\zeta}, \nonumber\\
+  e'_{\rm PE} &= e_{\rm PE}\,e^{-\lambda_E({\rm PE})\,\zeta}
+    + \frac{\lambda_E({\rm LW})-1}{\lambda_E({\rm LW})}\,
+      \big(e_{\rm LW}-e'_{\rm LW}\big).
+  \label{eq:packet-redshift-E}
+\end{align}
+The photon number $n$ of LW (stored as $N E_{\rm lo}$) falls with its own weight $\lambda_N$, and the photons
+that it loses enter PE in units of the PE lower edge. The photon number of PE
+falls at the rate with which its own photons cross $6$\,eV, with
+$\nu=(\lambda_E({\rm PE})-1)\,e_{\rm PE}/n_{\rm PE}=(\lambda_E({\rm PE})-1)\,\bar E_{\rm PE}/E_{{\rm lo},{\rm PE}}$,
+$\bar E_{\rm PE}$ being the mean photon energy of the share:
+\begin{align}
+  n'_{\rm LW} &= n_{\rm LW}\,e^{-\lambda_N\,\zeta}, \nonumber\\
+  n'_{\rm PE} &= n_{\rm PE}\,e^{-\nu\,\zeta}
+    + \frac{E_{{\rm lo},{\rm PE}}}{E_{{\rm lo},{\rm LW}}}\,
+      \big(n_{\rm LW}-n'_{\rm LW}\big).
+  \label{eq:packet-redshift-N}
+\end{align}
+No table gives $\nu$, because the field has no PE photon moment. The
+photon gain of PE and its energy gain describe the same photons only if the
+mean photon energy of the share is the table mean from which the weights come.
+Only the LW photon number reaches Grackle (Section~\ref{sec:packet-field}), so
+the PE photon number is a ledger quantity. In every band, the amount removed,
+net of the gain from the other band, is added to the redshift ledger $Y$ of the
+receiver (Section~\ref{sec:packet-ledger}). $Y_{\rm PE}$ can be negative. At
+fixed $a$ and $H$, and when each merge receives a single share, $\zeta$ adds along
+a chain of hops as the path does. One long hop and many short hops then give the
+same LW energy and LW photon number, and the same PE amounts to first order in
+$\zeta$. $H$ and $a$ are the values at the time of the booking, for a hop and for
+a star. With $H=0$ in a
+static box, there is no redshift and no transfer.
+
+The archived M1 solver (tag \code{isrf-m1-last}) took one combined depth for the
+dust and the expansion, and split the LW loss by the ratio of the two rates.
+The packet transport applies the redshift first and the dust second. The two agree in
+the energy that LW transmits, $E_{\rm LW}e^{-(\tau+\lambda_E({\rm LW})\zeta)}$, and
+in the PE gain when $\kappa=0$. With dust, the PE gain and the split of the loss between the
+redshift ledger and the absorbed ledger differ by a term of order $\zeta\tau E$.
+
+\paragraph{Implementation.} The constants are set at start-up by
+\code{radiation\_packet\_startup} (\code{radiation\_packet.c:267-282}, called at
+\code{src/runner\_radiation\_feedback.c:240}) through
+\code{radiation\_packet\_set\_redshift} (\code{radiation\_packet.c:75-84}), from the band-edge weights
+\code{band\_edge\_weight\_pe}, \code{band\_edge\_weight\_lw} and
+\code{band\_edge\_photon\_weight\_lw}
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:177-179}).
+Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
+\code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:303-349}).
+\code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
+\code{redshifted\_energy} and \code{redshifted\_photons}
+(\code{radiation\_packet.h:515-529}; fields at \code{feedback\_struct.h:226-233}).
+The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:655} for
+a hop, :844 for a star), and $H$ comes from
+\code{runner\_iact\_isrf\_packet\_hop} (\code{radiation\_propagation\_iact.h:141-145},
+:180-189) and from \code{radiation\_iact.h:277}.
+
+\subsection{Dust absorption}
+\label{sec:packet-absorption}
+
+A share is absorbed by dust along the distance that its light travelled
+in the receiver. In an expanding box the redshift of
+Section~\ref{sec:packet-transfer} acts first, and the dust acts on what remains. The dust uses the linear dust absorption rate $\kappa_b$ of the
+receiver in band $b$. The optical depth, the absorbed
+fraction and the transmitted amounts are
+\begin{align}
+  \tau_b &= \kappa_b\,\ell_{\rm phys} = \kappa_b\,a\,\Delta\ell, \label{eq:packet-tau}\\
+  \alpha_b &=
+  \begin{cases}
+    1-e^{-\tau_b}, & \tau_b<80,\\
+    1, & \tau_b\ge 80,
+  \end{cases} \label{eq:packet-alpha}\\
+  e_{b}^{\rm tr} &= (1-\alpha_b)\,e_b, \qquad
+  n_{b}^{\rm tr} = (1-\alpha_b)\,n_b, \label{eq:packet-transmit}
+\end{align}
+with $e_b$ and $n_b$ the energy and the photon number of the share after the
+redshift and before the absorption. Energy and photon number lose the same fraction, so the mean photon
+energy of a band is not changed by absorption (Eq.~\eqref{eq:packet-meanE}).
+If $n^{\rm tr}_b<10^{-35}$ (internal units of $N E_{\rm lo}$), the whole share of
+the band is booked as absorbed and nothing is transmitted. This keeps the photon number
+away from the float minimum, where it would flush to zero before the energy.
+
+The path length is
+\begin{equation}
+  \Delta\ell =
+  \begin{cases}
+    \max(0,\,d_r-d_s), & \text{hop from a particle},\\
+    r_{\star j}, & \text{emission by a star},
+  \end{cases}
+  \label{eq:packet-path}
+\end{equation}
+where $d_s=d_{i,k}$ is the distance from the origin to the sender, and
+$d_r=|\boldsymbol{o}_j|$ is the distance from the origin to the receiver,
+$\boldsymbol{o}_j$ being the offset of Eq.~\eqref{eq:packet-offset}. For a
+star, $d_s=0$ and $d_r=r_{\star j}$. For $\mu_{ij,k}>0$, $d_r^2=d_s^2+2d_s\,\boldsymbol{\Delta x}_{ij}\!\cdot\!\boldsymbol{n}_{i,k}+r_{ij}^2>d_s^2$, so the clamp acts only on rounding. When each merge
+receives a single share, the merge keeps the origin of that share, and the path lengths
+add up to the distance from the origin to the last receiver. The transmitted amounts are booked into the inbox of
+the receiver slot, or into its reservoir (Section~\ref{sec:packet-reservoir}), and the
+absorbed amounts into the absorbed ledger of the receiver
+(Section~\ref{sec:packet-ledger}). The absorbed energy is a diagnostic: it is
+not added to the gas, which sees the light only through the field of
+Section~\ref{sec:packet-field}.
+
+\paragraph{Implementation.} All of it is in
+\code{radiation\_packet\_deliver} (\code{radiation\_packet.h:491-572}):
+the redshift at :515-529, before the dust; the dust is
+\code{radiation\_packet\_absorb\_in\_dust} (:419-451, called at :533):
+Eq.~\eqref{eq:packet-tau} at :430, Eq.~\eqref{eq:packet-alpha} at :432-433
+(\code{RADIATION\_PACKET\_MAX\_OPTICAL\_DEPTH} is :64, and the exponential is
+\code{expm1}, in double), the
+photon cutoff at :439 (\code{RADIATION\_PACKET\_MIN\_PHOTONS}, :69), and
+the ledger at :447. The rate $\kappa_b$ is
+\code{isrf\_operator[b].kappa} of the receiver
+(\code{feedback\_struct.h:113-116}), set once per step by
+\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:142-149}). The hop
+path, Eq.~\eqref{eq:packet-path} first line, is at
+\code{radiation\_packet.h:615-621}, with $a$ applied at the call, :655; the star path is
+:721-722 (call at :844-848).
+
+\subsection{Particles on different time bins}
+\label{sec:packet-reservoir}
+
+A share goes into the inbox of the receiver slot, from which it joins the
+held packet at the next active step of the receiver. This holds if the
+sender's time bin is not coarser than the receiver's. If the sender's bin is
+coarser (its step is longer), the share goes into a reservoir of the slot
+instead, with the same origin sum, and the time $T_{\rm end}$, the time of the booking plus one step of the source's current time bin, is recorded
+(the latest over all shares of the slot). The reservoir is released in equal
+parts over the sender's step. At each merge of the receiver, at time $t$ and after a step of length $\Delta t$ (the step that ends now, which began at $t-\Delta t$), the fraction
+\begin{equation}
+  f_{{\rm rel},k} = \begin{cases}
+    \Delta t/(T_{\rm end}-t+\Delta t), & T_{\rm end}>t,\\
+    1, & \text{otherwise}
+  \end{cases}
+  \label{eq:packet-release}
+\end{equation}
+of the reservoir, measured from the start of the step that ends now (under cosmology $\Delta t$ and $T_{\rm end}-t+\Delta t$ are proper times), of its energy, its photon number and its origin sum alike, joins the arrivals
+of the merge (Eq.~\eqref{eq:packet-merge-E}). With equal receiver steps the parts
+are equal: a share booked at the start of a receiver step, with $n\Delta t$ to run, is released
+in $n$ merges of $1/n$ each, and the last merge releases the rest. If the release of the fraction $f_{{\rm rel},k}$ would leave the photon
+number of a band below $10^{-35}$, the whole reservoir is released. A star
+sends to the reservoir of a receiver whose bin is finer than its own, with
+$T_{\rm end}$ equal to the time of the emission plus one step of its time bin. This reservoir is a transport buffer for
+unequal steps.
+
+This section describes the mode \code{unlimited} of the speed of light, in which a
+share arrives at the next merge of its receiver whatever the distance. The finite
+speed replaces the inbox and the reservoir by arrival bins and cells
+(Section~\ref{sec:packet-lightspeed}).
+
+\paragraph{Implementation.} The choice between the inbox and the reservoir is
+the argument \code{to\_reservoir} of \code{radiation\_packet\_deliver}
+(\code{radiation\_packet.h:491-572}); it is
+\code{s->time\_bin > r->time\_bin} at :655 for a hop, and
+\code{si->time\_bin > pj->time\_bin} at :845 for a star, with
+\code{source\_step\_end\_ti} (:496) the end of the sender's step
+(\code{step\_end\_ti}, set at \code{radiation\_packet.c:2037} and :2077 as \code{ti\_current + ti\_step}, and
+\code{ti\_current + ti\_step} for a star, \code{radiation\_packet.h:846}). Eq.~\eqref{eq:packet-release} is
+\code{radiation\_packet\_merge\_slot\_unlimited} (\code{radiation\_packet.c:1706-1782}); the
+release fraction is at :1712-1724, the cutoff rule at :1726-1734, and the release of the energy, the photon number and the
+origin sum at :1736-1778.
+
+\subsection{The field that the gas sees}
+\label{sec:packet-field}
+
+The held packet of a slot is the light that crosses the particle in one step
+over the advance $l_{k}$ of Eq.~\eqref{eq:packet-advance}. The specific energy
+of band $b$ that the particle sees is the sum over its slots,
+\begin{equation}
+  u_{b} = \sum_{k:\,S_k>0} \frac{E_{k,b}}{m}\,\frac{a\,l_k}{c\,\Delta t},
+  \label{eq:packet-field}
+\end{equation}
+with $m$ the particle mass, $\Delta t$ the physical length of the step that ends now and $c$
+the speed of light; the photon number $N_{k,b}$ gives the field of the photon
+number in the same way. The factor $a\,l_k/(c\Delta t)$ is the hop speed over $c$ (Section~\ref{sec:packet-frame}). It is
+set to zero for $\Delta t\le0$ or $m\le0$. The field can be averaged in time with an
+exponential running mean of time constant $\tau_{\rm m}$
+(\code{ISRF\_packet\_read\_mean\_time\_Myr}, default 0, i.e.\ off),
+\begin{equation}
+  \bar u \leftarrow \bar u + (u-\bar u)\,\frac{\Delta t}{\tau_{\rm m}}, \qquad
+  \bar u \leftarrow u \ \text{if}\ \tau_{\rm m}\le0\ \text{or}\ \Delta t\ge\tau_{\rm m}.
+  \label{eq:packet-runmean}
+\end{equation}
+A step with $\Delta t\le0$ keeps the old mean.
+Only the field is averaged and never the packet, so the ledger is not
+changed. Then, in the force loop, each particle $i$ takes the kernel mean of the
+fields of its neighbours and of itself,
+\begin{equation}
+  \langle u_b\rangle_i =
+  \frac{\sum_j m_j\,w(r_{ij}/h_i)\,\bar u_{b,j} + m_i\,w(0)\,\bar u_{b,i}}
+       {\sum_j m_j\,w(r_{ij}/h_i) + m_i\,w(0)},
+  \label{eq:packet-kernelmean}
+\end{equation}
+over the neighbours with $r_{ij}<\gamma h_i$, with $w(u)$ the kernel of the build
+without the factor $h^{-3}$. The kernel mean $\langle u_b\rangle_i$ is written into the
+band moments that Grackle reads: PE to PE, LW to LW and the photon number
+of LW to the LW photon-number moment, in place of any value that was there. The photon number of PE is not coupled.
+
+\paragraph{Implementation.} Eq.~\eqref{eq:packet-field} is
+\code{radiation\_packet\_end\_gradient} (\code{radiation\_packet.c:2099-2148}, the
+sum over slots at :2119-2140, the factor at :2124); it is called from
+\code{radiation\_end\_gradient\_propagation} (\code{radiation\_isrf.c:234-246}, the call at :242).
+Eq.~\eqref{eq:packet-runmean} is \code{radiation\_packet\_read\_mean}
+(\code{radiation\_packet.h:314-319}), applied at
+\code{radiation\_packet.c:2142-2146}. The sums of
+Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
+(\code{radiation\_packet.h:684-701}, called at
+\code{radiation\_propagation\_iact.h:146-147}, :177), and the self term and the
+division are \code{radiation\_packet\_end\_force} (\code{radiation\_packet.c:2156-2175}),
+called at \code{radiation\_isrf.c:223}. The write into the moments is
+\code{radiation\_packet\_couple\_field} (\code{radiation\_packet.c:2187-2195}, called at
+\code{radiation\_isrf.c:224}). The packet transport sets no timestep limit from a
+propagation speed (\code{radiation\_isrf.c:195-208}), except in the light speed mode \code{fixed}
+(Section~\ref{sec:packet-lightspeed}).
+
+\subsection{A finite speed of light}
+\label{sec:packet-lightspeed}
+
+\paragraph{Modes.} \code{GEARFeedback:ISRF\_packet\_light\_speed} is \code{cap} (the
+default of the transport), \code{fixed} or \code{unlimited} (debugging; it warns at
+start-up). With the limit speed $v=f c$, $f=$ \code{ISRF\_packet\_light\_speed\_fraction\_of\_c}
+(default 0.99), a share from a sender with stamp $\tau_i$ (the latest arrival time of
+the light of its held packet) to a receiver at the separation $s_{ij}$ arrives at
+$\tau_i + s_{ij}/(v-\max(0,\mathbf{u}_j\cdot\hat{\mathbf{s}}))$, with $\mathbf{u}_j$ the
+physical velocity of the receiver at the booking. The factor $v/(v-u)$ is limited to
+100. Under cosmology the delay is $H s/v$ ticks of $\ln a$ at the rate of the start of the hop.
+The mode \code{fixed} also bounds the step of every gas particle by $f_{\Delta t}\,a h/v$, with the margin
+$f_{\Delta t}=$ \code{ISRF\_packet\_light\_speed\_time\_step\_margin} (default 0.5, range $(0,1.69]$). Light never moves
+faster than $v$ in the frame of the gas. A sender that moves towards the receiver
+between its stamp and its booking, or a receiver that speeds up after it, can make the
+front move at up to $v+u$ in the frame of the box; this is harmless for $v$ near $c$
+and not for a limit of a few km/s in moving gas. A receiver that recedes faster than
+$0.99\,v$ gets its light early; these deliveries are counted and printed once per step.
+
+\paragraph{Arrival bins and cells.} A share arrives evenly between $t_a$ and $t_a+\Delta t_s$
+for a sender with a longer step $\Delta t_s$, and at $t_a$ otherwise (a star: over the step that has just ended,
+from $t-\Delta t+\delta$ to $t+\delta$, as the feedback is applied at the end of the step). A receiver keeps the waiting light in four near bins, one
+step wide, on the multiples of its step (bin $0$ ends at the end of its step), and in two far
+cells, $2^{n}$ steps wide on the multiples of that width, for the light that arrives later
+than the last near bin. A near bin keeps the latest arrival time of its light, rounded
+later, and is released whole at the first merge at or after its end. This is the step
+that ends at the merge, as in Eq.~\eqref{eq:packet-release}. A far cell that holds the
+light of one share keeps its first and last arrival times and releases at the merge $t$
+the fraction $(t-t_{\rm first})/(t_{\rm last}-t_{\rm first})$ of it, then moves its first time to $t$.
+A far cell that holds several shares keeps one box, from the later of the first
+times to the later of the last times, which is never above the light that has arrived:
+on that interval the arrival line of each share lies at or above the box line.
+Light beyond the last cell goes to it with its true latest arrival time. The width $2^n$
+is the smallest at which all waiting light fits, and the waiting light moves to the
+lattices of the new step at each merge: a near bin as a pulse at its latest arrival time, a
+box as a box, never to an earlier time. All amounts are rounded so that nothing leaves
+before it has arrived: pieces of a split share down, stamps and arrival sums up. The held
+packet is stamped with the latest arrival time of what it released, so a hop starts from
+the arrival time and not from the merge time. The packet field of the receiver, the
+origin sum and the cutoff rules are those of the unlimited mode.
+
+\paragraph{Limit of the far light.} Two far cells cannot keep $N$ separate arrival times, so a
+steady source gives a steady field only up to a delay. For one receiver fed by one steady
+sender of its own step, the largest $|{\rm held}-{\rm mean}|/{\rm mean}$ is 0 for delays up to 6
+receiver steps, 1 at 7, 3 at 8, 7 at 10, 31 at 25 and 63 at 40. For a sender 2 or 4 times coarser it is 0 up
+to 4 steps, about 1 at 4.5 to 6 and up to 3 at 7 to 8. It does not occur at the default
+$v=0.99c$, nor in the mode \code{fixed} with $m=0.5$ except for the outermost
+neighbours (a hop to the kernel edge is 3.9 receiver steps, up to 7.7 with the bin rounding). A cap of
+5 km/s gives lumps of 0 to 3, a cap of 30 km/s none.
+
+\paragraph{Memory and restart.} A slot takes 200 bytes. Without \code{--enable-isrf-debugging-checks} the gas particle is
+2176 bytes with 8 slots, 2976 bytes with 12 slots (the default) and 3776 bytes with 16 slots; with the option it is 96 bytes larger.
+The fields of the two light speed modes share their bytes. The restart layout marker is 20.
+
+\subsection{The frame of reference of the light}
+\label{sec:packet-frame}
+
+The packet transport works in the gas frame. Every offset is measured from the
+particle that carries the packet: the stored origin of a slot is a distance and
+a direction from its carrier (Section~\ref{sec:packet-merge}), and the offset
+of a share is relative to its receiver (Eq.~\eqref{eq:packet-offset}). No
+position in the box frame enters the light. The distance and the direction of a
+held packet are set at the merge, which runs at the drift, and the hop of the
+same integer time reads them before the particle has moved, so they are never
+stale. The offsets of the inbox and of the reservoir are different. They are
+measured from the receiver at the time of booking and stay as they are until
+the next merge of the receiver, over any drift of the receiver in between. This
+is the gas-frame choice.
+
+GEAR-RT keeps the radiation field of a particle in a static frame and corrects
+it at each drift by extrapolation along the gradient.
+
+Real light moves at $c$ in every frame. The gas frame and the laboratory frame
+differ by terms of order $v/c$, which both schemes drop. The choice matters
+because a hop has the speed $v_{\rm hop}=a\,l/\Delta t$, with $l$ the
+advance of Eq.~\eqref{eq:packet-advance} and $\Delta t$ the step of the sender.
+This speed is usually far below $c$, but the code does not bound it by $c$
+(Section~\ref{sec:packet-hop}).
+In a laboratory (comoving) frame, a source that moves with its gas at the bulk
+speed $V$ would leave its light behind, by about $V/v_{\rm hop}$ hop lengths per
+hop, and a uniform boost of the whole box would change the result. In the gas
+frame, only the velocity of the source relative to the absorbing gas enters,
+and it is small for a star that moves with its natal cloud. The Hubble flow is
+a coordinate effect that comoving offsets absorb exactly.
+
+Per hop, the terms that the transport drops are of order $\Delta v/c$, with
+$\Delta v$ the relative velocity of the sender and the receiver: $10^{-5}$ to
+$10^{-4}$ for $\Delta v=3$ to $30\,{\rm km\,s^{-1}}$. The redshift that the
+transport keeps is the Doppler shift of the Hubble flow over the same hop. For a
+$7$\,pc hop it is $\lambda\zeta$, with $\lambda$ the band-edge weight and $\zeta=1.6\times10^{-9}$ at $z=0$ and
+$2.8\times10^{-8}$ at $z=9$ ($H_0=70\,{\rm km\,s^{-1}\,Mpc^{-1}}$,
+$\Omega_{\rm m}=0.3$). The ratio of the two is the velocity gradient over $H$.
+Inside a galaxy this ratio is $10^{2}$ to $10^{3}$: $10\,{\rm km\,s^{-1}}$ over
+$100$\,pc is $3\times10^{-15}\,{\rm s^{-1}}$, against $H_0=2.3\times10^{-18}\,{\rm s^{-1}}$ and
+$H(z=9)=3.9\times10^{-17}\,{\rm s^{-1}}$. In diffuse intergalactic gas, where the
+peculiar gradient is of order $H$, the two are comparable.
+
+Two other choices are possible. A laboratory-frame cone would subtract the drift
+displacement from the stored inbox and reservoir offsets at each drift, for 0
+to 24\,B per gas particle. A correction for the shear of the flow would also
+move the offsets with the velocity gradient, for 192 to 384\,B per gas
+particle.
+
+\paragraph{Implementation.} The merged origin is set in
+\code{radiation\_packet\_set\_origin} (\code{radiation\_packet.c:1653-1681}), called by the merge, at the
+drift, \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:119-177}). The hop
+reads it in \code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:614-621}).
+An empty slot keeps its old origin (\code{radiation\_packet.c:1780}), but the
+gradient and the hop skip empty slots (\code{radiation\_packet.h:367, :600}). The
+inbox and reservoir sums are booked at \code{radiation\_packet.h:545-566}. GEAR-RT is described in
+\code{theory/RadiativeTransfer/GEARRT/3-rt-numerical-method.tex}, lines 225-228
+(static frame) and 750-771 (Section ``Dealing With Particle Drifts'').
+
+\subsection{Ledgers}
+\label{sec:packet-ledger}
+
+The light is accounted for per band, in energy and in photon number ($N E_{\rm lo}$).
+Every gas particle carries a cumulative absorbed ledger $A$ (Section~\ref{sec:packet-absorption}),
+a cumulative redshift ledger $Y$ (Section~\ref{sec:packet-transfer}; zero in a static box)
+and a cumulative escaped ledger $X$: the held light of a slot with no
+downstream neighbour (Section~\ref{sec:packet-hop}) is added to $X$ and is set to zero.
+Every star carries the energy emitted, $E_{\rm em}=L_b\Delta t_\star$ summed over
+its steps, and the energy escaped, $X_\star=L_b\Delta t_\star\sum_c\varepsilon_c$
+(Eq.~\eqref{eq:packet-escape}), together with the photon numbers $f_b$ times these.
+When a gas particle becomes a star, or is swallowed by a sink or becomes one, the light it still
+holds in flight, which is the held, the inbox and the reservoir amounts of all slots, is
+lost with it, and is booked as removed energy $D$ in the ledger of the
+star or the sink. The absorbed, the redshift and the escaped ledgers of the gas are carried over in
+the same ledger as inherited amounts $I_{\rm inh}$. When a sink swallows another, the
+survivor adds the ledger of the swallowed sink to its own. With $E_{\rm fl}$ the light in flight,
+the amounts of one band balance as
+\begin{equation}
+  \sum_\star E_{\rm em} =
+  \sum_{\rm gas}\big(A+X+Y+E_{\rm fl}\big) + \sum_{\star,\,{\rm sinks}}\big(X_\star + D + I_{\rm inh}\big),
+  \label{eq:packet-balance}
+\end{equation}
+and likewise for the photon number. In each band, $Y$ is booked net of the
+gain from the other band, so $Y_{\rm PE}$ can be negative, and the balance of each band is exact. Each step of the transport moves light
+between the terms without creating or destroying it (the hop shares sum to
+one, Eq.~\eqref{eq:packet-share}; the merge adds; the redshift moves the lost
+part to $Y$; the absorption moves the absorbed part to $A$). The cone fractions of a star sum to one only if its
+density loop and its feedback loop see the same receivers and the same $h_\star$.
+The balance holds up to the rounding of float arithmetic in a periodic box,
+or while no gas particle leaves the box. Gas that leaves a non-periodic box is
+removed with its light in flight and its ledgers, and nothing books them.
+The ledgers are in double, because small shares must
+not be lost against a large total. A stored share is a float, with a relative
+rounding of at most $2^{-24}$, about $6\times10^{-8}$. The relative loss of a
+share in one hop is $\lambda\zeta$, with $\lambda$ the band-edge weight. For a $7$\,pc hop with the shipped weights it
+is about $10^{-8}$ in LW at $z=0$, and $1.8\times10^{-7}$ in LW and $6\times10^{-8}$ in PE at
+$z=9$. Below $z$ of about 4 the LW loss of one hop is below the rounding, so the
+stored shares carry it only on average. At higher redshift they resolve it. The
+double ledger $Y$ books it in both cases. A bar on the energy balance must lie
+above that rounding. The test beams of the code, which add light
+without a star, are in no ledger and are not part of Eq.~\eqref{eq:packet-balance}.
+
+\paragraph{Implementation.} The per-band ledger of a gas particle is
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:196-235}:
+\code{absorbed\_energy}, \code{absorbed\_photons}, \code{escaped\_energy},
+\code{escaped\_photons}, \code{redshifted\_energy}, \code{redshifted\_photons}); the ledger of a star or a sink is
+\code{feedback\_isrf\_packet\_removed\_data}
+(\code{feedback\_struct.h:394-408}), and the emission and escape of a star are
+\code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
+\code{escaped\_photons} in the \code{packet} struct of the star
+(\code{feedback\_struct.h:786-836}). The emission is booked by
+\code{radiation\_packet\_star\_book\_emission} (\code{radiation\_packet.c:2208-2241}),
+called at \code{src/feedback/GEAR\_thermal/feedback.c:612}. The
+removal is \code{radiation\_packet\_book\_removed\_gas}
+(\code{radiation\_packet.h:871-901}, the inherited sum with the redshift ledger at :895-900), reached from
+\code{feedback\_book\_removed\_gas\_to\_spart},
+\code{feedback\_book\_removed\_gas\_to\_sink} and
+\code{feedback\_book\_sink\_merger} (\code{src/feedback/GEAR/feedback\_common.c:1453-1478}).
+The escape of a slot with no downstream neighbour is at
+\code{radiation\_packet.c:2132-2139}.
