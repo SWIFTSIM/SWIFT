@@ -434,11 +434,9 @@ def check_dusty(
         f"{(1.0 - ratio) * float(np.max(tau_lw[lit])):.4f}"
     )
 
-    # Float32 error budget of the reconstruction. The CANONICAL derivation of
-    # this bar, with the shared-versus-per-band split and the sensitivity
-    # weights that follow from sigma_PE/sigma_LW, is `dust_band_ratio_bar` in
-    # ISRFCosmology/isrf_cosmology_check.py; this fixture carries the same
-    # metric and must keep the same term list. In brief: 4 u32 that do not
+    # Float32 error budget of the reconstruction: one rounding of u32 per
+    # float32 operation, weighted by the sensitivity of the signal to it
+    # (sigma_PE/sigma_LW sets the weights). 4 u32 that do not
     # scale with the signal (the two specific-energy stores and the two expf
     # calls, an expf relative error being an absolute error in the logarithm),
     # plus 16.5 u32 for the scaled part: twelve from the three per-band
