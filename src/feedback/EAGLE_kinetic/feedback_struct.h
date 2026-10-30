@@ -122,8 +122,27 @@ struct feedback_spart_data {
       /*! Number of SNII energy injections in kinetic form */
       int SNII_num_of_kinetic_energy_inj;
 
+      /* Normalisation of the magnetic field injection */
+      float B_inj_abs; 
+
+      /* Magnetic moment */
+      float magnetic_moment[3];
+
     } to_distribute;
   };
+
+  struct {
+
+    /* neighbour magnetic moment */
+    float ngb_m[3];
+
+    /* chosen magnetic moment */
+    float m[3];
+
+    /* total magnetic field energy if not normalised */
+    float ngb_B_inj;
+
+  } to_collect_mhd;
 
   /* Instantiate ray structs for SNII kinetic feedback  */
   struct ray_data SNII_rays_true[eagle_SNII_feedback_num_of_rays];

@@ -85,6 +85,84 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
   if (rho != 0.f)
     si->feedback_data.to_collect.enrichment_weight_inv += wi / rho;
 
+  /* collect magnetic field properties */
+  float B[3] = {0.f, 0.f, 0.f};
+  mhd_get_drifted_comoving_magnetic_field(pj, B);
+
+  /* contribution of pj to the neighbour angular magnetic field */
+  float pj_m[3] = {dx[1]*B[2] - dx[2]*B[1],
+	               dx[2]*B[0] - dx[0]*B[2],
+		           dx[0]*B[1] - dx[1]*B[0]};
+
+  /* DO WE NEED IT TO BE NORMALISED? */
+  const float pj_m_abs = sqrtf(pj_m[0]*pj_m[0] + pj_m[1]*pj_m[1] + pj_m[2]*pj_m[2]);
+  if (pj_m_abs) {
+    pj_m[0] /= pj_m_abs;
+    pj_m[1] /= pj_m_abs;
+    pj_m[2] /= pj_m_abs;
+  }
+
+  /* Get the magnetic moment
+   * in the cases where the magnetic moment is determined later, this
+   * fiducial value is used to calculate the normalisation */
+  float magnetic_moment[3] = {0.f, 0.f, 1.f};
+  switch (fb_props->magnetic_orientation_model) {
+
+    case SNII_magnetic_orientation_random_model:{
+
+      /* CHECK THAT THESE ARE DIFFERENT DIRECTIONS THAN THE RAYS */
+      const double rand_theta_m = random_unit_interval_part_ID_and_index(
+            si->id, eagle_SNII_feedback_num_of_rays, ti_current,
+            random_number_isotropic_SNII_feedback_ray_theta);
+      const double rand_phi_m = random_unit_interval_part_ID_and_index(
+            si->id, eagle_SNII_feedback_num_of_rays, ti_current,
+            random_number_isotropic_SNII_feedback_ray_phi);
+
+      /* convert [0,1[ interval to [-1, 1[*/
+      const double cos_theta_m = 2. * rand_theta_m - 1.;
+
+      /* get polar angle */
+      const double theta_m = acos(cos_theta_m);
+
+      /* convert [0,1[ interval to [-M_PI, M_PI[ */
+      const double phi_m = 2.* M_PI * rand_phi_m - M_PI;
+
+      magnetic_moment[0] = sin(theta_m) * cos(phi_m);
+      magnetic_moment[1] = sin(theta_m) * sin(phi_m);
+      magnetic_moment[2] = cos_theta_m;
+      
+      break;
+    }
+    case SNII_magnetic_orientation_constant_model:{
+
+      magnetic_moment[0] = fb_props->magnetic_moment[0];
+      magnetic_moment[1] = fb_props->magnetic_moment[1];
+      magnetic_moment[2] = fb_props->magnetic_moment[2];
+
+      break; 
+    }
+    default:{
+      /* use the magnetic moment as initialised */
+    }
+  }
+
+  /* compute the normalisation of the magnetic field */
+  const float B_inj_abs = compute_magnetic_injection_field_strength(
+    dx, magnetic_moment, fb_props, wi, hi);
+
+  if (rho != 0.f)
+    si->feedback_data.to_collect_mhd.ngb_B_inj += B_inj_abs * B_inj_abs * mj / 
+          (2 * fb_props->mu_0 * rho);
+
+  si->feedback_data.to_collect_mhd.ngb_m[0] += pj_m[0];
+  si->feedback_data.to_collect_mhd.ngb_m[1] += pj_m[1];
+  si->feedback_data.to_collect_mhd.ngb_m[2] += pj_m[2];
+
+  /* no cumulative sum here, just storing the chosen magnetic moment */
+  si->feedback_data.to_collect_mhd.m[0] = magnetic_moment[0];
+  si->feedback_data.to_collect_mhd.m[1] = magnetic_moment[1];
+  si->feedback_data.to_collect_mhd.m[2] = magnetic_moment[2];
+
   /* Compute arc lengths in stellar isotropic feedback and collect
    * relevant data for later use in the feedback_apply loop */
   for (int i = 0; i < eagle_SNII_feedback_num_of_rays; i++) {
@@ -353,6 +431,27 @@ runner_iact_nonsym_feedback_apply(
 
   /* Are we doing some SNII kinetic feedback? */
   if (N_of_SNII_kinetic_events > 0) {
+
+    /* current magnetic field */
+    float B0[3] = {0.f, 0.f, 0.f};
+    mhd_get_physical_magnetic_field(pj, xpj, cosmo, B0); 
+
+    /* get the magnetic field to inject */
+    float m[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
+                  si->feedback_data.to_distribute.magnetic_moment[1],
+                  si->feedback_data.to_distribute.magnetic_moment[2]};
+
+    float B_inj[3] = {0.f, 0.f, 0.f}; /* originally double */
+    compute_magnetic_injection_field(B_inj, 
+        si->feedback_data.to_distribute.B_inj_abs, dx, m, 
+        fb_props, wi, hi);
+
+    /* inject the magnetic field */
+    const float B_final[3] = {B0[0] + B_inj[0],
+                              B0[1] + B_inj[1],
+                              B0[2] + B_inj[2]};
+
+    mhd_set_physical_magnetic_field(pj, xpj, cosmo, B_final);
 
     /* Loop over the number of SNII kinetic events. In each event, two
      * particles are kicked in exactly the opposite directions. */
