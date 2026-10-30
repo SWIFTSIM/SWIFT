@@ -20,6 +20,104 @@
 #define SWIFT_NONE_MHD_H
 
 /**
+ * @brief Sets the physical magnetic field of a particle
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param cosmo Cosmology data structure
+ * @param B The (physical) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_field (
+    const struct part *p, struct xpart *xp, const struct cosmology *cosmo, 
+    const float B[3]) {
+  /* nothing to do here */
+}
+
+/**
+ * @brief Sets the comoving magnetic field of a particle
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param B The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_set_comoving_magnetic_field (
+    const struct part *p, struct xpart *xp, const float B[3]) {
+  /* nothing to do here */
+}
+
+/**
+ * @brief Returns the physical magnetic field of a particle at the last
+ * time the particle was kicked
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param cosmo Cosmology data structure
+ * @param B (return) The (physical) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_field (
+    const struct part *p, const struct xpart *xp, const struct cosmology *cosmo, 
+    float *B) {
+
+  /* not running with magnetic fields so return zero */
+  B[0] = 0.f;
+  B[1] = 0.f;
+  B[2] = 0.f;
+}
+
+/**
+ * @brief Returns the comoving magnetic field of a particle at the last
+ * time the particle was kicked
+ *
+ * @param p the #part.
+ * @param xp the #xpart.
+ * @param B (return) The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void mhd_get_comoving_magnetic_field (
+    const struct part *p, const struct xpart *xp, float *B) {
+
+  /* not running with magnetic fields so return zero */
+  B[0] = 0.f;
+  B[1] = 0.f;
+  B[2] = 0.f;
+}
+
+/**
+ * @brief Returns the comoving magnetic field of a particle drifted
+ * to the current time
+ *
+ * @param p the #part.
+ * @param B (return) The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void 
+  mhd_get_drifted_comoving_magnetic_field (
+    const struct part *p, float *B) {
+
+  /* not running with magnetic fields so return zero */
+  B[0] = 0.f;
+  B[1] = 0.f;
+  B[2] = 0.f;
+}
+
+/**
+ * @brief Returns the physical magnetic field of a particle drifted
+ * to the current time
+ *
+ * @param p the #part.
+ * @param cosmo Cosmology data structure
+ * @param B (return) The (comoving) magnetic field
+ */
+__attribute__((always_inline)) INLINE static void 
+  mhd_get_drifted_physical_magnetic_field (
+    const struct part *p, const struct cosmology *cosmo,
+    float *B) {
+
+  /* not running with magnetic fields so return zero */
+  B[0] = 0.f;
+  B[1] = 0.f;
+  B[2] = 0.f;
+}
+
+/**
  * @brief Returns the magnetic energy contained in the particle.
  *
  * @param p the #part.
