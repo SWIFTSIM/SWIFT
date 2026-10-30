@@ -39,11 +39,11 @@ table="${1:-PopII_parsec_spectral.hdf5}"
 case "$table" in
     PopII_parsec_spectral.hdf5)
 	share_id="ydicQptiff7WspX"
-	sha256="b8ba64e393f606b3e373de9d29e5e69c39e5621f3aaa6cd509d1de4cc63e958d"
+	sha256="5e65865a4fc2ef4daa59280e4c755765781ba839e82e8f199882274ff7208650"
 	;;
     PopIII_parsec_spectral.hdf5)
 	share_id="9D5yQEAa3NNg4F8"
-	sha256="2de39a002380ba67a8cc931aec59f20c82bab1ec326369d33af5c1fe1d7859d3"
+	sha256="0fa9ce351ae4f788393528237cbcf3366ba6c919d4947bd6555836f08530dcbe"
 	;;
     # Mass-only ("M"), blackbody-fits Q_H/L table. The HIIRegions and
     # RadiationPressure examples' star masses are calibrated against this
