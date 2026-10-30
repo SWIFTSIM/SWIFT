@@ -89,6 +89,11 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
   sp->feedback_data.to_collect.ngb_rho = 0.f;
   sp->feedback_data.to_collect.ngb_Z = 0.f;
 
+  for (size_t i = 0; i < 3; i++) {
+    sp->feedback_data.to_collect_mhd.ngb_m[i] = 0.f;
+  }
+  sp->feedback_data.to_collect_mhd.ngb_B_inj = 0.f;
+
   /* Reset all ray structs carried by this star particle */
   ray_init(sp->feedback_data.SNII_rays_true, eagle_SNII_feedback_num_of_rays);
   ray_init(sp->feedback_data.SNII_rays_mirr, eagle_SNII_feedback_num_of_rays);
@@ -160,6 +165,13 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
 
   /* Zero the SNII feedback properties */
   sp->feedback_data.to_distribute.SNII_num_of_kinetic_energy_inj = 0;
+
+  /* Zero the magnetic energy injection */
+  sp->feedback_data.to_distribute.B_inj_abs = 0.f;
+
+  for (size_t i = 0; i < 3; i++) {
+    sp->feedback_data.to_distribute.magnetic_moment[i] = 0.f;
+  }
 }
 
 /**
@@ -316,6 +328,16 @@ __attribute__((always_inline)) INLINE static void feedback_will_do_feedback(
     }
   }
 }
+
+float compute_magnetic_injection_field_strength (
+    const float dx[3], const float m[3], 
+    const struct feedback_props *feedback_props,
+    const float wi, const float sp_h);
+
+void compute_magnetic_injection_field(
+    float *B_inj, const float B_inj_norm, const float dx[3], 
+    const float m[3], const struct feedback_props *feedback_props, 
+    const float wi, const float sp_h);
 
 void feedback_clean(struct feedback_props *fp);
 

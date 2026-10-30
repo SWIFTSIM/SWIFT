@@ -27,6 +27,25 @@
 #include "hydro_properties.h"
 
 /**
+ * @brief Mode of magnetic injection field
+ */
+enum SNII_magnetic_injection_model {
+  SNII_magnetic_toroidal_injection,
+  SNII_magnetic_kernel_softened_toroidal_injection,
+  SNII_magnetic_current_loop_injection
+};
+
+/**
+ * @brief Mode of magnetic injection orientation
+ */
+enum SNII_magnetic_injection_orientation {
+  SNII_magnetic_orientation_maxB_model,    /*< orientation to maximize B injection energy */
+  SNII_magnetic_orientation_minB_model,    /*< orientation to minimize B injection energy */
+  SNII_magnetic_orientation_random_model,  /*< random orientation */
+  SNII_magnetic_orientation_constant_model /*< constant direction */
+};
+
+/**
  * @brief Stores AGB and SNII yield tables
  */
 struct yield_table {
@@ -108,6 +127,9 @@ struct feedback_props {
 
   /*! Are we doing SNIa feedback? */
   int with_SNIa_feedback;
+
+  /*! Are we doing MHD feedback? */
+  int with_MHD_feedback;
 
   /* ------------ Yield tables    ----------------- */
 
@@ -276,6 +298,26 @@ struct feedback_props {
   /*! Are we using the birth metallicity to compute f_th or the properties at
    * feedback time? */
   int use_birth_Z_for_f_th;
+
+  /* ------------ MHD feedback properties ----------- */
+
+    /* magnetic injection field configuration */
+  enum SNII_magnetic_injection_model magnetic_injection_model;
+
+  /* mode of determining magnetic injection orientation */
+  enum SNII_magnetic_injection_orientation magnetic_orientation_model;
+
+  /* the magnetic moment, for the constant orientation model */
+  float magnetic_moment[3];
+
+  /* current loop radius divider */
+  float r_fact_currentloop;
+
+  /* Energy fraction used for magnetic field injection */
+  float f_E_B;
+
+  /* vacuum permeability */
+  double mu_0;
 
   /* ------------ Enrichment sampling properties ------------ */
 
