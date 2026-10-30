@@ -1,3 +1,7 @@
 This directory contains a series of examples using an isolated galaxy
 disk embedded in an external Hernquist dark matter halo. These are
 ideal for testing galaxy formation subgrid model implementation.
+
+Unless stated otherwise, SWIFT must be configured with
+--with-ext-potential=hernquist. Without it the code will still run, but
+with no dark matter halo.

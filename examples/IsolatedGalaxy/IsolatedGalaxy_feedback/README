@@ -1,0 +1,6 @@
+Isolated galaxy with star formation and feedback, embedded in an external
+Hernquist dark matter halo.
+
+To run with the EAGLE model, configure SWIFT with:
+
+./configure --with-ext-potential=hernquist --with-subgrid=EAGLE
