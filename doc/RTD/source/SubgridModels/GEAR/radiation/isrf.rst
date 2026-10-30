@@ -168,7 +168,7 @@ The transport adds 200 bytes per reception slot to every gas particle at the def
 Restart and MPI
 ---------------
 
-A restart file carries a layout marker. SWIFT refuses a restart file written by another code version, another number of slots or another ``--with-subgrid-radiation`` selection. Rerun from the initial conditions instead of resuming across versions.
+A restart file carries a layout marker. It changes whenever the layout of the particles or of the feedback blocks changes, and it holds the ``--with-subgrid-radiation`` selection, so SWIFT stops with a message about the marker on a file of another layout or selection. The marker does not hold the number of slots or the ``--enable-isrf-debugging-checks`` setting. A file written with another value of either has another particle size, and SWIFT stops at the particle block with the generic message ``Mismatched data length``. A restart MUST use the same number of slots, the same debugging option and the same number of MPI ranks as the run that wrote it. Rerun from the initial conditions instead of resuming across versions.
 
 The transport works with MPI: a star of a foreign rank hands its light to the local receivers. MPI support of the radiation model is still being tested, so check a multi-rank run against a single-rank one.
 
