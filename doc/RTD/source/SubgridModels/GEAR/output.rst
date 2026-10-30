@@ -454,4 +454,6 @@ With ``ISRF_propagation: 1`` and a build configured with ``--enable-isrf-debuggi
 
 The photon-number fields are in energy units: the photon number times the lower edge energy of the band (6.0 eV for PE, 11.2 eV for Lyman-Werner).
 
+Gas that leaves a box with open faces is deleted together with the light it holds, so no particle field keeps its ledger. The run total of that light is written instead to the header of the snapshot, in the group ``SubgridScheme``, by a build with ``--enable-isrf-debugging-checks``. Each of the four attributes has two components (PE band, then Lyman-Werner band), is summed over the MPI ranks and is in snapshot units. ``PacketLeftBoxEscapedEnergies`` and ``PacketLeftBoxEscapedPhotonNumbers`` hold the light in flight in the gas when it left, which the energy balance counts as escaped. ``PacketLeftBoxInheritedEnergies`` and ``PacketLeftBoxInheritedPhotonNumbers`` hold the absorbed, escaped and redshifted light that the departed particles had already booked. Add them to the sums of the particle ledger fields to close the budget of a run with open faces.
+
 Three optional gas input fields let an initial-conditions file seed the local field directly; see :ref:`gear_isrf` for their use.
