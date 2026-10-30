@@ -166,7 +166,6 @@ __attribute__((always_inline)) INLINE static void feedback_reset_feedback(
   for (size_t i = 0; i < 3; i++) {
     sp->feedback_data.to_distribute.magnetic_moment[i] = 0.f;
   }
-  sp->feedback_data.to_distribute.ngb_B_inj_abs = 0.f;
 
 }
 

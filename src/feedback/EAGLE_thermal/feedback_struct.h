@@ -119,13 +119,10 @@ struct feedback_spart_data {
       float SNII_delta_u;
 
       /* Normalisation of the magnetic field injection */
-      float B_inj_abs;
+      float B_inj_abs; 
 
       /* Magnetic moment */
       float magnetic_moment[3];
-
-      /* normalisation magnetic field (used if injecting in all neighbours) */
-      float ngb_B_inj_abs;
 
     } to_distribute;
   };
