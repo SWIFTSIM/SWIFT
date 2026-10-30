@@ -266,7 +266,7 @@ struct cooling_function_data {
   float self_shielding_threshold;
 
   /*! H2 self-shielding mode (chemistry_data.H2_self_shielding):
-   * 0 = off, 2 = shielding length supplied per particle, half the column
+   * 0 = off, 2 = shielding length supplied per particle, the full column
    * path set by H2_self_shielding_path (one kernel support radius
    * kernel_gamma * h, physical, by default), 3 = local Jeans length
    * (computed internally by geajay).
@@ -279,7 +279,8 @@ struct cooling_function_data {
   /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
    * for "kernel_radius" (default), 2 for "kernel_diameter"
    * (GeajayCooling:H2_self_shielding_path). The length handed to geajay is
-   * half this path, and geajay forms N_H2 = n_H2 l from it. */
+   * this path, and geajay forms N_H2 = n_H2 l from it. The dust column of the
+   * backgrounds uses the same path. */
   float H2_self_shielding_path_in_kernel_radii;
 
   /*! Source of the length of the column shielding, with the method 4

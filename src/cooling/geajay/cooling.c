@@ -830,15 +830,15 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
         cooling->RT_H2_dissociation_rate / (1. / time_units);
   }
 
-  /* The length is half the chosen path of
+  /* The length is the full chosen path of
      H2_self_shielding_path_in_kernel_radii kernel support radii H =
-     kernel_gamma h. geajay forms N_H2 = n_H2 l from it (src/h2.h of geajay), so
-     the column is n_H2 times half the path. With comoving_coordinates = 0, a
-     physical length in length_units is expected. */
+     kernel_gamma h. geajay forms N_H2 = n_H2 l from it (src/h2.h of geajay).
+     With comoving_coordinates = 0, a physical length in length_units is
+     expected. */
   if (cooling->H2_self_shielding == cooling_h2_shielding_length_given)
     inputs->H2_self_shielding_length =
-        0.5f * cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma *
-        p->h * cosmo->a;
+        cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma * p->h *
+        cosmo->a;
 
   /* Proper length in length_units for the column shielding of the UV
      background; SWIFT runs with comoving_coordinates = 0. */
@@ -851,7 +851,7 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
      ratio scaled by Z / Z_sun as geajay does. */
   if (cooling->dust_background_attenuation ==
       GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
-    const double path = 2. * inputs->H2_self_shielding_length;
+    const double path = inputs->H2_self_shielding_length;
     /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
     const double dust_ratio =
