@@ -50,7 +50,7 @@ enum SNII_energy_scalings {
  */
 enum SNII_magnetic_injection_model {
   SNII_magnetic_toroidal_injection,
-  SNII_magnetic_kernel_softened_actual_toroidal_injection,
+  SNII_magnetic_kernel_softened_toroidal_injection,
   SNII_magnetic_current_loop_injection
 };
 
