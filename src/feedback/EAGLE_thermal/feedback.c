@@ -380,7 +380,7 @@ INLINE static void compute_magnetic_feedback(
   const float ngb_B_inj_norm = sp->feedback_data.to_collect_mhd.ngb_B_inj;
 
   /* Store the magnetic field normalisation */
-  sp->feedback_data.to_distribute.ngb_B_inj_abs = sqrtf(E_B_inj / ngb_B_inj_norm);
+  sp->feedback_data.to_distribute.B_inj_abs = sqrtf(E_B_inj / ngb_B_inj_norm);
 
   /* rescale the thermal energy injection */
   sp->feedback_data.to_distribute.SNII_delta_u *= (1 - feedback_props->f_E_B);

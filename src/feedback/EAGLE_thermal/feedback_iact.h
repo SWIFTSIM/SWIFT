@@ -490,7 +490,7 @@ runner_iact_nonsym_feedback_apply(
 
     float B_inj[3] = {0.f, 0.f, 0.f}; /* originally double */
     compute_magnetic_injection_field(B_inj, 
-        si->feedback_data.to_distribute.ngb_B_inj_abs, dx, m, 
+        si->feedback_data.to_distribute.B_inj_abs, dx, m, 
         fb_props, wi, hi);
 
     /* inject the magnetic field */
