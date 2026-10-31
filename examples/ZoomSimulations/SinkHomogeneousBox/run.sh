@@ -3,43 +3,27 @@
 set -e
 set -o pipefail
 
-# run_case: level5 (default, production), local (level 3, laptop test), level8 (one cluster node)
-run_case=${run_case:=level5}
-case $run_case in
-	level5)
-		level=${level:=5}
-		n_threads=${n_threads:=8}
-		case_params=""
-		snapshot_params=""
-		snapshot_params_cosmo=""
-		;;
-	local)
-		level=${level:=3}
-		n_threads=${n_threads:=2}
-		case_params="-P TimeIntegration:time_end:0.1"
-		snapshot_params=""
-		snapshot_params_cosmo=""
-		;;
-	level8)
-		level=${level:=8}
-		n_threads=${n_threads:=72}
-		case_params="-P Restarts:delta_hours:2"
-		snapshot_params="-P Snapshots:delta_time:0.05"
-		snapshot_params_cosmo="-P Snapshots:delta_time:1.1" # Ratio of scale factors
-		;;
-	*)
-		echo "Unknown run_case $run_case (level5, local or level8)"
-		exit 1
-		;;
-esac
-
+# Every variable can be set on the command line, for example
+#   level=3 padding=2 n_threads=2 time_end=0.1 ./run.sh
+level=${level:=5}                             # levelmax: 2^(3 level) gas particles
+levelmin=${levelmin:=}                        # Coarsest background level (empty: level - 3)
+padding=${padding:=8}                         # Cells of each coarser level around the finer one
+box_size=${box_size:=}                        # Box side: kpc, or comoving Mpc if cosmological=1 (empty: 8 gas boxes)
+n_threads=${n_threads:=8}
 gas_mass=${gas_mass:=50}                      # Gas particle mass in Msun
-embed=${embed:=8}                             # Periodic box side in gas box units (power of 2)
+jeans_length=${jeans_length:=0.250}           # Jeans wavelength in gas box units (sets the temperature)
 dm_ratio=${dm_ratio:=5.36}                    # Dark matter to gas density ratio in the gas box
 delta=${delta:=0}                             # Density contrast of the gas box
-jeans_length=${jeans_length:=0.250}           # Jeans wavelength in gas box units (sets the temperature)
 with_star_formation=${with_star_formation:=0} # 1: GEAR star formation instead of sinks
-cosmological=${cosmological:=0}               # 1: comoving ICs and --cosmology (tested at level 3 for the first 20 steps only)
+cosmological=${cosmological:=0}               # 1: comoving ICs and --cosmology
+time_end=${time_end:=0.5}                     # End time in internal units (cosmological=0)
+a_end_factor=${a_end_factor:=2}               # a_end / a_begin (cosmological=1)
+snapshot_delta=${snapshot_delta:=0.01}        # Time between snapshots (cosmological=0)
+snapshot_delta_cosmo=${snapshot_delta_cosmo:=1.02} # Ratio of scale factors between snapshots, > 1 (cosmological=1)
+velocity_fraction=${velocity_fraction:=0.1}   # Random velocities in units of the gas sound speed (cosmological=1)
+max_bkg_cdim=${max_bkg_cdim:=91}              # Cap on ZoomRegion:bkg_top_level_cells
+swift=${swift:=../../../swift}
+extra_params=${extra_params:=}                # More -P options for swift
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -50,22 +34,33 @@ h_max=$(python3 -c "print(0.08 * $length_scale)")
 softening=$(python3 -c "print(0.005 * $length_scale)")
 cut_off_radius=$(python3 -c "print(0.005 * $length_scale)")
 
-ic_params="--mass $gas_mass --h-max $h_max --softening $softening"
+ic_params="--level $level --padding $padding --mass $gas_mass --h-max $h_max"
+ic_params="$ic_params --softening $softening --dm-ratio $dm_ratio --delta $delta"
+ic_params="$ic_params --lJ $jeans_length --max-bkg-cdim $max_bkg_cdim"
+if [ -n "$levelmin" ]; then
+	ic_params="$ic_params --levelmin $levelmin"
+fi
+if [ -n "$box_size" ]; then
+	ic_params="$ic_params --box-size $box_size"
+fi
+
 cosmo_flag=""
-mass_params="-P Gravity:max_physical_baryon_softening:$softening"
-mass_params="$mass_params -P Gravity:max_physical_DM_softening:$softening"
+run_params="-P Gravity:max_physical_baryon_softening:$softening"
+run_params="$run_params -P Gravity:max_physical_DM_softening:$softening"
 if [ "$cosmological" -eq 1 ]; then
-	ic_params="$ic_params --cosmological"
+	ic_params="$ic_params --cosmological --a-end-factor $a_end_factor"
+	ic_params="$ic_params --velocity-fraction $velocity_fraction"
 	cosmo_flag="--cosmology"
-	snapshot_params=$snapshot_params_cosmo
+	run_params="$run_params -P Snapshots:delta_time:$snapshot_delta_cosmo"
 else
 	# makeIC.py writes the comoving SPH:h_max in cosmological runs
-	mass_params="$mass_params -P SPH:h_max:$h_max"
+	run_params="$run_params -P SPH:h_max:$h_max"
+	run_params="$run_params -P TimeIntegration:time_end:$time_end"
+	run_params="$run_params -P Snapshots:delta_time:$snapshot_delta"
 fi
 
 echo "Generating initial conditions for SinkHomogeneousBox (level $level)..."
-python3 makeIC.py --level $level --embed $embed --dm-ratio $dm_ratio \
-	--delta $delta --lJ $jeans_length $ic_params -o ICs_zoom_homogeneous_box.hdf5 \
+python3 makeIC.py $ic_params -o ICs_zoom_homogeneous_box.hdf5 \
 	--zoom-params-file zoom_runtime_params.txt
 
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]; then
@@ -81,7 +76,7 @@ fi
 if [ "$with_star_formation" -eq 0 ]; then
 	runtime_params="--sinks"
 	parameter_file="params_sinks.yml"
-	mass_params="$mass_params -P GEARSink:cut_off_radius:$cut_off_radius"
+	run_params="$run_params -P GEARSink:cut_off_radius:$cut_off_radius"
 else
 	runtime_params="--star-formation"
 	parameter_file="params_star_formation.yml"
@@ -90,6 +85,6 @@ fi
 rm -rf snap statistics.txt timesteps.txt output.log
 mkdir snap
 
-../../../swift --hydro $runtime_params --stars --self-gravity --feedback \
+$swift --hydro $runtime_params --stars --self-gravity --feedback \
 	--cooling --sync --limiter --zoom $cosmo_flag --threads=$n_threads \
-	$(cat zoom_runtime_params.txt) $mass_params $case_params $snapshot_params $parameter_file 2>&1 | tee output.log
+	$(cat zoom_runtime_params.txt) $run_params $extra_params $parameter_file 2>&1 | tee output.log

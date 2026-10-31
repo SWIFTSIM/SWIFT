@@ -19,6 +19,7 @@
 """Generate the ICs of the zoom homogeneous box (see README)."""
 
 import argparse
+import sys
 
 import h5py
 import numpy as np
@@ -29,6 +30,7 @@ G_NEWTON = 6.67430e-8
 MSUN = 1.988409870698051e33
 KPC = 3.0856775814913673e21
 MPC = 1e3 * KPC
+PC = 1e-3 * KPC
 
 # Internal units: 1e10 Msun, 1 kpc, 1 km/s
 UNIT_MASS = 1e10 * MSUN
@@ -40,12 +42,53 @@ UNIT_TIME = UNIT_LENGTH / UNIT_VELOCITY
 ETA_RESOLUTION = 1.2348
 KERNEL_GAMMA = 1.936492
 SPACE_STRETCH = 1.1
+GAS_GAMMA = 5.0 / 3.0
+
+# Gravity defaults of SWIFT (src/gravity_properties.h)
+A_SMOOTH = 1.25
+R_CUT_MAX = 4.5
+
+# Limits of zoom_region_init() (src/zoom_region/zoom_init.c)
+ZOOM_REGIONS_ERROR = 64
+ZOOM_REGIONS_WARNING = 16
 
 
 def parse_options():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--level", type=int, default=3, help="Number of gas particles 2^(3 level)"
+        "--level",
+        "--levelmax",
+        dest="level",
+        type=int,
+        default=5,
+        help="levelmax: the gas box holds 2^level gas particles per dimension",
+    )
+    parser.add_argument(
+        "--levelmin",
+        type=int,
+        default=None,
+        help="Coarsest level of the background; level l has the spacing "
+        "L / 2^l, L the gas box side (default: level - 3; may be 0 or negative)",
+    )
+    parser.add_argument(
+        "--padding",
+        type=int,
+        default=8,
+        help="Cells of each coarser level around the next finer level (MUSIC)",
+    )
+    box = parser.add_mutually_exclusive_group()
+    box.add_argument(
+        "--box-size",
+        type=float,
+        default=None,
+        help="Side of the periodic box: physical kpc, or comoving Mpc with "
+        "--cosmological (rounded to the background lattice)",
+    )
+    box.add_argument(
+        "--embed",
+        type=float,
+        default=None,
+        help="Side of the periodic box in gas box units (default 8)",
     )
     parser.add_argument(
         "--lJ", type=float, default=0.25, help="Jeans wavelength in gas box units"
@@ -55,12 +98,6 @@ def parse_options():
     )
     parser.add_argument(
         "--mass", type=float, default=50.0, help="Gas particle mass in Msun"
-    )
-    parser.add_argument(
-        "--embed",
-        type=int,
-        default=8,
-        help="Side of the periodic box in gas box units (power of 2)",
     )
     parser.add_argument(
         "--dm-ratio",
@@ -80,7 +117,9 @@ def parse_options():
         default=0.25,
         help="Width of the tanh density profile in gas box units",
     )
-    parser.add_argument("--h-max", type=float, default=0.08, help="SPH:h_max in kpc")
+    parser.add_argument(
+        "--h-max", type=float, default=0.08, help="SPH:h_max in physical kpc"
+    )
     parser.add_argument(
         "--pad-factor",
         type=float,
@@ -88,16 +127,34 @@ def parse_options():
         help="ZoomRegion:region_pad_factor",
     )
     parser.add_argument(
+        "--max-bkg-cdim",
+        type=int,
+        default=91,
+        help="Cap on ZoomRegion:bkg_top_level_cells",
+    )
+    parser.add_argument(
         "--max-zoom-cdim",
         type=int,
         default=32,
-        help="Maximal number of zoom top-level cells per axis",
+        help="Cap on the number of zoom top-level cells per axis",
+    )
+    parser.add_argument(
+        "--max-mesh",
+        type=int,
+        default=512,
+        help="Cap on Gravity:mesh_side_length",
+    )
+    parser.add_argument(
+        "--max-background-particles",
+        type=float,
+        default=1e8,
+        help="Stop if the background needs more PartType2 particles",
     )
     parser.add_argument(
         "--softening-ratio-background",
         type=float,
-        default=0.2,
-        help="Gravity:softening_ratio_background (printed softenings only)",
+        default=0.05,
+        help="Gravity:softening_ratio_background",
     )
     parser.add_argument(
         "--cosmological",
@@ -126,12 +183,18 @@ def parse_options():
         help="Physical softening of gas and PartType1 in kpc (with --cosmological)",
     )
     parser.add_argument(
-        "--velocity-sigma",
+        "--velocity-fraction",
         type=float,
-        default=1.0,
-        help="Random velocity dispersion in km/s (with --cosmological only)",
+        default=0.1,
+        help="Random velocity dispersion per component in units of the gas "
+        "sound speed (with --cosmological only)",
     )
     parser.add_argument("--seed", type=int, default=1, help="Random seed")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the layout and the zoom grid, write no file",
+    )
     parser.add_argument(
         "-o", dest="output", default="ICs_zoom_homogeneous_box.hdf5", help="IC file"
     )
@@ -144,99 +207,245 @@ def parse_options():
 
     if opt.level < 2:
         parser.error("--level must be at least 2")
-    if opt.embed < 2 or opt.embed & (opt.embed - 1):
-        parser.error("--embed must be a power of 2, at least 2")
+    if opt.levelmin is None:
+        opt.levelmin = opt.level - 3
+    if opt.levelmin >= opt.level:
+        parser.error("--levelmin must be below --level")
+    if opt.padding < 1:
+        parser.error("--padding must be at least 1")
+    if opt.box_size is None and opt.embed is None:
+        opt.embed = 8.0
+    if (opt.box_size is not None and opt.box_size <= 0) or (
+        opt.embed is not None and opt.embed <= 1
+    ):
+        parser.error("--box-size must be > 0 and --embed > 1")
     if opt.dm_ratio < 0 or opt.delta < 0 or opt.transition_width <= 0:
         parser.error("--dm-ratio and --delta must be >= 0, the width > 0")
+    if opt.velocity_fraction <= 0 and opt.cosmological:
+        parser.error("--velocity-fraction must be > 0 with --cosmological")
     return opt
 
 
-def gas_and_dm_box(opt, rng):
-    """Paired gas and dark matter particles in [0, L)^3, in cgs."""
+def gas_box(opt):
+    """Side, spacing, densities and masses of the gas box, in cgs."""
     n_side = 2**opt.level
     N = n_side**3
     rho_gas = opt.rho * M_PROTON
     m_gas = opt.mass * MSUN
     L = (N * m_gas / rho_gas) ** (1.0 / 3.0)
-    dx = L / n_side
+    m_dm = opt.dm_ratio * m_gas
+    rho_in = rho_gas * (1.0 + opt.dm_ratio)
 
     # Velocity dispersion of the original HomogeneousBox example
     k_J = 2.0 * np.pi / (opt.lJ * L)
     sigma = np.sqrt(4.0 * np.pi * G_NEWTON * rho_gas) / k_J
 
-    # Split each parent point as in space_generate_gas() (src/space.c)
-    m_dm = opt.dm_ratio * m_gas
-    gas_fraction = m_gas / (m_gas + m_dm)
-    parents = rng.random((N, 3)) * L
-    pos_gas = np.mod(parents - 0.5 * dx * (1.0 - gas_fraction), L)
-    pos_dm = np.mod(parents + 0.5 * dx * gas_fraction, L)
-
     return dict(
         N=N,
         L=L,
-        dx=dx,
+        dx=L / n_side,
         rho_gas=rho_gas,
+        rho_in=rho_in,
+        rho_out=rho_in / (1.0 + opt.delta),
         m_gas=m_gas,
         m_dm=m_dm,
         sigma=sigma,
-        pos_gas=pos_gas,
-        pos_dm=pos_dm if m_dm > 0 else np.zeros((0, 3)),
     )
 
 
-def background_shells(opt, box, rng):
-    """PartType2 on jittered grids in nested cube shells around the gas box."""
-    L, dx = box["L"], box["dx"]
-    n_side = 2**opt.level
-    rho_in = box["rho_gas"] * (1.0 + opt.dm_ratio)
-    rho_out = rho_in / (1.0 + opt.delta)
+def gas_and_dm_positions(box, rng):
+    """Paired gas and dark matter positions in [0, L)^3, in cgs."""
+    L, N, dx = box["L"], box["N"], box["dx"]
+
+    # Split each parent point as in space_generate_gas() (src/space.c)
+    gas_fraction = box["m_gas"] / (box["m_gas"] + box["m_dm"])
+    parents = rng.random((N, 3)) * L
+    pos_gas = np.mod(parents - 0.5 * dx * (1.0 - gas_fraction), L)
+    pos_dm = np.mod(parents + 0.5 * dx * gas_fraction, L)
+    return pos_gas, pos_dm if box["m_dm"] > 0 else np.zeros((0, 3))
+
+
+def level_layout(opt, L, box_target):
+    """Nested background levels around the gas box, as MUSIC builds them.
+
+    Level l has the spacing s = L / 2^l. Going from level l + 1 to level l,
+    the region grows by `padding` cells of level l on each side, plus one
+    cell when needed to keep the cell count a multiple of 4, so that the
+    region edges stay on the lattice of the next coarser level. The coarsest
+    level that fits in the box fills the box. Returns the levels from fine to
+    coarse and the levelmin that would fill the box with padded levels only.
+    """
+    n_inner = 2**opt.level
+    levels = []
+    level = opt.level - 1
+    while True:
+        s = L / 2**level
+        h = n_inner // 2
+        m = opt.padding if (h // 2 + opt.padding) % 2 == 0 else opt.padding + 1
+        fits = (h + 2 * m) * s <= box_target * (1.0 + 1e-12)
+        if level < opt.levelmin or not fits:
+            levelmin_fill = level if not fits else None
+            break
+        levels.append(dict(level=level, s=s, h=h, m=m, n=h + 2 * m))
+        n_inner = h + 2 * m
+        level -= 1
+
+    # Lowest level whose padded region still fits, if levelmin stops early
+    if levelmin_fill is None:
+        while True:
+            s = L / 2**level
+            h = n_inner // 2
+            m = opt.padding if (h // 2 + opt.padding) % 2 == 0 else opt.padding + 1
+            if (h + 2 * m) * s > box_target * (1.0 + 1e-12):
+                levelmin_fill = level + 1
+                break
+            n_inner = h + 2 * m
+            level -= 1
+    else:
+        levelmin_fill += 1
+
+    if not levels:
+        first = opt.level - 1
+        h = 2 ** (opt.level - 1)
+        m = opt.padding if (h // 2 + opt.padding) % 2 == 0 else opt.padding + 1
+        raise SystemExit(
+            f"Error: the box ({box_target / PC:.1f} pc) is smaller than the "
+            f"padded level {first} ({(h + 2 * m) * L / 2**first / PC:.1f} pc). "
+            "Increase the box or lower --padding."
+        )
+
+    outer = levels[-1]
+    m_box = max(outer["m"], int(round((box_target / outer["s"] - outer["h"]) / 2)))
+    outer["m"] = m_box
+    outer["n"] = outer["h"] + 2 * m_box
+    outer["fill"] = True
+    for lev in levels:
+        lev["count"] = lev["n"] ** 3 - lev["h"] ** 3
+    return levels, outer["n"] * outer["s"], levelmin_fill
+
+
+def background_particles(opt, box, levels, rng):
+    """PartType2 on jittered lattices, one level at a time, in cgs."""
+    L = box["L"]
     width = opt.transition_width * L
-    centre = 0.5 * opt.embed * L
+    rho_in, rho_out = box["rho_in"], box["rho_out"]
+    box_size = levels[-1]["n"] * levels[-1]["s"]
+    centre = 0.5 * box_size
 
-    idx = (np.arange(n_side) + 0.5) / n_side
-    gx, gy, gz = np.meshgrid(idx, idx, idx, indexing="ij")
-    unit = np.column_stack((gx.ravel(), gy.ravel(), gz.ravel())) - 0.5
-    inner = np.all(np.abs(unit) < 0.25, axis=1)
-    unit = unit[~inner]
-
-    pos, mass, shell = [], [], []
-    n_shells = int(round(np.log2(opt.embed)))
-    for k in range(1, n_shells + 1):
-        side = 2**k * L
-        spacing = 2**k * dx
-        cell_centres = unit * side
+    pos, mass, level_id = [], [], []
+    for lev in levels:
+        n, h, s = lev["n"], lev["h"], lev["s"]
+        idx = (np.arange(n) + 0.5) / n
+        gx, gy, gz = np.meshgrid(idx, idx, idx, indexing="ij")
+        unit = np.column_stack((gx.ravel(), gy.ravel(), gz.ravel())) - 0.5
+        inner = np.all(np.abs(unit) < 0.5 * h / n, axis=1)
+        cell_centres = unit[~inner] * (n * s)
         r = np.max(np.abs(cell_centres), axis=1)
         rho = rho_out + (rho_in - rho_out) * (1.0 - np.tanh((r - 0.5 * L) / width))
-        jitter = rng.uniform(-0.45, 0.45, size=cell_centres.shape) * spacing
+        jitter = rng.uniform(-0.45, 0.45, size=cell_centres.shape) * s
         pos.append(centre + cell_centres + jitter)
-        mass.append(rho * spacing**3)
-        shell.append(np.full(len(r), k))
+        mass.append(rho * s**3)
+        level_id.append(np.full(len(r), lev["level"]))
+    return np.concatenate(pos), np.concatenate(mass), np.concatenate(level_id)
 
-    return np.concatenate(pos), np.concatenate(mass), np.concatenate(shell)
 
+def zoom_grid(opt, box_size, extent, h_max):
+    """Background cdim, zoom depth and mesh, mirroring zoom_region_init()."""
+    errors, warnings = [], []
+    padded = opt.pad_factor * extent
 
-def zoom_geometry(opt, L):
-    """Background cdim and zoom depth for the given gas box side (cgs)."""
-    box_size = opt.embed * L
-    bkg_cdim = int(np.floor(opt.embed / opt.pad_factor))
+    # Automatic bkg_cdim of zoom_optimise_bkg_cells(), then the cap
+    bkg_cdim = int(np.floor(box_size / padded))
     if bkg_cdim % 2 == 0:
         bkg_cdim -= 1
-    if bkg_cdim < 1:
-        raise ValueError("--embed too small for --pad-factor")
+    if bkg_cdim >= 1:
+        width = box_size / bkg_cdim
+        if np.floor((0.5 * box_size - 0.5 * padded) / width) != np.floor(
+            (0.5 * box_size + 0.5 * padded) / width
+        ):
+            bkg_cdim -= 2
+    cap = opt.max_bkg_cdim if opt.max_bkg_cdim % 2 else opt.max_bkg_cdim - 1
+    bkg_cdim = min(bkg_cdim, cap)
+    if bkg_cdim < 3:
+        raise SystemExit(
+            f"Error: the box is only {box_size / padded:.2f} padded zoom regions "
+            "wide; the background grid needs at least 3 cells. Increase the box."
+        )
     bkg_width = box_size / bkg_cdim
-    min_zoom_width = SPACE_STRETCH * KERNEL_GAMMA * opt.h_max * KPC
+
+    # Void region of zoom_get_void_geometry()
+    i_low = np.floor((0.5 * box_size - 0.5 * padded) / bkg_width)
+    i_up = np.floor((0.5 * box_size + 0.5 * padded) / bkg_width)
+    k = int(i_up - i_low + 1)
+    region = k * bkg_width
+    nr_regions = int(np.ceil(region / padded))
+    if nr_regions >= ZOOM_REGIONS_ERROR:
+        errors.append(
+            f"{nr_regions} zoom regions in the void region (SWIFT stops at "
+            f"{ZOOM_REGIONS_ERROR}): bkg_top_level_cells {bkg_cdim} is capped by "
+            f"--max-bkg-cdim; a box of {box_size / extent:.0f} gas boxes needs at "
+            f"least {int(np.ceil(box_size / (ZOOM_REGIONS_ERROR * padded)))} cells"
+        )
+    elif nr_regions >= ZOOM_REGIONS_WARNING:
+        warnings.append(
+            f"{nr_regions} zoom regions in the void region (SWIFT warns at "
+            f"{ZOOM_REGIONS_WARNING})"
+        )
+
+    # Deepest zoom grid with cells wider than 1.1 kernel_gamma h_max
+    min_zoom_width = SPACE_STRETCH * KERNEL_GAMMA * h_max
     depth = 0
     while (
         bkg_width / 2 ** (depth + 1) > min_zoom_width
-        and 2 ** (depth + 1) <= opt.max_zoom_cdim
+        and k * 2 ** (depth + 1) <= opt.max_zoom_cdim
     ):
         depth += 1
     if depth < 1:
-        raise ValueError(
-            "Zoom cells narrower than 1.1 kernel_gamma h_max: lower --h-max "
-            "or --pad-factor, or raise --level"
+        errors.append(
+            f"no zoom depth >= 1 gives zoom cells wider than 1.1 kernel_gamma "
+            f"h_max = {min_zoom_width / PC:.1f} pc with at most "
+            f"{opt.max_zoom_cdim} cells per axis (background cell "
+            f"{bkg_width / PC:.1f} pc)"
         )
-    return bkg_cdim, depth, bkg_width, bkg_width / 2**depth, min_zoom_width
+        depth = 1
+    zoom_width = bkg_width / 2**depth
+    if region < extent:
+        errors.append("zoom region smaller than the high-resolution particles")
+    if region / extent >= 2.0 * opt.pad_factor:
+        warnings.append(
+            f"real padding {region / extent:.2f} is at least twice "
+            f"region_pad_factor {opt.pad_factor} (SWIFT warns)"
+        )
+
+    # Mesh: the smallest power of 2 with r_cut_max at most one background cell
+    mesh = 16
+    while R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width or mesh < bkg_cdim:
+        mesh *= 2
+    if mesh > opt.max_mesh:
+        mesh = opt.max_mesh
+        warnings.append(
+            f"mesh capped at {mesh}: r_cut_max is larger than a background cell"
+        )
+    if mesh < bkg_cdim:
+        errors.append(f"mesh {mesh} smaller than bkg_top_level_cells {bkg_cdim}")
+    r_s = A_SMOOTH * box_size / mesh
+
+    return dict(
+        bkg_cdim=bkg_cdim,
+        bkg_width=bkg_width,
+        k=k,
+        region=region,
+        nr_regions=nr_regions,
+        depth=depth,
+        zoom_cdim=k * 2**depth,
+        zoom_width=zoom_width,
+        min_zoom_width=min_zoom_width,
+        mesh=mesh,
+        r_s=r_s,
+        r_cut=R_CUT_MAX * r_s,
+        errors=errors,
+        warnings=warnings,
+    )
 
 
 def write_ics(opt, filename, a, box_size, groups):
@@ -284,44 +493,192 @@ def data_fields(data, a):
     return fields
 
 
+def rho_crit_0(opt):
+    H0 = 100.0 * opt.hubble_param * 1e5 / MPC
+    return 3.0 * H0**2 / (8.0 * np.pi * G_NEWTON)
+
+
+def physical_box_target(opt, box):
+    """Requested physical box side in cgs, and the estimated a_begin."""
+    L = box["L"]
+    if opt.embed is not None:
+        target = opt.embed * L
+        a = (opt.omega_m * rho_crit_0(opt) / box["rho_out"]) ** (1.0 / 3.0)
+        if opt.cosmological:
+            M = box["rho_out"] * target**3 + (box["rho_in"] - box["rho_out"]) * L**3
+            a = (opt.omega_m * rho_crit_0(opt) * target**3 / M) ** (1.0 / 3.0)
+        return target, a
+    if not opt.cosmological:
+        return opt.box_size * KPC, 1.0
+
+    # Mean density of the box = Omega_m rho_crit_0 at a_begin, box comoving
+    B = opt.box_size * MPC
+    excess = (box["rho_in"] - box["rho_out"]) * (L / B) ** 3
+    a3 = (opt.omega_m * rho_crit_0(opt) - excess) / box["rho_out"]
+    if a3 <= 0:
+        raise SystemExit("Error: the comoving box is too small for this overdensity")
+    a = a3 ** (1.0 / 3.0)
+    return a * B, a
+
+
+def print_levels(opt, box, levels, rho_mean, a, n_bg_total):
+    L, dx = box["L"], box["dx"]
+    unit = "pc" if not opt.cosmological else "pc (physical)"
+    print(
+        f"levelmax {opt.level}  : gas box L = {L / PC:.2f} {unit}, spacing "
+        f"d = {dx / PC:.3f} pc, {box['N']} gas and {box['N'] if box['m_dm'] > 0 else 0} "
+        "PartType1 particles"
+    )
+    for lev in levels:
+        m = lev["s"] ** 3 * box["rho_out"]
+        eps = opt.softening_ratio_background * (m / rho_mean) ** (1.0 / 3.0)
+        kind = "fills the box" if lev.get("fill") else f"padding {lev['m']} cells"
+        print(
+            f"level {lev['level']:3d}   : spacing {lev['s'] / dx:g} d = "
+            f"{lev['s'] / PC:.4g} pc, region {lev['n']} cells = "
+            f"{lev['n'] * lev['s'] / L:g} L ({kind}), {lev['count']} PartType2 "
+            f"of {m / MSUN:.4g} Msun (rho_out), softening {eps / PC:.3g} pc"
+        )
+    print(
+        f"PartType2 total : {n_bg_total} particles on {len(levels)} levels "
+        f"({opt.level - 1} to {levels[-1]['level']})"
+    )
+
+
 def main():
     opt = parse_options()
     rng = np.random.default_rng(opt.seed)
 
-    box = gas_and_dm_box(opt, rng)
+    box = gas_box(opt)
     L, N = box["L"], box["N"]
-    box_size = opt.embed * L
-    offset = 0.5 * (opt.embed - 1) * L
+    target, a = physical_box_target(opt, box)
+    levels, box_size, levelmin_fill = level_layout(opt, L, target)
+    n_bg_total = sum(lev["count"] for lev in levels)
+    offset = 0.5 * box_size - 0.5 * L
     centre = 0.5 * box_size
+    h_max = opt.h_max * KPC
+    h = min(ETA_RESOLUTION * box["dx"], h_max)
 
-    bkg_cdim, depth, bkg_width, zoom_width, min_zoom_width = zoom_geometry(opt, L)
-    mesh = max(32, 2 ** (opt.level + 1))
-    pos_bg, m_bg, shell_bg = background_shells(opt, box, rng)
+    if n_bg_total > opt.max_background_particles:
+        print_levels(opt, box, levels, box["rho_out"], a, n_bg_total)
+        raise SystemExit(
+            f"Error: {n_bg_total:.3e} PartType2 particles (limit "
+            f"--max-background-particles {opt.max_background_particles:.3g}). "
+            f"--levelmin {levelmin_fill} fills this box with padded levels."
+        )
 
-    # Checks
-    if np.any(np.max(np.abs(pos_bg - centre), axis=1) < 0.5 * L):
-        raise RuntimeError("PartType2 particle inside the gas box")
-    if np.any(pos_bg < 0) or np.any(pos_bg >= box_size):
-        raise RuntimeError("PartType2 particle outside the periodic box")
+    if opt.dry_run:
+        pos_gas = pos_dm = None
+        extent = L
+        M_total = (
+            box["rho_out"] * box_size**3 + (box["rho_in"] - box["rho_out"]) * L**3
+        )
+    else:
+        pos_gas, pos_dm = gas_and_dm_positions(box, rng)
+        pos_bg, m_bg, level_bg = background_particles(opt, box, levels, rng)
+        pos_gas += offset
+        pos_dm += offset
+        hires = np.concatenate((pos_gas, pos_dm))
+        extent = np.max(hires.max(axis=0) - hires.min(axis=0))
 
-    h = min(ETA_RESOLUTION * box["dx"], opt.h_max * KPC)
-    N_dm = len(box["pos_dm"])
-    N_bg = len(m_bg)
+        if np.any(np.max(np.abs(pos_bg - centre), axis=1) < 0.5 * L):
+            raise RuntimeError("PartType2 particle inside the gas box")
+        if np.any(pos_bg < 0) or np.any(pos_bg >= box_size):
+            raise RuntimeError("PartType2 particle outside the periodic box")
+        M_total = N * box["m_gas"] + len(pos_dm) * box["m_dm"] + m_bg.sum()
 
-    # Cosmological ICs: comoving mean matter density equal to Omega_m rho_crit_0
-    M_total = N * box["m_gas"] + N_dm * box["m_dm"] + m_bg.sum()
     rho_mean = M_total / box_size**3
-    a = 1.0
     if opt.cosmological:
-        H0 = 100.0 * opt.hubble_param * 1e5 / MPC
-        rho_crit_0 = 3.0 * H0**2 / (8.0 * np.pi * G_NEWTON)
-        a = (opt.omega_m * rho_crit_0 / rho_mean) ** (1.0 / 3.0)
+        a = (opt.omega_m * rho_crit_0(opt) / rho_mean) ** (1.0 / 3.0)
+    else:
+        a = 1.0
+    grid = zoom_grid(opt, box_size, extent, h_max)
+
+    # Report
+    mode = f"comoving, a_begin = {a:.6e}, z = {1 / a - 1:.2f}"
+    print(
+        f"{opt.output}{' (dry run, not written)' if opt.dry_run else ''}: "
+        f"{mode if opt.cosmological else 'physical'}"
+    )
+    if opt.cosmological:
+        print(
+            f"Box             : {box_size / a / MPC:.6g} comoving Mpc "
+            f"(requested {opt.box_size if opt.box_size else box_size / a / MPC:.6g}), "
+            f"{box_size / KPC:.6g} physical kpc at a_begin, "
+            f"{box_size / L:.6g} gas boxes"
+        )
+        print(
+            f"Gas box         : {L / KPC:.6g} physical kpc = "
+            f"{L / a / KPC:.6g} comoving kpc"
+        )
+    else:
+        req = opt.box_size if opt.box_size else (opt.embed * L / KPC)
+        print(
+            f"Box             : {box_size / KPC:.6g} kpc (requested {req:.6g}), "
+            f"{box_size / L:.6g} gas boxes"
+        )
+    print(
+        f"Levels          : levelmax {opt.level}, levelmin {opt.levelmin}, "
+        f"padding {opt.padding}, coarsest level used {levels[-1]['level']}, "
+        f"levelmin that fills this box with padded levels {levelmin_fill}"
+    )
+    print_levels(opt, box, levels, rho_mean, a, n_bg_total)
+    print(f"Mean spacing    : {box['dx'] / PC:.3f} pc, h = {h / PC:.3f} pc")
+    c_s = np.sqrt(GAS_GAMMA * (GAS_GAMMA - 1.0)) * box["sigma"]
+    print(
+        f"Gas             : u = sigma^2, sigma = {box['sigma'] / 1e5:.4f} km/s, "
+        f"sound speed {c_s / 1e5:.4f} km/s"
+    )
+    t_ff = np.sqrt(3.0 * np.pi / (32.0 * G_NEWTON * box["rho_in"]))
+    print(f"Free-fall time  : {t_ff / UNIT_TIME:.4f} internal units (gas box)")
+    print(
+        f"Densities       : inside {box['rho_in'] / M_PROTON:.6f}, outside "
+        f"{box['rho_out'] / M_PROTON:.6f}, mean {rho_mean / M_PROTON:.6f} m_p/cm^3"
+        " (physical)"
+    )
+    print(f"Total mass      : {M_total / MSUN:.6e} Msun")
+
+    eps_dm = opt.softening if opt.cosmological else None
+    print(
+        f"Softening       : PartType2 ratio {opt.softening_ratio_background} of the "
+        "mean spacing at its mass (values above)"
+        + (f"; gas and PartType1 {eps_dm * 1e3:g} pc" if eps_dm else "")
+    )
+    print(
+        f"Zoom grid       : extent E = {extent / PC:.2f} pc, bkg_top_level_cells "
+        f"{grid['bkg_cdim']} (cell {grid['bkg_width'] / PC:.6g} pc, cap "
+        f"{opt.max_bkg_cdim}), zoom region {grid['k']} background cells = "
+        f"{grid['region'] / PC:.6g} pc (real padding {grid['region'] / extent:.3f}, "
+        f"{grid['nr_regions']} zoom regions in the void region)"
+    )
+    print(
+        f"                  zoom_top_level_depth {grid['depth']}, zoom cdim "
+        f"{grid['zoom_cdim']}, zoom cell {grid['zoom_width'] / PC:.6g} pc "
+        f"(> 1.1 kernel_gamma h_max = {grid['min_zoom_width'] / PC:.1f} pc), "
+        f"region_pad_factor {opt.pad_factor}"
+    )
+    print(
+        f"                  mesh_side_length {grid['mesh']} (mesh cell "
+        f"{box_size / grid['mesh'] / PC:.6g} pc, r_s {grid['r_s'] / PC:.6g} pc, "
+        f"r_cut_max {grid['r_cut'] / PC:.6g} pc)"
+    )
+    for w in grid["warnings"]:
+        print(f"Warning: {w}")
+    if grid["errors"]:
+        for e in grid["errors"]:
+            print(f"Error: {e}", file=sys.stderr)
+        raise SystemExit("Error: the zoom grid does not fit the rules (see above)")
+    if opt.dry_run:
+        return
+
+    print(f"PartType2 inside the gas box: 0 (checked); in the box: {len(m_bg)}")
 
     to_mass = 1.0 / UNIT_MASS
     to_length = 1.0 / UNIT_LENGTH
+    N_dm, N_bg = len(pos_dm), len(m_bg)
     groups = {
         0: {
-            "Coordinates": (box["pos_gas"] + offset) * to_length,
+            "Coordinates": pos_gas * to_length,
             "Masses": np.full(N, box["m_gas"] * to_mass),
             "ParticleIDs": np.arange(1, N + 1),
             "SmoothingLength": np.full(N, h * to_length),
@@ -336,7 +693,7 @@ def main():
     }
     if N_dm > 0:
         groups[1] = {
-            "Coordinates": (box["pos_dm"] + offset) * to_length,
+            "Coordinates": pos_dm * to_length,
             "Masses": np.full(N_dm, box["m_dm"] * to_mass),
             "ParticleIDs": np.arange(N + 1, N + N_dm + 1),
         }
@@ -345,19 +702,22 @@ def main():
     # SWIFT stops on a zero RMS velocity in cosmological runs
     # (engine_recompute_displacement_constraint), so these ICs get a small
     # random velocity
-    sigma_v = opt.velocity_sigma if opt.cosmological else 0.0
+    sigma_v = opt.velocity_fraction * c_s / UNIT_VELOCITY if opt.cosmological else 0.0
     for data in groups.values():
         shape = data["Coordinates"].shape
         data["Velocities"] = (
             rng.normal(0.0, sigma_v, shape) if sigma_v > 0 else np.zeros(shape)
         )
     write_ics(opt, opt.output, a, box_size * to_length, groups)
+    if opt.cosmological:
+        print(f"Velocities      : Gaussian, {sigma_v:.4g} km/s per component")
 
     runtime = [
-        f"ZoomRegion:bkg_top_level_cells:{bkg_cdim}",
-        f"ZoomRegion:zoom_top_level_depth:{depth}",
+        f"ZoomRegion:bkg_top_level_cells:{grid['bkg_cdim']}",
+        f"ZoomRegion:zoom_top_level_depth:{grid['depth']}",
         f"ZoomRegion:region_pad_factor:{opt.pad_factor}",
-        f"Gravity:mesh_side_length:{mesh}",
+        f"Gravity:mesh_side_length:{grid['mesh']}",
+        f"Gravity:softening_ratio_background:{opt.softening_ratio_background}",
     ]
     if opt.cosmological:
         omega_b = opt.omega_m / (1.0 + opt.dm_ratio)
@@ -372,63 +732,14 @@ def main():
             f"Gravity:comoving_baryon_softening:{opt.softening / a:.8e}",
             f"SPH:h_max:{opt.h_max / a:.8e}",
             f"Snapshots:scale_factor_first:{a:.8e}",
-            "Snapshots:delta_time:1.02",
             f"Statistics:scale_factor_first:{a:.8e}",
             "Statistics:delta_time:1.01",
         ]
     with open(opt.zoom_params_file, "w") as f:
         f.write(" ".join(f"-P {r}" for r in runtime) + "\n")
-
-    # Report
-    pc = KPC * 1e-3
-    print(
-        f"{opt.output} written ({'comoving, a = %.6e' % a if opt.cosmological else 'physical'})"
-    )
-    print(
-        f"Gas box side L            : {L / pc:.2f} pc, periodic box {box_size / pc:.2f} pc"
-    )
-    print(
-        f"Gas box                   : [{offset / pc:.2f}, {(offset + L) / pc:.2f}) pc on each axis"
-    )
-    print(f"Mean gas spacing          : {box['dx'] / pc:.3f} pc, h = {h / pc:.3f} pc")
-    print(f"Velocity dispersion       : {box['sigma'] / 1e5:.4f} km/s")
-    print(f"PartType0 (gas)           : {N} x {box['m_gas'] / MSUN:.4g} Msun")
-    print(f"PartType1 (dark matter)   : {N_dm} x {box['m_dm'] / MSUN:.4g} Msun")
-    for k in np.unique(shell_bg):
-        sel = shell_bg == k
-        m_k = m_bg[sel]
-        eps = opt.softening_ratio_background * (m_k / rho_mean) ** (1.0 / 3.0)
-        print(
-            f"PartType2 shell {k}         : {sel.sum()} particles, "
-            f"{m_k.min() / MSUN:.4g} to {m_k.max() / MSUN:.4g} Msun, "
-            f"Plummer softening {eps.min() / pc:.3g} to {eps.max() / pc:.3g} pc "
-            f"(ratio {opt.softening_ratio_background})"
-        )
-    M_in = N * box["m_gas"] + N_dm * box["m_dm"]
-    M_out = m_bg.sum()
-    V_in = L**3
-    V_out = box_size**3 - V_in
-    print(
-        f"Mass inside the gas box   : {M_in / MSUN:.6e} Msun, density {M_in / V_in / M_PROTON:.6f} m_p/cm^3"
-    )
-    print(
-        f"Mass outside the gas box  : {M_out / MSUN:.6e} Msun, density {M_out / V_out / M_PROTON:.6f} m_p/cm^3"
-    )
-    print(
-        f"Total mass                : {M_total / MSUN:.6e} Msun, mean density {rho_mean / M_PROTON:.6f} m_p/cm^3"
-    )
-    print("PartType2 inside gas box  : 0 (checked)")
-    print(
-        f"Zoom grid                 : bkg_top_level_cells {bkg_cdim} "
-        f"(width {bkg_width / pc:.1f} pc), zoom_top_level_depth {depth} "
-        f"(zoom cell {zoom_width / pc:.1f} pc > 1.1 kernel_gamma h_max = "
-        f"{min_zoom_width / pc:.1f} pc), mesh_side_length {mesh}, "
-        f"written to {opt.zoom_params_file}"
-    )
-    if opt.cosmological:
-        print(f"Cosmological runtime parameters (also in {opt.zoom_params_file}):")
-        for r in runtime[3:]:
-            print(f"  {r}")
+    print(f"Runtime parameters written to {opt.zoom_params_file}:")
+    for r in runtime:
+        print(f"  {r}")
 
 
 if __name__ == "__main__":
