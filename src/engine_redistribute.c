@@ -940,8 +940,7 @@ void engine_redistribute(struct engine *e) {
 
     /* New cell index */
     const int new_cid =
-        cell_getid(s->cdim, sink->x[0] * s->iwidth[0],
-                   sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
+        cell_getid_from_pos(s, sink->x[0], sink->x[1], sink->x[2]);
 
     /* New cell of this sink */
     const struct cell *c = &s->cells_top[new_cid];
@@ -1337,9 +1336,8 @@ void engine_redistribute(struct engine *e) {
             k, cells[cid].nodeID);
   }
   for (size_t k = 0; k < nr_sinks_new; k++) {
-    const int cid = cell_getid(s->cdim, s->sinks[k].x[0] * s->iwidth[0],
-                               s->sinks[k].x[1] * s->iwidth[1],
-                               s->sinks[k].x[2] * s->iwidth[2]);
+    const int cid = cell_getid_from_pos(s, s->sinks[k].x[0], s->sinks[k].x[1],
+                                        s->sinks[k].x[2]);
     if (cells[cid].nodeID != nodeID)
       error(
           "Received sink-particle (%zu) that does not belong here (nodeID=%i).",
