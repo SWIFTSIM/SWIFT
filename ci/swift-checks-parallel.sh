@@ -85,13 +85,17 @@ do_make check VERBOSE=1
 do_make clean
 
 echo "MAGMA-MI1"
-do_configure --with-parmetis --disable-vec --disable-optimization --with-hydro=magma2-MI1
+do_configure --with-parmetis --disable-vec --disable-optimization --with-hydro=magma2-MI1 --with-kernel=quintic-spline
 do_make
-do_make check
 do_make clean
 
 echo "MAGMA-MI2"
-do_configure --with-parmetis --disable-vec --disable-optimization --with-hydro=magma2-MI2
+do_configure --with-parmetis --disable-vec --disable-optimization --with-hydro=magma2-MI2 --with-kernel=quintic-spline
+do_make
+do_make clean
+
+echo "MAGMA-MI3"
+do_configure --with-parmetis --disable-vec --disable-optimization --with-hydro=magma2-MI3 --with-kernel=quintic-spline
 do_make
 do_make check
 do_make clean
