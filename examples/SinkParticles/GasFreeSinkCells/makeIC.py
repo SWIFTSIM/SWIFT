@@ -422,10 +422,7 @@ def main() -> None:
 
     lJ = args.lJ * box_size * UNIT_LENGTH
     kJ = 2.0 * np.pi / lJ
-    sigma = (
-        np.sqrt(4.0 * np.pi * G * (args.rho * m_p / units.cm**3))
-        / kJ
-    )
+    sigma = np.sqrt(4.0 * np.pi * G * (args.rho * m_p / units.cm**3)) / kJ
     sigma = sigma.to(UNIT_VELOCITY).value
     gas_u = sigma**2
 
