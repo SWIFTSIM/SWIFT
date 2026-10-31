@@ -2582,7 +2582,7 @@ esac
 #  Adiabatic index
 AC_ARG_WITH([adiabatic-index],
    [AS_HELP_STRING([--with-adiabatic-index=<gamma>],
-      [adiabatic index @<:@5/3, 7/5, 4/3, 2 default: 5/3@:>@]
+      [adiabatic index @<:@5/3, 7/5, 4/3, 2, 1.001 default: 5/3@:>@]
    )],
    [with_gamma="$withval"],
    [with_gamma="5/3"]
@@ -2599,6 +2599,9 @@ case "$with_gamma" in
    ;;
    2)
       AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
+   ;;
+   1.001)
+      AC_DEFINE([HYDRO_GAMMA_1_001], [1.001], [Adiabatic index is 1.001 (nearly isothermal)])
    ;;
    *)
       AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
@@ -3091,6 +3094,9 @@ case "$with_forcing" in
    ;;
    idealized-agn-jet)
       AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
+   ;;
+   driven-turbulence)
+      AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence following updating the forces])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])

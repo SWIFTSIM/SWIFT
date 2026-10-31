@@ -557,6 +557,14 @@ __attribute__((always_inline)) INLINE static void tracers_split_part(
     struct part *p, struct xpart *xp, const double n) {
 
   xp->tracers_data.AGN_feedback_energy /= n;
+  xp->tracers_data.jet_feedback_energy /= n;
+
+  /* Only split the averaged SFR if it is positive. A negative value
+   * stores the time to remove after a snapshot trigger fired. */
+  for (int i = 0; i < num_snapshot_triggers_part; ++i) {
+    if (xp->tracers_data.averaged_SFR[i] > 0.f)
+      xp->tracers_data.averaged_SFR[i] /= n;
+  }
 }
 
 #endif /* SWIFT_TRACERS_EAGLE_H */

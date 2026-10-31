@@ -1,0 +1,18 @@
+\section{Runtime Options and Parameter Files}
+
+SWIFT requires a number of runtime options to run and get any sensible output.
+For instance, just running the \inlinecode{swift} binary will not use any SPH
+or gravity; the particles will just sit still!
+
+A list of  command line options can be found by running the compiled binary with
+the \inlinecode{-h} or \inlinecode{-{}-help} flag:
+
+\begin{lstlisting}[style=codeblock]
+   ./swift --help
+\end{lstlisting}
+
+
+You will also need to specify a number of runtime parameters that are dependent
+on your compile-time configuration in a parameter file. A list of all of these
+parameters can be found in \inlinecode{examples/parameter\_example.yml}, and you can check
+out examples in the \inlinecode{examples} directory.
