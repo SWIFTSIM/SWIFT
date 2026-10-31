@@ -156,7 +156,10 @@ MacOS, so it is best to leave it out. To configure:
 
 When using the clang compiler, the hand-written vectorized routines
 have to be disabled. This is done at configuration time by adding
-the flag ``--disable-hand-vec``.
+the flag ``--disable-hand-vec``. The hand-written routines exist for the
+GADGET-2 hydrodynamics scheme only; they use the same kernel tables as the
+scalar code, and ``tests/testKernel`` and ``tests/testKernelAccuracy`` check
+that both agree to a few ulp.
 
 Trouble Finding Libraries
 ~~~~~~~~~~~~~~~~~~~~~~~~~

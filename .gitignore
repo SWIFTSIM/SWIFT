@@ -140,6 +140,7 @@ tests/testSPHStep
 tests/testExp
 tests/testErfc
 tests/testKernel
+tests/testKernelAccuracy
 tests/testKernelGrav
 tests/testKernelLongGrav
 tests/testFFT
