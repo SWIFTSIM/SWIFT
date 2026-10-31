@@ -98,6 +98,8 @@ struct forcing_terms {
   /*! Maximal mode */
   double k_max;
 
+  /*! Time of the last update of the driving field (negative until the first
+   * call to forcing_update(), which sets it to the start time of the run) */
   double previous_update_time;
 
   double time_frequency;  // ST_DtFreq
@@ -328,6 +330,10 @@ static INLINE void forcing_terms_calculate_phases(struct forcing_terms *terms) {
 INLINE static void forcing_update(struct forcing_terms *terms,
                                   const double time_old, const double time) {
 
+  /* First call: the engine's initial time is the reference for the updates
+   * (the run need not start at t = 0) */
+  if (terms->previous_update_time < 0.) terms->previous_update_time = time;
+
   const double delta_time = time - terms->previous_update_time;
 
   if (delta_time >= terms->time_frequency) {
@@ -398,7 +404,7 @@ static INLINE void forcing_terms_init(struct swift_params *params,
       parser_get_param_double(params, "TurbulenceDriving:frequency");
 
   terms->decay_time = decay_time;
-  terms->previous_update_time = 0.;
+  terms->previous_update_time = -1.;
   terms->variance = sqrt(energy / decay_time);
   terms->solenoid_weight_norm =
       sqrt(3.0 / hydro_dimension) * sqrt(3.0) * 1.0 /
