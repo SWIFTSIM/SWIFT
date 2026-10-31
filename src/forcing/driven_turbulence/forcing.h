@@ -40,6 +40,40 @@
 #include "space.h"
 #include "units.h"
 
+/**
+ * @file forcing/driven_turbulence/forcing.h
+ * @brief Stochastic driving of turbulence with an Ornstein-Uhlenbeck process in
+ * Fourier space, following Arepo's TURB_DRIVING module (Bauer & Springel 2012,
+ * MNRAS 423, 2558; Pakmor et al. 2026, arXiv:2607.06660), itself based on
+ * Schmidt et al. (2006) and Federrath et al. (2010).
+ *
+ * Normalisation: the force density applied to the gas is
+ *
+ *   f = 2 * amplitude_factor * S * sum_k A(k) [a_k cos(k.x) - b_k sin(k.x)]
+ *
+ * where A(k) is the amplitude spectrum (1 at k_min for the Kolmogorov and
+ * k^-2 shapes, 1 at the centre of the band for the parabolic shape), a_k and
+ * b_k are the projected Ornstein-Uhlenbeck phases, each with standard
+ * deviation sqrt(energy / decay_time), and
+ *
+ *   S = sqrt(3 / d) * sqrt(3) / sqrt(1 - 2 w + d w^2)
+ *
+ * is the solenoidal-weight normalisation for weight w in d dimensions
+ * (sqrt(3/2) for purely solenoidal driving in 3D). The time-step is limited
+ * to the update interval of the field so that one Ornstein-Uhlenbeck step is
+ * taken per update (the sequence is advanced by at most one step per call).
+ *
+ * Calibration (Mach ~ 0.3 set-up of Bauer & Springel 2012, Table 4, i.e.
+ * energy = sigma^2 t_s = 1.96e-4, decay_time = 1, frequency = 0.005,
+ * k in [6.27, 12.57], Kolmogorov shape, solenoidal): with amplitude_factor = 1
+ * the stationary rms Mach number is ~0.35 for SPH; the Mach numbers of the
+ * paper (0.33 for Arepo, 0.30 for SPH with time-variable viscosity) are
+ * recovered with amplitude_factor = 1 / sqrt(3/2) = 0.8165, i.e. without
+ * the solenoidal-weight normalisation. Note that the prefactor 2/3 written in
+ * equation 3 of Pakmor et al. (2026) is not the normalisation of this code.
+ * See examples/HydroTests/DrivenTurbulence_3D.
+ */
+
 enum amplitude_spectrum {
   constant,
   parabolic, /*! Federrath et al. 2010 */
@@ -216,8 +250,10 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
     const struct phys_const *phys_const, const struct part *p,
     const struct xpart *xp) {
 
-  /* No time-step size limit */
-  return FLT_MAX;
+  /* The driving field is advanced by at most one Ornstein-Uhlenbeck step per
+   * call to forcing_update(). Steps longer than the update interval would
+   * make the field lag behind the time integration, so we limit them. */
+  return terms->time_frequency;
 }
 
 static INLINE void forcing_terms_init_random_sequence(
@@ -301,7 +337,9 @@ INLINE static void forcing_update(struct forcing_terms *terms,
 
     terms->previous_update_time += terms->time_frequency;
 
+#ifdef SWIFT_DEBUG_CHECKS
     message("Updated the driving fields at t=%e", time);
+#endif
   }
 }
 
