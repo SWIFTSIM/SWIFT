@@ -46,7 +46,7 @@ make -j10
 In the command line, type:
 
 ```
-n_ranks=8 n_threads=1 examples/SinkParticles/GasFreeSinkCells/run.sh
+n_threads=8 examples/SinkParticles/GasFreeSinkCells/run.sh
 ```
 
 and let's go!

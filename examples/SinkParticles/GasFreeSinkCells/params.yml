@@ -135,15 +135,3 @@ GEARSink:
   max_timestep_young_Myr:               0.5      # (Optional) Maximal time-step length of young sinks (in Mega-years). Defaults to FLT_MAX.
   max_timestep_old_Myr:                  1.      # (Optional) Maximal time-step length of old sinks (in Mega-years). Defaults to FLT_MAX.
   n_IMF:                                 2.      # (Optional) Number of times the IMF mass can be swallowed in a single timestep. (Default: FLTM_MAX)
-
-# Use GEAR SF if needed
-GEARStarFormation:
-  star_formation_efficiency: 0.01                # star formation efficiency (c_*)
-  maximal_temperature_K:     3e4                 # Upper limit to the temperature of a star forming particle
-  density_threshold_Hpcm3:   1e1                 # Density threshold in Hydrogen atoms/cm3
-  n_stars_per_particle:      2
-  min_mass_frac: 0.5
-
-# GEAR SF requires this to be set
-GEARPressureFloor:
-  jeans_factor: 10

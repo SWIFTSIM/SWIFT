@@ -5,19 +5,14 @@ set -e
 
 GEAR_SCRIPTS=../../GEAR_ICs_and_SCRIPTS # Shared GEAR table download scripts
 
-n_ranks=${n_ranks:=0}      # Number of ranks to use
+# Force n_rank = 0 until the sink MPI branch is merged
+n_ranks=0
+# n_ranks=${n_ranks:=0}    # Number of ranks to use
 n_threads=${n_threads:=8}  # Number of threads to use
 level=${level:=5}  # Nominal gas resolution before carving out the corner: N = 2^(3*level)
 jeans_length=${jeans_length:=0.250} # Jeans wavelength in unit of the boxsize
 debug=${debug:=0}
 run_name=${run_name:=""}
-with_star_formation=${with_star_formation=0}
-
-# This example is sinks-only: GEAR star formation with sinks is untested and unsupported
-if [[ "$with_star_formation" -ne 0 ]]; then
-    echo "Error: This example is sinks-only. GEAR star formation combined with sinks has never been tested." >&2
-    exit 1
-fi
 
 IC_FILE=ICs_gas_free_sink_cells.hdf5
 
@@ -64,11 +59,8 @@ else
   swift="../../../swift"
 fi
 
-# --sinks is mandatory: this example's ICs already contain sink particles.
-runtime_params="--sinks"
-
 printf "Running simulation..."
-$swift --hydro $runtime_params --stars --self-gravity --feedback \
+$swift --hydro --sinks --stars --self-gravity --feedback \
        --cooling --sync --limiter --threads=$n_threads \
        params.yml 2>&1 | tee output.log
 
