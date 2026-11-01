@@ -86,9 +86,10 @@ There are two additional optional parameters that can be used to modify
 details of the stand-alone FOF code. The ``GroupID`` of the particles that
 do not belong to any groups is by default set to 2147483647
 (i.e. :math:`2^{31}-1`). A different value can be specified by changing the
-optional parameter ``group_id_default``. Similarly, the first group in the
-catalogue (i.e. the largest group) carries the ``GroupID`` 1. This can be
-changed by tweaking the optional parameter ``group_id_offset``.
+optional parameter ``group_id_default``. It must not be negative and must not
+be the ID of a group: use either 0 or a value larger than the number of groups.
+The first group in the catalogue (i.e. the largest group) always carries the
+``GroupID`` 1.
 
 
 ------------------------
@@ -112,4 +113,3 @@ A full FOF section of the YAML parameter file looks like:
        dump_catalogue_when_seeding:     0           # (Optional) Write a FOF catalogue when seeding black holes. Defaults to 0 if unspecified.
        absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units).
        group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size.
-       group_id_offset:                 1           # (Optional) Sets the offset of group ID labelling. Defaults to 1 if unspecified.

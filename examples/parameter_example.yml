@@ -129,8 +129,7 @@ FOF:
   dump_catalogue_when_seeding:     1           # Enable (1) or disable (0) dumping a group catalogue when runnning FOF for seeding purposes.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
   absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units). When not set to -1, this will overwrite the linking length computed from 'linking_length_ratio'.
-  group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
-  group_id_offset:                 1           # (Optional) Sets the offset of group ID labeling. Defaults to 1 if unspecified.
+  group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Must be >= 0 and not the ID of a group.
   output_list_on:                  0           # (Optional) Enable the output list
   output_list:       ./output_list_fof.txt     # (Optional) File containing the output times (see documentation in "Parameter File" section)
   linking_types:   [0, 1, 0, 0, 0, 0, 0]       # Use DM as the primary FOF linking type
