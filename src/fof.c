@@ -752,30 +752,23 @@ __attribute__((always_inline)) INLINE static size_t fof_find(
 }
 
 /**
- * @brief Atomically update the root of a group
+ * @brief Atomically attach a root to a new root.
  *
- * @param address The address of the value to update.
- * @param y The new value to write.
+ * The update only happens if the old root is still a root, i.e. if no other
+ * thread has attached it to another group since we found it.
+ *
+ * @param group_index Array of group root indices.
+ * @param root The current root to attach.
+ * @param new_root The root to attach it to.
  *
  * @return 1 If successful, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int atomic_update_root(
-    volatile size_t *address, const size_t y) {
+    size_t *group_index, const size_t root, const size_t new_root) {
 
-  size_t *size_t_ptr = (size_t *)address;
-
-  size_t old_val = *address;
-  size_t test_val = old_val;
-  size_t new_val = y;
-
-  /* atomic_cas returns old_val if *size_t_ptr has not changed since being
-   * read.*/
-  old_val = atomic_cas(size_t_ptr, test_val, new_val);
-
-  if (test_val == old_val)
-    return 1;
-  else
-    return 0;
+  /* atomic_cas returns root if group_index[root] was still root, i.e. if root
+   * was still the root of its group. */
+  return atomic_cas(&group_index[root], root, new_root) == root;
 }
 
 /**
@@ -793,7 +786,7 @@ __attribute__((always_inline)) INLINE static void fof_union(
 
   /* Loop until the root can be set to a new value. */
   do {
-    size_t root_i_new = fof_find(*root_i, group_index);
+    const size_t root_i_new = fof_find(*root_i, group_index);
     const size_t root_j_new = fof_find(root_j, group_index);
 
     /* Skip particles in the same group. */
@@ -803,20 +796,20 @@ __attribute__((always_inline)) INLINE static void fof_union(
      * pj's. Otherwise set pj's root to point to pi's.*/
     if (root_j_new < root_i_new) {
 
-      /* Updates the root and checks that its value has not been changed since
-       * being read. */
-      result = atomic_update_root(&group_index[root_i_new], root_j_new);
+      /* Updates the root if it is still a root. Otherwise another thread
+       * linked it in the meantime and we try again from the new roots. */
+      result = atomic_update_root(group_index, root_i_new, root_j_new);
 
       /* Update root_i on the fly. */
-      *root_i = root_j_new;
+      if (result) *root_i = root_j_new;
     } else {
 
-      /* Updates the root and checks that its value has not been changed since
-       * being read. */
-      result = atomic_update_root(&group_index[root_j_new], root_i_new);
+      /* Updates the root if it is still a root. Otherwise another thread
+       * linked it in the meantime and we try again from the new roots. */
+      result = atomic_update_root(group_index, root_j_new, root_i_new);
 
       /* Update root_i on the fly. */
-      *root_i = root_i_new;
+      if (result) *root_i = root_i_new;
     }
   } while (result != 1);
 }
