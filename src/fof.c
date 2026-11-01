@@ -2619,6 +2619,13 @@ void fof_calc_group_mass(struct fof_props *props, const struct space *s,
   }
 
 #ifdef WITH_MPI
+  /* The MPI calls below take an int number of elements (up to 3 per group) */
+  if (3LL * props->num_groups > (long long)INT_MAX)
+    error(
+        "Too many FOF groups (%lld) for the MPI reductions of the group "
+        "properties.",
+        props->num_groups);
+
   /* Now all-reduce the local fragments so that everyone has a full catalog */
   MPI_Allreduce(MPI_IN_PLACE, final_group_size, props->num_groups,
                 MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
