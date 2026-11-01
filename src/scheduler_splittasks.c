@@ -582,10 +582,9 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
           } else {
 
             /* ... and add new ones for all the other pairs. */
-            scheduler_splittask_fof(
-                scheduler_addtask(s, t->type, t->subtype, 0, 0, sub_i[k],
-                                  sub_j[l]),
-                s);
+            scheduler_splittask_fof(scheduler_addtask(s, t->type, t->subtype, 0,
+                                                      0, sub_i[k], sub_j[l]),
+                                    s);
           }
         }
       }
