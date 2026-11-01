@@ -1615,6 +1615,16 @@ int engine_prepare(struct engine *e) {
     engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
 
+    /* The FOF decides which cells can contain links based on their geometry.
+     * The particles have moved since the last rebuild and may now lie outside
+     * their cell, so rebuild the tree with the drifted positions first.
+     * engine_rebuild() clears these flags but we still need the rebuild
+     * below to take the newly seeded black holes into account. */
+    const int restarting = e->restarting;
+    engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
+    e->forcerebuild = 1;
+    e->restarting = restarting;
+
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
 
