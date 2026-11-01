@@ -205,8 +205,7 @@ void engine_fof(struct engine *e, const int dump_results,
   tic_phase = getticks();
   engine_allocate_foreign_particles(e, /*fof=*/1);
   fof_timers[fof_timer_alloc_foreign] = getticks() - tic_phase;
-  fof_counters[fof_counter_gparts_foreign_recv].value =
-      e->s->nr_gparts_foreign;
+  fof_counters[fof_counter_gparts_foreign_recv].value = e->s->nr_gparts_foreign;
 
   /* Compute the local<->foreign group links (nothing to do without MPI)*/
   fof_search_foreign_cells(e->fof_properties, e->s);

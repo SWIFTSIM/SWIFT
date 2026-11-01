@@ -709,35 +709,73 @@ __attribute__((always_inline)) INLINE static int gpart_foreign_is_ignorable(
 ticks fof_timers[fof_timer_count];
 struct fof_counter fof_counters[fof_counter_count];
 
-static const char *fof_timer_names[fof_timer_count] = {
-    "free_start",       "allocate",          "make_tasks",
-    "activate_tasks",   "local_link",        "local_sizes",
-    "alloc_foreign",    "foreign_setup",     "foreign_roots",
-    "foreign_wait",     "foreign_comms",     "foreign_search",
-    "foreign_merge_thr", "foreign_wait2",    "frag_gather",
-    "frag_hash",        "frag_union",        "frag_update",
-    "ids_count",        "ids_collectives",   "ids_sort_default",
-    "ids_exchange",     "ids_final",         "attach_comms",
-    "attach",           "free_end",          "props_alloc",
-    "props_calc",       "props_allreduce",   "props_dump",
-    "props_seed",       "free_arrays",       "end_wait",
-    "realloc_foreign",  "total",             "task_link_self",
-    "task_link_pair",   "task_attach_self",  "task_attach_pair"};
+static const char *fof_timer_names[fof_timer_count] = {"free_start",
+                                                       "allocate",
+                                                       "make_tasks",
+                                                       "activate_tasks",
+                                                       "local_link",
+                                                       "local_sizes",
+                                                       "alloc_foreign",
+                                                       "foreign_setup",
+                                                       "foreign_roots",
+                                                       "foreign_wait",
+                                                       "foreign_comms",
+                                                       "foreign_search",
+                                                       "foreign_merge_thr",
+                                                       "foreign_wait2",
+                                                       "frag_gather",
+                                                       "frag_hash",
+                                                       "frag_union",
+                                                       "frag_update",
+                                                       "ids_count",
+                                                       "ids_collectives",
+                                                       "ids_sort_default",
+                                                       "ids_exchange",
+                                                       "ids_final",
+                                                       "attach_comms",
+                                                       "attach",
+                                                       "free_end",
+                                                       "props_alloc",
+                                                       "props_calc",
+                                                       "props_allreduce",
+                                                       "props_dump",
+                                                       "props_seed",
+                                                       "free_arrays",
+                                                       "end_wait",
+                                                       "realloc_foreign",
+                                                       "total",
+                                                       "task_link_self",
+                                                       "task_link_pair",
+                                                       "task_attach_self",
+                                                       "task_attach_pair"};
 
 static const char *fof_counter_names[fof_counter_count] = {
-    "nr_gparts",          "nr_threads",
-    "tasks_link_self",    "tasks_link_pair",
-    "tasks_attach_self",  "tasks_attach_pair",
-    "leaves_link_self",   "leaves_link_pair",
-    "leaves_foreign",     "leaves_attach_pair",
-    "cand_link_self",     "cand_link_pair",
-    "cand_link_pair_bbox", "cand_foreign",
-    "cand_foreign_bbox",  "cand_attach_self",
-    "cand_attach_pair",   "cand_attach_pair_bbox",
-    "foreign_cell_pairs", "foreign_cell_pairs_max",
-    "gparts_foreign_recv", "foreign_links_found",
-    "foreign_links_kept", "global_links",
-    "num_groups",         "ids_nsend",
+    "nr_gparts",
+    "nr_threads",
+    "tasks_link_self",
+    "tasks_link_pair",
+    "tasks_attach_self",
+    "tasks_attach_pair",
+    "leaves_link_self",
+    "leaves_link_pair",
+    "leaves_foreign",
+    "leaves_attach_pair",
+    "cand_link_self",
+    "cand_link_pair",
+    "cand_link_pair_bbox",
+    "cand_foreign",
+    "cand_foreign_bbox",
+    "cand_attach_self",
+    "cand_attach_pair",
+    "cand_attach_pair_bbox",
+    "foreign_cell_pairs",
+    "foreign_cell_pairs_max",
+    "gparts_foreign_recv",
+    "foreign_links_found",
+    "foreign_links_kept",
+    "global_links",
+    "num_groups",
+    "ids_nsend",
     "ids_nrecv"};
 
 /* Number of FOF calls so far (for the CSV output) */
@@ -780,10 +818,10 @@ void fof_timers_report(const struct engine *e) {
   const double t_link = vals[fof_timer_local_link];
   const double t_attach = vals[fof_timer_attach];
   vals[fof_timer_count + fof_counter_count + fof_derived_eff_link] =
-      t_link > 0. ? (vals[fof_timer_task_link_self] +
-                     vals[fof_timer_task_link_pair]) /
-                        (nr_threads * t_link)
-                  : 0.;
+      t_link > 0.
+          ? (vals[fof_timer_task_link_self] + vals[fof_timer_task_link_pair]) /
+                (nr_threads * t_link)
+          : 0.;
   vals[fof_timer_count + fof_counter_count + fof_derived_eff_attach] =
       t_attach > 0. ? (vals[fof_timer_task_attach_self] +
                        vals[fof_timer_task_attach_pair]) /
@@ -837,8 +875,7 @@ void fof_timers_report(const struct engine *e) {
 
       if (k >= fof_timer_count && k < fof_timer_count + fof_counter_count)
         message("  %-22s %12.4g %12.4g %12.4g %6d %6.2f %12.4g", name, v_min,
-                v_mean, v_max, r_max, v_mean > 0. ? v_max / v_mean : 0.,
-                v_sum);
+                v_mean, v_max, r_max, v_mean > 0. ? v_max / v_mean : 0., v_sum);
       else
         message("  %-22s %12.3f %12.3f %12.3f %6d %6.2f", name, v_min, v_mean,
                 v_max, r_max, v_mean > 0. ? v_max / v_mean : 0.);
@@ -897,8 +934,8 @@ INLINE static int fof_count_is_kind_local(const struct gpart *gp,
 /**
  * @brief Is a foreign #gpart of the requested kind?
  */
-INLINE static int fof_count_is_kind_foreign(
-    const struct gpart_fof_foreign *gp, const enum fof_count_kind kind) {
+INLINE static int fof_count_is_kind_foreign(const struct gpart_fof_foreign *gp,
+                                            const enum fof_count_kind kind) {
   if (gp->time_bin >= time_bin_inhibited) return 0;
   if (gpart_foreign_is_ignorable(gp)) return 0;
   return kind == fof_count_linkable ? gpart_foreign_is_linkable(gp) != 0
@@ -929,8 +966,7 @@ INLINE static double fof_count_box_dist2(const struct fof_count_box *b,
  */
 static void fof_count_make_box(const struct cell *c, const int foreign,
                                const enum fof_count_kind kind,
-                               const double shift[3],
-                               struct fof_count_box *b) {
+                               const double shift[3], struct fof_count_box *b) {
   b->n = 0;
   for (int k = 0; k < 3; k++) {
     b->min[k] = DBL_MAX;
@@ -1002,10 +1038,10 @@ static void fof_count_pair_direction(const struct cell *ci, const int foreign_i,
   *cand += box_i.n * box_j.n;
   if (box_i.n == 0 || box_j.n == 0) return;
 
-  const long long n_i = fof_count_near_box(ci, foreign_i, kind_i, no_shift,
-                                           &box_j, r2);
-  const long long n_j = fof_count_near_box(cj, foreign_j, kind_j, shift_j,
-                                           &box_i, r2);
+  const long long n_i =
+      fof_count_near_box(ci, foreign_i, kind_i, no_shift, &box_j, r2);
+  const long long n_j =
+      fof_count_near_box(cj, foreign_j, kind_j, shift_j, &box_i, r2);
   *cand_bbox += n_i * n_j;
 }
 
@@ -1037,8 +1073,7 @@ static void fof_count_link_pair(const struct cell *ci, const struct cell *cj,
   fof_count_shift(ci, cj, dim, periodic, shift_j);
   long long cand = 0, cand_bbox = 0;
   fof_count_pair_direction(ci, 0, fof_count_linkable, cj, foreign_j,
-                           fof_count_linkable, shift_j, r2, &cand,
-                           &cand_bbox);
+                           fof_count_linkable, shift_j, r2, &cand, &cand_bbox);
   if (foreign_j) {
     atomic_inc(&fof_counters[fof_counter_leaves_foreign].value);
     atomic_add(&fof_counters[fof_counter_cand_foreign].value, cand);
@@ -1046,8 +1081,7 @@ static void fof_count_link_pair(const struct cell *ci, const struct cell *cj,
   } else {
     atomic_inc(&fof_counters[fof_counter_leaves_link_pair].value);
     atomic_add(&fof_counters[fof_counter_cand_link_pair].value, cand);
-    atomic_add(&fof_counters[fof_counter_cand_link_pair_bbox].value,
-               cand_bbox);
+    atomic_add(&fof_counters[fof_counter_cand_link_pair_bbox].value, cand_bbox);
   }
 }
 
@@ -1073,8 +1107,7 @@ static void fof_count_attach_pair(const struct cell *ci, const struct cell *cj,
                              &cand_bbox);
   atomic_inc(&fof_counters[fof_counter_leaves_attach_pair].value);
   atomic_add(&fof_counters[fof_counter_cand_attach_pair].value, cand);
-  atomic_add(&fof_counters[fof_counter_cand_attach_pair_bbox].value,
-             cand_bbox);
+  atomic_add(&fof_counters[fof_counter_cand_attach_pair_bbox].value, cand_bbox);
 }
 
 /**
@@ -1085,8 +1118,7 @@ static void fof_count_self(const struct cell *c, const int attach) {
   for (int i = 0; i < c->grav.count; i++) {
     const struct gpart *gp = &c->grav.parts[i];
     if (fof_count_is_kind_local(gp, fof_count_linkable)) n_link++;
-    if (attach && fof_count_is_kind_local(gp, fof_count_attachable))
-      n_attach++;
+    if (attach && fof_count_is_kind_local(gp, fof_count_attachable)) n_attach++;
   }
   if (attach) {
     atomic_add(&fof_counters[fof_counter_cand_attach_self].value,
@@ -2615,8 +2647,7 @@ void rec_fof_attach_pair(const struct fof_props *props, const double dim[3],
       error("Error in the recursion logic");
     }
 #if FOF_COUNT_CANDIDATES
-    fof_count_attach_pair(ci, cj, ci_local, cj_local, dim, periodic,
-                          attach_r2);
+    fof_count_attach_pair(ci, cj, ci_local, cj_local, dim, periodic, attach_r2);
 #endif
   }
 }

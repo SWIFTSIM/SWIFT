@@ -31,10 +31,10 @@
 #include "runner.h"
 
 /* Local headers. */
-#include "engine.h"
 #include "atomic.h"
-#include "fof.h"
+#include "engine.h"
 #include "feedback.h"
+#include "fof.h"
 #include "scheduler.h"
 #include "space_getsid.h"
 #include "timers.h"
