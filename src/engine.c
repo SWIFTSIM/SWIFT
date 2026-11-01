@@ -2704,9 +2704,17 @@ int engine_step(struct engine *e) {
 
   /* When restarting, we may have had some i/o to do on the step
    * where we decided to stop. We have to do this now.
-   * We need some cells to exist but not the whole task stuff. */
-  if (e->restarting) space_rebuild(e->s, 0, e->verbose);
-  if (e->restarting) engine_io(e);
+   * We need a full rebuild (not just the space) such that the foreign cells
+   * and the communication tasks exist in case FOF runs over MPI. */
+  if (e->restarting) {
+    engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
+    engine_io(e);
+
+    /* engine_rebuild() clears these but the rest of the restart step needs
+     * them: drift everything below and rebuild again at the new time. */
+    e->restarting = 1;
+    e->forcerebuild = 1;
+  }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* If we're restarting, clean up some flags and counters first. If would

@@ -1072,8 +1072,10 @@ int main(int argc, char *argv[]) {
     /* If we are restarting at the very end of a run, just build the tree and
      * prepare to dump.
      * The main simulation loop below (where rebuild normally happens) won't be
-     * executed. */
-    if (engine_is_done(&e)) space_rebuild(e.s, /*repartitioned=*/0, e.verbose);
+     * executed. We need a full rebuild (not just the space) such that the
+     * foreign cells and the communication tasks exist for FOF over MPI. */
+    if (engine_is_done(&e))
+      engine_rebuild(&e, /*repartitioned=*/0, /*clean_h_values=*/0);
 
   } else {
 
