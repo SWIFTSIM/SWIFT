@@ -32,6 +32,8 @@
 
 /* Local headers. */
 #include "engine.h"
+#include "atomic.h"
+#include "fof.h"
 #include "feedback.h"
 #include "scheduler.h"
 #include "space_getsid.h"
@@ -546,18 +548,51 @@ void *runner_main(void *data) {
         case task_type_sink_formation:
           runner_do_sink_formation(r, t->ci);
           break;
-        case task_type_fof_self:
+        /* TEMPORARY: FOF scaling timers around the FOF tasks. */
+        case task_type_fof_self: {
+          const ticks tic_fof = getticks();
           runner_do_fof_search_self(r, t->ci, 1);
-          break;
-        case task_type_fof_pair:
+#ifdef WITH_FOF
+          atomic_add(&fof_timers[fof_timer_task_link_self],
+                     getticks() - tic_fof);
+          atomic_inc(&fof_counters[fof_counter_tasks_link_self].value);
+#else
+          (void)tic_fof;
+#endif
+        } break;
+        case task_type_fof_pair: {
+          const ticks tic_fof = getticks();
           runner_do_fof_search_pair(r, t->ci, t->cj, 1);
-          break;
-        case task_type_fof_attach_self:
+#ifdef WITH_FOF
+          atomic_add(&fof_timers[fof_timer_task_link_pair],
+                     getticks() - tic_fof);
+          atomic_inc(&fof_counters[fof_counter_tasks_link_pair].value);
+#else
+          (void)tic_fof;
+#endif
+        } break;
+        case task_type_fof_attach_self: {
+          const ticks tic_fof = getticks();
           runner_do_fof_attach_self(r, t->ci, 1);
-          break;
-        case task_type_fof_attach_pair:
+#ifdef WITH_FOF
+          atomic_add(&fof_timers[fof_timer_task_attach_self],
+                     getticks() - tic_fof);
+          atomic_inc(&fof_counters[fof_counter_tasks_attach_self].value);
+#else
+          (void)tic_fof;
+#endif
+        } break;
+        case task_type_fof_attach_pair: {
+          const ticks tic_fof = getticks();
           runner_do_fof_attach_pair(r, t->ci, t->cj, 1);
-          break;
+#ifdef WITH_FOF
+          atomic_add(&fof_timers[fof_timer_task_attach_pair],
+                     getticks() - tic_fof);
+          atomic_inc(&fof_counters[fof_counter_tasks_attach_pair].value);
+#else
+          (void)tic_fof;
+#endif
+        } break;
         case task_type_neutrino_weight:
           runner_do_neutrino_weighting(r, ci, 1);
           break;

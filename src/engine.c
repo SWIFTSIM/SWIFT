@@ -1621,9 +1621,16 @@ int engine_prepare(struct engine *e) {
      * engine_rebuild() clears these flags but we still need the rebuild
      * below to take the newly seeded black holes into account. */
     const int restarting = e->restarting;
+    const ticks tic_seed_rebuild = getticks(); /* TEMPORARY: FOF timers. */
     engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
     e->forcerebuild = 1;
     e->restarting = restarting;
+
+    /* TEMPORARY: FOF scaling timers. */
+    if (e->nodeID == 0)
+      message("FOF timers: rebuild before the seeding FOF took %.3f %s.",
+              clocks_from_ticks(getticks() - tic_seed_rebuild),
+              clocks_getunit());
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);

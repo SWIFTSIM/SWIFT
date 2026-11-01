@@ -150,6 +150,12 @@ void engine_fof(struct engine *e, const int dump_results,
 
   const ticks tic = getticks();
 
+  /* TEMPORARY: FOF scaling timers. */
+  fof_timers_reset();
+  fof_counters[fof_counter_nr_gparts].value = e->s->nr_gparts;
+  fof_counters[fof_counter_nr_threads].value = e->nr_threads;
+  ticks tic_phase = getticks();
+
   /* Start by cleaning up the foreign buffers */
   if (foreign_buffers_allocated) {
 #ifdef WITH_MPI
@@ -157,31 +163,50 @@ void engine_fof(struct engine *e, const int dump_results,
 #endif
   }
 
+  fof_timers[fof_timer_free_start] = getticks() - tic_phase;
+  tic_phase = getticks();
+
   /* Free all the memory related to gas and stars sort arrays. */
   space_free_sort_indices(e->s);
 
   /* Initialise FOF parameters and allocate FOF arrays. */
   fof_allocate(e->s, e->fof_properties);
 
+  fof_timers[fof_timer_allocate] = getticks() - tic_phase;
+  tic_phase = getticks();
+
   /* Make FOF tasks */
   engine_make_fof_tasks(e);
 
+  fof_timers[fof_timer_make_tasks] = getticks() - tic_phase;
+  tic_phase = getticks();
+
   /* and activate them. */
   engine_activate_fof_tasks(e);
+
+  fof_timers[fof_timer_activate_tasks] = getticks() - tic_phase;
 
   /* Print the number of active tasks ? */
   if (e->verbose) engine_print_task_counts(e);
 
   /* Perform local FOF tasks for linkable particles. */
+  tic_phase = getticks();
   engine_launch(e, "fof");
+  fof_timers[fof_timer_local_link] = getticks() - tic_phase;
 
   /* Compute group sizes (only of local fragments with MPI) */
+  tic_phase = getticks();
   fof_compute_local_sizes(e->fof_properties, e->s);
+  fof_timers[fof_timer_local_sizes] = getticks() - tic_phase;
 
 #ifdef WITH_MPI
 
   /* Allocate buffers to receive the gpart fof information */
+  tic_phase = getticks();
   engine_allocate_foreign_particles(e, /*fof=*/1);
+  fof_timers[fof_timer_alloc_foreign] = getticks() - tic_phase;
+  fof_counters[fof_counter_gparts_foreign_recv].value =
+      e->s->nr_gparts_foreign;
 
   /* Compute the local<->foreign group links (nothing to do without MPI)*/
   fof_search_foreign_cells(e->fof_properties, e->s);
@@ -198,20 +223,26 @@ void engine_fof(struct engine *e, const int dump_results,
 #ifdef WITH_MPI
 
   /* Activate the tasks exchanging all the required gparts */
+  tic_phase = getticks();
   engine_activate_gpart_comms(e);
 
   /* Perform send and receive tasks. */
   engine_launch(e, "fof comms");
+  fof_timers[fof_timer_attach_comms] = getticks() - tic_phase;
 
 #endif
 
   /* Compute the attachable->linkable links */
+  tic_phase = getticks();
   fof_link_attachable_particles(e->fof_properties, e->s);
+  fof_timers[fof_timer_attach] = getticks() - tic_phase;
 
 #ifdef WITH_MPI
 
   /* Free the foreign particles */
+  tic_phase = getticks();
   space_free_foreign_parts(e->s, /*clear pointers=*/1);
+  fof_timers[fof_timer_free_end] = getticks() - tic_phase;
 
 #endif
 
@@ -231,18 +262,28 @@ void engine_fof(struct engine *e, const int dump_results,
   if (seed_black_holes) engine_compute_next_fof_time(e);
 
   /* Free everything we allocated */
+  tic_phase = getticks();
   fof_free_arrays(e->fof_properties);
+  fof_timers[fof_timer_free_arrays] = getticks() - tic_phase;
 
+  tic_phase = getticks();
 #ifdef WITH_MPI
   MPI_Barrier(MPI_COMM_WORLD);
 #endif
+  fof_timers[fof_timer_end_wait] = getticks() - tic_phase;
 
   /* Restore the foreign buffers as they were*/
+  tic_phase = getticks();
   if (foreign_buffers_allocated) {
 #ifdef WITH_MPI
     engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
   }
+  fof_timers[fof_timer_realloc_foreign] = getticks() - tic_phase;
+
+  /* TEMPORARY: report the FOF scaling timers (collective). */
+  fof_timers[fof_timer_total] = getticks() - tic;
+  fof_timers_report(e);
 
   if (engine_rank == 0)
     message("Complete FOF search took: %.3f %s.",

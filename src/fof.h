@@ -24,6 +24,7 @@
 
 /* Local headers */
 #include "align.h"
+#include "cycle.h"
 #include "parser.h"
 #include "part_type.h"
 
@@ -227,5 +228,103 @@ void fof_struct_restore(struct fof_props *props, FILE *stream);
 extern MPI_Datatype fof_mpi_type;
 extern MPI_Datatype group_length_mpi_type;
 #endif
+
+/* ------------------------------------------------------------------------ */
+/* TEMPORARY: instrumentation for the FOF scaling tests. Not to be merged.  */
+/* ------------------------------------------------------------------------ */
+
+/* Count the candidate pairs in the leaf kernels and how many would survive a
+ * bounding-box pre-filter. Costs O(n_i + n_j) per leaf pair. Set to 0 to
+ * leave the kernels' timing untouched. */
+#define FOF_COUNT_CANDIDATES 1
+
+/*! Wall-clock timers of the FOF phases (per rank) and task times (summed over
+ * the threads of a rank). Keep in sync with fof_timer_names in fof.c. */
+enum fof_timer_id {
+  fof_timer_free_start,
+  fof_timer_allocate,
+  fof_timer_make_tasks,
+  fof_timer_activate_tasks,
+  fof_timer_local_link,
+  fof_timer_local_sizes,
+  fof_timer_alloc_foreign,
+  fof_timer_foreign_setup,
+  fof_timer_foreign_roots,
+  fof_timer_foreign_wait,
+  fof_timer_foreign_comms,
+  fof_timer_foreign_search,
+  fof_timer_foreign_merge_threads,
+  fof_timer_foreign_wait2,
+  fof_timer_fragments_gather,
+  fof_timer_fragments_hash,
+  fof_timer_fragments_union,
+  fof_timer_fragments_update,
+  fof_timer_ids_count,
+  fof_timer_ids_collectives,
+  fof_timer_ids_sort_default,
+  fof_timer_ids_exchange,
+  fof_timer_ids_final,
+  fof_timer_attach_comms,
+  fof_timer_attach,
+  fof_timer_free_end,
+  fof_timer_props_alloc,
+  fof_timer_props_calc,
+  fof_timer_props_allreduce,
+  fof_timer_props_dump,
+  fof_timer_props_seed,
+  fof_timer_free_arrays,
+  fof_timer_end_wait,
+  fof_timer_realloc_foreign,
+  fof_timer_total,
+  fof_timer_task_link_self,
+  fof_timer_task_link_pair,
+  fof_timer_task_attach_self,
+  fof_timer_task_attach_pair,
+  fof_timer_count
+};
+
+/*! Counters (per rank). Keep in sync with fof_counter_names in fof.c. */
+enum fof_counter_id {
+  fof_counter_nr_gparts,
+  fof_counter_nr_threads,
+  fof_counter_tasks_link_self,
+  fof_counter_tasks_link_pair,
+  fof_counter_tasks_attach_self,
+  fof_counter_tasks_attach_pair,
+  fof_counter_leaves_link_self,
+  fof_counter_leaves_link_pair,
+  fof_counter_leaves_foreign,
+  fof_counter_leaves_attach_pair,
+  fof_counter_cand_link_self,
+  fof_counter_cand_link_pair,
+  fof_counter_cand_link_pair_bbox,
+  fof_counter_cand_foreign,
+  fof_counter_cand_foreign_bbox,
+  fof_counter_cand_attach_self,
+  fof_counter_cand_attach_pair,
+  fof_counter_cand_attach_pair_bbox,
+  fof_counter_foreign_cell_pairs,
+  fof_counter_foreign_cell_pairs_max,
+  fof_counter_gparts_foreign_recv,
+  fof_counter_foreign_links_found,
+  fof_counter_foreign_links_kept,
+  fof_counter_global_links,
+  fof_counter_num_groups,
+  fof_counter_ids_nsend,
+  fof_counter_ids_nrecv,
+  fof_counter_count
+};
+
+/*! A counter on its own cache line to limit false sharing between threads. */
+struct fof_counter {
+  long long value;
+  char pad[64 - sizeof(long long)];
+};
+
+extern ticks fof_timers[fof_timer_count];
+extern struct fof_counter fof_counters[fof_counter_count];
+
+void fof_timers_reset(void);
+void fof_timers_report(const struct engine *e);
 
 #endif /* SWIFT_FOF_H */
