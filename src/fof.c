@@ -302,25 +302,6 @@ void fof_set_initial_group_index_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Mapper function to set the initial attach group indices.
- *
- * @param map_data The array of attach group indices.
- * @param num_elements Chunk size.
- * @param extra_data Pointer to first group index.
- */
-void fof_set_initial_attach_index_mapper(void *map_data, int num_elements,
-                                         void *extra_data) {
-  size_t *attach_index = (size_t *)map_data;
-  size_t *attach_index_start = (size_t *)extra_data;
-
-  const ptrdiff_t offset = attach_index - attach_index_start;
-
-  for (int i = 0; i < num_elements; ++i) {
-    attach_index[i] = i + offset;
-  }
-}
-
-/**
  * @brief Mapper function to set the initial group sizes.
  *
  * @param map_data The array of group sizes.
@@ -476,18 +457,6 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
                      s->nr_gparts * sizeof(size_t)) != 0)
     error("Failed to allocate list of particle group indices for FOF search.");
 
-  /* Allocate and initialise a group index array for attachables. */
-  if (swift_memalign("fof_attach_index", (void **)&props->attach_index, 64,
-                     s->nr_gparts * sizeof(size_t)) != 0)
-    error(
-        "Failed to allocate list of particle distances array for FOF search.");
-
-  /* Allocate and initialise a group index array for attachables. */
-  if (swift_memalign("fof_found_attach", (void **)&props->found_attachable_link,
-                     64, s->nr_gparts * sizeof(char)) != 0)
-    error(
-        "Failed to allocate list of particle distances array for FOF search.");
-
   /* Allocate and initialise the closest distance array. */
   if (swift_memalign("fof_distance", (void **)&props->distance_to_link, 64,
                      s->nr_gparts * sizeof(float)) != 0)
@@ -508,19 +477,6 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
 
   if (verbose)
     message("Setting initial group index took: %.3f %s.",
-            clocks_from_ticks(getticks() - tic), clocks_getunit());
-
-  tic = getticks();
-
-  /* Set initial attach index */
-  threadpool_map(&s->e->threadpool, fof_set_initial_attach_index_mapper,
-                 props->attach_index, s->nr_gparts, sizeof(size_t),
-                 threadpool_auto_chunk_size, props->attach_index);
-
-  bzero(props->found_attachable_link, s->nr_gparts * sizeof(char));
-
-  if (verbose)
-    message("Setting initial attach index took: %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -4120,8 +4076,6 @@ void fof_free_arrays(struct fof_props *props) {
              props->id_gas_particle_to_convert);
   swift_free("fof_has_black_hole", props->has_black_hole);
   swift_free("fof_distance", props->distance_to_link);
-  swift_free("fof_attach_index", props->attach_index);
-  swift_free("fof_found_attach", props->found_attachable_link);
   swift_free("fof_group_size", props->group_size);
   props->group_mass = NULL;
   props->final_group_size = NULL;
