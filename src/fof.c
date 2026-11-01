@@ -1018,11 +1018,14 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
     const double piy = pi->x[1];
     const double piz = pi->x[2];
 
-    /* Find the root of pi. */
-    size_t root_i = fof_find(offset[i], group_index);
-
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
+
+    /* Only linkable particles can link */
+    if (!is_link_i) continue;
+
+    /* Find the root of pi. */
+    size_t root_i = fof_find(offset[i], group_index);
 
     for (size_t j = i + 1; j < count; j++) {
 
@@ -1037,19 +1040,13 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
 
-      /* Both particles must be of the linking kind */
-      if (!(is_link_i && is_link_j)) continue;
+      /* Only consider linkable<->linkable pairs */
+      if (!is_link_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
-
-      /* Find the root of pj. */
-      const size_t root_j = fof_find(offset[j], group_index);
-
-      /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1065,6 +1062,12 @@ void fof_search_self_cell(const struct fof_props *props, const double l_x2,
 
       /* Hit or miss? */
       if (r2 < l_x2) {
+
+        /* Find the root of pj (only for pairs in range). */
+        const size_t root_j = fof_find(offset[j], group_index);
+
+        /* Skip particles in the same group. */
+        if (root_i == root_j) continue;
 
         /* Merge the groups` */
         fof_union(&root_i, root_j, group_index);
@@ -1146,11 +1149,14 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
-    /* Find the root of pi. */
-    size_t root_i = fof_find(offset_i[i], group_index);
-
     /* Get the nature of the linking */
     const int is_link_i = gpart_is_linkable(pi);
+
+    /* Only linkable particles can link */
+    if (!is_link_i) continue;
+
+    /* Find the root of pi. */
+    size_t root_i = fof_find(offset_i[i], group_index);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1165,19 +1171,13 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
       /* Get the nature of the linking */
       const int is_link_j = gpart_is_linkable(pj);
 
-      /* At least one of the particles has to be of linking type */
-      if (!(is_link_i && is_link_j)) continue;
+      /* Only consider linkable<->linkable pairs */
+      if (!is_link_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
         error("Running FOF on an un-drifted particle!");
 #endif
-
-      /* Find the root of pj. */
-      const size_t root_j = fof_find(offset_j[j], group_index);
-
-      /* Skip particles in the same group. */
-      if (root_i == root_j) continue;
 
       const double pjx = pj->x[0];
       const double pjy = pj->x[1];
@@ -1194,6 +1194,12 @@ void fof_search_pair_cells(const struct fof_props *props, const double dim[3],
 
       /* Hit or miss? */
       if (r2 < l_x2) {
+
+        /* Find the root of pj (only for pairs in range). */
+        const size_t root_j = fof_find(offset_j[j], group_index);
+
+        /* Skip particles in the same group. */
+        if (root_i == root_j) continue;
 
         /* Merge the groups */
         fof_union(&root_i, root_j, group_index);
@@ -1338,12 +1344,15 @@ void fof_search_pair_cells_foreign(
     const double piy = pi->x[1] - shift[1];
     const double piz = pi->x[2] - shift[2];
 
+    /* Get the nature of the linking */
+    const int is_link_i = gpart_is_linkable(pi);
+
+    /* Only linkable particles can link */
+    if (!is_link_i) continue;
+
     /* Find the root of pi. */
     const size_t root_i =
         fof_find_global(offset_i[i] - node_offset, group_index, nr_gparts);
-
-    /* Get the nature of the linking */
-    const int is_link_i = gpart_is_linkable(pi);
 
     for (size_t j = 0; j < count_j; j++) {
 
@@ -1359,7 +1368,7 @@ void fof_search_pair_cells_foreign(
       const int is_link_j = gpart_foreign_is_linkable(pj);
 
       /* Only consider linkable<->linkable pairs */
-      if (!(is_link_i && is_link_j)) continue;
+      if (!is_link_j) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (pj->ti_drift != ti_current)
