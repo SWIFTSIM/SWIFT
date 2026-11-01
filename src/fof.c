@@ -52,7 +52,6 @@
 #include "tracers.h"
 
 #define fof_props_default_group_id 2147483647
-#define fof_props_default_group_id_offset 1
 #define fof_props_default_group_link_size 20000
 
 /* Constants. */
@@ -154,12 +153,19 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 
   /* Read the default group ID of particles in groups below the minimum group
    * size. */
-  props->group_id_default = parser_get_opt_param_int(
+  const int group_id_default = parser_get_opt_param_int(
       params, "FOF:group_id_default", fof_props_default_group_id);
+  if (group_id_default < 0)
+    error("FOF:group_id_default must not be negative (got %d).",
+          group_id_default);
+  props->group_id_default = group_id_default;
 
-  /* Read the starting group ID. */
-  props->group_id_offset = parser_get_opt_param_int(
-      params, "FOF:group_id_offset", fof_props_default_group_id_offset);
+  /* The group IDs always start at 1. The option to change this was removed but
+   * we still accept parameter files that set it to that value. */
+  if (parser_get_opt_param_int(params, "FOF:group_id_offset", 1) != 1)
+    error(
+        "FOF:group_id_offset has been removed. Group IDs always start at 1. "
+        "Please remove the parameter from the parameter file.");
 
   /* Read the linking length ratio to the mean inter-particle separation. */
   props->l_x_ratio =
@@ -3634,7 +3640,6 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   const size_t nr_gparts = s->nr_gparts;
 
   const size_t min_group_size = props->min_group_size;
-  const size_t group_id_offset = props->group_id_offset;
   const size_t group_id_default = props->group_id_default;
 
   size_t num_groups_local = 0;
@@ -3720,6 +3725,14 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
   props->num_groups = num_groups;
   // message("num_groups_local=%zd", num_groups_local);
 
+  /* Group IDs run from 1 to num_groups. The default ID must not be one of
+   * them or the particles of that group would be treated as not in a group. */
+  if (group_id_default >= 1 && group_id_default <= (size_t)num_groups)
+    error(
+        "FOF:group_id_default (%zu) collides with the IDs of the %lld groups "
+        "found. Use 0 or a value larger than the number of groups.",
+        group_id_default, num_groups);
+
   /* Find number of groups on lower numbered MPI ranks */
 #ifdef WITH_MPI
   long long nglocal = num_groups_local;
@@ -3750,13 +3763,13 @@ void fof_assign_group_ids(struct fof_props *props, struct space *s) {
 
   /* Assign final group IDs to local root particles where the global root is
    * on this node and the group is large enough. Within a node IDs are
-   * assigned in descending order of particle number. */
+   * assigned in descending order of particle number, starting from 1. */
   for (size_t i = 0; i < num_groups_local; i++) {
 #ifdef WITH_MPI
     gparts[high_group_sizes[i].index - node_offset].fof_data.group_id =
-        group_id_offset + i + props->num_groups_prev;
+        1 + i + props->num_groups_prev;
 #else
-    gparts[high_group_sizes[i].index].fof_data.group_id = group_id_offset + i;
+    gparts[high_group_sizes[i].index].fof_data.group_id = 1 + i;
 #endif
   }
 

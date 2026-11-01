@@ -70,9 +70,6 @@ struct fof_props {
   /*! Default group ID to give to particles not in a group */
   size_t group_id_default;
 
-  /*! ID of the first (largest) group. */
-  size_t group_id_offset;
-
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
 
