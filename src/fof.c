@@ -821,6 +821,27 @@ __attribute__((always_inline)) INLINE static void fof_union(
   } while (result != 1);
 }
 
+/**
+ * @brief Verify that the particles of a foreign cell were received before
+ * reading them in a FOF operation.
+ *
+ * The FOF data is only exchanged for the cells (and their progeny) that carry
+ * a gravity recv task. If FOF ever needs the particles of another foreign cell
+ * we would read garbage, so stop here instead.
+ *
+ * @param c The foreign #cell.
+ */
+__attribute__((always_inline)) INLINE static void fof_check_foreign_cell(
+    const struct cell *c) {
+
+  if (c->grav.count > 0 && c->grav.parts_fof_foreign == NULL)
+    error(
+        "FOF needs the particles of a foreign cell (rank %d, depth %d, %d "
+        "gparts, loc=[%e %e %e], width=[%e %e %e]) that were not received.",
+        c->nodeID, c->depth, c->grav.count, c->loc[0], c->loc[1], c->loc[2],
+        c->width[0], c->width[1], c->width[2]);
+}
+
 #ifdef WITH_MPI
 
 /* Add a group to the hash table. */
@@ -1196,6 +1217,7 @@ void fof_search_pair_cells_foreign(
 #ifdef WITH_MPI
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
+  fof_check_foreign_cell(cj);
   const struct gpart *gparts_i = ci->grav.parts;
   const struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
@@ -1841,6 +1863,7 @@ void fof_attach_pair_cells_ci_local(const struct fof_props *props,
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
+  fof_check_foreign_cell(cj);
   struct gpart *gparts_i = ci->grav.parts;
   struct gpart_fof_foreign *gparts_j = cj->grav.parts_fof_foreign;
 
@@ -1992,6 +2015,7 @@ void fof_attach_pair_cells_cj_local(const struct fof_props *props,
 
   const size_t count_i = ci->grav.count;
   const size_t count_j = cj->grav.count;
+  fof_check_foreign_cell(ci);
   struct gpart_fof_foreign *gparts_i = ci->grav.parts_fof_foreign;
   struct gpart *gparts_j = cj->grav.parts;
 
