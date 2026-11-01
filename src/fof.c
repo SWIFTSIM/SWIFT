@@ -436,13 +436,14 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
     }
   }
 
-#ifdef WITH_MPI
-  /* Check size of linking length against the top-level cell dimensions. */
-  if (props->l_x2 > s->width[0] * s->width[0])
+  /* Check size of linking length against the top-level cell dimensions. The
+   * FOF tasks are only constructed between neighbouring top-level cells (and
+   * the split tasks rely on the same assumption). */
+  const double min_width = min3(s->width[0], s->width[1], s->width[2]);
+  if (props->l_x2 > min_width * min_width)
     error(
         "Linking length greater than the width of a top-level cell. Need to "
         "check more than one layer of top-level cells for links.");
-#endif
 
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
@@ -812,94 +813,6 @@ __attribute__((always_inline)) INLINE static void fof_union(
       if (result) *root_i = root_i_new;
     }
   } while (result != 1);
-}
-
-/**
- * @brief Compute th minimal distance between any two points in two cells.
- *
- * @param ci The first #cell.
- * @param cj The second #cell.
- * @param dim The size of the simulation domain.
- */
-__attribute__((always_inline)) INLINE static double cell_min_dist(
-    const struct cell *restrict ci, const struct cell *restrict cj,
-    const double dim[3]) {
-
-  /* Get cell locations. */
-  const double cix_min = ci->loc[0];
-  const double ciy_min = ci->loc[1];
-  const double ciz_min = ci->loc[2];
-  const double cjx_min = cj->loc[0];
-  const double cjy_min = cj->loc[1];
-  const double cjz_min = cj->loc[2];
-
-  const double cix_max = ci->loc[0] + ci->width[0];
-  const double ciy_max = ci->loc[1] + ci->width[1];
-  const double ciz_max = ci->loc[2] + ci->width[2];
-  const double cjx_max = cj->loc[0] + cj->width[0];
-  const double cjy_max = cj->loc[1] + cj->width[1];
-  const double cjz_max = cj->loc[2] + cj->width[2];
-
-  double not_same_range[3];
-
-  /* If two cells are in the same range of coordinates along
-     any of the 3 axis, the distance along this axis is 0 */
-  if (ci->width[0] > cj->width[0]) {
-    if ((cix_min <= cjx_min) && (cjx_max <= cix_max))
-      not_same_range[0] = 0.;
-    else
-      not_same_range[0] = 1.;
-  } else {
-    if ((cjx_min <= cix_min) && (cix_max <= cjx_max))
-      not_same_range[0] = 0.;
-    else
-      not_same_range[0] = 1.;
-  }
-  if (ci->width[1] > cj->width[1]) {
-    if ((ciy_min <= cjy_min) && (cjy_max <= ciy_max))
-      not_same_range[1] = 0.;
-    else
-      not_same_range[1] = 1.;
-  } else {
-    if ((cjy_min <= ciy_min) && (ciy_max <= cjy_max))
-      not_same_range[1] = 0.;
-    else
-      not_same_range[1] = 1.;
-  }
-  if (ci->width[2] > cj->width[2]) {
-    if ((ciz_min <= cjz_min) && (cjz_max <= ciz_max))
-      not_same_range[2] = 0.;
-    else
-      not_same_range[2] = 1.;
-  } else {
-    if ((cjz_min <= ciz_min) && (ciz_max <= cjz_max))
-      not_same_range[2] = 0.;
-    else
-      not_same_range[2] = 1.;
-  }
-
-  /* Find the shortest distance between cells, remembering to account for
-   * periodic boundary conditions. */
-  double dx[3];
-  dx[0] = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
-               fabs(nearest(cix_min - cjx_max, dim[0])),
-               fabs(nearest(cix_max - cjx_min, dim[0])),
-               fabs(nearest(cix_max - cjx_max, dim[0])));
-
-  dx[1] = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
-               fabs(nearest(ciy_min - cjy_max, dim[1])),
-               fabs(nearest(ciy_max - cjy_min, dim[1])),
-               fabs(nearest(ciy_max - cjy_max, dim[1])));
-
-  dx[2] = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
-               fabs(nearest(ciz_min - cjz_max, dim[2])),
-               fabs(nearest(ciz_max - cjz_min, dim[2])),
-               fabs(nearest(ciz_max - cjz_max, dim[2])));
-
-  double r2 = 0.;
-  for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k] * not_same_range[k];
-
-  return r2;
 }
 
 #ifdef WITH_MPI
