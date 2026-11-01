@@ -141,7 +141,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   if (engine_rank == 0) safe_checkdir(dirp, /*create=*/1);
 
   /* Read the minimum group size. */
-  props->min_group_size = parser_get_param_int(params, "FOF:min_group_size");
+  const int min_group_size = parser_get_param_int(params, "FOF:min_group_size");
+  if (min_group_size < 2)
+    error("FOF:min_group_size must be at least 2 (got %d).", min_group_size);
+  props->min_group_size = min_group_size;
 
   /* Read whether we're doing FoF calls to seed black holes. */
 #ifdef BLACK_HOLES_NONE
@@ -210,6 +213,16 @@ void fof_init(struct fof_props *props, struct swift_params *params,
       error("FOF can't use a type (%s) as both linking and attaching type!",
             part_type_names[i]);
 
+  /* The seeding only checks for existing black holes among the members of a
+   * group, so the black holes must be part of the groups. */
+  if (!stand_alone_fof && props->seed_black_holes_enabled &&
+      !props->fof_linking_types[swift_type_black_hole] &&
+      !props->fof_attach_types[swift_type_black_hole])
+    error(
+        "Seeding black holes with FOF requires the black holes to be a "
+        "linking or attaching type. Otherwise, black holes would be seeded "
+        "again in groups that already contain one.");
+
   /* Set the current FOF types */
   fof_set_current_types(props);
 
@@ -235,10 +248,10 @@ void fof_init(struct fof_props *props, struct swift_params *params,
 #if defined(WITH_MPI) && defined(UNION_BY_SIZE_OVER_MPI)
   if (engine_rank == 0)
     message(
-        "Performing FOF over MPI using union by size and union by rank "
+        "Performing FOF over MPI using union by size and union by index "
         "locally.");
 #else
-  message("Performing FOF using union by rank.");
+  if (engine_rank == 0) message("Performing FOF using union by index.");
 #endif
 }
 
@@ -391,6 +404,13 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
   MPI_Allreduce(MPI_IN_PLACE, &num_high_res_DM, 1, MPI_LONG_LONG, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
+
+  /* The linking length can only be derived from the dark matter. */
+  if (props->l_x_absolute == -1. && num_high_res_DM == 0)
+    error(
+        "No dark matter particles to compute the FOF linking length from the "
+        "mean inter-particle separation. Please specify "
+        "FOF:absolute_linking_length in the parameter file.");
 
   high_res_DM_mass /= (double)num_high_res_DM;
 
