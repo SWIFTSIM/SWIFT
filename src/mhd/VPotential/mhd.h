@@ -66,7 +66,7 @@ __attribute__((always_inline)) INLINE static void mhd_set_comoving_magnetic_fiel
  */
 __attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_field (
     const struct part *p, const struct xpart *xp, const struct cosmology *cosmo, 
-    float *B) {
+    float B[3]) {
 
   error("Trying to access the magnetic field at the last timestep "
         "which is not available in the vector potential implementation");
@@ -81,7 +81,7 @@ __attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_fiel
  * @param B (return) The (comoving) magnetic field
  */
 __attribute__((always_inline)) INLINE static void mhd_get_comoving_magnetic_field (
-    const struct part *p, const struct xpart *xp, float *B) {
+    const struct part *p, const struct xpart *xp, float B[3]) {
 
   error("Trying to access the magnetic field at the last timestep "
         "which is not available in the vector potential implementation");
@@ -96,7 +96,7 @@ __attribute__((always_inline)) INLINE static void mhd_get_comoving_magnetic_fiel
  */
 __attribute__((always_inline)) INLINE static void 
   mhd_get_drifted_comoving_magnetic_field (
-    const struct part *p, float *B) {
+    const struct part *p, float B[3]) {
 
   B[0] = p->mhd_data.BPred[0];
   B[1] = p->mhd_data.BPred[1];
@@ -114,7 +114,7 @@ __attribute__((always_inline)) INLINE static void
 __attribute__((always_inline)) INLINE static void 
   mhd_get_drifted_physical_magnetic_field (
     const struct part *p, const struct cosmology *cosmo,
-    float *B) {
+    float B[3]) {
 
   const float a_fact = pow(cosmo->a, mhd_comoving_factor);
 

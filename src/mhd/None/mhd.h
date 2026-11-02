@@ -56,7 +56,7 @@ __attribute__((always_inline)) INLINE static void mhd_set_comoving_magnetic_fiel
  */
 __attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_field (
     const struct part *p, const struct xpart *xp, const struct cosmology *cosmo, 
-    float *B) {
+    float B[3]) {
 
   /* not running with magnetic fields so return zero */
   B[0] = 0.f;
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_fiel
  * @param B (return) The (comoving) magnetic field
  */
 __attribute__((always_inline)) INLINE static void mhd_get_comoving_magnetic_field (
-    const struct part *p, const struct xpart *xp, float *B) {
+    const struct part *p, const struct xpart *xp, float B[3]) {
 
   /* not running with magnetic fields so return zero */
   B[0] = 0.f;
@@ -90,7 +90,7 @@ __attribute__((always_inline)) INLINE static void mhd_get_comoving_magnetic_fiel
  */
 __attribute__((always_inline)) INLINE static void 
   mhd_get_drifted_comoving_magnetic_field (
-    const struct part *p, float *B) {
+    const struct part *p, float B[3]) {
 
   /* not running with magnetic fields so return zero */
   B[0] = 0.f;
@@ -109,7 +109,7 @@ __attribute__((always_inline)) INLINE static void
 __attribute__((always_inline)) INLINE static void 
   mhd_get_drifted_physical_magnetic_field (
     const struct part *p, const struct cosmology *cosmo,
-    float *B) {
+    float B[3]) {
 
   /* not running with magnetic fields so return zero */
   B[0] = 0.f;
