@@ -15,7 +15,7 @@ Gravity:
   max_physical_baryon_softening: 0.005           # Gas, stars and sinks (internal units). run.sh overrides it (value for 50 Msun).
   max_physical_DM_softening:     0.005           # PartType1 dark matter (internal units). run.sh overrides it (value for 50 Msun).
   softening_ratio_background:    0.05            # Softening of PartType2 in units of the mean spacing of particles of its mass. run.sh passes the makeIC.py value.
-  mesh_side_length:              32              # Level 5 value; run.sh passes the makeIC.py value
+  mesh_side_length:              64              # Level 5 value; run.sh passes the makeIC.py value
 
 # Parameters governing the time integration
 TimeIntegration:
