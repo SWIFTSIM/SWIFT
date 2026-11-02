@@ -374,12 +374,8 @@ def void_geometry(box_size, padded, bkg_cdim):
     return k, region, int(np.ceil(region / padded))
 
 
-def zoom_grid(opt, box_size, extent, h_max):
-    """Background cdim, zoom depth and mesh, mirroring zoom_region_init()."""
-    errors, warnings = [], []
-    padded = opt.pad_factor * extent
-
-    # bkg_cdim of zoom_optimise_bkg_cells() without its floor of 8, then the cap
+def background_cdim(opt, box_size, padded):
+    """zoom_optimise_bkg_cells() without its floor of 8, capped (odd)."""
     bkg_cdim = int(np.floor(box_size / padded))
     if bkg_cdim % 2 == 0:
         bkg_cdim -= 1
@@ -396,6 +392,39 @@ def zoom_grid(opt, box_size, extent, h_max):
             f"Error: the box is only {box_size / padded:.2f} padded zoom regions "
             "wide; the background grid needs at least 3 cells. Increase the box."
         )
+    return bkg_cdim
+
+
+def zoom_depth(opt, bkg_cdim, bkg_width, k, min_zoom_width):
+    """Deepest zoom grid with cells wider than min_zoom_width, at most
+    max_zoom_cdim cells per axis and not narrower than a mesh cell."""
+    depth = 0
+    while (
+        bkg_width / 2 ** (depth + 1) > min_zoom_width
+        and k * 2 ** (depth + 1) <= opt.max_zoom_cdim
+        and bkg_cdim * 2 ** (depth + 1) <= opt.max_mesh
+    ):
+        depth += 1
+    return depth
+
+
+def mesh_size(box_size, bkg_cdim, bkg_width, depth):
+    """Smallest power of 2 with mesh cells not wider than a zoom cell
+    (space_regrid() stops otherwise) and r_cut_max within a background cell."""
+    mesh = 16
+    while (
+        R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width
+        or mesh < bkg_cdim * 2**depth
+    ):
+        mesh *= 2
+    return mesh
+
+
+def zoom_grid(opt, box_size, extent, h_max):
+    """Background cdim, zoom depth and mesh, mirroring zoom_region_init()."""
+    errors, warnings = [], []
+    padded = opt.pad_factor * extent
+    bkg_cdim = background_cdim(opt, box_size, padded)
     bkg_width = box_size / bkg_cdim
 
     k, region, nr_regions = void_geometry(box_size, padded, bkg_cdim)
@@ -415,16 +444,8 @@ def zoom_grid(opt, box_size, extent, h_max):
             f"{ZOOM_REGIONS_WARNING})"
         )
 
-    # Deepest zoom grid with cells wider than 1.1 kernel_gamma h_max and not
-    # narrower than a mesh cell (space_regrid() stops otherwise)
     min_zoom_width = SPACE_STRETCH * KERNEL_GAMMA * h_max
-    depth = 0
-    while (
-        bkg_width / 2 ** (depth + 1) > min_zoom_width
-        and k * 2 ** (depth + 1) <= opt.max_zoom_cdim
-        and bkg_cdim * 2 ** (depth + 1) <= opt.max_mesh
-    ):
-        depth += 1
+    depth = zoom_depth(opt, bkg_cdim, bkg_width, k, min_zoom_width)
     if depth < 1:
         errors.append(
             f"no zoom depth >= 1 gives zoom cells wider than 1.1 kernel_gamma "
@@ -449,14 +470,7 @@ def zoom_grid(opt, box_size, extent, h_max):
             f"region_pad_factor {opt.pad_factor} (SWIFT warns)"
         )
 
-    # Mesh: the smallest power of 2 with mesh cells not wider than a zoom cell
-    # and r_cut_max at most one background cell
-    mesh = 16
-    while (
-        R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width
-        or mesh < bkg_cdim * 2**depth
-    ):
-        mesh *= 2
+    mesh = mesh_size(box_size, bkg_cdim, bkg_width, depth)
     if mesh > opt.max_mesh:
         mesh = opt.max_mesh
         warnings.append(
