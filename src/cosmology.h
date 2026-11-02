@@ -67,6 +67,9 @@ struct cosmology {
   /*! Power of the scale-factor used for hydro accelerations */
   double a_factor_hydro_accel;
 
+  /*! Power of the scale-factor used for magnetic field conversion to physical */
+  double a_factor_magnetic_field;
+
   /*! Current redshift */
   double z;
 

@@ -38,6 +38,11 @@
  * @brief NO MHD but default parameters for other schemes
  */
 
+/* Choice of comoving coordinate conversion:
+ * B_phi = a^MHD_COMOVING_FACTOR * B_co
+ */
+#define mhd_comoving_factor 0.f
+
 /*! MHD parameters */
 struct mhd_global_data {};
 
