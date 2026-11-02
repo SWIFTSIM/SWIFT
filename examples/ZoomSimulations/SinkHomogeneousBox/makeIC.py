@@ -363,14 +363,17 @@ def background_mass(opt, box, levels):
     return total
 
 
-def background_particles(opt, box, levels, rng):
-    """PartType2 on jittered lattices, one level at a time, in cgs."""
+def background_particles(opt, box, levels):
+    """PartType2 at the cell centres of regular lattices, in cgs.
+
+    A random jitter would add a random force on the gas box that grows with
+    the spacing of the level, so the coarse levels would move the whole box.
+    """
     centre = 0.5 * levels[-1]["n"] * levels[-1]["s"]
     pos, mass = [], []
     for lev in levels:
         cell_centres = level_cells(lev)
-        jitter = rng.uniform(-0.45, 0.45, size=cell_centres.shape) * lev["s"]
-        pos.append(centre + cell_centres + jitter)
+        pos.append(centre + cell_centres)
         mass.append(level_masses(opt, box, lev, cell_centres))
     return np.concatenate(pos), np.concatenate(mass)
 
@@ -618,7 +621,7 @@ def main():
         M_total = M_hires + background_mass(opt, box, levels)
     else:
         pos_gas, pos_dm = gas_and_dm_positions(box, rng)
-        pos_bg, m_bg = background_particles(opt, box, levels, rng)
+        pos_bg, m_bg = background_particles(opt, box, levels)
         pos_gas += offset
         pos_dm += offset
         hires = np.concatenate((pos_gas, pos_dm))

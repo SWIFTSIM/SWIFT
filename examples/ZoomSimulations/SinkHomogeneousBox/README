@@ -67,8 +67,10 @@ particle spacing L / 2^l.
   as many PartType1 particles. The mean gas spacing d = L / 2^level is
   27.2 pc at 50 Msun for every level; L grows as 2^level (218 pc at level
   3, 872 pc at level 5, 6976 pc at level 8).
-- Levels levelmax - 1 down to levelmin hold PartType2 on jittered
-  lattices. Each level is a cube that contains the next finer one plus
+- Levels levelmax - 1 down to levelmin hold PartType2 at the cell centres
+  of regular lattices, as in MUSIC without perturbations. A random jitter
+  would give the gas box a net force that grows with the spacing of the
+  level. Each level is a cube that contains the next finer one plus
   `padding` cells of its own spacing on each side (MUSIC "padding", default
   8). One cell is added on each side when needed, so that the cube has a
   multiple of 4 cells and its faces stay on the lattice of the next coarser
