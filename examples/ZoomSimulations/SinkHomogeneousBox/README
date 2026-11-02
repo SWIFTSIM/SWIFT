@@ -3,7 +3,13 @@ Zoom homogeneous box with GEAR sinks
 
 The gas box of examples/SinkParticles/HomogeneousBox, with dark matter added,
 sits at the centre of a larger periodic box and runs as a zoom region
-(--zoom). Background dark matter particles fill the rest of the box.
+(--zoom). Background dark matter particles (PartType2) fill the rest of the
+box in nested levels, as in a MUSIC zoom IC. The example covers two
+geometries:
+
+- a box of the order of the zoom region (default: 8 gas boxes);
+- a box much larger than the zoom region, up to hundreds of Mpc or more
+  comoving, with a small zoom region at its centre.
 
 Build
 -----
@@ -19,139 +25,212 @@ Run
 ---
 
 run.sh makes the ICs, fetches the cooling and chemistry tables and runs
-../../../swift. Choose the case with run_case:
+../../../swift. Set its variables on the command line:
 
-  ./run.sh                                       # level 5 with sinks (default), 8 threads
-  with_star_formation=1 ./run.sh                 # level 5, GEAR star formation instead of sinks
-  run_case=local ./run.sh                        # local test: level 3, 2 threads, stops at t = 0.1
-  run_case=local with_star_formation=1 ./run.sh  # local test with star formation
-  run_case=level8 ./run.sh                       # level 8, 72 threads, one cluster node
+  ./run.sh                                       # level 5 with sinks, 8 threads
+  level=3 padding=2 n_threads=2 time_end=0.1 ./run.sh   # local test
+  with_star_formation=1 ./run.sh                 # GEAR star formation instead of sinks
+  level=8 n_threads=72 snapshot_delta=0.05 extra_params="-P Restarts:delta_hours:2" ./run.sh
+  box_size=3.5 ./run.sh                          # box of 4 gas boxes (3.49 kpc)
+  cosmological=1 ./run.sh                        # comoving ICs, --cosmology
+  cosmological=1 box_size=100 levelmin=-6 ./run.sh      # 100 comoving Mpc box
+  level=3 box_size=1000 levelmin=-12 n_threads=2 time_end=0.1 ./run.sh  # 1 Mpc box, no cosmology
 
-Other run.sh variables: level, n_threads, gas_mass (see "Gas particle
-mass"), embed, dm_ratio, delta, jeans_length, cosmological.
-"python3 makeIC.py --help" lists all IC options.
+Variables (default in brackets):
 
-What to expect
---------------
+  level [5]           levelmax: 2^(3 level) gas particles in the gas box
+  levelmin [level-3]  coarsest background level (see "Levels")
+  padding [8]         cells of each coarser level around the finer one
+  box_size [8 L]      box side: physical kpc, or comoving Mpc with
+                      cosmological=1; L is the gas box side
+  n_threads [8], gas_mass [50 Msun], jeans_length [0.25], dm_ratio [5.36],
+  delta [0], with_star_formation [0], cosmological [0]
+  time_end [0.5]      end time in internal units (cosmological=0)
+  a_end_factor [2]    a_end / a_begin (cosmological=1)
+  snapshot_delta [0.01]        time between snapshots (cosmological=0)
+  snapshot_delta_cosmo [1.02]  ratio of scale factors between snapshots,
+                               > 1 (cosmological=1)
+  velocity_fraction [0.1]      random velocities (cosmological=1)
+  max_bkg_cdim [91]   cap on ZoomRegion:bkg_top_level_cells
+  swift [../../../swift], extra_params []  more -P options for swift
 
-- Local test: a few seconds (release build). No sink or star forms before
-  t = 0.1 (98 Myr).
-- With the dark matter, the free-fall time is about 65 Myr (0.066 in
-  internal units) instead of 163 Myr in the gas-only example. The whole
-  uniform medium, inside and outside the gas box, collapses into clumps on
-  that time scale. The run does not reproduce the fragmentation of the
-  original example.
-- time_end is 0.5 (489 Myr), the value of the original example.
+run.sh chooses the snapshot spacing from the cosmological flag.
+"python3 makeIC.py --help" lists all IC options; "python3 makeIC.py
+--dry-run ..." prints the layout and the zoom grid without writing a file.
 
-Cases and resolution
---------------------
+Levels
+------
 
-The level sets the resolution: 2^(3 level) gas particles. The mean gas
-spacing (27.2 pc) and the smoothing length h (33.6 pc) do not change with
-the level. The gas box side L grows as 2^level. Values for 50 Msun and
-embed 8:
+The levels are those of MUSIC, counted from the gas box: level l has the
+particle spacing L / 2^l.
 
-  level  gas = DM particles  PartType2 particles  L [pc]  box [pc]
-  3      512                 1344                 218     1744
-  4      4096                10752                436     3488
-  5      32768               86016                872     6976
-  8      16777216            44040192             6976    55805
+- levelmax (level): the gas box, 2^level gas particles per dimension and
+  as many PartType1 particles. The mean gas spacing d = L / 2^level is
+  27.2 pc at 50 Msun for every level; L grows as 2^level (218 pc at level
+  3, 872 pc at level 5, 6976 pc at level 8).
+- Levels levelmax - 1 down to levelmin hold PartType2 on jittered
+  lattices. Each level is a cube that contains the next finer one plus
+  `padding` cells of its own spacing on each side (MUSIC "padding", default
+  8). One cell is added on each side when needed, so that the cube has a
+  multiple of 4 cells and its faces stay on the lattice of the next coarser
+  level (MUSIC aligns its grids to 2 cells for the same reason). The mass
+  per particle grows by 8 from one level to the next.
+- levelmin may be 0 or negative (spacing L, 2 L, ...). The default
+  levelmin = level - 3 gives spacings 2 d, 4 d and 8 d.
+- The coarsest level that fits in the box fills the box. If the box is
+  smaller than the padded region of levelmin, fewer levels are used. If it
+  is larger, the coarsest level fills the remaining volume with a constant
+  spacing.
+- The box side is rounded to the nearest box with a whole, symmetric number
+  of cells of the coarsest level (steps of 2 cells). makeIC.py prints the
+  real box, the levels, the counts, the masses and the softenings.
+- makeIC.py stops if the background needs more than 1e8 PartType2
+  particles (--max-background-particles) and prints the levelmin that
+  fills the box with padded levels only. A large box needs this levelmin:
+  for example -5 for 100 comoving Mpc at level 5.
 
-- level5 (default): time_end 0.5, a snapshot every 0.01.
-- local: time_end 0.1.
-- level8: restart files every 2 hours, a snapshot every 0.05 (49 Myr), or
-  every factor 1.1 in scale factor with cosmological=1.
-  - ICs: about 2 minutes, 6.9 GB of memory, a 3.7 GB file.
-  - Particles: 16777216 gas (50 Msun), 16777216 PartType1 (268 Msun),
-    3 x 14680064 PartType2 (2544, 2.035e4 and 1.628e5 Msun): 77.6 million.
-  - Memory: 19.7 GB for the particles, about 30 to 40 GB in total.
-  - Cost: about 2e6 core seconds to time_end, that is 7 hours on 72 cores
-    with perfect scaling, and 3 to 10 times more with deep time-step bins.
+With the defaults the box is 8 L. At level 5 the 3 levels have 32 cells
+across 2 L, 4 L and 8 L (28672 PartType2 each). At level 3, padding=2
+gives the same layout (448 PartType2 per level): with padding 8 the second
+level would need a box of 14 L.
 
-Initial temperature: at fixed jeans_length it grows as L^2, so it grows
-with the level and as gas_mass^(2/3). It is 16 K at level 5 and about
-1000 K at level 8 (50 Msun). To keep the temperature of level 5 at 50 Msun,
-scale jeans_length as 1/L: 0.03125 at level 8, 0.25 (50 / gas_mass)^(1/3)
-at level 5. Cooling changes the temperature during the run.
+  level  gas = PartType1  PartType2 (box 8 L)  L [pc]  box [pc]
+  3      512              1344 (padding 2)      218     1744
+  5      32768            86016                 872     6976
+  8      16777216         17889088              6976    55805
+
+Zoom grid
+---------
+
+makeIC.py writes zoom_runtime_params.txt, and run.sh passes it to swift
+with -P. makeIC.py repeats the geometry of zoom_region_init()
+(src/zoom_region/zoom_init.c) with the extent E of the gas and PartType1
+particles, and stops with the reason if SWIFT would stop:
+
+- ZoomRegion:region_pad_factor: 1.3. The zoom region is the block of
+  background cells that holds the centred cube of side 1.3 E.
+- ZoomRegion:bkg_top_level_cells: the value of the automatic mode of SWIFT
+  (the largest odd number of cells with the padded zoom region inside one
+  cell), capped at 91. The cap keeps the background grid at 753571 cells,
+  about 1.4 GB (struct cell and its multipole, 1888 bytes), and lets the
+  r_cut_max rule below hold with a mesh of 512. SWIFT stops if the zoom region
+  is 64 times smaller than its block of background cells and warns at 16;
+  makeIC.py does the same. Without the cap, a large box would need
+  hundreds of cells per side.
+- ZoomRegion:zoom_top_level_depth: the largest depth (at least 1) with zoom
+  cells wider than 1.1 kernel_gamma SPH:h_max, at most 32 zoom cells per
+  axis (--max-zoom-cdim) and zoom cells not narrower than a cell of the
+  largest mesh (512, --max-mesh).
+- Gravity:mesh_side_length: the smallest power of 2 (at least 16) with mesh
+  cells not wider than a zoom cell (SWIFT stops otherwise at the first
+  rebuild) and the tree cut-off r_cut_max = 4.5 x 1.25 box / mesh not
+  larger than one background cell, so that background cells exchange tree
+  forces only with their direct neighbours. The mesh does not need to
+  resolve the gas box: the tree covers the zoom region. With the default
+  box the mesh is 32 at level 3, 64 at level 5 and 256 at level 8.
+
+In a large box the largest mesh sets the zoom cell: it is at least
+box / 512, so the gas box can sit inside a few zoom cells (for 100
+comoving Mpc at level 5: zoom cells of 3.68 physical kpc, gas box of
+0.87 kpc). The usual cell tree then splits these cells.
+
+makeIC.py --h-max MUST equal SPH:h_max. run.sh passes the same value to
+both.
+
+Large boxes and cosmology
+-------------------------
+
+With cosmological=1, makeIC.py writes comoving ICs and box_size is in
+comoving Mpc. a_begin makes the mean matter density of the box equal to
+Omega_m rho_crit_0, and the box follows the Hubble flow. With the default
+densities a_begin = 0.0136 (z = 72.5). The gas box is then 0.872 physical
+kpc (64.1 comoving kpc) at level 5. Examples (makeIC.py --dry-run):
+
+  box [cMpc]  level  levelmin  real box [cMpc]  physical box  gas boxes  PartType2
+  100         5      -6        98.49            1.339 Mpc     1536       364544
+  1000        7      -9        984.9            13.39 Mpc     3840       1012648
+
+For 1000 cMpc at level 5 the zoom region is 130 times smaller than one
+background cell, and makeIC.py stops: raise --max-bkg-cdim (to at least
+185) or the level.
+
+Without cosmology, box_size is in physical kpc and the same rules hold.
+
+SWIFT stops on zero velocities in cosmological runs, so the cosmological
+ICs get Gaussian random velocities with a dispersion per component of
+velocity_fraction (default 0.1) times the gas sound speed: 0.011 km/s at
+level 3 and 0.042 km/s at level 5. This keeps the gas subsonic.
+makeIC.py also writes the Cosmology block, the comoving softenings, the
+comoving h_max and the output times to zoom_runtime_params.txt.
+
+Density contrast
+----------------
+
+delta = rho_in / rho_out - 1 sets the total density outside the gas box.
+With delta = 0 (default) the whole box is uniform. With delta > 0 the gas
+box is an overdensity: outside, the background follows
+rho(r) = rho_out + (rho_in - rho_out) (1 - tanh((r - L/2) / w)),
+with r the max-norm distance from the centre and w = 0.25 L. The gas stays
+a sharp cube. With cosmological=1 the mean of the box is the cosmological
+mean, so in a large box rho_out is close to Omega_m rho_crit_0 / a_begin^3.
+
+Softening
+---------
+
+- Gas, stars, sinks and PartType1: 5 pc (Gravity:max_physical_baryon_softening
+  and max_physical_DM_softening).
+- PartType2: Gravity:softening_ratio_background = 0.05 times the mean
+  spacing of particles of its mass at the mean matter density of the box,
+  the usual value of the zoom examples. This gives 2.72, 5.45 and 10.9 pc
+  for the spacings 2 d, 4 d and 8 d at 50 Msun, and twice as much for each
+  coarser level. makeIC.py prints the values and writes the ratio to
+  zoom_runtime_params.txt.
 
 Gas particle mass
 -----------------
 
 gas_mass sets the gas particle mass in Msun (default 50), for example:
 
-  gas_mass=100 run_case=local ./run.sh
+  gas_mass=100 level=3 padding=2 n_threads=2 time_end=0.1 ./run.sh
 
 The gas density stays 0.1 atom/cm^3. With s = (gas_mass / 50)^(1/3):
 
-- The gas box side L = (N m / rho)^(1/3), the mean spacing (m / rho)^(1/3)
-  and h (1.2348 times the spacing) grow as s.
-- run.sh passes SPH:h_max = 0.08 s kpc to makeIC.py and to swift. The initial h
-  stays below h_max, and the zoom grid (bkg_top_level_cells,
-  zoom_top_level_depth, mesh_side_length) stays the same as for 50 Msun.
-  Without this scaling, a mass below about 47 Msun gives a smaller zoom
-  depth, and makeIC.py stops at level 3.
+- The gas box side L, the mean spacing and h (1.2348 times the spacing)
+  grow as s.
+- run.sh passes SPH:h_max = 0.08 s kpc to makeIC.py and to swift, so the
+  zoom grid stays the same as for 50 Msun.
 - run.sh passes max_physical_baryon_softening and max_physical_DM_softening
-  = 0.005 s kpc.
-- With sinks, run.sh passes GEARSink:cut_off_radius = 0.005 s kpc. A sink
-  forms only where kernel_gamma h < cut_off_radius, so the density at which
-  sinks can form stays the same.
-- The PartType2 softenings follow the particle masses (see "How it is
-  built").
+  = 0.005 s kpc and, with sinks, GEARSink:cut_off_radius = 0.005 s kpc. A
+  sink forms only where kernel_gamma h < cut_off_radius, so the density at
+  which sinks can form stays the same.
 
 The parameter files hold the values for 50 Msun. run.sh overrides them, so
-change these four values in run.sh, not in the parameter files.
+change these values in run.sh, not in the parameter files.
 
 These values do not scale with the gas mass: the density and temperature
-thresholds of sink and star formation, the time-step limits (dt_max and the
-limits of sinks and stars in Myr), the feedback parameters,
-stellar_particle_mass_Msun (50 Msun, a choice of IMF sampling) and the
-spare particles per cell (Scheduler block). The GEAR star particle mass
-(gas mass / n_stars_per_particle) and the pressure floor (set by h) follow
-the gas mass by themselves. For jeans_length, see "Initial temperature"
-above.
+thresholds of sink and star formation, the time-step limits, the feedback
+parameters, stellar_particle_mass_Msun and the spare particles per cell
+(Scheduler block).
+
+Initial temperature: at fixed jeans_length it grows as L^2, so it grows
+with the level and as gas_mass^(2/3). It is 16 K at level 5 and about
+1000 K at level 8 (50 Msun). To keep the temperature of level 5, scale
+jeans_length as 1/L: 0.03125 at level 8.
 
 How it is built
 ---------------
 
 - Gas (PartType0): uniform random positions in a cube of side L, density
-  0.1 atom/cm^3, zero velocity. The internal energy u = sigma^2 uses the
-  velocity dispersion of the original example (set by jeans_length).
+  0.1 atom/cm^3, zero velocity without cosmology. The internal energy
+  u = sigma^2 uses the velocity dispersion of the original example (set by
+  jeans_length).
 - Dark matter (PartType1): one particle per gas particle. Each pair comes
   from one random point, split as in space_generate_gas() (src/space.c).
   The dark matter density is dm_ratio times the gas density (default 5.36,
-  the Planck 2018 ratio of cold dark matter to baryons).
-- Background dark matter (PartType2): nested cube shells around the gas
-  box. Shell k spans the cube sides 2^(k-1) L to 2^k L, up to the box side
-  embed L. Each shell is a jittered grid with spacing 2^k times the mean
-  gas spacing, so the particle mass grows by 8 from one shell to the next.
-  No PartType2 particle is inside the gas box.
-- Density contrast: with delta = 0 (default) the large box is uniform.
-  With delta > 0 the gas box is an overdensity, rho_in / rho_out =
-  1 + delta. The background then follows
-  rho(r) = rho_out + (rho_in - rho_out) (1 - tanh((r - L/2) / w)),
-  with r the max-norm distance from the centre. The gas stays a sharp cube.
-- Softening: gas, stars, sinks and PartType1 use 5 pc. PartType2 uses
-  softening_ratio_background (0.2) times the mean spacing of particles of
-  its mass at the mean matter density of the box: 10.9, 21.8 and 43.6 pc
-  for the three shells at 50 Msun. makeIC.py prints these values.
-- Zoom grid: makeIC.py writes zoom_runtime_params.txt, and run.sh passes
-  it to swift with -P:
-  - ZoomRegion:bkg_top_level_cells: the largest odd number not above
-    embed / region_pad_factor (5 with the defaults);
-  - ZoomRegion:zoom_top_level_depth: the largest depth with zoom cells
-    wider than 1.1 kernel_gamma h_max and at most 32 zoom cells per axis
-    (level - 2 up to level 7, then 5);
-  - Gravity:mesh_side_length: 2^(level+1), at least 32.
-  makeIC.py --h-max MUST equal SPH:h_max. run.sh passes the same value
-  to both.
-- Cosmological variant (cosmological=1; tested at level 3 for the first 20
-  steps only): comoving ICs. a_begin makes the mean matter density equal to
-  Omega_m rho_crit_0 (a_begin = 0.0136, z = 72, with the defaults). The box
-  follows the Hubble flow, so the physics is not that of the default run.
-  SWIFT stops on zero velocities in cosmological runs, so the ICs get
-  random velocities (--velocity-sigma, default 1 km/s). makeIC.py writes
-  the Cosmology block, the comoving softenings, the comoving h_max and the
-  output times to zoom_runtime_params.txt.
+  the Planck 2018 ratio of cold dark matter to baryons). The free-fall time
+  of the gas box is 65 Myr (0.066 internal units).
+- Background dark matter (PartType2): the levels above. No PartType2
+  particle is inside the gas box.
 
 Parameter files: params_sinks.yml (--sinks) and params_star_formation.yml
 (--star-formation). The physics blocks are the ones of
