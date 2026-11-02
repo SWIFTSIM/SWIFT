@@ -1395,7 +1395,11 @@ void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
   const struct engine *restrict e = r->e;
 
-#if !defined(SWIFT_USE_NAIVE_INTERACTIONS_STARS)
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS_STARS)
+  const int alway_naive = 1;
+#else
+  const int alway_naive = 0;
+#endif
 
   /* Get the sort ID. */
   double shift[3] = {0.0, 0.0, 0.0};
@@ -1416,30 +1420,43 @@ void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Are all the sorts we need there and still valid? */
   int sorted = 1;
   if (do_ci) {
-    sorted = sorted && (ci->stars.sorted & (1 << sid)) &&
-             ci->stars.dx_max_sort_old <= space_maxreldx * ci->dmin &&
-             (cj->hydro.sorted & (1 << sid)) &&
-             cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin;
+
+    /* Verify that the conditions for sorted interactions are not violated */
+    const int ci_stars_sorted = (ci->stars.sorted & (1 << sid));
+    const int cj_hydro_sorted = (cj->hydro.sorted & (1 << sid));
+    const int ci_stars_disp_ok =
+        (ci->stars.dx_max_sort_old <= space_maxreldx * ci->dmin);
+    const int cj_hydro_disp_ok =
+        (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
+
+    sorted = sorted && ci_stars_sorted && cj_hydro_sorted && ci_stars_disp_ok &&
+             cj_hydro_disp_ok;
   }
   if (do_cj) {
-    sorted = sorted && (cj->stars.sorted & (1 << sid)) &&
-             cj->stars.dx_max_sort_old <= space_maxreldx * cj->dmin &&
-             (ci->hydro.sorted & (1 << sid)) &&
-             ci->hydro.dx_max_sort_old <= space_maxreldx * ci->dmin;
+
+    /* Verify that the conditions for sorted interactions are not violated */
+    const int cj_stars_sorted = (cj->stars.sorted & (1 << sid));
+    const int ci_hydro_sorted = (ci->hydro.sorted & (1 << sid));
+    const int cj_stars_disp_ok =
+        (cj->stars.dx_max_sort_old <= space_maxreldx * cj->dmin);
+    const int ci_hydro_disp_ok =
+        (ci->hydro.dx_max_sort_old <= space_maxreldx * ci->dmin);
+
+    sorted = sorted && cj_stars_sorted && ci_hydro_sorted && cj_stars_disp_ok &&
+             ci_hydro_disp_ok;
   }
 
-  if (sorted) {
+  if (sorted && !always_naive) {
     DO_SYM_PAIR1_STARS(r, ci, cj, offset, ntasks, limit_min_h, limit_max_h, sid,
                        shift);
-    return;
-  }
-#endif
+  } else {
 
-  /* Naive interactions in both directions */
-  DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, offset, ntasks, limit_min_h,
-                              limit_max_h);
-  DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, offset, ntasks, limit_min_h,
-                              limit_max_h);
+    /* Naive interactions in both directions */
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, offset, ntasks, limit_min_h,
+                                limit_max_h);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, offset, ntasks, limit_min_h,
+                                limit_max_h);
+  }
 }
 
 /**
@@ -1733,8 +1750,9 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
 
   /* Largest smoothing length of the stars of the subset (all in ci) */
   float h_subset_max = 0.f;
-  for (int k = 0; k < scount; k++)
+  for (int k = 0; k < scount; k++) {
     h_subset_max = max(h_subset_max, sparts[ind[k]].h);
+  }
 
   /* Recurse? */
   if (cell_can_recurse_in_pair_stars_subset(ci, cj, h_subset_max)) {
@@ -1782,8 +1800,9 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
 
   /* Largest smoothing length of the stars of the subset */
   float h_subset_max = 0.f;
-  for (int k = 0; k < scount; k++)
+  for (int k = 0; k < scount; k++) {
     h_subset_max = max(h_subset_max, sparts[ind[k]].h);
+  }
 
   /* Recurse? */
   if (cell_can_recurse_in_self_stars_subset(ci, h_subset_max)) {
