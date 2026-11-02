@@ -1081,7 +1081,13 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 #endif
 
   if (force_naive || !is_sorted) {
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+
     DOPAIR_SUBSET_NAIVE(r, ci, parts_i, ind, count, cj, shift);
+
   } else {
 #if defined(WITH_VECTORIZATION) && defined(GADGET2_SPH)
     if (sort_is_face(sid))
@@ -1092,6 +1098,10 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
 #else
     DOPAIR_SUBSET(r, ci, parts_i, ind, count, cj, sid, flipped, shift);
 #endif
+
+    /* Unlock now that we are done reading the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
   }
 }
 
@@ -1256,7 +1266,6 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Some constants used to checks that the parts are in the right frame */
-  /* TODO MLADEN: coordinate 2. -> 2.02 with Matthieu */
   const float shift_threshold_x =
       2.02 * ci->width[0] +
       2.02 * max(ci->hydro.dx_max_part, cj->hydro.dx_max_part);

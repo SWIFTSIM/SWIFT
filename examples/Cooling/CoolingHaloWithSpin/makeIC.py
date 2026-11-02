@@ -57,7 +57,7 @@ r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
 
 # Now get the virial mass
 
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 # Now set the unit length and mass
 
@@ -114,7 +114,7 @@ radius = (
     boxSize * np.sqrt(3.0) / 2.0 * np.random.rand(N)
 )  # the diagonal extent of the cube
 ctheta = -1.0 + 2 * np.random.rand(N)
-stheta = np.sqrt(1.0 - ctheta ** 2)
+stheta = np.sqrt(1.0 - ctheta**2)
 phi = 2 * math.pi * np.random.rand(N)
 coords = np.zeros((N, 3))
 coords[:, 0] = radius * stheta * np.cos(phi)
@@ -190,7 +190,7 @@ v = np.zeros((N, 3))
 
 # first work out total angular momentum of the halo within the virial radius
 # we work in units where r_vir = 1 and M_vir = 1
-Total_E = v_c ** 2 / 2.0
+Total_E = v_c**2 / 2.0
 J = spin_lambda * const_G / np.sqrt(Total_E)
 print("J =", J)
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
@@ -230,16 +230,14 @@ ds[()] = m
 m = np.zeros(1)
 
 # Smoothing lengths
-l = (4.0 * np.pi * radius ** 2 / N) ** (
-    1.0 / 3.0
-)  # local mean inter-particle separation
+l = (4.0 * np.pi * radius**2 / N) ** (1.0 / 3.0)  # local mean inter-particle separation
 h = np.full((N,), eta * l)
 ds = grp.create_dataset("SmoothingLength", (N,), "f")
 ds[()] = h
 h = np.zeros(1)
 
 # Internal energies
-u = v_c ** 2 / (2.0 * (gamma - 1.0))
+u = v_c**2 / (2.0 * (gamma - 1.0))
 u = np.full((N,), u)
 ds = grp.create_dataset("InternalEnergy", (N,), "f")
 ds[()] = u

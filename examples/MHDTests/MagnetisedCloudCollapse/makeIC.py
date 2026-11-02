@@ -37,9 +37,7 @@ M = 1.99e33  # total mass of the sphere
 T = 4.7e5  # initial orbital period in years
 Omega = 2 * pi / (T * 3.1536e7)  # initial angular frequency of cloud
 
-mu = (
-    10
-)  # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
+mu = 10  # mass to magnetic field flux through sphere, normalised to a critical value for collapse. Refer to e.g. Henebelle & Fromang 2008 for details.
 Bini = (3.0 / (2.0 * c1)) * sqrt(mu0 * G / (5.0 * pi)) * M / (Rcloud * Rcloud) * 1 / mu
 
 # Barotropic EoS parameters
@@ -47,9 +45,9 @@ cs0 = 2e4
 inv_rho_c = 1e14
 
 # Attributes of cloud and ambient medium
-volume_cloud = (4 / 3) * pi * Rcloud ** 3
+volume_cloud = (4 / 3) * pi * Rcloud**3
 volume_cloud_box = (2 * Rcloud) ** 3
-volume_sim_box = Lbox ** 3
+volume_sim_box = Lbox**3
 
 rho_in = M / volume_cloud
 rho_out_to_rho_in = 1 / 360

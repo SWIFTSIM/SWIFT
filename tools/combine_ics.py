@@ -4,13 +4,13 @@ Usage:
     combine_ics.py input_file.0.hdf5 merged_file.hdf5 gzip_level
 
 This file combines Gadget-2 type 2 (i.e. hdf5) initial condition files
-into a single file that can be digested by SWIFT. 
+into a single file that can be digested by SWIFT.
 This has mainly be tested for DM-only (parttype1) files but also works
 smoothly for ICs including gas. The special case of a mass-table for
 the DM particles is handled. No unit conversions are applied nor are
 any scale-factors or h-factors changed.
 The script applies some compression and checksum filters to the output
-to save disk space. 
+to save disk space.
 The last argument `gzip_level` is used to specify the level of compression
 to apply to all the fields in the file. Use 0 to cancel all coompression.
 The default value is `4`.
@@ -222,9 +222,9 @@ for f in range(num_files):
     def copy_grp_pt3(name):
         full_name_new = "/PartType2/" + name
         full_name_old = "/PartType3/" + name
-        output_file[full_name_new][
-            cumul_parts[2] : cumul_parts[2] + num_parts[3]
-        ] = file[full_name_old]
+        output_file[full_name_new][cumul_parts[2] : cumul_parts[2] + num_parts[3]] = (
+            file[full_name_old]
+        )
 
     if num_parts[0] > 0:
         copy_grp_same_name("Coordinates", 0)

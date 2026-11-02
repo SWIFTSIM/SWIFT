@@ -390,7 +390,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||            \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
-    defined(GASOLINE_SPH) || defined(REMIX_SPH)
+    defined(GASOLINE_SPH) || defined(REMIX_SPH) || defined(MAGMA_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,

@@ -53,7 +53,7 @@ pos = pos[index]
 h = h[index]
 
 numPart = len(h)
-vol = 4.0 * np.pi / 3.0 * 0.25 ** 3
+vol = 4.0 * np.pi / 3.0 * 0.25**3
 
 # Generate extra arrays
 v = np.zeros((numPart, 3))

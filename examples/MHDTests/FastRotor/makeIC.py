@@ -128,11 +128,11 @@ vol = lx * ly * lz
 rot_out = np.sqrt((pos_out[:, 0] - 0.5 * lx) ** 2 + (pos_out[:, 1] - 0.5 * ly) ** 2)
 rot_in = np.sqrt((pos_in[:, 0] - 0.5 * lx) ** 2 + (pos_in[:, 1] - 0.5 * ly) ** 2)
 
-pos_out_f = pos_out[rot_out ** 2 >= R_0 ** 2]
-pos_in_f = pos_in[rot_in ** 2 < R_0 ** 2]
+pos_out_f = pos_out[rot_out**2 >= R_0**2]
+pos_in_f = pos_in[rot_in**2 < R_0**2]
 
-h_out_f = h_out[rot_out ** 2 > R_0 ** 2]
-h_in_f = h_in[rot_in ** 2 < R_0 ** 2]
+h_out_f = h_out[rot_out**2 > R_0**2]
+h_in_f = h_in[rot_in**2 < R_0**2]
 h_in_f = h_in_f[pos_in_f[:, 2] < lz]
 
 pos_in_f = pos_in_f[pos_in_f[:, 2] < lz]

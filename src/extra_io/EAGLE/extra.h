@@ -665,6 +665,7 @@ INLINE static float do_xray_interpolation(
       table = xrays->emissivity_ROSAT_intrinsic_energies;
       break;
     default:
+      table = NULL;
       error("Band doesn't exist");
   }
 
@@ -833,6 +834,7 @@ INLINE static double extra_io_get_xray_fluxes(const struct part *p,
           e->io_extra_props->xray_data.xray_energy_emissivity_unit_conversion;
       break;
     default:
+      xray_em = 0.;
       error("Band doesn't exist");
   }
 

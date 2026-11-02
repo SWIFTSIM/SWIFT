@@ -15,24 +15,26 @@ Z_count=${Z_count:=2}
 
 ################## makeIC constant parameters ##################
 level=${level:=6}  # Number of particles = 2^(3*level)
-jeans_length=${jeans_length:=1}  # Jeans wavelenght in unit of the boxsize
+T=${T:=200}  # Gas temperature
 gas_density=${gas_density:=0.1} # Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} # Mass of the gas particles
 num_star=${num_star:=1} # number of stars
 
-set -e 
+set -e
+
+scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getGrackleCoolingTable.sh
+    $scripts_location/getGrackleCoolingTable.sh
 fi
 
-if [ ! -e POPII.hdf5 ] || [! -e POPIII_PISNe.hdf5 ]
+if [ ! -e POPII.hdf5 ] || [ ! -e POPIII_PISNe.hdf5 ]
 then
     echo "Fetching the Cloudy tables required by Grackle..."
-    ./getChemistryTable.sh
+    $scripts_location/getChemistryTable.sh --with-winds
 fi
 
 star_mass=($(awk -v min=$star_mass_min -v max=$star_mass_max -v count=$star_mass_count 'BEGIN{for(i=0;i<count;i++)print min*(max/min)^(i/(count-1))}'))
@@ -102,7 +104,7 @@ for ((index=0; index<total_combinations; index++)); do
 
     # Generate the Initial Conditions
     echo "Generating initial conditions to run the example..."
-    python3 ../makeIC.py --level $level --lJ $jeans_length --rho $gas_density \
+    python3 ../makeIC.py --level $level --T $T --rho $gas_density \
         --mass $gas_particle_mass --star_mass $star_mass_value \
         --star_type $star_type_value --num_star $num_star \
         -o ICs_homogeneous_box.hdf5
@@ -110,9 +112,9 @@ for ((index=0; index<total_combinations; index++)); do
     # Start the simulation
     echo "Starting simulation"
     if [[ "$2" == "SN" ]]; then
-        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:pre_supernovae_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
+        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:stellar_winds_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
     else 
-        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:pre_supernovae_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
+        ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$z" --param="GEARFeedback:stellar_winds_efficiency:$coeff_value" ../params.yml 2>&1 | tee output.log
     fi
     cd ..
 done

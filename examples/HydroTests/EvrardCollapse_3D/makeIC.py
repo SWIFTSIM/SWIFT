@@ -49,7 +49,7 @@ r = R * sqrt(random.random(numPart))
 phi = 2.0 * pi * random.random(numPart)
 cos_theta = 2.0 * random.random(numPart) - 1.0
 
-sin_theta = sqrt(1.0 - cos_theta ** 2)
+sin_theta = sqrt(1.0 - cos_theta**2)
 cos_phi = cos(phi)
 sin_phi = sin(phi)
 

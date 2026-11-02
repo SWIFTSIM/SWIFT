@@ -17,6 +17,7 @@ Bi_fraction = 1e-8
 # output file
 fileOutputName = "ABCFlow.hdf5"
 
+
 ############################################################### Random B and A vector field generator
 def generate_random_vectors(N_of_vectors, randomize_length=True):
     RVF = []
@@ -40,7 +41,7 @@ def generate_k(Npart, Lbox, min_sine_res=6):
     for nx in range(-nmax, nmax + 1):
         for ny in range(-nmax, nmax + 1):
             for nz in range(-nmax, nmax + 1):
-                if np.sqrt(nx ** 2 + ny ** 2 + nz ** 2) <= nmax:
+                if np.sqrt(nx**2 + ny**2 + nz**2) <= nmax:
                     k.append([nx, ny, nz])
     k = np.array(k)
     k = k.astype("float64")
@@ -133,7 +134,7 @@ def find_Magnetic_Field(pos, kvec, Ak):
 
 def normalize_Magnetic_Field(A, B, B0):
     norms = np.linalg.norm(B, axis=1)
-    normalization_factor = B0 / np.sqrt(np.sum(norms ** 2))
+    normalization_factor = B0 / np.sqrt(np.sum(norms**2))
     return A * normalization_factor, B * normalization_factor
 
 
@@ -152,7 +153,7 @@ def add_other_particle_properties(
     pos, h, a, b, c, V0, kb, kv, Vz_factor, L, field_type
 ):
     if field_type != "load_from_file":
-        vol = L ** 3
+        vol = L**3
         N = len(h)
 
         # initializing arrays with particle properties
@@ -168,7 +169,7 @@ def add_other_particle_properties(
         kb0 = 2 * np.pi / L * kb
         Beq0 = np.sqrt(rho0) * V0
         B0 = Bi_fraction * Beq0
-        Norm = 1 / np.sqrt(a ** 2 + b ** 2 + c ** 2)
+        Norm = 1 / np.sqrt(a**2 + b**2 + c**2)
 
         # rescaling the box to size L
         pos *= L
@@ -204,7 +205,7 @@ def add_other_particle_properties(
             print("Error: wrong field type. Should be one_mode or random")
     else:
 
-        vol = L ** 3
+        vol = L**3
         # Put path to IC snapshots here
         filename = "./ICfiles/g32_randB_withVP.hdf5"
         # read the variables of interest from the snapshot file

@@ -16,8 +16,6 @@ Then, type
 make -j
 ```
 
-You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
-
 # ICs
 The start.slurm script calls the `makeIC.py' script with default values. You can experiment by changing the ICs. Run `python3 makeIC.py --help` to get the list of parameters.
 

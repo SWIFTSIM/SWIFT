@@ -96,7 +96,7 @@ else:
     phi_g = np.zeros(1)
 
 # Derived parameters
-rho_0 = m.sum() / (boxSize ** 3)  # critical density of the box
+rho_0 = m.sum() / (boxSize**3)  # critical density of the box
 lambda_i = boxSize  # wavelength of the perturbation
 
 
@@ -164,8 +164,8 @@ plt.ylabel("${\\rm{Potential}}~\\phi$", labelpad=0)
 
 # Temperature profile -------------------------
 plt.subplot(234)  # , yscale="log")
-u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
-u_g *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+u *= unit_length_in_si**2 / unit_time_in_si**2
+u_g *= unit_length_in_si**2 / unit_time_in_si**2
 u /= a ** (3 * (gas_gamma - 1.0))
 u_g /= a ** (3 * (gas_gamma - 1.0))
 T = (gas_gamma - 1.0) * u * mH_in_kg / k_in_J_K

@@ -10,19 +10,19 @@ from numpy.linalg import norm
 
 
 class Cube:
-    """ Class for creating a distribution of particles in a Cube.
+    """Class for creating a distribution of particles in a Cube.
 
-        Arguments:
-            n     : total number of desired points to represent the Cube
-            side  : side (with units)
-            mass  : mass (with units)
+    Arguments:
+        n     : total number of desired points to represent the Cube
+        side  : side (with units)
+        mass  : mass (with units)
     """
 
     def __init__(self, n=32, side=1.0, mass=1.0):
 
         nside = int(n)
 
-        naux = nside ** 3
+        naux = nside**3
         h = ones(naux) / 2.0 * side / nside  # min particle separation
 
         # z3     = mgrid[0:nside, 0:nside, 0:nside].T.reshape(naux, 3)

@@ -520,7 +520,9 @@ runner_iact_nonsym_feedback_apply(
       hydro_diffusive_feedback_reset(pj);
 
       /* Mark this particle has having been heated by supernova feedback */
-      tracers_after_feedback(xpj, snii_feedback_energy);
+      tracers_after_supernovae_feedback_part(xpj, /*delta_p_magnitude=*/0.f,
+                                             delta_u, /*kick_velocity=*/0.f,
+                                             snii_feedback_energy);
 
       /* message( 
           "We did some heating! id %llu star id %llu probability %.5e " 

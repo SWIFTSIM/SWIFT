@@ -1,25 +1,31 @@
 The 'run_test_program.py' script automatically configures and runs with parameters selected in the test_run_parameters.csv file
 The results of the run are stored in 'test_results' folder
-After a run is complete the script puts all snapshots and run data into corresponding folder in 'test_results' and fills the status column of the corresponding run with 'done'. If there is a need to skip some run just write 'done' in the status column of .csv
+After a run is complete, the script puts all snapshots and run data into corresponding folder in 'test_results' and fills the status column of the corresponding run with 'done'. If there is a need to skip some run just write 'done' in the status column of .csv
 
 Run parameter file 
 test_run_parameters.csv has the following parameters:
 1) v0 - rms velocity of the flow
-2) Vz_factor - prefactor before z component of the velocity field
+2) Vz_factor - prefactor before z component of the velocity field, = w0/sqrt(2)
 3) eta - physical resistivity in the run
-4) kv - wavenumber of the velocity field
-5) kb - wavenumber of the magnetic field
-6) Lbox - simulation box size
-7) Flow_kind - the kind of Roberts Flow. 0 - as in A.Brandenburg papers, 1 to 4 - the corresponding flows from Roberts paper
-8) Scheme - MHD scheme to configure for a run
-9) IAfile - initial arrangement file. g32 means glassCube32.hdf5
-10) monopole_subtraction, artificial_diffusion, hyperbolic_dedner, hyperbolic_dedner_divv, parabolic_dedner - parameters for Direct induction schemes
-11) t_max - maximal simulation time
-12) max_dt - maximal timestep size
-13) Forcing_kind - forcing regime for RobertsFlow dynamo. If 'v' was picked, RobertsFlow is in kinematic regime (that is B field does not affect the flow). If 'a' was picked, RobertsFlow is driven by external force proportional to artificial viscosity.
-14) viscosity_alpha - determines the magnitude of the external force
-15) Status - the script employs this column to see what runs to ignore (ignores the runs that are filled with 'done')
-16) Comment - stores additional information about a run
+4) internal_energy - internal_thermal_energy used for the run, defines sound speed value. Default value is 1210 which corresponds to cs~33
+5) kv - wavenumber of the velocity field 
+6) kb - wavenumber of the magnetic field (if one_mode ICMF_type was chosen)
+7) Lbox - factor to renormalize initial particle arrangement box (cubic box size)
+8) Flow_kind - the kind of Roberts Flow. - 1 to 4 - the corresponding flows
+9) ICMF_type - type of initial magnetic field: spectrum, BxSin, one_mode, etc.
+10) Npar - number of stacked initial arrangement cubes in xy plane
+11) Nper - number of stacked initial arrangement cubes in the z direction (use 2.0 for the elongated roberts flow study)
+12) LparMul - box stretching in z direction. Off by default
+13) LperMul - box stretching in xy direction. Off by default
+14) Scheme - MHD scheme to configure for a run. ODI - default direct induction
+15) IAfile - initial arrangement file. g32 means glassCube32.hdf5
+16) monopole_subtraction, artificial_diffusion, hyperbolic_dedner, hyperbolic_dedner_divv, parabolic_dedner - parameters for Direct induction schemes
+17) t_max - maximal simulation time
+18) max_dt - maximal timestep size
+19) Forcing_kind - forcing regime for RobertsFlow dynamo. If 'v' was picked, RobertsFlow is in kinematic regime (that is B field does not affect the flow). If 'a' was picked, RobertsFlow is driven by external force proportional to artificial viscosity (the latter is not ready yet).
+20) viscosity_alpha - determines the magnitude of the external force
+21) Status - the script employs this column to see what runs to ignore (ignores the runs that are filled with 'done')
+22) Comment - stores additional information about a run
 
 To run the test program type the following:
 'python run_test_program.py'

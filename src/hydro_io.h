@@ -49,6 +49,10 @@
 #include "./hydro/SPHENIX/hydro_io.h"
 #elif defined(MAGMA_SPH)
 #include "./hydro/MAGMA/hydro_io.h"
+#elif defined(MAGMA_SPMHD_DI)
+#include "./hydro/MAGMA_MHD_DI/hydro_io.h"
+#elif defined(MAGMA_SPMHD_VP)
+#include "./hydro/MAGMA_MHD_VP/hydro_io.h"
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_io.h"
 #elif defined(ANARCHY_PU_SPH)

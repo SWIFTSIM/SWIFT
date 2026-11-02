@@ -81,7 +81,7 @@ def get_total_stats(pdata):
     hmean[filt] /= counts[filt]
     hmean2 = hsum2
     hmean2[filt] /= counts[filt]
-    hstd = np.sqrt(hmean2 - hmean ** 2)
+    hstd = np.sqrt(hmean2 - hmean**2)
     bins = np.arange(hmean.shape[0])
     return (
         bins[filt],

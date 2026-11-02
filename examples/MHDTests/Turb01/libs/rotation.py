@@ -9,17 +9,17 @@ warnings.filterwarnings("ignore")
 
 
 class Rotation:
-    """ Class for setting rotational energy to a set of particles.
-        Some modes/noise may appear when setting a LARGE beta value.
-        This method efficiency scales as ~ alpha/(alpha+beta), so we
-        rescale beta if necessary.
+    """Class for setting rotational energy to a set of particles.
+    Some modes/noise may appear when setting a LARGE beta value.
+    This method efficiency scales as ~ alpha/(alpha+beta), so we
+    rescale beta if necessary.
 
-        Arguments:
-           beta : ratio of rotational energy to the magnitude of
-                  gravitational energy.
-           alpha: ratio of turbulent energy to the magnitude of
-                  gravitational energy.
-           epot : magnitude of gravitational energy.
+    Arguments:
+       beta : ratio of rotational energy to the magnitude of
+              gravitational energy.
+       alpha: ratio of turbulent energy to the magnitude of
+              gravitational energy.
+       epot : magnitude of gravitational energy.
     """
 
     def __init__(self, beta=-1, alpha=0.5, epot=1):

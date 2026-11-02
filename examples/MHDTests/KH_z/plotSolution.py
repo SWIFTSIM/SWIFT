@@ -49,9 +49,9 @@ for i in range(lastsnap + 1):
     m = file["/PartType0/Masses"][:]
     ee = file["/PartType0/InternalEnergies"][:]
 
-    ey_snap = 0.5 * m * vy ** 2
-    ek_snap = 0.5 * m * (vy ** 2 + vx ** 2 + vz ** 2)
-    b2_snap = 0.5 * (by ** 2 + bx ** 2 + bz ** 2)
+    ey_snap = 0.5 * m * vy**2
+    ek_snap = 0.5 * m * (vy**2 + vx**2 + vz**2)
+    b2_snap = 0.5 * (by**2 + bx**2 + bz**2)
 
     t[i] = t_snap
     ey[i] = ey_snap.sum()

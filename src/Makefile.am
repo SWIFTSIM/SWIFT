@@ -17,7 +17,8 @@
 
 # Add the non-standard paths to the included library headers
 AM_CFLAGS = $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) \
-        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS)
+        $(GRACKLE_INCS)  $(SUNDIALS_INCS) $(CHEALPIX_CFLAGS) $(LUSTREAPI_INCS) \
+        $(AGAMA_INCS)
 
 # Assign a "safe" version number
 AM_LDFLAGS = $(HDF5_LDFLAGS) $(FFTW_LIBS)
@@ -223,8 +224,8 @@ AM_SOURCES += $(GEAR_RT_SOURCES)
 AM_SOURCES += swift_lustre_api.c
 
 # Include files for distribution, not installation.
-nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h error.h inline.h kernel_hydro.h kernel_gravity.h
-nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h matrix.h
+nobase_noinst_HEADERS = align.h approx_math.h atomic.h barrier.h cycle.h custom_mpi.h error.h inline.h kernel_hydro.h kernel_gravity.h
+nobase_noinst_HEADERS += gravity_iact.h kernel_long_gravity.h vector.h accumulate.h cache.h exp.h log.h
 nobase_noinst_HEADERS += runner_doiact_nosort.h runner_doiact_hydro.h runner_doiact_stars.h runner_doiact_black_holes.h runner_doiact_grav.h
 nobase_noinst_HEADERS += runner_doiact_functions_hydro.h runner_doiact_functions_stars.h runner_doiact_functions_black_holes.h
 nobase_noinst_HEADERS += runner_doiact_functions_limiter.h runner_doiact_functions_sinks.h runner_doiact_limiter.h units.h swift_intrinsics.h minmax.h
@@ -240,6 +241,7 @@ nobase_noinst_HEADERS += gravity/MultiSoftening/gravity_csds.h
 nobase_noinst_HEADERS += equation_of_state.h
 nobase_noinst_HEADERS += equation_of_state/ideal_gas/equation_of_state.h equation_of_state/isothermal/equation_of_state.h equation_of_state/barotropic/equation_of_state.h
 nobase_noinst_HEADERS += signal_velocity.h
+nobase_noinst_HEADERS += symmetric_matrix.h
 nobase_noinst_HEADERS += hydro.h hydro_io.h hydro_csds.h hydro_parameters.h
 nobase_noinst_HEADERS += hydro/None/hydro.h hydro/None/hydro_iact.h hydro/None/hydro_io.h
 nobase_noinst_HEADERS += hydro/None/hydro_debug.h hydro/None/hydro_part.h
@@ -268,7 +270,16 @@ nobase_noinst_HEADERS += hydro/AnarchyPU/hydro_parameters.h
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro.h hydro/SPHENIX/hydro_iact.h hydro/SPHENIX/hydro_io.h
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro_debug.h hydro/SPHENIX/hydro_part.h hydro/SPHENIX/hydro_csds.h
 nobase_noinst_HEADERS += hydro/SPHENIX/hydro_parameters.h
-nobase_noinst_HEADERS += hydro/Gasoline/hydro.h hydro/Gasoline/hydro_iact.h hydro/Gasoline/hydro_io.h
+nobase_noinst_HEADERS += hydro/MAGMA/hydro.h hydro/MAGMA/hydro_iact.h hydro/MAGMA/hydro_io.h 
+nobase_noinst_HEADERS += hydro/MAGMA/hydro_debug.h hydro/MAGMA/hydro_part.h
+nobase_noinst_HEADERS += hydro/MAGMA/hydro_parameters.h
+nobase_noinst_HEADERS += hydro/MAGMA_MHD_DI/hydro.h hydro/MAGMA_MHD_DI/hydro_iact.h hydro/MAGMA/hydro_io.h 
+nobase_noinst_HEADERS += hydro/MAGMA_MHD_DI/hydro_debug.h hydro/MAGMA_MHD_DI/hydro_part.h
+nobase_noinst_HEADERS += hydro/MAGMA_MHD_DI/hydro_parameters.h
+nobase_noinst_HEADERS += hydro/MAGMA_MHD_VP/hydro.h hydro/MAGMA_MHD_VP/hydro_iact.h hydro/MAGMA/hydro_io.h 
+nobase_noinst_HEADERS += hydro/MAGMA_MHD_VP/hydro_debug.h hydro/MAGMA_MHD_VP/hydro_part.h
+nobase_noinst_HEADERS += hydro/MAGMA_MHD_VP/hydro_parameters.h
+nobase_noinst_HEADERS += hydro/Gasoline/hydro.h hydro/Gasoline/hydro_iact.h hydro/Gasoline/hydro_io.h 
 nobase_noinst_HEADERS += hydro/Gasoline/hydro_debug.h hydro/Gasoline/hydro_part.h
 nobase_noinst_HEADERS += hydro/Gasoline/hydro_parameters.h
 nobase_noinst_HEADERS += hydro/Gizmo/hydro_parameters.h
@@ -418,7 +429,8 @@ nobase_noinst_HEADERS += cooling/const_du/cooling_io.h cooling/const_du/cooling_
 nobase_noinst_HEADERS += cooling/const_lambda/cooling.h cooling/const_lambda/cooling_struct.h
 nobase_noinst_HEADERS += cooling/const_lambda/cooling_io.h cooling/const_lambda/cooling_properties.h cooling/const_lambda/cooling_debug.h
 nobase_noinst_HEADERS += cooling/grackle/cooling.h cooling/grackle/cooling_struct.h
-nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h cooling/grackle/cooling_debug.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_io.h cooling/grackle/cooling_properties.h
+nobase_noinst_HEADERS += cooling/grackle/cooling_debug.h cooling/grackle/cooling_utils.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling.h cooling/EAGLE/cooling_struct.h cooling/EAGLE/cooling_tables.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_io.h cooling/EAGLE/interpolate.h cooling/EAGLE/cooling_rates.h
 nobase_noinst_HEADERS += cooling/EAGLE/cooling_properties.h cooling/EAGLE/cooling_debug.h
@@ -432,6 +444,10 @@ nobase_noinst_HEADERS += cooling/PS2020/cooling.h cooling/PS2020/cooling_struct.
 nobase_noinst_HEADERS += cooling/PS2020/cooling_io.h cooling/PS2020/interpolate.h cooling/PS2020/cooling_rates.h
 nobase_noinst_HEADERS += cooling/PS2020/cooling_tables.h cooling/PS2020/cooling_subgrid.h
 nobase_noinst_HEADERS += cooling/PS2020/cooling_properties.h cooling/PS2020/cooling_debug.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling.h cooling/TREECOOL/cooling_struct.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling_io.h cooling/TREECOOL/cooling_rates.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling_tables.h
+nobase_noinst_HEADERS += cooling/TREECOOL/cooling_properties.h cooling/TREECOOL/cooling_debug.h
 nobase_noinst_HEADERS += chemistry/none/chemistry.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_additions.h
 nobase_noinst_HEADERS += chemistry/none/chemistry_io.h
@@ -474,6 +490,10 @@ nobase_noinst_HEADERS += tracers/none/tracers.h tracers/none/tracers_struct.h
 nobase_noinst_HEADERS += tracers/none/tracers_io.h tracers/none/tracers_debug.h
 nobase_noinst_HEADERS += tracers/EAGLE/tracers.h tracers/EAGLE/tracers_struct.h
 nobase_noinst_HEADERS += tracers/EAGLE/tracers_io.h tracers/EAGLE/tracers_debug.h
+nobase_noinst_HEADERS += tracers/FLAMINGO/tracers.h tracers/FLAMINGO/tracers_struct.h
+nobase_noinst_HEADERS += tracers/FLAMINGO/tracers_io.h tracers/FLAMINGO/tracers_debug.h
+nobase_noinst_HEADERS += tracers/GEAR/tracers.h tracers/GEAR/tracers_struct.h
+nobase_noinst_HEADERS += tracers/GEAR/tracers_io.h tracers/GEAR/tracers_debug.h
 nobase_noinst_HEADERS += extra_io/EAGLE/extra_io.h extra_io/EAGLE/extra.h
 nobase_noinst_HEADERS += feedback/none/feedback.h feedback/none/feedback_struct.h feedback/none/feedback_iact.h
 nobase_noinst_HEADERS += feedback/none/feedback_properties.h feedback/none/feedback.h
@@ -510,6 +530,10 @@ nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_part.h black_holes/SPI
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_properties.h black_holes/SPIN_JET/black_holes_parameters.h
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_spin.h black_holes/SPIN_JET/black_holes_struct.h
 nobase_noinst_HEADERS += black_holes/SPIN_JET/black_holes_debug.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes.h black_holes/GEAR/black_holes_io.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_part.h black_holes/GEAR/black_holes_iact.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_properties.h black_holes/GEAR/black_holes_parameters.h
+nobase_noinst_HEADERS += black_holes/GEAR/black_holes_struct.h black_holes/GEAR/black_holes_debug.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor.h pressure_floor/none/pressure_floor.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_iact.h pressure_floor/none/pressure_floor_iact.h
 nobase_noinst_HEADERS += pressure_floor/GEAR/pressure_floor_struct.h pressure_floor/none/pressure_floor_struct.h

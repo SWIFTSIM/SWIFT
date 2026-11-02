@@ -165,7 +165,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         snapshot_units = meta.units
 
         snapshot_unit_energy = (
-            snapshot_units.mass * snapshot_units.length ** 2 / snapshot_units.time ** 2
+            snapshot_units.mass * snapshot_units.length**2 / snapshot_units.time**2
         )
 
         time = meta.time.copy()
@@ -373,10 +373,10 @@ def get_minmax_vals(snaplist):
                 #  for direction in ["X", "Y", "Z"]:
                 f = getattr(data.gas.photon_fluxes, "Group" + str(g + 1) + direction)
                 fluxmin_group.append(
-                    (1 * f.min()).to(unyt.erg / unyt.cm ** 2 / unyt.s).value
+                    (1 * f.min()).to(unyt.erg / unyt.cm**2 / unyt.s).value
                 )
                 fluxmax_group.append(
-                    (1 * f.max()).to(unyt.erg / unyt.cm ** 2 / unyt.s).value
+                    (1 * f.max()).to(unyt.erg / unyt.cm**2 / unyt.s).value
                 )
 
         emins.append(emin_group)

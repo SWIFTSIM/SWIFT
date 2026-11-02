@@ -24,6 +24,7 @@
 #include "hydro.h"
 #include "random.h"
 #include "timestep_sync_part.h"
+#include "tracers.h"
 
 /**
  * @brief Density interaction between two particles (non-symmetric).
@@ -91,8 +92,8 @@ runner_iact_nonsym_feedback_apply(
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
     const struct feedback_props *fb_props, const integertime_t ti_current) {
 
-  const double e_sn = si->feedback_data.energy_ejected;
-  const double e_preSN = si->feedback_data.preSN.energy_ejected;
+  const double e_sn = si->feedback_data.supernovae.energy_ejected;
+  const double e_winds = si->feedback_data.winds.energy_ejected;
 
   const float mj = hydro_get_mass(pj);
   const float r = sqrtf(r2);
@@ -117,7 +118,7 @@ runner_iact_nonsym_feedback_apply(
   double dm_SN = 0.0;
 
   /* Distribute pre-SN */
-  if (e_preSN != 0.0 && weight > 0.0) {
+  if (e_winds != 0.0 && weight > 0.0) {
 
     /* Mass received by Stellar Winds */
     /* For physical consistency, we consider that the pre-SN feedback occurs
@@ -126,7 +127,7 @@ runner_iact_nonsym_feedback_apply(
        effects of the winds would be artificially boosted by the SNe ! (It is
        similar to not do the pre-SN feedback in the same step as SN, in that
        case the mass of the gas is not impacted by the mass ejected by SNe.) */
-    m_ej = si->feedback_data.preSN.mass_ejected;
+    m_ej = si->feedback_data.winds.mass_ejected;
     dm_SW = m_ej * weight;
     new_mass += dm_SW;
 
@@ -139,15 +140,16 @@ runner_iact_nonsym_feedback_apply(
       const float H = cosmo->H;
       const float a_dot = a * H;
 
-      /* physical velocities of the star particle i */
-      const float v_i_p[3] = {a_dot * si->x[0] + si->v[0] * a_inv,
-                              a_dot * si->x[1] + si->v[1] * a_inv,
-                              a_dot * si->x[2] + si->v[2] * a_inv};
+      /* Physical velocities of the star particle i. The Hubble flow term is
+         relative wrt the star particle. Hence, for the star, dx = 0 ; for the
+         gas, we use -dx = pj - si. */
+      const float v_i_p[3] = {si->v[0] * a_inv, si->v[1] * a_inv,
+                              si->v[2] * a_inv};
 
-      /* physical velocities of the gas particle j */
-      const float v_j_p[3] = {a_dot * pj->x[0] + xpj->v_full[0] * a_inv,
-                              a_dot * pj->x[1] + xpj->v_full[1] * a_inv,
-                              a_dot * pj->x[2] + xpj->v_full[2] * a_inv};
+      /* Physical velocities of the gas particle j. */
+      const float v_j_p[3] = {-a_dot * dx[0] + xpj->v_full[0] * a_inv,
+                              -a_dot * dx[1] + xpj->v_full[1] * a_inv,
+                              -a_dot * dx[2] + xpj->v_full[2] * a_inv};
 
       const float r_p = sqrtf(r2) * a;
       const float dx_p[3] = {dx[0] * a, dx[1] * a, dx[2] * a};
@@ -155,8 +157,8 @@ runner_iact_nonsym_feedback_apply(
       /* --------------- Compute physical momentum received ---------------- */
       /* Total momentum ejected by the winds during the timestep from the star
        * particle i */
-      const float p_ej = sqrt(2.0 * si->feedback_data.preSN.mass_ejected *
-                              si->feedback_data.preSN.energy_ejected);
+      const float p_ej = sqrt(2.0 * si->feedback_data.winds.mass_ejected *
+                              si->feedback_data.winds.energy_ejected);
 
       /* norm of physical velocities of the gas particle j */
       const float norm2_v_p =
@@ -170,7 +172,7 @@ runner_iact_nonsym_feedback_apply(
         /* the additional momentum due to change of frame of reference (from
          * star particle frame to lab frame) */
         const float change_of_frame_delta_p =
-            si->feedback_data.preSN.mass_ejected * v_i_p[i];
+            si->feedback_data.winds.mass_ejected * v_i_p[i];
         /* momentum in lab frame due to the ejecta */
         delta_p_lab_frame[i] =
             weight * (p_ej + change_of_frame_delta_p) * unit_direction;
@@ -190,12 +192,12 @@ runner_iact_nonsym_feedback_apply(
 
       /* The energy ejected from the star particle i by stellar wind that is
        * actually received by the gas particle j */
-      const double weighted_energy = weight * e_preSN;
+      const double weighted_energy = weight * e_winds;
       /* The additional energy received by the gas particle j due to the
        * momentum of the star particle i */
       const double dE_change_of_frame =
           0.5 * (norm2_delta_p_lab_frame - norm2_delta_p) /
-          (weight * si->feedback_data.preSN.mass_ejected);
+          (weight * si->feedback_data.winds.mass_ejected);
       /* The total energy received from the gas particle j in the laboratory
        * frame of reference */
       const double dE_lab_frame = weighted_energy + dE_change_of_frame;
@@ -234,7 +236,7 @@ runner_iact_nonsym_feedback_apply(
           /* the additional momentum due to change of frame of reference (from
            * star particle frame to lab frame) */
           const float change_of_frame_without_Hubble =
-              si->feedback_data.preSN.mass_ejected * v_i_without_Hubble_flow[i];
+              si->feedback_data.winds.mass_ejected * v_i_without_Hubble_flow[i];
           /* momentum in lab frame due to the ejecta */
           delta_p_without_Hubble[i] =
               weight * (p_ej + change_of_frame_without_Hubble) * unit_direction;
@@ -252,7 +254,15 @@ runner_iact_nonsym_feedback_apply(
         hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
       }
 
-      xpj->feedback_data.hit_by_preSN = 1;
+      /* Lifetime-cumulative tracer, using this branch's own locally-computed
+         momentum/energy (not the shared feedback_data.delta_p/delta_u,
+         which the SN branch below can also add to this same step). */
+      const float delta_p_mag_winds = (float)sqrt(norm2_delta_p_lab_frame);
+      tracers_after_stellar_winds_feedback_part(
+          xpj, delta_p_mag_winds, (float)du,
+          delta_p_mag_winds / (float)new_mass);
+
+      xpj->feedback_data.hit_by_winds = 1;
     }
   }
 
@@ -263,7 +273,7 @@ runner_iact_nonsym_feedback_apply(
     /* For the conservation of mass and energy, we perform the calculation only
      * with the mass actually ejected by the SN (not the combination of pre-SN
      * and SN) */
-    m_ej = si->feedback_data.mass_ejected;
+    m_ej = si->feedback_data.supernovae.mass_ejected;
     dm_SN = m_ej * weight;
 
     /* But we are considering that the stellar wind occurs before the SN, so the
@@ -273,13 +283,16 @@ runner_iact_nonsym_feedback_apply(
        feedback at the previous step. */
     new_mass += dm_SN;
 
-    /* Energy received */
-    const double du = (e_sn)*weight / new_mass;
+    /* Energy received. Guard against 0/0 (mj == 0): matches the winds
+       branch's own new_mass > 0.0 guard above. */
+    const double du = new_mass > 0.0 ? (e_sn)*weight / new_mass : 0.0;
     xpj->feedback_data.delta_u += du;
 
     /* Compute momentum received. */
+    float delta_p_supernovae[3];
     for (int i = 0; i < 3; i++) {
-      xpj->feedback_data.delta_p[i] += dm_SN * (si->v[i] - xpj->v_full[i]);
+      delta_p_supernovae[i] = dm_SN * (si->v[i] - xpj->v_full[i]);
+      xpj->feedback_data.delta_p[i] += delta_p_supernovae[i];
     }
 
     /* Add the metals */
@@ -288,11 +301,23 @@ runner_iact_nonsym_feedback_apply(
           weight * si->feedback_data.metal_mass_ejected[i];
     }
 
+    /* delta_p_supernovae is comoving; a_inv gives the physical momentum
+       actually applied (matches feedback_update_part()'s v_full += p/m). */
+    const float delta_p_mag_supernovae_comoving =
+        sqrtf(delta_p_supernovae[0] * delta_p_supernovae[0] +
+              delta_p_supernovae[1] * delta_p_supernovae[1] +
+              delta_p_supernovae[2] * delta_p_supernovae[2]);
+    const float delta_p_mag_supernovae =
+        delta_p_mag_supernovae_comoving * cosmo->a_inv;
+    tracers_after_supernovae_feedback_part(
+        xpj, delta_p_mag_supernovae, (float)du,
+        new_mass > 0.0 ? delta_p_mag_supernovae / (float)new_mass : 0.0f);
+
     /* Set the indication of SN event for cooling*/
     xpj->feedback_data.hit_by_SN = 1;
   }
 
-  if (xpj->feedback_data.hit_by_preSN || xpj->feedback_data.hit_by_SN) {
+  if (xpj->feedback_data.hit_by_winds || xpj->feedback_data.hit_by_SN) {
     /* Update the mass of the gas particle */
     xpj->feedback_data.delta_mass += dm_SW + dm_SN;
   }

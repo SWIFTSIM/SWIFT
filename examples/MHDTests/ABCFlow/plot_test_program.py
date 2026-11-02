@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
-
 results_directory_name = "test_results/"
 tau_max = 300
 take_last = int(180 / (5e-2))

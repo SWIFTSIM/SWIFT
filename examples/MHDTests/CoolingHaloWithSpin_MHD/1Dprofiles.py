@@ -30,11 +30,11 @@ c_200 = 7.2
 spin_lambda = 0.05
 nH_max_cgs = 1e2
 M_200_cgs = 1e12 * MSOL_IN_CGS
-rhoc_cgs = 3 * H_0_cgs ** 2 / (8 * np.pi * CONST_G_CGS)
+rhoc_cgs = 3 * H_0_cgs**2 / (8 * np.pi * CONST_G_CGS)
 r_200_cgs = (3 * M_200_cgs / (4 * np.pi * rhoc_cgs * 200)) ** (1 / 3)
 v_200_cgs = np.sqrt(CONST_G_CGS * M_200_cgs / r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs
-T_200_cgs = m_H_cgs * v_200_cgs ** 2 / (2 * kb_cgs)
+T_200_cgs = m_H_cgs * v_200_cgs**2 / (2 * kb_cgs)
 
 const_unit_mass_in_cgs = M_200_cgs
 const_unit_length_in_cgs = r_200_cgs
@@ -98,9 +98,9 @@ axis_dist = (
     + coords_center[:, 1] * e_r[:, 1]
     + coords_center[:, 2] * e_r[:, 2]
 )
-j = v_phi * radius ** 2 / axis_dist
+j = v_phi * radius**2 / axis_dist
 omega = v_phi / axis_dist
-Jtot = np.sum(omega * axis_dist ** 2 * m)
+Jtot = np.sum(omega * axis_dist**2 * m)
 
 P = data.gas.pressures
 T = data.gas.temperatures
@@ -114,10 +114,8 @@ errB = np.log10(h * abs(divB) / normB)
 
 rho_units = unyt.g * unyt.cm ** (-3)
 r_units = 1e3 * PARSEC_IN_CGS * unyt.cm
-P_units = (
-    MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS ** 2 * (unyt.g / (unyt.cm * unyt.s ** 2))
-)
-j_units = (1e3 * PARSEC_IN_CGS) / GYR_IN_CGS * (unyt.cm ** 2 / unyt.s)
+P_units = MSOL_IN_CGS / PARSEC_IN_CGS / GYR_IN_CGS**2 * (unyt.g / (unyt.cm * unyt.s**2))
+j_units = (1e3 * PARSEC_IN_CGS) / GYR_IN_CGS * (unyt.cm**2 / unyt.s)
 nH_units = unyt.cm ** (-3)
 
 rho.convert_to_units(rho_units)
@@ -149,12 +147,13 @@ axs[1].set_yscale("log")
 axs[2].scatter(radius.to(r_units), j.to(j_units), s=0.1, color="black")
 axs[2].set_yscale("log")
 
+
 # NFW-like gas density profile
 def rho_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200):
     rho_0 = (
         M_200_cgs
         / (np.log(1 + c_200) - c_200 / (1 + c_200))
-        / (4 * np.pi * r_200_cgs ** 3 / c_200 ** 3)
+        / (4 * np.pi * r_200_cgs**3 / c_200**3)
     )
     result_cgs = rho_0 * f_b / (c_200 * r_value * (1 + c_200 * r_value) ** 2)
     # Apply density cut
@@ -180,12 +179,12 @@ def a_NFW(r_value, M_200_cgs, r_200_cgs, c_200):
         CONST_G_CGS
         * M_200_cgs
         / (np.log(1 + c_200) - c_200 / (1 + c_200))
-        / r_200_cgs ** 2
+        / r_200_cgs**2
     )
     return (
         a_pref
         * ((r_value / (r_value + 1 / c_200)) - np.log(1 + c_200 * r_value))
-        / r_value ** 2
+        / r_value**2
     )
 
 
@@ -237,7 +236,7 @@ def j(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200):
 
 
 def jsimple(r_value, j_max, s, f_b, M_200_cgs, r_200_cgs, c_200):
-    return j_max * r_value ** s
+    return j_max * r_value**s
 
 
 rmax = (r_200_cgs * unyt.cm).to(radius.units)  # np.max(radius)
@@ -255,9 +254,7 @@ Mgas_analytic = Mgas_r(
 nH_analytic = rho_analytic / m_H_cgs * nH_units
 
 
-T0_cgs = (
-    T_200_cgs
-)  # 1e5 # gas temperature on the edge of the box (if we want to set this manually)
+T0_cgs = T_200_cgs  # 1e5 # gas temperature on the edge of the box (if we want to set this manually)
 rho0_cgs = rho_r((rmax / (r_200_cgs * unyt.cm)).value, f_b, M_200_cgs, r_200_cgs, c_200)
 
 P0_cgs = rho0_cgs * kb_cgs * T0_cgs / m_H_cgs  # gas pressure on the edge of the box
@@ -275,7 +272,7 @@ P_analytic = np.array(
         for i in range(len(r_analytic))
     ]
 ) * (
-    unyt.g / (unyt.cm * unyt.s ** 2)
+    unyt.g / (unyt.cm * unyt.s**2)
 )  # gas particle internal energies
 
 # Normalize to Bullock
@@ -305,7 +302,7 @@ jsp_1_analytic = (
     np.sum(
         j_1_analytic[:-1]
         * rho_analytic[:-1]
-        * (unyt.g / unyt.cm ** 3)
+        * (unyt.g / unyt.cm**3)
         * int_dOmega
         * r_analytic[:-1] ** 2
         * np.diff(r_analytic)
@@ -313,7 +310,7 @@ jsp_1_analytic = (
 ) / (
     np.sum(
         rho_analytic[:-1]
-        * (unyt.g / unyt.cm ** 3)
+        * (unyt.g / unyt.cm**3)
         * 4
         * np.pi
         * r_analytic[:-1] ** 2
@@ -324,7 +321,7 @@ jsp_1_analytic_simple = (
     np.sum(
         j_1_analytic_simple[:-1]
         * rho_analytic[:-1]
-        * (unyt.g / unyt.cm ** 3)
+        * (unyt.g / unyt.cm**3)
         * int_dOmega
         * r_analytic[:-1] ** 2
         * np.diff(r_analytic)
@@ -332,7 +329,7 @@ jsp_1_analytic_simple = (
 ) / (
     np.sum(
         rho_analytic[:-1]
-        * (unyt.g / unyt.cm ** 3)
+        * (unyt.g / unyt.cm**3)
         * 4
         * np.pi
         * r_analytic[:-1] ** 2

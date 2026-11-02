@@ -108,6 +108,8 @@ R1 = data.gas.r1.value
 R2 = data.gas.r2.value
 R3 = data.gas.r3.value
 
+print(np.mean(R0), np.max(R0))
+
 # Get RMS values
 Brms = rms_vec(B)
 vrms = rms_vec(v)
@@ -214,9 +216,9 @@ def make_color_levels(cmin, cmax, c_res=10, log_sc=True):
         levels = []
         levels_short = []
         for i in range(levmin, levmax):
-            levels_short += [10 ** i]
+            levels_short += [10**i]
             for j in range(int(c_res / 10), c_res):
-                levels += [(10 / c_res * j) * 10 ** i]
+                levels += [(10 / c_res * j) * 10**i]
 
     else:
         levels = [cmin + (cmax - cmin) / c_res * k for k in range(c_res)]

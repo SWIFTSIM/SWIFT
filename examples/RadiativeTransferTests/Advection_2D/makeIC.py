@@ -35,13 +35,20 @@
 import h5py
 import numpy as np
 import unyt
-from swiftsimio import Writer
+import swiftsimio as sw
 
 # define unit system to use
 unitsystem = unyt.unit_systems.cgs_unit_system
 
 # define box size
 boxsize = 1e10 * unitsystem["length"]
+boxsize_cosmo = sw.cosmo_array(
+    [boxsize.value, boxsize.value],
+    boxsize.units,
+    comoving=True,
+    scale_factor=1.0,
+    scale_exponent=1,
+)
 
 # number of photon groups
 nPhotonGroups = 4
@@ -56,7 +63,7 @@ def initial_condition(x):
 
     x: particle position. 3D unyt array
 
-    returns: 
+    returns:
     E: photon energy for each photon group. List of scalars with size of nPhotonGroups
     F: photon flux for each photon group. List with size of nPhotonGroups of numpy arrays of shape (3,)
     """
@@ -111,8 +118,7 @@ def initial_condition(x):
     baseline = 1.0
 
     E = (
-        amplitude
-        * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma ** 2))
+        amplitude * np.exp(-((x[0] - mean) ** 2 + (x[1] - mean) ** 2) / (2 * sigma**2))
         + baseline
     )
     F = np.zeros(3, dtype=np.float64)
@@ -129,7 +135,7 @@ def initial_condition(x):
     center = 0.5 * boxsize
     dx = x[0] - center
     dy = x[1] - center
-    r = np.sqrt(dx ** 2 + dy ** 2)
+    r = np.sqrt(dx**2 + dy**2)
     if r <= circle_radius:
         unit_vector = (dx / r, dy / r)
 
@@ -161,17 +167,40 @@ if __name__ == "__main__":
 
     numPart = np.size(h)
 
-    w = Writer(unyt.unit_systems.cgs_unit_system, boxsize, dimension=2)
-
-    w.gas.coordinates = pos
-    w.gas.velocities = np.zeros((numPart, 3)) * (unyt.cm / unyt.s)
-    w.gas.masses = np.ones(numPart, dtype=np.float64) * 1000 * unyt.g
-    w.gas.internal_energy = (
-        np.ones(numPart, dtype=np.float64) * (300.0 * unyt.kb * unyt.K) / unyt.g
+    w = sw.Writer(
+        unit_system=unyt.unit_systems.cgs_unit_system,
+        boxsize=boxsize_cosmo,
+        dimension=2,
     )
 
-    # Generate initial guess for smoothing lengths based on MIPS
-    w.gas.smoothing_length = h
+    w.gas.coordinates = sw.cosmo_array(
+        pos.value, pos.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
+    w.gas.velocities = sw.cosmo_array(
+        np.zeros((numPart, 3)),
+        unyt.cm / unyt.s,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    w.gas.masses = sw.cosmo_array(
+        np.ones(numPart, dtype=np.float64) * 1000,
+        unyt.g,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=0,
+    )
+    u = (300.0 * unyt.kb * unyt.K) / unyt.g
+    w.gas.internal_energy = sw.cosmo_array(
+        np.ones(numPart, dtype=np.float64) * u.value,
+        u.units,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=-2,
+    )
+    w.gas.smoothing_lengths = sw.cosmo_array(
+        h.value, h.units, comoving=True, scale_factor=1.0, scale_exponent=1
+    )
 
     # If IDs are not present, this automatically generates
     w.write(outputfilename)

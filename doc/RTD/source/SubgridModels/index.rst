@@ -14,6 +14,7 @@ be use as an empty canvas to be copied to create additional models.
    :caption: Available models:
 	      
    EAGLE/index
+   FLAMINGO/index
    QuickLymanAlpha/index
    GEAR/index
    Basic/index	     

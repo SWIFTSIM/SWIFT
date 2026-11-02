@@ -63,6 +63,45 @@
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))
 
 /**
+ * @brief Resolve the actual seed to use for a METIS or ParMETIS call.
+ *
+ * The default is a negative value which will keep the old behaviour and
+ * generate a fresh seed for each partitioning event. Only if a non-negative
+ * seed has been passed to DomainDecomposition:metis_seed will we use a
+ * fixed seed. This is a helper function to abstract this complication.
+ *
+ * ParMETIS requires all ranks to use the same seed, so rank 0 generates and
+ * broadcasts it.
+ *
+ * @param nodeID our nodeID.
+ * @param metis_seed the configured METIS seed.
+ * @param use_parmetis whether the seed will be used by ParMETIS.
+ *
+ * @return the seed to use for this partitioning event.
+ */
+static int partition_get_metis_seed(const int nodeID, const int metis_seed,
+                                    const int use_parmetis) {
+
+  /* Local variable for clarity */
+  int seed = metis_seed;
+
+  /* If the seed is negative, generate a new one. Only do this on rank 0 if
+   * using ParMETIS, since we will broadcast it to everyone. */
+  if (seed < 0 && (!use_parmetis || nodeID == 0)) seed = clocks_random_seed();
+
+#ifdef HAVE_PARMETIS
+  /* Ensure everyone agrees on the seed if using ParMETIS. */
+  if (use_parmetis) {
+    int res = MPI_Bcast(&seed, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (res != MPI_SUCCESS)
+      mpi_error(res, "Failed to broadcast partition seed.");
+  }
+#endif
+
+  return seed;
+}
+
+/**
  * @brief Count vertex edges for uniform (non-zoom) spaces.
  *
  * Populates the cell_edge_offsets array where cell_edge_offsets[i] is the
@@ -735,7 +774,8 @@ void permute_regions(int *newlist, int *oldlist, int nregions, int ncells,
  */
 void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
                              double *vertexw, double *edgew, int refine,
-                             int adaptive, float itr, int *celllist,
+                             int adaptive, float itr, int metis_seed,
+                             int verbose, int *celllist,
                              const int *cell_edge_offsets, int nedges) {
 
   int res;
@@ -1058,13 +1098,17 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
   real_t ubvec[1];
   ubvec[0] = 1.001;
 
+  const int seed = partition_get_metis_seed(nodeID, metis_seed, 1);
+
   if (refine) {
     /* Refine an existing partition, uncouple as we do not have the cells
      * present on their expected ranks. */
     options[3] = PARMETIS_PSR_UNCOUPLED;
 
     /* Seed for randoms. */
-    options[2] = clocks_random_seed();
+    options[2] = seed;
+
+    if (nodeID == 0 && verbose) message("ParMETIS partition seed: %d", seed);
 
     /* Choice is whether to use an adaptive repartition or a simple
      * refinement. */
@@ -1090,12 +1134,13 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
      * the way that serial METIS works (serial METIS usually gives the best
      * quality partitions). */
     idx_t best_edgecut = 0;
+    int best_seed = seed;
     idx_t *best_regionid = NULL;
     if ((best_regionid = (idx_t *)malloc(sizeof(idx_t) * (nverts + 1))) == NULL)
       error("Failed to allocate best_regionid array");
 
     for (int i = 0; i < 10; i++) {
-      options[2] = clocks_random_seed();
+      options[2] = seed + i;
 
       if (ParMETIS_V3_PartKway(vtxdist, xadj, adjncy, weights_v, weights_e,
                                &wgtflag, &numflag, &ncon, &nparts, tpwgts,
@@ -1105,9 +1150,16 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
 
       if (i == 0 || (best_edgecut > edgecut)) {
         best_edgecut = edgecut;
+        best_seed = options[2];
         memcpy(best_regionid, regionid, sizeof(idx_t) * (nverts + 1));
       }
     }
+
+    if (nodeID == 0 && verbose)
+      message(
+          "ParMETIS partition seed: %d (initial) -> %d (best after "
+          "iteration)",
+          seed, best_seed);
 
     /* Keep the best edgecut. */
     memcpy(regionid, best_regionid, sizeof(idx_t) * (nverts + 1));
@@ -1250,7 +1302,8 @@ void partition_pick_parmetis(int nodeID, struct space *s, int nregions,
  * @param nedges total number of edges in the graph.
  */
 void partition_pick_metis(int nodeID, struct space *s, int nregions,
-                          double *vertexw, double *edgew, int *celllist,
+                          double *vertexw, double *edgew, int metis_seed,
+                          int verbose, int *celllist,
                           const int *cell_edge_offsets, int nedges) {
 
   /* Total number of cells. */
@@ -1265,6 +1318,8 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
 
   /* Only one node needs to calculate this. */
   if (nodeID == 0) {
+
+    const int seed = partition_get_metis_seed(nodeID, metis_seed, 0);
 
     /* Allocate adjacency and weights arrays . */
     idx_t *xadj;
@@ -1357,6 +1412,9 @@ void partition_pick_metis(int nodeID, struct space *s, int nregions,
     options[METIS_OPTION_CONTIG] = 1;
     options[METIS_OPTION_NCUTS] = 10;
     options[METIS_OPTION_NITER] = 20;
+    options[METIS_OPTION_SEED] = seed;
+
+    if (verbose) message("METIS partition seed: %d", seed);
 
     /* Call METIS. */
     idx_t one = 1;

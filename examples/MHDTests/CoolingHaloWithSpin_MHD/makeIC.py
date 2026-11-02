@@ -62,14 +62,12 @@ eta = 1.595  # kernel smoothing
 
 # Additional options
 spin_lambda_choice = (
-    "Bullock"
-)  # which definition of spin parameter to use (Peebles or Bullock)
+    "Bullock"  # which definition of spin parameter to use (Peebles or Bullock)
+)
 save_to_vtk = False
 plot_v_distribution = False
 
-AMP = (
-    "Bullock"
-)  # sets angular momentum profile to be a function of M(r) or r^s or the one from Bullock et al.
+AMP = "Bullock"  # sets angular momentum profile to be a function of M(r) or r^s or the one from Bullock et al.
 AMPs = 1.3  # angular momentum profile parameter
 
 with_noise = True  # add gaussian uncertainty for particle positions
@@ -81,17 +79,15 @@ noise_mean = 0.0
 
 # Set M200 and get R200 and V200
 M_200_cgs = 1e12 * MSOL_IN_CGS
-rhoc_cgs = 3 * H_0_cgs ** 2 / (8 * np.pi * CONST_G_CGS)
+rhoc_cgs = 3 * H_0_cgs**2 / (8 * np.pi * CONST_G_CGS)
 r_200_cgs = (3 * M_200_cgs / (4 * np.pi * rhoc_cgs * 200)) ** (1 / 3)
 v_200_cgs = np.sqrt(CONST_G_CGS * M_200_cgs / r_200_cgs)
 v_200 = v_200_cgs / const_unit_velocity_in_cgs
-T_200_cgs = m_H_cgs * v_200_cgs ** 2 / (2 * kb_cgs)
+T_200_cgs = m_H_cgs * v_200_cgs**2 / (2 * kb_cgs)
 
 # Gas parameters
 gamma = 5.0 / 3.0
-T0_cgs = (
-    T_200_cgs
-)  # 1e5 # gas temperature on the edge of the box (if we want to set this manually)
+T0_cgs = T_200_cgs  # 1e5 # gas temperature on the edge of the box (if we want to set this manually)
 nH_max_cgs = 1e0  # maximum hydrogen number density
 print("T_200 = %E" % T_200_cgs)
 
@@ -108,7 +104,7 @@ const_unit_magnetic_field_in_cgs = 1e-7  # 1muG
 # Derived quantities
 const_unit_time_in_cgs = const_unit_length_in_cgs / const_unit_velocity_in_cgs
 const_unit_current_in_cgs = const_unit_mass_in_cgs / (
-    const_unit_magnetic_field_in_cgs * const_unit_time_in_cgs ** 2
+    const_unit_magnetic_field_in_cgs * const_unit_time_in_cgs**2
 )
 print("UnitTime_in_cgs:     ", const_unit_time_in_cgs)
 print("UnitCurrent_in_cgs:  ", const_unit_current_in_cgs)
@@ -149,6 +145,8 @@ grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
 
 # Loading initial arrangement file
 IAfile = "glassCube_64.hdf5"
+
+
 # smoothing kernel optimized for numpy Price 1012.1885 (6)
 def open_IAfile(path_to_file):
     IAfile = h5py.File(path_to_file, "r")
@@ -212,19 +210,20 @@ r_s = 1 / c_200
 # calculate distances to the center
 r_uni = np.linalg.norm(coords, axis=1)
 # Compute uniform CDF
-F_uni = r_uni ** 3 / R_max ** 3
+F_uni = r_uni**3 / R_max**3
 # Compute corresponding NFW radii
 r_nfw = np.array([invert_nfw_cdf(F, r_s, R_max) for F in F_uni])
 # Rescale positions
 scaling_factors = r_nfw / r_uni
 coords *= scaling_factors[:, np.newaxis]
 
+
 # NFW-like gas density profile
 def rho_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200):
     rho_0 = (
         M_200_cgs
         / (np.log(1 + c_200) - c_200 / (1 + c_200))
-        / (4 * np.pi * r_200_cgs ** 3 / c_200 ** 3)
+        / (4 * np.pi * r_200_cgs**3 / c_200**3)
     )
     result_cgs = rho_0 * f_b / (c_200 * r_value * (1 + c_200 * r_value) ** 2)
     # Apply density cut
@@ -250,12 +249,12 @@ def a_NFW(r_value, M_200_cgs, r_200_cgs, c_200):
         CONST_G_CGS
         * M_200_cgs
         / (np.log(1 + c_200) - c_200 / (1 + c_200))
-        / r_200_cgs ** 2
+        / r_200_cgs**2
     )
     return (
         a_pref
         * ((r_value / (r_value + 1 / c_200)) - np.log(1 + c_200 * r_value))
-        / r_value ** 2
+        / r_value**2
     )
 
 
@@ -413,12 +412,13 @@ B = np.zeros((N, 3))
 
 # first work out total angular momentum of the halo within the virial radius
 # we work in units where r_vir = 1 and M_vir = 1
-Total_E = v_200 ** 2 / 2.0
+Total_E = v_200**2 / 2.0
 # J = spin_lambda * const_G / np.sqrt(Total_E)
 j_sp = spin_lambda * np.sqrt(2) * v_200 * 1
 print("j_sp =", j_sp)
 # all particles within the virial radius have omega parallel to the z-axis, magnitude
 # is proportional to j/r^2
+
 
 # define specific angular momentum distribution
 def j(
@@ -426,9 +426,9 @@ def j(
 ):
     mass_ratio = Mgas_r(r_value, f_b, M_200_cgs, r_200_cgs, c_200) / (M_200_cgs * f_b)
     if angular_momentum_profile == "M(r)":
-        return j_max * mass_ratio ** s
+        return j_max * mass_ratio**s
     elif angular_momentum_profile == "r^s":  # for rigid body rotation use r^2
-        return j_max * r_value ** s
+        return j_max * r_value**s
     elif angular_momentum_profile == "Bullock":  # following
         return j_max * mass_ratio / (s - mass_ratio)
 
@@ -480,11 +480,11 @@ jsp = jsp_1_analytic
 
 if spin_lambda_choice == "Peebles":
     # Normalize to Peebles spin parameter
-    Ep_kin = gas_particle_mass * normV ** 2 / 2
+    Ep_kin = gas_particle_mass * normV**2 / 2
     Ep_pot = (
         gas_particle_mass
         * phi_NFW(radius, M_200_cgs, r_200_cgs, c_200)
-        / (const_unit_velocity_in_cgs ** 2)
+        / (const_unit_velocity_in_cgs**2)
     )
     Ep_tot = np.sum(Ep_kin[mask_r_200] + Ep_pot[mask_r_200])
     jsp_P = const_G * (gas_mass) ** (3 / 2) / np.sqrt(np.abs(Ep_tot))
@@ -558,7 +558,7 @@ u = [
     u_vs_r(
         P0_cgs, radius[i], boxSize * np.sqrt(3) / 2, f_b, M_200_cgs, r_200_cgs, c_200
     )
-    / const_unit_velocity_in_cgs ** 2
+    / const_unit_velocity_in_cgs**2
     for i in range(N)
 ]  # gas particle internal energies
 u = np.full((N,), u)

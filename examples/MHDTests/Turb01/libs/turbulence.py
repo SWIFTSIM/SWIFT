@@ -9,19 +9,19 @@ from scipy.interpolate import RegularGridInterpolator
 
 
 class VelocityGrid:
-    """ Class for creating a 3-D grid with turbulent velocity field.
-        The velocities are produced from a Gaussian random distribution
-        with a given power spectrum.
-        Each velocity component is sampled in Fourier space, and then
-        transformed back to real space.
-        Based on Dubinski et al. (1995).
+    """Class for creating a 3-D grid with turbulent velocity field.
+    The velocities are produced from a Gaussian random distribution
+    with a given power spectrum.
+    Each velocity component is sampled in Fourier space, and then
+    transformed back to real space.
+    Based on Dubinski et al. (1995).
 
-        Arguments:
-           npow : power index of spectrum.
-           ngrid: number of grid points per dimension (must be even).
-           xmax : outer scale of turbulence.
-           dx   : physical separation between neighboring points.
-           seed : number that determines the random realization.
+    Arguments:
+       npow : power index of spectrum.
+       ngrid: number of grid points per dimension (must be even).
+       xmax : outer scale of turbulence.
+       dx   : physical separation between neighboring points.
+       seed : number that determines the random realization.
     """
 
     def __init__(self, npow=-4.0, ngrid=256, xmax=1.0, dx=0.01, seed=2021987):
@@ -43,7 +43,7 @@ class VelocityGrid:
 
         # we produce a 3-D grid of the Fourier coordinates
         kxx, kyy, kzz = meshgrid(kx, ky, kz, indexing="ij", sparse=True)
-        kk = kxx * kxx + kyy * kyy + kzz * kzz + kmin ** 2
+        kk = kxx * kxx + kyy * kyy + kzz * kzz + kmin**2
 
         random.seed(seed)
 

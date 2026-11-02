@@ -24,6 +24,7 @@
 
 /* Includes. */
 #include "atomic.h"
+#include "swift_intrinsics.h"
 
 #ifdef PTHREAD_SPINLOCK
 #include <pthread.h>
@@ -53,7 +54,7 @@
 #define lock_destroy(l) 0
 INLINE static int lock_lock(volatile int *l) {
   while (atomic_cas(l, 0, 1) != 0) {
-    /* Nothing to do here. */
+    cpu_relax();
   }
   return 0;
 }

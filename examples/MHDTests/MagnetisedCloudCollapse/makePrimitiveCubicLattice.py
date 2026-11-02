@@ -21,12 +21,12 @@ def generate_cube(num_on_side, side_length=1.0):
     )
     values += 0.5 * step
 
-    positions = np.empty((num_on_side ** 3, 3), dtype=float)
+    positions = np.empty((num_on_side**3, 3), dtype=float)
 
     for x in range(num_on_side):
         for y in range(num_on_side):
             for z in range(num_on_side):
-                index = x * num_on_side + y * num_on_side ** 2 + z
+                index = x * num_on_side + y * num_on_side**2 + z
 
                 positions[index, 0] = values[x]
                 positions[index, 1] = values[y]

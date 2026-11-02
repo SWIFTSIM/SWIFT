@@ -54,7 +54,7 @@ def get_abundance(element_idx):
     if element_idx == ELEMENT_COUNT - 1:
         return 0.2
     else:
-        return 0.1 * 0.5 ** element_idx
+        return 0.1 * 0.5**element_idx
 
 
 def get_element_abundances_metallicity(pos, boxsize):

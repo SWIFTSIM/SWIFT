@@ -36,8 +36,8 @@ eta = 1.2349  # 48 ngbs with cubic spline kernel
 fileName = "uniformBox.hdf5"
 
 # ---------------------------------------------------
-numPart = L ** 3
-mass = boxSize ** 3 * rho / numPart
+numPart = L**3
+mass = boxSize**3 * rho / numPart
 internalEnergy = P / ((gamma - 1.0) * rho)
 
 # --------------------------------------------------
@@ -94,7 +94,7 @@ ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
 ds[()] = ids + 1
 x = ids % L
 y = ((ids - x) / L) % L
-z = (ids - x - L * y) / L ** 2
+z = (ids - x - L * y) / L**2
 coords = zeros((numPart, 3))
 coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 1] = y[:, 0] * boxSize / L + boxSize / (2 * L)

@@ -897,8 +897,9 @@ void write_output_single(struct engine *e,
       e->stf_output_count, e->snapshot_output_count, e->snapshot_subdir,
       snapshot_subdir_name, e->snapshot_base_name, snapshot_base_name);
 
-  /* Create the directory */
-  safe_checkdir(snapshot_subdir_name, /*create=*/1);
+  /* Create the directory (if its name is not an empty string)*/
+  if (strnlen(snapshot_subdir_name, FILENAME_BUFFER_SIZE) > 0)
+    safe_checkdir(snapshot_subdir_name, /*create=*/1);
 
   /* Do we want to sub-sample any of the arrays */
   int subsample[swift_type_count];

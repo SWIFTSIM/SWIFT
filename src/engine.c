@@ -2009,8 +2009,10 @@ void engine_synchronize_times(struct engine *e) {
   const ticks tic_start = getticks();
 
   /* Collect which top-level cells have been updated */
-  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_CHAR,
-                MPI_SUM, MPI_COMM_WORLD);
+  /* Note: the array holds 0/1 flags, so a byte-wise OR is what we want (and
+   * MPI_CHAR is not a valid type for arithmetic reductions). */
+  MPI_Allreduce(MPI_IN_PLACE, e->s->cells_top_updated, e->s->nr_cells, MPI_BYTE,
+                MPI_BOR, MPI_COMM_WORLD);
 
   /* Activate tend communications involving the cells that have changed. */
   for (int i = 0; i < e->s->nr_cells; ++i) {
@@ -2664,7 +2666,12 @@ int engine_step(struct engine *e) {
 #endif
 
     /* Write the star formation information to the file */
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
 
       star_formation_logger_write_to_log_file(e->sfh_logger, e->time,
                                               e->cosmology->a, e->cosmology->z,
@@ -3518,15 +3525,15 @@ void engine_init(
     parser_get_param_double_array(params, "Snapshots:recording_triggers_part",
                                   num_snapshot_triggers_part,
                                   e->snapshot_recording_triggers_desired_part);
-  if (num_snapshot_triggers_spart)
+  if (num_snapshot_triggers_spart && (e->policy & engine_policy_stars))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_spart",
                                   num_snapshot_triggers_spart,
                                   e->snapshot_recording_triggers_desired_spart);
-  if (num_snapshot_triggers_bpart)
+  if (num_snapshot_triggers_bpart && (e->policy & engine_policy_black_holes))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_bpart",
                                   num_snapshot_triggers_bpart,
                                   e->snapshot_recording_triggers_desired_bpart);
-  if (num_snapshot_triggers_sink)
+  if (num_snapshot_triggers_sink && (e->policy & engine_policy_sinks))
     parser_get_param_double_array(params, "Snapshots:recording_triggers_sink",
                                   num_snapshot_triggers_sink,
                                   e->snapshot_recording_triggers_desired_sink);
@@ -3738,7 +3745,12 @@ void engine_init(
   }
 
   /* Initialize the star formation history structure */
-  if (e->policy & engine_policy_star_formation) {
+  const int with_sinks = (e->policy & engine_policy_sinks);
+  const int with_stars = (e->policy & engine_policy_stars);
+  const int with_star_formation = (e->policy & engine_policy_star_formation);
+  const int with_star_formation_sink = with_sinks && with_stars;
+
+  if (with_star_formation || with_star_formation_sink) {
     star_formation_logger_accumulator_init(&e->sfh);
   }
 
@@ -4052,7 +4064,12 @@ void engine_clean(struct engine *e, const int fof, const int restart) {
     fclose(e->file_timesteps);
     fclose(e->file_stats);
 
-    if (e->policy & engine_policy_star_formation) {
+    const int with_sinks = (e->policy & engine_policy_sinks);
+    const int with_stars = (e->policy & engine_policy_stars);
+    const int with_star_formation = (e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    if (with_star_formation || with_star_formation_sink) {
       fclose(e->sfh_logger);
     }
 

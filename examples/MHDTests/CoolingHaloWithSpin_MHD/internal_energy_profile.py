@@ -59,7 +59,7 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
@@ -83,11 +83,11 @@ for i in range(n_snaps):
     u = np.array(u_dset)
 
     # make dimensionless
-    u /= v_c ** 2 / (2.0 * (gamma - 1.0))
+    u /= v_c**2 / (2.0 * (gamma - 1.0))
     r = radius_over_virial_radius
 
     bin_edges = np.linspace(0, max_r, n_radial_bins + 1)
-    (hist, u_totals) = do_binning(r, u, bin_edges)
+    hist, u_totals = do_binning(r, u, bin_edges)
 
     bin_widths = bin_edges[1] - bin_edges[0]
     radial_bin_mids = np.linspace(
@@ -98,8 +98,8 @@ for i in range(n_snaps):
     # calculate cooling radius
 
     r_cool_over_r_vir = np.sqrt(
-        (2.0 * (gamma - 1.0) * lambda_cgs * M_vir_cgs * X_H ** 2)
-        / (4.0 * np.pi * CONST_m_H_CGS ** 2 * v_c_cgs ** 2 * r_vir_cgs ** 3)
+        (2.0 * (gamma - 1.0) * lambda_cgs * M_vir_cgs * X_H**2)
+        / (4.0 * np.pi * CONST_m_H_CGS**2 * v_c_cgs**2 * r_vir_cgs**3)
     ) * np.sqrt(snap_time_cgs)
 
     plt.plot(radial_bin_mids, binned_u, "ko", label="Numerical solution")

@@ -106,7 +106,7 @@ def plot_kh(ax, snap, cmap, norm):
 
     # Size of plotted particles
     size_factor = 5e4
-    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_l ** 2
+    A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_l**2
 
     # Plot
     scatter = ax.scatter(

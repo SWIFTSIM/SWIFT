@@ -19,8 +19,8 @@ fileName = "zeldovichPancake.hdf5"
 Mpc_in_m = 3.08567758e22
 Msol_in_kg = 1.98848e30
 Gyr_in_s = (
-    3.08567758e19
-)  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
+    3.08567758e19  ### so this is not actually a Gigayear, but 1 Mpc / (1 km/s) !!!
+)
 mH_in_kg = 1.6737236e-27
 
 # Some constants
@@ -28,9 +28,9 @@ kB_in_SI = 1.38064852e-23
 G_in_SI = 6.67408e-11
 
 # Some useful variables in h-full units
-H_0 = 1.0 / Mpc_in_m * 10 ** 5  # h s^-1
-rho_0 = 3.0 * H_0 ** 2 / (8 * math.pi * G_in_SI)  # h^2 kg m^-3
-lambda_i = 64.0 / H_0 * 10 ** 5  # h^-1 m (= 64 h^-1 Mpc)
+H_0 = 1.0 / Mpc_in_m * 10**5  # h s^-1
+rho_0 = 3.0 * H_0**2 / (8 * math.pi * G_in_SI)  # h^2 kg m^-3
+lambda_i = 64.0 / H_0 * 10**5  # h^-1 m (= 64 h^-1 Mpc)
 x_min = -0.5 * lambda_i
 x_max = 0.5 * lambda_i
 
@@ -39,10 +39,10 @@ unit_l_in_si = Mpc_in_m
 unit_m_in_si = Msol_in_kg * 1.0e10
 unit_t_in_si = Gyr_in_s
 unit_v_in_si = unit_l_in_si / unit_t_in_si
-unit_u_in_si = unit_v_in_si ** 2
+unit_u_in_si = unit_v_in_si**2
 
 # Total number of particles
-numPart = numPart_1D ** 3
+numPart = numPart_1D**3
 
 # ---------------------------------------------------
 
@@ -63,7 +63,7 @@ delta_x = boxSize / numPart_1D  # = delta_y = delta_z
 
 # Get the particle mass
 a_i = 1.0 / (1.0 + z_i)
-m_i = boxSize ** 3 * rho_0 / numPart
+m_i = boxSize**3 * rho_0 / numPart
 
 # Build the arrays
 coords = zeros((numPart, 3))
@@ -77,7 +77,7 @@ u = zeros(numPart)
 for i in range(numPart_1D):
     for j in range(numPart_1D):
         for k in range(numPart_1D):
-            index = i * numPart_1D ** 2 + j * numPart_1D + k
+            index = i * numPart_1D**2 + j * numPart_1D + k
 
             # in x
             q_x = x_min + (i + 0.5) * delta_x

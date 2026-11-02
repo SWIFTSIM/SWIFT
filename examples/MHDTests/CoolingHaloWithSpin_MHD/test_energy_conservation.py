@@ -35,7 +35,7 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 potential_energy_array = []
 internal_energy_array = []
@@ -61,7 +61,7 @@ for i in range(n_snaps):
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
     r = radius_over_virial_radius
-    total_potential_energy = np.sum(v_c ** 2 * np.log(r))
+    total_potential_energy = np.sum(v_c**2 * np.log(r))
     potential_energy_array = np.append(potential_energy_array, total_potential_energy)
 
     vels_dset = f["PartType0/Velocities"]
@@ -87,10 +87,10 @@ rad_energy_array = rad_energy_array[0::10]
 
 # put energies in units of v_c^2 and rescale by number of particles
 
-pe = potential_energy_array / (N * v_c ** 2)
-ke = kinetic_energy_array / (N * v_c ** 2)
-ie = internal_energy_array / (N * v_c ** 2)
-re = rad_energy_array / (N * v_c ** 2)
+pe = potential_energy_array / (N * v_c**2)
+ke = kinetic_energy_array / (N * v_c**2)
+ie = internal_energy_array / (N * v_c**2)
+re = rad_energy_array / (N * v_c**2)
 te = pe + ke + ie  # + re
 
 print(pe)

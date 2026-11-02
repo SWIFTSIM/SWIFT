@@ -77,7 +77,7 @@ for i in snapshots:
         * 1.5
         * k_B
         * gas_masses
-        * 10 ** 10
+        * 10**10
         * Msun
         / (mu * m_H)
     )  # in cgs
@@ -85,7 +85,7 @@ for i in snapshots:
     gas_kinetic_energies = (
         0.5
         * gas_masses
-        * 10 ** 10
+        * 10**10
         * Msun
         * (
             gas_velocities[:, 0] ** 2

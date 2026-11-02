@@ -33,9 +33,7 @@ UnitMass_in_g = 4.435693e44
 UnitVelocity_in_cm_per_s = 97824708.2699
 
 k = (
-    c.k_B.to(u.g * u.cm ** 2 / u.s ** 2 / u.K)
-    / UnitVelocity_in_cm_per_s ** 2
-    / UnitMass_in_g
+    c.k_B.to(u.g * u.cm**2 / u.s**2 / u.K) / UnitVelocity_in_cm_per_s**2 / UnitMass_in_g
 ).value  # Boltzman constant   in code units
 m_p = (c.m_p.to(u.g) / UnitMass_in_g).value  # proton mass         in code units
 
@@ -204,6 +202,8 @@ nz_gas = 64 + 1  # number of bins in z
 # for an odd  value of nz, the density   is computed at z=0
 eps_gas = eps
 rc_gas = 3.0
+
+
 # grid bins functions
 def g_gas(r):
     return np.log(r / rc_gas + 1.0)
@@ -587,7 +587,7 @@ if hydro:
 nb.rename("galaxy_multi_component.hdf5")
 nb.write()
 
-#%%
+# %%
 # Add the StellarParticleType attribute to the dataset
 import h5py as h5
 import numpy as np

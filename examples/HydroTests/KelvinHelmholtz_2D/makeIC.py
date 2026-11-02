@@ -109,8 +109,8 @@ vel[:, 1] = (
     omega0
     * sin(4 * pi * coords[:, 0])
     * (
-        exp(-((coords[:, 1] - 0.25) ** 2) / (2 * sigma ** 2))
-        + exp(-((coords[:, 1] - 0.75) ** 2) / (2 * sigma ** 2))
+        exp(-((coords[:, 1] - 0.25) ** 2) / (2 * sigma**2))
+        + exp(-((coords[:, 1] - 0.75) ** 2) / (2 * sigma**2))
     )
 )
 

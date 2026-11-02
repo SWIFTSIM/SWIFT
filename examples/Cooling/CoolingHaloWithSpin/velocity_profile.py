@@ -67,7 +67,7 @@ box_centre = np.array(header.attrs["BoxSize"])
 
 # calculate r_vir and M_vir from v_c
 r_vir_cgs = v_c_cgs / (10.0 * H_0_cgs * np.sqrt(OMEGA))
-M_vir_cgs = r_vir_cgs * v_c_cgs ** 2 / CONST_G_CGS
+M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 

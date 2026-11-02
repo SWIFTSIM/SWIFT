@@ -20,24 +20,24 @@ units_dict = {
     "velocity": u.km / u.s,
     "momentum": 1.98e33 * u.g * u.km / u.s,
     "pressure": 1e10 * (1.98e33 * u.g) / ((3.08e21 * u.cm) * (3.15e16 * u.s) ** 2),
-    "magneticfield": 1e-7 * u.g / (u.s ** 2 * u.statA),
-    "magneticfieldpertime": 1e-7 * u.g / (u.s ** 2 * u.statA * 3.156e7 * u.s),
-    "magneticfieldgradient": 1e-7 * u.g / (u.s ** 2 * u.statA * u.cm),
+    "magneticfield": 1e-7 * u.g / (u.s**2 * u.statA),
+    "magneticfieldpertime": 1e-7 * u.g / (u.s**2 * u.statA * 3.156e7 * u.s),
+    "magneticfieldgradient": 1e-7 * u.g / (u.s**2 * u.statA * u.cm),
     "time": 3.15e16 * u.s,
     "mass": 1.98e33 * u.g,
-    "acceleration": u.cm / u.s ** 2,
+    "acceleration": u.cm / u.s**2,
 }
 # parsec - 3.086e18*u.cm
 
 
 # free fall time estimate
 # Constants
-G = 6.67430e-11 * u.m ** 3 / u.kg / u.s ** 2  # 6.67430e-8
-G = G.to(u.cm ** 3 / u.g / u.s ** 2)
+G = 6.67430e-11 * u.m**3 / u.kg / u.s**2  # 6.67430e-8
+G = G.to(u.cm**3 / u.g / u.s**2)
 # Parameters (taken from Hopkins 2016)
 Rcloud = 4.628516371e16 * u.cm
 M = 1.99e33 * u.g  # total mass of the sphere
-rhocloud0 = M / (4 / 3 * np.pi * Rcloud ** 3)
+rhocloud0 = M / (4 / 3 * np.pi * Rcloud**3)
 rhouniform = rhocloud0 / 360
 t_ff_lit = np.sqrt(3 / (2 * np.pi * G * rhocloud0))
 t_ff_wiki = np.sqrt(3 * np.pi / (32 * G * rhocloud0))
@@ -70,7 +70,7 @@ def cross_vec(vec1, vec2):
 def extract_variables_of_interest(data):
 
     # set constant
-    mu0 = 1.25663706127e-1 * u.g * u.cm / (u.s ** 2 * u.statA ** 2)
+    mu0 = 1.25663706127e-1 * u.g * u.cm / (u.s**2 * u.statA**2)
 
     # Get snapshot parameters
     time = data.metadata.time
@@ -508,7 +508,7 @@ def plot_pressure_vs_time(
             z = snap["values"]["CM_frame_coordinates"][:, 2] * units_dict["length"]
             y = snap["values"]["CM_frame_coordinates"][:, 1] * units_dict["length"]
             x = snap["values"]["CM_frame_coordinates"][:, 0] * units_dict["length"]
-            r = np.sqrt(x ** 2 + y ** 2)
+            r = np.sqrt(x**2 + y**2)
             mask = (r <= rcut) & (np.abs(z) <= zcut)
             pressures_values = pressures_values[mask]
             magnetic_pressures_values = magnetic_pressures_values[mask]
@@ -654,7 +654,7 @@ def plot_B_vs_time(
             z = snap["values"]["CM_frame_coordinates"][:, 2] * units_dict["length"]
             y = snap["values"]["CM_frame_coordinates"][:, 1] * units_dict["length"]
             x = snap["values"]["CM_frame_coordinates"][:, 0] * units_dict["length"]
-            r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+            r = np.sqrt(x**2 + y**2 + z**2)
             mask = r <= rcut
             magnetic_flux_densities_values_sq = magnetic_flux_densities_values_sq[mask]
             densities_values = densities_values[mask]

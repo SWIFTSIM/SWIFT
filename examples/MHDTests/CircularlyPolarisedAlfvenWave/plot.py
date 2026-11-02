@@ -13,10 +13,10 @@ v0 = 0.1
 B0 = 0.1
 
 sina = 2.0 / 3.0
-cosa = np.sqrt(1 - sina ** 2)
+cosa = np.sqrt(1 - sina**2)
 
 sinb = 2.0 / np.sqrt(5)
-cosb = np.sqrt(1 - sinb ** 2)
+cosb = np.sqrt(1 - sinb**2)
 
 # Rotation matrix to rotate frame S to the projected direction frame (direction of wave propagation) Sp ...
 Rotation_Sp_to_S = np.array(

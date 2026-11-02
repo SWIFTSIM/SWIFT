@@ -11,15 +11,15 @@ import numpy as np
 from scipy.interpolate import interp1d
 import vtk
 
-
 # Files to read from and write to
 
 
-def open_snapshot(fileName: str,):
-
-    """ Open the input file and read the header and particle positions 
+def open_snapshot(
+    fileName: str,
+):
+    """Open the input file and read the header and particle positions
     param: fileName - the name of the input file
-    return: a dictionary containing the BoxSize, afact, N_in, and pos_in 
+    return: a dictionary containing the BoxSize, afact, N_in, and pos_in
     """
 
     infile = h5py.File(fileName, "r")
@@ -63,7 +63,7 @@ def add_atmospere_particles(
     R_max: float,  # Maximum radius of the atmosphere in BoxSize units
     IAsource: str = "IAfile",  # Source of atmosphere particles, e.g., 'grid' or 'random',
 ):
-    """ Add atmosphere particles to the data dictionary
+    """Add atmosphere particles to the data dictionary
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
     param: pars - parameters for density profile
     param: IAsource - mode for atmosphere initial particle arrangement
@@ -112,9 +112,7 @@ def add_atmospere_particles(
     else:
         print("not impl yet")
 
-    pos -= (
-        0.5
-    )  # shift initial arrangement center at zero, prepare for cutting and rescaling
+    pos -= 0.5  # shift initial arrangement center at zero, prepare for cutting and rescaling
 
     # Cut a sphere
     r_uni = np.linalg.norm(pos, axis=1)
@@ -128,7 +126,7 @@ def add_atmospere_particles(
         rtab, Ftab, kind="linear", bounds_error=False, fill_value=(Ftab[0], Ftab[-1])
     )  # Build CDF function for the selected density
     r_uni = np.linalg.norm(pos, axis=1)
-    F_uni = r_uni ** 3 / R_max ** 3  # data['BoxSize'][0]**3
+    F_uni = r_uni**3 / R_max**3  # data['BoxSize'][0]**3
     r_target = np.array(
         [invert_density_cdf(F, F_rho, R_max, 1e-6 * R_max) for F in F_uni]
     )  # Invert CDF
@@ -188,10 +186,9 @@ def add_atmospere_particles(
 
 
 def add_internal_energy_profile(pars: dict, pos_center: np.ndarray, units: dict):
-
-    """ 
+    """
     Assign temperature profile to the particles.
-    param: data - data object with particle information 
+    param: data - data object with particle information
     param: pars - parameters of the profile
     """
 
@@ -216,7 +213,7 @@ def add_internal_energy_profile(pars: dict, pos_center: np.ndarray, units: dict)
         GUNIT = units["UL"] ** 3 / (units["UM"] * units["UTM"] ** 2)
         rtab, M_atm_DM = tabulate_Mtot_function(pars, rmax, N_points=N_points)
         dr = np.abs((np.max(rtab) - np.min(rtab)) / N_points)
-        integrands = M_atm_DM * rho(rtab, pars) / rtab ** 2
+        integrands = M_atm_DM * rho(rtab, pars) / rtab**2
 
         def u_vs_r(r_value):
             mask = (r_value < rtab) & (rtab < rmax)
@@ -239,7 +236,7 @@ def add_internal_energy_profile(pars: dict, pos_center: np.ndarray, units: dict)
 
 
 def tabulate_Mtot_function(pars: dict, R_max: float, N_points: int = 1000):
-    """ 
+    """
     Tabulate the DM + gas halo mass function
     param: pars - parameters of the density profile
     param: R_max - maximum radius for the mass function
@@ -249,14 +246,14 @@ def tabulate_Mtot_function(pars: dict, R_max: float, N_points: int = 1000):
     r = np.linspace(1e-6 * R_max, R_max, N_points)
     # M = np.array([integrate.quad(lambda s: (rho(s, pars)+rho_DM(s, pars)) * s**2, 0, ri)[0] for ri in r])
     M = np.array(
-        [integrate.quad(lambda s: rho_DM(s, pars) * s ** 2, 0, ri)[0] for ri in r]
+        [integrate.quad(lambda s: rho_DM(s, pars) * s**2, 0, ri)[0] for ri in r]
     )
 
     return r, M
 
 
 def rho_DM(r: np.ndarray, pars: dict):
-    """ 
+    """
     Compute: DM density profile of Hernquist galaxy
     param: pars - parameters of the profile
     param: r - radius of the profile
@@ -283,8 +280,7 @@ from scipy.spatial import cKDTree
 
 
 def cut_disk_region_from_atmosphere(data: dict, pos_atm: np.ndarray):
-
-    """ 
+    """
     Cut atmosphere particles which lie inside the disk
     param: data - data of the disk particles
     param: pos_atm - positions of the atmosphere particles
@@ -310,8 +306,10 @@ def cut_disk_region_from_atmosphere(data: dict, pos_atm: np.ndarray):
     return pos_atm_outside_disk
 
 
-def open_IAfile(path_to_file: str,):
-    """ 
+def open_IAfile(
+    path_to_file: str,
+):
+    """
     Open initial particle arrangement file (used for atmosphere generation)
     param: path_to_file - path to .hdf5
     return: positions and smoothing lengths of particles
@@ -323,16 +321,17 @@ def open_IAfile(path_to_file: str,):
 
 
 def estimate_Natm(pars: dict, mp: float, R_max: float):
-    """ 
+    """
     Estimate number of atmosphere particles given particle mass and atmosphere radius
     param: pars - parameters for density profile in snapshot units
     param: mp - particle mass in snapshot units
     param: R_max - atmosphere radius in snapshot units
     return: number of particles in the atmosphere
     """
+
     # Compute total mass in the profile
     def integrand(r):
-        return rho(r, pars) * 4 * np.pi * r ** 2
+        return rho(r, pars) * 4 * np.pi * r**2
 
     M_tot, _ = integrate.quad(integrand, 1e-6 * R_max, R_max)
 
@@ -341,7 +340,7 @@ def estimate_Natm(pars: dict, mp: float, R_max: float):
 
 
 def rho(r: np.ndarray, pars: dict):
-    """ 
+    """
     Calculate the density profile at given positions
     param: r - distance to the center
     param: pars - parameter dict for density profile.
@@ -373,7 +372,7 @@ def rho(r: np.ndarray, pars: dict):
 
 
 def tabulate_F_function(pars: dict, R_max: float, N_points: int = 1000):
-    """ 
+    """
     Tabulate the mass function for a given density profile
     param: pars - parameters of the density profile
     param: R_max - maximum radius for the mass function
@@ -381,16 +380,14 @@ def tabulate_F_function(pars: dict, R_max: float, N_points: int = 1000):
     return: a function that computes the cumulative mass distribution
     """
     r = np.linspace(1e-6 * R_max, R_max, N_points)
-    M = np.array(
-        [integrate.quad(lambda s: rho(s, pars) * s ** 2, 0, ri)[0] for ri in r]
-    )
+    M = np.array([integrate.quad(lambda s: rho(s, pars) * s**2, 0, ri)[0] for ri in r])
     M /= M[-1]  # Normalize to 1 at R_max
 
     return r, M
 
 
 def invert_density_cdf(F_uni: np.ndarray, F_rho: np.ndarray, R_max: float, Rmin: float):
-    """ Invert cdf function to get position rescaling
+    """Invert cdf function to get position rescaling
     param: F_uni - uniform density CDF of particles
     param: F_rho - chosen density profile CDF
     param: R_max - maximal radius of the atmosphere
@@ -407,7 +404,7 @@ def invert_density_cdf(F_uni: np.ndarray, F_rho: np.ndarray, R_max: float, Rmin:
 def add_magnetic_fields(
     data: dict, B0_Gaussian_Units: float = 1e-3, type: str = "uniform"  # micro Gauss
 ):
-    """ 
+    """
     Add magnetic fields to the data dictionary
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
     param: B0_Gaussian_Units - the magnitude of the uniform seed magnetic field in Gaussian units
@@ -437,7 +434,7 @@ def add_magnetic_fields(
     # Derived quantities
     const_unit_time_in_cgs = const_unit_length_in_cgs / const_unit_velocity_in_cgs
     const_unit_current_in_cgs = const_unit_mass_in_cgs / (
-        const_unit_magnetic_field_in_cgs * const_unit_time_in_cgs ** 2
+        const_unit_magnetic_field_in_cgs * const_unit_time_in_cgs**2
     )
 
     # Store the magnetic field and vector potential in the data dictionary
@@ -449,7 +446,7 @@ def add_magnetic_fields(
 
 
 def print_to_vtk(data: dict, fileName: str):
-    """ 
+    """
     Print the data dictionary to a VTK file
     param: data - the dictionary containing BoxSize, afact, N_in, and pos_in
     param: fileName - the name of the output VTK file
@@ -471,7 +468,6 @@ def print_to_vtk(data: dict, fileName: str):
 
 
 def makeIC(fileInputName: str, fileOutputName: str, PrintToVTK: bool = True):
-
     """
     Make a new file from an input snapshot file
     param: fileInputName - the name of the snapshot to be read
@@ -500,7 +496,7 @@ def makeIC(fileInputName: str, fileOutputName: str, PrintToVTK: bool = True):
     c_200 = 9
     h = 0.704
     H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
-    rhoc_cgs = 3 * H_0_cgs ** 2 / (8 * np.pi * CONST_G_CGS)
+    rhoc_cgs = 3 * H_0_cgs**2 / (8 * np.pi * CONST_G_CGS)
     r_200_cgs = (3 * M_200_cgs / (4 * np.pi * rhoc_cgs * 200)) ** (1 / 3) / data[
         "Units"
     ]["UL"]
@@ -581,8 +577,7 @@ def makeIC(fileInputName: str, fileOutputName: str, PrintToVTK: bool = True):
 def write_or_replace_dataset(
     group: object, name: str, datai: np.ndarray, size: list, dtype: str
 ):
-
-    """ Write or replace a field in .hdf5
+    """Write or replace a field in .hdf5
     param: group - group to write dataset into
     param: name - name of dataset
     param: datai - data to write

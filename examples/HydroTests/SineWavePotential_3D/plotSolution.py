@@ -60,7 +60,7 @@ gradP = np.zeros(P.shape)
 for i in range(len(P)):
     iself = int(ids[i] / n1D / n1D)
     jself = int(int(ids[i] - n1D * iself) / n1D)
-    kself = int(ids[i] - n1D ** 2 * iself - n1D * jself)
+    kself = int(ids[i] - n1D**2 * iself - n1D * jself)
     corr = 0.0
     im1 = iself - 1
     if im1 < 0:
@@ -70,8 +70,8 @@ for i in range(len(P)):
     if ip1 == n1D:
         ip1 = 0
         corr = 1.0
-    idxp1 = ids_reverse[ip1 * n1D ** 2 + jself * n1D + kself]
-    idxm1 = ids_reverse[im1 * n1D ** 2 + jself * n1D + kself]
+    idxp1 = ids_reverse[ip1 * n1D**2 + jself * n1D + kself]
+    idxm1 = ids_reverse[im1 * n1D**2 + jself * n1D + kself]
     gradP[i] = (P[idxp1] - P[idxm1]) / (coords[idxp1, 0] - coords[idxm1, 0] + corr)
 
 fig, ax = pl.subplots(2, 2)

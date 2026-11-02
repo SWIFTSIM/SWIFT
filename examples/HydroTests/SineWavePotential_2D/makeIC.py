@@ -33,7 +33,7 @@ A = 10.0
 fileName = "sineWavePotential.hdf5"
 numPart_1D = 50
 boxSize = [1.0, 1.0]
-numPart = numPart_1D ** 2
+numPart = numPart_1D**2
 
 coords = np.zeros((numPart, 3))
 v = np.zeros((numPart, 3))

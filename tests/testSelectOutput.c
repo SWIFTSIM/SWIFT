@@ -28,7 +28,8 @@ void select_output_engine_init(struct engine *e, struct space *s,
                                struct swift_params *params,
                                struct output_options *output,
                                struct cooling_function_data *cooling,
-                               struct hydro_props *hydro_properties) {
+                               struct hydro_props *hydro_properties,
+                               struct ic_info *ics_metadata) {
   /* set structures */
   e->s = s;
   e->cooling_func = cooling;
@@ -37,6 +38,7 @@ void select_output_engine_init(struct engine *e, struct space *s,
   e->cosmology = cosmo;
   e->policy = engine_policy_hydro;
   e->hydro_properties = hydro_properties;
+  e->ics_metadata = ics_metadata;
 
   /* initialization of threadpool */
   threadpool_init(&e->threadpool, 1);
@@ -85,7 +87,6 @@ int main(int argc, char *argv[]) {
   unsigned long long cpufreq = 0;
   clocks_set_cpufreq(cpufreq);
 
-  // const char *base_name = "testSelectOutput";
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0,
          Nsink = 0, Nnupart = 0;
   int flag_entropy_ICs = -1;
@@ -97,13 +98,14 @@ int main(int argc, char *argv[]) {
   struct bpart *bparts = NULL;
   struct sink *sinks = NULL;
   struct ic_info ics_metadata;
+  ics_metadata.file_image_length = 0;
+  ics_metadata.file_image_data = NULL;
   strcpy(ics_metadata.group_name, "NoSUCH");
 
   /* parse parameters */
   message("Reading parameters.");
   struct swift_params param_file;
-  const char *input_file = "selectOutputParameters.yml";
-  parser_read_file(input_file, &param_file);
+  parser_read_file(argv[1], &param_file);
 
   struct output_options output_options;
   output_options_init(&param_file, 0, &output_options);
@@ -161,7 +163,7 @@ int main(int argc, char *argv[]) {
   sprintf(e.snapshot_base_name, "testSelectOutput");
   sprintf(e.run_name, "Select Output Test");
   select_output_engine_init(&e, &s, &cosmo, &param_file, &output_options,
-                            &cooling, &hydro_properties);
+                            &cooling, &hydro_properties, &ics_metadata);
 
   /* check output selection */
   message("Checking output parameters.");

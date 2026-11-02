@@ -1223,7 +1223,8 @@ void engine_compute_next_ps_time(struct engine *e) {
  * @param params The #swift_params.
  */
 void engine_init_output_lists(struct engine *e, struct swift_params *params,
-                              const struct output_options *output_options) {
+                              const struct output_options *output_options,
+                              const int restart) {
 
   /* Deal with snapshots */
   e->output_list_snapshots = NULL;
@@ -1238,7 +1239,7 @@ void engine_init_output_lists(struct engine *e, struct swift_params *params,
     if (e->output_list_snapshots->select_output_on)
       output_list_check_selection(e->output_list_snapshots, output_options);
 
-    engine_compute_next_snapshot_time(e, /*restart=*/0);
+    engine_compute_next_snapshot_time(e, restart);
 
     if (e->policy & engine_policy_cosmology)
       e->a_first_snapshot =
@@ -1392,17 +1393,11 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
           error("Invalid time to deduct! %e", time_to_remove);
 #endif
 
-        /* Note that we need to use a separate array (not the raw
-         * e->snapshot_recording_triggers_part) as we only want to
-         * update one entry */
-        int my_temp_array[num_snapshot_triggers_part];
-        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_part);
-        my_temp_array[i] = 1;
-
-        tracers_after_timestep_part(
-            p, xp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, e->hydro_properties, e->cooling_func, e->time,
-            -time_to_remove, my_temp_array);
+        /* Store -time_to_remove as a deferred correction. On the particle's
+         * next step, tracers_after_timestep_part accumulates only the
+         * in-window fraction using a single consistent SFR value, avoiding
+         * a mismatch between the SFR at trigger time and at step completion. */
+        tracers_after_recording_trigger_part(xp, i, time_to_remove);
       }
     }
   }
@@ -1513,16 +1508,66 @@ void engine_io_check_snapshot_triggers(struct engine *e) {
           error("Invalid time to deduct! %e", time_to_remove);
 #endif
 
-        /* Note that we need to use a separate array (not the raw
-         * e->snapshot_recording_triggers_part) as we only want to
-         * update one entry */
-        int my_temp_array[num_snapshot_triggers_bpart];
-        memset(my_temp_array, 0, sizeof(int) * num_snapshot_triggers_bpart);
-        my_temp_array[i] = 1;
+        /* Store -time_to_remove as a deferred correction. On the black hole's
+         * next step, tracers_after_timestep_bpart accumulates only the
+         * in-window fraction using a single consistent accretion rate value,
+         * avoiding a mismatch between the rate at trigger time and at step
+         * completion. */
+        tracers_after_recording_trigger_bpart(bp, i, time_to_remove);
+      }
+    }
+  }
 
-        tracers_after_timestep_bpart(
-            bp, e->internal_units, e->physical_constants, with_cosmology,
-            e->cosmology, -time_to_remove, my_temp_array);
+  /* Should any not yet switched on trigger be activated? (sink version) */
+  for (int i = 0; i < num_snapshot_triggers_sink; ++i) {
+
+    if (time_to_next_snap <= e->snapshot_recording_triggers_sink[i] &&
+        e->snapshot_recording_triggers_sink[i] > 0. &&
+        !e->snapshot_recording_triggers_started_sink[i]) {
+      e->snapshot_recording_triggers_started_sink[i] = 1;
+
+      /* Be vocal about this */
+      if (e->verbose)
+        message(
+            "Snapshot will be dumped in %e U_t. Recording trigger for sink "
+            "activated.",
+            e->snapshot_recording_triggers_sink[i]);
+
+      /* We now need to loop over the particles to preemptively deduct the
+       * extra time logged between the particles' start of step and the
+       * actual start of the trigger */
+      for (size_t k = 0; k < s->nr_sinks; ++k) {
+
+        /* Get a handle on the sink. */
+        struct sink *sink = &s->sinks[k];
+        const integertime_t ti_begin =
+            get_integer_time_begin(e->ti_current, sink->time_bin);
+
+        /* Escape inhibited particles */
+        if (sink_is_inhibited(sink, e)) continue;
+
+        /* Time from the start of the particle's step to the snapshot */
+        double total_time;
+        if (with_cosmology) {
+          total_time =
+              cosmology_get_delta_time(e->cosmology, ti_begin, ti_next_snap);
+        } else {
+          total_time = (ti_next_snap - ti_begin) * e->time_base;
+        }
+
+        /* Time to deduct = time since the start of the step - trigger time */
+        const double time_to_remove =
+            total_time - e->snapshot_recording_triggers_sink[i];
+
+#ifdef SWIFT_DEBUG_CHECKS
+        if (time_to_remove < 0.)
+          error("Invalid time to deduct! %e", time_to_remove);
+#endif
+
+        /* Store -time_to_remove as a deferred correction. On the sink's
+         * next step, tracers_after_timestep_sink accumulates only the
+         * in-window fraction using a single consistent rate value. */
+        tracers_after_recording_trigger_sink(sink, i, time_to_remove);
       }
     }
   }

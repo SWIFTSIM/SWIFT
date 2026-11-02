@@ -73,16 +73,18 @@ float feedback_compute_spart_timestep(
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The physical time in internal units.
+ * @param old_time_bin The star's time bin for the step that just finished.
  */
 void feedback_will_do_feedback(
     struct spart *sp, const struct feedback_props *feedback_props,
     const int with_cosmology, const struct cosmology *cosmo, const double time,
     const struct unit_system *us, const struct phys_const *phys_const,
-    const integertime_t ti_current, const double time_base) {
+    const integertime_t ti_current, const double time_base,
+    const timebin_t old_time_bin) {
 
   /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
-  sp->feedback_data.preSN.energy_ejected = 0;
+  sp->feedback_data.supernovae.energy_ejected = 0;
+  sp->feedback_data.winds.energy_ejected = 0;
   sp->feedback_data.will_do_feedback = 0;
 
   /* Quit if the birth_scale_factor or birth_time is negative.
@@ -106,7 +108,7 @@ void feedback_will_do_feedback(
   double dt_enrichment = 0;
   integertime_t ti_begin = 0;
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
-               &ti_begin, ti_current, time_base, time);
+               &ti_begin, ti_current, time_base, time, old_time_bin);
 
   /* There is no feedback to do for newborn stars */
   const double star_age_end_step = star_age_beg_step + dt_enrichment;
@@ -144,7 +146,7 @@ void feedback_will_do_feedback(
     /* Now, compute the stellar evolution state for individual star particles.
      */
     stellar_evolution_evolve_individual_star(
-        sp, model, cosmo, us, phys_const,
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
         feedback_props->with_stellar_wind_feedback, ti_begin,
         star_age_beg_step_safe, dt_enrichment);
   } else {
@@ -152,22 +154,26 @@ void feedback_will_do_feedback(
        the case of particles representing the whole IMF (star_type =
        star_population) and the particles representing only the continuous part
        of the IMF (star_type = star_population_continuous_IMF) */
-    stellar_evolution_evolve_spart(sp, model, cosmo, us, phys_const,
-                                   feedback_props->with_stellar_wind_feedback,
-                                   ti_begin, star_age_beg_step_safe,
-                                   dt_enrichment);
+    stellar_evolution_evolve_spart(
+        sp, model, with_cosmology, cosmo, time, us, phys_const,
+        feedback_props->with_stellar_wind_feedback, ti_begin,
+        star_age_beg_step_safe, dt_enrichment);
   }
 
   /* Apply the energy efficiency factor */
-  sp->feedback_data.energy_ejected *= feedback_props->supernovae_efficiency;
+  sp->feedback_data.supernovae.energy_ejected *=
+      feedback_props->supernovae_efficiency;
+
+  /* Multiply pre-SN energy by the efficiency */
+  sp->feedback_data.winds.energy_ejected *= feedback_props->winds_efficiency;
 
   /* Multiply pre-SN energy by the efficiency */
   sp->feedback_data.preSN.energy_ejected *= feedback_props->preSN_efficiency;
 
   /* Set the particle as doing some feedback */
   sp->feedback_data.will_do_feedback =
-      sp->feedback_data.energy_ejected != 0. ||
-      sp->feedback_data.preSN.energy_ejected != 0. ||
+      sp->feedback_data.supernovae.energy_ejected != 0. ||
+      sp->feedback_data.winds.energy_ejected != 0. ||
       !sp->feedback_data.is_dead;
 }
 
@@ -185,13 +191,13 @@ double compute_star_age_end_of_step(const struct spart *sp,
                                     const double time) {
   double star_age_end_of_step;
   if (with_cosmology) {
-    if (cosmo->a > (double)sp->birth_scale_factor)
+    if (cosmo->a > sp->birth_scale_factor)
       star_age_end_of_step = cosmology_get_delta_time_from_scale_factors(
-          cosmo, (double)sp->birth_scale_factor, cosmo->a);
+          cosmo, sp->birth_scale_factor, cosmo->a);
     else
       star_age_end_of_step = 0.;
   } else {
-    star_age_end_of_step = max(time - (double)sp->birth_time, 0.);
+    star_age_end_of_step = max(time - sp->birth_time, 0.);
   }
   return star_age_end_of_step;
 }
@@ -211,14 +217,17 @@ double compute_star_age_end_of_step(const struct spart *sp,
  * @param ti_current The current time (in integer)
  * @param time_base The time base.
  * @param time The current time (in double)
+ * @param old_time_bin The star's time bin for the step that just finished
+ * (not its possibly-already-overwritten current bin; see the caller's
+ * comment at its own call site for which value that is).
  */
 void compute_time(const struct spart *sp, const int with_cosmology,
                   const struct cosmology *cosmo, double *star_age_beg_of_step,
                   double *dt_enrichment, integertime_t *ti_begin_star,
                   const integertime_t ti_current, const double time_base,
-                  const double time) {
-  const integertime_t ti_step = get_integer_timestep(sp->time_bin);
-  *ti_begin_star = get_integer_time_begin(ti_current, sp->time_bin);
+                  const double time, const timebin_t old_time_bin) {
+  const integertime_t ti_step = get_integer_timestep(old_time_bin);
+  *ti_begin_star = get_integer_time_begin(ti_current, old_time_bin);
 
   /* Get particle time-step */
   double dt_star;
@@ -226,7 +235,7 @@ void compute_time(const struct spart *sp, const int with_cosmology,
     dt_star = cosmology_get_delta_time(cosmo, *ti_begin_star,
                                        *ti_begin_star + ti_step);
   } else {
-    dt_star = get_timestep(sp->time_bin, time_base);
+    dt_star = get_timestep(old_time_bin, time_base);
   }
 
   /* Calculate age of the star at current time */
@@ -277,7 +286,7 @@ void feedback_init_after_star_formation(
   feedback_init_spart(sp);
 
   /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
+  sp->feedback_data.supernovae.energy_ejected = 0;
 
   /* The star has nothing useful to do in this loop. Note that in GEAR, the
   order of operations are:
@@ -311,8 +320,11 @@ void feedback_first_init_spart(struct spart *sp,
   /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
 
-  /* Zero the energy of supernovae */
-  sp->feedback_data.energy_ejected = 0;
+  /* Zero energies and masses */
+  sp->feedback_data.supernovae.energy_ejected = 0.0;
+  sp->feedback_data.supernovae.mass_ejected = 0.0;
+  sp->feedback_data.winds.energy_ejected = 0.0;
+  sp->feedback_data.winds.mass_ejected = 0.0;
 
   /* Activate the feedback loop for the first step */
   sp->feedback_data.will_do_feedback = 1;

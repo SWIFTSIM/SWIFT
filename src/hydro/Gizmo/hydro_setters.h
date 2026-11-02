@@ -431,4 +431,29 @@ __attribute__((always_inline)) INLINE static void hydro_set_particle_velocity(
   p->v[2] = v[2];
 }
 
+/**
+ * @brief Correct the signal velocity of the particle partaking in
+ * supernova (kinetic) feedback based on the velocity kick the particle receives
+ *
+ * @param p The particle of interest.
+ * @param cosmo Cosmology data structure
+ * @param dv_phys The velocity kick received by the particle expressed in
+ * physical units (note that dv_phys must be positive or equal to zero)
+ */
+__attribute__((always_inline)) INLINE static void
+hydro_set_v_sig_based_on_velocity_kick(struct part *p,
+                                       const struct cosmology *cosmo,
+                                       const float dv_phys) {
+
+  /* Compute the velocity kick in comoving coordinates */
+  const float dv = dv_phys / cosmo->a_factor_sound_speed;
+
+  /* Sound speed */
+  const float soundspeed = hydro_get_comoving_soundspeed(p);
+
+  /* Update the signal velocity */
+  p->timestepvars.vmax =
+      max(2.f * soundspeed, p->timestepvars.vmax + const_viscosity_beta * dv);
+}
+
 #endif /* SWIFT_GIZMO_HYDRO_SETTERS_H */

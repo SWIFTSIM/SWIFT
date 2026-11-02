@@ -29,7 +29,6 @@ import sys
 import math
 import os
 
-
 epsilon = 1.0
 h = 2.8 * epsilon
 r_s = 20.0
@@ -55,8 +54,8 @@ for i in range(numElem):
     else:
         u = r[i] / h
         if u < 0.5:
-            f[i] = (10.666666666667 + u * u * (32.0 * u - 38.4)) / h ** 3
-            f_wanted[i] = (10.666666666667 + u * u * (32.0 * u - 38.4)) / h ** 3
+            f[i] = (10.666666666667 + u * u * (32.0 * u - 38.4)) / h**3
+            f_wanted[i] = (10.666666666667 + u * u * (32.0 * u - 38.4)) / h**3
         else:
             f[i] = (
                 21.333333333333
@@ -64,14 +63,14 @@ for i in range(numElem):
                 + 38.4 * u * u
                 - 10.666666666667 * u * u * u
                 - 0.066666666667 / (u * u * u)
-            ) / h ** 3
+            ) / h**3
             f_wanted[i] = (
                 21.333333333333
                 - 48.0 * u
                 + 38.4 * u * u
                 - 10.666666666667 * u * u * u
                 - 0.066666666667 / (u * u * u)
-            ) / h ** 3
+            ) / h**3
 
     fac[i] = math.erfc(r[i] / (2.0 * r_s)) + (r[i] / (r_s * np.sqrt(np.pi))) * np.exp(
         -r[i] * r[i] / (4 * r_s * r_s)
@@ -85,7 +84,7 @@ for i in range(numElem):
 for i in range(numElem):
     u = r[i] / h
     if u < 0.5:
-        kernel[i] = (10.666666666667 + u * u * (32.0 * u - 38.4)) / h ** 3
+        kernel[i] = (10.666666666667 + u * u * (32.0 * u - 38.4)) / h**3
     else:
         kernel[i] = (
             21.333333333333
@@ -93,12 +92,12 @@ for i in range(numElem):
             + 38.4 * u * u
             - 10.666666666667 * u * u * u
             - 0.066666666667 / (u * u * u)
-        ) / h ** 3
+        ) / h**3
 
 plt.figure()
-plt.loglog(r / h, 1 / r ** 3, "b-", label="Newton's law")
+plt.loglog(r / h, 1 / r**3, "b-", label="Newton's law")
 plt.loglog(r / h, kernel, "r-", label="Softening kernel")
-plt.loglog(r / h, fac / r ** 3, "g-", label="Unsoftend tree force")
+plt.loglog(r / h, fac / r**3, "g-", label="Unsoftend tree force")
 plt.loglog(r / h, f2, "m-", label="Mesh force")
 plt.loglog(r / h, f, "c--", label="Total tree force", linewidth=3)
 plt.loglog(r / h, f + f2, "k--", label="Total force", linewidth=3)

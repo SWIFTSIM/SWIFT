@@ -39,7 +39,7 @@ for i in range(lastsnap + 1):
     vy = file["/PartType0/Velocities"][:, 1]
     m = file["/PartType0/Masses"][:]
 
-    ey_snap = 0.5 * m * vy ** 2
+    ey_snap = 0.5 * m * vy**2
 
     t[i] = t_snap
     ey[i] = ey_snap.sum()

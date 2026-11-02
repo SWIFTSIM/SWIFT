@@ -23,7 +23,6 @@ from matplotlib.patches import Rectangle
 from typing import Tuple
 from collections import namedtuple
 
-
 # Set up our simulation data collection to keep stuff together
 SimulationData = namedtuple(
     "SimulationData",
@@ -35,7 +34,7 @@ def latex_float(f):
     """
     Taken from:
     https://stackoverflow.com/questions/13490292/format-number-using-latex-notation-in-python.
-    
+
     Formats a float to LaTeX style.
     """
 

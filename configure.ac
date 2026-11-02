@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Init the project.
-AC_INIT([SWIFT],[2026.01],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
+AC_INIT([SWIFT],[2026.04],[https://gitlab.cosma.dur.ac.uk/swift/swiftsim])
 swift_config_flags="$*"
 
 AC_COPYRIGHT
@@ -1497,6 +1497,78 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for Agama (All-purpose Galaxy Modelling Architecture).
+# See https://agama.software/ for details.
+# Agama is linked as a static archive (agama.a) and requires two companion
+# static libraries from its extras/lib/ directory (libunsio.a and libnemo.a),
+# plus -lstdc++ -lm -lgomp -lgsl at link time.
+# Usage: --with-agama=PATH  where PATH is the root of the Agama installation
+# (the directory that contains agama.a and the src/ and extras/ sub-directories).
+have_agama="no"
+AC_ARG_WITH([agama],
+    [AS_HELP_STRING([--with-agama=PATH],
+       [root directory where agama is installed (contains agama.a and src/) @<:@yes/no@:>@]
+    )],
+    [with_agama="$withval"],
+    [with_agama="no"]
+)
+if test "x$with_agama" != "xno"; then
+   if test "x$with_agama" != "xyes" -a "x$with_agama" != "x"; then
+      # Agama headers may live under usr/include/agama/ (installed tree, via
+      # 'make install') or src/ (build tree). In both cases the #include must
+      # use <agama/interface_c.h>, so the -I flag must point to the directory
+      # that *contains* the agama/ subdirectory:
+      #   installed : -I$with_agama/usr/include  (agama/ subdir exists there)
+      #   build tree: -I$with_agama              (src/ acts as agama/ via symlink
+      #                                           or we create one at configure time)
+      if test -f "$with_agama/usr/include/agama/interface_c.h"; then
+         AGAMA_INCS="-I$with_agama/usr/include"
+      elif test -f "$with_agama/src/interface_c.h"; then
+         # Build-tree layout: create an 'agama' symlink next to src/ so that
+         # #include <agama/interface_c.h> resolves correctly.
+         AC_MSG_NOTICE([Agama build-tree layout detected: creating agama -> src symlink])
+         AS_IF([test ! -e "$with_agama/agama"],
+               [ln -s "$with_agama/src" "$with_agama/agama"])
+         AGAMA_INCS="-I$with_agama"
+      else
+         AC_MSG_ERROR([Cannot find Agama headers under $with_agama/usr/include/agama/ or $with_agama/src/.])
+      fi
+      # Link the main static archive with the -l: form so the linker accepts a
+      # full filename rather than the usual lib<name>.so/.a search.
+      # The two companion static libraries from extras/lib/ must follow.
+      AGAMA_LIBS="$with_agama/agama.a \
+                  $with_agama/extras/lib/libunsio.a \
+                  $with_agama/extras/lib/libnemo.a \
+                  -lstdc++ -lm -lgomp -lgsl"
+   else
+      AC_MSG_ERROR([--with-agama requires an explicit installation PATH (e.g. --with-agama=/path/to/Agama).])
+   fi
+
+   # Verify that the static archive is actually present.
+   AC_MSG_CHECKING([for agama.a in $with_agama])
+   if test -f "$with_agama/agama.a"; then
+      AC_MSG_RESULT([yes])
+      have_agama="yes"
+      AC_DEFINE([HAVE_AGAMA],1,[The AGAMA library appears to be present.])
+   else
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([Cannot find $with_agama/agama.a. Please check your Agama installation (https://agama.software/).])
+   fi
+
+   # Verify the companion extras libraries are present.
+   AC_MSG_CHECKING([for agama extras libraries (libunsio.a, libnemo.a)])
+   if test -f "$with_agama/extras/lib/libunsio.a" -a -f "$with_agama/extras/lib/libnemo.a"; then
+      AC_MSG_RESULT([yes])
+   else
+      AC_MSG_RESULT([no])
+      AC_MSG_ERROR([Cannot find libunsio.a or libnemo.a under $with_agama/extras/lib/.])
+   fi
+
+fi
+AC_SUBST([AGAMA_LIBS])
+AC_SUBST([AGAMA_INCS])
+AM_CONDITIONAL([HAVEAGAMA],[test "$have_agama" = "yes"])
+
 # Check for VELOCIraptor, non-MPI.
 have_velociraptor="no"
 AC_ARG_WITH([velociraptor],
@@ -1939,6 +2011,14 @@ if test "$enable_warn" != "no"; then
                           [CFLAGS="$CFLAGS"],[$CFLAGS],[AC_LANG_SOURCE([int main(void){return 0;}])])
 fi
 
+# Agama's interface_c.h uses empty () prototypes which are not valid in C99
+# and trigger -Wstrict-prototypes. Since we cannot modify the upstream header,
+# append -Wno-strict-prototypes here, *after* -Wstrict-prototypes has been
+# added above, so the suppression flag always comes last and wins.
+if test "$have_agama" = "yes"; then
+   CFLAGS="$CFLAGS -Wno-strict-prototypes"
+fi
+
 # Second part of the NUMA library checks. We now decide if we need to use
 # -isystem to get around the strict-prototypes problem. Assumes isystem
 # is available when strict-prototypes is.
@@ -1997,7 +2077,7 @@ AC_SUBST([SUNDIALS_INCS])
 AC_ARG_WITH([subgrid],
 	[AS_HELP_STRING([--with-subgrid=<subgrid>],
 		[Master switch for subgrid methods. Inexperienced user should
-		start here. Options are: @<:@none, GEAR, GEAR-G3, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE default: none@:>@]
+		start here. Options are: @<:@none, GEAR, GEAR-G3, GEAR-BH, AGORA, QLA, QLA-EAGLE, EAGLE, EAGLE-XL, SPIN_JET_EAGLE, FLAMINGO, SPIN_JET_FLAMINGO default: none@:>@]
 	)],
 	[with_subgrid="$withval"],
 	[with_subgrid=none]
@@ -2024,6 +2104,7 @@ case "$with_subgrid" in
    GEAR)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2036,6 +2117,7 @@ case "$with_subgrid" in
    GEAR-G3)
 	with_subgrid_cooling=grackle_3
 	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
 	with_subgrid_pressure_floor=none
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2045,9 +2127,23 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=no
    ;;
+   GEAR-BH)
+	with_subgrid_cooling=grackle_0
+	with_subgrid_chemistry=GEAR_10
+	with_subgrid_tracers=GEAR
+	with_subgrid_pressure_floor=GEAR
+	with_subgrid_stars=GEAR
+	with_subgrid_star_formation=GEAR
+	with_subgrid_feedback=GEAR
+	with_subgrid_black_holes=GEAR
+	with_subgrid_sink=GEAR
+	with_subgrid_extra_io=none
+	enable_fof=yes
+   ;;
    AGORA)
 	with_subgrid_cooling=grackle_0
 	with_subgrid_chemistry=AGORA
+	with_subgrid_tracers=none
 	with_subgrid_pressure_floor=GEAR
 	with_subgrid_stars=GEAR
 	with_subgrid_star_formation=GEAR
@@ -2121,7 +2217,7 @@ case "$with_subgrid" in
 	with_subgrid_extra_io=none
 	enable_fof=yes
    ;;
-  SPIN_JET_EAGLE-XL)
+   SPIN_JET_EAGLE-XL)
 	with_subgrid_cooling=PS2020
 	with_subgrid_chemistry=EAGLE
 	with_subgrid_tracers=EAGLE
@@ -2133,6 +2229,32 @@ case "$with_subgrid" in
 	with_subgrid_sink=none
 	with_subgrid_extra_io=none
 	enable_fof=yes
+   ;;
+   FLAMINGO)
+        with_subgrid_cooling=PS2020
+     	with_subgrid_chemistry=EAGLE
+        with_subgrid_tracers=FLAMINGO
+        with_subgrid_entropy_floor=EAGLE
+        with_subgrid_stars=EAGLE
+	with_subgrid_star_formation=EAGLE
+        with_subgrid_feedback=EAGLE-kinetic
+        with_subgrid_black_holes=EAGLE
+        with_subgrid_sink=none
+        with_subgrid_extra_io=EAGLE
+        enable_fof=yes
+   ;;
+   SPIN_JET_FLAMINGO)
+        with_subgrid_cooling=PS2020
+        with_subgrid_chemistry=EAGLE
+        with_subgrid_tracers=FLAMINGO
+        with_subgrid_entropy_floor=EAGLE
+	with_subgrid_stars=EAGLE
+        with_subgrid_star_formation=EAGLE
+        with_subgrid_feedback=EAGLE-kinetic
+        with_subgrid_black_holes=SPIN_JET
+        with_subgrid_sink=none
+        with_subgrid_extra_io=EAGLE
+        enable_fof=yes
    ;;
    *)
       AC_MSG_ERROR([Unknown subgrid choice: $with_subgrid])
@@ -2204,7 +2326,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2260,6 +2382,12 @@ case "$with_hydro" in
    magma2)
       AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
    ;;
+   magma2-mhd-di)
+      AC_DEFINE([MAGMA_SPMHD_DI], [1], [MAGMA SPMHD DI])
+   ;;
+   magma2-mhd-vp)
+      AC_DEFINE([MAGMA_SPMHD_VP], [1], [MAGMA SPMHD VP])
+   ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
    ;;
@@ -2282,9 +2410,6 @@ AC_ARG_WITH([spmhd],
 )
 
 case "$with_spmhd" in
-   none)
-      AC_DEFINE([NONE_MHD], [1], [No mhd])
-   ;;
    direct-induction)
       AC_DEFINE([DIRECT_INDUCTION_MHD], [1], [MHD using a direct induction method])
    ;;
@@ -2293,6 +2418,9 @@ case "$with_spmhd" in
    ;;
    vector-potential)
       AC_DEFINE([VECTOR_POTENTIAL_MHD], [1], [MHD using Vector Potentials])
+   ;;
+   none)
+      AC_DEFINE([NONE_MHD], [1], [No mhd])
    ;;
    *)
       AC_MSG_ERROR([Unknown magneto-hydrodynamics scheme: $with_spmhd])
@@ -2624,7 +2752,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, TREECOOL, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2684,6 +2812,10 @@ case "$with_cooling" in
       AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
       with_cooling_name="PS2020 (Ploeckinger+20 tables)"
    ;;
+   TREECOOL)
+      AC_DEFINE([COOLING_TREECOOL], [1], [Cooling following the Katz, Weinberg & Hernquist (1996) primordial model])
+      with_cooling_name="TREECOOL (Katz+96 primordial H/He, tabulated UV background)"
+   ;;
    COLIBRE)
       AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
    ;;
@@ -2701,7 +2833,7 @@ fi
 #  Particle tracers
 AC_ARG_WITH([tracers],
    [AS_HELP_STRING([--with-tracers=<function>],
-      [chemistry function @<:@none, EAGLE default: none@:>@]
+      [Tracer functions @<:@none, EAGLE, FLAMINGO, GEAR default: none@:>@]
    )],
    [with_tracers="$withval"],
    [with_tracers="none"]
@@ -2721,6 +2853,12 @@ case "$with_tracers" in
    ;;
    EAGLE)
       AC_DEFINE([TRACERS_EAGLE], [1], [Tracers taken from the EAGLE model])
+   ;;
+   FLAMINGO)
+      AC_DEFINE([TRACERS_FLAMINGO], [1], [Tracers taken from the FLAMINGO model])
+   ;;
+   GEAR)
+      AC_DEFINE([TRACERS_GEAR], [1], [Tracers taken from the GEAR model])
    ;;
    *)
       AC_MSG_ERROR([Unknown tracers choice: $with_tracers])
@@ -2887,6 +3025,9 @@ case "$with_black_holes" in
       AC_DEFINE([BLACK_HOLES_SPIN_JET], [1], [Spin and jet black hole model])
       with_black_holes="SPIN_JETS (Husko+22)"
    ;;
+   GEAR)
+      AC_DEFINE([BLACK_HOLES_GEAR], [1], [GEAR black hole model])
+   ;;
    *)
       AC_MSG_ERROR([Unknown black-hole model: $with_black_holes])
    ;;
@@ -2963,7 +3104,7 @@ esac
 #  External potential
 AC_ARG_WITH([ext-potential],
    [AS_HELP_STRING([--with-ext-potential=<pot>],
-      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, default: none@:>@]
+      [external potential @<:@none, point-mass, point-mass-softened, isothermal, nfw, nfw-mn, hernquist, hernquist-sdmh05, disc-patch, sine-wave, MWPotential2014, constant, agama, default: none@:>@]
    )],
    [with_potential="$withval"],
    [with_potential="none"]
@@ -3001,6 +3142,9 @@ case "$with_potential" in
    ;;
    MWPotential2014)
       AC_DEFINE([EXTERNAL_POTENTIAL_MWPotential2014], [1], [Milky-Way like potential composed of a Navarro-Frenk-White + Miyamoto-Nagai disk + Power spherical cuttoff external potential.])
+   ;;
+   agama)
+      AC_DEFINE([EXTERNAL_POTENTIAL_AGAMA], [1], [Potential generated from the AGAMA library (https://agama.software/).])
    ;;
    constant)
       AC_DEFINE([EXTERNAL_POTENTIAL_CONSTANT], [1], [Constant gravitational acceleration.])
@@ -3379,7 +3523,9 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
+AC_CONFIG_FILES([tests/testCustomMPI.sh], [chmod +x tests/testCustomMPI.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
+AC_CONFIG_FILES([tests/selectOutputParameters.yml])
 
 # Save the compilation options
 AC_DEFINE_UNQUOTED([SWIFT_CONFIG_FLAGS],["$swift_config_flags"],[Flags passed to configure])
@@ -3420,6 +3566,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   AGAMA enabled        : $have_agama
    Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator
    CPU profiler         : $have_profiler

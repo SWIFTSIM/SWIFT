@@ -46,7 +46,7 @@ plot_time = False
 
 
 # -----------------------------------------------------------------------
-energy_units = unyt.Msun * unyt.kpc ** 2 / unyt.kyr ** 2
+energy_units = unyt.Msun * unyt.kpc**2 / unyt.kyr**2
 mass_units = unyt.Msun
 length_units = unyt.kpc
 
@@ -202,8 +202,8 @@ def get_snapshot_data(snaplist):
 
     # Units derived from base
     velocity_units = length_units / time_units
-    energy_units = mass_units * velocity_units ** 2
-    density_units = mass_units / length_units ** 3
+    energy_units = mass_units * velocity_units**2
+    density_units = mass_units / length_units**3
 
     scale_factors = np.zeros(nsnaps)
     times = np.zeros(nsnaps) * unyt.Myr
@@ -294,8 +294,8 @@ def get_reference_data(reference_file="CosmoRTCoolingTestReference.txt"):
     velocity_units = float(velocity_units_line[22:-7]) * unyt.cm / unyt.s
 
     # Derived units
-    energy_units = mass_units * velocity_units ** 2
-    density_units = mass_units / length_units ** 3
+    energy_units = mass_units * velocity_units**2
+    density_units = mass_units / length_units**3
 
     # Read in data
     refdata = np.loadtxt(reference_file, dtype=np.float64)

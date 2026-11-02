@@ -41,7 +41,7 @@ uL = 1.0e3 * pc
 uM = 1.99e30
 uv = 1.0e10
 ut = uL / uv
-uU = uv ** 2
+uU = uv**2
 print("ut:", ut / 3.154e7, "yr")
 
 # ---------------------------------------------------
@@ -77,7 +77,7 @@ numPart = size(h)
 print(h, h.min(), h.max())
 
 numPart = size(h)
-vol = L ** 3
+vol = L**3
 
 # Generate extra arrays
 v = zeros((numPart, 3))

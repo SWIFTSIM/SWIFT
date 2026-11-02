@@ -16,9 +16,10 @@ TimeIntegration:
 # Parameters governing the snapshots
 Snapshots:
   subdir: snap
-  basename:   snapshot      # Common part of the name of output files
-  time_first: 0.0           # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
-  delta_time: 1e-3          # Time difference between consecutive outputs (in internal units)
+  basename:   snapshot                     # Common part of the name of output files
+  time_first: 0.0                          # (Optional) Time of the first output if non-cosmological time-integration (in internal units)
+  delta_time: 1e-3                         # Time difference between consecutive outputs (in internal units)
+  recording_triggers_sink:   [-1, -1, -1]  # Not recording for this test
 
 Scheduler:
   cell_extra_gparts: 10      # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
@@ -50,7 +51,7 @@ GEARFeedback:
   supernovae_Ia_energy_erg: 1e51                  # supernovae energy, used only for SNIa
   supernovae_efficiency: 0.0                   # supernovae energy efficiency, used for both SNIa and SNII
   with_stellar_wind_feedback: 1                 # Activate the stellar wind feedback
-  pre_supernovae_efficiency: 1                 # the pre supernovae efficiency, used for stellar wind
+  stellar_winds_efficiency: 1                 # the pre supernovae efficiency, used for stellar wind
   yields_table: ../POPII.hdf5
   yields_table_first_stars: ../POPIII_PISNe.hdf5
   discrete_yields: 1

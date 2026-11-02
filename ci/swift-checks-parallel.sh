@@ -84,6 +84,12 @@ do_make
 do_make check VERBOSE=1
 do_make clean
 
+echo "MAGMA"
+do_configure --with-parmetis --disable-vec --disable-optimization --with-hydro=magma2
+do_make
+do_make check
+do_make clean
+
 echo "PRESSURE-ENERGY"
 ./configure --with-parmetis --disable-vec --disable-optimization --with-hydro=pressure-energy
 do_make
@@ -132,6 +138,11 @@ do_make clean
 
 echo "EAGLE"
 do_configure --with-parmetis --disable-vec --disable-optimization --with-cooling=EAGLE --with-chemistry=EAGLE
+do_make
+do_make clean
+
+echo "TREECOOL"
+do_configure --with-parmetis --disable-vec --disable-optimization --with-cooling=TREECOOL
 do_make
 do_make clean
 

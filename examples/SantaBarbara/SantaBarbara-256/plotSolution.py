@@ -47,7 +47,7 @@ def get_energies(handle: h5py.File):
     unit_mass_in_si = 0.001 * unit_mass_in_cgs
     unit_time_in_si = unit_time_in_cgs
 
-    u *= unit_length_in_si ** 2 / unit_time_in_si ** 2
+    u *= unit_length_in_si**2 / unit_time_in_si**2
     u /= a ** (3 * (gas_gamma - 1.0))
 
     return u
@@ -142,7 +142,7 @@ def get_radial_density_profile(radii, masses, bins: int) -> Tuple[np.ndarray]:
 
     volumes = np.array(
         [
-            (4.0 * np.pi / 3.0) * (r_outer ** 3 - r_inner ** 3)
+            (4.0 * np.pi / 3.0) * (r_outer**3 - r_inner**3)
             for r_outer, r_inner in zip(bin_edges[1:], bin_edges[:-1])
         ]
     )
@@ -218,7 +218,7 @@ def get_radial_entropy_profile(data: SimulationParticleData, bins: int) -> np.nd
     gamma_minus_one = gas_gamma - 1.0
 
     entropies = (
-        data.gas.energies * (gamma_minus_one) / data.gas.densities ** gamma_minus_one
+        data.gas.energies * (gamma_minus_one) / data.gas.densities**gamma_minus_one
     )
     print("Warning: Current entropy profile assumes all gas is ionised")
     radii = data.gas.radii
@@ -238,7 +238,7 @@ def nfw(R, halo_data: HaloData):
     """
 
     R_s = halo_data.Rvir / halo_data.c
-    rho_0 = (4 * np.pi * R_s ** 3) / (halo_data.Mvir)
+    rho_0 = (4 * np.pi * R_s**3) / (halo_data.Mvir)
     rho_0 *= np.log(1 + halo_data.c) - halo_data.c / (halo_data.c + 1)
     rho_0 = 1.0 / rho_0
 

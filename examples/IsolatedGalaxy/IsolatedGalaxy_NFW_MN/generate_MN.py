@@ -33,22 +33,19 @@ def mcum(r, c):
 
 def MN_Vcirc(R, z, Rd=4.0, Md=3e10, Zd=0.4):
     return np.sqrt(
-        G
-        * Md
-        * R ** 2
-        / (R ** 2 + (Rd + np.sqrt(z ** 2 + Zd ** 2)) ** 2) ** (3.0 / 2.0)
+        G * Md * R**2 / (R**2 + (Rd + np.sqrt(z**2 + Zd**2)) ** 2) ** (3.0 / 2.0)
     )
 
 
 def get_vcirc_expo(R, Mgas=3e10, Rd=4.0):
-    sigma0 = Mgas / (2.0 * np.pi * Rd ** 2)
+    sigma0 = Mgas / (2.0 * np.pi * Rd**2)
     sigma = sigma0 * np.exp(-R / Rd)
     y = R / (2.0 * Rd)
     I0 = special.i0(y)
     K0 = special.k0(y)
     I1 = special.i1(y)
     K1 = special.k1(y)
-    return np.sqrt(4.0 * np.pi * G * sigma0 * Rd * y ** 2 * (I0 * K0 - I1 * K1))
+    return np.sqrt(4.0 * np.pi * G * sigma0 * Rd * y**2 * (I0 * K0 - I1 * K1))
 
 
 def dP1(x):
@@ -60,7 +57,7 @@ def dP2(x):
 
 
 hlittle = 0.704
-rhoc = 2.775e2 * hlittle ** 2
+rhoc = 2.775e2 * hlittle**2
 
 # halo mass and concentration
 # -------------------
@@ -112,7 +109,7 @@ while len(x) <= npart:
     y1 = ymin + (ymax1 - ymin) * np.random.rand(n)
     y2 = ymin + (ymax2 - ymin) * np.random.rand(n)
 
-    k, = np.where((y1 <= dP1(r0)) & (y2 <= dP2(z0)))
+    (k,) = np.where((y1 <= dP1(r0)) & (y2 <= dP2(z0)))
 
     phi0 = 2 * np.pi * np.random.rand(len(k))
     phi.extend(phi0)
@@ -126,7 +123,7 @@ y = np.asarray(y)[:npart]
 z = np.asarray(z)[:npart]
 phi = np.asarray(phi)[:npart]
 
-r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
+r = np.sqrt(x**2 + y**2 + z**2)
 
 # Set positions
 pgas = np.ones([npart, 3])
@@ -147,7 +144,7 @@ vcirc_gas = get_vcirc_expo(
 )  # Approximate the velocity of the disk (better than spherical)
 vcirc_dm = np.sqrt(G * mcum(Rgas / r200, c) * m200 / (Rgas))
 vcirc_MN = MN_Vcirc(Rgas, pgas[:, 2], Md=MN_Md, Rd=MN_Rd, Zd=MN_Zd)
-vcirc_tot = np.sqrt(vcirc_dm ** 2 + vcirc_gas ** 2 + vcirc_MN ** 2)
+vcirc_tot = np.sqrt(vcirc_dm**2 + vcirc_gas**2 + vcirc_MN**2)
 
 vgas[:, 0] = vcirc_tot * np.sin(phi)
 vgas[:, 1] = -vcirc_tot * np.cos(phi)

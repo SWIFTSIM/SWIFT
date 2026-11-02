@@ -39,15 +39,15 @@ ax.set_yscale("log")
 # theoretical imf
 s = -1.3
 bins = 10 ** np.linspace(np.log10(mmin), np.log10(mmax), 100)
-n = 0.9 * 10000 * bins ** s
+n = 0.9 * 10000 * bins**s
 ax.plot(bins, n, "k--")
 
 bins = 10 ** np.linspace(np.log10(mmin), np.log10(8), 100)
-n = 0.9 * 10000 * bins ** s
+n = 0.9 * 10000 * bins**s
 ax.fill_between(bins, 0.1, n, color="red", alpha=0.1)
 
 bins = 10 ** np.linspace(np.log10(8), np.log10(mmax), 100)
-n = 0.9 * 10000 * bins ** s
+n = 0.9 * 10000 * bins**s
 ax.fill_between(bins, 0.1, n, color="blue", alpha=0.1)
 
 ax.text(2, 1e2, r"$M_{\rm c}$", horizontalalignment="center")

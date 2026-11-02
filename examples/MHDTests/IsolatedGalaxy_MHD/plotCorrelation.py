@@ -46,7 +46,7 @@ y = data.gas.coordinates[:, 1].to_physical()
 z = data.gas.coordinates[:, 2].to_physical()
 
 rho = data.gas.densities
-nH = rho.to(unyt.g / unyt.cm ** 3) / (1.67e-24 * unyt.g)
+nH = rho.to(unyt.g / unyt.cm**3) / (1.67e-24 * unyt.g)
 h = data.gas.smoothing_lengths
 v = data.gas.velocities
 P = data.gas.pressures
@@ -247,7 +247,7 @@ def plot_histogram_density_plot(quantity_x, quantity_y, qname_x, qname_y, Nbins=
 
 
 if to_plot == "correlation_hist":
-    q_x = nH.to(1 / unyt.cm ** 3)
+    q_x = nH.to(1 / unyt.cm**3)
     q_y = T.to(
         unyt.K
     )  # normB.to(1e-7*unyt.g / (unyt.statA * unyt.s * unyt.s)) #T.to(unyt.K)
