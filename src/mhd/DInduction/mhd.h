@@ -33,7 +33,7 @@ __attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_fiel
     const struct part *p, struct xpart *xp, const struct cosmology *cosmo, 
     const float B[3]) {
 
-  const float a_fact = pow(cosmo->a, -1.f * mhd_comoving_factor);
+  const float a_fact = 1.f / cosmo->a_factor_magnetic_field;
 
   xp->mhd_data.Bfld_full[0] = a_fact * B[0];
   xp->mhd_data.Bfld_full[1] = a_fact * B[1];
@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_fiel
     const struct part *p, const struct xpart *xp, const struct cosmology *cosmo, 
     float B[3]) {
 
-  const float a_fact = pow(cosmo->a, mhd_comoving_factor);
+  const float a_fact = cosmo->a_factor_magnetic_field;
 
   B[0] = a_fact * xp->mhd_data.Bfld_full[0];
   B[1] = a_fact * xp->mhd_data.Bfld_full[1];
@@ -120,7 +120,7 @@ __attribute__((always_inline)) INLINE static void
     const struct part *p, const struct cosmology *cosmo,
     float B[3]) {
 
-  const float a_fact = pow(cosmo->a, mhd_comoving_factor);
+  const float a_fact = cosmo->a_factor_magnetic_field;
 
   B[0] = a_fact * p->mhd_data.BPred[0];
   B[1] = a_fact * p->mhd_data.BPred[1];

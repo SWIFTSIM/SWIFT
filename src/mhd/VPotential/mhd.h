@@ -116,7 +116,7 @@ __attribute__((always_inline)) INLINE static void
     const struct part *p, const struct cosmology *cosmo,
     float B[3]) {
 
-  const float a_fact = pow(cosmo->a, mhd_comoving_factor);
+  const float a_fact = cosmo->a_factor_magnetic_field;
 
   B[0] = a_fact * p->mhd_data.BPred[0];
   B[1] = a_fact * p->mhd_data.BPred[1];

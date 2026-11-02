@@ -35,7 +35,7 @@ __attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_fiel
     const float B[3]) {
 
   const float rho_inv = 1.f / hydro_get_comoving_density(p);
-  const float a_fact = pow(cosmo->a, 3.f * hydro_gamma / 2.f);
+  const float a_fact = 1.f / cosmo->a_factor_magnetic_field;
 
   xp->mhd_data.B_over_rho_full[0] = rho_inv * a_fact * B[0];
   xp->mhd_data.B_over_rho_full[1] = rho_inv * a_fact * B[1];
@@ -73,7 +73,7 @@ __attribute__((always_inline)) INLINE static void mhd_get_physical_magnetic_fiel
     float B[3]) {
 
   const float rho =  hydro_get_comoving_density(p);
-  const float a_fact = pow(cosmo->a, -3.f * hydro_gamma / 2.f);
+  const float a_fact = cosmo->a_factor_magnetic_field;
 
   B[0] = a_fact * xp->mhd_data.B_over_rho_full[0] * rho;
   B[1] = a_fact * xp->mhd_data.B_over_rho_full[1] * rho;
@@ -130,7 +130,7 @@ __attribute__((always_inline)) INLINE static void
     float B[3]) {
 
   const float rho =  hydro_get_comoving_density(p);
-  const float a_fact = pow(cosmo->a, -3.f * hydro_gamma / 2.f);
+  const float a_fact = cosmo->a_factor_magnetic_field;
 
   B[0] = a_fact * p->mhd_data.B_over_rho[0] * rho;
   B[1] = a_fact * p->mhd_data.B_over_rho[1] * rho;
