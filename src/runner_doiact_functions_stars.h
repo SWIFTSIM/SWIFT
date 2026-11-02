@@ -1396,9 +1396,9 @@ void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   const struct engine *restrict e = r->e;
 
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS_STARS)
-  const int alway_naive = 1;
+  const int always_naive = 1;
 #else
-  const int alway_naive = 0;
+  const int always_naive = 0;
 #endif
 
   /* Get the sort ID. */
