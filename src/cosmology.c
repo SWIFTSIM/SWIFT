@@ -36,6 +36,7 @@
 #include "memuse.h"
 #include "minmax.h"
 #include "restart.h"
+#include "hydro_parameters.h"
 
 #ifdef HAVE_LIBGSL
 #include <gsl/gsl_integration.h>
@@ -247,6 +248,8 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
       pow(a, 0.5 * (3. * hydro_gamma - 5.)); /* a^{(3*gamma - 5) / 2} */
   c->a_factor_Balsara_eps =
       pow(a, 0.5 * (1. - 3. * hydro_gamma)); /* a^{(1 - 3*gamma) / 2} */
+  c->a_factor_magnetic_field = 
+      pow(a, mhd_comoving_factor);
 
   /* Redshift */
   c->z = a_inv - 1.;
