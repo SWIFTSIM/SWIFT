@@ -147,7 +147,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float du_lin = pi->gradient_u_prev[0] * dx[0] +
                        pi->gradient_u_prev[1] * dx[1] +
                        pi->gradient_u_prev[2] * dx[2];
-  pi->laplace_u += pj->mass * (pi->u - pj->u - du_lin) * w_dx / (r * pj->rho);
+  const float r_inv = r ? 1.0f / r : 0.0f;
+  pi->laplace_u += pj->mass * (pi->u - pj->u - du_lin) * w_dx * r_inv / pj->rho;
 
   /* Get the mass and density. */
   const float mj = pj->mass;

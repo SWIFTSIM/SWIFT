@@ -410,11 +410,14 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   const float dv = dv_phys / cosmo->a_factor_sound_speed;
 
   /* Raise the signal velocity of the Courant condition by beta * dv, as the
-   * other schemes do. Here v_sig = 2 (c + 0.6 alpha (c + 2 mu_tilde)), so the
-   * kick enters as an additional approach velocity beta dv / (2.4 alpha) on
-   * top of the one collected in the force loop. */
-  p->force.mu_tilde +=
-      const_viscosity_beta * dv / (2.4f * const_viscosity_alpha);
+   * other schemes do. Here v_sig = 2 (c + 0.6 alpha (c + 2 mu_tilde)) with
+   * c the maximal sound speed c_sig (hydro_compute_timestep()), so the kick
+   * enters as a raise of c_sig by beta dv / (2 (1 + 0.6 alpha)), with the
+   * alpha the time step uses. (Through mu_tilde the raise would scale with
+   * alpha, and vanish with the viscosity.) */
+  const float alpha =
+      const_viscosity_switch ? p->alpha_visc : const_viscosity_alpha;
+  p->force.c_sig += const_viscosity_beta * dv / (2.f * (1.f + 0.6f * alpha));
 }
 
 /**
@@ -529,16 +532,17 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
  * @brief Returns the velocity divergence of the particle.
  *
  * The trace of the (matrix-inversion) gradient of the peculiar velocity, in
- * comoving coordinates and without the Hubble-flow term. Zero for particles
- * that fell back to standard SPH gradients (their gradient is not computed).
+ * comoving coordinates and without the Hubble-flow term, as recorded by the
+ * last hydro_prepare_force() (the persistent copy, valid in every phase of
+ * the step; the force union is not). Zero for particles that fell back to
+ * standard SPH gradients (their gradient is not computed).
  *
  * @param p The particle.
  */
 __attribute__((always_inline)) INLINE static float hydro_get_div_v(
     const struct part *p) {
 
-  return p->force.gradient_vx[0] + p->force.gradient_vy[1] +
-         p->force.gradient_vz[2];
+  return p->div_v;
 }
 
 /**
@@ -914,7 +918,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const float A = div_v_phys < 0.f
                         ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
                         : 0.f;
-    const float alpha_loc = const_viscosity_alpha * A / (A + c_phys * c_phys);
+    const float A_plus_c2 = A + c_phys * c_phys;
+    const float alpha_loc =
+        A_plus_c2 > 0.f ? const_viscosity_alpha * A / A_plus_c2 : 0.f;
     float alpha = p->alpha_visc;
     if (alpha_loc > alpha) {
       alpha = alpha_loc;
@@ -956,11 +962,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   alpha = fmaxf(alpha, hydro_props->diffusion.alpha_min);
   const float visc_range =
       const_viscosity_alpha - hydro_props->viscosity.alpha_min;
+  /* With the floor at alpha_max the coefficient carries no shock
+   * information: no cap. */
   const float visc_frac =
       visc_range > 0.f
           ? (p->alpha_visc_max_ngb - hydro_props->viscosity.alpha_min) /
                 visc_range
-          : 1.f;
+          : 0.f;
   alpha = fminf(alpha, 1.f - fminf(1.f, fmaxf(0.f, visc_frac)));
   p->alpha_diff = fminf(1.f, alpha);
 
