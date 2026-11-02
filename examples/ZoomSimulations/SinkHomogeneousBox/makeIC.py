@@ -64,34 +64,32 @@ def parse_options():
         dest="level",
         type=int,
         default=5,
-        help="levelmax: the gas box holds 2^level gas particles per dimension",
+        help="levelmax: 2^level gas particles per dimension in the gas box",
     )
     parser.add_argument(
         "--levelmin",
         type=int,
         default=None,
-        help="Coarsest level of the background; level l has the spacing "
-        "L / 2^l, L the gas box side (default: level - 3; may be 0 or negative)",
+        help="Coarsest background level, spacing L / 2^levelmin (default level - 3)",
     )
     parser.add_argument(
         "--padding",
         type=int,
         default=8,
-        help="Cells of each coarser level around the next finer level (MUSIC)",
+        help="Cells of each level around the next finer one (MUSIC padding)",
     )
     box = parser.add_mutually_exclusive_group()
     box.add_argument(
         "--box-size",
         type=float,
         default=None,
-        help="Side of the periodic box: physical kpc, or comoving Mpc with "
-        "--cosmological (rounded to the background lattice)",
+        help="Box side in kpc, or in comoving Mpc with --cosmological",
     )
     box.add_argument(
         "--embed",
         type=float,
         default=None,
-        help="Side of the periodic box in gas box units (default 8)",
+        help="Box side in gas box units (default 8)",
     )
     parser.add_argument(
         "--lJ", type=float, default=0.25, help="Jeans wavelength in gas box units"
@@ -118,7 +116,7 @@ def parse_options():
         "--transition-width",
         type=float,
         default=0.25,
-        help="Width of the tanh density profile in gas box units",
+        help="Width of the tanh profile in gas box units",
     )
     parser.add_argument(
         "--h-max", type=float, default=0.08, help="SPH:h_max in physical kpc"
@@ -139,7 +137,7 @@ def parse_options():
         "--max-zoom-cdim",
         type=int,
         default=32,
-        help="Cap on the number of zoom top-level cells per axis",
+        help="Cap on the zoom top-level cells per axis",
     )
     parser.add_argument(
         "--max-mesh",
@@ -151,7 +149,7 @@ def parse_options():
         "--max-background-particles",
         type=float,
         default=1e8,
-        help="Stop if the background needs more PartType2 particles",
+        help="Cap on the number of PartType2 particles",
     )
     parser.add_argument(
         "--softening-ratio-background",
@@ -183,20 +181,19 @@ def parse_options():
         "--softening",
         type=float,
         default=0.005,
-        help="Physical softening of gas and PartType1 in kpc (with --cosmological)",
+        help="Physical gas and PartType1 softening in kpc (with --cosmological)",
     )
     parser.add_argument(
         "--velocity-fraction",
         type=float,
         default=0.1,
-        help="Random velocity dispersion per component in units of the gas "
-        "sound speed (with --cosmological only)",
+        help="Velocity dispersion in units of the sound speed (with --cosmological)",
     )
     parser.add_argument("--seed", type=int, default=1, help="Random seed")
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print the layout and the zoom grid, write no file",
+        help="Print the layout and the zoom grid only",
     )
     parser.add_argument(
         "-o", dest="output", default="ICs_zoom_homogeneous_box.hdf5", help="IC file"
@@ -204,7 +201,7 @@ def parse_options():
     parser.add_argument(
         "--zoom-params-file",
         default="zoom_runtime_params.txt",
-        help="File for the runtime parameters passed with -P by run.sh",
+        help="Runtime parameters for swift -P",
     )
     opt = parser.parse_args()
 
