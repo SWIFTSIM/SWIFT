@@ -272,25 +272,28 @@ within a few $1/\kappa_b$ of where it enters, and the field behind falls as
 $e^{-\tau_b}$ along each ray. A dense cloud casts a sharp shadow
 (Fig.~\ref{fig:isrf-thin}b).
 
-\paragraph{Both limits in a run.} Figure~\ref{fig:isrf-thin} shows a run of
-the scheme. The box is static, $10$\,pc wide and not periodic. It holds
-uniform gas of $n_{\rm H}\approx720$\,cm$^{-3}$ and metallicity
-$Z=2\times10^{-4}$ in $262\,144$ particles, so $\tau_{\rm PE}=0.03$ per pc. The
-run uses 12 slots and the default limit speed. Panel (a) plots
-$c\rho\tilde u_{\rm PE}$, the median in shells around the star. Inside the
-front it is 0.90 to 0.95 times $L_{\rm PE}e^{-\kappa r}/(4\pi r^2)$. The front
-moves by one hop per step: it reaches about $2.5$\,pc at $0.15$\,Myr and
-$5$\,pc at $0.29$\,Myr, while light crosses $90$\,pc in that time. Panel (b)
-adds a clump of radius $1$\,pc on the line of sight, at the same density and
-$165$ times the metallicity, so that $\tau_{\rm PE}=10$ through its centre. The
-ratio of the fields with and without the clump, the median in a thin cylinder
-around the axis, follows $e^{-\kappa_{\rm c}\ell}$ over four decades, with
-$\kappa_{\rm c}$ the absorption rate of the clump and $\ell$ the depth into it.
-
 \paragraph{Time dependence.} A front of light moves at $c$. The light crosses
 $100$\,pc in $330$\,yr, which is short against the dynamical times of the
 gas. For the gas the field is close to its steady state, and the time
 derivative matters only during the transient after a star is born or dies.
+
+\paragraph{Both limits in a run.} Figure~\ref{fig:isrf-thin} shows a run of
+the scheme of Section~\ref{sec:isrf-idea}, with its default 12 reception slots
+per particle and a limit speed of $0.99\,c$. The box is static, $10$\,pc wide
+and not periodic. It holds uniform gas of $n_{\rm H}\approx720$\,cm$^{-3}$ and
+metallicity $Z=2\times10^{-4}$ in $262\,144$ particles, so
+$\tau_{\rm PE}=0.03$ per pc. Panel (a) plots $c\rho\tilde u_{\rm PE}$, the
+median in shells around the star. Inside the front it is 0.90 to 0.95 times
+$L_{\rm PE}e^{-\kappa r}/(4\pi r^2)$. The scheme hands the light from a gas
+particle to its neighbours once per step, so the front advances by about one
+smoothing length per step (Section~\ref{sec:isrf-rte-scope}). It reaches about
+$2.5$\,pc at $0.15$\,Myr and $5$\,pc at $0.29$\,Myr, while light crosses
+$90$\,pc in that time. Panel (b) adds a clump of radius $1$\,pc on the line of
+sight, at the same density and $165$ times the metallicity, so that
+$\tau_{\rm PE}=10$ through its centre. The ratio of the fields with and
+without the clump, the median in a thin cylinder around the axis, follows
+$e^{-\kappa_{\rm c}\ell}$ over four decades, with $\kappa_{\rm c}$ the
+absorption rate of the clump and $\ell$ the depth into it.
 
 \begin{figure}[htbp]
 \centering
@@ -1173,8 +1176,8 @@ A sender that moves towards the receiver between its stamp and its booking, or
 a receiver that speeds up after it, can make the front move at up to $v+u$ in
 the frame of the box. This is harmless for $v$ near $c$, and not for a limit
 of a few km\,s$^{-1}$ in moving gas. A receiver that recedes faster than
-$0.99\,v$ gets its light early; these deliveries are counted and printed once
-per step.
+$0.99\,v$ gets its light early. A build with the ISRF debugging checks counts
+these deliveries and prints the count once per step.
 
 \subsubsection{The reach of a hop}
 \label{sec:isrf-reach}
@@ -1233,10 +1236,12 @@ lost with it, and is booked as removed energy $D$ in the ledger of the star or
 the sink. The absorbed, the redshift and the escaped ledgers of the gas are
 carried over in the same ledger as inherited amounts $I_{\rm inh}$. When a sink
 swallows another, the survivor adds the ledger of the swallowed sink to its
-own. With $E_{\rm fl}$ the light in flight, the amounts of one band balance as
+own. Gas that leaves a non-periodic box is booked in the same way, into one
+ledger of the gas that left the box, summed over the ranks and written with
+each snapshot. With $E_{\rm fl}$ the light in flight, the amounts of one band balance as
 \begin{equation}
   \sum_\star E_{\rm em} =
-  \sum_{\rm gas}\big(A+X+Y+E_{\rm fl}\big) + \sum_{\star,\,{\rm sinks}}\big(X_\star + D + I_{\rm inh}\big),
+  \sum_{\rm gas}\big(A+X+Y+E_{\rm fl}\big) + \sum_{\star,\,{\rm sinks},\,{\rm left}}\big(X_\star + D + I_{\rm inh}\big),
   \label{eq:packet-balance}
 \end{equation}
 and likewise for the photon number. In each band, $Y$ is booked net of the gain
@@ -1248,10 +1253,9 @@ destroying it. The hop shares sum to one (Eq.~\eqref{eq:packet-share}); the
 merge adds; the redshift moves the lost part to $Y$; the absorption moves the
 absorbed part to $A$. The cone fractions of a star sum to one only if its
 density loop and its feedback loop see the same receivers and the same
-$h_\star$. The balance holds up to the rounding of float arithmetic in a
-periodic box, or while no gas particle leaves the box. Gas that leaves a
-non-periodic box is removed with its light in flight and its ledgers, and
-nothing books them. The test beams, which add light without a star, are in no
+$h_\star$. The balance holds up to the rounding of float arithmetic. The
+term ``left'' of Eq.~\eqref{eq:packet-balance} is the ledger of the gas that
+left a non-periodic box ($X_\star=0$ there). The test beams, which add light without a star, are in no
 ledger and are not part of Eq.~\eqref{eq:packet-balance}.
 
 \subsubsection{Rounding}
@@ -1348,11 +1352,11 @@ transport needs the HEALPix C library (\code{--with-chealpix}).
 
 \paragraph{Coupling to Grackle (Sec.~\ref{sec:isrf-problem}).} $G_0$,
 Eq.~\eqref{eq:isrf-G0}, is \code{radiation\_get\_part\_isrf\_habing}
-(\code{src/feedback/GEAR/radiation\_gas.c:768-791}), and $k_{\rm diss}$,
+(\code{src/feedback/GEAR/radiation\_gas.c:768-787}), and $k_{\rm diss}$,
 Eq.~\eqref{eq:isrf-kdiss}, is
-\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:805-825). Each
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:805-826). Each
 band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
-(:741-750). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
+(:741-751). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
 \code{RADIATION\_HABING\_FLUX\_CGS} and
 \code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}
 (\code{src/feedback/GEAR/radiation.h:81}, :88). Grackle reads the two rates
@@ -1559,7 +1563,7 @@ and the fraction are parsed at
 \code{radiation\_packet\_arrival\_delay} and
 \code{radiation\_packet\_arrival\_delay\_receding}
 (\code{radiation\_packet.c:223-260}), set up by
-\code{radiation\_packet\_set\_light\_speed} (:197-206). The arrival time of a
+\code{radiation\_packet\_set\_light\_speed} (:197-205). The arrival time of a
 hop is formed in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:629-650}). The near bins and far cells are
 \code{radiation\_packet\_deposit} (\code{radiation\_packet.c:1598}),
@@ -1617,11 +1621,19 @@ the inherited sum with the redshift ledger at :895-900). It is reached from
 \code{feedback\_book\_removed\_gas\_to\_spart},
 \code{feedback\_book\_removed\_gas\_to\_sink} and
 \code{feedback\_book\_sink\_merger}
-(\code{src/feedback/GEAR/feedback\_common.c:1453-1478}). The escape of a slot
+(\code{src/feedback/GEAR/feedback\_common.c:1453-1478}). Gas that leaves a
+non-periodic box is booked by \code{radiation\_packet\_book\_gas\_left\_box}
+(\code{radiation\_packet.c:861-863}) through
+\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1486-1488},
+called at \code{src/cell\_drift.c:337}). The sum over the ranks is
+\code{radiation\_packet\_reduce\_left\_box} (\code{radiation\_packet.c:871-880}),
+and \code{feedback\_write\_flavour}
+(\code{src/feedback/GEAR\_thermal/feedback.h:93-117}) writes it as the snapshot
+attributes \code{PacketLeftBox*}. The escape of a slot
 with no downstream neighbour is at \code{radiation\_packet.c:2132-2139}.
 
 \paragraph{Rounding (Sec.~\ref{sec:isrf-rounding}).} Stochastic rounding is
-\code{radiation\_packet\_add\_stochastic} (\code{radiation\_packet.h:238-258}),
+\code{radiation\_packet\_add\_stochastic} (\code{radiation\_packet.h:238-257}),
 with the salt of a share from \code{radiation\_packet\_share\_salt} (:289). It
 is used for the weight sum (:374) and for the inbox and the reservoir
 (:549-563).

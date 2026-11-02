@@ -36,8 +36,7 @@ def load(path: str) -> dict:
             t=float(np.ravel(f["Header"].attrs["Time"])[0]) * T / 3.156e13,
             x=g["Coordinates"][:].astype(np.float64) * L,
             rho=g["Densities"][:].astype(np.float64) * M / L**3,
-            u=g["PacketKernelMeanSpecificEnergies"][:, 0].astype(np.float64)
-            * (L / T) ** 2,
+            u=g["PESpecificEnergies"][:].astype(np.float64) * (L / T) ** 2,
             Z=g["SmoothedMetalMassFractions"][:, -1],
             star=s["Coordinates"][0].astype(np.float64) * L,
             L_pe=float(s["PELuminosities"][0]) * M * L**2 / T**3,
