@@ -202,6 +202,7 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   mesh->enabled = 1;
   mesh->distributed_mesh = props->distributed_mesh;
   mesh->use_local_patches = props->mesh_uses_local_patches;
+  mesh->buffer_cells = buffer_cells;
   mesh->r_s = zoom_r_s;
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
@@ -246,6 +247,51 @@ void zoom_mesh_clean(struct zoom_pm_mesh *mesh) {
   /* Release any allocated FFT storage and reset to a no-mesh state. */
   zoom_mesh_free(mesh);
   zoom_mesh_init_no_mesh(mesh);
+}
+
+/**
+ * @brief Rebuild the zoom mesh after rebuilding the zoom top-level cells.
+ *
+ * The Fourier kernel depends on the mesh spacing, so invalidate it along with
+ * the old potential before updating the mesh position and smoothing scale.
+ *
+ * @param mesh The #zoom_pm_mesh to rebuild.
+ * @param s The #space containing the new zoom region geometry.
+ */
+void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s) {
+
+  if (mesh == NULL || !mesh->enabled) return;
+
+  const struct zoom_region_properties *z = s->zoom_props;
+  const struct gravity_props *props = s->e->gravity_properties;
+  double dim[3], loc[3];
+  for (int i = 0; i < 3; ++i) {
+    const double buffer = mesh->buffer_cells * z->bkg_cells_top[0].width[i];
+    dim[i] = z->dim[i] + 2. * buffer;
+    loc[i] = z->region_lower_bounds[i] - buffer;
+  }
+  if (dim[0] != dim[1] || dim[0] != dim[2])
+    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
+
+  const double r_s = props->a_smooth * dim[0] / mesh->N[0];
+  if (r_s >= props->r_s)
+    error("Regridded zoom mesh must remain higher resolution than the "
+          "background mesh.");
+
+  /* Keep the configured cutoffs in units of the smoothing length. */
+  const double cut_max_ratio = mesh->r_cut_max / mesh->r_s;
+  const double cut_min_ratio = mesh->r_cut_min / mesh->r_s;
+  zoom_mesh_free(mesh);
+  for (int i = 0; i < 3; ++i) {
+    mesh->loc[i] = loc[i];
+    mesh->dim[i] = dim[i];
+    mesh->cell_fac[i] = mesh->N[i] / dim[i];
+  }
+  mesh->r_s = r_s;
+  mesh->r_s_inv = 1. / r_s;
+  mesh->r_cut_max = r_s * cut_max_ratio;
+  mesh->r_cut_min = r_s * cut_min_ratio;
+  zoom_mesh_allocate(mesh);
 }
 
 /**

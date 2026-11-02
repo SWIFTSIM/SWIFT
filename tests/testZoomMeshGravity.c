@@ -429,6 +429,33 @@ int main(int argc, char *argv[]) {
     error("Zoom mesh did not apply the linear neutrino response");
   neutrino_props.use_linear_response = 0;
 
+  /* A zoom regrid changes the mesh origin and spacing and invalidates the
+   * cached Fourier kernel before the next force calculation. */
+  struct cell bkg_cell = {0};
+  for (int axis = 0; axis < 3; ++axis) {
+    bkg_cell.width[axis] = 10.;
+    zoom_props.dim[axis] = 12.;
+    zoom_props.region_lower_bounds[axis] = 21.;
+  }
+  zoom_props.bkg_cells_top = &bkg_cell;
+  props.a_smooth = zoom_mesh.r_s * zoom_mesh.cell_fac[0];
+  props.r_s = mesh.r_s;
+  zoom_mesh.buffer_cells = 1;
+  if (zoom_mesh.kernel_fft == NULL)
+    error("Zoom mesh kernel should have been cached before regrid");
+  zoom_mesh_regrid(&zoom_mesh, &s);
+  if (zoom_mesh.loc[0] != 11. || zoom_mesh.dim[0] != 32. ||
+      fabs(zoom_mesh.r_s - props.a_smooth * 2.) > 1e-12 ||
+      zoom_mesh.kernel_fft != NULL)
+    error("Zoom mesh regrid did not update geometry and discard cached kernel");
+  for (int axis = 0; axis < 3; ++axis)
+    mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
+  zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
+  if (zoom_mesh.kernel_fft == NULL ||
+      !isfinite(mesh_cells[1].grav.parts[0].a_grav_mesh[0]) ||
+      mesh_cells[1].grav.parts[0].a_grav_mesh[0] == 0.f)
+    error("Regridded zoom mesh failed to reconstruct its kernel and force");
+
   zoom_mesh_clean(&zoom_mesh);
   threadpool_clean(&e.threadpool);
   free(neutrino_response.pt_density_ratio);

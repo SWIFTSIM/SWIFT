@@ -46,6 +46,9 @@ struct zoom_pm_mesh {
   /*! Use private cell patches instead of per-particle atomic writes. */
   int use_local_patches;
 
+  /*! Number of background top-level cell shells around the zoom region. */
+  int buffer_cells;
+
   /*! Side-length of the mesh along each axis. */
   int N[3];
 
@@ -89,6 +92,7 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
                     const struct gravity_props *props, const struct space *s,
                     const int nr_threads, const int verbose);
 void zoom_mesh_clean(struct zoom_pm_mesh *mesh);
+void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s);
 void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
                               const struct space *s);
 void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
