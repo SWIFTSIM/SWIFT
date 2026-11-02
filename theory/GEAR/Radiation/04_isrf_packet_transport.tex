@@ -1243,7 +1243,7 @@ merge of the receiver.}
 \subsubsection{How light is absorbed}
 \label{sec:packet-absorb-summary}
 
-Light is absorbed once per share, when the share is booked: at the hop of the
+Dust acts once per share, when the share is booked: at the hop of the
 sender, or at the emission of a star. The steps are, in order
 (Fig.~\ref{fig:isrf-share}):
 \begin{enumerate}
@@ -1269,7 +1269,8 @@ the removal is the same without them.
 The absorbed light does not heat the gas. The gas sees only the light that
 crosses it, through $G_0$ and $k_{\rm diss}$ (Section~\ref{sec:packet-field}),
 and Grackle applies no second dust attenuation to $G_0$. The transport has no
-H$_2$ line absorption. Grackle multiplies $k_{\rm diss}$ by an H$_2$
+H$_2$ line absorption. When the H$_2$ self-shielding of Grackle is on (mode 2
+or 3; it is off by default), Grackle multiplies $k_{\rm diss}$ by a
 self-shielding factor \citep{WolcottGreenHaiman2019}, computed from a local H$_2$
 column. That column is $n_{\rm H_2}$ times a length set by the self-shielding
 mode of Grackle. The length is a multiple of the kernel support in mode 2 and
@@ -1488,7 +1489,9 @@ packets that arrive at a particle into reception cones and merge the packets of
 each cone into one. A particle then holds at most one packet per cone, so the
 cost does not grow with the number of sources. Both absorb over a hop with the
 density of the receiver, constant along the hop, and remove the fraction
-$1-e^{-\tau}$, so the photons are conserved explicitly. Both can limit the
+$1-e^{-\tau}$, so the photons are conserved explicitly. In both, a merge
+replaces the directions of the merged packets by a mean, so the light of
+several sources does not add exactly. Both can limit the
 speed of the light: TRAPHIC with a clock on each packet, this scheme with an
 arrival time.
 
@@ -1534,7 +1537,8 @@ use of the absorbed light & the absorbed photons give the photoionisation
 speed of light & clock advanced by $d/c$ per hop, packet held until the
   simulation time reaches it; or the time-independent limit, one particle
   spacing per step & arrival time at $v=0.99\,c$, at most one hop per step of
-  the sender; mode \code{unlimited} for tests \\
+  the sender; a mode that bounds the step so the front moves at $v$, and a
+  mode with no limit for tests \\
 time steps & one global radiative transfer step $\Delta t_{\rm r}$ & the
   individual time bins of the gas; reservoir, near bins and far cells \\
 cosmology & tested on a static density field at $z\approx8.85$; the clock is
@@ -1547,7 +1551,8 @@ resolution & $\tilde N_{\rm ngb}$ (32 in the tests) and $N_c$ (8 to 128;
   32 converged in the reionisation test) & the hydro neighbours, $K$ and $p$ \\
 known artefacts & particle noise, largest at $N_c=\tilde N_{\rm ngb}$ and
   reduced by resampling; shadows slightly wider for
-  $N_c>\tilde N_{\rm ngb}$; overshoot of less than one hop per step & merged
+  $N_c>\tilde N_{\rm ngb}$; overshoot of less than one hop per step; merged
+  clocks change the distance travelled & merged
   slots break linearity; thread-order rounding noise; lumps of far light at
   slow speeds; shadow edge up to one hop late; front slower than $v$ \\
 \bottomrule
