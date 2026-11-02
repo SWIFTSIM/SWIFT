@@ -592,56 +592,24 @@ def print_levels(opt, box, levels, rho_mean, n_bg_total):
     )
 
 
-def main():
-    opt = parse_options()
-    rng = np.random.default_rng(opt.seed)
-
-    box = gas_box(opt)
-    L, N = box["L"], box["N"]
-    target = physical_box_target(opt, box)
-    levels, box_size, levelmin_fill = level_layout(opt, L, target)
-    n_bg_total = sum(lev["count"] for lev in levels)
+def build_particles(opt, box, levels, box_size, rng):
+    """Gas, PartType1 and PartType2 positions and PartType2 masses, in cgs."""
+    L = box["L"]
     offset = 0.5 * box_size - 0.5 * L
     centre = 0.5 * box_size
-    h_max = opt.h_max * KPC
-    h = min(ETA_RESOLUTION * box["dx"], h_max)
+    pos_gas, pos_dm = gas_and_dm_positions(box, rng)
+    pos_bg, m_bg = background_particles(opt, box, levels)
+    pos_gas += offset
+    pos_dm += offset
+    if np.any(np.max(np.abs(pos_bg - centre), axis=1) < 0.5 * L):
+        raise RuntimeError("PartType2 particle inside the gas box")
+    if np.any(pos_bg < 0) or np.any(pos_bg >= box_size):
+        raise RuntimeError("PartType2 particle outside the periodic box")
+    return pos_gas, pos_dm, pos_bg, m_bg
 
-    if n_bg_total > opt.max_background_particles:
-        print_levels(opt, box, levels, box["rho_out"], n_bg_total)
-        raise SystemExit(
-            f"Error: {n_bg_total:.3e} PartType2 particles (limit "
-            f"--max-background-particles {opt.max_background_particles:.3g}). "
-            f"--levelmin {levelmin_fill} fills this box with padded levels."
-        )
 
-    M_hires = N * (box["m_gas"] + box["m_dm"])
-    particles = None
-    if opt.dry_run:
-        extent = L
-        M_total = M_hires + background_mass(opt, box, levels)
-    else:
-        pos_gas, pos_dm = gas_and_dm_positions(box, rng)
-        pos_bg, m_bg = background_particles(opt, box, levels)
-        pos_gas += offset
-        pos_dm += offset
-        hires = np.concatenate((pos_gas, pos_dm))
-        extent = np.max(hires.max(axis=0) - hires.min(axis=0))
-
-        if np.any(np.max(np.abs(pos_bg - centre), axis=1) < 0.5 * L):
-            raise RuntimeError("PartType2 particle inside the gas box")
-        if np.any(pos_bg < 0) or np.any(pos_bg >= box_size):
-            raise RuntimeError("PartType2 particle outside the periodic box")
-        M_total = M_hires + m_bg.sum()
-        particles = (pos_gas, pos_dm, pos_bg, m_bg)
-
-    rho_mean = M_total / box_size**3
-    if opt.cosmological:
-        a = (opt.omega_m * rho_crit_0(opt) / rho_mean) ** (1.0 / 3.0)
-    else:
-        a = 1.0
-    grid = zoom_grid(opt, box_size, extent, h_max)
-
-    # Report
+def print_box(opt, box, box_size, a):
+    L = box["L"]
     mode = f"comoving, a_begin = {a:.6e}, z = {1 / a - 1:.2f}"
     print(
         f"{opt.output}{' (dry run, not written)' if opt.dry_run else ''}: "
@@ -666,14 +634,10 @@ def main():
             f"Box             : {box_size / KPC:.6g} kpc ({requested}), "
             f"{box_size / L:.6g} gas boxes"
         )
-    print(
-        f"Levels          : levelmax {opt.level}, levelmin {opt.levelmin}, "
-        f"padding {opt.padding}, coarsest level used {levels[-1]['level']}, "
-        f"levelmin that fills this box with padded levels {levelmin_fill}"
-    )
-    print_levels(opt, box, levels, rho_mean, n_bg_total)
+
+
+def print_gas(opt, box, h, c_s, rho_mean, M_total):
     print(f"Mean spacing    : {box['dx'] / PC:.3f} pc, h = {h / PC:.3f} pc")
-    c_s = np.sqrt(GAS_GAMMA * (GAS_GAMMA - 1.0)) * box["sigma"]
     print(
         f"Gas             : u = sigma^2, sigma = {box['sigma'] / 1e5:.4f} km/s, "
         f"sound speed {c_s / 1e5:.4f} km/s"
@@ -686,13 +650,15 @@ def main():
         " (physical)"
     )
     print(f"Total mass      : {M_total / MSUN:.6e} Msun")
-
     eps_dm = opt.softening if opt.cosmological else None
     print(
         f"Softening       : PartType2 ratio {opt.softening_ratio_background} of the "
         "mean spacing at its mass (values above)"
         + (f"; gas and PartType1 {eps_dm * 1e3:g} pc" if eps_dm else "")
     )
+
+
+def print_zoom_grid(opt, grid, box_size, extent):
     print(
         f"Zoom grid       : extent E = {extent / PC:.2f} pc, bkg_top_level_cells "
         f"{grid['bkg_cdim']} (cell {grid['bkg_width'] / PC:.6g} pc, cap "
@@ -717,15 +683,14 @@ def main():
         for e in grid["errors"]:
             print(f"Error: {e}", file=sys.stderr)
         raise SystemExit("Error: the zoom grid does not fit the rules (see above)")
-    if particles is None:
-        return
-    pos_gas, pos_dm, pos_bg, m_bg = particles
 
-    print(f"PartType2 inside the gas box: 0 (checked); in the box: {len(m_bg)}")
 
+def particle_groups(box, h, pos_gas, pos_dm, pos_bg, m_bg):
+    """Fields per particle type in internal units, IDs in type order."""
+    N = box["N"]
+    N_dm, N_bg = len(pos_dm), len(m_bg)
     to_mass = 1.0 / UNIT_MASS
     to_length = 1.0 / UNIT_LENGTH
-    N_dm, N_bg = len(pos_dm), len(m_bg)
     groups = {
         0: {
             "Coordinates": pos_gas * to_length,
@@ -735,11 +700,6 @@ def main():
             "InternalEnergy": np.full(N, box["sigma"] ** 2 / UNIT_VELOCITY**2),
             "Densities": np.full(N, box["rho_gas"] * to_mass / to_length**3),
         },
-        2: {
-            "Coordinates": pos_bg * to_length,
-            "Masses": m_bg * to_mass,
-            "ParticleIDs": np.arange(N + N_dm + 1, N + N_dm + N_bg + 1),
-        },
     }
     if N_dm > 0:
         groups[1] = {
@@ -747,22 +707,16 @@ def main():
             "Masses": np.full(N_dm, box["m_dm"] * to_mass),
             "ParticleIDs": np.arange(N + 1, N + N_dm + 1),
         }
-    groups = dict(sorted(groups.items()))
+    groups[2] = {
+        "Coordinates": pos_bg * to_length,
+        "Masses": m_bg * to_mass,
+        "ParticleIDs": np.arange(N + N_dm + 1, N + N_dm + N_bg + 1),
+    }
+    return groups
 
-    # SWIFT stops on a zero RMS velocity in cosmological runs
-    # (engine_recompute_displacement_constraint), so these ICs get a small
-    # random velocity
-    sigma_v = opt.velocity_fraction * c_s / UNIT_VELOCITY if opt.cosmological else 0.0
-    for data in groups.values():
-        shape = data["Coordinates"].shape
-        data["Velocities"] = (
-            rng.normal(0.0, sigma_v, shape) if sigma_v > 0 else np.zeros(shape)
-        )
-    write_ics(opt, opt.output, a, box_size * to_length, groups)
-    if opt.cosmological:
-        print(f"Velocities      : Gaussian, {sigma_v:.4g} km/s per component")
 
-    runtime = [
+def runtime_parameters(opt, grid, a):
+    params = [
         f"ZoomRegion:bkg_top_level_cells:{grid['bkg_cdim']}",
         f"ZoomRegion:zoom_top_level_depth:{grid['depth']}",
         f"ZoomRegion:region_pad_factor:{opt.pad_factor}",
@@ -771,7 +725,7 @@ def main():
     ]
     if opt.cosmological:
         omega_b = opt.omega_m / (1.0 + opt.dm_ratio)
-        runtime += [
+        params += [
             f"Cosmology:Omega_cdm:{opt.omega_m - omega_b:.8f}",
             f"Cosmology:Omega_b:{omega_b:.8f}",
             f"Cosmology:Omega_lambda:{1.0 - opt.omega_m:.8f}",
@@ -785,10 +739,84 @@ def main():
             f"Statistics:scale_factor_first:{a:.8e}",
             "Statistics:delta_time:1.01",
         ]
+    return params
+
+
+def main():
+    opt = parse_options()
+    rng = np.random.default_rng(opt.seed)
+
+    box = gas_box(opt)
+    L, N = box["L"], box["N"]
+    levels, box_size, levelmin_fill = level_layout(
+        opt, L, physical_box_target(opt, box)
+    )
+    n_bg_total = sum(lev["count"] for lev in levels)
+    h_max = opt.h_max * KPC
+    h = min(ETA_RESOLUTION * box["dx"], h_max)
+
+    if n_bg_total > opt.max_background_particles:
+        print_levels(opt, box, levels, box["rho_out"], n_bg_total)
+        raise SystemExit(
+            f"Error: {n_bg_total:.3e} PartType2 particles (limit "
+            f"--max-background-particles {opt.max_background_particles:.3g}). "
+            f"--levelmin {levelmin_fill} fills this box with padded levels."
+        )
+
+    M_hires = N * (box["m_gas"] + box["m_dm"])
+    if opt.dry_run:
+        particles = None
+        extent = L
+        M_total = M_hires + background_mass(opt, box, levels)
+    else:
+        particles = build_particles(opt, box, levels, box_size, rng)
+        hires = np.concatenate(particles[:2])
+        extent = np.max(hires.max(axis=0) - hires.min(axis=0))
+        M_total = M_hires + particles[3].sum()
+
+    rho_mean = M_total / box_size**3
+    if opt.cosmological:
+        a = (opt.omega_m * rho_crit_0(opt) / rho_mean) ** (1.0 / 3.0)
+    else:
+        a = 1.0
+    grid = zoom_grid(opt, box_size, extent, h_max)
+    c_s = np.sqrt(GAS_GAMMA * (GAS_GAMMA - 1.0)) * box["sigma"]
+
+    print_box(opt, box, box_size, a)
+    print(
+        f"Levels          : levelmax {opt.level}, levelmin {opt.levelmin}, "
+        f"padding {opt.padding}, coarsest level used {levels[-1]['level']}, "
+        f"levelmin that fills this box with padded levels {levelmin_fill}"
+    )
+    print_levels(opt, box, levels, rho_mean, n_bg_total)
+    print_gas(opt, box, h, c_s, rho_mean, M_total)
+    print_zoom_grid(opt, grid, box_size, extent)
+    if particles is None:
+        return
+
+    print(
+        "PartType2 inside the gas box: 0 (checked); "
+        f"in the box: {len(particles[3])}"
+    )
+    groups = particle_groups(box, h, *particles)
+
+    # SWIFT stops on a zero RMS velocity in cosmological runs
+    # (engine_recompute_displacement_constraint)
+    sigma_v = opt.velocity_fraction * c_s / UNIT_VELOCITY if opt.cosmological else 0.0
+    for data in groups.values():
+        shape = data["Coordinates"].shape
+        data["Velocities"] = (
+            rng.normal(0.0, sigma_v, shape) if sigma_v > 0 else np.zeros(shape)
+        )
+    write_ics(opt, opt.output, a, box_size * (1.0 / UNIT_LENGTH), groups)
+    if opt.cosmological:
+        print(f"Velocities      : Gaussian, {sigma_v:.4g} km/s per component")
+
+    params = runtime_parameters(opt, grid, a)
     with open(opt.zoom_params_file, "w") as f:
-        f.write(" ".join(f"-P {r}" for r in runtime) + "\n")
+        f.write(" ".join(f"-P {r}" for r in params) + "\n")
     print(f"Runtime parameters written to {opt.zoom_params_file}:")
-    for r in runtime:
+    for r in params:
         print(f"  {r}")
 
 
