@@ -93,7 +93,7 @@ mass). Grackle receives two numbers from it:
 with $\rho$ the physical gas density and
 $\sigma_{\rm H_2}/\bar E_{\rm LW}=1.2847\times10^{-7}$\,cm$^2$\,erg$^{-1}$.
 Grackle computes the photoelectric heating from $G_0$, with the efficiency law
-chosen in its parameters. Grackle is compiled with one of four chemical
+chosen in its parameters. SWIFT is built with one of four Grackle chemical
 networks, the Grackle build modes 0 to 3. Only build modes 2 and 3 track
 H$_2$, and only they receive $k_{\rm diss}$. In build modes 0 and 1,
 $k_{\rm diss}$ is zero: the LW band still heats through $G_0$, but it
@@ -106,13 +106,13 @@ is an output only; Grackle does not read it.
 and a mean photon energy $\bar E_b$ in each band. Both come from a
 precomputed table of stellar spectra, integrated over each band; the same
 table gives the ionising photon rate of the HII channel. The table is built
-outside SWIFT. A table with a metallicity axis reads the PARSEC v2.0 stellar
-tracks. By default $L_b$ is the Planck spectrum of each point of a track, at
-its effective temperature and radius, integrated over the band and averaged
-over the main sequence; an option takes the spectrum from model atmospheres
-instead. A table of mass only uses power-law fits of the luminosity and the
-radius in the mass. $\bar E_b$ is $L_b$ over the band photon rate of the same
-spectrum.
+outside SWIFT. The published tables with a metallicity axis read the PARSEC
+v2.0 stellar tracks. They take the spectrum of each point of a track from
+model atmospheres, integrate it over the band and average it over the main
+sequence. A table can also be built with a Planck spectrum at the temperature
+and radius of each point. A table of mass only uses the Planck spectrum of
+power-law fits of the luminosity and the radius. $\bar E_b$ is $L_b$ over the
+band photon rate of the same spectrum.
 
 A particle that stands for one star reads $L_b$ and $\bar E_b$ at its mass, and also at its
 metallicity if the table has a metallicity axis. The table has no age axis, so
@@ -387,8 +387,7 @@ the infrared, outside the two bands. The redshift depth over $10$\,kpc is
 $\zeta\approx4\times10^{-5}$ at $z=9$, and less later. With
 $\lambda_E({\rm LW})\approx6.5$ the whole redshift loss over such a path is
 below $3\times10^{-4}$, so an error in the constant band-edge weights changes
-the field inside a galaxy by less than that. The scheme counts scattered light
-as absorbed. The errors from dropping scattering and the emission of the gas
+the field inside a galaxy by less than that. The errors from dropping scattering and the emission of the gas
 in the bands, and from one grey opacity per band, have not been estimated.
 
 {\small
@@ -562,7 +561,7 @@ term & step of the scheme & subsection \\
 $a^3 j_b$ & star hands $L_b\Delta t_\star$ to its kernel neighbours over 12 emission cells & \ref{sec:packet-emission} \\
 $\boldsymbol{n}\cdot\nabla_{\!x}\hat I_b/a$ & hop of each slot down a cone of weights; receiving slot set by the direction from the origin & \ref{sec:packet-state}, \ref{sec:packet-hop} \\
 angular structure of $\hat I_b$ & 12 slots, one mean direction each, merged at each step & \ref{sec:packet-merge} \\
-$\partial_t\hat I_b/c$ & one hop per step; arrival time with the limit speed $v$; near bins and far cells & \ref{sec:packet-reservoir}, \ref{sec:packet-lightspeed} \\
+$\partial_t\hat I_b/c$ & one hop per step; arrival time with the limit speed $v$; near bins and far cells & \ref{sec:packet-lightspeed}, \ref{sec:packet-reservoir} \\
 $-\kappa_b\hat I_b$ & absorption of a share at delivery, over its path & \ref{sec:packet-absorption} \\
 $-\lambda_E(b)H\hat I_b/c$, $H\hat G_b/c$ & redshift and band-edge transfer of a share at delivery, over its path & \ref{sec:packet-transfer} \\
 $u_b$, Eq.~\eqref{eq:isrf-moments} & sum over the slots, with the hop speed over $c$, then a kernel mean & \ref{sec:packet-field} \\
@@ -1561,8 +1560,8 @@ test, by a mechanism not yet identified; one-thread runs are bit-identical.
 \label{sec:isrf-accuracy}
 
 Three tests measure the accuracy of the transport: one star in uniform gas, the
-sideways spread of a beam, and two crossing beams. Each was run in a static
-box with 12 slots, $p=4$ and at one resolution unless stated.
+sideways spread of a beam, and two crossing beams. Each was run with 12
+slots, $p=4$ and at one resolution unless stated.
 
 \paragraph{One star: the thin limit and a shadow.} Figure~\ref{fig:isrf-thin}
 shows one star in a static box, $10$\,pc wide and not periodic, in the default
@@ -1628,12 +1627,13 @@ that run, with a step of $0.43\,h/v$, the centre of a pulse moves at
 $0.64\,v$, and at $0.66\,v$ with eight times more particles. Beams at
 $60^\circ$ share slots; that limit follows.
 
-\paragraph{What is not established.} No test was run in an expanding box: the
-redshift and the band-edge transfer are checked only per hop, against the
-analytic sizes of Sections~\ref{sec:packet-transfer} and
+\paragraph{What is not established.} No accuracy test of the transport ran in
+an expanding box: the redshift and the band-edge transfer have only the
+per-hop error sizes of Sections~\ref{sec:packet-transfer} and
 \ref{sec:isrf-rounding}, and the cosmological equation has no end-to-end test.
-The accuracy on several MPI ranks is not measured. There is no resolution study, no study of the slot count $K$, no
-comparison with an independent transfer code, and no galaxy-scale test.
+The accuracy on several MPI ranks is not measured. There is no resolution
+study, no study of the slot count $K$, no comparison with an independent
+transfer code other than on beam tests, and no galaxy-scale test.
 
 \subsubsection{Limit: merged slots break the linearity of the superposition}
 \label{sec:packet-superposition}
