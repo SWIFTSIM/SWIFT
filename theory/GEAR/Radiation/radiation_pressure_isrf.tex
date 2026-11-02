@@ -10,6 +10,7 @@
 \usepackage{multirow}
 \usepackage{booktabs}
 \usepackage{array}
+\usepackage{longtable}
 \usetikzlibrary{positioning}
 \usepackage[hidelinks]{hyperref}
 
@@ -52,36 +53,33 @@
 \newcommand{\RR}{\right)}
 
 \title{GEAR radiation feedback: radiation pressure and the FUV/ISRF}
-\subtitle{Theory document: momentum injection, photoelectric heating,
-and H$_2$ photodissociation propagation design}
+\subtitle{Theory document: momentum injection, and the transport of the
+far-ultraviolet light for photoelectric heating and H$_2$ photodissociation}
 \author{Darwin Roduit}
 
 \begin{document}
 \maketitle
 
-This is the \textbf{theory document} for two radiation feedback
-channels beyond the subgrid HII photoionization model, split out from
-that model's own theory document (\code{radiation.tex}/\code{radiation.pdf},
-this same directory) since they are largely self-contained: the
-\textbf{radiation-pressure} momentum-injection channel
-(Section~\ref{sec:radiation-pressure}, branch
-\code{darwin/gear\_radiation}), and the
-\textbf{FUV/ISRF} channel for photoelectric heating and
-H$_2$ photodissociation (Section~\ref{sec:packet}). It
-describes the current design and physics only. The theory of the removed
-M1 solver of the ISRF is archived in the \code{swift-gear} repository
-(\code{theory/radiation\_m1\_archive/}), for the code at the tag
-\code{isrf-m1-last};
-dated bug history and open-item tracking for both channels live in the
-\textbf{GEAR radiation logbook} (\code{swift-gear} repository,
-\code{theory/radiation/}), alongside the HII photoionization model's
-own logbook content. Where content here depends on the HII
-photoionization model itself (the blackbody luminosity fit, the
-task-graph algorithm, the validation targets) or on the logbook, it is
-cited by name and section rather than by automatic cross-reference,
-since the documents compile separately in separate repositories.
-Edit the numbered \code{.tex} files directly; each covers one topic and
-is short enough to update on its own.
+This is the \textbf{theory document} for two radiation feedback channels
+beyond the subgrid HII photoionization model. The HII model has its own theory
+document in this directory (\code{radiation.tex}). The two channels here are
+largely self-contained:
+\begin{itemize}
+  \item the \textbf{radiation-pressure} channel, which injects momentum
+    (Section~\ref{sec:radiation-pressure});
+  \item the \textbf{FUV/ISRF} channel, which transports the far-ultraviolet
+    light of the stars for photoelectric heating and H$_2$
+    photodissociation (Section~\ref{sec:packet}).
+\end{itemize}
+The document describes the current design and physics only. Validation
+results and open items live in the \textbf{GEAR radiation logbook}
+(\code{swift-gear} repository, \code{theory/radiation/}). The theory of the
+M1 moment solver of the ISRF, which the packet transport replaced, is kept in
+the same repository (\code{theory/radiation\_m1\_archive/}, code at the tag
+\code{isrf-m1-last}). The HII theory
+document and the logbook compile separately, so they are cited by name and
+section, not by automatic cross-reference. Edit the numbered \code{.tex}
+files directly; each covers one topic.
 
 \textbf{In the code.} The radiation-pressure channel lives in
 \code{src/feedback/GEAR/radiation.c} and related files, and the FUV/ISRF
