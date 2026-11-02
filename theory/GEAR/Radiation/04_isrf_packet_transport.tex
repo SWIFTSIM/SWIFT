@@ -167,7 +167,8 @@ $\partial_t I=-4HI$, the $a^{-4}$ law of free radiation. Over one band,
 integration by parts gives
 $\int_b E\,\partial_E I_E\,dE = E_{{\rm hi},b}I_E(E_{{\rm hi},b})
 - E_{{\rm lo},b}I_E(E_{{\rm lo},b}) - I_b$. The band then loses energy through
-its lower edge and gains energy through its upper edge. Let
+its lower edge and gains energy through its upper edge
+(Fig.~\ref{fig:isrf-redshift}). Let
 \begin{equation}
   \lambda_E(b) = 1 + \frac{E_{{\rm lo},b}\,I_E(E_{{\rm lo},b})}{I_b}
   \label{eq:isrf-lambdaE}
@@ -224,7 +225,16 @@ the mean photon energy that the light carries. The weights of the shipped
 tables satisfy Eq.~\eqref{eq:isrf-lambdaN}: $\lambda_E({\rm LW})-1=5.508$ and
 $\lambda_N({\rm LW})=6.0$ give $\bar E_{\rm LW}=12.2$\,eV.
 
-% FIGURE: spectrum I_E over 6 to 13.6 eV with the PE and LW bands shaded, arrows of the redshift at 6, 11.2 and 13.6 eV, and the edge flux E_lo I_E(E_lo) that defines lambda_E - 1 (fig:isrf-redshift).
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_band_edge.pdf}
+\caption{Band-edge transfer by the redshift, on a sketched spectrum $I_E$
+with the default weights. Every photon moves to a lower energy. A band loses
+the energy of its photons and the flux $E_{\rm lo}I_E(E_{\rm lo})$ through its
+lower edge (hatched). LW feeds PE through $11.2$\,eV; PE loses light below
+$6$\,eV; nothing enters LW from above $13.6$\,eV.}
+\label{fig:isrf-redshift}
+\end{figure}
 
 \subsubsection{Moments and limits}
 \label{sec:isrf-rte-limits}
@@ -249,7 +259,8 @@ gives
   \qquad \tau_b(r)=\int_0^r\kappa_b\,dr',
   \label{eq:isrf-thin}
 \end{equation}
-and for $\tau_b\ll1$ the field falls as $r^{-2}$. Here $c\,u_b=|\boldsymbol{F}_b|$,
+and for $\tau_b\ll1$ the field falls as $r^{-2}$. Figure~\ref{fig:isrf-thin}a
+shows this profile in a run of the scheme. Here $c\,u_b=|\boldsymbol{F}_b|$,
 because all the light moves away from the star. In an expanding box, along a
 ray of physical length $\ell$, the light also loses the factor
 $e^{-\lambda_E(b)H\ell/c}$, and PE gains part of what LW loses.
@@ -257,23 +268,49 @@ $e^{-\lambda_E(b)H\ell/c}$, and PE gains part of what LW loses.
 \paragraph{Optically thick limit.} The equation has no scattering, so there is
 no diffusion limit. In gas with $\kappa_b\ell\gg1$ the light is absorbed
 within a few $1/\kappa_b$ of where it enters, and the field behind falls as
-$e^{-\tau_b}$ along each ray. A dense cloud casts a sharp shadow.
+$e^{-\tau_b}$ along each ray. A dense cloud casts a sharp shadow
+(Fig.~\ref{fig:isrf-thin}b).
+
+\paragraph{Both limits in a run.} Figure~\ref{fig:isrf-thin} shows a run of
+the scheme. The box is static, $10$\,pc wide and not periodic. It holds
+uniform gas of $n_{\rm H}\approx720$\,cm$^{-3}$ and metallicity
+$Z=2\times10^{-4}$ in $262\,144$ particles, so $\tau_{\rm PE}=0.03$ per pc. The
+run uses 12 slots and the default limit speed. Panel (a) plots
+$c\rho\tilde u_{\rm PE}$, the median in shells around the star. Inside the
+front it is 0.90 to 0.95 times $L_{\rm PE}e^{-\kappa r}/(4\pi r^2)$. The front
+moves by one hop per step: it reaches about $2.5$\,pc at $0.15$\,Myr and
+$5$\,pc at $0.29$\,Myr, while light crosses $90$\,pc in that time. Panel (b)
+adds a clump of radius $1$\,pc on the line of sight, at the same density and
+$165$ times the metallicity, so that $\tau_{\rm PE}=10$ through its centre. The
+ratio of the fields with and without the clump, the median in a thin cylinder
+around the axis, follows $e^{-\kappa_{\rm c}\ell}$ over four decades, with
+$\kappa_{\rm c}$ the absorption rate of the clump and $\ell$ the depth into it.
 
 \paragraph{Time dependence.} A front of light moves at $c$. The light crosses
 $100$\,pc in $330$\,yr, which is short against the dynamical times of the
 gas. For the gas the field is close to its steady state, and the time
 derivative matters only during the transient after a star is born or dies.
 
-% FIGURE: optically thin test: profile of c u_b(r) around one star in a uniform dust-free static box, against L_b/(4 pi r^2) (fig:isrf-thin). Placeholder until a run is available.
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_thin.pdf}
+\caption{One star in a run of the scheme. (a) The field that Grackle
+receives, at two times, against the thin limit of Eq.~\eqref{eq:isrf-thin}.
+Inside the front they agree to 10 per cent; the front is far slower than
+light. (b) The field with a dusty clump over the field without it falls as
+$e^{-\kappa_{\rm c}\ell}$: a sharp shadow.}
+\label{fig:isrf-thin}
+\end{figure}
 
 \subsubsection{What is kept and what is dropped}
 \label{sec:isrf-rte-scope}
 
 Table~\ref{tab:isrf-scope} lists the terms. The speed of the light needs a
 word. The equation has $1/c$ in front of the time derivative. The scheme
-moves the light by one hop per step of the sending particle, over about one
-smoothing length, and never faster than a limit speed $v=f\,c$ (default
-$f=0.99$). The front therefore moves at about $\min(v,\,a\,l/\Delta t)$, with
+moves the light by one hop per step of the sending particle. A hop is a
+hand-over from a gas particle to its neighbours (Section~\ref{sec:isrf-idea}).
+It covers about one smoothing length. The light never moves faster than a
+limit speed $v=f\,c$ (default $f=0.99$). The front therefore moves at about $\min(v,\,a\,l/\Delta t)$, with
 $l$ the comoving advance of one hop and $\Delta t$ the step of the sender. For
 a smoothing length of $1$\,pc and a step of $1$\,kyr this is $980$\,km\,s$^{-1}$,
 or $3\times10^{-3}c$. Only the light-speed mode \code{fixed} bounds the step,
@@ -371,6 +408,8 @@ $\sigma_{\rm H_2}/\bar E_{\rm LW}$ & cm$^2$\,erg$^{-1}$ & H$_2$ dissociation cro
 \subsection{The idea of the scheme}
 \label{sec:isrf-idea}
 
+Figure~\ref{fig:isrf-overview} shows the steps below in one picture.
+
 \paragraph{Light is carried by the gas.} The scheme has no grid and no
 photons of its own. Each gas particle holds the light that is passing through
 it, as a few packets. A packet is an amount of energy and of photon number in
@@ -433,6 +472,8 @@ does not get it all at once.
 \paragraph{The field the gas sees.} A packet is the light that crosses the
 particle during one step. Its energy, divided by the mass of the particle and
 multiplied by the hop speed over $c$, is the specific energy of that light.
+The hop speed is the advance of the light in one hop over the step of the
+particle.
 The particle sums this over its slots, takes a kernel mean with its
 neighbours, and passes the result to Grackle as $G_0$ and $k_{\rm diss}$.
 
@@ -442,7 +483,16 @@ removed by the redshift, or escaped from the gas. Or it was removed with a gas
 particle that became a star or entered a sink. Each gas particle and each star carries ledgers of
 these amounts, and their sum equals the emitted energy to rounding.
 
-% FIGURE: overview of the scheme in 2D: one star, its 12 emission cells as wedges, about 30 gas particles; the light given to the kernel neighbours; one hop from one particle with its cone of weights cos^p drawn as shaded arrows to the downstream neighbours; one receiver and the reception slot that takes the share (fig:isrf-overview).
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_overview.pdf}
+\caption{The scheme, sketched in two dimensions. The star gives its light
+to the gas in its kernel (orange arrows), over twelve emission cells drawn
+anew at each step. The sender $i$ hands the light of one slot to the
+neighbours ahead (blue, width $\propto$ share). The receiver
+$j$ files its share by the direction from the star to $j$.}
+\label{fig:isrf-overview}
+\end{figure}
 
 % ---------------------------------------------------------------------------
 \subsection{From the equation to the scheme}
@@ -565,13 +615,22 @@ Eq.~\eqref{eq:packet-slot12}, $m$ is the axis of the smallest $|y|$, the
 lowest axis on a tie. The indices $(i,j)$ are the two other axes in axis
 order: $(1,2)$ for $m=0$, $(0,2)$ for $m=1$ and $(0,1)$ for $m=2$. For $K=8$
 the cells are the octants of the frame. For $K=12$ they are the faces of a
-rhombic dodecahedron. For $K=16$ they are the octants halved by the plane
+rhombic dodecahedron (Fig.~\ref{fig:isrf-slots}). For $K=16$ they are the octants halved by the plane
 $|y_0|=|y_1|$; a tie $|y_0|=|y_1|$ goes to the lower half. A direction on a
 border goes to the cell with the positive coordinate, whatever the sign of a
 zero. A direction in the same octant as another differs from it by at most
 $90^\circ$, so for $K=8$ light from opposite sides is never put in one slot.
 
-% FIGURE: the 12 reception slots of the rhombic dodecahedron on the unit sphere (3D view or Mollweide map), coloured by slot index, with the axes of the rotated frame; small insets for the 8 octants and the 16 half-octants; shows equal solid angle and convex cells (fig:isrf-slots).
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_slots.pdf}
+\caption{The reception slots on the sphere of directions, in the slot frame
+$(y_0,y_1,y_2)$. Left: the 12 slots, front and back, coloured by the axis $m$
+of Eq.~\eqref{eq:packet-slot12} and numbered by $k$. All are convex cones of
+equal solid angle. The dots are the box axes, each at least $10^\circ$ from a
+border. Right: 8 and 16 slots.}
+\label{fig:isrf-slots}
+\end{figure}
 
 \paragraph{The frame.} The matrix is
 \begin{equation}
@@ -629,7 +688,7 @@ $\phi_{ij,k}$: only the shape of $W$, the volume $V_j$ and the factor $\mu^p$
 matter. A larger $p$ gives a narrower cone.
 
 The share is placed in the slot of the receiver that holds the direction from
-the packet's origin to the receiver. Seen from the receiver, the origin lies at
+the packet's origin to the receiver (Fig.~\ref{fig:isrf-hop}a). Seen from the receiver, the origin lies at
 \begin{equation}
   \boldsymbol{o}_{j} = -\boldsymbol{\Delta x}_{ij} - d_{i,k}\,\boldsymbol{n}_{i,k},
   \label{eq:packet-offset}
@@ -643,7 +702,17 @@ and the photon number $\phi_{ij,k}N_{i,k,b}$ of each band $b$, changed by the
 redshift and the band-edge transfer of Section~\ref{sec:packet-transfer} and
 reduced by the absorption of Section~\ref{sec:packet-absorption}.
 
-% FIGURE: hop geometry: origin O, sender i at distance d_s along n_k, receiver j, the vector Delta x_ij, the offset o_j and the distance d_r; the path d_r - d_s on which dust and redshift act; mu_ij as the angle between Delta x_ij and n_k (fig:isrf-hop).
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_hop.pdf}
+\caption{(a) One share of a hop. The receiver $j$ books dust and redshift
+over the path $d_r-d_s$ (green). The
+direction $-\boldsymbol{o}_j$ from the origin sets the slot of $j$. (b) The
+reach of the sender $i$: its own kernel, plus the kernel of an active
+receiver. An inactive receiver beyond $\gamma h_i$ gets nothing. Shading:
+$\mu^p$.}
+\label{fig:isrf-hop}
+\end{figure}
 
 The loop that forms $S_{i,k}$ also forms the mean advance of the slot along
 its direction,
@@ -662,7 +731,7 @@ $S_{i,k}=0$, it has no downstream neighbour, and its light is booked as escaped
 At each active step of the particle, when its previous step has ended, in each
 slot, the energy and the photon number that have arrived since the last active
 step become the held packet. Let $I_{k,b}$ be the energy that arrived in the
-inbox of slot $k$, and $f_{{\rm rel},k} B_{k,b}$ the part of the reservoir of
+inbox of slot $k$ (the store of the shares booked since the last step), and $f_{{\rm rel},k} B_{k,b}$ the part of the reservoir of
 Section~\ref{sec:packet-reservoir} that is due. Then
 \begin{equation}
   E_{k,b} \leftarrow E_{k,b} + I_{k,b} + f_{{\rm rel},k} B_{k,b},
@@ -672,7 +741,7 @@ and the photon number $N_{k,b}$ is updated in the same way. Each arriving share
 brought an offset $\boldsymbol{o}_s$ (Eq.~\eqref{eq:packet-offset}, or the
 star-to-gas vector of Section~\ref{sec:packet-emission}) and a transmitted
 energy $e_s=\sum_b e_{s,b}$ summed over both bands. The slot takes the
-energy-weighted mean origin of its arrivals,
+energy-weighted mean origin of its arrivals (Fig.~\ref{fig:isrf-merge}a),
 \begin{equation}
   \boldsymbol{o}_k = \frac{\sum_s e_s\,\boldsymbol{o}_s}{\sum_s e_s},
   \qquad d_k=|\boldsymbol{o}_k|, \qquad
@@ -698,7 +767,16 @@ vectors $-\boldsymbol{o}_s$ all lie in one convex cone. Their positive
 combination $-\boldsymbol{o}_k$ lies in that cone too, so the direction
 $\boldsymbol{n}_k$ is in the cell of its slot, apart from the case $d_k=0$.
 
-% FIGURE: merge in one slot: three shares from three origins, their energies as arrow widths, and the energy-weighted mean origin; second panel: two beams at 60 degrees whose light partly lands in one slot (fig:isrf-merge).
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_merge.pdf}
+\caption{(a) The merge: three shares in one slot (width $\propto$ energy)
+become one packet with the energy-weighted mean origin (open circle), and a
+direction away from it. (b) Two beams at $60^\circ$, a sketch. The hop cone
+spreads each beam (lobes); the hatched part of beam 2 lands in the slot of
+beam 1 and is merged with it.}
+\label{fig:isrf-merge}
+\end{figure}
 
 \subsubsection{Emission by a star}
 \label{sec:packet-emission}
@@ -940,7 +1018,8 @@ the step of every gas particle (Section~\ref{sec:isrf-speed}).
 $t_a+\Delta t_s$ for a sender with a longer step $\Delta t_s$, and at $t_a$
 otherwise. A star spreads its share over the step that has just ended, from
 $t-\Delta t+\delta$ to $t+\delta$, as the feedback is applied at the end of the
-step. A receiver keeps the waiting light in four near bins and two far cells.
+step. A receiver keeps the waiting light in four near bins and two far cells
+(Fig.~\ref{fig:isrf-bins}).
 The near bins are one step wide, on the multiples of its step; bin $0$ ends at
 the end of its step. The far cells are $2^{n}$ steps wide, on the multiples of
 that width, and hold the light that arrives later than the last near bin. A
@@ -966,7 +1045,16 @@ the latest arrival time of what it released, so a hop starts from the arrival
 time and not from the merge time. The packet field of the receiver, the origin
 sum and the cutoff rules are those of the unlimited mode.
 
-% FIGURE: time axis of one receiver: its step, the four near bins one step wide, the two far cells 2^n steps wide; one share from a coarse sender spread over the sender's step; one far share released as a fraction at each merge (fig:isrf-bins).
+\begin{figure}[htbp]
+\centering
+\includegraphics{figures/isrf_bins.pdf}
+\caption{(a) The waiting light of one slot at a merge at time
+$t$: four near bins one step wide, then two far cells $2^n$ steps wide. A share
+from a sender with twice the step is spread over three bins.
+(b) A far share is released in parts, one per merge (black), never ahead of
+the arrived light (orange).}
+\label{fig:isrf-bins}
+\end{figure}
 
 \subsubsection{The field that the gas sees}
 \label{sec:packet-field}
@@ -1089,7 +1177,8 @@ per step.
 \subsubsection{The reach of a hop}
 \label{sec:isrf-reach}
 
-The reach of a hop is the kernel support of the sender, $r_{ij}<\gamma h_i$,
+The reach of a hop (Fig.~\ref{fig:isrf-hop}b) is the kernel support of the
+sender, $r_{ij}<\gamma h_i$,
 and, for a receiver $j$ that is active in this step, the kernel support of the
 receiver, $r_{ij}<\gamma h_j$. Both radii are cut by the factor
 $1-\varepsilon$, $\varepsilon=10^{-5}$, so that the filter of each loop, whose
@@ -1209,7 +1298,7 @@ that each source gives alone. Two cases fall under this limit:
   \item the spread of the transmission cone, which carries a part of a beam
     into the neighbouring slots.
 \end{itemize}
-For two beams at $60^\circ$, $87.6\,\%$ of the light of the first beam arrives
+For two beams at $60^\circ$ (Fig.~\ref{fig:isrf-merge}b), $87.6\,\%$ of the light of the first beam arrives
 in one slot of the receivers, and $8.4\,\%$ of the light of the second beam
 arrives in the same slot.
 
