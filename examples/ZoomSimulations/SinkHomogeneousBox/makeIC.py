@@ -392,20 +392,22 @@ def zoom_grid(opt, box_size, extent, h_max):
             f"{ZOOM_REGIONS_WARNING})"
         )
 
-    # Deepest zoom grid with cells wider than 1.1 kernel_gamma h_max
+    # Deepest zoom grid with cells wider than 1.1 kernel_gamma h_max and not
+    # narrower than a mesh cell (space_regrid() stops otherwise)
     min_zoom_width = SPACE_STRETCH * KERNEL_GAMMA * h_max
     depth = 0
     while (
         bkg_width / 2 ** (depth + 1) > min_zoom_width
         and k * 2 ** (depth + 1) <= opt.max_zoom_cdim
+        and bkg_cdim * 2 ** (depth + 1) <= opt.max_mesh
     ):
         depth += 1
     if depth < 1:
         errors.append(
             f"no zoom depth >= 1 gives zoom cells wider than 1.1 kernel_gamma "
             f"h_max = {min_zoom_width / PC:.1f} pc with at most "
-            f"{opt.max_zoom_cdim} cells per axis (background cell "
-            f"{bkg_width / PC:.1f} pc)"
+            f"{opt.max_zoom_cdim} cells per axis and a mesh of at most "
+            f"{opt.max_mesh} (background cell {bkg_width / PC:.1f} pc)"
         )
         depth = 1
     zoom_width = bkg_width / 2**depth
@@ -417,17 +419,24 @@ def zoom_grid(opt, box_size, extent, h_max):
             f"region_pad_factor {opt.pad_factor} (SWIFT warns)"
         )
 
-    # Mesh: the smallest power of 2 with r_cut_max at most one background cell
+    # Mesh: the smallest power of 2 with mesh cells not wider than a zoom cell
+    # and r_cut_max at most one background cell
     mesh = 16
-    while R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width or mesh < bkg_cdim:
+    while (
+        R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width
+        or mesh < bkg_cdim * 2**depth
+    ):
         mesh *= 2
     if mesh > opt.max_mesh:
         mesh = opt.max_mesh
         warnings.append(
             f"mesh capped at {mesh}: r_cut_max is larger than a background cell"
         )
-    if mesh < bkg_cdim:
-        errors.append(f"mesh {mesh} smaller than bkg_top_level_cells {bkg_cdim}")
+    if mesh < bkg_cdim * 2**depth:
+        errors.append(
+            f"mesh {mesh} coarser than the zoom cells ({bkg_cdim * 2**depth} "
+            "zoom cells across the box)"
+        )
     r_s = A_SMOOTH * box_size / mesh
 
     return dict(
