@@ -793,9 +793,8 @@ def main():
     if particles is None:
         return
 
-    print(
-        "PartType2 inside the gas box: 0 (checked); " f"in the box: {len(particles[3])}"
-    )
+    n_bg = len(particles[3])
+    print(f"PartType2 inside the gas box: 0 (checked); in the box: {n_bg}")
     groups = particle_groups(box, h, *particles)
 
     # SWIFT stops on a zero RMS velocity in cosmological runs
