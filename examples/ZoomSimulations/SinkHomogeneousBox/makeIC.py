@@ -413,8 +413,7 @@ def mesh_size(box_size, bkg_cdim, bkg_width, depth):
     (space_regrid() stops otherwise) and r_cut_max within a background cell."""
     mesh = 16
     while (
-        R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width
-        or mesh < bkg_cdim * 2**depth
+        R_CUT_MAX * A_SMOOTH * box_size / mesh > bkg_width or mesh < bkg_cdim * 2**depth
     ):
         mesh *= 2
     return mesh
@@ -795,8 +794,7 @@ def main():
         return
 
     print(
-        "PartType2 inside the gas box: 0 (checked); "
-        f"in the box: {len(particles[3])}"
+        "PartType2 inside the gas box: 0 (checked); " f"in the box: {len(particles[3])}"
     )
     groups = particle_groups(box, h, *particles)
 
