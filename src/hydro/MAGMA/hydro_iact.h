@@ -349,8 +349,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Terms entering the limiter (eq. 23) */
     const float eta_ij = sqrtf(fminf(eta_square_i, eta_square_j));
-    const float eta_crit = magma_viscosity.eta_crit;
-    const float width_inv = 1.f / magma_viscosity.limiter_width;
+    const float eta_crit = fminf(pi->force.eta_crit, pj->force.eta_crit);
+    const float width_inv = 1.f / const_limiter_width;
 
     /* Van Leer limiter fraction (eq. 22) */
     const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
@@ -384,7 +384,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float delta_eta = (eta_ij - eta_crit) * width_inv;
     const float cut_off =
         eta_ij < eta_crit ? expf(-delta_eta * delta_eta) : 1.f;
-    /* Convergence switch (SPH:limiter_convergence_switch): the cut-off acts in
+    /* Convergence switch: the cut-off acts in
      * proportion to the convergence fraction of the flow (1 in a
      * compression, 0 in pure shear), so that close pairs of a shear flow,
      * which approach along their separation without colliding, keep their
@@ -458,7 +458,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     /* Same for the pressure (only needed with the pressure-residual term of
      * the conduction signal speed) */
-    if (magma_diffusion.alpha_pressure > 0.f) {
+    if (const_diffusion_alpha_pressure > 0.f) {
       const float A_ij_P_num = pi->force.gradient_P[0] * dx[0] +
                                pi->force.gradient_P[1] * dx[1] +
                                pi->force.gradient_P[2] * dx[2];
@@ -524,7 +524,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   G_j[1] *= -wj * hjd_inv;
   G_j[2] *= -wj * hjd_inv;
 
-  const float cos_limit = magma_viscosity.cos_angle_limit;
+  const float cos_limit = const_gradient_cos_angle_limit;
 
 #if defined(TRADITIONAL_SPH_ACCELERATION_TERM) || defined(MAGMA_MI3_FORMULATION)
   /* MI1 and MI3 use G_i and G_j individually: test each of them. The averaged G
@@ -590,7 +590,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * can indicate compression while the particles recede, in which case Q
    * would do negative work (Q v_ij . G < 0) and cool the gas. */
   const int pair_approaching = (dvdr_Hubble < 0.f);
-  const float eps_squared = magma_viscosity.epsilon * magma_viscosity.epsilon;
+  const float eps_squared = const_viscosity_epsilon * const_viscosity_epsilon;
   const float mu_i =
       pair_approaching
           ? fminf(0.f, vel_rel_Hubble_i / (eta_square_i + eps_squared))
@@ -629,10 +629,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Eq. 14; with the viscosity switch each particle brings its own
    * time-dependent alpha to the linear term */
   const float visc_alpha_i =
-      magma_viscosity.alpha_switch ? pi->alpha_visc : magma_viscosity.alpha;
+      const_viscosity_switch ? pi->alpha_visc : const_viscosity_alpha;
   const float visc_alpha_j =
-      magma_viscosity.alpha_switch ? pj->alpha_visc : magma_viscosity.alpha;
-  const float visc_beta = magma_viscosity.beta;
+      const_viscosity_switch ? pj->alpha_visc : const_viscosity_alpha;
+  const float visc_beta = const_viscosity_beta;
   /* Shear limiter of the viscous pressure: each particle's Q scaled by its
    * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence
    * boost of eq. 17, as their alpha_i xi_i). 1 when switched off. Mode 1
@@ -642,13 +642,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * maintains particle order in subsonic shear layers. */
   const float xi_q_i = pi->force.viscosity_limiter;
   const float xi_q_j = pj->force.viscosity_limiter;
-  const int quad_only = (magma_viscosity.shear_limiter == 2);
-  /* With the Mach threshold (default 0.7) the linear term is limited only
+  const int quad_only = (const_viscosity_shear_limiter == 2);
+  /* With the Mach threshold the linear term is limited only
    * in supersonic shear (|mu| > limiter_mach c), where it is a Keplerian
    * flow rather than a subsonic shear layer that needs its particle order
    * kept. */
-  const float mach_i = magma_viscosity.limiter_mach * ci;
-  const float mach_j = magma_viscosity.limiter_mach * cj;
+  const float mach_i = const_viscosity_limiter_mach * ci;
+  const float mach_j = const_viscosity_limiter_mach * cj;
   const float xi_lin_i = (quad_only || fabsf(mu_i) <= mach_i) ? 1.f : xi_q_i;
   const float xi_lin_j = (quad_only || fabsf(mu_j) <= mach_j) ? 1.f : xi_q_j;
   const float Qi = Q_dissipative_i
@@ -784,10 +784,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * pressure blips of entropy jumps and in shocks, not on resolved pressure
    * gradients */
   const float dP_eff = fmaxf(
-      0.f, fabsf(delta_P_rec) - 0.5f * magma_diffusion.pressure_threshold *
+      0.f, fabsf(delta_P_rec) - 0.5f * const_diffusion_pressure_threshold *
                                     (pressurei + pressurej));
   const float v_sig_P =
-      magma_diffusion.alpha_pressure * sqrtf(2.f * dP_eff / (rhoi + rhoj));
+      const_diffusion_alpha_pressure * sqrtf(2.f * dP_eff / (rhoi + rhoj));
 
   /* Diffusion term (eq. 24), scaled by the pressure-weighted mean of the
    * two particles' conduction coefficients, so that the hotter particle sets
@@ -799,7 +799,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
           ? (pressurei * pi->alpha_diff + pressurej * pj->alpha_diff) / P_sum
           : 0.5f * (pi->alpha_diff + pj->alpha_diff);
   pi->u_dt += -mj * alpha_diff * delta_u *
-              (magma_diffusion.alpha * v_sig_u + v_sig_P) * norm_sum_G /
+              (const_diffusion_alpha * v_sig_u + v_sig_P) * norm_sum_G /
               (rhoi + rhoj);
 
   /* Get the time derivative for h. */

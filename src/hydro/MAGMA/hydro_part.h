@@ -272,6 +272,10 @@ struct part {
        * pressure, 1 when the limiter is switched off */
       float viscosity_limiter;
 
+      /*! Pair separation, in units of h, below which the slope limiter
+       * switches the reconstruction off (the run's 1 / eta_neighbours) */
+      float eta_crit;
+
     } force;
   };
 
