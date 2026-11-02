@@ -1,0 +1,6 @@
+Isolated stellar disk embedded in an external Hernquist dark matter halo.
+There is no gas, only star particles, so no subgrid model is needed.
+
+Configure SWIFT with:
+
+./configure --with-ext-potential=hernquist

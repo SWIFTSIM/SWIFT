@@ -18,6 +18,12 @@ then
     ./getCoolingTables.sh
 fi
 
+if [ ! -e POPII.hdf5 ]
+then
+    echo "Fetching the chemistry tables..."
+    ../../GEAR_ICs_and_SCRIPTS/getChemistryTable.sh --with-winds
+fi
+
 # Run SWIFT
 ../../../swift --cosmology --hydro --self-gravity --cooling --threads=8 small_cosmo_volume.yml 2>&1 | tee output.log
 

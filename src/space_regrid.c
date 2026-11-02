@@ -522,6 +522,9 @@ static void space_partition_cells(struct space *s, int *oldnodeIDs,
                                   s->e->nr_nodes, s);
     }
 
+    /* Void cells must be local on every rank. */
+    if (s->with_zoom_region) zoom_partition_voids(s, s->e->nodeID);
+
     /* Re-distribute the particles to their new nodes. */
     engine_redistribute(s->e);
 
@@ -539,6 +542,9 @@ static void space_partition_cells(struct space *s, int *oldnodeIDs,
      * partition_store_celllist() was called once before, or just before
      * dumping the restart files.*/
     partition_restore_celllist(s, s->e->reparttype);
+
+    /* Void cells must be local on every rank. */
+    if (s->with_zoom_region) zoom_partition_voids(s, s->e->nodeID);
 
     /* Now re-distribute the particles, should just add to cells? */
     engine_redistribute(s->e);

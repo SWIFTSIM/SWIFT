@@ -27,36 +27,39 @@ endif
 AM_LDFLAGS = ../src/.libs/libswiftsim.a $(COMMON_LIBS)
 
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
+TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
+        testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
-        testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
+        testCbrt testCosmologyAccuracy testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
-        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown testMeshGravityRebuildCheck \
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown \
         testGravityBackgroundSoftening
         # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-                 testKernel testFFT testInteractions testMaths testRandom testExp \
-                 testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
-                 testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
-                 testRiemannHLLC testMatrixInversion testDump testCSDS \
+         testKernel testKernelAccuracy testFFT testInteractions testMaths \
+         testRandom testExp \
+         testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
+         testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
+         testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
-                 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
-                 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
-                 testHashmap testAtomic testHydroMPIrules testGravitySpeed testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testZoomInit testGetZoomIJKFunc \
-                 testZoomRegrid testSpaceSplit testZoomVoidTree testZoomGravityDown testMeshGravityRebuildCheck \
-                 testGravityBackgroundSoftening
+		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
+		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
+		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
+		 testNeutrinoCosmology testNeutrinoFermiDirac testLog testTimeline \
+		 testZoomInit testGetZoomIJKFunc testZoomRegrid testSpaceSplit \
+		 testZoomVoidTree testZoomGravityDown \
+		 testGravityBackgroundSoftening
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -82,7 +85,7 @@ testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
 
-testCosmology_SOURCES = testCosmology.c
+testCosmologyAccuracy_SOURCES = testCosmologyAccuracy.c
 
 testOutputList_SOURCES = testOutputList.c
 
@@ -120,6 +123,8 @@ test125cells_SOURCES = test125cells.c
 testParser_SOURCES = testParser.c
 
 testKernel_SOURCES = testKernel.c
+
+testKernelAccuracy_SOURCES = testKernelAccuracy.c
 
 testKernelLongGrav_SOURCES = testKernelLongGrav.c
 
