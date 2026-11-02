@@ -339,31 +339,19 @@ INLINE static void compute_magnetic_feedback(
   sp->feedback_data.to_distribute.magnetic_moment[1] = m[1];
   sp->feedback_data.to_distribute.magnetic_moment[2] = m[2];
 
-  /* Compute injected magnetic field strength 
-   *
-   * Due to the stochastic nature of the SNII feedback 
-   * the thermal energy injection is not exactly f_th * E_SN * N_SNe
-   * so we calculate it here from the change in internal energy. 
-   * The final magnetic field injection strength depends on the local
-   * properties of the gas particles */
-
-  /* the total injected energy */
-  /* float E_th_tot = 0.f;*/
-  /* for (int i = 0; i < number_of_SN_events; i++) {
-    E_th_tot += delta_u * sp->feedback_data.SNII_rays[i].mass;
-  }*/
-
-  float E_th_tot = sp->feedback_data.to_distribute.SNII_E_kinetic;
+  
+  /* the kinetic energy we are injecting */
+  float E_kin_tot = sp->feedback_data.to_distribute.SNII_E_kinetic;
 
   /* magnetic energy available for injection */
-  const float E_B_inj = feedback_props->f_E_B * E_th_tot;
+  const float E_B_inj = feedback_props->f_E_B * E_kin_tot;
 
   const float ngb_B_inj_norm = sp->feedback_data.to_collect_mhd.ngb_B_inj;
 
   /* Store the magnetic field normalisation */
   sp->feedback_data.to_distribute.B_inj_abs = sqrtf(E_B_inj / ngb_B_inj_norm);
 
-  /* rescale the thermal energy injection */
+  /* rescale the kinetic energy injection */
   sp->feedback_data.to_distribute.SNII_E_kinetic *= (1 - feedback_props->f_E_B);
 }
 
