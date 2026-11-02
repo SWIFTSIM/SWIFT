@@ -233,6 +233,20 @@ struct feedback_props {
    */
   double log10_imf_max_mass_msun;
 
+  /* ---- IMF model selection ---- */
+  /*! Encoded IMF model: 0=Chabrier, 1=Kroupa, 2=Salpeter, 3=Custom */
+  int imf_model_code;
+  /*! Optional high-mass slope (>0 means set) */
+  double imf_high_mass_slope;
+  /*! Optional low-mass slope (>0 means set) */
+  double imf_low_mass_slope;
+  /*! Optional pivot/break mass in Msun (>0 means set) */
+  double imf_pivot_mass_msun;
+  /*! Optional Chabrier lognormal characteristic mass (Msun) */
+  double imf_chabrier_m_c_msun;
+  /*! Optional Chabrier lognormal dispersion in log10 */
+  double imf_chabrier_sigma_log10;
+
   /* ------------ SNe feedback properties ------------ */
 
   /*! SNII feedback model: random, isotropic or minimum distance */
