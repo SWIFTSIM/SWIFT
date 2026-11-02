@@ -52,6 +52,9 @@ R_CUT_MAX = 4.5
 ZOOM_REGIONS_ERROR = 64
 ZOOM_REGIONS_WARNING = 16
 
+# Smallest zoom region / (region_pad_factor E) that makeIC.py accepts silently
+REGRID_MARGIN = 1.1
+
 
 def parse_options():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -324,29 +327,62 @@ def level_layout(opt, L, box_target):
     return levels, outer["n"] * outer["s"], levelmin_fill
 
 
+def level_cells(lev):
+    """Cell centres of one background level, relative to the box centre."""
+    n, h, s = lev["n"], lev["h"], lev["s"]
+    idx = (np.arange(n) + 0.5) / n
+    gx, gy, gz = np.meshgrid(idx, idx, idx, indexing="ij")
+    unit = np.column_stack((gx.ravel(), gy.ravel(), gz.ravel())) - 0.5
+    inner = np.all(np.abs(unit) < 0.5 * h / n, axis=1)
+    return unit[~inner] * (n * s)
+
+
+def level_masses(opt, box, lev, cell_centres):
+    """Particle masses of one level: the density profile times the cell volume."""
+    L = box["L"]
+    rho_in, rho_out = box["rho_in"], box["rho_out"]
+    r = np.max(np.abs(cell_centres), axis=1)
+    x = (r - 0.5 * L) / (opt.transition_width * L)
+    return (rho_out + (rho_in - rho_out) * (1.0 - np.tanh(x))) * lev["s"] ** 3
+
+
+def background_mass(opt, box, levels):
+    """Total PartType2 mass, without drawing the particles."""
+    L = box["L"]
+    total = 0.0
+    for lev in levels:
+        volume = (lev["n"] ** 3 - lev["h"] ** 3) * lev["s"] ** 3
+        inner_edge = 0.5 * lev["h"] * lev["s"] - 0.5 * L
+        if (
+            box["rho_in"] == box["rho_out"]
+            or inner_edge > 20 * opt.transition_width * L
+        ):
+            total += box["rho_out"] * volume
+        else:
+            total += level_masses(opt, box, lev, level_cells(lev)).sum()
+    return total
+
+
 def background_particles(opt, box, levels, rng):
     """PartType2 on jittered lattices, one level at a time, in cgs."""
-    L = box["L"]
-    width = opt.transition_width * L
-    rho_in, rho_out = box["rho_in"], box["rho_out"]
-    box_size = levels[-1]["n"] * levels[-1]["s"]
-    centre = 0.5 * box_size
-
-    pos, mass, level_id = [], [], []
+    centre = 0.5 * levels[-1]["n"] * levels[-1]["s"]
+    pos, mass = [], []
     for lev in levels:
-        n, h, s = lev["n"], lev["h"], lev["s"]
-        idx = (np.arange(n) + 0.5) / n
-        gx, gy, gz = np.meshgrid(idx, idx, idx, indexing="ij")
-        unit = np.column_stack((gx.ravel(), gy.ravel(), gz.ravel())) - 0.5
-        inner = np.all(np.abs(unit) < 0.5 * h / n, axis=1)
-        cell_centres = unit[~inner] * (n * s)
-        r = np.max(np.abs(cell_centres), axis=1)
-        rho = rho_out + (rho_in - rho_out) * (1.0 - np.tanh((r - 0.5 * L) / width))
-        jitter = rng.uniform(-0.45, 0.45, size=cell_centres.shape) * s
+        cell_centres = level_cells(lev)
+        jitter = rng.uniform(-0.45, 0.45, size=cell_centres.shape) * lev["s"]
         pos.append(centre + cell_centres + jitter)
-        mass.append(rho * s**3)
-        level_id.append(np.full(len(r), lev["level"]))
-    return np.concatenate(pos), np.concatenate(mass), np.concatenate(level_id)
+        mass.append(level_masses(opt, box, lev, cell_centres))
+    return np.concatenate(pos), np.concatenate(mass)
+
+
+def void_geometry(box_size, padded, bkg_cdim):
+    """Zoom region cells, side and zoom regions of zoom_get_void_geometry()."""
+    bkg_width = box_size / bkg_cdim
+    i_low = np.floor((0.5 * box_size - 0.5 * padded) / bkg_width)
+    i_up = np.floor((0.5 * box_size + 0.5 * padded) / bkg_width)
+    k = int(i_up - i_low + 1)
+    region = k * bkg_width
+    return k, region, int(np.ceil(region / padded))
 
 
 def zoom_grid(opt, box_size, extent, h_max):
@@ -354,7 +390,7 @@ def zoom_grid(opt, box_size, extent, h_max):
     errors, warnings = [], []
     padded = opt.pad_factor * extent
 
-    # Automatic bkg_cdim of zoom_optimise_bkg_cells(), then the cap
+    # bkg_cdim of zoom_optimise_bkg_cells() without its floor of 8, then the cap
     bkg_cdim = int(np.floor(box_size / padded))
     if bkg_cdim % 2 == 0:
         bkg_cdim -= 1
@@ -373,18 +409,16 @@ def zoom_grid(opt, box_size, extent, h_max):
         )
     bkg_width = box_size / bkg_cdim
 
-    # Void region of zoom_get_void_geometry()
-    i_low = np.floor((0.5 * box_size - 0.5 * padded) / bkg_width)
-    i_up = np.floor((0.5 * box_size + 0.5 * padded) / bkg_width)
-    k = int(i_up - i_low + 1)
-    region = k * bkg_width
-    nr_regions = int(np.ceil(region / padded))
+    k, region, nr_regions = void_geometry(box_size, padded, bkg_cdim)
     if nr_regions >= ZOOM_REGIONS_ERROR:
+        needed = bkg_cdim + 2
+        while void_geometry(box_size, padded, needed)[2] >= ZOOM_REGIONS_ERROR:
+            needed += 2
         errors.append(
             f"{nr_regions} zoom regions in the void region (SWIFT stops at "
             f"{ZOOM_REGIONS_ERROR}): bkg_top_level_cells {bkg_cdim} is capped by "
-            f"--max-bkg-cdim; a box of {box_size / extent:.0f} gas boxes needs at "
-            f"least {int(np.ceil(box_size / (ZOOM_REGIONS_ERROR * padded)))} cells"
+            f"--max-bkg-cdim (run.sh: max_bkg_cdim); this box needs at least "
+            f"{needed} cells"
         )
     elif nr_regions >= ZOOM_REGIONS_WARNING:
         warnings.append(
@@ -413,6 +447,13 @@ def zoom_grid(opt, box_size, extent, h_max):
     zoom_width = bkg_width / 2**depth
     if region < extent:
         errors.append("zoom region smaller than the high-resolution particles")
+    if region / extent < REGRID_MARGIN * opt.pad_factor:
+        warnings.append(
+            f"the zoom region regrids when the extent grows by "
+            f"{100 * (region / (opt.pad_factor * extent) - 1):.1f} % "
+            f"(zoom region / region_pad_factor); keep at least "
+            f"{100 * (REGRID_MARGIN - 1):.0f} %: change the box or region_pad_factor"
+        )
     if region / extent >= 2.0 * opt.pad_factor:
         warnings.append(
             f"real padding {region / extent:.2f} is at least twice "
@@ -508,17 +549,12 @@ def rho_crit_0(opt):
 
 
 def physical_box_target(opt, box):
-    """Requested physical box side in cgs, and the estimated a_begin."""
+    """Requested physical box side in cgs."""
     L = box["L"]
     if opt.embed is not None:
-        target = opt.embed * L
-        a = (opt.omega_m * rho_crit_0(opt) / box["rho_out"]) ** (1.0 / 3.0)
-        if opt.cosmological:
-            M = box["rho_out"] * target**3 + (box["rho_in"] - box["rho_out"]) * L**3
-            a = (opt.omega_m * rho_crit_0(opt) * target**3 / M) ** (1.0 / 3.0)
-        return target, a
+        return opt.embed * L
     if not opt.cosmological:
-        return opt.box_size * KPC, 1.0
+        return opt.box_size * KPC
 
     # Mean density of the box = Omega_m rho_crit_0 at a_begin, box comoving
     B = opt.box_size * MPC
@@ -526,11 +562,10 @@ def physical_box_target(opt, box):
     a3 = (opt.omega_m * rho_crit_0(opt) - excess) / box["rho_out"]
     if a3 <= 0:
         raise SystemExit("Error: the comoving box is too small for this overdensity")
-    a = a3 ** (1.0 / 3.0)
-    return a * B, a
+    return a3 ** (1.0 / 3.0) * B
 
 
-def print_levels(opt, box, levels, rho_mean, a, n_bg_total):
+def print_levels(opt, box, levels, rho_mean, n_bg_total):
     L, dx = box["L"], box["dx"]
     unit = "pc" if not opt.cosmological else "pc (physical)"
     print(
@@ -560,7 +595,7 @@ def main():
 
     box = gas_box(opt)
     L, N = box["L"], box["N"]
-    target, a = physical_box_target(opt, box)
+    target = physical_box_target(opt, box)
     levels, box_size, levelmin_fill = level_layout(opt, L, target)
     n_bg_total = sum(lev["count"] for lev in levels)
     offset = 0.5 * box_size - 0.5 * L
@@ -569,22 +604,21 @@ def main():
     h = min(ETA_RESOLUTION * box["dx"], h_max)
 
     if n_bg_total > opt.max_background_particles:
-        print_levels(opt, box, levels, box["rho_out"], a, n_bg_total)
+        print_levels(opt, box, levels, box["rho_out"], n_bg_total)
         raise SystemExit(
             f"Error: {n_bg_total:.3e} PartType2 particles (limit "
             f"--max-background-particles {opt.max_background_particles:.3g}). "
             f"--levelmin {levelmin_fill} fills this box with padded levels."
         )
 
+    M_hires = N * (box["m_gas"] + box["m_dm"])
+    particles = None
     if opt.dry_run:
-        pos_gas = pos_dm = None
         extent = L
-        M_total = (
-            box["rho_out"] * box_size**3 + (box["rho_in"] - box["rho_out"]) * L**3
-        )
+        M_total = M_hires + background_mass(opt, box, levels)
     else:
         pos_gas, pos_dm = gas_and_dm_positions(box, rng)
-        pos_bg, m_bg, level_bg = background_particles(opt, box, levels, rng)
+        pos_bg, m_bg = background_particles(opt, box, levels, rng)
         pos_gas += offset
         pos_dm += offset
         hires = np.concatenate((pos_gas, pos_dm))
@@ -594,7 +628,8 @@ def main():
             raise RuntimeError("PartType2 particle inside the gas box")
         if np.any(pos_bg < 0) or np.any(pos_bg >= box_size):
             raise RuntimeError("PartType2 particle outside the periodic box")
-        M_total = N * box["m_gas"] + len(pos_dm) * box["m_dm"] + m_bg.sum()
+        M_total = M_hires + m_bg.sum()
+        particles = (pos_gas, pos_dm, pos_bg, m_bg)
 
     rho_mean = M_total / box_size**3
     if opt.cosmological:
@@ -609,10 +644,13 @@ def main():
         f"{opt.output}{' (dry run, not written)' if opt.dry_run else ''}: "
         f"{mode if opt.cosmological else 'physical'}"
     )
+    if opt.box_size:
+        requested = f"requested {opt.box_size:.6g}"
+    else:
+        requested = f"requested {opt.embed:g} gas boxes"
     if opt.cosmological:
         print(
-            f"Box             : {box_size / a / MPC:.6g} comoving Mpc "
-            f"(requested {opt.box_size if opt.box_size else box_size / a / MPC:.6g}), "
+            f"Box             : {box_size / a / MPC:.6g} comoving Mpc ({requested}), "
             f"{box_size / KPC:.6g} physical kpc at a_begin, "
             f"{box_size / L:.6g} gas boxes"
         )
@@ -621,9 +659,8 @@ def main():
             f"{L / a / KPC:.6g} comoving kpc"
         )
     else:
-        req = opt.box_size if opt.box_size else (opt.embed * L / KPC)
         print(
-            f"Box             : {box_size / KPC:.6g} kpc (requested {req:.6g}), "
+            f"Box             : {box_size / KPC:.6g} kpc ({requested}), "
             f"{box_size / L:.6g} gas boxes"
         )
     print(
@@ -631,7 +668,7 @@ def main():
         f"padding {opt.padding}, coarsest level used {levels[-1]['level']}, "
         f"levelmin that fills this box with padded levels {levelmin_fill}"
     )
-    print_levels(opt, box, levels, rho_mean, a, n_bg_total)
+    print_levels(opt, box, levels, rho_mean, n_bg_total)
     print(f"Mean spacing    : {box['dx'] / PC:.3f} pc, h = {h / PC:.3f} pc")
     c_s = np.sqrt(GAS_GAMMA * (GAS_GAMMA - 1.0)) * box["sigma"]
     print(
@@ -677,8 +714,9 @@ def main():
         for e in grid["errors"]:
             print(f"Error: {e}", file=sys.stderr)
         raise SystemExit("Error: the zoom grid does not fit the rules (see above)")
-    if opt.dry_run:
+    if particles is None:
         return
+    pos_gas, pos_dm, pos_bg, m_bg = particles
 
     print(f"PartType2 inside the gas box: 0 (checked); in the box: {len(m_bg)}")
 
