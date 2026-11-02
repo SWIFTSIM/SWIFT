@@ -75,11 +75,9 @@ fi
 
 if [ "$with_star_formation" -eq 0 ]; then
 	runtime_params="--sinks"
-	parameter_file="params_sinks.yml"
 	run_params="$run_params -P GEARSink:cut_off_radius:$cut_off_radius"
 else
 	runtime_params="--star-formation"
-	parameter_file="params_star_formation.yml"
 fi
 
 rm -rf snap statistics.txt timesteps.txt output.log
@@ -87,4 +85,4 @@ mkdir snap
 
 $swift --hydro $runtime_params --stars --self-gravity --feedback \
 	--cooling --sync --limiter --zoom $cosmo_flag --threads=$n_threads \
-	$(cat zoom_runtime_params.txt) $run_params $extra_params $parameter_file 2>&1 | tee output.log
+	$(cat zoom_runtime_params.txt) $run_params $extra_params params.yml 2>&1 | tee output.log
