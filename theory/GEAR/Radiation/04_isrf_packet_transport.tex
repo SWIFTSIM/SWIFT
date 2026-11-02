@@ -89,8 +89,9 @@ chosen in its parameters. It uses $k_{\rm diss}$ only when it tracks H$_2$
 (Grackle modes 2 and 3); at modes 0 and 1 the LW band still heats through
 $G_0$, but it dissociates nothing. A negative band value never reaches
 Grackle: each band is set to zero if it is negative. The light that dust
-absorbs on the way is not added to the gas as heat. It is booked in a ledger,
-and the gas is heated only through $G_0$. The scheme also carries the photon
+absorbs on the way is not added to the gas as heat; the gas is heated only
+through $G_0$. A build with the ISRF debugging checks books the absorbed light
+in a ledger. The scheme also carries the photon
 number of each band. The LW photon number is written to the snapshots;
 Grackle does not read it.
 
@@ -480,8 +481,9 @@ neighbours, and passes the result to Grackle as $G_0$ and $k_{\rm diss}$.
 \paragraph{Nothing is lost unaccounted.} Every unit of energy that a star emits
 is at any time in one of a few places. It is in flight, absorbed by dust,
 removed by the redshift, or escaped from the gas. Or it was removed with a gas
-particle that became a star or entered a sink. Each gas particle and each star carries ledgers of
-these amounts, and their sum equals the emitted energy to rounding.
+particle that became a star or entered a sink. In a build with the ISRF debugging checks, each gas particle and each star
+carries ledgers of these amounts, and their sum equals the emitted energy to
+rounding.
 
 \begin{figure}[htbp]
 \centering
@@ -1210,7 +1212,10 @@ to one hop downstream of the edge of the absorbing gas.
 \label{sec:packet-ledger}
 
 The light is accounted for per band, in energy and in photon number
-($N E_{\rm lo}$). Every gas particle carries three cumulative ledgers:
+($N E_{\rm lo}$). The ledgers exist only in a build configured with
+\code{--enable-isrf-debugging-checks}. Without it the transport is the same,
+but nothing books the amounts below. Every gas particle carries three
+cumulative ledgers:
 \begin{itemize}
   \item the absorbed ledger $A$ (Section~\ref{sec:packet-absorption});
   \item the redshift ledger $Y$ (Section~\ref{sec:packet-transfer}; zero in a
@@ -1357,7 +1362,7 @@ through \code{cooling\_get\_isrf\_habing\_subgrid} and
 returns zero at Grackle mode 0 or 1. Both are called in
 \code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:903-939}). \code{dust\_chemistry},
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
-\code{cooling.c:1844-1856}. The H$_2$ self-shielding length of Grackle mode 2 is
+\code{cooling.c:1851-1855}. The H$_2$ self-shielding length of Grackle mode 2 is
 set at \code{cooling.c:945-952}. The LW photon number is output only
 (\code{src/feedback/GEAR\_thermal/feedback\_io.h:346-351}).
 
@@ -1404,7 +1409,7 @@ Eq.~\eqref{eq:packet-photonfrac} is
 (\code{src/feedback/GEAR/radiation.h:385-396}, the ratio at :395). The
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:886-899}).
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:891-899}).
 Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
 (\code{src/feedback/GEAR/radiation\_packet.c:446-457}), and
 Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot16} are
@@ -1421,7 +1426,7 @@ arithmetic. The cutoff $\mu_{\rm min}$ is \code{RADIATION\_PACKET\_MU\_MIN}
 (\code{src/feedback/GEAR/radiation\_packet.h:53}). The coefficients of
 Eq.~\eqref{eq:packet-kernel} are \code{kernel\_coeffs}, \code{kernel\_constant}
 and \code{kernel\_gamma} in \code{src/kernel\_hydro.h} (one block per kernel;
-the Wendland C2 block is at :121-150), evaluated by \code{kernel\_eval}
+the Wendland C2 block is at :121-148), evaluated by \code{kernel\_eval}
 (\code{kernel\_hydro.h:297-318}). The gradient loop sums $S_{i,k}$ and the
 numerator of Eq.~\eqref{eq:packet-advance} in
 \code{radiation\_packet\_gradient\_accumulate}
@@ -1448,7 +1453,7 @@ set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 at \code{radiation\_packet.c:2132-2139}. The parameter $p$ is copied to each
 particle at \code{radiation\_isrf.c:103}, and \code{ISRF\_packet\_cone\_power}
 is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:840-842}
-and checked at :887-890.
+and checked at :888-890.
 
 \paragraph{The reach (Sec.~\ref{sec:isrf-reach}).} The membership test is
 \code{radiation\_packet\_in\_reach} (\code{radiation\_packet.c:370-380}) and the
@@ -1531,7 +1536,7 @@ $\kappa_b$ is \code{isrf\_operator[b].kappa} of the receiver
 \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:142-149}).
 The hop path, Eq.~\eqref{eq:packet-path} first line, is at
 \code{radiation\_packet.h:615-621}, with $a$ applied at the call, :655; the star
-path is :721-722 (call at :844-848).
+path is :839-840 (call at :844-848).
 
 \paragraph{Time bins without a speed limit (Sec.~\ref{sec:packet-reservoir}).}
 The choice between the inbox and the reservoir is the argument
@@ -1589,10 +1594,12 @@ The hop reads it in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.c:1780}), but the gradient and the hop skip empty
 slots (\code{radiation\_packet.h:367, :600}). The inbox and reservoir sums are
 booked at \code{radiation\_packet.h:545-566}. GEAR-RT is described in
-\code{theory/RadiativeTransfer/GEARRT/3-rt-numerical-method.tex}, lines 225-228
+\code{theory/RadiativeTransfer/GEARRT/3-rt-numerical-method.tex}, lines 227-228
 (static frame) and 750-771 (Section ``Dealing With Particle Drifts'').
 
-\paragraph{Ledgers (Sec.~\ref{sec:packet-ledger}).} The per-band ledger of a gas
+\paragraph{Ledgers (Sec.~\ref{sec:packet-ledger}).} The ledgers are compiled
+only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
+\code{--enable-isrf-debugging-checks} (\code{configure.ac:3058-3070}). The per-band ledger of a gas
 particle is \code{feedback\_isrf\_packet\_band\_data}
 (\code{feedback\_struct.h:196-235}: \code{absorbed\_energy},
 \code{absorbed\_photons}, \code{escaped\_energy}, \code{escaped\_photons},
@@ -1601,7 +1608,7 @@ a sink is \code{feedback\_isrf\_packet\_removed\_data}
 (\code{feedback\_struct.h:394-408}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:786-836}). The emission is booked by
+(\code{feedback\_struct.h:792-838}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
 (\code{radiation\_packet.c:2208-2241}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:612}. The removal is
