@@ -104,12 +104,14 @@ precomputed table of stellar spectra, integrated over each band; the same
 table gives the ionising photon rate of the HII channel. A particle that
 stands for one star reads $L_b$ and $\bar E_b$ at its mass, and also at its
 metallicity if the table has a metallicity axis. The table has no age axis, so
-the light of a single star does not change during its life before its
-supernova. A particle that stands for a stellar population integrates the
-table over the initial mass function, from its lowest mass to the largest
-mass still alive in the step, and multiplies by the initial mass of the
-particle. With a metallicity axis, that largest mass is also capped at the
-mass whose main-sequence lifetime in the table ends in that step. The mean
+the light of a single star is constant while it emits. A particle that stands
+for a stellar population integrates the table over the initial mass function,
+from its lowest mass to the largest mass still alive in the step, and
+multiplies by the initial mass of the particle. With a metallicity axis, that
+largest mass is also capped at the mass whose main-sequence lifetime in the
+table ends in that step. A population that holds only the continuous part of
+the initial mass function, formed by a sink, has no star above the mass that
+splits the function, and its bound is capped there too. The mean
 photon energy of a population is the band luminosity over the band photon
 rate of the same stars. Both quantities are set at each feedback step of the
 star and are constant over it. The mean photon energy fixes the photon number
@@ -429,8 +431,8 @@ directions into twelve equal cones (the faces of a rhombic dodecahedron). The
 frame of this partition is the same for all particles and all steps. Each slot
 holds one packet: the light that travels in its range of directions. Twelve
 slots are the angular resolution of the scheme. Two directions in one slot are
-at most $90^\circ$ apart, so light from opposite sides is kept apart: two
-stars on opposite sides of a particle add up exactly, to rounding.
+at most $90^\circ$ apart, so light from opposite sides of a particle never
+shares a slot there.
 
 \paragraph{Emission by a star.} At each of its feedback steps, a star hands
 the light of that step, $L_b\Delta t_\star$ per band, to the gas particles in
@@ -698,8 +700,8 @@ $w_{ij,k}$ is zero if $r_{ij}=0$, if $j$ is not in the reach of $i$
 (Section~\ref{sec:isrf-reach}), or if $\mu_{ij,k}\le\mu_{\rm min}=10^{-3}$.
 The cut at $\mu_{\rm min}$ removes the neighbours behind and beside the
 sender; a neighbour just above it has a weight of order
-$\mu_{\rm min}^p=10^{-12}$ times that of one straight ahead, so the cut moves
-no measurable light. The sum runs over all neighbours with non-zero weight, so
+$\mu_{\rm min}^p$ times that of one straight ahead, $10^{-12}$ at $p=4$, so
+the cut moves no measurable light. The sum runs over all neighbours with non-zero weight, so
 $\sum_j\phi_{ij,k}=1$ up to float rounding. The hop hands on the whole of each
 slot: nothing is kept by the sender.
 
@@ -1396,13 +1398,12 @@ mode bounds the step of every gas particle by
   \label{eq:isrf-dt}
 \end{equation}
 with the margin $f_{\Delta t}$ (default 0.5), so that a hop is fast enough for
-the light to move at $v$. The mean advance of a hop is about $0.8\,h$. Above
-$f_{\Delta t}\approx0.8$, light at $v$ travels further in one step than the
-mean hop. The bulk of the light then lags behind $v$, while the front, carried
-by the neighbours near the kernel edge, keeps the speed. In a beam test
-with a step of $0.43\,h/v$ the centre of a light pulse moved at 0.64 to
-$0.66\,v$ (Section~\ref{sec:isrf-accuracy}), so the bulk can lag also below
-0.8. The bound costs many steps: at $v=0.99c$ and $h=0.2$\,pc it is $0.33$\,yr,
+the light to move at $v$. Above $f_{\Delta t}$ of about 0.8 the bulk of the
+light lags behind $v$, while its front, carried by the neighbours near the
+kernel edge, keeps the speed. The bulk lags also below that value: in a beam
+test with a step of $0.43\,h/v$ the centre of a light pulse moved at 0.64 to
+$0.66\,v$ (Section~\ref{sec:isrf-accuracy}). The mechanism of this lag is not
+identified. The bound costs many steps: at $v=0.99c$ and $h=0.2$\,pc it is $0.33$\,yr,
 about $3\times10^4$ times shorter than the step of the test of
 Section~\ref{sec:isrf-accuracy}. This mode is therefore affordable only with a
 limit speed far below $c$.
@@ -1566,7 +1567,7 @@ $L_{\rm PE}e^{-\kappa r}/(4\pi r^2)$; the cause of the deficit of 5 to 10 per
 cent is not known. The front reaches about $2.5$\,pc at $0.15$\,Myr and
 $5$\,pc at $0.29$\,Myr: $0.16$\,pc, one particle spacing, per step of
 $9.2$\,kyr, which is $17$\,km\,s$^{-1}$ or $6\times10^{-5}c$. Real light
-crosses $90$\,pc in that time. Behind the front the field is close to the
+crosses $90$\,kpc in that time. Behind the front the field is close to the
 steady field; ahead of it the gas sees none of the light. In this test a new
 star lights the gas at $5$\,pc after $0.29$\,Myr, not after $16$\,yr.
 Panel (b) adds a clump of radius $1$\,pc on the line of sight, at the same
@@ -1595,8 +1596,11 @@ the beam, per axis, grows linearly with the distance $s$ travelled:
 $\sigma^2-\sigma_0^2=A\,s$. The spread is diffusive: the width grows as
 $\sqrt s$, not in proportion to $s$. The coefficient is $A=0.261\,h$,
 $0.168\,h$ and $0.116\,h$ for $p=2$, 4 and 8. After $100\,h$ the rms
-sideways shift per axis is $5.1$, $4.1$ and $3.4\,h$. A larger $p$ is the
-lever: it is a run-time parameter and costs no memory. Two orientations of the
+sideways shift per axis is $5.1$, $4.1$ and $3.4\,h$. A larger $p$ narrows
+the beam at no memory cost, as $p$ is a run-time parameter. What it costs
+elsewhere is not measured: a narrower cone may spread diffuse light less
+evenly over directions, and at $p=8$ the spread already follows the structure
+of the glass more. Two orientations of the
 slot frame, with the beam $10.7^\circ$ and $29.1^\circ$ from a slot border,
 give the same $A$ to four digits. A test beam whose origin lies one smoothing
 length behind each particle instead fans out like many point sources, with a
@@ -1640,8 +1644,11 @@ arrives in one slot of the receivers, and $8.4\,\%$ of the light of the second
 beam arrives in the same slot. After 24 steps of the two beams together, the
 field differs from the sum of the fields of the two single-beam runs by a
 fraction $5.4\times10^{-2}$. For beams at $180^\circ$ the fraction is
-$3.7\times10^{-6}$, the rounding of the single precision sums, because the
-beams then use opposite slots and never mix. For two stars in a
+$3.7\times10^{-6}$, close to the rounding of the single precision sums,
+because the beams then use opposite slots. Opposite beams are not always
+additive: the crossing test of Section~\ref{sec:isrf-accuracy} gives up to
+$5.1\times10^{-5}$ at the default speed and $2\times10^{-2}$ at a slow limit
+speed. For two stars in a
 low-resolution box, the total light summed over all gas particles after 64
 steps differs from the sum of the two single-star runs by a fraction
 $1.3\times10^{-4}$. The light of a single gas particle, and so its $G_0$, can
