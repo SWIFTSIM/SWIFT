@@ -34,12 +34,12 @@ __attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_fiel
     const struct part *p, struct xpart *xp, const struct cosmology *cosmo, 
     const float B[3]) {
 
-  const float rho = hydro_get_comoving_density(p);
+  const float rho_inv = 1.f / hydro_get_comoving_density(p);
   const float a_fact = pow(cosmo->a, 3.f * hydro_gamma / 2.f);
 
-  xp->mhd_data.B_over_rho_full[0] = a_fact * B[0] / rho;
-  xp->mhd_data.B_over_rho_full[1] = a_fact * B[1] / rho;
-  xp->mhd_data.B_over_rho_full[2] = a_fact * B[2] / rho;
+  xp->mhd_data.B_over_rho_full[0] = rho_inv * a_fact * B[0];
+  xp->mhd_data.B_over_rho_full[1] = rho_inv * a_fact * B[1];
+  xp->mhd_data.B_over_rho_full[2] = rho_inv * a_fact * B[2];
 }
 
 /**
@@ -52,11 +52,11 @@ __attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_fiel
 __attribute__((always_inline)) INLINE static void mhd_set_comoving_magnetic_field (
     const struct part *p, struct xpart *xp, const float B[3]) {
 
-  const float rho = hydro_get_comoving_density(p);
+  const float rho_inv =  1.f / hydro_get_comoving_density(p);
 
-  xp->mhd_data.B_over_rho_full[0] = B[0] / rho;
-  xp->mhd_data.B_over_rho_full[1] = B[1] / rho;
-  xp->mhd_data.B_over_rho_full[2] = B[2] / rho;
+  xp->mhd_data.B_over_rho_full[0] = rho_inv * B[0];
+  xp->mhd_data.B_over_rho_full[1] = rho_inv * B[1];
+  xp->mhd_data.B_over_rho_full[2] = rho_inv * B[2];
 }
 
 /**
