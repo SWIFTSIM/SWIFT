@@ -25,7 +25,9 @@
  *
  * Recommended configuration: the quintic spline kernel
  * (--with-kernel=quintic-spline) with SPH:resolution_eta 1.5 (149
- * neighbours in 3D) and SPH:CFL_condition 0.2. The kernel study of
+ * neighbours in 3D) and SPH:CFL_condition 0.2 (SWIFT's time-step criteria
+ * are written with the kernel support H = kernel_gamma h, so this is the
+ * paper's C = 0.4 in its h = H/2 convention). The kernel study of
  * 2026-10 at eta 1.5 found the quintic spline the most accurate on
  * densities and shocks at the lowest cost: the cubic and quartic splines
  * pair at this neighbour number, the Wendland C2/C4/C6 kernels carry a
