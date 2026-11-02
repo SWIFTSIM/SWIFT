@@ -265,52 +265,42 @@ def gas_and_dm_positions(box, rng):
     return pos_gas, pos_dm if box["m_dm"] > 0 else np.zeros((0, 3))
 
 
-def level_layout(opt, L, box_target):
-    """Nested background levels around the gas box, as MUSIC builds them.
+def margin(h, padding):
+    """Cells added on each side of a hole of h cells: the padding, plus one
+    when needed for a multiple of 4 cells, so that the region edges stay on
+    the lattice of the next coarser level."""
+    return padding if (h // 2 + padding) % 2 == 0 else padding + 1
 
-    Level l has the spacing s = L / 2^l. Going from level l + 1 to level l,
-    the region grows by `padding` cells of level l on each side, plus one
-    cell when needed to keep the cell count a multiple of 4, so that the
-    region edges stay on the lattice of the next coarser level. The coarsest
-    level that fits in the box fills the box. Returns the levels from fine to
-    coarse and the levelmin that would fill the box with padded levels only.
+
+def level_layout(opt, L, box_target):
+    """Background levels from fine to coarse, as MUSIC nests them.
+
+    Level l has the spacing L / 2^l and surrounds the next finer level. The
+    coarsest level that fits fills the box. Also returns the coarsest level
+    whose padded region still fits, the levelmin that fills the box.
     """
-    n_inner = 2**opt.level
     levels = []
+    n_inner = 2**opt.level
     level = opt.level - 1
     while True:
         s = L / 2**level
         h = n_inner // 2
-        m = opt.padding if (h // 2 + opt.padding) % 2 == 0 else opt.padding + 1
-        fits = (h + 2 * m) * s <= box_target * (1.0 + 1e-12)
-        if level < opt.levelmin or not fits:
-            levelmin_fill = level if not fits else None
+        m = margin(h, opt.padding)
+        if (h + 2 * m) * s > box_target * (1.0 + 1e-12):
             break
-        levels.append(dict(level=level, s=s, h=h, m=m, n=h + 2 * m))
+        if level >= opt.levelmin:
+            levels.append(dict(level=level, s=s, h=h, m=m, n=h + 2 * m))
         n_inner = h + 2 * m
         level -= 1
-
-    # Lowest level whose padded region still fits, if levelmin stops early
-    if levelmin_fill is None:
-        while True:
-            s = L / 2**level
-            h = n_inner // 2
-            m = opt.padding if (h // 2 + opt.padding) % 2 == 0 else opt.padding + 1
-            if (h + 2 * m) * s > box_target * (1.0 + 1e-12):
-                levelmin_fill = level + 1
-                break
-            n_inner = h + 2 * m
-            level -= 1
-    else:
-        levelmin_fill += 1
+    levelmin_fill = level + 1
 
     if not levels:
         first = opt.level - 1
         h = 2 ** (opt.level - 1)
-        m = opt.padding if (h // 2 + opt.padding) % 2 == 0 else opt.padding + 1
+        n = h + 2 * margin(h, opt.padding)
         raise SystemExit(
             f"Error: the box ({box_target / PC:.1f} pc) is smaller than the "
-            f"padded level {first} ({(h + 2 * m) * L / 2**first / PC:.1f} pc). "
+            f"padded level {first} ({n * L / 2**first / PC:.1f} pc). "
             "Increase the box or lower --padding."
         )
 
@@ -361,10 +351,9 @@ def background_mass(opt, box, levels):
 
 
 def background_particles(opt, box, levels):
-    """PartType2 at the cell centres of regular lattices, in cgs.
+    """PartType2 at the cell centres of each level, in cgs.
 
-    A random jitter would add a random force on the gas box that grows with
-    the spacing of the level, so the coarse levels would move the whole box.
+    No jitter: its random pull on the gas box grows with the spacing.
     """
     centre = 0.5 * levels[-1]["n"] * levels[-1]["s"]
     pos, mass = [], []
