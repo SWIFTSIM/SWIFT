@@ -849,93 +849,95 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * without the shock term): the convergence of the flow against its shear,
    * both from the matrix velocity gradient V. Pure shear (differential
    * rotation) gives 0, pure compression 1. Particles without a valid
-   * gradient get 1 (the slope limiter then keeps its full distance
-   * cut-off). */
+   * gradient (zero gradient arrays) get 1 (the slope limiter then keeps its
+   * full distance cut-off), a zero divergence (no information for their
+   * neighbours' shock-presence sums, see runner_iact_nonsym_gradient()) and
+   * a decaying viscosity coefficient, so that a raised coefficient does not
+   * survive a spell without a valid C-matrix and keep the conduction of the
+   * neighbourhood off. */
   float convergence_fraction = 1.f;
   float viscosity_limiter = 1.f;
-  if (!res) {
-    const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
-    /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
-     * the d diagonal entries that exist in d dimensions (the absent ones
-     * would contribute -(div v / d)^2 each and make a pure compression
-     * look partly sheared: xi = 1/3 in 1D, 4/5 in 2D). */
-    const float iso = div_v / hydro_dimension;
-    const float Sxx = gradient_vx[0] - iso;
+  const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
+  /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
+   * the d diagonal entries that exist in d dimensions (the absent ones
+   * would contribute -(div v / d)^2 each and make a pure compression
+   * look partly sheared: xi = 1/3 in 1D, 4/5 in 2D). */
+  const float iso = div_v / hydro_dimension;
+  const float Sxx = gradient_vx[0] - iso;
 #if defined(HYDRO_DIMENSION_1D)
-    const float Syy = 0.f;
-    const float Szz = 0.f;
+  const float Syy = 0.f;
+  const float Szz = 0.f;
 #elif defined(HYDRO_DIMENSION_2D)
-    const float Syy = gradient_vy[1] - iso;
-    const float Szz = 0.f;
+  const float Syy = gradient_vy[1] - iso;
+  const float Szz = 0.f;
 #else
-    const float Syy = gradient_vy[1] - iso;
-    const float Szz = gradient_vz[2] - iso;
+  const float Syy = gradient_vy[1] - iso;
+  const float Szz = gradient_vz[2] - iso;
 #endif
-    const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
-    const float Sxz = 0.5f * (gradient_vx[2] + gradient_vz[0]);
-    const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
-    const float S2 = Sxx * Sxx + Syy * Syy + Szz * Szz +
-                     2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
-    const float div2 = div_v * div_v;
-    convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
+  const float Sxy = 0.5f * (gradient_vx[1] + gradient_vy[0]);
+  const float Sxz = 0.5f * (gradient_vx[2] + gradient_vz[0]);
+  const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
+  const float S2 = Sxx * Sxx + Syy * Syy + Szz * Szz +
+                   2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
+  const float div2 = div_v * div_v;
+  convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
 
-    /* Viscosity limiter: the same comparison with the
-     * shock-presence boost of Cullen & Dehnen (2010, eq. 17-18). R = (1/rho)
-     * sum_j sign(div v_j) m_j W_ij is -1 inside a converging front (all
-     * neighbours converge) and ~0 where the signs are mixed (noise, smooth
-     * shear); the divergence is boosted by 2 (1 - R)^4, up to 32 in a
-     * shock, so that a shock seen through shear keeps its viscosity. */
-    if (const_viscosity_shear_limiter) {
-      const float R =
-          fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
-      const float one_minus_R = 1.f - R;
-      const float boost =
-          2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
-      const float bdiv2 = boost * boost * div2;
-      viscosity_limiter = (bdiv2 + S2 > 0.f) ? bdiv2 / (bdiv2 + S2) : 1.f;
-      viscosity_limiter =
-          fmaxf(viscosity_limiter, hydro_props->viscosity.limiter_floor);
-    }
-
-    /* Remember the divergence for the neighbours' shock-presence sums */
-    p->div_v = div_v;
-
-    /* Time-dependent alpha (Cullen & Dehnen 2010, eq. 13-16, in the form
-     * of SPHENIX): the source A = xi H^2 max(0, -d(div v)/dt) of a
-     * converging flow (xi the shock-boosted limiter, H the kernel support)
-     * sets alpha_loc = alpha_max A / (A + c_s^2), which is ~(k H)^2 times
-     * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
-     * up to alpha_loc and decays back towards it over H / (2 length c_s);
-     * floored at alpha_min. Divergence and sound speed are physical. */
-    /* Always evolved: the conduction coefficient uses the neighbours' alpha
-     * as its shock measure; the viscosity itself reads alpha_visc only with
-     * its own switch on. */
-    const float H = kernel_gamma * p->h * cosmo->a;
-    const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
-    const float div_v_phys = div_v * cosmo->a2_inv;
-    const float div_v_dt =
-        dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
-    const float A = div_v_phys < 0.f
-                        ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
-                        : 0.f;
-    const float A_plus_c2 = A + c_phys * c_phys;
-    const float alpha_loc =
-        A_plus_c2 > 0.f ? const_viscosity_alpha * A / A_plus_c2 : 0.f;
-    float alpha = p->alpha_visc;
-    if (alpha_loc > alpha) {
-      alpha = alpha_loc;
-    } else {
-      /* Implicit decay, stable for any time step (Price et al. 2018),
-       * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
-       * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
-       * H, and with v_sig -> c_s: H / (2 l c_s). */
-      const float ratio =
-          dt_alpha * 2.f * hydro_props->viscosity.length * c_phys / H;
-      alpha = (alpha + alpha_loc * ratio) / (1.f + ratio);
-    }
-    p->alpha_visc = fmaxf(alpha, hydro_props->viscosity.alpha_min);
-    p->div_v_previous = div_v_phys;
+  /* Viscosity limiter: the same comparison with the
+   * shock-presence boost of Cullen & Dehnen (2010, eq. 17-18). R = (1/rho)
+   * sum_j sign(div v_j) m_j W_ij is -1 inside a converging front (all
+   * neighbours converge) and ~0 where the signs are mixed (noise, smooth
+   * shear); the divergence is boosted by 2 (1 - R)^4, up to 32 in a
+   * shock, so that a shock seen through shear keeps its viscosity. */
+  if (const_viscosity_shear_limiter) {
+    const float R =
+        fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
+    const float one_minus_R = 1.f - R;
+    const float boost =
+        2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
+    const float bdiv2 = boost * boost * div2;
+    viscosity_limiter = (bdiv2 + S2 > 0.f) ? bdiv2 / (bdiv2 + S2) : 1.f;
+    viscosity_limiter =
+        fmaxf(viscosity_limiter, hydro_props->viscosity.limiter_floor);
   }
+
+  /* Remember the divergence for the neighbours' shock-presence sums */
+  p->div_v = div_v;
+
+  /* Time-dependent alpha (Cullen & Dehnen 2010, eq. 13-16, in the form
+   * of SPHENIX): the source A = xi H^2 max(0, -d(div v)/dt) of a
+   * converging flow (xi the shock-boosted limiter, H the kernel support)
+   * sets alpha_loc = alpha_max A / (A + c_s^2), which is ~(k H)^2 times
+   * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
+   * up to alpha_loc and decays back towards it over H / (2 length c_s);
+   * floored at alpha_min. Divergence and sound speed are physical. */
+  /* Always evolved: the conduction coefficient uses the neighbours' alpha
+   * as its shock measure; the viscosity itself reads alpha_visc only with
+   * its own switch on. */
+  const float H = kernel_gamma * p->h * cosmo->a;
+  const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
+  const float div_v_phys = div_v * cosmo->a2_inv;
+  const float div_v_dt =
+      dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
+  const float A = div_v_phys < 0.f
+                      ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
+                      : 0.f;
+  const float A_plus_c2 = A + c_phys * c_phys;
+  const float alpha_loc =
+      A_plus_c2 > 0.f ? const_viscosity_alpha * A / A_plus_c2 : 0.f;
+  float alpha_v = p->alpha_visc;
+  if (alpha_loc > alpha_v) {
+    alpha_v = alpha_loc;
+  } else {
+    /* Implicit decay, stable for any time step (Price et al. 2018),
+     * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
+     * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
+     * H, and with v_sig -> c_s: H / (2 l c_s). */
+    const float ratio =
+        dt_alpha * 2.f * hydro_props->viscosity.length * c_phys / H;
+    alpha_v = (alpha_v + alpha_loc * ratio) / (1.f + ratio);
+  }
+  p->alpha_visc = fmaxf(alpha_v, hydro_props->viscosity.alpha_min);
+  p->div_v_previous = div_v_phys;
 
   /* Conduction coefficient (SPHENIX's, after Price 2008): grows where u has
    * a local minimum (source beta H laplace(u) / sqrt(u), physical, with the

@@ -164,8 +164,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
   const float common_term = w * mj / rhoj;
 
   /* Shock-presence sum (Cullen & Dehnen 2010, eq. 17) with the neighbour's
-   * divergence from its last gradient evaluation (viscosity limiter) */
-  pi->gradient.shock_indicator += copysignf(mj * w, pj->div_v);
+   * divergence from its last gradient evaluation (viscosity limiter). A
+   * neighbour without a valid gradient (divergence exactly zero) carries no
+   * information and does not count. */
+  pi->gradient.shock_indicator +=
+      (pj->div_v != 0.f) ? copysignf(mj * w, pj->div_v) : 0.f;
 
   /* The inverse of the C-matrix. eq. 6
    * It's symmetric so recall we only store the 6 useful terms. */
