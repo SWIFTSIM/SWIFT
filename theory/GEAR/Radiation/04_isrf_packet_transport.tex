@@ -26,10 +26,10 @@ interstellar medium. This channel transports two bands of them:
   \item the photoelectric band (PE), $6.0$ to $11.2$\,eV;
   \item the Lyman-Werner band (LW), $11.2$ to $13.6$\,eV.
 \end{itemize}
-Together the two bands span the band of the Habing field, $6$ to
-$13.6$\,eV \citep{Habing1968}. The local strength of the field is often given
-as $G_0$, the energy flux over that band in units of the Habing flux
-$F_{\rm H}=1.6\times10^{-3}$\,erg\,s$^{-1}$\,cm$^{-2}$.
+Together the two bands span $6$ to $13.6$\,eV. Here the local strength of the
+field, $G_0$, is the energy flux over that band in units of the Habing flux
+$F_{\rm H}=1.6\times10^{-3}$\,erg\,s$^{-1}$\,cm$^{-2}$, the mean local
+interstellar field \citep{Habing1968}.
 
 \paragraph{Photoelectric heating.} A photon of a few eV can eject an electron
 from a small dust grain or a polycyclic aromatic hydrocarbon. The electron
@@ -356,6 +356,11 @@ $u_b$, $\tilde u_b$ & erg\,cm$^{-3}$, erg\,g$^{-1}$ & energy density of band $b$
 $\boldsymbol{F}_b$ & erg\,s$^{-1}$\,cm$^{-2}$ & flux of band $b$ \\
 $\tau_b$ & -- & optical depth of band $b$ \\
 $G_0$, $F_{\rm H}$ & --, erg\,s$^{-1}$\,cm$^{-2}$ & field strength in Habing units, and the Habing flux \\
+$\Gamma_{\rm pe}$, $\epsilon$ & erg\,s$^{-1}$, -- & photoelectric heating rate per hydrogen atom, and its efficiency \\
+$\Omega$ & sr & solid angle \\
+$\boldsymbol{x}_\star$ & cm & position of a star \\
+$r$, $\ell$ & cm & distance to a star; physical length of a ray, or the length of the local column without transport \\
+$\Sigma$ & g\,cm$^{-2}$ & local gas column without transport, $\rho\,\ell$ \\
 $k_{\rm diss}$ & s$^{-1}$ & H$_2$ photodissociation rate per molecule \\
 $\sigma_{\rm H_2}/\bar E_{\rm LW}$ & cm$^2$\,erg$^{-1}$ & H$_2$ dissociation cross-section over the mean LW photon energy \\
 \bottomrule
@@ -405,9 +410,10 @@ even after many hops.
 from the sender to the receiver. The extra distance from the origin, receiver
 minus sender, is the path of the share. On delivery, the receiver books the
 redshift over this path (in an expanding box) and the dust absorption over it,
-with its own $\kappa_b$. Both are exact exponentials over the path, so many
-short hops give the same result as one long one. What dust absorbs is booked
-in a ledger of the receiver.
+with its own $\kappa_b$. Both are exponentials over the path. In uniform gas,
+at fixed $a$ and $H$, and with one share per merge, many short hops therefore
+give the same energy as one long one (the PE gain to first order in the
+redshift). What dust absorbs is booked in a ledger of the receiver.
 
 \paragraph{The merge.} At its next step, each particle collects the light that
 has arrived in each slot since its last step, and makes it one packet. The
@@ -416,8 +422,8 @@ the energy-weighted mean of the origins of the arrivals. This is the one place
 where the scheme loses information: the spread of directions inside a slot.
 
 \paragraph{Time.} Particles have different time steps, and light has a finite
-speed. Each share therefore carries an arrival time: when the light leaves the
-sender, plus the distance over the limit speed $v$. A share that has not yet
+speed. Each share therefore carries an arrival time: the time at which its
+light reached the sender, plus the distance over the limit speed $v$. A share that has not yet
 arrived waits at the receiver. The receiver keeps four near bins, one of its
 steps wide, and two far cells, many steps wide, for the light that arrives
 later. At each merge it takes only the light that has arrived. Light from a
@@ -1102,6 +1108,15 @@ the receiver plays no role. The reach is a geometric bound and not a light
 travel distance. The step of the sender does not limit it. The speed of light
 limits when a share arrives, not how far it reaches.
 
+\subsubsection{Absorption over a hop}
+\label{sec:isrf-hop-absorption}
+
+A share is absorbed with the $\kappa_b$ of its receiver over its whole path
+(Eq.~\eqref{eq:packet-tau}), so $\kappa_b$ is constant along each hop. Between
+gas of different density the optical depth of a hop is that of the receiver,
+not the integral along the segment. The edge of a shadow can therefore sit up
+to one hop downstream of the edge of the absorbing gas.
+
 \subsubsection{Conservation and the ledgers}
 \label{sec:packet-ledger}
 
@@ -1175,7 +1190,7 @@ returned exactly.
 an order set by the scheduling of the tasks on the threads. Float addition is
 not associative, and the rounding of each addition depends on its operands.
 Two runs with the same input can therefore differ in the last bits of a slot,
-and the difference then grows along the transport. This noise is unbiased: it
+and the difference is then carried along the transport. This noise is unbiased: it
 does not change the balance of Eq.~\eqref{eq:packet-balance} beyond the
 rounding of each addition.
 
