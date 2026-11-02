@@ -276,6 +276,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float rhoj = pj->rho;
   const float pressurei = pi->force.pressure;
   const float pressurej = pj->force.pressure;
+  /* Thermal pressures, without the pressure floor (which acts on the force
+   * only), for the reconstructed pressure residual of the conduction term:
+   * consistent with its gradient, accumulated without the floor. Identical
+   * to the above without a pressure-floor model. */
+  const float P_th_i = gas_pressure_from_internal_energy(rhoi, pi->u);
+  const float P_th_j = gas_pressure_from_internal_energy(rhoj, pj->u);
   const float ci = pi->force.soundspeed;
   const float cj = pj->force.soundspeed;
   const int use_base_SPH_i =
@@ -331,7 +337,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * pressure gradient (hydrostatic equilibrium) reconstructs away, the
    * kernel-scale pressure blip of the density estimate across an entropy
    * jump, or a shock, does not. Drives the conduction signal speed. */
-  float delta_P_rec = pressurei - pressurej;
+  float delta_P_rec = P_th_i - P_th_j;
 
 #ifdef USE_ZEROTH_ORDER_VELOCITIES
   const int force_zeroth_order = 1;
@@ -475,13 +481,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                          : 0.f;
       const float Phi_ij_P = fminf(1.f, fraction_P) * exp_term;
       const float P_rec_i =
-          pressurei + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
-                                  pi->force.gradient_P[1] * delta_i[1] +
-                                  pi->force.gradient_P[2] * delta_i[2]);
+          P_th_i + Phi_ij_P * (pi->force.gradient_P[0] * delta_i[0] +
+                               pi->force.gradient_P[1] * delta_i[1] +
+                               pi->force.gradient_P[2] * delta_i[2]);
       const float P_rec_j =
-          pressurej + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
-                                  pj->force.gradient_P[1] * delta_j[1] +
-                                  pj->force.gradient_P[2] * delta_j[2]);
+          P_th_j + Phi_ij_P * (pj->force.gradient_P[0] * delta_j[0] +
+                               pj->force.gradient_P[1] * delta_j[1] +
+                               pj->force.gradient_P[2] * delta_j[2]);
       /* The residual never exceeds the raw jump (reconstruction overshoot) */
       delta_P_rec = fminf(fabsf(P_rec_i - P_rec_j), fabsf(delta_P_rec));
     }
@@ -788,8 +794,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
    * pressure blips of entropy jumps and in shocks, not on resolved pressure
    * gradients */
   const float dP_eff = fmaxf(
-      0.f, fabsf(delta_P_rec) - 0.5f * const_diffusion_pressure_threshold *
-                                    (pressurei + pressurej));
+      0.f, fabsf(delta_P_rec) -
+               0.5f * const_diffusion_pressure_threshold * (P_th_i + P_th_j));
   const float v_sig_P =
       const_diffusion_alpha_pressure * sqrtf(2.f * dP_eff / (rhoi + rhoj));
 
