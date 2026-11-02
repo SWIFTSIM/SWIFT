@@ -40,5 +40,6 @@ Current examples:
 - SinkHomogeneousBox:
   The GEAR sink HomogeneousBox (gas plus paired dark matter) at the centre
   of a larger periodic box filled with nested shells of background dark
-  matter. Non-cosmological, GEAR sinks or GEAR star formation, no MPI.
+  matter. Without cosmology, or comoving with cosmological=1; GEAR sinks
+  or GEAR star formation, no MPI.
   Not used by CI.

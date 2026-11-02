@@ -31,9 +31,8 @@ run.sh makes the ICs, fetches the cooling and chemistry tables and runs
   level=3 padding=2 n_threads=2 time_end=0.1 ./run.sh   # local test
   with_star_formation=1 ./run.sh                 # GEAR star formation instead of sinks
   level=8 n_threads=72 snapshot_delta=0.05 extra_params="-P Restarts:delta_hours:2" ./run.sh
-  box_size=3.5 ./run.sh                          # box of 4 gas boxes (3.49 kpc)
   cosmological=1 ./run.sh                        # comoving ICs, --cosmology
-  cosmological=1 box_size=100 levelmin=-6 ./run.sh      # 100 comoving Mpc box
+  cosmological=1 box_size=100 levelmin=-5 ./run.sh      # 100 comoving Mpc box
   level=3 box_size=1000 levelmin=-12 n_threads=2 time_end=0.1 ./run.sh  # 1 Mpc box, no cosmology
 
 Variables (default in brackets):
@@ -109,14 +108,19 @@ particles, and stops with the reason if SWIFT would stop:
 
 - ZoomRegion:region_pad_factor: 1.3. The zoom region is the block of
   background cells that holds the centred cube of side 1.3 E.
-- ZoomRegion:bkg_top_level_cells: the value of the automatic mode of SWIFT
+- ZoomRegion:bkg_top_level_cells: the rule of zoom_optimise_bkg_cells()
   (the largest odd number of cells with the padded zoom region inside one
-  cell), capped at 91. The cap keeps the background grid at 753571 cells,
-  about 1.4 GB (struct cell and its multipole, 1888 bytes), and lets the
-  r_cut_max rule below hold with a mesh of 512. SWIFT stops if the zoom region
-  is 64 times smaller than its block of background cells and warns at 16;
-  makeIC.py does the same. Without the cap, a large box would need
-  hundreds of cells per side.
+  cell), without its lower limit of 8, and capped at 91 (max_bkg_cdim). The
+  cap keeps the background grid at 753571 cells, about 1.4 GB (struct cell
+  and its multipole, 1888 bytes), and lets the r_cut_max rule below hold
+  with a mesh of 512. SWIFT stops if the block of background cells around
+  the zoom region is 64 or more padded zoom regions wide, and warns at 16;
+  makeIC.py does the same and prints the smallest number of cells that
+  passes. Without the cap, a large box would need hundreds of cells per
+  side.
+- SWIFT regrids the zoom region when the extent of the gas and PartType1
+  particles grows above zoom region / region_pad_factor. makeIC.py warns
+  when this leaves less than 10 % of growth.
 - ZoomRegion:zoom_top_level_depth: the largest depth (at least 1) with zoom
   cells wider than 1.1 kernel_gamma SPH:h_max, at most 32 zoom cells per
   axis (--max-zoom-cdim) and zoom cells not narrower than a cell of the
@@ -147,12 +151,12 @@ densities a_begin = 0.0136 (z = 72.5). The gas box is then 0.872 physical
 kpc (64.1 comoving kpc) at level 5. Examples (makeIC.py --dry-run):
 
   box [cMpc]  level  levelmin  real box [cMpc]  physical box  gas boxes  PartType2
-  100         5      -6        98.49            1.339 Mpc     1536       364544
-  1000        7      -9        984.9            13.39 Mpc     3840       1012648
+  100         5      -5        98.49            1.339 Mpc     1536       364544
+  1000        7      -6        984.9            13.39 Mpc     3840       1012648
 
-For 1000 cMpc at level 5 the zoom region is 130 times smaller than one
-background cell, and makeIC.py stops: raise --max-bkg-cdim (to at least
-185) or the level.
+For 1000 cMpc at level 5 the background cell around the zoom region is
+130 padded zoom regions wide, and makeIC.py stops: raise max_bkg_cdim
+(makeIC.py --max-bkg-cdim) to at least 189, or raise the level.
 
 Without cosmology, box_size is in physical kpc and the same rules hold.
 
