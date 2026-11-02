@@ -65,8 +65,10 @@ the H$_2$ cooling and the chemistry of cold gas.
     \citep{DraineBertoldi1996,WolcottGreenHaiman2019}.
 \end{itemize}
 The transport of this channel treats the dust. H$_2$ self-shielding is a
-property of the line profile at each place; Grackle applies it locally, from
-a local estimate of the H$_2$ column, and the transport does not.
+property of the line profile at each place. The transport does not treat it.
+Grackle can apply it locally, from a local estimate of the H$_2$ column, but
+this option is off by default: by default the LW dissociation is not
+shielded.
 
 \paragraph{Why a local transport.} Near a young star the field is many times
 the mean field of the galaxy, and it falls off with distance and behind dense
@@ -91,9 +93,11 @@ mass). Grackle receives two numbers from it:
 with $\rho$ the physical gas density and
 $\sigma_{\rm H_2}/\bar E_{\rm LW}=1.2847\times10^{-7}$\,cm$^2$\,erg$^{-1}$.
 Grackle computes the photoelectric heating from $G_0$, with the efficiency law
-chosen in its parameters. It uses $k_{\rm diss}$ only when its chemical
-network tracks H$_2$; with a network without H$_2$ the LW band still heats
-through $G_0$, but it dissociates nothing. The light that dust absorbs on the
+chosen in its parameters. Grackle is compiled with one of four chemical
+networks, the Grackle build modes 0 to 3. Only build modes 2 and 3 track
+H$_2$, and only they receive $k_{\rm diss}$. In build modes 0 and 1,
+$k_{\rm diss}$ is zero: the LW band still heats through $G_0$, but it
+dissociates nothing. The light that dust absorbs on the
 way is not added to the gas as heat; the gas is heated only through $G_0$.
 The scheme also carries the photon number of each band. The LW photon number
 is an output only; Grackle does not read it.
@@ -101,8 +105,16 @@ is an output only; Grackle does not read it.
 \paragraph{The light of a star.} Each star particle has a luminosity $L_b$
 and a mean photon energy $\bar E_b$ in each band. Both come from a
 precomputed table of stellar spectra, integrated over each band; the same
-table gives the ionising photon rate of the HII channel. A particle that
-stands for one star reads $L_b$ and $\bar E_b$ at its mass, and also at its
+table gives the ionising photon rate of the HII channel. The table is built
+outside SWIFT. A table with a metallicity axis reads the PARSEC v2.0 stellar
+tracks. By default $L_b$ is the Planck spectrum of each point of a track, at
+its effective temperature and radius, integrated over the band and averaged
+over the main sequence; an option takes the spectrum from model atmospheres
+instead. A table of mass only uses power-law fits of the luminosity and the
+radius in the mass. $\bar E_b$ is $L_b$ over the band photon rate of the same
+spectrum.
+
+A particle that stands for one star reads $L_b$ and $\bar E_b$ at its mass, and also at its
 metallicity if the table has a metallicity axis. The table has no age axis, so
 the light of a single star is constant while it emits. A particle that stands
 for a stellar population integrates the table over the initial mass function,
@@ -111,16 +123,19 @@ multiplies by the initial mass of the particle. With a metallicity axis, that
 largest mass is also capped at the mass whose main-sequence lifetime in the
 table ends in that step. A population that holds only the continuous part of
 the initial mass function, formed by a sink, has no star above the mass that
-splits the function, and its bound is capped there too. The mean
-photon energy of a population is the band luminosity over the band photon
-rate of the same stars. Both quantities are set at each feedback step of the
+splits the function, and its bound is capped there too. For a population,
+$\bar E_b$ is the band luminosity over the band photon rate of the same stars.
+Both quantities are set at each feedback step of the
 star and are constant over it. The mean photon energy fixes the photon number
 that the star emits (Section~\ref{sec:packet-state}).
 
 \paragraph{Without transport.} The transport can be switched off. A star then
 gives the light of its step to the gas particles in its kernel, each
-attenuated by $e^{-\kappa_b\Sigma}$, with $\Sigma=\rho\,\ell$ a local column
-through a length $\ell$ chosen by a run-time parameter. The field of a
+attenuated by $e^{-\kappa_b\ell}$. Here $\kappa_b$ is the absorption rate of
+Eq.~\eqref{eq:isrf-kappa} at the density and metallicity of the receiving
+particle. $\ell$ is a physical length chosen at run time: a multiple of the
+kernel support radius of the receiver, its distance to the star, or its Jeans
+length at a capped temperature, at most one support radius. The field of a
 particle is the sum over the stars that reach it in the current step. Light
 never reaches gas outside the kernels of the stars. The rest of this section
 describes the transport.
@@ -251,11 +266,13 @@ energy $\bar E_b$ of the light at each place.
 through an edge depends on the local spectrum, which the scheme does not
 carry. The scheme takes $\lambda_E({\rm PE})$, $\lambda_E({\rm LW})$ and
 $\lambda_N({\rm LW})$ as constants of the run. They are computed once, from the
-stellar spectrum integrated over the initial mass function at a reference
-metallicity. For PE, $\lambda_N$ follows from Eq.~\eqref{eq:isrf-lambdaN} with
-the mean photon energy that the light carries. The weights of the shipped
-tables satisfy Eq.~\eqref{eq:isrf-lambdaN}: $\lambda_E({\rm LW})-1=5.508$ and
-$\lambda_N({\rm LW})=6.0$ give $\bar E_{\rm LW}=12.2$\,eV.
+stellar spectrum integrated over the initial mass function, at the metallicity
+$Z=0.014$ if the table has a metallicity axis. $\lambda_N({\rm PE})$ is not a
+constant: it follows from Eq.~\eqref{eq:isrf-lambdaN} with the mean photon
+energy of each share (Section~\ref{sec:packet-transfer}). Without a usable
+table the weights are $\lambda_E({\rm PE})=2.154$, $\lambda_E({\rm LW})=6.508$
+and $\lambda_N({\rm LW})=6.0$; they satisfy Eq.~\eqref{eq:isrf-lambdaN} with
+$\bar E_{\rm LW}=12.2$\,eV.
 
 \begin{figure}[htbp]
 \centering
@@ -318,9 +335,13 @@ the light at a reduced speed, set by the time step of the gas and by a limit
 speed $v\le c$ (Section~\ref{sec:isrf-speed}); with the default settings it is
 far below $c$. The field that the gas sees is still formed with the true $c$
 (Section~\ref{sec:packet-field}): the scheme carries the flux of the light and
-converts it to the energy density that light of that flux has at $c$. Once the
-front has passed, the steady field is therefore right. The approach to it is
-slower than for real light (Section~\ref{sec:isrf-accuracy}). The dust
+converts it to the energy density that light of that flux has at $c$. A slow
+front therefore delays the field but does not scale it. Behind the front the
+measured field is 0.90 to 0.95 of the thin limit. Where the light of several
+sources shares a slot, $G_0$ of a single particle can differ by up to 13 per
+cent from the sum of the sources
+(Sections~\ref{sec:isrf-accuracy}, \ref{sec:packet-superposition}). The
+approach to the steady field is slower than for real light. The dust
 absorption and the redshift are booked per unit of path, not per unit of
 time, so a slow front does not change them.
 
@@ -360,6 +381,15 @@ heating by the absorbed light & not applied: the gas is heated through $G_0$
 \bottomrule
 \end{tabular}
 \end{table}
+
+\paragraph{Why these terms may be dropped.} Dust re-emits what it absorbs in
+the infrared, outside the two bands. The redshift depth over $10$\,kpc is
+$\zeta\approx4\times10^{-5}$ at $z=9$, and less later. With
+$\lambda_E({\rm LW})\approx6.5$ the whole redshift loss over such a path is
+below $3\times10^{-4}$, so an error in the constant band-edge weights changes
+the field inside a galaxy by less than that. The scheme counts scattered light
+as absorbed. The errors from dropping scattering and the emission of the gas
+in the bands, and from one grey opacity per band, have not been estimated.
 
 {\small
 \begin{longtable}{>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{7.4cm}}
@@ -403,8 +433,7 @@ $\Gamma_{\rm pe}$, $\epsilon_{\rm pe}$ & erg\,s$^{-1}$, -- & photoelectric heati
 $F_{\rm LW}$ & erg\,s$^{-1}$\,cm$^{-2}$ & LW energy flux from all directions, $c\,u_{\rm LW}$ \\
 $\Omega$ & sr & solid angle \\
 $\boldsymbol{x}_\star$ & cm & position of a star \\
-$r$, $\ell$ & cm & distance to a star; physical length of a ray, or the length of the local column without transport \\
-$\Sigma$ & g\,cm$^{-2}$ & local gas column without transport, $\rho\,\ell$ \\
+$r$, $\ell$ & cm & distance to a star; physical length of a ray, or the local attenuation length without transport \\
 $k_{\rm diss}$ & s$^{-1}$ & H$_2$ photodissociation rate per molecule \\
 $\sigma_{\rm H_2}/\bar E_{\rm LW}$ & cm$^2$\,erg$^{-1}$ & H$_2$ dissociation cross-section over the mean LW photon energy \\
 \bottomrule
@@ -705,7 +734,7 @@ the cut moves no measurable light. The sum runs over all neighbours with non-zer
 $\sum_j\phi_{ij,k}=1$ up to float rounding. The hop hands on the whole of each
 slot: nothing is kept by the sender.
 
-For the Wendland-C2 kernel of the canonical build (three dimensions),
+For the Wendland-C2 kernel used in GEAR runs (three dimensions),
 \begin{equation}
   W(r,h) = \frac{21}{2\pi\,\gamma^{3}h^{3}}\,(1-q)^4\,(1+4q), \qquad
   q=\frac{r}{\gamma h},\quad \gamma=1.936492,
@@ -771,8 +800,11 @@ the fraction of it that is due at $t$. Then
   \label{eq:packet-merge-E}
 \end{equation}
 and the photon number $N_{k,b}$ is updated in the same way, with the same
-$g_\beta$. Under the default speed limit the stores are four near bins and
-two far cells (Section~\ref{sec:packet-lightspeed}). A near bin ends at the
+$g_\beta$. The transport has three modes for the speed of the light
+(Section~\ref{sec:packet-lightspeed}). In the default capped mode and in the
+step-bounding mode, each slot has the stores of Section~\ref{sec:isrf-idea}:
+four near bins, one receiver step wide each, and two far cells, many steps
+wide, for light that arrives later. A near bin ends at the
 time $T_\beta$ and holds the light that arrives by then; a far cell holds light
 that arrives evenly from $t_{{\rm f},\beta}$ to $t_{{\rm l},\beta}$ (a pulse
 has $t_{{\rm f},\beta}=t_{{\rm l},\beta}$). The due
@@ -788,9 +820,9 @@ fractions are
   \end{cases}
   \label{eq:packet-merge-g}
 \end{equation}
-In the no-delay test mode (Section~\ref{sec:packet-reservoir}) there are two
-stores: an inbox, with $g=1$, and a reservoir $B_{k,b}$, with
-$g=f_{{\rm rel},k}$.
+The third mode, the no-delay test mode, is a limit case with two stores: an
+inbox, with $g=1$, and a reservoir $B_{k,b}$, with $g=f_{{\rm rel},k}$
+(Section~\ref{sec:packet-reservoir}).
 
 Each share brought an offset $\boldsymbol{o}_s$ to its origin
 (Eq.~\eqref{eq:packet-offset}, or the star-to-gas vector of
@@ -798,17 +830,20 @@ Section~\ref{sec:packet-emission}) and a transmitted energy
 $e_s=\sum_b e_{s,b}$, summed over both bands. The slot keeps the origin sum
 $O_k=\sum_s e_s\boldsymbol{o}_s$ of its waiting light and the waiting energy
 $E_{\rm wait}=\sum_{\beta,b}P_{\beta,k,b}$. A merge that releases the energy
-$E_{\rm rel}=\sum_{\beta,b}g_\beta P_{\beta,k,b}$ takes the part
-$\min(1,E_{\rm rel}/E_{\rm wait})\,O_k$ of the sum, so the new origin is
-(Fig.~\ref{fig:isrf-merge}a)
+$E_{\rm rel}=\sum_{\beta,b}g_\beta P_{\beta,k,b}\le E_{\rm wait}$ takes the
+same fraction $E_{\rm rel}/E_{\rm wait}$ of the origin sum and divides it by
+the released energy. The new origin is (Fig.~\ref{fig:isrf-merge}a)
 \begin{equation}
-  \boldsymbol{o}_k = \frac{O_k}{E_{\rm wait}},
+  \boldsymbol{o}_k = \frac{1}{E_{\rm rel}}\,
+  \frac{E_{\rm rel}}{E_{\rm wait}}\,O_k = \frac{O_k}{E_{\rm wait}},
   \qquad d_k=|\boldsymbol{o}_k|, \qquad
   \boldsymbol{n}_k = -\frac{\boldsymbol{o}_k}{d_k},
   \label{eq:packet-merge-origin}
 \end{equation}
 for $d_k>0$: the energy-weighted mean origin of all the light that waited, not
-only of the released part. For $d_k=0$ the direction is
+only of the released part. The rest of the sum,
+$(1-E_{\rm rel}/E_{\rm wait})\,O_k$, stays with the light that still waits, so
+its mean origin is unchanged. For $d_k=0$ the direction is
 $\boldsymbol{n}_k=(0,0,1)$. In the no-delay mode the inbox and the reservoir
 keep separate origin sums. The merge takes the whole inbox sum and the
 fraction $f_{{\rm rel},k}$ of the reservoir sum, so the origin is the mean
@@ -980,13 +1015,10 @@ the time of the booking, for a hop and for a star. With $H=0$ in a static box,
 there is no redshift and no transfer.
 
 \paragraph{Order of redshift and dust.} The scheme applies the redshift first
-and the dust second. Another ordering takes one combined depth
-$\tau+\lambda_E\zeta$ and splits the LW loss by the ratio of the two rates.
-The two agree in the energy that LW transmits,
-$E_{\rm LW}e^{-(\tau+\lambda_E({\rm LW})\zeta)}$, and in the PE gain when
-$\kappa=0$. With dust, the PE gain and the split of the loss between the
-redshift ledger and the absorbed ledger differ by a term of order
-$\zeta\tau E$.
+and the dust second. A combined depth $\tau+\lambda_E\zeta$ gives the same LW
+energy; the PE gain and the split between the redshift and absorbed ledgers
+differ by order $\zeta\tau E$, below $10^{-7}E$ for $\tau\le1$ and a $7$\,pc
+hop up to $z=9$.
 
 \subsubsection{Dust absorption}
 \label{sec:packet-absorption}
@@ -1039,51 +1071,11 @@ $d_r^2=d_s^2+2d_s\,\boldsymbol{\Delta x}_{ij}\!\cdot\!\boldsymbol{n}_{i,k}+r_{ij
 so the clamp acts only on rounding. When each merge receives a single share,
 the merge keeps the origin of that share, and the path lengths add up to the
 distance from the origin to the last receiver. The transmitted amounts are
-booked into the inbox of the receiver slot, or into its reservoir
-(Section~\ref{sec:packet-reservoir}), and the absorbed amounts into the
+booked into a store of the receiver slot (Section~\ref{sec:packet-merge}),
+and the absorbed amounts into the
 absorbed ledger of the receiver (Section~\ref{sec:packet-ledger}). The absorbed
 energy is a diagnostic: it is not added to the gas, which sees the light only
 through the field of Section~\ref{sec:packet-field}.
-
-\subsubsection{Particles on different time bins}
-\label{sec:packet-reservoir}
-
-This subsection describes the no-delay test mode, in which a share arrives at
-the next merge of its receiver whatever the distance. It is the simple case
-of the merge of Eq.~\eqref{eq:packet-merge-E}. The default mode replaces the
-inbox and the reservoir by the arrival bins and cells of
-Section~\ref{sec:packet-lightspeed}.
-
-A share goes into the inbox of the receiver slot, from which it joins the held
-packet at the next active step of the receiver. This holds if the time bin of
-the sender is not coarser than that of the receiver. If the bin of the sender
-is coarser (its step is longer), the share goes into a reservoir of the slot
-instead, with the same origin sum. The slot records the time $T_{\rm end}$:
-the time of the booking plus one step of the current time bin of the source,
-the latest over all shares of the slot. The reservoir is released in equal
-parts over the step of the sender. At each merge of the receiver, at time $t$
-and after a step of length $\Delta t$ (the step that ends now, which began at
-$t-\Delta t$), the fraction
-\begin{equation}
-  f_{{\rm rel},k} = \begin{cases}
-    \Delta t/(T_{\rm end}-t+\Delta t), & T_{\rm end}>t,\\
-    1, & \text{otherwise}
-  \end{cases}
-  \label{eq:packet-release}
-\end{equation}
-of the reservoir joins the arrivals of the merge
-(Eq.~\eqref{eq:packet-merge-E}). The fraction applies to the energy, the photon
-number and the origin sum alike. It is measured from the start of the step
-that ends now; under cosmology $\Delta t$ and $T_{\rm end}-t+\Delta t$ are
-proper times. With equal receiver steps the parts are equal: a share booked at
-the start of a receiver step, with $n\Delta t$ to run, is released in $n$
-merges of $1/n$ each, and the last merge releases the rest. If the part
-released in a band, $f_{{\rm rel},k}$ times its photon number in the
-reservoir, would be below $10^{-35}$, the whole reservoir is released, in every band, with its origin
-sum. A star sends to the reservoir of a
-receiver whose bin is finer than its own, with $T_{\rm end}$ equal to the time
-of the emission plus one step of its time bin. This reservoir is a transport
-buffer for unequal steps.
 
 \subsubsection{A finite speed of light}
 \label{sec:packet-lightspeed}
@@ -1091,12 +1083,11 @@ buffer for unequal steps.
 This step solves the time derivative of Eq.~\eqref{eq:isrf-rte-solved} with a
 limit speed $v$ in place of $c$.
 
-\paragraph{Modes.} The transport has three modes for the speed of the light.
-The default capped mode limits the speed to $v=fc$ (default $f=0.99$) and sets
-no bound on the time step. The step-bounding mode also bounds the step of every
-gas particle (Section~\ref{sec:isrf-speed}). The no-delay mode, for tests,
-delivers every share at the next merge of its receiver
-(Section~\ref{sec:packet-reservoir}).
+\paragraph{Modes.} The default capped mode limits the speed of the light to
+$v=fc$ (default $f=0.99$) and sets no bound on the time step. The
+step-bounding mode also bounds the step of every gas particle
+(Section~\ref{sec:isrf-speed}). The no-delay test mode is the limit
+$v\to\infty$ (Section~\ref{sec:packet-reservoir}).
 
 \paragraph{Arrival time.} Let $t_{{\rm a},i}$ be the arrival stamp of sender
 $i$: the latest arrival time of the light of its held packet. A share to a
@@ -1145,8 +1136,7 @@ bin as a pulse at its latest arrival time, a box as a box, never to an earlier
 time. The roundings never make light leave early: each piece of a share split
 over bins is rounded down, the last piece takes the rest, and every stored
 arrival time is rounded later. The held packet is stamped with the latest
-arrival time of what it released. The field that the receiver sees is formed
-as in the no-delay mode (Section~\ref{sec:packet-field}). The origin follows
+arrival time of what it released. The origin follows
 Eq.~\eqref{eq:packet-merge-origin}: one origin sum for all the waiting light
 of a slot. A bin or a far cell whose photon number is below $10^{-35}$ is
 booked as absorbed before the release. So is the rest of a far cell when it
@@ -1168,6 +1158,41 @@ from a sender with twice the step is spread over three bins.
 the arrived light (orange).}
 \label{fig:isrf-bins}
 \end{figure}
+
+\subsubsection{Limit case: the no-delay test mode}
+\label{sec:packet-reservoir}
+
+In this mode, for tests, a share arrives at the next merge of its receiver
+whatever the distance: the limit $v\to\infty$. It is the simple case of the
+merge of Eq.~\eqref{eq:packet-merge-E}, with an inbox and a reservoir in place
+of the near bins and far cells. A share goes into the inbox of the receiver slot, from which it joins the held
+packet at the next active step of the receiver. This holds if the time bin of
+the sender is not coarser than that of the receiver. If the bin of the sender
+is coarser (its step is longer), the share goes into a reservoir of the slot
+instead, with the same origin sum. The slot records the time $T_{\rm end}$:
+the time of the booking plus one step of the current time bin of the source,
+the latest over all shares of the slot. The reservoir is released in equal
+parts over the step of the sender. At each merge of the receiver, at time $t$
+and after a step of length $\Delta t$ (the step that ends now, which began at
+$t-\Delta t$), the fraction
+\begin{equation}
+  f_{{\rm rel},k} = \begin{cases}
+    \Delta t/(T_{\rm end}-t+\Delta t), & T_{\rm end}>t,\\
+    1, & \text{otherwise}
+  \end{cases}
+  \label{eq:packet-release}
+\end{equation}
+of the reservoir joins the arrivals of the merge
+(Eq.~\eqref{eq:packet-merge-E}). The fraction applies to the energy, the photon
+number and the origin sum alike. Under cosmology $\Delta t$ and
+$T_{\rm end}-t+\Delta t$ are proper times. With equal receiver steps the parts are equal: a share booked at
+the start of a receiver step, with $n\Delta t$ to run, is released in $n$
+merges of $1/n$ each, and the last merge releases the rest. If the part
+released in a band, $f_{{\rm rel},k}$ times its photon number in the
+reservoir, would be below $10^{-35}$, the whole reservoir is released, in every
+band, with its origin sum. A star sends to the reservoir of a receiver whose
+bin is finer than its own, with $T_{\rm end}$ the time of the emission plus
+one step of its time bin.
 
 \subsubsection{The field that the gas sees}
 \label{sec:packet-field}
@@ -1235,17 +1260,14 @@ position in the box frame enters the light. The distance and the direction of
 a held packet are set at the merge. The merge runs when the position of the
 particle is updated (the drift), and the hop of the
 same integer time reads them before the particle has moved, so they are never
-stale. The offsets of the inbox and of the reservoir are different. They are
-measured from the receiver at the time of booking. They stay as they are until
-the next merge of the receiver, over any drift of the receiver in between. This
-is the gas-frame choice. GEAR-RT keeps the radiation field of a particle in a
-static frame instead, and corrects it at each drift by extrapolation along the
-gradient.
+stale. The offsets of the waiting light are different. They are measured
+from the receiver at the time of booking, and stay as they are until the next
+merge of the receiver, over any drift of the receiver in between. This is the
+gas-frame choice.
 
-Real light moves at $c$ in every frame. The box frame is fixed in the comoving
-coordinates, in which the Hubble flow is at rest. It differs from the gas frame
-by the peculiar velocities of the gas, and the light in the two frames by terms
-of order $u/c$. The choice of frame matters because a hop has the speed
+The box frame is fixed in the comoving coordinates, in which the Hubble flow
+is at rest; it differs from the gas frame by the peculiar velocities of the
+gas. The choice of frame matters because a hop has the speed
 $v_{\rm hop}=a\,l/\Delta t$, with $l$ the advance of
 Eq.~\eqref{eq:packet-advance} and $\Delta t$ the step of the sender. This speed
 is usually far below $c$ (Section~\ref{sec:isrf-speed}). In the box frame, a
@@ -1264,11 +1286,10 @@ $\Delta u=3$ to $30\,{\rm km\,s^{-1}}$. The kept redshift over a $7$\,pc hop
 is $\lambda\zeta$, with $\lambda$ the band-edge weight and
 $\zeta=1.6\times10^{-9}$ at $z=0$ and $2.8\times10^{-8}$ at $z=9$
 ($H_0=70\,{\rm km\,s^{-1}\,Mpc^{-1}}$, $\Omega_{\rm m}=0.3$). Inside a galaxy
-the dropped term per hop is therefore $10^{2}$ to $10^{3}$ times the kept one:
-the ratio is the velocity gradient over $H$, and $10\,{\rm km\,s^{-1}}$ over
-$100$\,pc is $3\times10^{-15}\,{\rm s^{-1}}$, against
-$H_0=2.3\times10^{-18}\,{\rm s^{-1}}$ and
-$H(z=9)=3.9\times10^{-17}\,{\rm s^{-1}}$.
+the dropped term per hop is therefore $10^{2}$ to $10^{3}$ times the kept one,
+the ratio of the velocity gradient ($10\,{\rm km\,s^{-1}}$ over $100$\,pc,
+$3\times10^{-15}\,{\rm s^{-1}}$) to $H$ ($2.3\times10^{-18}$ to
+$3.9\times10^{-17}\,{\rm s^{-1}}$ from $z=0$ to 9).
 
 Dropping the larger term is still the better choice, because the two terms
 add up differently along a ray. The Doppler terms of successive hops along a
@@ -1292,7 +1313,7 @@ lands in two different slots of a particle is never merged. At the booking, a
 share adds its energy, photon number and $e_s\boldsymbol{o}_s$ to a store of
 the slot that its origin sets. At the next step of the receiver, the light
 that is due leaves the stores and becomes the held packet
-(Sections~\ref{sec:packet-merge} to \ref{sec:packet-lightspeed}).
+(Sections~\ref{sec:packet-merge} to \ref{sec:packet-reservoir}).
 Table~\ref{tab:isrf-merge-rules} lists how each quantity is combined.
 
 \begin{table}[htbp]
@@ -1310,22 +1331,20 @@ origin of the packet & mean of the origin offsets, weighted by the energy of
   both bands \\
 direction $\boldsymbol{n}_k$, distance $d_k$ & taken from the mean origin
   (Eq.~\eqref{eq:packet-merge-origin}) \\
-near bins (default) & a bin that has ended is released whole \\
-far cells (default) & the part that has arrived is released \\
-origin sum (default) & one sum for all waiting light; the fraction of the
+near bins (capped mode) & a bin that has ended is released whole \\
+far cells (capped mode) & the part that has arrived is released \\
+origin sum (capped mode) & one sum for all waiting light; the fraction of the
   waiting energy that is released takes the same fraction of the sum \\
-arrival stamp (default) & the latest arrival time of the released light \\
+arrival stamp (capped mode) & the latest arrival time of the released light \\
 reservoir (no-delay mode) & the fraction $f_{{\rm rel},k}$ of its energy,
   photon number and origin sum joins the merge \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Two facts follow. First, the merge conserves the energy and the photon number
-of each band exactly, and loses only the spread of the directions inside a
-slot (Section~\ref{sec:packet-superposition}). Second, the mean is taken over
-origin offsets, not over unit directions. For two shares of equal energy, the
-one with the more distant origin turns the merged direction more.
+The mean is taken over origin offsets, not over unit directions: of two shares
+of equal energy, the one with the more distant origin turns the merged
+direction more.
 
 \begin{figure}[htbp]
 \centering
@@ -1367,12 +1386,9 @@ The absorbed light does not heat the gas. The gas sees only the light that
 crosses it, through $G_0$ and $k_{\rm diss}$ (Section~\ref{sec:packet-field}),
 and Grackle applies no second dust attenuation to $G_0$. The transport has no
 H$_2$ line absorption. When the H$_2$ self-shielding option of Grackle is on
-(it is off by default), Grackle multiplies $k_{\rm diss}$ by a self-shielding
-factor \citep{WolcottGreenHaiman2019}, computed from a local H$_2$ column. That
-column is $n_{\rm H_2}$ times a length that the option chooses: either a
-multiple of the kernel support radius of the particle or the local Jeans
-length. This option is separate from the choice of the chemical network of
-Section~\ref{sec:isrf-problem}.
+(Section~\ref{sec:isrf-problem}), Grackle multiplies $k_{\rm diss}$ by a
+factor \citep{WolcottGreenHaiman2019} from a local H$_2$ column: $n_{\rm H_2}$
+times a multiple of the kernel support radius, or times the Jeans length.
 
 % ---------------------------------------------------------------------------
 \subsection{Numerics: speed, conservation, rounding, accuracy and limits}
@@ -1427,25 +1443,21 @@ receiver, $r_{ij}<\gamma h_j$. Both radii are cut by the factor
 $1-\delta_{\rm r}$, $\delta_{\rm r}=10^{-5}$, about a hundred float roundings
 of the square distance. Without the cut, a pair at the edge could be inside
 the reach when $S_{i,k}$ is summed and outside when the shares are booked,
-because the two computations may round the distance differently. The weight
-uses the larger of the two lengths, $H_{ij}$, for every receiver in the reach,
-so that it does not depend on the activity of the receiver. An inactive
-receiver beyond the kernel support of the sender gets no light.
+because the two computations may round the distance differently.
 
-The reason lies in how SWIFT visits pairs. It computes pair interactions in
-loops over neighbour pairs, at fixed stages of a step (density, gradient,
-force). In the default hydro scheme a loop visits a pair for the particle it
-updates only if the pair lies inside the kernel support of that particle, and
-only active particles are updated. $S_{i,k}$ is summed in the gradient stage
-and the shares are booked in the force stage. Visiting $i$, these stages see
-the neighbours inside $\gamma h_i$. A neighbour $j$ with
-$\gamma h_i\le r_{ij}<\gamma h_j$ is seen only when $j$ itself is visited,
-which happens only if $j$ is active. Both stages use the same membership test,
-so the shares of a sender sum to 1. With a hydro scheme whose gradient stage
-visits each pair within the larger of the two supports, on a single rank, the
-activity of the receiver plays no role. The reach is a geometric bound and not
-a light travel distance. The step of the sender does not limit it. The speed of light
-limits when a share arrives, not how far it reaches.
+$S_{i,k}$ is summed in one pass over the neighbour pairs and the shares are
+booked in a later pass, and a pair can be visited from either of its
+particles. The weight uses the larger length $H_{ij}$, so that it has the same
+value in both passes, from both sides and for an inactive receiver; the shares
+of a sender then sum to one. The kernel mean of the field
+(Eq.~\eqref{eq:packet-kernelmean}) moves no light and needs no such
+agreement. It uses the support $\gamma h_i$ of the particle alone, the usual
+SPH gather; this is a choice. A pass visits a pair only for an active
+particle, and only inside its kernel support. A neighbour $j$ with
+$\gamma h_i\le r_{ij}<\gamma h_j$ is therefore seen only when $j$ is visited,
+which needs $j$ active: an inactive receiver beyond $\gamma h_i$ gets no
+light. The reach is a geometric bound, not a light travel distance. The speed
+of light limits when a share arrives, not how far it reaches.
 
 \subsubsection{Absorption over a hop}
 \label{sec:isrf-hop-absorption}
@@ -1478,8 +1490,7 @@ $X_\star=L_b\Delta t_\star\sum_c\varepsilon_c$ (Eq.~\eqref{eq:packet-escape}),
 together with the photon numbers $f_b$ times these. A gas particle can become
 a star, be swallowed by a sink, or become a sink. The light it still holds in
 flight is then lost with it. This is, in all slots, the held packet and the
-waiting light: the inbox and the reservoir, or the near bins and the far cells
-under a speed limit. It is booked as removed energy $E_{\rm rm}$ in the ledger
+waiting light in all its stores. It is booked as removed energy $E_{\rm rm}$ in the ledger
 of the star or the sink. The absorbed, the redshift and the escaped ledgers of
 the gas are carried over in the same ledger as inherited amounts
 $E_{\rm inh}$. When a sink
@@ -1500,7 +1511,7 @@ Each step of the transport moves light between the terms without creating or
 destroying it. The hop shares sum to one (Eq.~\eqref{eq:packet-share}); the
 merge adds; the redshift moves the lost part to $Y$; the absorption moves the
 absorbed part to $A$. The cell fractions of a star sum to one only if the
-stage that sums $S_c$ and the stage that delivers the shares see the same
+pass that sums $S_c$ and the later pass that delivers the shares see the same
 receivers and the same $h_\star$. The balance holds up to the rounding of float
 arithmetic; in the beam tests of Section~\ref{sec:isrf-accuracy} the energy of
 the light is kept to $2\times10^{-7}$ of the beam energy or better. The term
@@ -1516,12 +1527,11 @@ The ledgers are in double precision, because small shares must not be lost
 against a large total. A stored share is a float, with a relative rounding of
 at most $2^{-24}$, about $6\times10^{-8}$. The relative loss of a share in one
 hop by the redshift is $\lambda\zeta$, with $\lambda$ the band-edge weight. For
-a $7$\,pc hop with the shipped weights it is about $10^{-8}$ in LW at $z=0$,
+a $7$\,pc hop with the default weights it is about $10^{-8}$ in LW at $z=0$,
 and $1.8\times10^{-7}$ in LW and $6\times10^{-8}$ in PE at $z=9$. Below $z$ of
 about 4 the LW loss of one hop is below the rounding, so the stored shares
 carry it only on average. At higher redshift they resolve it. The double
-ledger $Y$ books it in both cases. A bar on the energy balance must lie above
-that rounding.
+ledger $Y$ books it in both cases.
 
 \paragraph{Stochastic rounding of the sums.} A float running sum rounded to the
 nearest drops every term below half a step of the sum. The hop weights and
@@ -1551,10 +1561,8 @@ test, by a mechanism not yet identified; one-thread runs are bit-identical.
 \label{sec:isrf-accuracy}
 
 Three tests measure the accuracy of the transport: one star in uniform gas, the
-sideways spread of a beam, and two crossing beams. Each was run with 12 slots,
-$p=4$ and at one resolution unless stated. There is no systematic
-resolution study yet, and the effect of the slot count $K$ has not been
-measured.
+sideways spread of a beam, and two crossing beams. Each was run in a static
+box with 12 slots, $p=4$ and at one resolution unless stated.
 
 \paragraph{One star: the thin limit and a shadow.} Figure~\ref{fig:isrf-thin}
 shows one star in a static box, $10$\,pc wide and not periodic, in the default
@@ -1563,11 +1571,11 @@ $n_{\rm H}\approx720$\,cm$^{-3}$ and metallicity $Z=2\times10^{-4}$ in
 $262\,144$ particles, so $\tau_{\rm PE}=0.03$ per pc. The steps of the gas are
 at most $9.2$\,kyr. Panel (a) plots $c\rho\tilde u_{\rm PE}$, the median in
 shells around the star. Inside the front it is 0.90 to 0.95 times
-$L_{\rm PE}e^{-\kappa r}/(4\pi r^2)$; the cause of the deficit of 5 to 10 per
-cent is not known. The front reaches about $2.5$\,pc at $0.15$\,Myr and
-$5$\,pc at $0.29$\,Myr: $0.16$\,pc, one particle spacing, per step of
-$9.2$\,kyr, which is $17$\,km\,s$^{-1}$ or $6\times10^{-5}c$. Real light
-crosses $90$\,kpc in that time. Behind the front the field is close to the
+$L_{\rm PE}e^{-\kappa_{\rm PE}r}/(4\pi r^2)$; the cause of the deficit of 5 to
+10 per cent is not known. The front reaches about $2.5$\,pc at $0.15$\,Myr and
+$5$\,pc at $0.29$\,Myr. It moves by $0.16$\,pc, one particle spacing, in each
+step of $9.2$\,kyr: $17$\,km\,s$^{-1}$ or $6\times10^{-5}c$. Real light
+crosses $2.8$\,kpc in one such step, and $90$\,kpc in $0.29$\,Myr. Behind the front the field is close to the
 steady field; ahead of it the gas sees none of the light. In this test a new
 star lights the gas at $5$\,pc after $0.29$\,Myr, not after $16$\,yr.
 Panel (b) adds a clump of radius $1$\,pc on the line of sight, at the same
@@ -1597,10 +1605,8 @@ $\sigma^2-\sigma_0^2=A\,s$. The spread is diffusive: the width grows as
 $\sqrt s$, not in proportion to $s$. The coefficient is $A=0.261\,h$,
 $0.168\,h$ and $0.116\,h$ for $p=2$, 4 and 8. After $100\,h$ the rms
 sideways shift per axis is $5.1$, $4.1$ and $3.4\,h$. A larger $p$ narrows
-the beam at no memory cost, as $p$ is a run-time parameter. What it costs
-elsewhere is not measured: a narrower cone may spread diffuse light less
-evenly over directions, and at $p=8$ the spread already follows the structure
-of the glass more. Two orientations of the
+the beam at no memory cost; its other costs are not measured, and at $p=8$ the
+spread already follows the structure of the glass more. Two orientations of the
 slot frame, with the beam $10.7^\circ$ and $29.1^\circ$ from a slot border,
 give the same $A$ to four digits. A test beam whose origin lies one smoothing
 length behind each particle instead fans out like many point sources, with a
@@ -1619,8 +1625,15 @@ $v=3\times10^{-5}c$ ($9$\,km\,s$^{-1}$), with one thread, it is
 $2.0\times10^{-2}$ to $3.1\times10^{-2}$. At a slow limit speed the transport
 is therefore not linear even for opposite beams; the mechanism is not known. In
 that run, with a step of $0.43\,h/v$, the centre of a pulse moves at
-$0.64\,v$, and at $0.66\,v$ with eight times more particles. Beams at $60^\circ$ share slots; that limit
-follows.
+$0.64\,v$, and at $0.66\,v$ with eight times more particles. Beams at
+$60^\circ$ share slots; that limit follows.
+
+\paragraph{What is not established.} No test was run in an expanding box: the
+redshift and the band-edge transfer are checked only per hop, against the
+analytic sizes of Sections~\ref{sec:packet-transfer} and
+\ref{sec:isrf-rounding}, and the cosmological equation has no end-to-end test.
+The accuracy on several MPI ranks is not measured. There is no resolution study, no study of the slot count $K$, no
+comparison with an independent transfer code, and no galaxy-scale test.
 
 \subsubsection{Limit: merged slots break the linearity of the superposition}
 \label{sec:packet-superposition}
@@ -1656,9 +1669,8 @@ differ by up to $13\,\%$. The scheme conserves the energy of each band exactly
 in every case (Section~\ref{sec:packet-merge}); what it loses is the exact
 additivity of the directions.
 
-This is an accepted limit of the scheme. It keeps the total energy, but it
-changes where the light of several sources goes, and so the field at single
-particles. The effect of the number of slots on it has not been measured.
+The scheme has no correction for this: it keeps the total energy, but not the
+field of several sources at a single particle.
 
 \subsubsection{Limit: the far light at a slow speed}
 \label{sec:isrf-far-limit}
@@ -1689,20 +1701,12 @@ hydrogen- and helium-ionising radiation in SPH simulations of reionisation.
 This subsection compares the two as those papers describe TRAPHIC.
 Table~\ref{tab:isrf-traphic} sets them side by side.
 
-\paragraph{What the two share.} Both move the light on the SPH particles,
-from a particle to its neighbours, with no grid. In both, a source hands its
-light to its neighbours over a set of emission cones of equal solid angle,
-rotated at random at each emission. In both, a gas particle passes a packet
-only to the neighbours that lie ahead along its direction. Both sort the
-packets that arrive at a particle into reception cones and merge the packets of
-each cone into one. A particle then holds at most one packet per cone, so the
-cost does not grow with the number of sources. Both absorb over a hop with the
-density of the receiver, constant along the hop, and remove the fraction
-$1-e^{-\tau}$, so the photons are conserved explicitly. In both, a merge
-replaces the directions of the merged packets by a mean, so the light of
-several sources does not add exactly. Both can limit the
-speed of the light: TRAPHIC with a clock on each packet, this scheme with an
-arrival time.
+\paragraph{What the two share.} Both move the light from SPH particle to
+neighbour, with no grid: random emission cones at a source, transmission only
+to the neighbours ahead, and reception cones whose packets merge into one. The
+cost does not grow with the number of sources. Both absorb $1-e^{-\tau}$ over
+a hop with the density of the receiver, and in both a merge replaces the
+directions by a mean, so several sources do not add exactly.
 
 \begin{table}[!htbp]
 \centering
@@ -1749,7 +1753,7 @@ speed of light & clock advanced by $d/c$ per hop, packet held until the
   the sender; a step-bounding mode so the front moves at $v$, and a
   no-delay mode for tests \\
 time steps & one global radiative transfer step $\Delta t_{\rm r}$ & the
-  individual time bins of the gas; reservoir, near bins and far cells \\
+  individual time bins of the gas; near bins and far cells \\
 cosmology & tested on a static density field at $z\approx8.85$; the clock is
   noted as a way to redshift & comoving offsets; redshift and band-edge
   transfer per share \\
@@ -1794,16 +1798,12 @@ and loses no light. This scheme books that light as escaped, at the emission
 (Eq.~\eqref{eq:packet-escape}) and at a hop (Section~\ref{sec:packet-ledger}).
 
 \paragraph{Absorption and its use.} For a hop TRAPHIC takes the projection of
-the particle separation on the direction; for a source it takes the full
-distance. This scheme takes the increase of the distance from the origin,
-which equals that projection when the origin is far compared with the hop, and
-the full distance for a star. In TRAPHIC the absorbed photons are the
-physics: their number per step gives the photoionisation rate of the receiver,
-and photons that the sub-cycled rate equation does not use are added back to
-the transport \citep[Section~5.2]{PawlikSchaye2008}. Here the dust only removes
-light. The gas responds to the light that crosses it, through $G_0$ and
-$k_{\rm diss}$, and the absorbed energy is a diagnostic. The time steps and
-the cosmology differ as Table~\ref{tab:isrf-traphic} lists.
+the separation on the direction. The increase of the distance from the origin,
+used here, equals it when the origin is far compared with the hop. In TRAPHIC
+the absorbed photons give the photoionisation rate of the receiver, and
+photons that the sub-cycled rate equation does not use return to the
+transport \citep[Section~5.2]{PawlikSchaye2008}. Here the absorbed energy is a
+diagnostic; the gas responds to the light that crosses it.
 
 % ---------------------------------------------------------------------------
 \subsection{In the code}
@@ -1834,9 +1834,13 @@ chemical network has no H$_2$. Both are called in
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
 \code{cooling.c:1851-1855}. The H$_2$ self-shielding option of
 Sec.~\ref{sec:packet-absorb-summary} is \code{GrackleCooling:H2\_self\_shielding}
-(\code{src/cooling/grackle/cooling\_io.h:391-405}; 0 off, 2 the kernel-support
-length, 3 the Jeans length); its length for the value 2 is set at
-\code{cooling.c:945-952}. It is independent of the build mode. The LW photon
+(\code{src/cooling/grackle/cooling\_io.h:391-405}). Its values, not to be
+confused with the build modes, are 0 (off, the default), 2 (the kernel-support
+length) and 3 (the Jeans length). The length for the value 2 is set at
+\code{cooling.c:945-952}. The option is read in every
+build mode, but it acts on $k_{\rm diss}$, which is zero below
+\code{grackle\_2}, so it has an effect only in \code{grackle\_2} and
+\code{grackle\_3}. The LW photon
 number is output only
 (\code{src/feedback/GEAR\_thermal/feedback\_io.h:346-351}).
 
@@ -1854,7 +1858,7 @@ are read in \code{src/feedback/GEAR/radiation\_table\_io.c} (:990, :1012,
 :1112, :1138).
 
 \paragraph{Without transport (Sec.~\ref{sec:isrf-problem}).} The local
-deposit with $e^{-\kappa_b\Sigma}$ is in \code{radiation\_iact.h}
+deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}
 (\code{src/feedback/GEAR/radiation\_iact.h:279-323}), with the path
 \code{radiation\_get\_comoving\_extinction\_path} and the factors
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
@@ -2109,9 +2113,7 @@ The hop reads it in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:614-621}). An empty slot keeps its old origin
 (\code{radiation\_packet.c:1780}), but the gradient and the hop skip empty
 slots (\code{radiation\_packet.h:367, :600}). The inbox and reservoir sums are
-booked at \code{radiation\_packet.h:545-566}. GEAR-RT is described in
-\code{theory/RadiativeTransfer/GEARRT/3-rt-numerical-method.tex}, lines 227-228
-(static frame) and 750-771 (Section ``Dealing With Particle Drifts'').
+booked at \code{radiation\_packet.h:545-566}.
 
 \paragraph{Ledgers (Sec.~\ref{sec:packet-ledger}).} The ledgers are compiled
 only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
@@ -2161,4 +2163,4 @@ is used for the weight sum (:374) and for the inbox and the reservoir
 \code{--enable-isrf-debugging-checks} the gas particle is 2176 bytes with 8
 slots, 2976 bytes with 12 slots (the default) and 3776 bytes with 16 slots;
 with the option it is 96 bytes larger. The fields of the two light speed modes
-share their bytes. The restart layout marker is 20.
+share their bytes.
