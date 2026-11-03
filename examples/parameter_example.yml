@@ -726,8 +726,8 @@ GeajayCooling:
   # rates file in use; geajay refuses a file of another spectrum or redshift grid.
   # uv_shielding_table_file: FG20_column_shielding.h5 # Required with HI_HeI_HeII_column. Column file of the UV background. No default
   uv_shielding_length_method: none             # Required with HI_HeI_HeII_column: given_length (the proper length path * kernel_gamma * h * a) or Jeans (local Jeans length) for the gas;
-                                               # none is refused there. For the gas around a GEAR sink, at the birth of its stars, the length is always the proper sink cut-off
-                                               # radius r_cut * a, or kernel_gamma * h_sink * a with use_fixed_cut_off_radius: 0, whatever this method (default: none)
+                                               # none is refused there. This method applies to gas particles. For a GEAR sink particle the length is its cut-off radius r_cut * a
+                                               # (kernel_gamma * h_sink * a with use_fixed_cut_off_radius: 0), whatever this method, times the factor below (default: none)
   uv_shielding_length_factor: 1                # (optional) Factor R_sh on the length, above 0 (default: 1)
   uv_shielding_path: kernel_radius             # (optional) Read only with uv_shielding_length_method: given_length. Path in kernel support radii: kernel_radius or kernel_diameter (default: kernel_radius)
   # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
