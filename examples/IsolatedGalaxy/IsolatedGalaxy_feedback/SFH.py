@@ -1,12 +1,15 @@
 """
-Makes a movie using sphviewer and ffmpeg.
+Plots the star formation history of the isolated galaxy, computed two ways:
 
-Edit low_frac and up_frac to focus on a certain view of the box.
-The colour map can also be changed via colour_map.
+ - from the summed star formation rates of the gas particles in each of the
+   snapshots output_0001.hdf5 to output_0099.hdf5;
+ - from a mass-weighted histogram of the birth times of the star particles in
+   the final snapshot output_0100.hdf5.
 
-Usage: python3 makeMovie.py CoolingHalo_
+Only particles within a 20x20x4 kpc slab centred on the box are used.
+The two curves should agree if star formation behaves as expected.
 
-Written by James Willis (james.s.willis@durham.ac.uk)
+Usage: python3 SFH.py
 """
 
 import glob
