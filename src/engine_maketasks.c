@@ -107,9 +107,10 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
           "c->count=%d",
           ci->depth, ci->hydro.count);
 #endif
-    /* Create the task. Packed pre-SF, same snapshot as the gpart data pack
-     * (see the t_grav_counts -> t_pack_grav unlock below) so the count this
-     * message reports always matches what the data pack actually sends. */
+    /* Create the task. It is packed before star formation runs, at the
+     * same moment as the gpart data pack (see the t_grav_counts ->
+     * t_pack_grav unlock below), so the count it reports always matches
+     * what the data pack actually sends. */
     t_grav_counts = scheduler_addtask(
         s, task_type_send, task_subtype_grav_counts, ci->mpi.tag, 0, ci, cj);
   }
