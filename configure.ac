@@ -3046,6 +3046,9 @@ case "$with_sink" in
     if test "$with_feedback" != "GEAR"; then
        AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR])
     fi
+    if test "$with_cooling" != "grackle"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_N])
+    fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
     *)
