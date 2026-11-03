@@ -110,6 +110,10 @@ enum isrf_packet_light_speed {
  * angles alone. */
 #define default_ISRF_packet_octant_frame_seed_offset 0
 
+/*! Default distance of the origin of the test beams behind the particle, in
+ * smoothing lengths. */
+#define default_ISRF_packet_test_beam_origin_distance_h 1000.f
+
 /**
  * @brief Dust extinction path of the LW/PE bands
  * (GEARFeedback:ISRF_extinction_path).
@@ -214,6 +218,10 @@ struct feedback_props {
   /*! Test beams, see #radiation_packet_inject_test_beams. */
   float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS]
                              [RADIATION_PACKET_TEST_BEAM_FIELDS];
+
+  /*! Distance behind the particle, in smoothing lengths, of the origin of the
+   * test beams. Large is collimated, 1 fans the first hop out. */
+  float ISRF_packet_test_beam_origin_distance_h;
 
   /*! Minimal density to consider a particle eligible for HII ionization */
   float HII_min_density;
@@ -874,6 +882,20 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     const int n_test_beams =
         radiation_packet_read_test_beams(params, fp->ISRF_packet_test_beam);
+    fp->ISRF_packet_test_beam_origin_distance_h = parser_get_opt_param_float(
+        params, "GEARFeedback:ISRF_packet_test_beam_origin_distance_h",
+        default_ISRF_packet_test_beam_origin_distance_h);
+    uint32_t origin_bits;
+    memcpy(&origin_bits, &fp->ISRF_packet_test_beam_origin_distance_h,
+           sizeof(origin_bits));
+    volatile uint32_t origin_opaque = origin_bits;
+    if (((origin_opaque >> 23) & 0xFFu) == 0xFFu ||
+        !(fp->ISRF_packet_test_beam_origin_distance_h > 0.f &&
+          fp->ISRF_packet_test_beam_origin_distance_h <= 1e4f))
+      error(
+          "GEARFeedback:ISRF_packet_test_beam_origin_distance_h must be in "
+          "(0, 1e4] (got %g).",
+          fp->ISRF_packet_test_beam_origin_distance_h);
     if (n_test_beams > 0 && !fp->ISRF_propagation)
       error(
           "GEARFeedback:ISRF_packet_test_beam_* is set, but it acts only with "

@@ -682,20 +682,22 @@ int radiation_packet_read_test_beams(
  * @brief Give the particles inside a test beam box their beam pulse, once.
  *
  * The pulse goes into the inbox of the slot of the beam direction, as a share
- * whose origin lies one smoothing length behind the particle. Its photon number
- * is its energy (mean photon energy at the band lower edge). The energy is in
- * no ledger: a test adds it up from the parameters. Called before the first
- * merge of the particle.
+ * whose origin lies @a origin_distance_h smoothing lengths behind the particle.
+ * Its photon number is its energy (mean photon energy at the band lower edge).
+ * The energy is in no ledger: a test adds it up from the parameters. Called
+ * before the first merge of the particle.
  *
  * @param p The particle.
  * @param beams The beams, see #radiation_packet_read_test_beams.
+ * @param origin_distance_h Distance of the origin behind the particle, in
+ * smoothing lengths. Large is a collimated beam.
  * @param ti_current Current integer time, the arrival time of the pulse.
  */
 void radiation_packet_inject_test_beams(
     struct part *p,
     const float beams[RADIATION_PACKET_TEST_BEAMS]
                      [RADIATION_PACKET_TEST_BEAM_FIELDS],
-    const integertime_t ti_current) {
+    const float origin_distance_h, const integertime_t ti_current) {
 
   for (int i = 0; i < RADIATION_PACKET_TEST_BEAMS; i++) {
     const float *bm = beams[i];
@@ -713,8 +715,9 @@ void radiation_packet_inject_test_beams(
         inside = 0;
     if (!inside) continue;
 
-    const float offset[3] = {-p->h * direction[0], -p->h * direction[1],
-                             -p->h * direction[2]};
+    const float back = origin_distance_h * p->h;
+    const float offset[3] = {-back * direction[0], -back * direction[1],
+                             -back * direction[2]};
     radiation_packet_deliver(p, p->feedback_data.isrf_packet.octant_frame,
                              energy, energy, offset, 0.f, 0.f, 0, 0,
                              (double)ti_current, (double)ti_current);

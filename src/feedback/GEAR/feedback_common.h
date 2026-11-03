@@ -165,7 +165,7 @@ void feedback_first_init_sink(struct sink *s);
  * the layout of the gas, the star, the sink, #feedback_props or the feedback
  * restart blocks changes, so that a restart file of another layout is
  * refused. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 21
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 23
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

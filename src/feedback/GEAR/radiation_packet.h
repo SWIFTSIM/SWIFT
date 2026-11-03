@@ -219,7 +219,7 @@ void radiation_packet_inject_test_beams(
     struct part *p,
     const float beams[RADIATION_PACKET_TEST_BEAMS]
                      [RADIATION_PACKET_TEST_BEAM_FIELDS],
-    const integertime_t ti_current);
+    const float origin_distance_h, const integertime_t ti_current);
 
 /**
  * @brief Float sum `a + b` with stochastic rounding: the float below or above
