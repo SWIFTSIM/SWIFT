@@ -564,7 +564,7 @@ feedback_get_physical_SN_terminal_momentum(
   } else if ((0.01 <= Z_mean_over_Z_sun) && (Z_mean_over_Z_sun <= 1)) {
     metallicity_factor = pow(Z_mean_over_Z_sun, -0.18);
   } else /* Z/Z_sun > 1 */ {
-    metallicity_factor = pow(Z_mean_over_Z_sun, -0.14);
+    metallicity_factor = pow(Z_mean_over_Z_sun, -0.12);
   }
 
   /* Get number density factor in cgs */
