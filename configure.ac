@@ -3235,6 +3235,12 @@ case "$with_star_formation" in
       AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
    ;;
    GEAR)
+      if test "$with_stars" != "GEAR"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-stars=GEAR])
+      fi
+      if test "$with_chemistry" != "GEAR" && test "$with_chemistry" != "AGORA"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-chemistry=GEAR_N or AGORA])
+      fi
       AC_DEFINE([STAR_FORMATION_GEAR], [1], [GEAR star formation model (Revaz and Jablonka (2018))])
    ;;
    *)
