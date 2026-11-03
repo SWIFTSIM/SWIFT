@@ -2567,7 +2567,7 @@ esac
 #  Adiabatic index
 AC_ARG_WITH([adiabatic-index],
    [AS_HELP_STRING([--with-adiabatic-index=<gamma>],
-      [adiabatic index @<:@5/3, 7/5, 4/3, 2 default: 5/3@:>@]
+      [adiabatic index @<:@5/3, 7/5, 4/3, 2, 1.001 default: 5/3@:>@]
    )],
    [with_gamma="$withval"],
    [with_gamma="5/3"]
@@ -2584,6 +2584,9 @@ case "$with_gamma" in
    ;;
    2)
       AC_DEFINE([HYDRO_GAMMA_2_1], [2.], [Adiabatic index is 2])
+   ;;
+   1.001)
+      AC_DEFINE([HYDRO_GAMMA_1_001], [1.001], [Adiabatic index is 1.001 (nearly isothermal)])
    ;;
    *)
       AC_MSG_ERROR([Unknown adiabatic index: $with_gamma])
@@ -2734,7 +2737,7 @@ fi
 #  Cooling function
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
-      [cooling function @<:@none, const-du, const-lambda, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
+      [cooling function @<:@none, const-du, const-lambda, TREECOOL, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
       For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
    )],
    [with_cooling="$withval"],
@@ -2793,6 +2796,10 @@ case "$with_cooling" in
    PS2020)
       AC_DEFINE([COOLING_PS2020], [1], [Cooling following the PS2020 model (Ploeckinger+20 tables)])
       with_cooling_name="PS2020 (Ploeckinger+20 tables)"
+   ;;
+   TREECOOL)
+      AC_DEFINE([COOLING_TREECOOL], [1], [Cooling following the Katz, Weinberg & Hernquist (1996) primordial model])
+      with_cooling_name="TREECOOL (Katz+96 primordial H/He, tabulated UV background)"
    ;;
    COLIBRE)
       AC_MSG_ERROR([This cooling model changed name. Please use 'PS2020'.])
@@ -3072,6 +3079,9 @@ case "$with_forcing" in
    ;;
    idealized-agn-jet)
       AC_DEFINE([FORCING_IDEALIZED_AGN_JET], [1], [Launch AGN jets and treats particles in jet reservoir as fixed boundary particles])
+   ;;
+   driven-turbulence)
+      AC_DEFINE([FORCING_DRIVEN_TURBULENCE], [1], [Driven turbulence following updating the forces])
    ;;
    *)
       AC_MSG_ERROR([Unknown external forcing term: $with_forcing])
@@ -3501,6 +3511,7 @@ AC_CONFIG_FILES([tests/testParser.sh], [chmod +x tests/testParser.sh])
 AC_CONFIG_FILES([tests/testSelectOutput.sh], [chmod +x tests/testSelectOutput.sh])
 AC_CONFIG_FILES([tests/testFormat.sh], [chmod +x tests/testFormat.sh])
 AC_CONFIG_FILES([tests/testNeutrinoCosmology.sh], [chmod +x tests/testNeutrinoCosmology.sh])
+AC_CONFIG_FILES([tests/testCustomMPI.sh], [chmod +x tests/testCustomMPI.sh])
 AC_CONFIG_FILES([tests/output_list_params.yml])
 AC_CONFIG_FILES([tests/selectOutputParameters.yml])
 

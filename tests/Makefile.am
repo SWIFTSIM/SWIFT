@@ -17,21 +17,25 @@
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
 AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS)
 
-AM_LDFLAGS = ../src/.libs/libswiftsim.a $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
+# Libraries every test needs on top of the SWIFT library itself
+COMMON_LIBS = $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
 
 if HAVECSDS
-AM_LDFLAGS += ../csds/src/.libs/libcsds_writer.a
+COMMON_LIBS += ../csds/src/.libs/libcsds_writer.a
 endif
 
+AM_LDFLAGS = ../src/.libs/libswiftsim.a $(COMMON_LIBS)
+
 # List of programs and scripts to run in the test suite
-TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
+TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
+        testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
         testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
         testPotentialSelf testPotentialPair testEOS testUtilities testSelectOutput.sh \
-        testCbrt testCosmology testRandomCone testOutputList testFormat.sh \
+        testCbrt testCosmologyAccuracy testRandomCone testOutputList testFormat.sh \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -40,12 +44,13 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
 		 testActivePair test27cells test27cells_subset test125cells testParser \
-         testKernel testFFT testInteractions testMaths testRandom testExp \
+         testKernel testKernelAccuracy testFFT testInteractions testMaths \
+         testRandom testExp \
          testSymmetry testDistance testThreadpool testRandomSpacing testErfc \
          testAdiabaticIndex testRiemannExact testRiemannTRRS testRandomPoisson testRandomCone \
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
-		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
+		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
@@ -75,7 +80,7 @@ testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
 
-testCosmology_SOURCES = testCosmology.c
+testCosmologyAccuracy_SOURCES = testCosmologyAccuracy.c
 
 testOutputList_SOURCES = testOutputList.c
 
@@ -113,6 +118,8 @@ test125cells_SOURCES = test125cells.c
 testParser_SOURCES = testParser.c
 
 testKernel_SOURCES = testKernel.c
+
+testKernelAccuracy_SOURCES = testKernelAccuracy.c
 
 testKernelLongGrav_SOURCES = testKernelLongGrav.c
 
@@ -164,7 +171,19 @@ testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
 
-testHydroMPIrules = testHydroMPIrules.c
+testHydroMPIrules_SOURCES = testHydroMPIrules.c
+
+# Tests that need an MPI launcher. Built with the MPI library and run through
+# the wrapper script (which skips them when no mpirun is available).
+if HAVEMPI
+TESTS += testCustomMPI.sh
+check_PROGRAMS += testCustomMPI
+testCustomMPI_SOURCES = testCustomMPI.c
+testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
+# The MPI library pulls in the same extra dependencies as the swift_mpi binary
+testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
+EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
+endif
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
@@ -179,4 +198,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh
