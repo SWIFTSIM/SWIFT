@@ -152,6 +152,13 @@ struct feedback_isrf_operator_data {
 #define RADIATION_PACKET_FAR_CELLS 2
 #endif
 
+/*! Width of the far arrival cells of a particle with a known step, as a power
+    of two times the step. It does not depend on what waits, so faint light
+    cannot change when other light leaves. */
+#ifndef RADIATION_PACKET_FAR_SCALE
+#define RADIATION_PACKET_FAR_SCALE 3
+#endif
+
 #if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
     RADIATION_PACKET_SLOTS != 16
 #error "RADIATION_PACKET_SLOTS must be 8, 12 or 16."
@@ -159,6 +166,10 @@ struct feedback_isrf_operator_data {
 
 #if RADIATION_PACKET_FAR_CELLS < 1
 #error "RADIATION_PACKET_FAR_CELLS must be at least 1."
+#endif
+
+#if RADIATION_PACKET_FAR_SCALE < 0
+#error "RADIATION_PACKET_FAR_SCALE must not be negative."
 #endif
 
 /*! Text of the snapshot descriptions: what a reception slot is. */
@@ -324,17 +335,19 @@ struct feedback_isrf_packet_slot_data {
       /*! Distance from the end of each far cell down to the first arrival
           time of its light, when the cell holds the light of one share, which
           arrives evenly between this time and the one of #far_last_below. A
-          negative value marks a cell that holds the light of several shares.
-          Rounded so that the time is later. */
+          negative value marks a cell that holds the light of several shares,
+          or of a particle with a known step. Rounded so that the time is
+          later. */
       float far_first_below[RADIATION_PACKET_FAR_CELLS];
 
       /*! Distance from the end of each far cell down to the latest arrival
-          time of its light, rounded so that the time is later. Negative for
-          light that arrives beyond the end of the last cell. Valid for a cell
-          that holds energy. */
+          time of its light, rounded so that the time is later. Zero once the
+          particle has a known step: the light then leaves at the end of the
+          cell. Negative for light that arrives beyond the end of the last
+          cell. Valid for a cell that holds energy. */
       float far_last_below[RADIATION_PACKET_FAR_CELLS];
 
-      /*! Latest arrival time of the light in the held packet. A share booked
+      /*! Departure time of the held packet, its merge time. A share booked
           from it arrives its path over the limit speed after this time, so
           that no part of the packet moves faster than the limit. */
       double arrival;
@@ -366,8 +379,9 @@ struct feedback_isrf_packet_data {
   float octant_frame[9];
 
   /*! The width of the far arrival cells is the length of the step times two
-      to this power (#radiation_packet_far_end). Placed before the 8-byte
-      members, where it fills padding. */
+      to this power (#radiation_packet_far_end): #RADIATION_PACKET_FAR_SCALE
+      once the step is known, fitted to the waiting light before. Placed
+      before the 8-byte members, where it fills padding. */
   unsigned char far_scale;
 
   /*! End of the current step of the particle, set at its merge. A finer

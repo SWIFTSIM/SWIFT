@@ -1120,6 +1120,34 @@ static float radiation_packet_round_down(const double x) {
 }
 
 /**
+ * @brief Latest arrival time of a bin or cell after a piece joins it, as a
+ * distance below its end, for a particle with a known step.
+ *
+ * A part whose energy is below the float rounding of the other part
+ * (`FLT_EPSILON` of it) takes the time of the other part, so the time at which
+ * the light leaves is set by its bulk, not by light near the photon cutoff.
+ * That faint part may leave before it arrives. Otherwise the later time is
+ * kept.
+ *
+ * The energies are sums over both bands. The result depends on the order in
+ * which the pieces arrive: faint pieces that come before the bulk can set the
+ * time, so the bulk then leaves late, never early.
+ *
+ * @param held Energy in the bin or cell before the piece.
+ * @param held_below Its time, as a distance below the end.
+ * @param piece Energy of the piece.
+ * @param piece_below Time of the piece, as a distance below the end.
+ */
+static float radiation_packet_join_below_end(const float held,
+                                             const float held_below,
+                                             const float piece,
+                                             const float piece_below) {
+  if (!(held > 0.f) || held < FLT_EPSILON * piece) return piece_below;
+  if (piece < FLT_EPSILON * held) return held_below;
+  return fminf(held_below, piece_below);
+}
+
+/**
  * @brief Add a piece of a share to a near arrival bin.
  *
  * @param sl The slot.
@@ -1129,23 +1157,31 @@ static float radiation_packet_round_down(const double x) {
  * @param below_end Distance from the end of the bin to the latest arrival time
  * of the piece, rounded down.
  * @param salt Salt of the share (#radiation_packet_share_salt).
+ * @param known_step Does the particle have a known step
+ * (#radiation_packet_join_below_end)?
  */
 static void radiation_packet_add_to_bin(
     struct feedback_isrf_packet_slot_data *sl, const int j,
     const float energy[ISRF_OPERATOR_COUNT],
     const float photons[ISRF_OPERATOR_COUNT], const float below_end,
-    const uint32_t salt) {
-  float held = 0.f;
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+    const uint32_t salt, const int known_step) {
+  float held = 0.f, piece = 0.f;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     held += sl->band[b].bin_energy[j];
+    piece += energy[b];
+  }
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     sl->band[b].bin_energy[j] = radiation_packet_add_stochastic(
         sl->band[b].bin_energy[j], energy[b], salt);
     sl->band[b].bin_photons[j] = radiation_packet_add_stochastic(
         sl->band[b].bin_photons[j], photons[b], salt);
   }
-  sl->bin_stamp_below_end[j] =
-      held > 0.f ? fminf(sl->bin_stamp_below_end[j], below_end) : below_end;
+  if (known_step)
+    sl->bin_stamp_below_end[j] = radiation_packet_join_below_end(
+        held, sl->bin_stamp_below_end[j], piece, below_end);
+  else
+    sl->bin_stamp_below_end[j] =
+        held > 0.f ? fminf(sl->bin_stamp_below_end[j], below_end) : below_end;
 }
 
 /**
@@ -1160,6 +1196,11 @@ static void radiation_packet_add_to_bin(
  * light: the carried light arrived before it, so it leaves no earlier than it
  * has arrived.
  *
+ * Once the particle has a known step, the light of the cell leaves at its end,
+ * as the light of a near bin does, so that the time at which one share leaves
+ * does not depend on the other shares in the cell. Light beyond the end of the
+ * last cell keeps its latest arrival time (#radiation_packet_join_below_end).
+ *
  * @param sl The slot.
  * @param c The cell.
  * @param energy Energy of the piece per band.
@@ -1168,12 +1209,13 @@ static void radiation_packet_add_to_bin(
  * @param hi Last arrival time of the piece.
  * @param end End of the cell.
  * @param salt Salt of the share (#radiation_packet_share_salt).
+ * @param known_step Does the particle have a known step?
  */
 static void radiation_packet_add_to_far(
     struct feedback_isrf_packet_slot_data *sl, const int c,
     const float energy[ISRF_OPERATOR_COUNT],
     const float photons[ISRF_OPERATOR_COUNT], const double lo, const double hi,
-    const double end, const uint32_t salt) {
+    const double end, const uint32_t salt, const int known_step) {
   float held = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     held += sl->band[b].far_energy[c];
@@ -1183,8 +1225,15 @@ static void radiation_packet_add_to_far(
     sl->band[b].far_photons[c] = radiation_packet_add_stochastic(
         sl->band[b].far_photons[c], photons[b], salt);
   }
-  const float last_below = radiation_packet_round_down(end - hi);
-  if (held > 0.f) {
+  const float last_below =
+      hi <= end && known_step ? 0.f : radiation_packet_round_down(end - hi);
+  if (known_step) {
+    float piece = 0.f;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) piece += energy[b];
+    sl->far_first_below[c] = -1.f;
+    sl->far_last_below[c] = radiation_packet_join_below_end(
+        held, sl->far_last_below[c], piece, last_below);
+  } else if (held > 0.f) {
     /* Two boxes make one box from the later of the first times to the later
        of the last times: the light of each share arrives, along its line,
        at or above that box line, so the cell never releases more than has
@@ -1398,7 +1447,8 @@ static int radiation_packet_take_bin(struct feedback_isrf_packet_slot_data *sl,
 
 /**
  * @brief Take the light of a far cell out of a slot: a box if the cell holds
- * one share, a pulse at its latest arrival time if it holds several.
+ * one share of a particle with an unknown step, a pulse at its latest arrival
+ * time otherwise.
  *
  * @param sl The slot.
  * @param c The cell.
@@ -1458,13 +1508,15 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
  * @param first First arrival time of the share.
  * @param last Last arrival time of the share.
  * @param salt Salt of the share (#radiation_packet_share_salt).
+ * @param known_step Does the receiver have a known step
+ * (#radiation_packet_add_to_far)?
  */
 static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                    const double ub[RADIATION_PACKET_PIECES],
                                    const float energy[ISRF_OPERATOR_COUNT],
                                    const float photons[ISRF_OPERATOR_COUNT],
                                    const double first, const double last,
-                                   const uint32_t salt) {
+                                   const uint32_t salt, const int known_step) {
 
   const int n = RADIATION_PACKET_PIECES;
 
@@ -1556,17 +1608,18 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
 #endif
     if (j < RADIATION_PACKET_BINS) {
       const double stamp = fmin(last, ub[j]);
-      radiation_packet_add_to_bin(sl, j, pe, pn,
-                                  radiation_packet_round_down(ub[j] - stamp),
-                                  salt ^ ((uint32_t)j * 0xc2b2ae35u));
+      radiation_packet_add_to_bin(
+          sl, j, pe, pn, radiation_packet_round_down(ub[j] - stamp),
+          salt ^ ((uint32_t)j * 0xc2b2ae35u), known_step);
     } else if (j < n) {
       radiation_packet_add_to_far(sl, j - RADIATION_PACKET_BINS, pe, pn,
                                   fmax(first, ub[j - 1]), fmin(last, ub[j]),
-                                  ub[j], salt ^ ((uint32_t)j * 0xc2b2ae35u));
+                                  ub[j], salt ^ ((uint32_t)j * 0xc2b2ae35u),
+                                  known_step);
     } else {
-      radiation_packet_add_to_far(sl, RADIATION_PACKET_FAR_CELLS - 1, pe, pn,
-                                  fmax(first, ub[n - 1]), last, ub[n - 1],
-                                  salt ^ ((uint32_t)j * 0xc2b2ae35u));
+      radiation_packet_add_to_far(
+          sl, RADIATION_PACKET_FAR_CELLS - 1, pe, pn, fmax(first, ub[n - 1]),
+          last, ub[n - 1], salt ^ ((uint32_t)j * 0xc2b2ae35u), known_step);
       radiation_packet_count_overflow();
     }
   }
@@ -1577,13 +1630,14 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
  * and, when needed, to another far scale.
  *
  * Call it after the step of the packet changed (or, with @p extra_last, before
- * a share is placed whose light arrives beyond the far cells). The far scale
- * becomes the smallest at which all waiting light, and the share, fits the
- * far cells. Light that waits in a near bin keeps its latest arrival time,
+ * a share is placed whose light arrives beyond the far cells). Once the step
+ * is known the far scale is #RADIATION_PACKET_FAR_SCALE. Before, it becomes
+ * the smallest at which all waiting light, and the share, fits the far cells.
+ * Light that waits in a near bin becomes a pulse at its latest arrival time,
  * light in a far cell that holds one share keeps its interval, and light in a
- * far cell that holds several shares becomes a pulse at its latest arrival
- * time: it is never moved earlier. What the new lattices cannot hold in the
- * near bins goes to the far cells.
+ * far cell that holds several shares, or that leaves at the end of the cell,
+ * becomes a pulse at that time: it is never moved earlier. What the new
+ * lattices cannot hold in the near bins goes to the far cells.
  *
  * @param pk The packet of the particle.
  * @param old_first End of bin 0 on the previous lattice.
@@ -1603,6 +1657,8 @@ static void radiation_packet_regrid(
   const int n = RADIATION_PACKET_BINS;
   const integertime_t w = radiation_packet_step_width(pk);
   const integertime_t new_first = radiation_packet_bin_end(pk, 0);
+  const int known_step = pk->step_ti > 0;
+  const int limit = radiation_packet_far_scale_limit(w);
 
   /* The latest arrival time of everything that waits. */
   double need = extra_last;
@@ -1631,14 +1687,13 @@ static void radiation_packet_regrid(
     }
   }
   if (!pending) {
-    pk->far_scale = 0;
+    pk->far_scale = known_step ? min(RADIATION_PACKET_FAR_SCALE, limit) : 0;
     return;
   }
 
   /* The smallest far scale at which it fits. */
-  const int limit = radiation_packet_far_scale_limit(w);
-  int scale = 0;
-  if (need > (double)radiation_packet_bin_end(pk, n - 1))
+  int scale = known_step ? min(RADIATION_PACKET_FAR_SCALE, limit) : 0;
+  if (!known_step && need > (double)radiation_packet_bin_end(pk, n - 1))
     while (scale < limit &&
            (double)radiation_packet_far_end_at(
                pk, scale, RADIATION_PACKET_FAR_CELLS - 1) < need)
@@ -1673,7 +1728,7 @@ static void radiation_packet_regrid(
     for (int i = 0; i < count; i++)
       radiation_packet_place(sl, ub, rec[i].energy, rec[i].photons,
                              rec[i].first, rec[i].last,
-                             salt ^ ((uint32_t)i * 0x9e3779b9u));
+                             salt ^ ((uint32_t)i * 0x9e3779b9u), known_step);
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     radiation_packet_diag_again = 0;
 #endif
@@ -1683,20 +1738,20 @@ static void radiation_packet_regrid(
 /**
  * @brief Put a share into the arrival bins and cells of a slot.
  *
- * If the last light of the share is beyond the last far cell, the far cells
- * become wider until it fits (#radiation_packet_regrid), up to a limit. The
- * near bins never widen, so light that arrives soon is released as it would
- * be without the far light. See #radiation_packet_place for the placing.
+ * Before the receiver has a known step, if the last light of the share is
+ * beyond the last far cell, the far cells become wider until it fits
+ * (#radiation_packet_regrid), up to a limit. With a known step their width is
+ * fixed, so that faint light cannot delay other light, and light beyond them
+ * waits in the last cell. The near bins never widen, so light that arrives
+ * soon is released as it would be without the far light. See
+ * #radiation_packet_place for the placing.
  *
- * Limit of the far light. Two far cells cannot keep the separate arrival times
- * of many shares, so several shares in a cell leave together when the cell is
- * due (they are never early). A steady source is steady only up to a delay.
- * The largest |held - mean| / mean of a receiver fed by one steady sender of
- * its own step is 0 for delays up to 6 receiver steps, 1 at 7, 3 at 8, 7 at
- * 10, 31 at 25 and 63 at 40; for a sender 2 or 4 times coarser it is 0 up to 4
- * steps, about 1 at 4.5 to 6 and up to 3 at 7 to 8. It does not occur at the
- * default limit of 0.99 c, nor in the fixed mode with margin 0.5 except for the
- * outermost neighbours.
+ * Limit of the far light. A far cell keeps no separate arrival times, so the
+ * shares in it leave together when the cell is due, never early except for
+ * light below the float rounding of the cell, summed over both bands, which
+ * also depends on the order of arrival (#radiation_packet_join_below_end). A
+ * steady source is thus steady only while its light arrives within the near
+ * bins.
  *
  * @param pk The packet of the receiver.
  * @param sl The slot.
@@ -1715,7 +1770,8 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
 
   double ub[RADIATION_PACKET_PIECES];
   radiation_packet_piece_ends(pk, ub);
-  if (last < (double)max_nr_timesteps &&
+  const int known_step = pk->step_ti > 0;
+  if (!known_step && last < (double)max_nr_timesteps &&
       last > ub[RADIATION_PACKET_PIECES - 1] &&
       pk->far_scale <
           radiation_packet_far_scale_limit(radiation_packet_step_width(pk))) {
@@ -1728,7 +1784,8 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
     radiation_packet_count_coarsening();
     radiation_packet_piece_ends(pk, ub);
   }
-  radiation_packet_place(sl, ub, energy, photons, first, last, salt);
+  radiation_packet_place(sl, ub, energy, photons, first, last, salt,
+                         known_step);
 }
 
 /**
@@ -1897,9 +1954,9 @@ static void radiation_packet_merge_slot_unlimited(
  * limit: release the part of its light that has arrived to the held packet.
  *
  * A far cell that holds one share releases the fraction of it that has
- * arrived, as the light arrives evenly. A far cell that holds several shares
- * releases all of it when its latest light has arrived, which is never early
- * for any of them.
+ * arrived, as the light arrives evenly. A far cell that holds several shares,
+ * or any far cell once the particle has a known step, releases all of it at
+ * its stored latest time (#radiation_packet_add_to_far).
  *
  * @param sl The slot.
  * @param ledger The ledger of the particle, per band.
@@ -1909,13 +1966,12 @@ static void radiation_packet_merge_slot_unlimited(
  * @param now Time of the merge.
  * @param salt Salt of the roundings (#radiation_packet_salt).
  * @param total_energy (in, out) Energy released to the held packet, summed.
- * @param stamp (in, out) Latest arrival time of what is released.
  */
 static void radiation_packet_release_far_cell(
     struct feedback_isrf_packet_slot_data *sl,
     struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
     const int c, const integertime_t far_end, const integertime_t old_width,
-    const double now, const uint32_t salt, float *total_energy, double *stamp) {
+    const double now, const uint32_t salt, float *total_energy) {
 
   float cell_total = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
@@ -1984,7 +2040,6 @@ static void radiation_packet_release_far_cell(
   }
   if (e > 0.f) {
     *total_energy += e;
-    *stamp = fmax(*stamp, fmin(last, now));
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     if (diag_overflow) {
       radiation_packet_diag(rpd_overflow_released, (double)e);
@@ -2010,14 +2065,13 @@ static void radiation_packet_release_far_cell(
  *
  * A bin is released whole at the first merge at or after its end
  * (#radiation_packet_place). Times of the bins are integers and are compared
- * with the merge time as integers. A far cell that holds one share releases
- * the fraction of it that has arrived, as the light arrives evenly. A far cell
- * that holds several shares releases all of it when its latest light has
- * arrived, which is never early for any of them. The caller then moves what
+ * with the merge time as integers. The far cells are released as
+ * #radiation_packet_release_far_cell says. The caller then moves what
  * waits to the lattices of the new step (#radiation_packet_regrid).
  *
- * The held packet is stamped with the latest arrival time of what is released,
- * so that no share booked from it leaves before its light. The origin of the
+ * The held packet leaves at the merge time, which is at or after the arrival
+ * of everything it holds. A stamp taken from its content would let the light
+ * of one source delay the light of another in the same slot. The origin of the
  * packet is the mean origin of everything that waited in the slot.
  *
  * @param sl The slot.
@@ -2057,12 +2111,7 @@ static void radiation_packet_merge_slot_limited(
       pending += band->far_energy[c];
     }
   }
-  double held_before = 0.;
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-    held_before += sl->band[b].energy;
-
   float total_energy = 0.f;
-  double stamp = -1e300;
 
   /* The near bins that have ended. */
   for (int j = 0; j < n; j++) {
@@ -2081,17 +2130,13 @@ static void radiation_packet_merge_slot_limited(
       band->bin_energy[j] = 0.f;
       band->bin_photons[j] = 0.f;
     }
-    if (e > 0.f) {
-      total_energy += e;
-      stamp = fmax(stamp, radiation_packet_time_below_end(
-                              (double)end, sl->bin_stamp_below_end[j]));
-    }
+    if (e > 0.f) total_energy += e;
   }
 
   /* The far cells. */
   for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
     radiation_packet_release_far_cell(sl, ledger, c, old_far_end[c], old_width,
-                                      now, salt, &total_energy, &stamp);
+                                      now, salt, &total_energy);
 
   /* Origin: the mean origin of everything that waited. */
   double offset[3] = {0., 0., 0.};
@@ -2112,7 +2157,7 @@ static void radiation_packet_merge_slot_limited(
     for (int k = 0; k < 3; k++) sl->inbox_origin_offset[k] = 0.0;
 
   if (!(total_energy > 0.f)) return;
-  sl->arrival = held_before > 0. ? fmax(sl->arrival, stamp) : stamp;
+  sl->arrival = now;
   radiation_packet_set_origin(sl, offset, total_energy, slot_index, frame);
 }
 
