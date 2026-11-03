@@ -740,6 +740,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
             }
 #endif
 
+            feedback_book_star_left_box(sp);
+
             /* Remove the particle entirely */
             cell_remove_spart(e, c, sp);
           }
@@ -1149,6 +1151,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
               error("Logging of sink particles is not yet implemented.");
             }
 #endif
+
+            feedback_book_sink_left_box(sink);
 
             /* Remove the particle entirely */
             cell_remove_sink(e, c, sink);

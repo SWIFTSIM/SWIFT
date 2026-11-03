@@ -456,4 +456,14 @@ The photon-number fields are in energy units: the photon number times the lower 
 
 Gas that leaves a box with open faces is deleted together with the light it holds, so no particle field keeps its ledger. The run total of that light is written instead to the header of the snapshot, in the group ``SubgridScheme``, by a build with ``--enable-isrf-debugging-checks``. Each of the four attributes has two components (PE band, then Lyman-Werner band), is summed over the MPI ranks and is in snapshot units. ``PacketLeftBoxEscapedEnergies`` and ``PacketLeftBoxEscapedPhotonNumbers`` hold the light in flight in the gas when it left, which the energy balance counts as escaped. ``PacketLeftBoxInheritedEnergies`` and ``PacketLeftBoxInheritedPhotonNumbers`` hold the absorbed, escaped and redshifted light that the departed particles had already booked. Add them to the sums of the particle ledger fields to close the budget of a run with open faces.
 
+Stars and sinks that leave a box with open faces, and gas that a black hole swallows, also take their ledgers with them. The same header holds their run totals, with the same conventions:
+
+* ``PacketStarsLeftBoxEmittedEnergies`` and ``PacketStarsLeftBoxEmittedPhotonNumbers``: the light emitted by the stars that left. Add them to the emitted side of the budget.
+* ``PacketStarsLeftBoxEscapedEnergies`` and ``PacketStarsLeftBoxEscapedPhotonNumbers``: the light of their empty emission cones.
+* ``PacketStarsLeftBoxRemovedEnergies``, ``PacketStarsLeftBoxInheritedEnergies`` and the matching ``PhotonNumbers``: the ledgers of the gas these stars formed from.
+* ``PacketSinksLeftBoxRemovedEnergies``, ``PacketSinksLeftBoxInheritedEnergies`` and the matching ``PhotonNumbers``: the ledgers of the sinks that left.
+* ``PacketSwallowedByBlackHolesRemovedEnergies``, ``PacketSwallowedByBlackHolesInheritedEnergies`` and the matching ``PhotonNumbers``: the light in flight in the gas that black holes swallowed, and the ledgers of that gas.
+
+All but the emitted pair go to the booked side of the budget.
+
 Three optional gas input fields let an initial-conditions file seed the local field directly; see :ref:`gear_isrf` for their use.

@@ -1488,6 +1488,37 @@ void feedback_book_removed_gas_left_box(const struct part *p) {
 }
 
 /**
+ * @brief A star leaves a non-periodic box and is removed: book what its
+ * feedback carried. Called with the space lock held.
+ *
+ * @param sp The removed #spart.
+ */
+void feedback_book_star_left_box(const struct spart *sp) {
+  radiation_packet_book_star_left_box(sp);
+}
+
+/**
+ * @brief A sink leaves a non-periodic box and is removed: book what its
+ * feedback carried. Called with the space lock held.
+ *
+ * @param s The removed #sink.
+ */
+void feedback_book_sink_left_box(const struct sink *s) {
+  radiation_packet_book_sink_left_box(s);
+}
+
+/**
+ * @brief A black hole swallows a gas particle, which is removed: book what
+ * its feedback carried. Called on the rank of the gas, with the space lock
+ * held.
+ *
+ * @param p The removed #part.
+ */
+void feedback_book_removed_gas_swallowed_by_black_hole(const struct part *p) {
+  radiation_packet_book_gas_swallowed_by_black_hole(p);
+}
+
+/**
  * @brief Zero the feedback fields of a sink, after the ICs are read or when
  * the sink is formed.
  *
@@ -1604,8 +1635,9 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "
         "%d (packet transport only, HII random cone frame flag, redraw period "
-        "and star pass count, packet reception slots, ledger of the gas that "
-        "left the box). "
+        "and star pass count, packet reception slots, ledger of the light "
+        "carried out of the box by gas, stars and sinks and by gas swallowed "
+        "by black holes). "
         "A restart written by another code version cannot be resumed: rerun "
         "the simulation from its initial conditions.",
         layout, feedback_restart_particle_layout());
