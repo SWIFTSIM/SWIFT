@@ -1,0 +1,16 @@
+Strong blast wave (3D)
+----------------------
+
+A planar Riemann problem with uniform density and a pressure jump of 10^4
+(P = 1000 on the left, 0.1 on the right; gamma = 5/3), as in section 3.4.3
+of the MAGMA2 paper (Rosswog 2020) and section 5.1.2 of the Phantom code
+paper (Price et al. 2018). The shock Mach number is of order 100, a regime
+where the artificial viscosity must prevent particle interpenetration.
+
+The box is N glass cubes along x (default 4, glassCube_32, 131k particles).
+plotSolution.py compares the profiles with the exact Riemann solution. The
+code needs to be compiled in 3D (the default).
+
+The periodic boundary carries the same pressure jump, so a second blast
+propagates in from the box edge; the comparison is restricted to the middle
+half of the box, which the waves from the edge do not reach before t = 0.02.

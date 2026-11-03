@@ -20,7 +20,7 @@
 """Velocity power spectrum of a SWIFT snapshot the way Bauer & Springel (2012)
 measure it: nearest-particle sampling of the velocity on a Cartesian grid
 twice finer than the particle resolution, FFT, spherical shells in fine
-logarithmic k bins merged to >= 8 modes, E(k) = 4 pi k^2 <P(k)> (L/2pi)^3 so that int E(k) dk = <|v|^2> over the grid.
+logarithmic k bins merged to >= 12 modes, E(k) = 4 pi k^2 <P(k)> (L/2pi)^3 so that int E(k) dk = <|v|^2> over the grid.
 Writes k, E(k), k E(k) and the rms Mach number.
 Usage: python3 -I power_spectrum.py snapshot.hdf5 out.txt [grid] [cs]
 """
@@ -70,12 +70,16 @@ edges = np.concatenate([[0.5 * kmin], edges])
 which = np.digitize(kk.ravel(), edges) - 1
 Pw = P.ravel()
 mask = (which >= 0) & (which < len(edges) - 1) & (kk.ravel() > 0)
+# per fine bin: total power, number of modes of the full k-space and mean k. An rfft entry with kz > 0 stands for
+# two modes of the full k-space, so the count must carry the same weights as the power; counting the rfft entries
+# instead makes the mean power per mode (and E) too high by a factor ~2.
+Wm = np.broadcast_to(w[None, None, :], P.shape).ravel()[mask]
 power = np.bincount(which[mask], weights=Pw[mask], minlength=len(edges) - 1)
-count = np.bincount(which[mask], minlength=len(edges) - 1)
+count = np.bincount(which[mask], weights=Wm, minlength=len(edges) - 1)
 kc = np.bincount(
-    which[mask], weights=kk.ravel()[mask], minlength=len(edges) - 1
+    which[mask], weights=kk.ravel()[mask] * Wm, minlength=len(edges) - 1
 ) / np.maximum(count, 1)
-# merge bins until each has at least 8 modes
+# merge bins until each has at least 12 modes (first bins: 18, 14, 24, 24, 12, 30, ... modes)
 rows = []
 acc_p = 0
 acc_k = 0
@@ -85,7 +89,7 @@ for i in range(len(power)):
     acc_p += power[i]
     acc_k += kc[i] * count[i]
     acc_n += count[i]
-    if acc_n >= 8:
+    if acc_n >= 12:
         # mean power per mode times the continuum shell volume 4 pi k^2 and the mode density (L/2pi)^3
         # (Bauer & Springel eq. 13); this removes the sawtooth that the discrete mode count per bin gives
         k = acc_k / acc_n

@@ -9,15 +9,16 @@ InternalUnitSystem:
 # Parameters governing the time integration
 TimeIntegration:
   time_begin: 0.    # The starting time of the simulation (in internal units).
-  time_end:   50    # The end time of the simulation (in internal units).
-  dt_min:     1e-6  # The minimal time-step size of the simulation (in internal units).
+  time_end:   120   # The end time of the simulation (in internal units): ~20 orbits at r = 1 (Hopkins 2015).
+  dt_min:     1e-9  # The minimal time-step size of the simulation (in internal units). Particles falling onto the point mass need very small steps.
   dt_max:     1e-3  # The maximal time-step size of the simulation (in internal units).
 
 # Parameters governing the snapshots
 Snapshots:
   basename:            keplerian_ring # Common part of the name of output files
   time_first:          0.        # Time of the first output (in internal units)
-  delta_time:          0.2      # Time difference between consecutive outputs (in internal units)
+  delta_time:          2.       # Time difference between consecutive outputs (in internal units)
+  compression:         4        # Compress the snapshots (gzip level, lossless)
 
 # Parameters governing the conserved quantities statistics
 Statistics:
@@ -28,6 +29,7 @@ SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:                 0.5      # Particles ejected from the ring late in the run lose all their neighbours; without a cap on h they stop the run.
 
 # Parameters related to the initial conditions
 InitialConditions:

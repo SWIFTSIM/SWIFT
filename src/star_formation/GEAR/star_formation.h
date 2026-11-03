@@ -478,6 +478,17 @@ __attribute__((always_inline)) INLINE static void star_formation_end_density(
   /* Add the missing term */
   div_v += hydro_dimension * cosmo->H;
   xp->sf_data.div_v = div_v;
+#elif MAGMA_SPH
+  /* Comoving divergence of the peculiar velocity (trace of the gradient) */
+  float div_v = hydro_get_div_v(p);
+
+  /* Multiply by the missing scale factors */
+  div_v *= cosmo->a2_inv;
+
+  /* Add the missing term */
+  div_v += hydro_dimension * cosmo->H;
+
+  xp->sf_data.div_v = div_v;
 #else
 #error \
     "This scheme is not implemented. Note that Different scheme apply the Hubble flow in different places. Be careful about it."

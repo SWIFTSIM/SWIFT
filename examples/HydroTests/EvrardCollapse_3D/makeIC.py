@@ -35,6 +35,18 @@ parser.add_argument(
     default=100000,
 )
 
+parser.add_argument(
+    "-s",
+    "--seed",
+    help="""
+         Seed of the random number generator (fixed by default so that the
+         ICs are reproducible between invocations).
+         """,
+    required=False,
+    default=42,
+    type=int,
+)
+
 args = vars(parser.parse_args())
 
 # Parameters
@@ -45,6 +57,7 @@ u0 = 0.05 / M  # initial thermal energy
 fileName = "evrard.hdf5"
 numPart = int(args["nparts"])
 
+random.seed(args["seed"])
 r = R * sqrt(random.random(numPart))
 phi = 2.0 * pi * random.random(numPart)
 cos_theta = 2.0 * random.random(numPart) - 1.0

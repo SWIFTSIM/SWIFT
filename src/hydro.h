@@ -78,6 +78,17 @@
 #include "./hydro/SPHENIX/hydro.h"
 #include "./hydro/SPHENIX/hydro_iact.h"
 #define SPH_IMPLEMENTATION "SPHENIX (Borrow+ 2020)"
+#elif defined(MAGMA_SPH)
+#include "./hydro/MAGMA/hydro.h"
+#include "./hydro/MAGMA/hydro_iact.h"
+#if defined(TRADITIONAL_SPH_ACCELERATION_TERM)
+#define SPH_IMPLEMENTATION "MAGMA-2-MI1 (Rosswog+ 2020)"
+#elif defined(MAGMA_MI3_FORMULATION)
+#define SPH_IMPLEMENTATION \
+  "MAGMA-2-MI3 (Rosswog+ 2020, own gradient function per pressure)"
+#else
+#define SPH_IMPLEMENTATION "MAGMA-2-MI2 (Rosswog+ 2020)"
+#endif
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro.h"
 #include "./hydro/Gasoline/hydro_iact.h"
@@ -93,9 +104,10 @@
 
 /* Check whether this scheme implements the density checks */
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
-#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH) && !defined(REMIX_SPH)
+#if !defined(SPHENIX_SPH) && !defined(PLANETARY_SPH) && !defined(REMIX_SPH) && \
+    !defined(MAGMA_SPH)
 #error \
-    "Can only use the hydro brute-force density checks with the SPHENIX or PLANETARY or REMIX hydro schemes."
+    "Can only use the hydro brute-force density checks with the SPHENIX, PLANETARY, REMIX or MAGMA hydro schemes."
 #endif
 #endif
 

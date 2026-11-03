@@ -1,0 +1,17 @@
+Taylor-Green vortex (2D)
+------------------------
+
+Four counter-rotating vortices (Taylor & Green 1937) on a 2D glass in a
+periodic unit box: v_x = v0 sin(2 pi x) cos(2 pi y), v_y = -v0 cos(2 pi x)
+sin(2 pi y), uniform density and the pressure P = P0 + rho v0^2 / 4
+(cos 4 pi x + cos 4 pi y) that makes the flow a stationary solution of the
+Euler equations. v0 = 0.1 and a sound speed of 1 (Mach 0.1) as in section
+5.4.1 of the Phantom code paper (Price et al. 2018), which uses the test to
+verify physical viscosity: the kinetic energy decays as exp(-16 pi^2 nu t).
+
+Run without physical viscosity, the measured decay gives the effective
+numerical viscosity nu_eff of the scheme in a smooth subsonic flow (artificial
+viscosity, its switches and limiters, gradient errors). plotSolution.py reads
+statistics.txt and reports nu_eff.
+
+The code needs to be compiled with --with-hydro-dimension=2.
