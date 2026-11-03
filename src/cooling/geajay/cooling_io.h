@@ -495,7 +495,7 @@ INLINE static void cooling_read_background_parameters(
     return;
 
   /* The dust column is the one of the H2 self-shielding */
-  if (cooling->H2_self_shielding != cooling_h2_shielding_length_given)
+  if (cooling->h2_shielding_length_method != cooling_h2_shielding_length_given)
     error(
         "GeajayCooling:dust_background_attenuation: per_band needs "
         "h2_shielding_length_method: given_length, whose path is also the "
@@ -549,7 +549,7 @@ INLINE static void cooling_read_column_shielding_parameters(
   cooling->uv_shielding_path_in_kernel_radii = 1.0f;
   cooling->uv_shielding_table_file[0] = '\0';
 
-  if (cooling->self_shielding_method !=
+  if (cooling->uv_self_shielding !=
       cooling_uv_self_shielding_HI_HeI_HeII_column) {
     if (parser_does_param_exist(parameter_file, keys[0]))
       error(
@@ -604,7 +604,7 @@ INLINE static void cooling_read_column_shielding_parameters(
   if (!ionising_background_on)
     error(
         "GeajayCooling:uv_self_shielding: HI_HeI_HeII_column shields the UV "
-        "background, but none is loaded. Set GeajayCooling:with_UV_background: "
+        "background, but none is loaded. Set GeajayCooling:with_uv_background: "
         "1 (background_mode: grackle), or ionising_background_model: "
         "uv_table (background_mode: per_band).");
 
@@ -716,7 +716,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:compton_xray_heating must be 0 or 1, got %d.",
           cooling->compton_xray_heating);
 
-  cooling->local_dust_to_gas_ratio = parser_get_opt_param_double(
+  cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
 
   cooling->cmb_temperature_floor = parser_get_opt_param_int(
@@ -726,7 +726,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GeajayCooling:agora_cmb_temperature_floor", 0);
 
   cooling->with_uv_background =
-      parser_get_param_int(parameter_file, "GeajayCooling:with_UV_background");
+      parser_get_param_int(parameter_file, "GeajayCooling:with_uv_background");
 
   cooling->redshift =
       parser_get_param_double(parameter_file, "GeajayCooling:redshift");
@@ -734,23 +734,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_metal_cooling =
       parser_get_param_int(parameter_file, "GeajayCooling:with_metal_cooling");
 
-  cooling->use_radiative_transfer = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:use_radiative_transfer_fields", 0);
+  cooling->rt_use_fields = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:rt_use_fields", 0);
 
-  cooling->RT_heating_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:RT_heating_rate_cgs", 0);
+  cooling->rt_heating_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:rt_heating_rate_cgs", 0);
 
-  cooling->RT_HI_ionization_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:RT_HI_ionization_rate_cgs", 0);
+  cooling->rt_hi_ionisation_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:rt_hi_ionisation_rate_per_s", 0);
 
-  cooling->RT_HeI_ionization_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:RT_HeI_ionization_rate_cgs", 0);
+  cooling->rt_hei_ionisation_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:rt_hei_ionisation_rate_per_s", 0);
 
-  cooling->RT_HeII_ionization_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:RT_HeII_ionization_rate_cgs", 0);
+  cooling->rt_heii_ionisation_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:rt_heii_ionisation_rate_per_s", 0);
 
-  cooling->RT_H2_dissociation_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:RT_H2_dissociation_rate_cgs", 0);
+  cooling->rt_h2_dissociation_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:rt_h2_dissociation_rate_per_s", 0);
 
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:volumetric_heating_rates_cgs", 0);
@@ -761,35 +761,35 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:hydrogen_mass_fraction", -1.);
 
-  cooling->initial_nHII_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nHII_to_nH_ratio", -1);
+  cooling->initial_hii_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_hii_to_h_ratio", -1);
 
-  cooling->initial_nHeI_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nHeI_to_nH_ratio", -1);
+  cooling->initial_hei_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_hei_to_h_ratio", -1);
 
-  cooling->initial_nHeII_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nHeII_to_nH_ratio", -1);
+  cooling->initial_heii_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_heii_to_h_ratio", -1);
 
-  cooling->initial_nHeIII_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nHeIII_to_nH_ratio", -1);
+  cooling->initial_heiii_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_heiii_to_h_ratio", -1);
 
-  cooling->initial_nDI_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nDI_to_nH_ratio", -1);
+  cooling->initial_di_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_di_to_h_ratio", -1);
 
-  cooling->initial_nDII_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nDII_to_nH_ratio", -1);
+  cooling->initial_dii_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_dii_to_h_ratio", -1);
 
-  cooling->initial_nHM_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nHM_to_nH_ratio", -1);
+  cooling->initial_hm_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_hm_to_h_ratio", -1);
 
-  cooling->initial_nH2I_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nH2I_to_nH_ratio", -1);
+  cooling->initial_h2i_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_h2i_to_h_ratio", -1);
 
-  cooling->initial_nH2II_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nH2II_to_nH_ratio", -1);
+  cooling->initial_h2ii_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_h2ii_to_h_ratio", -1);
 
-  cooling->initial_nHDI_to_nH_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_nHDI_to_nH_ratio", -1);
+  cooling->initial_hdi_to_h_ratio = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:initial_hdi_to_h_ratio", -1);
 
   /* Self shielding */
   const int uv_shielding = cooling_read_choice(
@@ -809,12 +809,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           "%d.",
           uv_shielding);
   }
-  cooling->self_shielding_method = (enum cooling_uv_self_shielding)uv_shielding;
+  cooling->uv_self_shielding = (enum cooling_uv_self_shielding)uv_shielding;
 
-  if (cooling->self_shielding_method ==
+  if (cooling->uv_self_shielding ==
       cooling_uv_self_shielding_density_threshold) {
-    cooling->self_shielding_threshold = parser_get_param_float(
-        parameter_file, "GeajayCooling:self_shielding_threshold_atom_per_cm3");
+    cooling->uv_shielding_threshold = parser_get_param_float(
+        parameter_file, "GeajayCooling:uv_shielding_threshold_nucleon_per_cm3");
   }
 
   const int h2_shielding = cooling_read_choice(
@@ -841,28 +841,28 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           "%d.",
           h2_shielding);
   }
-  cooling->H2_self_shielding = (enum cooling_h2_shielding_length)h2_shielding;
+  cooling->h2_shielding_length_method = (enum cooling_h2_shielding_length)h2_shielding;
 
   char H2_path[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
-                              "GeajayCooling:H2_self_shielding_path", H2_path,
+                              "GeajayCooling:h2_shielding_path", H2_path,
                               "kernel_radius");
   if (strcmp(H2_path, "kernel_radius") == 0)
-    cooling->H2_self_shielding_path_in_kernel_radii = 1.0f;
+    cooling->h2_shielding_path_in_kernel_radii = 1.0f;
   else if (strcmp(H2_path, "kernel_diameter") == 0)
-    cooling->H2_self_shielding_path_in_kernel_radii = 2.0f;
+    cooling->h2_shielding_path_in_kernel_radii = 2.0f;
   else
     error(
-        "GeajayCooling:H2_self_shielding_path must be kernel_radius or "
+        "GeajayCooling:h2_shielding_path must be kernel_radius or "
         "kernel_diameter, got '%s'.",
         H2_path);
 
   /* Sub-cycle iteration limit */
-  cooling->max_step =
+  cooling->max_substeps =
       parser_get_opt_param_int(parameter_file, "GeajayCooling:max_substeps", 0);
-  if (cooling->max_step < 0)
+  if (cooling->max_substeps < 0)
     error("GeajayCooling:max_substeps must be >= 0, got %d.",
-          cooling->max_step);
+          cooling->max_substeps);
 
   /* Retries of a failed solve, each one halving the sub-step. Default 2:
    * two retries give 4x the iteration budget, which covered every stiff
@@ -912,9 +912,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   /* Density cap, given as n_H = rho / m_p in cm^-3 as in the Grackle module.
    * Zero or negative: no cap. */
-  cooling->cooling_density_max = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:maximal_density_Hpcm3", -1.);
-  cooling->cooling_density_max *=
+  cooling->maximal_density = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:maximal_density_nucleon_per_cm3", -1.);
+  cooling->maximal_density *=
       cooling->proton_mass_cgs /
       units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
 

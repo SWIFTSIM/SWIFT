@@ -113,7 +113,7 @@ struct cooling_function_data {
   int compton_xray_heating;
 
   /*! The ratio of total dust mass to gas mass in the local Universe. */
-  double local_dust_to_gas_ratio;
+  double reference_dust_to_gas_ratio;
 
   /*! Enable/disable CMB temperature floor */
   int cmb_temperature_floor;
@@ -201,22 +201,22 @@ struct cooling_function_data {
   int with_metal_cooling;
 
   /*! Arrays of ionization and heating rates are provided */
-  int use_radiative_transfer;
+  int rt_use_fields;
 
-  /*! RT_heating_rate (in IU) */
-  float RT_heating_rate;
+  /*! rt_heating_rate_cgs (in cgs) */
+  float rt_heating_rate;
 
-  /*! RT_HI_ionization_rate (in IU) */
-  float RT_HI_ionization_rate;
+  /*! rt_hi_ionisation_rate_per_s (in 1/s) */
+  float rt_hi_ionisation_rate;
 
-  /*! RT_HeI_ionization_rate (in IU) */
-  float RT_HeI_ionization_rate;
+  /*! rt_hei_ionisation_rate_per_s (in 1/s) */
+  float rt_hei_ionisation_rate;
 
-  /*! RT_HeII_ionization_rate (in IU) */
-  float RT_HeII_ionization_rate;
+  /*! rt_heii_ionisation_rate_per_s (in 1/s) */
+  float rt_heii_ionisation_rate;
 
-  /*! RT_H2_dissociation_rate (in IU) */
-  float RT_H2_dissociation_rate;
+  /*! rt_h2_dissociation_rate_per_s (in 1/s) */
+  float rt_h2_dissociation_rate;
 
   /*! Volumetric heating rates */
   float volumetric_heating_rates;
@@ -229,59 +229,59 @@ struct cooling_function_data {
   double HydrogenFractionByMass;
 
   /*! initial nHII to nH ratio (number density ratio) */
-  float initial_nHII_to_nH_ratio;
+  float initial_hii_to_h_ratio;
 
   /*! initial nHeI to nH ratio (number density ratio) */
-  float initial_nHeI_to_nH_ratio;
+  float initial_hei_to_h_ratio;
 
   /*! initial nHeII to nH ratio (number density ratio) */
-  float initial_nHeII_to_nH_ratio;
+  float initial_heii_to_h_ratio;
 
   /*! initial nHeIII to nH ratio (number density ratio) */
-  float initial_nHeIII_to_nH_ratio;
+  float initial_heiii_to_h_ratio;
 
   /*! initial nDI to nH ratio (number density ratio) */
-  float initial_nDI_to_nH_ratio;
+  float initial_di_to_h_ratio;
 
   /*! initial nDII to nH ratio (number density ratio) */
-  float initial_nDII_to_nH_ratio;
+  float initial_dii_to_h_ratio;
 
   /*! initial nHM to nH ratio (number density ratio) */
-  float initial_nHM_to_nH_ratio;
+  float initial_hm_to_h_ratio;
 
   /*! initial nH2I to nH ratio (number density ratio) */
-  float initial_nH2I_to_nH_ratio;
+  float initial_h2i_to_h_ratio;
 
   /*! initial nH2II to nH ratio (number density ratio) */
-  float initial_nH2II_to_nH_ratio;
+  float initial_h2ii_to_h_ratio;
 
   /*! initial nHDI to nH ratio (number density ratio) */
-  float initial_nHDI_to_nH_ratio;
+  float initial_hdi_to_h_ratio;
 
   /*! Self shielding method (1 -> 4 for the library's ones, 0 for none and -1
    * for a density threshold) */
-  enum cooling_uv_self_shielding self_shielding_method;
+  enum cooling_uv_self_shielding uv_self_shielding;
 
   /*! Self shielding threshold */
-  float self_shielding_threshold;
+  float uv_shielding_threshold;
 
   /*! H2 self-shielding mode (chemistry_data.H2_self_shielding):
    * 0 = off, 2 = shielding length supplied per particle, the full column
-   * path set by H2_self_shielding_path (one kernel support radius
+   * path set by h2_shielding_path (one kernel support radius
    * kernel_gamma * h, physical, by default), 3 = local Jeans length
    * (computed internally by geajay).
    * Mode 1 (Sobolev-like, differences neighbouring grid cells) is rejected
    * at start-up, since SWIFT calls geajay on a single particle. Unrelated
-   * to self_shielding_method above, which is a separate field
+   * to uv_self_shielding above, which is a separate field
    * gating UV-background self-shielding. */
-  enum cooling_h2_shielding_length H2_self_shielding;
+  enum cooling_h2_shielding_length h2_shielding_length_method;
 
   /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
    * for "kernel_radius" (default), 2 for "kernel_diameter"
-   * (GeajayCooling:H2_self_shielding_path). The length handed to geajay is
+   * (GeajayCooling:h2_shielding_path). The length handed to geajay is
    * this path, and geajay forms N_H2 = n_H2 l from it. The dust column of the
    * backgrounds uses the same path. */
-  float H2_self_shielding_path_in_kernel_radii;
+  float h2_shielding_path_in_kernel_radii;
 
   /*! Source of the length of the column shielding, with the method 4
    * (GeajayCooling:uv_shielding_length_method):
@@ -303,7 +303,7 @@ struct cooling_function_data {
   /*! Maximal number of sub-cycle iterations per solve, or 0 for the geajay
    * default (10000 x 0.1 / energy limit)
    * (GeajayCooling:max_substeps, chemistry_data.max_iterations). */
-  int max_step;
+  int max_substeps;
 
   /*! Number of retries of a failed solve
    * (GeajayCooling:subcycle_on_failure). Retry i splits the time-step into
@@ -341,8 +341,8 @@ struct cooling_function_data {
   double table_edge_density;
 
   /*! Largest physical density passed to geajay, in internal units
-   * (GeajayCooling:maximal_density_Hpcm3). Zero or negative: no cap. */
-  double cooling_density_max;
+   * (GeajayCooling:maximal_density_nucleon_per_cm3). Zero or negative: no cap. */
+  double maximal_density;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_GEAJAY_H */

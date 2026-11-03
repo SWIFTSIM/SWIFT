@@ -403,16 +403,16 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   /* primordial chemistry >= 1 */
 
   /* Hydrogen I */
-  if (cooling->initial_nHII_to_nH_ratio >= 0.f)
-    xp->cooling_data.HI_frac = nH * (1.f - cooling->initial_nHII_to_nH_ratio);
+  if (cooling->initial_hii_to_h_ratio >= 0.f)
+    xp->cooling_data.HI_frac = nH * (1.f - cooling->initial_hii_to_h_ratio);
   else
     xp->cooling_data.HI_frac = nH;
 
   Xtot += xp->cooling_data.HI_frac;
 
   /* Hydrogen II */
-  if (cooling->initial_nHII_to_nH_ratio >= 0.f) {
-    double nHII = nH * cooling->initial_nHII_to_nH_ratio;
+  if (cooling->initial_hii_to_h_ratio >= 0.f) {
+    double nHII = nH * cooling->initial_hii_to_h_ratio;
     xp->cooling_data.HII_frac = nHII;
     ne += nHII;
   } else
@@ -421,8 +421,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.HII_frac;
 
   /* Helium I */
-  if (cooling->initial_nHeI_to_nH_ratio >= 0.f) {
-    double nHeI = nH * cooling->initial_nHeI_to_nH_ratio;
+  if (cooling->initial_hei_to_h_ratio >= 0.f) {
+    double nHeI = nH * cooling->initial_hei_to_h_ratio;
     xp->cooling_data.HeI_frac = nHeI * 4.f;
   } else
     xp->cooling_data.HeI_frac = nHe * 4.f;
@@ -430,8 +430,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.HeI_frac;
 
   /* Helium II */
-  if (cooling->initial_nHeII_to_nH_ratio >= 0.f) {
-    double nHeII = nH * cooling->initial_nHeII_to_nH_ratio;
+  if (cooling->initial_heii_to_h_ratio >= 0.f) {
+    double nHeII = nH * cooling->initial_heii_to_h_ratio;
     xp->cooling_data.HeII_frac = nHeII * 4.f;
     ne += nHeII;
   } else
@@ -440,8 +440,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.HeII_frac;
 
   /* Helium III */
-  if (cooling->initial_nHeIII_to_nH_ratio >= 0.f) {
-    double nHeIII = nH * cooling->initial_nHeIII_to_nH_ratio;
+  if (cooling->initial_heiii_to_h_ratio >= 0.f) {
+    double nHeIII = nH * cooling->initial_heiii_to_h_ratio;
     xp->cooling_data.HeIII_frac = nHeIII * 4.f;
     ne += 2.f * nHeIII;
   } else
@@ -459,8 +459,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   /* primordial chemistry >= 2 */
 
   /* Hydrogen- */
-  if (cooling->initial_nHM_to_nH_ratio >= 0.f) {
-    double nHM = nH * cooling->initial_nHM_to_nH_ratio;
+  if (cooling->initial_hm_to_h_ratio >= 0.f) {
+    double nHM = nH * cooling->initial_hm_to_h_ratio;
     xp->cooling_data.HM_frac = nHM;
     ne -= nHM;
   } else
@@ -469,8 +469,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.HM_frac;
 
   /* H2I */
-  if (cooling->initial_nH2I_to_nH_ratio >= 0.f) {
-    double nH2I = nH * cooling->initial_nH2I_to_nH_ratio;
+  if (cooling->initial_h2i_to_h_ratio >= 0.f) {
+    double nH2I = nH * cooling->initial_h2i_to_h_ratio;
     xp->cooling_data.H2I_frac = nH2I * 2.f;
   } else
     xp->cooling_data.H2I_frac = zero;
@@ -478,8 +478,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.H2I_frac;
 
   /* H2II */
-  if (cooling->initial_nH2II_to_nH_ratio >= 0.f) {
-    double nH2II = nH * cooling->initial_nH2II_to_nH_ratio;
+  if (cooling->initial_h2ii_to_h_ratio >= 0.f) {
+    double nH2II = nH * cooling->initial_h2ii_to_h_ratio;
     xp->cooling_data.H2II_frac = nH2II * 2.f;
     ne += nH2II;
   } else
@@ -497,8 +497,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   /* primordial chemistry >= 3 */
 
   /* Deuterium I */
-  if (cooling->initial_nDI_to_nH_ratio >= 0.f) {
-    double nDI = nH * cooling->initial_nDI_to_nH_ratio;
+  if (cooling->initial_di_to_h_ratio >= 0.f) {
+    double nDI = nH * cooling->initial_di_to_h_ratio;
     xp->cooling_data.DI_frac = nDI * 2.f;
   } else {
     xp->cooling_data.DI_frac =
@@ -509,8 +509,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.DI_frac;
 
   /* Deuterium II */
-  if (cooling->initial_nDII_to_nH_ratio >= 0.f) {
-    double nDII = nH * cooling->initial_nDII_to_nH_ratio;
+  if (cooling->initial_dii_to_h_ratio >= 0.f) {
+    double nDII = nH * cooling->initial_dii_to_h_ratio;
     xp->cooling_data.DII_frac = nDII * 2.f;
     ne += nDII;
   } else
@@ -519,8 +519,8 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   Xtot += xp->cooling_data.DII_frac;
 
   /* HD I */
-  if (cooling->initial_nHDI_to_nH_ratio >= 0.f) {
-    double nHDI = nH * cooling->initial_nHDI_to_nH_ratio;
+  if (cooling->initial_hdi_to_h_ratio >= 0.f) {
+    double nHDI = nH * cooling->initial_hdi_to_h_ratio;
     xp->cooling_data.HDI_frac = nHDI * 3.f;
   } else
     xp->cooling_data.HDI_frac = zero;
@@ -606,8 +606,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Metal cooling = %i", cooling->chemistry_data.metal_cooling);
   message("Compton X-ray heating = %d",
           cooling->chemistry_data.Compton_xray_heating);
-  message("Self Shielding = %i", (int)cooling->self_shielding_method);
-  if (cooling->self_shielding_method ==
+  message("Self Shielding = %i", (int)cooling->uv_self_shielding);
+  if (cooling->uv_self_shielding ==
       cooling_uv_self_shielding_HI_HeI_HeII_column) {
     message("Column shielding file = %s", cooling->uv_shielding_table_file);
     message(
@@ -627,22 +627,22 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           : "extrapolates (table_density_edge: extrapolate)");
   message("AGORA CMB temperature floor = %d",
           cooling->agora_cmb_temperature_floor);
-  if (cooling->self_shielding_method ==
+  if (cooling->uv_self_shielding ==
       cooling_uv_self_shielding_density_threshold) {
-    message("Self Shelding density = %g", cooling->self_shielding_threshold);
+    message("Self Shelding density = %g", cooling->uv_shielding_threshold);
   }
 
   message("Thermal time = %g", cooling->thermal_time);
   message("Max geajay sub-steps = %d (0 in the parameters: the geajay default)",
-          cooling->max_step);
+          cooling->max_substeps);
   message("geajay retries on failure = %d", cooling->subcycle_on_failure);
   message("geajay energy change limit = %g (0: the geajay default)",
           cooling->energy_change_limit);
   message("geajay cheap energy update = %d (0 explicit, 1 second order)",
           cooling->chemistry_data.cheap_energy_update);
-  if (cooling->cooling_density_max > 0.)
+  if (cooling->maximal_density > 0.)
     message("Maximal density passed to geajay = %e (internal units)",
-            cooling->cooling_density_max);
+            cooling->maximal_density);
   else
     message("Maximal density passed to geajay: none");
   message("Background mode = %s, dust attenuation = %s",
@@ -696,35 +696,35 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Specific Heating Rates = %g", cooling->specific_heating_rates);
   message("Volumetric Heating Rates = %g", cooling->volumetric_heating_rates);
 
-  message("chemistry_data.RT_heating_rate = %g", cooling->RT_heating_rate);
+  message("chemistry_data.RT_heating_rate = %g", cooling->rt_heating_rate);
   message("chemistry_data.RT_HI_ionization_rate = %g",
-          cooling->RT_HI_ionization_rate);
+          cooling->rt_hi_ionisation_rate);
   message("chemistry_data.RT_HeI_ionization_rate = %g",
-          cooling->RT_HeI_ionization_rate);
+          cooling->rt_hei_ionisation_rate);
   message("chemistry_data.RT_HeII_ionization_rate = %g",
-          cooling->RT_HeII_ionization_rate);
+          cooling->rt_heii_ionisation_rate);
   message("chemistry_data.RT_H2_dissociation_rate = %g",
-          cooling->RT_H2_dissociation_rate);
-  message("cooling.initial_nHII_to_nH_ratio= %g",
-          cooling->initial_nHII_to_nH_ratio);
-  message("cooling.initial_nHeI_to_nH_ratio= %g",
-          cooling->initial_nHeI_to_nH_ratio);
-  message("cooling.initial_nHeII_to_nH_ratio= %g",
-          cooling->initial_nHeII_to_nH_ratio);
-  message("cooling.initial_nHeIII_to_nH_ratio= %g",
-          cooling->initial_nHeIII_to_nH_ratio);
-  message("cooling.initial_nDI_to_nH_ratio= %g",
-          cooling->initial_nDI_to_nH_ratio);
-  message("cooling.initial_nDII_to_nH_ratio= %g",
-          cooling->initial_nDII_to_nH_ratio);
-  message("cooling.initial_nHM_to_nH_ratio= %g",
-          cooling->initial_nHM_to_nH_ratio);
-  message("cooling.initial_nH2I_to_nH_ratio= %g",
-          cooling->initial_nH2I_to_nH_ratio);
-  message("cooling.initial_nH2II_to_nH_ratio= %g",
-          cooling->initial_nH2II_to_nH_ratio);
-  message("cooling.initial_nHDI_to_nH_ratio= %g",
-          cooling->initial_nHDI_to_nH_ratio);
+          cooling->rt_h2_dissociation_rate);
+  message("cooling.initial_hii_to_h_ratio= %g",
+          cooling->initial_hii_to_h_ratio);
+  message("cooling.initial_hei_to_h_ratio= %g",
+          cooling->initial_hei_to_h_ratio);
+  message("cooling.initial_heii_to_h_ratio= %g",
+          cooling->initial_heii_to_h_ratio);
+  message("cooling.initial_heiii_to_h_ratio= %g",
+          cooling->initial_heiii_to_h_ratio);
+  message("cooling.initial_di_to_h_ratio= %g",
+          cooling->initial_di_to_h_ratio);
+  message("cooling.initial_dii_to_h_ratio= %g",
+          cooling->initial_dii_to_h_ratio);
+  message("cooling.initial_hm_to_h_ratio= %g",
+          cooling->initial_hm_to_h_ratio);
+  message("cooling.initial_h2i_to_h_ratio= %g",
+          cooling->initial_h2i_to_h_ratio);
+  message("cooling.initial_h2ii_to_h_ratio= %g",
+          cooling->initial_h2ii_to_h_ratio);
+  message("cooling.initial_hdi_to_h_ratio= %g",
+          cooling->initial_hdi_to_h_ratio);
   message("Units:");
   message("\tComoving = %i", cooling->units.comoving_coordinates);
   message("\tLength = %g", cooling->units.length_units);
@@ -814,25 +814,25 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
 
   /* The rates are given in 1/s: the library wants 1/internal_time_units */
   if (cooling->chemistry_data.use_radiative_transfer) {
-    inputs->RT_heating_rate = cooling->RT_heating_rate;
+    inputs->RT_heating_rate = cooling->rt_heating_rate;
     inputs->RT_HI_ionization_rate =
-        cooling->RT_HI_ionization_rate / (1. / time_units);
+        cooling->rt_hi_ionisation_rate / (1. / time_units);
     inputs->RT_HeI_ionization_rate =
-        cooling->RT_HeI_ionization_rate / (1. / time_units);
+        cooling->rt_hei_ionisation_rate / (1. / time_units);
     inputs->RT_HeII_ionization_rate =
-        cooling->RT_HeII_ionization_rate / (1. / time_units);
+        cooling->rt_heii_ionisation_rate / (1. / time_units);
     inputs->RT_H2_dissociation_rate =
-        cooling->RT_H2_dissociation_rate / (1. / time_units);
+        cooling->rt_h2_dissociation_rate / (1. / time_units);
   }
 
   /* The length is the full chosen path of
-     H2_self_shielding_path_in_kernel_radii kernel support radii H =
+     h2_shielding_path_in_kernel_radii kernel support radii H =
      kernel_gamma h. geajay forms N_H2 = n_H2 l from it (src/h2.h of geajay).
      With comoving_coordinates = 0, a physical length in length_units is
      expected. */
-  if (cooling->H2_self_shielding == cooling_h2_shielding_length_given)
+  if (cooling->h2_shielding_length_method == cooling_h2_shielding_length_given)
     inputs->H2_self_shielding_length =
-        cooling->H2_self_shielding_path_in_kernel_radii * kernel_gamma * p->h *
+        cooling->h2_shielding_path_in_kernel_radii * kernel_gamma * p->h *
         cosmo->a;
 
   /* Proper length in length_units for the column shielding of the UV
@@ -862,9 +862,9 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
 
   /* Self shielding by a density threshold: switch the UV background off */
   if (cooling->with_uv_background &&
-      cooling->self_shielding_method ==
+      cooling->uv_self_shielding ==
           cooling_uv_self_shielding_density_threshold &&
-      hydro_get_physical_density(p, cosmo) > cooling->self_shielding_threshold)
+      hydro_get_physical_density(p, cosmo) > cooling->uv_shielding_threshold)
     inputs->uvb_off = 1;
 }
 
@@ -1511,8 +1511,8 @@ double cooling_get_equilibrium_mean_molecular_weight(
 
   geajay_particle_inputs inputs;
   geajay_particle_inputs_init(cooling->context, &inputs);
-  const double rho = cooling->cooling_density_max > 0.
-                         ? fmin(rho_physical, cooling->cooling_density_max)
+  const double rho = cooling->maximal_density > 0.
+                         ? fmin(rho_physical, cooling->maximal_density)
                          : rho_physical;
   inputs.density = rho;
   inputs.internal_energy = u;
@@ -1530,9 +1530,9 @@ double cooling_get_equilibrium_mean_molecular_weight(
   }
 
   if (cooling->with_uv_background &&
-      cooling->self_shielding_method ==
+      cooling->uv_self_shielding ==
           cooling_uv_self_shielding_density_threshold &&
-      rho_physical > cooling->self_shielding_threshold)
+      rho_physical > cooling->uv_shielding_threshold)
     inputs.uvb_off = 1;
 
   double mu;
@@ -1636,9 +1636,9 @@ void cooling_init_units(const struct unit_system *us,
       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY);
 
   /* Self shielding */
-  if (cooling->self_shielding_method ==
+  if (cooling->uv_self_shielding ==
       cooling_uv_self_shielding_density_threshold) {
-    cooling->self_shielding_threshold *=
+    cooling->uv_shielding_threshold *=
         phys_const->const_proton_mass *
         pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
   }
@@ -1716,7 +1716,7 @@ static geajay_context *cooling_create_options_context(
   if (cooling->isrf_rates_file[0] != '\0')
     options.isrf_rates_file = cooling->isrf_rates_file;
 
-  if (cooling->self_shielding_method ==
+  if (cooling->uv_self_shielding ==
       cooling_uv_self_shielding_HI_HeI_HeII_column) {
     options.uv_self_shielding = GEAJAY_UV_SHIELDING_COLUMN;
     options.uv_shielding_length_method = cooling->uv_shielding_length_method;
@@ -1760,19 +1760,19 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->Compton_xray_heating = cooling->compton_xray_heating;
   chemistry->grackle_data_file = cooling->cloudy_table;
 
-  if (cooling->local_dust_to_gas_ratio > 0)
-    chemistry->local_dust_to_gas_ratio = cooling->local_dust_to_gas_ratio;
+  if (cooling->reference_dust_to_gas_ratio > 0)
+    chemistry->local_dust_to_gas_ratio = cooling->reference_dust_to_gas_ratio;
 
   /* radiative transfer */
 #if COOLING_GEAJAY_MODE == 0
-  if (cooling->use_radiative_transfer)
+  if (cooling->rt_use_fields)
     error(
-        "The parameter GeajayCooling:use_radiative_transfer_fields cannot be "
+        "The parameter GeajayCooling:rt_use_fields cannot be "
         "set "
         "to 1 in geajay mode 0 !");
 #endif
 
-  chemistry->use_radiative_transfer = cooling->use_radiative_transfer;
+  chemistry->use_radiative_transfer = cooling->rt_use_fields;
 
   if (cooling->volumetric_heating_rates > 0)
     chemistry->use_volumetric_heating_rate = 1;
@@ -1793,7 +1793,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
         "heating rates, not both");
 
   /* self shielding */
-  switch (cooling->self_shielding_method) {
+  switch (cooling->uv_self_shielding) {
     case cooling_uv_self_shielding_density_threshold:
     case cooling_uv_self_shielding_none:
     case cooling_uv_self_shielding_HI_HeI_HeII_column:
@@ -1803,14 +1803,14 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
     case cooling_uv_self_shielding_HI:
     case cooling_uv_self_shielding_HI_HeI:
     case cooling_uv_self_shielding_HI_HeI_no_HeII:
-      chemistry->self_shielding_method = (int)cooling->self_shielding_method;
+      chemistry->self_shielding_method = (int)cooling->uv_self_shielding;
       break;
     default:
       error("Unknown self-shielding method %d.",
-            (int)cooling->self_shielding_method);
+            (int)cooling->uv_self_shielding);
   }
 
-  chemistry->H2_self_shielding = (int)cooling->H2_self_shielding;
+  chemistry->H2_self_shielding = (int)cooling->h2_shielding_length_method;
 
   if (cooling->lw_background_j21 >= 0.)
     chemistry->LWbackground_intensity = cooling->lw_background_j21;
@@ -1818,7 +1818,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of
      a state integrated over only part of the time-step. */
-  chemistry->max_iterations = cooling->max_step;
+  chemistry->max_iterations = cooling->max_substeps;
   chemistry->exit_after_iterations_exceeded = 1;
   chemistry->energy_change_limit = cooling->energy_change_limit;
   if (cooling->cheap_energy_update >= 0)
@@ -1860,7 +1860,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   geajay_context_error context_error;
   if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_GRACKLE &&
-      cooling->self_shielding_method !=
+      cooling->uv_self_shielding !=
           cooling_uv_self_shielding_HI_HeI_HeII_column)
     cooling->context = geajay_context_create(&cooling->chemistry_data,
                                              &cooling->chemistry_rates,
@@ -1871,7 +1871,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (cooling->context == NULL)
     error("geajay refused the chemistry parameters (error %d)%s: %s",
           (int)context_error,
-          cooling->self_shielding_method ==
+          cooling->uv_self_shielding ==
                   cooling_uv_self_shielding_HI_HeI_HeII_column
               ? " (with GeajayCooling:uv_self_shielding: HI_HeI_HeII_column, "
                 "see the keys GeajayCooling:uv_shielding_*)"
@@ -1984,7 +1984,7 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
 /**
  * @brief Get the physical density of the #part passed to geajay.
  *
- * A positive cooling_density_max caps it, as in the Grackle module.
+ * A positive maximal_density caps it, as in the Grackle module.
  * The first particle of a run above the density range of the Cloudy table
  * prints a warning. Its n_H is X_H rho / m_p, close to the n_H of geajay,
  * which sums the hydrogen species.
@@ -2000,7 +2000,7 @@ double cooling_get_physical_density(
     const struct cooling_function_data *cooling) {
 
   double part_density = hydro_get_physical_density(p, cosmo);
-  const double cooling_max_density = cooling->cooling_density_max;
+  const double cooling_max_density = cooling->maximal_density;
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (cooling_max_density > 0.0 && part_density > cooling_max_density) {
