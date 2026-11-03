@@ -388,11 +388,15 @@ static INLINE void tracers_after_stellar_winds_feedback_part(
  */
 static INLINE void tracers_after_supernovae_feedback_part(
     struct xpart *xp, const float delta_p_magnitude, const float delta_u,
-    const float kick_velocity, const float delta_E) {
+    const float kick_velocity, const float delta_E, const float m[3]) {
 
   xp->tracers_data.hit_by_SNII_feedback++;
 
   xp->tracers_data.snii_feedback_energy += delta_E;
+  
+  xp->tracers_data.magnetic_moment[0] = m[0];
+  xp->tracers_data.magnetic_moment[1] = m[1];
+  xp->tracers_data.magnetic_moment[2] = m[2];
 }
 
 /**

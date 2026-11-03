@@ -141,6 +141,30 @@ runner_iact_nonsym_feedback_density(const float r2, const float dx[3],
 
       break; 
     }
+    case SNII_magnetic_orientation_ang_momentum_model:{
+      /* have the moment be aligned with the local angular momentum */
+      const float dv[3] = {pj->v[0] - si->v[0], 
+                           pj->v[1] - si->v[1],
+                           pj->v[2] - si->v[2]};
+                       
+      si->feedback_data.to_collect_mhd.ngb_v_circ[0] -= mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
+      si->feedback_data.to_collect_mhd.ngb_v_circ[0] -= mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
+      si->feedback_data.to_collect_mhd.ngb_v_circ[0] -= mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
+
+      break;
+    }
+    case SNII_magnetic_orientation_ang_momentum_model_anti:{
+      /* have the moment be anti-aligned with the local angular momentum */
+      const float dv[3] = {pj->v[0] - si->v[0], 
+                           pj->v[1] - si->v[1],
+                           pj->v[2] - si->v[2]};
+                       
+      si->feedback_data.to_collect_mhd.ngb_v_circ[0] += mj * wi * (dx[1] * dv[2] - dx[2] * dv[1]);
+      si->feedback_data.to_collect_mhd.ngb_v_circ[0] += mj * wi * (dx[2] * dv[0] - dx[0] * dv[2]);
+      si->feedback_data.to_collect_mhd.ngb_v_circ[0] += mj * wi * (dx[0] * dv[1] - dx[1] * dv[0]);
+
+      break;
+    }
     default:{
       /* use the magnetic moment as initialised */
     }
@@ -484,9 +508,9 @@ runner_iact_nonsym_feedback_apply(
     mhd_get_physical_magnetic_field(pj, xpj, cosmo, B0); 
 
     /* get the magnetic field to inject */
-    float m[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
-                  si->feedback_data.to_distribute.magnetic_moment[1],
-                  si->feedback_data.to_distribute.magnetic_moment[2]};
+    const float m[3] = {si->feedback_data.to_distribute.magnetic_moment[0],
+                        si->feedback_data.to_distribute.magnetic_moment[1],
+                        si->feedback_data.to_distribute.magnetic_moment[2]};
 
     float B_inj[3] = {0.f, 0.f, 0.f}; /* originally double */
     compute_magnetic_injection_field(B_inj, 
@@ -522,7 +546,8 @@ runner_iact_nonsym_feedback_apply(
       /* Mark this particle has having been heated by supernova feedback */
       tracers_after_supernovae_feedback_part(xpj, /*delta_p_magnitude=*/0.f,
                                              delta_u, /*kick_velocity=*/0.f,
-                                             snii_feedback_energy);
+                                             snii_feedback_energy,
+                                             m);
 
       /* message( 
           "We did some heating! id %llu star id %llu probability %.5e " 
