@@ -1717,9 +1717,14 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
+  /* The ghost may have grown h past the cell's h_max_old */
+  float h_max = 0.f;
+  for (int i = 0; i < scount; i++) h_max = max(h_max, sparts[ind[i]].h);
+
   /* Recurse? */
   if (cell_can_recurse_in_pair_stars_task(ci) &&
-      cell_can_recurse_in_pair_stars_task(cj)) {
+      cell_can_recurse_in_pair_stars_task(cj) &&
+      (kernel_gamma * h_max + ci->stars.dx_max_part_old < 0.5f * ci->dmin)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
