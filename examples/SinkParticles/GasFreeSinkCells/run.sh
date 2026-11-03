@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -o pipefail
 
 GEAR_SCRIPTS=../../GEAR_ICs_and_SCRIPTS # Shared GEAR table download scripts
 
