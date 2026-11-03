@@ -1455,7 +1455,10 @@ SPH gather; this is a choice. A pass visits a pair only for an active
 particle, and only inside its kernel support. A neighbour $j$ with
 $\gamma h_i\le r_{ij}<\gamma h_j$ is therefore seen only when $j$ is visited,
 which needs $j$ active: an inactive receiver beyond $\gamma h_i$ gets no
-light. The reach is a geometric bound, not a light travel distance. The speed
+light. The booking pass books each part in the same visit as the summing pass
+adds it: the inner part in the visit of the sender, the outer part in the
+visit of the receiver, because the visit of the sender at its own tree depth
+need not reach a receiver with a larger smoothing length. The reach is a geometric bound, not a light travel distance. The speed
 of light limits when a share arrives, not how far it reaches.
 
 \subsubsection{Absorption over a hop}
@@ -1941,8 +1944,9 @@ The share $\phi_{ij,k}$ is \code{fraction} in
 (\code{radiation\_packet.h:491-572}, \code{from\_origin} at :503). The force
 loop calls \code{radiation\_packet\_book\_share} from
 \code{runner\_iact\_isrf\_packet\_hop} and its non-symmetric twin
-(\code{radiation\_propagation\_iact.h:141-144}, :180-189); the twin also books
-the part of the reach of a foreign active sender. The vector \code{dx\_ij}
+(\code{radiation\_propagation\_iact.h:141-144}, :179-192); the twin also books,
+in the visit of the receiver, the outer part of the reach of each active
+sender, local or foreign. The vector \code{dx\_ij}
 passed to it points from sender to receiver. The held energy of the sender is
 set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 \code{radiation\_packet.c:2156-2175}). The escape of a slot with $S_{i,k}=0$ is
@@ -2016,7 +2020,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 (\code{radiation\_packet.h:515-529}; fields at \code{feedback\_struct.h:226-233}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:655}
 for a hop, :844 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
-(\code{radiation\_propagation\_iact.h:141-145}, :180-189) and from
+(\code{radiation\_propagation\_iact.h:141-145}, :179-192) and from
 \code{radiation\_iact.h:277}.
 
 \paragraph{Dust absorption (Secs.~\ref{sec:packet-absorption}, \ref{sec:packet-absorb-summary}).} All of it is
@@ -2099,7 +2103,7 @@ applied at \code{radiation\_packet.c:2142-2146}; $\tau_{\rm m}$ is
 (\code{feedback\_properties.h:843-850}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:684-701}, called at
-\code{radiation\_propagation\_iact.h:146-147}, :177). The self term and the
+\code{radiation\_propagation\_iact.h:146-147}, :180). The self term and the
 division are \code{radiation\_packet\_end\_force}
 (\code{radiation\_packet.c:2156-2175}), called at \code{radiation\_isrf.c:223}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
