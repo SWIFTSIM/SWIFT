@@ -571,8 +571,11 @@ int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
   if (mesh == NULL) return 0;
   if (!mesh->enabled) return 0;
 
-  /* Defer to the geometric containment check. */
-  return zoom_mesh_cell_is_inside(mesh, c, use_max_dx);
+  /* Long-range gravity can interact at the top-cell level. Do not apply a
+   * fine-mesh correction to a covered leaf if its parent top cell still uses
+   * the coarse tree split. */
+  return zoom_mesh_cell_is_inside(mesh, c->top, use_max_dx) &&
+         zoom_mesh_cell_is_inside(mesh, c, use_max_dx);
 }
 
 /**

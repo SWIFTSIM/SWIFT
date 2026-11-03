@@ -40,6 +40,7 @@ static void setup_cell(struct cell *c, const double loc[3],
                        const double width[3], const double x[3]) {
 
   bzero(c, sizeof(struct cell));
+  c->top = c;
 
   for (int i = 0; i < 3; ++i) {
     c->loc[i] = loc[i];
@@ -241,6 +242,18 @@ int main(int argc, char *argv[]) {
     error("ci should be covered by the zoom mesh");
   if (!zoom_mesh_cell_is_covered(&zoom_mesh, &cj, /*use_max_dx=*/0))
     error("cj should be covered by the zoom mesh");
+
+  /* A leaf inside the fine mesh cannot use it when its top cell straddles
+   * the mesh boundary: long-range tree interactions use that top cell. */
+  struct cell straddling_top = {0};
+  for (int axis = 0; axis < 3; ++axis) {
+    straddling_top.loc[axis] = 12.;
+    straddling_top.width[axis] = 6.;
+  }
+  ci.top = &straddling_top;
+  if (zoom_mesh_cell_is_covered(&zoom_mesh, &ci, /*use_max_dx=*/0))
+    error("Leaf in a partially covered top cell used the zoom mesh");
+  ci.top = &ci;
 
   if (!zoom_mesh_can_use_mesh(&zoom_mesh, &s, &ci, &cj))
     error("Cells should be able to use the zoom mesh");

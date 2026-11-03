@@ -490,7 +490,18 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
   if (ci->nodeID != e->nodeID) error("Calling function on foreign pair!");
 #endif
 
-  const float r_s_inv = grav_props->r_s_inv;
+  /* Get the correct inverse mesh smoothing scale based on the mesh
+   * configuration (and whether running a zoom in particular). */
+  float r_s_inv;
+  if (!e->s->with_zoom_region || e->zoom_mesh == NULL ||
+      !e->zoom_mesh->enabled) {
+    r_s_inv = grav_props->r_s_inv;
+  } else if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj,
+                                         /*use_max_dx=*/0)) {
+    r_s_inv = e->zoom_mesh->r_s_inv;
+  } else {
+    r_s_inv = grav_props->r_s_inv;
+  }
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
