@@ -171,7 +171,7 @@ INLINE static void convert_part_softening(const struct engine *e,
 INLINE static void convert_viscosity(const struct engine *e,
                                      const struct part *p,
                                      const struct xpart *xp, float *ret) {
-  ret[0] = p->viscosity.alpha * p->force.balsara;
+  ret[0] = p->viscosity.alpha;
 }
 
 INLINE static void convert_diffusion(const struct engine *e,
@@ -235,9 +235,7 @@ INLINE static void hydro_write_particles(const struct part *parts,
 
   list[9] = io_make_output_field_convert_part(
       "ViscosityParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
-      convert_viscosity,
-      "Visosity coefficient (alpha_visc) of the particles, multiplied by the "
-      "balsara switch");
+      convert_viscosity, "Visosity coefficient (alpha_visc) of the particles");
 
   list[10] = io_make_output_field_convert_part(
       "DiffusionParameters", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,

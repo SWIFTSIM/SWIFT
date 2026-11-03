@@ -155,4 +155,6 @@ grp.create_dataset(
 grp.create_dataset("ParticleIDs", data=ids, dtype="L", compression="gzip", shuffle=True)
 grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
 grp.create_dataset("Density", data=rhos, dtype="f")
+grp.create_dataset("Bfield", data=b, dtype="f")
+grp.create_dataset("VecPot", data=vp, dtype="f")
 file.close()
