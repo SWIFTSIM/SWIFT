@@ -52,36 +52,83 @@ fig, ax = plt.subplots(figsize=(10, 4.8), constrained_layout=True)
 
 
 def bar(a, b, y, colour, hatch=None, alpha=1.0, label=None):
-    ax.barh(y, b - a, left=a, height=0.5, color=colour, edgecolor="white", lw=1,
-            hatch=hatch, alpha=alpha, label=label)
+    ax.barh(
+        y,
+        b - a,
+        left=a,
+        height=0.5,
+        color=colour,
+        edgecolor="white",
+        lw=1,
+        hatch=hatch,
+        alpha=alpha,
+        label=label,
+    )
 
 
 # Row 3: what was planned
 ax.barh(3, dti_old, left=ti_beg_old, height=0.5, color="0.9", edgecolor="0.3")
 ax.text(32, 3, "old step: bin %d, %d ticks" % (old_bin, dti_old), ha="center")
 bar(ti_beg_old, ti_end_half_old, 2, blue, label="kick1 (applied)")
-bar(ti_end_half_old, ti_end_old, 2, orange, alpha=0.35, hatch="//",
-    label="kick2 (planned, never done)")
+bar(
+    ti_end_half_old,
+    ti_end_old,
+    2,
+    orange,
+    alpha=0.35,
+    hatch="//",
+    label="kick2 (planned, never done)",
+)
 
 # Row 1: what happens at ti_current
-bar(ti_beg_old, ti_end_half_old, 1, red, hatch="xx", alpha=0.6,
-    label="kick1 undone (negative dt)")
+bar(
+    ti_beg_old,
+    ti_end_half_old,
+    1,
+    red,
+    hatch="xx",
+    alpha=0.6,
+    label="kick1 undone (negative dt)",
+)
 bar(ti_beg_old, ti_beg_new, 0.4, blue, label="kick to the new start")
-bar(ti_beg_new, ti_end_half_new, -0.2, blue, hatch="..",
-    label="missing kick1 of the new step")
+bar(
+    ti_beg_new,
+    ti_end_half_new,
+    -0.2,
+    blue,
+    hatch="..",
+    label="missing kick1 of the new step",
+)
 
 # Row -1: the new step
 ax.barh(-1, dti_new, left=ti_beg_new, height=0.5, color="0.9", edgecolor="0.3")
-ax.text(ti_beg_new + dti_new / 2, -1, "new step: bin %d, %d ticks" % (new_bin, dti_new),
-        ha="center")
+ax.text(
+    ti_beg_new + dti_new / 2,
+    -1,
+    "new step: bin %d, %d ticks" % (new_bin, dti_new),
+    ha="center",
+)
 
 ax.axvline(ti_current, color="0.2", ls="--", lw=1.2)
-ax.text(ti_current + 0.5, 4.4, "wake-up by a neighbour\nof bin %d at t = %d" % (waker_bin, ti_current),
-        va="top", fontsize=9)
+ax.text(
+    ti_current + 0.5,
+    4.4,
+    "wake-up by a neighbour\nof bin %d at t = %d" % (waker_bin, ti_current),
+    va="top",
+    fontsize=9,
+)
 
 ax.set_yticks([3, 2, 1, 0.4, -0.2, -1])
-ax.set_yticklabels(["before", "kicks before", "step 1: undo", "step 2: redo",
-                    "step 3: complete", "after"])
+ax.set_yticklabels(
+    [
+        "before",
+        "kicks before",
+        "step 1: undo",
+        "step 2: redo",
+        "step 3: complete",
+        "after",
+    ]
+)
 ax.set_xticks([0, 16, 20, 24, 32, 48, 64])
 ax.set_xlim(-2, 66)
 ax.set_ylim(-1.6, 4.5)
