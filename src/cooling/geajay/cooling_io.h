@@ -935,6 +935,26 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         COOLING_GEAJAY_MODE);
 #endif
 
+  /* The H2 species start with network 2 */
+  if (cooling->primordial_chemistry < 2) {
+    const struct {
+      const char *key;
+      int value;
+    } h2_switches[] = {
+        {"GeajayCooling:h2_three_body_fit", cooling->H2_three_body_rate},
+        {"GeajayCooling:h2_cie_cooling", cooling->H2_cie_cooling},
+        {"GeajayCooling:h2_formation_on_dust", cooling->H2_on_dust},
+        {"GeajayCooling:h2_photodissociation_heating",
+         cooling->H2_photodissociation_heating}};
+    for (size_t i = 0; i < sizeof(h2_switches) / sizeof(h2_switches[0]); i++)
+      if (h2_switches[i].value != 0)
+        error(
+            "%s is set to a value other than its default, but it is not "
+            "read: the species network "
+            "GeajayCooling:primordial_chemistry_network has no H2.",
+            h2_switches[i].key);
+  }
+
   cooling->compton_xray_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:compton_xray_heating", 0);
   if (cooling->compton_xray_heating != 0 && cooling->compton_xray_heating != 1)
