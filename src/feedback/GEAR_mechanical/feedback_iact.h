@@ -549,10 +549,14 @@ runner_iact_nonsym_feedback_apply(
     double dp_norm_2_SN = 0.0;
     double dp_SN[3] = {0.0, 0.0, 0.0};
     double dp_ejecta_SN[3] = {0.0, 0.0, 0.0};
+    char do_diffusive_feedback_reset = 0;
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
         dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dp_norm_2_SN,
-        dp_SN, dp_ejecta_SN);
+        dp_SN, dp_ejecta_SN, &do_diffusive_feedback_reset);
+
+    /* Maximal viscosity and no conduction, as for thermal feedback */
+    if (do_diffusive_feedback_reset) hydro_diffusive_feedback_reset(pj);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -636,8 +640,6 @@ runner_iact_nonsym_feedback_apply(
       const float dv_phys = tot_momentum_norm / new_mass;
       hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
     }
-
-    /* Note: We do not impose maximal viscosity as GEAR_thermal */
 
     /* Synchronize the particle on the timeline */
     timestep_sync_part(pj);

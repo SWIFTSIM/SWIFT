@@ -67,6 +67,10 @@ struct feedback_props {
      conservation in the case of multiple SN. */
   char enable_multiple_SN_momentum_correction_factor;
 
+  /* Set the viscosity to its maximum and the conduction to zero for gas that
+     receives the thermal energy of a resolved SN */
+  char enable_SN_diffusive_feedback_reset;
+
   /*! Pre-supernova feedback energy effectively deposited */
   float winds_efficiency;
 
@@ -231,6 +235,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
      multiple SN ? */
   fp->enable_multiple_SN_momentum_correction_factor = parser_get_opt_param_int(
       params, "GEARFeedback:enable_multiple_SN_momentum_correction_factor", 0);
+
+  fp->enable_SN_diffusive_feedback_reset = parser_get_opt_param_int(
+      params, "GEARFeedback:enable_SN_diffusive_feedback_reset", 1);
 
   /* Print the stellar properties */
   feedback_props_print(fp);

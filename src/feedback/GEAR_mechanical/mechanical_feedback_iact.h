@@ -197,6 +197,8 @@ runner_iact_nonsym_mechanical_1_stellar_winds_apply(
  * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
+ * @param do_diffusive_feedback_reset (return) Should j get the viscosity
+ * and conduction reset of thermal feedback?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_1_supernovae_apply(
@@ -206,7 +208,9 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dp_norm_2_return,
-    double dp[3], double dp_ejecta[3]) {
+    double dp[3], double dp_ejecta[3], char *do_diffusive_feedback_reset) {
+
+  *do_diffusive_feedback_reset = 0;
 
   const float dm_inv = 1.0 / dm;
 
@@ -448,6 +452,8 @@ runner_iact_nonsym_mechanical_2_stellar_winds_apply(
  * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
+ * @param do_diffusive_feedback_reset (return) Should j get the viscosity
+ * and conduction reset of thermal feedback?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_2_supernovae_apply(
@@ -457,7 +463,7 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dp_norm_2_return,
-    double dp[3], double dp_ejecta[3]) {
+    double dp[3], double dp_ejecta[3], char *do_diffusive_feedback_reset) {
 
   const double f_kin_0 = fb_props->f_kin_0;
 
@@ -480,6 +486,10 @@ runner_iact_nonsym_mechanical_2_supernovae_apply(
   const double p_terminal = feedback_get_physical_SN_terminal_momentum(
       si, pj, xpj, phys_const, us, fb_props, cosmo);
   const double xsi = min(1.0, p_terminal / (psi * p_available));
+
+  /* Resolved: the thermal share is the Sedov one, 1 - f_kin_0 */
+  *do_diffusive_feedback_reset =
+      fb_props->enable_SN_diffusive_feedback_reset && xsi >= 1.0;
 
   /* Finally, the ejected velocity is */
   const double p_ej = psi * xsi * p_available;
@@ -624,6 +634,8 @@ runner_iact_nonsym_mechanical_stellar_winds_apply(
  * event.
  * @param dp (return) Momemtum from mechanical feedback to distribute j.
  * @param dp_ejecta (return) Momemtum from ejecta to distribute to j.
+ * @param do_diffusive_feedback_reset (return) Should j get the viscosity
+ * and conduction reset of thermal feedback?
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_mechanical_feedback_apply(
@@ -633,18 +645,18 @@ runner_iact_nonsym_mechanical_feedback_apply(
     const float dm, const float new_mass, const struct cosmology *cosmo,
     const struct feedback_props *fb_props, const struct phys_const *phys_const,
     const struct unit_system *us, double *dU, double *dp_norm_2_return,
-    double dp[3], double dp_ejecta[3]) {
+    double dp[3], double dp_ejecta[3], char *do_diffusive_feedback_reset) {
 
 #if FEEDBACK_GEAR_MECHANICAL_MODE == 1
   runner_iact_nonsym_mechanical_1_supernovae_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
       new_mass, cosmo, fb_props, phys_const, us, dU, dp_norm_2_return, dp,
-      dp_ejecta);
+      dp_ejecta, do_diffusive_feedback_reset);
 #elif FEEDBACK_GEAR_MECHANICAL_MODE == 2
   runner_iact_nonsym_mechanical_2_supernovae_apply(
       r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej, m_ej, mj, dm,
       new_mass, cosmo, fb_props, phys_const, us, dU, dp_norm_2_return, dp,
-      dp_ejecta);
+      dp_ejecta, do_diffusive_feedback_reset);
 #else
 #error "Mechanical feedback only supports mode 1 and 2"
 #endif
