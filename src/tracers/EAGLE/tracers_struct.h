@@ -96,6 +96,9 @@ struct tracers_xpart_data {
   /* Total SNII feedback energy received by this particle */
   float snii_feedback_energy;
 
+  /*! the magnetic moment of the star particle */
+  float magnetic_moment[3];
+
   /*! Counts how many times this particle has been kicked as part of
      jet feedback */
   char hit_by_jet_feedback;

@@ -132,6 +132,9 @@ struct feedback_spart_data {
     /* neighbour magnetic moment */
     float ngb_m[3];
 
+    /* neighbour angular momentum */
+    float ngb_v_circ[3];
+
     /* chosen magnetic moment */
     float m[3];
 

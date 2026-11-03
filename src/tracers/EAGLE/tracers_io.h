@@ -221,16 +221,22 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
       xparts, tracers_data.snii_feedback_energy, /*can convert to comoving=*/0,
       "Total amount of thermal energy received from SNII thermal feedback "
       "events received by the particles.");
+  
+  list[12] = io_make_physical_output_field(
+    "MagneticMomentAtLastSNIIEvent", FLOAT, 3, UNIT_CONV_NO_UNITS, 0.f,
+    xparts, tracers_data.magnetic_moment, /*can convert to comoving=*/0,
+    "The orientation vector of the injected magnetic field at the last "
+    "SNII event.");
 
   if (with_jets) {
-    list[12] = io_make_output_field(
+    list[13] = io_make_output_field(
         "KickedByJetFeedback", CHAR, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
         tracers_data.hit_by_jet_feedback,
         "Flags the particles that have been directly kicked by"
         "an AGN jet feedback event at some point in the past. "
         "If > 0, contains the number of individual events.");
 
-    list[13] = io_make_physical_output_field(
+    list[14] = io_make_physical_output_field(
         "EnergiesReceivedFromJetFeedback", FLOAT, 1, UNIT_CONV_ENERGY, 0.f,
         xparts, tracers_data.jet_feedback_energy, /*can convert to comoving=*/0,
         "Total amount of kinetic energy from AGN "
@@ -240,7 +246,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
     if (with_cosmology) {
 
-      list[14] = io_make_physical_output_field(
+      list[15] = io_make_physical_output_field(
           "LastAGNJetFeedbackScaleFactors", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f,
           xparts, tracers_data.last_AGN_jet_feedback_scale_factor,
           /*can convert to comoving=*/0,
@@ -250,7 +256,7 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
 
     } else {
 
-      list[14] = io_make_output_field(
+      list[15] = io_make_output_field(
           "LastAGNJetFeedbackTimes", FLOAT, 1, UNIT_CONV_TIME, 0.f, xparts,
           tracers_data.last_AGN_jet_feedback_time,
           "Times at which the particles were last hit by jet"
@@ -258,12 +264,12 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
           "-1 if a particle has never been hit by feedback");
     }
 
-    list[15] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
+    list[16] = io_make_output_field("LastAGNJetKickVelocities", FLOAT, 1,
                                     UNIT_CONV_VELOCITY, 0.f, xparts,
                                     tracers_data.last_jet_kick_velocity,
                                     "Kick velocity at last AGN jet event.");
 
-    list[16] = io_make_output_field("LastAGNJetKickMode", CHAR, 1,
+    list[17] = io_make_output_field("LastAGNJetKickMode", CHAR, 1,
                                     UNIT_CONV_NO_UNITS, 0.f, xparts,
                                     tracers_data.last_jet_kick_accretion_mode,
                                     "The accretion/feedback mode the BH was "
@@ -271,15 +277,15 @@ __attribute__((always_inline)) INLINE static int tracers_write_particles(
                                     "corresponds to the thick disc, 1 to the "
                                     "thin disc and 2 to the slim disc.");
 
-    list[17] = io_make_output_field("LastAGNJetKickBHId", ULONGLONG, 1,
+    list[18] = io_make_output_field("LastAGNJetKickBHId", ULONGLONG, 1,
                                     UNIT_CONV_NO_UNITS, 0.f, xparts,
                                     tracers_data.last_jet_kick_BH_id,
                                     "The id of the BH that last kicked this "
                                     "particle.");
 
-    return 18;
+    return 19;
   } else {
-    return 12;
+    return 13;
   }
 }
 

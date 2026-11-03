@@ -61,7 +61,9 @@ enum SNII_magnetic_injection_orientation {
   SNII_magnetic_orientation_maxB_model,    /*< orientation to maximize B injection energy */
   SNII_magnetic_orientation_minB_model,    /*< orientation to minimize B injection energy */
   SNII_magnetic_orientation_random_model,  /*< random orientation */
-  SNII_magnetic_orientation_constant_model /*< constant direction */
+  SNII_magnetic_orientation_constant_model, /*< constant direction */
+  SNII_magnetic_orientation_ang_momentum_model, /*< orientation from local angular momentum*/
+  SNII_magnetic_orientation_ang_momentum_model_anti /*< orientation min local angular momentum*/
 };
 
 /**

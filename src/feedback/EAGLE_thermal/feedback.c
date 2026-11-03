@@ -332,10 +332,18 @@ INLINE static void compute_magnetic_feedback(
                                 ngb_m[1]*ngb_m[1] +
                                 ngb_m[2]*ngb_m[2]);
 
+  const float ngb_v_circ[3] = {sp->feedback_data.to_collect_mhd.ngb_v_circ[0],
+                               sp->feedback_data.to_collect_mhd.ngb_v_circ[1],
+                               sp->feedback_data.to_collect_mhd.ngb_v_circ[2]};
+  const float ngb_v_circ_abs = sqrtf(ngb_v_circ[0]*ngb_v_circ[0] +
+                                     ngb_v_circ[1]*ngb_v_circ[1] +
+                                     ngb_v_circ[2]*ngb_v_circ[2]);
+  const float ngb_v_circ_abs_inv = 1.f / ngb_v_circ_abs;
+
   /* Choose the orientation of the magnetic moment */
   switch (feedback_props->magnetic_orientation_model) {
 
-    case SNII_magnetic_orientation_maxB_model:
+    case SNII_magnetic_orientation_maxB_model:{
       /* choose the moment such that it maximizes
        * the injected magnetic energy */
 
@@ -347,8 +355,8 @@ INLINE static void compute_magnetic_feedback(
       }
 
       break;
-
-    case SNII_magnetic_orientation_minB_model:
+    }
+    case SNII_magnetic_orientation_minB_model:{
       /* choose the moment such that it minimizes
        * the injected magnetic energy */
 
@@ -360,7 +368,33 @@ INLINE static void compute_magnetic_feedback(
       }
 
       break;
+    }
+    case SNII_magnetic_orientation_ang_momentum_model:{
+      /* choose the moment such that it aligns with the local angular momentum */
 
+      /* we took care of the sign in the sum over the neighbours 
+       * so we only need to take care of the normalisation here */
+      if (ngb_v_circ_abs) {
+        m[0] = ngb_v_circ[0] * ngb_v_circ_abs_inv;
+        m[1] = ngb_v_circ[1] * ngb_v_circ_abs_inv;
+        m[2] = ngb_v_circ[2] * ngb_v_circ_abs_inv;
+      }
+
+      break;
+    }
+    case SNII_magnetic_orientation_ang_momentum_model_anti:{
+      /* choose the moment such that it anti aligns with the local angular momentum */
+
+      /* we took care of the sign in the sum over the neighbours 
+       * so we only need to take care of the normalisation here */
+      if (ngb_v_circ_abs) {
+        m[0] = ngb_v_circ[0] * ngb_v_circ_abs_inv;
+        m[1] = ngb_v_circ[1] * ngb_v_circ_abs_inv;
+        m[2] = ngb_v_circ[2] * ngb_v_circ_abs_inv;
+      }
+
+      break;
+    }
     default:
 
       /* use the moment computed in the density loop */
@@ -1040,6 +1074,10 @@ void feedback_props_init(struct feedback_props *fp,
       parser_get_param_float_array(params, 
         "EAGLEFeedback:SNII_magnetic_moment", 3, fp->magnetic_moment);
     }
+    else if (strcmp(B_orientation_model, "LocalAngMomentum") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_ang_momentum_model;
+    else if (strcmp(B_orientation_model, "AntiLocalAngMomentum") == 0)
+      fp->magnetic_orientation_model = SNII_magnetic_orientation_ang_momentum_model_anti;
     else 
       error("Invalid magnetic orentiation model '%s'", B_orientation_model);
 

@@ -90,6 +90,7 @@ __attribute__((always_inline)) INLINE static void feedback_init_spart(
 
   for (size_t i = 0; i < 3; i++) {
     sp->feedback_data.to_collect_mhd.ngb_m[i] = 0.f;
+    sp->feedback_data.to_collect_mhd.ngb_v_circ[i] = 0.f;
   }
   sp->feedback_data.to_collect_mhd.ngb_B_inj = 0.f;
 
