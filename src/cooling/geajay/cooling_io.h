@@ -326,6 +326,126 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
 }
 
 /**
+ * @brief Stop if a key that the chosen options do not read is in the file.
+ *
+ * For a key without a default value: any value is refused.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param key The parameter.
+ * @param reason Why the key is not read.
+ */
+INLINE static void cooling_refuse_unread_key(
+    struct swift_params *parameter_file, const char *key, const char *reason) {
+  if (parser_does_param_exist(parameter_file, key))
+    error("%s is set, but it is not read: %s.", key, reason);
+}
+
+/**
+ * @brief Stop if a number that the chosen options do not read differs from
+ * its default.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param key The parameter.
+ * @param def The default value.
+ * @param reason Why the key is not read.
+ */
+INLINE static void cooling_refuse_unread_double(
+    struct swift_params *parameter_file, const char *key, const double def,
+    const char *reason) {
+  if (parser_does_param_exist(parameter_file, key) &&
+      parser_get_param_double(parameter_file, key) != def)
+    error(
+        "%s is set to a value other than its default %g, but it is not "
+        "read: %s.",
+        key, def, reason);
+}
+
+/**
+ * @brief Stop if a choice that the chosen options do not read differs from
+ * its default. A name and its integer are the same value.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param key The parameter.
+ * @param option The geajay option of the choice.
+ * @param def The default value.
+ * @param reason Why the key is not read.
+ */
+INLINE static void cooling_refuse_unread_choice(
+    struct swift_params *parameter_file, const char *key, const char *option,
+    const int def, const char *reason) {
+  if (parser_does_param_exist(parameter_file, key) &&
+      cooling_read_choice(parameter_file, key, option, def, NULL, 0) != def)
+    error(
+        "%s is set to a value other than its default, but it is not read: "
+        "%s.",
+        key, reason);
+}
+
+/**
+ * @brief Stop if a string that the chosen options do not read differs from
+ * its default.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param key The parameter.
+ * @param def The default value.
+ * @param reason Why the key is not read.
+ */
+INLINE static void cooling_refuse_unread_string(
+    struct swift_params *parameter_file, const char *key, const char *def,
+    const char *reason) {
+  if (!parser_does_param_exist(parameter_file, key)) return;
+  char text[PARSER_MAX_LINE_SIZE];
+  parser_get_param_string(parameter_file, key, text);
+  if (strcmp(text, def) != 0)
+    error(
+        "%s is set to a value other than its default '%s', but it is not "
+        "read: %s.",
+        key, def, reason);
+}
+
+/**
+ * @brief Stop if a cosmic-ray choice that the chosen options do not read
+ * differs from its geajay default.
+ *
+ * @param parameter_file The parser parameter file.
+ * @param option The geajay option name: "cosmic_ray_input",
+ * "cosmic_ray_heating" or "cosmic_ray_heat_per_ionisation".
+ * @param reason Why the key is not read.
+ */
+INLINE static void cooling_refuse_unread_cosmic_ray_option(
+    struct swift_params *parameter_file, const char *option,
+    const char *reason) {
+
+  char key[PARSER_MAX_LINE_SIZE], text[PARSER_MAX_LINE_SIZE];
+  snprintf(key, sizeof(key), "GeajayCooling:%s", option);
+  if (!parser_does_param_exist(parameter_file, key)) return;
+  parser_get_param_string(parameter_file, key, text);
+
+  geajay_cosmic_ray_settings defaults, given;
+  geajay_cosmic_ray_settings_init(&defaults);
+  geajay_cosmic_ray_settings_init(&given);
+  if (geajay_cosmic_ray_settings_set(&given, option, text) == GEAJAY_FAIL)
+    error("%s: geajay refused the value '%s': %s", key, text,
+          geajay_last_error_message());
+
+  int is_default = 0;
+  if (strcmp(option, "cosmic_ray_input") == 0)
+    is_default = given.input == defaults.input;
+  else if (strcmp(option, "cosmic_ray_heating") == 0)
+    is_default = given.heating == defaults.heating;
+  else if (strcmp(option, "cosmic_ray_heat_per_ionisation") == 0)
+    is_default = given.heat_per_ionisation == defaults.heat_per_ionisation;
+  else
+    error("%s has no default to compare with.", key);
+
+  if (!is_default)
+    error(
+        "%s is set to a value other than its default, but it is not read: "
+        "%s.",
+        key, reason);
+}
+
+/**
  * @brief Pass one cosmic-ray option to geajay, if the parameter file has it.
  *
  * @param parameter_file The parser parameter file.
@@ -349,8 +469,8 @@ INLINE static void cooling_set_cosmic_ray_option(
  * @brief Read the cosmic-ray options of geajay and the initial value of the
  * particles.
  *
- * An option is read only when the choices above it use it, so the others
- * stay in unused_parameters.yml.
+ * An option is read only when the choices above it use it. An option that is
+ * not read stops the run when it holds a value other than its default.
  *
  * @param parameter_file The parser parameter file.
  * @param cooling The cooling properties to initialize.
@@ -364,27 +484,69 @@ INLINE static void cooling_read_cosmic_ray_parameters(
   cooling->cosmic_ray_initial_value = 0.f;
 
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_rays");
-  if (settings->network == GEAJAY_COSMIC_RAYS_OFF) return;
+  if (settings->network == GEAJAY_COSMIC_RAYS_OFF) {
+    const char *off = "GeajayCooling:cosmic_rays is off";
+    cooling_refuse_unread_cosmic_ray_option(parameter_file, "cosmic_ray_input",
+                                            off);
+    cooling_refuse_unread_cosmic_ray_option(parameter_file,
+                                            "cosmic_ray_heating", off);
+    cooling_refuse_unread_cosmic_ray_option(
+        parameter_file, "cosmic_ray_heat_per_ionisation", off);
+    cooling_refuse_unread_key(parameter_file,
+                              "GeajayCooling:cosmic_ray_constant_rate", off);
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_rate_per_energy_density",
+        off);
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_coulomb_loss_coefficient",
+        off);
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_hadronic_loss_coefficient",
+        off);
+    cooling_refuse_unread_key(parameter_file,
+                              "GeajayCooling:cosmic_ray_initial_value", off);
+    return;
+  }
 
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_input");
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_heating");
   if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
     cooling_set_cosmic_ray_option(parameter_file, settings,
                                   "cosmic_ray_constant_rate");
-  if (settings->input == GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY) {
-    cooling_set_cosmic_ray_option(parameter_file, settings,
-                                  "cosmic_ray_rate_per_energy_density");
-    cooling_set_cosmic_ray_option(parameter_file, settings,
-                                  "cosmic_ray_coulomb_loss_coefficient");
-    cooling_set_cosmic_ray_option(parameter_file, settings,
-                                  "cosmic_ray_hadronic_loss_coefficient");
+  else
+    cooling_refuse_unread_key(parameter_file,
+                              "GeajayCooling:cosmic_ray_constant_rate",
+                              "GeajayCooling:cosmic_ray_input is not constant");
+  static const char *energy_density_options[] = {
+      "cosmic_ray_rate_per_energy_density",
+      "cosmic_ray_coulomb_loss_coefficient",
+      "cosmic_ray_hadronic_loss_coefficient"};
+  for (int i = 0; i < 3; i++) {
+    if (settings->input == GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY) {
+      cooling_set_cosmic_ray_option(parameter_file, settings,
+                                    energy_density_options[i]);
+    } else {
+      char key[PARSER_MAX_LINE_SIZE];
+      snprintf(key, sizeof(key), "GeajayCooling:%s", energy_density_options[i]);
+      cooling_refuse_unread_key(
+          parameter_file, key,
+          "GeajayCooling:cosmic_ray_input is not energy_density");
+    }
   }
   if (settings->heating == GEAJAY_COSMIC_RAY_HEATING_FIXED_ENERGY)
     cooling_set_cosmic_ray_option(parameter_file, settings,
                                   "cosmic_ray_heat_per_ionisation");
+  else
+    cooling_refuse_unread_cosmic_ray_option(
+        parameter_file, "cosmic_ray_heat_per_ionisation",
+        "GeajayCooling:cosmic_ray_heating is not fixed_energy");
 
   /* The initial value is SWIFT's: read only by a per-particle input */
-  if (settings->input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT) {
+  if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+    cooling_refuse_unread_key(parameter_file,
+                              "GeajayCooling:cosmic_ray_initial_value",
+                              "GeajayCooling:cosmic_ray_input is constant");
+  else {
     const char *initial_key = "GeajayCooling:cosmic_ray_initial_value";
     if (!parser_does_param_exist(parameter_file, initial_key))
       error("%s is required with the cosmic-ray input %s.", initial_key,
@@ -410,7 +572,8 @@ INLINE static void cooling_read_cosmic_ray_parameters(
  * @brief Read the background options of geajay.
  *
  * The per-band options are read with background_mode "per_band" only, so
- * that "grackle" keeps the context of the chemistry.
+ * that "grackle" keeps the context of the chemistry. An option that is not
+ * read stops the run when it holds a value other than its default.
  *
  * @param parameter_file The parser parameter file.
  * @param cooling The cooling properties to initialize.
@@ -454,7 +617,30 @@ INLINE static void cooling_read_background_parameters(
       "GeajayCooling:ionising_rates_file",
       "GeajayCooling:lw_rates_file",
       "GeajayCooling:isrf_rates_file"};
-  if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) return;
+  if (cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND) {
+    const char *grackle = "GeajayCooling:background_mode is not per_band";
+    cooling_refuse_unread_choice(parameter_file, per_band_keys[0],
+                                 "ionising_background_model",
+                                 GEAJAY_IONISING_BACKGROUND_DEFAULT, grackle);
+    cooling_refuse_unread_choice(parameter_file, per_band_keys[1],
+                                 "lw_background_model",
+                                 GEAJAY_LW_BACKGROUND_DEFAULT, grackle);
+    cooling_refuse_unread_choice(parameter_file, per_band_keys[2],
+                                 "isrf_background_model",
+                                 GEAJAY_ISRF_BACKGROUND_DEFAULT, grackle);
+    cooling_refuse_unread_double(parameter_file, per_band_keys[3], -1.,
+                                 grackle);
+    cooling_refuse_unread_choice(
+        parameter_file, per_band_keys[4], "dust_background_attenuation",
+        GEAJAY_DUST_BACKGROUND_ATTENUATION_NONE, grackle);
+    cooling_refuse_unread_double(parameter_file, per_band_keys[5], 1.5e-21,
+                                 grackle);
+    cooling_refuse_unread_double(parameter_file, per_band_keys[6], 8.6e-22,
+                                 grackle);
+    for (int i = 7; i < 11; i++)
+      cooling_refuse_unread_key(parameter_file, per_band_keys[i], grackle);
+    return;
+  }
 
   cooling->ionising_background_model = cooling_read_choice(
       parameter_file, per_band_keys[0], "ionising_background_model",
@@ -491,8 +677,15 @@ INLINE static void cooling_read_background_parameters(
         "background_mode: per_band: the context owns its tables.");
 
   if (cooling->dust_background_attenuation !=
-      GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND)
+      GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
+    const char *no_dust =
+        "GeajayCooling:dust_background_attenuation is not per_band";
+    cooling_refuse_unread_double(parameter_file, per_band_keys[5], 1.5e-21,
+                                 no_dust);
+    cooling_refuse_unread_double(parameter_file, per_band_keys[6], 8.6e-22,
+                                 no_dust);
     return;
+  }
 
   /* The dust column is the one of the H2 self-shielding */
   if (cooling->h2_shielding_length_method != cooling_h2_shielding_length_given)
@@ -529,8 +722,8 @@ INLINE static void cooling_read_background_parameters(
  * @brief Read the options of the column shielding of the UV background.
  *
  * The options are read with the method uv_self_shielding: HI_HeI_HeII_column.
- * A key set to a non-default value without it stops the run, so that none is
- * ignored silently.
+ * An option that is not read stops the run when it holds a value other than
+ * its default.
  *
  * @param parameter_file The parser parameter file.
  * @param cooling The cooling properties to initialize.
@@ -551,31 +744,15 @@ INLINE static void cooling_read_column_shielding_parameters(
 
   if (cooling->uv_self_shielding !=
       cooling_uv_self_shielding_HI_HeI_HeII_column) {
-    if (parser_does_param_exist(parameter_file, keys[0]))
-      error(
-          "%s is set, but GeajayCooling:uv_self_shielding is not "
-          "HI_HeI_HeII_column.",
-          keys[0]);
-    if (cooling_read_choice(parameter_file, keys[1],
-                            "uv_shielding_length_method",
-                            GEAJAY_UV_SHIELDING_LENGTH_NONE, NULL,
-                            0) != GEAJAY_UV_SHIELDING_LENGTH_NONE)
-      error(
-          "%s is set, but GeajayCooling:uv_self_shielding is not "
-          "HI_HeI_HeII_column.",
-          keys[1]);
-    if (parser_get_opt_param_double(parameter_file, keys[2], 1.) != 1.)
-      error(
-          "%s is set, but GeajayCooling:uv_self_shielding is not "
-          "HI_HeI_HeII_column.",
-          keys[2]);
-    char path[PARSER_MAX_LINE_SIZE];
-    parser_get_opt_param_string(parameter_file, keys[3], path, "kernel_radius");
-    if (strcmp(path, "kernel_radius") != 0)
-      error(
-          "%s is set, but GeajayCooling:uv_self_shielding is not "
-          "HI_HeI_HeII_column.",
-          keys[3]);
+    const char *no_column =
+        "GeajayCooling:uv_self_shielding is not HI_HeI_HeII_column";
+    cooling_refuse_unread_key(parameter_file, keys[0], no_column);
+    cooling_refuse_unread_choice(parameter_file, keys[1],
+                                 "uv_shielding_length_method",
+                                 GEAJAY_UV_SHIELDING_LENGTH_NONE, no_column);
+    cooling_refuse_unread_double(parameter_file, keys[2], 1., no_column);
+    cooling_refuse_unread_string(parameter_file, keys[3], "kernel_radius",
+                                 no_column);
     return;
   }
 
@@ -664,6 +841,45 @@ INLINE static void cooling_read_column_shielding_parameters(
 }
 
 /**
+ * @brief Stop if the file holds a retired name of a parameter.
+ *
+ * @param parameter_file The parser parameter file.
+ */
+INLINE static void cooling_refuse_retired_keys(
+    struct swift_params *parameter_file) {
+
+  static const char *retired[][2] = {
+      {"with_UV_background", "with_uv_background"},
+      {"use_radiative_transfer_fields", "rt_use_fields"},
+      {"RT_heating_rate_cgs", "rt_heating_rate_cgs"},
+      {"RT_HI_ionization_rate_cgs", "rt_hi_ionisation_rate_per_s"},
+      {"RT_HeI_ionization_rate_cgs", "rt_hei_ionisation_rate_per_s"},
+      {"RT_HeII_ionization_rate_cgs", "rt_heii_ionisation_rate_per_s"},
+      {"RT_H2_dissociation_rate_cgs", "rt_h2_dissociation_rate_per_s"},
+      {"initial_nHII_to_nH_ratio", "initial_hii_to_h_ratio"},
+      {"initial_nHeI_to_nH_ratio", "initial_hei_to_h_ratio"},
+      {"initial_nHeII_to_nH_ratio", "initial_heii_to_h_ratio"},
+      {"initial_nHeIII_to_nH_ratio", "initial_heiii_to_h_ratio"},
+      {"initial_nDI_to_nH_ratio", "initial_di_to_h_ratio"},
+      {"initial_nDII_to_nH_ratio", "initial_dii_to_h_ratio"},
+      {"initial_nHM_to_nH_ratio", "initial_hm_to_h_ratio"},
+      {"initial_nH2I_to_nH_ratio", "initial_h2i_to_h_ratio"},
+      {"initial_nH2II_to_nH_ratio", "initial_h2ii_to_h_ratio"},
+      {"initial_nHDI_to_nH_ratio", "initial_hdi_to_h_ratio"},
+      {"self_shielding_threshold_atom_per_cm3",
+       "uv_shielding_threshold_nucleon_per_cm3"},
+      {"H2_self_shielding_path", "h2_shielding_path"},
+      {"maximal_density_Hpcm3", "maximal_density_nucleon_per_cm3"}};
+
+  char key[PARSER_MAX_LINE_SIZE];
+  for (size_t i = 0; i < sizeof(retired) / sizeof(retired[0]); i++) {
+    snprintf(key, sizeof(key), "GeajayCooling:%s", retired[i][0]);
+    if (parser_does_param_exist(parameter_file, key))
+      error("%s is a retired name: use GeajayCooling:%s.", key, retired[i][1]);
+  }
+}
+
+/**
  * @brief Parser the parameter file and initialize the #cooling_function_data
  *
  * @param parameter_file The parser parameter file
@@ -673,6 +889,8 @@ INLINE static void cooling_read_column_shielding_parameters(
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params *parameter_file, struct cooling_function_data *cooling,
     const struct phys_const *phys_const, const struct unit_system *us) {
+
+  cooling_refuse_retired_keys(parameter_file);
 
   parser_get_param_string(parameter_file, "GeajayCooling:cloudy_table_file",
                           cooling->cloudy_table);
@@ -737,20 +955,25 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->rt_use_fields = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:rt_use_fields", 0);
 
-  cooling->rt_heating_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:rt_heating_rate_cgs", 0);
-
-  cooling->rt_hi_ionisation_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:rt_hi_ionisation_rate_per_s", 0);
-
-  cooling->rt_hei_ionisation_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:rt_hei_ionisation_rate_per_s", 0);
-
-  cooling->rt_heii_ionisation_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:rt_heii_ionisation_rate_per_s", 0);
-
-  cooling->rt_h2_dissociation_rate = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:rt_h2_dissociation_rate_per_s", 0);
+  static const char *rt_keys[] = {
+      "GeajayCooling:rt_heating_rate_cgs",
+      "GeajayCooling:rt_hi_ionisation_rate_per_s",
+      "GeajayCooling:rt_hei_ionisation_rate_per_s",
+      "GeajayCooling:rt_heii_ionisation_rate_per_s",
+      "GeajayCooling:rt_h2_dissociation_rate_per_s"};
+  double rt_rates[5] = {0., 0., 0., 0., 0.};
+  for (int i = 0; i < 5; i++) {
+    if (cooling->rt_use_fields)
+      rt_rates[i] = parser_get_opt_param_double(parameter_file, rt_keys[i], 0.);
+    else
+      cooling_refuse_unread_double(parameter_file, rt_keys[i], 0.,
+                                   "GeajayCooling:rt_use_fields is 0");
+  }
+  cooling->rt_heating_rate = rt_rates[0];
+  cooling->rt_hi_ionisation_rate = rt_rates[1];
+  cooling->rt_hei_ionisation_rate = rt_rates[2];
+  cooling->rt_heii_ionisation_rate = rt_rates[3];
+  cooling->rt_h2_dissociation_rate = rt_rates[4];
 
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:volumetric_heating_rates_cgs", 0);
@@ -761,35 +984,43 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:hydrogen_mass_fraction", -1.);
 
-  cooling->initial_hii_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_hii_to_h_ratio", -1);
-
-  cooling->initial_hei_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_hei_to_h_ratio", -1);
-
-  cooling->initial_heii_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_heii_to_h_ratio", -1);
-
-  cooling->initial_heiii_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_heiii_to_h_ratio", -1);
-
-  cooling->initial_di_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_di_to_h_ratio", -1);
-
-  cooling->initial_dii_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_dii_to_h_ratio", -1);
-
-  cooling->initial_hm_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_hm_to_h_ratio", -1);
-
-  cooling->initial_h2i_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_h2i_to_h_ratio", -1);
-
-  cooling->initial_h2ii_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_h2ii_to_h_ratio", -1);
-
-  cooling->initial_hdi_to_h_ratio = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:initial_hdi_to_h_ratio", -1);
+  /* Initial species ratios, with the lowest network that has the species */
+  struct {
+    const char *key;
+    int network;
+    float *value;
+  } initial_ratios[] = {{"GeajayCooling:initial_hii_to_h_ratio", 1,
+                         &cooling->initial_hii_to_h_ratio},
+                        {"GeajayCooling:initial_hei_to_h_ratio", 1,
+                         &cooling->initial_hei_to_h_ratio},
+                        {"GeajayCooling:initial_heii_to_h_ratio", 1,
+                         &cooling->initial_heii_to_h_ratio},
+                        {"GeajayCooling:initial_heiii_to_h_ratio", 1,
+                         &cooling->initial_heiii_to_h_ratio},
+                        {"GeajayCooling:initial_hm_to_h_ratio", 2,
+                         &cooling->initial_hm_to_h_ratio},
+                        {"GeajayCooling:initial_h2i_to_h_ratio", 2,
+                         &cooling->initial_h2i_to_h_ratio},
+                        {"GeajayCooling:initial_h2ii_to_h_ratio", 2,
+                         &cooling->initial_h2ii_to_h_ratio},
+                        {"GeajayCooling:initial_di_to_h_ratio", 3,
+                         &cooling->initial_di_to_h_ratio},
+                        {"GeajayCooling:initial_dii_to_h_ratio", 3,
+                         &cooling->initial_dii_to_h_ratio},
+                        {"GeajayCooling:initial_hdi_to_h_ratio", 3,
+                         &cooling->initial_hdi_to_h_ratio}};
+  for (size_t i = 0; i < sizeof(initial_ratios) / sizeof(initial_ratios[0]);
+       i++) {
+    *initial_ratios[i].value = -1.f;
+    if (cooling->primordial_chemistry >= initial_ratios[i].network)
+      *initial_ratios[i].value = parser_get_opt_param_double(
+          parameter_file, initial_ratios[i].key, -1.);
+    else
+      cooling_refuse_unread_double(
+          parameter_file, initial_ratios[i].key, -1.,
+          "the species network GeajayCooling:primordial_chemistry_network "
+          "has no such species");
+  }
 
   /* Self shielding */
   const int uv_shielding = cooling_read_choice(
@@ -811,11 +1042,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
   cooling->uv_self_shielding = (enum cooling_uv_self_shielding)uv_shielding;
 
-  if (cooling->uv_self_shielding ==
-      cooling_uv_self_shielding_density_threshold) {
+  if (cooling->uv_self_shielding == cooling_uv_self_shielding_density_threshold)
     cooling->uv_shielding_threshold = parser_get_param_float(
         parameter_file, "GeajayCooling:uv_shielding_threshold_nucleon_per_cm3");
-  }
+  else
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:uv_shielding_threshold_nucleon_per_cm3",
+        "GeajayCooling:uv_self_shielding is not density_threshold");
 
   const int h2_shielding = cooling_read_choice(
       parameter_file, "GeajayCooling:h2_shielding_length_method",
@@ -844,9 +1077,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->h2_shielding_length_method =
       (enum cooling_h2_shielding_length)h2_shielding;
 
-  char H2_path[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(parameter_file, "GeajayCooling:h2_shielding_path",
-                              H2_path, "kernel_radius");
+  char H2_path[PARSER_MAX_LINE_SIZE] = "kernel_radius";
+  if (cooling->h2_shielding_length_method == cooling_h2_shielding_length_given)
+    parser_get_opt_param_string(parameter_file,
+                                "GeajayCooling:h2_shielding_path", H2_path,
+                                "kernel_radius");
+  else
+    cooling_refuse_unread_string(
+        parameter_file, "GeajayCooling:h2_shielding_path", "kernel_radius",
+        "GeajayCooling:h2_shielding_length_method is not given_length");
   if (strcmp(H2_path, "kernel_radius") == 0)
     cooling->h2_shielding_path_in_kernel_radii = 1.0f;
   else if (strcmp(H2_path, "kernel_diameter") == 0)

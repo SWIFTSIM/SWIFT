@@ -730,7 +730,7 @@ GeajayCooling:
                                                # length); none is refused there (default: none)
   uv_shielding_length_factor: 1                # (optional) Factor R_sh on the length, above 0 (default: 1)
   uv_shielding_path: kernel_radius             # (optional) Read only with uv_shielding_length_method: given_length. Path in kernel support radii: kernel_radius or kernel_diameter (default: kernel_radius)
-  uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
+  # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
   h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported.
   h2_shielding_path: kernel_radius             # (optional) Path for given_length, also the path of the dust column of the backgrounds: kernel_radius (kernel_gamma * h) or kernel_diameter (default: kernel_radius)
   metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
@@ -767,11 +767,11 @@ GeajayCooling:
   cosmic_rays: off                             # (optional) Cosmic-ray network: off or reduced (needs primordial_chemistry_network H_He or above) (default: off)
   # With it the fields CosmicRayValues and CosmicRayEnergyLossRates join the snapshot, but swift -o does not list them.
   cosmic_ray_input: ionisation_rate            # (optional) Read only with cosmic_rays: reduced. Meaning of the per-particle value: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)
-  cosmic_ray_initial_value: 2e-16              # Read only with cosmic_rays: reduced and a per-particle input (ionisation_rate or energy_density), then required. Start value of every particle, proper
-  cosmic_ray_constant_rate: 2e-16              # Read only with cosmic_ray_input: constant, then required. Primary ionisation rate per H [s^-1]
-  cosmic_ray_rate_per_energy_density: 3e-17    # Read only with cosmic_ray_input: energy_density, then required. Ionisation rate per energy density kappa [s^-1 / (eV cm^-3)]
-  cosmic_ray_coulomb_loss_coefficient: 1.65e-16 # Read only with cosmic_ray_input: energy_density, then required. Coulomb loss coefficient [cm^3 s^-1]
-  cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Read only with cosmic_ray_input: energy_density, then required. Hadronic loss coefficient [cm^3 s^-1]
+  # cosmic_ray_initial_value: 2e-16              # Read only with cosmic_rays: reduced and a per-particle input (ionisation_rate or energy_density), then required. Start value of every particle, proper
+  # cosmic_ray_constant_rate: 2e-16              # Read only with cosmic_ray_input: constant, then required. Primary ionisation rate per H [s^-1]
+  # cosmic_ray_rate_per_energy_density: 3e-17    # Read only with cosmic_ray_input: energy_density, then required. Ionisation rate per energy density kappa [s^-1 / (eV cm^-3)]
+  # cosmic_ray_coulomb_loss_coefficient: 1.65e-16 # Read only with cosmic_ray_input: energy_density, then required. Coulomb loss coefficient [cm^3 s^-1]
+  # cosmic_ray_hadronic_loss_coefficient: 5.86e-16 # Read only with cosmic_ray_input: energy_density, then required. Hadronic loss coefficient [cm^3 s^-1]
   cosmic_ray_heating: atomic_molecular_fit     # (optional) Read only with cosmic_rays: reduced. Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
   cosmic_ray_heat_per_ionisation: 20           # (optional) Read only with cosmic_ray_heating: fixed_energy. Heat per ionisation [eV] (default: 20)
   lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default. Above 0 it replaces the table k31 and adds to rt_h2_dissociation_rate_per_s (default: -1)
@@ -786,13 +786,13 @@ GeajayCooling:
   isrf_background_model: default               # (optional) Read only with background_mode: per_band. Background G_0: default, none, constant or uv_table (G0_habing of a UV rates file, log-linear in 1
                                                # + z; with lw_background_model: Brown+2025_strong its 11.2 to 13.6 eV share follows the Brown k31, FG20 files only) (default: default)
   isrf_background_habing: -1                   # (optional) Read only with background_mode: per_band. Background G_0 of the model constant [Habing] (default: -1, unset)
-  uv_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file whose /UVBRates is the UV background, e.g. an FG20 file; the metal table always comes
+  # uv_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file whose /UVBRates is the UV background, e.g. an FG20 file; the metal table always comes
                                                # from cloudy_table_file. Leave the line out (an empty value is invalid) to use cloudy_table_file (default: cloudy_table_file)
-  ionising_rates_file: CloudyData_UVB=HM2012.h5 # (optional) Read only with background_mode: per_band. HDF5 file of the ionising band (k24 to k26, k29, k30, photoheating, cross sections). Needs
+  # ionising_rates_file: CloudyData_UVB=HM2012.h5 # (optional) Read only with background_mode: per_band. HDF5 file of the ionising band (k24 to k26, k29, k30, photoheating, cross sections). Needs
                                                 # ionising_background_model: uv_table. Leave the line out to use uv_rates_file (default: uv_rates_file)
-  lw_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file of the Lyman-Werner band (k27, k28, k31). Needs lw_background_model: uv_table or a Brown
+  # lw_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file of the Lyman-Werner band (k27, k28, k31). Needs lw_background_model: uv_table or a Brown
                                                # model. Leave the line out to use uv_rates_file (default: uv_rates_file)
-  isrf_rates_file: CloudyData_UVB=HM2012.h5    # (optional) Read only with background_mode: per_band. HDF5 file of the background G_0. Needs isrf_background_model: uv_table. Leave the line out to use uv_rates_file (default: uv_rates_file)
+  # isrf_rates_file: CloudyData_UVB=HM2012.h5    # (optional) Read only with background_mode: per_band. HDF5 file of the background G_0. Needs isrf_background_model: uv_table. Leave the line out to use uv_rates_file (default: uv_rates_file)
   dust_background_attenuation: none            # (optional) Read only with background_mode: per_band. Dust attenuation of the backgrounds: none or per_band; per_band needs h2_shielding_length_method: given_length (default: none)
   # The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D_sun) N_H) of the LW and PE backgrounds, with N_H the column of the H2 shielding. They do not change uv_self_shielding.
   # Defaults: Kim et al. 2023, Table 3 (WD01 R_V = 3.1, per H nucleon, mu_H = 1.4). D/D_sun uses the reference dust-to-gas ratio 0.009387 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.

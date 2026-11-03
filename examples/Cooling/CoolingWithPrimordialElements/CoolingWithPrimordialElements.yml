@@ -96,7 +96,7 @@ GeajayCooling:
   with_metal_cooling: 0                        # Enable or not the metal cooling
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   uv_self_shielding: none                      # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
-  uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with GEAR's self shielding. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
+  # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with GEAR's self shielding. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
   hydrogen_mass_fraction: 0.76                 # Hydrogen fraction by mass
   rt_use_fields: 0                             # Arrays of ionization and heating rates are provided
   h2_three_body_fit: Palla+1983                # H2 three-body formation rate
