@@ -44,7 +44,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-	    testLog testDistance testTimeline \
+	    testLog testDistance testTimeline testSubsetRecursion \
 	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
 
 # List of test programs to compile
@@ -64,7 +64,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testRadiationHIIConeClaim \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
+		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion testSymmetricMatrixDiagonalisation \
 		 testChemistryFluxAntisymmetry
 
 # Rebuild tests when SWIFT is updated.
@@ -171,6 +171,8 @@ testRiemannHLLC_SOURCES = testRiemannHLLC.c
 testMatrixInversion_SOURCES = testMatrixInversion.c
 
 testThreadpool_SOURCES = testThreadpool.c
+
+testSubsetRecursion_SOURCES = testSubsetRecursion.c
 
 testDump_SOURCES = testDump.c
 

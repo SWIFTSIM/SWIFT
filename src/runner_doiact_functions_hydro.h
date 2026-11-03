@@ -3660,9 +3660,14 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
   if (!cell_is_active_hydro(ci, e)) return;
 
+  /* The ghost may have grown h past the cell's h_max_old */
+  float h_max = 0.f;
+  for (int i = 0; i < count; i++) h_max = max(h_max, parts[ind[i]].h);
+
   /* Recurse? */
   if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
+      cell_can_recurse_in_pair_hydro_task(cj) &&
+      (kernel_gamma * h_max + ci->hydro.dx_max_part_old < 0.5f * ci->dmin)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB(ci, parts, ind);

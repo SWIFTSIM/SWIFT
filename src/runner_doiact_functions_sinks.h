@@ -593,9 +593,14 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
   /* Otherwise, it's a pair interaction. */
   else {
 
+    /* The ghost may have grown h past the cell's h_max_old */
+    float h_max = 0.f;
+    for (int i = 0; i < scount; i++) h_max = max(h_max, sinks[ind[i]].h);
+
     /* Recurse? */
     if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+        cell_can_recurse_in_pair_sinks_task(cj, ci) &&
+        (kernel_gamma * h_max + ci->sinks.dx_max_part_old < 0.5f * ci->dmin)) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};

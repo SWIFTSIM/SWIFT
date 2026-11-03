@@ -242,6 +242,7 @@ tests/testNeutrinoCosmology
 tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
+tests/testSubsetRecursion
 tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt
