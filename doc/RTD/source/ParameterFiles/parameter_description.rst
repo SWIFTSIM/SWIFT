@@ -252,6 +252,13 @@ the Universe. That is :math:`\epsilon_{\rm background} =
 f\sqrt[3]{\frac{m}{\Omega_m\rho_{\rm crit}}}`, where :math:`f` is the
 user-defined value (typically of order 0.05).
 
+Without cosmology, the code uses the mean matter density of the box instead
+of :math:`\Omega_m\rho_{\rm crit}`: the total mass of all particles except
+neutrinos, :math:`M_{\rm tot}`, divided by the box volume :math:`V`. That is
+:math:`\epsilon_{\rm background} = f\sqrt[3]{\frac{m V}{M_{\rm tot}}}`, a
+physical length. A run without cosmology that has background particles
+(``PartType2``) must hence set ``softening_ratio_background``.
+
 The accuracy of the gravity calculation is governed by the following four parameters:
 
 * The multipole acceptance criterion: ``MAC``
