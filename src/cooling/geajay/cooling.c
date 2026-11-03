@@ -238,6 +238,10 @@ void cooling_update(const struct phys_const *phys_const,
 
   if (geajay_context_update(cooling->context, &cooling->units) == GEAJAY_FAIL)
     error("Error in geajay_context_update.");
+  if (cooling->sink_context != NULL &&
+      geajay_context_update(cooling->sink_context, &cooling->units) ==
+          GEAJAY_FAIL)
+    error("Error in geajay_context_update of the sink context.");
 
   /* Report the geajay failures of the previous step */
   long long failed, not_finite, recovered;
@@ -618,6 +622,10 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
                    : "given, one kernel support diameter")
             : "Jeans",
         cooling->uv_shielding_length_factor);
+#ifdef SINK_GEAR
+    message("Column shielding length of a sink = its cut-off radius%s",
+            cooling->sink_context != NULL ? " (second geajay context)" : "");
+#endif
   }
   message(
       "Cloudy table density range = [%g, %g] cm^-3, beyond it the lookup %s",
@@ -1496,7 +1504,8 @@ double cooling_get_internal_energy_from_temperature(
  * @param rho_physical Physical gas density.
  * @param metal_mass_fraction Metal mass fraction of the gas.
  * @param shielding_length Physical shielding length in internal units, passed
- * as the UV shielding length with given_length.
+ * as the UV shielding length of the column shielding, whatever the length
+ * method of the gas.
  * @param phys_const #phys_const data structure.
  * @param hydro_props The properties of the hydro scheme.
  * @param cooling #cooling_function_data struct.
@@ -1507,8 +1516,11 @@ double cooling_get_equilibrium_mean_molecular_weight(
     const struct hydro_props *hydro_props,
     const struct cooling_function_data *cooling) {
 
+  const geajay_context *context =
+      cooling->sink_context != NULL ? cooling->sink_context : cooling->context;
+
   geajay_particle_inputs inputs;
-  geajay_particle_inputs_init(cooling->context, &inputs);
+  geajay_particle_inputs_init(context, &inputs);
   const double rho = cooling->maximal_density > 0.
                          ? fmin(rho_physical, cooling->maximal_density)
                          : rho_physical;
@@ -1517,12 +1529,13 @@ double cooling_get_equilibrium_mean_molecular_weight(
   inputs.has_metal = 1;
   inputs.metal = metal_mass_fraction * rho;
 
-  if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN) {
+  if (cooling->uv_self_shielding ==
+      cooling_uv_self_shielding_HI_HeI_HeII_column) {
     if (!(shielding_length > 0.))
       error(
           "The equilibrium mean molecular weight needs a positive shielding "
-          "length with GeajayCooling:uv_shielding_length_method: "
-          "given_length, got %e.",
+          "length with GeajayCooling:uv_self_shielding: HI_HeI_HeII_column, "
+          "got %e.",
           shielding_length);
     inputs.uv_shielding_length = shielding_length;
   }
@@ -1534,8 +1547,8 @@ double cooling_get_equilibrium_mean_molecular_weight(
     inputs.uvb_off = 1;
 
   double mu;
-  if (geajay_particle_equilibrium_mean_molecular_weight(
-          cooling->context, &inputs, &mu) != GEAJAY_SUCCESS)
+  if (geajay_particle_equilibrium_mean_molecular_weight(context, &inputs,
+                                                        &mu) != GEAJAY_SUCCESS)
     error(
         "geajay refused the arguments of the equilibrium mean molecular "
         "weight (density %e, energy %e, metal mass fraction %e).",
@@ -1685,13 +1698,15 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
  *
  * @param cooling The cooling properties.
  * @param chemistry The chemistry parameters before their initialisation.
+ * @param uv_shielding_length_method The length method of the column
+ * shielding.
  * @param context_error (return) The reason of a refusal.
  * @return The context, or NULL.
  */
 static geajay_context *cooling_create_options_context(
     const struct cooling_function_data *cooling,
     const geajay_chemistry_data *chemistry,
-    geajay_context_error *context_error) {
+    const int uv_shielding_length_method, geajay_context_error *context_error) {
 
   geajay_options options;
   geajay_options_set_defaults(&options);
@@ -1717,7 +1732,7 @@ static geajay_context *cooling_create_options_context(
   if (cooling->uv_self_shielding ==
       cooling_uv_self_shielding_HI_HeI_HeII_column) {
     options.uv_self_shielding = GEAJAY_UV_SHIELDING_COLUMN;
-    options.uv_shielding_length_method = cooling->uv_shielding_length_method;
+    options.uv_shielding_length_method = uv_shielding_length_method;
     options.uv_shielding_length_factor = cooling->uv_shielding_length_factor;
     options.uv_shielding_table_file = cooling->uv_shielding_table_file;
   }
@@ -1865,7 +1880,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
                                              &cooling->units, &context_error);
   else
     cooling->context = cooling_create_options_context(
-        cooling, &chemistry_as_set, &context_error);
+        cooling, &chemistry_as_set, cooling->uv_shielding_length_method,
+        &context_error);
   if (cooling->context == NULL)
     error("geajay refused the chemistry parameters (error %d)%s: %s",
           (int)context_error,
@@ -1876,13 +1892,35 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
               : "",
           geajay_last_error_message());
 
+  /* A sink is shielded over its cut-off radius, which a Jeans context
+     ignores */
+  cooling->sink_context = NULL;
+#ifdef SINK_GEAR
+  if (cooling->uv_self_shielding ==
+          cooling_uv_self_shielding_HI_HeI_HeII_column &&
+      cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_JEANS) {
+    cooling->sink_context = cooling_create_options_context(
+        cooling, &chemistry_as_set, GEAJAY_UV_SHIELDING_LENGTH_GIVEN,
+        &context_error);
+    if (cooling->sink_context == NULL)
+      error("geajay refused the sink context (error %d): %s",
+            (int)context_error, geajay_last_error_message());
+  }
+#endif
+
   if (cooling->redshift != -1 &&
-      geajay_context_set_redshift(cooling->context, cooling->redshift) ==
-          GEAJAY_FAIL)
+      (geajay_context_set_redshift(cooling->context, cooling->redshift) ==
+           GEAJAY_FAIL ||
+       (cooling->sink_context != NULL &&
+        geajay_context_set_redshift(cooling->sink_context, cooling->redshift) ==
+            GEAJAY_FAIL)))
     error("Invalid redshift %g for geajay.", cooling->redshift);
 
   geajay_context_set_subcycle_on_failure(cooling->context,
                                          cooling->subcycle_on_failure);
+  if (cooling->sink_context != NULL)
+    geajay_context_set_subcycle_on_failure(cooling->sink_context,
+                                           cooling->subcycle_on_failure);
 
   cooling_init_species_layout(&cooling->layout);
   if (geajay_context_check_layout(cooling->context, &cooling->layout,
@@ -1938,6 +1976,8 @@ void cooling_init_backend(struct swift_params *parameter_file,
 void cooling_clean(struct cooling_function_data *cooling) {
   geajay_cosmic_ray_reduced_context_free(cooling->cosmic_ray_context);
   cooling->cosmic_ray_context = NULL;
+  if (cooling->sink_context != NULL) geajay_context_free(cooling->sink_context);
+  cooling->sink_context = NULL;
   geajay_context_free(cooling->context);
   cooling->context = NULL;
 

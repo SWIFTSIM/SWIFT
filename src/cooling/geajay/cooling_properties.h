@@ -142,6 +142,11 @@ struct cooling_function_data {
    * after a restart read. */
   geajay_context *context;
 
+  /*! Copy of #context on given_length for the sink calls, built only with the
+   * column shielding on the Jeans length, so that a sink gets its cut-off
+   * radius; NULL otherwise. Same lifetime as #context. */
+  geajay_context *sink_context;
+
   /*! Where the species live in the #xpart, checked against the context. */
   geajay_species_layout layout;
 

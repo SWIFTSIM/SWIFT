@@ -141,7 +141,7 @@ double cooling_get_internal_energy_from_temperature(
  * @param rho_physical Physical gas density.
  * @param metal_mass_fraction Metal mass fraction of the gas.
  * @param shielding_length Physical shielding length in internal units, used
- * with uv_shielding_length_method: given_length.
+ * by the column shielding whatever its length method.
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
  * @param cooling The #cooling_function_data used in the run.
