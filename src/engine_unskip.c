@@ -249,36 +249,19 @@ static int engine_unskip_top_cell_is_active(const struct cell *c,
 }
 
 /**
- * @brief Does a top-level cell get its own job in engine_unskip()?
+ * @brief Does the gravity walk of a cell skip one of its progeny?
  *
- * This is the membership rule of space_list_useful_top_level_cells() combined
- * with the activity filter of engine_unskip().
+ * Zoom cells linked below a void cell are unskipped on their own.
  *
- * @param c The top-level #cell.
- * @param e The #engine.
- */
-static int engine_unskip_top_cell_is_listed(struct cell *c,
-                                            const struct engine *e) {
-
-  return space_top_cell_has_tasks(c) && engine_unskip_top_cell_is_active(c, e);
-}
-
-/**
- * @brief Is the progeny of a gravity cell a top-level zoom cell that is
- * unskipped by its own job?
- *
- * The finest void cells link the top-level zoom cells as their progeny. Such a
- * zoom cell must not be walked a second time from the void hierarchy.
- *
- * @param c The parent #cell.
+ * @param c The #cell.
  * @param cp The progeny of @p c.
  * @param e The #engine.
  */
-static int engine_unskip_gravity_progeny_is_listed(const struct cell *c,
-                                                   struct cell *cp,
-                                                   const struct engine *e) {
+static int engine_unskip_gravity_skips_progeny(const struct cell *c,
+                                               struct cell *cp,
+                                               const struct engine *e) {
 
-  return cp->void_parent == c && engine_unskip_top_cell_is_listed(cp, e);
+  return c->subtype == cell_subtype_void && cp->type == cell_type_zoom;
 }
 
 /**
@@ -348,8 +331,7 @@ static void engine_do_unskip_gravity(struct cell *c, struct engine *e,
   if (walk_below && engine_unskip_gravity_enters_progeny(c)) {
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
-      if (cp == NULL || engine_unskip_gravity_progeny_is_listed(c, cp, e))
-        continue;
+      if (cp == NULL || engine_unskip_gravity_skips_progeny(c, cp, e)) continue;
       engine_do_unskip_gravity(cp, e, /*walk_below=*/1);
     }
   }
@@ -627,37 +609,6 @@ void engine_do_unskip_mapper(void *map_data, int num_elements,
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
-/**
- * @brief Check that engine_unskip_top_cell_is_listed() holds exactly for the
- * top-level cells of the active list.
- *
- * @param e The #engine.
- * @param active_cells The indices of the active top-level cells.
- * @param num_active_cells The number of active top-level cells.
- */
-static void engine_unskip_check_listed_rule(struct engine *e,
-                                            const int *active_cells,
-                                            const int num_active_cells) {
-
-  struct space *s = e->s;
-  char *listed = (char *)calloc(s->nr_cells, sizeof(char));
-  if (listed == NULL) error("Couldn't allocate the active list flags.");
-
-  for (int k = 0; k < num_active_cells; k++) listed[active_cells[k]] = 1;
-
-  for (int cid = 0; cid < s->nr_cells; cid++) {
-    struct cell *c = &s->cells_top[cid];
-    if (engine_unskip_top_cell_is_listed(c, e) != listed[cid])
-      error(
-          "Active list rule does not match the active list (cellID=%lld "
-          "type=%s subtype=%s listed=%d).",
-          c->cellID, cellID_names[c->type], subcellID_names[c->subtype],
-          listed[cid]);
-  }
-
-  free(listed);
-}
-
 /*! Number of steps between two checks of the gravity unskip */
 #ifndef ENGINE_UNSKIP_CHECK_PERIOD
 #define ENGINE_UNSKIP_CHECK_PERIOD 1
@@ -698,10 +649,9 @@ static void engine_do_unskip_gravity_reference(struct cell *c,
                                    c->grav.tasks_below_diff_grav_depth ||
                                    c->subtype == cell_subtype_void)) {
     for (int k = 0; k < 8; k++) {
-      if (c->progeny[k] != NULL) {
-        struct cell *cp = c->progeny[k];
-        engine_do_unskip_gravity_reference(cp, e);
-      }
+      struct cell *cp = c->progeny[k];
+      if (cp == NULL || engine_unskip_gravity_skips_progeny(c, cp, e)) continue;
+      engine_do_unskip_gravity_reference(cp, e);
     }
   }
 
@@ -894,10 +844,6 @@ void engine_unskip(struct engine *e) {
     }
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  engine_unskip_check_listed_rule(e, local_cells, num_active_cells);
-#endif
-
   /* What kind of tasks do we have? */
   struct unskip_data data;
   bzero(&data, sizeof(struct unskip_data));
@@ -966,7 +912,7 @@ void engine_unskip(struct engine *e) {
     grav_items.e = e;
     grav_items.acts_on = engine_unskip_gravity_acts_on;
     grav_items.recurses = engine_unskip_gravity_recurses;
-    grav_items.has_own_job = engine_unskip_gravity_progeny_is_listed;
+    grav_items.has_own_job = engine_unskip_gravity_skips_progeny;
     grav_items.unskip = engine_do_unskip_gravity;
     const ticks tic_items = getticks();
     engine_unskip_build_items(&grav_items, local_cells, num_active_cells);
