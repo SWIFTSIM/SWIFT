@@ -150,6 +150,8 @@ __attribute__((always_inline)) INLINE static double radiation_packet_time_later(
   return t >= 0x1p53 ? nextafter(t, DBL_MAX) : t;
 }
 
+void radiation_packet_weight_vector(const struct part *s, const struct part *r,
+                                    const float dx[3], float out[3]);
 float radiation_packet_transmission_weight(const float dx[3], const float h_s,
                                            const float h_r, const int r_active,
                                            const int want, const float n[3],
@@ -350,7 +352,9 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
  * @brief Gradient loop: add one downstream neighbour to the weight sum and the
  * forward advance of each non-empty slot of the sender.
  *
- * @param dx Comoving vector from the sender to the neighbour.
+ * @param dx Comoving vector from the sender to the neighbour. It gives the
+ * forward advance and selects the periodic image of the transmission weight,
+ * which is computed from the positions (#radiation_packet_weight_vector).
  * @param h_s Comoving smoothing length of the sender.
  * @param h_r Comoving smoothing length of the neighbour.
  * @param r_active Is the neighbour active in this step?
@@ -366,12 +370,18 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
                                      const struct part *restrict r) {
 
   struct feedback_isrf_packet_data *pk = &s->feedback_data.isrf_packet;
+  float dxw[3];
+  int have_dxw = 0;
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
     if (radiation_packet_slot_is_empty(sl)) continue;
+    if (!have_dxw) {
+      radiation_packet_weight_vector(s, r, dx, dxw);
+      have_dxw = 1;
+    }
 
     const float w = radiation_packet_transmission_weight(
-        dx, h_s, h_r, r_active, want, sl->direction, pk->cone_power,
+        dxw, h_s, h_r, r_active, want, sl->direction, pk->cone_power,
         hydro_get_mass(r), r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
@@ -582,7 +592,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * A share is absorbed over the increase of the distance to the slot's origin,
  * so the paths telescope along a chain of hops. The frame is the sender's copy.
  *
- * @param dx Comoving vector from the sender to the receiver.
+ * @param dx Comoving vector from the sender to the receiver. It gives the
+ * path and the arrival delay and selects the periodic image of the
+ * transmission weight, which is computed from the positions
+ * (#radiation_packet_weight_vector).
  * @param h_s Comoving smoothing length of the sender.
  * @param h_r Comoving smoothing length of the receiver.
  * @param r_active Is the receiver active in this step?
@@ -599,12 +612,18 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     const float a, const float H) {
 
   const struct feedback_isrf_packet_data *pk_s = &s->feedback_data.isrf_packet;
+  float dxw[3];
+  int have_dxw = 0;
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
     const struct feedback_isrf_packet_slot_data *sl = &pk_s->slot[k];
     if (radiation_packet_slot_is_empty(sl)) continue;
+    if (!have_dxw) {
+      radiation_packet_weight_vector(s, r, dx, dxw);
+      have_dxw = 1;
+    }
 
     const float w = radiation_packet_transmission_weight(
-        dx, h_s, h_r, r_active, want, sl->direction, pk_s->cone_power,
+        dxw, h_s, h_r, r_active, want, sl->direction, pk_s->cone_power,
         hydro_get_mass(r), r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
