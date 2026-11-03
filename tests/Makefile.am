@@ -40,7 +40,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         testSinkApertureEdgeRounding testSinkDriftFlags \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck \
         testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
-        testRadiationHIIConeClaim \
+        testRadiationHIIConeClaim testRadiationPacketSlotGeometry \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
@@ -61,7 +61,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testRadiationRebuildCheck testRadiationPairShift testRadiationHIIConeFrame \
-		 testRadiationHIIConeClaim \
+		 testRadiationHIIConeClaim testRadiationPacketSlotGeometry \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
@@ -84,6 +84,8 @@ testRadiationPairShift_SOURCES = testRadiationPairShift.c
 testRadiationHIIConeFrame_SOURCES = testRadiationHIIConeFrame.c
 
 testRadiationHIIConeClaim_SOURCES = testRadiationHIIConeClaim.c
+
+testRadiationPacketSlotGeometry_SOURCES = testRadiationPacketSlotGeometry.c
 
 testIOOptionalFieldDefaultWidth_SOURCES = testIOOptionalFieldDefaultWidth.c
 
