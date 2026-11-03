@@ -752,11 +752,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->RT_H2_dissociation_rate = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:RT_H2_dissociation_rate_cgs", 0);
 
-  /* Debug/test-only: see cooling_function_data.disable_cooling_for_
-     debugging's own doxygen. Never set in a production run. */
-  cooling->disable_cooling_for_debugging = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:disable_cooling_for_debugging", 0);
-
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:volumetric_heating_rates_cgs", 0);
 

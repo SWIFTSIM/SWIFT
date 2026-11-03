@@ -787,7 +787,6 @@ GeajayCooling:
   # SWIFT's GEAR radiation module (branch darwin/gear_radiation) keeps 9e-22 cm^2 for the PE band, so the two now differ.
   dust_cross_section_lw_cm2: 1.5e-21           # (optional) Read only with dust_background_attenuation: per_band. Dust cross-section of the LW band (11.2-13.6 eV) [cm^2] (default: 1.5e-21)
   dust_cross_section_pe_cm2: 8.6e-22           # (optional) Read only with dust_background_attenuation: per_band. Dust cross-section of the PE band (6-11.2 eV) [cm^2] (default: 8.6e-22)
-  disable_cooling_for_debugging: 0             # (optional) Debug only: 1 skips the per-particle energy update; start-up and tables run as usual. Always read. Never set it in a production run (default: 0)
 
 
   

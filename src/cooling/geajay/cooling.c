@@ -693,11 +693,6 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
       message("Cosmic-ray heat per ionisation = %g eV",
               cr->heat_per_ionisation);
   }
-  if (cooling->disable_cooling_for_debugging)
-    warning(
-        "GeajayCooling:disable_cooling_for_debugging is set: the "
-        "per-particle cooling/heating update is skipped entirely. Never "
-        "use this in a production run.");
   message("Specific Heating Rates = %g", cooling->specific_heating_rates);
   message("Volumetric Heating Rates = %g", cooling->volumetric_heating_rates);
 
@@ -1273,11 +1268,6 @@ void cooling_cool_part(const struct phys_const *phys_const,
 
   /* Nothing to do here? */
   if (dt == 0.) return;
-
-  /* Debug/test-only: skip the per-particle energy update entirely,
-     leaving hydro's own internal-energy derivative untouched. See
-     cooling_function_data.disable_cooling_for_debugging's own doxygen. */
-  if (cooling->disable_cooling_for_debugging) return;
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
