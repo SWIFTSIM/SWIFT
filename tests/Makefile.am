@@ -15,10 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Add the source directory and the non-standard paths to the included library headers to CFLAGS
-AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS)
+AM_CFLAGS = -I$(top_srcdir)/src $(HDF5_CPPFLAGS) $(GSL_INCS) $(GEAJAY_INCS) $(FFTW_INCS) $(NUMA_INCS) $(CHEALPIX_CFLAGS)
 
 # Libraries every test needs on top of the SWIFT library itself
-COMMON_LIBS = $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
+COMMON_LIBS = $(HDF5_LDFLAGS) $(HDF5_LIBS) $(FFTW_LIBS) $(NUMA_LIBS) $(TCMALLOC_LIBS) $(JEMALLOC_LIBS) $(TBBMALLOC_LIBS) $(GRACKLE_LIBS) $(GEAJAY_LIBS) $(GSL_LIBS) $(PROFILER_LIBS) $(CHEALPIX_LIBS)
 
 if HAVECSDS
 COMMON_LIBS += ../csds/src/.libs/libcsds_writer.a
