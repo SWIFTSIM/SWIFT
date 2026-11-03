@@ -841,7 +841,7 @@ INLINE static void cooling_read_column_shielding_parameters(
 }
 
 /**
- * @brief Stop if the file holds a retired name of a parameter.
+ * @brief Stop if the file holds a retired name or a removed key.
  *
  * @param parameter_file The parser parameter file.
  */
@@ -876,6 +876,13 @@ INLINE static void cooling_refuse_retired_keys(
     snprintf(key, sizeof(key), "GeajayCooling:%s", retired[i][0]);
     if (parser_does_param_exist(parameter_file, key))
       error("%s is a retired name: use GeajayCooling:%s.", key, retired[i][1]);
+  }
+
+  static const char *removed[] = {"disable_cooling_for_debugging"};
+  for (size_t i = 0; i < sizeof(removed) / sizeof(removed[0]); i++) {
+    snprintf(key, sizeof(key), "GeajayCooling:%s", removed[i]);
+    if (parser_does_param_exist(parameter_file, key))
+      error("%s was removed, no replacement.", key);
   }
 }
 
