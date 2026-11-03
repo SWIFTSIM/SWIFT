@@ -236,7 +236,7 @@ static void test_delta_time_from_scale_factors(struct cosmology *c) {
    * (the accuracy of this extrapolation is not guaranteed, see below) */
   const double dt_early =
       cosmology_get_delta_time_from_scale_factors(c, 0.5 * c->a_begin, c->a);
-  if (!(dt_early >= 0.) || !isfinite(dt_early))
+  if (!(dt_early >= 0. && dt_early <= DBL_MAX))
     error("Invalid delta time %e for a_start < a_begin", dt_early);
 
   message("  delta_time_from_scale_factors: no negative values");
