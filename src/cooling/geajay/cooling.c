@@ -713,12 +713,10 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->initial_heii_to_h_ratio);
   message("cooling.initial_heiii_to_h_ratio= %g",
           cooling->initial_heiii_to_h_ratio);
-  message("cooling.initial_di_to_h_ratio= %g",
-          cooling->initial_di_to_h_ratio);
+  message("cooling.initial_di_to_h_ratio= %g", cooling->initial_di_to_h_ratio);
   message("cooling.initial_dii_to_h_ratio= %g",
           cooling->initial_dii_to_h_ratio);
-  message("cooling.initial_hm_to_h_ratio= %g",
-          cooling->initial_hm_to_h_ratio);
+  message("cooling.initial_hm_to_h_ratio= %g", cooling->initial_hm_to_h_ratio);
   message("cooling.initial_h2i_to_h_ratio= %g",
           cooling->initial_h2i_to_h_ratio);
   message("cooling.initial_h2ii_to_h_ratio= %g",

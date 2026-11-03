@@ -340,8 +340,9 @@ struct cooling_function_data {
    * table_density_max_Hpcm3. */
   double table_edge_density;
 
-  /*! Largest physical density passed to geajay, in internal units
-   * (GeajayCooling:maximal_density_nucleon_per_cm3). Zero or negative: no cap. */
+  /*! Largest physical density passed to geajay, in internal units, from
+   * GeajayCooling:maximal_density_nucleon_per_cm3 (rho / m_p). Zero or
+   * negative: no cap. */
   double maximal_density;
 };
 

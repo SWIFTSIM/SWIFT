@@ -841,12 +841,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           "%d.",
           h2_shielding);
   }
-  cooling->h2_shielding_length_method = (enum cooling_h2_shielding_length)h2_shielding;
+  cooling->h2_shielding_length_method =
+      (enum cooling_h2_shielding_length)h2_shielding;
 
   char H2_path[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(parameter_file,
-                              "GeajayCooling:h2_shielding_path", H2_path,
-                              "kernel_radius");
+  parser_get_opt_param_string(parameter_file, "GeajayCooling:h2_shielding_path",
+                              H2_path, "kernel_radius");
   if (strcmp(H2_path, "kernel_radius") == 0)
     cooling->h2_shielding_path_in_kernel_radii = 1.0f;
   else if (strcmp(H2_path, "kernel_diameter") == 0)
