@@ -42,6 +42,8 @@
 #include "./forcing/boundary_particles/forcing_struct.h"
 #elif defined(FORCING_IDEALIZED_AGN_JET)
 #include "./forcing/idealized_agn_jet/forcing_struct.h"
+#elif defined(FORCING_DRIVEN_TURBULENCE)
+#include "./forcing/driven_turbulence/forcing_struct.h"
 #else
 #error "Invalid choice of forcing terms"
 #endif
