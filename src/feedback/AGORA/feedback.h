@@ -481,6 +481,30 @@ __attribute__((always_inline)) INLINE static void
 feedback_book_removed_gas_left_box(const struct part *p) {}
 
 /**
+ * @brief A star leaves a non-periodic box. Nothing to do here.
+ *
+ * @param sp The removed #spart.
+ */
+__attribute__((always_inline)) INLINE static void feedback_book_star_left_box(
+    const struct spart *sp) {}
+
+/**
+ * @brief A sink leaves a non-periodic box. Nothing to do here.
+ *
+ * @param s The removed #sink.
+ */
+__attribute__((always_inline)) INLINE static void feedback_book_sink_left_box(
+    const struct sink *s) {}
+
+/**
+ * @brief A black hole swallows a gas particle. Nothing to do here.
+ *
+ * @param p The removed #part.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_book_removed_gas_swallowed_by_black_hole(const struct part *p) {}
+
+/**
  * @brief Zero the feedback fields of a sink. Nothing to do here.
  *
  * @param s The #sink.

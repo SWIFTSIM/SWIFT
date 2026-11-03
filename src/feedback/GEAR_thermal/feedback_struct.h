@@ -406,6 +406,44 @@ struct feedback_isrf_packet_removed_data {
   /*! Absorbed, escaped and redshifted photon number of the gas, as `N E_lo`. */
   double inherited_photons[ISRF_OPERATOR_COUNT];
 };
+
+/**
+ * @brief Packet ledgers of stars, per band (#radiation_isrf_operator): the
+ * fields of the star's own ledger, summed.
+ */
+struct feedback_isrf_packet_star_ledger_data {
+
+  /*! Energy emitted by the stars. */
+  double emitted_energy[ISRF_OPERATOR_COUNT];
+
+  /*! Photon number emitted by the stars, as `N E_lo`. */
+  double emitted_photons[ISRF_OPERATOR_COUNT];
+
+  /*! Emitted energy that escaped the stars' empty emission cones. */
+  double escaped_energy[ISRF_OPERATOR_COUNT];
+
+  /*! Emitted photon number that escaped the empty cones, as `N E_lo`. */
+  double escaped_photons[ISRF_OPERATOR_COUNT];
+
+  /*! Ledgers of the gas particles the stars were converted from. */
+  struct feedback_isrf_packet_removed_data removed;
+};
+
+/**
+ * @brief Box ledger of the particles that took packet light out of the
+ * simulation, other than the gas that left a non-periodic box.
+ */
+struct feedback_isrf_packet_box_data {
+
+  /*! Ledgers of the stars that left a non-periodic box. */
+  struct feedback_isrf_packet_star_ledger_data stars_left_box;
+
+  /*! Ledgers of the sinks that left a non-periodic box. */
+  struct feedback_isrf_packet_removed_data sinks_left_box;
+
+  /*! Packet of the gas swallowed by black holes. */
+  struct feedback_isrf_packet_removed_data gas_swallowed_by_black_holes;
+};
 #endif /* SWIFT_DEBUG_CHECKS_ISRF */
 
 /**

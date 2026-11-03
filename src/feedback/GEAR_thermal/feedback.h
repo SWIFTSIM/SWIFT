@@ -84,8 +84,9 @@ void feedback_prepare_feedback(struct spart *restrict sp,
 
 /**
  * @brief Writes the current model of feedback to the file. With
- * SWIFT_DEBUG_CHECKS_ISRF, also the packet ledger of the gas that left the
- * box, summed over the ranks, PE then LW, in snapshot units.
+ * SWIFT_DEBUG_CHECKS_ISRF, also the packet ledgers of the gas, the stars and
+ * the sinks that left the box and of the gas swallowed by black holes, summed
+ * over the ranks, PE then LW, in snapshot units.
  *
  * @param feedback The #feedback_props.
  * @param h_grp The HDF5 group in which to write
@@ -113,6 +114,43 @@ INLINE static void feedback_write_flavour(struct feedback_props *feedback,
                      l.inherited_energy, ISRF_OPERATOR_COUNT);
   io_write_attribute(h_grp, "PacketLeftBoxInheritedPhotonNumbers", DOUBLE,
                      l.inherited_photons, ISRF_OPERATOR_COUNT);
+
+  struct feedback_isrf_packet_box_data x;
+  radiation_packet_box_total(&x);
+  double *v = (double *)&x;
+  for (size_t k = 0; k < sizeof(x) / sizeof(double); k++) v[k] *= f;
+  const struct feedback_isrf_packet_star_ledger_data *st = &x.stars_left_box;
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEmittedEnergies", DOUBLE,
+                     st->emitted_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEmittedPhotonNumbers", DOUBLE,
+                     st->emitted_photons, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEscapedEnergies", DOUBLE,
+                     st->escaped_energy, ISRF_OPERATOR_COUNT);
+  io_write_attribute(h_grp, "PacketStarsLeftBoxEscapedPhotonNumbers", DOUBLE,
+                     st->escaped_photons, ISRF_OPERATOR_COUNT);
+  const struct {
+    const char *name;
+    const struct feedback_isrf_packet_removed_data *r;
+  } groups[3] = {{"StarsLeftBox", &st->removed},
+                 {"SinksLeftBox", &x.sinks_left_box},
+                 {"SwallowedByBlackHoles", &x.gas_swallowed_by_black_holes}};
+  for (int g = 0; g < 3; g++) {
+    char name[64];
+    snprintf(name, sizeof(name), "Packet%sRemovedEnergies", groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->removed_energy,
+                       ISRF_OPERATOR_COUNT);
+    snprintf(name, sizeof(name), "Packet%sRemovedPhotonNumbers",
+             groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->removed_photons,
+                       ISRF_OPERATOR_COUNT);
+    snprintf(name, sizeof(name), "Packet%sInheritedEnergies", groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->inherited_energy,
+                       ISRF_OPERATOR_COUNT);
+    snprintf(name, sizeof(name), "Packet%sInheritedPhotonNumbers",
+             groups[g].name);
+    io_write_attribute(h_grp, name, DOUBLE, groups[g].r->inherited_photons,
+                       ISRF_OPERATOR_COUNT);
+  }
 #endif
 };
 

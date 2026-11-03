@@ -183,9 +183,13 @@ void radiation_packet_step_diagnostics(const struct engine *e);
 void radiation_packet_bin_counters(long long *widened, long long *beyond,
                                    long long *clamped);
 void radiation_packet_book_gas_left_box(const struct part *p);
+void radiation_packet_book_star_left_box(const struct spart *sp);
+void radiation_packet_book_sink_left_box(const struct sink *s);
+void radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p);
 void radiation_packet_reduce_left_box(const struct engine *e);
 void radiation_packet_left_box_total(
     struct feedback_isrf_packet_removed_data *l, double *to_snapshot_units);
+void radiation_packet_box_total(struct feedback_isrf_packet_box_data *l);
 void radiation_packet_left_box_dump(FILE *stream);
 void radiation_packet_left_box_restore(FILE *stream);
 #endif
@@ -987,6 +991,15 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_book_gas_left_box(const struct part *p) {}
 
 __attribute__((always_inline)) INLINE static void
+radiation_packet_book_star_left_box(const struct spart *sp) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_sink_left_box(const struct sink *s) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {}
+
+__attribute__((always_inline)) INLINE static void
 radiation_packet_left_box_dump(FILE *stream) {}
 
 __attribute__((always_inline)) INLINE static void
@@ -1012,6 +1025,15 @@ radiation_packet_first_init_sink(struct sink *s) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_gas_left_box(const struct part *p) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_star_left_box(const struct spart *sp) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_sink_left_box(const struct sink *s) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_left_box_dump(FILE *stream) {}

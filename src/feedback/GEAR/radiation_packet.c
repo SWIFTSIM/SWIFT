@@ -848,9 +848,26 @@ static struct feedback_isrf_packet_removed_data radiation_packet_left_box;
 static struct feedback_isrf_packet_removed_data radiation_packet_left_box_sum;
 static double radiation_packet_left_box_to_snapshot = 1.0;
 
+/*! Box ledger of the stars and sinks that left a non-periodic box and of the
+    gas swallowed by black holes on this rank, since the start. Written under
+    `e->s->lock`. */
+static struct feedback_isrf_packet_box_data radiation_packet_box;
+
+/*! #radiation_packet_box summed over the ranks at the last
+    #radiation_packet_reduce_left_box. */
+static struct feedback_isrf_packet_box_data radiation_packet_box_sum;
+
+#define RADIATION_PACKET_LEFT_BOX_DOUBLES \
+  (sizeof(struct feedback_isrf_packet_removed_data) / sizeof(double))
+#define RADIATION_PACKET_BOX_DOUBLES \
+  (sizeof(struct feedback_isrf_packet_box_data) / sizeof(double))
+
 _Static_assert(sizeof(struct feedback_isrf_packet_removed_data) ==
-                   4 * ISRF_OPERATOR_COUNT * sizeof(double),
+                   RADIATION_PACKET_LEFT_BOX_DOUBLES * sizeof(double),
                "The left-box ledger is reduced as an array of doubles.");
+_Static_assert(sizeof(struct feedback_isrf_packet_box_data) ==
+                   RADIATION_PACKET_BOX_DOUBLES * sizeof(double),
+               "The box ledger is reduced as an array of doubles.");
 
 /**
  * @brief A gas particle leaves a non-periodic box: book its packet to the
@@ -863,17 +880,75 @@ void radiation_packet_book_gas_left_box(const struct part *p) {
 }
 
 /**
- * @brief Sum the ledger of the gas that left the box over the ranks.
- * Collective.
+ * @brief A star leaves a non-periodic box: add its emitted, escaped and
+ * inherited ledgers to the box ledger. Called with `e->s->lock` held.
+ *
+ * @param sp The star particle.
+ */
+void radiation_packet_book_star_left_box(const struct spart *sp) {
+  struct feedback_isrf_packet_star_ledger_data *l =
+      &radiation_packet_box.stars_left_box;
+  const struct feedback_isrf_packet_removed_data *r =
+      &sp->feedback_data.radiation.packet.removed;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    l->emitted_energy[b] +=
+        sp->feedback_data.radiation.packet.emitted_energy[b];
+    l->emitted_photons[b] +=
+        sp->feedback_data.radiation.packet.emitted_photons[b];
+    l->escaped_energy[b] +=
+        sp->feedback_data.radiation.packet.escaped_energy[b];
+    l->escaped_photons[b] +=
+        sp->feedback_data.radiation.packet.escaped_photons[b];
+  }
+  radiation_packet_add_removed(&l->removed, r);
+}
+
+/**
+ * @brief A sink leaves a non-periodic box: add its ledger to the box ledger.
+ * Called with `e->s->lock` held.
+ *
+ * @param s The sink particle.
+ */
+void radiation_packet_book_sink_left_box(const struct sink *s) {
+  radiation_packet_add_removed(&radiation_packet_box.sinks_left_box,
+                               &s->feedback_data.isrf_packet);
+}
+
+/**
+ * @brief A black hole swallows a gas particle: book the gas's packet to the
+ * box ledger, on the rank of the gas. Called with `e->s->lock` held.
+ *
+ * @param p The gas particle.
+ */
+void radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {
+  radiation_packet_book_removed_gas(
+      p, &radiation_packet_box.gas_swallowed_by_black_holes);
+}
+
+/**
+ * @brief Sum the ledger of the gas that left the box and the box ledger over
+ * the ranks. Collective.
  *
  * @param e The #engine.
  */
 void radiation_packet_reduce_left_box(const struct engine *e) {
 #ifdef WITH_MPI
-  MPI_Allreduce(&radiation_packet_left_box, &radiation_packet_left_box_sum,
-                4 * ISRF_OPERATOR_COUNT, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  double send[RADIATION_PACKET_LEFT_BOX_DOUBLES + RADIATION_PACKET_BOX_DOUBLES];
+  double recv[RADIATION_PACKET_LEFT_BOX_DOUBLES + RADIATION_PACKET_BOX_DOUBLES];
+  memcpy(send, &radiation_packet_left_box, sizeof(radiation_packet_left_box));
+  memcpy(send + RADIATION_PACKET_LEFT_BOX_DOUBLES, &radiation_packet_box,
+         sizeof(radiation_packet_box));
+  MPI_Allreduce(
+      send, recv,
+      RADIATION_PACKET_LEFT_BOX_DOUBLES + RADIATION_PACKET_BOX_DOUBLES,
+      MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  memcpy(&radiation_packet_left_box_sum, recv,
+         sizeof(radiation_packet_left_box_sum));
+  memcpy(&radiation_packet_box_sum, recv + RADIATION_PACKET_LEFT_BOX_DOUBLES,
+         sizeof(radiation_packet_box_sum));
 #else
   radiation_packet_left_box_sum = radiation_packet_left_box;
+  radiation_packet_box_sum = radiation_packet_box;
 #endif
   radiation_packet_left_box_to_snapshot = units_conversion_factor(
       e->internal_units, e->snapshot_units, UNIT_CONV_ENERGY);
@@ -894,8 +969,20 @@ void radiation_packet_left_box_total(
 }
 
 /**
- * @brief Write this rank's ledger of the gas that left the box to a restart
- * file.
+ * @brief Box ledger of the stars and sinks that left the box and of the gas
+ * swallowed by black holes, summed over the ranks at the last
+ * #radiation_packet_reduce_left_box, in internal units. The factor to snapshot
+ * units is the one of #radiation_packet_left_box_total.
+ *
+ * @param l (return) The ledger.
+ */
+void radiation_packet_box_total(struct feedback_isrf_packet_box_data *l) {
+  *l = radiation_packet_box_sum;
+}
+
+/**
+ * @brief Write this rank's ledger of the gas that left the box and its box
+ * ledger to a restart file.
  *
  * @param stream The restart file.
  */
@@ -903,11 +990,13 @@ void radiation_packet_left_box_dump(FILE *stream) {
   restart_write_blocks(&radiation_packet_left_box,
                        sizeof(radiation_packet_left_box), 1, stream,
                        "isrf_left_box", "ISRF ledger of the gas that left");
+  restart_write_blocks(&radiation_packet_box, sizeof(radiation_packet_box), 1,
+                       stream, "isrf_box", "ISRF box ledger");
 }
 
 /**
- * @brief Read this rank's ledger of the gas that left the box from a restart
- * file.
+ * @brief Read this rank's ledger of the gas that left the box and its box
+ * ledger from a restart file.
  *
  * @param stream The restart file.
  */
@@ -915,6 +1004,8 @@ void radiation_packet_left_box_restore(FILE *stream) {
   restart_read_blocks(&radiation_packet_left_box,
                       sizeof(radiation_packet_left_box), 1, stream, NULL,
                       "ISRF ledger of the gas that left");
+  restart_read_blocks(&radiation_packet_box, sizeof(radiation_packet_box), 1,
+                      stream, NULL, "ISRF box ledger");
 }
 
 /**
@@ -923,8 +1014,8 @@ void radiation_packet_left_box_restore(FILE *stream) {
  * many deliveries went to a receiver that moved away faster than the clamp of
  * the delay allows, summed over the ranks, then reset the counters of every
  * rank. Prints nothing if all are zero. Also prints the ledger of the gas that
- * left the box when it changed. Collective: called by every rank from
- * engine_step().
+ * left the box and the box ledger when they changed. Collective: called by
+ * every rank from engine_step().
  *
  * @param e The #engine.
  */
@@ -941,6 +1032,26 @@ void radiation_packet_step_diagnostics(const struct engine *e) {
         e->step, l->removed_energy[0], l->removed_energy[1],
         l->inherited_energy[0], l->inherited_energy[1]);
   printed = *l;
+
+  static struct feedback_isrf_packet_box_data printed_box;
+  const struct feedback_isrf_packet_box_data *x = &radiation_packet_box_sum;
+  if (e->nodeID == 0 && memcmp(x, &printed_box, sizeof(printed_box)) != 0)
+    message(
+        "ISRF packet light of the box ledger, step %d: stars that left emitted "
+        "%.9e %.9e; sinks that left %.9e %.9e; gas swallowed by black holes "
+        "%.9e %.9e (energy, PE then LW, internal units; sinks and black holes: "
+        "in flight plus inherited).",
+        e->step, x->stars_left_box.emitted_energy[0],
+        x->stars_left_box.emitted_energy[1],
+        x->sinks_left_box.removed_energy[0] +
+            x->sinks_left_box.inherited_energy[0],
+        x->sinks_left_box.removed_energy[1] +
+            x->sinks_left_box.inherited_energy[1],
+        x->gas_swallowed_by_black_holes.removed_energy[0] +
+            x->gas_swallowed_by_black_holes.inherited_energy[0],
+        x->gas_swallowed_by_black_holes.removed_energy[1] +
+            x->gas_swallowed_by_black_holes.inherited_energy[1]);
+  printed_box = *x;
 
   if (!radiation_packet_light_speed_limited) return;
   long long counts[3] = {radiation_packet_coarsening_count,
