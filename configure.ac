@@ -3043,6 +3043,9 @@ case "$with_sink" in
     AC_DEFINE([SINK_BASIC], [1], [Simple, self-contained sink model with only Bondi-Hoyle accretion and no SF.])
     ;;
    GEAR)
+    if test "$with_feedback" != "GEAR"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR])
+    fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     ;;
     *)
