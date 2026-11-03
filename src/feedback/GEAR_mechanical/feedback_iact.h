@@ -555,14 +555,12 @@ runner_iact_nonsym_feedback_apply(
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
 
-    /* Signal velocity update: Get the momentum in the frame of the gas, without
-     * the Hubble flow term. */
-    const float p_ej_SW = sqrt(2.0 * m_ej * E_ej_SW);
-    const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW,
-                         w_j_bar[2] * p_ej_SW};
+    /* Signal velocity update: Get the coupled momentum in the frame of the gas,
+     * without the Hubble flow term. */
     for (int i = 0; i < 3; i++) {
-      total_momentum_kick_p[i] += dp[i] + dm_SW * (v_i_without_Hubble_flow[i] -
-                                                   v_j_without_Hubble_flow[i]);
+      total_momentum_kick_p[i] +=
+          dp_SW[i] +
+          dm_SW * (v_i_without_Hubble_flow[i] - v_j_without_Hubble_flow[i]);
     }
   }
 
@@ -606,10 +604,14 @@ runner_iact_nonsym_feedback_apply(
     double dp_norm_2_SN = 0.0;
     double dp_SN[3] = {0.0, 0.0, 0.0};
     double dp_ejecta_SN[3] = {0.0, 0.0, 0.0};
+    char do_diffusive_feedback_reset = 0;
     runner_iact_nonsym_mechanical_feedback_apply(
         r2, si, pj, xpj, w_j_bar, w_j_bar_norm, v_i_p, v_j_p, E_ej_SN, m_ej, mj,
         dm_SN, new_mass, cosmo, fb_props, phys_const, us, &dU, &dp_norm_2_SN,
-        dp_SN, dp_ejecta_SN);
+        dp_SN, dp_ejecta_SN, &do_diffusive_feedback_reset);
+
+    /* Maximal viscosity and no conduction, as for thermal feedback */
+    if (do_diffusive_feedback_reset) hydro_diffusive_feedback_reset(pj);
 
     /* Now we can give momentum, thermal and kinetic energy to the xpart.
        Note: Do not give momentum for the isotropy check test. Momentum pushes
@@ -661,14 +663,12 @@ runner_iact_nonsym_feedback_apply(
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;
 
-    /* Signal velocity update: Get the momentum in the frame of the gas, without
-     * the Hubble flow term. */
-    const float p_ej_SN = sqrt(2.0 * m_ej * E_ej_SN);
-    const float dp[3] = {w_j_bar[0] * p_ej_SN, w_j_bar[1] * p_ej_SN,
-                         w_j_bar[2] * p_ej_SN};
+    /* Signal velocity update: Get the coupled momentum in the frame of the gas,
+     * without the Hubble flow term. */
     for (int i = 0; i < 3; i++) {
-      total_momentum_kick_p[i] += dp[i] + dm_SN * (v_i_without_Hubble_flow[i] -
-                                                   v_j_without_Hubble_flow[i]);
+      total_momentum_kick_p[i] +=
+          dp_SN[i] +
+          dm_SN * (v_i_without_Hubble_flow[i] - v_j_without_Hubble_flow[i]);
     }
   }
 
@@ -737,8 +737,6 @@ runner_iact_nonsym_feedback_apply(
       const float dv_phys = tot_momentum_norm / new_mass;
       hydro_set_v_sig_based_on_velocity_kick(pj, cosmo, dv_phys);
     }
-
-    /* Note: We do not impose maximal viscosity as GEAR_thermal */
 
     /* Synchronize the particle on the timeline */
     timestep_sync_part(pj);
