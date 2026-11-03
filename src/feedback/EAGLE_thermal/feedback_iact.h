@@ -519,7 +519,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  * @param book Book the share.
- * @param pj_active Is j active in this step?
  * @param reverse Book the outer part of the share of j into i.
  */
 __attribute__((always_inline)) INLINE static void
@@ -528,6 +527,6 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    struct part *restrict pi,
                                    struct part *restrict pj, const float a,
                                    const float H, const int book,
-                                   const int pj_active, const int reverse) {}
+                                   const int reverse) {}
 
 #endif /* SWIFT_EAGLE_FEEDBACK_IACT_THERMAL_H */

@@ -151,6 +151,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  * @brief Force-loop packet hop from the updated particle i into j; j's own
  * field joins the kernel mean of i.
  *
+ * Books the same parts as #runner_iact_nonsym_isrf_gradient adds in the same
+ * visit: the inner part of the share of i into j and, with @p reverse, the
+ * outer part of the share of j into i. The visit of j at its own tree depth
+ * may not reach i, so the outer part of j is booked here.
+ *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param hi Comoving smoothing-length of particle i.
@@ -160,10 +165,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
  * @param book Book the share (j is local and this is its booking visit).
- * @param pj_active Is j active in this step? It decides whether the outer part
- * of the reach of i is booked.
- * @param reverse Book the outer part of the share of j into i. For a sender j
- * that is active and foreign: the rank of i is the only one that books it.
+ * @param reverse Book the outer part of the share of j into i: i is local and
+ * j is active.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
@@ -171,15 +174,14 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    struct part *restrict pi,
                                    struct part *restrict pj, const float a,
                                    const float H, const int book,
-                                   const int pj_active, const int reverse) {
+                                   const int reverse) {
 
   if (pi->feedback_data.ISRF_packet_transport) {
     radiation_packet_gather_field(r2, hi, pi, pj);
     if (book) {
       const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-      radiation_packet_book_share(dx_ij, hi, hj,
-                                  RADIATION_PACKET_RECEIVER_ACTIVE(pj_active),
-                                  RADIATION_PACKET_REACH_ALL, pi, pj, a, H);
+      radiation_packet_book_share(dx_ij, hi, hj, 1,
+                                  RADIATION_PACKET_GRADIENT_WANT, pi, pj, a, H);
     }
   }
 
@@ -217,7 +219,7 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
                                    struct part *restrict pi,
                                    struct part *restrict pj, const float a,
                                    const float H, const int book,
-                                   const int pj_active, const int reverse) {}
+                                   const int reverse) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 

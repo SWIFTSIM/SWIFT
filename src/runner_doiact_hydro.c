@@ -137,10 +137,13 @@ runner_iact_isrf_packet_hop_fct_prep(const float r2, const float dx[3],
                                      const int book_j_to_i) {}
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_packet_hop_fct_prep(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const int book, const int pj_active, const int reverse) {}
+runner_iact_nonsym_isrf_packet_hop_fct_prep(const float r2, const float dx[3],
+                                            const float hi, const float hj,
+                                            struct part *restrict pi,
+                                            struct part *restrict pj,
+                                            const float a, const float H,
+                                            const int book, const int reverse) {
+}
 
 #define runner_iact_isrf_packet_hop runner_iact_isrf_packet_hop_fct_prep
 #define runner_iact_nonsym_isrf_packet_hop \
