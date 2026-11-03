@@ -928,6 +928,7 @@ GEARFeedback:
 
   # Mechanical feedback
   maximal_radius: 2                                        # Comoving maximal radius for feedback injection in internal units (Default: 2 kpc)
+  enable_SN_diffusive_feedback_reset: 1                    # Set the artificial viscosity to its maximum and the artificial conduction to zero for gas that receives the thermal energy of a SN in its energy-conserving phase: in mode 2 when this phase is resolved, in mode 1 inside the cooling radius when the heat exceeds the kinetic energy. (Default: 1)
   f_kin_0: 0.28                                            # Idealized fraction of the SN energy available in kinetic energy. The default value is for an idealized Sedov solution in a homogenous background. Only for GEAR-mechanical_2. (Default: 0.28)
   terminal_momentum_normalisation_Msun_km_per_s: 2.5e5     # Normalisation factor for the terminal momentum relation, in Msun*km/s. (Default: 2.5e5)
 
