@@ -38,6 +38,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelLongGrav \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
+        testCoolingSplit \
         testLog testDistance testTimeline  # testMatrixInversion
 
 # List of test programs to compile
@@ -49,7 +50,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmology testOutputList \
-		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset testCooling testCoolingSplit testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline
@@ -156,6 +157,8 @@ testEOS_SOURCES = testEOS.c
 testUtilities_SOURCES = testUtilities.c
 
 testCooling_SOURCES = testCooling.c
+
+testCoolingSplit_SOURCES = testCoolingSplit.c
 
 testComovingCooling_SOURCES = testComovingCooling.c
 
