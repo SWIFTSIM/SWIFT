@@ -159,7 +159,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # get analytical solutions
     if plot_analytical_solutions:
         # Grab unit system used in IC
-        IC_units = swiftsimio.units.cosmo_units
+        IC_units = swiftsimio.metadata.writer.unit_systems.cosmo_units
 
         # Grab unit system used in snapshot
         snapshot_units = meta.units

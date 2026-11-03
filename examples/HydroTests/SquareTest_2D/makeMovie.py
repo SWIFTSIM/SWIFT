@@ -18,7 +18,7 @@
 ##############################################################################
 
 from swiftsimio import load
-from swiftsimio.visualisation import project_gas_pixel_grid
+from swiftsimio.visualisation.projection import project_gas
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 
@@ -37,8 +37,8 @@ except:
 def load_and_make_image(number, res, property):
     filename = "square_{:04d}.hdf5".format(number)
     data = load(filename)
-    image = project_gas_pixel_grid(data, res, property)
-    image_none = project_gas_pixel_grid(data, res, None)
+    image = project_gas(data, res, property).to_value()
+    image_none = project_gas(data, res, None).to_value()
 
     return image / image_none
 

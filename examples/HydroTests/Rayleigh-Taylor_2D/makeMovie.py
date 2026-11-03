@@ -19,7 +19,7 @@
 ##############################################################################
 
 from swiftsimio import load
-from swiftsimio.visualisation import scatter
+from swiftsimio.visualisation.projection_backends.fast import scatter
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
@@ -71,7 +71,7 @@ def project(data, m_res, property, ylim):
     x = x[mask]
     y = y[mask] - np.float64(ylim[0])
 
-    h = data.gas.smoothing_length[mask]
+    h = data.gas.smoothing_lengths.value[mask]
 
     if property == "density":
         property = "masses"

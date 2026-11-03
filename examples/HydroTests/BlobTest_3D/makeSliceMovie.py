@@ -7,9 +7,10 @@ LGPLv3
 """
 
 from swiftsimio import load
-from swiftsimio.visualisation import slice
+from swiftsimio.visualisation.slice_backends.sph import slice_scatter
 
 from p_tqdm import p_map
+from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,39 +59,64 @@ def get_image(n):
 
         if plot == "density":
             mass = data.gas.masses.value[mask]
-            image = slice(
+            image = slice_scatter(
                 x=masked_y,
                 y=masked_x,
                 z=masked_z,
                 m=mass,
                 h=hsml,
                 z_slice=0.5,
-                res=resolution,
+                xres=resolution,
+                yres=resolution,
             )
         else:
             quantity = getattr(data.gas, plot).value[mask]
             # Need to divide out the particle density for non-projected density quantities
-            image = scatter(
+            image = slice_scatter(
                 x=masked_y,
                 y=masked_x,
                 z=masked_z,
                 m=quantity,
                 h=hsml,
                 z_slice=0.5,
-                res=resolution,
-            ) / scatter(
+                xres=resolution,
+                yres=resolution,
+            ) / slice_scatter(
                 x=masked_y,
                 y=masked_x,
                 z=masked_z,
                 m=np.ones_like(quantity),
                 h=hsml,
                 z_slice=0.5,
-                res=resolution,
+                xres=resolution,
+                yres=resolution,
             )
 
         output[:, box * resolution : (box + 1) * resolution] = image
 
-    return output, data.metadata
+    return output, picklable_metadata(data.metadata)
+
+
+def picklable_metadata(metadata):
+    """
+    The swiftsimio metadata object holds an open HDF5 file handle and cannot
+    be sent back from the p_map worker processes, so keep only what we use.
+    """
+
+    def info(name):
+        try:
+            return getattr(metadata, name)
+        except Exception:
+            return "No info"
+
+    return SimpleNamespace(
+        t=metadata.t,
+        code_info=metadata.code_info,
+        compiler_info=metadata.compiler_info,
+        hydro_info=metadata.hydro_info,
+        viscosity_info=info("viscosity_info"),
+        diffusion_info=info("diffusion_info"),
+    )
 
 
 def get_data_dump(metadata):

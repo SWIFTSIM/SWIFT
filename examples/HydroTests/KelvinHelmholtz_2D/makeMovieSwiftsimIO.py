@@ -15,7 +15,7 @@ import numpy as np
 import scipy.interpolate as si
 
 from swiftsimio import load
-from swiftsimio.visualisation import project_gas_pixel_grid
+from swiftsimio.visualisation.projection import project_gas
 
 
 def load_and_extract(filename):
@@ -35,7 +35,7 @@ def make_plot(filename, array, nx, ny, dx, dy):
 
     data = load_and_extract(filename)
 
-    mesh = project_gas_pixel_grid(data, nx).T
+    mesh = project_gas(data, nx).to_value().T
 
     array.set_array(mesh)
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     data = load_and_extract("kelvinHelmholtz_0000.hdf5")
 
-    mesh = project_gas_pixel_grid(data, dpi)
+    mesh = project_gas(data, dpi).to_value()
 
     # Global variable for set_array
     plot = ax.imshow(

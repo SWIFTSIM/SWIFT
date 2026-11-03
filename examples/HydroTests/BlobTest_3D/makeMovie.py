@@ -7,9 +7,10 @@ LGPLv3
 """
 
 from swiftsimio import load
-from swiftsimio.visualisation import scatter
+from swiftsimio.visualisation.projection_backends.fast import scatter
 
 from p_tqdm import p_map
+from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -69,7 +70,29 @@ def get_image(n):
 
         output[:, box * resolution : (box + 1) * resolution] = image
 
-    return output, data.metadata
+    return output, picklable_metadata(data.metadata)
+
+
+def picklable_metadata(metadata):
+    """
+    The swiftsimio metadata object holds an open HDF5 file handle and cannot
+    be sent back from the p_map worker processes, so keep only what we use.
+    """
+
+    def info(name):
+        try:
+            return getattr(metadata, name)
+        except Exception:
+            return "No info"
+
+    return SimpleNamespace(
+        t=metadata.t,
+        code_info=metadata.code_info,
+        compiler_info=metadata.compiler_info,
+        hydro_info=metadata.hydro_info,
+        viscosity_info=info("viscosity_info"),
+        diffusion_info=info("diffusion_info"),
+    )
 
 
 def get_data_dump(metadata):

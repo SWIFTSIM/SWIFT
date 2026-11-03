@@ -318,11 +318,13 @@ def make_movie(args, image_resolution):
     # Once we've rearranged the figure with tight_layout(), we can start laying
     # Down the metadata text.
 
-    def format_metadata(metadata: sw.SWIFTMetadata):
+    def format_metadata(metadata: sw.metadata.objects.SWIFTMetadata):
         t = metadata.t
         t.convert_to_units(unyt.Myr)
 
-        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(metadata.a, metadata.z, t)
+        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(
+            metadata.scale_factor, metadata.z, t
+        )
 
         return x
 

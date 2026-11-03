@@ -28,7 +28,7 @@ from swiftsimio.visualisation.smoothing_length.generate import (
 import scipy.optimize as scop
 from scipy.optimize import root_scalar
 from swiftsimio.objects import cosmo_array, cosmo_factor
-from swiftsimio.units import cosmo_units
+from swiftsimio.metadata.writer.unit_systems import cosmo_units
 from swiftsimio import Writer
 import swiftsimio as sw
 

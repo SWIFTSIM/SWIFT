@@ -4,7 +4,7 @@ from h5py import File
 import shutil
 import numpy as np
 import sys
-from swiftsimio.visualisation.smoothing_length_generation import (
+from swiftsimio.visualisation.smoothing_length import (
     generate_smoothing_lengths,
 )
 import time
