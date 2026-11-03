@@ -199,8 +199,8 @@ void runner_do_recv_gpart(struct runner *r, struct cell *c, int timer) {
       ti_gravity_end_min < ti_current)
     error(
         "Received a cell at an incorrect time c->ti_end_min=%lld, "
-        "e->ti_current=%lld.",
-        ti_gravity_end_min, ti_current);
+        "e->ti_current=%lld, c->cellID=%lld, c->depth=%d, c->top->cellID=%lld.",
+        ti_gravity_end_min, ti_current, c->cellID, c->depth, c->top->cellID);
 #endif
 
   /* ... and store. */
