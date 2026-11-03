@@ -309,11 +309,11 @@ struct part {
   float div_v;
 
   /*! Velocity divergence of the previous force preparation, for the time
-   * derivative driving the time-dependent alpha (viscosity switch) */
+   * derivative driving the per-particle alpha */
   float div_v_previous;
 
-  /*! Time-dependent viscosity coefficient alpha of the particle (Cullen &
-   * Dehnen 2010); alpha_max when the switch is off */
+  /*! Per-particle coefficient alpha of the Cullen & Dehnen (2010) form,
+   * the shock measure of the conduction cap (not used by the viscosity) */
   float alpha_visc;
 
   /*! Coefficient of the conduction terms of this particle (SPHENIX's

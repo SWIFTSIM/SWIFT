@@ -297,9 +297,9 @@ INLINE static void hydro_write_particles(const struct part *parts,
 
   list[20] = io_make_output_field(
       "ViscosityAlpha", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_visc,
-      "Time-dependent coefficient alpha of the linear viscosity term "
-      "(Cullen & Dehnen 2010; the constant alpha if the viscosity switch is "
-      "off).");
+      "Per-particle coefficient alpha of the Cullen & Dehnen (2010) form, "
+      "evolved as the shock measure of the conduction cap; the viscosity "
+      "itself uses the constant alpha.");
 }
 
 /**

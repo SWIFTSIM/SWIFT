@@ -636,12 +636,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const int Q_dissipative_j = Q_dissipative_i;
 #endif
 
-  /* Eq. 14; with the viscosity switch each particle brings its own
-   * time-dependent alpha to the linear term */
-  const float visc_alpha_i =
-      const_viscosity_switch ? pi->alpha_visc : const_viscosity_alpha;
-  const float visc_alpha_j =
-      const_viscosity_switch ? pj->alpha_visc : const_viscosity_alpha;
+  /* Eq. 14, with the constant alpha (the per-particle alpha_visc is the
+   * shock measure of the conduction cap only, see hydro_parameters.h) */
+  const float visc_alpha_i = const_viscosity_alpha;
+  const float visc_alpha_j = const_viscosity_alpha;
   const float visc_beta = const_viscosity_beta;
   /* Shear limiter of the viscous pressure: each particle's Q scaled by its
    * own limiter xi_i (Cullen & Dehnen 2010 eq. 18 with the shock-presence

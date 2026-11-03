@@ -102,21 +102,34 @@
  * on the Sedov pressure error, which is why 0.7 was the earlier choice). */
 #define const_viscosity_limiter_mach 0.5f
 
-/*! Time-dependent viscosity coefficient (Cullen & Dehnen 2010): 0 the
- * paper's constant alpha, 1 a per-particle alpha raised to
- * alpha_max A / (A + c_s^2) with A = xi H^2 max(0, -d(div v)/dt) where the
- * flow is converging (xi the shock-boosted limiter above, H the kernel
- * support) and decaying back otherwise, floored at
- * alpha_min; the decay time is Cullen & Dehnen's h / (2 length v_sig) with
- * their h the kernel support radius H: H / (2 length c_s). The slope-limited
- * reconstruction does not switch the
- * viscosity off in smooth flow to better than a few per cent of the
- * velocity jump (gradient noise and the first-order mid-point
- * reconstruction), which with a constant alpha = 1 damps a linear sound
- * wave by 4-5 per cent per period at 32 particles per wavelength. The
- * per-particle coefficient is evolved whatever the switch, as the shock
- * measure of the conduction cap. */
-#define const_viscosity_switch 0
+/* The viscosity uses the constant alpha above (Rosswog 2020). A
+ * per-particle coefficient of the Cullen & Dehnen (2010) form, raised to
+ * alpha A / (A + c_s^2) with A = xi H^2 max(0, -d(div v)/dt) where the flow
+ * is converging (xi the shock-boosted limiter above, H the kernel support)
+ * and decaying back over H / (2 length c_s) otherwise, floored at
+ * alpha_min, is evolved for every particle but only as the shock measure of
+ * the conduction cap (hydro_prepare_force()); it never enters Q. Using it
+ * in Q as well would apply the limiter xi twice, in the trigger and on Q.
+ * The slope-limited reconstruction does not switch the viscosity off in
+ * smooth flow to better than a few per cent of the velocity jump (gradient
+ * noise and the first-order mid-point reconstruction), which with the
+ * constant alpha = 1 damps a linear sound wave by 4-5 per cent per period
+ * at 32 particles per wavelength. */
+
+/*! Dead zone of the shock-presence factor of the viscosity limiter, in
+ * units of the particle noise of R. The factor 2 (1 - R)^4 of Cullen &
+ * Dehnen (2010, eq. 17) reads R = (1/rho) sum_j sign(div v_j) m_j W_ij,
+ * which in a disordered flow with mixed signs scatters about 0 by the
+ * particle's own term m W(0) / rho plus about 1 / sqrt(N_ngb) from the
+ * neighbours (0.26 + 0.17 with the quintic at eta 1.5 in 2D, 0.13 + 0.08
+ * in 3D). R within this many times that noise of 0 is mapped to 0 (the
+ * factor 2) and the rest rescaled to keep R = -1 (the factor 32), so that
+ * only a net majority of converging neighbours raises the factor. Without
+ * it the converging half of the particles of a cold Keplerian disc get a
+ * factor of up to 6 and the limiter lets them plunge (study of 2026-11-03,
+ * where 1.1 noise units = 0.5 in 2D held the Mach-700 disc at no cost on
+ * the shocks). 0 is the paper's factor. */
+#define const_viscosity_boost_dead_zone 1.1f
 
 /*! Cosine of the maximal angle (0.5 rad) between the gradient function G
  * and the separation vector of a pair before falling back to kernel
@@ -333,22 +346,18 @@ static INLINE void viscosity_print(
   if (const_viscosity_shear_limiter)
     message(
         "Viscous pressure scaled by the Cullen & Dehnen limiter (%s, floor "
-        "%.2f, linear term limited for |mu| > %.2f c).",
+        "%.2f, linear term limited for |mu| > %.2f c, shock-presence factor "
+        "dead zone %.1f noise units).",
         const_viscosity_shear_limiter == 2 ? "quadratic term only"
                                            : "both terms",
-        viscosity->limiter_floor, const_viscosity_limiter_mach);
+        viscosity->limiter_floor, const_viscosity_limiter_mach,
+        const_viscosity_boost_dead_zone);
   else
     message("Viscous pressure not scaled by the Cullen & Dehnen limiter.");
-  if (const_viscosity_switch)
-    message(
-        "Time-dependent alpha (Cullen & Dehnen 2010): alpha_max %.2f, "
-        "alpha_min %.2f, decay length %.3f.",
-        const_viscosity_alpha, viscosity->alpha_min, viscosity->length);
-  else
-    message(
-        "Constant viscosity alpha %.2f (per-particle alpha evolved for the "
-        "conduction cap: alpha_min %.2f, decay length %.3f).",
-        const_viscosity_alpha, viscosity->alpha_min, viscosity->length);
+  message(
+      "Constant viscosity alpha %.2f (per-particle alpha evolved for the "
+      "conduction cap: alpha_min %.2f, decay length %.3f).",
+      const_viscosity_alpha, viscosity->alpha_min, viscosity->length);
 }
 
 #if defined(HAVE_HDF5)
@@ -372,7 +381,8 @@ static INLINE void viscosity_print_snapshot(
                        viscosity->limiter_floor);
   io_write_attribute_f(h_grpsph, "Viscosity limiter Mach",
                        const_viscosity_limiter_mach);
-  io_write_attribute_i(h_grpsph, "Viscosity switch", const_viscosity_switch);
+  io_write_attribute_f(h_grpsph, "Viscosity boost dead zone (noise units)",
+                       const_viscosity_boost_dead_zone);
   io_write_attribute_f(h_grpsph, "Alpha viscosity (min)", viscosity->alpha_min);
   io_write_attribute_f(h_grpsph, "Viscosity decay length", viscosity->length);
   io_write_attribute_f(h_grpsph, "Gradient max condition number",

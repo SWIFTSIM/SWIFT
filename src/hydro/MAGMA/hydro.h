@@ -414,12 +414,10 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   /* Raise the signal velocity of the Courant condition by beta * dv, as the
    * other schemes do. Here v_sig = 2 (c + 0.6 alpha (c + 2 mu_tilde)) with
    * c the maximal sound speed c_sig (hydro_compute_timestep()), so the kick
-   * enters as a raise of c_sig by beta dv / (2 (1 + 0.6 alpha)), with the
-   * alpha the time step uses. (Through mu_tilde the raise would scale with
-   * alpha, and vanish with the viscosity.) */
-  const float alpha =
-      const_viscosity_switch ? p->alpha_visc : const_viscosity_alpha;
-  p->force.c_sig += const_viscosity_beta * dv / (2.f * (1.f + 0.6f * alpha));
+   * enters as a raise of c_sig by beta dv / (2 (1 + 0.6 alpha)). (Through
+   * mu_tilde the raise would scale with alpha.) */
+  p->force.c_sig +=
+      const_viscosity_beta * dv / (2.f * (1.f + 0.6f * const_viscosity_alpha));
 }
 
 /**
@@ -484,9 +482,8 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
   /* Signal speed: maximal sound speed of the particle and its neighbours
    * (the paper's global time-step limits every particle by the hottest one) */
   const float c = p->force.c_sig;
-  const float alpha =
-      const_viscosity_switch ? p->alpha_visc : const_viscosity_alpha;
-  const float v_sig = 2.f * (c + 0.6f * alpha * (c + 2.f * p->force.mu_tilde));
+  const float v_sig =
+      2.f * (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
   const float dt_Courant = 2.f * kernel_gamma * cosmo->a * p->h /
                            (cosmo->a_factor_sound_speed * v_sig);
 
@@ -720,6 +717,15 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
    * dW_ij/dr / r_ij, with the factors of h of dW/dr) */
   p->laplace_u *= 2.f * h_inv_dim * h_inv;
 
+  /* Finish the shock-presence sum sum_j sign(div v_j) m_j W_ij (Cullen &
+   * Dehnen 2010, eq. 17): the particle's own term, with its divergence from
+   * its last gradient evaluation as for the neighbours (none if it had no
+   * valid gradient), and the factors of h of W, so that the sum compares
+   * with the density. */
+  if (p->div_v != 0.f)
+    p->gradient.shock_indicator += copysignf(p->mass * kernel_root, p->div_v);
+  p->gradient.shock_indicator *= h_inv_dim;
+
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->n_gradient += kernel_root;
 #endif
@@ -891,8 +897,21 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * shear); the divergence is boosted by 2 (1 - R)^4, up to 32 in a
    * shock, so that a shock seen through shear keeps its viscosity. */
   if (const_viscosity_shear_limiter) {
-    const float R =
+    const float R_raw =
         fminf(1.f, fmaxf(-1.f, p->gradient.shock_indicator / p->rho));
+    /* Dead zone (see hydro_parameters.h): the particle noise of R is its
+     * own term m W(0) / rho plus 1 / sqrt(N_ngb), with N_ngb the number of
+     * neighbours rho h^d kernel_norm / m; R within the dead zone of 0 gets
+     * the R = 0 factor, beyond it R is rescaled so that -1 and +1 are kept.
+     */
+    const float h_inv_dim = pow_dimension(1.f / p->h);
+    const float m_over_rho_hd = p->mass * h_inv_dim / p->rho;
+    const float noise =
+        kernel_root * m_over_rho_hd + sqrtf(m_over_rho_hd / kernel_norm);
+    const float dz = fminf(0.9f, const_viscosity_boost_dead_zone * noise);
+    const float R = R_raw < -dz  ? (R_raw + dz) / (1.f - dz)
+                    : R_raw > dz ? (R_raw - dz) / (1.f - dz)
+                                 : 0.f;
     const float one_minus_R = 1.f - R;
     const float boost =
         2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
@@ -912,9 +931,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
    * up to alpha_loc and decays back towards it over H / (2 length c_s);
    * floored at alpha_min. Divergence and sound speed are physical. */
-  /* Always evolved: the conduction coefficient uses the neighbours' alpha
-   * as its shock measure; the viscosity itself reads alpha_visc only with
-   * its own switch on. */
+  /* The coefficient is the shock measure of the conduction cap only (the
+   * cap uses the neighbours' maximum); the viscosity itself uses the
+   * constant alpha, see hydro_parameters.h. */
   const float H = kernel_gamma * p->h * cosmo->a;
   const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
   const float div_v_phys = div_v * cosmo->a2_inv;
