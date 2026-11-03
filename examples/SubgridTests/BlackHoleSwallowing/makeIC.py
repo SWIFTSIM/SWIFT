@@ -18,6 +18,8 @@
 ##############################################################################
 
 import h5py
+import unyt
+import swiftsimio as sw
 from numpy import *
 
 # Some constants
@@ -111,49 +113,35 @@ boxsize = boxsize_cgs / unit_l_cgs
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(unit_l_cgs * unyt.cm)
+UM = unyt.Unit(unit_m_cgs * unyt.g)
+Ut = unyt.Unit(unit_t_cgs * unyt.s)
+units = unyt.UnitSystem("bh_swallowing", UL, UM, Ut)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxsize] * 3
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 2]
-# grp.attrs["NumPart_Total"] =  [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 2]
-# grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 0
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = unit_l_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = unit_m_cgs
-grp.attrs["Unit time in cgs (U_t)"] = unit_t_cgs
-grp.attrs["Unit current in cgs (U_I)"] = unit_A_cgs
-grp.attrs["Unit temperature in cgs (U_T)"] = unit_T_cgs
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxsize] * 3, UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(uint64)
 
-# stellar group
-grp = file.create_group("/PartType5")
-grp.create_dataset("Coordinates", (2, 3), data=bh_pos, dtype="d")
-grp.create_dataset("Velocities", (2, 3), data=bh_v, dtype="f")
-grp.create_dataset("Masses", (2, 1), data=bh_m, dtype="f")
-grp.create_dataset("SmoothingLength", (2, 1), data=bh_h, dtype="f")
-grp.create_dataset("ParticleIDs", (2, 1), data=bh_ids[::-1], dtype="L")
+# black hole group
+w.black_holes.coordinates = bh_pos * UL * w.a.comoving
+w.black_holes.velocities = bh_v * UL / Ut * w.a.comoving**0
+w.black_holes.masses = bh_m * UM * w.a.comoving**0
+w.black_holes.particle_ids = bh_ids[::-1].astype(uint64)
 
-file.close()
+w.write(fileName)
+
+# Add the extra fields
+with h5py.File(fileName, "r+") as f:
+    f["PartType5"].create_dataset("SmoothingLength", data=bh_h, dtype="f")

@@ -17,8 +17,9 @@
 #
 ##############################################################################
 
-import h5py
 import sys
+import unyt
+import swiftsimio as sw
 import numpy as np
 import math
 import random
@@ -88,17 +89,12 @@ N = int(sys.argv[1])  # Number of particles
 
 # Create the file
 filename = "CoolingHalo.hdf5"
-file = h5py.File(filename, "w")
 
 # Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = const_unit_length_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = const_unit_mass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = (
-    const_unit_length_in_cgs / const_unit_velocity_in_cgs
-)
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+UL = unyt.Unit(const_unit_length_in_cgs * unyt.cm)
+UM = unyt.Unit(const_unit_mass_in_cgs * unyt.g)
+Ut = unyt.Unit(const_unit_time_in_cgs * unyt.s)
+units = unyt.UnitSystem("cooling_halo_spin_units", UL, UM, Ut)
 
 # set seed for random number
 np.random.seed(1234)
@@ -201,51 +197,35 @@ for i in range(N):
     v[i, :] = np.cross(omega[i, :], (coords[i, :] - boxSize / 2.0))
 
 # Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize] * 3, UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = file.create_group("/PartType0")
+w.gas.coordinates = coords * UL * w.a.comoving
 
-ds = grp.create_dataset("Coordinates", (N, 3), "d")
-ds[()] = coords
-coords = np.zeros(1)
-
-ds = grp.create_dataset("Velocities", (N, 3), "f")
-ds[()] = v
-v = np.zeros(1)
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
 
 # All particles of equal mass
 m = np.full((N,), gas_particle_mass)
-ds = grp.create_dataset("Masses", (N,), "f")
-ds[()] = m
-m = np.zeros(1)
+w.gas.masses = m * UM * w.a.comoving**0
 
 # Smoothing lengths
 l = (4.0 * np.pi * radius**2 / N) ** (1.0 / 3.0)  # local mean inter-particle separation
 h = np.full((N,), eta * l)
-ds = grp.create_dataset("SmoothingLength", (N,), "f")
-ds[()] = h
-h = np.zeros(1)
+w.gas.smoothing_lengths = h * UL * w.a.comoving
 
 # Internal energies
 u = v_c**2 / (2.0 * (gamma - 1.0))
 u = np.full((N,), u)
-ds = grp.create_dataset("InternalEnergy", (N,), "f")
-ds[()] = u
-u = np.zeros(1)
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
 
 # Particle IDs
 ids = 1 + np.linspace(0, N, N, endpoint=False)
-ds = grp.create_dataset("ParticleIDs", (N,), "L")
-ds[()] = ids
+w.gas.particle_ids = ids.astype(np.uint64)
 
-file.close()
+w.write(filename)

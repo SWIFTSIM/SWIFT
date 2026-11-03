@@ -18,6 +18,8 @@
 ##############################################################################
 
 import h5py
+import unyt
+import swiftsimio as sw
 from numpy import *
 
 # Generates a swift IC file for the 3D Noh problem in a periodic box
@@ -69,38 +71,28 @@ densities = np.ones(numPart, dtype=np.float32)
 mat_ids = np.zeros(numPart)
 
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [vol ** (1.0 / 3.0), vol ** (1.0 / 3.0), vol ** (1.0 / 3.0)],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [vol ** (1.0 / 3.0), vol ** (1.0 / 3.0), vol ** (1.0 / 3.0)]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(uint64)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.write(fileName)
 
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MaterialIDs", data=mat_ids, dtype="L")
-grp.create_dataset("Density", data=densities, dtype="f")
-
-
-file.close()
+# Add the extra fields not handled by the Writer
+with h5py.File(fileName, "r+") as f:
+    f["PartType0"].create_dataset("MaterialIDs", data=mat_ids, dtype="L")
+    f["PartType0"].create_dataset("Density", data=densities, dtype="f")

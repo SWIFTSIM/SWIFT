@@ -18,7 +18,8 @@
 #
 ##############################################################################
 
-import h5py
+import unyt
+import swiftsimio as sw
 import sys
 from numpy import *
 
@@ -42,56 +43,12 @@ internalEnergy = P / ((gamma - 1.0) * rho)
 
 # --------------------------------------------------
 
-# File
-file = h5py.File(fileName, "w")
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = file.create_group("/PartType0")
-
 v = zeros((numPart, 3))
-ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = v
-v = zeros(1)
-
-m = full((numPart, 1), mass)
-ds = grp.create_dataset("Masses", (numPart, 1), "f")
-ds[()] = m
-m = zeros(1)
-
-h = full((numPart, 1), eta * boxSize / L)
-ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-ds[()] = h
-h = zeros(1)
-
-u = full((numPart, 1), internalEnergy)
-ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-ds[()] = u
-u = zeros(1)
-
+m = full(numPart, mass)
+h = full(numPart, eta * boxSize / L)
+u = full(numPart, internalEnergy)
 
 ids = linspace(0, numPart, numPart, endpoint=False).reshape((numPart, 1))
-ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-ds[()] = ids + 1
 x = ids % L
 y = ((ids - x) / L) % L
 z = (ids - x - L * y) / L**2
@@ -99,7 +56,25 @@ coords = zeros((numPart, 3))
 coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 1] = y[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 2] = x[:, 0] * boxSize / L + boxSize / (2 * L)
-ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-ds[()] = coords
 
-file.close()
+# File
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
+
+w.gas.coordinates = coords * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = (ids[:, 0] + 1).astype(uint64)
+
+w.write(fileName)

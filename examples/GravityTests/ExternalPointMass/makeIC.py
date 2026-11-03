@@ -18,9 +18,10 @@
 #
 ##############################################################################
 
-import h5py
 import sys
 import numpy
+import unyt
+import swiftsimio as sw
 import math
 import random
 
@@ -69,33 +70,6 @@ fileName = "PointMass.hdf5"
 
 # --------------------------------------------------
 
-# File
-file = h5py.File(fileName, "w")
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [0, numPart, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [0, numPart, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
-
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 3.0856776e21
-grp.attrs["Unit mass in cgs (U_M)"] = 1.98848e33
-grp.attrs["Unit time in cgs (U_t)"] = 3.0856776e16
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp1 = file.create_group("/PartType1")
-
 # generate particle positions
 radius = max_radius * (numpy.random.rand(numPart)) ** (1.0 / 3.0)
 print("---------------------")
@@ -117,20 +91,31 @@ v = numpy.zeros((numPart, 3))
 v[:, 0] = -omega * r[:, 1]
 v[:, 1] = omega * r[:, 0]
 
-ds = grp1.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = v
-v = numpy.zeros(1)
-
 m = numpy.full((numPart,), mass)
-ds = grp1.create_dataset("Masses", (numPart,), "f")
-ds[()] = m
-m = numpy.zeros(1)
 
 ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False)
-ds = grp1.create_dataset("ParticleIDs", (numPart,), "L")
-ds[()] = ids
 
-ds = grp1.create_dataset("Coordinates", (numPart, 3), "d")
-ds[()] = r
+# File
+UL = unyt.Unit(3.0856776e21 * unyt.cm)
+UM = unyt.Unit(1.98848e33 * unyt.g)
+Ut = unyt.Unit(3.0856776e16 * unyt.s)
+units = unyt.UnitSystem("external_point_mass", UL, UM, Ut)
 
-file.close()
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
+
+w.dark_matter.coordinates = r * UL * w.a.comoving
+w.dark_matter.velocities = v * UL / Ut * w.a.comoving**0
+w.dark_matter.masses = m * UM * w.a.comoving**0
+w.dark_matter.particle_ids = ids.astype(numpy.uint64)
+
+w.write(fileName)

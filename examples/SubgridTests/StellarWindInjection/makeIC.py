@@ -23,6 +23,7 @@ import h5py
 import numpy as np
 import argparse
 import unyt
+import swiftsimio as sw
 
 
 class store_as_array(argparse._StoreAction):
@@ -216,7 +217,7 @@ else:
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.ones(N) * u_code
-ids = np.arange(N)
+ids = np.arange(1, N + 1)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
 
@@ -249,49 +250,43 @@ star_birth_time = np.zeros(N_star)  # birth time of the star in Myr
 #####################
 
 # File
-fileOutput = h5py.File(opt.outputfilename, "w")
-print("{} saved.".format(opt.outputfilename))
+units = unyt.UnitSystem(
+    "stellar_wind", unyt.Unit(UnitLength), unyt.Unit(UnitMass), unyt.Unit(UnitTime)
+)
 
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, L]
-grp.attrs["NumPart_Total"] = [N, 0, 0, 0, N_star, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, N_star, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFileOutputsPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [L, L, L], UnitLength, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
-grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
-
-# Write Gas particle group
-grp = fileOutput.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=vel, dtype="f")
-grp.create_dataset("Masses", data=mass, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("Densities", data=rho, dtype="f")
+# Gas particle group
+w.gas.coordinates = pos * UnitLength * w.a.comoving
+w.gas.velocities = vel * UnitVelocity * w.a.comoving**0
+w.gas.masses = mass * UnitMass * w.a.comoving**0
+w.gas.smoothing_lengths = h * UnitLength * w.a.comoving
+w.gas.internal_energy = u * UnitVelocity**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
 if N_star != 0:
-    # Write star particle group
-    grp = fileOutput.create_group("/PartType4")
-    grp.create_dataset("Coordinates", data=pos_star, dtype="d")
-    grp.create_dataset("Velocities", data=vel_star, dtype="f")
-    grp.create_dataset("Masses", data=M_star, dtype="f")
-    grp.create_dataset("ParticleIDs", data=star_id, dtype="L")
-    grp.create_dataset("SmoothingLength", data=h_star, dtype="f")
-    grp.create_dataset("BirthMass", data=M_star, dtype="f")
-    grp.create_dataset("BirthTime", data=star_birth_time, dtype="f")
-    grp.create_dataset("StellarParticleType", data=star_particle_type, dtype="i")
+    # Star particle group
+    w.stars.coordinates = np.atleast_2d(pos_star) * UnitLength * w.a.comoving
+    w.stars.velocities = vel_star * UnitVelocity * w.a.comoving**0
+    w.stars.masses = np.array(M_star) * UnitMass * w.a.comoving**0
+    w.stars.smoothing_lengths = h_star * UnitLength * w.a.comoving
+    w.stars.particle_ids = np.array(star_id, dtype=np.uint64)
 
-fileOutput.close()
+w.write(opt.outputfilename)
+print("{} saved.".format(opt.outputfilename))
+
+# Add the extra fields
+with h5py.File(opt.outputfilename, "r+") as f:
+    f["PartType0"].create_dataset("Densities", data=rho, dtype="f")
+
+    if N_star != 0:
+        grp = f["PartType4"]
+        grp.create_dataset("BirthMass", data=M_star, dtype="f")
+        grp.create_dataset("BirthTime", data=star_birth_time, dtype="f")
+        grp.create_dataset("StellarParticleType", data=star_particle_type, dtype="i")

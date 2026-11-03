@@ -20,6 +20,8 @@
 
 import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
 import argparse
 from astropy import units
 from astropy import constants
@@ -187,7 +189,7 @@ pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.ones(N) * sigma**2
-ids = np.arange(N)
+ids = np.arange(1, N + 1)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
 rho = np.ones(N) * rho
 
@@ -215,54 +217,44 @@ else:
 
 mass_sink = np.ones(N_sink) * m_sink
 h_sink = np.ones(N_sink) * 3 * L / (N + N_sink) ** (1 / 3.0)
-ids_sink = np.arange(N, N + N_sink)
+ids_sink = np.arange(N + 1, N + N_sink + 1)
 
 #####################
 # Finally write the ICs in the file
 #####################
 
 # File
-fileOutput = h5py.File(opt.outputfilename, "w")
-print("{} saved.".format(opt.outputfilename))
+UL = unyt.Unit(UnitLength_in_cgs * unyt.cm)
+UM = unyt.Unit(UnitMass_in_cgs * unyt.g)
+Ut = unyt.Unit(UnitTime_in_cgs * unyt.s)
+unit_system = unyt.UnitSystem("homogeneous_box_sink_particles", UL, UM, Ut)
 
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, L]
-grp.attrs["NumPart_Total"] = [N, 0, 0, N_sink, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, N_sink, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFileOutputsPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
-
-
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
-grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
-
+w = sw.Writer(
+    unit_system=unit_system,
+    boxsize=sw.cosmo_array(
+        [L, L, L], UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Write Gas particle group
-grp = fileOutput.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=vel, dtype="f")
-grp.create_dataset("Masses", data=mass, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("Densities", data=rho, dtype="f")
-
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = vel * UL / Ut * w.a.comoving**0
+w.gas.masses = mass * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
 # Write sink particle group
-grp = fileOutput.create_group("/PartType3")
-grp.create_dataset("Coordinates", data=pos_sink, dtype="d")
-grp.create_dataset("Velocities", data=vel_sink, dtype="f")
-grp.create_dataset("Masses", data=mass_sink, dtype="f")
-grp.create_dataset("SmoothingLength", data=h_sink, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids_sink, dtype="L")
-fileOutput.close()
+w.sinks.coordinates = pos_sink * UL * w.a.comoving
+w.sinks.velocities = vel_sink * UL / Ut * w.a.comoving**0
+w.sinks.masses = mass_sink * UM * w.a.comoving**0
+w.sinks.particle_ids = ids_sink.astype(np.uint64)
+
+w.write(opt.outputfilename)
+
+with h5py.File(opt.outputfilename, "r+") as fileOutput:
+    fileOutput["PartType0"].create_dataset("Densities", data=rho, dtype="f")
+    fileOutput["PartType3"].create_dataset("SmoothingLength", data=h_sink, dtype="f")
+
+print("{} saved.".format(opt.outputfilename))

@@ -17,7 +17,8 @@
 #
 ##############################################################################
 
-import h5py
+import unyt
+import swiftsimio as sw
 import sys
 import random
 from numpy import *
@@ -43,10 +44,10 @@ internalEnergy = P / ((gamma - 1.0) * rho)
 # Generate particles
 coords = zeros((numPart, 3))
 v = zeros((numPart, 3))
-m = zeros((numPart, 1))
-h = zeros((numPart, 1))
-u = zeros((numPart, 1))
-ids = zeros((numPart, 1), dtype="L")
+m = zeros(numPart)
+h = zeros(numPart)
+u = zeros(numPart)
+ids = zeros(numPart, dtype="L")
 
 for i in range(L):
     for j in range(L):
@@ -69,42 +70,19 @@ for i in range(L):
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=2,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total"] = numPart
-grp.attrs["Dimension"] = 2
+w.gas.coordinates = coords * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = (ids + 1).astype(uint64)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = file.create_group("/PartType0")
-ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-ds[()] = coords
-ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = v
-ds = grp.create_dataset("Masses", (numPart, 1), "f")
-ds[()] = m
-ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-ds[()] = h
-ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-ds[()] = u
-ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-ds[()] = ids + 1
-
-file.close()
+w.write(fileName)

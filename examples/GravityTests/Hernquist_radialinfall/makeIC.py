@@ -17,8 +17,9 @@
 #
 ##############################################################################
 
-import h5py
 import sys
+import unyt
+import swiftsimio as sw
 import numpy
 import math
 import random
@@ -87,36 +88,9 @@ mass = 1
 
 # --------------------------------------------------
 
-# File
-file = h5py.File(fileName, "w")
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = const_unit_length_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = const_unit_mass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = (
-    const_unit_length_in_cgs / const_unit_velocity_in_cgs
-)
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [0, numPart, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [0, numPart, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
-
 # set seed for random number
 numpy.random.seed(1234)
 
-# Particle group
-grp1 = file.create_group("/PartType1")
 # generate particle positions
 # radius = Radius * (numpy.random.rand(N))**(1./3.) + 10.
 radius = np.zeros(N)
@@ -153,15 +127,32 @@ omegav = omega
 v[:, 0] = -omegav * r[:, 1]
 v[:, 1] = omegav * r[:, 0]
 
-ds = grp1.create_dataset("Velocities", (numPart, 3), "f", data=v)
-
 m = numpy.full((numPart,), mass, dtype="f")
-ds = grp1.create_dataset("Masses", (numPart,), "f", data=m)
 
 ids = 1 + numpy.linspace(0, numPart, numPart, endpoint=False)
-ds = grp1.create_dataset("ParticleIDs", (numPart,), "L", data=ids)
 
-ds = grp1.create_dataset("Coordinates", (numPart, 3), "d", data=r)
+# File
+UL = unyt.Unit(const_unit_length_in_cgs * unyt.cm)
+UM = unyt.Unit(const_unit_mass_in_cgs * unyt.g)
+Ut = unyt.Unit(const_unit_time_in_cgs * unyt.s)
+units = unyt.UnitSystem("hernquist_radial_infall", UL, UM, Ut)
 
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-file.close()
+# Particle group
+w.dark_matter.coordinates = r * UL * w.a.comoving
+w.dark_matter.velocities = v * UL / Ut * w.a.comoving**0
+w.dark_matter.masses = m * UM * w.a.comoving**0
+w.dark_matter.particle_ids = ids.astype(np.uint64)
+
+w.write(fileName)
