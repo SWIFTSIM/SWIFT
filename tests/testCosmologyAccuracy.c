@@ -39,7 +39,9 @@
 #include <float.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_integration.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 /* Includes. */
@@ -90,6 +92,43 @@ extern const int cosmology_table_length;
 #define TOL_CLOSURE 1e-12
 
 /* ------------------------------------------------------------------------ */
+
+/* Finite and >= 0, decided on the bit pattern. isfinite() does not compile
+ * and NaN comparisons are unreliable under -ffast-math. */
+static int is_finite_non_negative(const double x) {
+  uint64_t bits;
+  memcpy(&bits, &x, sizeof(bits));
+  const int exponent = (int)((bits >> 52) & 0x7ff);
+  const int negative = (int)(bits >> 63);
+  const int is_zero = (bits << 1) == 0;
+  return exponent != 0x7ff && (!negative || is_zero);
+}
+
+/* Check the helper on values built from bit patterns, so that the compiler
+ * cannot fold them. */
+static void test_finite_check(void) {
+  const volatile uint64_t patterns[] = {
+      0x7ff8000000000000ULL, /* quiet NaN */
+      0x7ff0000000000001ULL, /* signalling NaN */
+      0x7ff0000000000000ULL, /* +inf */
+      0xfff0000000000000ULL, /* -inf */
+      0xbff0000000000000ULL, /* -1 */
+      0x8000000000000000ULL, /* -0 */
+      0x0000000000000000ULL, /* +0 */
+      0x3ff0000000000000ULL, /* 1 */
+      0x7fefffffffffffffULL  /* DBL_MAX */
+  };
+  const int expected[] = {0, 0, 0, 0, 0, 1, 1, 1, 1};
+  for (int i = 0; i < (int)(sizeof(expected) / sizeof(expected[0])); i++) {
+    const uint64_t bits = patterns[i];
+    double x;
+    memcpy(&x, &bits, sizeof(x));
+    if (is_finite_non_negative(x) != expected[i])
+      error("is_finite_non_negative wrong for bit pattern 0x%016llx",
+            (unsigned long long)bits);
+  }
+  message("  finite-value check: NaN and inf rejected, finite accepted");
+}
 
 /* Uniform in [0, 1) */
 static double random_unit(void) { return rand() / ((double)RAND_MAX + 1.); }
@@ -236,7 +275,7 @@ static void test_delta_time_from_scale_factors(struct cosmology *c) {
    * (the accuracy of this extrapolation is not guaranteed, see below) */
   const double dt_early =
       cosmology_get_delta_time_from_scale_factors(c, 0.5 * c->a_begin, c->a);
-  if (!(dt_early >= 0.) || !isfinite(dt_early))
+  if (!is_finite_non_negative(dt_early))
     error("Invalid delta time %e for a_start < a_begin", dt_early);
 
   message("  delta_time_from_scale_factors: no negative values");
@@ -479,6 +518,7 @@ int main(int argc, char *argv[]) {
                                 ? (unsigned int)strtoul(argv[1], NULL, 10)
                                 : (unsigned int)time(NULL);
   srand(seed);
+  test_finite_check();
   message("Random seed: %u (pass it as argument to reproduce this run)", seed);
 
   workspace = gsl_integration_workspace_alloc(100000);
