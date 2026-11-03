@@ -21,6 +21,7 @@
 #include <config.h>
 
 /* Some standard headers. */
+#include <fenv.h>
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
