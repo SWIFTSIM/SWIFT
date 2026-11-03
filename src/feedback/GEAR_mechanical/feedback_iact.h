@@ -498,14 +498,12 @@ runner_iact_nonsym_feedback_apply(
     /* Flag this particle that it received stellar wind feedback */
     xpj->feedback_data.number_winds += 1;
 
-    /* Signal velocity update: Get the momentum in the frame of the gas, without
-     * the Hubble flow term. */
-    const float p_ej_SW = sqrt(2.0 * m_ej * E_ej_SW);
-    const float dp[3] = {w_j_bar[0] * p_ej_SW, w_j_bar[1] * p_ej_SW,
-                         w_j_bar[2] * p_ej_SW};
+    /* Signal velocity update: Get the coupled momentum in the frame of the gas,
+     * without the Hubble flow term. */
     for (int i = 0; i < 3; i++) {
-      total_momentum_kick_p[i] += dp[i] + dm_SW * (v_i_without_Hubble_flow[i] -
-                                                   v_j_without_Hubble_flow[i]);
+      total_momentum_kick_p[i] +=
+          dp_SW[i] +
+          dm_SW * (v_i_without_Hubble_flow[i] - v_j_without_Hubble_flow[i]);
     }
   }
 
@@ -608,14 +606,12 @@ runner_iact_nonsym_feedback_apply(
     /* Flag this particle that it received SN feedback */
     xpj->feedback_data.number_SN += 1;
 
-    /* Signal velocity update: Get the momentum in the frame of the gas, without
-     * the Hubble flow term. */
-    const float p_ej_SN = sqrt(2.0 * m_ej * E_ej_SN);
-    const float dp[3] = {w_j_bar[0] * p_ej_SN, w_j_bar[1] * p_ej_SN,
-                         w_j_bar[2] * p_ej_SN};
+    /* Signal velocity update: Get the coupled momentum in the frame of the gas,
+     * without the Hubble flow term. */
     for (int i = 0; i < 3; i++) {
-      total_momentum_kick_p[i] += dp[i] + dm_SN * (v_i_without_Hubble_flow[i] -
-                                                   v_j_without_Hubble_flow[i]);
+      total_momentum_kick_p[i] +=
+          dp_SN[i] +
+          dm_SN * (v_i_without_Hubble_flow[i] - v_j_without_Hubble_flow[i]);
     }
   }
 
