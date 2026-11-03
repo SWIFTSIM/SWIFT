@@ -66,6 +66,7 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
   const int name_length = 32;
   const int num_channels = cooling_rate_channel_count();
   char names[GEAJAY_RATE_NCHANNELS_COSMIC_RAY][32];
+  memset(names, 0, sizeof(names));
   for (int k = 0; k < num_channels; k++)
     snprintf(names[k], name_length, "%s", cooling_rate_channel_name(k));
   hsize_t dims[1] = {num_channels};
