@@ -84,7 +84,7 @@ _Static_assert(sizeof(enum cooling_uv_self_shielding) == sizeof(int) &&
 struct cooling_function_data {
 
   /*! Filename of the Cloudy Table */
-  char cloudy_table[200];
+  char cloudy_table[PARSER_MAX_LINE_SIZE];
 
   /*! Enable/Disable UV backgroud */
   int with_uv_background;
