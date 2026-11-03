@@ -303,7 +303,12 @@ runner_iact_nonsym_mechanical_1_supernovae_apply(
     message("We do not resolve the Sedov-Taylor (r_cool = %e). Rescaling dU.",
             r_cool);
 #endif /* SWIFT_DEBUG_CHECKS */
-  } /* else we do not change dU */
+  } else {
+    /* Inside r_cool the heat is physical when it dominates the kick */
+    *do_diffusive_feedback_reset =
+        fb_props->enable_SN_diffusive_feedback_reset &&
+        *dU > 0.5 * dp_norm_2 / new_mass;
+  }
 
 #ifdef SWIFT_FEEDBACK_DEBUG_CHECKS
   message(

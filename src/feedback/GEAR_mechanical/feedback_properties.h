@@ -68,7 +68,7 @@ struct feedback_props {
   char enable_multiple_SN_momentum_correction_factor;
 
   /* Set the viscosity to its maximum and the conduction to zero for gas that
-     receives the thermal energy of a resolved SN */
+     receives the thermal energy of a SN in its energy-conserving phase */
   char enable_SN_diffusive_feedback_reset;
 
   /*! Pre-supernova feedback energy effectively deposited */
