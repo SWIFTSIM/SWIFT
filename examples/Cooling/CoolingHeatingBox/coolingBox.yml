@@ -68,7 +68,7 @@ GeajayCooling:
   with_uv_background: 0                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 0                        # Enable or not the metal cooling
-  thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
+  thermal_time_myr: 5                          # Time (in Myr) for adiabatic cooling after a feedback event.
   uv_self_shielding: none                      # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
   # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with GEAR's self shielding. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
   hydrogen_mass_fraction: 1.                   # Hydrogen fraction by mass
