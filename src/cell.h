@@ -253,52 +253,31 @@ struct pcell {
 
 /**
  * @brief Cell information at the end of a time-step.
+ *
+ * The time-steps and the displacements are grouped such that the structure
+ * carries no padding between its members. We only include what is needed
+ * based on the models we compiled with.
  */
 struct pcell_step {
 
+  /*! Minimal integer end-of-timestep in this cell, per particle type */
   struct {
+#ifndef NONE_SPH
+    integertime_t hydro;
+#endif
+    integertime_t grav;
+#ifndef STARS_NONE
+    integertime_t stars;
+#endif
+#ifndef BLACK_HOLES_NONE
+    integertime_t black_holes;
+#endif
+#ifndef SINK_NONE
+    integertime_t sinks;
+#endif
+  } ti_end_min;
 
-    /*! Minimal integer end-of-timestep in this cell (hydro) */
-    integertime_t ti_end_min;
-
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-  } hydro;
-
-  struct {
-
-    /*! Minimal integer end-of-timestep in this cell (gravity) */
-    integertime_t ti_end_min;
-
-  } grav;
-
-  struct {
-
-    /*! Minimal integer end-of-timestep in this cell (stars) */
-    integertime_t ti_end_min;
-
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-  } stars;
-
-  struct {
-
-    /*! Minimal integer end-of-timestep in this cell (black_holes) */
-    integertime_t ti_end_min;
-
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-  } black_holes;
-
-  struct {
-
-    /*! Minimal integer end-of-timestep in this cell (sinks) */
-    integertime_t ti_end_min;
-
-    /*! Maximal distance any #part has travelled since last rebuild */
-    float dx_max_part;
-  } sinks;
-
+#ifndef RT_NONE
   struct {
 
     /*! Minimal integer end-of-timestep in this cell (rt) */
@@ -308,6 +287,27 @@ struct pcell_step {
     integertime_t ti_rt_min_step_size;
 
   } rt;
+#endif
+
+#if !defined(NONE_SPH) || !defined(STARS_NONE) || \
+    !defined(BLACK_HOLES_NONE) || !defined(SINK_NONE)
+  /*! Maximal distance any particle has travelled since last rebuild, per
+   * particle type */
+  struct {
+#ifndef NONE_SPH
+    float hydro;
+#endif
+#ifndef STARS_NONE
+    float stars;
+#endif
+#ifndef BLACK_HOLES_NONE
+    float black_holes;
+#endif
+#ifndef SINK_NONE
+    float sinks;
+#endif
+  } dx_max_part;
+#endif
 };
 
 /**
