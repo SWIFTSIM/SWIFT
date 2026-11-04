@@ -1625,15 +1625,32 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                       ISRF_LAYOUT_RESTART_DESCRIPTION);
   if (layout % FEEDBACK_RESTART_SELECTION_FACTOR ==
           FEEDBACK_RESTART_ISRF_PART_LAYOUT &&
-      layout != feedback_restart_particle_layout())
+      layout != feedback_restart_particle_layout()) {
+    const int file_mask = (layout / FEEDBACK_RESTART_SELECTION_FACTOR) % 8;
+    if (file_mask != radiation_selection_absent_mask())
+      error(
+          "The restart file was written by a build with the subgrid "
+          "radiation parts absent-mask %d, but this build has absent-mask %d "
+          "(bit 1 rp, 2 hii, 4 isrf; ./configure "
+          "--with-subgrid-radiation). The particles differ in layout: resume "
+          "with a build of the same selection, or rerun the simulation from "
+          "its initial conditions.",
+          file_mask, radiation_selection_absent_mask());
+    const int g = layout / FEEDBACK_RESTART_GEOMETRY_FACTOR;
     error(
-        "The restart file was written by a build with the subgrid radiation "
-        "parts absent-mask %d, but this build has absent-mask %d (bit 1 rp, "
-        "2 hii, 4 isrf; ./configure --with-subgrid-radiation). The particles "
-        "differ in layout: resume with a build of the same selection, or "
-        "rerun the simulation from its initial conditions.",
-        layout / FEEDBACK_RESTART_SELECTION_FACTOR,
-        radiation_selection_absent_mask());
+        "The restart file was written by a build with %d packet reception "
+        "slots, %d near arrival bins, %d far cells and far scale %d, but "
+        "this build has %d, %d, %d and %d (RADIATION_PACKET_SLOTS, "
+        "RADIATION_PACKET_BINS, RADIATION_PACKET_FAR_CELLS, "
+        "RADIATION_PACKET_FAR_SCALE). The particles differ in size: resume "
+        "with a build of the same packet geometry, or rerun the simulation "
+        "from its initial conditions.",
+        g & 63, (g >> 6) & 31, (g >> 11) & 15, (g >> 15) & 15,
+        FEEDBACK_RESTART_PACKET_GEOMETRY & 63,
+        (FEEDBACK_RESTART_PACKET_GEOMETRY >> 6) & 31,
+        (FEEDBACK_RESTART_PACKET_GEOMETRY >> 11) & 15,
+        (FEEDBACK_RESTART_PACKET_GEOMETRY >> 15) & 15);
+  }
   if (layout != feedback_restart_particle_layout())
     error(
         "The restart file holds ISRF particle layout %d, but this code needs "

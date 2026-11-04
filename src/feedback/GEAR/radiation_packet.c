@@ -150,6 +150,34 @@ static void radiation_packet_count_overflow(void) {}
 static void radiation_packet_count_clamp(void) {}
 #endif
 
+/*! Largest share of the placed light that may land in the far cells before
+    #radiation_packet_far_share_report warns. Light in the far cells leaves
+    late, by up to `2^RADIATION_PACKET_FAR_SCALE - 1` receiver steps and by
+    half of that on average, so a far share `f` slows the light by about `f
+    (2^RADIATION_PACKET_FAR_SCALE - 1) / (2 R)`, `R` the mean number of
+    receiver steps of a hop. A speed loss of 0.05 at `R = 2.3` and 8 steps
+    gives `f = 0.033`; the limit is rounded down. */
+#define RADIATION_PACKET_FAR_SHARE_LIMIT 0.03
+
+/*! Energy of the light placed in the arrival bins and cells since the start of
+    the step, in all and in the far cells, and the same summed over the steps
+    of this rank. Only the light of a new share counts, not the light that a
+    change of the lattice places again. */
+static double radiation_packet_placed_energy = 0.0;
+static double radiation_packet_placed_far_energy = 0.0;
+static double radiation_packet_placed_total[2] = {0.0, 0.0};
+static int radiation_packet_far_share_warned = 0;
+
+/*! Add to a double that other threads add to. */
+static void radiation_packet_atomic_add(double *target, const double x) {
+  double seen;
+  __atomic_load(target, &seen, __ATOMIC_RELAXED);
+  double wanted = seen + x;
+  while (!__atomic_compare_exchange(target, &seen, &wanted, 0, __ATOMIC_RELAXED,
+                                    __ATOMIC_RELAXED))
+    wanted = seen + x;
+}
+
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
 /*! Counters of the arrival containers, per step and since the start. */
 enum radiation_packet_diag {
@@ -338,6 +366,107 @@ static void radiation_packet_report_frame_width(const struct engine *e) {
 }
 
 /**
+ * @brief Number of near arrival bins that light needs on a hop.
+ *
+ * The light of a hop arrives `r / (v dt_r) + s` receiver steps after the
+ * departure of the sender: the hop of length `r h_r` takes `r / q` receiver
+ * steps, and a sender `s` times coarser than the receiver spreads its light
+ * over `s` more.
+ *
+ * @param reach Length of the hop over the smoothing length of the receiver.
+ * @param q Distance that the light covers in one receiver step, over the
+ * smoothing length of the receiver.
+ * @param s Step ratio of the sender to the receiver, at least 1.
+ * @return The number of bins.
+ */
+int radiation_packet_bin_demand(const double reach, const double q,
+                                const int s) {
+  return (int)ceil(reach / q) + s;
+}
+
+/**
+ * @brief Report the near arrival bins that the configured light speed needs.
+ *
+ * Only the `fixed` mode bounds `q`, by its time step margin `f_dt`, so the
+ * bound is the one case known before the run: a receiver at its step bound
+ * has `q = f_dt`, and a shorter step has a smaller `q` and a larger demand.
+ * The line is printed with verbose on rank 0, the warning always. No
+ * collective operation.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_report_bin_demand(const struct engine *e) {
+  const struct feedback_props *fp = e->feedback_props;
+  if (e->nodeID != 0 ||
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_fixed)
+    return;
+  const double q = fp->ISRF_packet_light_speed_time_step_margin;
+  if (!(q > 0.)) return;
+  const int s_max = 1 << time_bin_neighbour_max_delta_bin;
+  const int bulk = radiation_packet_bin_demand(0.97, q, 1);
+  const int bulk_coarse = radiation_packet_bin_demand(0.97, q, s_max);
+  if (e->verbose)
+    message(
+        "ISRF packet near arrival bins: %d configured. A receiver at its step "
+        "bound (q = %.3g) needs %d for the bulk of the light and %d for the "
+        "kernel edge from a sender of the same step, %d and %d from a sender "
+        "%d times coarser; a shorter step needs more.",
+        RADIATION_PACKET_BINS, q, bulk,
+        radiation_packet_bin_demand(kernel_gamma, q, 1), bulk_coarse,
+        radiation_packet_bin_demand(kernel_gamma, q, s_max), s_max);
+  if (bulk_coarse > RADIATION_PACKET_BINS)
+    message(
+        "WARNING: the bulk of the light of a sender %d times coarser than the "
+        "receiver needs %d near arrival bins at the step bound, but %d are "
+        "configured (RADIATION_PACKET_BINS). The surplus waits in the far "
+        "cells and leaves late.",
+        s_max, bulk_coarse, RADIATION_PACKET_BINS);
+}
+
+/**
+ * @brief Warn once if too much of the packet light lands in the far cells.
+ *
+ * Sums the light of the new shares placed in the arrival bins and cells over
+ * the ranks and the steps, and compares the share that went to the far cells
+ * with #RADIATION_PACKET_FAR_SHARE_LIMIT. Collective: called by every rank
+ * from engine_step(). Does nothing without a light speed limit, on every rank
+ * alike.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_far_share_report(const struct engine *e) {
+  if (!radiation_packet_light_speed_limited) return;
+  double step[2] = {radiation_packet_placed_energy,
+                    radiation_packet_placed_far_energy};
+  radiation_packet_placed_energy -= step[0];
+  radiation_packet_placed_far_energy -= step[1];
+#ifdef WITH_MPI
+  double sum[2];
+  MPI_Reduce(step, sum, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (e->nodeID == 0) {
+    step[0] = sum[0];
+    step[1] = sum[1];
+  }
+#endif
+  if (e->nodeID != 0) return;
+  radiation_packet_placed_total[0] += step[0];
+  radiation_packet_placed_total[1] += step[1];
+  const double all = radiation_packet_placed_total[0];
+  const double far = radiation_packet_placed_total[1];
+  if (!radiation_packet_far_share_warned && all > 0. &&
+      far > RADIATION_PACKET_FAR_SHARE_LIMIT * all) {
+    radiation_packet_far_share_warned = 1;
+    message(
+        "WARNING: at step %d, %.3g of the ISRF packet light placed since the "
+        "start went to the far arrival cells, above %.3g. That light leaves "
+        "late and slows the light. Raise RADIATION_PACKET_BINS (now %d) or "
+        "read the start-up demand of the near bins.",
+        e->step, far / all, RADIATION_PACKET_FAR_SHARE_LIMIT,
+        RADIATION_PACKET_BINS);
+  }
+}
+
+/**
  * @brief Start-up of the packet emission, from engine_config().
  *
  * @param e The #engine.
@@ -347,6 +476,7 @@ void radiation_packet_startup(const struct engine *e) {
   radiation_packet_set_box(e->s->dim, e->s->periodic);
   radiation_packet_refresh_frame_width(e);
   radiation_packet_report_frame_width(e);
+  radiation_packet_report_bin_demand(e);
   const struct feedback_props *fp = e->feedback_props;
   if (fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
     radiation_packet_set_light_speed(0.0, e->time_base, 0);
@@ -1687,6 +1817,9 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
  * (#radiation_packet_add_to_far)?
  * @param faint Energy below which light is faint
  * (#radiation_packet_faint_energy).
+ * @param fresh Is the share new, and not light that waited and is placed again
+ * after a change of the lattice? Only new light counts in the far share
+ * (#radiation_packet_far_share_report).
  */
 static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                    const double ub[RADIATION_PACKET_PIECES],
@@ -1694,7 +1827,7 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                    const float photons[ISRF_OPERATOR_COUNT],
                                    const double first, const double last,
                                    const uint32_t salt, const int known_step,
-                                   const double faint) {
+                                   const double faint, const int fresh) {
 
   const int n = RADIATION_PACKET_PIECES;
 
@@ -1742,6 +1875,7 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
     given_n[b] = 0.;
   }
 
+  double placed = 0., placed_far = 0.;
   for (int j = 0; j <= last_piece; j++) {
     float pe[ISRF_OPERATOR_COUNT], pn[ISRF_OPERATOR_COUNT];
     int any = 0;
@@ -1771,6 +1905,10 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
       if (pe[b] != 0.f || pn[b] != 0.f) any = 1;
     }
     if (!any) continue;
+    for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+      placed += fabs((double)pe[b]);
+      if (j >= RADIATION_PACKET_BINS) placed_far += fabs((double)pe[b]);
+    }
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     {
       double piece = 0.;
@@ -1810,6 +1948,12 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                   known_step, is_faint);
       radiation_packet_count_overflow();
     }
+  }
+  if (fresh && placed > 0.) {
+    radiation_packet_atomic_add(&radiation_packet_placed_energy, placed);
+    if (placed_far > 0.)
+      radiation_packet_atomic_add(&radiation_packet_placed_far_energy,
+                                  placed_far);
   }
 }
 
@@ -1960,7 +2104,7 @@ static void radiation_packet_regrid(
     for (int i = 0; i < count; i++)
       radiation_packet_place(
           sl, ub, rec[i].energy, rec[i].photons, rec[i].first, rec[i].last,
-          salt ^ ((uint32_t)i * 0x9e3779b9u), known_step, faint);
+          salt ^ ((uint32_t)i * 0x9e3779b9u), known_step, faint, 0);
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     radiation_packet_diag_again = 0;
 #endif
@@ -2029,7 +2173,7 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                            ? radiation_packet_faint_energy(pk, energy_sum)
                            : 0.;
   radiation_packet_place(sl, ub, energy, photons, first, last, salt, known_step,
-                         faint);
+                         faint, 1);
 }
 
 /**

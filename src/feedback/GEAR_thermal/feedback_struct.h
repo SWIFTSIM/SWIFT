@@ -142,8 +142,26 @@ struct feedback_isrf_operator_data {
 #endif
 
 /*! Near arrival bins per slot, one step wide each, on the receiver's own step
-    lattice. 8 hold a kernel-edge hop of slow light (0.43 h per base step) on
-    the half step, so that it does not wait in the far cells. */
+    lattice. Set with `CFLAGS="-DRADIATION_PACKET_BINS=<n>"` at configure time,
+    from 1 to 31 (the restart layout code, #FEEDBACK_RESTART_PACKET_GEOMETRY,
+    holds 5 bits).
+
+    Memory: every slot costs 20 B per bin (two bands, two floats per bin and
+    band, and one stamp float), so `20 * RADIATION_PACKET_SLOTS` B per bin in
+    every gas particle: 240 B at 12 slots, 960 B at 48.
+
+    Horizon: light that crosses a distance `r` towards a receiver of step
+    `dt_r` and smoothing length `h_r` arrives `r / (v dt_r) + s` receiver steps
+    after the departure of the sender, `s` the step ratio of the sender to the
+    receiver (1 for equal steps), `v` the limit speed. The bins hold it if
+    that is at most `RADIATION_PACKET_BINS`. With `q = v dt_r / h_r` and `r_h`
+    the sender smoothing length over `h_r`, the bulk of the light (mean hop
+    `0.97 h`) needs `ceil(0.97 r_h / q) + s` bins and the kernel edge
+    `ceil(kernel_gamma r_h / q) + s`. Light beyond the bins waits in the far
+    cells and leaves late (see #RADIATION_PACKET_FAR_CELLS); the start-up
+    report and the far-share counter of the packet transport state the demand
+    and the loss of a run. 8 hold a kernel-edge hop of slow light (0.43 h per
+    base step) on the half step. */
 #ifndef RADIATION_PACKET_BINS
 #define RADIATION_PACKET_BINS 8
 #endif
@@ -169,8 +187,16 @@ struct feedback_isrf_operator_data {
 #error "RADIATION_PACKET_SLOTS must be 8, 12, 16, 24 or 48."
 #endif
 
-#if RADIATION_PACKET_FAR_CELLS < 1
-#error "RADIATION_PACKET_FAR_CELLS must be at least 1."
+#if RADIATION_PACKET_BINS < 1 || RADIATION_PACKET_BINS > 31
+#error "RADIATION_PACKET_BINS must be from 1 to 31."
+#endif
+
+#if RADIATION_PACKET_FAR_CELLS < 1 || RADIATION_PACKET_FAR_CELLS > 15
+#error "RADIATION_PACKET_FAR_CELLS must be from 1 to 15."
+#endif
+
+#if RADIATION_PACKET_FAR_SCALE > 15
+#error "RADIATION_PACKET_FAR_SCALE must not exceed 15."
 #endif
 
 #if RADIATION_PACKET_FAR_SCALE < 0

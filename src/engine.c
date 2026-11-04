@@ -2763,6 +2763,7 @@ int engine_step(struct engine *e) {
 
   /* Collective: every rank reports its counters and resets them. */
   radiation_packet_step_diagnostics(e);
+  radiation_packet_far_share_report(e);
 
   if (e->nodeID == 0) {
 
