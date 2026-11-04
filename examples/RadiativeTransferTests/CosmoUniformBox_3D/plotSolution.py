@@ -8,7 +8,6 @@ import matplotlib as mpl
 import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
-from scipy.optimize import curve_fit as cf
 
 # Parameters users should/may tweak
 snapshot_base = "output"  # snapshot basename

@@ -23,7 +23,6 @@ import matplotlib
 matplotlib.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
 import h5py
 import glob
 import os.path

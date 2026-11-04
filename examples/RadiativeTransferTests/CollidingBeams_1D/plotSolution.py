@@ -31,7 +31,6 @@ import os
 import sys
 
 import matplotlib as mpl
-import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
 

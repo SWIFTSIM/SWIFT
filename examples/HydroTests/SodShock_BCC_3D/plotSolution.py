@@ -28,7 +28,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import stats
 
 from swiftsimio import load
 from analyticSolution import analytic

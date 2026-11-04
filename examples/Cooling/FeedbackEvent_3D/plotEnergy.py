@@ -9,14 +9,7 @@ from swiftsimio import load
 
 from unyt import Gyr, erg, mh, kb
 
-from makeIC import (
-    gamma,
-    initial_density,
-    initial_temperature,
-    inject_temperature,
-    mu,
-    particle_mass,
-)
+from makeIC import gamma, initial_temperature, inject_temperature, mu, particle_mass
 
 plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 

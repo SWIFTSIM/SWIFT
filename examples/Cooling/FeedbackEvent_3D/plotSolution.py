@@ -26,7 +26,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from unyt import cm, s, km, kpc, Pa, msun, K, keV, mh
+from unyt import cm, s, km, kpc, Pa, K, keV, mh
 
 kPa = 1000 * Pa
 plot_radius = 7 * kpc

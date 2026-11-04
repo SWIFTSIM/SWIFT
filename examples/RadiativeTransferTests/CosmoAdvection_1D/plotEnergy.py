@@ -23,10 +23,8 @@ import os
 import sys
 import argparse
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
-import unyt
 from matplotlib import pyplot as plt
 
 # Parameters users should/may tweak

@@ -28,7 +28,6 @@ plt.rcParams.update(params)
 
 
 import h5py as h5
-import sys
 
 # File containing the total energy
 stats_filename = "./energy.txt"

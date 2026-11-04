@@ -68,7 +68,6 @@ if __name__ == "__main__":
 
     from tqdm import tqdm
     from matplotlib.animation import FuncAnimation
-    from scipy.stats import gaussian_kde
 
     import matplotlib.pyplot as plt
 

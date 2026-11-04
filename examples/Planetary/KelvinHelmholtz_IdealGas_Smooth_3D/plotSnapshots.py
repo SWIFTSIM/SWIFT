@@ -21,7 +21,6 @@
 Generate plot of the 3D Kelvin--Helmholtz instability.
 """
 
-import sys
 import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
