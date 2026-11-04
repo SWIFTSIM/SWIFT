@@ -150,7 +150,7 @@ for j in range(n_particles_to_plot):
         alpha=0.1,
     )
 plt.xlabel("Time (Myr)", labelpad=0)
-plt.ylabel("Radial velocity $(\\rm{cm} \cdot \\rm{s}^{-1})$", labelpad=0)
+plt.ylabel("Radial velocity $(\\rm{cm} \\cdot \\rm{s}^{-1})$", labelpad=0)
 plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Internal energy --------------------------------
@@ -165,7 +165,7 @@ for j in range(n_particles_to_plot):
         alpha=0.1,
     )
 plt.xlabel("Time (Myr)", labelpad=0)
-plt.ylabel("Internal energy $(\\rm{erg} \cdot \\rm{g}^{-1})$", labelpad=2)
+plt.ylabel("Internal energy $(\\rm{erg} \\cdot \\rm{g}^{-1})$", labelpad=2)
 plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Masses --------------------------------

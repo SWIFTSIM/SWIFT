@@ -150,7 +150,7 @@ plt.plot(
     color="blue",
     linestyle="-",
     linewidth=1,
-    label="Kaiser & Best (2007), analytical, $L\propto t^{0.6}$",
+    label=r"Kaiser & Best (2007), analytical, $L\propto t^{0.6}$",
 )
 plt.plot(
     times_in_Myr, lobe_radius_analytical, color="blue", linestyle="--", linewidth=1

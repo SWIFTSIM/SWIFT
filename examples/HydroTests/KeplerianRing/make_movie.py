@@ -262,7 +262,7 @@ if __name__ == "__main__":
     ax.text(
         offset + left,
         right - offset - 0.35,
-        "Code: {} {} | {} {} \nHydro {}\n$\eta$={:1.4f}".format(
+        "Code: {} {} | {} {} \nHydro {}\n$\\eta$={:1.4f}".format(
             metadata["code"]["Git Branch"].decode("utf-8"),
             metadata["code"]["Git Revision"].decode("utf-8"),
             metadata["code"]["Compiler Name"].decode("utf-8"),

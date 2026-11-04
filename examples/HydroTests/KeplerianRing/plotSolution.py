@@ -231,7 +231,7 @@ def plot_chisq(ax, minsnap, maxsnap, chisq, filename="keplerian_ring"):
     ax.plot(rotations, np.array(chisq) / max(chisq))
 
     ax.set_xlabel("Number of rotations")
-    ax.set_ylabel("$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
+    ax.set_ylabel(r"$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
 
     return
 

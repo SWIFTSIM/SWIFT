@@ -124,7 +124,7 @@ def plot_param_over_time(
             x,
             analytic,
             c="r",
-            label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$",
+            label=f"Analytic solution $\\propto a^{{{analytic_exponent[i]}}}$",
         )
 
         ax.legend()

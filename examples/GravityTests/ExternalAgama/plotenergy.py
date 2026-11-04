@@ -152,7 +152,7 @@ def getValueAndLabel(value):
         return value, label
 
     elif value == "Rel_Tot_Energy":
-        label = "Relative Total Energy [\%]"
+        label = r"Relative Total Energy [\%]"
         value = data[value]
         return value, label
 

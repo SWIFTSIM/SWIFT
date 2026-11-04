@@ -157,7 +157,7 @@ def plot_param_over_time(snapshot_list, param="energy density", redshift_domain=
                 analytic_scale_factor,
                 analytic,
                 c="r",
-                label=f"Analytic solution $\propto a^{{{analytic_exponent[i]}}}$",
+                label=f"Analytic solution $\\propto a^{{{analytic_exponent[i]}}}$",
             )
 
             ax.legend()

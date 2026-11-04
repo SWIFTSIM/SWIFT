@@ -305,7 +305,7 @@ def create_plot(
     axes[1][1].text(
         0.02,
         5,
-        "$c_{{vir}} = {:2.2f}$\n$R_{{vir}} = {:2.2f}$ Mpc\n$M_{{vir}} = {:2.2f}$ $10^{{10}}$ M$_\odot$".format(
+        "$c_{{vir}} = {:2.2f}$\n$R_{{vir}} = {:2.2f}$ Mpc\n$M_{{vir}} = {:2.2f}$ $10^{{10}}$ M$_\\odot$".format(
             halo_data.c, halo_data.Rvir, halo_data.Mvir
         ),
         va="bottom",
