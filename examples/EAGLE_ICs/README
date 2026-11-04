@@ -10,7 +10,7 @@ For standard runs, the code should be configured with
 (and any other optimization, library or compiler parameters specific
 to your system.)
 
-Compared to the original EAGLE runs of Schaye et al. 2015),
+Compared to the original EAGLE runs (Schaye et al. 2015),
 the following changes have been made (at standard resolution):
 
  - The flavour of SPH has been changed from the Pressure-Entropy
@@ -89,7 +89,7 @@ the following changes have been made (at standard resolution):
    any more. Energy is accumulated and then used in a deterministic
    way once the threshold for feedback is reached.
  - The free parameters in the SN feedback efficiency function, boost
-   of the AGN accretion, coupling efficieny, and AGN heating temperatures
+   of the AGN accretion, coupling efficiency, and AGN heating temperatures
    have been calibrated to match the z=0 stellar mass function, and
    mass-size relation. The procedure used to obtain the values of these
    parameters is described in Borrow et al. (in prep.)
@@ -105,7 +105,7 @@ can then be loaded using the getEagleCoolingTable.sh script.
 VELOCIraptor can be run on the output. The code is compiled
 using
 
-cmake -DVR_USE_GAS=ON -DVR_USE_STAR=ON -DV_USE_BH=ON
+cmake -DVR_USE_GAS=ON -DVR_USE_STAR=ON -DVR_USE_BH=ON
 
 and run using
 

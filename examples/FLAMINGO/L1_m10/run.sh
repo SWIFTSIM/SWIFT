@@ -5,7 +5,7 @@ set -eo pipefail
 # Generate the initial conditions if they are not present.
 if [ ! -e FLAMINGO_m10_ICs.hdf5 ]
 then
-    echo "Fetching initial conditions for the FLAMIGNO 100Mpc example..."
+    echo "Fetching initial conditions for the FLAMINGO 100Mpc example..."
     ./getIC.sh
 fi
 
@@ -18,7 +18,7 @@ fi
 
 if [ ! -e X_Ray_tables_flamingo.hdf5 ]
 then
-    echo "Fetching FLANINGO X-ray tables..."
+    echo "Fetching FLAMINGO X-ray tables..."
     ../getXrayTables.sh
 fi
 

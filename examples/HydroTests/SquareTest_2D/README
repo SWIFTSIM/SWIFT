@@ -15,9 +15,6 @@ For the SWIFT method of finding an un-mass weighted number
 of particles in the kernel, it makes more sense to have
 different mass particles (makeICDifferentMasses.py). For
 comparison to previous methods, we also provide a script
-that creates initial conditions with a different density
-of particles, all with equal masses, in the square and
-outside of the square.
-
-If you do not have the swiftsimio library, you can use
-the plotSolutionLegacy.py to plot the solution.
+(makeIC.py) that creates initial conditions with a different
+density of particles, all with equal masses, in the square
+and outside of the square.
