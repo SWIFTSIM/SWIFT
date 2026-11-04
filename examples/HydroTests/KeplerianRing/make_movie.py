@@ -96,19 +96,11 @@ def rotation_velocity_at_r(r, params):
     """
     Gets the rotation velocity at a given radius r by assuming it is keplerian.
 
-    Assumes we are in cgs units, which may one day be our downfall.
+    The example runs in cgs units (see keplerian_ring.yml).
     """
 
-    unit_length = float(params[r"InternalUnitSystem:UnitLength_in_cgs"])
-
-    if unit_length != 1.0:
-        print(f"Your unit length: {unit_length}")
-        raise InternalUnitSystemError(
-            "This function is only created to handle CGS units."
-        )
-
     central_mass = float(params["PointMassPotential:mass"])
-    G = 6.67408e-8
+    G = 6.67408e-8  # cgs
 
     v = np.sqrt(G * central_mass / r)
 

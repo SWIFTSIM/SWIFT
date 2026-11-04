@@ -56,10 +56,6 @@ yt.funcs.mylog.setLevel(50)
 tqdm.monitor_interval = 0
 
 
-class InternalUnitSystemError(Exception):
-    pass
-
-
 def get_axes_grid(figure):
     """
     Grab our axes grid.
