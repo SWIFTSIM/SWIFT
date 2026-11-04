@@ -13,7 +13,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import scipy.interpolate as sci
-import sys
+import argparse
 from shutil import copyfile
 from unyt import unyt_array
 import unyt
@@ -235,25 +235,46 @@ amount_of_sigma_used = 0.0
 mu_angular = 1.25
 lambda_angular = 0.05  # 0.05
 s_angular = 1.0
-adaptive_mass_radius = float(sys.argv[7])  # kpc
 minimum_radius = 0.1  # kpc
 NFW = False
 
 # get the arguments of the code
-file_name = str(sys.argv[1])
-file_name_save = str(sys.argv[2])
-mass_scheme = str(sys.argv[3])
+parser = argparse.ArgumentParser(
+    description="Add a hydrostatic gas halo to the ICs produced by MakeNewDisk."
+)
+parser.add_argument("input_file", help="IC file produced by MakeNewDisk")
+parser.add_argument("output_file", help="Name of the IC file to write")
+parser.add_argument(
+    "mass_scheme",
+    choices=["default", "linear", "quadratic", "cubic"],
+    help="Slope of the gas particle mass degradation outside the high-resolution region",
+)
+parser.add_argument(
+    "halo", choices=["H12", "H13", "H13.5", "H14", "H14.5", "H15"], help="Halo mass"
+)
+parser.add_argument(
+    "concentration",
+    type=float,
+    help="Halo concentration; 0 uses the default of the chosen halo",
+)
+parser.add_argument(
+    "log_Tmin",
+    type=float,
+    help="log10 of the central temperature in K; 0 uses the default of the chosen halo",
+)
+parser.add_argument(
+    "radius", type=float, help="Radius of the high-resolution region in kpc"
+)
+args = parser.parse_args()
+
+file_name = args.input_file
+file_name_save = args.output_file
+mass_scheme = args.mass_scheme
+adaptive_mass_radius = args.radius  # kpc
 
 # parameters of the galaxy:
-try:
-    galaxy = str(sys.argv[4])
-except:
-    galaxy = "H13"
-
-try:
-    cc = float(sys.argv[5])
-except:
-    cc = 0
+galaxy = args.halo
+cc = args.concentration
 
 gas_mass_used = 0.0
 
@@ -324,10 +345,10 @@ elif galaxy == "H15":
     if cc == 0:
         cc = 4.0
 
-try:
-    Tmin_model = 10 ** float(sys.argv[6])
-except:
-    print("We use the default Tmin forthe model")
+if args.log_Tmin != 0:
+    Tmin_model = 10**args.log_Tmin
+else:
+    print("We use the default Tmin for the model")
 
 print(f"Used parameters c={cc:1.4f} Tmin={Tmin_model:1.4e}")
 
