@@ -67,16 +67,17 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
  * the width `W` of a cell away, so `|pi| + |pj|` is at most `3 W`. The relative
  * rounding error of `r2` at the edge `R = kernel_gamma h` is then at most
  * `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see #radiation_packet_reach_guard.
+ * The cell width changes at every regrid: #radiation_packet_refresh_frame_width
+ * is called at every rebuild.
  *
  * @param width Largest width of a top-level cell, comoving. 0 or less
  * leaves the margin at #RADIATION_PACKET_REACH_GUARD.
  */
 void radiation_packet_set_frame_width(const double width) {
   radiation_packet_guard_scale =
-      width > 0.
-          ? (float)(RADIATION_PACKET_REACH_GUARD_PER_SUPPORT *
-                    RADIATION_PACKET_FRAME_SUPPORTS * width / kernel_gamma)
-          : 0.f;
+      width > 0. ? (float)(RADIATION_PACKET_REACH_GUARD_PER_SUPPORT *
+                           RADIATION_PACKET_FRAME_WIDTHS * width / kernel_gamma)
+                 : 0.f;
 }
 
 /* The redshift constants, set at start-up by radiation_packet_set_redshift().
@@ -283,6 +284,18 @@ double radiation_packet_arrival_delay_receding(const double path_phys,
 }
 
 /**
+ * @brief Give the reach margin the cell width of the current top-level grid.
+ * Called at every rebuild, because a regrid changes the width.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_refresh_frame_width(const struct engine *e) {
+  const struct space *s = e->s;
+  radiation_packet_set_frame_width(
+      fmax(s->width[0], fmax(s->width[1], s->width[2])));
+}
+
+/**
  * @brief Report the widest cell frame over the smallest kernel support, when
  * the engine is verbose.
  *
@@ -308,9 +321,8 @@ static void radiation_packet_report_frame_width(const struct engine *e) {
         "Widest cell frame over the smallest kernel support: %.3g. Reach "
         "margin there: %.3g.",
         ratio,
-        (double)fminf(0.5f, fmaxf(RADIATION_PACKET_REACH_GUARD,
-                                  RADIATION_PACKET_REACH_GUARD_OTHER +
-                                      radiation_packet_guard_scale / h_min)));
+        (double)fminf(0.5f, RADIATION_PACKET_REACH_GUARD +
+                                radiation_packet_guard_scale / h_min));
 }
 
 /**
@@ -321,8 +333,7 @@ static void radiation_packet_report_frame_width(const struct engine *e) {
 void radiation_packet_startup(const struct engine *e) {
   if (e->feedback_props == NULL) return;
   radiation_packet_set_box(e->s->dim, e->s->periodic);
-  radiation_packet_set_frame_width(
-      fmax(e->s->width[0], fmax(e->s->width[1], e->s->width[2])));
+  radiation_packet_refresh_frame_width(e);
   radiation_packet_report_frame_width(e);
   const struct feedback_props *fp = e->feedback_props;
   if (fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
@@ -411,11 +422,10 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
  *
  * The caller's `dx` is formed from float positions measured from a cell corner,
  * so the relative error of `r2` at the edge is at most
- * `RADIATION_PACKET_REACH_GUARD_OTHER +
- * RADIATION_PACKET_REACH_GUARD_PER_SUPPORT S`, with `S = 3 W / (kernel_gamma
- * h)` (#radiation_packet_set_frame_width). The result is never below
- * #RADIATION_PACKET_REACH_GUARD, which is the value for `S` up to 46, and never
- * above 0.5.
+ * `sqrt(3) 2^-23 S` plus the other roundings of the distance, with
+ * `S = 3 W / (kernel_gamma h)` (#radiation_packet_set_frame_width). The cut is
+ * #RADIATION_PACKET_REACH_GUARD, which holds the other roundings, plus
+ * #RADIATION_PACKET_REACH_GUARD_PER_SUPPORT times `S`, and at most 0.5.
  *
  * @param h Comoving smoothing length of the radius.
  * @return The relative cut.
@@ -425,11 +435,9 @@ __attribute__((always_inline)) INLINE static float radiation_packet_reach_guard(
 
   if (!(radiation_packet_guard_scale > 0.f))
     return RADIATION_PACKET_REACH_GUARD;
-  float g = RADIATION_PACKET_REACH_GUARD_OTHER +
-            (h > 0.f ? radiation_packet_guard_scale / h : 1.f);
-  if (g < RADIATION_PACKET_REACH_GUARD) g = RADIATION_PACKET_REACH_GUARD;
-  if (g > 0.5f) g = 0.5f;
-  return g;
+  const float g = RADIATION_PACKET_REACH_GUARD +
+                  (h > 0.f ? radiation_packet_guard_scale / h : 1.f);
+  return g < 0.5f ? g : 0.5f;
 }
 
 /**

@@ -361,9 +361,12 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
    Empty when the ISRF part is not compiled. */
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 void radiation_packet_startup(const struct engine *e);
+void radiation_packet_refresh_frame_width(const struct engine *e);
 #else
 __attribute__((always_inline)) INLINE static void radiation_packet_startup(
     const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_packet_refresh_frame_width(const struct engine *e) {}
 #endif
 
 /* The arrival bin counters are reported once per step, and the ledger of the

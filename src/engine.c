@@ -1565,6 +1565,9 @@ void engine_rebuild(struct engine *e, const int repartitioned,
 #endif
   }
 
+  /* The packet reach margin follows the cell width, which a regrid changes. */
+  radiation_packet_refresh_frame_width(e);
+
   /* Re-build the tasks. */
   engine_maketasks(e);
 

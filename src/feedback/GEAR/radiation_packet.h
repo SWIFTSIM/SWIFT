@@ -68,16 +68,11 @@
    energy and the mean photon energy would leave the band. */
 #define RADIATION_PACKET_MIN_PHOTONS 1e-35f
 
-/*! Smallest relative cut of both radii of the reach of a sender
-   (#radiation_packet_in_reach). About 100 float ulp of the square distance. It
-   holds the rounding of `r2` for cell frames up to 46 supports of the radius
+/*! Relative cut of both radii of the reach of a sender for narrow cell frames
+   (#radiation_packet_in_reach). About 100 float ulp of the square distance. A
+   wider frame adds the rounding of its positions
    (#radiation_packet_reach_guard). */
 #define RADIATION_PACKET_REACH_GUARD 1e-5f
-
-/*! Relative error of `r2` at the radius that does not grow with the frame
-    width: the rounding of the vector difference, of the sum of squares and of
-    the cut product. */
-#define RADIATION_PACKET_REACH_GUARD_OTHER 5e-7f
 
 /*! Relative error of `r2` at the radius per unit of `S`, the sum of the two
     frame positions in supports of the radius: `sqrt(3) 2^-23 = 2.07e-7`,
@@ -86,7 +81,7 @@
 
 /*! Largest sum of the two frame positions of a pair, in cell widths: the
     positions are at most 2 and 1 widths from the corner of the cell. */
-#define RADIATION_PACKET_FRAME_SUPPORTS 3.f
+#define RADIATION_PACKET_FRAME_WIDTHS 3.f
 
 /*! Parts of the reach of a sender: its own kernel support, the rest of the
     kernel support of an active receiver, or both. */
@@ -182,6 +177,7 @@ int radiation_packet_star_gas_weight(const struct spart *si,
                                      double *q, double *weight);
 void radiation_packet_set_box(const double dim[3], const int periodic);
 void radiation_packet_set_frame_width(const double width);
+void radiation_packet_refresh_frame_width(const struct engine *e);
 void radiation_packet_set_redshift(const double speed_of_light,
                                    const double weight_pe,
                                    const double weight_lw,
