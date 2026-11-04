@@ -161,8 +161,9 @@ struct feedback_isrf_operator_data {
     `ceil(kernel_gamma r_h / q) + s`. Light beyond the bins waits in the far
     cells and leaves late (see #RADIATION_PACKET_FAR_CELLS); the start-up
     report and the far-share counter of the packet transport state the demand
-    and the loss of a run. 8 hold a kernel-edge hop of slow light (0.43 h per
-    base step) on the half step. */
+    and the loss of a run. Slow light of 0.43 h per base step on the half step
+    (q = 0.215) from a sender twice as coarse (s = 2) needs 7 bins for the bulk
+    and 12 for the kernel edge: 8 hold the bulk. */
 #ifndef RADIATION_PACKET_BINS
 #define RADIATION_PACKET_BINS 8
 #endif

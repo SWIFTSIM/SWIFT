@@ -4178,6 +4178,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  * @param restart Was this a run that was restarted from check-point files?
  */
 void engine_clean(struct engine *e, const int fof, const int restart) {
+  /* Collective: the far share of the whole run. */
+  if (!fof) radiation_packet_far_share_final(e);
+
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
   swift_barrier_wait(&e->run_barrier);

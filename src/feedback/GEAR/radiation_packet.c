@@ -152,22 +152,32 @@ static void radiation_packet_count_clamp(void) {}
 
 /*! Largest share of the placed light that may land in the far cells before
     #radiation_packet_far_share_report warns. Light in the far cells leaves
-    late, by up to `2^RADIATION_PACKET_FAR_SCALE - 1` receiver steps and by
-    half of that on average, so a far share `f` slows the light by about `f
-    (2^RADIATION_PACKET_FAR_SCALE - 1) / (2 R)`, `R` the mean number of
-    receiver steps of a hop. A speed loss of 0.05 at `R = 2.3` and 8 steps
-    gives `f = 0.033`; the limit is rounded down. */
+    late, by up to `W - 1 = 2^RADIATION_PACKET_FAR_SCALE - 1` receiver steps and
+    by half of that on average, so a far share `f` slows the light by about `f
+    (W - 1) / (2 R)`, `R` the number of receiver steps of a hop. `R` is a
+    property of the run, not of the code: the limit is chosen for `R` between 2
+    and 3 (3 is the bulk of a hop at the step bound of the `fixed` mode), where
+    `f = 0.03` and `W = 8` slow the light by 0.035 to 0.053. */
 #define RADIATION_PACKET_FAR_SHARE_LIMIT 0.03
 
+/*! Smallest number of placements before the cumulative far share can warn.
+    A share `f` measured from `n` placements has a relative error of about `1 /
+    sqrt(f n)`; `n = 9 / f` makes it a third. */
+#define RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS \
+  ((int)(9. / RADIATION_PACKET_FAR_SHARE_LIMIT))
+
 /*! Energy of the new light placed in the arrival bins and cells, in all and in
-    the far cells, since the last #radiation_packet_far_share_report. One
-    record per thread, on its own cache line, so that the placement takes no
-    atomic operation. Only the light of a new share counts, not the light that a
-    change of the lattice places again. */
+    the far cells, and the number of placements, since the last
+    #radiation_packet_far_share_report. One record per thread, on its own cache
+    line, so that the placement takes no atomic operation. Only the light of a
+    new share counts, and only when the receiver has a known step: light placed
+    before that is placed again at the first merge on the final lattice, and
+    the light that a change of the lattice places again is not new. */
 struct radiation_packet_placed {
   double all;
   double far;
-  char pad[48];
+  double count;
+  char pad[40];
 } __attribute__((aligned(64)));
 
 #define RADIATION_PACKET_MAX_THREADS 1024
@@ -178,8 +188,9 @@ static _Thread_local struct radiation_packet_placed
     *radiation_packet_placed_mine = NULL;
 
 /*! The same summed over the steps on rank 0, and whether the warning was
-    printed. */
-static double radiation_packet_placed_total[2] = {0.0, 0.0};
+    printed. The sums start with the run or with its last restart: they are
+    not in the restart file. */
+static double radiation_packet_placed_total[3] = {0.0, 0.0, 0.0};
 static int radiation_packet_far_share_warned = 0;
 
 /*! The record of the calling thread, registered at its first use. */
@@ -407,16 +418,18 @@ int radiation_packet_bin_demand(const double reach, const double q,
  * Only the `fixed` mode bounds `q`, by its time step margin `f_dt`, so the
  * bound is the one case known before the run: a receiver at its step bound
  * has `q = f_dt`, and a shorter step has a smaller `q` and a larger demand.
- * The line is printed with verbose on rank 0, the warning always. No
- * collective operation.
+ * The line is printed with verbose on rank 0, the warning always, both once
+ * even if the start-up is called twice. No collective operation.
  *
  * @param e The #engine.
  */
 static void radiation_packet_report_bin_demand(const struct engine *e) {
   const struct feedback_props *fp = e->feedback_props;
+  static int reported = 0;
   if (e->nodeID != 0 ||
-      fp->ISRF_packet_light_speed != isrf_packet_light_speed_fixed)
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_fixed || reported)
     return;
+  reported = 1;
   const double q = fp->ISRF_packet_light_speed_time_step_margin;
   if (!(q > 0.)) return;
   const int s_max = 1 << time_bin_neighbour_max_delta_bin;
@@ -441,51 +454,89 @@ static void radiation_packet_report_bin_demand(const struct engine *e) {
 }
 
 /**
+ * @brief Sum the placed light of the last step over the threads and the ranks.
+ *
+ * Collective. The result is valid on rank 0 only.
+ *
+ * @param e The #engine.
+ * @param step (out) Light placed in all, light placed in the far cells, number
+ * of placements.
+ */
+static void radiation_packet_placed_collect(const struct engine *e,
+                                            double step[3]) {
+  step[0] = step[1] = step[2] = 0.;
+  const int n = radiation_packet_placed_registered;
+  for (int k = 0; k < n; k++) {
+    step[0] += radiation_packet_placed_threads[k].all;
+    step[1] += radiation_packet_placed_threads[k].far;
+    step[2] += radiation_packet_placed_threads[k].count;
+    radiation_packet_placed_threads[k].all = 0.;
+    radiation_packet_placed_threads[k].far = 0.;
+    radiation_packet_placed_threads[k].count = 0.;
+  }
+#ifdef WITH_MPI
+  double sum[3];
+  MPI_Reduce(step, sum, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (e->nodeID == 0)
+    for (int k = 0; k < 3; k++) step[k] = sum[k];
+#endif
+}
+
+/**
  * @brief Warn once if too much of the packet light lands in the far cells.
  *
- * Sums the new light placed in the arrival bins and cells during the last step
- * over the threads and the ranks and compares the share that went to the far
- * cells with #RADIATION_PACKET_FAR_SHARE_LIMIT. Warns at the first step above
- * it and prints the share since the start as well. Collective: called by every
- * rank from engine_step(), when no task runs. Does nothing without a light
- * speed limit, on every rank alike.
+ * Adds the new light placed in the arrival bins and cells during the last step
+ * to the sums of the run, and warns once when the share of the sums that went
+ * to the far cells exceeds #RADIATION_PACKET_FAR_SHARE_LIMIT after at least
+ * #RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS placements. The sums start with
+ * the run or with its last restart. Collective: called by every rank from
+ * engine_step(), when no task runs. Does nothing without a light speed limit,
+ * on every rank alike.
  *
  * @param e The #engine.
  */
 void radiation_packet_far_share_report(const struct engine *e) {
   if (!radiation_packet_light_speed_limited) return;
-  double step[2] = {0., 0.};
-  const int n = radiation_packet_placed_registered;
-  for (int k = 0; k < n; k++) {
-    step[0] += radiation_packet_placed_threads[k].all;
-    step[1] += radiation_packet_placed_threads[k].far;
-    radiation_packet_placed_threads[k].all = 0.;
-    radiation_packet_placed_threads[k].far = 0.;
-  }
-#ifdef WITH_MPI
-  double sum[2];
-  MPI_Reduce(step, sum, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  if (e->nodeID == 0) {
-    step[0] = sum[0];
-    step[1] = sum[1];
-  }
-#endif
+  double step[3];
+  radiation_packet_placed_collect(e, step);
   if (e->nodeID != 0) return;
-  radiation_packet_placed_total[0] += step[0];
-  radiation_packet_placed_total[1] += step[1];
-  if (!radiation_packet_far_share_warned && step[0] > 0. &&
-      step[1] > RADIATION_PACKET_FAR_SHARE_LIMIT * step[0]) {
+  for (int k = 0; k < 3; k++) radiation_packet_placed_total[k] += step[k];
+  const double *t = radiation_packet_placed_total;
+  if (!radiation_packet_far_share_warned &&
+      t[2] >= RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS &&
+      t[1] > RADIATION_PACKET_FAR_SHARE_LIMIT * t[0]) {
     radiation_packet_far_share_warned = 1;
     message(
-        "WARNING: at step %d, %.3g of the new ISRF packet light of the last "
-        "step (%.3g since the start) went to the far arrival cells, above "
-        "%.3g. That light leaves late and slows the light. Raise "
+        "WARNING: before step %d, %.3g of the new ISRF packet light since the "
+        "start (%.0f placements) went to the far arrival cells, above %.3g. "
+        "That light leaves late and slows the light. Raise "
         "RADIATION_PACKET_BINS (now %d) or read the start-up demand of the "
         "near bins.",
-        e->step, step[1] / step[0],
-        radiation_packet_placed_total[1] / radiation_packet_placed_total[0],
-        RADIATION_PACKET_FAR_SHARE_LIMIT, RADIATION_PACKET_BINS);
+        e->step - 1, t[1] / t[0], t[2], RADIATION_PACKET_FAR_SHARE_LIMIT,
+        RADIATION_PACKET_BINS);
   }
+}
+
+/**
+ * @brief Print the far share of the whole run, at its end.
+ *
+ * Collective: called by every rank from engine_clean(). Does nothing without
+ * a light speed limit or without placed light.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_far_share_final(const struct engine *e) {
+  if (!radiation_packet_light_speed_limited) return;
+  double step[3];
+  radiation_packet_placed_collect(e, step);
+  if (e->nodeID != 0) return;
+  for (int k = 0; k < 3; k++) radiation_packet_placed_total[k] += step[k];
+  const double *t = radiation_packet_placed_total;
+  if (t[0] > 0.)
+    message(
+        "ISRF packet light in the far arrival cells over the run: %.3g of the "
+        "new light (%.0f placements), limit %.3g.",
+        t[1] / t[0], t[2], RADIATION_PACKET_FAR_SHARE_LIMIT);
 }
 
 /**
@@ -1839,9 +1890,10 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
  * (#radiation_packet_add_to_far)?
  * @param faint Energy below which light is faint
  * (#radiation_packet_faint_energy).
- * @param fresh Is the share new, and not light that waited and is placed again
- * after a change of the lattice? Only new light counts in the far share
- * (#radiation_packet_far_share_report).
+ * @param fresh Is the share new, on a lattice that is final: not light that
+ * waited and is placed again after a change of the lattice, and not light of a
+ * receiver without a known step, which is placed again at its first merge? Only
+ * such light counts in the far share (#radiation_packet_far_share_report).
  */
 static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                    const double ub[RADIATION_PACKET_PIECES],
@@ -1975,6 +2027,7 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
     struct radiation_packet_placed *mine = radiation_packet_placed_record();
     mine->all += placed;
     mine->far += placed_far;
+    mine->count += 1.;
   }
 }
 
@@ -2194,7 +2247,7 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                            ? radiation_packet_faint_energy(pk, energy_sum)
                            : 0.;
   radiation_packet_place(sl, ub, energy, photons, first, last, salt, known_step,
-                         faint, 1);
+                         faint, known_step);
 }
 
 /**

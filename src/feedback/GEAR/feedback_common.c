@@ -1642,7 +1642,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
           "The restart file was written by a build that does not record the "
           "packet geometry, but this build records %d packet reception slots, "
           "%d near arrival bins, %d far cells and far scale %d. The particles "
-          "can differ in size: rerun the simulation from its initial "
+          "can differ in layout: rerun the simulation from its initial "
           "conditions.",
           FEEDBACK_RESTART_PACKET_GEOMETRY & 63,
           (FEEDBACK_RESTART_PACKET_GEOMETRY >> 6) & 31,
@@ -1653,7 +1653,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
         "slots, %d near arrival bins, %d far cells and far scale %d, but "
         "this build has %d, %d, %d and %d (RADIATION_PACKET_SLOTS, "
         "RADIATION_PACKET_BINS, RADIATION_PACKET_FAR_CELLS, "
-        "RADIATION_PACKET_FAR_SCALE). The particles differ in size: resume "
+        "RADIATION_PACKET_FAR_SCALE). The particles differ in layout: resume "
         "with a build of the same packet geometry, or rerun the simulation "
         "from its initial conditions.",
         g & 63, (g >> 6) & 31, (g >> 11) & 15, (g >> 15) & 15,
