@@ -203,8 +203,9 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
                           const int count, struct cell *restrict cj);
 
 void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count, struct cell *cj,
-                       const int gettimer);
+                       const int *ind, const int count, const float h_max_redo,
+                       struct cell *cj, const int gettimer);
 
 void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count, const int gettimer);
+                       const int *ind, const int count, const float h_max_redo,
+                       const int gettimer);

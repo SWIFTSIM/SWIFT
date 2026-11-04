@@ -1652,10 +1652,23 @@ struct cell *FIND_SUB_STARS(const struct cell *const c,
   return NULL;
 }
 
+/**
+ * @brief Redo the density loop of a subset of the stars of ci against the gas
+ * of cj.
+ *
+ * @param r The #runner.
+ * @param ci The #cell holding the subset.
+ * @param sparts The #spart array of ci.
+ * @param ind The indices of the subset in sparts.
+ * @param scount The number of stars in the subset.
+ * @param h_max_redo The largest h of the stars in the subset.
+ * @param cj The #cell with the gas.
+ * @param gettimer Do we have a timer ?
+ */
 void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
                              struct spart *sparts, const int *ind,
-                             const int scount, struct cell *cj,
-                             const int gettimer) {
+                             const int scount, const float h_max_redo,
+                             struct cell *cj, const int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -1666,7 +1679,8 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (!cell_is_active_stars(ci, e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci, cj, ci->stars.h_max_old)) {
+  if (cell_can_recurse_in_pair_stars_task(
+          ci, cj, max(h_max_redo, ci->stars.h_max_old))) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
@@ -1681,10 +1695,10 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
       const int pjd = csp->pairs[k].pjd;
       if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
         DOSUB_PAIR_SUBSET_STARS(r, ci->progeny[pid], sparts, ind, scount,
-                                cj->progeny[pjd], /*gettimer=*/0);
+                                h_max_redo, cj->progeny[pjd], /*gettimer=*/0);
       if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
         DOSUB_PAIR_SUBSET_STARS(r, cj->progeny[pjd], sparts, ind, scount,
-                                ci->progeny[pid], /*gettimer=*/0);
+                                h_max_redo, ci->progeny[pid], /*gettimer=*/0);
     }
 
   }
@@ -1698,9 +1712,22 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   }
 }
 
+/**
+ * @brief Redo the density loop of a subset of the stars of ci against the gas
+ * of ci.
+ *
+ * @param r The #runner.
+ * @param ci The #cell holding the subset.
+ * @param sparts The #spart array of ci.
+ * @param ind The indices of the subset in sparts.
+ * @param scount The number of stars in the subset.
+ * @param h_max_redo The largest h of the stars in the subset.
+ * @param gettimer Do we have a timer ?
+ */
 void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
                              struct spart *sparts, const int *ind,
-                             const int scount, const int gettimer) {
+                             const int scount, const float h_max_redo,
+                             const int gettimer) {
 
   const struct engine *e = r->e;
 
@@ -1716,11 +1743,12 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
 
     /* Loop over all progeny. */
-    DOSUB_SELF_SUBSET_STARS(r, sub, sparts, ind, scount, /*gettimer=*/0);
+    DOSUB_SELF_SUBSET_STARS(r, sub, sparts, ind, scount, h_max_redo,
+                            /*gettimer=*/0);
     for (int j = 0; j < 8; j++)
       if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-        DOSUB_PAIR_SUBSET_STARS(r, sub, sparts, ind, scount, ci->progeny[j],
-                                /*gettimer=*/0);
+        DOSUB_PAIR_SUBSET_STARS(r, sub, sparts, ind, scount, h_max_redo,
+                                ci->progeny[j], /*gettimer=*/0);
   }
 
   /* Otherwise, compute self-interaction. */

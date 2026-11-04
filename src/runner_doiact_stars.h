@@ -121,12 +121,13 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
 
 void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
                              struct spart *sparts, const int *ind,
-                             const int scount, struct cell *cj,
-                             const int gettimer);
+                             const int scount, const float h_max_redo,
+                             struct cell *cj, const int gettimer);
 
 void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
                              struct spart *sparts, const int *ind,
-                             const int scount, const int gettimer);
+                             const int scount, const float h_max_redo,
+                             const int gettimer);
 
 void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
                         int *ind, int scount, struct cell *cj, int gettimer);

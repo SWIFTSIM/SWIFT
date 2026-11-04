@@ -99,6 +99,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
       pow_dimension(e->stars_properties->eta_neighbours);
   const int max_smoothing_iter = e->stars_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
+  float h_max_redo = 0.f;
 
   /* Running value of the maximal smoothing length */
   float h_max = c->stars.h_max;
@@ -160,6 +161,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
 
       /* Reset the redo-count. */
       redo = 0;
+      h_max_redo = 0.f;
 
       /* Loop over the remaining active parts in this cell. */
       for (int i = 0; i < scount; i++) {
@@ -365,6 +367,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
             left[redo] = left[i];
             right[redo] = right[i];
             redo += 1;
+            h_max_redo = max(h_max_redo, sp->h);
 
             /* Re-initialise everything */
             stars_init_spart(sp);
@@ -514,7 +517,7 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
               if (run_on_all_selfs || l->t->flags == 0) {
 
                 runner_dosub_self_subset_stars_density(r, finger, sparts, sid,
-                                                       scount, 1);
+                                                       scount, h_max_redo, 1);
               }
             }
 
@@ -523,11 +526,11 @@ void runner_do_stars_ghost(struct runner *r, struct cell *c, const int offset,
 
               /* Left or right? */
               if (l->t->ci == finger)
-                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
-                                                       scount, l->t->cj, 1);
+                runner_dosub_pair_subset_stars_density(
+                    r, finger, sparts, sid, scount, h_max_redo, l->t->cj, 1);
               else
-                runner_dosub_pair_subset_stars_density(r, finger, sparts, sid,
-                                                       scount, l->t->ci, 1);
+                runner_dosub_pair_subset_stars_density(
+                    r, finger, sparts, sid, scount, h_max_redo, l->t->ci, 1);
             } else {
 #ifdef SWIFT_DEBUG_CHECKS
               error("Invalid sub-type!");
@@ -616,6 +619,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
       pow_dimension(e->black_holes_properties->eta_neighbours);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, bcount = 0;
+  float h_max_redo = 0.f;
 
   /* Running value of the maximal smoothing length */
   float h_max = c->black_holes.h_max;
@@ -672,6 +676,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
 
       /* Reset the redo-count. */
       redo = 0;
+      h_max_redo = 0.f;
 
       /* Loop over the remaining active parts in this cell. */
       for (int i = 0; i < bcount; i++) {
@@ -800,6 +805,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
             left[redo] = left[i];
             right[redo] = right[i];
             redo += 1;
+            h_max_redo = max(h_max_redo, bp->h);
 
             /* Re-initialise everything */
             black_holes_init_bpart(bp);
@@ -866,7 +872,7 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
             /* Self-interaction? */
             if (l->t->type == task_type_self) {
               runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                             NULL, 1);
+                                             h_max_redo, NULL, 1);
             }
 
             /* Otherwise, pair interaction? */
@@ -875,10 +881,10 @@ void runner_do_black_holes_density_ghost(struct runner *r, struct cell *c,
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                               l->t->cj, 1);
+                                               h_max_redo, l->t->cj, 1);
               else
                 runner_dosub_subset_bh_density(r, finger, bparts, sid, bcount,
-                                               l->t->ci, 1);
+                                               h_max_redo, l->t->ci, 1);
             } else {
 #ifdef SWIFT_DEBUG_CHECKS
               error("Invalid sub-type!");
@@ -1136,6 +1142,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
       e->hydro_properties->use_mass_weighted_num_ngb;
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, count = 0;
+  float h_max_redo = 0.f;
 
   /* Running value of the maximal smoothing length */
   float h_max = c->hydro.h_max;
@@ -1192,6 +1199,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
 
       /* Reset the redo-count. */
       redo = 0;
+      h_max_redo = 0.f;
 
       /* Loop over the remaining active parts in this cell. */
       for (int i = 0; i < count; i++) {
@@ -1412,6 +1420,7 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
             left[redo] = left[i];
             right[redo] = right[i];
             redo += 1;
+            h_max_redo = max(h_max_redo, p->h);
 
             /* Re-initialise everything */
             hydro_init_part(p, hs);
@@ -1557,7 +1566,8 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
 
             /* Self-interaction? */
             if (l->t->type == task_type_self) {
-              runner_dosub_self_subset_density(r, finger, parts, pid, count, 1);
+              runner_dosub_self_subset_density(r, finger, parts, pid, count,
+                                               h_max_redo, 1);
             }
 
             /* Otherwise, pair interaction? */
@@ -1566,10 +1576,10 @@ void runner_do_ghost(struct runner *r, struct cell *c, const int offset,
               /* Left or right? */
               if (l->t->ci == finger)
                 runner_dosub_pair_subset_density(r, finger, parts, pid, count,
-                                                 l->t->cj, 1);
+                                                 h_max_redo, l->t->cj, 1);
               else
                 runner_dosub_pair_subset_density(r, finger, parts, pid, count,
-                                                 l->t->ci, 1);
+                                                 h_max_redo, l->t->ci, 1);
             } else {
 #ifdef SWIFT_DEBUG_CHECKS
               error("Invalid sub-type!");
@@ -1762,6 +1772,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
   const float sinks_eta_dim = pow_dimension(e->sink_properties->eta_neighbours);
   const int max_smoothing_iter = e->hydro_properties->max_smoothing_iterations;
   int redo = 0, scount = 0;
+  float h_max_redo = 0.f;
 
   /* Running value of the maximal smoothing length */
   float h_max = c->sinks.h_max;
@@ -1841,6 +1852,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
         /* Reset the redo-count. */
         redo = 0;
+        h_max_redo = 0.f;
 
         /* Loop over the remaining active parts in this cell. */
         for (int i = 0; i < scount; i++) {
@@ -1965,6 +1977,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
               left[redo] = left[i];
               right[redo] = right[i];
               redo += 1;
+              h_max_redo = max(h_max_redo, sp->h);
 
               /* Re-initialise everything */
               sink_init_sink(sp);
@@ -2027,7 +2040,7 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
               /* Self-interaction? */
               if (l->t->type == task_type_self) {
                 runner_dosub_subset_sinks_density(r, finger, sinks, sid, scount,
-                                                  NULL, 1);
+                                                  h_max_redo, NULL, 1);
               }
 
               /* Otherwise, pair interaction? */
@@ -2035,11 +2048,11 @@ void runner_do_sinks_density_ghost(struct runner *r, struct cell *c,
 
                 /* Left or right? */
                 if (l->t->ci == finger)
-                  runner_dosub_subset_sinks_density(r, finger, sinks, sid,
-                                                    scount, l->t->cj, 1);
+                  runner_dosub_subset_sinks_density(
+                      r, finger, sinks, sid, scount, h_max_redo, l->t->cj, 1);
                 else
-                  runner_dosub_subset_sinks_density(r, finger, sinks, sid,
-                                                    scount, l->t->ci, 1);
+                  runner_dosub_subset_sinks_density(
+                      r, finger, sinks, sid, scount, h_max_redo, l->t->ci, 1);
               } else {
 #ifdef SWIFT_DEBUG_CHECKS
                 error("Invalid sub-type!");

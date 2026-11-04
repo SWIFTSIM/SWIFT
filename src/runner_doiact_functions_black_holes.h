@@ -611,9 +611,22 @@ void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
   DOPAIR1_SUBSET_BH_NAIVE(r, ci, bparts_i, ind, bcount, cj, shift);
 }
 
+/**
+ * @brief Redo the density loop of a subset of the black holes of ci against
+ * the gas of cj, or of ci if cj is NULL.
+ *
+ * @param r The #runner.
+ * @param ci The #cell holding the subset.
+ * @param bparts The #bpart array of ci.
+ * @param ind The indices of the subset in bparts.
+ * @param bcount The number of black holes in the subset.
+ * @param h_max_redo The largest h of the black holes in the subset.
+ * @param cj The #cell with the gas, or NULL.
+ * @param gettimer Do we have a timer ?
+ */
 void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
-                     int *ind, const int bcount, struct cell *cj,
-                     int gettimer) {
+                     int *ind, const int bcount, const float h_max_redo,
+                     struct cell *cj, int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -646,10 +659,11 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
     if (cell_can_recurse_in_self_black_holes_task(ci)) {
 
       /* Loop over all progeny. */
-      DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, NULL, 0);
+      DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, h_max_redo, NULL, 0);
       for (int j = 0; j < 8; j++)
         if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, ci->progeny[j], 0);
+          DOSUB_SUBSET_BH(r, sub, bparts, ind, bcount, h_max_redo,
+                          ci->progeny[j], 0);
 
     }
 
@@ -662,8 +676,8 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_black_holes_task(ci, cj,
-                                                  ci->black_holes.h_max_old)) {
+    if (cell_can_recurse_in_pair_black_holes_task(
+            ci, cj, max(h_max_redo, ci->black_holes.h_max_old))) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -674,10 +688,10 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
         const int pid = csp->pairs[k].pid;
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
-          DOSUB_SUBSET_BH(r, ci->progeny[pid], bparts, ind, bcount,
+          DOSUB_SUBSET_BH(r, ci->progeny[pid], bparts, ind, bcount, h_max_redo,
                           cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
-          DOSUB_SUBSET_BH(r, cj->progeny[pjd], bparts, ind, bcount,
+          DOSUB_SUBSET_BH(r, cj->progeny[pjd], bparts, ind, bcount, h_max_redo,
                           ci->progeny[pid], 0);
       }
     }
