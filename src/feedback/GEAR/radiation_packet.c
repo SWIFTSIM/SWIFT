@@ -65,10 +65,14 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
  *
  * The loops form `dx` from positions measured from the corner of a cell, up to
  * `2 W` away for the first particle and `W` for the second, plus the drift
- * since the last rebuild, which the rebuild criterion allows up to `W` for each
- * (cell.h). The sum `|pi| + |pj|` of an axis is then at most `4 W`. The
- * relative rounding error of `r2` at the edge `R = kernel_gamma h` is then at
- * most `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see #radiation_packet_reach_guard.
+ * since the last rebuild. The rebuild criterion limits the sum of the two
+ * drifts to `W - R` (cell.h), so the sum `|pi| + |pj|` of an axis is at most
+ * `4 W - R`, bounded here by `4 W`. The bound needs the drift of a cell to be
+ * limited by a hydro pair task. A gas cell whose 26 neighbours are all empty
+ * has no pair task (engine_maketasks.c), so no drift check bounds it there.
+ * That case is rare. The relative rounding error of `r2` at the edge
+ * `R = kernel_gamma h` is at most `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see
+ * #radiation_packet_reach_guard.
  * The cell width changes at every regrid: #radiation_packet_refresh_frame_width
  * is called at every rebuild.
  *
@@ -298,8 +302,11 @@ void radiation_packet_refresh_frame_width(const struct engine *e) {
 }
 
 /**
- * @brief Report the widest cell frame over the smallest kernel support, when
- * the engine is verbose.
+ * @brief Report the widest cell frame over the smallest kernel support, and
+ * warn on rank 0 if the reach margin is capped.
+ *
+ * The ratio is printed only when the engine is verbose. The reduction runs on
+ * every rank.
  *
  * @param e The #engine.
  */
@@ -314,15 +321,16 @@ static void radiation_packet_report_frame_width(const struct engine *e) {
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &h_min, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 #endif
-  if (h_min == FLT_MAX || !e->verbose || e->nodeID != 0) return;
+  if (h_min == FLT_MAX || e->nodeID != 0) return;
   const double width = fmax(s->width[0], fmax(s->width[1], s->width[2]));
   const double ratio = width / (kernel_gamma * h_min);
   const float margin =
       RADIATION_PACKET_REACH_GUARD + radiation_packet_guard_scale / h_min;
-  message(
-      "Widest cell frame over the smallest kernel support: %.3g. Reach "
-      "margin there: %.3g.",
-      ratio, (double)fminf(0.5f, margin));
+  if (e->verbose)
+    message(
+        "Widest cell frame over the smallest kernel support: %.3g. Reach "
+        "margin there: %.3g.",
+        ratio, (double)fminf(0.5f, margin));
   if (margin >= 0.5f)
     message(
         "WARNING: the reach margin is capped at 0.5 for the smallest kernel "

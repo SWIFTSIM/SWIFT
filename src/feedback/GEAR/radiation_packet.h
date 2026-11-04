@@ -80,8 +80,11 @@
 #define RADIATION_PACKET_REACH_GUARD_PER_SUPPORT 2.1e-7f
 
 /*! Largest sum of the two frame positions of a pair along an axis, in cell
-    widths: at most 2 and 1 widths from the corner of the cell, plus the drift
-    since the rebuild, up to 1 width for each. */
+    widths: at most 2 and 1 widths from the corner of the cell, plus the sum of
+    the two drifts since the rebuild, which the rebuild criterion limits to 1
+    width minus the radius (`4 W - R` in all). The bound needs a hydro pair task
+    to limit the drift of a cell: a gas cell whose 26 neighbours are all empty
+    has none, so the bound has no guarantee there (rare). */
 #define RADIATION_PACKET_FRAME_WIDTHS 4.f
 
 /*! Parts of the reach of a sender: its own kernel support, the rest of the

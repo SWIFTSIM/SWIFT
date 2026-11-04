@@ -1454,19 +1454,21 @@ because the two computations may round the distance differently.
 
 The pair loops form $\boldsymbol{r}_{ij}$ in float from positions measured from
 the corner of a cell. Along an axis the first position is at most $2W$ from
-it and the second at most $W$, and each particle may have drifted by up to $W$
-since the last rebuild (the rebuild criterion allows this), so the
-relative error of $r_{ij}^2$ at the edge $R=\gamma h$ is at most
+it and the second at most $W$, plus the drift since the last rebuild. The
+rebuild criterion limits the sum of the two drifts to $W-R$, so
+$|p_i|+|p_j|\le 4W-R$. The relative error of $r_{ij}^2$ at the edge $R=\gamma h$ is at most
 $\sqrt{3}\,2^{-23}\,(|p_i|+|p_j|)/R$, plus the other roundings of the distance
 (the difference, the sum of squares and the cut product). With
 $|p_i|+|p_j|\le 4W$ the cut is
 $\delta_{\rm r}=10^{-5}+2.1\times10^{-7}\cdot 4W/R$, at most $0.5$, with $W$
 the largest top-level cell width, refreshed at every rebuild, and $R$ the edge
-being tested. The constant $10^{-5}$ is about a hundred float roundings of the
+being tested. The bound needs a hydro pair task to limit the drift of a cell. A
+gas cell whose 26 neighbours are all empty has no pair task, so no drift check
+bounds it and the bound has no guarantee there; this is rare. The constant $10^{-5}$ is about a hundred float roundings of the
 square distance and holds the other roundings. A wide cell, which holds a particle with a small
 smoothing length in a cell sized for a larger one, gets a larger cut: for
-$4W/R=100$ it is $3.1\times10^{-5}$. At startup the verbose log gives $W/R$ for the
-smallest smoothing length, and a warning if the cut reaches its cap.
+$4W/R=100$ it is $3.1\times10^{-5}$. At startup rank 0 warns if the cut reaches its cap, and the verbose log gives
+$W/R$ for the smallest smoothing length.
 
 $S_{i,k}$ is summed in one pass over the neighbour pairs and the shares are
 booked in a later pass, and a pair can be visited from either of its
