@@ -30,11 +30,12 @@ import gc
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 from swiftsimio.visualisation import project_gas
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 plot_all_data = False  # plot all groups and all photon quantities
@@ -55,8 +56,6 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
-
-mpl.rcParams["text.usetex"] = True
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -218,7 +217,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies")
 
     # Add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)

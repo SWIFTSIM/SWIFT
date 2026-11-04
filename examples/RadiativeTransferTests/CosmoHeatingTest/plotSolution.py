@@ -33,6 +33,8 @@ import unyt
 from matplotlib import pyplot as plt
 from matplotlib import ticker as mticker
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
 # arguments for plot of references
@@ -296,7 +298,6 @@ if __name__ == "__main__":
     ax4.set_xlabel(xlabel)
     ax4.set_ylabel(
         r"energy budget [$" + energy_units.units.latex_representation() + "$]",
-        usetex=True,
     )
     ax4.legend(prop=legendprops)
     ax4.grid()

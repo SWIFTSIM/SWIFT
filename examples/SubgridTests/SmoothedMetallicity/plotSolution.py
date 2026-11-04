@@ -29,6 +29,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Parameters
 low_metal = -6  # low metal abundance
 high_metal = -5.5  # High metal abundance
@@ -54,7 +56,6 @@ params = {
     "legend.fontsize": 12,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (9.90, 6.45),
     "figure.subplot.left": 0.045,
     "figure.subplot.right": 0.99,

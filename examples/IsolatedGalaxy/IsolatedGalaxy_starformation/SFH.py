@@ -22,6 +22,8 @@ import numpy as np
 import swiftsimio as sw
 import matplotlib.pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # check if we have tqdm installed
 try:
     from tqdm import tqdm
@@ -48,7 +50,6 @@ params = {
     "legend.fontsize": 16,
     "xtick.labelsize": 16,
     "ytick.labelsize": 16,
-    "text.usetex": True,
     "figure.figsize": (7.5, 7.5),
     "figure.subplot.left": 0.12,
     "figure.subplot.right": 0.98,

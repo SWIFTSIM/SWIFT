@@ -26,13 +26,14 @@
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 from swiftsimio.visualisation import project_gas
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -49,7 +50,6 @@ projection_kwargs = {"resolution": 512, "parallel": True}
 
 # -----------------------------------------------------------------------
 
-mpl.rcParams["text.usetex"] = True
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False
 
@@ -206,7 +206,7 @@ def plot_ionization(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to("Myr"))

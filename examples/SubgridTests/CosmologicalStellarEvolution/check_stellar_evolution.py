@@ -7,6 +7,8 @@ import h5py
 import os.path
 import glob
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Number of snapshots and elements
 newest_snap_name = max(glob.glob("stellar_evolution_*.hdf5"), key=os.path.getctime)
 n_snapshots = (
@@ -22,7 +24,6 @@ params = {
     "legend.fontsize": 9,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.3,
     "figure.subplot.right": 0.99,

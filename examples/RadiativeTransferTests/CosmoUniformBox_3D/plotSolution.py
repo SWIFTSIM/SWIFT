@@ -4,18 +4,17 @@ import os
 import sys
 import argparse
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 snapshot_base = "output"  # snapshot basename
 plot_physical_quantities = True
 
 nPhotonGroups = 11
-
-mpl.rcParams["text.usetex"] = True
 
 
 def parse_args():

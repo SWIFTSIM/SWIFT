@@ -2,6 +2,8 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 keys = [
     "Step",
     "Time",
@@ -124,7 +126,6 @@ params = {
     "legend.fontsize": 12,
     "xtick.labelsize": 14,
     "ytick.labelsize": 14,
-    "text.usetex": True,
     "figure.subplot.left": 0.19,
     "figure.subplot.right": 0.98,
     "figure.subplot.bottom": 0.12,

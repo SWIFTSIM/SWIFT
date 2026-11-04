@@ -27,7 +27,6 @@
 import gc
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
@@ -36,6 +35,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from swiftsimio.visualisation import slice_gas
 
 import stromgren_plotting_tools as spt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -58,8 +59,6 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
-
-mpl.rcParams["text.usetex"] = True
 
 
 def set_colorbar(ax, im):
@@ -240,7 +239,7 @@ def plot_result(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.1f}".format(meta.time.to("Myr"))

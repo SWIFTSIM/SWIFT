@@ -18,6 +18,8 @@ from matplotlib.colors import LogNorm
 from swiftsimio import load
 from swiftsimio.visualisation import project_pixel_grid, generate_smoothing_lengths
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Grab snapshot
 
 snapshot_basename = "snap"
@@ -78,16 +80,16 @@ plt.colorbar(im)
 
 # Add xlabels
 xunits = data.dark_matter.coordinates.units.latex_representation()
-ax.set_xlabel("x [" + xunits + "]", usetex=True)
-ax.set_ylabel("y [" + xunits + "]", usetex=True)
+ax.set_xlabel("x [$" + xunits + "$]")
+ax.set_ylabel("y [$" + xunits + "$]")
 
 
 # Add title
-title = file.replace("_", r"\_")  # exception handle underscore for latex
+title = file
 if meta.cosmology is not None:
     title += ", $z$ = {0:.3f}".format(meta.z)
 title += ", $t$ = {0:.2e}".format(meta.time.to("Gyr"))
-fig.suptitle(title, usetex=True)
+fig.suptitle(title)
 
 # Save figure
 plt.tight_layout()

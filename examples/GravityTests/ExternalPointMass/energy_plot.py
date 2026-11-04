@@ -4,6 +4,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import h5py
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Plot parameters
 params = {
     "axes.labelsize": 10,
@@ -12,7 +14,6 @@ params = {
     "legend.fontsize": 12,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.145,
     "figure.subplot.right": 0.99,

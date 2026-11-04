@@ -28,7 +28,6 @@
 import matplotlib
 
 matplotlib.use("Agg")
-matplotlib.rc("text", usetex=True)
 
 try:
     import yt
@@ -44,6 +43,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.gridspec as gridspec
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 try:
     from tqdm import tqdm

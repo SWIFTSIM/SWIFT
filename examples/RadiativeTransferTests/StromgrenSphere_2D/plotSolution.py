@@ -29,13 +29,14 @@ import gc
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 from swiftsimio.visualisation import project_gas
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -57,8 +58,6 @@ try:
     snapnr = int(sys.argv[1])
 except IndexError:
     plot_all = True
-
-mpl.rcParams["text.usetex"] = True
 
 
 def get_snapshot_list(snapshot_basename="output"):
@@ -279,7 +278,7 @@ def plot_result(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2f}".format(meta.z)
     title += ", $t$ = {0:.2f}".format(meta.time.to("Myr"))

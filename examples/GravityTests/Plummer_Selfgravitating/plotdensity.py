@@ -3,12 +3,13 @@ from matplotlib import pyplot as plt
 import argparse
 import h5py
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Parse user input
 parser = argparse.ArgumentParser(
     description="Plot multiple density profiles against theoretical prediction"
 )
 parser.add_argument("files", nargs="+", help="snapshot files to be imaged")
-parser.add_argument("--notex", action="store_true", help="Flag to not use LaTeX markup")
 parser.add_argument(
     "-a", type=float, default=0.1, help="Softening length of theoretical model"
 )
@@ -34,11 +35,7 @@ if len(fnames) > 20:
     )
 
 # Set parameters
-tex = not args.notex
-if tex:
-    plt.rcParams.update({"text.usetex": tex, "font.size": 14, "font.family": "serif"})
-else:
-    plt.rcParams.update({"font.size": 12})
+plt.rcParams.update({"font.size": 14})
 figsize = 7
 
 # Model Parameters (Mestel surface density)

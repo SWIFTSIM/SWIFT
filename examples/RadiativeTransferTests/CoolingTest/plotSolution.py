@@ -31,6 +31,8 @@ import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # arguments for plots of results
 plotkwargs = {"alpha": 0.5}
 # arguments for plot of references
@@ -340,9 +342,7 @@ if __name__ == "__main__":
             )
         ax4.plot(t, u, label="gas internal energy", **plotkwargs)
         ax4.set_xlabel("time [Myr]")
-        ax4.set_ylabel(
-            r"energy budget [$" + u.units.latex_representation() + "$]", usetex=True
-        )
+        ax4.set_ylabel(r"energy budget [$" + u.units.latex_representation() + "$]")
         ax4.legend(prop=legendprops)
         ax4.grid()
 

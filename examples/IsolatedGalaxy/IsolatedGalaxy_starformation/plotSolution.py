@@ -26,6 +26,8 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import h5py as h5
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 # Plot parameters
 params = {
     "axes.labelsize": 10,
@@ -34,7 +36,6 @@ params = {
     "legend.fontsize": 9,
     "xtick.labelsize": 10,
     "ytick.labelsize": 10,
-    "text.usetex": True,
     "figure.figsize": (3.15, 3.15),
     "figure.subplot.left": 0.15,
     "figure.subplot.right": 0.99,
@@ -457,7 +458,7 @@ plt.text(
 plt.text(
     16,
     2e-6,
-    "${\\rm K\\textendash S~law}$:\n$\\Sigma_{\\rm SFR} = A \\times \\Sigma_g^n$\n$n=%.1f$\n$A=%.3f\\times10^{-4}~{\\rm M_\\odot / yr^{1} / kpc^{2}}$\n$f_{\\rm g} = %.1f$\n$\\gamma_{\\rm eos} = %.3f$\n$Z=%1.4f$"
+    "${\\rm K–S~law}$:\n$\\Sigma_{\\rm SFR} = A \\times \\Sigma_g^n$\n$n=%.1f$\n$A=%.3f\\times10^{-4}~{\\rm M_\\odot / yr^{1} / kpc^{2}}$\n$f_{\\rm g} = %.1f$\n$\\gamma_{\\rm eos} = %.3f$\n$Z=%1.4f$"
     % (
         KS_law_slope,
         KS_law_norm * 10**4,

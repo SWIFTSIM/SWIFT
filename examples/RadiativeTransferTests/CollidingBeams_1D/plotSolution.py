@@ -30,9 +30,10 @@
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 from matplotlib import pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 snapshot_base = "output"  # snapshot basename
@@ -48,7 +49,6 @@ scatterplot_kwargs = {
 
 # -----------------------------------------------------------------------
 
-mpl.rcParams["text.usetex"] = True
 
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False  # plot all snapshots
@@ -182,7 +182,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             ax.set_ylim(fixed_min, fixed_max)
 
     # add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)

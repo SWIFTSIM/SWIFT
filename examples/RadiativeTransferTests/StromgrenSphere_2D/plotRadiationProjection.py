@@ -32,13 +32,14 @@ import gc
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 from swiftsimio.visualisation import project_gas
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -51,7 +52,6 @@ do_stromgren_sphere = True
 # fancy up the plots a bit?
 fancy = True
 
-mpl.rcParams["text.usetex"] = True
 
 # parameters for imshow plots
 imshow_kwargs = {"origin": "lower", "cmap": "viridis"}
@@ -302,7 +302,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies [$" + energy_units_str + "$]")
 
     # Add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to(time_units))
