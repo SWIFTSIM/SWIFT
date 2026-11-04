@@ -1,7 +1,6 @@
 import pylab
 from pylab import *
 from scipy import stats
-import h5py as h5
 import matplotlib
 from matplotlib.colors import LogNorm
 import swiftsimio as sw

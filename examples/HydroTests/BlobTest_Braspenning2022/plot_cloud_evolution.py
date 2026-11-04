@@ -5,7 +5,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import os
 from unyt import s, pc, Myr, kb, mp, cm, K, erg, g, G, km
-import h5py
 import glob
 
 
