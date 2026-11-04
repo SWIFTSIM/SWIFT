@@ -648,6 +648,12 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->energy_change_limit);
   message("geajay cheap energy update = %d (0 explicit, 1 second order)",
           cooling->chemistry_data.cheap_energy_update);
+  message("geajay solver = %d, hydrogen_deuterium_update = %d",
+          cooling->chemistry_data.solver,
+          cooling->chemistry_data.hydrogen_deuterium_update);
+  message("geajay accurate tolerances: relative %g, absolute %g",
+          cooling->chemistry_data.accurate_relative_tolerance,
+          cooling->chemistry_data.accurate_absolute_tolerance);
   if (cooling->maximal_density > 0.)
     message("Maximal density passed to geajay = %e (internal units)",
             cooling->maximal_density);
@@ -1836,6 +1842,15 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->energy_change_limit = cooling->energy_change_limit;
   if (cooling->cheap_energy_update >= 0)
     chemistry->cheap_energy_update = cooling->cheap_energy_update;
+  if (cooling->solver >= 0) chemistry->solver = cooling->solver;
+  if (cooling->hydrogen_deuterium_update >= 0)
+    chemistry->hydrogen_deuterium_update = cooling->hydrogen_deuterium_update;
+  if (cooling->accurate_relative_tolerance > 0.)
+    chemistry->accurate_relative_tolerance =
+        cooling->accurate_relative_tolerance;
+  if (cooling->accurate_absolute_tolerance > 0.)
+    chemistry->accurate_absolute_tolerance =
+        cooling->accurate_absolute_tolerance;
 
   /* The options of "per_band" start from the parameters as set here */
   const geajay_chemistry_data chemistry_as_set = *chemistry;
