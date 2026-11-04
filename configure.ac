@@ -3046,12 +3046,12 @@ AC_DEFINE_UNQUOTED([HII_MAX_ANGULAR_PIXELS], [$with_number_of_hii_angular_pixels
 # adds 200 bytes to every gas particle. 12 merges fewer directions of light than
 # 8 and costs 800 bytes more per gas particle.
 AC_ARG_WITH([isrf-packet-slots],
-	    [AS_HELP_STRING([--with-isrf-packet-slots=<N>], [Number of reception slots of the GEAR ISRF packet transport: 8 (octants of the frame), 12 (rhombic dodecahedron faces) or 16 (octants halved) @<:@default: 12@:>@])],
+	    [AS_HELP_STRING([--with-isrf-packet-slots=<N>], [Number of reception slots of the GEAR ISRF packet transport: 8 (octants of the frame), 12 (rhombic dodecahedron faces), 16 (octants halved), 24 (tetrakis hexahedron faces) or 48 (disdyakis dodecahedron faces) @<:@default: 12@:>@])],
 	    [with_isrf_packet_slots="$withval"],
 	    [with_isrf_packet_slots="12"])
 case "$with_isrf_packet_slots" in
-   8|12|16) ;;
-   *) AC_MSG_ERROR([--with-isrf-packet-slots=$with_isrf_packet_slots: use 8, 12 or 16]) ;;
+   8|12|16|24|48) ;;
+   *) AC_MSG_ERROR([--with-isrf-packet-slots=$with_isrf_packet_slots: use 8, 12, 16, 24 or 48]) ;;
 esac
 AC_DEFINE_UNQUOTED([RADIATION_PACKET_SLOTS], [$with_isrf_packet_slots], [Number of reception slots of the GEAR ISRF packet transport])
 

@@ -501,8 +501,16 @@ __attribute__((noinline)) int radiation_packet_octant(
  * coordinate (the lowest on a tie), `a` and `b` 1 for a coordinate that is zero
  * or positive on the other two axes in axis order. With 16 slot `o + 8 h`, `o`
  * the octant and `h` 1 when the absolute second frame coordinate exceeds the
- * absolute first. A tie goes to the same side whatever the sign of a zero.
- * Kept out of line, as #radiation_packet_octant.
+ * absolute first. With 24 they are the faces of a tetrakis hexahedron: slot
+ * `4 (2 m + s) + 2 t + b`, `m` the frame axis of largest absolute coordinate
+ * (the lowest on a tie), `s` 1 for a zero or positive coordinate on it, `t`
+ * 1 when the absolute coordinate on the first of the two other axes in axis
+ * order is at least that on the second, `b` 1 for a zero or positive
+ * coordinate on the larger of the two. With 48 they are the faces of a
+ * disdyakis dodecahedron: slot `8 (2 m + s) + 4 t + 2 b + c`, `c` 1 for a
+ * zero or positive coordinate on the smaller of the two. A tie goes to the
+ * same side whatever the sign of a zero. Kept out of line, as
+ * #radiation_packet_octant.
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
  * @param direction Direction in the box frame. Need not be a unit vector.
@@ -525,6 +533,21 @@ __attribute__((noinline)) int radiation_packet_slot(const float frame[9],
     if (q[k] >= 0.0) slot |= 1 << k;
   if (fabs(q[1]) > fabs(q[0])) slot |= 8;
   return slot;
+#elif RADIATION_PACKET_SLOTS == 24 || RADIATION_PACKET_SLOTS == 48
+  int m = 0;
+  if (fabs(q[1]) > fabs(q[m])) m = 1;
+  if (fabs(q[2]) > fabs(q[m])) m = 2;
+  const int i = (m == 0) ? 1 : 0;
+  const int j = (m == 2) ? 1 : 2;
+  const int t = fabs(q[i]) >= fabs(q[j]);
+  const int big = t ? i : j;
+#if RADIATION_PACKET_SLOTS == 24
+  return 4 * (2 * m + (q[m] >= 0.0)) + 2 * t + (q[big] >= 0.0);
+#else
+  const int small = t ? j : i;
+  return 8 * (2 * m + (q[m] >= 0.0)) + 4 * t + 2 * (q[big] >= 0.0) +
+         (q[small] >= 0.0);
+#endif
 #else
   int m = 0;
   if (fabs(q[1]) < fabs(q[m])) m = 1;
@@ -541,8 +564,9 @@ __attribute__((noinline)) int radiation_packet_slot(const float frame[9],
  * sine of the angle to the nearest border plane.
  *
  * Used by the debug check of #radiation_packet_set_origin to skip directions
- * that rounding to float can move across a border. For 12 slots it is
- * conservative: it takes the border between every pair of absolute coordinates.
+ * that rounding to float can move across a border. For 12, 24 and 48 slots it
+ * is conservative: it takes the border between every pair of absolute
+ * coordinates.
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
  * @param direction Direction in the box frame.
@@ -562,12 +586,14 @@ double radiation_packet_slot_border_distance(const float frame[9],
   const double norm = sqrt(norm2);
   if (!(norm > 0.0)) return 0.0;
   double d = 1.0;
-#if RADIATION_PACKET_SLOTS == 8 || RADIATION_PACKET_SLOTS == 16
+#if RADIATION_PACKET_SLOTS == 8 || RADIATION_PACKET_SLOTS == 16 || \
+    RADIATION_PACKET_SLOTS == 48
   for (int k = 0; k < 3; k++) d = fmin(d, a[k]);
 #endif
 #if RADIATION_PACKET_SLOTS == 16
   d = fmin(d, fabs(a[0] - a[1]) * M_SQRT1_2);
-#elif RADIATION_PACKET_SLOTS == 12
+#elif RADIATION_PACKET_SLOTS == 12 || RADIATION_PACKET_SLOTS == 24 || \
+    RADIATION_PACKET_SLOTS == 48
   for (int k = 0; k < 3; k++)
     d = fmin(d, fabs(a[k] - a[(k + 1) % 3]) * M_SQRT1_2);
 #endif

@@ -132,9 +132,10 @@ struct feedback_isrf_operator_data {
 /*! Reception slots of the packet of a gas particle: one per cell of an
     equal-solid-angle partition of the directions, fixed in the frame
     #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set by
-    `--with-isrf-packet-slots`: 12 (the default),
-    8 (the octants of the frame) or 16 (octants halved by the plane
-    `|x| = |y|`). Each slot costs `sizeof(struct
+    `--with-isrf-packet-slots`: 12 (the default), 8 (the octants of the
+    frame), 16 (octants halved by the plane `|x| = |y|`), 24 (the faces of a
+    tetrakis hexahedron) or 48 (the faces of a disdyakis dodecahedron). Each
+    slot costs `sizeof(struct
     feedback_isrf_packet_slot_data)` bytes in every gas particle. */
 #ifndef RADIATION_PACKET_SLOTS
 #define RADIATION_PACKET_SLOTS 12
@@ -152,9 +153,10 @@ struct feedback_isrf_operator_data {
 #define RADIATION_PACKET_FAR_CELLS 2
 #endif
 
-#if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 && \
-    RADIATION_PACKET_SLOTS != 16
-#error "RADIATION_PACKET_SLOTS must be 8, 12 or 16."
+#if RADIATION_PACKET_SLOTS != 8 && RADIATION_PACKET_SLOTS != 12 &&  \
+    RADIATION_PACKET_SLOTS != 16 && RADIATION_PACKET_SLOTS != 24 && \
+    RADIATION_PACKET_SLOTS != 48
+#error "RADIATION_PACKET_SLOTS must be 8, 12, 16, 24 or 48."
 #endif
 
 #if RADIATION_PACKET_FAR_CELLS < 1
@@ -176,13 +178,31 @@ struct feedback_isrf_operator_data {
   "absolute coordinate (the lowest axis on a tie), a and b are 1 for a "    \
   "coordinate that is zero or positive on the two other axes, in axis "     \
   "order."
-#else
+#elif RADIATION_PACKET_SLOTS == 16
 #define RADIATION_PACKET_SLOT_TEXT                                          \
   "16 reception slots at its last merge, away from its origin: slot 0 "     \
   "first, then x, y, z. Slot k = o + 8 h: o is the octant of the fixed "    \
   "frame (bit 0 set for positive first frame coordinate, bit 1 for the "    \
   "second, bit 2 for the third) and h is 1 when the absolute second frame " \
   "coordinate exceeds the absolute first."
+#elif RADIATION_PACKET_SLOTS == 24
+#define RADIATION_PACKET_SLOT_TEXT                                        \
+  "24 reception slots at its last merge, away from its origin: slot 0 "   \
+  "first, then x, y, z. Slot k = 4 (2 m + s) + 2 t + b is the face of a " \
+  "tetrakis hexahedron in the fixed frame. m is the axis of the largest " \
+  "absolute coordinate (lowest axis on a tie), s is 1 if that "           \
+  "coordinate is zero or positive, t is 1 if the first of the other two " \
+  "axes has the larger or equal absolute coordinate, and b is 1 if the "  \
+  "larger of those two is zero or positive."
+#else
+#define RADIATION_PACKET_SLOT_TEXT                                         \
+  "48 reception slots at its last merge, away from its origin: slot 0 "    \
+  "first, then x, y, z. Slot k = 8 (2 m + s) + 4 t + 2 b + c is the face " \
+  "of a disdyakis dodecahedron in the fixed frame. m is the axis of the "  \
+  "largest absolute coordinate (lowest axis on a tie), s is 1 if that "    \
+  "coordinate is not negative, t is 1 if the first of the other two axes " \
+  "has the larger or equal absolute coordinate, and b and c are 1 if the " \
+  "larger and the smaller of those two are not negative."
 #endif
 
 /**
