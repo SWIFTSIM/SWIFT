@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"

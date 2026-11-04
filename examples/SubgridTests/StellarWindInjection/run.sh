@@ -72,7 +72,7 @@ python3 ../makeIC.py --level $level --T $T --rho $gas_density \
 
 # Start the simulation
 echo "Starting simulation"
-if [[ "$2" == "SN" ]]; then
+if [[ "$1" == "SN" ]]; then
     ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:supernovae_efficiency:0.1" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../params.yml 2>&1 | tee output.log
 else 
     ../../../../swift --hydro --sync --limiter --external-gravity --stars --sinks --feedback --threads=$n_threads --param="GEARChemistry:initial_metallicity:$Z" --param="GEARFeedback:stellar_winds_efficiency:$coeff" ../params.yml 2>&1 | tee output.log

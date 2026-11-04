@@ -1,2 +1,3 @@
-rm -rf pygadgetreader
+#!/bin/bash
+
 rm -rf pygadenv

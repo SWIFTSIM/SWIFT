@@ -16,8 +16,8 @@ if [ ! -e orbit.csv ]; then
 fi
 
 #Clears the IC file
-if [ -f "circular_orbits_MW.hdf5" ]; then
-    rm circular_orbits_MW.hdf5
+if [ -f "IC.hdf5" ]; then
+    rm IC.hdf5
 fi
 
 #Generates the initial conditions

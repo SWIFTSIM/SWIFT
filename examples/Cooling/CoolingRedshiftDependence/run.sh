@@ -7,11 +7,18 @@ then
     ./getGlass.sh
 fi
 
-# Fetch the cooling tables
+# Generate the initial conditions if they are not present.
 if [ ! -e ics_no_z.hdf5 ]
 then
     echo "Generating initial conditions for the uniform cosmo box example..."
     python3 makeIC.py
+fi
+
+# Fetch the cooling tables
+if [ ! -e coolingtables ]
+then
+    echo "Fetching EAGLE cooling tables..."
+    ../getEagleCoolingTable.sh
 fi
 
 swift_location="../../../swift"
