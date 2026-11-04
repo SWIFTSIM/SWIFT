@@ -2647,11 +2647,20 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_subcell_black_holes_tasks(ci, NULL, s,
                                                 with_timestep_sync);
+
+        /* The density reruns can read all the gas of the task cells. */
+        if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s, with_timestep_sync);
+
+        /* The density reruns can read all the gas of the task cells. */
+        if (ci_nodeID == nodeID && cj_active && ci->hydro.count > 0)
+          cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID && ci_active && cj->hydro.count > 0)
+          cell_activate_drift_part(cj, s);
 
         /* Activate bh_in for each cell that is part of
          * a pair task as to not miss any dependencies */
