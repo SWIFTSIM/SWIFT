@@ -301,9 +301,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                        cooling, cosmo, with_cosmology,
                                        phys_const, us, displacement);
 
-          sp->x_diff[0] += displacement[0];
-          sp->x_diff[1] += displacement[1];
-          sp->x_diff[2] += displacement[2];
+          sp->x_diff[0] -= displacement[0];
+          sp->x_diff[1] -= displacement[1];
+          sp->x_diff[2] -= displacement[2];
 
           /* Update the Star formation history */
           star_formation_logger_log_new_spart(sp, &c->stars.sfh);
