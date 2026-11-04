@@ -1263,8 +1263,8 @@ static void radiation_packet_add_to_bin(
  * as the light of a near bin does, so that the time at which one share leaves
  * does not depend on the other shares in the cell. Light beyond the end of the
  * last cell keeps its latest arrival time (#radiation_packet_join_below_end),
- * unless it did not widen the cells (@p unwidened): then it takes the end of
- * the cell and never moves the time of other light, in either order of arrival.
+ * unless it is faint (@p is_faint): then it takes the end of the cell and never
+ * moves the time of other light, in either order of arrival.
  *
  * @param sl The slot.
  * @param c The cell.
@@ -1275,15 +1275,15 @@ static void radiation_packet_add_to_bin(
  * @param end End of the cell.
  * @param salt Salt of the share (#radiation_packet_share_salt).
  * @param known_step Does the particle have a known step?
- * @param unwidened Is the light beyond the end of the cell light that did not
- * widen the far cells (#radiation_packet_place)?
+ * @param is_faint Is the light beyond the end of the cell faint
+ * (#radiation_packet_faint_energy)?
  */
 static void radiation_packet_add_to_far(
     struct feedback_isrf_packet_slot_data *sl, const int c,
     const float energy[ISRF_OPERATOR_COUNT],
     const float photons[ISRF_OPERATOR_COUNT], const double lo, const double hi,
     const double end, const uint32_t salt, const int known_step,
-    const int unwidened) {
+    const int is_faint) {
   float held = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     held += sl->band[b].far_energy[c];
@@ -1293,7 +1293,7 @@ static void radiation_packet_add_to_far(
     sl->band[b].far_photons[c] = radiation_packet_add_stochastic(
         sl->band[b].far_photons[c], photons[b], salt);
   }
-  const float last_below = (hi <= end || unwidened) && known_step
+  const float last_below = (hi <= end || is_faint) && known_step
                                ? 0.f
                                : radiation_packet_round_down(end - hi);
   if (known_step) {
@@ -1592,14 +1592,14 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
 
   const int n = RADIATION_PACKET_PIECES;
 
-  /* With a known step, faint light and light after the end of the time line
-     do not widen the far cells (#radiation_packet_regrid), so their overflow
-     must not move the time of the light in the last cell either. */
+  /* With a known step, faint light does not widen the far cells
+     (#radiation_packet_regrid), so its overflow must not move the time of the
+     light in the last cell either. Light after the end of the time line does
+     not widen them either, but it never arrives and keeps its time. */
   double share_energy = 0.;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
     share_energy += fabs((double)energy[b]);
-  const int unwidened =
-      known_step && (share_energy < faint || last >= (double)max_nr_timesteps);
+  const int is_faint = known_step && share_energy < faint;
 
   /* Cumulative fraction of the share in the pieces 0..j, and beyond (j = n). */
   double cum[RADIATION_PACKET_PIECES + 1];
@@ -1701,7 +1701,7 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
       radiation_packet_add_to_far(sl, RADIATION_PACKET_FAR_CELLS - 1, pe, pn,
                                   fmax(first, ub[n - 1]), last, ub[n - 1],
                                   salt ^ ((uint32_t)j * 0xc2b2ae35u),
-                                  known_step, unwidened);
+                                  known_step, is_faint);
       radiation_packet_count_overflow();
     }
   }
@@ -1867,14 +1867,15 @@ static void radiation_packet_regrid(
  * If the last light of the share is beyond the last far cell, the far cells
  * become wider until it fits (#radiation_packet_regrid), up to a limit. With a
  * known step they are `2^RADIATION_PACKET_FAR_SCALE` steps wide as long as the
- * light fits. A share below `FLT_EPSILON` of the waiting energy, and a share
- * after the end of the time line, do not widen them and, beyond the last
- * cell, take the end of that cell: they never move the time of other light.
- * Other light that still arrives beyond the last cell (at the scale limit)
- * keeps its latest arrival time there. Light that widens the cells delays all
- * the light beyond the near bins by up to one widened cell. The near bins never
- * widen, so light that arrives soon is released as it would be without the far
- * light. See #radiation_packet_place for the placing.
+ * light fits. A share below `FLT_EPSILON` of the waiting energy does not
+ * widen them and, beyond the last cell, takes the end of that cell: it never
+ * moves the time of other light. Other light that still arrives beyond the last
+ * cell (after the end of the time line, or at the scale limit) keeps its
+ * latest arrival time there, so it holds the light of that cell for as long.
+ * Light that widens the cells delays all the light beyond the near bins by up
+ * to one widened cell. The near bins never widen, so light that arrives soon is
+ * released as it would be without the far light. See #radiation_packet_place
+ * for the placing.
  *
  * Limit of the far light. A far cell keeps no separate arrival times, so the
  * shares in it leave together when the cell is due, never early except for
