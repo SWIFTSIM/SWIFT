@@ -16,10 +16,7 @@ from matplotlib.colors import LogNorm
 import unyt
 import h5py
 
-try:
-    plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Global constants
 radial_bin_units = unyt.Mpc
@@ -301,12 +298,12 @@ def info(
 
     try:
         viscosity = metadata.viscosity_info
-    except:
+    except KeyError:
         viscosity = "No info"
 
     try:
         diffusion = metadata.diffusion_info
-    except:
+    except KeyError:
         diffusion = "No info"
 
     output = (

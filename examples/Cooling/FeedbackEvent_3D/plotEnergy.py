@@ -18,10 +18,7 @@ from makeIC import (
     particle_mass,
 )
 
-try:
-    plt.style.use("mnras_durham")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 # Snapshot for grabbing the units.

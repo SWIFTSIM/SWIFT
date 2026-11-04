@@ -30,7 +30,7 @@ import numpy as np
 try:
     # Try and load this, otherwise we're stuck with serial
     from p_tqdm import p_map
-except:
+except ImportError:
     print("Try installing the p_tqdm package to make movie frames in parallel")
     p_map = map
     pass

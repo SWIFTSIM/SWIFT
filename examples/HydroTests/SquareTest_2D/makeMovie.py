@@ -29,7 +29,7 @@ try:
     from p_tqdm import p_map
 
     map = p_map
-except:
+except ImportError:
     print("Try installing the p_tqdm package to make movie frames in parallel")
     pass
 

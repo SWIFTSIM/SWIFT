@@ -19,10 +19,7 @@ from makeIC import (
     particle_mass,
 )
 
-try:
-    plt.style.use("mnras_durham")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 time_to_plot = 25 * Myr
 diffusion_parameters = [0.1 * x for x in range(11)]
