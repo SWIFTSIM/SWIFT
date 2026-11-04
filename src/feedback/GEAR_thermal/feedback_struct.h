@@ -142,9 +142,10 @@ struct feedback_isrf_operator_data {
 #endif
 
 /*! Near arrival bins per slot, one step wide each, on the receiver's own step
-    lattice. */
+    lattice. 8 hold a kernel-edge hop of slow light (0.43 h per base step) on
+    the half step, so that it does not wait in the far cells. */
 #ifndef RADIATION_PACKET_BINS
-#define RADIATION_PACKET_BINS 4
+#define RADIATION_PACKET_BINS 8
 #endif
 
 /*! Far arrival cells per slot, for light that arrives beyond the near bins.

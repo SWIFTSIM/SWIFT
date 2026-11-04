@@ -157,8 +157,8 @@ Compile-time options
 ``--with-isrf-packet-slots=<N>``
   Number of reception slots of each gas particle: 12 (default), 8, 16, 24 or 48. More slots keep the directions of incoming light apart better and cost memory in every gas particle. See :ref:`gear_radiation` for the shapes of the partitions.
 
-``RADIATION_PACKET_BINS`` (default 4) and ``RADIATION_PACKET_FAR_CELLS`` (fixed at 2)
-  Number of near arrival bins per slot, one time step wide, and of far arrival cells per slot, for light that arrives later. Set the first with ``CFLAGS="-DRADIATION_PACKET_BINS=<n>"`` at configure time. The defaults are enough for ``cap`` and ``fixed``.
+``RADIATION_PACKET_BINS`` (default 8) and ``RADIATION_PACKET_FAR_CELLS`` (fixed at 2)
+  Number of near arrival bins per slot, one time step wide, and of far arrival cells per slot, for light that arrives later. Set the first with ``CFLAGS="-DRADIATION_PACKET_BINS=<n>"`` at configure time. Light that arrives beyond the near bins waits in the far cells and leaves late, which slows a beam. With 8 bins a ``fixed`` beam at 0.43 h per step keeps its one-bin speed when half of the gas is on half the step; slower light or a deeper step hierarchy needs more.
 
 ``--with-chealpix=<path>``
   Path of the HEALPix C library (https://healpix.sourceforge.io), needed for the emission cones of the stars. HEALPix can need CFITSIO. See :doc:`the compilation instructions </GettingStarted/compiling_code>`.
