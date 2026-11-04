@@ -6,7 +6,7 @@
  # Generate the initial conditions if they are not present.
 if [ ! -e diffusion.hdf5 ]
 then
-    echo "Generating initial conditions for the Sedov blast example..."
+    echo "Generating initial conditions for the diffusion example..."
     python3 makeIC.py
 fi
 

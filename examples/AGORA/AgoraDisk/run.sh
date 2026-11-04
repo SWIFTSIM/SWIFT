@@ -14,7 +14,7 @@ scripts_location="../../GEAR_ICs_and_SCRIPTS"
 # Generate the initial conditions if they are not present.
 if [ ! -e agora_disk.hdf5 ]
 then
-    echo "Fetching initial glass file for the Sedov blast example..."
+    echo "Fetching initial conditions for the AGORA disk example..."
     ./getIC.sh $sim
 fi
 

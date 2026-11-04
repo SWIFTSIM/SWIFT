@@ -17,8 +17,9 @@
 #
 ################################################################################
 
-# Computes the analytical solution of the Zeldovich pancake and compares with
-# the simulation result
+# Plots the evolution of the mean comoving density, internal energy, entropy
+# and peculiar velocities of the gas in a uniform cosmological box, and
+# compares them with the expected (constant) solution
 
 # Parameters
 T_i = 100.0  # Initial temperature of the gas (in K)

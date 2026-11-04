@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Generate the initial conditions if they are not present.
-echo "Generating initial conditions for the isothermal potential box example..."
+echo "Generating initial conditions for the cooling halo example..."
 python3 makeIC.py 10000
 
 # Run SWIFT with external potential, SPH and cooling

@@ -3,14 +3,14 @@
 # Generate the initial conditions if they are not present.
 if [ ! -e gravity_glassCube_32.hdf5 ]
 then
-    echo "Fetching initial gravity glass file for the constant cosmological box example..."
+    echo "Fetching initial gravity glass file for the cooling redshift dependence example..."
     ./getGlass.sh
 fi
 
 # Generate the initial conditions if they are not present.
 if [ ! -e ics_no_z.hdf5 ]
 then
-    echo "Generating initial conditions for the uniform cosmo box example..."
+    echo "Generating initial conditions for the cooling redshift dependence example..."
     python3 makeIC.py
 fi
 

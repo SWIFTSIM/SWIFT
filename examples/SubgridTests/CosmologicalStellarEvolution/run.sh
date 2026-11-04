@@ -3,7 +3,7 @@
 # Generate the initial conditions if they are not present.
 if [ ! -e glassCube_32.hdf5 ]
 then
-    echo "Fetching initial glass file for the Supernovae feedback example..."
+    echo "Fetching initial glass file for the stellar evolution example..."
     ./getGlass.sh
 fi
 if [ ! -e stellar_evolution.hdf5 ]

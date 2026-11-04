@@ -3,7 +3,7 @@
 # Generate the initial conditions if they are not present.
 if [ ! -e Hydrostatic.hdf5 ]
 then
-    echo "Generating initial conditions for the isothermal potential box example..."
+    echo "Generating initial conditions for the hydrostatic halo example..."
     python3 makeIC.py 100000
 fi
 
