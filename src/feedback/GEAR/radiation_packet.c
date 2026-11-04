@@ -44,8 +44,8 @@ static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
 static int radiation_packet_box_periodic = 0;
 static int radiation_packet_box_is_set = 0;
 
-/* Rounding scale of the reach margin per unit of 1 / h, set at start-up by
- * radiation_packet_set_frame_width(). 0 for narrow frames. */
+/* Rounding scale of the reach margin per unit of 1 / h, set at every rebuild by
+ * radiation_packet_set_frame_width(). 0 only before the first refresh. */
 static float radiation_packet_guard_scale = 0.f;
 
 /**
@@ -63,10 +63,12 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
 /**
  * @brief Give the reach margin the widest cell frame of the pair loops.
  *
- * The loops form `dx` from positions measured from a cell corner, each up to
- * the width `W` of a cell away, so `|pi| + |pj|` is at most `3 W`. The relative
- * rounding error of `r2` at the edge `R = kernel_gamma h` is then at most
- * `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see #radiation_packet_reach_guard.
+ * The loops form `dx` from positions measured from the corner of a cell, up to
+ * `2 W` away for the first particle and `W` for the second, plus the drift
+ * since the last rebuild, which the rebuild criterion allows up to `W` for each
+ * (cell.h). The sum `|pi| + |pj|` of an axis is then at most `4 W`. The
+ * relative rounding error of `r2` at the edge `R = kernel_gamma h` is then at
+ * most `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see #radiation_packet_reach_guard.
  * The cell width changes at every regrid: #radiation_packet_refresh_frame_width
  * is called at every rebuild.
  *
@@ -302,7 +304,6 @@ void radiation_packet_refresh_frame_width(const struct engine *e) {
  * @param e The #engine.
  */
 static void radiation_packet_report_frame_width(const struct engine *e) {
-  if (!e->verbose) return;
   const struct space *s = e->s;
   float h_min = FLT_MAX;
   for (size_t i = 0; i < s->nr_parts; i++) {
@@ -313,16 +314,19 @@ static void radiation_packet_report_frame_width(const struct engine *e) {
 #ifdef WITH_MPI
   MPI_Allreduce(MPI_IN_PLACE, &h_min, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
 #endif
-  if (h_min == FLT_MAX) return;
+  if (h_min == FLT_MAX || !e->verbose || e->nodeID != 0) return;
   const double width = fmax(s->width[0], fmax(s->width[1], s->width[2]));
   const double ratio = width / (kernel_gamma * h_min);
-  if (e->nodeID == 0)
+  const float margin =
+      RADIATION_PACKET_REACH_GUARD + radiation_packet_guard_scale / h_min;
+  message(
+      "Widest cell frame over the smallest kernel support: %.3g. Reach "
+      "margin there: %.3g.",
+      ratio, (double)fminf(0.5f, margin));
+  if (margin >= 0.5f)
     message(
-        "Widest cell frame over the smallest kernel support: %.3g. Reach "
-        "margin there: %.3g.",
-        ratio,
-        (double)fminf(0.5f, RADIATION_PACKET_REACH_GUARD +
-                                radiation_packet_guard_scale / h_min));
+        "WARNING: the reach margin is capped at 0.5 for the smallest kernel "
+        "support. Its float rounding is no longer covered.");
 }
 
 /**
@@ -423,7 +427,7 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
  * The caller's `dx` is formed from float positions measured from a cell corner,
  * so the relative error of `r2` at the edge is at most
  * `sqrt(3) 2^-23 S` plus the other roundings of the distance, with
- * `S = 3 W / (kernel_gamma h)` (#radiation_packet_set_frame_width). The cut is
+ * `S = 4 W / (kernel_gamma h)` (#radiation_packet_set_frame_width). The cut is
  * #RADIATION_PACKET_REACH_GUARD, which holds the other roundings, plus
  * #RADIATION_PACKET_REACH_GUARD_PER_SUPPORT times `S`, and at most 0.5.
  *

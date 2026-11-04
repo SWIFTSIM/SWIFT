@@ -79,9 +79,10 @@
     rounded up. */
 #define RADIATION_PACKET_REACH_GUARD_PER_SUPPORT 2.1e-7f
 
-/*! Largest sum of the two frame positions of a pair, in cell widths: the
-    positions are at most 2 and 1 widths from the corner of the cell. */
-#define RADIATION_PACKET_FRAME_WIDTHS 3.f
+/*! Largest sum of the two frame positions of a pair along an axis, in cell
+    widths: at most 2 and 1 widths from the corner of the cell, plus the drift
+    since the rebuild, up to 1 width for each. */
+#define RADIATION_PACKET_FRAME_WIDTHS 4.f
 
 /*! Parts of the reach of a sender: its own kernel support, the rest of the
     kernel support of an active receiver, or both. */
