@@ -356,10 +356,11 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
  * active receiver: the gradient loop reaches it from the visit of that
  * receiver, which exists only when the receiver is updated. Both radii are
  * cut by #RADIATION_PACKET_REACH_GUARD so that every caller's own filter, which
- * may round `r2` differently, contains the reach.
+ * may round `r2` differently, contains the reach. The margin holds for cell
+ * frames up to about 10 to 30 kernel supports wide.
  *
  * @param r2 Square distance, computed in the caller of this function from the
- * one `dx`.
+ * weight vector of #radiation_packet_weight_vector.
  * @param h_s Comoving smoothing length of the sender.
  * @param h_r Comoving smoothing length of the receiver.
  * @param r_active Is the receiver active in this step?
@@ -425,6 +426,39 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
   float w;
   kernel_eval(r * h_inv, &w);
   return (mass / rho) * w * pow_dimension(h_inv) * powf(mu, power);
+}
+
+/**
+ * @brief Vector from a sender to a neighbour for the transmission weight,
+ * from the absolute positions in double.
+ *
+ * The gradient and the force loops form their own `dx` in the frames of the
+ * cells they run in, and the two can differ by an ulp. The weight is very
+ * sensitive to that near the kernel edge. This vector depends only on the two
+ * positions, so both loops agree on the weight of every pair they both visit.
+ * The loop's `dx` only picks the periodic image. The box comes from
+ * #radiation_packet_set_box, called in `engine_config` on every rank; without
+ * it the box is not periodic and no image is chosen.
+ *
+ * @param s The sender.
+ * @param r The neighbour.
+ * @param dx The loop's comoving vector from the sender to the neighbour.
+ * @param out (return) The vector, comoving.
+ */
+__attribute__((noinline)) void radiation_packet_weight_vector(
+    const struct part *s, const struct part *r, const float dx[3],
+    float out[3]) {
+  for (int k = 0; k < 3; k++) {
+    double d = r->x[k] - s->x[k];
+    if (radiation_packet_box_periodic) {
+      const double wrap = d - (double)dx[k];
+      if (wrap > 0.5 * radiation_packet_box_dim[k])
+        d -= radiation_packet_box_dim[k];
+      else if (wrap < -0.5 * radiation_packet_box_dim[k])
+        d += radiation_packet_box_dim[k];
+    }
+    out[k] = (float)d;
+  }
 }
 
 /**
