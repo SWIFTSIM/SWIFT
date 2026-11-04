@@ -39,7 +39,7 @@ sim = load(f"square_{snap:04d}.hdf5")
 resolution = 512
 
 # First create a grid that gets the particle density so we can divide it out later
-unweighted_grid = project_gas(sim, 512, None).to_value()
+unweighted_grid = project_gas(sim, 512, None)
 
 # Set up plotting stuff
 try:
@@ -114,9 +114,9 @@ for key, label in plot.items():
         # Raw data
         try:
             grid = (
-                project_gas(sim, resolution=resolution, project=key).to_value()
-                / unweighted_grid
+                project_gas(sim, resolution=resolution, project=key) / unweighted_grid
             )
+            grid = grid.to_value(getattr(sim.gas, key).units)
             axis.imshow(grid, origin="lower", extent=[0, 1, 0, 1], cmap="cividis")
         except:
             continue

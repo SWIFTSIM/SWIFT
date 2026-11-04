@@ -53,14 +53,21 @@ def project(data, m_res, property, ylim):
         scale_exponent=1,
     )
 
-    if property == "density":
-        property = "masses"
-
     # The box has walls along y, so do not wrap the particles periodically
-    image = project_gas(data, m_res, property, region=region, periodic=False)
+    args = dict(region=region, periodic=False)
+
+    if property == "density":
+        # Surface density
+        image = project_gas(data, m_res, "masses", **args).to_value("g/cm**2")
+    else:
+        # Divide out the particle density to get the mean of the field
+        image = project_gas(data, m_res, property, **args) / project_gas(
+            data, m_res, None, **args
+        )
+        image = image.to_value(getattr(data.gas, property).units)
 
     # The image is indexed [x, y]; imshow wants [y, x]
-    return image.to_value().T
+    return image.T
 
 
 def load_and_make_image(filename, res, property):
@@ -73,18 +80,14 @@ def load_and_make_image(filename, res, property):
 
     data = load(filename)
     image[:m_res, :m_res] = project(data, m_res, property, ylim)
-    if property != "density":
-        image[:m_res, :m_res] /= project(data, m_res, None, ylim)
 
     # second part of the image
     ylim = np.array([0.5, 1.5])
 
     left = -m_res + border
     image[left:, :] = project(data, m_res, property, ylim)[left:, :]
-    if property != "density":
-        image[left:, :] /= project(data, m_res, None, ylim)[left:, :]
 
-    return image, data.metadata.t.to_value()
+    return image, data.metadata.t.to_value("s")
 
 
 def time_formatter(t):

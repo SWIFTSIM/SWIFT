@@ -66,7 +66,7 @@ def image(
 
     # project_gas returns an [x, y] array; imshow wants [y, x]
     image = project_gas(data, image_res, "masses", region=region, parallel=True)
-    image = image.to_value().T
+    image = image.to_value("Msun/Mpc**2").T
 
     ax.imshow(image, cmap=image_cmap, norm=LogNorm(), origin="lower")
 

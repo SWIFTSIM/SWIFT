@@ -53,17 +53,20 @@ def get_image(n):
         )
 
         if plot == "density":
+            # Surface density
             image = project_gas(data, resolution, "masses", region=region)
+            image = image.to_value("g/cm**2")
         else:
             # Need to divide out the particle density for non-projected density quantities
             image = project_gas(data, resolution, plot, region=region) / project_gas(
                 data, resolution, None, region=region
             )
+            image = image.to_value(getattr(data.gas, plot).units)
 
         # The images are indexed [x, y]; imshow wants [y, x]
-        output[:, box * resolution : (box + 1) * resolution] = image.to_value().T
+        output[:, box * resolution : (box + 1) * resolution] = image.T
 
-    return output, data.metadata.t.to_value()
+    return output, data.metadata.t.to_value("s")
 
 
 def get_data_dump(metadata):

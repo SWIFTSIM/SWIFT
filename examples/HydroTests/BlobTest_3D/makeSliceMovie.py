@@ -60,17 +60,20 @@ def get_image(n):
         )
 
         if plot == "density":
+            # Density in the slice
             image = slice_gas(data, resolution, z_slice, "masses", region=region)
+            image = image.to_value("g/cm**3")
         else:
             # Need to divide out the particle density for non-projected density quantities
             image = slice_gas(
                 data, resolution, z_slice, plot, region=region
             ) / slice_gas(data, resolution, z_slice, None, region=region)
+            image = image.to_value(getattr(data.gas, plot).units)
 
         # The images are indexed [x, y]; imshow wants [y, x]
-        output[:, box * resolution : (box + 1) * resolution] = image.to_value().T
+        output[:, box * resolution : (box + 1) * resolution] = image.T
 
-    return output, data.metadata.t.to_value()
+    return output, data.metadata.t.to_value("s")
 
 
 def get_data_dump(metadata):

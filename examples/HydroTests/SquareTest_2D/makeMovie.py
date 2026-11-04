@@ -37,10 +37,10 @@ except:
 def load_and_make_image(number, res, property):
     filename = "square_{:04d}.hdf5".format(number)
     data = load(filename)
-    image = project_gas(data, res, property).to_value()
-    image_none = project_gas(data, res, None).to_value()
+    image = project_gas(data, res, property) / project_gas(data, res, None)
 
-    return image / image_none
+    # Mean of the field, in the field's own units
+    return image.to_value(getattr(data.gas, property).units)
 
 
 def create_movie(filename, start, stop, resolution, property, output_filename):

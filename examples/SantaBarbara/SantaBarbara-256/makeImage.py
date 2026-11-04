@@ -124,7 +124,7 @@ def generate_views(data: SimulationData, res=2048) -> Tuple[np.ndarray]:
         data.particles, resolution=zoomed_res, region=region_zoomed, parallel=True
     )
 
-    return img_all.to_value().T, img_zoomed.to_value().T
+    return img_all.to_value("Msun/Mpc**2").T, img_zoomed.to_value("Msun/Mpc**2").T
 
 
 def create_plot(data: SimulationData, res=2048, cmap="viridis", text_color="white"):

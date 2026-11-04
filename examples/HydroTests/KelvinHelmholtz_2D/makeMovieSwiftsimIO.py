@@ -35,7 +35,7 @@ def make_plot(filename, array, nx, ny, dx, dy):
 
     data = load_and_extract(filename)
 
-    mesh = project_gas(data, nx).to_value().T
+    mesh = project_gas(data, nx).to_value("g/cm**2").T
 
     array.set_array(mesh)
 
@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     data = load_and_extract("kelvinHelmholtz_0000.hdf5")
 
-    mesh = project_gas(data, dpi).to_value()
+    mesh = project_gas(data, dpi).to_value("g/cm**2")
 
     # Global variable for set_array
     plot = ax.imshow(
