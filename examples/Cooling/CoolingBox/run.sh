@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 # Generate the initial conditions if they are not present.

@@ -3,6 +3,8 @@
 # This example requires SWIFT to be configured with:
 #   --with-hydro-dimension=1
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e toroTest2.hdf5 ]
 then

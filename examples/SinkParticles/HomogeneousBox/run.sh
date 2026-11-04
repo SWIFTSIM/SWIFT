@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 n_ranks=${n_ranks:=0}      # Number of ranks to use
 n_threads=${n_threads:=8}  # Number of threads to use
@@ -21,7 +21,7 @@ echo "========================================"
 # Remove the ICs
 if [ -e ICs_homogeneous_box.hdf5 ]
 then
-    rm ICs_homogeneous_box.hdf5
+    rm -f ICs_homogeneous_box.hdf5
 fi
 
 #Create the ICs if they do not exist
@@ -64,10 +64,10 @@ DIR=snap #First test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+    rm -rf $DIR
 else
     echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    mkdir -p $DIR
 fi
 
 if [[ $n_ranks -gt 0 ]]; then
@@ -94,7 +94,7 @@ echo "Detecting last snapshot..."
 echo "========================================"
 
 # Look for files matching 'snap/snapshot_XXXX.hdf5', strip strings, sort numerically, pick the last one
-last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1)
+last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1 || true)
 
 if [ -z "$last_snap_file" ]; then
     echo "Error: No snapshots found in snap/ directory! Defaulting analysis to 0."

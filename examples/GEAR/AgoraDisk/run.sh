@@ -6,7 +6,7 @@
 sim=LOW
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 

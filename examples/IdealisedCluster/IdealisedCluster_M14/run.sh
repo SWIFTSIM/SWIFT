@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 with_subgrid="${with_subgrid:-"EAGLE-XL"}" # EAGLE-XL or GEAR
 
 if [ ! -e H14_fid.hdf5 ]

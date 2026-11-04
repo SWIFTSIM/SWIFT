@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -eo pipefail
+
 python3 makeICs.py stretched
 ../../../swift --hydro --threads=2 gradientsStretched.yml
 python3 plot.py gradients_stretched_0001.hdf5 stretched

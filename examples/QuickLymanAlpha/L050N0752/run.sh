@@ -3,6 +3,8 @@
 # This example requires SWIFT to be configured with:
 #   --with-subgrid=QLA
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e EAGLE_L0050N0752_ICs.hdf5 ]
 then

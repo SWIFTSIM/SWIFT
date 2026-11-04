@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Convert the original (Gadget binary) nIFTy ICs to nifty.hdf5.
 # Usage: ./create_ics.sh /path/to/IC_CLUSTER_00019
 if [ $# -ne 1 ]

@@ -1,4 +1,6 @@
 #!/bin/bash
 
-mkdir halo
+set -eo pipefail
+
+mkdir -p halo
 ${VELOCIRAPTOR_PATH} -I 2 -i santabarbara_0153 -C velociraptor_cfg.cfg -o ./halo/santabarbara

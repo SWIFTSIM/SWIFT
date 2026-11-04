@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e gravity_glassCube_32.hdf5 ]
 then
@@ -23,9 +25,9 @@ fi
 
 swift_location="../../../swift"
 
-rm data/redshift_dependence_*_z_*.hdf5
+rm -f data/redshift_dependence_*_z_*.hdf5
 
-mkdir data
+mkdir -p data
 
 # Run SWIFT
 $swift_location --hydro --cosmology --cooling --limiter --threads=4 cooling_redshift_dependence_high_z.yml 2>&1 | tee output_high.log

@@ -3,6 +3,8 @@
 # This example requires SWIFT to be configured with:
 #   --with-ext-potential=sine-wave --with-equation-of-state=isothermal-gas
 
+set -eo pipefail
+
 if [ ! -e sineWavePotential.hdf5 ]
 then
   echo "Generating initial conditions for the 1D SineWavePotential example..."

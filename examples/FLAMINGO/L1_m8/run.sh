@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e FLAMINGO_m8_ICs.hdf5 ]
 then

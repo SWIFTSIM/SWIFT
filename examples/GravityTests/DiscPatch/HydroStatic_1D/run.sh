@@ -3,6 +3,8 @@
 # This example requires SWIFT to be configured with:
 #   --with-hydro-dimension=1 --with-ext-potential=disc-patch
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e Disc-Patch.hdf5 ]
 then

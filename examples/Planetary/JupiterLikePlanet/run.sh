@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 set -o xtrace
 
 # Resolution

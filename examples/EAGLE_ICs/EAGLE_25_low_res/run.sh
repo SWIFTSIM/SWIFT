@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
  # Generate the initial conditions if they are not present.
 if [ ! -e EAGLE_L0025N0188_ICs.hdf5 ]
 then

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 if [ ! -f glassCube_32.hdf5 ]; then
     ./getGlass.sh

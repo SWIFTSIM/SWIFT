@@ -3,6 +3,8 @@
 # Ensure that the right modules are loaded, MAKE SURE to load python3 as well
 #module purge
 
+set -eo pipefail
+
 # Create ICs if they are not present (remove ICs.hdf5 after changing write_ICs.py)
 if [ ! -e ICs.hdf5 ]
 then

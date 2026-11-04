@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Install swiftsimio and pygadgetreader, needed by convert_to_swift.py, in a
 # virtual environment. The original pygadgetreader repository on Bitbucket no
 # longer exists; this fork is maintained and works with Python 3.

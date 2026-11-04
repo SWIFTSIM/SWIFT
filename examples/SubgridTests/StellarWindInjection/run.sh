@@ -15,7 +15,7 @@ gas_density=${gas_density:=0.1} # Gas density in atom/cm^3
 gas_particle_mass=${gas_particle_mass:=10} # Mass of the gas particles
 num_star=${num_star:=1} # number of stars
 
-set -e
+set -eo pipefail
 
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
@@ -49,11 +49,11 @@ fi
 # Create directory if not already present
 if [ -d "$str" ]; then
     echo "$str directory exists. Its content will be removed."
-    rm -r $str
+    rm -rf $str
 else
     echo "$str directory does not exist. It will be created."
 fi
-mkdir $str
+mkdir -p $str
 cd $str
 
 # Continuous stars are multiplied by a factor of 100, as well as gas particle
