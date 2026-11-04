@@ -50,10 +50,12 @@
  * sub-cell that a rerun with a grown h can read.
  */
 
-void runner_dosub_pair_subset_stars_density(
-    struct runner *r, struct cell *ci, struct spart *sparts, const int *ind,
-    const int scount, const float h_max_redo, struct cell *cj,
-    const int gettimer);
+void runner_dosub_pair_subset_stars_density(struct runner *r, struct cell *ci,
+                                            struct spart *sparts,
+                                            const int *ind, const int scount,
+                                            const float h_max_redo,
+                                            struct cell *cj,
+                                            const int gettimer);
 void runner_dosub_self_subset_stars_density(struct runner *r, struct cell *ci,
                                             struct spart *sparts,
                                             const int *ind, const int scount,
@@ -415,9 +417,9 @@ static int run_subset_loop(struct runner *r, struct cell *cells, const int loop,
     runner_dosub_self_subset_stars_density(r, &cells[0], cells[0].stars.parts,
                                            &ind_star, 1, /*h_max_redo=*/h_new,
                                            /*gettimer=*/0);
-    runner_dosub_pair_subset_stars_density(
-        r, &cells[0], cells[0].stars.parts, &ind_star, 1, /*h_max_redo=*/h_new,
-        &cells[1], /*gettimer=*/0);
+    runner_dosub_pair_subset_stars_density(r, &cells[0], cells[0].stars.parts,
+                                           &ind_star, 1, /*h_max_redo=*/h_new,
+                                           &cells[1], /*gettimer=*/0);
     wcount_code = sp->density.wcount;
 #if defined(FEEDBACK_GEAR)
     n_code = sp->feedback_data.num_ngbs;
