@@ -1238,6 +1238,10 @@ LightconeCommon:
   particles_gzip_level:        6  # Apply lossless (deflate) compression to lightcone particles
   maps_gzip_level:             6  # Apply lossless (deflate) compression to healpix maps
 
+  xray_maps_recent_AGN_injection_exclusion_time_myr: 15    # (Optional) Exclude gas heated by AGN in the last this many Myr from the X-ray and SZ maps (default: -1, i.e. no exclusion)
+  xray_maps_recent_AGN_injection_delta_logT_min:    -1.0   # Recently AGN-heated gas is excluded if log10(T) > log10(AGN_delta_T) + this value (must be <= 0; required if the exclusion time is > 0)
+  xray_maps_recent_AGN_injection_delta_logT_max:     0.3   # Recently AGN-heated gas is excluded if log10(T) < log10(AGN_delta_T) + this value (must be >= 0; required if the exclusion time is > 0)
+
 # Parameters specific to lightcone 0 - any lightcone parameters not found here are taken from LightconeCommon, above,
 # except for 'enabled' and 'basename'.
 Lightcone0:
