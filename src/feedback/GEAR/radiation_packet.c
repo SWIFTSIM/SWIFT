@@ -162,7 +162,9 @@ static void radiation_packet_count_clamp(void) {}
 
 /*! Smallest number of placements before the cumulative far share can warn.
     A share `f` measured from `n` placements has a relative error of about `1 /
-    sqrt(f n)`; `n = 9 / f` makes it a third. */
+    sqrt(f n)`; `n = 9 / f` makes it a third. The share is weighted by energy,
+    so a few large placements can dominate it: 300 is a floor on the noise,
+    not an effective sample size. */
 #define RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS \
   ((int)(9. / RADIATION_PACKET_FAR_SHARE_LIMIT))
 
@@ -507,12 +509,12 @@ void radiation_packet_far_share_report(const struct engine *e) {
       t[1] > RADIATION_PACKET_FAR_SHARE_LIMIT * t[0]) {
     radiation_packet_far_share_warned = 1;
     message(
-        "WARNING: before step %d, %.3g of the new ISRF packet light since the "
+        "WARNING: after step %d, %.3g of the new ISRF packet light since the "
         "start (%.0f placements) went to the far arrival cells, above %.3g. "
         "That light leaves late and slows the light. Raise "
         "RADIATION_PACKET_BINS (now %d) or read the start-up demand of the "
         "near bins.",
-        e->step - 1, t[1] / t[0], t[2], RADIATION_PACKET_FAR_SHARE_LIMIT,
+        e->step, t[1] / t[0], t[2], RADIATION_PACKET_FAR_SHARE_LIMIT,
         RADIATION_PACKET_BINS);
   }
 }
@@ -521,12 +523,13 @@ void radiation_packet_far_share_report(const struct engine *e) {
  * @brief Print the far share of the whole run, at its end.
  *
  * Collective: called by every rank from engine_clean(). Does nothing without
- * a light speed limit or without placed light.
+ * a light speed limit, without placed light, or when no step ran (a dry run,
+ * where MPI is already finalized; e->step is the same on every rank).
  *
  * @param e The #engine.
  */
 void radiation_packet_far_share_final(const struct engine *e) {
-  if (!radiation_packet_light_speed_limited) return;
+  if (!radiation_packet_light_speed_limited || e->step == 0) return;
   double step[3];
   radiation_packet_placed_collect(e, step);
   if (e->nodeID != 0) return;
