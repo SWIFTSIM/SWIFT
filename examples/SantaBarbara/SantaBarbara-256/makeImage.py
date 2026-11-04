@@ -15,9 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import swiftsimio as sw
 
-from swiftsimio.visualisation.projection import project_pixel_grid
-from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
-from swiftsimio.visualisation.projection_backends.kernels import kernel_gamma
+from swiftsimio.visualisation import project_pixel_grid, generate_smoothing_lengths
 from matplotlib.patches import Rectangle
 
 from typing import Tuple
@@ -65,7 +63,7 @@ def read_data_from_file(filename: str, part_type=0) -> SimulationData:
     else:
         particles = data.dark_matter
         particles.smoothing_lengths = generate_smoothing_lengths(
-            particles.coordinates, data.metadata.boxsize, kernel_gamma=kernel_gamma
+            particles.coordinates, data.metadata.boxsize, kernel_gamma=1.8
         )
 
     sph_name = data.metadata.hydro_scheme["Scheme"].decode("utf-8")

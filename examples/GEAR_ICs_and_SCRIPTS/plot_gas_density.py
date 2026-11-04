@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import swiftsimio as sw
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation import project_gas
 
 import unyt
 from unyt import mh, cm

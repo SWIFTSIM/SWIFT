@@ -18,7 +18,7 @@
 ##############################################################################
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation import project_gas
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 

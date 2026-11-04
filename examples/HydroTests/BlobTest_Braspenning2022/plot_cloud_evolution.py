@@ -1,5 +1,5 @@
 from swiftsimio import load
-from swiftsimio.visualisation.volume_render import render_gas
+from swiftsimio.visualisation import render_gas
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt

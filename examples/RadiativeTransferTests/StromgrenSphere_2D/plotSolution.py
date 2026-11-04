@@ -31,6 +31,7 @@ import sys
 
 import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
@@ -156,9 +157,7 @@ def plot_result(filename):
     ]
     cutoff = int(0.05 * projection_kwargs["resolution"])
 
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
     gamma = meta.hydro_scheme["Adiabatic index"][0]
 
     data.gas.mXHI = data.gas.ion_mass_fractions.HI * data.gas.masses
@@ -172,18 +171,10 @@ def plot_result(filename):
         gas_temperature(data.gas.internal_energies, mu, gamma) * data.gas.masses
     )
 
-    mass_weighted_hydrogen_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHI", **projection_kwargs
-    )
-    mass_weighted_pressure_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mP", **projection_kwargs
-    )
-    mass_weighted_density_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mrho", **projection_kwargs
-    )
-    mass_weighted_temperature_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="mT", **projection_kwargs
-    )
+    mass_weighted_hydrogen_map = project_gas(data, project="mXHI", **projection_kwargs)
+    mass_weighted_pressure_map = project_gas(data, project="mP", **projection_kwargs)
+    mass_weighted_density_map = project_gas(data, project="mrho", **projection_kwargs)
+    mass_weighted_temperature_map = project_gas(data, project="mT", **projection_kwargs)
 
     hydrogen_map = mass_weighted_hydrogen_map / mass_map
     hydrogen_map = hydrogen_map[cutoff:-cutoff, cutoff:-cutoff]

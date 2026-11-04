@@ -25,7 +25,7 @@ from matplotlib.ticker import ScalarFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation import project_gas
 
 import unyt
 

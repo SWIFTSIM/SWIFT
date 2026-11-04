@@ -22,9 +22,7 @@ import unyt
 
 np.random.seed(420)
 import swiftsimio.visualisation as swvis
-from swiftsimio.visualisation.smoothing_length.generate import (
-    generate_smoothing_lengths,
-)
+from swiftsimio.visualisation import generate_smoothing_lengths
 import scipy.optimize as scop
 from scipy.optimize import root_scalar
 from swiftsimio.objects import cosmo_array, cosmo_factor

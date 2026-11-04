@@ -32,6 +32,7 @@ import sys
 
 import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
@@ -134,9 +135,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 setattr(data.gas, new_attribute_str, f)
 
     # get mass surface density projection that we'll use to remove density dependence in image
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
 
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 3, 5.05 * ngroups), dpi=200)
@@ -146,7 +145,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get energy projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -164,7 +163,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux X projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "X"
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -182,7 +181,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux Y projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "Y"
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -204,7 +203,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map

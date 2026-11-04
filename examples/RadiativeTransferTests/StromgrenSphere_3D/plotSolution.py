@@ -33,7 +33,7 @@ import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from swiftsimio.visualisation.slice import slice_gas
+from swiftsimio.visualisation import slice_gas
 
 import stromgren_plotting_tools as spt
 

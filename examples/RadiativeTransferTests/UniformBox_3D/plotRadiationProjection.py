@@ -33,6 +33,7 @@ import sys
 import matplotlib as mpl
 import numpy as np
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
@@ -155,9 +156,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 setattr(data.gas, new_attribute_str, f)
 
     # get mass surface density projection that we'll use to remove density dependence in image
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
 
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 4, 5.05 * ngroups), dpi=200)
@@ -167,7 +166,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get energy projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            mass_weighted_photon_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_photon_map /= mass_map may cause RecursionErrors...
@@ -192,7 +191,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux X projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "X"
-            mass_weighted_flux_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_flux_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_flux_map /= mass_map may cause RecursionErrors...
@@ -216,7 +215,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux Y projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "Y"
-            mass_weighted_flux_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_flux_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_flux_map /= mass_map may cause RecursionErrors...
@@ -233,7 +232,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux Z projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "Z"
-            mass_weighted_flux_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_flux_map = project_gas(
                 data,
                 project=new_attribute_str,
                 **projection_kwargs,
@@ -261,7 +260,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            mass_weighted_photon_map = swiftsimio.visualisation.projection.project_gas(
+            mass_weighted_photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             # mass_weighted_photon_map /= mass_map may cause RecursionErrors...

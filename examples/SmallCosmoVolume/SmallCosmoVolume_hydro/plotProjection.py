@@ -17,8 +17,9 @@ from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_pixel_grid, project_gas
-from swiftsimio.visualisation.smoothing_length import (
+from swiftsimio.visualisation import (
+    project_pixel_grid,
+    project_gas,
     generate_smoothing_lengths,
 )
 

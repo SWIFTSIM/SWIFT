@@ -28,6 +28,7 @@ import sys
 
 import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -121,9 +122,7 @@ def plot_ionization(filename):
         0.99 * meta.boxsize[1].v,
     ]
 
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
 
     data.gas.mXHI = data.gas.ion_mass_fractions.HI * data.gas.masses
     data.gas.mXHII = data.gas.ion_mass_fractions.HII * data.gas.masses
@@ -131,21 +130,11 @@ def plot_ionization(filename):
     data.gas.mXHeII = data.gas.ion_mass_fractions.HeII * data.gas.masses
     data.gas.mXHeIII = data.gas.ion_mass_fractions.HeIII * data.gas.masses
 
-    mass_weighted_XHImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHI", **projection_kwargs
-    )
-    mass_weighted_XHIImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHII", **projection_kwargs
-    )
-    mass_weighted_XHeImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHeI", **projection_kwargs
-    )
-    mass_weighted_XHeIImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHeII", **projection_kwargs
-    )
-    mass_weighted_XHeIIImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHeIII", **projection_kwargs
-    )
+    mass_weighted_XHImap = project_gas(data, project="mXHI", **projection_kwargs)
+    mass_weighted_XHIImap = project_gas(data, project="mXHII", **projection_kwargs)
+    mass_weighted_XHeImap = project_gas(data, project="mXHeI", **projection_kwargs)
+    mass_weighted_XHeIImap = project_gas(data, project="mXHeII", **projection_kwargs)
+    mass_weighted_XHeIIImap = project_gas(data, project="mXHeIII", **projection_kwargs)
 
     XHImap = mass_weighted_XHImap / mass_map
     XHIImap = mass_weighted_XHIImap / mass_map

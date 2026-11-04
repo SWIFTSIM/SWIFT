@@ -6,8 +6,8 @@ Josh Borrow (joshua.borrow@durham.ac.uk) 2019
 LGPLv3
 """
 
-from swiftsimio import load
-from swiftsimio.visualisation.projection_backends.fast import scatter
+from swiftsimio import load, cosmo_array
+from swiftsimio.visualisation import project_gas
 
 from p_tqdm import p_map
 from types import SimpleNamespace
@@ -39,36 +39,30 @@ def get_image(n):
     filename = f"{snapshot_name}_{n:04d}.hdf5"
 
     data = load(filename)
-    boxsize = data.metadata.boxsize[0].value
+    coords = data.gas.coordinates
 
     output = np.zeros((resolution, resolution * 4), dtype=float)
 
-    x, y, _ = data.gas.coordinates.value.T
-
     # This is an oblong box but we can only make squares!
-    for box, box_edges in enumerate([[0.0, 1.1], [0.9, 2.1], [1.9, 3.1], [2.9, 4.0]]):
-        mask = np.logical_and(x >= box_edges[0], x <= box_edges[1])
-        masked_x = x[mask] - np.float64(box)
-        masked_y = y[mask]
-
-        try:
-            hsml = data.gas.smoothing_length.value[mask]
-        except:
-            hsml = data.gas.smoothing_lengths.value[mask]
+    for box in range(4):
+        region = cosmo_array(
+            [box, box + 1.0, 0.0, 1.0],
+            coords.units,
+            comoving=coords.comoving,
+            scale_factor=data.metadata.scale_factor,
+            scale_exponent=1,
+        )
 
         if plot == "density":
-            mass = data.gas.masses.value[mask]
-            image = scatter(x=masked_y, y=masked_x, m=mass, h=hsml, res=resolution)
+            image = project_gas(data, resolution, "masses", region=region)
         else:
-            quantity = getattr(data.gas, plot).value[mask]
             # Need to divide out the particle density for non-projected density quantities
-            image = scatter(
-                x=masked_y, y=masked_x, m=quantity, h=hsml, res=resolution
-            ) / scatter(
-                x=masked_y, y=masked_x, m=np.ones_like(quantity), h=hsml, res=resolution
+            image = project_gas(data, resolution, plot, region=region) / project_gas(
+                data, resolution, None, region=region
             )
 
-        output[:, box * resolution : (box + 1) * resolution] = image
+        # The images are indexed [x, y]; imshow wants [y, x]
+        output[:, box * resolution : (box + 1) * resolution] = image.to_value().T
 
     return output, picklable_metadata(data.metadata)
 
@@ -138,7 +132,7 @@ def time_formatter(metadata):
 # Generate the frames and unpack our variables
 images, metadata = zip(*p_map(get_image, list(range(start_frame, end_frame))))
 
-# The edges are funny because of the non-periodicity.
+# Set the colour range from the central part of the first frame.
 central_region = images[0][
     resolution // 10 : resolution - resolution // 10,
     resolution // 10 : resolution - resolution // 10,

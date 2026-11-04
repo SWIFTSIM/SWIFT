@@ -18,8 +18,8 @@
 #
 ##############################################################################
 
-from swiftsimio import load
-from swiftsimio.visualisation.projection_backends.fast import scatter
+from swiftsimio import load, cosmo_array
+from swiftsimio.visualisation import project_gas
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import LogNorm
 import matplotlib.pyplot as plt
@@ -64,26 +64,25 @@ class Metadata(object):
 
 
 def project(data, m_res, property, ylim):
-    x, y, _ = data.gas.coordinates.value.T
+    coords = data.gas.coordinates
 
-    mask = np.logical_and(y >= ylim[0], y <= ylim[1])
-
-    x = x[mask]
-    y = y[mask] - np.float64(ylim[0])
-
-    h = data.gas.smoothing_lengths.value[mask]
+    # Unit-width square starting at height ylim[0]
+    region = cosmo_array(
+        [0.0, 1.0, ylim[0], ylim[1]],
+        coords.units,
+        comoving=coords.comoving,
+        scale_factor=data.metadata.scale_factor,
+        scale_exponent=1,
+    )
 
     if property == "density":
         property = "masses"
 
-    if property is not None:
-        quant = getattr(data.gas, property).value[mask]
-    else:
-        quant = np.ones_like(x)
+    # The box has walls along y, so do not wrap the particles periodically
+    image = project_gas(data, m_res, property, region=region, periodic=False)
 
-    image = scatter(x=x, y=y, m=quant, h=h, res=m_res)
-
-    return image.T
+    # The image is indexed [x, y]; imshow wants [y, x]
+    return image.to_value().T
 
 
 def load_and_make_image(filename, res, property):

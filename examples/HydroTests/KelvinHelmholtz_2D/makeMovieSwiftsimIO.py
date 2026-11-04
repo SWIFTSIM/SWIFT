@@ -15,7 +15,7 @@ import numpy as np
 import scipy.interpolate as si
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation import project_gas
 
 
 def load_and_extract(filename):

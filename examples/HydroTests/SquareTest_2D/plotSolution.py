@@ -31,7 +31,7 @@ import numpy as np
 from scipy import stats
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation import project_gas
 
 snap = int(sys.argv[1])
 
