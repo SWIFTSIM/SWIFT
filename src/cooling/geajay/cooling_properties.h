@@ -331,10 +331,6 @@ struct cooling_function_data {
    * (GeajayCooling:solver, chemistry_data.solver). */
   int solver;
 
-  /*! Update of the H and D species of network 3: 1 sequential, 2 joint
-   * block, -1 the geajay default (GeajayCooling:hydrogen_deuterium_update). */
-  int hydrogen_deuterium_update;
-
   /*! Relative and absolute tolerances of the accurate solver, <= 0 for the
    * geajay defaults (GeajayCooling:accurate_relative_tolerance and
    * GeajayCooling:accurate_absolute_tolerance). */
