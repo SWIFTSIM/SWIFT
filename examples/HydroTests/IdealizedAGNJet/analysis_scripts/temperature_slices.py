@@ -1,4 +1,5 @@
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
 import swiftsimio as sw
 from swiftsimio.visualisation import project_gas
@@ -26,7 +27,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -151,7 +152,6 @@ mintemp = 6.5  # minimum of color bar scale for temperature
 maxtemp = 9.5  # maximum of color bar scale for temperature
 aspect_ratio = 0.5  # aspect ratio of images, x:y
 
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 fig = plt.figure(figsize=(23, 10.5))

@@ -59,7 +59,7 @@ git = sim["Code"].attrs["Git Revision"]
 pos = sim["/PartType0/Coordinates"][:, :]
 x = pos[:, 0] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = abs(x)
+r = np.abs(x)
 v_r = x * vel[:, 0] / r
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -83,7 +83,6 @@ except:
 # Now, work our the solution....
 
 from scipy.special import gamma as Gamma
-from numpy import *
 
 
 def calc_a(g, nu=3):
@@ -119,7 +118,7 @@ def calc_beta(v, g, nu=3):
     beta = (
         (nu + 2)
         * (g + 1)
-        * array(
+        * np.array(
             (
                 0.25,
                 (g / (g - 1)) * 0.5,
@@ -128,20 +127,20 @@ def calc_beta(v, g, nu=3):
                 / ((nu + 2) * (g + 1) - 2 * (2 + nu * (g - 1))),
                 -0.5 / (g - 1),
             ),
-            dtype=float64,
+            dtype=np.float64,
         )
     )
 
-    beta = outer(beta, v)
+    beta = np.outer(beta, v)
 
-    beta += (g + 1) * array(
+    beta += (g + 1) * np.array(
         (
             0.0,
             -1.0 / (g - 1),
             (nu + 2) / ((nu + 2) * (g + 1) - 2.0 * (2 + nu * (g - 1))),
             1.0 / (g - 1),
         ),
-        dtype=float64,
+        dtype=np.float64,
     ).reshape((4, 1))
 
     return beta
@@ -161,17 +160,19 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     v_min = 2.0 / ((nu + 2) * g)
     v_max = 4.0 / ((nu + 2) * (g + 1))
 
-    v = v_min + arange(n) * (v_max - v_min) / (n - 1.0)
+    v = v_min + np.arange(n) * (v_max - v_min) / (n - 1.0)
 
     a = calc_a(g, nu)
     beta = calc_beta(v, g=g, nu=nu)
-    lbeta = log(beta)
+    lbeta = np.log(beta)
 
-    r = exp(-a[0] * lbeta[0] - a[2] * lbeta[1] - a[1] * lbeta[2])
-    rho = ((g + 1.0) / (g - 1.0)) * exp(
+    r = np.exp(-a[0] * lbeta[0] - a[2] * lbeta[1] - a[1] * lbeta[2])
+    rho = ((g + 1.0) / (g - 1.0)) * np.exp(
         a[3] * lbeta[1] + a[5] * lbeta[3] + a[4] * lbeta[2]
     )
-    p = exp(nu * a[0] * lbeta[0] + (a[5] + 1) * lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2])
+    p = np.exp(
+        nu * a[0] * lbeta[0] + (a[5] + 1) * lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2]
+    )
     u = beta[0] * r * 4.0 / ((g + 1) * (nu + 2))
     p *= 8.0 / ((g + 1) * (nu + 2) * (nu + 2))
 
@@ -185,7 +186,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     p[0] = p[1]
 
     # volume of an n-sphere
-    vol = (pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * power(r, nu)
+    vol = (np.pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * np.power(r, nu)
 
     # note we choose to evaluate the integral in this way because the
     # volumes of the first few elements (i.e near v=vmin) are shrinking
@@ -196,7 +197,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     # (dimensionless) energy of the model solution
     de = rho * u * u * 0.5 + p / (g - 1)
     # integrate (trapezium rule)
-    q = inner(de[1:] + de[:-1], diff(vol)) * 0.5
+    q = np.inner(de[1:] + de[:-1], np.diff(vol)) * 0.5
 
     # the factor to convert to this particular problem
     fac = (q * (t**nu) * rho0 / E0) ** (-1.0 / (nu + 2))

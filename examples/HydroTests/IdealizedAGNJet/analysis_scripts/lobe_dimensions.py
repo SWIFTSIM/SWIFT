@@ -1,4 +1,5 @@
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
 import swiftsimio as sw
 
@@ -24,7 +25,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -105,7 +106,6 @@ for i in snapshots:
     lobe_radii.append(lobe_radius)
 
 # Make the plot
-import matplotlib.pyplot as plt
 
 plt.style.use("classic")
 fig = plt.figure(figsize=(8, 6))

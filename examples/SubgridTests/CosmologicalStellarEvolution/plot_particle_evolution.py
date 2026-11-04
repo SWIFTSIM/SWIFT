@@ -26,10 +26,10 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 from scipy import stats
 import h5py
-import numpy as np
 import glob
 import os.path
 
@@ -61,7 +61,7 @@ params = {
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 
 # Number of snapshots and elements
@@ -104,7 +104,7 @@ x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 z = pos[:, 2] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = sqrt(x**2 + y**2 + z**2)
+r = np.sqrt(x**2 + y**2 + z**2)
 v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -114,16 +114,16 @@ mass = sim["/PartType0/Masses"][:]
 IDs = sim["/PartType0/ParticleIDs"][:]
 
 # Find which particles are closest to centre of box
-index = argsort(r)
-part_IDs_to_plot = zeros(n_particles_to_plot)
+index = np.argsort(r)
+part_IDs_to_plot = np.zeros(n_particles_to_plot)
 part_IDs_to_plot = np.sort(IDs[index[0:n_particles_to_plot]])
 
 # Declare arrrays to plot
-masses_to_plot = zeros((n_particles_to_plot, n_snapshots))
-v_r_to_plot = zeros((n_particles_to_plot, n_snapshots))
-metallicities_to_plot = zeros((n_particles_to_plot, n_snapshots))
-internal_energies_to_plot = zeros((n_particles_to_plot, n_snapshots))
-t = zeros(n_snapshots)
+masses_to_plot = np.zeros((n_particles_to_plot, n_snapshots))
+v_r_to_plot = np.zeros((n_particles_to_plot, n_snapshots))
+metallicities_to_plot = np.zeros((n_particles_to_plot, n_snapshots))
+internal_energies_to_plot = np.zeros((n_particles_to_plot, n_snapshots))
+t = np.zeros(n_snapshots)
 
 # Read data from rest of snapshots
 for i in range(n_snapshots):
@@ -137,7 +137,7 @@ for i in range(n_snapshots):
     y = pos[:, 1] - boxSize / 2
     z = pos[:, 2] - boxSize / 2
     vel = sim["/PartType0/Velocities"][:, :]
-    r = sqrt(x**2 + y**2 + z**2)
+    r = np.sqrt(x**2 + y**2 + z**2)
     v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
     u = sim["/PartType0/InternalEnergies"][:]
     S = sim["/PartType0/Entropies"][:]
@@ -157,12 +157,12 @@ for i in range(n_snapshots):
 
 
 # Plot the interesting quantities
-figure()
+plt.figure()
 
 # Radial velocity --------------------------------
-subplot(221)
+plt.subplot(221)
 for j in range(n_particles_to_plot):
-    plot(
+    plt.plot(
         t * unit_time_in_cgs / Myr_in_cgs,
         v_r_to_plot[j, :] * unit_vel_in_cgs,
         linewidth=0.5,
@@ -170,14 +170,14 @@ for j in range(n_particles_to_plot):
         ms=0.5,
         alpha=0.1,
     )
-xlabel("Time (Myr)", labelpad=0)
-ylabel("Radial velocity $(\\rm{cm} \cdot \\rm{s}^{-1})$", labelpad=0)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("Time (Myr)", labelpad=0)
+plt.ylabel("Radial velocity $(\\rm{cm} \cdot \\rm{s}^{-1})$", labelpad=0)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Internal energy --------------------------------
-subplot(222)
+plt.subplot(222)
 for j in range(n_particles_to_plot):
-    plot(
+    plt.plot(
         t * unit_time_in_cgs / Myr_in_cgs,
         internal_energies_to_plot[j, :] * unit_energy_in_cgs / unit_mass_in_cgs,
         linewidth=0.5,
@@ -185,14 +185,14 @@ for j in range(n_particles_to_plot):
         ms=0.5,
         alpha=0.1,
     )
-xlabel("Time (Myr)", labelpad=0)
-ylabel("Internal energy $(\\rm{erg} \cdot \\rm{g}^{-1})$", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("Time (Myr)", labelpad=0)
+plt.ylabel("Internal energy $(\\rm{erg} \cdot \\rm{g}^{-1})$", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Masses --------------------------------
-subplot(223)
+plt.subplot(223)
 for j in range(n_particles_to_plot):
-    plot(
+    plt.plot(
         t * unit_time_in_cgs / Myr_in_cgs,
         masses_to_plot[j, :] * unit_mass_in_cgs / Msun_in_cgs,
         linewidth=0.5,
@@ -200,14 +200,14 @@ for j in range(n_particles_to_plot):
         ms=0.5,
         alpha=0.1,
     )
-xlabel("Time (Myr)", labelpad=0)
-ylabel("Mass (Msun)", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("Time (Myr)", labelpad=0)
+plt.ylabel("Mass (Msun)", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Metallicities --------------------------------
-subplot(224)
+plt.subplot(224)
 for j in range(n_particles_to_plot):
-    plot(
+    plt.plot(
         t * unit_time_in_cgs / Myr_in_cgs,
         metallicities_to_plot[j, :],
         linewidth=0.5,
@@ -215,8 +215,8 @@ for j in range(n_particles_to_plot):
         ms=0.5,
         alpha=0.1,
     )
-xlabel("Time (Myr)", labelpad=0)
-ylabel("Metallicity", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("Time (Myr)", labelpad=0)
+plt.ylabel("Metallicity", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
-savefig("particle_evolution.png", dpi=200)
+plt.savefig("particle_evolution.png", dpi=200)

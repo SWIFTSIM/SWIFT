@@ -1,4 +1,5 @@
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
 import swiftsimio as sw
 
@@ -24,7 +25,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -45,7 +46,6 @@ m_H = 1.67262e-24  # g
 gas_density_0 *= (10**10 * Msun / kpc**3) / (mu * m_H)
 
 # Make plot
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 plt.style.use("classic")

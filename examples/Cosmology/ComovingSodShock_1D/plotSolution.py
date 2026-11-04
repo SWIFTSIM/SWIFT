@@ -43,10 +43,11 @@ from riemannSolver import RiemannSolver
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 import h5py
 
-style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -86,7 +87,7 @@ x += x_min
 solver = RiemannSolver(gas_gamma)
 
 delta_x = (x_max - x_min) / N
-x_s = arange(0.5 * x_min, 0.5 * x_max, delta_x)
+x_s = np.arange(0.5 * x_min, 0.5 * x_max, delta_x)
 rho_s, v_s, P_s, _ = solver.solve(rho_L, v_L, P_L, rho_R, v_R, P_R, x_s / time)
 
 # Additional arrays
@@ -94,107 +95,107 @@ u_s = P_s / (rho_s * (gas_gamma - 1.0))  # internal energy
 s_s = P_s / rho_s**gas_gamma  # entropic function
 
 # Shock position (since we want to overplot it in the viscosity/diffusion plot
-c_R = sqrt(gas_gamma * P_R / rho_R)
+c_R = np.sqrt(gas_gamma * P_R / rho_R)
 x_shock = (c_R + v_R) * time
 
 # Plot the interesting quantities
-figure(figsize=(7, 7 / 1.6))
+plt.figure(figsize=(7, 7 / 1.6))
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(x, v, ".", color="r", ms=4.0)
-plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(-0.1, 0.95)
+plt.subplot(231)
+plt.plot(x, v, ".", color="r", ms=4.0)
+plt.plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(-0.1, 0.95)
 
 # Density profile --------------------------------
-subplot(232)
-plot(x, rho, ".", color="r", ms=4.0)
-plot(x_s, rho_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(0.05, 1.1)
+plt.subplot(232)
+plt.plot(x, rho, ".", color="r", ms=4.0)
+plt.plot(x_s, rho_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0.05, 1.1)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(x, P, ".", color="r", ms=4.0)
-plot(x_s, P_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Pressure}}~P$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(0.01, 1.1)
+plt.subplot(233)
+plt.plot(x, P, ".", color="r", ms=4.0)
+plt.plot(x_s, P_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0.01, 1.1)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(x, u, ".", color="r", ms=4.0)
-plot(x_s, u_s, "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
-xlim(-0.5, 0.5)
-ylim(0.8, 2.2)
+plt.subplot(234)
+plt.plot(x, u, ".", color="r", ms=4.0)
+plt.plot(x_s, u_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.xlim(-0.5, 0.5)
+plt.ylim(0.8, 2.2)
 
 # Entropy/alpha profile ---------------------------------
-subplot(235)
+plt.subplot(235)
 
 if plot_alpha:
-    plot(x, alpha, ".", color="r", ms=4.0)
-    ylabel(r"${\rm{Viscosity}}~\alpha$", labelpad=0)
+    plt.plot(x, alpha, ".", color="r", ms=4.0)
+    plt.ylabel(r"${\rm{Viscosity}}~\alpha$", labelpad=0)
     # Show location of shock
-    axvline(x=x_shock, color="k", alpha=0.5, ls="dashed", lw=1.2)
-    ylim(0, 1)
+    plt.axvline(x=x_shock, color="k", alpha=0.5, ls="dashed", lw=1.2)
+    plt.ylim(0, 1)
 else:
-    plot(x, S, ".", color="r", ms=4.0)
-    plot(x_s, s_s, "--", color="k", alpha=0.8, lw=1.2)
-    ylabel("${\\rm{Entropy}}~S$", labelpad=0)
-    ylim(0.8, 3.8)
+    plt.plot(x, S, ".", color="r", ms=4.0)
+    plt.plot(x_s, s_s, "--", color="k", alpha=0.8, lw=1.2)
+    plt.ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+    plt.ylim(0.8, 3.8)
 
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-xlim(-0.5, 0.5)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.xlim(-0.5, 0.5)
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
 text_fontsize = 5
 
 z_now = 1.0 / anow - 1.0
-text(
+plt.text(
     -0.49,
     0.9,
     "Sod shock with $\\gamma=%.3f$ in 1D at $z=%.2f$" % (gas_gamma, z_now),
     fontsize=text_fontsize,
 )
-text(
+plt.text(
     -0.49,
     0.8,
     "Left: $(P_L, \\rho_L, v_L) = (%.3f, %.3f, %.3f)$" % (P_L, rho_L, v_L),
     fontsize=text_fontsize,
 )
-text(
+plt.text(
     -0.49,
     0.7,
     "Right: $(P_R, \\rho_R, v_R) = (%.3f, %.3f, %.3f)$" % (P_R, rho_R, v_R),
     fontsize=text_fontsize,
 )
 z_i = 1.0 / a_i - 1.0
-text(-0.49, 0.6, "Initial redshift: $%.2f$" % z_i, fontsize=text_fontsize)
-plot([-0.49, 0.1], [0.52, 0.52], "k-", lw=1)
-text(-0.49, 0.4, "SWIFT %s" % git, fontsize=text_fontsize)
-text(-0.49, 0.3, scheme, fontsize=text_fontsize)
-text(-0.49, 0.2, kernel, fontsize=text_fontsize)
-text(
+plt.text(-0.49, 0.6, "Initial redshift: $%.2f$" % z_i, fontsize=text_fontsize)
+plt.plot([-0.49, 0.1], [0.52, 0.52], "k-", lw=1)
+plt.text(-0.49, 0.4, "SWIFT %s" % git, fontsize=text_fontsize)
+plt.text(-0.49, 0.3, scheme, fontsize=text_fontsize)
+plt.text(-0.49, 0.2, kernel, fontsize=text_fontsize)
+plt.text(
     -0.49,
     0.1,
     "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
     fontsize=text_fontsize,
 )
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-tight_layout()
+plt.tight_layout()
 
-savefig("SodShock.png", dpi=200)
+plt.savefig("SodShock.png", dpi=200)

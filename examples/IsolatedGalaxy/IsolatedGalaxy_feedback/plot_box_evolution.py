@@ -21,10 +21,10 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 from scipy import stats
 import h5py
-import numpy as np
 import glob
 import os.path
 
@@ -56,7 +56,7 @@ params = {
     "lines.markersize": 6,
     "lines.linewidth": 3.0,
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 
 # Number of snapshots and elements
@@ -92,12 +92,12 @@ unit_entropy_in_cgs = unit_energy_in_cgs / unit_temp_in_cgs
 Gyr_in_cgs = 3.155e16
 Msun_in_cgs = 1.989e33
 
-box_energy = zeros(n_snapshots)
-box_mass = zeros(n_snapshots)
-box_star_mass = zeros(n_snapshots)
-box_metal_mass = zeros(n_snapshots)
-element_mass = zeros((n_snapshots, n_elements))
-t = zeros(n_snapshots)
+box_energy = np.zeros(n_snapshots)
+box_mass = np.zeros(n_snapshots)
+box_star_mass = np.zeros(n_snapshots)
+box_metal_mass = np.zeros(n_snapshots)
+element_mass = np.zeros((n_snapshots, n_elements))
+t = np.zeros(n_snapshots)
 
 # Read data from snapshots
 for i in range(n_snapshots):
@@ -120,11 +120,11 @@ for i in range(n_snapshots):
     box_energy[i] = np.sum(masses * internal_energies)
 
 # Plot the interesting quantities
-figure()
+plt.figure()
 
 # Box mass --------------------------------
-subplot(221)
-plot(
+plt.subplot(221)
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (box_mass[1:] - box_mass[0]) * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
@@ -133,13 +133,13 @@ plot(
     ms=0.5,
     label="swift",
 )
-xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-ylabel("Change in total gas particle mass (Msun)", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+plt.ylabel("Change in total gas particle mass (Msun)", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Box metal mass --------------------------------
-subplot(222)
-plot(
+plt.subplot(222)
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (box_metal_mass[1:] - box_metal_mass[0]) * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
@@ -147,13 +147,13 @@ plot(
     ms=0.5,
     label="swift",
 )
-xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+plt.ylabel("Change in total metal mass of gas particles (Msun)", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Box energy --------------------------------
-subplot(223)
-plot(
+plt.subplot(223)
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (box_energy[1:] - box_energy[0]) * unit_energy_in_cgs,
     linewidth=0.5,
@@ -161,13 +161,13 @@ plot(
     ms=0.5,
     label="swift",
 )
-xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-ylabel("Change in total energy of gas particles (erg)", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+plt.ylabel("Change in total energy of gas particles (erg)", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Box mass --------------------------------
-subplot(224)
-plot(
+plt.subplot(224)
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (box_mass[1:] - box_mass[0]) * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
@@ -176,7 +176,7 @@ plot(
     ms=0.5,
     label="gas",
 )
-plot(
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (box_star_mass[1:] - box_star_mass[n_snapshots - 1])
     * unit_mass_in_cgs
@@ -187,7 +187,7 @@ plot(
     ms=0.5,
     label="stars",
 )
-plot(
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (box_star_mass[1:] - box_star_mass[n_snapshots - 1] + box_mass[1:] - box_mass[0])
     * unit_mass_in_cgs
@@ -198,9 +198,9 @@ plot(
     ms=0.5,
     label="total",
 )
-xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
-ylabel("Change in total gas particle mass (Msun)", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-legend()
+plt.xlabel("${\\rm{Time}} (Gyr)$", labelpad=0)
+plt.ylabel("Change in total gas particle mass (Msun)", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.legend()
 
-savefig("box_evolution.png", dpi=200)
+plt.savefig("box_evolution.png", dpi=200)

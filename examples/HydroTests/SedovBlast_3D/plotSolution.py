@@ -35,14 +35,15 @@ gas_gamma = 5.0 / 3.0  # Gas polytropic index
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 from numpy import power
 from scipy import stats
 import h5py
 
-style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
-snap = int(sys.argv[1])
+snap = int(plt.sys.argv[1])
 
 # Read the simulation data
 sim = h5py.File("sedov_%04d.hdf5" % snap, "r")
@@ -59,7 +60,7 @@ x = pos[:, 0] - boxSize / 2
 y = pos[:, 1] - boxSize / 2
 z = pos[:, 2] - boxSize / 2
 vel = sim["/PartType0/Velocities"][:, :]
-r = sqrt(x**2 + y**2 + z**2)
+r = np.sqrt(x**2 + y**2 + z**2)
 v_r = (x * vel[:, 0] + y * vel[:, 1] + z * vel[:, 2]) / r
 u = sim["/PartType0/InternalEnergies"][:]
 S = sim["/PartType0/Entropies"][:]
@@ -154,7 +155,7 @@ def calc_beta(v, g, nu=3):
     beta = (
         (nu + 2)
         * (g + 1)
-        * array(
+        * np.array(
             (
                 0.25,
                 (g / (g - 1)) * 0.5,
@@ -163,20 +164,20 @@ def calc_beta(v, g, nu=3):
                 / ((nu + 2) * (g + 1) - 2 * (2 + nu * (g - 1))),
                 -0.5 / (g - 1),
             ),
-            dtype=float64,
+            dtype=np.float64,
         )
     )
 
-    beta = outer(beta, v)
+    beta = np.linalg.outer(beta, v)
 
-    beta += (g + 1) * array(
+    beta += (g + 1) * np.array(
         (
             0.0,
             -1.0 / (g - 1),
             (nu + 2) / ((nu + 2) * (g + 1) - 2.0 * (2 + nu * (g - 1))),
             1.0 / (g - 1),
         ),
-        dtype=float64,
+        dtype=np.float64,
     ).reshape((4, 1))
 
     return beta
@@ -196,17 +197,19 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     v_min = 2.0 / ((nu + 2) * g)
     v_max = 4.0 / ((nu + 2) * (g + 1))
 
-    v = v_min + arange(n) * (v_max - v_min) / (n - 1.0)
+    v = v_min + np.arange(n) * (v_max - v_min) / (n - 1.0)
 
     a = calc_a(g, nu)
     beta = calc_beta(v, g=g, nu=nu)
-    lbeta = log(beta)
+    lbeta = np.log(beta)
 
-    r = exp(-a[0] * lbeta[0] - a[2] * lbeta[1] - a[1] * lbeta[2])
-    rho = ((g + 1.0) / (g - 1.0)) * exp(
+    r = np.exp(-a[0] * lbeta[0] - a[2] * lbeta[1] - a[1] * lbeta[2])
+    rho = ((g + 1.0) / (g - 1.0)) * np.exp(
         a[3] * lbeta[1] + a[5] * lbeta[3] + a[4] * lbeta[2]
     )
-    p = exp(nu * a[0] * lbeta[0] + (a[5] + 1) * lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2])
+    p = np.exp(
+        nu * a[0] * lbeta[0] + (a[5] + 1) * lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2]
+    )
     u = beta[0] * r * 4.0 / ((g + 1) * (nu + 2))
     p *= 8.0 / ((g + 1) * (nu + 2) * (nu + 2))
 
@@ -220,7 +223,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     p[0] = p[1]
 
     # volume of an n-sphere
-    vol = (pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * power(r, nu)
+    vol = (np.pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * power(r, nu)
 
     # note we choose to evaluate the integral in this way because the
     # volumes of the first few elements (i.e near v=vmin) are shrinking
@@ -231,7 +234,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     # (dimensionless) energy of the model solution
     de = rho * u * u * 0.5 + p / (g - 1)
     # integrate (trapezium rule)
-    q = inner(de[1:] + de[:-1], diff(vol)) * 0.5
+    q = np.inner(de[1:] + de[:-1], np.diff(vol)) * 0.5
 
     # the factor to convert to this particular problem
     fac = (q * (t**nu) * rho0 / E0) ** (-1.0 / (nu + 2))
@@ -265,7 +268,7 @@ s_s = P_s / rho_s**gas_gamma  # entropic function
 
 
 # Plot the interesting quantities
-figure(figsize=(7, 7 / 1.6))
+plt.figure(figsize=(7, 7 / 1.6))
 
 line_color = "C4"
 binned_color = "C2"
@@ -284,52 +287,52 @@ scatter_props = dict(
 errorbar_props = dict(color=binned_color, ms=binned_marker_size, fmt=".", lw=1.2)
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(r, v_r, **scatter_props)
-plot(r_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
-xlabel("Radius $r$")
-ylabel("Radialvelocity $v_r$")
-xlim(0, 1.3 * r_shock)
-ylim(-0.2, 3.8)
+plt.subplot(231)
+plt.plot(r, v_r, **scatter_props)
+plt.plot(r_s, v_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, v_bin, yerr=v_sigma_bin, **errorbar_props)
+plt.xlabel("Radius $r$")
+plt.ylabel("Radialvelocity $v_r$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-0.2, 3.8)
 
 # Density profile --------------------------------
-subplot(232)
-plot(r, rho, **scatter_props)
-plot(r_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
-xlabel("Radius $r$")
-ylabel("Density $\\rho$")
-xlim(0, 1.3 * r_shock)
-ylim(-0.2, 5.2)
+plt.subplot(232)
+plt.plot(r, rho, **scatter_props)
+plt.plot(r_s, rho_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, rho_bin, yerr=rho_sigma_bin, **errorbar_props)
+plt.xlabel("Radius $r$")
+plt.ylabel("Density $\\rho$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-0.2, 5.2)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(r, P, **scatter_props)
-plot(r_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
-xlabel("Radius $r$")
-ylabel("Pressure $P$")
-xlim(0, 1.3 * r_shock)
-ylim(-1, 12.5)
+plt.subplot(233)
+plt.plot(r, P, **scatter_props)
+plt.plot(r_s, P_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, P_bin, yerr=P_sigma_bin, **errorbar_props)
+plt.xlabel("Radius $r$")
+plt.ylabel("Pressure $P$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-1, 12.5)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(r, u, **scatter_props)
-plot(r_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
-errorbar(r_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
-xlabel("Radius $r$")
-ylabel("Internal Energy $u$")
-xlim(0, 1.3 * r_shock)
-ylim(-2, 22)
+plt.subplot(234)
+plt.plot(r, u, **scatter_props)
+plt.plot(r_s, u_s, "--", color=line_color, alpha=0.8, lw=1.2)
+plt.errorbar(r_bin, u_bin, yerr=u_sigma_bin, **errorbar_props)
+plt.xlabel("Radius $r$")
+plt.ylabel("Internal Energy $u$")
+plt.xlim(0, 1.3 * r_shock)
+plt.ylim(-2, 22)
 
 # Entropy profile ---------------------------------
-subplot(235)
-xlabel("Radius $r$")
+plt.subplot(235)
+plt.xlabel("Radius $r$")
 if plot_diffusion or plot_viscosity:
     if plot_diffusion:
-        plot(r, diffusion, **scatter_props)
-        errorbar(
+        plt.plot(r, diffusion, **scatter_props)
+        plt.errorbar(
             r_bin,
             alpha_diff_bin,
             yerr=alpha_diff_sigma_bin,
@@ -338,8 +341,8 @@ if plot_diffusion or plot_viscosity:
         )
 
     if plot_viscosity:
-        plot(r, viscosity, **scatter_props)
-        errorbar(
+        plt.plot(r, viscosity, **scatter_props)
+        plt.errorbar(
             r_bin,
             alpha_visc_bin,
             yerr=alpha_visc_sigma_bin,
@@ -350,44 +353,44 @@ if plot_diffusion or plot_viscosity:
             lw=1.2,
         )
 
-    ylabel(r"Rate Coefficient $\alpha$", labelpad=0)
-    legend()
+    plt.ylabel(r"Rate Coefficient $\alpha$", labelpad=0)
+    plt.legend()
 else:
-    plot(r, S, **scatter_props)
-    plot(r_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
-    errorbar(r_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
-    ylabel("Entropy $S$", labelpad=0)
-    ylim(-5, 50)
+    plt.plot(r, S, **scatter_props)
+    plt.plot(r_s, s_s, "--", color=line_color, alpha=0.8, lw=1.2)
+    plt.errorbar(r_bin, S_bin, yerr=S_sigma_bin, **errorbar_props)
+    plt.ylabel("Entropy $S$", labelpad=0)
+    plt.ylim(-5, 50)
 
-xlim(0, 1.3 * r_shock)
+plt.xlim(0, 1.3 * r_shock)
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
 text_fontsize = 5
 
-text(
+plt.text(
     -0.45,
     0.9,
     "Sedov blast with  $\\gamma=%.3f$ in 3D at $t=%.2f$" % (gas_gamma, time),
     fontsize=text_fontsize,
 )
-text(-0.45, 0.8, "Background $\\rho_0=%.2f$" % (rho_0), fontsize=text_fontsize)
-text(-0.45, 0.7, "Energy injected $E_0=%.2f$" % (E_0), fontsize=text_fontsize)
-plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.45, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
-text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
-text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
-text(
+plt.text(-0.45, 0.8, "Background $\\rho_0=%.2f$" % (rho_0), fontsize=text_fontsize)
+plt.text(-0.45, 0.7, "Energy injected $E_0=%.2f$" % (E_0), fontsize=text_fontsize)
+plt.plot([-0.45, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.45, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.45, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
     -0.45,
     0.2,
     "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
     fontsize=text_fontsize,
 )
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-tight_layout()
+plt.tight_layout()
 
-savefig("Sedov.png")
+plt.savefig("Sedov.png")
