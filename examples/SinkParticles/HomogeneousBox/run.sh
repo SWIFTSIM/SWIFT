@@ -18,19 +18,6 @@ echo "========================================"
 echo "Preparing the simulation..."
 echo "========================================"
 
-# Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
-then
-    rm -f ICs_homogeneous_box.hdf5
-fi
-
-#Create the ICs if they do not exist
-if [ ! -e ICs_homogeneous_box.hdf5 ]
-then
-    echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length
-fi
-
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
@@ -55,8 +42,20 @@ if [[ -z "$debug" || "$debug" -eq 1 ]]; then
     fi
 
     parameter_file="params_debug.yml"
+    ics_params=""
 else
+    # The ICs depend on the level and Jeans length, so name them after both
+    ics_file="ICs_homogeneous_box_level${level}_lJ${jeans_length}.hdf5"
+
+    # Create the ICs if they do not exist
+    if [ ! -e $ics_file ]
+    then
+	echo "Generating initial conditions to run the example..."
+	python3 makeIC.py --level $level -o $ics_file --lJ $jeans_length
+    fi
+
     parameter_file="params.yml"
+    ics_params="--param=InitialConditions:file_name:$ics_file"
 fi
 
 # Create output directory
@@ -86,7 +85,7 @@ echo "========================================"
 echo "Running simulation..."
 echo "========================================"
 $swift --hydro $runtime_params --stars --self-gravity --feedback \
-       --cooling --sync --limiter --threads=$n_threads \
+       --cooling --sync --limiter --threads=$n_threads $ics_params \
        $parameter_file 2>&1 | tee output.log
 
 echo "========================================"

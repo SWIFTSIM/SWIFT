@@ -3,7 +3,7 @@ import matplotlib
 matplotlib.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
+import glob
 
 plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
@@ -31,7 +31,7 @@ plt.rcParams.update(params)
 import h5py as h5
 
 # File containing the total energy
-stats_filename = "./energy.txt"
+stats_filename = "./statistics.txt"
 
 # First snapshot
 snap_filename = "Isothermal_0000.hdf5"
@@ -54,23 +54,24 @@ Vrot = float(parameters.attrs["IsothermalPotential:vrot"])
 centre = [box_size / 2, box_size / 2, box_size / 2]
 f.close()
 
-# Read the statistics summary
-file_energy = np.loadtxt("energy.txt")
-time_stats = file_energy[:, 0]
-E_kin_stats = file_energy[:, 3]
-E_pot_stats = file_energy[:, 5]
+# Read the statistics summary (columns: (1) Time, (13) Kin. Energy, (15) Pot. energy)
+file_energy = np.loadtxt(stats_filename)
+time_stats = file_energy[:, 1]
+E_kin_stats = file_energy[:, 13]
+E_pot_stats = file_energy[:, 15]
 E_tot_stats = E_kin_stats + E_pot_stats
 
 # Read the snapshots
-time_snap = np.zeros(402)
-E_kin_snap = np.zeros(402)
-E_pot_snap = np.zeros(402)
-E_tot_snap = np.zeros(402)
-Lz_snap = np.zeros(402)
+snap_filenames = sorted(glob.glob("Isothermal_[0-9][0-9][0-9][0-9].hdf5"))
+n_snaps = len(snap_filenames)
+time_snap = np.zeros(n_snaps)
+E_kin_snap = np.zeros(n_snaps)
+E_pot_snap = np.zeros(n_snaps)
+E_tot_snap = np.zeros(n_snaps)
+Lz_snap = np.zeros(n_snaps)
 
 # Read all the particles from the snapshots
-for i in range(402):
-    snap_filename = "Isothermal_%0.4d.hdf5" % i
+for i, snap_filename in enumerate(snap_filenames):
     f = h5.File(snap_filename, "r")
 
     pos_x = f["PartType1/Coordinates"][:, 0]
@@ -88,11 +89,12 @@ for i in range(402):
     )
     Lz = (pos_x[:] - centre[0]) * vel_y[:] - (pos_y[:] - centre[1]) * vel_x[:]
 
-    time_snap[i] = f["Header"].attrs["Time"]
+    time_snap[i] = f["Header"].attrs["Time"][0]
     E_kin_snap[i] = np.sum(0.5 * mass * (vel_x[:] ** 2 + vel_y[:] ** 2 + vel_z[:] ** 2))
     E_pot_snap[i] = np.sum(mass * Vrot**2 * np.log(r))
     E_tot_snap[i] = E_kin_snap[i] + E_pot_snap[i]
     Lz_snap[i] = np.sum(Lz)
+    f.close()
 
 # Plot energy evolution
 plt.figure()

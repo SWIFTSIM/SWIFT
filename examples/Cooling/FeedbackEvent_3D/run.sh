@@ -6,6 +6,11 @@ if [ ! -f glassCube_32.hdf5 ]; then
     ./getGlass.sh
 fi
 
+if [ ! -e coolingtables ]; then
+    echo "Fetching EAGLE cooling tables"
+    ../getEagleCoolingTable.sh
+fi
+
 if [ ! -f feedback.hdf5 ]; then
     echo "Generating ICs"
     python3 ./makeIC.py

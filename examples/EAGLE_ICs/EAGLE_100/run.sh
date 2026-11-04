@@ -28,12 +28,10 @@ then
     ../getEaglePhotometryTable.sh
 fi
 
-# The following run-time options are broken down by line as:
-# Basic run-time options
-# Create and run with stars
-# Radiative options - run with cooling and stellar feedback
-# Run with the time-step limiter required to capture feedback
-# Run with black holes - fof is needed for the seeding
+# The run-time options are broken down by line as:
+# Cosmology and all the EAGLE model options (--eagle is equivalent to
+#   --hydro --limiter --sync --self-gravity --stars --star-formation
+#   --cooling --feedback --black-holes --fof; fof is needed for the BH seeding)
 # Threading options - run with threads and pinning (latter not required but improves performance)
 # The corresponding parameter file for this run
 
