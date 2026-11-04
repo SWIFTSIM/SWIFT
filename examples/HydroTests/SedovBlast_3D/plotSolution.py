@@ -37,7 +37,6 @@ import matplotlib
 matplotlib.use("Agg")
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy import power
 from scipy import stats
 import h5py
 
@@ -51,8 +50,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 pos = sim["/PartType0/Coordinates"][:, :]
@@ -168,7 +167,7 @@ def calc_beta(v, g, nu=3):
         )
     )
 
-    beta = np.linalg.outer(beta, v)
+    beta = np.outer(beta, v)
 
     beta += (g + 1) * np.array(
         (
@@ -223,7 +222,7 @@ def sedov(t, E0, rho0, g, n=1000, nu=3):
     p[0] = p[1]
 
     # volume of an n-sphere
-    vol = (np.pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * power(r, nu)
+    vol = (np.pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * np.power(r, nu)
 
     # note we choose to evaluate the integral in this way because the
     # volumes of the first few elements (i.e near v=vmin) are shrinking
