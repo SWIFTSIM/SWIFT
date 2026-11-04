@@ -119,7 +119,7 @@ GEARPressureFloor:
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
   with_UV_background: 1                        # Enable or not the UV background
-  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  redshift: -1                                 # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
