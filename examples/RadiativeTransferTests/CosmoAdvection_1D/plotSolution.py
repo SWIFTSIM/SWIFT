@@ -201,7 +201,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     if plot_all_data:
 
         fig = plt.figure(figsize=(5.05 * ngroups, 5.4), dpi=200)
-        figname = filename[:-5] + f"-all-quantities.png"
+        figname = filename[:-5] + "-all-quantities.png"
 
         for g in range(ngroups):
 

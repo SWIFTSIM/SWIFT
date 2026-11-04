@@ -114,7 +114,6 @@ def plot_ionization(filename):
     data = swiftsimio.load(filename)
     meta = data.metadata
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [
         0.01 * meta.boxsize[0].v,
         0.99 * meta.boxsize[0].v,

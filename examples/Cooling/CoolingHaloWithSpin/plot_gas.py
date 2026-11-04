@@ -120,10 +120,8 @@ def plot_gas(filename, fullbox=False, extent=0.1, scatter=False):
     xlabel_units_str = meta.boxsize.units.latex_representation()
 
     # update shared parameters
-    global imshow_kwargs
     imshow_kwargs["extent"] = imshow_extent
 
-    global projection_kwargs
     projection_kwargs["region"] = region
 
     # Make the actual plot

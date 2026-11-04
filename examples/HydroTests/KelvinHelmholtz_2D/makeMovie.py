@@ -54,8 +54,6 @@ def frame(n, *args):
     Make a single frame. Requires the global variables plot and dpi.
     """
 
-    global plot, dpi
-
     fn = "{}_{:04d}.hdf5".format(filename, n)
 
     return make_plot(fn, plot, dpi, dpi, (0, 1), (0, 1))

@@ -326,7 +326,7 @@ if __name__ == "__main__":
         ax4.plot(
             t,
             tot_energy,
-            label=f"total energy budget",
+            label="total energy budget",
             color="k",
             ls="--",
             **plotkwargs,

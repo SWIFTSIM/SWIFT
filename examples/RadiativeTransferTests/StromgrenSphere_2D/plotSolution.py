@@ -148,7 +148,6 @@ def plot_result(filename):
     data = swiftsimio.load(filename)
     meta = data.metadata
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [
         0.0 * meta.boxsize[0].v,
         0.9 * meta.boxsize[0].v,

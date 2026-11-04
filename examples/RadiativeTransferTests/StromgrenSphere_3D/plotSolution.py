@@ -83,7 +83,6 @@ def plot_result(filename):
     meta = data.metadata
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [
         0.0 * meta.boxsize[0].v,
         0.9 * meta.boxsize[0].v,

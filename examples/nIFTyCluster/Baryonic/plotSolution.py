@@ -337,7 +337,7 @@ def info(
 
 
 def get_center(snapshot):
-    catalogue_filename = f"halo_0303.properties"
+    catalogue_filename = "halo_0303.properties"
 
     with h5py.File(catalogue_filename, "r") as handle:
         highest_mass = handle["Mass_200crit"][...].argsort()[-1]
