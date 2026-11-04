@@ -80,12 +80,12 @@ def get_data_dump(metadata):
 
     try:
         viscosity = metadata.viscosity_info
-    except:
+    except KeyError:
         viscosity = "No info"
 
     try:
         diffusion = metadata.diffusion_info
-    except:
+    except KeyError:
         diffusion = "No info"
 
     output = (
