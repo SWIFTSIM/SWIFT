@@ -48,8 +48,6 @@ GrackleCooling:
   with_UV_background: 0 # Enable or not the UV background
   redshift: 0 # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1 # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
-  provide_specific_heating_rates: 0 # User provide specific heating rates
   self_shielding_method: 0 # Grackle (<= 3) or Gear self shielding method
   max_steps: 1000
   convergence_limit: 1e-2
