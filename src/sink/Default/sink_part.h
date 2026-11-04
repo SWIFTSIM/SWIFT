@@ -19,6 +19,7 @@
 #ifndef SWIFT_DEFAULT_SINK_PART_H
 #define SWIFT_DEFAULT_SINK_PART_H
 
+#include "feedback_struct.h"
 #include "timeline.h"
 #include "tracers_struct.h"
 
@@ -90,6 +91,9 @@ struct sink {
 
   /*! Tracer structure */
   struct tracers_sink_data tracers_data;
+
+  /*! Feedback structure */
+  struct feedback_sink_data feedback_data;
 
 #ifdef DEBUG_INTERACTIONS_SINKS
   /*! Number of interactions in merger SELF and PAIR */
