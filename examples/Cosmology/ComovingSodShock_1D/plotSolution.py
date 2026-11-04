@@ -55,14 +55,14 @@ snap = int(sys.argv[1])
 # Read the simulation data
 sim = h5py.File("sodShock_%04d.hdf5" % snap, "r")
 boxSize = sim["/Header"].attrs["BoxSize"][0]
-anow = sim["/Header"].attrs["Scale-factor"]
-a_i = sim["/Cosmology"].attrs["a_beg"]
-H_0 = sim["/Cosmology"].attrs["H0 [internal units]"]
+anow = sim["/Header"].attrs["Scale-factor"][0]
+a_i = sim["/Cosmology"].attrs["a_beg"][0]
+H_0 = sim["/Cosmology"].attrs["H0 [internal units]"][0]
 time = 2.0 * (1.0 / np.sqrt(a_i) - 1.0 / np.sqrt(anow)) / H_0
 scheme = sim["/HydroScheme"].attrs["Scheme"].decode("utf-8")
 kernel = sim["/HydroScheme"].attrs["Kernel function"].decode("utf-8")
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"].decode("utf-8")
 
 x = sim["/PartType0/Coordinates"][:, 0]

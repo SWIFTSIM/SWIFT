@@ -58,8 +58,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"].decode("utf-8")
 kernel = sim["/HydroScheme"].attrs["Kernel function"].decode("utf-8")
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"].decode("utf-8")
 
 x = sim["/PartType0/Coordinates"][:, 0]
@@ -71,12 +71,12 @@ rho = sim["/PartType0/Densities"][:]
 try:
     alpha = sim["/PartType0/ViscosityParameters"][:]
     plot_alpha = True
-except:
+except KeyError:
     plot_alpha = False
 try:
-    alpha_diff = sim["PartType0/Diffusion"][:]
+    alpha_diff = sim["/PartType0/DiffusionParameters"][:]
     plot_alpha_diff = True
-except:
+except KeyError:
     plot_alpha_diff = False
 
 N = 1000  # Number of points
@@ -99,6 +99,11 @@ s_s = P_s / rho_s**gas_gamma  # entropic function
 # Shock position (since we want to overplot it in the viscosity/diffusion plot
 c_R = np.sqrt(gas_gamma * P_R / rho_R)
 x_shock = (c_R + v_R) * time
+
+# Contact discontinuity position (overplotted in the diffusion plot). It moves
+# with the velocity of the middle state, which is the maximum of the velocity
+# profile in the Sod problem
+x_34 = np.max(v_s) * time
 
 # Plot the interesting quantities
 plt.figure(figsize=(7, 7 / 1.6))
