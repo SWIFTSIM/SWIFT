@@ -1,5 +1,5 @@
 These examples show how to run Swift on initial conditions of a two-component (gravity-only)
-dwarf model generated with the pNbody code (http://lastro.epfl.ch/projects/pNbody/).
+dwarf model generated with the pNbody code (https://lastro.epfl.ch/projects/pNbody/).
 
 In the current example, the dwarf galaxy is composed of a Plummer spheroid 
 embedded in a cuspy or cored halo.

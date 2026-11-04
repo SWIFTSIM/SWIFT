@@ -4,7 +4,7 @@ Keplerian Ring Test
 This test uses the '2D Keplerian Ring' to assess the accuracy of SPH
 calculations. It is known to fail with all schemes in SWIFT. For more
 information on the test, please see Cullen & Dehnen 2009
-(http://arxiv.org/abs/1006.1524) Section 4.3.
+(https://arxiv.org/abs/1006.1524) Section 4.3.
 
 It is key that for this test in particular that the initial conditions are
 perfectly arranged (here we use the same methodology as described in the paper
