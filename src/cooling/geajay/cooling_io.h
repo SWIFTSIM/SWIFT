@@ -1165,6 +1165,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GeajayCooling:accurate_relative_tolerance", -1.);
   cooling->accurate_absolute_tolerance = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:accurate_absolute_tolerance", -1.);
+  if (cooling->solver < -1)
+    error("GeajayCooling:solver must be 0 (cheap) or 1 (accurate), got %d.",
+          cooling->solver);
+  if (cooling->accurate_relative_tolerance != -1. &&
+      !(cooling->accurate_relative_tolerance > 0.))
+    error("GeajayCooling:accurate_relative_tolerance must be > 0, got %g.",
+          cooling->accurate_relative_tolerance);
+  if (cooling->accurate_absolute_tolerance != -1. &&
+      !(cooling->accurate_absolute_tolerance > 0.))
+    error("GeajayCooling:accurate_absolute_tolerance must be > 0, got %g.",
+          cooling->accurate_absolute_tolerance);
 
   /* Thermal time */
   cooling->thermal_time =

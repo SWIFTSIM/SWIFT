@@ -1855,7 +1855,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (geajay_initialize_chemistry_data(&cooling->chemistry_data,
                                        &cooling->chemistry_rates,
                                        &cooling->units) == 0) {
-    error("Error in geajay_initialize_chemistry_data");
+    error("Error in geajay_initialize_chemistry_data: %s",
+          geajay_last_error_message());
   }
 
   /* geajay resolves a negative hydrogen mass fraction to its own value */
