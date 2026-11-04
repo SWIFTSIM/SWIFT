@@ -22,7 +22,7 @@ as well as ``wget`` for grabbing the glass).
    cd examples/HydroTests/SodShock_3D
    ./getGlass.sh
    python3 makeIC.py
-   ../swift --hydro --threads=4 sodShock.yml
+   ../../../swift --hydro --threads=4 sodShock.yml
    python3 plotSolution.py 1
 
 
