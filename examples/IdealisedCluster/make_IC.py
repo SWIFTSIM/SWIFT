@@ -13,22 +13,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import scipy.interpolate as sci
-from tqdm import tqdm
 import sys
-import time
 from shutil import copyfile
 from unyt import unyt_array
 import unyt
 
 np.random.seed(420)
-import swiftsimio.visualisation as swvis
 from swiftsimio.visualisation import generate_smoothing_lengths
-import scipy.optimize as scop
 from scipy.optimize import root_scalar
-from swiftsimio.objects import cosmo_array, cosmo_factor
-from swiftsimio.metadata.writer.unit_systems import cosmo_units
-from swiftsimio import Writer
-import swiftsimio as sw
+from swiftsimio.objects import cosmo_array
 
 # definition of constants
 G = 4.3e4  # cm^2 s^-2
@@ -130,7 +123,6 @@ def find_gas_mass(Mdm_encl, Mstar_encl, r_array):
 
     idx_min_mass_500 = np.argmin(np.abs(rho_avg - rho_500))
 
-    r500_guess = r_array[idx_min_mass_500]
     m500_guess = Mdm_stars_encl[idx_min_mass_500]
     m500_gas_fraction = gas_fraction_rho500(m500_guess, alpha, mt)
     mgas_mass_guess = m500_gas_fraction * m500_guess
@@ -931,15 +923,13 @@ number_of_gas_particles = len(x_gas)
 print(f"Number of gas particles = {number_of_gas_particles:d}")
 print("Calculate the smoothing lengths:")
 
-smoothing_lengths = (
-    sw.visualisation.smoothing_length.generate.generate_smoothing_lengths(
-        coords[selection_gas],
-        boxsize=boxsize,
-        kernel_gamma=1.936492,
-        neighbours=57,
-        dimension=3,
-        speedup_fac=2,
-    )
+smoothing_lengths = generate_smoothing_lengths(
+    coords[selection_gas],
+    boxsize=boxsize,
+    kernel_gamma=1.936492,
+    neighbours=57,
+    dimension=3,
+    speedup_fac=2,
 )
 
 print("Finished calculating the smoothing lengths")

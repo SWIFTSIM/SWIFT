@@ -11,7 +11,6 @@ Written by Josh Borrow (joshua.borrow@durham.ac.uk)
 
 import os
 import numpy as np
-import scipy.interpolate as si
 
 from swiftsimio import load
 from swiftsimio.visualisation import project_gas
@@ -46,8 +45,6 @@ def frame(n, *args):
     Make a single frame. Requires the global variables plot and dpi.
     """
 
-    global plot, dpi
-
     fn = "{}_{:04d}.hdf5".format(filename, n)
 
     return make_plot(fn, plot, dpi, dpi, (0, 1), (0, 1))
@@ -60,7 +57,6 @@ if __name__ == "__main__":
 
     from tqdm import tqdm
     from matplotlib.animation import FuncAnimation
-    from scipy.stats import gaussian_kde
 
     import matplotlib.pyplot as plt
 

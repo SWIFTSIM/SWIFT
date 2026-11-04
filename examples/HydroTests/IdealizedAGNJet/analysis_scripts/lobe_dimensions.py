@@ -1,12 +1,6 @@
-import pylab
 from pylab import *
-from scipy import stats
 import matplotlib
-from matplotlib.colors import LogNorm
 import swiftsimio as sw
-import glob
-import re
-import os
 
 matplotlib.use("Agg")
 
@@ -112,7 +106,6 @@ for i in snapshots:
 
 # Make the plot
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
 plt.style.use("classic")
 fig = plt.figure(figsize=(8, 6))

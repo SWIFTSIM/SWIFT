@@ -1,12 +1,6 @@
-import pylab
 from pylab import *
-from scipy import stats
 import matplotlib
-from matplotlib.colors import LogNorm
 import swiftsimio as sw
-import glob
-import re
-import os
 from swiftsimio.visualisation import project_gas
 from swiftsimio import mask, load, cosmo_array
 

@@ -31,8 +31,6 @@ import os
 import sys
 import argparse
 
-import unyt
-import numpy as np
 import matplotlib as mpl
 import swiftsimio
 from swiftsimio.visualisation import project_gas

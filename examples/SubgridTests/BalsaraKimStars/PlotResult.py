@@ -20,7 +20,6 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
 from matplotlib.ticker import ScalarFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 

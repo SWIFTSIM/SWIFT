@@ -1,6 +1,5 @@
 #!/bin/env python
 
-import numpy as np
 import healpy as hp
 
 import read_lightcone as rl
