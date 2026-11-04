@@ -726,7 +726,8 @@ GeajayCooling:
   uv_self_shielding: none                      # (optional) Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or HI_HeI_HeII_column (the library's methods, or 0 to 4), or density_threshold (or -1) for the threshold below (default: none)
   # Column shielding of the UV background, read only with uv_self_shielding: HI_HeI_HeII_column (setting a key to a non-default value otherwise stops the run). It needs a species network (H_He or
   # above) and a UV background: with_uv_background: 1, or ionising_background_model: uv_table under background_mode: per_band. The factors come from the column file, built from the spectrum of the UV
-  # rates file in use; geajay refuses a file of another spectrum or redshift grid.
+  # rates file in use; geajay refuses a file of another spectrum or redshift grid. A restart takes these keys from the restart files, not from this file, and opens the column file
+  # again at the same path (a relative path must hold from the directory of the restart).
   # uv_shielding_table_file: FG20_column_shielding.h5 # Required with HI_HeI_HeII_column. Column file of the UV background. No default
   uv_shielding_length_method: none             # Required with HI_HeI_HeII_column: given_length (the proper length path * kernel_gamma * h * a) or Jeans (local Jeans length) for the gas;
                                                # none is refused there. This method applies to gas particles. For a GEAR sink particle the length is its cut-off radius r_cut * a
