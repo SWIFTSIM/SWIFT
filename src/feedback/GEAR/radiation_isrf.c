@@ -169,7 +169,9 @@ void radiation_snapshot_part_propagation(struct part *p,
   if (part_is_active(p, e)) {
     if (p->feedback_data.isrf_packet.step_end_ti == 0)
       radiation_packet_inject_test_beams(
-          p, e->feedback_props->ISRF_packet_test_beam, e->ti_current);
+          p, e->feedback_props->ISRF_packet_test_beam,
+          e->feedback_props->ISRF_packet_test_beam_origin_distance_h,
+          e->ti_current);
     radiation_packet_merge(p, e->ti_current, ti_step, e->time_base,
                            with_cosmology ? e->cosmology : NULL);
     radiation_packet_reset_field_mean(p);

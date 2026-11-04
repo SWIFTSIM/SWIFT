@@ -1640,7 +1640,7 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
         "%d (packet transport only, HII random cone frame flag, redraw period "
         "and star pass count, packet reception slots, ledger of the light "
         "carried out of the box by gas, stars and sinks and by gas swallowed "
-        "by black holes). "
+        "by black holes, distance of the test beam origin). "
         "A restart written by another code version cannot be resumed: rerun "
         "the simulation from its initial conditions.",
         layout, feedback_restart_particle_layout());

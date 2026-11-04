@@ -936,6 +936,7 @@ GEARFeedback:
   ISRF_packet_octant_frame_seed_offset: 0                  # Seed of an extra random rotation of that frame, 0 is none. (Default: 0)
   ISRF_packet_test_beam_1: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0] # (test only) Beam pulse: box corners lo (3) and hi (3), direction (3), PE and LW energy per particle (2). (Default: off)
   ISRF_packet_test_beam_2: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0] # (test only) Second beam pulse, as ISRF_packet_test_beam_1. (Default: off)
+  ISRF_packet_test_beam_origin_distance_h: 1000            # (test only) Distance in smoothing lengths of the origin of the test beams behind each particle, in (0, 1e4]. 1000 is collimated, 1 fans the first hop out by up to 63 deg. (Default: 1000)
 
 GEARRadiation:
   interpolation_size_mass:        500       # Number of elements in the mass interpolation of the Data/Radiation table. (Default: 500)

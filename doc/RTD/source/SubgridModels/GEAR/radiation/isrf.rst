@@ -90,10 +90,13 @@ Light held by a gas particle with no downstream neighbour escapes and leaves the
 Test beams
 ~~~~~~~~~~
 
-Two optional parameters inject a pulse of light without a star. They exist to validate the transport and are not meant for a production run.
+Three optional parameters inject a pulse of light without a star and set its geometry. They exist to validate the transport and are not meant for a production run.
 
 ``GEARFeedback:ISRF_packet_test_beam_1`` and ``GEARFeedback:ISRF_packet_test_beam_2`` (default: off)
   Each is a list of 11 numbers in internal units: the lower corner of a box (3), the upper corner of the box (3), the direction of the beam (3), and the energy given to each gas particle in the PE band and in the Lyman-Werner band (2). Every gas particle inside the box receives that energy once, at its first step, as light that travels along the direction (it is normalised). The pulse then propagates like any other light. A beam with zero energy in both bands is off. The energy is an energy, not a specific energy, in the internal energy unit of the run (internal mass unit times the square of the internal velocity unit). For example, with the units of the example parameter file (:math:`10^{10}\,\mathrm{M}_\odot`, 1 kpc, 1 km/s), one internal energy unit is :math:`1.988\times10^{53}` erg, so a pulse of :math:`10^{45}` erg in the PE band is written as :math:`10^{45} / 1.988\times10^{53} = 5.03\times10^{-9}`.
+
+``GEARFeedback:ISRF_packet_test_beam_origin_distance_h`` (default ``1000``, valid range :math:`(0, 10^4]`)
+  Distance, in smoothing lengths, of the origin of the beam behind each particle that receives it. A large value gives a collimated (parallel) beam: with 1000 the receivers at the kernel edge see the origin within 0.11 degrees of the beam direction. The value ``1`` gives a fan: the first hop then spreads over up to 63 degrees about the direction, and two beams that cross no longer add up. The hop path is a difference of two large distances in single precision, so the dust absorption of a hop loses accuracy at the top of the range.
 
 The injected energy is in no ledger, so a test adds it up from the parameters. SWIFT prints one message for each active beam, stops if an energy is negative, the direction is zero or the upper corner is not above the lower one, and stops if a beam is set with ``ISRF_propagation: 0``. In a cosmological run the corners are comoving coordinates.
 
