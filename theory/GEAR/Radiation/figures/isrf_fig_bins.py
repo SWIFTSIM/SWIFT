@@ -98,21 +98,28 @@ def main() -> None:
         "(a) where the waiting light of one slot is kept, at the merge $t$ (now)"
     )
 
-    # The released fraction of the far share at each merge never exceeds what has arrived.
+    # The far share is cut at the cell ends: each piece leaves whole at the end
+    # of its cell, never ahead of the light that has arrived.
     t = np.linspace(0, 12, 400)
     arrived = np.clip((t - t_f) / (t_l - t_f), 0, 1)
     bot.plot(
         t, arrived, color=st.VERMILION, label="light of the far share that has arrived"
     )
     merges = np.arange(1, 13)
-    released = np.clip((merges - t_f) / (t_l - t_f), 0, 1)
+    cell_ends = (far_end0 + width * np.arange(N_FAR)).astype(float)
+    released = np.zeros(len(merges))
+    for end in cell_ends:
+        lo = max(t_f, end - width)
+        hi = min(t_l, end)
+        if hi > lo:
+            released += np.where(merges >= end, (hi - lo) / (t_l - t_f), 0.0)
     bot.step(
         np.r_[0, merges],
         np.r_[0, released],
         where="post",
         color=st.BLACK,
         lw=1.0,
-        label="released at the merges (one per step)",
+        label="released at the merges (each piece at the end of its cell)",
     )
     bot.plot(merges, released, "o", color=st.BLACK, ms=3)
     bot.set_ylabel("fraction")
