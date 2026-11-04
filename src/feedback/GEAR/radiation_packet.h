@@ -480,7 +480,7 @@ radiation_packet_absorb_in_dust(
  * over `v - u` (#radiation_packet_arrival_delay_receding), at most
  * #RADIATION_PACKET_RECEDING_MAX_FACTOR times the separation over `v`. The
  * limit holds in the frame of the gas: a sender that moves towards the receiver
- * between its stamp and its booking, or a receiver that speeds up after it, can
+ * between its merge and its booking, or a receiver that speeds up after it, can
  * make the front move at up to `v + u` in the frame of the box. That is
  * harmless for `v` near `c`; for a limit of a few km/s in moving gas it is not.
  *
