@@ -22,8 +22,8 @@ import sys
 import random
 from numpy import *
 
-# Generates a swift IC file containing a perturbed cartesian distribution of particles
-# at a constant density and pressure in a cubic box
+# Generates a swift IC file containing a cartesian distribution of particles
+# at a constant density and pressure in a square (2D) box
 
 # Parameters
 periodic = 1  # 1 For periodic box
@@ -51,8 +51,8 @@ ids = zeros((numPart, 1), dtype="L")
 for i in range(L):
     for j in range(L):
         index = i * L + j
-        x = i * boxSize / L + boxSize / (2 * L) + boxSize / (2.0 * L)
-        y = j * boxSize / L + boxSize / (2 * L) + boxSize / (2.0 * L)
+        x = i * boxSize / L + boxSize / (2.0 * L)
+        y = j * boxSize / L + boxSize / (2.0 * L)
         z = 0
         coords[index, 0] = x
         coords[index, 1] = y
