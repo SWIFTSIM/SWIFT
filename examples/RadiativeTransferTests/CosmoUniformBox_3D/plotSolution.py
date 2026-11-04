@@ -76,7 +76,6 @@ def plot_param_over_time(
 
         if plot_physical_quantities:
             physical_energy_density = energy_density.to_physical()
-            physical_mass = mass.to_physical()
             physical_vol = vol.to_physical()
             physical_energy = physical_energy_density * physical_vol
             if param == "energy density":

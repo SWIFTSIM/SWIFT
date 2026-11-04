@@ -175,7 +175,6 @@ def get_snapshot_data(snaplist):
     internal_energies = np.zeros(nsnaps) * energy_units
     photon_energies = np.zeros((ngroups, nsnaps)) * energy_units
 
-    time_first = firstdata.metadata.time.copy()
     for i, snap in enumerate(snaplist):
 
         data = swiftsimio.load(snap)

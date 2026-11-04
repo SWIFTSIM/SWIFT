@@ -38,13 +38,11 @@ def get_energies(handle: h5py.File):
     """
     u = handle["PartType0/InternalEnergy"][:]
     unit_length_in_cgs = handle["/Units"].attrs["Unit length in cgs (U_L)"]
-    unit_mass_in_cgs = handle["/Units"].attrs["Unit mass in cgs (U_M)"]
     unit_time_in_cgs = handle["/Units"].attrs["Unit time in cgs (U_t)"]
     gas_gamma = handle["/HydroScheme"].attrs["Adiabatic index"][0]
     a = handle["/Cosmology"].attrs["Scale-factor"][0]
 
     unit_length_in_si = 0.01 * unit_length_in_cgs
-    unit_mass_in_si = 0.001 * unit_mass_in_cgs
     unit_time_in_si = unit_time_in_cgs
 
     u *= unit_length_in_si**2 / unit_time_in_si**2

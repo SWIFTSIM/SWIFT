@@ -118,7 +118,6 @@ def plot_gas(filename, fullbox=False, extent=0.1, scatter=False):
         imshow_extent = [0, meta.boxsize[0].v, 0, meta.boxsize[1].v]
 
     xlabel_units_str = meta.boxsize.units.latex_representation()
-    time_units_str = meta.time.units.latex_representation()
 
     # update shared parameters
     global imshow_kwargs
