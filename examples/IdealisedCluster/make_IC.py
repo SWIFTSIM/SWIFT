@@ -106,7 +106,7 @@ def mean_density(r_array, rho_avg, rho_500, rho_200, rho_c):
     plt.plot(r_array, np.ones(len(r_array)) * rho_200, linestyle="--")
     plt.plot(r_array, np.ones(len(r_array)) * rho_c, linestyle="--")
     plt.xlabel("Radius [$\\rm kpc$]")
-    plt.ylabel("Average density [$\\rm M_\odot \\rm kpc^{-3}$]")
+    plt.ylabel("Average density [$\\rm M_\\odot \\rm kpc^{-3}$]")
     plt.xscale("log")
     plt.yscale("log")
     plt.savefig("Mean_density_guess.png")
@@ -371,7 +371,7 @@ print(
     f"particle_mass at R200: {particle_mass_function(np.array([R200]), adaptive_mass_radius)}"
 )
 print("-----------")
-print(f"Model used:")
+print("Model used:")
 print(f"We are running with model: {galaxy}")
 print(f"The used mass profile is {mass_scheme}")
 print(f"n: {ms_n:1.4f}")
@@ -379,7 +379,7 @@ print(f"a: {ms_a:1.4f}")
 print(f"b: {ms_b:1.4f}")
 print("#" * 60)
 print("Halo properties")
-print(f"Properties:")
+print("Properties:")
 print(f"M200: {M200:1.4e} Msun")
 print(f"R200: {R200:1.4f} kpc")
 print(f"V200: {V200:1.4f} km/s")
@@ -388,20 +388,20 @@ print(f"Rs_NFW: {Rs:1.4f} kpc")
 print(f"A_Hernquist: {a_hernquist:1.4f} kpc (Hernquist equivalent scale length)")
 print(f"M_dm: {Mdm_hern:1.4e} Msun (total Hernquist mass)")
 print("#" * 60)
-print(f"Stellar properties:")
+print("Stellar properties:")
 print(f"Stellar bulge fraction: {bulge_fraction:1.6f}")
 print(f"Mstar: {Mstar:1.4e} Msun")
-print(f"Reff: Implicit in IC file")
+print("Reff: Implicit in IC file")
 print("#" * 60)
-print(f"Black hole properties")
+print("Black hole properties")
 print(f"M_BH: {mBH:1.4e} Msun")
 print("#" * 60)
 if minimum_temperature:
-    print(f"Constrain on minimum temperature at r=0 are:")
+    print("Constrain on minimum temperature at r=0 are:")
     print(f"Tmin: {Tmin_model:1.4e} K")
     print(f"Tscale length: {Tscale_length:1.4f} kpc")
     print("#" * 60)
-print(f"We will use the fit in Debackere et al. (2020) to find the gas fraction:")
+print("We will use the fit in Debackere et al. (2020) to find the gas fraction:")
 print(f"alpha: {alpha:1.4f}")
 print(f"m_t: {mt:1.4e} Msun")
 print(f"Amount of sigma used: {amount_of_sigma_used:1.2f}")
@@ -442,7 +442,7 @@ R1000 = results_R1000.root
 M500 = Mp_NFW(R500, Rs, M200, cc)
 M1000 = Mp_NFW(R1000, Rs, M200, cc)
 
-print(f"Other halo information (NFW):")
+print("Other halo information (NFW):")
 print(f"R500: {R500:1.4f} kpc")
 print(f"M500: {M500:1.4e} Msun")
 print(f"R500_old: {R500_old:1.4f} kpc")
@@ -450,7 +450,7 @@ print(f"R1000: {R1000:1.4f} kpc")
 print(f"M1000: {M1000:1.4e} Msun")
 print(f"R1000_old: {R1000_old:1.4f} kpc")
 print("#" * 60)
-print(f"Hernquist equivalent halo information:")
+print("Hernquist equivalent halo information:")
 
 results_R500 = root_scalar(
     average_rho_hern_minus_rhox,
@@ -500,16 +500,16 @@ print(
 print(f"Total gass mass within R500: {mgas_mass_guess:1.4e} Msun")
 print(f"Total gass mass within R500 (Hernquist case): {mgas_mass_guess_hern:1.4e} Msun")
 if NFW:
-    print(f"We will use a NFW profile to determine the properties")
+    print("We will use a NFW profile to determine the properties")
 else:
-    print(f"We will use a Hernquist profile to determine the properties")
+    print("We will use a Hernquist profile to determine the properties")
     R500 = R500_hern
     M500 = M500_hern
     m500_gas_fraction = m500_gas_fraction_hern
     mgas_mass_guess = mgas_mass_guess_hern
 
 if gas_mass_used > 0:
-    print(f"we overwrite the gas fraction to match the BAHAMAS sample")
+    print("we overwrite the gas fraction to match the BAHAMAS sample")
     mgas_mass_guess = gas_mass_used
     print(f"The used gas mass is {mgas_mass_guess:1.4e}")
 
@@ -705,14 +705,14 @@ M500_estimate = M1 * (R2 - R500) / delta_R + M2 * (R500 - R1) / delta_R
 
 correction_factor = mgas_mass_guess / M500_estimate
 
-print(f"Match the correct M500 value and solve the hydrostatic equilibrium ODE")
+print("Match the correct M500 value and solve the hydrostatic equilibrium ODE")
 print(f"Current initial estimate of M500_gas: {M500_estimate:1.4e} Msun")
 print(f"Desired M500_gas: {mgas_mass_guess:1.4e} Msun")
 print(f"Estimated density at minimum distance: {rho[0]:1.4e} cm^-3")
 print(f"Correction factor becomes: {correction_factor:1.4e}")
 
 rho *= correction_factor
-print(f"Applied correction factor.")
+print("Applied correction factor.")
 print(f"corrected density at minimum distance: {rho[0]:1.4e} cm^-3")
 print("#" * 60)
 
@@ -733,9 +733,9 @@ j0_angular = (
 
 jmax_angular = j0_angular / (mu_angular - 1.0)
 
-print(f"Setting up the angular momentum profile, e.g. velocity profile")
-print(f"\lambda: {lambda_angular:1.4f}")
-print(f"\mu: {mu_angular:1.4f}")
+print("Setting up the angular momentum profile, e.g. velocity profile")
+print(f"\\lambda: {lambda_angular:1.4f}")
+print(f"\\mu: {mu_angular:1.4f}")
 print(f"j0: {j0_angular/3.086e26:1.4e} km/s kpc")
 print(f"jmax: {jmax_angular/3.086e26:1.4e} km/s kpc")
 
