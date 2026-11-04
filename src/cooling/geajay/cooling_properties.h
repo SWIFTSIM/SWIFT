@@ -327,6 +327,16 @@ struct cooling_function_data {
    * chemistry_data.cheap_energy_update). */
   int cheap_energy_update;
 
+  /*! Solver of networks 1 to 3: 0 cheap, 1 accurate, -1 the geajay default
+   * (GeajayCooling:solver, chemistry_data.solver). */
+  int solver;
+
+  /*! Relative and absolute tolerances of the accurate solver, <= 0 for the
+   * geajay defaults (GeajayCooling:accurate_relative_tolerance and
+   * GeajayCooling:accurate_absolute_tolerance). */
+  double accurate_relative_tolerance;
+  double accurate_absolute_tolerance;
+
   /*! Duration for switching off cooling after an event (e.g. supernovae) */
   double thermal_time;
 
