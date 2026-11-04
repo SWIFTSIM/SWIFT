@@ -349,7 +349,9 @@ struct feedback_isrf_packet_slot_data {
     struct {
       /*! Latest arrival time of the light of each near arrival bin, as the
           distance below the end of the bin. Rounded so that the time is
-          later, never earlier. Valid for a bin that holds energy. */
+          later, never earlier. A faint piece of a particle with a known step
+          takes the time of the bulk (#radiation_packet_join_below_end).
+          Valid for a bin that holds energy. */
       float bin_stamp_below_end[RADIATION_PACKET_BINS];
 
       /*! Distance from the end of each far cell down to the first arrival
