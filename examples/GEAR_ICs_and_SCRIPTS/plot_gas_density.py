@@ -253,9 +253,8 @@ def make_movie(args, image_resolution):
 
     def grab_metadata(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
-        data = sw.load(filename)
-
-        return data.metadata
+        # A mask only reads the metadata, which is all we need here
+        return sw.mask(filename).metadata
 
     def grab_data(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)

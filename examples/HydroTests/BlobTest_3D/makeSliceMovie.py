@@ -6,7 +6,7 @@ Josh Borrow (joshua.borrow@durham.ac.uk) 2019
 LGPLv3
 """
 
-from swiftsimio import load, cosmo_array, cosmo_quantity
+from swiftsimio import load, mask, cosmo_array, cosmo_quantity
 from swiftsimio.visualisation import slice_gas
 
 from p_tqdm import p_map
@@ -137,7 +137,7 @@ image = ax.imshow(np.zeros_like(images[0]), norm=norm, cmap=cmap, origin="lower"
 description_text = ax.text(
     0.5,
     0.5,
-    get_data_dump(load(f"{snapshot_name}_{start_frame:04d}.hdf5").metadata),
+    get_data_dump(mask(f"{snapshot_name}_{start_frame:04d}.hdf5").metadata),
     va="center",
     ha="center",
     **text_args,

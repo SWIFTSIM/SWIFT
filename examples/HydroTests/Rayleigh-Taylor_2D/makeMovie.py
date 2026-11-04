@@ -18,7 +18,7 @@
 #
 ##############################################################################
 
-from swiftsimio import load, cosmo_array
+from swiftsimio import load, mask, cosmo_array
 from swiftsimio.visualisation import project_gas
 from matplotlib.animation import FuncAnimation
 from matplotlib.colors import LogNorm
@@ -130,7 +130,7 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
         0.5,
         0.5,
         get_simulation_information(
-            load(filename + "_{:04d}.hdf5".format(start)).metadata
+            mask(filename + "_{:04d}.hdf5".format(start)).metadata
         ),
         va="center",
         ha="center",

@@ -5,7 +5,7 @@ Makes a rho-T plot. Uses the swiftsimio library.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from swiftsimio import SWIFTDataset
+from swiftsimio import SWIFTDataset, mask
 from swiftsimio.metadata.objects import SWIFTMetadata
 
 from unyt import mh, cm, Gyr
@@ -104,9 +104,8 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
 
     def grab_metadata(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
-        data = SWIFTDataset(filename).metadata
-
-        return data
+        # A mask only reads the metadata, which is all we need here
+        return mask(filename).metadata
 
     def grab_data(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)

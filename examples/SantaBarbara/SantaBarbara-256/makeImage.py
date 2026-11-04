@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
     # Read in the data from file
 
-    if part_type == 0 and sw.load(filename).metadata.n_gas == 0:
+    if part_type == 0 and sw.mask(filename).metadata.n_gas == 0:
         # Must be a dark matter only run
         part_type = 1
 
