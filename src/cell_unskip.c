@@ -986,8 +986,7 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(ci, cj, ci->hydro.h_max_old)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -1106,8 +1105,7 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj, ci->stars.h_max_old)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1235,8 +1233,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-        cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_black_holes_task(ci, cj,
+                                                  ci->black_holes.h_max_old)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -1342,8 +1340,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj, ci->sinks.h_max_old)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1696,8 +1693,7 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(ci, cj, ci->hydro.h_max_old)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;

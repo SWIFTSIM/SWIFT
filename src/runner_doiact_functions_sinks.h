@@ -594,8 +594,7 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
   else {
 
     /* Recurse? */
-    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj, ci->sinks.h_max_old)) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -759,8 +758,7 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-      cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+  if (cell_can_recurse_in_pair_sinks_task(ci, cj, ci->sinks.h_max_old)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;

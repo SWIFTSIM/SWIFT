@@ -3309,8 +3309,7 @@ void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
   if (!cell_is_active_hydro(ci, e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_hydro_task(ci) &&
-      cell_can_recurse_in_pair_hydro_task(cj)) {
+  if (cell_can_recurse_in_pair_hydro_task(ci, cj, ci->hydro.h_max_old)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB(ci, parts, ind);
