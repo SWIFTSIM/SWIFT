@@ -148,7 +148,8 @@ struct feedback_isrf_operator_data {
 
     Memory: every slot costs 20 B per bin (two bands, two floats per bin and
     band, and one stamp float), so `20 * RADIATION_PACKET_SLOTS` B per bin in
-    every gas particle: 240 B at 12 slots, 960 B at 48.
+    every gas particle: 240 B at 12 slots, 960 B at 48. The slot is rounded up
+    to a multiple of 8 B, so an odd count costs up to 4 B more per slot.
 
     Horizon: light that crosses a distance `r` towards a receiver of step
     `dt_r` and smoothing length `h_r` arrives `r / (v dt_r) + s` receiver steps

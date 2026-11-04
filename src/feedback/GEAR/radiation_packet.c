@@ -159,23 +159,40 @@ static void radiation_packet_count_clamp(void) {}
     gives `f = 0.033`; the limit is rounded down. */
 #define RADIATION_PACKET_FAR_SHARE_LIMIT 0.03
 
-/*! Energy of the light placed in the arrival bins and cells since the start of
-    the step, in all and in the far cells, and the same summed over the steps
-    of this rank. Only the light of a new share counts, not the light that a
+/*! Energy of the new light placed in the arrival bins and cells, in all and in
+    the far cells, since the last #radiation_packet_far_share_report. One
+    record per thread, on its own cache line, so that the placement takes no
+    atomic operation. Only the light of a new share counts, not the light that a
     change of the lattice places again. */
-static double radiation_packet_placed_energy = 0.0;
-static double radiation_packet_placed_far_energy = 0.0;
+struct radiation_packet_placed {
+  double all;
+  double far;
+  char pad[48];
+} __attribute__((aligned(64)));
+
+#define RADIATION_PACKET_MAX_THREADS 1024
+static struct radiation_packet_placed
+    radiation_packet_placed_threads[RADIATION_PACKET_MAX_THREADS];
+static int radiation_packet_placed_registered = 0;
+static _Thread_local struct radiation_packet_placed
+    *radiation_packet_placed_mine = NULL;
+
+/*! The same summed over the steps on rank 0, and whether the warning was
+    printed. */
 static double radiation_packet_placed_total[2] = {0.0, 0.0};
 static int radiation_packet_far_share_warned = 0;
 
-/*! Add to a double that other threads add to. */
-static void radiation_packet_atomic_add(double *target, const double x) {
-  double seen;
-  __atomic_load(target, &seen, __ATOMIC_RELAXED);
-  double wanted = seen + x;
-  while (!__atomic_compare_exchange(target, &seen, &wanted, 0, __ATOMIC_RELAXED,
-                                    __ATOMIC_RELAXED))
-    wanted = seen + x;
+/*! The record of the calling thread, registered at its first use. */
+static struct radiation_packet_placed *radiation_packet_placed_record(void) {
+  if (radiation_packet_placed_mine == NULL) {
+    const int k = __atomic_fetch_add(&radiation_packet_placed_registered, 1,
+                                     __ATOMIC_RELAXED);
+    if (k >= RADIATION_PACKET_MAX_THREADS)
+      error("More than %d threads place packet light.",
+            RADIATION_PACKET_MAX_THREADS);
+    radiation_packet_placed_mine = &radiation_packet_placed_threads[k];
+  }
+  return radiation_packet_placed_mine;
 }
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
@@ -426,20 +443,25 @@ static void radiation_packet_report_bin_demand(const struct engine *e) {
 /**
  * @brief Warn once if too much of the packet light lands in the far cells.
  *
- * Sums the light of the new shares placed in the arrival bins and cells over
- * the ranks and the steps, and compares the share that went to the far cells
- * with #RADIATION_PACKET_FAR_SHARE_LIMIT. Collective: called by every rank
- * from engine_step(). Does nothing without a light speed limit, on every rank
- * alike.
+ * Sums the new light placed in the arrival bins and cells during the last step
+ * over the threads and the ranks and compares the share that went to the far
+ * cells with #RADIATION_PACKET_FAR_SHARE_LIMIT. Warns at the first step above
+ * it and prints the share since the start as well. Collective: called by every
+ * rank from engine_step(), when no task runs. Does nothing without a light
+ * speed limit, on every rank alike.
  *
  * @param e The #engine.
  */
 void radiation_packet_far_share_report(const struct engine *e) {
   if (!radiation_packet_light_speed_limited) return;
-  double step[2] = {radiation_packet_placed_energy,
-                    radiation_packet_placed_far_energy};
-  radiation_packet_placed_energy -= step[0];
-  radiation_packet_placed_far_energy -= step[1];
+  double step[2] = {0., 0.};
+  const int n = radiation_packet_placed_registered;
+  for (int k = 0; k < n; k++) {
+    step[0] += radiation_packet_placed_threads[k].all;
+    step[1] += radiation_packet_placed_threads[k].far;
+    radiation_packet_placed_threads[k].all = 0.;
+    radiation_packet_placed_threads[k].far = 0.;
+  }
 #ifdef WITH_MPI
   double sum[2];
   MPI_Reduce(step, sum, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -451,18 +473,18 @@ void radiation_packet_far_share_report(const struct engine *e) {
   if (e->nodeID != 0) return;
   radiation_packet_placed_total[0] += step[0];
   radiation_packet_placed_total[1] += step[1];
-  const double all = radiation_packet_placed_total[0];
-  const double far = radiation_packet_placed_total[1];
-  if (!radiation_packet_far_share_warned && all > 0. &&
-      far > RADIATION_PACKET_FAR_SHARE_LIMIT * all) {
+  if (!radiation_packet_far_share_warned && step[0] > 0. &&
+      step[1] > RADIATION_PACKET_FAR_SHARE_LIMIT * step[0]) {
     radiation_packet_far_share_warned = 1;
     message(
-        "WARNING: at step %d, %.3g of the ISRF packet light placed since the "
-        "start went to the far arrival cells, above %.3g. That light leaves "
-        "late and slows the light. Raise RADIATION_PACKET_BINS (now %d) or "
-        "read the start-up demand of the near bins.",
-        e->step, far / all, RADIATION_PACKET_FAR_SHARE_LIMIT,
-        RADIATION_PACKET_BINS);
+        "WARNING: at step %d, %.3g of the new ISRF packet light of the last "
+        "step (%.3g since the start) went to the far arrival cells, above "
+        "%.3g. That light leaves late and slows the light. Raise "
+        "RADIATION_PACKET_BINS (now %d) or read the start-up demand of the "
+        "near bins.",
+        e->step, step[1] / step[0],
+        radiation_packet_placed_total[1] / radiation_packet_placed_total[0],
+        RADIATION_PACKET_FAR_SHARE_LIMIT, RADIATION_PACKET_BINS);
   }
 }
 
@@ -1950,10 +1972,9 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
     }
   }
   if (fresh && placed > 0.) {
-    radiation_packet_atomic_add(&radiation_packet_placed_energy, placed);
-    if (placed_far > 0.)
-      radiation_packet_atomic_add(&radiation_packet_placed_far_energy,
-                                  placed_far);
+    struct radiation_packet_placed *mine = radiation_packet_placed_record();
+    mine->all += placed;
+    mine->far += placed_far;
   }
 }
 

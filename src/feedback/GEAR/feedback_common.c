@@ -1637,6 +1637,17 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
           "its initial conditions.",
           file_mask, radiation_selection_absent_mask());
     const int g = layout / FEEDBACK_RESTART_GEOMETRY_FACTOR;
+    if (g == 0)
+      error(
+          "The restart file was written by a build that does not record the "
+          "packet geometry, but this build records %d packet reception slots, "
+          "%d near arrival bins, %d far cells and far scale %d. The particles "
+          "can differ in size: rerun the simulation from its initial "
+          "conditions.",
+          FEEDBACK_RESTART_PACKET_GEOMETRY & 63,
+          (FEEDBACK_RESTART_PACKET_GEOMETRY >> 6) & 31,
+          (FEEDBACK_RESTART_PACKET_GEOMETRY >> 11) & 15,
+          (FEEDBACK_RESTART_PACKET_GEOMETRY >> 15) & 15);
     error(
         "The restart file was written by a build with %d packet reception "
         "slots, %d near arrival bins, %d far cells and far scale %d, but "
