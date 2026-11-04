@@ -155,8 +155,9 @@ struct feedback_isrf_operator_data {
 
 /*! Width of the far arrival cells of a particle with a known step, as a power
     of two times the step, as long as the waiting light fits. Light beyond the
-    last cell widens them to the smallest power that fits. Faint light does not
-    widen them, so it cannot change when other light leaves. */
+    last cell widens them to the smallest power that fits. Faint light, and
+    light after the end of the time line, do not widen them and do not move the
+    time of other light that waits in the last cell. */
 #ifndef RADIATION_PACKET_FAR_SCALE
 #define RADIATION_PACKET_FAR_SCALE 3
 #endif
