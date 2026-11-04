@@ -833,10 +833,11 @@ A particle that has merged once has a known step, which is every particle
 after its first merge. Its far cell also ends at $T_\beta$ and is released
 whole, $g_\beta=g_\beta^{\rm near}$. Light that arrives beyond the end of the
 last cell widens the cells (Section~\ref{sec:packet-lightspeed}), so it is
-released whole at the end of its cell. Three cases stay in the last cell as a
-pulse at their latest arrival time, released by $g_\beta^{\rm far}$ with
-$t_{{\rm f},\beta}=t_{{\rm l},\beta}$: faint light, light that arrives after
-the end of the time line, and light beyond the cells at the widest width.
+released whole at the end of its cell. Light beyond the cells at the widest
+width, and light that arrives after the end of the time line, stay in the last
+cell as a pulse at their latest arrival time, released by $g_\beta^{\rm far}$
+with $t_{{\rm f},\beta}=t_{{\rm l},\beta}$. Faint light that falls beyond the
+last cell is released whole at its end.
 The third mode, the no-delay test mode, is a limit case with two stores: an
 inbox, with $g=1$, and a reservoir $B_{k,b}$, with $g=f_{{\rm rel},k}$
 (Section~\ref{sec:packet-reservoir}).
@@ -1141,8 +1142,13 @@ cells to the smallest power of two of steps, at least $8$, at which it fits,
 and they are $8$ steps wide again when that light has left. Faint light does
 not widen them: a piece whose energy, summed over both bands, is below
 $\epsilon_{\rm f}$ times the energy that waits does not count, nor does light
-due after the end of the time line. So faint light cannot change when other
-light leaves. A particle that has not yet merged has no step. Its far width is the smallest power of two of steps at which all
+due after the end of the time line. Faint light that falls beyond the last
+cell takes the end of that cell, and it never changes when other light leaves,
+in either order of arrival. Light due after the end of the time line keeps its
+latest arrival time in the last cell, so it holds the other light of that cell
+for as long. Light that widens the cells delays all the light
+beyond the near bins, from every source, by up to one widened cell: the widest
+width is set by the farthest non-faint source. A particle that has not yet merged has no step. Its far width is the smallest power of two of steps at which all
 waiting light fits, and a far cell that holds one share keeps the interval of
 that share and releases the part that has arrived.
 
@@ -1153,15 +1159,20 @@ When the step or the width changes, the light of a cell is placed again as a
 pulse at its end, in the cell that holds that time: it does not move if the
 new width divides the old one, and moves by less than the new width otherwise.
 Only a width above all earlier ones adds a wait, so light that arrived at $T$
-leaves at the first merge at or after $T+2W_{\max}\Delta t$, with $W_{\max}$
-the widest width in steps that held it and $\Delta t$ the receiver step. With
-one width this is $T+W\Delta t$ plus the wait of one merge. Light due beyond
-the end of the last cell at the widest width, and no other light, goes to that
-cell as a pulse at its latest arrival time and leaves at the first merge at or
-after that time. The held packet departs at the merge time. Along a chain of
+leaves no later than the first merge at or after $T+W_{\max}\Delta t$, with
+$W_{\max}\Delta t$ the width in time of the widest cell that held it ($\Delta t$
+the receiver step, which can change). The cell ends lie on nested lattices,
+each width a power of two times the step, so the stored time after any number of
+widenings is the next multiple of $W_{\max}\Delta t$ at or after $T$. With one
+width this is $T+W\Delta t$. Non-faint light due beyond the end of the last
+cell at the widest width, and light due after the end of the time line, goes
+to that cell as a pulse at its latest arrival time and leaves at the first merge
+at or after that time. Faint light also goes beyond the last cell, at any width;
+it takes the end of the cell. The held packet departs at the merge time. Along a chain of
 particles a hop adds a wait of less than one receiver step when its light time
-is at most four receiver steps, and of less than $2W_{\max}$ steps when it is
-longer, with $W_{\max}=8$ while its light fits the last cell of $8$ steps. The
+is at most four receiver steps, and of less than $W_{\max}\Delta t+\Delta t$ when it is
+longer, with $W_{\max}\Delta t=8\Delta t$ while its light fits the last cell of
+$8$ steps. The
 waits of the hops add up.
 
 When a piece of a share joins a bin or a cell that holds light, the time at
@@ -1951,12 +1962,12 @@ vanishes. They are stored as \code{band\_edge\_weight\_pe},
 count is \code{RADIATION\_PACKET\_SLOTS}, set by
 \code{--with-isrf-packet-slots=<N>} (\code{configure.ac:3048-3056}, default 12;
 \code{N} other than 8, 12, 16, 24 or 48 is an error; the default and the check are
-repeated at \code{src/feedback/GEAR\_thermal/feedback\_struct.h:140-168}). The
+repeated at \code{src/feedback/GEAR\_thermal/feedback\_struct.h:140-169}). The
 slot struct is \code{feedback\_isrf\_packet\_slot\_data}
-(\code{feedback\_struct.h:314-379}); the packet is
-\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:385-422}).
+(\code{feedback\_struct.h:315-380}); the packet is
+\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:386-423}).
 Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
-\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:221-228}).
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:222-229}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
 (\code{src/feedback/GEAR/radiation.h:385-396}, the ratio at :395). The
@@ -1991,7 +2002,7 @@ border distance of the debug check is
 \code{radiation\_packet\_slot\_border\_distance} (\code{radiation\_packet.c:575-601}).
 \code{tests/testRadiationPacketSlotGeometry.c} checks these properties for the
 slot count of the build against the nearest of $K$ generator directions.
-Every gas particle holds the $K$ slots (\code{feedback\_struct.h:391}), so
+Every gas particle holds the $K$ slots (\code{feedback\_struct.h:392}), so
 its size grows by 200 bytes per slot (paragraph on memory below). The gradient and the force loops visit
 every non-empty slot of the sender (\code{radiation\_packet.h:375}, :617), so
 the work of a hop grows with the number of lit slots, at most $K$. More slots
@@ -2021,7 +2032,7 @@ numerator of Eq.~\eqref{eq:packet-advance} in
 (\code{src/feedback/GEAR/radiation\_propagation\_iact.h:74-76}, :105-112); the
 twin also adds the part of the reach of an active receiver. The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
-\code{radiation\_packet.c:2374}.
+\code{radiation\_packet.c:2415}.
 
 The share $\phi_{ij,k}$ is \code{fraction} in
 \code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:609-681},
@@ -2036,8 +2047,8 @@ in the visit of the receiver, the outer part of the reach of each active
 sender, local or foreign. The vector \code{dx\_ij}
 passed to it points from sender to receiver. The held energy of the sender is
 set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
-\code{radiation\_packet.c:2408-2427}). The escape of a slot with $S_{i,k}=0$ is
-at \code{radiation\_packet.c:2384-2391}. The parameter $p$ is copied to each
+\code{radiation\_packet.c:2449-2468}). The escape of a slot with $S_{i,k}=0$ is
+at \code{radiation\_packet.c:2425-2432}. The parameter $p$ is copied to each
 particle at \code{radiation\_isrf.c:103}, and \code{ISRF\_packet\_cone\_power}
 is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:848-850}
 and checked at :910-912.
@@ -2049,23 +2060,23 @@ cut $\varepsilon$ is \code{RADIATION\_PACKET\_REACH\_GUARD}
 
 \paragraph{The merge (Secs.~\ref{sec:packet-merge}, \ref{sec:packet-merge-summary}).} The merge of one slot
 without a speed limit is \code{radiation\_packet\_merge\_slot\_unlimited}
-(\code{radiation\_packet.c:1970-2046}). It is called for every slot by
-\code{radiation\_packet\_merge} (:2277-2333), which
+(\code{radiation\_packet.c:2011-2087}). It is called for every slot by
+\code{radiation\_packet\_merge} (:2318-2374), which
 \code{radiation\_snapshot\_part\_propagation} calls for active particles
 (\code{radiation\_isrf.c:119-179}, the call at :175).
-Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:2015-2023}. The
+Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:2056-2064}. The
 sums of Eq.~\eqref{eq:packet-merge-origin} are formed in
 \code{radiation\_packet\_deliver} as \code{inbox\_origin\_offset}
 (\code{radiation\_packet.h:560} and :580). Their weight is
 \code{delivered\_energy}, summed over the bands inside
 \code{radiation\_packet\_absorb\_in\_dust} (:433-465). The division by
-$\sum_s e_s$ is at \code{radiation\_packet.c:1920} in
-\code{radiation\_packet\_set\_origin} (:1917-1945), $d_k$ at :1921-1923,
-$\boldsymbol{n}_k$ at :1925, and the fallback direction at :1941-1943. The
+$\sum_s e_s$ is at \code{radiation\_packet.c:1961} in
+\code{radiation\_packet\_set\_origin} (:1958-1986), $d_k$ at :1962-1964,
+$\boldsymbol{n}_k$ at :1966, and the fallback direction at :1982-1984. The
 merge returns before any change of origin when the slot received no energy
-(:2044). The fields of Eq.~\eqref{eq:packet-merge-origin} are
+(:2085). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
-\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:314-379}).
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:315-380}).
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
@@ -2104,7 +2115,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:303-349}).
 \code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
-(\code{radiation\_packet.h:529-543}; fields at \code{feedback\_struct.h:258-265}).
+(\code{radiation\_packet.h:529-543}; fields at \code{feedback\_struct.h:259-266}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:678}
 for a hop, :867 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:141-145}, :179-192) and from
@@ -2136,12 +2147,12 @@ The choice between the inbox and the reservoir is the argument
 \code{si->time\_bin > pj->time\_bin} at :868. \code{source\_step\_end\_ti}
 (:510) is the end of the step of the sender. For a particle it is
 \code{step\_end\_ti}, set as \code{ti\_current + ti\_step} at
-\code{radiation\_packet.c:2289} and :2329. For a star it is
+\code{radiation\_packet.c:2330} and :2370. For a star it is
 \code{ti\_current + ti\_step} at \code{radiation\_packet.h:869}.
 Eq.~\eqref{eq:packet-release} is \code{radiation\_packet\_merge\_slot\_unlimited}
-(\code{radiation\_packet.c:1970-2046}). The release fraction is at :1976-1988,
-the cutoff rule at :1990-1998, and the release of the energy, the photon number
-and the origin sum at :2000-2042.
+(\code{radiation\_packet.c:2011-2087}). The release fraction is at :2017-2029,
+the cutoff rule at :2031-2039, and the release of the energy, the photon number
+and the origin sum at :2041-2083.
 
 \paragraph{Finite speed of light (Sec.~\ref{sec:packet-lightspeed}).} The mode
 is \code{GEARFeedback:ISRF\_packet\_light\_speed}: \code{cap} is the capped
@@ -2157,7 +2168,7 @@ $v/(v-u_j)$ is \code{RADIATION\_PACKET\_RECEDING\_MAX\_FACTOR}
 (\code{radiation\_packet.h:61}). The four near bins and two far cells are
 \code{RADIATION\_PACKET\_BINS} and \code{RADIATION\_PACKET\_FAR\_CELLS}
 (\code{feedback\_struct.h:147}, :153); the fixed far width $2^3$ is
-\code{RADIATION\_PACKET\_FAR\_SCALE} (:161).
+\code{RADIATION\_PACKET\_FAR\_SCALE} (:162).
 
 The delay is
 \code{radiation\_packet\_arrival\_delay} and
@@ -2166,47 +2177,47 @@ The delay is
 \code{radiation\_packet\_set\_light\_speed} (:197-205). The arrival time of a
 hop is formed in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:652-673}). The near bins and far cells are
-\code{radiation\_packet\_deposit} (\code{radiation\_packet.c:1858}),
-\code{radiation\_packet\_place} (:1577), \code{radiation\_packet\_regrid}
-(:1718), \code{radiation\_packet\_release\_far\_cell} (:2066) and
-\code{radiation\_packet\_merge\_slot\_limited} (:2183). The time at which the
+\code{radiation\_packet\_deposit} (\code{radiation\_packet.c:1894}),
+\code{radiation\_packet\_place} (:1585), \code{radiation\_packet\_regrid}
+(:1765), \code{radiation\_packet\_release\_far\_cell} (:2107) and
+\code{radiation\_packet\_merge\_slot\_limited} (:2224). The time at which the
 light of a bin or a cell leaves, and the faint-light rule, are
 \code{radiation\_packet\_add\_to\_bin}, \code{radiation\_packet\_add\_to\_far}
 and \code{radiation\_packet\_join\_below\_end}. In that merge the origin
 sum of the waiting light is released in proportion to the energy at
-:2237-2253. Bins and far cells below the photon cutoff are booked as absorbed
-at :2196-2208 (\code{radiation\_packet\_absorb\_below\_cutoff}, :1895-1906).
-The departure time is set at :2256. The rest of a far cell below the cutoff is
-booked at :2107-2114. A stored stamp is capped at the end of its bin or cell
-by \code{radiation\_packet\_time\_below\_end} (:1444-1448). The time-step bound of
+:2278-2294. Bins and far cells below the photon cutoff are booked as absorbed
+at :2237-2249 (\code{radiation\_packet\_absorb\_below\_cutoff}, :1936-1947).
+The departure time is set at :2297. The rest of a far cell below the cutoff is
+booked at :2148-2155. A stored stamp is capped at the end of its bin or cell
+by \code{radiation\_packet\_time\_below\_end} (:1450-1454). The time-step bound of
 Eq.~\eqref{eq:isrf-dt} is \code{radiation\_isrf\_part\_timestep}
 (\code{radiation\_isrf.c:197-210}).
 
 \paragraph{The field (Sec.~\ref{sec:packet-field}).}
 Eq.~\eqref{eq:packet-field} is \code{radiation\_packet\_end\_gradient}
-(\code{radiation\_packet.c:2351-2400}, the sum over slots at :2371-2392, the
-factor at :2376). It is called from \code{radiation\_end\_gradient\_propagation}
+(\code{radiation\_packet.c:2392-2441}, the sum over slots at :2412-2433, the
+factor at :2417). It is called from \code{radiation\_end\_gradient\_propagation}
 (\code{radiation\_isrf.c:236-248}, the call at :244), which passes the true
 speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:320-325}),
-applied at \code{radiation\_packet.c:2394-2398}; $\tau_{\rm m}$ is
+applied at \code{radiation\_packet.c:2435-2439}; $\tau_{\rm m}$ is
 \code{GEARFeedback:ISRF\_packet\_read\_mean\_time\_Myr}
 (\code{feedback\_properties.h:851-858}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:707-724}, called at
 \code{radiation\_propagation\_iact.h:146-147}, :180). The self term and the
 division are \code{radiation\_packet\_end\_force}
-(\code{radiation\_packet.c:2408-2427}), called at \code{radiation\_isrf.c:225}.
+(\code{radiation\_packet.c:2449-2468}), called at \code{radiation\_isrf.c:225}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
-(\code{radiation\_packet.c:2439-2447}, called at \code{radiation\_isrf.c:226}).
+(\code{radiation\_packet.c:2480-2488}, called at \code{radiation\_isrf.c:226}).
 
 \paragraph{The frame of the light (Sec.~\ref{sec:packet-frame}).} The merged
 origin is set in \code{radiation\_packet\_set\_origin}
-(\code{radiation\_packet.c:1917-1945}), called by the merge at the drift,
+(\code{radiation\_packet.c:1958-1986}), called by the merge at the drift,
 \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:119-179}).
 The hop reads it in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:637-644}). An empty slot keeps its old origin
-(\code{radiation\_packet.c:2044}), but the gradient and the hop skip empty
+(\code{radiation\_packet.c:2085}), but the gradient and the hop skip empty
 slots (\code{radiation\_packet.h:377, :619}). The inbox and reservoir sums are
 booked at \code{radiation\_packet.h:559-580}.
 
@@ -2215,16 +2226,16 @@ only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
 \code{--enable-isrf-debugging-checks} (\code{configure.ac:3058-3070}), the
 diagnostic build. The per-band ledger of a gas
 particle is \code{feedback\_isrf\_packet\_band\_data}
-(\code{feedback\_struct.h:228-267}: \code{absorbed\_energy},
+(\code{feedback\_struct.h:229-268}: \code{absorbed\_energy},
 \code{absorbed\_photons}, \code{escaped\_energy}, \code{escaped\_photons},
 \code{redshifted\_energy}, \code{redshifted\_photons}). The ledger of a star or
 a sink is \code{feedback\_isrf\_packet\_removed\_data}
-(\code{feedback\_struct.h:432-446}). The emission and escape of a star are
+(\code{feedback\_struct.h:433-447}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:868-914}). The emission is booked by
+(\code{feedback\_struct.h:869-915}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
-(\code{radiation\_packet.c:2460-2493}), called at
+(\code{radiation\_packet.c:2501-2534}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:612}. The removal is
 \code{radiation\_packet\_book\_removed\_gas} (\code{radiation\_packet.h:894-924},
 the inherited sum with the redshift ledger at :918-923). It is reached from
@@ -2250,7 +2261,7 @@ ledger \code{feedback\_isrf\_packet\_box\_data}. The same reduction sums it over
 the ranks, and \code{feedback\_write\_flavour} writes it as the snapshot
 attributes \code{PacketStarsLeftBox*}, \code{PacketSinksLeftBox*} and
 \code{PacketSwallowedByBlackHoles*}. The escape of a slot
-with no downstream neighbour is at \code{radiation\_packet.c:2384-2391}.
+with no downstream neighbour is at \code{radiation\_packet.c:2425-2432}.
 
 \paragraph{Test beams (Sec.~\ref{sec:packet-ledger}).} The keys are
 \code{GEARFeedback:ISRF\_packet\_test\_beam\_1} and \code{\_2}. They are read
