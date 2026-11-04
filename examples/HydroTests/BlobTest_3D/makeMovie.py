@@ -10,7 +10,6 @@ from swiftsimio import load, cosmo_array
 from swiftsimio.visualisation import project_gas
 
 from p_tqdm import p_map
-from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,7 +33,7 @@ name = "Fluid Density $\\rho$"
 def get_image(n):
     """
     Gets the image for snapshot n, and also returns the associated
-    SWIFT metadata object.
+    simulation time.
     """
     filename = f"{snapshot_name}_{n:04d}.hdf5"
 
@@ -64,29 +63,7 @@ def get_image(n):
         # The images are indexed [x, y]; imshow wants [y, x]
         output[:, box * resolution : (box + 1) * resolution] = image.to_value().T
 
-    return output, picklable_metadata(data.metadata)
-
-
-def picklable_metadata(metadata):
-    """
-    The swiftsimio metadata object holds an open HDF5 file handle and cannot
-    be sent back from the p_map worker processes, so keep only what we use.
-    """
-
-    def info(name):
-        try:
-            return getattr(metadata, name)
-        except Exception:
-            return "No info"
-
-    return SimpleNamespace(
-        t=metadata.t,
-        code_info=metadata.code_info,
-        compiler_info=metadata.compiler_info,
-        hydro_info=metadata.hydro_info,
-        viscosity_info=info("viscosity_info"),
-        diffusion_info=info("diffusion_info"),
-    )
+    return output, data.metadata.t.to_value()
 
 
 def get_data_dump(metadata):
@@ -125,12 +102,12 @@ def get_data_dump(metadata):
     return output
 
 
-def time_formatter(metadata):
-    return f"$t = {metadata.t:2.2f}$"
+def time_formatter(t):
+    return f"$t = {t:2.2f}$"
 
 
 # Generate the frames and unpack our variables
-images, metadata = zip(*p_map(get_image, list(range(start_frame, end_frame))))
+images, times = zip(*p_map(get_image, list(range(start_frame, end_frame))))
 
 # Set the colour range from the central part of the first frame.
 central_region = images[0][
@@ -150,7 +127,7 @@ image = ax.imshow(np.zeros_like(images[0]), norm=norm, cmap=cmap, origin="lower"
 description_text = ax.text(
     0.5,
     0.5,
-    get_data_dump(metadata[0]),
+    get_data_dump(load(f"{snapshot_name}_{start_frame:04d}.hdf5").metadata),
     va="center",
     ha="center",
     **text_args,
@@ -160,7 +137,7 @@ description_text = ax.text(
 time_text = ax.text(
     (1 - 0.025 * 0.25),
     0.975,
-    time_formatter(metadata[0]),
+    time_formatter(times[0]),
     **text_args,
     va="top",
     ha="right",
@@ -177,7 +154,7 @@ def animate(n):
     if n >= 0:
         image.set_array(images[n])
         description_text.set_text("")
-        time_text.set_text(time_formatter(metadata[n]))
+        time_text.set_text(time_formatter(times[n]))
 
     return (image,)
 

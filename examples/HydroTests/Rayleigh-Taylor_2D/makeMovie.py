@@ -41,28 +41,6 @@ generate_png = False
 text_args = dict(color="black")
 
 
-class Metadata(object):
-    """
-    Copy the useful data in order to decrease the memory usage
-    """
-
-    def __init__(self, data):
-        metadata = data.metadata
-        self.t = metadata.t
-        try:
-            self.viscosity_info = metadata.viscosity_info
-        except:
-            self.viscosity_info = "No info"
-        try:
-            self.diffusion_info = metadata.diffusion_info
-        except:
-            self.diffusion_info = "No info"
-
-        self.code_info = metadata.code_info
-        self.compiler_info = metadata.compiler_info
-        self.hydro_info = metadata.hydro_info
-
-
 def project(data, m_res, property, ylim):
     coords = data.gas.coordinates
 
@@ -106,12 +84,11 @@ def load_and_make_image(filename, res, property):
     if property != "density":
         image[left:, :] /= project(data, m_res, None, ylim)[left:, :]
 
-    metadata = Metadata(data)
-    return image, metadata
+    return image, data.metadata.t.to_value()
 
 
-def time_formatter(metadata):
-    return f"$t = {metadata.t:2.2f}$"
+def time_formatter(t):
+    return f"$t = {t:2.2f}$"
 
 
 def create_movie(filename, start, stop, resolution, property, output_filename):
@@ -133,7 +110,7 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
         return load_and_make_image(f, resolution, property)
 
     # Make frames in parallel (reading also parallel!)
-    frames, metadata = zip(*p_map(baked_in_load, list(range(start, stop))))
+    frames, times = zip(*p_map(baked_in_load, list(range(start, stop))))
 
     vmax = max(list(p_map(max, frames)))
     vmin = min(list(p_map(min, frames)))
@@ -149,7 +126,9 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
     description_text = ax.text(
         0.5,
         0.5,
-        get_simulation_information(metadata[0]),
+        get_simulation_information(
+            load(filename + "_{:04d}.hdf5".format(start)).metadata
+        ),
         va="center",
         ha="center",
         **text_args,
@@ -159,7 +138,7 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
     time_text = ax.text(
         (1 - 0.025 * 0.25),
         0.975,
-        time_formatter(metadata[0]),
+        time_formatter(times[0]),
         **text_args,
         va="top",
         ha="right",
@@ -180,7 +159,7 @@ def create_movie(filename, start, stop, resolution, property, output_filename):
         if n >= 0:
             image.set_array(frames[n])
             description_text.set_text("")
-            time_text.set_text(time_formatter(metadata[n]))
+            time_text.set_text(time_formatter(times[n]))
 
         if generate_png:
             name = filename + "_{:04d}".format(n + info_frames)
@@ -203,8 +182,15 @@ def get_simulation_information(metadata):
     """
     Generates a string from the SWIFT metadata
     """
-    viscosity = metadata.viscosity_info
-    diffusion = metadata.diffusion_info
+    try:
+        viscosity = metadata.viscosity_info
+    except KeyError:
+        viscosity = "No info"
+
+    try:
+        diffusion = metadata.diffusion_info
+    except KeyError:
+        diffusion = "No info"
 
     output = (
         "$\\bf{Rayleigh-Taylor}$ $\\bf{Instability}$\n\n"
