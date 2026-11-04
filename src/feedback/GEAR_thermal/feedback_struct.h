@@ -154,8 +154,9 @@ struct feedback_isrf_operator_data {
 #endif
 
 /*! Width of the far arrival cells of a particle with a known step, as a power
-    of two times the step. It does not depend on what waits, so faint light
-    cannot change when other light leaves. */
+    of two times the step, as long as the waiting light fits. Light beyond the
+    last cell widens them to the smallest power that fits. Faint light does not
+    widen them, so it cannot change when other light leaves. */
 #ifndef RADIATION_PACKET_FAR_SCALE
 #define RADIATION_PACKET_FAR_SCALE 3
 #endif
@@ -401,8 +402,9 @@ struct feedback_isrf_packet_data {
   float octant_frame[9];
 
   /*! The width of the far arrival cells is the length of the step times two
-      to this power (#radiation_packet_far_end): #RADIATION_PACKET_FAR_SCALE
-      once the step is known, fitted to the waiting light before. Placed
+      to this power (#radiation_packet_far_end): at least
+      #RADIATION_PACKET_FAR_SCALE once the step is known, fitted to the
+      waiting light before. Placed
       before the 8-byte members, where it fills padding. */
   unsigned char far_scale;
 
