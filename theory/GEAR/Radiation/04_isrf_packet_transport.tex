@@ -660,15 +660,24 @@ a direction depends on the number $K$ of slots, a compile-time option.
   K=12:&\quad k=4m+2\,[\,y_{m_1}\ge0\,]+[\,y_{m_2}\ge0\,], \quad
   m=\arg\min_{m'} |y_{m'}|, \label{eq:packet-slot12}\\
   K=16:&\quad k=\sum_{m=0}^{2} 2^m\,[\,y_m\ge 0\,]+8\,[\,|y_1|>|y_0|\,],
-  \label{eq:packet-slot16}
+  \label{eq:packet-slot16}\\
+  K=24:&\quad k=4(2m+s)+2t+b, \label{eq:packet-slot24}\\
+  K=48:&\quad k=8(2m+s)+4t+2b+c, \label{eq:packet-slot48}
 \end{align}
 with $[\cdot]$ equal to 1 if the condition holds and 0 otherwise. In
+Eqs.~\eqref{eq:packet-slot24} and~\eqref{eq:packet-slot48}, $m$ is the axis of
+the largest $|y|$ (the lowest axis on a tie), $s=[\,y_m\ge0\,]$, $(m_1,m_2)$
+are the two other axes in axis order, $t=[\,|y_{m_1}|\ge|y_{m_2}|\,]$, and $b$
+and $c$ are $[\,y\ge0\,]$ for the larger and for the smaller of $|y_{m_1}|$ and
+$|y_{m_2}|$. In
 Eq.~\eqref{eq:packet-slot12}, $m$ is the axis of the smallest $|y|$, the
 lowest axis on a tie. The indices $(m_1,m_2)$ are the two other axes in axis
 order: $(1,2)$ for $m=0$, $(0,2)$ for $m=1$ and $(0,1)$ for $m=2$. For $K=8$
 the cells are the octants of the frame. For $K=12$ they are the faces of a
 rhombic dodecahedron (Fig.~\ref{fig:isrf-slots}). For $K=16$ they are the octants halved by the plane
-$|y_0|=|y_1|$; a tie $|y_0|=|y_1|$ goes to the lower half. A direction on a
+$|y_0|=|y_1|$; a tie $|y_0|=|y_1|$ goes to the lower half. For $K=24$ and $48$
+the cells are the faces of a tetrakis hexahedron and of a disdyakis
+dodecahedron (Sec.~\ref{sec:isrf-code}). A direction on a
 border goes to the cell with the positive coordinate, whatever the sign of a
 zero. A direction in the same octant as another differs from it by at most
 $90^\circ$. The cells of $K=16$ lie inside octants, and those of $K=12$ also
@@ -697,7 +706,7 @@ Right: 8 and 16 slots (octants, halved octants).}
 with $\theta_x,\theta_y,\theta_z$ three run-time angles, default
 $(24^\circ,36^\circ,66^\circ)$. The default keeps every cell border at least
 $10^\circ$ from the six box axes for $K=12$ ($19^\circ$ for $K=8$, $6^\circ$
-for $K=16$). Box diagonals can lie on a border: the $(1,1,1)$ directions are
+for $K=16$, $24$ and $48$). Box diagonals can lie on a border: the $(1,1,1)$ directions are
 $0.01^\circ$ from one at $K=12$. A source or beam exactly along a box diagonal
 then gets an arbitrary but deterministic slot; rotate the frame for such a
 setup. A positive run-time seed offset multiplies $R$ on the left by a rotation drawn uniformly from that seed
@@ -756,7 +765,7 @@ the packet's origin to the receiver (Fig.~\ref{fig:isrf-hop}a). Seen from the re
 \end{equation}
 because the origin is $d_{i,k}$ behind the sender along its direction. The
 slot of the receiver is the slot function of
-Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot16} applied to
+Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot48} applied to
 $-\boldsymbol{o}_j$. The slot is chosen from this geometry and not from the
 slot index of the sender. The share carries the energy $\phi_{ij,k}E_{i,k,b}$
 and the photon number $\phi_{ij,k}N_{i,k,b}$ of each band $b$, changed by the
@@ -1742,7 +1751,7 @@ transmission & neighbours inside a regular cone of solid angle $4\pi/N_c$
   & every neighbour ahead ($\mu>10^{-3}$), weight $V_jW\mu^p$, $p=4$; the
   light escapes if there is none \\
 reception & $N_c$ cones, random rotation at each reception; a packet is binned
-  by its direction & $K=12$ cells (8 or 16), one fixed frame for all particles
+  by its direction & $K=12$ cells (8, 16, 24 or 48), one fixed frame for all particles
   and steps; a share is binned by the direction from its origin to the
   receiver \\
 merging & mean of the unit directions, weighted by the photon number and
@@ -1901,10 +1910,10 @@ count is \code{RADIATION\_PACKET\_SLOTS}, set by
 \code{N} other than 8, 12, 16, 24 or 48 is an error; the default and the check are
 repeated at \code{src/feedback/GEAR\_thermal/feedback\_struct.h:140-160}). The
 slot struct is \code{feedback\_isrf\_packet\_slot\_data}
-(\code{feedback\_struct.h:304-365}); the packet is
-\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:371-406}).
+(\code{feedback\_struct.h:302-363}); the packet is
+\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:369-404}).
 Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
-\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:211-218}).
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:209-216}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
 (\code{src/feedback/GEAR/radiation.h:385-396}, the ratio at :395). The
@@ -1913,7 +1922,7 @@ or \code{Integrated\_MeanPhotonEnergyPE}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:891-899}).
 Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
 (\code{src/feedback/GEAR/radiation\_packet.c:446-457}), and
-Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot16} are
+Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot48} are
 \code{radiation\_packet\_slot} (\code{radiation\_packet.c:485-526}).
 Eq.~\eqref{eq:packet-frame} is \code{radiation\_packet\_build\_octant\_frame}
 (\code{radiation\_packet.c:580-636}). Its angles are
@@ -1939,7 +1948,7 @@ border distance of the debug check is
 \code{radiation\_packet\_slot\_border\_distance} (\code{radiation\_packet.c:541-567}).
 \code{tests/testRadiationPacketSlotGeometry.c} checks these properties for the
 slot count of the build against the nearest of $K$ generator directions.
-Every gas particle holds the $K$ slots (\code{feedback\_struct.h:377}), so
+Every gas particle holds the $K$ slots (\code{feedback\_struct.h:375}), so
 its size grows by 200 bytes per slot (paragraph on memory below). The gradient and the force loops visit
 every non-empty slot of the sender (\code{radiation\_packet.h:369}, :602), so
 the work of a hop grows with the number of lit slots, at most $K$. More slots
@@ -2010,7 +2019,7 @@ $\boldsymbol{n}_k$ at :1798, and the fallback direction at :1814-1816. The
 merge returns before any change of origin when the slot received no energy
 (:1917). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
-\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:304-365}).
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:302-363}).
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
@@ -2049,7 +2058,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:303-349}).
 \code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
-(\code{radiation\_packet.h:519-533}; fields at \code{feedback\_struct.h:248-255}).
+(\code{radiation\_packet.h:519-533}; fields at \code{feedback\_struct.h:246-253}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:659}
 for a hop, :848 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:141-145}, :179-192) and from
@@ -2156,14 +2165,14 @@ only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
 \code{--enable-isrf-debugging-checks} (\code{configure.ac:3058-3070}), the
 diagnostic build. The per-band ledger of a gas
 particle is \code{feedback\_isrf\_packet\_band\_data}
-(\code{feedback\_struct.h:218-257}: \code{absorbed\_energy},
+(\code{feedback\_struct.h:216-255}: \code{absorbed\_energy},
 \code{absorbed\_photons}, \code{escaped\_energy}, \code{escaped\_photons},
 \code{redshifted\_energy}, \code{redshifted\_photons}). The ledger of a star or
 a sink is \code{feedback\_isrf\_packet\_removed\_data}
-(\code{feedback\_struct.h:416-430}). The emission and escape of a star are
+(\code{feedback\_struct.h:414-428}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:852-898}). The emission is booked by
+(\code{feedback\_struct.h:850-896}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
 (\code{radiation\_packet.c:2345-2378}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:612}. The removal is
