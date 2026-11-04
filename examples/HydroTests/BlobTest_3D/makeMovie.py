@@ -106,7 +106,7 @@ def get_data_dump(metadata):
 
 
 def time_formatter(t):
-    return f"$t = {t:2.2f}$"
+    return f"$t = {t:2.2f}$ s"
 
 
 # Generate the frames and unpack our variables

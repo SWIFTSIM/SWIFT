@@ -91,7 +91,7 @@ def load_and_make_image(filename, res, property):
 
 
 def time_formatter(t):
-    return f"$t = {t:2.2f}$"
+    return f"$t = {t:2.2f}$ s"
 
 
 def create_movie(filename, start, stop, resolution, property, output_filename):

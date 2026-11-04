@@ -84,7 +84,7 @@ if os.path.exists(filename_g):
     u_g = sim_g["/PartType0/InternalEnergies"][:]
     rho_g = sim_g["/PartType0/Densities"][:]
     phi_g = sim_g["/PartType0/Potential"][:]
-    a_g = sim_g["/Header"].attrs["Time"][0]
+    a_g = float(np.squeeze(sim_g["/Header"].attrs["Time"]))  # scalar in Gadget files
     print("Gadget Scale-factor:", a_g, "redshift:", 1 / a_g - 1.0)
 
     x_g -= 0.5 * boxSize
