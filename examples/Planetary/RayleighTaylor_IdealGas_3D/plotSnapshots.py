@@ -21,7 +21,6 @@
 Generate plot of the 3D Rayleigh--Taylor instability.
 """
 
-import sys
 import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -42,7 +41,7 @@ def make_axes():
     cbar_gap_len = n_gs_cbar_gap * ax_len_x / n_gs_ax_x
     cbar_len = n_gs_cbar * ax_len_x / n_gs_ax_x
 
-    fig = plt.figure(
+    plt.figure(
         figsize=(3 * ax_len_x + 2 * ax_gap_len + cbar_gap_len + cbar_len, ax_len_y)
     )
     gs = mpl.gridspec.GridSpec(
@@ -118,7 +117,7 @@ def plot_kh(ax, snap, cmap, norm):
     A1_size = size_factor * (A1_m_slice / A1_rho_slice) ** (2 / 3) / boxsize_x**2
 
     # Plot
-    scatter = ax.scatter(
+    ax.scatter(
         A1_x_slice,
         A1_y_slice,
         c=A1_rho_slice,

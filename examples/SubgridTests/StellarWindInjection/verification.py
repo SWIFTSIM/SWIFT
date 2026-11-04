@@ -152,7 +152,7 @@ def interpolate_2d(params, mass, metallicity, verbose, num_error):
             ):
                 num_error[0] += 1
                 print(
-                    f"Error : the indices found are in opposition with the SWIFT's ones"
+                    "Error : the indices found are in opposition with the SWIFT's ones"
                 )
             return [None]
 
@@ -163,7 +163,7 @@ def interpolate_2d(params, mass, metallicity, verbose, num_error):
             if idx != params["idx"] or idy != params["idy"]:
                 num_error[0] += 1
                 print(
-                    f"Error : the indices found are in opposition with the SWIFT's ones"
+                    "Error : the indices found are in opposition with the SWIFT's ones"
                 )
             return [0]
 

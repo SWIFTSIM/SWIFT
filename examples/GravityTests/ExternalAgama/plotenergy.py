@@ -1,7 +1,8 @@
-import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 keys = [
     "Step",
@@ -125,7 +126,6 @@ params = {
     "legend.fontsize": 12,
     "xtick.labelsize": 14,
     "ytick.labelsize": 14,
-    "text.usetex": True,
     "figure.subplot.left": 0.19,
     "figure.subplot.right": 0.98,
     "figure.subplot.bottom": 0.12,
@@ -153,7 +153,7 @@ def getValueAndLabel(value):
         return value, label
 
     elif value == "Rel_Tot_Energy":
-        label = "Relative Total Energy [\%]"
+        label = r"Relative Total Energy [\%]"
         value = data[value]
         return value, label
 

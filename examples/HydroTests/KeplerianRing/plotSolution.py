@@ -28,7 +28,6 @@
 import matplotlib
 
 matplotlib.use("Agg")
-matplotlib.rc("text", usetex=True)
 
 try:
     import yt
@@ -45,6 +44,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.gridspec as gridspec
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 try:
     from tqdm import tqdm
 except ImportError:
@@ -54,10 +55,6 @@ from make_movie import get_metadata
 
 yt.funcs.mylog.setLevel(50)
 tqdm.monitor_interval = 0
-
-
-class InternalUnitSystemError(Exception):
-    pass
 
 
 def get_axes_grid(figure):
@@ -235,7 +232,7 @@ def plot_chisq(ax, minsnap, maxsnap, chisq, filename="keplerian_ring"):
     ax.plot(rotations, np.array(chisq) / max(chisq))
 
     ax.set_xlabel("Number of rotations")
-    ax.set_ylabel("$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
+    ax.set_ylabel(r"$\chi^2 / \chi^2_{{max}}$ = {:3.5f}".format(max(chisq)))
 
     return
 

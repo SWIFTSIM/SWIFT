@@ -40,10 +40,11 @@ from riemannSolver import RiemannSolver
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import numpy as np
+import matplotlib.pyplot as plt
 import h5py
 
-style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 snap = int(sys.argv[1])
 
@@ -54,8 +55,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 x = sim["/PartType0/Coordinates"][:, 0]
@@ -75,7 +76,7 @@ x += x_min
 solver = RiemannSolver(gas_gamma)
 
 delta_x = (x_max - x_min) / N
-x_s = arange(0.5 * x_min, 0.5 * x_max, delta_x)
+x_s = np.arange(0.5 * x_min, 0.5 * x_max, delta_x)
 rho_s, v_s, P_s, _ = solver.solve(rho_L, v_L, P_L, rho_R, v_R, P_R, x_s / time)
 rho_s2, v_s2, P_s2, _ = solver.solve(rho_R, v_R, P_R, rho_L, v_L, P_L, x_s / time)
 x_s2 = np.array(x_s)
@@ -92,93 +93,93 @@ s_s2 = P_s2 / rho_s2**gas_gamma  # entropic function
 
 
 # Plot the interesting quantities
-figure(figsize=(7, 7 / 1.6))
+plt.figure(figsize=(7, 7 / 1.6))
 
 # Velocity profile --------------------------------
-subplot(231)
-plot(x, v, ".", color="r", ms=4.0)
-plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2pos], v_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2neg], v_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
+plt.subplot(231)
+plt.plot(x, v, ".", color="r", ms=4.0)
+plt.plot(x_s, v_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2pos], v_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2neg], v_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Velocity}}~v_x$", labelpad=0)
 
 # Density profile --------------------------------
-subplot(232)
-plot(x, rho, ".", color="r", ms=4.0)
-plot(x_s, rho_s, "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2pos], rho_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2neg], rho_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
+plt.subplot(232)
+plt.plot(x, rho, ".", color="r", ms=4.0)
+plt.plot(x_s, rho_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2pos], rho_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2neg], rho_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Density}}~\\rho$", labelpad=0)
 
 # Pressure profile --------------------------------
-subplot(233)
-plot(x, P, ".", color="r", ms=4.0)
-plot(x_s, P_s, "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2pos], P_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2neg], P_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Pressure}}~P$", labelpad=0)
+plt.subplot(233)
+plt.plot(x, P, ".", color="r", ms=4.0)
+plt.plot(x_s, P_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2pos], P_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2neg], P_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Pressure}}~P$", labelpad=0)
 
 # Internal energy profile -------------------------
-subplot(234)
-plot(x, u, ".", color="r", ms=4.0)
-plot(x_s, u_s, "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2pos], u_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2neg], u_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
+plt.subplot(234)
+plt.plot(x, u, ".", color="r", ms=4.0)
+plt.plot(x_s, u_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2pos], u_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2neg], u_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Internal~Energy}}~u$", labelpad=0)
 
 # Entropy profile ---------------------------------
-subplot(235)
+plt.subplot(235)
 
-plot(x, S, ".", color="r", ms=4.0)
-plot(x_s, s_s, "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2pos], s_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
-plot(x_s2[s2neg], s_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
-xlabel("${\\rm{Position}}~x$", labelpad=0)
-ylabel("${\\rm{Entropy}}~S$", labelpad=0)
+plt.plot(x, S, ".", color="r", ms=4.0)
+plt.plot(x_s, s_s, "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2pos], s_s2[s2pos], "--", color="k", alpha=0.8, lw=1.2)
+plt.plot(x_s2[s2neg], s_s2[s2neg], "--", color="k", alpha=0.8, lw=1.2)
+plt.xlabel("${\\rm{Position}}~x$", labelpad=0)
+plt.ylabel("${\\rm{Entropy}}~S$", labelpad=0)
 
 
 # Information -------------------------------------
-subplot(236, frameon=False)
+plt.subplot(236, frameon=False)
 
 text_fontsize = 5
 
-text(
+plt.text(
     -0.49,
     0.9,
     "Toro (2009) test 2 with  $\\gamma=%.3f$ in 1D at $t=%.2f$" % (gas_gamma, time),
     fontsize=text_fontsize,
 )
-text(
+plt.text(
     -0.49,
     0.8,
     "Left: $(P_L, \\rho_L, v_L) = (%.3f, %.3f, %.3f)$" % (P_L, rho_L, v_L),
     fontsize=text_fontsize,
 )
-text(
+plt.text(
     -0.49,
     0.7,
     "Right: $(P_R, \\rho_R, v_R) = (%.3f, %.3f, %.3f)$" % (P_R, rho_R, v_R),
     fontsize=text_fontsize,
 )
-plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
-text(-0.49, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
-text(-0.49, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
-text(-0.49, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
-text(
+plt.plot([-0.49, 0.1], [0.62, 0.62], "k-", lw=1)
+plt.text(-0.49, 0.5, "SWIFT %s" % git.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.49, 0.4, scheme.decode("utf-8"), fontsize=text_fontsize)
+plt.text(-0.49, 0.3, kernel.decode("utf-8"), fontsize=text_fontsize)
+plt.text(
     -0.49,
     0.2,
     "$%.2f$ neighbours ($\\eta=%.3f$)" % (neighbours, eta),
     fontsize=text_fontsize,
 )
-xlim(-0.5, 0.5)
-ylim(0, 1)
-xticks([])
-yticks([])
+plt.xlim(-0.5, 0.5)
+plt.ylim(0, 1)
+plt.xticks([])
+plt.yticks([])
 
-tight_layout()
+plt.tight_layout()
 
-savefig("ToroTest2.png", dpi=200)
+plt.savefig("ToroTest2.png", dpi=200)
