@@ -27,6 +27,13 @@ then
     ./getEaglePhotometryTable.sh
 fi
 
+# Get the cooling tables (the cooling model is initialised by --temperature)
+if [ ! -e coolingtables ]
+then
+    echo "Fetching EAGLE cooling tables..."
+    ../../Cooling/getEagleCoolingTable.sh
+fi
+
 # Get the solutions
 if [ ! -e StellarEvolutionSolution ]
 then

@@ -20,10 +20,12 @@ fi
 
 # The following run-time options are broken down by line as:
 # Basic run-time options
+# Line-of-sight outputs (see the LineOfSight section of the parameter file)
 # Threading options - run with threads and pinning (latter not required but improves performance)
 # The corresponding parameter file for this run
 
 ../../../swift \
     --cosmology --quick-lyman-alpha \
+    --line-of-sight \
     --threads=16 --pin \
     qla_50.yml
