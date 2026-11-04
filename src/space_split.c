@@ -1070,7 +1070,7 @@ static void space_split_large_cell(struct space *s, struct cell *c) {
   const int nr_threads = s->e->threadpool.num_threads;
 
   /* Set the top level cell tpid. */
-  c->tpid = threadpool_gettid();
+  c->tpid = 0;
 
   /* Sorting buffers holding the positions of the particles
    * We fill them in parallel using all the threads */
