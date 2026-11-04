@@ -23,7 +23,7 @@ RT implementation rather than produce actual physically meaningful results.
 
 o   To use GEAR-RT, configure SWIFT with
 
-    --with-stars=basic --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-feedback=none
+    --with-stars=basic --with-hydro=gizmo-mfv --with-riemann-solver=hllc --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-feedback=none --with-grackle=$GRACKLE_ROOT
 
 [technically, any other feedback scheme should work as well.]
 [the .yml file is set up to handle up to 3 photon groups, so

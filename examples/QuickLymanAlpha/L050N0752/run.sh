@@ -1,6 +1,9 @@
 #!/bin/bash
 
- # Generate the initial conditions if they are not present.
+# This example requires SWIFT to be configured with:
+#   --with-subgrid=QLA
+
+# Generate the initial conditions if they are not present.
 if [ ! -e EAGLE_L0050N0752_ICs.hdf5 ]
 then
     echo "Fetching initial conditions for the quick Lyman-alpha 50Mpc example..."

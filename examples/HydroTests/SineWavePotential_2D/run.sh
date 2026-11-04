@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This example requires SWIFT to be configured with:
+#   --with-hydro-dimension=2 --with-ext-potential=sine-wave --with-equation-of-state=isothermal-gas
+
 if [ ! -e sineWavePotential.hdf5 ]
 then
   echo "Generating initial conditions for the 1D SineWavePotential example..."

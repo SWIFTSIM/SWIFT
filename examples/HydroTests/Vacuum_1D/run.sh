@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This example requires SWIFT to be configured with:
+#   --with-hydro-dimension=1
+
 # Generate the initial conditions if they are not present.
 if [ ! -e vacuum.hdf5 ]
 then
