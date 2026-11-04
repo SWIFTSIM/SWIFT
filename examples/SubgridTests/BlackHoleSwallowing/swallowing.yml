@@ -37,7 +37,8 @@ Statistics:
 # Parameters for the self-gravity scheme
 Gravity:
   eta:                    0.025     # Constant dimensionless multiplier for time integration.
-  theta:                  0.7       # Opening angle (Multipole acceptance criterion)
+  MAC:                    geometric # Choice of multipole acceptance criterion: 'adaptive' OR 'geometric'.
+  theta_cr:               0.7       # Opening angle (Multipole acceptance criterion)
   mesh_side_length:       128
   comoving_DM_softening:         0.003320 # Comoving softening for DM (3.32 ckpc)
   max_physical_DM_softening:     0.001300 # Physical softening for DM (1.30 pkpc)

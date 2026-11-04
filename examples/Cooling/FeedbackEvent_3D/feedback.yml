@@ -56,7 +56,7 @@ GrackleCooling:
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
   maximal_density_Hpcm3: -1 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
   
-GearChemistry:
+GEARChemistry:
   initial_metallicity: 0.01295
 
 EAGLEChemistry:              # Solar abundances

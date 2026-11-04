@@ -7,10 +7,10 @@ then
     ./getIC.sh
 fi
 
-if [ ! -e coolingtables ]
+if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
 then
     echo "Fetching quick Lyman-alpha cooling tables..."
-    ../getQLACoolingTable.sh
+    ../getPloeckingerTable.sh
 fi
 
 # The following run-time options are broken down by line as:

@@ -9,7 +9,7 @@ fi
 
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
 then
-    ../../Cooling/getGrackleCoolingTable.sh
+    ../../GEAR_ICs_and_SCRIPTS/getGrackleCoolingTable.sh --hm2012
 fi
 
 if [ ! -e coolingtables ]
