@@ -44,6 +44,10 @@ static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
 static int radiation_packet_box_periodic = 0;
 static int radiation_packet_box_is_set = 0;
 
+/* Rounding scale of the reach margin per unit of 1 / h, set at start-up by
+ * radiation_packet_set_frame_width(). 0 for narrow frames. */
+static float radiation_packet_guard_scale = 0.f;
+
 /**
  * @brief Give the star emission the box, to wrap star-gas vectors.
  *
@@ -54,6 +58,25 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
   for (int k = 0; k < 3; k++) radiation_packet_box_dim[k] = dim[k];
   radiation_packet_box_periodic = periodic;
   radiation_packet_box_is_set = 1;
+}
+
+/**
+ * @brief Give the reach margin the widest cell frame of the pair loops.
+ *
+ * The loops form `dx` from positions measured from a cell corner, each up to
+ * the width `W` of a cell away, so `|pi| + |pj|` is at most `3 W`. The relative
+ * rounding error of `r2` at the edge `R = kernel_gamma h` is then at most
+ * `sqrt(3) 2^-23 (|pi| + |pj|) / R`, see #radiation_packet_reach_guard.
+ *
+ * @param width Largest width of a top-level cell, comoving. 0 or less
+ * leaves the margin at #RADIATION_PACKET_REACH_GUARD.
+ */
+void radiation_packet_set_frame_width(const double width) {
+  radiation_packet_guard_scale =
+      width > 0.
+          ? (float)(RADIATION_PACKET_REACH_GUARD_PER_SUPPORT *
+                    RADIATION_PACKET_FRAME_SUPPORTS * width / kernel_gamma)
+          : 0.f;
 }
 
 /* The redshift constants, set at start-up by radiation_packet_set_redshift().
@@ -260,6 +283,37 @@ double radiation_packet_arrival_delay_receding(const double path_phys,
 }
 
 /**
+ * @brief Report the widest cell frame over the smallest kernel support, when
+ * the engine is verbose.
+ *
+ * @param e The #engine.
+ */
+static void radiation_packet_report_frame_width(const struct engine *e) {
+  if (!e->verbose) return;
+  const struct space *s = e->s;
+  float h_min = FLT_MAX;
+  for (size_t i = 0; i < s->nr_parts; i++) {
+    const struct part *p = &s->parts[i];
+    if (p->time_bin != time_bin_inhibited && p->h > 0.f && p->h < h_min)
+      h_min = p->h;
+  }
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &h_min, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+#endif
+  if (h_min == FLT_MAX) return;
+  const double width = fmax(s->width[0], fmax(s->width[1], s->width[2]));
+  const double ratio = width / (kernel_gamma * h_min);
+  if (e->nodeID == 0)
+    message(
+        "Widest cell frame over the smallest kernel support: %.3g. Reach "
+        "margin there: %.3g.",
+        ratio,
+        (double)fminf(0.5f, fmaxf(RADIATION_PACKET_REACH_GUARD,
+                                  RADIATION_PACKET_REACH_GUARD_OTHER +
+                                      radiation_packet_guard_scale / h_min)));
+}
+
+/**
  * @brief Start-up of the packet emission, from engine_config().
  *
  * @param e The #engine.
@@ -267,6 +321,9 @@ double radiation_packet_arrival_delay_receding(const double path_phys,
 void radiation_packet_startup(const struct engine *e) {
   if (e->feedback_props == NULL) return;
   radiation_packet_set_box(e->s->dim, e->s->periodic);
+  radiation_packet_set_frame_width(
+      fmax(e->s->width[0], fmax(e->s->width[1], e->s->width[2])));
+  radiation_packet_report_frame_width(e);
   const struct feedback_props *fp = e->feedback_props;
   if (fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
     radiation_packet_set_light_speed(0.0, e->time_base, 0);
@@ -349,15 +406,42 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
 }
 
 /**
+ * @brief Relative cut of the squared radius of a reach with smoothing length
+ * `h`.
+ *
+ * The caller's `dx` is formed from float positions measured from a cell corner,
+ * so the relative error of `r2` at the edge is at most
+ * `RADIATION_PACKET_REACH_GUARD_OTHER +
+ * RADIATION_PACKET_REACH_GUARD_PER_SUPPORT S`, with `S = 3 W / (kernel_gamma
+ * h)` (#radiation_packet_set_frame_width). The result is never below
+ * #RADIATION_PACKET_REACH_GUARD, which is the value for `S` up to 46, and never
+ * above 0.5.
+ *
+ * @param h Comoving smoothing length of the radius.
+ * @return The relative cut.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_reach_guard(
+    const float h) {
+
+  if (!(radiation_packet_guard_scale > 0.f))
+    return RADIATION_PACKET_REACH_GUARD;
+  float g = RADIATION_PACKET_REACH_GUARD_OTHER +
+            (h > 0.f ? radiation_packet_guard_scale / h : 1.f);
+  if (g < RADIATION_PACKET_REACH_GUARD) g = RADIATION_PACKET_REACH_GUARD;
+  if (g > 0.5f) g = 0.5f;
+  return g;
+}
+
+/**
  * @brief Is a receiver in the reach of a sender, and in which part of it?
  *
  * The inner part is the kernel support of the sender. The outer part is the
  * rest of the kernel support of the receiver, and it counts only for an
  * active receiver: the gradient loop reaches it from the visit of that
  * receiver, which exists only when the receiver is updated. Both radii are
- * cut by #RADIATION_PACKET_REACH_GUARD so that every caller's own filter, which
- * may round `r2` differently, contains the reach. The margin holds for cell
- * frames up to about 10 to 30 kernel supports wide.
+ * cut by #radiation_packet_reach_guard so that every caller's own filter, which
+ * may round `r2` differently, contains the reach. The margin grows with the
+ * width of the cell frames of the loops.
  *
  * @param r2 Square distance, computed in the caller of this function from the
  * weight vector of #radiation_packet_weight_vector.
@@ -372,9 +456,11 @@ __attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
     const float r2, const float h_s, const float h_r, const int r_active,
     const int want) {
 
-  const float cut = (1.f - RADIATION_PACKET_REACH_GUARD) * kernel_gamma2;
-  const int inner = r2 < cut * h_s * h_s;
-  const int outer = !inner && r_active && r2 < cut * h_r * h_r;
+  const float cut_s = (1.f - radiation_packet_reach_guard(h_s)) * kernel_gamma2;
+  const int inner = r2 < cut_s * h_s * h_s;
+  const int outer = !inner && r_active &&
+                    r2 < (1.f - radiation_packet_reach_guard(h_r)) *
+                             kernel_gamma2 * h_r * h_r;
   if (want == RADIATION_PACKET_REACH_INNER) return inner;
   if (want == RADIATION_PACKET_REACH_OUTER) return outer;
   return inner || outer;
