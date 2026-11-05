@@ -941,6 +941,20 @@ __attribute__((always_inline)) INLINE static float cell_get_hydro_dx_max_part(
 }
 
 /**
+ * @brief The largest distance the stars of a #cell have moved since the last
+ * rebuild.
+ *
+ * A local cell holds the value of the drift of this step. A foreign cell
+ * holds the value of the last end-of-step exchange.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_get_stars_dx_max_part(
+    const struct cell *c) {
+  return c->stars.dx_max_part;
+}
+
+/**
  * @brief The smallest h that a pair recursion handles at the level of a pair
  * of cells rather than in the pairs of their progeny.
  *

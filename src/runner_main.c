@@ -235,18 +235,18 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, /*offset=*/t->flags,
                                             /*ntasks=*/STARS_SELF_NTASK,
-                                            /*below_h_max=*/0, 1);
+                                            /*h_hi=*/FLT_MAX, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
             runner_dosub_self_stars_prep1(r, ci, /*offset=*/0, /*ntasks=*/1,
-                                          /*below_h_max=*/0, 1);
+                                          /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_self_stars_prep2(r, ci, /*offset=*/0, /*ntasks=*/1,
-                                          /*below_h_max=*/0, 1);
+                                          /*h_hi=*/FLT_MAX, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
             runner_dosub_self_stars_feedback(r, ci, /*offset=*/0, /*ntasks=*/1,
-                                             /*below_h_max=*/0, 1);
+                                             /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_self_bh_density(r, ci, 1);
           else if (t->subtype == task_subtype_bh_swallow)
@@ -293,18 +293,22 @@ void *runner_main(void *data) {
             runner_dosub_pair1_limiter(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, /*offset=*/0,
-                                            /*ntasks=*/1, /*below_h_max=*/0, 1);
+                                            /*ntasks=*/1, /*h_hi_i=*/FLT_MAX,
+                                            /*h_hi_j=*/FLT_MAX, 1);
 #ifdef EXTRA_STAR_LOOPS
           else if (t->subtype == task_subtype_stars_prep1)
             runner_dosub_pair_stars_prep1(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
-                                          /*below_h_max=*/0, 1);
+                                          /*h_hi_i=*/FLT_MAX,
+                                          /*h_hi_j=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_prep2)
             runner_dosub_pair_stars_prep2(r, ci, cj, /*offset=*/0, /*ntasks=*/1,
-                                          /*below_h_max=*/0, 1);
+                                          /*h_hi_i=*/FLT_MAX,
+                                          /*h_hi_j=*/FLT_MAX, 1);
 #endif
           else if (t->subtype == task_subtype_stars_feedback)
-            runner_dosub_pair_stars_feedback(
-                r, ci, cj, /*offset=*/0, /*ntasks=*/1, /*below_h_max=*/0, 1);
+            runner_dosub_pair_stars_feedback(r, ci, cj, /*offset=*/0,
+                                             /*ntasks=*/1, /*h_hi_i=*/FLT_MAX,
+                                             /*h_hi_j=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_bh_density)
             runner_dosub_pair_bh_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_bh_swallow)
