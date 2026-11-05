@@ -261,6 +261,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
         /* Update the dx_max */
         c->stars.dx_max_part = max(c->stars.dx_max_part, cp->stars.dx_max_part);
+        c->stars.dx_outside_max =
+            max(c->stars.dx_outside_max, cp->stars.dx_outside_max);
         c->stars.dx_max_sort = max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
       }
   } else {
@@ -343,6 +345,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* Update the cell's running maximum displacement */
           c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+          c->stars.dx_outside_max =
+              max(c->stars.dx_outside_max, cell_distance_outside_box(c, sp->x));
           c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
 
           /* Update sink properties */
@@ -458,6 +462,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
         if (star_formation_need_update_dx_max) {
           c->hydro.dx_max_part =
               max(cp->hydro.dx_max_part, c->hydro.dx_max_part);
+          c->hydro.dx_outside_max =
+              max(cp->hydro.dx_outside_max, c->hydro.dx_outside_max);
           c->hydro.dx_max_sort =
               max(cp->hydro.dx_max_sort, c->hydro.dx_max_sort);
         }
@@ -466,6 +472,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
         if (swift_star_formation_model_creates_stars) {
           c->stars.dx_max_part =
               max(c->stars.dx_max_part, cp->stars.dx_max_part);
+          c->stars.dx_outside_max =
+              max(c->stars.dx_outside_max, cp->stars.dx_outside_max);
           c->stars.dx_max_sort =
               max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
         }
@@ -598,6 +606,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                   /* Note: no need to update quantities further up the tree as
                      this task is always called at the top-level */
                   c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
+                  c->hydro.dx_outside_max =
+                      max(c->hydro.dx_outside_max,
+                          cell_distance_outside_box(c, p->x));
                   c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
                 }
 
@@ -626,6 +637,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                   /* Note: no need to update quantities further up the tree as
                      this task is always called at the top-level */
                   c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+                  c->stars.dx_outside_max =
+                      max(c->stars.dx_outside_max,
+                          cell_distance_outside_box(c, sp->x));
                   c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
                 }
 

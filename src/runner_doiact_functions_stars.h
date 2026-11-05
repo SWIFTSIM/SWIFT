@@ -1418,6 +1418,16 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
   /* Should we even bother? */
   if (!do_ci && !do_cj) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The drift margin of the recursion relies on these bounds. */
+  if (gettimer) {
+    cell_check_stars_dx_outside_max(ci);
+    cell_check_stars_dx_outside_max(cj);
+    cell_check_hydro_dx_outside_max(ci);
+    cell_check_hydro_dx_outside_max(cj);
+  }
+#endif
+
   /* We reached a leaf OR a cell small enough to be processed quickly */
   if (!ci->split || ci->stars.count < space_recurse_size_pair_stars ||
       !cj->split || cj->stars.count < space_recurse_size_pair_stars) {
@@ -1457,10 +1467,12 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
     /* The stars with h >= h_lo can have neighbours in progeny pairs that do
        not touch: they are handled at this level. */
-    const float h_lo_i = cell_pair_h_split(
-        ci, cell_get_stars_dx_max_part(ci) + cell_get_hydro_dx_max_part(cj));
-    const float h_lo_j = cell_pair_h_split(
-        ci, cell_get_stars_dx_max_part(cj) + cell_get_hydro_dx_max_part(ci));
+    const float h_lo_i =
+        cell_pair_h_split(ci, cell_get_stars_dx_outside_max(ci) +
+                                  cell_get_hydro_dx_outside_max(cj));
+    const float h_lo_j =
+        cell_pair_h_split(ci, cell_get_stars_dx_outside_max(cj) +
+                                  cell_get_hydro_dx_outside_max(ci));
 
     const int do_ci_here =
         do_ci && h_lo_i < h_hi_i && ci->stars.h_max_active >= h_lo_i;

@@ -604,6 +604,8 @@ void cell_check_multipole(struct cell *c,
 void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
+void cell_check_hydro_dx_outside_max(const struct cell *c);
+void cell_check_stars_dx_outside_max(const struct cell *c);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_bpart_drift_point(struct cell *c, void *data);
@@ -927,43 +929,66 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
 /* Inlined functions (for speed). */
 
 /**
- * @brief The largest distance the gas of a #cell has moved since the last
- * rebuild.
- *
- * A local cell holds the value of the drift of this step. A foreign cell
- * holds the value of the last end-of-step exchange.
+ * @brief The largest distance (max-norm) by which a position lies outside the
+ * box of a #cell.
  *
  * @param c The #cell.
+ * @param x The position.
  */
-__attribute__((always_inline)) INLINE static float cell_get_hydro_dx_max_part(
-    const struct cell *c) {
-  return c->hydro.dx_max_part;
+__attribute__((always_inline)) INLINE static float cell_distance_outside_box(
+    const struct cell *c, const double x[3]) {
+  double d = 0.;
+  for (int k = 0; k < 3; k++) {
+    d = max(d, c->loc[k] - x[k]);
+    d = max(d, x[k] - (c->loc[k] + c->width[k]));
+  }
+  return (float)d;
 }
 
 /**
- * @brief The largest distance the stars of a #cell have moved since the last
- * rebuild.
- *
- * A local cell holds the value of the drift of this step. A foreign cell
- * holds the value of the last end-of-step exchange.
+ * @brief The largest distance by which the gas of a #cell lies outside the
+ * box of its leaf cell.
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static float cell_get_stars_dx_max_part(
-    const struct cell *c) {
-  return c->stars.dx_max_part;
+__attribute__((always_inline)) INLINE static float
+cell_get_hydro_dx_outside_max(const struct cell *c) {
+  return c->hydro.dx_outside_max;
+}
+
+/**
+ * @brief The largest distance by which the stars of a #cell lie outside the
+ * box of their leaf cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float
+cell_get_stars_dx_outside_max(const struct cell *c) {
+  return c->stars.dx_outside_max;
+}
+
+/**
+ * @brief The largest distance by which the black holes of a #cell lie outside
+ * the box of their leaf cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float
+cell_get_black_holes_dx_outside_max(const struct cell *c) {
+  return c->black_holes.dx_outside_max;
 }
 
 /**
  * @brief The smallest h that a pair recursion handles at the level of a pair
  * of cells rather than in the pairs of their progeny.
  *
- * The progeny are half of dmin wide and no particle is further than its
- * cell's drift from the progeny it was sorted into. A particle with a smaller
- * h hence finds all its neighbours in the progeny pairs that touch.
+ * The progeny pairs that do not touch are at least half of dmin apart along
+ * one axis, and no particle lies further than dx_outside_max outside the box
+ * of its progeny. A particle with a smaller h hence finds all its neighbours
+ * in the progeny pairs that touch.
  *
  * @param c One #cell of the pair.
- * @param dx The sum of the drifts of the particles of the two cells.
+ * @param dx The sum of the dx_outside_max of the two cells.
  */
 __attribute__((always_inline)) INLINE static float cell_pair_h_split(
     const struct cell *c, const float dx) {
@@ -979,8 +1004,8 @@ __attribute__((always_inline)) INLINE static float cell_pair_h_split(
  */
 __attribute__((always_inline)) INLINE static float cell_pair_hydro_h_split(
     const struct cell *ci, const struct cell *cj) {
-  return cell_pair_h_split(
-      ci, cell_get_hydro_dx_max_part(ci) + cell_get_hydro_dx_max_part(cj));
+  return cell_pair_h_split(ci, cell_get_hydro_dx_outside_max(ci) +
+                                   cell_get_hydro_dx_outside_max(cj));
 }
 
 /**
@@ -1013,8 +1038,8 @@ cell_can_recurse_in_pair_hydro_task(const struct cell *ci,
                                     const struct cell *cj, const float h_max) {
 
   return ci->split && cj->split &&
-         (kernel_gamma * h_max + cell_get_hydro_dx_max_part(ci) +
-          cell_get_hydro_dx_max_part(cj)) < 0.5f * ci->dmin;
+         (kernel_gamma * h_max + cell_get_hydro_dx_outside_max(ci) +
+          cell_get_hydro_dx_outside_max(cj)) < 0.5f * ci->dmin;
 }
 
 /**
@@ -1104,8 +1129,8 @@ cell_can_recurse_in_pair_stars_task(const struct cell *ci,
                                     const float h_max_i) {
 
   return ci->split && cj->split &&
-         (kernel_gamma * h_max_i + cell_get_stars_dx_max_part(ci) +
-          cell_get_hydro_dx_max_part(cj)) < 0.5f * ci->dmin;
+         (kernel_gamma * h_max_i + cell_get_stars_dx_outside_max(ci) +
+          cell_get_hydro_dx_outside_max(cj)) < 0.5f * ci->dmin;
 }
 
 /**
@@ -1172,8 +1197,10 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
 
   const float h_i = max(h_max_i, cj->hydro.h_max);
   const float h_j = max(cj->sinks.h_max, ci->hydro.h_max);
-  const float dx_i = max(ci->hydro.dx_max_part, ci->sinks.dx_max_part);
-  const float dx_j = max(cj->hydro.dx_max_part, cj->sinks.dx_max_part);
+  const float dx_i =
+      max(cell_get_hydro_dx_outside_max(ci), ci->sinks.dx_max_part);
+  const float dx_j =
+      max(cell_get_hydro_dx_outside_max(cj), cj->sinks.dx_max_part);
 
   return ci->split && cj->split &&
          ((kernel_gamma * h_i + ci->sinks.dx_max_part + dx_j) <
@@ -1205,14 +1232,14 @@ cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
 
   const float h_i = max(h_max_i, cj->hydro.h_max);
   const float h_j = max(cj->black_holes.h_max, ci->hydro.h_max);
-  const float dx_i = max(ci->hydro.dx_max_part, ci->black_holes.dx_max_part);
-  const float dx_j = max(cj->hydro.dx_max_part, cj->black_holes.dx_max_part);
+  const float dx_bh_i = cell_get_black_holes_dx_outside_max(ci);
+  const float dx_bh_j = cell_get_black_holes_dx_outside_max(cj);
+  const float dx_i = max(cell_get_hydro_dx_outside_max(ci), dx_bh_i);
+  const float dx_j = max(cell_get_hydro_dx_outside_max(cj), dx_bh_j);
 
   return ci->split && cj->split &&
-         ((kernel_gamma * h_i + ci->black_holes.dx_max_part + dx_j) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * h_j + cj->black_holes.dx_max_part + dx_i) <
-          0.5f * cj->dmin);
+         ((kernel_gamma * h_i + dx_bh_i + dx_j) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * h_j + dx_bh_j + dx_i) < 0.5f * cj->dmin);
 }
 
 /**

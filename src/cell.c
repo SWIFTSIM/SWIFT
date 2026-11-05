@@ -729,6 +729,72 @@ void cell_clean_links(struct cell *c, void *data) {
 }
 
 /**
+ * @brief Check that no gas particle lies further outside the box of its leaf
+ * cell than the dx_outside_max of the cells above it.
+ *
+ * @param c The #cell.
+ */
+void cell_check_hydro_dx_outside_max(const struct cell *c) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      const struct cell *cp = c->progeny[k];
+      if (cp == NULL || cp->hydro.count == 0) continue;
+      if (cp->hydro.dx_outside_max > c->hydro.dx_outside_max)
+        error("Progeny with a larger dx_outside_max than its parent");
+      cell_check_hydro_dx_outside_max(cp);
+    }
+  } else {
+    for (int k = 0; k < c->hydro.count; k++) {
+      const struct part *p = &c->hydro.parts[k];
+      if (p->time_bin == time_bin_inhibited) continue;
+      const float d = cell_distance_outside_box(c, p->x);
+      if (d > c->hydro.dx_outside_max)
+        error(
+            "Particle further outside its cell than dx_outside_max: id=%lld "
+            "d=%e dx_outside_max=%e nodeID=%d",
+            p->id, d, c->hydro.dx_outside_max, c->nodeID);
+    }
+  }
+#else
+  error("To be used only in debug mode.");
+#endif
+}
+
+/**
+ * @brief Check that no star lies further outside the box of its leaf cell
+ * than the dx_outside_max of the cells above it.
+ *
+ * @param c The #cell.
+ */
+void cell_check_stars_dx_outside_max(const struct cell *c) {
+#ifdef SWIFT_DEBUG_CHECKS
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      const struct cell *cp = c->progeny[k];
+      if (cp == NULL || cp->stars.count == 0) continue;
+      if (cp->stars.dx_outside_max > c->stars.dx_outside_max)
+        error("Progeny with a larger dx_outside_max than its parent");
+      cell_check_stars_dx_outside_max(cp);
+    }
+  } else {
+    for (int k = 0; k < c->stars.count; k++) {
+      const struct spart *sp = &c->stars.parts[k];
+      if (sp->time_bin == time_bin_inhibited) continue;
+      const float d = cell_distance_outside_box(c, sp->x);
+      if (d > c->stars.dx_outside_max)
+        error(
+            "Star further outside its cell than dx_outside_max: id=%lld "
+            "d=%e dx_outside_max=%e nodeID=%d",
+            sp->id, d, c->stars.dx_outside_max, c->nodeID);
+    }
+  }
+#else
+  error("To be used only in debug mode.");
+#endif
+}
+
+/**
  * @brief Checks that the #part in a cell are at the
  * current point in time
  *

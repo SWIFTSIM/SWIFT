@@ -2879,6 +2879,14 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The drift margin of the recursion relies on these bounds. */
+  if (gettimer) {
+    cell_check_hydro_dx_outside_max(ci);
+    cell_check_hydro_dx_outside_max(cj);
+  }
+#endif
+
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
@@ -3030,6 +3038,14 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   /* Should we even bother? */
   if (!CELL_IS_ACTIVE(ci, e) && !CELL_IS_ACTIVE(cj, e)) return;
   if (ci->hydro.count == 0 || cj->hydro.count == 0) return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The drift margin of the recursion relies on these bounds. */
+  if (gettimer) {
+    cell_check_hydro_dx_outside_max(ci);
+    cell_check_hydro_dx_outside_max(cj);
+  }
+#endif
 
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];

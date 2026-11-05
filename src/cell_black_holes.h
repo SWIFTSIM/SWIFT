@@ -90,6 +90,10 @@ struct cell_black_holes {
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
 
+    /*! Largest distance (max-norm) by which a black hole of this cell lies
+     * outside the box of its leaf cell. */
+    float dx_outside_max;
+
     /*! Values of dx_max before the drifts, used for sub-cell tasks. */
     float dx_max_part_old;
 

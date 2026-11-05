@@ -118,6 +118,10 @@ struct cell_hydro {
     /*! Maximum part movement in this cell since last construction. */
     float dx_max_part;
 
+    /*! Largest distance (max-norm) by which a part of this cell lies outside
+     * the box of its leaf cell. */
+    float dx_outside_max;
+
     /*! Maximum particle movement in this cell since the last sort. */
     float dx_max_sort;
 
