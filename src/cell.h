@@ -1180,12 +1180,10 @@ cell_can_recurse_in_subself_stars_task(const struct cell *c) {
  * @brief Can a pair sink task recurse to a lower level based
  * on the status of the particles in the cells.
  *
- * Both directions are tested: the sinks of ci on cj and the sinks of cj on
- * ci. The cells the recursion skips are at least half of dmin away from the
- * sub-cell of a sink, so the search radius plus the drift of the searching
- * sinks and the largest drift of the gas or sinks they search must stay
- * below that. As in the rebuild test, the search radius also covers the h of
- * the gas searched. The drifts are those of this step.
+ * Both directions are tested: the sinks of ci on cj and of cj on ci. The
+ * cells the recursion skips are at least half of dmin away, so the search
+ * radius plus the drifts of the searching sinks and of what they search must
+ * stay below that. The search radius also covers the h of the gas searched.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1214,13 +1212,11 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
  * @brief Can a pair black hole task recurse to a lower level based
  * on the status of the particles in the cells.
  *
- * Both directions are tested: the black holes of ci on cj and the black
- * holes of cj on ci. The cells the recursion skips are at least half of dmin
- * away from the sub-cell of a black hole, so the search radius plus the drift
- * of the searching black holes and the largest drift of the gas or black
- * holes they search must stay below that. As in the rebuild test, the search
- * radius also covers the h of the gas searched. The drifts are those of this
- * step.
+ * Both directions are tested: the black holes of ci on cj and of cj on ci.
+ * The cells the recursion skips are at least half of dmin away, so the search
+ * radius plus the drifts of the searching black holes and of what they search
+ * must stay below that. The search radius also covers the h of the gas
+ * searched.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.

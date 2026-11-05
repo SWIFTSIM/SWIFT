@@ -2711,7 +2711,7 @@ void DOSELF2(struct runner *r, const struct cell *c, const float h_lo,
 
         /* Decide which of the two particles to update */
 
-        /* We know pi is active and the pair in the right range of h
+        /* We know pi is active and the pair is in the right range of h
          * -> Only check the distance to pj */
         const int doi = (r2 < hig2) || (r2 < hjg2);
 
