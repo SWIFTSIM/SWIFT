@@ -2285,8 +2285,8 @@ static void radiation_packet_absorb_below_cutoff(
  */
 static void radiation_packet_set_origin(
     struct feedback_isrf_packet_slot_data *sl, double offset[3],
-    const float total_energy, const int slot_index, const float frame[9]) {
-  for (int k = 0; k < 3; k++) offset[k] /= (double)total_energy;
+    const double total_energy, const int slot_index, const float frame[9]) {
+  for (int k = 0; k < 3; k++) offset[k] /= total_energy;
   const double d = sqrt(offset[0] * offset[0] + offset[1] * offset[1] +
                         offset[2] * offset[2]);
   sl->origin_distance = (float)d;
@@ -2366,7 +2366,7 @@ static void radiation_packet_merge_slot_unlimited(
       partial = 0;
   }
 
-  float total_energy = 0.f;
+  double total_energy = 0.0;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
     float res_energy = band->reservoir_energy;
@@ -2392,7 +2392,7 @@ static void radiation_packet_merge_slot_unlimited(
         salt);
     band->bin_energy[0] = 0.f;
     band->bin_photons[0] = 0.f;
-    total_energy += arriving;
+    total_energy += (double)arriving;
   }
 
   /* Double: the product of a share near the transmission cutoff with a small
@@ -2410,7 +2410,7 @@ static void radiation_packet_merge_slot_unlimited(
     sl->inbox_origin_offset[k] = 0.0;
   }
 
-  if (!(total_energy > 0.f)) return;
+  if (!(total_energy > 0.0)) return;
   radiation_packet_set_origin(sl, offset, total_energy, slot_index, frame);
 }
 
@@ -2436,7 +2436,7 @@ static void radiation_packet_release_far_cell(
     struct feedback_isrf_packet_slot_data *sl,
     struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
     const int c, const integertime_t far_end, const integertime_t old_width,
-    const double now, const uint32_t salt, float *total_energy) {
+    const double now, const uint32_t salt, double *total_energy) {
 
   float cell_total = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
@@ -2486,7 +2486,7 @@ static void radiation_packet_release_far_cell(
     f_b[b] = fb;
     if (fb < 1.) all = 0;
   }
-  float e = 0.f;
+  double e = 0.0;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
     float re = band->far_energy[c], rp = band->far_photons[c];
@@ -2503,7 +2503,7 @@ static void radiation_packet_release_far_cell(
         radiation_packet_add_stochastic(band->photons, rp, cell_salt);
     e += re;
   }
-  if (e > 0.f) {
+  if (e > 0.0) {
     *total_energy += e;
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
     if (diag_overflow) {
@@ -2576,13 +2576,13 @@ static void radiation_packet_merge_slot_limited(
       pending += band->far_energy[c];
     }
   }
-  float total_energy = 0.f;
+  double total_energy = 0.0;
 
   /* The near bins that have ended. */
   for (int j = 0; j < n; j++) {
     const integertime_t end = old_first + (integertime_t)j * old_width;
     if (end > ti_current) continue;
-    float e = 0.f;
+    double e = 0.0;
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
       const uint32_t bin_salt =
@@ -2595,7 +2595,7 @@ static void radiation_packet_merge_slot_limited(
       band->bin_energy[j] = 0.f;
       band->bin_photons[j] = 0.f;
     }
-    if (e > 0.f) total_energy += e;
+    if (e > 0.0) total_energy += e;
   }
 
   /* The far cells. */
@@ -2605,8 +2605,8 @@ static void radiation_packet_merge_slot_limited(
 
   /* Origin: the mean origin of everything that waited. */
   double offset[3] = {0., 0., 0.};
-  if (total_energy > 0.f && pending > 0.) {
-    const double fraction = fmin(1., (double)total_energy / pending);
+  if (total_energy > 0.0 && pending > 0.) {
+    const double fraction = fmin(1., total_energy / pending);
     for (int k = 0; k < 3; k++) {
       offset[k] = sl->inbox_origin_offset[k] * fraction;
       sl->inbox_origin_offset[k] -= offset[k];
@@ -2621,7 +2621,7 @@ static void radiation_packet_merge_slot_limited(
   if (!(left > 0.))
     for (int k = 0; k < 3; k++) sl->inbox_origin_offset[k] = 0.0;
 
-  if (!(total_energy > 0.f)) return;
+  if (!(total_energy > 0.0)) return;
   sl->arrival = now;
   radiation_packet_set_origin(sl, offset, total_energy, slot_index, frame);
 }
