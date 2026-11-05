@@ -405,14 +405,7 @@ void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
                                    struct cell *cj, float h_lo, float h_hi);
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
-                                 struct cell *cj, int limit_h_min,
-                                 int limit_h_max);
-
-/* Call the force pair loop with no limit in h. */
-static void dopair2_branch_force_all(struct runner *r, struct cell *ci,
-                                     struct cell *cj, float h_lo, float h_hi) {
-  runner_dopair2_branch_force(r, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
-}
+                                 struct cell *cj, float h_lo, float h_hi);
 
 /**
  * @brief Computes the pair interactions of two cells using SWIFT and a brute
@@ -777,7 +770,7 @@ int main(int argc, char *argv[]) {
 
   /* Re-assign function pointers. */
   serial_inter_func = &pairs_all_force;
-  vec_inter_func = &dopair2_branch_force_all;
+  vec_inter_func = &runner_dopair2_branch_force;
   init = &zero_particle_fields_force;
   finalise = &end_calculation_force;
 

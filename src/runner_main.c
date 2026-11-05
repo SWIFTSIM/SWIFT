@@ -223,13 +223,13 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-            runner_dosub_self2_gradient(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self2_gradient(r, ci, /*h_hi=*/FLT_MAX, 1);
 #else
             runner_dosub_self1_gradient(r, ci, /*h_hi=*/FLT_MAX, 1);
 #endif
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self2_force(r, ci, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_self1_limiter(r, ci, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -260,7 +260,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_self1_rt_gradient(r, ci, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_rt_transport)
-            runner_dosub_self2_rt_transport(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self2_rt_transport(r, ci, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_sink_density)
             runner_dosub_self_sinks_density(r, ci, 1);
           else if (t->subtype == task_subtype_sink_swallow)
@@ -282,13 +282,13 @@ void *runner_main(void *data) {
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-            runner_dosub_pair2_gradient(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair2_gradient(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
 #else
             runner_dosub_pair1_gradient(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
 #endif
 #endif
           else if (t->subtype == task_subtype_force)
-            runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair2_force(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_limiter)
             runner_dosub_pair1_limiter(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_density)
@@ -322,7 +322,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_rt_gradient)
             runner_dosub_pair1_rt_gradient(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_rt_transport)
-            runner_dosub_pair2_rt_transport(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair2_rt_transport(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_sink_density)
             runner_dosub_pair_sinks_density(r, ci, cj, 1);
           else if (t->subtype == task_subtype_sink_swallow)

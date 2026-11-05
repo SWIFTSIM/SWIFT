@@ -176,23 +176,23 @@
 
 void DOSELF1_BRANCH(struct runner *r, const struct cell *c, const float h_lo,
                     const float h_hi);
-void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
+void DOSELF2_BRANCH(struct runner *r, const struct cell *c, const float h_lo,
+                    const float h_hi);
 
 void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
                     const float h_lo, const float h_hi);
 void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
+                    const float h_lo, const float h_hi);
 
 void DOSUB_SELF1(struct runner *r, struct cell *c, const float h_hi,
                  const int gettimer);
-void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
+void DOSUB_SELF2(struct runner *r, struct cell *c, const float h_hi,
                  const int gettimer);
 
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
                  const float h_hi, const int gettimer);
 void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
+                 const float h_hi, const int gettimer);
 
 void DOSELF_SUBSET_BRANCH(struct runner *r, const struct cell *ci,
                           struct part *restrict parts, const int *ind,
