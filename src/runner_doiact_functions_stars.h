@@ -1420,11 +1420,16 @@ void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* The drift margin of the recursion relies on these bounds. */
+  /* Only the sides used by this pair hold particles received this step. */
   if (gettimer) {
-    cell_check_stars_dx_outside_max(ci);
-    cell_check_stars_dx_outside_max(cj);
-    cell_check_hydro_dx_outside_max(ci);
-    cell_check_hydro_dx_outside_max(cj);
+    if (do_ci) {
+      cell_check_stars_dx_outside_max(ci);
+      cell_check_hydro_dx_outside_max(cj);
+    }
+    if (do_cj) {
+      cell_check_stars_dx_outside_max(cj);
+      cell_check_hydro_dx_outside_max(ci);
+    }
   }
 #endif
 
