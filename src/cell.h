@@ -1000,24 +1000,21 @@ __attribute__((always_inline)) INLINE static float cell_self_h_split(
  * @brief Can a pair hydro task recurse to a lower level based
  * on the status of the particles in the cells.
  *
- * Each cell is tested with its own smoothing length and drift. The gas of cj
- * uses the h of the last step. The _old values are used as a drift may have
- * updated the others.
+ * The progeny pairs that the recursion skips are at least half of dmin
+ * apart, so the search radius plus the drift of the gas of both cells must
+ * stay below that.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
- * @param h_max_i The largest h of the gas of ci that searches cj.
+ * @param h_max The largest h of the gas that searches.
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_hydro_task(const struct cell *ci,
-                                    const struct cell *cj,
-                                    const float h_max_i) {
+                                    const struct cell *cj, const float h_max) {
 
   return ci->split && cj->split &&
-         ((kernel_gamma * h_max_i + ci->hydro.dx_max_part_old) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
-          0.5f * cj->dmin);
+         (kernel_gamma * h_max + cell_get_hydro_dx_max_part(ci) +
+          cell_get_hydro_dx_max_part(cj)) < 0.5f * ci->dmin;
 }
 
 /**
@@ -1091,14 +1088,14 @@ cell_can_recurse_in_subself2_hydro_task(const struct cell *c) {
 
 /**
  * @brief Can a pair star task recurse to a lower level based
- * on the status of the particles in the cells.
+ * on the status of the stars of ci searching the gas of cj.
  *
- * Each cell is tested with the h and drift of its own stars. The stars of cj
- * use the h of the last step. The _old values are used as a drift may have
- * updated the others.
+ * The progeny pairs that the recursion skips are at least half of dmin
+ * apart, so the search radius plus the drift of the stars of ci and of the
+ * gas of cj must stay below that.
  *
- * @param ci The first #cell.
- * @param cj The second #cell.
+ * @param ci The #cell with the stars.
+ * @param cj The #cell with the gas.
  * @param h_max_i The largest h of the stars of ci that search cj.
  */
 __attribute__((always_inline)) INLINE static int
@@ -1107,10 +1104,8 @@ cell_can_recurse_in_pair_stars_task(const struct cell *ci,
                                     const float h_max_i) {
 
   return ci->split && cj->split &&
-         ((kernel_gamma * h_max_i + ci->stars.dx_max_part_old) <
-          0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->stars.h_max_old + cj->stars.dx_max_part_old) <
-          0.5f * cj->dmin);
+         (kernel_gamma * h_max_i + cell_get_stars_dx_max_part(ci) +
+          cell_get_hydro_dx_max_part(cj)) < 0.5f * ci->dmin;
 }
 
 /**
@@ -1164,8 +1159,7 @@ cell_can_recurse_in_subself_stars_task(const struct cell *c) {
  * sub-cell of a sink, so the search radius plus the drift of the searching
  * sinks and the largest drift of the gas or sinks they search must stay
  * below that. As in the rebuild test, the search radius also covers the h of
- * the gas searched. All values but h_max_i are those of the last step. The
- * _old values are used as a drift may have updated the others.
+ * the gas searched. The drifts are those of this step.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1176,15 +1170,15 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
                                     const struct cell *cj,
                                     const float h_max_i) {
 
-  const float h_i = max(h_max_i, cj->hydro.h_max_old);
-  const float h_j = max(cj->sinks.h_max_old, ci->hydro.h_max_old);
-  const float dx_i = max(ci->hydro.dx_max_part_old, ci->sinks.dx_max_part_old);
-  const float dx_j = max(cj->hydro.dx_max_part_old, cj->sinks.dx_max_part_old);
+  const float h_i = max(h_max_i, cj->hydro.h_max);
+  const float h_j = max(cj->sinks.h_max, ci->hydro.h_max);
+  const float dx_i = max(ci->hydro.dx_max_part, ci->sinks.dx_max_part);
+  const float dx_j = max(cj->hydro.dx_max_part, cj->sinks.dx_max_part);
 
   return ci->split && cj->split &&
-         ((kernel_gamma * h_i + ci->sinks.dx_max_part_old + dx_j) <
+         ((kernel_gamma * h_i + ci->sinks.dx_max_part + dx_j) <
           0.5f * ci->dmin) &&
-         ((kernel_gamma * h_j + cj->sinks.dx_max_part_old + dx_i) <
+         ((kernel_gamma * h_j + cj->sinks.dx_max_part + dx_i) <
           0.5f * cj->dmin);
 }
 
@@ -1197,9 +1191,8 @@ cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
  * away from the sub-cell of a black hole, so the search radius plus the drift
  * of the searching black holes and the largest drift of the gas or black
  * holes they search must stay below that. As in the rebuild test, the search
- * radius also covers the h of the gas searched. All values but h_max_i are
- * those of the last step. The _old values are used as a drift may have
- * updated the others.
+ * radius also covers the h of the gas searched. The drifts are those of this
+ * step.
  *
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1210,17 +1203,15 @@ cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
                                           const struct cell *cj,
                                           const float h_max_i) {
 
-  const float h_i = max(h_max_i, cj->hydro.h_max_old);
-  const float h_j = max(cj->black_holes.h_max_old, ci->hydro.h_max_old);
-  const float dx_i =
-      max(ci->hydro.dx_max_part_old, ci->black_holes.dx_max_part_old);
-  const float dx_j =
-      max(cj->hydro.dx_max_part_old, cj->black_holes.dx_max_part_old);
+  const float h_i = max(h_max_i, cj->hydro.h_max);
+  const float h_j = max(cj->black_holes.h_max, ci->hydro.h_max);
+  const float dx_i = max(ci->hydro.dx_max_part, ci->black_holes.dx_max_part);
+  const float dx_j = max(cj->hydro.dx_max_part, cj->black_holes.dx_max_part);
 
   return ci->split && cj->split &&
-         ((kernel_gamma * h_i + ci->black_holes.dx_max_part_old + dx_j) <
+         ((kernel_gamma * h_i + ci->black_holes.dx_max_part + dx_j) <
           0.5f * ci->dmin) &&
-         ((kernel_gamma * h_j + cj->black_holes.dx_max_part_old + dx_i) <
+         ((kernel_gamma * h_j + cj->black_holes.dx_max_part + dx_i) <
           0.5f * cj->dmin);
 }
 

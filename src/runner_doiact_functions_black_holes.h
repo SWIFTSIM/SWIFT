@@ -677,7 +677,7 @@ void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
 
     /* Recurse? */
     if (cell_can_recurse_in_pair_black_holes_task(
-            ci, cj, max(h_max_redo, ci->black_holes.h_max_old))) {
+            ci, cj, max(h_max_redo, ci->black_holes.h_max))) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -831,7 +831,7 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
 
   /* Recurse? */
   if (cell_can_recurse_in_pair_black_holes_task(ci, cj,
-                                                ci->black_holes.h_max_old)) {
+                                                ci->black_holes.h_max)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;
