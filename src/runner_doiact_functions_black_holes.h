@@ -825,6 +825,37 @@ void DOSUB_PAIR1_BH(struct runner *r, struct cell *ci, struct cell *cj,
 
   if (!should_do_ci && !should_do_cj) return;
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* The drift margin of the recursion relies on these bounds. */
+  /* Only the sides used by this pair hold particles received this step. */
+  if (gettimer) {
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY)
+    const int check_ci = should_do_ci && ci->nodeID == e->nodeID;
+    const int check_cj = should_do_cj && cj->nodeID == e->nodeID;
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_FEEDBACK)
+    const int check_ci = should_do_ci && cj->nodeID == e->nodeID;
+    const int check_cj = should_do_cj && ci->nodeID == e->nodeID;
+#else
+    const int check_ci = should_do_ci;
+    const int check_cj = should_do_cj;
+#endif
+    if (check_ci) {
+      cell_check_black_holes_dx_outside_max(ci);
+      cell_check_hydro_dx_outside_max(cj);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+      cell_check_black_holes_dx_outside_max(cj);
+#endif
+    }
+    if (check_cj) {
+      cell_check_black_holes_dx_outside_max(cj);
+      cell_check_hydro_dx_outside_max(ci);
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_SWALLOW)
+      cell_check_black_holes_dx_outside_max(ci);
+#endif
+    }
+  }
+#endif
+
   /* Get the type of pair and flip ci/cj if needed. */
   double shift[3];
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);

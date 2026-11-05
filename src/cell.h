@@ -606,6 +606,7 @@ void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
 void cell_check_hydro_dx_outside_max(const struct cell *c);
 void cell_check_stars_dx_outside_max(const struct cell *c);
+void cell_check_black_holes_dx_outside_max(const struct cell *c);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_bpart_drift_point(struct cell *c, void *data);
