@@ -231,7 +231,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_self1_limiter(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self1_limiter(r, ci, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_self_stars_density(r, ci, /*offset=*/t->flags,
                                             /*ntasks=*/STARS_SELF_NTASK,
@@ -290,7 +290,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_limiter)
-            runner_dosub_pair1_limiter(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair1_limiter(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_stars_density)
             runner_dosub_pair_stars_density(r, ci, cj, /*offset=*/0,
                                             /*ntasks=*/1, /*below_h_max=*/0, 1);
