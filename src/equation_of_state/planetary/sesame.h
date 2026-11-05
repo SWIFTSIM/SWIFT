@@ -82,7 +82,7 @@ INLINE static void set_AQUA(struct SESAME_params *mat,
                             enum eos_planetary_material_id mat_id) {
   // Haldemann et al. (2020)
   mat->mat_id = mat_id;
-  mat->version_date = 20220714;
+  mat->version_date = 20261105;
 }
 INLINE static void set_CMS19_H(struct SESAME_params *mat,
                                enum eos_planetary_material_id mat_id) {
