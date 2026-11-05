@@ -219,13 +219,13 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_external_grav)
             runner_do_grav_external(r, ci, 1);
           else if (t->subtype == task_subtype_density)
-            runner_dosub_self1_density(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self1_density(r, ci, /*h_hi=*/FLT_MAX, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
             runner_dosub_self2_gradient(r, ci, /*below_h_max=*/0, 1);
 #else
-            runner_dosub_self1_gradient(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self1_gradient(r, ci, /*h_hi=*/FLT_MAX, 1);
 #endif
 #endif
           else if (t->subtype == task_subtype_force)
@@ -258,7 +258,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_self_bh_feedback(r, ci, 1);
           else if (t->subtype == task_subtype_rt_gradient)
-            runner_dosub_self1_rt_gradient(r, ci, /*below_h_max=*/0, 1);
+            runner_dosub_self1_rt_gradient(r, ci, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_self2_rt_transport(r, ci, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_sink_density)
@@ -278,13 +278,13 @@ void *runner_main(void *data) {
           if (t->subtype == task_subtype_grav)
             runner_dopair_recursive_grav(r, ci, cj, 1);
           else if (t->subtype == task_subtype_density)
-            runner_dosub_pair1_density(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair1_density(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
 #ifdef EXTRA_HYDRO_LOOP
           else if (t->subtype == task_subtype_gradient)
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
             runner_dosub_pair2_gradient(r, ci, cj, /*below_h_max=*/0, 1);
 #else
-            runner_dosub_pair1_gradient(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair1_gradient(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
 #endif
 #endif
           else if (t->subtype == task_subtype_force)
@@ -316,7 +316,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_bh_feedback)
             runner_dosub_pair_bh_feedback(r, ci, cj, 1);
           else if (t->subtype == task_subtype_rt_gradient)
-            runner_dosub_pair1_rt_gradient(r, ci, cj, /*below_h_max=*/0, 1);
+            runner_dosub_pair1_rt_gradient(r, ci, cj, /*h_hi=*/FLT_MAX, 1);
           else if (t->subtype == task_subtype_rt_transport)
             runner_dosub_pair2_rt_transport(r, ci, cj, /*below_h_max=*/0, 1);
           else if (t->subtype == task_subtype_sink_density)

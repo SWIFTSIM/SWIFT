@@ -35,7 +35,7 @@
 typedef void (*serial_interaction_func)(struct runner *, struct cell *,
                                         struct cell *);
 typedef void (*interaction_func)(struct runner *, struct cell *, struct cell *,
-                                 int, int);
+                                 float, float);
 typedef void (*init_func)(struct cell *, const struct cosmology *,
                           const struct hydro_props *,
                           const struct pressure_floor_props *);
@@ -403,11 +403,16 @@ void runner_dopair2_force_vec(struct runner *r, struct cell *ci,
                               struct cell *cj);
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
-                                   int limit_h_max);
+                                   struct cell *cj, float h_lo, float h_hi);
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
                                  struct cell *cj, int limit_h_min,
                                  int limit_h_max);
+
+/* Call the force pair loop with no limit in h. */
+static void dopair2_branch_force_all(struct runner *r, struct cell *ci,
+                                     struct cell *cj, float h_lo, float h_hi) {
+  runner_dopair2_branch_force(r, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+}
 
 /**
  * @brief Computes the pair interactions of two cells using SWIFT and a brute
@@ -430,7 +435,7 @@ void test_pair_interactions(struct runner *runner, struct cell **ci,
   init(*cj, e->cosmology, e->hydro_properties, e->pressure_floor_props);
 
   /* Run the test */
-  vec_interaction(runner, *ci, *cj, 0, 0);
+  vec_interaction(runner, *ci, *cj, /*h_lo=*/0.f, /*h_hi=*/FLT_MAX);
 
   /* Let's get physical ! */
   finalise(*ci, e->cosmology, e->gravity_properties);
@@ -772,7 +777,7 @@ int main(int argc, char *argv[]) {
 
   /* Re-assign function pointers. */
   serial_inter_func = &pairs_all_force;
-  vec_inter_func = &runner_dopair2_branch_force;
+  vec_inter_func = &dopair2_branch_force_all;
   init = &zero_particle_fields_force;
   finalise = &end_calculation_force;
 

@@ -927,6 +927,62 @@ __attribute__((always_inline)) INLINE static double cell_min_dist2_with_max_dx(
 /* Inlined functions (for speed). */
 
 /**
+ * @brief The largest distance the gas of a #cell has moved since the last
+ * rebuild.
+ *
+ * A local cell holds the value of the drift of this step. A foreign cell
+ * holds the value of the last end-of-step exchange.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_get_hydro_dx_max_part(
+    const struct cell *c) {
+  return c->hydro.dx_max_part;
+}
+
+/**
+ * @brief The smallest h that a pair recursion handles at the level of a pair
+ * of cells rather than in the pairs of their progeny.
+ *
+ * The progeny are half of dmin wide and no particle is further than its
+ * cell's drift from the progeny it was sorted into. A particle with a smaller
+ * h hence finds all its neighbours in the progeny pairs that touch.
+ *
+ * @param c One #cell of the pair.
+ * @param dx The sum of the drifts of the particles of the two cells.
+ */
+__attribute__((always_inline)) INLINE static float cell_pair_h_split(
+    const struct cell *c, const float dx) {
+  return max(0.5f * c->dmin - dx, 0.f) * kernel_gamma_inv;
+}
+
+/**
+ * @brief The smallest h that a pair recursion handles at the level of a pair
+ * of gas cells rather than in the pairs of their progeny.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_pair_hydro_h_split(
+    const struct cell *ci, const struct cell *cj) {
+  return cell_pair_h_split(
+      ci, cell_get_hydro_dx_max_part(ci) + cell_get_hydro_dx_max_part(cj));
+}
+
+/**
+ * @brief The smallest h that a self recursion handles at the level of a cell
+ * rather than in its progeny.
+ *
+ * All the progeny of a cell touch each other, so no drift enters.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_self_h_split(
+    const struct cell *c) {
+  return 0.5f * c->dmin * kernel_gamma_inv;
+}
+
+/**
  * @brief Can a pair hydro task recurse to a lower level based
  * on the status of the particles in the cells.
  *
