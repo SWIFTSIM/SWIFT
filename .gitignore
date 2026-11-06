@@ -178,6 +178,7 @@ tests/testSPHStep
 tests/testExp
 tests/testErfc
 tests/testKernel
+tests/testKernelAccuracy
 tests/testKernelGrav
 tests/testKernelLongGrav
 tests/testFFT
@@ -242,6 +243,7 @@ tests/testNeutrinoCosmology
 tests/testNeutrinoFermiDirac
 tests/testLog
 tests/testTimeline
+tests/testSubsetRecursion
 tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt

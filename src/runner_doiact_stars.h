@@ -96,18 +96,17 @@
 #define IACT_STARS _IACT_STARS(FUNCTION)
 
 void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
-                          const int offset, const int ntasks,
-                          const int limit_min_h, const int limit_max_h);
+                          const int offset, const int ntasks, const float h_lo,
+                          const float h_hi);
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                          const int offset, const int ntasks,
-                          const int limit_min_h, const int limit_max_h);
+                          const int offset, const int ntasks, float h_lo_i,
+                          float h_hi_i, float h_lo_j, float h_hi_j);
 
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, const int offset,
-                       const int ntasks, int recurse_below_h_max,
-                       const int gettimer);
+                       const int ntasks, const float h_hi, const int gettimer);
 void DOSUB_PAIR1_STARS(struct runner *r, struct cell *ci, struct cell *cj,
-                       const int offset, const int ntasks,
-                       int recurse_below_h_max, const int gettimer);
+                       const int offset, const int ntasks, float h_hi_i,
+                       float h_hi_j, const int gettimer);
 
 void DOSELF1_SUBSET_BRANCH_STARS(struct runner *r, const struct cell *ci,
                                  struct spart *restrict sparts, const int *ind,
@@ -121,12 +120,13 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
 
 void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
                              struct spart *sparts, const int *ind,
-                             const int scount, struct cell *cj,
-                             const int gettimer);
+                             const int scount, const float h_max_redo,
+                             struct cell *cj, const int gettimer);
 
 void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
                              struct spart *sparts, const int *ind,
-                             const int scount, const int gettimer);
+                             const int scount, const float h_max_redo,
+                             const int gettimer);
 
 void DOSUB_SUBSET_STARS(struct runner *r, struct cell *ci, struct spart *sparts,
                         int *ind, int scount, struct cell *cj, int gettimer);

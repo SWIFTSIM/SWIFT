@@ -11,7 +11,7 @@ This example allows you to play with the sink parameters to see how they impact 
 To run this example with GEAR model,
 
 '''
-./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-adaptive-softening --with-grackle=path/to/grackle
+./configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 
 and then
 

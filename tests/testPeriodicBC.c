@@ -297,10 +297,9 @@ int check_results(struct part *serial_parts, struct part *vec_parts, int count,
 /* Just a forward declaration... */
 void runner_doself1_density_vec(struct runner *r, struct cell *ci);
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
-                                   int limit_h_max);
-void runner_doself1_branch_density(struct runner *r, struct cell *c,
-                                   int limit_h_min, int limit_h_max);
+                                   struct cell *cj, float h_lo, float h_hi);
+void runner_doself1_branch_density(struct runner *r, struct cell *c, float h_lo,
+                                   float h_hi);
 
 void test_boundary_conditions(struct cell **cells, struct runner *runner,
                               const int loc_i, const int loc_j, const int loc_k,
@@ -337,16 +336,14 @@ void test_boundary_conditions(struct cell **cells, struct runner *runner,
         struct cell *cj = cells[iii * (dim * dim) + jjj * dim + kkk];
 
         if (cj != main_cell)
-          DOPAIR1(runner, main_cell, cj, /*limit_h_min=*/0,
-                  /*limit_h_max=*/0);
+          DOPAIR1(runner, main_cell, cj, /*h_lo=*/0.f, /*h_hi=*/FLT_MAX);
       }
     }
   }
 
   /* And now the self-interaction */
 
-  DOSELF1(runner, main_cell, /*limit_h_min=*/0,
-          /*limit_h_max=*/0);
+  DOSELF1(runner, main_cell, /*h_lo=*/0.f, /*h_hi=*/FLT_MAX);
 
   /* Let's get physical ! */
   end_calculation(main_cell, runner->e->cosmology,

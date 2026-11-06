@@ -105,5 +105,5 @@ void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
                                  struct cell *restrict cj);
 
 void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
-                        int *ind, const int scount, struct cell *cj,
-                        int gettimer);
+                        int *ind, const int scount, const float h_max_redo,
+                        struct cell *cj, int gettimer);
