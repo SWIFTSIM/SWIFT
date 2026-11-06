@@ -33,6 +33,60 @@
 #include "sink_properties.h"
 #include "space_getsid.h"
 
+/**
+ * @brief Has there been too much motion in a pair of cells for the stars of
+ * ci to find their gas neighbours in cj, considering only the stars that
+ * interact with their neighbours (via feedback_is_active) in this step?
+ *
+ * @param e The #engine.
+ * @param ci The #cell holding the stars.
+ * @param cj The #cell holding the gas.
+ */
+static int cell_need_rebuild_for_stars_pair_feedback(const struct engine *e,
+                                                     const struct cell *ci,
+                                                     const struct cell *cj) {
+
+  /* Conservative test using all the stars */
+  if (!cell_need_rebuild_for_stars_pair(ci, cj)) return 0;
+
+  /* cell_need_rebuild_for_stars_pair() uses the largest smoothing length of
+   * all the stars of ci. Only the active stars doing feedback (or all the
+   * active stars when running with RT) take part in the stars loops of the
+   * step, so the motion part of the test only needs to hold for them. Stars
+   * with a large smoothing length that are inactive for feedback don't
+   * trigger rebuilds. */
+
+  /* Are the smoothing lengths alone too large? */
+  if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) > cj->dmin) return 1;
+
+  /* No active star in ci: only the gas smoothing lengths matter */
+  if (!cell_is_active_stars(ci, e))
+    return kernel_gamma * cj->hydro.h_max + ci->stars.dx_max_part +
+               cj->hydro.dx_max_part >
+           cj->dmin;
+
+  /* We do not know which stars of a foreign cell are active */
+  if (ci->nodeID != e->nodeID) return 1;
+
+  /* With RT, all the active stars interact */
+  if (e->policy & engine_policy_rt) return 1;
+
+  /* Largest smoothing length of the stars interacting in this step */
+  float h_max = 0.f;
+  for (int k = 0; k < ci->stars.count; k++) {
+    const struct spart *sp = &ci->stars.parts[k];
+    if (spart_is_inhibited(sp, e) || !spart_is_active(sp, e)) continue;
+    if (!feedback_is_active(sp, e)) continue;
+    h_max = max(h_max, sp->h);
+  }
+
+  /* Same test as the test above but now also considering the max active h in ci
+   */
+  return kernel_gamma * max(h_max, cj->hydro.h_max) + ci->stars.dx_max_part +
+             cj->hydro.dx_max_part >
+         cj->dmin;
+}
+
 extern int engine_star_resort_task_depth;
 
 /**
@@ -934,8 +988,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(
+            ci, cj, max(ci->hydro.h_max, cj->hydro.h_max))) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -1056,8 +1110,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj, ci->stars.h_max) &&
+        cell_can_recurse_in_pair_stars_task(cj, ci, cj->stars.h_max)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1185,8 +1239,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-        cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_black_holes_task(ci, cj,
+                                                  ci->black_holes.h_max)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -1292,8 +1346,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj, ci->sinks.h_max)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1646,8 +1699,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(
+            ci, cj, max(ci->hydro.h_max, cj->hydro.h_max))) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -2670,8 +2723,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (t->type == task_type_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair_feedback(e, ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair_feedback(e, cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -3103,11 +3156,29 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_subcell_black_holes_tasks(ci, NULL, s,
                                                 with_timestep_sync);
+
+        /* The density reruns can read all the gas of the task cells. */
+        if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+
+        /* The recursion reads the drift of all the black holes. */
+        if (ci->black_holes.count > 0) cell_activate_drift_bpart(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s, with_timestep_sync);
+
+        /* The density reruns can read all the gas of the task cells. */
+        if (ci_nodeID == nodeID && cj_active && ci->hydro.count > 0)
+          cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID && ci_active && cj->hydro.count > 0)
+          cell_activate_drift_part(cj, s);
+
+        /* The recursion reads the drift of all the black holes. */
+        if (ci_nodeID == nodeID && ci->black_holes.count > 0)
+          cell_activate_drift_bpart(ci, s);
+        if (cj_nodeID == nodeID && cj->black_holes.count > 0)
+          cell_activate_drift_bpart(cj, s);
 
         /* Activate bh_in for each cell that is part of
          * a pair task as to not miss any dependencies */

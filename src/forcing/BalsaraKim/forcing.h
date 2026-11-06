@@ -331,9 +331,10 @@ __attribute__((always_inline)) INLINE static float forcing_terms_timestep(
  *
  * @param terms The #forcing_terms properties of the run
  * @param time_old The previous system time
+ * @param time The current system time
  */
 static INLINE void forcing_update(struct forcing_terms *terms,
-                                  const double time_old) {
+                                  const double time_old, const double time) {
   /* if the current time is later than the latest SN event */
   if (time_old >= terms->times[terms->num_supernovae - 1]) {
     /* we do not want any more energy injections */
