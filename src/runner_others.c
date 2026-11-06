@@ -754,6 +754,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
         c->sinks.h_max = max(c->sinks.h_max, cp->sinks.h_max);
         c->sinks.h_max_active =
             max(c->sinks.h_max_active, cp->sinks.h_max_active);
+        c->sinks.dx_max_part = max(c->sinks.dx_max_part, cp->sinks.dx_max_part);
       }
   } else {
 
@@ -812,6 +813,12 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
               /* Update the cell h_max if necessary */
               c->sinks.h_max = max(c->sinks.h_max, sink->h);
               c->sinks.h_max_active = max(c->sinks.h_max_active, sink->h);
+
+              /* The new sink keeps the drift of its gas since the rebuild. */
+              const float dx2 = sink->x_diff[0] * sink->x_diff[0] +
+                                sink->x_diff[1] * sink->x_diff[1] +
+                                sink->x_diff[2] * sink->x_diff[2];
+              c->sinks.dx_max_part = max(c->sinks.dx_max_part, sqrtf(dx2));
             }
           }
         }
