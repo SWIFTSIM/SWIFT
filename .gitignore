@@ -253,6 +253,7 @@ tests/testZoomRegrid.sh
 tests/testZoomRadiationGrid
 tests/testZoomVoidTree
 tests/testZoomVoidTree.sh
+tests/testSubsetRecursion
 tests/testMeshGravityRebuildCheck
 tests/*.png
 tests/*.txt

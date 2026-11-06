@@ -191,6 +191,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   struct xpart *const xparts = c->hydro.xparts;
 
   float dx_max = 0.f, dx2_max = 0.f;
+  float dx_outside_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
@@ -240,6 +241,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
         /* Update */
         dx_max = max(dx_max, cp->hydro.dx_max_part);
+        dx_outside_max = max(dx_outside_max, cp->hydro.dx_outside_max);
         dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->hydro.h_max);
         cell_h_max_active = max(cell_h_max_active, cp->hydro.h_max_active);
@@ -250,6 +252,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     c->hydro.h_max = cell_h_max;
     c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
+    c->hydro.dx_outside_max = dx_outside_max;
     c->hydro.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
@@ -441,6 +444,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
                         xp->x_diff[1] * xp->x_diff[1] +
                         xp->x_diff[2] * xp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+      dx_outside_max = max(dx_outside_max, cell_distance_outside_box(c, p->x));
       const float dx2_sort = xp->x_diff_sort[0] * xp->x_diff_sort[0] +
                              xp->x_diff_sort[1] * xp->x_diff_sort[1] +
                              xp->x_diff_sort[2] * xp->x_diff_sort[2];
@@ -482,6 +486,14 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
     c->hydro.h_max = cell_h_max;
     c->hydro.h_max_active = cell_h_max_active;
     c->hydro.dx_max_part = dx_max;
+    c->hydro.dx_outside_max = dx_outside_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* A particle was inside its cell at the last rebuild. */
+    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+      error("Particle further outside its cell than it moved: %e > %e",
+            dx_outside_max, dx_max);
+#endif
     c->hydro.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
@@ -698,6 +710,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
   struct spart *const sparts = c->stars.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
+  float dx_outside_max = 0.f;
   float dx_max_sort = 0.0f, dx2_max_sort = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
@@ -749,6 +762,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
         /* Update */
         dx_max = max(dx_max, cp->stars.dx_max_part);
+        dx_outside_max = max(dx_outside_max, cp->stars.dx_outside_max);
         dx_max_sort = max(dx_max_sort, cp->stars.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->stars.h_max);
         cell_h_max_active = max(cell_h_max_active, cp->stars.h_max_active);
@@ -764,6 +778,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     c->stars.h_hii_max = cell_h_hii_max;
     c->stars.h_hii_max_active = cell_h_hii_max_active;
     c->stars.dx_max_part = dx_max;
+    c->stars.dx_outside_max = dx_outside_max;
     c->stars.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
@@ -928,6 +943,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
                         sp->x_diff[1] * sp->x_diff[1] +
                         sp->x_diff[2] * sp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+      dx_outside_max = max(dx_outside_max, cell_distance_outside_box(c, sp->x));
 
       const float dx2_sort = sp->x_diff_sort[0] * sp->x_diff_sort[0] +
                              sp->x_diff_sort[1] * sp->x_diff_sort[1] +
@@ -964,6 +980,14 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
     c->stars.h_hii_max = cell_h_hii_max;
     c->stars.h_hii_max_active = cell_h_hii_max_active;
     c->stars.dx_max_part = dx_max;
+    c->stars.dx_outside_max = dx_outside_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* A particle was inside its cell at the last rebuild. */
+    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+      error("Particle further outside its cell than it moved: %e > %e",
+            dx_outside_max, dx_max);
+#endif
     c->stars.dx_max_sort = dx_max_sort;
 
     /* Update the time of the last drift */
@@ -1006,6 +1030,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
   struct bpart *const bparts = c->black_holes.parts;
 
   float dx_max = 0.f, dx2_max = 0.f;
+  float dx_outside_max = 0.f;
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
 
@@ -1055,6 +1080,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
 
         /* Update */
         dx_max = max(dx_max, cp->black_holes.dx_max_part);
+        dx_outside_max = max(dx_outside_max, cp->black_holes.dx_outside_max);
         cell_h_max = max(cell_h_max, cp->black_holes.h_max);
         cell_h_max_active =
             max(cell_h_max_active, cp->black_holes.h_max_active);
@@ -1065,6 +1091,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     c->black_holes.h_max = cell_h_max;
     c->black_holes.h_max_active = cell_h_max_active;
     c->black_holes.dx_max_part = dx_max;
+    c->black_holes.dx_outside_max = dx_outside_max;
 
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;
@@ -1226,6 +1253,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
                         bp->x_diff[1] * bp->x_diff[1] +
                         bp->x_diff[2] * bp->x_diff[2];
       dx2_max = max(dx2_max, dx2);
+      dx_outside_max = max(dx_outside_max, cell_distance_outside_box(c, bp->x));
 
       /* Maximal smoothing length */
       cell_h_max = max(cell_h_max, bp->h);
@@ -1251,6 +1279,14 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
     c->black_holes.h_max = cell_h_max;
     c->black_holes.h_max_active = cell_h_max_active;
     c->black_holes.dx_max_part = dx_max;
+    c->black_holes.dx_outside_max = dx_outside_max;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* A particle was inside its cell at the last rebuild. */
+    if (dx_outside_max > 1.0001f * dx_max + 1e-6f * c->width[0])
+      error("Particle further outside its cell than it moved: %e > %e",
+            dx_outside_max, dx_max);
+#endif
 
     /* Update the time of the last drift */
     c->black_holes.ti_old_part = ti_current;

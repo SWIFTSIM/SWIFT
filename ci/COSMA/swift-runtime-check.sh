@@ -148,6 +148,21 @@ link_data POPIIsw.h5
 do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --threads=4 params.yml
 cd ../../../
 
+echo "--------------"
+echo "Sink particles in gas-free cell"
+do_make clean
+echo "--------------"
+echo "debugging-checks are enabled"
+do_configure --disable-mpi --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=${GRACKLE_HOME}/lib --enable-debugging-checks --enable-debug
+do_make
+cd examples/SinkParticles/GasFreeSinkCells
+# Create the ICs using the default parameters.
+python3 makeIC.py --level 5 -o ICs_gas_free_sink_cells.hdf5 --lJ 0.250
+link_data CloudyData_UVB=HM2012.h5
+link_data POPIIsw.h5
+do_run ../../../swift --hydro --sinks --stars --self-gravity --feedback --cooling --sync --limiter --threads=4 params.yml
+cd ../../../
+
 echo "---------------------------------------"
 echo "TREECOOL cooling, cosmological box test"
 echo "---------------------------------------"
