@@ -116,6 +116,8 @@ void radiation_packet_set_redshift(const double speed_of_light,
 /* The speed limit of the light of a share, set once at start-up by
    radiation_packet_set_light_speed(). */
 int radiation_packet_light_speed_limited = 0;
+float radiation_packet_cone_power = 0.f;
+float radiation_packet_octant_frame[9] = {0.f};
 static double radiation_packet_arrival_per_length = 0.0;
 static double radiation_packet_limit_speed = 0.0;
 static int radiation_packet_ticks_are_ln_a = 0;
@@ -266,6 +268,18 @@ static void radiation_packet_diag(const enum radiation_packet_diag k,
   radiation_packet_diag_add_double(&radiation_packet_diag_e[0][k], energy);
 }
 #endif
+
+/**
+ * @brief Set the cone power and the slot frame, the same for every particle.
+ *
+ * @param cone_power Power of the soft transmission cone.
+ * @param frame Row-major rotation matrix of the fixed frame of the slots.
+ */
+void radiation_packet_set_frame(const float cone_power, const float frame[9]) {
+  radiation_packet_cone_power = cone_power;
+  memcpy(radiation_packet_octant_frame, frame,
+         sizeof(radiation_packet_octant_frame));
+}
 
 /**
  * @brief Limit the speed of the light of a share, or lift the limit.
@@ -554,6 +568,8 @@ void radiation_packet_startup(const struct engine *e) {
   radiation_packet_report_frame_width(e);
   radiation_packet_report_bin_demand(e);
   const struct feedback_props *fp = e->feedback_props;
+  radiation_packet_set_frame(fp->ISRF_packet_cone_power,
+                             fp->ISRF_packet_octant_frame);
   if (fp->ISRF_packet_light_speed == isrf_packet_light_speed_unlimited)
     radiation_packet_set_light_speed(0.0, e->time_base, 0);
   else
@@ -1090,9 +1106,9 @@ void radiation_packet_inject_test_beams(
     const float back = origin_distance_h * p->h;
     const float offset[3] = {-back * direction[0], -back * direction[1],
                              -back * direction[2]};
-    radiation_packet_deliver(p, p->feedback_data.isrf_packet.octant_frame,
-                             energy, energy, offset, 0.f, 0.f, 0, 0,
-                             (double)ti_current, (double)ti_current);
+    radiation_packet_deliver(p, radiation_packet_octant_frame, energy, energy,
+                             offset, 0.f, 0.f, 0, 0, (double)ti_current,
+                             (double)ti_current);
   }
 }
 
@@ -2622,7 +2638,6 @@ static void radiation_packet_merge_slot_limited(
     for (int k = 0; k < 3; k++) sl->inbox_origin_offset[k] = 0.0;
 
   if (!(total_energy > 0.0)) return;
-  sl->arrival = now;
   radiation_packet_set_origin(sl, offset, total_energy, slot_index, frame);
 }
 
@@ -2660,7 +2675,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
       radiation_packet_merge_slot_unlimited(
           &pk->slot[s], ti_current, ti_step, time_base, cosmo, s,
-          pk->octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
+          radiation_packet_octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
     return;
   }
 
@@ -2694,7 +2709,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
     radiation_packet_merge_slot_limited(
         &pk->slot[s], pk->band, old_first, old_width, old_far_end, ti_current,
-        s, pk->octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
+        s, radiation_packet_octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
   pk->step_end_ti = ti_current + ti_step;
   pk->step_ti = ti_step;
   radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale, -1.,
@@ -2723,13 +2738,14 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   const float m = hydro_get_mass(p);
 
-  /* A zero frame copy would send every share to one slot. Once per step. */
+  /* An unset frame would send every share to one slot. Once per step. */
   float frame_norm = 0.f;
   for (int k = 0; k < 9; k++)
-    frame_norm += pk->octant_frame[k] * pk->octant_frame[k];
+    frame_norm +=
+        radiation_packet_octant_frame[k] * radiation_packet_octant_frame[k];
   if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
-    error("Particle %lld has an unset octant frame (norm %e) at its step.",
-          p->id, frame_norm);
+    error("The octant frame is unset (norm %e) at the step of particle %lld.",
+          frame_norm, p->id);
 
   double field_energy[ISRF_OPERATOR_COUNT], field_photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {

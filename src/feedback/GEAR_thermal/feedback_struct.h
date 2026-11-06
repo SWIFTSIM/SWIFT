@@ -399,11 +399,6 @@ struct feedback_isrf_packet_slot_data {
           cell. Negative for light that arrives beyond the end of the last
           cell. Valid for a cell that holds energy. */
       float far_last_below[RADIATION_PACKET_FAR_CELLS];
-
-      /*! Departure time of the held packet, its merge time. A share booked
-          from it arrives its path over the limit speed after this time, so
-          that no part of the packet moves faster than the limit. */
-      double arrival;
     };
   };
 };
@@ -423,14 +418,6 @@ struct feedback_isrf_packet_data {
   /*! Sum of the kernel weights of the field mean. Scratch. */
   float ngb_field_weight_sum;
 
-  /*! Copy of #feedback_props.ISRF_packet_cone_power, set with
-      #feedback_part_data.ISRF_packet_transport. */
-  float cone_power;
-
-  /*! Copy of #feedback_props.ISRF_packet_octant_frame (row-major rotation
-      matrix), set with #cone_power. */
-  float octant_frame[9];
-
   /*! The width of the far arrival cells is the length of the step times two
       to this power (#radiation_packet_far_end): at least
       #RADIATION_PACKET_FAR_SCALE once the step is known, fitted to the
@@ -442,7 +429,8 @@ struct feedback_isrf_packet_data {
       receiver releases its shares by then. */
   integertime_t step_end_ti;
 
-  /*! Length of this particle's current step, set at its merge. */
+  /*! Length of this particle's current step, set at its merge. The merge time,
+      from which the held packet departs, is #step_end_ti minus this. */
   integertime_t step_ti;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -522,10 +510,8 @@ struct feedback_isrf_packet_box_data {
  */
 struct feedback_part_data {
 
-#ifdef GEAR_SUBGRID_RADIATION_HII
-  /*! Tag to mark the particle as ionized. */
-  char is_ionized;
-#endif
+  /* Members are ordered by alignment (8-byte, 4-byte, then the packet and the
+     one-byte flags) so that struct part carries no padding between them. */
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */
@@ -540,6 +526,29 @@ struct feedback_part_data {
       the owner-side merge when this claim loses a collision, to count the
       forfeited budget. */
   double cost;
+#endif
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+  /*! Per-moment ISRF state, indexed by #radiation_isrf_moment. */
+  struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
+
+  /*! Step (#engine.ti_current) at which #feedback_isrf_moment_data.u was
+      last written. With ISRF_propagation off, a match with the current step
+      means a further star sums into u, a mismatch means u is zeroed first.
+      Set to -1 at first init. */
+  integertime_t ISRF_last_touch_ti;
+
+  /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
+      every injection touch with a margin of
+      RADIATION_ISRF_TAG_LIFETIME_INTERVALS star steps. Set to -1 at first
+      init. */
+  integertime_t ISRF_illumination_end_ti;
+#endif
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  /* Trace the metals received from feedback events. This is similar to not
+     diffusing metals */
+  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 
 #ifdef GEAR_COOLING
@@ -564,16 +573,9 @@ struct feedback_part_data {
       time. The owner-side merge keeps the claim with the smallest
       (r2, star_id). */
   float r2;
-
-  /*! Set when this rank claims a foreign copy of this particle, so the claim
-      is reported to the owner. Cleared when the report is packed. */
-  char claimed_this_pass;
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-  /*! Per-moment ISRF state, indexed by #radiation_isrf_moment. */
-  struct feedback_isrf_moment_data isrf_moment[ISRF_MOMENT_COUNT];
-
   /*! Per-operator ISRF band-physics coefficients, indexed by
       #radiation_isrf_operator; a moment reaches its own operator through
       #radiation_isrf_moment_to_operator. */
@@ -587,12 +589,22 @@ struct feedback_part_data {
       drift. */
   float dt_prev;
 
-  /*! Step (#engine.ti_current) at which #feedback_isrf_moment_data.u was
-      last written. With ISRF_propagation off, a match with the current step
-      means a further star sums into u, a mismatch means u is zeroed first.
-      Set to -1 at first init. */
-  integertime_t ISRF_last_touch_ti;
+  /*! Radiation packet of the packet transport. */
+  struct feedback_isrf_packet_data isrf_packet;
+#endif
 
+#ifdef GEAR_SUBGRID_RADIATION_HII
+  /*! Tag to mark the particle as ionized. */
+  char is_ionized;
+#endif
+
+#if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
+  /*! Set when this rank claims a foreign copy of this particle, so the claim
+      is reported to the owner. Cleared when the report is packed. */
+  char claimed_this_pass;
+#endif
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
   /*! Is the particle illuminated by a star's injection pass, with the
       episode still live? Gates a first-touch-only timestep_sync_part call and
       is cleared once #ISRF_illumination_end_ti lapses, like #is_ionized. */
@@ -601,21 +613,6 @@ struct feedback_part_data {
   /*! Copy of #feedback_props.ISRF_propagation, set at drift and in the extra
       ghost, so the neighbour loops read it without the engine. */
   char ISRF_packet_transport;
-
-  /*! Integer time until which #is_illuminated_ISRF stays set, renewed on
-      every injection touch with a margin of
-      RADIATION_ISRF_TAG_LIFETIME_INTERVALS star steps. Set to -1 at first
-      init. */
-  integertime_t ISRF_illumination_end_ti;
-
-  /*! Radiation packet of the packet transport. */
-  struct feedback_isrf_packet_data isrf_packet;
-#endif
-
-#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
-  /* Trace the metals received from feedback events. This is similar to not
-     diffusing metals */
-  double metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
 #endif
 };
 

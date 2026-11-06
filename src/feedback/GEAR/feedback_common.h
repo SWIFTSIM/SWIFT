@@ -168,7 +168,7 @@ void feedback_first_init_sink(struct sink *s);
  * (#RADIATION_PACKET_SLOTS, #RADIATION_PACKET_BINS,
  * #RADIATION_PACKET_FAR_CELLS, #RADIATION_PACKET_FAR_SCALE) is not part of
  * it: #feedback_restart_particle_layout adds it, so that it needs no bump. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 23
+#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 24
 
 /*! The restart layout marker adds this factor times
     #radiation_selection_absent_mask(), so that a build with all the parts

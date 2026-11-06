@@ -100,10 +100,6 @@ static void radiation_set_part_transport(struct part *p,
                                          const struct engine *e) {
   struct feedback_part_data *fd = &p->feedback_data;
   fd->ISRF_packet_transport = e->feedback_props->ISRF_propagation;
-  fd->isrf_packet.cone_power = e->feedback_props->ISRF_packet_cone_power;
-  memcpy(fd->isrf_packet.octant_frame,
-         e->feedback_props->ISRF_packet_octant_frame,
-         sizeof(fd->isrf_packet.octant_frame));
 }
 
 /**

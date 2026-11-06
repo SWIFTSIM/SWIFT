@@ -101,6 +101,14 @@
     #radiation_packet_set_light_speed. */
 extern int radiation_packet_light_speed_limited;
 
+/*! Power of the soft transmission cone, the same for every particle. Set by
+    #radiation_packet_set_frame. */
+extern float radiation_packet_cone_power;
+
+/*! Row-major rotation matrix of the fixed frame of the reception slots, the
+    same for every particle. Set by #radiation_packet_set_frame. */
+extern float radiation_packet_octant_frame[9];
+
 /**
  * @brief Add to the cumulative absorbed ledger of a band. Does nothing without
  * SWIFT_DEBUG_CHECKS_ISRF.
@@ -186,6 +194,7 @@ void radiation_packet_set_redshift(const double speed_of_light,
                                    const double weight_pe,
                                    const double weight_lw,
                                    const double photon_weight_lw);
+void radiation_packet_set_frame(const float cone_power, const float frame[9]);
 void radiation_packet_set_light_speed(const double limit_speed,
                                       const double time_base,
                                       const int cosmological);
@@ -400,8 +409,9 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
     }
 
     const float w = radiation_packet_transmission_weight(
-        dxw, h_s, h_r, r_active, want, sl->direction, pk->cone_power,
-        hydro_get_mass(r), r->feedback_data.rho_prev);
+        dxw, h_s, h_r, r_active, want, sl->direction,
+        radiation_packet_cone_power, hydro_get_mass(r),
+        r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
     sl->weight_sum = radiation_packet_add_stochastic(
@@ -642,8 +652,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     }
 
     const float w = radiation_packet_transmission_weight(
-        dxw, h_s, h_r, r_active, want, sl->direction, pk_s->cone_power,
-        hydro_get_mass(r), r->feedback_data.rho_prev);
+        dxw, h_s, h_r, r_active, want, sl->direction,
+        radiation_packet_cone_power, hydro_get_mass(r),
+        r->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -675,6 +686,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
        the packet. */
     double arrival = 0., arrival_last = 0.;
     const integertime_t source_end_ti = pk_s->step_end_ti;
+    const double merge_time = (double)(source_end_ti - pk_s->step_ti);
     if (radiation_packet_light_speed_limited) {
       const double separation =
           sqrt((double)dx[0] * dx[0] + (double)dx[1] * dx[1] +
@@ -685,7 +697,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
                    (double)r->v[2] * dx[2]) /
                   (separation * (double)a);
       arrival = radiation_packet_time_later(
-          sl->arrival +
+          merge_time +
           radiation_packet_arrival_delay_receding(a * separation, H, closing));
       arrival_last =
           s->time_bin > r->time_bin
@@ -693,8 +705,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
                     arrival + (double)get_integer_timestep(s->time_bin))
               : arrival;
     }
-    radiation_packet_deliver(r, pk_s->octant_frame, energy, photons, offset,
-                             a * path, H, s->time_bin > r->time_bin,
+    radiation_packet_deliver(r, radiation_packet_octant_frame, energy, photons,
+                             offset, a * path, H, s->time_bin > r->time_bin,
                              source_end_ti, arrival, arrival_last);
   }
 }
