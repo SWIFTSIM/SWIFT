@@ -1500,8 +1500,11 @@ the light to move at $v$. Above $f_{\Delta t}$ of about 0.8 the bulk of the
 light lags behind $v$, while its front, carried by the neighbours near the
 kernel edge, keeps the speed. The bulk lags also below that value: in a beam
 test with a step of $0.43\,h/v$ the centre of a light pulse moved at 0.64 to
-$0.66\,v$ (Section~\ref{sec:isrf-accuracy}). The mechanism of this lag is not
-identified. The bound costs many steps: at $v=0.99c$ and $h=0.2$\,pc it is $0.33$\,yr,
+$0.66\,v$ (Section~\ref{sec:isrf-accuracy}). The lag has two causes. A hop delays the light by its full length, but the
+pulse gains only the part of the hop along its axis (a factor of about 0.83),
+and a hop leaves at the end of a step of the receiver (a factor of about 0.78).
+Together these give 0.645 at $0.43\,h/v$. A model built on these two factors
+reproduces the speed measured at four step sizes to 0.013 of $v$. The bound costs many steps: at $v=0.99c$ and $h=0.2$\,pc it is $0.33$\,yr,
 about $3\times10^4$ times shorter than the step of the test of
 Section~\ref{sec:isrf-accuracy}. This mode is therefore affordable only with a
 limit speed far below $c$.
