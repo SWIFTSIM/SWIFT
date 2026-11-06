@@ -589,6 +589,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                 c->stars.h_max = max(c->stars.h_max, sp->h);
                 c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
 
+                /* A new star can lie outside the cell, as its gas did. */
+                c->stars.dx_outside_max =
+                    max(c->stars.dx_outside_max,
+                        cell_distance_outside_box(c, sp->x));
+
                 /* Update the displacement information */
                 if (star_formation_need_update_dx_max) {
 
@@ -637,9 +642,6 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                   /* Note: no need to update quantities further up the tree as
                      this task is always called at the top-level */
                   c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
-                  c->stars.dx_outside_max =
-                      max(c->stars.dx_outside_max,
-                          cell_distance_outside_box(c, sp->x));
                   c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
                 }
 
