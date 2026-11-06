@@ -544,9 +544,22 @@ void DOPAIR1_SUBSET_BRANCH_SINKS(struct runner *r, struct cell *restrict ci,
   DOPAIR1_SUBSET_SINKS_NAIVE(r, ci, sinks_i, ind, scount, cj, shift);
 }
 
+/**
+ * @brief Redo the density loop of a subset of the sinks of ci against the gas
+ * of cj, or of ci if cj is NULL.
+ *
+ * @param r The #runner.
+ * @param ci The #cell holding the subset.
+ * @param sinks The #sink array of ci.
+ * @param ind The indices of the subset in sinks.
+ * @param scount The number of sinks in the subset.
+ * @param h_max_redo The largest h of the sinks in the subset.
+ * @param cj The #cell with the gas, or NULL.
+ * @param gettimer Do we have a timer ?
+ */
 void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
-                        int *ind, const int scount, struct cell *cj,
-                        int gettimer) {
+                        int *ind, const int scount, const float h_max_redo,
+                        struct cell *cj, int gettimer) {
 
   const struct engine *e = r->e;
   struct space *s = e->s;
@@ -578,10 +591,11 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
     if (cell_can_recurse_in_self_sinks_task(ci)) {
 
       /* Loop over all progeny. */
-      DOSUB_SUBSET_SINKS(r, sub, sinks, ind, scount, NULL, 0);
+      DOSUB_SUBSET_SINKS(r, sub, sinks, ind, scount, h_max_redo, NULL, 0);
       for (int j = 0; j < 8; j++)
         if (ci->progeny[j] != sub && ci->progeny[j] != NULL)
-          DOSUB_SUBSET_SINKS(r, sub, sinks, ind, scount, ci->progeny[j], 0);
+          DOSUB_SUBSET_SINKS(r, sub, sinks, ind, scount, h_max_redo,
+                             ci->progeny[j], 0);
 
     }
 
@@ -593,14 +607,9 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
   /* Otherwise, it's a pair interaction. */
   else {
 
-    /* The ghost may have grown h past the cell's h_max_old */
-    float h_max = 0.f;
-    for (int i = 0; i < scount; i++) h_max = max(h_max, sinks[ind[i]].h);
-
     /* Recurse? */
-    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-        cell_can_recurse_in_pair_sinks_task(cj, ci) &&
-        (kernel_gamma * h_max + ci->sinks.dx_max_part_old < 0.5f * ci->dmin)) {
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj,
+                                            max(h_max_redo, ci->sinks.h_max))) {
 
       /* Get the type of pair and flip ci/cj if needed. */
       double shift[3] = {0.0, 0.0, 0.0};
@@ -612,10 +621,10 @@ void DOSUB_SUBSET_SINKS(struct runner *r, struct cell *ci, struct sink *sinks,
         const int pjd = csp->pairs[k].pjd;
         if (ci->progeny[pid] == sub && cj->progeny[pjd] != NULL)
           DOSUB_SUBSET_SINKS(r, ci->progeny[pid], sinks, ind, scount,
-                             cj->progeny[pjd], 0);
+                             h_max_redo, cj->progeny[pjd], 0);
         if (ci->progeny[pid] != NULL && cj->progeny[pjd] == sub)
           DOSUB_SUBSET_SINKS(r, cj->progeny[pjd], sinks, ind, scount,
-                             ci->progeny[pid], 0);
+                             h_max_redo, ci->progeny[pid], 0);
       }
     }
 
@@ -764,8 +773,7 @@ void DOSUB_PAIR1_SINKS(struct runner *r, struct cell *ci, struct cell *cj,
   const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-      cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+  if (cell_can_recurse_in_pair_sinks_task(ci, cj, ci->sinks.h_max)) {
     struct cell_split_pair *csp = &cell_split_pairs[sid];
     for (int k = 0; k < csp->count; k++) {
       const int pid = csp->pairs[k].pid;

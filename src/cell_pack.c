@@ -518,11 +518,14 @@ int cell_unpack(struct pcell *restrict pc, struct cell *restrict c,
       temp->depth = c->depth + 1;
       temp->split = 0;
       temp->hydro.dx_max_part = 0.f;
+      temp->hydro.dx_outside_max = 0.f;
       temp->hydro.dx_max_sort = 0.f;
       temp->stars.dx_max_part = 0.f;
+      temp->stars.dx_outside_max = 0.f;
       temp->stars.dx_max_sort = 0.f;
       temp->sinks.dx_max_part = 0.f;
       temp->black_holes.dx_max_part = 0.f;
+      temp->black_holes.dx_outside_max = 0.f;
       temp->nodeID = c->nodeID;
       temp->parent = c;
       temp->top = c->top;

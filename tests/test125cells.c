@@ -447,30 +447,26 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
-                                   int limit_h_max);
+                                   struct cell *cj, float h_lo, float h_hi);
 void runner_doself1_branch_density(struct runner *r, struct cell *ci,
-                                   int limit_h_min, int limit_h_max);
+                                   float h_lo, float h_hi);
 #ifdef EXTRA_HYDRO_LOOP
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
 void runner_dopair2_branch_gradient(struct runner *r, struct cell *ci,
-                                    struct cell *cj, int limit_h_min,
-                                    int limit_h_max);
+                                    struct cell *cj, float h_lo, float h_hi);
 void runner_doself2_branch_gradient(struct runner *r, struct cell *ci,
-                                    int limit_h_min, int limit_h_max);
+                                    float h_lo, float h_hi);
 #else
 void runner_dopair1_branch_gradient(struct runner *r, struct cell *ci,
-                                    struct cell *cj, int limit_h_min,
-                                    int limit_h_max);
+                                    struct cell *cj, float h_lo, float h_hi);
 void runner_doself1_branch_gradient(struct runner *r, struct cell *ci,
-                                    int limit_h_min, int limit_h_max);
+                                    float h_lo, float h_hi);
 #endif /* EXTRA_HYDRO_LOOP_TYPE2 */
 #endif /* EXTRA_HYDRO LOOP */
 void runner_dopair2_branch_force(struct runner *r, struct cell *ci,
-                                 struct cell *cj, int limit_h_min,
-                                 int limit_h_max);
-void runner_doself2_branch_force(struct runner *r, struct cell *ci,
-                                 int limit_h_min, int limit_h_max);
+                                 struct cell *cj, float h_lo, float h_hi);
+void runner_doself2_branch_force(struct runner *r, struct cell *ci, float h_lo,
+                                 float h_hi);
 
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 
@@ -724,8 +720,8 @@ int main(int argc, char *argv[]) {
                 struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
 
                 if (cj > ci)
-                  runner_dopair1_branch_density(
-                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+                  runner_dopair1_branch_density(&runner, ci, cj, /*h_lo=*/0.f,
+                                                /*h_hi=*/FLT_MAX);
               }
             }
           }
@@ -735,8 +731,8 @@ int main(int argc, char *argv[]) {
 
     /* And now the self-interaction for the central cells*/
     for (int j = 0; j < 27; ++j)
-      runner_doself1_branch_density(&runner, inner_cells[j], /*limit_h_min=*/0,
-                                    /*limit_h_max=*/0);
+      runner_doself1_branch_density(&runner, inner_cells[j], /*h_lo=*/0.f,
+                                    /*h_hi=*/FLT_MAX);
 
     /* Ghost to finish everything on the central cells */
     for (int j = 0; j < 27; ++j)
@@ -773,11 +769,11 @@ int main(int argc, char *argv[]) {
 
                 if (cj > ci) {
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-                  runner_dopair2_branch_gradient(
-                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+                  runner_dopair2_branch_gradient(&runner, ci, cj, /*h_lo=*/0.f,
+                                                 /*h_hi=*/FLT_MAX);
 #else
-                  runner_dopair1_branch_gradient(
-                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
+                  runner_dopair1_branch_gradient(&runner, ci, cj, /*h_lo=*/0.f,
+                                                 /*h_hi=*/FLT_MAX);
 #endif
                 }
               }
@@ -790,11 +786,11 @@ int main(int argc, char *argv[]) {
     /* And now the self-interaction for the central cells */
     for (int j = 0; j < 27; ++j) {
 #ifdef EXTRA_HYDRO_LOOP_TYPE2
-      runner_doself2_branch_gradient(&runner, inner_cells[j], /*limit_h_min=*/0,
-                                     /*limit_h_max=*/0);
+      runner_doself2_branch_gradient(&runner, inner_cells[j], /*h_lo=*/0.f,
+                                     /*h_hi=*/FLT_MAX);
 #else
-      runner_doself1_branch_gradient(&runner, inner_cells[j], /*limit_h_min=*/0,
-                                     /*limit_h_max=*/0);
+      runner_doself1_branch_gradient(&runner, inner_cells[j], /*h_lo=*/0.f,
+                                     /*h_hi=*/FLT_MAX);
 #endif
     }
 
@@ -826,8 +822,8 @@ int main(int argc, char *argv[]) {
 
             const ticks sub_tic = getticks();
 
-            runner_dopair2_branch_force(&runner, main_cell, cj,
-                                        /*limit_h_min=*/0, /*limit_h_max=*/0);
+            runner_dopair2_branch_force(&runner, main_cell, cj, /*h_lo=*/0.f,
+                                        /*h_hi=*/FLT_MAX);
 
             timings[ctr++] += getticks() - sub_tic;
           }
@@ -838,8 +834,8 @@ int main(int argc, char *argv[]) {
     ticks self_tic = getticks();
 
     /* And now the self-interaction for the main cell */
-    runner_doself2_branch_force(&runner, main_cell, /*limit_h_min=*/0,
-                                /*limit_h_max=*/0);
+    runner_doself2_branch_force(&runner, main_cell, /*h_lo=*/0.f,
+                                /*h_hi=*/FLT_MAX);
 
     timings[26] += getticks() - self_tic;
 

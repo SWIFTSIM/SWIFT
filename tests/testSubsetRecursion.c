@@ -31,40 +31,52 @@
 
 /*
  * Checks the density loops that the ghosts rerun on a subset of particles
- * while their smoothing length converges. The cells keep the h_max_old of the
- * previous step, while the particle being redone already has a larger h. The
- * density sums of the subset loops must equal a brute-force sum over all the
- * gas of the two cells.
+ * while their smoothing length converges. The density sums of the subset
+ * loops must equal a brute-force sum over all the gas of the two cells.
  *
  * Two adjacent top-level cells of width 1 are split once into octants of
  * width 0.5. The gas sits on a lattice. The particle being redone sits just
- * inside the face shared by the two cells.
+ * inside the face shared by the two cells. Extra gas is planted in the octant
+ * of the second cell that does not touch the shared face.
+ *
+ * Case 1: the cells keep the h of the last step while the particle being
+ * redone already has a larger h.
+ * Case 2: the planted gas has drifted out of its octant, inside the kernel.
+ * Only the black hole and sink loops are checked: the stars and hydro loops
+ * place each particle at a depth set from its h alone, so their reruns keep
+ * the drift of the searching cell only. Pass --with-depth-drift to run these
+ * loops too.
+ * Case 3: the activation of a black hole density task must drift every gas
+ * sub-cell that a rerun with a grown h can read.
  */
 
 void runner_dosub_pair_subset_stars_density(struct runner *r, struct cell *ci,
                                             struct spart *sparts,
                                             const int *ind, const int scount,
+                                            const float h_max_redo,
                                             struct cell *cj,
                                             const int gettimer);
 void runner_dosub_self_subset_stars_density(struct runner *r, struct cell *ci,
                                             struct spart *sparts,
                                             const int *ind, const int scount,
+                                            const float h_max_redo,
                                             const int gettimer);
 void runner_dosub_pair_subset_density(struct runner *r, struct cell *ci,
                                       struct part *parts, const int *ind,
-                                      const int count, struct cell *cj,
-                                      const int gettimer);
+                                      const int count, const float h_max_redo,
+                                      struct cell *cj, const int gettimer);
 void runner_dosub_self_subset_density(struct runner *r, struct cell *ci,
                                       struct part *parts, const int *ind,
-                                      const int count, const int gettimer);
+                                      const int count, const float h_max_redo,
+                                      const int gettimer);
 void runner_dosub_subset_bh_density(struct runner *r, struct cell *ci,
                                     struct bpart *bparts, int *ind,
-                                    const int bcount, struct cell *cj,
-                                    int gettimer);
+                                    const int bcount, const float h_max_redo,
+                                    struct cell *cj, int gettimer);
 void runner_dosub_subset_sinks_density(struct runner *r, struct cell *ci,
                                        struct sink *sinks, int *ind,
-                                       const int scount, struct cell *cj,
-                                       int gettimer);
+                                       const int scount, const float h_max_redo,
+                                       struct cell *cj, int gettimer);
 
 #if !defined(BLACK_HOLES_NONE)
 #define WITH_BH_LOOP 1
@@ -82,15 +94,29 @@ void runner_dosub_subset_sinks_density(struct runner *r, struct cell *ci,
 /* Smoothing length of the lattice gas, small enough to allow recursion. */
 #define H_LATTICE 0.05f
 
+/* Ids of the planted gas start here. */
+#define ID_PLANT 200000
+
 /* Position of the particle being redone, just inside the shared face. */
 static const double x_redo[3] = {0.999, 0.25, 0.25};
 
-/* Gas planted just beyond the octant next to the shared face. */
+/* Planted gas, in octant 4 of the second cell (x from 1.5 to 2). */
 #define N_PLANT 4
-static const double x_plant[N_PLANT][3] = {{1.505, 0.25, 0.25},
-                                           {1.505, 0.30, 0.25},
-                                           {1.505, 0.25, 0.30},
-                                           {1.510, 0.20, 0.20}};
+static const double x_plant_inside[N_PLANT][3] = {{1.505, 0.25, 0.25},
+                                                  {1.505, 0.30, 0.25},
+                                                  {1.505, 0.25, 0.30},
+                                                  {1.510, 0.20, 0.20}};
+
+/* The same gas drifted by up to 0.04 out of its octant. */
+static const double x_plant_drifted[N_PLANT][3] = {{1.46, 0.25, 0.25},
+                                                   {1.46, 0.30, 0.25},
+                                                   {1.46, 0.25, 0.30},
+                                                   {1.47, 0.20, 0.20}};
+
+/* Drift of the gas of the second cell in case 2. */
+#define DX_DRIFT 0.05f
+
+static const char *loop_name[4] = {"stars", "hydro", "black-hole", "sink"};
 
 /**
  * @brief Build a top-level cell of width 1 split into eight leaf octants.
@@ -103,9 +129,11 @@ static const double x_plant[N_PLANT][3] = {{1.505, 0.25, 0.25},
  * @param progeny The array of 8 #cell used as octants.
  * @param loc_x The x position of the cell's lower corner.
  * @param with_redo Whether this cell holds the particle being redone.
+ * @param x_plant The positions of the planted gas.
  */
 static void make_split_cell(struct cell *c, struct cell *progeny,
-                            const double loc_x, const int with_redo) {
+                            const double loc_x, const int with_redo,
+                            const double x_plant[N_PLANT][3]) {
 
   const int count = 8 * N_OCTANT + (with_redo ? 1 : N_PLANT);
   if (posix_memalign((void **)&c->hydro.parts, part_align,
@@ -195,7 +223,7 @@ static void make_split_cell(struct cell *c, struct cell *progeny,
       for (n = 0; n < N_PLANT; n++) {
         struct part *p = &c->hydro.parts[offset + n];
         for (int d = 0; d < 3; d++) p->x[d] = x_plant[n][d];
-        p->id = 200000 + n;
+        p->id = ID_PLANT + n;
       }
     }
     for (int ix = 0; ix < N_SIDE; ix++) {
@@ -249,6 +277,7 @@ static void make_split_cell(struct cell *c, struct cell *progeny,
     cc->hydro.h_max_old = H_LATTICE;
     cc->hydro.ti_end_min = TI_CURRENT;
     cc->hydro.ti_old_part = TI_CURRENT;
+    cc->hydro.super = c;
     cc->stars.ti_end_min = TI_CURRENT;
     cc->stars.ti_old_part = TI_CURRENT;
 #ifdef WITH_BH_LOOP
@@ -260,14 +289,31 @@ static void make_split_cell(struct cell *c, struct cell *progeny,
     cc->sinks.ti_old_part = TI_CURRENT;
 #endif
     cc->nodeID = 0;
+    cc->top = c;
     if (k < 8) {
       cc->parent = c;
-      cc->top = c;
       cc->depth = 1;
       c->progeny[k] = cc;
-    } else {
-      cc->top = c;
     }
+  }
+}
+
+/**
+ * @brief Free the particle arrays of the two top-level cells.
+ *
+ * @param cells The two top-level #cell.
+ */
+static void free_cells(struct cell *cells) {
+  for (int c = 0; c < 2; c++) {
+    free(cells[c].hydro.parts);
+    free(cells[c].hydro.xparts);
+    free(cells[c].stars.parts);
+#ifdef WITH_BH_LOOP
+    free(cells[c].black_holes.parts);
+#endif
+#ifdef WITH_SINK_LOOP
+    free(cells[c].sinks.parts);
+#endif
   }
 }
 
@@ -278,8 +324,8 @@ static void make_split_cell(struct cell *c, struct cell *progeny,
  * @param cells The two top-level #cell.
  * @param h The smoothing length of the particle.
  * @param skip_id Gas id to leave out (the particle itself), or -1.
- * @param far_only Whether to count only the gas in the far half of the
- * second cell.
+ * @param far_only Whether to count only the gas of the octants of the second
+ * cell that do not touch the shared face.
  * @param wcount (return) The kernel-weighted neighbour count.
  * @return The number of neighbours.
  */
@@ -287,6 +333,7 @@ static int brute_force(struct cell *cells, const float h,
                        const long long skip_id, const int far_only,
                        double *wcount) {
   const float h_inv = 1.f / h;
+  const struct part *far_start = cells[1].progeny[4]->hydro.parts;
   int n_ngb = 0;
   *wcount = 0.;
   for (int c = 0; c < 2; c++) {
@@ -294,7 +341,7 @@ static int brute_force(struct cell *cells, const float h,
     for (int i = 0; i < cells[c].hydro.count; i++) {
       const struct part *p = &cells[c].hydro.parts[i];
       if (p->id == skip_id) continue;
-      if (far_only && p->x[0] < 1.5) continue;
+      if (far_only && p < far_start) continue;
       const float dx[3] = {(float)(x_redo[0] - p->x[0]),
                            (float)(x_redo[1] - p->x[1]),
                            (float)(x_redo[2] - p->x[2])};
@@ -310,9 +357,236 @@ static int brute_force(struct cell *cells, const float h,
   return n_ngb;
 }
 
+/**
+ * @brief Set the values of the last step on every cell, as the activation
+ * of the tasks does.
+ *
+ * @param cells The two top-level #cell.
+ * @param h_old The h of the last step of the particle being redone.
+ * @param dx_j The drift of the gas of the second cell.
+ */
+static void set_old_values(struct cell *cells, const float h_old,
+                           const float dx_j) {
+  for (int c = 0; c < 2; c++) {
+    for (int j = 0; j < 9; j++) {
+      struct cell *cc = (j < 8) ? cells[c].progeny[j] : &cells[c];
+      cc->stars.h_max_old = (c == 0) ? h_old : 0.f;
+#ifdef WITH_BH_LOOP
+      cc->black_holes.h_max_old = (c == 0) ? h_old : 0.f;
+#endif
+#ifdef WITH_SINK_LOOP
+      cc->sinks.h_max_old = (c == 0) ? h_old : 0.f;
+#endif
+      cc->hydro.h_max_old = (c == 0) ? max(h_old, H_LATTICE) : H_LATTICE;
+      cc->hydro.dx_max_part_old = (c == 1) ? dx_j : 0.f;
+      cc->hydro.dx_max_part = cc->hydro.dx_max_part_old;
+    }
+  }
+}
+
+/**
+ * @brief Run the subset density loops of one particle type and compare the
+ * result with the brute-force sum.
+ *
+ * @param r The #runner.
+ * @param cells The two top-level #cell.
+ * @param loop The loop: 0 stars, 1 hydro, 2 black holes, 3 sinks.
+ * @param h_new The h of the particle being redone.
+ * @param label The name of the case for the output.
+ * @return 1 if the sums agree, 0 otherwise.
+ */
+static int run_subset_loop(struct runner *r, struct cell *cells, const int loop,
+                           const float h_new, const char *label) {
+
+  struct part *p_redo = cells[0].progeny[4]->hydro.parts;
+  const int ind_gas = (int)(p_redo - cells[0].hydro.parts);
+  const int ind_star = 0;
+  int ind_one = 0;
+  (void)ind_one;
+
+  float wcount_code = 0.f;
+  int n_code = -1;
+  if (loop == 0) {
+    struct spart *sp = cells[0].stars.parts;
+    bzero(&sp->density, sizeof(sp->density));
+#if defined(FEEDBACK_GEAR)
+    bzero(&sp->feedback_data, sizeof(sp->feedback_data));
+    sp->feedback_data.will_do_feedback = 1;
+#endif
+    sp->h = h_new;
+    runner_dosub_self_subset_stars_density(r, &cells[0], cells[0].stars.parts,
+                                           &ind_star, 1, /*h_max_redo=*/h_new,
+                                           /*gettimer=*/0);
+    runner_dosub_pair_subset_stars_density(r, &cells[0], cells[0].stars.parts,
+                                           &ind_star, 1, /*h_max_redo=*/h_new,
+                                           &cells[1], /*gettimer=*/0);
+    wcount_code = sp->density.wcount;
+#if defined(FEEDBACK_GEAR)
+    n_code = sp->feedback_data.num_ngbs;
+#endif
+  } else if (loop == 1) {
+    bzero(&p_redo->density, sizeof(p_redo->density));
+    p_redo->h = h_new;
+    runner_dosub_self_subset_density(r, &cells[0], cells[0].hydro.parts,
+                                     &ind_gas, 1, /*h_max_redo=*/h_new,
+                                     /*gettimer=*/0);
+    runner_dosub_pair_subset_density(r, &cells[0], cells[0].hydro.parts,
+                                     &ind_gas, 1, /*h_max_redo=*/h_new,
+                                     &cells[1], /*gettimer=*/0);
+    wcount_code = p_redo->density.wcount;
+    p_redo->h = H_LATTICE;
+  } else if (loop == 2) {
+#ifdef WITH_BH_LOOP
+    struct bpart *bp = cells[0].black_holes.parts;
+    bzero(&bp->density, sizeof(bp->density));
+    bp->h = h_new;
+#if defined(BLACK_HOLES_GEAR)
+    bp->num_ngbs = 0;
+#endif
+    runner_dosub_subset_bh_density(r, &cells[0], bp, &ind_one, 1,
+                                   /*h_max_redo=*/h_new, NULL,
+                                   /*gettimer=*/0);
+    runner_dosub_subset_bh_density(r, &cells[0], bp, &ind_one, 1,
+                                   /*h_max_redo=*/h_new, &cells[1],
+                                   /*gettimer=*/0);
+    wcount_code = bp->density.wcount;
+#if defined(BLACK_HOLES_GEAR)
+    n_code = bp->num_ngbs;
+#endif
+#endif
+  } else {
+#ifdef WITH_SINK_LOOP
+    struct sink *si = cells[0].sinks.parts;
+    bzero(&si->density, sizeof(si->density));
+    si->h = h_new;
+    si->num_ngbs = 0;
+    runner_dosub_subset_sinks_density(r, &cells[0], si, &ind_one, 1,
+                                      /*h_max_redo=*/h_new, NULL,
+                                      /*gettimer=*/0);
+    runner_dosub_subset_sinks_density(r, &cells[0], si, &ind_one, 1,
+                                      /*h_max_redo=*/h_new, &cells[1],
+                                      /*gettimer=*/0);
+    wcount_code = si->density.wcount;
+    n_code = si->num_ngbs;
+#endif
+  }
+
+  const long long skip_id = (loop == 1) ? p_redo->id : -1;
+  double wcount_ref, wcount_far;
+  const int n_ref = brute_force(cells, h_new, skip_id, 0, &wcount_ref);
+  const int n_far = brute_force(cells, h_new, skip_id, 1, &wcount_far);
+  const double rel = fabs(wcount_code - wcount_ref) / wcount_ref;
+  /* Rounding bound of a float sum of n_ref positive terms. */
+  const double rel_tol = n_ref * FLT_EPSILON;
+  const int ok = (rel < rel_tol) && (n_code < 0 || n_code == n_ref);
+
+  message(
+      "%s, %s loop, kernel_gamma*h/octant %.2f: neighbours %d (code %d, far "
+      "octants %d), wcount code %.6e brute force %.6e (far octants %.6e), "
+      "relative difference %.3e (bar %.3e): %s",
+      label, loop_name[loop], h_new * kernel_gamma / 0.5f, n_ref, n_code, n_far,
+      wcount_code, wcount_ref, wcount_far, rel, rel_tol,
+      ok ? "agree" : "MISMATCH");
+  return ok;
+}
+
+#ifdef WITH_BH_LOOP
+
+/**
+ * @brief Is the gas of a leaf cell drifted this step, given the drift flags?
+ *
+ * A cell flagged for drift drifts its whole sub-tree (cell_drift_part()).
+ *
+ * @param c The leaf #cell.
+ */
+static int leaf_is_drifted(const struct cell *c) {
+  for (const struct cell *f = c; f != NULL; f = f->parent)
+    if (cell_get_flag(f, cell_flag_do_hydro_drift)) return 1;
+  return 0;
+}
+
+/**
+ * @brief Activate a black hole density pair task as the unskip does, then
+ * count the gas inside the grown kernel that will not be drifted.
+ *
+ * @param cells The two top-level #cell.
+ * @param s The #scheduler.
+ * @param h_old The h of the last step of the black hole.
+ * @param h_new The h of the black hole in the rerun.
+ * @return 1 if every gas particle inside the kernel is drifted.
+ */
+static int check_bh_drift_activation(struct cell *cells, struct scheduler *s,
+                                     const float h_old, const float h_new) {
+
+  static struct task tasks[16];
+  static int tid_active[16];
+  bzero(tasks, sizeof(tasks));
+  for (int t = 0; t < 16; t++) tasks[t].skip = 1;
+  s->tasks = tasks;
+  s->tid_active = tid_active;
+  s->active_count = 0;
+
+  struct task *density = &tasks[0];
+  density->type = task_type_pair;
+  density->subtype = task_subtype_bh_density;
+  density->ci = &cells[0];
+  density->cj = &cells[1];
+  struct link link = {density, NULL};
+
+  for (int c = 0; c < 2; c++) {
+    cells[c].hydro.drift = &tasks[1 + 4 * c];
+    cells[c].black_holes.drift = &tasks[2 + 4 * c];
+    cells[c].black_holes.swallow_ghost_1 = &tasks[3 + 4 * c];
+    cells[c].black_holes.black_holes_in = &tasks[4 + 4 * c];
+    for (int j = 0; j < 9; j++) {
+      struct cell *cc = (j < 8) ? cells[c].progeny[j] : &cells[c];
+      cc->flags = 0;
+      cc->hydro.h_max = H_LATTICE;
+      cc->hydro.dx_max_part = 0.f;
+      cc->black_holes.h_max = (c == 0) ? h_old : 0.f;
+      cc->black_holes.dx_max_part = 0.f;
+      /* Only the cells holding the black hole are active. */
+      const int has_bh = (c == 0) && (j == 4 || j == 8);
+      cc->black_holes.ti_end_min = has_bh ? TI_CURRENT : 2 * TI_CURRENT;
+    }
+  }
+  cells[0].black_holes.density = &link;
+
+  cell_unskip_black_holes_tasks(&cells[0], s);
+  cells[0].black_holes.density = NULL;
+
+  /* Gas of the second cell inside the grown kernel, by octant. */
+  int n_missed = 0, n_in = 0;
+  for (int k = 0; k < 8; k++) {
+    const struct cell *cp = cells[1].progeny[k];
+    int n_kernel = 0;
+    for (int i = 0; i < cp->hydro.count; i++) {
+      const struct part *p = &cp->hydro.parts[i];
+      double r2 = 0.;
+      for (int d = 0; d < 3; d++)
+        r2 += (x_redo[d] - p->x[d]) * (x_redo[d] - p->x[d]);
+      if (r2 < h_new * h_new * kernel_gamma2) n_kernel++;
+    }
+    n_in += n_kernel;
+    if (!leaf_is_drifted(cp)) n_missed += n_kernel;
+  }
+
+  const int ok = (n_missed == 0);
+  message(
+      "black-hole drift activation, kernel_gamma*h/octant old %.2f new %.2f: "
+      "%d gas of the second cell in the kernel, %d of them not drifted: %s",
+      h_old * kernel_gamma / 0.5f, h_new * kernel_gamma / 0.5f, n_in, n_missed,
+      ok ? "agree" : "MISMATCH");
+  return ok;
+}
+
+#endif /* WITH_BH_LOOP */
+
 int main(int argc, char *argv[]) {
 
   clocks_set_cpufreq(0);
+  const int with_depth_drift =
+      (argc > 1 && strcmp(argv[1], "--with-depth-drift") == 0);
 
   struct space space;
   bzero(&space, sizeof(struct space));
@@ -349,6 +623,7 @@ int main(int argc, char *argv[]) {
   engine.hydro_properties = &hp;
   engine.stars_properties = &stars_p;
   engine.nodeID = 0;
+  space.e = &engine;
 
   struct cosmology cosmo;
   cosmology_init_no_cosmo(&cosmo);
@@ -360,152 +635,70 @@ int main(int argc, char *argv[]) {
 
   struct cell cells[2];
   struct cell progeny[2][8];
-  make_split_cell(&cells[0], progeny[0], 0., /*with_redo=*/1);
-  make_split_cell(&cells[1], progeny[1], 1., /*with_redo=*/0);
-  space.cells_top = cells;
 
-  struct part *p_redo = progeny[0][4].hydro.parts;
-  struct spart *sp_redo = cells[0].stars.parts;
-  const int ind_gas = (int)(p_redo - cells[0].hydro.parts);
-  const int ind_star = 0;
-  int ind_one = 0;
-#ifdef WITH_BH_LOOP
-  struct bpart *bp_redo = cells[0].black_holes.parts;
-#endif
-#ifdef WITH_SINK_LOOP
-  struct sink *si_redo = cells[0].sinks.parts;
-#endif
-  (void)ind_one;
-  static const char *loop_name[4] = {"stars", "hydro", "black-hole", "sink"};
-
-  /* kernel_gamma * h in units of the octant width, before and after the
-   * update. Only values below 1 allow recursion. The last case shrinks h. */
+  /* kernel_gamma * h in units of the octant width. Only values below 1 allow
+   * recursion. */
   const float r_old = 0.9f;
-  const float r_new[3] = {1.1f, 1.8f, 0.8f};
+  const float h_old = r_old * 0.5f / kernel_gamma;
 
   int n_fail = 0;
-  for (int k = 0; k < 3; k++) {
-    const float h_old = r_old * 0.5f / kernel_gamma;
-    const float h_new = r_new[k] * 0.5f / kernel_gamma;
 
+  /* Case 1: h grows past the octant, or shrinks. */
+  make_split_cell(&cells[0], progeny[0], 0., /*with_redo=*/1, x_plant_inside);
+  make_split_cell(&cells[1], progeny[1], 1., /*with_redo=*/0, x_plant_inside);
+  space.cells_top = cells;
+  const float r_grow[3] = {1.1f, 1.8f, 0.8f};
+  for (int k = 0; k < 3; k++) {
+    const float h_new = r_grow[k] * 0.5f / kernel_gamma;
     for (int loop = 0; loop < 4; loop++) {
-      const int is_stars = (loop == 0);
 #ifndef WITH_BH_LOOP
       if (loop == 2) continue;
 #endif
 #ifndef WITH_SINK_LOOP
       if (loop == 3) continue;
 #endif
-
-      for (int c = 0; c < 2; c++) {
-        for (int j = 0; j < 9; j++) {
-          struct cell *cc = (j < 8) ? &progeny[c][j] : &cells[c];
-          cc->stars.h_max_old = (c == 0) ? h_old : 0.f;
-#ifdef WITH_BH_LOOP
-          cc->black_holes.h_max_old = (c == 0) ? h_old : 0.f;
-#endif
-#ifdef WITH_SINK_LOOP
-          cc->sinks.h_max_old = (c == 0) ? h_old : 0.f;
-#endif
-          cc->hydro.h_max_old = (c == 0) ? max(h_old, H_LATTICE) : H_LATTICE;
-        }
-      }
-
-      float wcount_code;
-      int n_code = -1;
-      if (is_stars) {
-        bzero(&sp_redo->density, sizeof(sp_redo->density));
-#if defined(FEEDBACK_GEAR)
-        bzero(&sp_redo->feedback_data, sizeof(sp_redo->feedback_data));
-        sp_redo->feedback_data.will_do_feedback = 1;
-#endif
-        sp_redo->h = h_new;
-        runner_dosub_self_subset_stars_density(&runner, &cells[0],
-                                               cells[0].stars.parts, &ind_star,
-                                               1, /*gettimer=*/0);
-        runner_dosub_pair_subset_stars_density(
-            &runner, &cells[0], cells[0].stars.parts, &ind_star, 1, &cells[1],
-            /*gettimer=*/0);
-        wcount_code = sp_redo->density.wcount;
-#if defined(FEEDBACK_GEAR)
-        n_code = sp_redo->feedback_data.num_ngbs;
-#endif
-      } else if (loop == 2) {
-#ifdef WITH_BH_LOOP
-        bzero(&bp_redo->density, sizeof(bp_redo->density));
-        bp_redo->h = h_new;
-#if defined(BLACK_HOLES_GEAR)
-        bp_redo->num_ngbs = 0;
-#endif
-        runner_dosub_subset_bh_density(&runner, &cells[0], bp_redo, &ind_one, 1,
-                                       NULL, /*gettimer=*/0);
-        runner_dosub_subset_bh_density(&runner, &cells[0], bp_redo, &ind_one, 1,
-                                       &cells[1], /*gettimer=*/0);
-        wcount_code = bp_redo->density.wcount;
-#if defined(BLACK_HOLES_GEAR)
-        n_code = bp_redo->num_ngbs;
-#endif
-#else
-        wcount_code = 0.f;
-#endif
-      } else if (loop == 3) {
-#ifdef WITH_SINK_LOOP
-        bzero(&si_redo->density, sizeof(si_redo->density));
-        si_redo->h = h_new;
-        si_redo->num_ngbs = 0;
-        runner_dosub_subset_sinks_density(&runner, &cells[0], si_redo, &ind_one,
-                                          1, NULL, /*gettimer=*/0);
-        runner_dosub_subset_sinks_density(&runner, &cells[0], si_redo, &ind_one,
-                                          1, &cells[1], /*gettimer=*/0);
-        wcount_code = si_redo->density.wcount;
-        n_code = si_redo->num_ngbs;
-#else
-        wcount_code = 0.f;
-#endif
-      } else {
-        bzero(&p_redo->density, sizeof(p_redo->density));
-        p_redo->h = h_new;
-        runner_dosub_self_subset_density(&runner, &cells[0],
-                                         cells[0].hydro.parts, &ind_gas, 1,
-                                         /*gettimer=*/0);
-        runner_dosub_pair_subset_density(&runner, &cells[0],
-                                         cells[0].hydro.parts, &ind_gas, 1,
-                                         &cells[1], /*gettimer=*/0);
-        wcount_code = p_redo->density.wcount;
-        p_redo->h = H_LATTICE;
-      }
-
-      const long long skip_id = (loop == 1) ? p_redo->id : -1;
-      double wcount_ref, wcount_far;
-      const int n_ref = brute_force(cells, h_new, skip_id, 0, &wcount_ref);
-      const int n_far = brute_force(cells, h_new, skip_id, 1, &wcount_far);
-      const double rel = fabs(wcount_code - wcount_ref) / wcount_ref;
-      /* Rounding bound of a float sum of n_ref positive terms. */
-      const double rel_tol = n_ref * FLT_EPSILON;
-      const int ok = (rel < rel_tol) && (n_code < 0 || n_code == n_ref);
-      if (!ok) n_fail++;
-
-      message(
-          "%s loop, kernel_gamma*h/octant: old %.2f new %.2f: neighbours %d "
-          "(code %d, far half %d), wcount code %.6e brute force %.6e (far half "
-          "%.6e), relative difference %.3e (bar %.3e): %s",
-          loop_name[loop], r_old, r_new[k], n_ref, n_code, n_far, wcount_code,
-          wcount_ref, wcount_far, rel, rel_tol, ok ? "agree" : "MISMATCH");
+      set_old_values(cells, h_old, 0.f);
+      if (!run_subset_loop(&runner, cells, loop, h_new, "h growth")) n_fail++;
     }
   }
+  free_cells(cells);
 
-  for (int c = 0; c < 2; c++) {
-    free(cells[c].hydro.parts);
-    free(cells[c].hydro.xparts);
-    free(cells[c].stars.parts);
-#ifdef WITH_BH_LOOP
-    free(cells[c].black_holes.parts);
+  /* Case 2: gas drifted out of the far octant into the kernel. */
+  make_split_cell(&cells[0], progeny[0], 0., /*with_redo=*/1, x_plant_drifted);
+  make_split_cell(&cells[1], progeny[1], 1., /*with_redo=*/0, x_plant_drifted);
+  space.cells_top = cells;
+  {
+    const float h_new = 0.95f * 0.5f / kernel_gamma;
+    for (int loop = 0; loop < 4; loop++) {
+      if (loop < 2 && !with_depth_drift) continue;
+#ifndef WITH_BH_LOOP
+      if (loop == 2) continue;
 #endif
-#ifdef WITH_SINK_LOOP
-    free(cells[c].sinks.parts);
+#ifndef WITH_SINK_LOOP
+      if (loop == 3) continue;
 #endif
+      set_old_values(cells, h_new, DX_DRIFT);
+      if (!run_subset_loop(&runner, cells, loop, h_new, "neighbour drift"))
+        n_fail++;
+    }
   }
+  free_cells(cells);
 
-  if (n_fail) error("%d subset density sums differ from brute force", n_fail);
+#ifdef WITH_BH_LOOP
+  /* Case 3: the black hole task activation drifts the gas a rerun reads. */
+  make_split_cell(&cells[0], progeny[0], 0., /*with_redo=*/1, x_plant_inside);
+  make_split_cell(&cells[1], progeny[1], 1., /*with_redo=*/0, x_plant_inside);
+  space.cells_top = cells;
+  {
+    struct scheduler sched;
+    bzero(&sched, sizeof(sched));
+    sched.space = &space;
+    const float h_new = 1.1f * 0.5f / kernel_gamma;
+    if (!check_bh_drift_activation(cells, &sched, h_old, h_new)) n_fail++;
+  }
+  free_cells(cells);
+#endif
+
+  if (n_fail) error("%d subset density checks failed", n_fail);
   return 0;
 }

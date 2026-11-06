@@ -261,6 +261,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
         /* Update the dx_max */
         c->stars.dx_max_part = max(c->stars.dx_max_part, cp->stars.dx_max_part);
+        c->stars.dx_outside_max =
+            max(c->stars.dx_outside_max, cp->stars.dx_outside_max);
         c->stars.dx_max_sort = max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
       }
   } else {
@@ -301,9 +303,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                        cooling, cosmo, with_cosmology,
                                        phys_const, us, displacement);
 
-          sp->x_diff[0] += displacement[0];
-          sp->x_diff[1] += displacement[1];
-          sp->x_diff[2] += displacement[2];
+          sp->x_diff[0] -= displacement[0];
+          sp->x_diff[1] -= displacement[1];
+          sp->x_diff[2] -= displacement[2];
 
           /* Update the Star formation history */
           star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -343,6 +345,8 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
 
           /* Update the cell's running maximum displacement */
           c->stars.dx_max_part = max(c->stars.dx_max_part, dx_part);
+          c->stars.dx_outside_max =
+              max(c->stars.dx_outside_max, cell_distance_outside_box(c, sp->x));
           c->stars.dx_max_sort = max(c->stars.dx_max_sort, dx_sort);
 
           /* Update sink properties */
@@ -458,6 +462,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
         if (star_formation_need_update_dx_max) {
           c->hydro.dx_max_part =
               max(cp->hydro.dx_max_part, c->hydro.dx_max_part);
+          c->hydro.dx_outside_max =
+              max(cp->hydro.dx_outside_max, c->hydro.dx_outside_max);
           c->hydro.dx_max_sort =
               max(cp->hydro.dx_max_sort, c->hydro.dx_max_sort);
         }
@@ -466,6 +472,8 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
         if (swift_star_formation_model_creates_stars) {
           c->stars.dx_max_part =
               max(c->stars.dx_max_part, cp->stars.dx_max_part);
+          c->stars.dx_outside_max =
+              max(c->stars.dx_outside_max, cp->stars.dx_outside_max);
           c->stars.dx_max_sort =
               max(c->stars.dx_max_sort, cp->stars.dx_max_sort);
         }
@@ -570,9 +578,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                     hydro_props, us, cooling, e->chemistry, part_converted,
                     displacement);
 
-                sp->x_diff[0] += displacement[0];
-                sp->x_diff[1] += displacement[1];
-                sp->x_diff[2] += displacement[2];
+                sp->x_diff[0] -= displacement[0];
+                sp->x_diff[1] -= displacement[1];
+                sp->x_diff[2] -= displacement[2];
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -580,6 +588,11 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                 /* Update the h_max */
                 c->stars.h_max = max(c->stars.h_max, sp->h);
                 c->stars.h_max_active = max(c->stars.h_max_active, sp->h);
+
+                /* A new star can lie outside the cell, as its gas did. */
+                c->stars.dx_outside_max =
+                    max(c->stars.dx_outside_max,
+                        cell_distance_outside_box(c, sp->x));
 
                 /* Update the displacement information */
                 if (star_formation_need_update_dx_max) {
@@ -598,6 +611,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                   /* Note: no need to update quantities further up the tree as
                      this task is always called at the top-level */
                   c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx_part);
+                  c->hydro.dx_outside_max =
+                      max(c->hydro.dx_outside_max,
+                          cell_distance_outside_box(c, p->x));
                   c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx_sort);
                 }
 
@@ -738,6 +754,7 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
         c->sinks.h_max = max(c->sinks.h_max, cp->sinks.h_max);
         c->sinks.h_max_active =
             max(c->sinks.h_max_active, cp->sinks.h_max_active);
+        c->sinks.dx_max_part = max(c->sinks.dx_max_part, cp->sinks.dx_max_part);
       }
   } else {
 
@@ -796,6 +813,12 @@ void runner_do_sink_formation(struct runner *r, struct cell *c) {
               /* Update the cell h_max if necessary */
               c->sinks.h_max = max(c->sinks.h_max, sink->h);
               c->sinks.h_max_active = max(c->sinks.h_max_active, sink->h);
+
+              /* The new sink keeps the drift of its gas since the rebuild. */
+              const float dx2 = sink->x_diff[0] * sink->x_diff[0] +
+                                sink->x_diff[1] * sink->x_diff[1] +
+                                sink->x_diff[2] * sink->x_diff[2];
+              c->sinks.dx_max_part = max(c->sinks.dx_max_part, sqrtf(dx2));
             }
           }
         }

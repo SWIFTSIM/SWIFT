@@ -988,8 +988,8 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(
+            ci, cj, max(ci->hydro.h_max, cj->hydro.h_max))) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -1110,8 +1110,8 @@ void cell_activate_subcell_stars_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_stars_task(ci) &&
-        cell_can_recurse_in_pair_stars_task(cj)) {
+    if (cell_can_recurse_in_pair_stars_task(ci, cj, ci->stars.h_max) &&
+        cell_can_recurse_in_pair_stars_task(cj, ci, cj->stars.h_max)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1239,8 +1239,8 @@ void cell_activate_subcell_black_holes_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_black_holes_task(ci, cj) &&
-        cell_can_recurse_in_pair_black_holes_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_black_holes_task(ci, cj,
+                                                  ci->black_holes.h_max)) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -1346,8 +1346,7 @@ void cell_activate_subcell_sinks_tasks(struct cell *ci, struct cell *cj,
     if (!ci_active && !cj_active) return;
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_sinks_task(ci, cj) &&
-        cell_can_recurse_in_pair_sinks_task(cj, ci)) {
+    if (cell_can_recurse_in_pair_sinks_task(ci, cj, ci->sinks.h_max)) {
 
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
@@ -1700,8 +1699,8 @@ void cell_activate_subcell_rt_tasks(struct cell *ci, struct cell *cj,
     const int sid = space_getsid_and_swap_cells(s->space, &ci, &cj, shift);
 
     /* recurse? */
-    if (cell_can_recurse_in_pair_hydro_task(ci) &&
-        cell_can_recurse_in_pair_hydro_task(cj)) {
+    if (cell_can_recurse_in_pair_hydro_task(
+            ci, cj, max(ci->hydro.h_max, cj->hydro.h_max))) {
       const struct cell_split_pair *csp = &cell_split_pairs[sid];
       for (int k = 0; k < csp->count; k++) {
         const int pid = csp->pairs[k].pid;
@@ -3056,11 +3055,29 @@ int cell_unskip_black_holes_tasks(struct cell *c, struct scheduler *s) {
       if (t->type == task_type_self) {
         cell_activate_subcell_black_holes_tasks(ci, NULL, s,
                                                 with_timestep_sync);
+
+        /* The density reruns can read all the gas of the task cells. */
+        if (ci->hydro.count > 0) cell_activate_drift_part(ci, s);
+
+        /* The recursion reads the drift of all the black holes. */
+        if (ci->black_holes.count > 0) cell_activate_drift_bpart(ci, s);
       }
 
       /* Store current values of dx_max and h_max. */
       else if (t->type == task_type_pair) {
         cell_activate_subcell_black_holes_tasks(ci, cj, s, with_timestep_sync);
+
+        /* The density reruns can read all the gas of the task cells. */
+        if (ci_nodeID == nodeID && cj_active && ci->hydro.count > 0)
+          cell_activate_drift_part(ci, s);
+        if (cj_nodeID == nodeID && ci_active && cj->hydro.count > 0)
+          cell_activate_drift_part(cj, s);
+
+        /* The recursion reads the drift of all the black holes. */
+        if (ci_nodeID == nodeID && ci->black_holes.count > 0)
+          cell_activate_drift_bpart(ci, s);
+        if (cj_nodeID == nodeID && cj->black_holes.count > 0)
+          cell_activate_drift_bpart(cj, s);
 
         /* Activate bh_in for each cell that is part of
          * a pair task as to not miss any dependencies */

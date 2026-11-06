@@ -649,6 +649,9 @@ void cell_check_multipole(struct cell *c,
 void cell_check_foreign_multipole(const struct cell *c);
 void cell_clean(struct cell *c);
 void cell_check_part_drift_point(struct cell *c, void *data);
+void cell_check_hydro_dx_outside_max(const struct cell *c);
+void cell_check_stars_dx_outside_max(const struct cell *c);
+void cell_check_black_holes_dx_outside_max(const struct cell *c);
 void cell_check_gpart_drift_point(struct cell *c, void *data);
 void cell_check_spart_drift_point(struct cell *c, void *data);
 void cell_check_bpart_drift_point(struct cell *c, void *data);
@@ -1020,20 +1023,117 @@ cell_boxes_touch_under_shift(const struct cell *a, const struct cell *b,
 /* Inlined functions (for speed). */
 
 /**
- * @brief Can a sub-pair hydro task recurse to a lower level based
- * on the status of the particles in the cell.
+ * @brief The largest distance (max-norm) by which a position lies outside the
+ * box of a #cell.
+ *
+ * @param c The #cell.
+ * @param x The position.
+ */
+__attribute__((always_inline)) INLINE static float cell_distance_outside_box(
+    const struct cell *c, const double x[3]) {
+  double d = 0.;
+  for (int k = 0; k < 3; k++) {
+    d = max(d, c->loc[k] - x[k]);
+    d = max(d, x[k] - (c->loc[k] + c->width[k]));
+  }
+  return (float)d;
+}
+
+/**
+ * @brief The largest distance by which the gas of a #cell lies outside the
+ * box of its leaf cell.
  *
  * @param c The #cell.
  */
-__attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_hydro_task(const struct cell *c) {
+__attribute__((always_inline)) INLINE static float
+cell_get_hydro_dx_outside_max(const struct cell *c) {
+  return c->hydro.dx_outside_max;
+}
 
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
-  /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->hydro.h_max_old +
-                       c->hydro.dx_max_part_old) < 0.5f * c->dmin);
+/**
+ * @brief The largest distance by which the stars of a #cell lie outside the
+ * box of their leaf cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float
+cell_get_stars_dx_outside_max(const struct cell *c) {
+  return c->stars.dx_outside_max;
+}
+
+/**
+ * @brief The largest distance by which the black holes of a #cell lie outside
+ * the box of their leaf cell.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float
+cell_get_black_holes_dx_outside_max(const struct cell *c) {
+  return c->black_holes.dx_outside_max;
+}
+
+/**
+ * @brief The smallest h that a pair recursion handles at the level of a pair
+ * of cells rather than in the pairs of their progeny.
+ *
+ * The progeny pairs that do not touch are at least half of dmin apart along
+ * one axis, and no particle lies further than dx_outside_max outside the box
+ * of its progeny. A particle with a smaller h hence finds all its neighbours
+ * in the progeny pairs that touch.
+ *
+ * @param c One #cell of the pair.
+ * @param dx The sum of the dx_outside_max of the two cells.
+ */
+__attribute__((always_inline)) INLINE static float cell_pair_h_split(
+    const struct cell *c, const float dx) {
+  return max(0.5f * c->dmin - dx, 0.f) * kernel_gamma_inv;
+}
+
+/**
+ * @brief The smallest h that a pair recursion handles at the level of a pair
+ * of gas cells rather than in the pairs of their progeny.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_pair_hydro_h_split(
+    const struct cell *ci, const struct cell *cj) {
+  return cell_pair_h_split(ci, cell_get_hydro_dx_outside_max(ci) +
+                                   cell_get_hydro_dx_outside_max(cj));
+}
+
+/**
+ * @brief The smallest h that a self recursion handles at the level of a cell
+ * rather than in its progeny.
+ *
+ * All the progeny of a cell touch each other, so no drift enters.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static float cell_self_h_split(
+    const struct cell *c) {
+  return 0.5f * c->dmin * kernel_gamma_inv;
+}
+
+/**
+ * @brief Can a pair hydro task recurse to a lower level based
+ * on the status of the particles in the cells.
+ *
+ * The progeny pairs that the recursion skips are at least half of dmin
+ * apart, so the search radius plus the drift of the gas of both cells must
+ * stay below that.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param h_max The largest h of the gas that searches.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_hydro_task(const struct cell *ci,
+                                    const struct cell *cj, const float h_max) {
+
+  return ci->split && cj->split &&
+         (kernel_gamma * h_max + cell_get_hydro_dx_outside_max(ci) +
+          cell_get_hydro_dx_outside_max(cj)) < 0.5f * ci->dmin;
 }
 
 /**
@@ -1146,21 +1246,25 @@ cell_can_recurse_in_subself2_hydro_task(const struct cell *c) {
 }
 
 /**
- * @brief Can a sub-pair star task recurse to a lower level based
- * on the status of the particles in the cell.
+ * @brief Can a pair star task recurse to a lower level based
+ * on the status of the stars of ci searching the gas of cj.
  *
- * @param ci The #cell with stars.
- * @param cj The #cell with hydro parts.
+ * The progeny pairs that the recursion skips are at least half of dmin
+ * apart, so the search radius plus the drift of the stars of ci and of the
+ * gas of cj must stay below that.
+ *
+ * @param ci The #cell with the stars.
+ * @param cj The #cell with the gas.
+ * @param h_max_i The largest h of the stars of ci that search cj.
  */
 __attribute__((always_inline)) INLINE static int
-cell_can_recurse_in_pair_stars_task(const struct cell *c) {
+cell_can_recurse_in_pair_stars_task(const struct cell *ci,
+                                    const struct cell *cj,
+                                    const float h_max_i) {
 
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
-  /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
-  return c->split && ((kernel_gamma * c->stars.h_max_old +
-                       c->stars.dx_max_part_old) < 0.5f * c->dmin);
+  return ci->split && cj->split &&
+         (kernel_gamma * h_max_i + cell_get_stars_dx_outside_max(ci) +
+          cell_get_hydro_dx_outside_max(cj)) < 0.5f * ci->dmin;
 }
 
 /**
@@ -1206,47 +1310,66 @@ cell_can_recurse_in_subself_stars_task(const struct cell *c) {
 }
 
 /**
- * @brief Can a sub-pair sink task recurse to a lower level based
- * on the status of the particles in the cell.
+ * @brief Can a pair sink task recurse to a lower level based
+ * on the status of the particles in the cells.
  *
- * @param ci The #cell with stars.
- * @param cj The #cell with hydro parts.
+ * Both directions are tested: the sinks of ci on cj and of cj on ci. The
+ * cells the recursion skips are at least half of dmin away, so the search
+ * radius plus the drifts of the searching sinks and of what they search must
+ * stay below that. The search radius also covers the h of the gas searched.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param h_max_i The largest h of the sinks of ci that search cj.
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_sinks_task(const struct cell *ci,
-                                    const struct cell *cj) {
+                                    const struct cell *cj,
+                                    const float h_max_i) {
 
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
-  /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
+  const float h_i = max(h_max_i, cj->hydro.h_max);
+  const float h_j = max(cj->sinks.h_max, ci->hydro.h_max);
+  const float dx_i =
+      max(cell_get_hydro_dx_outside_max(ci), ci->sinks.dx_max_part);
+  const float dx_j =
+      max(cell_get_hydro_dx_outside_max(cj), cj->sinks.dx_max_part);
+
   return ci->split && cj->split &&
-         ((kernel_gamma * ci->sinks.h_max_old + ci->sinks.dx_max_part_old) <
+         ((kernel_gamma * h_i + ci->sinks.dx_max_part + dx_j) <
           0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
+         ((kernel_gamma * h_j + cj->sinks.dx_max_part + dx_i) <
           0.5f * cj->dmin);
 }
 
 /**
- * @brief Can a sub-pair black hole task recurse to a lower level based
- * on the status of the particles in the cell.
+ * @brief Can a pair black hole task recurse to a lower level based
+ * on the status of the particles in the cells.
  *
- * @param ci The #cell with black holes.
- * @param cj The #cell with hydro parts.
+ * Both directions are tested: the black holes of ci on cj and of cj on ci.
+ * The cells the recursion skips are at least half of dmin away, so the search
+ * radius plus the drifts of the searching black holes and of what they search
+ * must stay below that. The search radius also covers the h of the gas
+ * searched.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param h_max_i The largest h of the black holes of ci that search cj.
  */
 __attribute__((always_inline)) INLINE static int
 cell_can_recurse_in_pair_black_holes_task(const struct cell *ci,
-                                          const struct cell *cj) {
+                                          const struct cell *cj,
+                                          const float h_max_i) {
 
-  /* Is the cell split ? */
-  /* If so, is the cut-off radius plus the max distance the parts have moved */
-  /* smaller than the sub-cell sizes ? */
-  /* Note: We use the _old values as these might have been updated by a drift */
+  const float h_i = max(h_max_i, cj->hydro.h_max);
+  const float h_j = max(cj->black_holes.h_max, ci->hydro.h_max);
+  const float dx_bh_i = cell_get_black_holes_dx_outside_max(ci);
+  const float dx_bh_j = cell_get_black_holes_dx_outside_max(cj);
+  const float dx_i = max(cell_get_hydro_dx_outside_max(ci), dx_bh_i);
+  const float dx_j = max(cell_get_hydro_dx_outside_max(cj), dx_bh_j);
+
   return ci->split && cj->split &&
-         ((kernel_gamma * ci->black_holes.h_max_old +
-           ci->black_holes.dx_max_part_old) < 0.5f * ci->dmin) &&
-         ((kernel_gamma * cj->hydro.h_max_old + cj->hydro.dx_max_part_old) <
-          0.5f * cj->dmin);
+         ((kernel_gamma * h_i + dx_bh_i + dx_j) < 0.5f * ci->dmin) &&
+         ((kernel_gamma * h_j + dx_bh_j + dx_i) < 0.5f * cj->dmin);
 }
 
 /**
