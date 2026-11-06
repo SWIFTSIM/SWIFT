@@ -208,8 +208,12 @@ const char *package_description(void) {
  */
 const char *compiler_name(void) {
   static char compiler[256] = {0};
-#if defined(__INTEL_COMPILER)
+#if defined(__INTEL_LLVM_COMPILER)
+  sprintf(compiler, "ONEAPI");
+#elif defined(__INTEL_COMPILER)
   sprintf(compiler, "ICC");
+#elif defined(__NVCOMPILER)
+  sprintf(compiler, "NVHPC");
 #elif defined(__clang__)
   sprintf(compiler, "LLVM/Clang");
 #elif defined(__xlc__)
@@ -228,10 +232,22 @@ const char *compiler_name(void) {
  */
 const char *compiler_version(void) {
   static char version[256] = {0};
-#if defined(__INTEL_COMPILER)
+#if defined(__INTEL_LLVM_COMPILER)
+  /* Same decomposition as _AX_COMPILER_VERSION_ONEAPI in m4, so that the
+   * version reported here matches the one configure reports. */
+  const int major = __INTEL_LLVM_COMPILER / 10000;
+  const int minor = (__INTEL_LLVM_COMPILER % 10000) / 100;
+  const int patch = __INTEL_LLVM_COMPILER % 100;
+  sprintf(version, "%i.%i.%i", major, minor, patch);
+#elif defined(__INTEL_COMPILER)
   const int major = __INTEL_COMPILER / 100;
   const int minor = __INTEL_COMPILER - major * 100;
   sprintf(version, "%i.%i.%i", major, minor, __INTEL_COMPILER_BUILD_DATE);
+#elif defined(__NVCOMPILER)
+  const int major = __NVCOMPILER_MAJOR__;
+  const int minor = __NVCOMPILER_MINOR__;
+  const int patch = __NVCOMPILER_PATCHLEVEL__;
+  sprintf(version, "%i.%i.%i", major, minor, patch);
 #elif defined(__clang__)
   sprintf(version, "%i.%i.%i", __clang_major__, __clang_minor__,
           __clang_patchlevel__);
