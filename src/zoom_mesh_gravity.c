@@ -128,7 +128,7 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         "Gravity:zoom_mesh_side_length is too large for the current "
         "zero-padded zoom mesh implementation. The active side length N is "
         "%d, but the zero padded Hockney-Eastwood FFT uses side length 2N=%d. "
-        "Use N <= 645 until a distributed zoom mesh is implemented.",
+        "Use N <= 645 or enable Gravity:distributed_mesh.",
         side_length, 2 * side_length);
 
   const double r_cut_max_ratio =
@@ -277,7 +277,6 @@ void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s) {
   if (r_s >= props->r_s)
     error("Regridded zoom mesh must remain higher resolution than the "
           "background mesh.");
-
   /* Keep the configured cutoffs in units of the smoothing length. */
   const double cut_max_ratio = mesh->r_cut_max / mesh->r_s;
   const double cut_min_ratio = mesh->r_cut_min / mesh->r_s;
@@ -640,7 +639,15 @@ static void zoom_mesh_deposit_cell(const struct cell *c,
   }
 }
 
-/** @brief Extend patch bounds with particles in covered leaf cells. */
+/**
+ * @brief Extend patch bounds with particles in covered leaf cells.
+ *
+ * @param c The cell whose particles define the bounds.
+ * @param data The mesh geometry and particle data.
+ * @param mesh_min The lowest mesh indices reached (updated).
+ * @param mesh_max The highest mesh indices reached (updated).
+ * @param has_particles Whether any covered particles were found (updated).
+ */
 static void zoom_mesh_patch_bounds(const struct cell *c,
                                    const struct zoom_cic_mapper_data *data,
                                    int mesh_min[3], int mesh_max[3],
@@ -676,14 +683,28 @@ static void zoom_mesh_patch_bounds(const struct cell *c,
   }
 }
 
-/** @brief Return a private zoom-patch row-major index. */
+/**
+ * @brief Return a private zoom-patch row-major index.
+ *
+ * @param patch The private patch.
+ * @param i Index along x.
+ * @param j Index along y.
+ * @param k Index along z.
+ * @return The row-major index within the patch.
+ */
 __attribute__((always_inline, const)) INLINE static size_t
 zoom_mesh_patch_index(const struct zoom_mesh_patch *patch, const int i,
                       const int j, const int k) {
   return ((size_t)i * patch->mesh_size[1] + j) * patch->mesh_size[2] + k;
 }
 
-/** @brief Deposit covered leaf particles into a private patch. */
+/**
+ * @brief Deposit covered leaf particles into a private patch.
+ *
+ * @param c The cell containing the particles.
+ * @param data The mesh geometry and neutrino weights.
+ * @param patch The patch receiving the particles.
+ */
 static void zoom_mesh_deposit_cell_to_patch(
     const struct cell *c, const struct zoom_cic_mapper_data *data,
     const struct zoom_mesh_patch *patch) {
@@ -728,7 +749,12 @@ static void zoom_mesh_deposit_cell_to_patch(
   }
 }
 
-/** @brief Deposit one top-level cell through a private non-periodic patch. */
+/**
+ * @brief Deposit one top-level cell through a private non-periodic patch.
+ *
+ * @param c The top-level cell.
+ * @param data The mesh and density array receiving its patch.
+ */
 static void zoom_mesh_deposit_cell_with_patch(
     const struct cell *c, const struct zoom_cic_mapper_data *data) {
 
@@ -766,6 +792,10 @@ static void zoom_mesh_deposit_cell_with_patch(
 
 /**
  * @brief Threadpool mapper for depositing top-level cells on the zoom mesh.
+ *
+ * @param map_data The top-level cell indices to process.
+ * @param num The number of cell indices.
+ * @param extra The shared #zoom_cic_mapper_data.
  */
 static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
                                             void *extra) {
@@ -783,13 +813,25 @@ static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
   }
 }
 
-/** @brief Label zoom-cell density assignment in threadpool diagnostics. */
+/**
+ * @brief Label zoom-cell density assignment in threadpool diagnostics.
+ *
+ * @param map_data The zoom-cell indices.
+ * @param num The number of indices.
+ * @param extra The shared #zoom_cic_mapper_data.
+ */
 static void zoom_mesh_deposit_zoom_cells_mapper(void *map_data, int num,
                                                  void *extra) {
   zoom_mesh_deposit_cells_mapper(map_data, num, extra);
 }
 
-/** @brief Label background-cell density assignment in threadpool diagnostics. */
+/**
+ * @brief Label background-cell density assignment in threadpool diagnostics.
+ *
+ * @param map_data The background-cell indices.
+ * @param num The number of indices.
+ * @param extra The shared #zoom_cic_mapper_data.
+ */
 static void zoom_mesh_deposit_bkg_cells_mapper(void *map_data, int num,
                                                 void *extra) {
   zoom_mesh_deposit_cells_mapper(map_data, num, extra);
@@ -910,6 +952,10 @@ static void zoom_mesh_interpolate_cell(
 
 /**
  * @brief Threadpool mapper for interpolating top-level zoom mesh cells.
+ *
+ * @param map_data The top-level cell indices to process.
+ * @param num The number of cell indices.
+ * @param extra The shared #zoom_cic_mapper_data.
  */
 static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
                                                 void *extra) {
@@ -922,13 +968,25 @@ static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
     zoom_mesh_interpolate_cell(&data->cells[cell_ids[n]], data);
 }
 
-/** @brief Label zoom-cell force interpolation in threadpool diagnostics. */
+/**
+ * @brief Label zoom-cell force interpolation in threadpool diagnostics.
+ *
+ * @param map_data The zoom-cell indices.
+ * @param num The number of indices.
+ * @param extra The shared #zoom_cic_mapper_data.
+ */
 static void zoom_mesh_interpolate_zoom_cells_mapper(void *map_data, int num,
                                                      void *extra) {
   zoom_mesh_interpolate_cells_mapper(map_data, num, extra);
 }
 
-/** @brief Label background-cell force interpolation in diagnostics. */
+/**
+ * @brief Label background-cell force interpolation in diagnostics.
+ *
+ * @param map_data The background-cell indices.
+ * @param num The number of indices.
+ * @param extra The shared #zoom_cic_mapper_data.
+ */
 static void zoom_mesh_interpolate_bkg_cells_mapper(void *map_data, int num,
                                                     void *extra) {
   zoom_mesh_interpolate_cells_mapper(map_data, num, extra);
@@ -938,6 +996,7 @@ static void zoom_mesh_interpolate_bkg_cells_mapper(void *map_data, int num,
  * @brief Deposit all local covered cells on the zoom mesh.
  *
  * @param s The #space.
+ * @param tp The #threadpool used to process the cells.
  * @param data The shared CIC mapper data.
  */
 static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp,
@@ -964,6 +1023,7 @@ static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp
  * @brief Interpolate the zoom mesh correction to all local covered cells.
  *
  * @param s The #space.
+ * @param tp The #threadpool used to process the cells.
  * @param data The shared CIC mapper data.
  */
 static void zoom_mesh_interpolate_cells(
@@ -996,6 +1056,10 @@ struct zoom_kernel_mapper_data {
 
 /**
  * @brief Threadpool mapper constructing slices of the isolated kernel.
+ *
+ * @param map_data The first real-space kernel slab in this chunk.
+ * @param num The number of slabs in the chunk.
+ * @param extra The mesh geometry and global smoothing scale.
  */
 static void zoom_mesh_apply_kernel_mapper(void *map_data, int num,
                                           void *extra) {
@@ -1087,7 +1151,13 @@ struct zoom_deconvolution_mapper_data {
   int M;
 };
 
-/** @brief Apply the global PM CIC deconvolution to the cached zoom kernel. */
+/**
+ * @brief Apply the global PM CIC deconvolution to the cached zoom kernel.
+ *
+ * @param map_data The Fourier coefficients in this chunk.
+ * @param num The number of coefficients.
+ * @param extra The full kernel and its mesh side length.
+ */
 static void zoom_mesh_deconvolve_mapper(void *map_data, int num, void *extra) {
 
   fftw_complex *kernel = (fftw_complex *)map_data;
@@ -1113,6 +1183,10 @@ static void zoom_mesh_deconvolve_mapper(void *map_data, int num, void *extra) {
 
 /**
  * @brief Threadpool mapper multiplying density by the Fourier-space kernel.
+ *
+ * @param map_data The density coefficients in this chunk.
+ * @param num The number of coefficients.
+ * @param extra The kernel and FFT normalisation.
  */
 static void zoom_mesh_multiply_mapper(void *map_data, int num, void *extra) {
 
@@ -1165,11 +1239,9 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   if (mesh->potential_global == NULL) zoom_mesh_allocate(mesh);
   double *rho = mesh->potential_global;
 
-  /* Clear the mesh before assigning the current particle distribution. */
   ticks tic = getticks();
   bzero(rho, real_size * sizeof(double));
 
-  /* Fill in the data shared by the CIC density-assignment mapper. */
   struct zoom_cic_mapper_data data;
   data.mesh = mesh;
   data.cells = s->cells_top;
@@ -1202,7 +1274,6 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
 
   tic = getticks();
 
-  /* Allocate the Fourier-space density work array. */
   fftw_complex *frho =
       (fftw_complex *)fftw_malloc(complex_size * sizeof(fftw_complex));
   if (frho == NULL)
@@ -1326,11 +1397,55 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
 }
 #endif
 
+/**
+ * @brief Add the isolated zoom mesh correction to covered particles.
+ *
+ * Check the softening of particles that actually receive the correction, then
+ * select the replicated or distributed FFT solve.
+ *
+ * @param mesh The #zoom_pm_mesh, or NULL when disabled.
+ * @param s The #space containing the particles.
+ * @param tp The #threadpool used for deposition and interpolation.
+ * @param verbose Are we talkative?
+ */
 void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                                  const struct space *s, struct threadpool *tp,
                                  int verbose) {
 
   if (mesh == NULL || !mesh->enabled) return;
+
+  /* Background particles can have mass-dependent softenings larger than the
+   * configured high-resolution values. Check only cells receiving the zoom
+   * correction; uncovered cells keep the global tree-PM split. */
+  double max_softening = 0.;
+  if (s->cells_top != NULL && s->zoom_props != NULL) {
+    const struct zoom_region_properties *z = s->zoom_props;
+    const int *lists[2] = {z->local_zoom_cells_with_particles_top,
+                           z->local_bkg_cells_with_particles_top};
+    const int counts[2] = {z->nr_local_zoom_cells_with_particles,
+                           z->nr_local_bkg_cells_with_particles};
+    for (int type = 0; type < 2; ++type) {
+      for (int i = 0; i < counts[type]; ++i) {
+        const struct cell *c = &s->cells_top[lists[type][i]];
+        if (!zoom_mesh_cell_is_covered(mesh, c, /*use_max_dx=*/0)) continue;
+        for (int j = 0; j < c->grav.count; ++j) {
+          const struct gpart *gp = &c->grav.parts[j];
+          if (gp->time_bin == time_bin_inhibited) continue;
+          max_softening = max(max_softening,
+                              (double)gravity_get_softening(
+                                  gp, s->e->gravity_properties));
+        }
+      }
+    }
+  }
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &max_softening, 1, MPI_DOUBLE, MPI_MAX,
+                MPI_COMM_WORLD);
+#endif
+  if (max_softening > mesh->r_s)
+    error("Zoom mesh smoothing scale r_s=%g is smaller than the softening "
+          "radius h=%g of a covered gravity particle.",
+          mesh->r_s, max_softening);
 
   if (mesh->distributed_mesh)
     zoom_mesh_compute_potential_distributed(mesh, s, tp, verbose);

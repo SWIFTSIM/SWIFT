@@ -143,11 +143,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra gparts (i.e. we haven't used up any)
    * ? */
-  /* The >= matters: a regrid can move the cells without changing how many
-   * extras we need, and the block below is what (re)places them. Skipping it
-   * would leave the existing extras stranded at their old cell centres. */
-  if (expected_num_extra_gparts > 0 &&
-      nr_actual_gparts + expected_num_extra_gparts >= nr_gparts) {
+  if (nr_actual_gparts + expected_num_extra_gparts > nr_gparts) {
 
     /* Ok... need to put some more in the game */
 
@@ -242,11 +238,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra parts (i.e. we haven't used up any) ?
    */
-  /* The >= matters: a regrid can move the cells without changing how many
-   * extras we need, and the block below is what (re)places them. Skipping it
-   * would leave the existing extras stranded at their old cell centres. */
-  if (expected_num_extra_parts > 0 &&
-      nr_actual_parts + expected_num_extra_parts >= nr_parts) {
+  if (nr_actual_parts + expected_num_extra_parts > nr_parts) {
 
     /* Ok... need to put some more in the game */
 
@@ -345,11 +337,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra sinks (i.e. we haven't used up any)
    * ? */
-  /* The >= matters: a regrid can move the cells without changing how many
-   * extras we need, and the block below is what (re)places them. Skipping it
-   * would leave the existing extras stranded at their old cell centres. */
-  if (expected_num_extra_sinks > 0 &&
-      nr_actual_sinks + expected_num_extra_sinks >= nr_sinks) {
+  if (nr_actual_sinks + expected_num_extra_sinks > nr_sinks) {
     /* Ok... need to put some more in the game */
 
     /* Do we need to reallocate? */
@@ -438,11 +426,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra sparts (i.e. we haven't used up any)
    * ? */
-  /* The >= matters: a regrid can move the cells without changing how many
-   * extras we need, and the block below is what (re)places them. Skipping it
-   * would leave the existing extras stranded at their old cell centres. */
-  if (expected_num_extra_sparts > 0 &&
-      nr_actual_sparts + expected_num_extra_sparts >= nr_sparts) {
+  if (nr_actual_sparts + expected_num_extra_sparts > nr_sparts) {
 
     /* Ok... need to put some more in the game */
 
@@ -531,11 +515,7 @@ void space_allocate_extras(struct space *s, int verbose) {
 
   /* Do we have enough space for the extra bparts (i.e. we haven't used up any)
    * ? */
-  /* The >= matters: a regrid can move the cells without changing how many
-   * extras we need, and the block below is what (re)places them. Skipping it
-   * would leave the existing extras stranded at their old cell centres. */
-  if (expected_num_extra_bparts > 0 &&
-      nr_actual_bparts + expected_num_extra_bparts >= nr_bparts) {
+  if (nr_actual_bparts + expected_num_extra_bparts > nr_bparts) {
 
     /* Ok... need to put some more in the game */
 

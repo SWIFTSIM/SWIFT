@@ -582,6 +582,7 @@ struct Green_function_data {
  * @param ky Fourier mode along y.
  * @param kz Fourier mode along z.
  * @param N Mesh side length.
+ * @return The CIC deconvolution factor.
  */
 double mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
                               const int N) {

@@ -6,6 +6,15 @@
  * it under the terms of the GNU Lesser General Public License as published
  * by the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  *******************************************************************************/
 
 #include "zoom_mesh_gravity_mpi.h"
@@ -59,6 +68,7 @@ struct zoom_mpi_potential_value {
   double value;
 };
 
+/** @brief Real and transposed Fourier slab ownership for an MPI FFT. */
 struct zoom_mpi_layout {
   int M;
   int complex_width;
@@ -73,16 +83,19 @@ struct zoom_mpi_layout {
   int *offset;
 };
 
+/** @brief Shared input for private density-patch deposition. */
 struct zoom_mpi_patch_mapper_data {
   const struct zoom_pm_mesh *mesh;
   const struct neutrino_model *nu_model;
 };
 
+/** @brief Shared input for force interpolation from returned patches. */
 struct zoom_mpi_interpolate_mapper_data {
   const struct zoom_pm_mesh *mesh;
   float const_G;
 };
 
+/** @brief Shared Fourier layout and kernel data for threadpool mappers. */
 struct zoom_mpi_fourier_mapper_data {
   fftw_complex *field;
   const fftw_complex *kernel;
@@ -92,17 +105,43 @@ struct zoom_mpi_fourier_mapper_data {
   double norm;
 };
 
+/**
+ * @brief Allocate an exchange buffer, including when the local count is zero.
+ *
+ * @param label The SWIFT allocation label.
+ * @param count Number of elements requested.
+ * @param size Size of one element in bytes.
+ * @return The allocated buffer.
+ */
 static void *zoom_mpi_malloc(const char *label, size_t count, size_t size) {
   void *p = swift_malloc(label, (count != 0 ? count : 1) * size);
   if (p == NULL) error("Failed to allocate %s.", label);
   return p;
 }
 
+/**
+ * @brief Return a row-major index into the zero-padded global mesh.
+ *
+ * @param i Global x index.
+ * @param j Global y index.
+ * @param k Global z index.
+ * @param M Side length of the padded mesh.
+ * @return The linear mesh index.
+ */
 static size_t zoom_mpi_index(const int i, const int j, const int k,
                              const int M) {
   return ((size_t)i * M + j) * M + k;
 }
 
+/**
+ * @brief Return an index into this rank's FFTW-padded real slab.
+ *
+ * @param i Global x index.
+ * @param j Global y index.
+ * @param k Global z index.
+ * @param layout The distributed slab geometry.
+ * @return The offset in the local real array.
+ */
 static size_t zoom_mpi_real_local_index(const int i, const int j, const int k,
                                         const struct zoom_mpi_layout *layout) {
   return ((size_t)(i - layout->local_0_start) * layout->M + j) *
@@ -110,11 +149,27 @@ static size_t zoom_mpi_real_local_index(const int i, const int j, const int k,
          k;
 }
 
+/**
+ * @brief Return a row-major index within one private cell patch.
+ *
+ * @param patch The private patch.
+ * @param i Local x index.
+ * @param j Local y index.
+ * @param k Local z index.
+ * @return The offset in the patch array.
+ */
 static size_t zoom_mpi_patch_index(const struct zoom_mpi_patch *patch,
                                    const int i, const int j, const int k) {
   return ((size_t)i * patch->size[1] + j) * patch->size[2] + k;
 }
 
+/**
+ * @brief Find the rank owning a real-space x slab.
+ *
+ * @param layout The distributed slab geometry.
+ * @param x Global x index.
+ * @return The owning MPI rank.
+ */
 static int zoom_mpi_owner(const struct zoom_mpi_layout *layout, const int x) {
   for (int rank = 0; rank < layout->nr_nodes; ++rank)
     if (layout->width[rank] > 0 && x >= layout->offset[rank] &&
@@ -124,6 +179,12 @@ static int zoom_mpi_owner(const struct zoom_mpi_layout *layout, const int x) {
   return -1;
 }
 
+/**
+ * @brief Query FFTW's real and transposed Fourier slab distribution.
+ *
+ * @param layout The layout to initialise.
+ * @param M Side length of the padded FFT mesh.
+ */
 static void zoom_mpi_layout_init(struct zoom_mpi_layout *layout, const int M) {
   layout->M = M;
   layout->complex_width = M / 2 + 1;
@@ -143,11 +204,27 @@ static void zoom_mpi_layout_init(struct zoom_mpi_layout *layout, const int M) {
                 MPI_COMM_WORLD);
 }
 
+/**
+ * @brief Release the slab-ownership arrays.
+ *
+ * @param layout The layout to clean.
+ */
 static void zoom_mpi_layout_clean(struct zoom_mpi_layout *layout) {
   swift_free("zoom_mpi_slab_width", layout->width);
   swift_free("zoom_mpi_slab_offset", layout->offset);
 }
 
+/**
+ * @brief Map a gravity particle to active mesh indices and CIC weights.
+ *
+ * @param mesh The zoom mesh geometry.
+ * @param gp The particle to locate.
+ * @param ind The lower mesh indices (returned).
+ * @param d The upper CIC weights (returned).
+ * @param t The lower CIC weights (returned).
+ * @param need_stencil Whether the five-point force stencil must fit.
+ * @return 1 if the required grid points are inside the active mesh.
+ */
 static int zoom_mpi_gpart_index(const struct zoom_pm_mesh *mesh,
                                 const struct gpart *gp, int ind[3], double d[3],
                                 double t[3], const int need_stencil) {
@@ -165,6 +242,15 @@ static int zoom_mpi_gpart_index(const struct zoom_pm_mesh *mesh,
   return 1;
 }
 
+/**
+ * @brief Extend private patch bounds to include covered source particles.
+ *
+ * @param c The cell to inspect recursively.
+ * @param mesh The zoom mesh geometry.
+ * @param min Lowest mesh indices found (updated).
+ * @param max Highest mesh indices found (updated).
+ * @param found Whether any covered particles were found (updated).
+ */
 static void zoom_mpi_density_bounds(const struct cell *c,
                                     const struct zoom_pm_mesh *mesh, int min[3],
                                     int max[3], int *found) {
@@ -190,6 +276,13 @@ static void zoom_mpi_density_bounds(const struct cell *c,
   }
 }
 
+/**
+ * @brief Deposit covered particles into one cell's private density patch.
+ *
+ * @param c The cell to visit recursively.
+ * @param data Mesh geometry and neutrino weights.
+ * @param patch The private patch receiving mass.
+ */
 static void zoom_mpi_deposit_leaf(const struct cell *c,
                                   const struct zoom_mpi_patch_mapper_data *data,
                                   struct zoom_mpi_patch *patch) {
@@ -228,6 +321,13 @@ static void zoom_mpi_deposit_leaf(const struct cell *c,
   }
 }
 
+/**
+ * @brief Build density patches for a chunk of locally owned top cells.
+ *
+ * @param map_data The chunk of #zoom_mpi_patch objects.
+ * @param num Number of patches in the chunk.
+ * @param extra Mesh geometry and neutrino weights.
+ */
 static void zoom_mpi_build_density_patches_mapper(void *map_data, int num,
                                                   void *extra) {
   struct zoom_mpi_patch *patches = map_data;
@@ -251,6 +351,13 @@ static void zoom_mpi_build_density_patches_mapper(void *map_data, int num,
   }
 }
 
+/**
+ * @brief Collect locally owned zoom and background cells with particles.
+ *
+ * @param s The #space containing zoom-region cell lists.
+ * @param patches_out The allocated patch array (returned).
+ * @return Number of cell patches to process.
+ */
 static int zoom_mpi_collect_cells(const struct space *s,
                                   struct zoom_mpi_patch **patches_out) {
   if (!s->with_zoom_region || s->zoom_props == NULL)
@@ -271,12 +378,27 @@ static int zoom_mpi_collect_cells(const struct space *s,
   return count;
 }
 
+/**
+ * @brief Exchange per-rank element counts before the particle data exchange.
+ *
+ * @param send Counts sent to each rank.
+ * @param recv Counts received from each rank (returned).
+ * @param nr_nodes Number of MPI ranks.
+ */
 static void zoom_mpi_exchange_counts(const size_t *send, size_t *recv,
                                      const int nr_nodes) {
   MPI_Alltoall((void *)send, sizeof(size_t), MPI_BYTE, recv, sizeof(size_t),
                MPI_BYTE, MPI_COMM_WORLD);
 }
 
+/**
+ * @brief Route nonzero private-patch values to their owning real-space slabs.
+ *
+ * @param patches The locally deposited cell patches.
+ * @param nr_patches Number of local patches.
+ * @param layout The FFTW slab ownership map.
+ * @param rho The local FFTW-padded density slab receiving mass.
+ */
 static void zoom_mpi_patches_to_density(struct zoom_mpi_patch *patches,
                                         const int nr_patches,
                                         const struct zoom_mpi_layout *layout,
@@ -356,6 +478,16 @@ static void zoom_mpi_patches_to_density(struct zoom_mpi_patch *patches,
   swift_free("zoom_mpi_recv_count", recv_count);
 }
 
+/**
+ * @brief Fill this rank's real-space slab with the isolated split correction.
+ *
+ * The kernel subtracts the global PM split from the finer zoom split.
+ *
+ * @param kernel The local real-space kernel slab to fill.
+ * @param mesh The zoom mesh geometry and split scale.
+ * @param s The #space containing the global mesh split scale.
+ * @param layout The FFTW slab ownership map.
+ */
 static void zoom_mpi_kernel_real(double *kernel,
                                  const struct zoom_pm_mesh *mesh,
                                  const struct space *s,
@@ -388,6 +520,13 @@ static void zoom_mpi_kernel_real(double *kernel,
   }
 }
 
+/**
+ * @brief Deconvolve CIC assignment and sampling on a Fourier y-slab chunk.
+ *
+ * @param map_data The first Fourier slab in this chunk.
+ * @param num Number of slabs in the chunk.
+ * @param extra The transposed Fourier layout and kernel storage.
+ */
 static void zoom_mpi_deconvolve_mapper(void *map_data, int num, void *extra) {
   fftw_complex *values = map_data;
   const struct zoom_mpi_fourier_mapper_data *data = extra;
@@ -409,6 +548,13 @@ static void zoom_mpi_deconvolve_mapper(void *map_data, int num, void *extra) {
   }
 }
 
+/**
+ * @brief Multiply a Fourier density chunk by the cached isolated kernel.
+ *
+ * @param map_data The density coefficients in this chunk.
+ * @param num Number of coefficients.
+ * @param extra The cached kernel and inverse FFT normalisation.
+ */
 static void zoom_mpi_multiply_mapper(void *map_data, int num, void *extra) {
   fftw_complex *field = map_data;
   const struct zoom_mpi_fourier_mapper_data *data = extra;
@@ -423,6 +569,14 @@ static void zoom_mpi_multiply_mapper(void *map_data, int num, void *extra) {
   }
 }
 
+/**
+ * @brief Transform and cache the isolated Green's function in Fourier space.
+ *
+ * @param mesh The zoom mesh receiving the cached Fourier kernel.
+ * @param s The #space containing the global split scale.
+ * @param tp The #threadpool used for CIC deconvolution.
+ * @param layout The real and Fourier FFTW slab layout.
+ */
 static void zoom_mpi_build_kernel(struct zoom_pm_mesh *mesh,
                                   const struct space *s, struct threadpool *tp,
                                   const struct zoom_mpi_layout *layout) {
@@ -456,6 +610,15 @@ static void zoom_mpi_build_kernel(struct zoom_pm_mesh *mesh,
                         alloc_count * sizeof(fftw_complex));
 }
 
+/**
+ * @brief Extend patch bounds to include force stencils for covered particles.
+ *
+ * @param c The cell to inspect recursively.
+ * @param mesh The active zoom mesh geometry.
+ * @param min Lowest required mesh indices (updated).
+ * @param max Highest required mesh indices (updated).
+ * @param found Whether any covered particles were found (updated).
+ */
 static void zoom_mpi_potential_bounds(const struct cell *c,
                                       const struct zoom_pm_mesh *mesh,
                                       int min[3], int max[3], int *found) {
@@ -481,6 +644,14 @@ static void zoom_mpi_potential_bounds(const struct cell *c,
   }
 }
 
+/**
+ * @brief Allocate private potential patches covering every required stencil.
+ *
+ * @param patches The local cell patches to prepare.
+ * @param nr_patches Number of patches.
+ * @param mesh The active zoom mesh geometry.
+ * @return Total potential values to request from slab owners.
+ */
 static size_t zoom_mpi_prepare_potential_patches(
     struct zoom_mpi_patch *patches, const int nr_patches,
     const struct zoom_pm_mesh *mesh) {
@@ -506,6 +677,18 @@ static size_t zoom_mpi_prepare_potential_patches(
   return total;
 }
 
+/**
+ * @brief Fetch the potential stencil of each local patch from slab owners.
+ *
+ * Requests retain their patch and offset so returned values can be placed
+ * without an additional lookup after the all-to-all exchange.
+ *
+ * @param patches The local patches receiving potential values.
+ * @param nr_patches Number of local patches.
+ * @param mesh The active zoom mesh geometry.
+ * @param layout The FFTW slab ownership map.
+ * @param potential The locally owned real-space potential slab.
+ */
 static void zoom_mpi_request_potential(struct zoom_mpi_patch *patches,
                                        const int nr_patches,
                                        const struct zoom_pm_mesh *mesh,
@@ -585,6 +768,17 @@ static void zoom_mpi_request_potential(struct zoom_mpi_patch *patches,
   swift_free("zoom_mpi_pot_recv_count", recv_count);
 }
 
+/**
+ * @brief Interpolate one potential value from a private patch using CIC.
+ *
+ * @param patch The potential patch to sample.
+ * @param i Lower x index within the patch.
+ * @param j Lower y index within the patch.
+ * @param k Lower z index within the patch.
+ * @param t Lower CIC weights.
+ * @param d Upper CIC weights.
+ * @return The interpolated potential.
+ */
 static double zoom_mpi_patch_CIC_get(const struct zoom_mpi_patch *patch,
                                      const int i, const int j, const int k,
                                      const double t[3], const double d[3]) {
@@ -602,6 +796,13 @@ static double zoom_mpi_patch_CIC_get(const struct zoom_mpi_patch *patch,
   return value;
 }
 
+/**
+ * @brief Add potential and five-point force corrections to covered particles.
+ *
+ * @param c The cell to visit recursively.
+ * @param patch The potential patch covering its force stencils.
+ * @param data The mesh geometry and gravitational constant.
+ */
 static void zoom_mpi_interpolate_leaf(
     struct cell *c, const struct zoom_mpi_patch *patch,
     const struct zoom_mpi_interpolate_mapper_data *data) {
@@ -645,6 +846,13 @@ static void zoom_mpi_interpolate_leaf(
   }
 }
 
+/**
+ * @brief Interpolate a chunk of locally returned potential patches.
+ *
+ * @param map_data The patch objects in this chunk.
+ * @param num Number of patches in the chunk.
+ * @param extra The mesh geometry and gravitational constant.
+ */
 static void zoom_mpi_interpolate_mapper(void *map_data, int num, void *extra) {
   struct zoom_mpi_patch *patches = map_data;
   const struct zoom_mpi_interpolate_mapper_data *data = extra;
@@ -653,6 +861,18 @@ static void zoom_mpi_interpolate_mapper(void *map_data, int num, void *extra) {
       zoom_mpi_interpolate_leaf(patches[p].cell, &patches[p], data);
 }
 
+/**
+ * @brief Add the isolated zoom correction using distributed FFTW slabs.
+ *
+ * Deposit local cell patches, exchange density to slab owners, solve the
+ * zero-padded convolution, then fetch only the potential stencils needed by
+ * locally owned covered particles.
+ *
+ * @param mesh The #zoom_pm_mesh with its cached Fourier kernel.
+ * @param s The #space containing locally owned gravity particles.
+ * @param tp The #threadpool used for deposition and interpolation.
+ * @param verbose Are we talkative?
+ */
 void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
                                              const struct space *s,
                                              struct threadpool *tp,
@@ -777,6 +997,14 @@ void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
 
 #else
 
+/**
+ * @brief Report that distributed zoom gravity needs MPI FFTW support.
+ *
+ * @param mesh The requested #zoom_pm_mesh.
+ * @param s The #space (unused).
+ * @param tp The #threadpool (unused).
+ * @param verbose Whether to print diagnostics (unused).
+ */
 void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
                                              const struct space *s,
                                              struct threadpool *tp,

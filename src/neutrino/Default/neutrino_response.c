@@ -121,6 +121,8 @@ void read_transfer_function(hid_t h_file, char title[PARSER_MAX_LINE_SIZE],
  * @param c The #cosmology used for this run.
  * @param np The #neutrino_props used for this run.
  * @param gp The #gravity_props used for this run.
+ * @param zoom_mesh The optional zoom mesh whose modes extend the response.
+ * @param rank The MPI rank of this process.
  * @param verbose Are we talkative ?
  */
 void neutrino_response_init(struct neutrino_response *numesh,
@@ -609,6 +611,17 @@ void neutrino_response_compute_mesh(
 #endif
 }
 
+/**
+ * @brief Apply the linear neutrino response to the periodic PM mesh.
+ *
+ * @param s The current #space.
+ * @param mesh The periodic #pm_mesh.
+ * @param tp The threadpool used to process Fourier modes.
+ * @param frho The Fourier-space density field.
+ * @param slice_offset The first Fourier slice on this rank.
+ * @param slice_width The number of slices on this rank.
+ * @param verbose Are we talkative?
+ */
 void neutrino_response_compute(const struct space *s, struct pm_mesh *mesh,
                                struct threadpool *tp, fftw_complex *frho,
                                const int slice_offset, const int slice_width,
