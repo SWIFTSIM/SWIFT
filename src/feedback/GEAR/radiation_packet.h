@@ -619,7 +619,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * one receiver.
  *
  * A share is absorbed over the increase of the distance to the slot's origin,
- * so the paths telescope along a chain of hops. The frame is the sender's copy.
+ * so the paths telescope along a chain of hops. The frame is the global
+ * #radiation_packet_octant_frame.
  *
  * @param dx Comoving vector from the sender to the receiver. It gives the
  * path and the arrival delay and selects the periodic image of the

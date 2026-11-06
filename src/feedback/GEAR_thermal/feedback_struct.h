@@ -510,8 +510,8 @@ struct feedback_isrf_packet_box_data {
  */
 struct feedback_part_data {
 
-  /* Members are ordered by alignment (8-byte, 4-byte, then the packet and the
-     one-byte flags) so that struct part carries no padding between them. */
+  /* Members are ordered from large to small alignment. The padding of struct
+     part depends on whether the MPI HII floats are compiled in. */
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
   /*! Id of the star that ionized this particle. */

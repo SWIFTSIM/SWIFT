@@ -2099,7 +2099,7 @@ passed to it points from sender to receiver. The held energy of the sender is
 set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 \code{radiation\_packet.c:2793-2812}). The escape of a slot with $S_{i,k}=0$ is
 at \code{radiation\_packet.c:2769-2776}. The parameter $p$ is the global
-\code{radiation\_packet\_cone\_power} (\code{radiation\_packet.c:571}), and \code{ISRF\_packet\_cone\_power}
+\code{radiation\_packet\_cone\_power} (\code{radiation\_packet.c:119}), and \code{ISRF\_packet\_cone\_power}
 is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:848-850}
 and checked at :910-912.
 
@@ -2169,7 +2169,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
 (\code{radiation\_packet.h:558-572}; fields at \code{feedback\_struct.h:288-295}).
-The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:708}
+The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:709}
 for a hop, :898 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:141-145}, :179-192) and from
 \code{radiation\_iact.h:277}.
