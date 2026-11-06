@@ -75,6 +75,7 @@ static void free_cell(struct cell *c) {
   free(c->grav.parts);
 }
 
+#ifdef HAVE_FFTW
 /**
  * @brief Compute the analytic zoom mesh correction kernel at a separation.
  *
@@ -128,15 +129,17 @@ static double zoom_mesh_expected_acceleration_x(const double cell_fac,
 
   return cell_fac * a;
 }
+#endif
 
 /**
- * @brief Test the zoom mesh pair-pruning predicates.
+ * @brief Test zoom mesh pair pruning and, with FFTW, its force correction.
  *
  * This constructs a mock periodic engine with both a regular PM mesh and a
  * zoom mesh. The regular PM cutoff is deliberately set too large to prune the
  * pair so that #cell_can_use_mesh must rely on the zoom mesh fallback. The test
  * then checks inside/outside bounds handling and the between-rebuild dx_max
- * safety path.
+ * safety path. With FFTW it also tests the isolated solve, neutrino response,
+ * deposition methods and kernel invalidation after regridding.
  */
 int main(int argc, char *argv[]) {
 
@@ -213,6 +216,7 @@ int main(int argc, char *argv[]) {
   s.with_zoom_region = 1;
   s.zoom_props = &zoom_props;
 
+#ifdef HAVE_FFTW
   const int test_mode[3] = {3, -2, 5};
   double expected_deconvolution = 1.;
   for (int axis = 0; axis < 3; ++axis) {
@@ -223,6 +227,7 @@ int main(int argc, char *argv[]) {
       test_mode[0], test_mode[1], test_mode[2], 32);
   if (fabs(measured_deconvolution - expected_deconvolution) > 1e-12)
     error("Shared CIC deconvolution differs from the global PM convention");
+#endif
 
   const double width[3] = {1., 1., 1.};
   const double loc_i[3] = {16., 16., 16.};
@@ -281,6 +286,7 @@ int main(int argc, char *argv[]) {
   if (zoom_mesh_can_use_mesh_between_rebuilds(&zoom_mesh, &s, &ci, &cj))
     error("dx_max should make the zoom mesh unsafe between rebuilds");
 
+#ifdef HAVE_FFTW
   /* Check the Hockney solve against the analytic correction kernel sampled
    * with the same finite-difference stencil. CIC deconvolution modifies this
    * sampled reference slightly at this deliberately small mesh size. */
@@ -475,6 +481,7 @@ int main(int argc, char *argv[]) {
 
   free_cell(&mesh_cells[0]);
   free_cell(&mesh_cells[1]);
+#endif
 
   free_cell(&ci);
   free_cell(&cj);

@@ -99,16 +99,21 @@ static void setup_mock_engine(struct swift_params *params,
 }
 
 /**
- * @brief Run #zoom_mesh_init in a child process and report whether it
- * survived.
+ * @brief Check mesh setup and optional covered-particle force validation.
  *
- * #zoom_mesh_init calls #error() (i.e. exit(1)) when it rejects the
- * configuration, so we fork to observe that without killing the test runner.
+ * These paths call #error() when they reject the configuration, so we fork to
+ * observe that without killing the test runner.
  *
  * @param zoom_mesh_side_length The value of Gravity:zoom_mesh_side_length.
- * @return 1 if #zoom_mesh_init completed normally, 0 if it errored.
+ * @param softening The current internal DM gravitational softening radius.
+ * @param regrid_bkg_width New background-cell width, or 0 for no regrid.
+ * @param check_covered Whether to test the force guard with a covered DM particle.
+ * @return 1 if setup completed normally, 0 if it errored.
  */
-static int zoom_mesh_init_survives(const int zoom_mesh_side_length) {
+static int zoom_mesh_init_survives(const int zoom_mesh_side_length,
+                                   const float softening,
+                                   const double regrid_bkg_width,
+                                   const int check_covered) {
 
   struct swift_params params;
   struct gravity_props props;
@@ -117,6 +122,11 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length) {
   struct cell bkg_cell, zoom_cell;
   setup_mock_engine(&params, &props, &s, &zoom_props, &bkg_cell, &zoom_cell,
                     zoom_mesh_side_length);
+  props.epsilon_DM_cur = softening;
+  props.epsilon_baryon_cur = 0.6f;
+  struct engine e = {0};
+  e.gravity_properties = &props;
+  s.e = &e;
 
   const pid_t pid = fork();
   if (pid < 0) error("fork() failed");
@@ -129,14 +139,50 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length) {
     bzero(&zoom_mesh, sizeof(struct zoom_pm_mesh));
     zoom_mesh_init(&zoom_mesh, &params, &props, &s, /*nr_threads=*/1,
                    /*verbose=*/0);
+    if (regrid_bkg_width > 0.) {
+      for (int i = 0; i < 3; ++i) bkg_cell.width[i] = regrid_bkg_width;
+      zoom_mesh_regrid(&zoom_mesh, &s);
+    }
+    if (check_covered) {
+      struct gpart gp = {0};
+      gp.type = swift_type_dark_matter;
+      gp.time_bin = 1;
+#ifdef MULTI_SOFTENING_GRAVITY
+      gp.epsilon = softening;
+#endif
+      for (int i = 0; i < 3; ++i) {
+        zoom_cell.loc[i] = 48.;
+        gp.x[i] = 49.;
+      }
+      zoom_cell.top = &zoom_cell;
+      zoom_cell.grav.parts = &gp;
+      zoom_cell.grav.count = 1;
+      int cell_index = 0;
+      s.cells_top = &zoom_cell;
+      zoom_props.local_zoom_cells_with_particles_top = &cell_index;
+      zoom_props.nr_local_zoom_cells_with_particles = 1;
+      if (!zoom_mesh_cell_is_covered(&zoom_mesh, &zoom_cell, 0))
+        error("Mock DM particle must be covered by the zoom mesh");
+#ifdef WITH_MPI
+      MPI_Init(NULL, NULL);
+#endif
+      zoom_mesh_compute_potential(&zoom_mesh, &s, NULL, 0);
+      _exit(0);
+    }
     zoom_mesh_clean(&zoom_mesh);
     _exit(0);
   }
 
   int status;
   if (waitpid(pid, &status, 0) < 0) error("waitpid() failed");
+  if (!WIFEXITED(status))
+    error("Zoom mesh guard test child terminated with signal %d",
+          WTERMSIG(status));
+  if (check_covered && WEXITSTATUS(status) != 1)
+    error("Covered particle guard exited with status %d instead of 1",
+          WEXITSTATUS(status));
 
-  return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+  return WEXITSTATUS(status) == 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -147,8 +193,8 @@ int main(int argc, char *argv[]) {
   /* A zoom mesh with side_length=128 over the ~35-wide padded zoom domain
    * (10 + 2 * 1 buffer cell of width 12.5) is far higher resolution than the
    * r_s=0.9765625 background mesh: r_s_zoom = 1.25 * 35/128 ~ 0.342. This
-   * must be accepted. */
-  if (!zoom_mesh_init_survives(128))
+   * must be accepted even though the unused baryon softening is 0.6. */
+  if (!zoom_mesh_init_survives(128, 0.3f, 0., 0))
     error("A genuinely higher-resolution zoom mesh should not be rejected.");
 
   /* A zoom mesh with the minimum allowed side_length=8 over the same ~35-wide
@@ -157,10 +203,19 @@ int main(int argc, char *argv[]) {
    * accepting it silently makes the mesh-tree splitting criterion *more*
    * conservative inside the zoom region, exploding the gravity task count
    * instead of reducing it. */
-  if (zoom_mesh_init_survives(8))
+  if (zoom_mesh_init_survives(8, 0.3f, 0., 0))
     error(
         "A zoom mesh lower resolution than the background mesh should have "
         "been rejected by zoom_mesh_init.");
+
+  /* Only a covered DM particle with softening above r_s should be rejected. */
+  if (zoom_mesh_init_survives(128, 0.4f, 0., 1))
+    error("Covered DM softening larger than the smoothing scale was accepted.");
+
+  /* A regrid shrinking the padded mesh from 35 to 24 units reduces r_s from
+   * ~0.342 to ~0.234, which must now be rejected for h=0.3. */
+  if (zoom_mesh_init_survives(128, 0.3f, 7., 1))
+    error("Covered DM softening above the regridded scale was accepted.");
 
   message("Zoom mesh resolution guard behaves as expected.");
   return 0;
