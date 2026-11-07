@@ -1,0 +1,82 @@
+# Intro
+A pulse of light crosses a periodic box of uniform dust-free gas (1e3 atom/cm^3,
+0.1 Msun particles, 262144 particles, 51.8 smoothing lengths on a side) at a
+set, slow light speed (3e-5 c, about 9 km/s). The pulse is a cube of 10
+smoothing lengths, injected into the gas at the first step by the test
+parameter `GEARFeedback:ISRF_packet_test_beam_1` (box corners, direction and
+energy per particle in internal units; the layout of the 11 numbers is in
+`examples/parameter_example.yml`). It is meant for tests, not for production runs.
+`makeIC.py` writes the value to `beam_args.txt` and `run.sh` passes it to swift.
+There is no star.
+
+The light speed is set by `GEARFeedback:ISRF_packet_light_speed`:
+
+- `cap`: a share of light arrives no earlier than the separation divided by the
+  limit speed, `ISRF_packet_light_speed_fraction_of_c` times c, in the frame of the
+  gas.
+- `fixed`: as `cap`, and the time step of each gas particle is also bounded so that
+  the light moves at the limit speed.
+  `ISRF_packet_light_speed_time_step_margin` sets the bound.
+- `unlimited`: a share arrives at the next step of its receiver, and the light can
+  move faster than c (debugging only).
+
+The example measures the speed of the pulse, and whether it depends on the
+time-step hierarchy. `arm` selects the run:
+
+- `one`: mode `cap` at 3e-5 c. All gas is on one time bin. 80 steps.
+- `two`: mode `fixed` at 3e-5 c, margin 0.4305. About half of the gas takes half
+  of the step, so there are two time bins. 96 steps, which is 48 base steps.
+
+Both arms write a snapshot every 8 base steps (9.375e-6 internal units each).
+`beamSpeed.py` takes the energy centroid of the light in flight along the beam
+between the snapshots at 16 and 40 base steps, divides the advance by the time
+difference and by the set speed, and gives the ratio of the two arms. A
+smoothing-length hop per step makes the pulse slower than the set speed, so
+the speeds are fractions of it; the ratio of the two arms is what tells whether
+the time bins change the speed.
+
+`params.yml` fixes the base time step at 9.375e-6 (internal units). Cooling is
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
+the light only.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --enable-isrf-debugging-checks --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. `--enable-isrf-debugging-checks`
+adds the `Packet*` snapshot fields that `beamSpeed.py` reads. The number of
+reception slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table from
+its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
+(see the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
+the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+
+# Run
+```
+arm=one ./run.sh
+arm=two ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_<arm>`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `arm`, `light_speed` (cap, fixed or unlimited),
+`speed_fraction` (the fraction of c), `margin`, `n_steps`, `snapshot_every`
+(base steps), `energy_scale`, `gas_density` (atom/cm^3), `gas_mass` (Msun),
+`swift_exe`, `run_dir` and `extra_args` (further swift arguments).
+
+# Measure
+```
+python3 beamSpeed.py run_one run_two
+```
+It prints the speed of each run over the set speed and the ratio of the second
+run to the first. `--bar 0.05` makes it exit with status 1 if that ratio differs
+from 1 by more than 0.05. `--fraction` gives the set speed if you changed
+`speed_fraction`; `--first` and `--last` choose the snapshots of the window.
