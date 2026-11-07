@@ -1,0 +1,71 @@
+# Intro
+A periodic box of uniform gas (1e3 atom/cm^3, 0.1 Msun, 32768 particles, solar
+metallicity) with one star of 29.7 Msun at its centre. The example tests that
+the light field does not depend on the velocity of the box. Gas and star share a
+bulk velocity along x, so a boosted run is the rest run seen from a moving
+frame. `velocity` sets the boost in km/s. `ic` selects the gas layout:
+
+- `lattice`: the particles sit on a perfect cubic lattice with a uniform smoothing
+  length. The gas moves as a rigid block. This is the clean test.
+- `glass`: the particles sit on a glass. The tiny residual forces of the glass
+  move the particles differently in the two frames at float32 rounding level.
+  The light field then differs by more than the lattice shows.
+
+`compareBoost.py` computes
+`D = max |u_boost - u_rest| / max u_rest` over the gas particles, with `u` the
+packet specific energy (`PacketSpecificEnergies`, both bands) matched by particle
+id. It also prints the largest displacement between the two runs after
+the bulk motion is removed. Two identical rest runs give the repeat floor of `D`:
+the multithreaded transport changes the last bits from run to run, and `D`
+moves in steps of about 6e-8.
+
+`params.yml` runs 32 steps of 1.5625e-6 (internal units) to t = 5e-5, with
+cooling off (`GrackleCooling:disable_cooling_for_debugging: 1`) so that the maps
+show the light only. `GEARFeedback:ISRF_packet_light_speed` keeps its default
+(`cap`, 0.99 c).
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --enable-isrf-debugging-checks --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. `--enable-isrf-debugging-checks`
+adds the `Packet*` snapshot fields that `compareBoost.py` reads. The number of
+reception slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table from
+its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
+(see the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
+the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+
+# Run
+```
+ic=lattice velocity=0 ./run.sh
+ic=lattice velocity=0 run_dir=run_lattice_v0_repeat ./run.sh
+ic=lattice velocity=300 ./run.sh
+ic=lattice velocity=1000 ./run.sh
+ic=glass velocity=0 ./run.sh
+ic=glass velocity=300 ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_<ic>_v<velocity>`, which it empties first. Override a setting with an environment
+variable: `n_threads`, `ic`, `velocity` (km/s), `gas_density` (atom/cm^3),
+`gas_mass` (Msun), `star_mass` (Msun), `swift_exe`, `run_dir` and `extra_args`
+(further swift arguments).
+
+# Compare
+```
+python3 compareBoost.py run_lattice_v0 run_lattice_v300
+python3 compareBoost.py run_lattice_v0 run_lattice_v0_repeat
+python3 compareBoost.py run_glass_v0 run_glass_v300
+```
+The first argument is the rest run. The script prints `D` and the displacement
+for each snapshot after the first. `--bar` makes it exit with status 1 when `D` of
+the last snapshot exceeds the given value.
