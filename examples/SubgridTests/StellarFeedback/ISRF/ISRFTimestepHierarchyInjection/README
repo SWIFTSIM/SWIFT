@@ -1,0 +1,75 @@
+# Intro
+A pulse of light crosses a periodic box of uniform dust-free gas (1e3 atom/cm^3,
+0.1 Msun particles, 262144 particles, 51.8 smoothing lengths on a side) while
+the gas runs on two time bins. The pulse is a cube of 10 smoothing lengths,
+injected into the gas at the first step by the test parameter
+`GEARFeedback:ISRF_packet_test_beam_1` (box corners, direction and energy per
+particle in internal units; the layout of the 11 numbers is in
+`examples/parameter_example.yml`). It is meant for tests, not for production
+runs. `makeIC.py` writes the value to `beam_args.txt` and `run.sh` passes it to
+swift. There is no star.
+
+The transport of the light is linear in its energy: a pulse a thousand times
+weaker must evolve into the same light field, a thousand times weaker, whatever
+the time-step hierarchy. Particles on different time bins hand their light on
+at different steps, and the bookkeeping of that hand-over must not depend on
+the energy. The example runs the pulse at energy x1 (`energy_scale=1`) and at
+x1e-3 (`energy_scale=1e-3`) and compares the light in flight snapshot by
+snapshot with `scaleTest.py`.
+
+`bins` selects the hierarchy:
+
+- `two`: `GEARFeedback:ISRF_packet_light_speed` is `fixed` at 3e-5 c with
+  `ISRF_packet_light_speed_time_step_margin` 0.4305. About half of the gas takes
+  half of the step, so there are two time bins. 96 steps, which is 48 base
+  steps of 9.375e-6 internal units.
+- `one`: mode `cap` at 3e-5 c. All gas is on one time bin. 80 steps.
+
+A snapshot is written every 8 base steps. `params.yml` fixes the base time step
+at 9.375e-6 (internal units). Cooling is off
+(`GrackleCooling:disable_cooling_for_debugging: 1`), so that the light is the
+only thing that changes.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --enable-isrf-debugging-checks --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. `--enable-isrf-debugging-checks`
+adds the `Packet*` snapshot fields that `scaleTest.py` reads. The number of
+reception slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table from
+its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
+(see the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). No download is provided. Pass
+the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+
+# Run
+```
+bins=two energy_scale=1 ./run.sh
+bins=two energy_scale=1e-3 ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_<bins>_scale<energy_scale>`, which it empties first. Override a setting
+with an environment variable: `n_threads`, `bins`, `energy_scale`, `light_speed`
+(cap, fixed or unlimited), `speed_fraction` (the fraction of c), `margin`,
+`n_steps`, `snapshot_every` (base steps), `gas_density` (atom/cm^3),
+`gas_mass` (Msun), `swift_exe`, `run_dir` and `extra_args` (further swift
+arguments). The multithreaded transport changes the last bits from run to run,
+so use `n_threads=1` for a reproducible comparison.
+
+# Compare
+```
+python3 scaleTest.py run_two_scale1 run_two_scale1e-3 1e-3
+```
+It prints L for each snapshot after the first, with L the summed absolute
+difference between the scaled light divided by the scale and the x1 light,
+over the summed x1 light. The default bar is 1e-5; `--bar` changes it. The
+script exits with status 1 if L exceeds the bar.
