@@ -3,8 +3,9 @@
 
 Each entry is the sum over the particles of the last snapshot, as a fraction of the energy the star
 has emitted: light still in flight (held, inbox and reservoir), absorbed by dust, redshifted by the
-expansion, escaped from the star without reaching gas. The residual closes the budget: it is zero up to
-float32 rounding. PE is the photoelectric band (6 to 11.2 eV), LW the Lyman-Werner band (11.2 to 13.6 eV).
+expansion, lost with no downstream neighbour, escaped from the star without reaching gas. The residual closes the
+budget: it is zero up to float32 rounding, so the script exits with status 1 if |residual| exceeds 1e-6 in any
+band of any run, or if any row is not finite. PE is the photoelectric band (6 to 11.2 eV), LW the Lyman-Werner band (11.2 to 13.6 eV).
 The budget needs the Packet fields of a build configured with --enable-isrf-debugging-checks.
 """
 
@@ -13,6 +14,8 @@ import sys
 
 import h5py
 import numpy as np
+
+RESIDUAL_BAR = 1e-6
 
 GAS = (
     "PacketHeldEnergies",
@@ -58,7 +61,7 @@ def budget(run):
         "in flight": inflight / emitted,
         "absorbed": gas["PacketAbsorbedEnergies"] / emitted,
         "redshifted": gas["PacketRedshiftedEnergies"] / emitted,
-        "left the box": gas["PacketEscapedEnergies"] / emitted,
+        "no downstream neighbour": gas["PacketEscapedEnergies"] / emitted,
         "escaped from the star": star_escaped / emitted,
     }
     rows["residual"] = 1.0 - sum(
@@ -84,6 +87,17 @@ def main():
                 f"  {key:26s}"
                 + "".join(f"{rows[key][band]:16.4e}" for _, rows in results)
             )
+    failed = False
+    for r, (_, rows) in zip(runs, results):
+        for key, v in rows.items():
+            if not np.all(np.isfinite(v)):
+                print(f"FAIL {r}: non-finite value in '{key}'")
+                failed = True
+        if not np.all(np.abs(rows["residual"]) <= RESIDUAL_BAR):
+            print(f"FAIL {r}: |residual| above {RESIDUAL_BAR:.0e}")
+            failed = True
+    if failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

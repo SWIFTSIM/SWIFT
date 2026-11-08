@@ -76,8 +76,9 @@ GrackleCooling:
   agora_cmb_temperature_floor: 0                # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
   HydrogenFractionByMass: 0.76                  # Hydrogen mass fraction (Default: 0.76)
 
-  # H2 and self-shielding. The ISRF needs H2_self_shielding 2 or 3 with primordial_chemistry >= 2,
-  # otherwise the Lyman-Werner field reaches Grackle unshielded.
+  # H2 and self-shielding. These settings have no effect without primordial chemistry, as in the
+  # grackle_0 build of this example: there is no H2 for Grackle to shield. A run with H2 needs
+  # H2_self_shielding 2 or 3, otherwise the Lyman-Werner field reaches Grackle unshielded.
   H2_self_shielding: 3                          # Local Jeans length (Default: 0)
   H2_self_shielding_path: kernel_radius         # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
   H2_on_dust: 0                                 # H2 formation on dust grains (Default: 0)
