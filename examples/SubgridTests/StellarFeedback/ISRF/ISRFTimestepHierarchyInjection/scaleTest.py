@@ -8,7 +8,8 @@ the light in flight of the x1 run, up to float32 rounding:
 
 E_i is the light in flight of particle i in the PE band (inbox + reservoir + held energy). The test fails when L
 exceeds the bar in any snapshot, or on a non-finite energy, a different snapshot set, time or particle set, or no
-light. The bar 1e-5 is a few float32 roundings of 6e-8 per hop over about 30 hops. The light-free first snapshot is
+light. The bar 1e-5 exceeds the float32 rounding of 6e-8 per hop over the 96 fine steps of the two-bin run
+(96 x 6e-8 = 5.8e-6). The light-free first snapshot is
 not compared.
 """
 

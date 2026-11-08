@@ -52,8 +52,8 @@ the file with `radiation_table=/path/to/table.hdf5 ./run.sh`; the default is
 
 # Run
 ```
-bins=two energy_scale=1 ./run.sh
-bins=two energy_scale=1e-3 ./run.sh
+n_threads=1 bins=two energy_scale=1 ./run.sh
+n_threads=1 bins=two energy_scale=1e-3 ./run.sh
 ```
 
 `run.sh` builds the initial conditions and runs swift in its own directory,
