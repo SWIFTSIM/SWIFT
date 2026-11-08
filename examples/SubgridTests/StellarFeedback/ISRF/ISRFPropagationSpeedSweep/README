@@ -36,8 +36,8 @@ the speeds are fractions of it; the ratio of the two arms is what tells whether
 the time bins change the speed.
 
 `params.yml` fixes the base time step at 9.375e-6 (internal units). Cooling is
-off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show
-the light only.
+off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the light is
+the only thing that changes.
 
 # Configure
 ```

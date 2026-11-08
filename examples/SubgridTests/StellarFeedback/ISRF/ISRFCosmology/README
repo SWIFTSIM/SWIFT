@@ -24,10 +24,10 @@ is the signal of the expansion: it is zero in `static`. Comparing `dust`
 with `redshift` and `static` shows how the two losses combine.
 
 The time step is set by `n_steps`: SWIFT rounds the step down to a power of two
-fraction of the run, so 2000 steps give 2048 rows in `timesteps.txt` and every
+fraction of the run, so 2000 steps give 2048 steps (2049 rows in `timesteps.txt`) and every
 step updates all the gas (one time bin). `Stars:max_timestep_young_Myr: 10` leaves the step of the star to the gas.
 `GEARFeedback:ISRF_packet_light_speed` keeps its default (`cap`, 0.99 c). With
-the default 2000 steps, a leg takes under an hour on 8 threads. Set `n_steps` and
+the default 2000 steps, a leg takes about an hour or more on 8 threads. Set `n_steps` and
 `duration` smaller for a quick run, for example `n_steps=100 duration=0.0092`.
 
 # Configure

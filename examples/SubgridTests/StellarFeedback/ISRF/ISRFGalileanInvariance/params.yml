@@ -18,7 +18,7 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration: 20 steps of 2.5e-6.
+# Parameters governing the time integration: 32 steps of 1.5625e-6 (dt_max rounds down to a power-of-two fraction of time_end).
 TimeIntegration:
   time_begin:        0.
   time_end:          5e-5

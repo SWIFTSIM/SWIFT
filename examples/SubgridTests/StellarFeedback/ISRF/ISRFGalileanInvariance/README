@@ -20,8 +20,8 @@ the multithreaded transport changes the last bits from run to run, and `D`
 moves in steps of about 6e-8.
 
 `params.yml` runs 32 steps of 1.5625e-6 (internal units) to t = 5e-5, with
-cooling off (`GrackleCooling:disable_cooling_for_debugging: 1`) so that the maps
-show the light only. `GEARFeedback:ISRF_packet_light_speed` keeps its default
+cooling off (`GrackleCooling:disable_cooling_for_debugging: 1`) so that the light is
+the only thing that changes. `GEARFeedback:ISRF_packet_light_speed` keeps its default
 (`cap`, 0.99 c).
 
 # Configure
