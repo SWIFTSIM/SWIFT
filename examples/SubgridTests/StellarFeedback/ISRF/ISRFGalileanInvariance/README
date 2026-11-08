@@ -67,5 +67,10 @@ python3 compareBoost.py run_lattice_v0 run_lattice_v0_repeat
 python3 compareBoost.py run_glass_v0 run_glass_v300
 ```
 The first argument is the rest run. The script prints `D` and the displacement
-for each snapshot after the first. `--bar` makes it exit with status 1 when `D` of
-the last snapshot exceeds the given value.
+for each snapshot after the first. It exits with status 1 when `D` of the last
+snapshot exceeds `--bar` or is not finite. The default bar is 1.9e-6, that is
+32 x 2^-24: one float32 rounding step of `D` for each of the 32 time steps. It
+applies to the lattice pairs (`run_lattice_v0` against `run_lattice_v300`,
+`run_lattice_v1000` and `run_lattice_v0_repeat`). The glass pair gives `D` of about
+7.4e-5 by design and fails the bar: it shows
+that the check can fail.

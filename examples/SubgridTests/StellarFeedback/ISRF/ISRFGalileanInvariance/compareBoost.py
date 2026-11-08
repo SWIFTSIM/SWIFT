@@ -4,6 +4,8 @@
 D = max |u_boost - u_rest| / max u_rest, with u the PacketSpecificEnergies (both bands) matched by particle id.
 The second column is the largest displacement of a particle between the two runs once the bulk motion is
 removed, in median smoothing lengths. Compare two identical rest runs to get the repeat floor of D.
+The default bar is 1.9e-6 = 32 x 2^-24: one float32 rounding step of D for each of the 32 time steps. It applies
+to the lattice pairs. The glass pair gives D of about 7.4e-5 by design and fails it.
 """
 
 import argparse
@@ -55,8 +57,8 @@ def main():
     p.add_argument(
         "--bar",
         type=float,
-        default=None,
-        help="Exit with status 1 if D of the last snapshot exceeds this",
+        default=1.9e-6,
+        help="Exit with status 1 if D of the last snapshot exceeds this (default 32 x 2^-24)",
     )
     opt = p.parse_args()
 
@@ -83,7 +85,7 @@ def main():
         d_last = float(np.abs(a["u"] - b["u"]).max() / a["u"].max())
         print(f"{i:8d}  {a['t']:.4e}  {d_last:.4e}  {displacement(a, b):.3e}")
     print(f"D at the last snapshot: {d_last:.3e}")
-    if opt.bar is not None and not d_last <= opt.bar:
+    if not d_last <= opt.bar:
         sys.exit(1)
 
 
