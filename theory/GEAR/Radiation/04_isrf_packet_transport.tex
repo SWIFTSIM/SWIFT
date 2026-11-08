@@ -742,6 +742,20 @@ the cut moves no measurable light. The sum runs over all neighbours with non-zer
 $\sum_j\phi_{ij,k}=1$ up to float rounding. The hop hands on the whole of each
 slot: nothing is kept by the sender.
 
+\paragraph{One weight per pair.}
+The shares of a sender sum to one only if the sender loop, which builds
+$S_{i,k}$, and the receiver loop, which builds $\phi_{ij,k}=w_{ij,k}/S_{i,k}$,
+evaluate the same $w_{ij,k}$ for every pair. A pair vector formed in the local
+frame of each loop's cell differs between the two loops by float rounding.
+Near the kernel edge $W$ and $\mu^{p}$ vary steeply, so that rounding gives two
+different weights. Then $\sum_j\phi_{ij,k}\ne1$ and light is created or lost.
+For the cell frames tested, the two frames disagreed on the weight of 21 to 46
+percent of pairs. Both loops therefore form $\boldsymbol{\Delta x}_{ij}$ from
+the absolute positions in double precision, wrapped to the nearest periodic
+image, and the weight is identical for the pair, also across a periodic face.
+This vector fixes the value of the weight only. It does not select which
+neighbours are visited (Section~\ref{sec:isrf-code}).
+
 For the Wendland-C2 kernel used in GEAR runs (three dimensions),
 \begin{equation}
   W(r,h) = \frac{21}{2\pi\,\gamma^{3}h^{3}}\,(1-q)^4\,(1+4q), \qquad
