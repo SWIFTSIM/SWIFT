@@ -31,17 +31,16 @@ def glass_box(glass_file, rho_per_cm3, mass_msun):
     return pos, h * box, box, m, rho
 
 
-def write_ic(path, pos, h, box, m, rho, star_pos=None, star_mass_msun=0.0, metals=None):
-    """Write gas, and optionally single-star particles, in the SWIFT IC format."""
+def write_ic(path, pos, h, box, m, rho):
+    """Write the gas particles in the SWIFT IC format."""
     n = len(pos)
-    ns = 0 if star_pos is None else len(star_pos)
     kw = dict(compression="gzip", compression_opts=4, shuffle=True, chunks=True)
     with h5py.File(path, "w") as f:
         hd = f.create_group("Header")
         hd.attrs["BoxSize"] = [box, box, box]
-        hd.attrs["NumPart_Total"] = [n, 0, 0, 0, ns, 0]
+        hd.attrs["NumPart_Total"] = [n, 0, 0, 0, 0, 0]
         hd.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-        hd.attrs["NumPart_ThisFile"] = [n, 0, 0, 0, ns, 0]
+        hd.attrs["NumPart_ThisFile"] = [n, 0, 0, 0, 0, 0]
         hd.attrs["Time"] = 0.0
         hd.attrs["NumFileOutputsPerSnapshot"] = 1
         hd.attrs["MassTable"] = [0.0] * 6
@@ -61,25 +60,6 @@ def write_ic(path, pos, h, box, m, rho, star_pos=None, star_mass_msun=0.0, metal
         g.create_dataset("InternalEnergy", data=np.ones(n), dtype="f", **kw)
         g.create_dataset("ParticleIDs", data=np.arange(n), dtype="L", **kw)
         g.create_dataset("Densities", data=np.full(n, rho), dtype="f", **kw)
-        if metals is not None:
-            g.create_dataset("MetalMassFraction", data=metals, dtype="d", **kw)
-        if ns:
-            ms = star_mass_msun * MSUN / UNIT_MASS
-            s = f.create_group("PartType4")
-            s.create_dataset("Coordinates", data=star_pos, dtype="d")
-            s.create_dataset("Velocities", data=np.zeros((ns, 3)), dtype="f")
-            s.create_dataset("Masses", data=np.full(ns, ms), dtype="f")
-            s.create_dataset("ParticleIDs", data=np.arange(n, n + ns), dtype="L")
-            s.create_dataset(
-                "SmoothingLength",
-                data=np.full(ns, 3.0 * box / n ** (1.0 / 3.0)),
-                dtype="f",
-            )
-            s.create_dataset("BirthMass", data=np.full(ns, ms), dtype="f")
-            s.create_dataset("BirthTime", data=np.zeros(ns), dtype="f")
-            s.create_dataset(
-                "StellarParticleType", data=np.zeros(ns, dtype=np.int32), dtype="i"
-            )  # discrete single star
 
 
 def parse(extra):
@@ -131,13 +111,11 @@ def main():
     open("beam_args.txt", "w").write(
         f"-P\nGEARFeedback:ISRF_packet_test_beam_1:[{value}]\n"
     )
-    inside = np.all((pos >= lo) & (pos < hi), axis=1)
     geometry = dict(
         box_kpc=box,
         h0_kpc=h0,
         centre_kpc=centre.tolist(),
         direction=d.tolist(),
-        n_particles=int(inside.sum()),
     )
     json.dump(geometry, open("geometry.json", "w"), indent=1)
     print(json.dumps(geometry))

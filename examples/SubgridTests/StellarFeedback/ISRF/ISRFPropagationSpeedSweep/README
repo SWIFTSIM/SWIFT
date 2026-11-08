@@ -77,6 +77,7 @@ variable: `n_threads`, `arm`, `light_speed` (cap, fixed or unlimited),
 python3 beamSpeed.py run_one run_two
 ```
 It prints the speed of each run over the set speed and the ratio of the second
-run to the first. `--bar 0.05` makes it exit with status 1 if that ratio differs
-from 1 by more than 0.05. `--fraction` gives the set speed if you changed
+run to the first. It exits with status 1 if that ratio differs from 1 by more
+than `--bar`. The default, 0.05, is a tolerance on the speed ratio, not a bar
+derived from the mechanism. `--fraction` gives the set speed if you changed
 `speed_fraction`; `--first` and `--last` choose the snapshots of the window.

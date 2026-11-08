@@ -4,7 +4,8 @@
 The pulse position is the energy centroid of the light in flight (inbox, reservoir and held energy of the
 PE band) along the beam direction. The speed is the advance of the centroid between two snapshots over their
 time difference, divided by the set speed (the fraction of c of the run). With two runs the script also prints
-the ratio of the second to the first.
+the ratio of the second to the first and exits with status 1 if it differs from 1 by more than --bar (default 0.05,
+a tolerance on the speed ratio, not a bar derived from the mechanism).
 """
 
 import argparse
@@ -70,8 +71,8 @@ def main():
     p.add_argument(
         "--bar",
         type=float,
-        default=None,
-        help="With two runs, exit with status 1 if the ratio differs from 1 by more than this",
+        default=0.05,
+        help="With two runs, exit with status 1 if the ratio differs from 1 by more than this (a tolerance, not a derived bar)",
     )
     opt = p.parse_args()
     speeds = [speed(r, opt.fraction, opt.first, opt.last) for r in opt.runs]
@@ -79,7 +80,7 @@ def main():
         print(f"{r}: speed over set speed {s:.4f}")
     if len(speeds) == 2:
         print(f"ratio {opt.runs[1]} over {opt.runs[0]}: {speeds[1] / speeds[0]:.3f}")
-        if opt.bar is not None and not abs(speeds[1] / speeds[0] - 1.0) <= opt.bar:
+        if not abs(speeds[1] / speeds[0] - 1.0) <= opt.bar:
             sys.exit(1)
 
 
