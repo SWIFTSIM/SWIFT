@@ -37,21 +37,21 @@ for j, t in enumerate(times):
         active[b - 1, j] = by_end
 
 fig, ax = plt.subplots(
-    2, 1, figsize=(10, 5.6), sharex=True, gridspec_kw={"height_ratios": [4, 1]},
+    2,
+    1,
+    figsize=(10, 5.6),
+    sharex=True,
+    gridspec_kw={"height_ratios": [4, 1]},
     constrained_layout=True,
 )
 for b in range(1, n_bins + 1):
     for j, t in enumerate(times):
         if active[b - 1, j]:
             ax[0].add_patch(
-                plt.Rectangle(
-                    (t - 2, b - 0.4), 4, 0.8, color=PALETTE["blue"], lw=0
-                )
+                plt.Rectangle((t - 2, b - 0.4), 4, 0.8, color=PALETTE["blue"], lw=0)
             )
         else:
-            ax[0].add_patch(
-                plt.Rectangle((t - 2, b - 0.4), 4, 0.8, color="0.92", lw=0)
-            )
+            ax[0].add_patch(plt.Rectangle((t - 2, b - 0.4), 4, 0.8, color="0.92", lw=0))
 ax[0].set_xlim(0, times[-1] + 2)
 ax[0].set_ylim(0.4, n_bins + 1.0)
 ax[0].set_yticks(range(1, n_bins + 1))
