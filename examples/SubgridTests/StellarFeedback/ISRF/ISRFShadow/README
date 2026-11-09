@@ -71,7 +71,8 @@ particles or lies within 4 smoothing lengths of a face.
 
 # Check
 At the end of the `clump=1` run, `run.sh` calls `checkShadow.py` from the run
-directory. It reads the last snapshot of `run_clump1` and of `../run_clump0`,
+directory. It needs the control directory `../run_clump0`: without it, `run.sh`
+skips the plot and the check and says so. It reads the last snapshot of `run_clump1` and of `../run_clump0`,
 and scores the gas in the zone behind the clump (about 6000 particles): the gas
 whose line of sight to the star crosses the core of the clump, between 15.9 and
 20 smoothing lengths from the clump centre.

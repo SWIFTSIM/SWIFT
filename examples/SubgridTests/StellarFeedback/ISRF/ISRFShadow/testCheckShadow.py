@@ -6,7 +6,7 @@ Usage: testCheckShadow.py RUN_DIR
 RUN_DIR holds ICs_isrf_shadow.hdf5 and geometry.json (any run directory after makeIC.py).
 The synthetic field with the clump is the exact free-streaming field times the analytic
 transmission of the clump, with a planted error in every case but the first. Each case
-states the verdict that the check must give. The exit code is 0 when all of them do.
+states the verdict that the check must give, per zone where it matters. The exit code is 0 when all of them do.
 """
 
 import contextlib
@@ -26,7 +26,7 @@ C_LIGHT = 299792.458  # km/s, internal velocity units
 LUMINOSITY = 1.0
 
 
-def write_snapshot(root, gas_x, ids, u, stars):
+def write_snapshot(root, gas_x, ids, u, stars, luminosity=LUMINOSITY):
     """Write a snapshot with the fields that checkShadow.py reads."""
     os.makedirs(os.path.join(root, "snap"))
     with h5py.File(os.path.join(root, "snap", "snapshot_0000.hdf5"), "w") as f:
@@ -37,7 +37,7 @@ def write_snapshot(root, gas_x, ids, u, stars):
         g = f.create_group("PartType0")
         g["ParticleIDs"], g["Coordinates"], g["PESpecificEnergies"] = ids, gas_x, u
         s = f.create_group("PartType4")
-        s["Coordinates"], s["PELuminosities"] = stars, np.full(len(stars), LUMINOSITY)
+        s["Coordinates"], s["PELuminosities"] = stars, np.full(len(stars), luminosity)
 
 
 def main(run_dir):
@@ -84,66 +84,108 @@ def main(run_dir):
     keep = np.ones(len(x), dtype=bool)
     keep[first[50:]] = False
     exact = field(0.0)
+    every = {k: True for k in zones}
+    none = {k: False for k in zones}
     cases = [
-        ("exact shadow", dict(clump=exact, control=control), 0),
-        ("transmission raised by 0.05", dict(clump=field(0.05), control=control), 0),
+        ("exact shadow", dict(clump=exact, control=control), 0, every),
+        (
+            "transmission raised by 0.05",
+            dict(clump=field(0.05), control=control),
+            0,
+            every,
+        ),
         (
             "transmission raised by 0.20 (too shallow)",
             dict(clump=field(0.2), control=control),
             2,
+            none,
         ),
-        ("no shadow", dict(clump=control, control=control), 2),
-        ("a NaN in the field of a zone", dict(clump=nan_field, control=control), 2),
+        ("no shadow", dict(clump=control, control=control), 2, none),
+        (
+            "a NaN in the field of a zone",
+            dict(clump=nan_field, control=control),
+            2,
+            None,
+        ),
         (
             "both fields at 0.2 of free streaming (light front not arrived)",
             dict(clump=0.2 * exact, control=0.2 * control),
             2,
+            none,
         ),
         (
             "first zone holds 50 particles",
             dict(clump=exact, control=control, keep=keep),
             2,
+            None,
+        ),
+        (
+            "control run with another gas mass (geometry differs)",
+            dict(clump=exact, control=control, control_geo=dict(h0_kpc=1.1 * h0)),
+            2,
+            None,
+        ),
+        (
+            "control run with another star mass (luminosity differs)",
+            dict(clump=exact, control=control, control_lum=1.5 * LUMINOSITY),
+            2,
+            None,
         ),
     ]
     if len(stars) == 2:
+        # Each zone must fail: the single-star zones are the ones that a wrong rule
+        # for "clear of the other star" turns into a pass.
         cases.append(
             (
                 "shadow 0.15 too shallow, grazing rays of the other star dimmed",
                 dict(clump=field(0.15, 0.7), control=control),
                 2,
+                none,
             )
         )
     wrong = 0
-    for name, case, wanted in cases:
+    for name, case, wanted, wanted_zones in cases:
         mask = case.get("keep", np.ones(len(x), dtype=bool))
         tmp = tempfile.mkdtemp(dir=os.environ.get("TMPDIR"))
         try:
             for label in ("clump", "control"):
+                lum = (
+                    case.get("control_lum", LUMINOSITY)
+                    if label == "control"
+                    else LUMINOSITY
+                )
                 write_snapshot(
                     os.path.join(tmp, label),
                     x[mask],
                     ids[mask],
                     case[label][mask],
                     stars,
+                    lum,
                 )
-            shutil.copy(
-                os.path.join(run_dir, "geometry.json"), os.path.join(tmp, "clump")
-            )
-            out = io.StringIO()
+                g = dict(
+                    geo, **(case.get("control_geo", {}) if label == "control" else {})
+                )
+                json.dump(g, open(os.path.join(tmp, label, "geometry.json"), "w"))
+            out, passed = io.StringIO(), {}
             with contextlib.redirect_stdout(out):
                 code = cs.check(
-                    os.path.join(tmp, "clump"), os.path.join(tmp, "control")
+                    os.path.join(tmp, "clump"), os.path.join(tmp, "control"), passed
                 )
         finally:
             shutil.rmtree(tmp)
+        bad = code != wanted or (wanted_zones is not None and passed != wanted_zones)
         print(
             f"{name}: exit code {code}, wanted {wanted}"
-            + ("" if code == wanted else "  <-- WRONG")
+            + ("  <-- WRONG" if bad else "")
         )
         for line in out.getvalue().splitlines():
-            if line.startswith("RESULT") or line.startswith("  "):
+            if (
+                line.startswith("RESULT")
+                or line.startswith("  ")
+                or line.startswith("FAIL")
+            ):
                 print("    " + line.strip())
-        wrong += code != wanted
+        wrong += bad
     print(
         "all cases give the wanted verdict"
         if not wrong
