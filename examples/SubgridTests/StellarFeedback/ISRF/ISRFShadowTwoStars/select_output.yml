@@ -1,0 +1,6 @@
+# Gas fields that the check and the plot read.
+Default:
+  Standard_Gas: off
+  Coordinates_Gas: on
+  ParticleIDs_Gas: on
+  PESpecificEnergies_Gas: on

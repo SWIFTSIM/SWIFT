@@ -1,0 +1,118 @@
+# Intro
+Two stars behind which an absorbing clump casts two shadows, in a box that is NOT
+periodic. Two stars (29.7 Msun each) and a spherical clump lie in a cube of gas,
+with 265686 particles (1e3 atom/cm^3, 0.8 Msun, 52 smoothing lengths on a
+side). The clump has a radius of 12 smoothing lengths. Star 1 lies 24 smoothing
+lengths from its centre on the x axis and star 2 the same distance away on the y
+axis, so each shadow has a half angle of 30 degrees and the two shadows overlap.
+The ambient gas has Z = 0.01 Zsun. The clump is the gas of higher metallicity:
+its dust makes it optically thick, with an optical depth of 10 across its
+diameter in the PE band (the photoelectric heating band of the radiation
+field). `makeIC.py` sets that metallicity from the dust cross-section and writes
+the metal mass fractions to the initial conditions, so `params.yml` reads them
+with `GEARChemistry:initial_metallicity: -1`.
+
+An optically thick clump absorbs the light that crosses it. A second run
+without the clump (`clump=0`) gives the reference field. The one-star version of
+this example is `../ISRFShadow`.
+
+`InitialConditions:periodic: 0`: the light that reaches a face of the box
+leaves, and no image of a star feeds the shadow. The gas has an internal
+energy of 0.1 (km/s)^2 per unit mass, low enough that the gas at the faces does
+not expand into the region that the check reads during the run. Swift removes
+each particle that leaves, and the light that the particle holds goes with it.
+With `--enable-isrf-debugging-checks` the snapshots carry the ledger of that
+light, in the `SubgridScheme` header group.
+
+`params.yml` fixes the time step at 1.875e-5 (internal units). Cooling is off
+(`GrackleCooling:disable_cooling_for_debugging: 1`), so that the maps show the
+light only. The light is deliberately slow: its speed is set by the time step,
+not by c. A packet (the light that a particle hands on to its neighbours) makes
+one hop of about one smoothing length per step, which is about 20 km/s here.
+`GEARFeedback:ISRF_packet_light_speed` keeps its default (`cap`, 0.99 c). The
+run lasts 80 steps, long enough for the light to reach every particle that the
+check reads. `select_output.yml` keeps the snapshots to the fields that the
+check and the plot read.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-subgrid-radiation=all --with-chealpix=path/to/chealpix --with-grackle=path/to/grackle
+make -j
+```
+`--with-chealpix` is required by the ISRF transport. The number of reception
+slots (the direction cells in which a gas particle stores the light it
+receives) is the default of `--with-isrf-packet-slots` (12).
+
+The example needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`, besides the datasets
+of the ISRF (section "The Data/Radiation group" of the stellar evolution
+table documentation). The pychem table generator produces such a table from
+its parameter file `params/chimieparam_radiation_parsec_spectral_popII.py`
+(see the section "Where each Radiation field comes from" of the pychem page
+"How to generate a Chemistry Table for GEAR"). The published table that
+`getRadiationTable.sh` downloads predates the two datasets, so no download is
+provided. Pass the file with `radiation_table=/path/to/table.hdf5 ./run.sh`;
+the default is
+`PopII_parsec_spectral_with_pe_photon_energy.hdf5` in this directory.
+
+# Run
+```
+clump=0 ./run.sh
+clump=1 ./run.sh
+```
+
+`run.sh` builds the initial conditions and runs swift in its own directory,
+`run_clump<clump>`, which it empties first. Run `clump=0` first. Override a
+setting with an environment variable: `n_threads`, `gas_density` (atom/cm^3),
+`gas_mass` (Msun), `star_mass` (Msun), `clump` (1 or 0), `n_steps` (number of
+time steps), `swift_exe`, `run_dir`, `run_analysis` (0 skips the plot and the
+check) and `extra_args` (further swift arguments). The geometry is fixed in
+units of the mean smoothing length of the gas, so it follows `gas_density` and
+`gas_mass`. `makeIC.py` stops when a zone of the check holds fewer than 100
+particles or lies within 4 smoothing lengths of a face.
+
+# Check
+At the end of the `clump=1` run, `run.sh` calls `checkShadow.py` from the run
+directory. It reads the last snapshot of `run_clump1` and of `../run_clump0`,
+and scores three zones between 15.9 and 20 smoothing lengths from the clump
+centre, behind it as seen from the stars:
+- `star1_only` (about 1900 particles): the line of sight to star 1 crosses the
+  core of the clump, and the segment to star 2 stays at least 15.9 smoothing
+  lengths (the radius plus the metal skirt of the smoothed clump) from the clump
+  centre. A segment that grazes the smoothed edge is partly absorbed, so such a
+  particle is left out.
+- `star2_only` (about 1900 particles): the same with the stars exchanged.
+- `overlap` (about 440 particles): the lines of sight to both stars cross the
+  core of the clump.
+
+The kept depth is `(1 - ratio) / (1 - expected)`. `ratio` is the PE-band field
+summed over a zone with the clump, over the same sum without it. `expected` is
+the same ratio for an exact shadow: the analytic transmission of the clump along
+the line of sight to each star, weighted by the field of each star in the run
+without the clump. An exact shadow keeps a depth of 1. The check passes when
+every zone keeps 0.90 or more, and a deeper shadow passes. It fails when a value
+is not finite, when a zone holds fewer than 100 particles, or when the field has
+not settled in a zone (the light front has not arrived). The no-clump field is
+compared with the exact free-streaming field of the two stars, which has the
+ambient extinction and no image; the ratio is close to 1 once the light front
+has passed. The check prints a warning when it is outside [0.95, 1.05].
+
+About 81 per cent of the light in a single-star zone comes from the other star,
+which the clump does not shadow there. The shadow is then only 19 per cent of the
+field, so a relative error in the light of the other star changes the kept depth
+about five times more, and the sum cannot tell which star is wrong. The `overlap`
+zone, where both stars are shadowed, is the clean one.
+
+`python3 testCheckShadow.py <run_dir>` runs the check on synthetic fields built
+from the gas of `<run_dir>/ICs_isrf_shadow.hdf5`: an exact shadow passes, and a
+shallow shadow, no shadow, a NaN, a field that has not settled, a zone of 50
+particles and a shallow shadow with dimmed grazing rays all fail.
+
+# Plot
+`run.sh` calls `plotShadow.py` from the run directory. It reads
+`geometry.json` and the last snapshot, and writes `shadow.png`: the ratio of the
+PE field with the clump to the field without it, on the gas within 1.5
+smoothing lengths of the plane that holds the stars and the clump. The ratio
+needs both runs; `run_clump1` finds `../run_clump0`. To re-plot or re-check after
+the second run, run `python3 ../plotShadow.py` or `python3 ../checkShadow.py`
+inside `run_clump1`.
