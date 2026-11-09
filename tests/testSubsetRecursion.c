@@ -422,6 +422,9 @@ static int run_subset_loop(struct runner *r, struct cell *cells, const int loop,
                                            &ind_star, 1, /*h_max_redo=*/h_new,
                                            &cells[1], /*gettimer=*/0);
     wcount_code = sp->density.wcount;
+#if defined(FEEDBACK_GEAR)
+    n_code = sp->feedback_data.num_ngbs;
+#endif
   } else if (loop == 1) {
     bzero(&p_redo->density, sizeof(p_redo->density));
     p_redo->h = h_new;
