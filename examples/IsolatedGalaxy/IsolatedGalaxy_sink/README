@@ -1,6 +1,6 @@
 # Intro
 
-This example is an idealised galaxy with a geasous disk, a stellar bulge and disc. The dark matter halo is model using a external Hernquist potential. This example allows the use of sink particles for star formation.
+This example is an idealised galaxy with a gaseous disk, a stellar bulge and disc. The dark matter halo is modelled using an external Hernquist potential. This example allows the use of sink particles for star formation.
 
 # Configure
 
@@ -16,7 +16,7 @@ and then
 
 You can remove the adaptive softening. In this case, you may need to change the default `max_physical_baryon_softening` value.
 
-Other sink models can be probed by changing swift configuration and adding the relevant parameters in params.yml.
+Other sink models can be probed by changing swift configuration and adding the relevant parameters in isolated_galaxy.yml.
 
 # ICs
 

@@ -48,8 +48,9 @@ Then:
 
 This will:
 1. Download the initial conditions (if not already present).
-2. Run SWIFT with self-gravity and inline FOF, writing 59 snapshots from z=9 to
-   z=0 into ./outputs/SWIFT/. Note we require a large number of snapshots to
+2. Run SWIFT with self-gravity and inline FOF, writing 61 snapshots into
+   ./outputs/SWIFT/ (the initial conditions at z=50, 59 regular outputs from
+   z=9 and the final one at z=0). Note we require a large number of snapshots to
    produce reliable results as HBT-HERONS is a history-based subhalo finder.
 3. Run HBT-HERONS to produce subhalo catalogues in ./outputs/HBT-HERONS/.
 4. Plot the z=0 halo mass function and save it as HMF.png.

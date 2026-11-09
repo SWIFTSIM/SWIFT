@@ -90,7 +90,7 @@ for i in range(n_snaps):
     total_kinetic_energy = 0.5 * np.sum(speed_squared)
     kinetic_energy_array = np.append(kinetic_energy_array, total_kinetic_energy)
 
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
     total_internal_energy = np.sum(u)
     internal_energy_array = np.append(internal_energy_array, total_internal_energy)

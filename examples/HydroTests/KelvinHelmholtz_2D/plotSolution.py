@@ -17,7 +17,8 @@
 #
 ##############################################################################
 
-# Computes the analytical solution of the Gresho-Chan vortex and plots the SPH answer
+# Plots maps of the x-velocity, density, pressure, internal energy and entropy
+# of the particles in the 2D Kelvin-Helmholtz instability test
 
 # Parameters
 gas_gamma = 5.0 / 3.0  # Gas adiabatic index
