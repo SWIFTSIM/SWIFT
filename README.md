@@ -24,6 +24,36 @@ We suggest that you use the latest release branch of SWIFT, rather than the
 current master branch as this will change rapidly. We do, however, like to
 ensure that the master branch will build and run.
 
+## Installing for GPU
+
+This branch can now be configured against either CUDA or HIP at configure
+time. The GPU backends are mutually exclusive, so pass either `--with-cuda`
+or `--with-hip` (optionally stating the root of that installation).
+
+The configure interface also accepts backend-specific extra flags:
+
+- `--with-cuda-flags="..."` appends extra CUDA compiler flags to the default
+  CUDA flags.
+- `--with-hip-flags="..."` appends extra HIP compiler flags to the default
+  HIP flags.
+
+Recommended CUDA:
+
+```bash
+./configure --with-cuda="root/to/cuda" --enable-ipo --with-tbbmalloc --disable-hand-vec
+make -j
+```
+
+Recommended HIP (requires extra flags and warnings to be enabled):
+
+```bash
+./configure --with-hip="root/to/hip"   --with-hip-flags="--offload-arch=gfxXXX -fgpu-default-stream=per-thread -munsafe-fp-atomics" --enable-ipo --with-tbbmalloc --enable-compiler-warnings
+make -j
+```
+
+If you pass both `--with-cuda` and `--with-hip`, configure will stop with an
+error.
+
 This GitHub repository is designed to be an issue tracker, and a space for
 the public to submit patches through pull requests. It is synchronised with
 the main development repository that is available on the
