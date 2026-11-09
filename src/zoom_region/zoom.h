@@ -75,6 +75,7 @@ void zoom_link_void_leaves(struct space *s, struct cell *c);
 int zoom_need_regrid(const struct space *s, const int new_cdim[3]);
 void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose);
 void zoom_allocate_cells(struct space *s);
+void zoom_space_shift_extras(struct space *s);
 
 /* Void cell tree construction function. */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
