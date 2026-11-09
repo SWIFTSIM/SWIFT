@@ -28,8 +28,9 @@ import matplotlib
 matplotlib.use("Agg")
 import pylab as pl
 
+pl.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 pl.rcParams["figure.figsize"] = (12, 10)
-pl.rcParams["text.usetex"] = True
 
 # these should be the same as in makeIC.py
 uconst = 20.2615290634

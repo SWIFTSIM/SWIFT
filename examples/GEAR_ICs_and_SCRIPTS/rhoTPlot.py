@@ -236,9 +236,8 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
 
     def grab_metadata(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
-        data = sw.load(filename)
-
-        return data.metadata
+        # A mask only reads the metadata, which is all we need here
+        return sw.mask(filename).metadata
 
     def grab_data(n):
         filename = "{:s}_{:04d}.hdf5".format(args["stub"], n)
@@ -285,11 +284,13 @@ def make_movie(args, density_bounds, temperature_bounds, bins):
     # Once we've rearranged the figure with tight_layout(), we can start laying
     # Down the metadata text.
 
-    def format_metadata(metadata: sw.SWIFTMetadata):
+    def format_metadata(metadata: sw.metadata.objects.SWIFTMetadata):
         t = metadata.t
         t.convert_to_units(unyt.Myr)
 
-        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(metadata.a, metadata.z, t)
+        x = "$a$: {:2.2f}\n$z$: {:2.2f}\n$t$: {:2.2f}".format(
+            metadata.scale_factor, metadata.z, t
+        )
 
         return x
 

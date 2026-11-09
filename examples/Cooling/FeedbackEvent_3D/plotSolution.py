@@ -26,7 +26,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from unyt import cm, s, km, kpc, Pa, msun, K, keV, mh
+from unyt import cm, s, km, kpc, Pa, K, keV, mh
 
 kPa = 1000 * Pa
 plot_radius = 7 * kpc
@@ -38,16 +38,7 @@ snap = int(sys.argv[1])
 sim = load(f"feedback_{snap:04d}.hdf5")
 
 # Set up plotting stuff
-try:
-    plt.style.use("mnras_durham")
-except:
-    rcParams = {
-        "font.serif": ["STIX", "Times New Roman", "Times"],
-        "font.family": ["serif"],
-        "mathtext.fontset": "stix",
-        "font.size": 8,
-    }
-    plt.rcParams.update(rcParams)
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 def get_data_dump(metadata):

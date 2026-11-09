@@ -6,7 +6,6 @@ in the simple example.
 from swiftsimio import load
 import matplotlib.pyplot as plt
 import numpy as np
-import sys
 
 try:
     plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
