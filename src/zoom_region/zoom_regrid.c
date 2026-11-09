@@ -369,41 +369,56 @@ void zoom_allocate_cells(struct space *s) {
  */
 void zoom_space_shift_extras(struct space *s) {
 
+  const size_t nr_zoom_cells = s->zoom_props->nr_zoom_cells;
+  const size_t nr_gparts = s->nr_gparts;
+  const size_t nr_parts = s->nr_parts;
+  const size_t nr_sinks = s->nr_sinks;
+  const size_t nr_sparts = s->nr_sparts;
+  const size_t nr_bparts = s->nr_bparts;
+  const size_t nr_extra_gparts = s->nr_extra_gparts;
+  const size_t nr_extra_parts = s->nr_extra_parts;
+  const size_t nr_extra_sinks = s->nr_extra_sinks;
+  const size_t nr_extra_sparts = s->nr_extra_sparts;
+  const size_t nr_extra_bparts = s->nr_extra_bparts;
+  const size_t extra_gparts_per_cell = space_extra_gparts;
+  const size_t extra_parts_per_cell = space_extra_parts;
+  const size_t extra_sinks_per_cell = space_extra_sinks;
+  const size_t extra_sparts_per_cell = space_extra_sparts;
+  const size_t extra_bparts_per_cell = space_extra_bparts;
+
   /* Nothing to do if there are no extras. */
-  if (s->nr_extra_parts == 0 && s->nr_extra_gparts == 0 &&
-      s->nr_extra_sparts == 0 && s->nr_extra_bparts == 0 &&
-      s->nr_extra_sinks == 0)
+  if (nr_extra_parts == 0 && nr_extra_gparts == 0 && nr_extra_sparts == 0 &&
+      nr_extra_bparts == 0 && nr_extra_sinks == 0)
     return;
 
   /* Count local zoom cells to see whether the number of extras changed. */
-  const int nr_zoom_cells = s->zoom_props->nr_zoom_cells;
   size_t nr_local_cells = 0;
-  for (int i = 0; i < nr_zoom_cells; ++i) {
+  for (size_t i = 0; i < nr_zoom_cells; ++i) {
     if (s->cells_top[i].nodeID == s->e->nodeID) ++nr_local_cells;
   }
 
   /* Shift extra gparts to the centre of their new cells. */
-  if (nr_local_cells > 0 && s->nr_extra_gparts > 0 &&
-      s->nr_extra_gparts == nr_local_cells * space_extra_gparts) {
+  if (nr_local_cells > 0 && nr_extra_gparts > 0 &&
+      nr_extra_gparts == nr_local_cells * extra_gparts_per_cell) {
     size_t next = 0;
 
     /* Loop over the new zoom cells owned by this rank. */
-    for (int i = 0; i < nr_zoom_cells; ++i) {
+    for (size_t i = 0; i < nr_zoom_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
       if (c->nodeID != s->e->nodeID) continue;
 
       /* Skip particles which aren't extras. */
-      for (; next < s->nr_gparts; ++next) {
+      for (; next < nr_gparts; ++next) {
         if (s->gparts[next].time_bin == time_bin_not_created) break;
       }
 
       /* Each cell must still have its full block of extras. */
-      if (s->nr_gparts - next < space_extra_gparts) {
+      if (nr_gparts - next < extra_gparts_per_cell) {
         error("Missing extra gparts");
       }
 
       /* Move this cell's extras to its new centre. */
-      for (int j = 0; j < space_extra_gparts; ++j) {
+      for (size_t j = 0; j < extra_gparts_per_cell; ++j) {
         struct gpart *gp = &s->gparts[next + j];
         if (gp->time_bin != time_bin_not_created) {
           error("Extra gparts are not contiguous");
@@ -414,32 +429,32 @@ void zoom_space_shift_extras(struct space *s) {
       }
 
       /* Continue with the next block of extras. */
-      next += space_extra_gparts;
+      next += extra_gparts_per_cell;
     }
   }
 
   /* Shift extra parts to the centre of their new cells. */
-  if (nr_local_cells > 0 && s->nr_extra_parts > 0 &&
-      s->nr_extra_parts == nr_local_cells * space_extra_parts) {
+  if (nr_local_cells > 0 && nr_extra_parts > 0 &&
+      nr_extra_parts == nr_local_cells * extra_parts_per_cell) {
     size_t next = 0;
 
     /* Loop over the new zoom cells owned by this rank. */
-    for (int i = 0; i < nr_zoom_cells; ++i) {
+    for (size_t i = 0; i < nr_zoom_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
       if (c->nodeID != s->e->nodeID) continue;
 
       /* Skip particles which aren't extras. */
-      for (; next < s->nr_parts; ++next) {
+      for (; next < nr_parts; ++next) {
         if (s->parts[next].time_bin == time_bin_not_created) break;
       }
 
       /* Each cell must still have its full block of extras. */
-      if (s->nr_parts - next < space_extra_parts) {
+      if (nr_parts - next < extra_parts_per_cell) {
         error("Missing extra parts");
       }
 
       /* Move this cell's extras to its new centre. */
-      for (int j = 0; j < space_extra_parts; ++j) {
+      for (size_t j = 0; j < extra_parts_per_cell; ++j) {
         struct part *p = &s->parts[next + j];
         if (p->time_bin != time_bin_not_created) {
           error("Extra parts are not contiguous");
@@ -450,32 +465,32 @@ void zoom_space_shift_extras(struct space *s) {
       }
 
       /* Continue with the next block of extras. */
-      next += space_extra_parts;
+      next += extra_parts_per_cell;
     }
   }
 
   /* Shift extra sinks to the centre of their new cells. */
-  if (nr_local_cells > 0 && s->nr_extra_sinks > 0 &&
-      s->nr_extra_sinks == nr_local_cells * space_extra_sinks) {
+  if (nr_local_cells > 0 && nr_extra_sinks > 0 &&
+      nr_extra_sinks == nr_local_cells * extra_sinks_per_cell) {
     size_t next = 0;
 
     /* Loop over the new zoom cells owned by this rank. */
-    for (int i = 0; i < nr_zoom_cells; ++i) {
+    for (size_t i = 0; i < nr_zoom_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
       if (c->nodeID != s->e->nodeID) continue;
 
       /* Skip particles which aren't extras. */
-      for (; next < s->nr_sinks; ++next) {
+      for (; next < nr_sinks; ++next) {
         if (s->sinks[next].time_bin == time_bin_not_created) break;
       }
 
       /* Each cell must still have its full block of extras. */
-      if (s->nr_sinks - next < space_extra_sinks) {
+      if (nr_sinks - next < extra_sinks_per_cell) {
         error("Missing extra sinks");
       }
 
       /* Move this cell's extras to its new centre. */
-      for (int j = 0; j < space_extra_sinks; ++j) {
+      for (size_t j = 0; j < extra_sinks_per_cell; ++j) {
         struct sink *sink = &s->sinks[next + j];
         if (sink->time_bin != time_bin_not_created) {
           error("Extra sinks are not contiguous");
@@ -486,32 +501,32 @@ void zoom_space_shift_extras(struct space *s) {
       }
 
       /* Continue with the next block of extras. */
-      next += space_extra_sinks;
+      next += extra_sinks_per_cell;
     }
   }
 
   /* Shift extra sparts to the centre of their new cells. */
-  if (nr_local_cells > 0 && s->nr_extra_sparts > 0 &&
-      s->nr_extra_sparts == nr_local_cells * space_extra_sparts) {
+  if (nr_local_cells > 0 && nr_extra_sparts > 0 &&
+      nr_extra_sparts == nr_local_cells * extra_sparts_per_cell) {
     size_t next = 0;
 
     /* Loop over the new zoom cells owned by this rank. */
-    for (int i = 0; i < nr_zoom_cells; ++i) {
+    for (size_t i = 0; i < nr_zoom_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
       if (c->nodeID != s->e->nodeID) continue;
 
       /* Skip particles which aren't extras. */
-      for (; next < s->nr_sparts; ++next) {
+      for (; next < nr_sparts; ++next) {
         if (s->sparts[next].time_bin == time_bin_not_created) break;
       }
 
       /* Each cell must still have its full block of extras. */
-      if (s->nr_sparts - next < space_extra_sparts) {
+      if (nr_sparts - next < extra_sparts_per_cell) {
         error("Missing extra sparts");
       }
 
       /* Move this cell's extras to its new centre. */
-      for (int j = 0; j < space_extra_sparts; ++j) {
+      for (size_t j = 0; j < extra_sparts_per_cell; ++j) {
         struct spart *sp = &s->sparts[next + j];
         if (sp->time_bin != time_bin_not_created) {
           error("Extra sparts are not contiguous");
@@ -522,32 +537,32 @@ void zoom_space_shift_extras(struct space *s) {
       }
 
       /* Continue with the next block of extras. */
-      next += space_extra_sparts;
+      next += extra_sparts_per_cell;
     }
   }
 
   /* Shift extra bparts to the centre of their new cells. */
-  if (nr_local_cells > 0 && s->nr_extra_bparts > 0 &&
-      s->nr_extra_bparts == nr_local_cells * space_extra_bparts) {
+  if (nr_local_cells > 0 && nr_extra_bparts > 0 &&
+      nr_extra_bparts == nr_local_cells * extra_bparts_per_cell) {
     size_t next = 0;
 
     /* Loop over the new zoom cells owned by this rank. */
-    for (int i = 0; i < nr_zoom_cells; ++i) {
+    for (size_t i = 0; i < nr_zoom_cells; ++i) {
       const struct cell *c = &s->cells_top[i];
       if (c->nodeID != s->e->nodeID) continue;
 
       /* Skip particles which aren't extras. */
-      for (; next < s->nr_bparts; ++next) {
+      for (; next < nr_bparts; ++next) {
         if (s->bparts[next].time_bin == time_bin_not_created) break;
       }
 
       /* Each cell must still have its full block of extras. */
-      if (s->nr_bparts - next < space_extra_bparts) {
+      if (nr_bparts - next < extra_bparts_per_cell) {
         error("Missing extra bparts");
       }
 
       /* Move this cell's extras to its new centre. */
-      for (int j = 0; j < space_extra_bparts; ++j) {
+      for (size_t j = 0; j < extra_bparts_per_cell; ++j) {
         struct bpart *bp = &s->bparts[next + j];
         if (bp->time_bin != time_bin_not_created) {
           error("Extra bparts are not contiguous");
@@ -558,7 +573,7 @@ void zoom_space_shift_extras(struct space *s) {
       }
 
       /* Continue with the next block of extras. */
-      next += space_extra_bparts;
+      next += extra_bparts_per_cell;
     }
   }
 }
