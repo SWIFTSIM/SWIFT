@@ -25,7 +25,6 @@
 #include "cooling.h"
 #include "hydro_properties.h"
 #include "part.h"
-#include "radiation_selection.h"
 #include "units.h"
 
 /**

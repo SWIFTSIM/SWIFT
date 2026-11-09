@@ -143,8 +143,8 @@ struct feedback_isrf_operator_data {
 
 /*! Near arrival bins per slot, one step wide each, on the receiver's own step
     lattice. Set with `CFLAGS="-DRADIATION_PACKET_BINS=<n>"` at configure time,
-    at least 1. The default is 8
-    (#RADIATION_PACKET_BINS).
+    from 1 to 31. The default is
+    8.
 
     Memory: every slot costs 20 B per bin (two bands, two floats per bin and
     band, and one stamp float), so `20 * RADIATION_PACKET_SLOTS` B per bin in
