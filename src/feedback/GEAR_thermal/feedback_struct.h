@@ -425,6 +425,11 @@ struct feedback_isrf_packet_data {
       before the 8-byte members, where it fills padding. */
   unsigned char far_scale;
 
+  /*! Bit `s` is set when the held packet of slot `s` has energy in any band
+      (#radiation_packet_slot_is_empty is false). Kept by every writer of the
+      held energy, see #radiation_packet_refresh_occupied. Fills padding. */
+  uint16_t occupied_slots;
+
   /*! End of the current step of the particle, set at its merge. A finer
       receiver releases its shares by then. */
   integertime_t step_end_ti;

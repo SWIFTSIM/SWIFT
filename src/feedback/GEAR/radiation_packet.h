@@ -364,6 +364,54 @@ __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
   return 1;
 }
 
+_Static_assert(RADIATION_PACKET_SLOTS <= 16,
+               "The mask of occupied slots is a uint16_t.");
+
+/**
+ * @brief The mask of the slots that hold energy, by scanning them.
+ *
+ * @param pk The packet.
+ */
+__attribute__((always_inline)) INLINE static uint16_t
+radiation_packet_scan_occupied(const struct feedback_isrf_packet_data *pk) {
+  uint16_t mask = 0;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    if (!radiation_packet_slot_is_empty(&pk->slot[s]))
+      mask |= (uint16_t)(1u << s);
+  return mask;
+}
+
+/**
+ * @brief Set the mask of occupied slots from the held energies. Every code
+ * that writes the held energy of a slot must call this afterwards, or clear
+ * the bit of a slot it zeroes.
+ *
+ * @param pk The packet.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_refresh_occupied(struct feedback_isrf_packet_data *pk) {
+  pk->occupied_slots = radiation_packet_scan_occupied(pk);
+}
+
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
+/**
+ * @brief Stop if the mask of occupied slots differs from the held energies.
+ *
+ * @param pk The packet.
+ * @param id ID of the particle.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
+                                const long long id) {
+  const uint16_t scanned = radiation_packet_scan_occupied(pk);
+  if (pk->occupied_slots != scanned)
+    error(
+        "Particle %lld has the occupied-slot mask %#x but its held energies "
+        "give %#x.",
+        id, (unsigned)pk->occupied_slots, (unsigned)scanned);
+}
+#endif
+
 /**
  * @brief Does the particle hold no energy in any band of any slot?
  *
@@ -371,9 +419,7 @@ __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
  */
 __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
     const struct feedback_isrf_packet_data *pk) {
-  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-    if (!radiation_packet_slot_is_empty(&pk->slot[s])) return 0;
-  return 1;
+  return pk->occupied_slots == 0;
 }
 
 /**
@@ -400,9 +446,13 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
   struct feedback_isrf_packet_data *pk = &s->feedback_data.isrf_packet;
   float dxw[3];
   int have_dxw = 0;
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
+  radiation_packet_check_occupied(pk, s->id);
+#endif
+  /* A set-bit walk here changes the rounding of the inlined hydro gradient loop. */
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
-    if (radiation_packet_slot_is_empty(sl)) continue;
+    if (!((pk->occupied_slots >> k) & 1u)) continue;
     if (!have_dxw) {
       radiation_packet_weight_vector(s, r, dx, dxw);
       have_dxw = 1;
@@ -644,9 +694,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
   const struct feedback_isrf_packet_data *pk_s = &s->feedback_data.isrf_packet;
   float dxw[3];
   int have_dxw = 0;
-  for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
+  radiation_packet_check_occupied(pk_s, s->id);
+#endif
+  for (uint32_t m = pk_s->occupied_slots; m != 0; m &= m - 1) {
+    const int k = __builtin_ctz(m);
     const struct feedback_isrf_packet_slot_data *sl = &pk_s->slot[k];
-    if (radiation_packet_slot_is_empty(sl)) continue;
     if (!have_dxw) {
       radiation_packet_weight_vector(s, r, dx, dxw);
       have_dxw = 1;

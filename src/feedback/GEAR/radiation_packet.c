@@ -2664,6 +2664,9 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   const uint32_t salt = radiation_packet_salt(p->id, ti_current);
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
+  radiation_packet_check_occupied(pk, p->id);
+#endif
 #ifdef SWIFT_DEBUG_CHECKS
   if (!radiation_packet_is_empty(pk))
     error("Particle %lld still holds a packet at its merge.", p->id);
@@ -2676,6 +2679,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
       radiation_packet_merge_slot_unlimited(
           &pk->slot[s], ti_current, ti_step, time_base, cosmo, s,
           radiation_packet_octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
+    radiation_packet_refresh_occupied(pk);
     return;
   }
 
@@ -2714,6 +2718,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   pk->step_ti = ti_step;
   radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale, -1.,
                           0., salt);
+  radiation_packet_refresh_occupied(pk);
 }
 
 /**
@@ -2747,6 +2752,9 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
     error("The octant frame is unset (norm %e) at the step of particle %lld.",
           frame_norm, p->id);
 
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
+  radiation_packet_check_occupied(pk, p->id);
+#endif
   double field_energy[ISRF_OPERATOR_COUNT], field_photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     field_energy[b] = 0.;
@@ -2774,6 +2782,7 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
       band->energy = 0.f;
       band->photons = 0.f;
     }
+    pk->occupied_slots &= (uint16_t)~(1u << s);
   }
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -2797,6 +2806,10 @@ void radiation_packet_end_force(struct part *p) {
   kernel_eval(0.f, &w_self);
   const float mw = hydro_get_mass(p) * w_self;
   const float norm = 1.f / (pk->ngb_field_weight_sum + mw);
+#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
+  radiation_packet_check_occupied(pk, p->id);
+#endif
+  pk->occupied_slots = 0;
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       pk->slot[s].band[b].energy = 0.f;
