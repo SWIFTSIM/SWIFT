@@ -9,7 +9,7 @@ You will need:
     + swiftsimio
 """
 
-from pygadgetreader import *
+from pygadgetreader import readheader, readsnap
 import swiftsimio as sw
 import numpy as np
 import unyt

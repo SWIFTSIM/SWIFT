@@ -36,15 +36,13 @@ def get_energies(handle: h5py.File):
     """
     Gets the energies with the correct units.
     """
-    u = handle["PartType0/InternalEnergy"][:]
-    unit_length_in_cgs = handle["/Units"].attrs["Unit length in cgs (U_L)"]
-    unit_mass_in_cgs = handle["/Units"].attrs["Unit mass in cgs (U_M)"]
-    unit_time_in_cgs = handle["/Units"].attrs["Unit time in cgs (U_t)"]
+    u = handle["PartType0/InternalEnergies"][:]
+    unit_length_in_cgs = handle["/Units"].attrs["Unit length in cgs (U_L)"][0]
+    unit_time_in_cgs = handle["/Units"].attrs["Unit time in cgs (U_t)"][0]
     gas_gamma = handle["/HydroScheme"].attrs["Adiabatic index"][0]
     a = handle["/Cosmology"].attrs["Scale-factor"][0]
 
     unit_length_in_si = 0.01 * unit_length_in_cgs
-    unit_mass_in_si = 0.001 * unit_mass_in_cgs
     unit_time_in_si = unit_time_in_cgs
 
     u *= unit_length_in_si**2 / unit_time_in_si**2
@@ -71,7 +69,7 @@ def load_data(filename: str, center: np.array) -> SimulationParticleData:
             radii=get_radial_distances(gas_handle["Coordinates"][...], center),
             masses=gas_handle["Masses"][...],
             energies=get_energies(file),
-            densities=gas_handle["Density"][...],
+            densities=gas_handle["Densities"][...],
         )
 
         dm_data = ParticleData(
@@ -107,16 +105,14 @@ def get_halo_data(catalogue_filename: str) -> HaloData:
     """
 
     with h5py.File(catalogue_filename, "r") as file:
-        largest_halo = np.where(
-            file["Mass_200crit"][...] == file["Mass_200crit"][...].max()
-        )
+        largest_halo = np.argmax(file["Mass_200crit"][...])
 
-        x = float(np.take(file["Xc"], largest_halo))
-        y = float(np.take(file["Yc"], largest_halo))
-        z = float(np.take(file["Zc"], largest_halo))
-        Mvir = float(np.take(file["Mass_200crit"], largest_halo))
-        Rvir = float(np.take(file["R_200crit"], largest_halo))
-        c = float(np.take(file["cNFW"], largest_halo))
+        x = float(file["Xc"][largest_halo])
+        y = float(file["Yc"][largest_halo])
+        z = float(file["Zc"][largest_halo])
+        Mvir = float(file["Mass_200crit"][largest_halo])
+        Rvir = float(file["R_200crit"][largest_halo])
+        c = float(file["cNFW"][largest_halo])
 
     return HaloData(c=c, Rvir=Rvir, Mvir=Mvir, center=np.array([x, y, z]))
 
@@ -309,7 +305,7 @@ def create_plot(
     axes[1][1].text(
         0.02,
         5,
-        "$c_{{vir}} = {:2.2f}$\n$R_{{vir}} = {:2.2f}$ Mpc\n$M_{{vir}} = {:2.2f}$ $10^{{10}}$ M$_\odot$".format(
+        "$c_{{vir}} = {:2.2f}$\n$R_{{vir}} = {:2.2f}$ Mpc\n$M_{{vir}} = {:2.2f}$ $10^{{10}}$ M$_\\odot$".format(
             halo_data.c, halo_data.Rvir, halo_data.Mvir
         ),
         va="bottom",

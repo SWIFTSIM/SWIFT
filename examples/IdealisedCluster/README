@@ -24,11 +24,15 @@ the same resolution as the stellar component.
 To run the script you need to provide 7 args:
     1)input_file
     2)output_file
-    3)mass degradation slope (linear, quadratic or cubic)
-    4)halo mass (H13, H13.5, H14, H15)
-    5)halo concentration (see Nobels+2022 and Husko+2023)
-    6)central Temp exponent
-    7)high resolution region radius
+    3)mass degradation slope (default, linear, quadratic or cubic)
+    4)halo mass (H12, H13, H13.5, H14, H14.5, H15)
+    5)halo concentration (see Nobels+2022 and Husko+2023); 0 uses the
+      default concentration of the chosen halo
+    6)central Temp exponent (log10 of the temperature in K); 0 uses the
+      default central temperature of the chosen halo
+    7)high resolution region radius (kpc)
+
+Run "python3 make_IC.py -h" for a summary of the arguments.
 
 An example command is:
 python3 make_IC.py M5_lowres8_Tmin7.hdf5 M5_quadratic500_lowres8_Tmin7.hdf5 quadratic H14 5.6 7 500
