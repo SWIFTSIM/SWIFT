@@ -2,19 +2,24 @@
 Script to convert the NIFTY ICs to those that are compatible with SWIFT.
 Note that this leaves h-factors as-is to be fixed in-place by SWIFT.
 
+Usage: python3 convert_to_swift.py /path/to/IC_CLUSTER_00019
+
 You will need:
 
-    + pygadgetreader from https://bitbucket.org/rthompson/pygadgetreader/overview
-      (with 2to3 ran on all files to convert them to python3)
+    + pygadgetreader from https://github.com/dnarayanan/pygadgetreader
     + swiftsimio
+
+The setup.sh script installs both in a virtual environment.
 """
+
+import sys
 
 from pygadgetreader import readheader, readsnap
 import swiftsimio as sw
 import numpy as np
 import unyt
 
-filename = "/cosma7/data/dp004/jlvc76/nIFTy/IC_CLUSTER_00019"
+filename = sys.argv[1]
 
 length = unyt.kpc
 mass = 1e10 * unyt.msun

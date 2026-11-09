@@ -20,7 +20,8 @@
 import h5py
 from numpy import *
 
-# Generates a swift IC file for the 1D Zeldovich pancake
+# Generates a 3D swift IC file for the Zeldovich pancake (a plane-wave
+# perturbation along the x-axis)
 
 # Parameters
 T_i = 100.0  # Initial temperature of the gas (in K)

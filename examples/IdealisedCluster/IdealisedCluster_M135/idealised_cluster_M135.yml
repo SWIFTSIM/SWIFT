@@ -243,7 +243,6 @@ SPINJETAGN:
   use_multi_phase_bondi:              0               # Compute Bondi rates per neighbour particle?
   with_angmom_limiter:                0               # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   with_boost_factor:                  0               # Are we using the model from Booth & Schaye (2009)?
-  with_fixed_T_near_EoS:              0               # Are we using a fixed temperature to compute the sound-speed of gas on the entropy floor in the Bondy-Hoyle accretion term?
   use_krumholz:                       0               # Whether to use Krumholz suppression of the Bondi accretion rate
   use_subgrid_gas_properties:         1               # Subgrid extrapolation of gas properties around the BH
   use_nibbling:                       1               # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]?
@@ -255,7 +254,6 @@ SPINJETAGN:
   AGN_feedback_model:                 MinimumDistance # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   AGN_use_deterministic_feedback:     1               # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
   AGN_delta_T_K:                      3.16228e8       # Change in temperature to apply to the gas particle in an AGN feedback event [K] (used if use_variable_delta_T is 0 or AGN_use_nheat_with_fixed_dT is 1 AND to initialise the BHs).
-  AGN_heating_temperature_model:      Constant        # How AGN heating temperatures are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate delta_T. 'HaloMass' is currently not supported.
   AGN_num_ngb_to_heat:                1.              # Target number of gas neighbours to heat in an AGN feedback event (only used if AGN_use_adaptive_energy_reservoir_threshold is 0).
   AGN_delta_T_model:                  Constant        # How AGN heating temperatures are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate delta_T. 'HaloMass' is currently not supported.
   max_reposition_distance_ratio:      3.0             # Maximal distance a BH can be repositioned, in units of the softening length.
@@ -302,8 +300,6 @@ GrackleCooling:
   with_UV_background: 1 # Enable or not the UV background
   redshift: 0 # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1 # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0 # User provide volumetric heating rates
-  provide_specific_heating_rates: 0 # User provide specific heating rates
   self_shielding_method: -1 # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 1000
@@ -337,7 +333,6 @@ GEARChemistry:
 GEARAGN:
   subgrid_seed_mass_Msun:             1.0e4           # Black hole subgrid mass at creation time in solar masses.
   use_multi_phase_bondi:              0               # Compute Bondi rates per neighbour particle?
-  use_subgrid_bondi:                  0               # Compute Bondi rates using the subgrid extrapolation of the gas properties around the BH?
   with_angmom_limiter:                0               # Are we applying the Rosas-Guevara et al. (2015) viscous time-scale reduction term?
   viscous_alpha:                      1e6             # Normalisation constant of the viscous time-scale in the accretion reduction term
   with_boost_factor:                  0               # Are we using the model from Booth & Schaye (2009)?

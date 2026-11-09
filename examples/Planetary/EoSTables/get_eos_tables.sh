@@ -1,4 +1,6 @@
 #!/bin/bash
+set -eo pipefail
+
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_HHe.txt
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_ice.txt
 wget https://virgodb.cosma.dur.ac.uk/swift-webstorage/EoS/HM80_rock.txt
