@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This example requires SWIFT to be configured with:
-#   --with-hydro-dimension=1
+#   --with-hydro-dimension=1 --with-adiabatic-index=7/5
 
 set -eo pipefail
 
