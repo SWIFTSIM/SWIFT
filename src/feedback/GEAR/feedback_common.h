@@ -161,62 +161,6 @@ void feedback_book_sink_left_box(const struct sink *s);
 void feedback_book_removed_gas_swallowed_by_black_hole(const struct part *p);
 void feedback_first_init_sink(struct sink *s);
 
-/*! ISRF layout marker written ahead of #feedback_props. It changes whenever
- * the layout of the gas, the star, the sink, #feedback_props or the feedback
- * restart blocks changes, so that a restart file of another layout is
- * refused. The layout that follows from the compile-time sizes of the packet
- * (#RADIATION_PACKET_SLOTS, #RADIATION_PACKET_BINS,
- * #RADIATION_PACKET_FAR_CELLS, #RADIATION_PACKET_FAR_SCALE) is not part of
- * it: #feedback_restart_particle_layout adds it, so that it needs no bump. */
-#define FEEDBACK_RESTART_ISRF_PART_LAYOUT 24
-
-/*! The restart layout marker adds this factor times
-    #radiation_selection_absent_mask(), so that a build with all the parts
-    writes #FEEDBACK_RESTART_ISRF_PART_LAYOUT unchanged. */
-#define FEEDBACK_RESTART_SELECTION_FACTOR 32
-
-/*! The restart layout marker adds this factor times the packet geometry
-    (#FEEDBACK_RESTART_PACKET_GEOMETRY) to the part with the absent mask. The
-    mask takes 3 bits. */
-#define FEEDBACK_RESTART_GEOMETRY_FACTOR (8 * FEEDBACK_RESTART_SELECTION_FACTOR)
-
-/*! Packet geometry of this build as one number: slots (6 bits), near bins (5
-    bits), far cells (4 bits) and far scale (4 bits). Zero without the ISRF
-    part, which has no packet. */
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-#define FEEDBACK_RESTART_PACKET_GEOMETRY                   \
-  (RADIATION_PACKET_SLOTS | (RADIATION_PACKET_BINS << 6) | \
-   (RADIATION_PACKET_FAR_CELLS << 11) | (RADIATION_PACKET_FAR_SCALE << 15))
-
-_Static_assert(RADIATION_PACKET_SLOTS < 64 && RADIATION_PACKET_BINS < 32 &&
-                   RADIATION_PACKET_FAR_CELLS < 16 &&
-                   RADIATION_PACKET_FAR_SCALE < 16,
-               "The packet geometry of the restart layout marker needs 6 bits "
-               "for the slots, 5 for the bins and 4 each for the far cells "
-               "and the far scale.");
-#else
-#define FEEDBACK_RESTART_PACKET_GEOMETRY 0
-#endif
-
-_Static_assert(FEEDBACK_RESTART_ISRF_PART_LAYOUT <
-                   FEEDBACK_RESTART_SELECTION_FACTOR,
-               "The absent-mask check of a restart file needs the layout "
-               "marker below the selection factor.");
-
-/**
- * @brief The particle layout marker this build writes to its restart files.
- *
- * @return #FEEDBACK_RESTART_ISRF_PART_LAYOUT plus
- * #FEEDBACK_RESTART_SELECTION_FACTOR times the absent-part mask plus
- * #FEEDBACK_RESTART_GEOMETRY_FACTOR times the packet geometry.
- */
-__attribute__((always_inline)) INLINE static int
-feedback_restart_particle_layout(void) {
-  return FEEDBACK_RESTART_ISRF_PART_LAYOUT +
-         FEEDBACK_RESTART_SELECTION_FACTOR * radiation_selection_absent_mask() +
-         FEEDBACK_RESTART_GEOMETRY_FACTOR * FEEDBACK_RESTART_PACKET_GEOMETRY;
-}
-
 void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream);
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                              const struct unit_system *us,

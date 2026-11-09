@@ -1559,16 +1559,8 @@ void feedback_first_init_spart(struct spart *sp,
   radiation_set_star_will_do_HII_ionization(sp, 1);
 }
 
-/* Printed by restart_read_blocks() when the marker block is missing, i.e.
-   when the restart file was written by a code version older than the marker. */
-#define ISRF_LAYOUT_RESTART_DESCRIPTION                                \
-  "ISRF layout marker (absent from the restart files of earlier code " \
-  "versions, which cannot be resumed: rerun the simulation)"
-
 /**
- * @brief Write a feedback struct to the given FILE as a stream of bytes,
- * preceded by the ISRF layout marker block
- * (#FEEDBACK_RESTART_ISRF_PART_LAYOUT).
+ * @brief Write a feedback struct to the given FILE as a stream of bytes.
  *
  * @param feedback the struct
  * @param stream the file stream
@@ -1586,14 +1578,6 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
     stellar_evolution_zero_pointers(feedback_copy.stellar_model_first_stars);
   }
 
-  /* Written first, so that a restart file of an earlier version, whose first
-     block is the (much larger) #feedback_props block, fails the block-length
-     check of restart_read_blocks() instead of being read with the wrong
-     layout. The description string is what that error prints. */
-  const int layout = feedback_restart_particle_layout();
-  restart_write_blocks((void *)&layout, sizeof(int), 1, stream, "isrf_layout",
-                       ISRF_LAYOUT_RESTART_DESCRIPTION);
-
   restart_write_blocks((void *)&feedback_copy, sizeof(struct feedback_props), 1,
                        stream, "feedback", "feedback function");
 
@@ -1608,8 +1592,7 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 
 /**
  * @brief Restore a feedback struct from the given FILE as a stream of
- * bytes. Stops with error() if the ISRF layout marker block is missing or
- * differs.
+ * bytes.
  *
  * @param feedback the struct
  * @param stream the file stream
@@ -1619,60 +1602,6 @@ void feedback_struct_dump(const struct feedback_props *feedback, FILE *stream) {
 void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                              const struct unit_system *us,
                              const struct phys_const *phys_const) {
-
-  int layout = 0;
-  restart_read_blocks(&layout, sizeof(int), 1, stream, NULL,
-                      ISRF_LAYOUT_RESTART_DESCRIPTION);
-  if (layout % FEEDBACK_RESTART_SELECTION_FACTOR ==
-          FEEDBACK_RESTART_ISRF_PART_LAYOUT &&
-      layout != feedback_restart_particle_layout()) {
-    const int file_mask = (layout / FEEDBACK_RESTART_SELECTION_FACTOR) % 8;
-    if (file_mask != radiation_selection_absent_mask())
-      error(
-          "The restart file was written by a build with the subgrid "
-          "radiation parts absent-mask %d, but this build has absent-mask %d "
-          "(bit 1 rp, 2 hii, 4 isrf; ./configure "
-          "--with-subgrid-radiation). The particles differ in layout: resume "
-          "with a build of the same selection, or rerun the simulation from "
-          "its initial conditions.",
-          file_mask, radiation_selection_absent_mask());
-    const int g = layout / FEEDBACK_RESTART_GEOMETRY_FACTOR;
-    if (g == 0)
-      error(
-          "The restart file was written by a build that does not record the "
-          "packet geometry, but this build records %d packet reception slots, "
-          "%d near arrival bins, %d far cells and far scale %d. The particles "
-          "can differ in layout: rerun the simulation from its initial "
-          "conditions.",
-          FEEDBACK_RESTART_PACKET_GEOMETRY & 63,
-          (FEEDBACK_RESTART_PACKET_GEOMETRY >> 6) & 31,
-          (FEEDBACK_RESTART_PACKET_GEOMETRY >> 11) & 15,
-          (FEEDBACK_RESTART_PACKET_GEOMETRY >> 15) & 15);
-    error(
-        "The restart file was written by a build with %d packet reception "
-        "slots, %d near arrival bins, %d far cells and far scale %d, but "
-        "this build has %d, %d, %d and %d (RADIATION_PACKET_SLOTS, "
-        "RADIATION_PACKET_BINS, RADIATION_PACKET_FAR_CELLS, "
-        "RADIATION_PACKET_FAR_SCALE). The particles differ in layout: resume "
-        "with a build of the same packet geometry, or rerun the simulation "
-        "from its initial conditions.",
-        g & 63, (g >> 6) & 31, (g >> 11) & 15, (g >> 15) & 15,
-        FEEDBACK_RESTART_PACKET_GEOMETRY & 63,
-        (FEEDBACK_RESTART_PACKET_GEOMETRY >> 6) & 31,
-        (FEEDBACK_RESTART_PACKET_GEOMETRY >> 11) & 15,
-        (FEEDBACK_RESTART_PACKET_GEOMETRY >> 15) & 15);
-  }
-  if (layout != feedback_restart_particle_layout())
-    error(
-        "The restart file holds ISRF particle layout %d, but this code needs "
-        "%d (packet transport only, HII random cone frame flag, redraw period "
-        "and star pass count, packet reception slots, ledger of the light "
-        "carried out of the box by gas, stars and sinks and by gas swallowed "
-        "by black holes, distance of the test beam origin, order and size of "
-        "the gas feedback fields). "
-        "A restart written by another code version cannot be resumed: rerun "
-        "the simulation from its initial conditions.",
-        layout, feedback_restart_particle_layout());
 
   restart_read_blocks((void *)feedback, sizeof(struct feedback_props), 1,
                       stream, NULL, "feedback function");

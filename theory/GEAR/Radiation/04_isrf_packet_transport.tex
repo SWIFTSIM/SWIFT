@@ -2355,6 +2355,6 @@ slots, 3776 bytes with 12 slots (the default), 4864 bytes with 16, 7040 bytes
 with 24 and 13568 bytes with 48 slots; with the option the ledger makes it 96 bytes larger. The fields of the two light speed modes
 share their bytes. The box ledger and the ledger of the gas that left the box
 are written to the restart file as two blocks (\code{isrf\_box} and
-\code{isrf\_left\_box}) and read back from it. The particle layout marker of the
-restart file counts the box ledger, so a restart file written by another code
-version is refused and the run starts again from its initial conditions.
+\code{isrf\_left\_box}) and read back from it. A restart file written
+by another code version cannot be resumed: the run starts again from its
+initial conditions.
