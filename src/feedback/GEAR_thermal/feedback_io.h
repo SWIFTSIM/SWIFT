@@ -457,9 +457,10 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "PacketReservoirEnergies", FLOAT, ISRF_OPERATOR_COUNT, UNIT_CONV_ENERGY,
       0.f, parts, xparts, convert_part_packet_reservoir_energy,
       "Packet energy that waits beyond the arrival bins of the inbox: with "
-      "a speed limit, light that arrives more than three steps ahead; "
-      "without one, energy from senders on longer steps, released over "
-      "their step. Two components, PE (6-11.2 eV) then LW (11.2-13.6 eV). "
+      "a speed limit, light that arrives later than the near arrival bins "
+      "(8 steps ahead by default); without one, energy from senders on "
+      "longer steps, released over their step. Two components, PE (6-11.2 eV) "
+      "then LW (11.2-13.6 eV). "
       "Zero unless GEARFeedback:ISRF_propagation is on.");
 
   list[num++] = io_make_output_field_convert_part(
