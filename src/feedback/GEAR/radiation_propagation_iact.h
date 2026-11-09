@@ -153,8 +153,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  *
  * Books the same parts as #runner_iact_nonsym_isrf_gradient adds in the same
  * visit: the inner part of the share of i into j and, with @p reverse, the
- * outer part of the share of j into i. The visit of j at its own tree depth
- * may not reach i, so the outer part of j is booked here.
+ * outer part of the share of j into i. The visit of j may not reach i, so
+ * the outer part of j is booked here.
  *
  * @param r2 Comoving square distance between the two particles.
  * @param dx Comoving vector separating both particles (pi - pj).
