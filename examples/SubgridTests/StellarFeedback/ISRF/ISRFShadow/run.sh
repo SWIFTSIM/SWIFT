@@ -8,21 +8,21 @@ set -eo pipefail
 
 n_threads=${n_threads:=4}  #Number of threads to use
 gas_density=${gas_density:=1e3} #Gas density in atom/cm^3
-gas_mass=${gas_mass:=0.1} #Mass of the gas particles (Msun)
+gas_mass=${gas_mass:=0.8} #Mass of the gas particles (Msun)
 clump=${clump:=1} #1: absorbing clump, 0: the same box without it
 star_mass=${star_mass:=29.7} #Star mass (Msun)
-n_steps=${n_steps:=64} #Number of time steps to run
-run_analysis=${run_analysis:=1} #Plot the result when the run ends
+n_steps=${n_steps:=81} #Number of time steps to run
+run_analysis=${run_analysis:=1} #Plot and check the result when the run ends
 radiation_table=${radiation_table:=PopII_parsec_spectral_with_pe_photon_energy.hdf5} #Table with MeanPhotonEnergyPE
 swift_exe=${swift_exe:="$PWD/../../../../../swift"} #swift binary
 run_dir=${run_dir:=run_clump${clump}} #Isolated directory of the run
 extra_args=${extra_args:=""} #Further swift arguments, e.g. "-P Snapshots:delta_time:3e-5"
 
-glass_file="glassCube_64.hdf5"
+glass_file="glassCube_32.hdf5"
 if [ ! -e "$glass_file" ]
 then
     echo "Fetching initial glass file (${glass_file})..."
-    ./getGlass.sh 64
+    ./getGlass.sh 32
 fi
 
 if [ ! -e CloudyData_UVB=HM2012.h5 ]
@@ -63,10 +63,10 @@ fi
 mkdir -p "$run_dir/snap"
 cd "$run_dir"
 ln -s "$here/$glass_file" "$here/CloudyData_UVB=HM2012.h5" "$radiation_path" .
-cp "$here/params.yml" .
+cp "$here/params.yml" "$here/select_output.yml" .
 
 echo "Generating initial conditions to run the example..."
-python3 "$here/makeIC.py" --glass "$glass_file" --rho $gas_density --mass $gas_mass --star_mass $star_mass --table "$radiation_table" --clump $clump -o ICs_isrf_shadow.hdf5
+python3 "$here/makeIC.py" --glass "$glass_file" --rho $gas_density --mass $gas_mass --star_mass $star_mass --table "$radiation_table" --stars 1 --clump $clump -o ICs_isrf_shadow.hdf5
 
 echo "Running simulation..."
 
@@ -80,5 +80,9 @@ echo "Running simulation..."
 
 if [ "$run_analysis" = "1" ]
 then
-    python3 "$here/plotShadow.py" 
+    python3 "$here/plotShadow.py"
+    if [ "$clump" = "1" ] && [ -d ../run_clump0 ]
+    then
+        python3 "$here/checkShadow.py"
+    fi
 fi

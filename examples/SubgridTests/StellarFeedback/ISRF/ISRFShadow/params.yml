@@ -19,13 +19,13 @@ Gravity:
   mesh_side_length:        32
 
 # Parameters governing the time integration. time_end and dt_max set the
-# step: the largest time_end / 2^k below dt_max, 9.375e-6. run.sh stops the
+# step: the largest time_end / 2^k below dt_max, 1.875e-5. run.sh stops the
 # run after n_steps steps. The box is not periodic: light that reaches a face leaves.
 TimeIntegration:
   time_begin:        0.
   time_end:          2.4e-3
   dt_min:            1e-12
-  dt_max:            9.4e-6
+  dt_max:            1.9e-5
 
 # Parameters governing the snapshots
 Snapshots:
@@ -35,6 +35,8 @@ Snapshots:
   delta_time: 1.5e-4
   recording_triggers_sink:   [-1, -1, -1]
   compression: 1
+  select_output_on: 1
+  select_output: select_output.yml
 
 Scheduler:
   cell_extra_gparts: 10
