@@ -12,7 +12,6 @@ Gravity:
   epsilon_fmm:                   0.001     # Tolerance parameter for the adaptive multipole acceptance criterion.
   theta_cr:                      0.7       # Opening angle for the purely gemoetric criterion.
   eta:          0.025               # Constant dimensionless multiplier for time integration.
-  theta:        0.7                 # Opening angle (Multipole acceptance criterion).
   max_physical_DM_softening: 0.7    # Physical softening length (in internal units).
   max_physical_baryon_softening: 0.2  # Physical softening length (in internal units)
 
@@ -58,7 +57,7 @@ SPH:
   max_ghost_iterations:              30       # (Optional) Maximal number of iterations allowed to converge towards the smoothing length.
   particle_splitting:                1        # (Optional) Are we splitting particles that are too massive (default: 0)
   particle_splitting_mass_threshold: 7e-4     # (Optional) Mass threshold for particle splitting (in internal units)
-  generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
+  particle_splitting_generate_random_ids:               0        # (Optional) When creating new particles via splitting, generate ids at random (1) or use new IDs beyond the current range (0) (default: 0)
   initial_temperature:               0        # (Optional) Initial temperature (in internal units) to set the gas particles at start-up. Value is ignored if set to 0.
   minimal_temperature:               10       # (Optional) Minimal temperature (in internal units) allowed for the gas particles. Value is ignored if set to 0.
   H_mass_fraction:                   0.755    # (Optional) Hydrogen mass fraction used for initial conversion from temp to internal energy. Default value is derived from the physical constants.
@@ -84,9 +83,6 @@ HernquistPotential:
   bulgefraction:              0.014   # Bulge mass fraction
   timestep_mult:   0.01     # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
   epsilon:         0.2      # Softening size (internal units)
-
-DefaultSink:
-  cut_off_radius: 0.1      # Cut off radius of all the sinks in internal units.
 
 GEARSink:
   use_fixed_cut_off_radius: 1                 # Are we using a fixed cutoff radius? If we are, in GEAR the cutoff radius is fixed at the value specified below, and the sink smoothing length is fixed at this value divided by kernel_gamma. If not, the cutoff radius varies with the sink smoothing length as r_cut = h*kernel_gamma.

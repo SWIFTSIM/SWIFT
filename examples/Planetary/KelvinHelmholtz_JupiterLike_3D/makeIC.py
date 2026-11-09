@@ -34,9 +34,11 @@ matID1 = 304  # Central region material ID: AQUA
 matID2 = 307  # Outskirts material ID: CD21 H--He
 P1 = 3.2e12  # Central region pressure
 P2 = 3.2e12  # Outskirts pressure
-u1 = 283591514  # Central region specific internal energy
+u1 = 283591514  # Central region specific internal energy (for P1 at rho1_approx)
 u2 = 804943158  # Outskirts specific internal energy
-rho1_approx = 9000  # Central region density. Readjusted later
+rho1_approx = 9000  # Central region density. Readjusted later (to 8426 with the
+# default resolution). u1 is not recomputed for the readjusted density, so the
+# central region is not exactly at pressure P1.
 rho2 = 3500  # Outskirts density
 boxsize_l = R_jupiter  # size of simulation box in x and y dimension
 v1 = boxsize_l / 10000  # Central region velocity

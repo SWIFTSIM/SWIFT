@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ ! -e circularorbitshernquist.hdf5 ]
 then 
     echo "Generate initial conditions for circular orbits"

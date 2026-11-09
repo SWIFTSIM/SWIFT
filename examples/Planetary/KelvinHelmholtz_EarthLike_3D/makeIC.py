@@ -33,9 +33,11 @@ matID1 = 402  # Central region material ID: ANEOS Fe85Si15
 matID2 = 400  # Outskirts material ID: ANEOS forsterite
 P1 = 1.2e11  # Central region pressure
 P2 = 1.2e11  # Outskirts pressure
-u1 = 4069874  # Central region specific internal energy
+u1 = 4069874  # Central region specific internal energy (for P1 at rho1_approx)
 u2 = 9899952  # Outskirts specific internal energy
-rho1_approx = 10000  # Central region density. Readjusted later
+rho1_approx = 10000  # Central region density. Readjusted later (to 9549 with the
+# default resolution). u1 is not recomputed for the readjusted density, so the
+# central region is not exactly at pressure P1.
 rho2 = 5000  # Outskirts density
 boxsize_l = R_earth  # size of simulation box in x and y dimension
 v1 = boxsize_l / 10000  # Central region velocity

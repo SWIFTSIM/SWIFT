@@ -7,7 +7,7 @@ body onto the proto-Earth, at the mutual escape speed, with an impact angle of
 
 The initial conditions can be created via the DemoImpactInitCond example, see
 its README.md and the WoMa documentation for more details. Or the premade
-initial conditions can be downloaded directly with `get_init_cond.sh`.
+initial conditions can be downloaded directly with `getICs.sh`.
 
 The default resolution is ~10^5 particles, set by the `N` variables at the start
 of the scripts. Note that here the simulation is cut short with an end time of

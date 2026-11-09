@@ -1,13 +1,15 @@
 #!/bin/bash
 
+set -eo pipefail
+
 #Clears the previous figures
 echo "Clearing existing figures."
 if [ -f "orbits_simulation_kpc.png" ]; then
-    rm orbits_simulation_kpc.png
+    rm -f orbits_simulation_kpc.png
 fi
 
 if [ -f "orbits_simulation_Mpc.png" ]; then
-    rm orbits_simulation_Mpc.png
+    rm -f orbits_simulation_Mpc.png
 fi
 
 if [ ! -e orbit.csv ]; then
@@ -16,8 +18,8 @@ if [ ! -e orbit.csv ]; then
 fi
 
 #Clears the IC file
-if [ -f "circular_orbits_MW.hdf5" ]; then
-    rm circular_orbits_MW.hdf5
+if [ -f "IC.hdf5" ]; then
+    rm -f IC.hdf5
 fi
 
 #Generates the initial conditions

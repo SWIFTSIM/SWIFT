@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -o pipefail
+set -eo pipefail
 
 GEAR_SCRIPTS=../../GEAR_ICs_and_SCRIPTS # Shared GEAR table download scripts
 
@@ -14,13 +14,8 @@ jeans_length=${jeans_length:=0.250} # Jeans wavelength in unit of the boxsize
 debug=${debug:=0}
 run_name=${run_name:=""}
 
-IC_FILE=ICs_gas_free_sink_cells.hdf5
-
-# Remove the ICs
-if [ -e $IC_FILE ]
-then
-    rm $IC_FILE
-fi
+# The ICs depend on the level and Jeans length, so name them after both
+IC_FILE=ICs_gas_free_sink_cells_level${level}_lJ${jeans_length}.hdf5
 
 # Create the ICs if they do not exist
 if [ ! -e $IC_FILE ]
@@ -47,10 +42,10 @@ DIR=snap
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm -r $DIR
+    rm -rf $DIR
 else
     echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    mkdir -p $DIR
 fi
 
 if [[ $n_ranks -gt 0 ]]; then
@@ -62,6 +57,7 @@ fi
 printf "Running simulation..."
 $swift --hydro --sinks --stars --self-gravity --feedback \
        --cooling --sync --limiter --threads=$n_threads \
+       --param=InitialConditions:file_name:$IC_FILE \
        params.yml 2>&1 | tee output.log
 
 if [ -z "$run_name" ]; then

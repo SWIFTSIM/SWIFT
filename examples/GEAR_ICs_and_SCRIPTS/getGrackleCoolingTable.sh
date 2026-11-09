@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Default state (no flags given): download the standard Cloudy tables
 # (HM2012 + high density). Passing any flag selects exactly the
 # requested table(s) instead.

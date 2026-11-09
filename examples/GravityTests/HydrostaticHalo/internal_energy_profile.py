@@ -100,7 +100,7 @@ for i in range(n_snaps):
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
     # get the internal energies
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
 
     # make dimensionless
