@@ -448,6 +448,10 @@ static void runner_gpu_write_timing_row(
     double d2h_s,
     double unpack_s) {
 
+	#ifdef SWIFT_USE_TIMERS
+	const ticks io_tic = getticks();
+	#endif
+
   const char *path = getenv("SWIFT_GPU_TIMING_FILE");
 
   if (path == NULL || path[0] == '\0')
@@ -483,6 +487,10 @@ static void runner_gpu_write_timing_row(
         unpack_s);
 
   fclose(fp);
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_timing_io, io_tic);
+  #endif
 }
 #endif
 
@@ -975,6 +983,10 @@ static void runner_dopair_grav_pp_pack(
     struct task *t, int internal_from_self,
     int max_cell_size, GPUStream stream) {
 
+	#ifdef SWIFT_USE_TIMERS
+	const ticks pair_pack_tic = getticks();
+	#endif
+
   (void)symmetric;
   (void)stream;
 
@@ -1175,6 +1187,10 @@ static void runner_dopair_grav_pp_pack(
   #ifdef SWIFT_GPU_TIMING 
   runner_gpu_pair_pack_time_s += runner_gpu_walltime_s() - pack_time_start;
   #endif
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_pair_pack_cpu, pair_pack_tic);
+  #endif
 }
 
 /**
@@ -1275,6 +1291,10 @@ static void runner_dopair_grav_pp_flush(
 
   if (npairs == 0 || ncells_flush == 0)
     return;
+
+  #ifdef SWIFT_USE_TIMERS
+  const ticks pair_flush_tic = getticks();
+  #endif
     
   #ifdef SWIFT_DEBUG_TASKS
 
@@ -1523,7 +1543,15 @@ GPUEventRecord(h2d_start, stream);
     GPUEventRecord(d2h_stop, stream);
     #endif 
     GPUEventRecord(substream->done, stream);
+    #ifdef SWIFT_USE_TIMERS
+    const ticks gpu_wait_tic = getticks();
+    #endif
+
     GPUEventSynchronize(substream->done);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+    #endif
     
     #ifdef SWIFT_DEBUG_TASKS
   gpu_sync_toc = getticks();
@@ -1714,7 +1742,7 @@ if (cj_pair->nodeID == e->nodeID &&
 /* ---- Timing output ---- */
 runner_gpu_write_timing_row(
     "pair",
-    (long long)e->ti_current,
+    (long long)e->step,
     r->id,
     0,
     nslots,
@@ -1780,6 +1808,10 @@ runner_gpu_write_timing_row(
       r,
       &r->e->sched,
       "runner_dopair_grav_pp_flush:end");
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_pair_flush_cpu, pair_flush_tic);
+  #endif
 }
 
 /**
@@ -1925,6 +1957,10 @@ static void runner_doself_grav_pp_flush(
   const double pack_time_start = runner_gpu_walltime_s();
   #endif
 
+  #ifdef SWIFT_USE_TIMERS
+  const ticks self_pack_tic = getticks();
+  #endif
+
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const double min_trunc = e->mesh->r_cut_min;
@@ -2010,6 +2046,10 @@ static void runner_doself_grav_pp_flush(
 
   #ifdef SWIFT_GPU_TIMING 
   runner_gpu_self_pack_time_s += runner_gpu_walltime_s() - pack_time_start;
+  #endif
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_self_pack_cpu, self_pack_tic);
   #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2169,7 +2209,15 @@ static void runner_doself_grav_pp_flush(
     GPUEventRecord(d2h_stop, substream->stream);
     #endif
     GPUEventRecord(substream->done, substream->stream);
+    #ifdef SWIFT_USE_TIMERS
+    const ticks gpu_wait_tic = getticks();
+    #endif
+
     GPUEventSynchronize(substream->done);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+    #endif
     
     #ifdef SWIFT_DEBUG_TASKS
   gpu_sync_toc = getticks();
@@ -2435,6 +2483,7 @@ enum runner_gpu_task_type runner_dopair_recursive_grav_gpu(
       accumulate_add_ll(&multi_j->pot.num_interacted_pm,
                         multi_i->m_pole.num_gpart);
 #endif
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
     return regular_task;
   }
 
@@ -2444,7 +2493,17 @@ enum runner_gpu_task_type runner_dopair_recursive_grav_gpu(
   if (ci->grav.count <= 1 || cj->grav.count <= 1) {
 
     /* We have two cheap cells. Go P-P. */
+    #ifdef SWIFT_USE_TIMERS
+    const ticks cpu_fallback_tic = getticks();
+    #endif
+
     runner_dopair_recursive_grav(r, ci, cj, 0);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_cpu_fallback, cpu_fallback_tic);
+    #endif
+
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
     return regular_task;
 
     /* Can we use M-M interactions ? */
@@ -2453,20 +2512,33 @@ enum runner_gpu_task_type runner_dopair_recursive_grav_gpu(
                                           /*use_rebuild_sizes=*/0, periodic)) {
 
     /* Go M-M */
+    #ifdef SWIFT_USE_TIMERS
+    const ticks cpu_fallback_tic = getticks();
+    #endif
+
     runner_dopair_recursive_grav(r, ci, cj, 0);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_cpu_fallback, cpu_fallback_tic);
+    #endif
+
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
     return regular_task;
 
     /* Did we reach the bottom? */
   } else if (!ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
-    return runner_dopair_grav_pp_gpu(
+    const enum runner_gpu_task_type result = runner_dopair_grav_pp_gpu(
     r, substream, ci, cj, 1, 1,
     substream->grav_cells_pair,
     substream->grav_tasks_pair,
     substream->grav_pair_internal_from_self,
     t, internal_from_self,
     ncells, max_cell_size, substream->stream);
+
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
+    return result;
 
   } else {
 
@@ -3204,7 +3276,15 @@ runner_gpu_acquire_substream(struct runner *r) {
   struct gpu_runner_substream *substream =
       &gpu->substreams[gpu->next_substream];
 
+  #ifdef SWIFT_USE_TIMERS
+  const ticks gpu_wait_tic = getticks();
+  #endif
+
   const GPUError serr = GPUEventSynchronize(substream->done);
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+  #endif
   if (serr != GPU_SUCCESS)
     error("runner_gpu_acquire_substream: GPUEventSynchronize failed: %s",
           GPUGetErrorString(serr));
@@ -3507,7 +3587,15 @@ enum runner_gpu_task_type runner_gpu_flush_leftover_self(struct runner *r) {
     #endif
 
     GPUEventRecord(substream->done, substream->stream);
+    #ifdef SWIFT_USE_TIMERS
+    const ticks gpu_wait_tic = getticks();
+    #endif
+
     GPUEventSynchronize(substream->done);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+    #endif
     
     #ifdef SWIFT_DEBUG_TASKS
   gpu_sync_toc = getticks();
@@ -3780,11 +3868,6 @@ enum runner_gpu_task_type runner_doself_recursive_grav_gpu(
   final_type = flushed_self_task;
   } else {
   final_type = regular_task;
-  }
-
-  if (gettimer) {
-
-    TIMER_TOC(timer_doself_grav_pp);
   }
   
   #ifdef SWIFT_DEBUG_CHECKS
