@@ -197,9 +197,32 @@ def zone_row(clump, control, geo):
     return rows
 
 
-def check(clump_run, control_run):
-    """Print the table of the kept depth and return the exit code: 0 pass, 2 fail."""
-    geo = json.load(open(os.path.join(clump_run, "geometry.json")))
+def same_setup(clump_run, control_run):
+    """Return the geometry of the clump run, or None after printing why the two runs differ."""
+    geos = []
+    for d in (clump_run, control_run):
+        try:
+            geos.append(json.load(open(os.path.join(d, "geometry.json"))))
+        except OSError:
+            print(f"FAIL: no geometry.json in {d}")
+            return None
+    for g in geos:
+        g.pop("n_clump")
+    if geos[0] != geos[1]:
+        keys = [k for k in geos[0] if geos[0][k] != geos[1].get(k)]
+        print(f"FAIL: geometry.json differs between the runs: {', '.join(keys)}")
+        return None
+    return geos[0]
+
+
+def check(clump_run, control_run, passed=None):
+    """Print the table of the kept depth and return the exit code: 0 pass, 2 fail.
+
+    If passed is a dict, it receives the pass or fail of every zone.
+    """
+    geo = same_setup(clump_run, control_run)
+    if geo is None:
+        return 2
     files = [
         sorted(glob.glob(os.path.join(d, "snap", "snapshot_*.hdf5")))
         for d in (clump_run, control_run)
@@ -221,6 +244,17 @@ def check(clump_run, control_run):
         if clump is None:
             print(
                 f"FAIL: {os.path.basename(fc)}: less than 90 per cent of the gas is in both runs"
+            )
+            return 2
+        if not (
+            clump["stars"].shape == control["stars"].shape
+            and np.allclose(clump["stars"], control["stars"], rtol=1e-6, atol=0)
+            and np.allclose(
+                clump["luminosity"], control["luminosity"], rtol=1e-5, atol=0
+            )
+        ):
+            print(
+                f"FAIL: {os.path.basename(fc)}: the stars differ between the runs (position or PE luminosity)"
             )
             return 2
         if last and not (
@@ -259,6 +293,8 @@ def check(clump_run, control_run):
                     f"[{CONTROL_BAND[0]}, {CONTROL_BAND[1]}]"
                 )
         failed += verdict.startswith("FAIL")
+        if passed is not None:
+            passed[name] = verdict.startswith("pass")
         print(f"RESULT {name}: {verdict}")
     print("RESULT " + ("FAIL" if failed else "PASS"))
     return 2 if failed else 0

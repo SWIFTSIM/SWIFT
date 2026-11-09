@@ -73,7 +73,8 @@ particles or lies within 4 smoothing lengths of a face.
 
 # Check
 At the end of the `clump=1` run, `run.sh` calls `checkShadow.py` from the run
-directory. It reads the last snapshot of `run_clump1` and of `../run_clump0`,
+directory. It needs the control directory `../run_clump0`: without it, `run.sh`
+skips the plot and the check and says so. It reads the last snapshot of `run_clump1` and of `../run_clump0`,
 and scores three zones between 15.9 and 20 smoothing lengths from the clump
 centre, behind it as seen from the stars:
 - `star1_only` (about 1900 particles): the line of sight to star 1 crosses the
@@ -100,8 +101,13 @@ has passed. The check prints a warning when it is outside [0.95, 1.05].
 About 81 per cent of the light in a single-star zone comes from the other star,
 which the clump does not shadow there. The shadow is then only 19 per cent of the
 field, so a relative error in the light of the other star changes the kept depth
-about five times more, and the sum cannot tell which star is wrong. The `overlap`
-zone, where both stars are shadowed, is the clean one.
+about four times more, and the sum cannot tell which star is wrong. In a
+single-star zone a kept depth above 1 means that the light of the other star is
+lost in the clump run, and the bar does not test that. The `overlap` zone, where
+both stars are shadowed, is free of this ambiguity. The ratio of the no-clump
+field to free streaming is 1 only for an exact transport, so the `overlap` zone
+can read outside [0.95, 1.05]; the check then prints a warning, which does not
+affect the verdict.
 
 `python3 testCheckShadow.py <run_dir>` runs the check on synthetic fields built
 from the gas of `<run_dir>/ICs_isrf_shadow.hdf5`: an exact shadow passes, and a

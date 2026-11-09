@@ -80,9 +80,14 @@ echo "Running simulation..."
 
 if [ "$run_analysis" = "1" ]
 then
-    python3 "$here/plotShadow.py"
-    if [ "$clump" = "1" ] && [ -d ../run_clump0 ]
+    if [ "$clump" = "1" ]
     then
-        python3 "$here/checkShadow.py"
+        python3 "$here/plotShadow.py"
+        if [ -d ../run_clump0 ]
+        then
+            python3 "$here/checkShadow.py"
+        else
+            echo "No ../run_clump0: run clump=0 first to get the check."
+        fi
     fi
 fi

@@ -3,7 +3,6 @@
 
 import glob
 import json
-import sys
 
 import h5py
 import matplotlib
@@ -29,7 +28,8 @@ def main():
     centre = np.array(geo["centre_kpc"])
     files = sorted(glob.glob("snap/snapshot_*.hdf5"))
     if not files or not glob.glob("../run_clump0/snap/snapshot_*.hdf5"):
-        sys.exit("Need the snapshots of this run and of ../run_clump0.")
+        print("No snapshots of this run or of ../run_clump0: no plot.")
+        return
     t, x, ids, q = load(files[-1])
     _, _, ids0, q0 = load("../run_clump0/snap/" + files[-1].split("/")[-1])
     _, i1, i0 = np.intersect1d(
