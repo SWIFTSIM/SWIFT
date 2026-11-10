@@ -18,7 +18,6 @@
 ###############################################################################
 
 import numpy as np
-import h5py
 import unyt
 import swiftsimio as sw
 
@@ -31,11 +30,11 @@ gamma = 5.0 / 3.0  # Gas adiabatic index
 fileName = "vacuum.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassPlane_128.hdf5", "r")
+glass = sw.load("glassPlane_128.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:] * 0.3
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value * 0.3
 
 # Make 4 copies of the glass to have more particles
 pos *= 0.5

@@ -17,7 +17,6 @@
 #
 ##############################################################################
 
-import h5py
 import unyt
 import swiftsimio as sw
 from numpy import *
@@ -40,12 +39,12 @@ fileName = "toroTest2.hdf5"
 # ---------------------------------------------------
 boxSize = x_max - x_min
 
-glass = h5py.File("glassPlane_128.hdf5", "r")
+glass = sw.load("glassPlane_128.hdf5")
 
-pos_L = glass["/PartType0/Coordinates"][:, :] * 0.5
-pos_R = glass["/PartType0/Coordinates"][:, :] * 0.5
-h_L = glass["/PartType0/SmoothingLength"][:] * 0.5
-h_R = glass["/PartType0/SmoothingLength"][:] * 0.5
+pos_L = glass.gas.coordinates.value * 0.5
+pos_R = glass.gas.coordinates.value * 0.5
+h_L = glass.gas.smoothing_lengths.value * 0.5
+h_R = glass.gas.smoothing_lengths.value * 0.5
 
 # Merge things
 aa = pos_L - array([0.5, 0.0, 0.0])

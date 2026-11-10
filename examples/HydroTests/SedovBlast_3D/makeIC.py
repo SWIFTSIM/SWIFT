@@ -20,6 +20,7 @@
 import h5py
 import unyt
 import swiftsimio as sw
+import numpy as np
 from numpy import *
 
 # Generates a swift IC file for the Sedov blast test in a periodic cubic box
@@ -33,11 +34,11 @@ N_inject = 15  # Number of particles in which to inject energy
 fileName = "sedov.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = sw.load("glassCube_64.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:] * 0.3
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value * 0.3
 
 numPart = size(h)
 vol = 1.0

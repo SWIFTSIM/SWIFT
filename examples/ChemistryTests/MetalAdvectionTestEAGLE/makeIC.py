@@ -77,13 +77,12 @@ def get_element_abundances_metallicity(pos, boxsize):
 
 
 if __name__ == "__main__":
-    glass = h5py.File("glassPlane_64.hdf5", "r")
-    parts = glass["PartType0"]
-    pos = parts["Coordinates"][:]
+    glass = sw.load("glassPlane_64.hdf5")
+    parts = glass.gas
+    pos = parts.coordinates.value
     pos = np.concatenate([pos, pos + np.array([1, 0, 0])])
-    h = parts["SmoothingLength"][:]
+    h = parts.smoothing_lengths.value
     h = np.concatenate([h, h])
-    glass.close()
 
     # Set up metadata
     boxsize = np.array([2.0, 1.0, 1.0])

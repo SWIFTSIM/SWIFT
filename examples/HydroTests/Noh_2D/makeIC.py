@@ -17,7 +17,6 @@
 #
 ##############################################################################
 
-import h5py
 import unyt
 import swiftsimio as sw
 from numpy import *
@@ -32,12 +31,12 @@ P0 = 1.0e-6  # Background pressure
 fileName = "noh.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassPlane_128.hdf5", "r")
+glass = sw.load("glassPlane_128.hdf5")
 
 vol = 4.0
 
-pos = glass["/PartType0/Coordinates"][:, :] * sqrt(vol)
-h = glass["/PartType0/SmoothingLength"][:] * sqrt(vol)
+pos = glass.gas.coordinates.value * sqrt(vol)
+h = glass.gas.smoothing_lengths.value * sqrt(vol)
 numPart = size(h)
 
 # Generate extra arrays

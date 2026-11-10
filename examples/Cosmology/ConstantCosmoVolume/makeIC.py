@@ -17,6 +17,7 @@
 #
 ################################################################################
 
+import math
 import h5py
 import unyt
 import swiftsimio as sw
@@ -58,11 +59,10 @@ unit_u_in_si = unit_v_in_si**2
 # ---------------------------------------------------
 
 # Read the glass file
-glass = h5py.File(glassFile, "r")
+glass = sw.load(glassFile)
 
 # Read particle positions and h from the glass
-pos = glass["/PartType1/Coordinates"][:, :]
-glass.close()
+pos = glass.dark_matter.coordinates.value
 
 # Total number of particles
 numPart = size(pos) / 3

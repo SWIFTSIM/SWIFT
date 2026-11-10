@@ -17,7 +17,6 @@
 #
 ##############################################################################
 
-import h5py
 import unyt
 import swiftsimio as sw
 from numpy import *
@@ -40,13 +39,13 @@ fileName = "sodShock.hdf5"
 # ---------------------------------------------------
 boxSize = x_max - x_min
 
-glass_L = h5py.File("glassCube_64.hdf5", "r")
-glass_R = h5py.File("glassCube_32.hdf5", "r")
+glass_L = sw.load("glassCube_64.hdf5")
+glass_R = sw.load("glassCube_32.hdf5")
 
-pos_L = glass_L["/PartType0/Coordinates"][:, :]
-pos_R = glass_R["/PartType0/Coordinates"][:, :]
-h_L = glass_L["/PartType0/SmoothingLength"][:]
-h_R = glass_R["/PartType0/SmoothingLength"][:]
+pos_L = glass_L.gas.coordinates.value
+pos_R = glass_R.gas.coordinates.value
+h_L = glass_L.gas.smoothing_lengths.value
+h_R = glass_R.gas.smoothing_lengths.value
 
 radius_L = sqrt(
     (pos_L[:, 0] - 0.5) ** 2 + (pos_L[:, 1] - 0.5) ** 2 + (pos_L[:, 2] - 0.5) ** 2

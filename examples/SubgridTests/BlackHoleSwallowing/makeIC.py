@@ -47,13 +47,13 @@ boxsize_cgs = 10.0 * kpc_in_cm
 vol_cgs = boxsize_cgs**3
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_32.hdf5", "r")
+glass = sw.load("glassCube_32.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
+pos = glass.gas.coordinates.value
 eps = 1e-6
 pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * boxsize_cgs / unit_l_cgs
-h = glass["/PartType0/SmoothingLength"][:] * boxsize_cgs / unit_l_cgs
+h = glass.gas.smoothing_lengths.value * boxsize_cgs / unit_l_cgs
 
 numPart = size(h)
 

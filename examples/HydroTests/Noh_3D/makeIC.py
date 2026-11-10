@@ -20,6 +20,7 @@
 import h5py
 import unyt
 import swiftsimio as sw
+import numpy as np
 from numpy import *
 
 # Generates a swift IC file for the 3D Noh problem in a periodic box
@@ -32,12 +33,12 @@ P0 = 1.0e-6  # Background pressure
 fileName = "noh.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = sw.load("glassCube_64.hdf5")
 
 vol = 8.0
 
-pos = glass["/PartType0/Coordinates"][:, :] * vol ** (1.0 / 3.0)
-h = glass["/PartType0/SmoothingLength"][:] * vol ** (1.0 / 3.0)
+pos = glass.gas.coordinates.value * vol ** (1.0 / 3.0)
+h = glass.gas.smoothing_lengths.value * vol ** (1.0 / 3.0)
 numPart = size(h)
 
 # Generate extra arrays

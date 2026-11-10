@@ -18,7 +18,6 @@
 #
 ##############################################################################
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -54,10 +53,10 @@ unit_velocity = 1e5  # 1e5 km/s
 unit_time = unit_length / unit_velocity
 
 # Read id, position and h from glass
-glass = h5py.File("glassCube_32.hdf5", "r")
-ids = glass["/PartType0/ParticleIDs"][:]
-pos = glass["/PartType0/Coordinates"][:, :] * boxSize
-h = glass["/PartType0/SmoothingLength"][:] * boxSize
+glass = sw.load("glassCube_32.hdf5")
+ids = glass.gas.particle_ids.value
+pos = glass.gas.coordinates.value * boxSize
+h = glass.gas.smoothing_lengths.value * boxSize
 
 # Compute basic properties
 numPart = np.size(pos) // 3

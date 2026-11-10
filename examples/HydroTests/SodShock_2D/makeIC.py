@@ -17,7 +17,6 @@
 #
 ##############################################################################
 
-import h5py
 import unyt
 import swiftsimio as sw
 from numpy import *
@@ -40,13 +39,13 @@ fileName = "sodShock.hdf5"
 # ---------------------------------------------------
 boxSize = x_max - x_min
 
-glass_L = h5py.File("glassPlane_128.hdf5", "r")
-glass_R = h5py.File("glassPlane_48.hdf5", "r")
+glass_L = sw.load("glassPlane_128.hdf5")
+glass_R = sw.load("glassPlane_48.hdf5")
 
-pos_L = glass_L["/PartType0/Coordinates"][:, :] * 0.5
-pos_R = glass_R["/PartType0/Coordinates"][:, :] * 0.5
-h_L = glass_L["/PartType0/SmoothingLength"][:] * 0.5
-h_R = glass_R["/PartType0/SmoothingLength"][:] * 0.5
+pos_L = glass_L.gas.coordinates.value * 0.5
+pos_R = glass_R.gas.coordinates.value * 0.5
+h_L = glass_L.gas.smoothing_lengths.value * 0.5
+h_R = glass_R.gas.smoothing_lengths.value * 0.5
 
 # Merge things
 aa = pos_L - array([0.5, 0.0, 0.0])

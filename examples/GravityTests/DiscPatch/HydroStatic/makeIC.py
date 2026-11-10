@@ -20,7 +20,6 @@
 #
 ##############################################################################
 
-import h5py
 import sys
 import numpy as np
 import unyt
@@ -135,9 +134,9 @@ print("")
 ####################################################################
 
 # Read glass pre-ICs
-infile = h5py.File("glassCube_32.hdf5", "r")
-one_glass_pos = infile["/PartType0/Coordinates"][:, :]
-one_glass_h = infile["/PartType0/SmoothingLength"][:]
+infile = sw.load("glassCube_32.hdf5")
+one_glass_pos = infile.gas.coordinates.value
+one_glass_h = infile.gas.smoothing_lengths.value
 
 # Rescale to the problem size
 one_glass_pos *= side_length

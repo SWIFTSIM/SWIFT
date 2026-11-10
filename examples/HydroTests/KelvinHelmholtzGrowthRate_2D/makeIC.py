@@ -18,7 +18,6 @@
 #
 ################################################################################
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -36,9 +35,9 @@ fileOutputName = "kelvinHelmholtzGrowthRate.hdf5"
 
 # ---------------------------------------------------
 
-glass = h5py.File("glassPlane_128.hdf5", "r")
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+glass = sw.load("glassPlane_128.hdf5")
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
 
 N = len(h)
 vol = 1.0

@@ -49,11 +49,11 @@ B0 /= 1e7 * uM / (ut**2 * uA)  # code units
 fileName = "BalsaraKim.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = sw.load("glassCube_64.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
 
 pos *= L
 h *= L

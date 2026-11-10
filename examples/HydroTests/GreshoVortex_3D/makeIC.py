@@ -21,6 +21,7 @@
 import h5py
 import unyt
 import swiftsimio as sw
+import numpy as np
 from numpy import *
 
 # Generates a swift IC file for the Gresho-Chan vortex in a periodic box
@@ -34,13 +35,12 @@ fileGlass = "glassCube_64.hdf5"
 # ---------------------------------------------------
 
 # Get position and smoothing lengths from the glass
-fileInput = h5py.File(fileGlass, "r")
-coords = fileInput["/PartType0/Coordinates"][:, :]
-h = fileInput["/PartType0/SmoothingLength"][:]
-ids = fileInput["/PartType0/ParticleIDs"][:]
-boxSize = fileInput["/Header"].attrs["BoxSize"][0]
+fileInput = sw.load(fileGlass)
+coords = fileInput.gas.coordinates.value
+h = fileInput.gas.smoothing_lengths.value
+ids = fileInput.gas.particle_ids.value
+boxSize = fileInput.metadata.boxsize[0].value
 numPart = size(h)
-fileInput.close()
 
 # Now generate the rest
 m = ones(numPart) * rho0 * boxSize**3 / numPart

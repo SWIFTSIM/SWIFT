@@ -44,11 +44,11 @@ high_metal = [high_metal] * Nelem + np.linspace(0, max_shift, Nelem)
 high_metal = 10**high_metal
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_32.hdf5", "r")
+glass = sw.load("glassCube_32.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
 
 numPart = np.size(h)
 vol = 1.0

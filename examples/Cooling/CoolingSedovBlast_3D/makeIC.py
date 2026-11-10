@@ -17,7 +17,6 @@
 #
 ##############################################################################
 
-import h5py
 import unyt
 import swiftsimio as sw
 from numpy import *
@@ -47,11 +46,11 @@ uU = uv**2
 print("ut:", ut / 3.154e7, "yr")
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = sw.load("glassCube_64.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
 
 pos *= L
 h *= L
