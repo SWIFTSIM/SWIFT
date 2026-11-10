@@ -171,10 +171,10 @@ static void radiation_packet_count_clamp(void) {
     #radiation_packet_far_share_report. One record per thread, on its own cache
     line, so that the placement takes no atomic operation. Only the light of a
     new share counts. The light of a receiver with a known step is the first
-    triple. The light of a receiver without a known step is placed again at its
-    first merge on the final lattice: it is the second triple, apart, so that it
-    does not enter the first share. The light that a change of the lattice
-    places again is not new and is in neither. */
+    triple. The light of a receiver without a known step is placed again when
+    its step is set: it is the second triple, apart, so that it does not enter
+    the first share. The light that a change of the lattice places again is not
+    new and is in neither. */
 struct radiation_packet_placed {
   double all;
   double far;
@@ -2117,7 +2117,7 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
  * @param fresh 1 for a new share of a receiver with a known step, on a lattice
  * that is final: it counts in the far share
  * (#radiation_packet_far_share_report). 2 for a new share of a receiver without
- * a known step, which is placed again at its first merge: it counts apart. 0
+ * a known step, which is placed again when its step is set: it counts apart. 0
  * for light that waited and is placed again after a change of the lattice.
  */
 static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
@@ -2936,12 +2936,13 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 }
 
 /**
- * @brief Give the lattices of its first step to a particle that is not active
- * at its first merge.
+ * @brief Give the lattices of its first step to a particle that is inactive
+ * before its first merge.
  *
  * Light that arrives before the step is known waits in the far cells of a
  * one-tick lattice until the first merge. It moves to the lattices of the step
- * here instead. Without a speed limit nothing is done.
+ * here instead, at the drift of the first step. Without a speed limit nothing
+ * is done.
  *
  * @param p The particle, not active, with its time bin set.
  * @param ti_current Current integer time.

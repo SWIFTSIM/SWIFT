@@ -161,7 +161,9 @@ void radiation_snapshot_part_propagation(struct part *p,
   }
   p->feedback_data.dt_prev = dt_phys;
 
-  /* The drift runs for inactive particles too: they keep their inbox. */
+  /* The drift runs for inactive particles too. Give them the step lattice
+   * now, so that light arriving before their first merge is placed once, on
+   * the final lattice. */
   if (!part_is_active(p, e) && p->time_bin > 0)
     radiation_packet_set_first_step(
         p, e->ti_current, ti_step,

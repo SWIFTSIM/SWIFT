@@ -435,12 +435,14 @@ struct feedback_isrf_packet_data {
       held energy, see #radiation_packet_refresh_occupied. Fills padding. */
   uint16_t occupied_slots;
 
-  /*! End of the current step of the particle, set at its merge. A finer
-      receiver releases its shares by then. */
+  /*! End of the current step of the particle, set at its merge, or at the
+      drift of its first step if it is inactive then
+      (#radiation_packet_set_first_step). A finer receiver releases its shares
+      by then. */
   integertime_t step_end_ti;
 
-  /*! Length of this particle's current step, set at its merge. The merge time,
-      from which the held packet departs, is #step_end_ti minus this. */
+  /*! Length of this particle's current step, set like #step_end_ti. The merge
+      time, from which the held packet departs, is #step_end_ti minus this. */
   integertime_t step_ti;
 
 #ifdef SWIFT_DEBUG_CHECKS
