@@ -40,7 +40,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
-        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown \
+        testGravityBackgroundSoftening
         # testMatrixInversion
 
 # List of test programs to compile
@@ -57,7 +58,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology testNeutrinoFermiDirac testLog testTimeline \
 		 testZoomInit testGetZoomIJKFunc testZoomRegrid testSpaceSplit \
-		 testZoomVoidTree testZoomGravityDown
+		 testZoomVoidTree testZoomGravityDown \
+		 testGravityBackgroundSoftening
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -205,6 +207,8 @@ testZoomRegrid_SOURCES = testZoomRegrid.c
 testZoomVoidTree_SOURCES = testZoomVoidTree.c
 
 testZoomGravityDown_SOURCES = testZoomGravityDown.c
+
+testGravityBackgroundSoftening_SOURCES = testGravityBackgroundSoftening.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
