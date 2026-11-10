@@ -21,7 +21,6 @@ import unyt
 import swiftsimio as sw
 
 box_size = 1000.0
-N_PARTICLES = 3
 print("Initial conditions written to 'circular_orbits_MW.hdf5'")
 
 pos = np.zeros((3, 3))

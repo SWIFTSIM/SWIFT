@@ -20,12 +20,10 @@
 #
 ##############################################################################
 
-import sys
 import numpy as np
 import unyt
 import swiftsimio as sw
 import math
-import random
 
 # Generates a disc-patch in hydrostatic equilibrium
 #

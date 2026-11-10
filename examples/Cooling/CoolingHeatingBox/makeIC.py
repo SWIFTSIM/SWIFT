@@ -25,7 +25,6 @@ import swiftsimio as sw
 # Generates a SWIFT IC file with a constant density and pressure
 
 # Parameters
-periodic = 1  # 1 For periodic box
 boxSize = 1  # 1 kiloparsec
 # rho = 3.2e3  # Density in code units (3.2e6 is 0.1 hydrogen atoms per cm^3)
 

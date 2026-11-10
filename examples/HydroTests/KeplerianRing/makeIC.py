@@ -402,7 +402,6 @@ def QSP_fix(r_i, theta_i):
     for circle in circles:
         n_particles = len(circle[0])
         radius = sum(circle[0]) / n_particles
-        theta_initial = circle[1][0]
 
         theta_sep = 2 * np.pi / n_particles
 
@@ -513,7 +512,6 @@ def gen_particles_gaussian(meta):
         meta["boxsize"] / 2.0,
         meta["boxsize"] / 2.0,
     )
-    max_r = meta["boxsize"] / 2.0
 
     m = (np.arange(particles.nparts) + 0.5) / particles.nparts
     error_function = erfinv(2 * m - 1)

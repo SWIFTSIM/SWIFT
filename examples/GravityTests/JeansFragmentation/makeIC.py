@@ -92,8 +92,6 @@ files, opt = parse_options()
 UnitMass_in_cgs = 1.989e43  # 10^10 M_sun in grams
 UnitLength_in_cgs = 3.085678e21  # kpc in centimeters
 UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
-UnitCurrent_in_cgs = 1  # Amperes
-UnitTemp_in_cgs = 1  # Kelvin
 UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
 
 UnitMass = UnitMass_in_cgs * units.g

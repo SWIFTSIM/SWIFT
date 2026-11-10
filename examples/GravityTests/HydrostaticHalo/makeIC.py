@@ -22,7 +22,6 @@ import numpy as np
 import unyt
 import swiftsimio as sw
 import math
-import random
 
 # Generates N particles in a spherically symmetric distribution with density profile ~r^(-2)
 # usage: python3 makeIC.py 1000: generate 1000 particles

@@ -17,14 +17,11 @@
 #
 ################################################################################
 import numpy as np
-import matplotlib.pyplot as plt
-from astropy import units
 import unyt
 import swiftsimio as sw
 
 C = 8.0
 M_200 = 2.0
-N_PARTICLES = 3
 print("Initial conditions written to 'circularorbitshernquist.hdf5'")
 
 pos = np.zeros((3, 3))

@@ -20,7 +20,6 @@
 import unyt
 import swiftsimio as sw
 import sys
-import random
 import numpy as np
 
 # Generates a swift IC file containing a cartesian distribution of particles

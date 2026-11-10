@@ -19,7 +19,6 @@
 
 import numpy as np
 from scipy import special
-import matplotlib.pyplot as plt
 import h5py
 
 G = 4.299e-6
@@ -39,7 +38,6 @@ def MN_Vcirc(R, z, Rd=4.0, Md=3e10, Zd=0.4):
 
 def get_vcirc_expo(R, Mgas=3e10, Rd=4.0):
     sigma0 = Mgas / (2.0 * np.pi * Rd**2)
-    sigma = sigma0 * np.exp(-R / Rd)
     y = R / (2.0 * Rd)
     I0 = special.i0(y)
     K0 = special.k0(y)

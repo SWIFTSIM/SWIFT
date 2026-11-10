@@ -20,7 +20,6 @@
 import unyt
 import swiftsimio as sw
 import numpy as np
-import sys
 
 # Generates a swift IC file for the Kelvin-Helmholtz vortex in a periodic box
 

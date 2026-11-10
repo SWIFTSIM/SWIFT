@@ -20,7 +20,7 @@
 import swiftsimio as sw
 from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
-from unyt import cm, kpc, mh, msun, K, s, kb
+from unyt import cm, mh, msun, K, s, kb
 
 import numpy as np
 

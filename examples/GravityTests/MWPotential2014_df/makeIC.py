@@ -21,7 +21,6 @@ import unyt
 import swiftsimio as sw
 
 box_size = 1000.0
-N_PARTICLES = 1
 print("Initial conditions written to 'IC.hdf5'")
 
 pos = np.zeros((1, 3))

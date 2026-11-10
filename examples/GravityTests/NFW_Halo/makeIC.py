@@ -19,14 +19,11 @@
 ################################################################################
 
 import numpy as np
-import matplotlib.pyplot as plt
-from astropy import units
 import unyt
 import swiftsimio as sw
 
 C = 8.0
 M_200 = 2.0
-N_PARTICLES = 1
 
 
 print("\nInitial conditions written to 'test_nfw.hdf5'")

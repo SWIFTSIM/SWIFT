@@ -24,7 +24,6 @@ import swiftsimio as sw
 # Generates a SWIFT IC file with a constant density and pressure
 
 # Parameters
-periodic = 1  # 1 For periodic box
 boxSize = 200  # 200 kiloparsec
 rho = 200  # Density in code units
 T = 3000  # Initial Temperature

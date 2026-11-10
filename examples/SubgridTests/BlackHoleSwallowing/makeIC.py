@@ -39,8 +39,6 @@ fileName = "bh_swallowing.hdf5"
 unit_l_cgs = 3.08567758149e24  # kpc
 unit_m_cgs = 1.988410e43  # 10^10 Msun
 unit_v_cgs = 1e5  # km / s
-unit_A_cgs = 1.0
-unit_T_cgs = 1.0
 unit_t_cgs = unit_l_cgs / unit_v_cgs
 
 boxsize_cgs = 10.0 * kpc_in_cm

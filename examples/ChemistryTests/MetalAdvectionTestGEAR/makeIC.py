@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     if ELEMENT_COUNT == 2:
         print(
-            f"Make sure swift was compiled with `--with-chemistry=GEAR_2` or `--with-chemistry=AGORA`"
+            "Make sure swift was compiled with `--with-chemistry=GEAR_2` or `--with-chemistry=AGORA`"
         )
     else:
         print(
