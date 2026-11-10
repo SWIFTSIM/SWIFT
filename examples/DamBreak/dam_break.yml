@@ -27,7 +27,11 @@ Statistics:
 SPH:
   resolution_eta:        1.487    # Target smoothing length in units of the mean inter-particle separation (1.487 == 100Ngbs with the Wendland C2 kernel).
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
-  h_max:                 0.1      # Maximal allowed smoothing length (in internal units), limits the reach of isolated spray particles.
+  h_max:                 0.025    # Maximal allowed smoothing length (in internal units), limits the reach of isolated spray particles and keeps kernels smaller than the top-level cells.
+
+# Parameters for the task scheduling
+Scheduler:
+  max_top_level_cells:   32       # The thin (y) direction needs at least 3 top-level cells, i.e. 3 * 2 m / 0.25 m = 24 along the long axes.
 
 # Parameters related to the initial conditions
 InitialConditions:
