@@ -18,7 +18,9 @@
 ##############################################################################
 
 import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Generates a swift IC file for the Balsaro-Kim test in a periodic cubic box
 
@@ -49,11 +51,11 @@ B0 /= 1e7 * uM / (ut**2 * uA)  # code units
 fileName = "BalsaraKim.hdf5"
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_64.hdf5", "r")
+glass = sw.load("glassCube_64.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
 
 pos *= L
 h *= L
@@ -62,21 +64,21 @@ for i in range(3):
     pos[pos[:, i] < 0.0, i] += L
     pos[pos[:, i] >= L, i] -= L
 
-numPart = size(h)
+numPart = np.size(h)
 
 print("smoothing lengths (all,min,max):", h, h.min(), h.max())
 
-numPart = size(h)
+numPart = np.size(h)
 vol = L**3
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
-r = zeros(numPart)
-B = zeros((numPart, 3))
-A = zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
+r = np.zeros(numPart)
+B = np.zeros((numPart, 3))
+A = np.zeros((numPart, 3))
 
 m[:] = rho0 * vol / numPart
 u[:] = P0 / ((gamma - 1.0) * rho0)
@@ -96,17 +98,17 @@ print("pos:", pos.min(), pos.max())
 
 ### Initialise star particles ###
 
-injection_data = loadtxt("injection_coords.txt", delimiter=",", skiprows=1)
+injection_data = np.loadtxt("injection_coords.txt", delimiter=",", skiprows=1)
 
 numStars = injection_data.shape[0]
 
 pos_stars = injection_data[:, 1:4] * L  # positions in the file are relative to boxsize
-v_stars = zeros((numStars, 3))
-ids_stars = linspace(numPart + 1, numPart + numStars, numStars)
-m_stars = zeros(numStars)
-h_stars = zeros(numStars)
-z_stars = zeros(numStars)
-n0_stars = zeros(numStars)
+v_stars = np.zeros((numStars, 3))
+ids_stars = np.linspace(numPart + 1, numPart + numStars, numStars)
+m_stars = np.zeros(numStars)
+h_stars = np.zeros(numStars)
+z_stars = np.zeros(numStars)
+n0_stars = np.zeros(numStars)
 
 m_stars[:] = (
     57.6 * Msun / uM
@@ -119,46 +121,44 @@ h_stars[:] = 5 * pc / uL
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(uL * unyt.cm)
+UM = unyt.Unit(uM * unyt.g)
+Ut = unyt.Unit(ut * unyt.s)
+units = unyt.UnitSystem("balsara_kim", UL, UM, Ut)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, L]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, numStars, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, numStars, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = uL
-grp.attrs["Unit mass in cgs (U_M)"] = uM
-grp.attrs["Unit time in cgs (U_t)"] = ut
-grp.attrs["Unit current in cgs (U_I)"] = uA
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [L, L, L], UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
-grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
 # Stars group
-grp = file.create_group("/PartType4")
-grp.create_dataset("Coordinates", data=pos_stars, dtype="d")
-grp.create_dataset("Velocities", data=v_stars, dtype="f")
-grp.create_dataset("Masses", data=m_stars, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids_stars, dtype="L")
-grp.create_dataset("StellarFormationTime", data=birthtimes, dtype="f")
-grp.create_dataset("SmoothingLength", data=h_stars, dtype="f")
+w.stars.coordinates = pos_stars * UL * w.a.comoving
+w.stars.velocities = v_stars * UL / Ut * w.a.comoving**0
+w.stars.masses = m_stars * UM * w.a.comoving**0
+w.stars.smoothing_lengths = h_stars * UL * w.a.comoving
+w.stars.particle_ids = ids_stars.astype(np.uint64)
 
-file.close()
+w.write(fileName)
+
+# Add the extra fields
+with h5py.File(fileName, "r+") as f:
+    # The Writer always writes a current unit of 1; the B fields are in uA
+    f["Units"].attrs["Unit current in cgs (U_I)"] = [uA]
+
+    grp = f["PartType0"]
+    grp.create_dataset("MagneticFluxDensities", data=B, dtype="f")
+    grp.create_dataset("MagneticVectorPotentials", data=A, dtype="f")
+
+    grp = f["PartType4"]
+    grp.create_dataset("StellarFormationTime", data=birthtimes, dtype="f")

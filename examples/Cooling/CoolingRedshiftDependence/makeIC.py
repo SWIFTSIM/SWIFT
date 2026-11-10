@@ -9,8 +9,6 @@ from swiftsimio.metadata.writer.unit_systems import cosmo_units
 from unyt import mh, cm, s, K, Mpc, kb
 import numpy as np
 
-import h5py
-
 # Physics parameters.
 boxsize = 1.0 * Mpc
 physical_density = 0.1 * mh / cm**3
@@ -24,10 +22,7 @@ def get_coordinates(glass_filename: str) -> np.array:
     Gets the coordinates from the glass file.
     """
 
-    with h5py.File(glass_filename, "r") as handle:
-        coordinates = handle["PartType1/Coordinates"][...]
-
-    return coordinates
+    return sw.load(glass_filename).dark_matter.coordinates.value
 
 
 def generate_ics(redshift: float, filename: str, glass_filename: str) -> None:

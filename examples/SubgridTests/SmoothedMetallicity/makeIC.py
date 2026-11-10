@@ -19,6 +19,11 @@
 
 import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
+
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
 
 # Generates a swift IC file for the Smoothed Metallicity test
 # in a periodic cubic box
@@ -42,11 +47,11 @@ high_metal = [high_metal] * Nelem + np.linspace(0, max_shift, Nelem)
 high_metal = 10**high_metal
 
 # ---------------------------------------------------
-glass = h5py.File("glassCube_32.hdf5", "r")
+glass = sw.load("glassCube_32.hdf5")
 
 # Read particle positions and h from the glass
-pos = glass["/PartType0/Coordinates"][:, :]
-h = glass["/PartType0/SmoothingLength"][:]
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
 
 numPart = np.size(h)
 vol = 1.0
@@ -79,38 +84,26 @@ v[~select, 2] = -1
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [1.0, 1.0, 1.0]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [1.0, 1.0, 1.0], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("MetalMassFraction", data=mass_frac, dtype="d")
-grp.create_dataset("ElementAbundance", data=mass_frac, dtype="d")
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
+w.write(fileName)
 
-file.close()
+# Add the extra fields
+with h5py.File(fileName, "r+") as f:
+    grp = f["PartType0"]
+    grp.create_dataset("MetalMassFraction", data=mass_frac, dtype="d")
+    grp.create_dataset("ElementAbundance", data=mass_frac, dtype="d")

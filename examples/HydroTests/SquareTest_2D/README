@@ -18,3 +18,6 @@ comparison to previous methods, we also provide a script
 (makeIC.py) that creates initial conditions with a different
 density of particles, all with equal masses, in the square
 and outside of the square.
+
+The script makeMovie.py needs the python package p_tqdm, besides the packages
+of examples/requirements.txt.

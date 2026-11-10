@@ -20,9 +20,8 @@
 import swiftsimio as sw
 from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
-from unyt import cm, kpc, mh, msun, K, s, kb
+from unyt import cm, mh, msun, K, s, kb
 
-import h5py
 import numpy as np
 
 # Generates a SWIFT IC file for the Feedback blast test.
@@ -40,9 +39,9 @@ if __name__ == "__main__":
     file_name = "feedback.hdf5"
 
     # Read in glass file
-    with h5py.File("glassCube_32.hdf5", "r") as handle:
-        positions = handle["/PartType0/Coordinates"][:]
-        h = handle["PartType0/SmoothingLength"][:] * 0.3
+    glass = sw.load("glassCube_32.hdf5")
+    positions = glass.gas.coordinates.value
+    h = glass.gas.smoothing_lengths.value * 0.3
 
     number_of_particles = len(h)
     side_length = (number_of_particles * particle_mass / initial_density) ** (1 / 3)

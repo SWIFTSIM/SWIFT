@@ -17,11 +17,10 @@
 #
 ################################################################################
 import numpy as np
-import h5py as h5
+import unyt
+import swiftsimio as sw
 
 box_size = 1000.0
-N_PARTICLES = 1
-print("Initial conditions written to 'IC.hdf5'")
 
 pos = np.zeros((1, 3))
 pos[0, 0] = 0.1
@@ -43,37 +42,28 @@ ids = np.array([1.0])
 mass = np.array([1.0]) * 1e-10
 
 # File
-file = h5.File("IC.hdf5", "w")
+UL = unyt.Unit(3.086e21 * unyt.cm)
+UM = unyt.Unit(1.98848e43 * unyt.g)
+Ut = unyt.Unit(3.086e16 * unyt.s)
+units = unyt.UnitSystem("mw_potential_2014_df", UL, UM, Ut)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 3.086e21
-grp.attrs["Unit mass in cgs (U_M)"] = 1.98848e43
-grp.attrs["Unit time in cgs (U_t)"] = 3.086e16
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = box_size
-grp.attrs["NumPart_Total"] = [0, N_PARTICLES, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [0, N_PARTICLES, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
-
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 1
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [box_size, box_size, box_size],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp1 = file.create_group("/PartType1")
-ds = grp1.create_dataset("Velocities", (N_PARTICLES, 3), "f", data=vel)
-ds = grp1.create_dataset("Masses", (N_PARTICLES,), "f", data=mass)
-ds = grp1.create_dataset("ParticleIDs", (N_PARTICLES,), "L", data=ids)
-ds = grp1.create_dataset("Coordinates", (N_PARTICLES, 3), "d", data=pos)
+w.dark_matter.coordinates = pos * UL * w.a.comoving
+w.dark_matter.velocities = vel * UL / Ut * w.a.comoving**0
+w.dark_matter.masses = mass * UM * w.a.comoving**0
+w.dark_matter.particle_ids = ids.astype(np.uint64)
 
-file.close()
+w.write("IC.hdf5")
+print("Initial conditions written to 'IC.hdf5'")
