@@ -20,7 +20,7 @@
 import h5py
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the Balsaro-Kim test in a periodic cubic box
 
@@ -62,21 +62,21 @@ for i in range(3):
     pos[pos[:, i] < 0.0, i] += L
     pos[pos[:, i] >= L, i] -= L
 
-numPart = size(h)
+numPart = np.size(h)
 
 print("smoothing lengths (all,min,max):", h, h.min(), h.max())
 
-numPart = size(h)
+numPart = np.size(h)
 vol = L**3
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
-r = zeros(numPart)
-B = zeros((numPart, 3))
-A = zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
+r = np.zeros(numPart)
+B = np.zeros((numPart, 3))
+A = np.zeros((numPart, 3))
 
 m[:] = rho0 * vol / numPart
 u[:] = P0 / ((gamma - 1.0) * rho0)
@@ -116,7 +116,7 @@ w.gas.velocities = v * UL / Ut * w.a.comoving**0
 w.gas.masses = m * UM * w.a.comoving**0
 w.gas.smoothing_lengths = h * UL * w.a.comoving
 w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)
 

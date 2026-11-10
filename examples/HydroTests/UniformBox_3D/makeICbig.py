@@ -19,7 +19,7 @@
 
 import h5py
 import sys
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a cubic box
@@ -109,63 +109,63 @@ ds_x = grp.create_dataset(
 # Now loop and create parts of the dataset
 offset = 0
 for n in range(n_iterations):
-    v = zeros((N, 3))
+    v = np.zeros((N, 3))
     ds_v[offset : offset + N, :] = v
-    v = zeros(1)
+    v = np.zeros(1)
 
-    m = full((N, 1), mass)
+    m = np.full((N, 1), mass)
     ds_m[offset : offset + N] = m
-    m = zeros(1)
+    m = np.zeros(1)
 
-    h = full((N, 1), eta * boxSize / L)
+    h = np.full((N, 1), eta * boxSize / L)
     ds_h[offset : offset + N] = h
-    h = zeros(1)
+    h = np.zeros(1)
 
-    u = full((N, 1), internalEnergy)
+    u = np.full((N, 1), internalEnergy)
     ds_u[offset : offset + N] = u
-    u = zeros(1)
+    u = np.zeros(1)
 
-    ids = linspace(offset, offset + N, N, endpoint=False).reshape((N, 1))
+    ids = np.linspace(offset, offset + N, N, endpoint=False).reshape((N, 1))
     ds_id[offset : offset + N] = ids + 1
     x = ids % L
     y = ((ids - x) / L) % L
     z = (ids - x - L * y) / L**2
-    ids = zeros(1)
-    coords = zeros((N, 3))
+    ids = np.zeros(1)
+    coords = np.zeros((N, 3))
     coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
     coords[:, 1] = y[:, 0] * boxSize / L + boxSize / (2 * L)
     coords[:, 2] = x[:, 0] * boxSize / L + boxSize / (2 * L)
     ds_x[offset : offset + N, :] = coords
-    coords = zeros((1, 3))
+    coords = np.zeros((1, 3))
 
     offset += N
     print("Done", offset, "/", numPart, "(%.1f %%)" % (100 * (float)(offset) / numPart))
 
 # And now, the remainder
-v = zeros((remainder, 3))
+v = np.zeros((remainder, 3))
 ds_v[offset : offset + remainder, :] = v
-v = zeros(1)
+v = np.zeros(1)
 
-m = full((remainder, 1), mass)
+m = np.full((remainder, 1), mass)
 ds_m[offset : offset + remainder] = m
-m = zeros(1)
+m = np.zeros(1)
 
-h = full((remainder, 1), eta * boxSize / L)
+h = np.full((remainder, 1), eta * boxSize / L)
 ds_h[offset : offset + remainder] = h
-h = zeros(1)
+h = np.zeros(1)
 
-u = full((remainder, 1), internalEnergy)
+u = np.full((remainder, 1), internalEnergy)
 ds_u[offset : offset + remainder] = u
-u = zeros(1)
+u = np.zeros(1)
 
-ids = linspace(offset, offset + remainder, remainder, endpoint=False).reshape(
+ids = np.linspace(offset, offset + remainder, remainder, endpoint=False).reshape(
     (remainder, 1)
 )
 ds_id[offset : offset + remainder] = ids + 1
 x = ids % L
 y = ((ids - x) / L) % L
 z = (ids - x - L * y) / L**2
-coords = zeros((remainder, 3))
+coords = np.zeros((remainder, 3))
 coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 1] = y[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 2] = x[:, 0] * boxSize / L + boxSize / (2 * L)

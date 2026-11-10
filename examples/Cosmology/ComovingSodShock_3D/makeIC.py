@@ -22,7 +22,6 @@ import h5py
 import unyt
 import swiftsimio as sw
 import numpy as np
-from numpy import *
 
 # Generates a swift IC file for the 3D Sod Shock in a periodic box
 
@@ -56,26 +55,26 @@ h_L = glass_L.gas.smoothing_lengths.value * 0.5
 h_R = glass_R.gas.smoothing_lengths.value * 0.5
 
 # Merge things
-aa = pos_L - array([0.5, 0.0, 0.0])
-pos_LL = append(pos_L, pos_L + array([0.5, 0.0, 0.0]), axis=0)
-pos_RR = append(pos_R, pos_R + array([0.5, 0.0, 0.0]), axis=0)
-pos = append(pos_LL - array([1.0, 0.0, 0.0]), pos_RR, axis=0)
-h_LL = append(h_L, h_L)
-h_RR = append(h_R, h_R)
-h = append(h_LL, h_RR)
+aa = pos_L - np.array([0.5, 0.0, 0.0])
+pos_LL = np.append(pos_L, pos_L + np.array([0.5, 0.0, 0.0]), axis=0)
+pos_RR = np.append(pos_R, pos_R + np.array([0.5, 0.0, 0.0]), axis=0)
+pos = np.append(pos_LL - np.array([1.0, 0.0, 0.0]), pos_RR, axis=0)
+h_LL = np.append(h_L, h_L)
+h_RR = np.append(h_R, h_R)
+h = np.append(h_LL, h_RR)
 
-numPart_L = size(h_LL)
-numPart_R = size(h_RR)
-numPart = size(h)
+numPart_L = np.size(h_LL)
+numPart_R = np.size(h_RR)
+numPart = np.size(h)
 
 vol_L = (0.25 * boxSize) ** 2 * (0.5 * boxSize)
 vol_R = (0.25 * boxSize) ** 2 * (0.5 * boxSize)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 # Add rho and material ids
 rho = np.zeros(numPart)
@@ -123,7 +122,7 @@ w.gas.velocities = v * UL / Ut * w.a.comoving**0
 w.gas.masses = m * UM * w.a.comoving**0
 w.gas.smoothing_lengths = h * UL * w.a.comoving
 w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)
 

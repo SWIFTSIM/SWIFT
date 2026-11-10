@@ -21,7 +21,6 @@ import h5py
 import unyt
 import swiftsimio as sw
 import numpy as np
-from numpy import *
 
 # Generates a swift IC file for the 3D Noh problem in a periodic box
 
@@ -39,14 +38,14 @@ vol = 8.0
 
 pos = glass.gas.coordinates.value * vol ** (1.0 / 3.0)
 h = glass.gas.smoothing_lengths.value * vol ** (1.0 / 3.0)
-numPart = size(h)
+numPart = np.size(h)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
 
-m = zeros(numPart)
-u = zeros(numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 m[:] = rho0 * vol / numPart
 u[:] = P0 / (rho0 * (gamma - 1))
 
@@ -57,7 +56,7 @@ v[:, 0] = -(pos[:, 0] - 1.0)
 v[:, 1] = -(pos[:, 1] - 1.0)
 v[:, 2] = -(pos[:, 2] - 1.0)
 
-norm_v = sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
+norm_v = np.sqrt(v[:, 0] ** 2 + v[:, 1] ** 2 + v[:, 2] ** 2)
 v[:, 0] /= norm_v
 v[:, 1] /= norm_v
 v[:, 2] /= norm_v
@@ -89,7 +88,7 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)
 

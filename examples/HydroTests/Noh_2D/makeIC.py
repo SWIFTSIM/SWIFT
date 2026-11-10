@@ -19,7 +19,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the 2D Noh problem in a periodic box
 
@@ -35,16 +35,16 @@ glass = sw.load("glassPlane_128.hdf5")
 
 vol = 4.0
 
-pos = glass.gas.coordinates.value * sqrt(vol)
-h = glass.gas.smoothing_lengths.value * sqrt(vol)
-numPart = size(h)
+pos = glass.gas.coordinates.value * np.sqrt(vol)
+h = glass.gas.smoothing_lengths.value * np.sqrt(vol)
+numPart = np.size(h)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
 
-m = zeros(numPart)
-u = zeros(numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 m[:] = rho0 * vol / numPart
 u[:] = P0 / (rho0 * (gamma - 1))
 
@@ -54,7 +54,7 @@ u[:] = P0 / (rho0 * (gamma - 1))
 v[:, 0] = -(pos[:, 0] - 1.0)
 v[:, 1] = -(pos[:, 1] - 1.0)
 
-norm_v = sqrt(v[:, 0] ** 2 + v[:, 1] ** 2)
+norm_v = np.sqrt(v[:, 0] ** 2 + v[:, 1] ** 2)
 v[:, 0] /= norm_v
 v[:, 1] /= norm_v
 
@@ -62,7 +62,7 @@ v[:, 1] /= norm_v
 w = sw.Writer(
     unit_system=unyt.unit_systems.cgs_unit_system,
     boxsize=sw.cosmo_array(
-        [sqrt(vol), sqrt(vol)],
+        [np.sqrt(vol), np.sqrt(vol)],
         unyt.cm,
         comoving=True,
         scale_factor=1.0,
@@ -76,6 +76,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)

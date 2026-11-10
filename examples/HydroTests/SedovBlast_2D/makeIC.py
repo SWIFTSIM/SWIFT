@@ -19,7 +19,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the Sedov blast test in a periodic cubic box
 
@@ -38,22 +38,22 @@ glass = sw.load("glassPlane_128.hdf5")
 pos = glass.gas.coordinates.value
 h = glass.gas.smoothing_lengths.value * 0.3
 
-numPart = size(h)
+numPart = np.size(h)
 vol = 1.0
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
-r = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
+r = np.zeros(numPart)
 
-r = sqrt((pos[:, 0] - 0.5) ** 2 + (pos[:, 1] - 0.5) ** 2)
+r = np.sqrt((pos[:, 0] - 0.5) ** 2 + (pos[:, 1] - 0.5) ** 2)
 m[:] = rho0 * vol / numPart
 u[:] = P0 / (rho0 * (gamma - 1))
 
 # Make the central particle detonate
-index = argsort(r)
+index = np.argsort(r)
 u[index[0:N_inject]] = E0 / (N_inject * m[0])
 
 # --------------------------------------------------
@@ -72,6 +72,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)

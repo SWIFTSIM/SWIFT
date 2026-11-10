@@ -19,7 +19,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Some constants
 solar_mass_cgs = 1.988480e33
@@ -54,30 +54,30 @@ eps = 1e-6
 pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * boxsize_cgs / unit_l_cgs
 h = glass.gas.smoothing_lengths.value * boxsize_cgs / unit_l_cgs
 
-numPart = size(h)
+numPart = np.size(h)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m_cgs = zeros(numPart)
-u_cgs = zeros(numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m_cgs = np.zeros(numPart)
+u_cgs = np.zeros(numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 m_cgs[:] = rho_cgs * vol_cgs / numPart
 u_cgs[:] = P_cgs / (rho_cgs * (gamma - 1))
 
 # Stars
-star_pos = zeros((1, 3))
+star_pos = np.zeros((1, 3))
 star_pos[:, :] = 0.5 * boxsize_cgs / unit_l_cgs
 
-star_v = zeros((1, 3))
+star_v = np.zeros((1, 3))
 star_v[:, :] = 0.0
 
 # increase mass to keep it at center
 star_m_cgs = m_cgs[0]
-star_ids = array([numPart + 1])
-star_h = array([h.max()])
+star_ids = np.array([numPart + 1])
+star_h = np.array([h.max()])
 
 # --------------------------------------------------
 
@@ -123,13 +123,13 @@ w.gas.velocities = v * UL / Ut * w.a.comoving**0
 w.gas.masses = m * UM * w.a.comoving**0
 w.gas.smoothing_lengths = h * UL * w.a.comoving
 w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 # stellar group
 w.stars.coordinates = star_pos * UL * w.a.comoving
 w.stars.velocities = star_v * UL / Ut * w.a.comoving**0
-w.stars.masses = array([star_m]) * UM * w.a.comoving**0
+w.stars.masses = np.array([star_m]) * UM * w.a.comoving**0
 w.stars.smoothing_lengths = star_h * UL * w.a.comoving
-w.stars.particle_ids = star_ids.astype(uint64)
+w.stars.particle_ids = star_ids.astype(np.uint64)
 
 w.write(fileName)

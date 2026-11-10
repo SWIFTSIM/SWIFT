@@ -20,7 +20,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the Square test in a periodic box
 
@@ -40,33 +40,33 @@ vol = 1.0
 
 numPart = L * L
 
-pos_x = arange(0, 1, 1.0 / L)
-xv, yv = meshgrid(pos_x, pos_x)
-pos = zeros((numPart, 3), dtype=float)
+pos_x = np.arange(0, 1, 1.0 / L)
+xv, yv = np.meshgrid(pos_x, pos_x)
+pos = np.zeros((numPart, 3), dtype=float)
 pos[:, 0] = xv.flatten()
 pos[:, 1] = yv.flatten()
 
 # Now we can get 2d masks!
-inside = logical_and.reduce([xv < 0.75, xv > 0.25, yv < 0.75, yv > 0.25])
+inside = np.logical_and.reduce([xv < 0.75, xv > 0.25, yv < 0.75, yv > 0.25])
 
 mass_in = rho0 / numPart
 mass_out = rho1 / numPart
 
-m = ones_like(xv) * mass_out
+m = np.ones_like(xv) * mass_out
 m[inside] = mass_in
 m = m.flatten()
 
-h = ones_like(m) / L
+h = np.ones_like(m) / L
 
 u_in = P0 / ((gamma - 1) * rho0)
 u_out = P1 / ((gamma - 1) * rho1)
-u = ones_like(xv) * u_out
+u = np.ones_like(xv) * u_out
 u[inside] = u_in
 u = u.flatten()
 
-vel = zeros_like(pos)
+vel = np.zeros_like(pos)
 
-ids = arange(1, numPart + 1)
+ids = np.arange(1, numPart + 1)
 
 
 # File
@@ -83,6 +83,6 @@ w.gas.velocities = vel * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileOutputName)

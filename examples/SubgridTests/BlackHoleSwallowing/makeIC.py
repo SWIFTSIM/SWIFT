@@ -20,7 +20,7 @@
 import h5py
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Some constants
 solar_mass_cgs = 1.988410e33
@@ -55,39 +55,39 @@ eps = 1e-6
 pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * boxsize_cgs / unit_l_cgs
 h = glass.gas.smoothing_lengths.value * boxsize_cgs / unit_l_cgs
 
-numPart = size(h)
+numPart = np.size(h)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m_cgs = zeros(numPart)
-u_cgs = zeros(numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m_cgs = np.zeros(numPart)
+u_cgs = np.zeros(numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 m_cgs[:] = rho_cgs * vol_cgs / numPart
 u_cgs[:] = P_cgs / (rho_cgs * (gamma - 1))
 
 # BHs
-bh_pos = zeros((2, 3))
+bh_pos = np.zeros((2, 3))
 bh_pos[0, :] = 0.5 * boxsize_cgs / unit_l_cgs
 
 # diff = [4.812127e-03, 4.908179e-03, -4.878537e-03] - bh_pos[0,:]
 
 # print diff
 
-bh_pos[1, :] = 0.5 * boxsize_cgs / unit_l_cgs + diff
+bh_pos[1, :] = 0.5 * boxsize_cgs / unit_l_cgs + np.diff
 
 print(bh_pos)
 
 # BHs don't move
-bh_v = zeros((2, 3))
+bh_v = np.zeros((2, 3))
 bh_v[:, :] = 0.0
 
 # increase mass to keep it at center
-bh_m_cgs = ones(2) * m_cgs[0]
-bh_ids = linspace(numPart + 1, numPart + 2, 2, dtype="L")
-bh_h = ones(2) * [h.max()]
+bh_m_cgs = np.ones(2) * m_cgs[0]
+bh_ids = np.linspace(numPart + 1, numPart + 2, 2, dtype="L")
+bh_h = np.ones(2) * [h.max()]
 
 print(bh_ids)
 
@@ -132,13 +132,13 @@ w.gas.velocities = v * UL / Ut * w.a.comoving**0
 w.gas.masses = m * UM * w.a.comoving**0
 w.gas.smoothing_lengths = h * UL * w.a.comoving
 w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 # black hole group
 w.black_holes.coordinates = bh_pos * UL * w.a.comoving
 w.black_holes.velocities = bh_v * UL / Ut * w.a.comoving**0
 w.black_holes.masses = bh_m * UM * w.a.comoving**0
-w.black_holes.particle_ids = bh_ids[::-1].astype(uint64)
+w.black_holes.particle_ids = bh_ids[::-1].astype(np.uint64)
 
 w.write(fileName)
 

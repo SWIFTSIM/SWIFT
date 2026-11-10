@@ -21,7 +21,7 @@ import unyt
 import swiftsimio as sw
 import sys
 import random
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file containing a cartesian distribution of particles
 # at a constant density and pressure in a square (2D) box
@@ -42,12 +42,12 @@ mass = boxSize**2 * rho / numPart
 internalEnergy = P / ((gamma - 1.0) * rho)
 
 # Generate particles
-coords = zeros((numPart, 3))
-v = zeros((numPart, 3))
-m = zeros(numPart)
-h = zeros(numPart)
-u = zeros(numPart)
-ids = zeros(numPart, dtype="L")
+coords = np.zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+m = np.zeros(numPart)
+h = np.zeros(numPart)
+u = np.zeros(numPart)
+ids = np.zeros(numPart, dtype="L")
 
 for i in range(L):
     for j in range(L):
@@ -83,6 +83,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = (ids + 1).astype(uint64)
+w.gas.particle_ids = (ids + 1).astype(np.uint64)
 
 w.write(fileName)

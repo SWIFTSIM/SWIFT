@@ -22,7 +22,6 @@ import h5py
 import unyt
 import swiftsimio as sw
 import numpy as np
-from numpy import *
 
 # Generates a swift IC file for the Gresho-Chan vortex in a periodic box
 
@@ -40,12 +39,12 @@ coords = fileInput.gas.coordinates.value
 h = fileInput.gas.smoothing_lengths.value
 ids = fileInput.gas.particle_ids.value
 boxSize = fileInput.metadata.boxsize[0].value
-numPart = size(h)
+numPart = np.size(h)
 
 # Now generate the rest
-m = ones(numPart) * rho0 * boxSize**3 / numPart
-u = zeros(numPart)
-v = zeros((numPart, 3))
+m = np.ones(numPart) * rho0 * boxSize**3 / numPart
+u = np.zeros(numPart)
+v = np.zeros((numPart, 3))
 
 # Add rho and material ids
 rho = np.ones(numPart)  # given rho0=1, this is easily done
@@ -57,7 +56,7 @@ for i in range(numPart):
     y = coords[i, 1]
 
     r2 = (x - boxSize / 2) ** 2 + (y - boxSize / 2) ** 2
-    r = sqrt(r2)
+    r = np.sqrt(r2)
 
     v_phi = 0.0
     if r < 0.2:
@@ -74,9 +73,9 @@ for i in range(numPart):
     if r < 0.2:
         P = P + 5.0 + 12.5 * r2
     elif r < 0.4:
-        P = P + 9.0 + 12.5 * r2 - 20.0 * r + 4.0 * log(r / 0.2)
+        P = P + 9.0 + 12.5 * r2 - 20.0 * r + 4.0 * np.log(r / 0.2)
     else:
-        P = P + 3.0 + 4.0 * log(2.0)
+        P = P + 3.0 + 4.0 * np.log(2.0)
     u[i] = P / ((gamma - 1.0) * rho0)
 
 
@@ -98,7 +97,7 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileOutputName)
 

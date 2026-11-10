@@ -19,7 +19,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the 1D Toro (2009) test 2 in a periodic box
 # Fun fact: because of the periodic boundaries, we get a second test for free
@@ -44,12 +44,12 @@ boxSize = x_max - x_min
 delta = boxSize / numPart
 
 # Build the arrays
-coords = zeros((numPart, 3))
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-h = zeros(numPart)
-u = zeros(numPart)
+coords = np.zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+h = np.zeros(numPart)
+u = np.zeros(numPart)
 
 # Set the particles on the left
 for i in range(numPart // 2):
@@ -85,6 +85,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)

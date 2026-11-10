@@ -19,7 +19,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the 2D Sod Shock in a periodic box
 
@@ -47,35 +47,35 @@ pos_R = glass_R.gas.coordinates.value
 h_L = glass_L.gas.smoothing_lengths.value
 h_R = glass_R.gas.smoothing_lengths.value
 
-radius_L = sqrt((pos_L[:, 0] - 0.5) ** 2 + (pos_L[:, 1] - 0.5) ** 2)
+radius_L = np.sqrt((pos_L[:, 0] - 0.5) ** 2 + (pos_L[:, 1] - 0.5) ** 2)
 index_L = radius_L < 0.25
 pos_LL = pos_L[index_L]
 h_LL = h_L[index_L]
 
-radius_R = sqrt((pos_R[:, 0] - 0.5) ** 2 + (pos_R[:, 1] - 0.5) ** 2)
+radius_R = np.sqrt((pos_R[:, 0] - 0.5) ** 2 + (pos_R[:, 1] - 0.5) ** 2)
 index_R = radius_R > 0.25
 pos_RR = pos_R[index_R]
 h_RR = h_R[index_R]
 
 # Merge things
-pos = append(pos_LL, pos_RR, axis=0)
-h = append(h_LL, h_RR)
+pos = np.append(pos_LL, pos_RR, axis=0)
+h = np.append(h_LL, h_RR)
 
-numPart_L = size(h_LL)
-numPart_R = size(h_RR)
-numPart = size(h)
+numPart_L = np.size(h_LL)
+numPart_R = np.size(h_RR)
+numPart = np.size(h)
 
-vol_L = pi * 0.25**2
-vol_R = 1.0 - pi * 0.25**2
+vol_L = np.pi * 0.25**2
+vol_R = 1.0 - np.pi * 0.25**2
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 for i in range(numPart):
-    x = sqrt((pos[i, 0] - 0.5) ** 2 + (pos[i, 1] - 0.5) ** 2)
+    x = np.sqrt((pos[i, 0] - 0.5) ** 2 + (pos[i, 1] - 0.5) ** 2)
 
     if x < 0.25:  # left
         u[i] = P_L / (rho_L * (gamma - 1.0))
@@ -100,6 +100,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)

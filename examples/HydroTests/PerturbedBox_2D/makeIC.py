@@ -21,7 +21,7 @@ import unyt
 import swiftsimio as sw
 import sys
 import random
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file containing a perturbed cartesian distribution of particles
 # at a constant density and pressure in a cubic box
@@ -43,12 +43,12 @@ mass = boxSize**2 * rho / numPart
 internalEnergy = P / ((gamma - 1.0) * rho)
 
 # Generate particles
-coords = zeros((numPart, 3))
-v = zeros((numPart, 3))
-m = zeros((numPart, 1))
-h = zeros((numPart, 1))
-u = zeros((numPart, 1))
-ids = zeros((numPart, 1), dtype="L")
+coords = np.zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+m = np.zeros((numPart, 1))
+h = np.zeros((numPart, 1))
+u = np.zeros((numPart, 1))
+ids = np.zeros((numPart, 1), dtype="L")
 
 for i in range(L):
     for j in range(L):
@@ -56,12 +56,12 @@ for i in range(L):
         x = (
             i * boxSize / L
             + boxSize / (2 * L)
-            + random.random() * pert * boxSize / (2.0 * L)
+            + np.random.random() * pert * boxSize / (2.0 * L)
         )
         y = (
             j * boxSize / L
             + boxSize / (2 * L)
-            + random.random() * pert * boxSize / (2.0 * L)
+            + np.random.random() * pert * boxSize / (2.0 * L)
         )
         z = 0
         coords[index, 0] = x
@@ -92,6 +92,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m[:, 0] * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h[:, 0] * unyt.cm * w.a.comoving
 w.gas.internal_energy = u[:, 0] * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = (ids[:, 0] + 1).astype(uint64)
+w.gas.particle_ids = (ids[:, 0] + 1).astype(np.uint64)
 
 w.write(fileName)

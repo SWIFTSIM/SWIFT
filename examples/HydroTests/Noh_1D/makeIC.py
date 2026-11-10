@@ -19,7 +19,7 @@
 
 import unyt
 import swiftsimio as sw
-from numpy import *
+import numpy as np
 
 # Generates a swift IC file for the 1D Noh problem test in a periodic box
 
@@ -31,8 +31,8 @@ P0 = 1.0e-6  # Background pressure
 fileName = "noh.hdf5"
 
 # ---------------------------------------------------
-coords = zeros((numPart, 3))
-h = zeros(numPart)
+coords = np.zeros((numPart, 3))
+h = np.zeros(numPart)
 vol = 2.0
 
 for i in range(numPart):
@@ -40,10 +40,10 @@ for i in range(numPart):
     h[i] = 1.2348 * vol / numPart
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 m[:] = rho0 * vol / numPart
 u[:] = P0 / (rho0 * (gamma - 1))
@@ -66,6 +66,6 @@ w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
 w.gas.masses = m * unyt.g * w.a.comoving**0
 w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
 w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = ids.astype(uint64)
+w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)
