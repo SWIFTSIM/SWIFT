@@ -13,7 +13,7 @@ Sod Shock
 ~~~~~~~~~
 
 To run the Sod Shock example, you need to follow the following instructions 
-(requires ``python3`` with the ``h5py`` and other standard scientific packages, 
+(requires ``python3`` with ``swiftsimio`` and other standard scientific packages, 
 as well as ``wget`` for grabbing the glass).
 
 
