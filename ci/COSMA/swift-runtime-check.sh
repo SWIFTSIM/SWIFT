@@ -60,7 +60,8 @@ cd examples/GravityTests/ExternalPointMass
 echo "------------------------"
 echo "External point mass test, 1 thread"
 echo "------------------------"
-python makeIC.py 10000
+python3 --version
+python3 makeIC.py 10000
 do_run ../../../swift -g -t 1 externalPointMass.yml
 
 echo "---------------------------------------------"
@@ -94,7 +95,7 @@ echo "--------------------------------------------"
 #wget http://virgodb/swift-webstorage/ICs/glassCube_32.hdf5
 link_data glassCube_64.hdf5
 link_data glassCube_32.hdf5
-python makeIC.py
+python3 makeIC.py
 do_run ../../../swift -s -t 4 -n 256 sodShock.yml
 
 #  Bigger test, requires a lot of resources, so don't run as long.
@@ -136,7 +137,7 @@ do_make clean
 do_configure --with-hydro-dimension=1 --with-parmetis --enable-debugging-checks --disable-vec --enable-debug
 do_make
 cd examples/HydroTests/SodShock_1D
-python makeIC.py
+python3 makeIC.py
 do_run ../../../swift -s -t 1 sodShock.yml
 cd ../../../
 
