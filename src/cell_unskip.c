@@ -462,7 +462,7 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->hydro.drift");
 #endif
     scheduler_activate(s, c->hydro.drift);
-    scheduler_activate(s, c->hydro.boundary);
+    if (c->hydro.boundary != NULL) scheduler_activate(s, c->hydro.boundary);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_hydro_sub_drift);
@@ -476,7 +476,8 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->hydro.drift");
 #endif
         scheduler_activate(s, parent->hydro.drift);
-        scheduler_activate(s, parent->hydro.boundary);
+        if (parent->hydro.boundary != NULL)
+          scheduler_activate(s, parent->hydro.boundary);
         break;
       }
     }
@@ -545,7 +546,7 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->grav.drift");
 #endif
     scheduler_activate(s, c->grav.drift);
-    scheduler_activate(s, c->grav.boundary);
+    if (c->grav.boundary != NULL) scheduler_activate(s, c->grav.boundary);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_grav_sub_drift);
@@ -562,7 +563,8 @@ void cell_activate_drift_gpart(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->grav.drift");
 #endif
         scheduler_activate(s, parent->grav.drift);
-        scheduler_activate(s, parent->grav.boundary);
+        if (parent->grav.boundary != NULL)
+          scheduler_activate(s, parent->grav.boundary);
         break;
       }
     }
@@ -587,7 +589,7 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->stars.drift");
 #endif
     scheduler_activate(s, c->stars.drift);
-    scheduler_activate(s, c->stars.boundary);
+    if (c->stars.boundary != NULL) scheduler_activate(s, c->stars.boundary);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_stars_sub_drift);
@@ -601,7 +603,8 @@ void cell_activate_drift_spart(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->stars.drift");
 #endif
         scheduler_activate(s, parent->stars.drift);
-        scheduler_activate(s, parent->stars.boundary);
+        if (parent->stars.boundary != NULL)
+          scheduler_activate(s, parent->stars.boundary);
         break;
       }
     }
@@ -627,7 +630,8 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->black_holes.drift");
 #endif
     scheduler_activate(s, c->black_holes.drift);
-    scheduler_activate(s, c->black_holes.boundary);
+    if (c->black_holes.boundary != NULL)
+      scheduler_activate(s, c->black_holes.boundary);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_bh_sub_drift);
@@ -641,7 +645,8 @@ void cell_activate_drift_bpart(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->black_holes.drift");
 #endif
         scheduler_activate(s, parent->black_holes.drift);
-        scheduler_activate(s, parent->black_holes.boundary);
+        if (parent->black_holes.boundary != NULL)
+          scheduler_activate(s, parent->black_holes.boundary);
         break;
       }
     }
@@ -667,7 +672,7 @@ void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
       error("Trying to activate un-existing c->sinks.drift");
 #endif
     scheduler_activate(s, c->sinks.drift);
-    scheduler_activate(s, c->sinks.boundary);
+    if (c->sinks.boundary != NULL) scheduler_activate(s, c->sinks.boundary);
   } else {
     for (struct cell *parent = c->parent;
          parent != NULL && !cell_get_flag(parent, cell_flag_do_sink_sub_drift);
@@ -681,7 +686,8 @@ void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
           error("Trying to activate un-existing parent->sinks.drift");
 #endif
         scheduler_activate(s, parent->sinks.drift);
-        scheduler_activate(s, parent->sinks.boundary);
+        if (parent->sinks.boundary != NULL)
+          scheduler_activate(s, parent->sinks.boundary);
         break;
       }
     }

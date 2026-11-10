@@ -172,7 +172,6 @@ const char *subtaskID_names[task_subtype_count] = {
     "rt_gradient",
     "rt_transport",
     "boundary_open",
-    "boundary_periodic",
     "boundary_reflective",
 };
 
