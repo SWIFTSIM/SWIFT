@@ -1839,6 +1839,9 @@ void engine_print_stats(struct engine *e) {
     stats_write_to_file(e->file_stats, &global_stats, e->time, e->cosmology->a,
                         e->cosmology->z, e->step);
 
+  /* Collective: the far light of the packet transport. */
+  radiation_packet_far_diagnostics(e);
+
   /* Flag that we dumped some statistics */
   e->step_props |= engine_step_prop_statistics;
 

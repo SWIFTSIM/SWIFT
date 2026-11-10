@@ -122,11 +122,10 @@ static double radiation_packet_arrival_per_length = 0.0;
 static double radiation_packet_limit_speed = 0.0;
 static int radiation_packet_ticks_are_ln_a = 0;
 
-#ifdef SWIFT_DEBUG_CHECKS_ISRF
 /*! Number of times the far cells of a particle became wider, of pieces of
     light that fell beyond the widest far cells, and of deliveries to a
-    receiver that moves away faster than the clamp allows, since the last
-    report. */
+    receiver that moves away faster than the clamp allows, on this rank since
+    the start. Rare events: one atomic operation each. */
 static long long radiation_packet_coarsening_count = 0;
 static long long radiation_packet_overflow_count = 0;
 static long long radiation_packet_clamp_count = 0;
@@ -146,11 +145,6 @@ static void radiation_packet_count_overflow(void) {
 static void radiation_packet_count_clamp(void) {
   __sync_fetch_and_add(&radiation_packet_clamp_count, 1);
 }
-#else
-static void radiation_packet_count_coarsening(void) {}
-static void radiation_packet_count_overflow(void) {}
-static void radiation_packet_count_clamp(void) {}
-#endif
 
 /*! Largest share of the placed light that may land in the far cells before
     #radiation_packet_far_share_report warns. Light in the far cells leaves
@@ -174,15 +168,23 @@ static void radiation_packet_count_clamp(void) {}
     the far cells, and the number of placements, since the last
     #radiation_packet_far_share_report. One record per thread, on its own cache
     line, so that the placement takes no atomic operation. Only the light of a
-    new share counts, and only when the receiver has a known step: light placed
-    before that is placed again at the first merge on the final lattice, and
-    the light that a change of the lattice places again is not new. */
+    new share counts. The light of a receiver with a known step is the first
+    triple. The light of a receiver without a known step is placed again at its
+    first merge on the final lattice: it is the second triple, apart, so that it
+    does not enter the first share. The light that a change of the lattice
+    places again is not new and is in neither. */
 struct radiation_packet_placed {
   double all;
   double far;
   double count;
-  char pad[40];
+  double unknown_all;
+  double unknown_far;
+  double unknown_count;
+  char pad[16];
 } __attribute__((aligned(64)));
+
+/*! Number of sums of #radiation_packet_placed. */
+#define RADIATION_PACKET_PLACED_SUMS 6
 
 #define RADIATION_PACKET_MAX_THREADS 1024
 static struct radiation_packet_placed
@@ -194,7 +196,8 @@ static _Thread_local struct radiation_packet_placed
 /*! The same summed over the steps on rank 0, and whether the warning was
     printed. The sums start with the run or with its last restart: they are
     not in the restart file. */
-static double radiation_packet_placed_total[3] = {0.0, 0.0, 0.0};
+static double radiation_packet_placed_total[RADIATION_PACKET_PLACED_SUMS];
+static double radiation_packet_placed_window[RADIATION_PACKET_PLACED_SUMS];
 static int radiation_packet_far_share_warned = 0;
 
 /*! The record of the calling thread, registered at its first use. */
@@ -476,25 +479,29 @@ static void radiation_packet_report_bin_demand(const struct engine *e) {
  *
  * @param e The #engine.
  * @param step (out) Light placed in all, light placed in the far cells, number
- * of placements.
+ * of placements, then the same three for the receivers without a known step.
  */
-static void radiation_packet_placed_collect(const struct engine *e,
-                                            double step[3]) {
-  step[0] = step[1] = step[2] = 0.;
+static void radiation_packet_placed_collect(
+    const struct engine *e, double step[RADIATION_PACKET_PLACED_SUMS]) {
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++) step[k] = 0.;
   const int n = radiation_packet_placed_registered;
   for (int k = 0; k < n; k++) {
-    step[0] += radiation_packet_placed_threads[k].all;
-    step[1] += radiation_packet_placed_threads[k].far;
-    step[2] += radiation_packet_placed_threads[k].count;
-    radiation_packet_placed_threads[k].all = 0.;
-    radiation_packet_placed_threads[k].far = 0.;
-    radiation_packet_placed_threads[k].count = 0.;
+    struct radiation_packet_placed *t = &radiation_packet_placed_threads[k];
+    step[0] += t->all;
+    step[1] += t->far;
+    step[2] += t->count;
+    step[3] += t->unknown_all;
+    step[4] += t->unknown_far;
+    step[5] += t->unknown_count;
+    t->all = t->far = t->count = 0.;
+    t->unknown_all = t->unknown_far = t->unknown_count = 0.;
   }
 #ifdef WITH_MPI
-  double sum[3];
-  MPI_Reduce(step, sum, 3, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  double sum[RADIATION_PACKET_PLACED_SUMS];
+  MPI_Reduce(step, sum, RADIATION_PACKET_PLACED_SUMS, MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
   if (e->nodeID == 0)
-    for (int k = 0; k < 3; k++) step[k] = sum[k];
+    for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++) step[k] = sum[k];
 #endif
 }
 
@@ -513,10 +520,13 @@ static void radiation_packet_placed_collect(const struct engine *e,
  */
 void radiation_packet_far_share_report(const struct engine *e) {
   if (!radiation_packet_light_speed_limited) return;
-  double step[3];
+  double step[RADIATION_PACKET_PLACED_SUMS];
   radiation_packet_placed_collect(e, step);
   if (e->nodeID != 0) return;
-  for (int k = 0; k < 3; k++) radiation_packet_placed_total[k] += step[k];
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++) {
+    radiation_packet_placed_total[k] += step[k];
+    radiation_packet_placed_window[k] += step[k];
+  }
   const double *t = radiation_packet_placed_total;
   if (!radiation_packet_far_share_warned &&
       t[2] >= RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS &&
@@ -544,16 +554,123 @@ void radiation_packet_far_share_report(const struct engine *e) {
  */
 void radiation_packet_far_share_final(const struct engine *e) {
   if (!radiation_packet_light_speed_limited || e->step == 0) return;
-  double step[3];
+  double step[RADIATION_PACKET_PLACED_SUMS];
   radiation_packet_placed_collect(e, step);
+  long long counts[3] = {radiation_packet_coarsening_count,
+                         radiation_packet_overflow_count,
+                         radiation_packet_clamp_count};
+#ifdef WITH_MPI
+  long long total[3];
+  MPI_Reduce(counts, total, 3, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (e->nodeID == 0)
+    for (int k = 0; k < 3; k++) counts[k] = total[k];
+#endif
   if (e->nodeID != 0) return;
-  for (int k = 0; k < 3; k++) radiation_packet_placed_total[k] += step[k];
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++)
+    radiation_packet_placed_total[k] += step[k];
   const double *t = radiation_packet_placed_total;
   if (t[0] > 0.)
     message(
         "ISRF packet light in the far arrival cells over the run: %.3g of the "
         "new light (%.0f placements), limit %.3g.",
         t[1] / t[0], t[2], RADIATION_PACKET_FAR_SHARE_LIMIT);
+  if (t[3] > 0.)
+    message(
+        "ISRF packet light placed in receivers without a known step over the "
+        "run: %.3g of the new light (%.0f placements), %.3g of it in the far "
+        "arrival cells.",
+        t[3] / (t[0] + t[3]), t[5], t[4] / t[3]);
+  message(
+      "ISRF packet arrival cells over the run: far cells widened %lld times, "
+      "%lld pieces of light beyond the widest far cells, %lld deliveries to a "
+      "receiver that moves away faster than %g of the limit speed.",
+      counts[0], counts[1], counts[2],
+      1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
+}
+
+/**
+ * @brief Print the far light of the packet transport at the statistics
+ * cadence: the far share of the new light in the window since the last call
+ * and over the run, the share placed in receivers without a known step, the
+ * stock of light that waits in the far cells now, and the counters of the far
+ * cells.
+ *
+ * The stock is the sum of the far cell energy over the local gas: it holds the
+ * light parked in receivers that have not merged since it arrived, which
+ * neither the placement counters nor #radiation_packet_far_share_report see.
+ * The placed light is that of the steps before the current one. Collective:
+ * called by every rank from engine_print_stats(). Prints once per step, even if
+ * the statistics are written several times in it. Does nothing without a light
+ * speed limit, on every rank alike.
+ *
+ * @param e The #engine.
+ */
+void radiation_packet_far_diagnostics(const struct engine *e) {
+  if (!radiation_packet_light_speed_limited) return;
+  static int last_step = -1;
+  if (e->step == last_step) return;
+  last_step = e->step;
+  const struct space *s = e->s;
+  double stock[2] = {0., 0.};
+  long long holders[2] = {0, 0};
+  for (size_t i = 0; i < s->nr_parts; i++) {
+    const struct part *p = &s->parts[i];
+    if (p->time_bin == time_bin_inhibited) continue;
+    const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+    double held = 0.;
+    for (int k = 0; k < RADIATION_PACKET_SLOTS; k++)
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+          held += (double)pk->slot[k].band[b].far_energy[c];
+    if (held == 0.) continue;
+    stock[0] += held;
+    holders[0]++;
+    if (pk->step_ti == 0) {
+      stock[1] += held;
+      holders[1]++;
+    }
+  }
+  long long counts[3] = {radiation_packet_coarsening_count,
+                         radiation_packet_overflow_count,
+                         radiation_packet_clamp_count};
+#ifdef WITH_MPI
+  double stock_sum[2];
+  long long holders_sum[2], counts_sum[3];
+  MPI_Reduce(stock, stock_sum, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+  MPI_Reduce(holders, holders_sum, 2, MPI_LONG_LONG, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  MPI_Reduce(counts, counts_sum, 3, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (e->nodeID == 0) {
+    for (int k = 0; k < 2; k++) {
+      stock[k] = stock_sum[k];
+      holders[k] = holders_sum[k];
+    }
+    for (int k = 0; k < 3; k++) counts[k] = counts_sum[k];
+  }
+#endif
+  if (e->nodeID != 0) return;
+  const double *w = radiation_packet_placed_window;
+  const double *t = radiation_packet_placed_total;
+  const double window_all = w[0] + w[3];
+  const double run_all = t[0] + t[3];
+  message(
+      "ISRF packet far light, step %d: in the far arrival cells %.3g of the "
+      "new "
+      "light since the last statistics (%.0f placements) and %.3g over the run "
+      "(%.0f placements), of which placed in receivers without a known step "
+      "%.3g and %.3g of the new light (%.0f and %.0f placements). Waiting now "
+      "in the far cells: %.3g energy units in %lld particles (%.3g of the new "
+      "light of the run), %.3g in %lld particles without a known step. Far "
+      "cells widened %lld times, %lld pieces beyond the widest far cells, "
+      "%lld clamped deliveries over the run.",
+      e->step, window_all > 0. ? (w[1] + w[4]) / window_all : 0., w[2] + w[5],
+      run_all > 0. ? (t[1] + t[4]) / run_all : 0., t[2] + t[5],
+      window_all > 0. ? w[3] / window_all : 0.,
+      run_all > 0. ? t[3] / run_all : 0., w[5], t[5], stock[0], holders[0],
+      run_all > 0. ? stock[0] / run_all : 0., stock[1], holders[1], counts[0],
+      counts[1], counts[2]);
+  for (int k = 0; k < RADIATION_PACKET_PLACED_SUMS; k++)
+    radiation_packet_placed_window[k] = 0.;
 }
 
 /**
@@ -1213,7 +1330,7 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
- * @brief Counters of the arrival bins since the last report, for tests.
+ * @brief Counters of the arrival bins on this rank since the start, for tests.
  *
  * @param widened (return) Times the far cells of a particle became wider.
  * @param beyond (return) Pieces of light beyond the widest far cells.
@@ -1403,8 +1520,8 @@ void radiation_packet_left_box_restore(FILE *stream) {
  * @brief Print, once per step, how many times the far arrival cells had to
  * widen, how many pieces of light were beyond the widest far cells and how
  * many deliveries went to a receiver that moved away faster than the clamp of
- * the delay allows, summed over the ranks, then reset the counters of every
- * rank. Prints nothing if all are zero. Also prints the ledger of the gas that
+ * the delay allows since the last step, summed over the ranks. Prints nothing
+ * if all are zero. Also prints the ledger of the gas that
  * left the box and the box ledger when they changed. Collective: called by
  * every rank from engine_step().
  *
@@ -1445,12 +1562,13 @@ void radiation_packet_step_diagnostics(const struct engine *e) {
   printed_box = *x;
 
   if (!radiation_packet_light_speed_limited) return;
-  long long counts[3] = {radiation_packet_coarsening_count,
-                         radiation_packet_overflow_count,
-                         radiation_packet_clamp_count};
-  radiation_packet_coarsening_count = 0;
-  radiation_packet_overflow_count = 0;
-  radiation_packet_clamp_count = 0;
+  static long long counted[3];
+  long long counts[3] = {radiation_packet_coarsening_count - counted[0],
+                         radiation_packet_overflow_count - counted[1],
+                         radiation_packet_clamp_count - counted[2]};
+  counted[0] = radiation_packet_coarsening_count;
+  counted[1] = radiation_packet_overflow_count;
+  counted[2] = radiation_packet_clamp_count;
 #ifdef WITH_MPI
   long long total[3];
   MPI_Reduce(counts, total, 3, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -1909,10 +2027,11 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
  * (#radiation_packet_add_to_far)?
  * @param faint Energy below which light is faint
  * (#radiation_packet_faint_energy).
- * @param fresh Is the share new, on a lattice that is final: not light that
- * waited and is placed again after a change of the lattice, and not light of a
- * receiver without a known step, which is placed again at its first merge? Only
- * such light counts in the far share (#radiation_packet_far_share_report).
+ * @param fresh 1 for a new share of a receiver with a known step, on a lattice
+ * that is final: it counts in the far share
+ * (#radiation_packet_far_share_report). 2 for a new share of a receiver without
+ * a known step, which is placed again at its first merge: it counts apart. 0
+ * for light that waited and is placed again after a change of the lattice.
  */
 static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
                                    const double ub[RADIATION_PACKET_PIECES],
@@ -2044,9 +2163,15 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
   }
   if (fresh && placed > 0.) {
     struct radiation_packet_placed *mine = radiation_packet_placed_record();
-    mine->all += placed;
-    mine->far += placed_far;
-    mine->count += 1.;
+    if (fresh == 1) {
+      mine->all += placed;
+      mine->far += placed_far;
+      mine->count += 1.;
+    } else {
+      mine->unknown_all += placed;
+      mine->unknown_far += placed_far;
+      mine->unknown_count += 1.;
+    }
   }
 }
 
@@ -2266,7 +2391,7 @@ void radiation_packet_deposit(struct feedback_isrf_packet_data *pk,
                            ? radiation_packet_faint_energy(pk, energy_sum)
                            : 0.;
   radiation_packet_place(sl, ub, energy, photons, first, last, salt, known_step,
-                         faint, known_step);
+                         faint, known_step ? 1 : 2);
 }
 
 /**

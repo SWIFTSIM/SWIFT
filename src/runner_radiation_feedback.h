@@ -370,15 +370,19 @@ radiation_packet_refresh_frame_width(const struct engine *e) {}
 #endif
 
 /* The share of the packet light in the far arrival cells is checked once per
-   step, on every rank. Empty when the ISRF part is not compiled. */
+   step, on every rank, and printed with the far stock at the statistics
+   cadence. Empty when the ISRF part is not compiled. */
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 void radiation_packet_far_share_report(const struct engine *e);
 void radiation_packet_far_share_final(const struct engine *e);
+void radiation_packet_far_diagnostics(const struct engine *e);
 #else
 __attribute__((always_inline)) INLINE static void
 radiation_packet_far_share_report(const struct engine *e) {}
 __attribute__((always_inline)) INLINE static void
 radiation_packet_far_share_final(const struct engine *e) {}
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_diagnostics(const struct engine *e) {}
 #endif
 
 /* The arrival bin counters are reported once per step, and the ledger of the
