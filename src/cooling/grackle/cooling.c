@@ -57,13 +57,6 @@ gr_float cooling_new_energy(const struct phys_const *phys_const,
                             const struct part *p, struct xpart *xp, double dt,
                             double dt_therm);
 
-gr_float cooling_time(const struct phys_const *phys_const,
-                      const struct unit_system *us,
-                      const struct hydro_props *hydro_properties,
-                      const struct cosmology *cosmo,
-                      const struct cooling_function_data *cooling,
-                      const struct part *p, struct xpart *xp);
-
 double cooling_get_physical_density(
     const struct part *p, const struct cosmology *cosmo,
     const struct cooling_function_data *cooling);
@@ -1007,7 +1000,11 @@ gr_float cooling_time(const struct phys_const *phys_const,
                       const struct hydro_props *hydro_props,
                       const struct cosmology *cosmo,
                       const struct cooling_function_data *cooling,
-                      const struct part *p, struct xpart *xp) {
+                      const struct part *p, const struct xpart *xp_in) {
+
+  /* The copy back to the particle is done on a local copy. */
+  struct xpart xp_local = *xp_in;
+  struct xpart *xp = &xp_local;
 
   /* set current time */
   code_units units = cooling->units;
@@ -1023,6 +1020,7 @@ gr_float cooling_time(const struct phys_const *phys_const,
   int grid_start[GRACKLE_RANK] = {0, 0, 0};
   int grid_end[GRACKLE_RANK] = {GRACKLE_NPART - 1, 0, 0};
 
+  data.grid_dx = 0.;
   data.grid_rank = GRACKLE_RANK;
   data.grid_dimension = grid_dimension;
   data.grid_start = grid_start;
