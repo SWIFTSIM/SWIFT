@@ -14,3 +14,6 @@ fi
 
 # Plot the solutions
 python3 ./plotSnapshots.py
+
+# Make the movie
+python3 ./makeMovie.py

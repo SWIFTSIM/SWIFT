@@ -19,6 +19,10 @@ particles, so the kernels of the particles close to a wall are truncated.
 The number of particles is set when generating the initial conditions and
 defaults to one million: `python3 makeIC.py --n_part 1000000`.
 
+`python3 makeMovie.py` renders every snapshot in the directory into
+`dam_break.mp4` (requires swiftsimio and ffmpeg). Lower `Snapshots:delta_time`
+for a smoother movie.
+
 Configuration options:
 
 REMIX:
