@@ -922,8 +922,43 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       cooling_read_choice(parameter_file, "GeajayCooling:h2_cie_cooling",
                           "h2_cie_cooling", 0, NULL, 0);
 
-  cooling->H2_on_dust = parser_get_opt_param_int(
-      parameter_file, "GeajayCooling:h2_formation_on_dust", 0);
+  cooling->dust_model =
+      cooling_read_choice(parameter_file, "GeajayCooling:dust_model",
+                          "dust_model", GEAJAY_DUST_MODEL_NONE, NULL, 0);
+  if (cooling->dust_model != GEAJAY_DUST_MODEL_NONE &&
+      cooling->dust_model != GEAJAY_DUST_MODEL_BASIC)
+    error("GeajayCooling:dust_model must be none (0) or basic (1), got %d.",
+          cooling->dust_model);
+
+  cooling->dust_to_gas_model = cooling_read_choice(
+      parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
+      GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);
+  if (cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_LINEAR &&
+      cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
+    error(
+        "GeajayCooling:dust_to_gas_model must be linear (0) or "
+        "remy_ruyer_2014 (1), got %d.",
+        cooling->dust_to_gas_model);
+
+  cooling->H2_on_dust = cooling_read_choice(
+      parameter_file, "GeajayCooling:h2_formation_on_dust",
+      "h2_formation_on_dust", GEAJAY_H2_ON_DUST_DEFAULT, NULL, 0);
+  if (cooling->H2_on_dust < 0) cooling->H2_on_dust = GEAJAY_H2_ON_DUST_DEFAULT;
+  if (cooling->H2_on_dust > GEAJAY_H2_ON_DUST_ENABLED)
+    error(
+        "GeajayCooling:h2_formation_on_dust must be default (-1), disabled "
+        "(0) or enabled (1), got %d.",
+        cooling->H2_on_dust);
+
+  /* The dust-to-gas ratio is read with the dust chemistry or with the H2
+     formation on grains */
+  if (cooling->dust_model == GEAJAY_DUST_MODEL_NONE &&
+      cooling->H2_on_dust != GEAJAY_H2_ON_DUST_ENABLED)
+    cooling_refuse_unread_choice(
+        parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
+        GEAJAY_DUST_TO_GAS_LINEAR,
+        "GeajayCooling:dust_model is none and h2_formation_on_dust is not "
+        "enabled, so no dust is computed");
 
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
@@ -944,7 +979,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     } h2_switches[] = {
         {"GeajayCooling:h2_three_body_fit", cooling->H2_three_body_rate},
         {"GeajayCooling:h2_cie_cooling", cooling->H2_cie_cooling},
-        {"GeajayCooling:h2_formation_on_dust", cooling->H2_on_dust},
+        {"GeajayCooling:h2_formation_on_dust",
+         cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED},
         {"GeajayCooling:h2_photodissociation_heating",
          cooling->H2_photodissociation_heating}};
     for (size_t i = 0; i < sizeof(h2_switches) / sizeof(h2_switches[0]); i++)

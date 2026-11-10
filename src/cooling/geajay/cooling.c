@@ -781,6 +781,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->chemistry_data.HydrogenFractionByMass);
   message("chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
   message("chemistry_data.h2_on_dust = %d", cooling->chemistry_data.h2_on_dust);
+  message("chemistry_data.dust_to_gas_model = %d",
+          cooling->chemistry_data.dust_to_gas_model);
   message("chemistry_data.use_dust_density_field = %d",
           cooling->chemistry_data.use_dust_density_field);
   message("chemistry_data.local_dust_to_gas_ratio = %.3g",
@@ -1772,6 +1774,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->three_body_rate = cooling->H2_three_body_rate;
   chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
   chemistry->cie_cooling = cooling->H2_cie_cooling;
+  chemistry->dust_chemistry = cooling->dust_model;
+  chemistry->dust_to_gas_model = cooling->dust_to_gas_model;
   chemistry->h2_on_dust = cooling->H2_on_dust;
   chemistry->H2_photodissociation_heating =
       cooling->H2_photodissociation_heating;
