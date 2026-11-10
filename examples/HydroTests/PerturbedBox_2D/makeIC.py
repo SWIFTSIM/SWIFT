@@ -22,6 +22,9 @@ import swiftsimio as sw
 import sys
 import numpy as np
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 # Generates a swift IC file containing a perturbed cartesian distribution of particles
 # at a constant density and pressure in a cubic box
 

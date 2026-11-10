@@ -25,6 +25,9 @@ import h5py
 import unyt
 import swiftsimio as sw
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 # constant thermal energy
 # the definition below assumes the same thermal energy is defined in const.h,
 # and also that the code was configured with an adiabatic index of 5./3.

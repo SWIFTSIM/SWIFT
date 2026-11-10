@@ -23,6 +23,9 @@ import swiftsimio as sw
 import argparse as ap
 import numpy as np
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 parser = ap.ArgumentParser(
     description="Generates a swift IC file for the Evrard collapse"
 )

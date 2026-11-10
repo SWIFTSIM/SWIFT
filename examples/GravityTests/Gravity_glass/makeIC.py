@@ -23,6 +23,9 @@ import numpy as np
 import unyt
 import swiftsimio as sw
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 # Generates a swift IC file containing a cartesian distribution of DM particles
 # with a density of 1
 

@@ -24,6 +24,9 @@ import argparse
 import swiftsimio as sw
 import unyt
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 parser = argparse.ArgumentParser(
     description="Generate discrete realization of Anisotropic Plummer Model"
 )

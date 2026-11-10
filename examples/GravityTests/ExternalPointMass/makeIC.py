@@ -24,6 +24,9 @@ import unyt
 import swiftsimio as sw
 import math
 
+# Fixed seed so that the initial conditions are reproducible
+numpy.random.seed(1)
+
 # Generates a random distriution of particles, for motion in an external potential centred at (0,0,0)
 
 # physical constants in cgs

@@ -21,6 +21,9 @@ import numpy as np
 from scipy import special
 import h5py
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 G = 4.299e-6
 
 

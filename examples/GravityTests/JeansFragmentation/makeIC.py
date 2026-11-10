@@ -24,6 +24,9 @@ from optparse import OptionParser
 from astropy import units
 from astropy import constants
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 
 def parse_options():
 

@@ -22,6 +22,9 @@ import numpy as np
 import unyt
 import swiftsimio as sw
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 # Generates a swift IC file for the Smoothed Metallicity test
 # in a periodic cubic box
 

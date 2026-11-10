@@ -28,6 +28,9 @@ import swiftsimio as sw
 
 from scipy.special import erfinv
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 
 class Particles(object):
     """
