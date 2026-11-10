@@ -29,3 +29,7 @@ executables according to their configuration.
 This example requires the code to be configured to use the planetary
 hydrodynamics scheme and planetary equations of state:
     --with-hydro=planetary --with-equation-of-state=planetary
+
+Besides the packages of `examples/requirements.txt`, `plot_snapshots.py`
+needs woma, in a version older than 1.5:
+    python3 -m pip install "woma<1.5"

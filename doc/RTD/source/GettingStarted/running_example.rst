@@ -9,12 +9,60 @@ Now that you have built the code, you will want to run an example!
 Let's start with a hydrodynamics only example, the 3D Sod Shock.
 
 
+Python requirements
+~~~~~~~~~~~~~~~~~~~
+
+The examples use python scripts to make their initial conditions and to plot
+their results. These need ``python3`` (version 3.11 or later) and the packages
+listed in ``examples/requirements.txt``, which can be installed with:
+
+.. code-block:: bash
+
+   python3 -m pip install -r examples/requirements.txt
+
+The main one is `swiftsimio <https://swiftsimio.readthedocs.io/en/latest/>`_
+(version 12.4.0 or later), which is used to write the initial conditions and
+to read the snapshots. The download scripts also need ``wget``.
+
+A few examples need additional packages:
+
+==================  ========================================================
+Package             Examples
+==================  ========================================================
+``woma`` (< 1.5)    ``Planetary/DemoImpact``, ``Planetary/DemoImpactInitCond``,
+                    ``Planetary/JupiterLikePlanet``,
+                    ``Planetary/RayleighTaylor_EarthLike_3D``,
+                    ``Planetary/RayleighTaylor_JupiterLike_3D``
+``p_tqdm``          the ``makeMovie.py`` scripts of ``HydroTests/BlobTest_3D``,
+                    ``HydroTests/Rayleigh-Taylor_2D`` and
+                    ``HydroTests/SquareTest_2D``
+``pyyaml``          ``RadiativeTransferTests/CosmoCoolingTest``,
+                    ``RadiativeTransferTests/CosmoHeatingTest``,
+                    ``RadiativeTransferTests/HeatingTest``
+                    (``generate_output_times.py``)
+``yt``              ``HydroTests/KeplerianRing`` (optional plots)
+``galpy``           ``GravityTests/NFW_Halo``
+``agama``           ``GravityTests/ExternalAgama``
+``pNbody``          ``GravityTests/ExternalAgama``,
+                    ``IsolatedGalaxy/IsolatedGalaxy_multi_component``
+``hmf``             ``SmallCosmoVolume/SmallCosmoVolume_VELOCIraptor``
+``healpy``          ``SmallCosmoVolume/SmallCosmoVolume_lightcone``
+``velociraptor``    ``SmallCosmoVolume/SmallCosmoVolume_DM`` (CSDS analysis,
+                    which also needs SWIFT configured with
+                    ``--enable-csds --enable-python``)
+==================  ========================================================
+
+Versions 1.5 and later of ``woma`` fail to compute the equations of state used
+by these examples, so use an earlier version
+(``python3 -m pip install "woma<1.5"``).
+
+
 Sod Shock
 ~~~~~~~~~
 
-To run the Sod Shock example, you need to follow the following instructions 
-(requires ``python3`` with ``swiftsimio`` and other standard scientific packages, 
-as well as ``wget`` for grabbing the glass).
+To run the Sod Shock example, you need to follow the following instructions
+(requires the python packages listed above, as well as ``wget`` for grabbing
+the glass).
 
 
 .. code-block:: bash

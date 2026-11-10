@@ -125,3 +125,7 @@ $$
 This is used to convert the $GM$ used by the initial conditions generator
 (`--gravitymass`, 1 by default) to the mass of the central potential
 (`PointMassPotential:mass`, $1/G = 1.498351\times10^{7}$ in the parameter file).
+
+The script `testplots.py` needs the python package yt, besides the packages
+of `examples/requirements.txt`. `plotSolution.py` uses it when it is
+available.
