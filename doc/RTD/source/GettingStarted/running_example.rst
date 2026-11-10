@@ -97,7 +97,7 @@ https://github.com/SWIFTSIM/swiftsim/issues.
 Small Cosmological Volume
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As a second example, we run a small cosmolgical 
+As a second example, we run a small cosmological 
 volume containing dark matter only starting at redshift :math:`z = 50`.
 Like for the Sod Shock example, it suffices to configure (``./configure``) and 
 compile (``make``) the code without any extra flags.
