@@ -45,7 +45,7 @@ noinst_LTLIBRARIES += libgrav_mpi.la
 endif
 
 # List required headers
-include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h part.h const.h
+include_HEADERS = space.h runner.h queue.h task.h lock.h cell.h cell_boundary.h part.h const.h
 include_HEADERS += boundary_conditions.h
 include_HEADERS += cell_hydro.h cell_stars.h cell_grav.h cell_sinks.h cell_black_holes.h cell_rt.h cell_grid.h
 include_HEADERS += engine.h swift.h serial_io.h timers.h debug.h scheduler.h proxy.h parallel_io.h
@@ -183,7 +183,7 @@ AM_SOURCES += runner_recv.c runner_pack.c
 AM_SOURCES += runner_sort.c runner_drift.c runner_black_holes.c runner_time_integration.c
 AM_SOURCES += runner_doiact_hydro_vec.c runner_others.c
 AM_SOURCES += runner_sinks.c
-AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_lock.c cell_pack.c cell_split.c
+AM_SOURCES += cell.c cell_convert_part.c cell_drift.c cell_boundary.c cell_lock.c cell_pack.c cell_split.c
 AM_SOURCES += cell_unskip.c cell_grid.c cell_init.c
 AM_SOURCES += engine.c engine_maketasks.c engine_split_particles.c engine_strays.c
 AM_SOURCES += engine_drift.c engine_unskip.c engine_collect_end_of_step.c

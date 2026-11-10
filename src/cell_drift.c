@@ -27,6 +27,7 @@
 
 /* Local headers. */
 #include "active.h"
+#include "cell_boundary.h"
 #include "drift.h"
 #include "feedback.h"
 #include "lightcone/lightcone.h"
@@ -291,41 +292,8 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* In non-periodic BC runs, remove particles that crossed the border */
-      if (!periodic) {
-
-        /* Did the particle leave the box?  */
-        if ((p->x[0] > dim[0]) || (p->x[0] < 0.) ||  // x
-            (p->x[1] > dim[1]) || (p->x[1] < 0.) ||  // y
-            (p->x[2] > dim[2]) || (p->x[2] < 0.)) {  // z
-
-          lock_lock(&e->s->lock);
-
-          /* Re-check that the particle has not been removed
-           * by another thread before we do the deed. */
-          if (!part_is_inhibited(p, e)) {
-
-#ifdef WITH_CSDS
-            if (e->policy & engine_policy_csds) {
-              /* Log the particle one last time. */
-              csds_log_part(e->csds, p, xp, e, /* log_all */ 1,
-                            csds_flag_delete, /* data */ 0);
-            }
-#endif
-
-            /* One last action before death? */
-            hydro_remove_part(p, xp, e->time);
-
-            /* Remove the particle entirely */
-            cell_remove_part(e, c, p, xp);
-          }
-
-          if (lock_unlock(&e->s->lock) != 0)
-            error("Failed to unlock the space!");
-
-          continue;
-        }
-      }
+      /* Open boundaries remove escaped particles in the following task. */
+      if (!periodic && cell_boundary_outside(p->x, dim)) continue;
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
@@ -512,42 +480,8 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* In non-periodic BC runs, remove particles that crossed the border */
-      if (!periodic) {
-
-        /* Did the particle leave the box?  */
-        if ((gp->x[0] > dim[0]) || (gp->x[0] < 0.) ||  // x
-            (gp->x[1] > dim[1]) || (gp->x[1] < 0.) ||  // y
-            (gp->x[2] > dim[2]) || (gp->x[2] < 0.)) {  // z
-
-          lock_lock(&e->s->lock);
-
-          /* Re-check that the particle has not been removed
-           * by another thread before we do the deed. */
-          if (!gpart_is_inhibited(gp, e)) {
-
-            /* Remove the particle entirely */
-            if (gp->type == swift_type_dark_matter) {
-
-#ifdef WITH_CSDS
-              if (e->policy & engine_policy_csds) {
-                /* Log the particle one last time. */
-                csds_log_gpart(e->csds, gp, e, /* log_all */ 1,
-                               csds_flag_delete, /* data */ 0);
-              }
-#endif
-
-              /* Remove the particle */
-              cell_remove_gpart(e, c, gp);
-            }
-          }
-
-          if (lock_unlock(&e->s->lock) != 0)
-            error("Failed to unlock the space!");
-
-          continue;
-        }
-      }
+      /* Open boundaries remove escaped particles in the following task. */
+      if (!periodic && cell_boundary_outside(gp->x, dim)) continue;
 
       /* Init gravity force fields. */
       if (init_particles && gpart_is_active(gp, e)) {
@@ -691,38 +625,8 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* In non-periodic BC runs, remove particles that crossed the border */
-      if (!periodic) {
-
-        /* Did the particle leave the box?  */
-        if ((sp->x[0] > dim[0]) || (sp->x[0] < 0.) ||  // x
-            (sp->x[1] > dim[1]) || (sp->x[1] < 0.) ||  // y
-            (sp->x[2] > dim[2]) || (sp->x[2] < 0.)) {  // z
-
-          lock_lock(&e->s->lock);
-
-          /* Re-check that the particle has not been removed
-           * by another thread before we do the deed. */
-          if (!spart_is_inhibited(sp, e)) {
-
-#ifdef WITH_CSDS
-            if (e->policy & engine_policy_csds) {
-              /* Log the particle one last time. */
-              csds_log_spart(e->csds, sp, e, /* log_all */ 1, csds_flag_delete,
-                             /* data */ 0);
-            }
-#endif
-
-            /* Remove the particle entirely */
-            cell_remove_spart(e, c, sp);
-          }
-
-          if (lock_unlock(&e->s->lock) != 0)
-            error("Failed to unlock the space!");
-
-          continue;
-        }
-      }
+      /* Open boundaries remove escaped particles in the following task. */
+      if (!periodic && cell_boundary_outside(sp->x, dim)) continue;
 
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
@@ -904,36 +808,8 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* In non-periodic BC runs, remove particles that crossed the border */
-      if (!periodic) {
-
-        /* Did the particle leave the box?  */
-        if ((bp->x[0] > dim[0]) || (bp->x[0] < 0.) ||  // x
-            (bp->x[1] > dim[1]) || (bp->x[1] < 0.) ||  // y
-            (bp->x[2] > dim[2]) || (bp->x[2] < 0.)) {  // z
-
-          lock_lock(&e->s->lock);
-
-          /* Re-check that the particle has not been removed
-           * by another thread before we do the deed. */
-          if (!bpart_is_inhibited(bp, e)) {
-
-#ifdef WITH_CSDS
-            if (e->policy & engine_policy_csds) {
-              error("Logging of black hole particles is not yet implemented.");
-            }
-#endif
-
-            /* Remove the particle entirely */
-            cell_remove_bpart(e, c, bp);
-          }
-
-          if (lock_unlock(&e->s->lock) != 0)
-            error("Failed to unlock the space!");
-
-          continue;
-        }
-      }
+      /* Open boundaries remove escaped particles in the following task. */
+      if (!periodic && cell_boundary_outside(bp->x, dim)) continue;
 
       /* Limit h to within the allowed range */
       bp->h = min(bp->h, black_holes_h_max);
@@ -1098,36 +974,8 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* In non-periodic BC runs, remove particles that crossed the border */
-      if (!periodic) {
-
-        /* Did the particle leave the box?  */
-        if ((sink->x[0] > dim[0]) || (sink->x[0] < 0.) ||  // x
-            (sink->x[1] > dim[1]) || (sink->x[1] < 0.) ||  // y
-            (sink->x[2] > dim[2]) || (sink->x[2] < 0.)) {  // z
-
-          lock_lock(&e->s->lock);
-
-          /* Re-check that the particle has not been removed
-           * by another thread before we do the deed. */
-          if (!sink_is_inhibited(sink, e)) {
-
-#ifdef WITH_CSDS
-            if (e->policy & engine_policy_csds) {
-              error("Logging of sink particles is not yet implemented.");
-            }
-#endif
-
-            /* Remove the particle entirely */
-            cell_remove_sink(e, c, sink);
-          }
-
-          if (lock_unlock(&e->s->lock) != 0)
-            error("Failed to unlock the space!");
-
-          continue;
-        }
-      }
+      /* Open boundaries remove escaped particles in the following task. */
+      if (!periodic && cell_boundary_outside(sink->x, dim)) continue;
 
       /* Limit h to within the allowed range */
       sink->h = min(sink->h, sinks_h_max);

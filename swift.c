@@ -1899,6 +1899,7 @@ int main(int argc, char *argv[]) {
     engine_current_step = e.step;
 
     engine_drift_all(&e, /*drift_mpole=*/0, /*init_particles=*/0);
+    engine_boundary_condition_all(&e);
 
     /* Write final statistics? */
     if (e.output_list_stats) {

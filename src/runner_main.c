@@ -31,6 +31,7 @@
 #include "runner.h"
 
 /* Local headers. */
+#include "cell_boundary.h"
 #include "engine.h"
 #include "feedback.h"
 #include "scheduler.h"
@@ -401,11 +402,24 @@ void *runner_main(void *data) {
           runner_do_drift_gpart(r, ci, 1);
           break;
         case task_type_boundary_part:
+          if (t->subtype != task_subtype_boundary_periodic)
+            cell_boundary_part(ci, e);
+          break;
         case task_type_boundary_spart:
+          if (t->subtype != task_subtype_boundary_periodic)
+            cell_boundary_spart(ci, e);
+          break;
         case task_type_boundary_sink:
+          if (t->subtype != task_subtype_boundary_periodic)
+            cell_boundary_sink(ci, e);
+          break;
         case task_type_boundary_bpart:
+          if (t->subtype != task_subtype_boundary_periodic)
+            cell_boundary_bpart(ci, e);
+          break;
         case task_type_boundary_gpart:
-          /* Boundary operations are introduced in the next step. */
+          if (t->subtype != task_subtype_boundary_periodic)
+            cell_boundary_gpart(ci, e);
           break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);

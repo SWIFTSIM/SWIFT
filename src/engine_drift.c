@@ -27,6 +27,7 @@
 
 /* This object's header. */
 #include "engine.h"
+#include "cell_boundary.h"
 #include "lightcone/lightcone_array.h"
 
 struct engine_drift_all_data {
@@ -444,9 +445,6 @@ void engine_drift_all(struct engine *e, const int drift_mpoles,
     }
   }
 
-  /* Synchronize particle positions */
-  space_synchronize_particle_positions(e->s);
-
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
   space_check_drift_point(
@@ -473,6 +471,42 @@ void engine_drift_all(struct engine *e, const int drift_mpoles,
                         /*flush_map_updates=*/1, /*flush_particles=*/1,
                         /*end_file=*/0, /*dump_all_shells=*/0);
 #endif
+}
+
+/** Apply box boundary conditions to all particles after engine_drift_all. */
+static void engine_do_boundary_condition_all_mapper(void *map_data,
+                                                     int num_elements,
+                                                     void *extra_data) {
+  struct engine *e = (struct engine *)extra_data;
+  struct space *s = e->s;
+
+  for (int ind = 0; ind < num_elements; ind++) {
+    struct cell *c = e->restarting ? &((struct cell *)map_data)[ind]
+                                   : &s->cells_top[((int *)map_data)[ind]];
+    if (c->nodeID != e->nodeID) continue;
+
+    if (s->nr_parts > 0) cell_boundary_part(c, e);
+    if (s->nr_sparts > 0) cell_boundary_spart(c, e);
+    if (s->nr_sinks > 0) cell_boundary_sink(c, e);
+    if (s->nr_bparts > 0) cell_boundary_bpart(c, e);
+    if (s->nr_gparts > 0) cell_boundary_gpart(c, e);
+  }
+}
+
+/** Apply the boundary phase outside the task network and sync linked gparts. */
+void engine_boundary_condition_all(struct engine *e) {
+  if (!e->s->periodic) {
+    if (e->restarting)
+      threadpool_map(&e->threadpool, engine_do_boundary_condition_all_mapper,
+                     e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
+                     threadpool_auto_chunk_size, e);
+    else
+      threadpool_map(&e->threadpool, engine_do_boundary_condition_all_mapper,
+                     e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
+                     threadpool_auto_chunk_size, e);
+  }
+
+  space_synchronize_particle_positions(e->s);
 }
 
 /**
