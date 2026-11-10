@@ -208,6 +208,10 @@ integertime_t radiation_packet_far_end(
     const struct feedback_isrf_packet_data *pk, const int c);
 int radiation_packet_bin_demand(const double reach, const double q,
                                 const int s);
+struct threadpool;
+void radiation_packet_far_stock_sum(struct threadpool *tp,
+                                    const struct part *parts, size_t nr_parts,
+                                    double stock[2], long long holders[2]);
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
 void radiation_packet_step_diagnostics(const struct engine *e);
 void radiation_packet_bin_counters(long long *widened, long long *beyond,

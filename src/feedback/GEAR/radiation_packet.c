@@ -604,44 +604,89 @@ struct far_stock_chunk {
 /*! Extra data of #radiation_packet_far_stock_mapper. */
 struct far_stock_data {
   const struct part *parts;
+  size_t nr_parts;
   struct far_stock_chunk *chunks;
 };
 
 /**
- * @brief Threadpool mapper summing the far cell energy of a chunk of gas.
+ * @brief Threadpool mapper summing the far cell energy of the gas, over the
+ * slots of the partial sums.
  *
- * The partial sum goes into the slot of the chunk, so the caller can add the
- * chunks in a fixed order.
+ * Each slot sums only its own particles, so it has one writer and the caller
+ * can add the slots in a fixed order.
  *
- * @param map_data The first #part of the chunk.
- * @param num_elements The number of #part in the chunk.
+ * @param map_data The first #far_stock_chunk of the range.
+ * @param num_elements The number of slots in the range.
  * @param extra_data The #far_stock_data.
  */
 static void radiation_packet_far_stock_mapper(void *map_data, int num_elements,
                                               void *extra_data) {
-  const struct part *restrict parts = (const struct part *)map_data;
   struct far_stock_data *data = (struct far_stock_data *)extra_data;
-  struct far_stock_chunk *out = &data->chunks[(size_t)(parts - data->parts) /
-                                              RADIATION_PACKET_FAR_STOCK_CHUNK];
-  for (int i = 0; i < num_elements; i++) {
-    const struct part *p = &parts[i];
-    if (p->time_bin == time_bin_inhibited ||
-        p->time_bin == time_bin_not_created)
-      continue;
-    const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
-    double held = 0.;
-    for (int k = 0; k < RADIATION_PACKET_SLOTS; k++)
-      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
-          held += (double)pk->slot[k].band[b].far_energy[c];
-    if (held == 0.) continue;
-    out->stock[0] += held;
-    out->holders[0]++;
-    if (pk->step_ti == 0) {
-      out->stock[1] += held;
-      out->holders[1]++;
+  struct far_stock_chunk *first = (struct far_stock_chunk *)map_data;
+  const size_t first_slot = first - data->chunks;
+  for (int j = 0; j < num_elements; j++) {
+    struct far_stock_chunk *out = &first[j];
+    const size_t begin = (first_slot + j) * RADIATION_PACKET_FAR_STOCK_CHUNK;
+    size_t end = begin + RADIATION_PACKET_FAR_STOCK_CHUNK;
+    if (end > data->nr_parts) end = data->nr_parts;
+    for (size_t i = begin; i < end; i++) {
+      const struct part *p = &data->parts[i];
+      if (p->time_bin == time_bin_inhibited ||
+          p->time_bin == time_bin_not_created)
+        continue;
+      const struct feedback_isrf_packet_data *pk =
+          &p->feedback_data.isrf_packet;
+      double held = 0.;
+      for (int k = 0; k < RADIATION_PACKET_SLOTS; k++)
+        for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+          for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+            held += (double)pk->slot[k].band[b].far_energy[c];
+      if (held == 0.) continue;
+      out->stock[0] += held;
+      out->holders[0]++;
+      if (pk->step_ti == 0) {
+        out->stock[1] += held;
+        out->holders[1]++;
+      }
     }
   }
+}
+
+/**
+ * @brief Sum the far cell energy over the gas, with the threadpool.
+ *
+ * The particles are grouped in fixed blocks and the block sums are added in
+ * block order, so the result is the same for any number of threads.
+ *
+ * @param tp The #threadpool.
+ * @param parts The #part array.
+ * @param nr_parts The number of #part.
+ * @param stock (out) The energy in all holders and in those without a known
+ * step.
+ * @param holders (out) The number of those holders.
+ */
+void radiation_packet_far_stock_sum(struct threadpool *tp,
+                                    const struct part *parts, size_t nr_parts,
+                                    double stock[2], long long holders[2]) {
+  stock[0] = stock[1] = 0.;
+  holders[0] = holders[1] = 0;
+  if (nr_parts == 0) return;
+  const size_t n_chunks = (nr_parts + RADIATION_PACKET_FAR_STOCK_CHUNK - 1) /
+                          RADIATION_PACKET_FAR_STOCK_CHUNK;
+  struct far_stock_chunk *chunks =
+      (struct far_stock_chunk *)calloc(n_chunks, sizeof(*chunks));
+  if (chunks == NULL) error("Failed to allocate the far stock partial sums.");
+  struct far_stock_data data = {parts, nr_parts, chunks};
+  threadpool_map(tp, radiation_packet_far_stock_mapper, chunks, n_chunks,
+                 sizeof(struct far_stock_chunk), threadpool_auto_chunk_size,
+                 &data);
+  for (size_t c = 0; c < n_chunks; c++) {
+    for (int k = 0; k < 2; k++) {
+      stock[k] += chunks[c].stock[k];
+      holders[k] += chunks[c].holders[k];
+    }
+  }
+  free(chunks);
 }
 
 /**
@@ -669,25 +714,8 @@ void radiation_packet_far_diagnostics(const struct engine *e) {
   const struct space *s = e->s;
   double stock[2] = {0., 0.};
   long long holders[2] = {0, 0};
-  if (s->nr_parts > 0) {
-    const size_t n_chunks =
-        (s->nr_parts + RADIATION_PACKET_FAR_STOCK_CHUNK - 1) /
-        RADIATION_PACKET_FAR_STOCK_CHUNK;
-    struct far_stock_chunk *chunks =
-        (struct far_stock_chunk *)calloc(n_chunks, sizeof(*chunks));
-    if (chunks == NULL) error("Failed to allocate the far stock partial sums.");
-    struct far_stock_data data = {s->parts, chunks};
-    threadpool_map(&s->e->threadpool, radiation_packet_far_stock_mapper,
-                   s->parts, s->nr_parts, sizeof(struct part),
-                   RADIATION_PACKET_FAR_STOCK_CHUNK, &data);
-    for (size_t c = 0; c < n_chunks; c++) {
-      for (int k = 0; k < 2; k++) {
-        stock[k] += chunks[c].stock[k];
-        holders[k] += chunks[c].holders[k];
-      }
-    }
-    free(chunks);
-  }
+  radiation_packet_far_stock_sum(&s->e->threadpool, s->parts, s->nr_parts,
+                                 stock, holders);
   long long counts[3] = {radiation_packet_coarsening_count,
                          radiation_packet_overflow_count,
                          radiation_packet_clamp_count};
