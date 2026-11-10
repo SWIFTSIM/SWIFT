@@ -29,7 +29,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-snaps = [0, 5, 10, 20, 35, 50]
+snaps = [0, 40, 80, 160, 280, 400]
 
 fig, axes = plt.subplots(2, 3, figsize=(15, 9.5), constrained_layout=True)
 for ax, snap in zip(axes.flat, snaps):
