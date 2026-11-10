@@ -36,7 +36,7 @@ P_cgs = rho_cgs * u0_cgs * (gamma - 1.0)  # Background pressure
 fileName = "bh_swallowing.hdf5"
 
 # Units
-unit_l_cgs = 3.08567758149e24  # kpc
+unit_l_cgs = 3.08567758149e24  # Mpc
 unit_m_cgs = 1.988410e43  # 10^10 Msun
 unit_v_cgs = 1e5  # km / s
 unit_t_cgs = unit_l_cgs / unit_v_cgs
@@ -70,11 +70,9 @@ u_cgs[:] = P_cgs / (rho_cgs * (gamma - 1))
 bh_pos = np.zeros((2, 3))
 bh_pos[0, :] = 0.5 * boxsize_cgs / unit_l_cgs
 
-# diff = [4.812127e-03, 4.908179e-03, -4.878537e-03] - bh_pos[0,:]
-
-# print diff
-
-bh_pos[1, :] = 0.5 * boxsize_cgs / unit_l_cgs + np.diff
+# Second BH 0.24 kpc away from the central one
+diff = np.array([-1.87873e-04, -9.18210e-05, 1.21463e-04])
+bh_pos[1, :] = bh_pos[0, :] + diff
 
 print(bh_pos)
 
