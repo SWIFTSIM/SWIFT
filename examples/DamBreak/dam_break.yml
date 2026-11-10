@@ -1,0 +1,48 @@
+# Define the system of units to use internally (SI).
+InternalUnitSystem:
+  UnitMass_in_cgs:        1000.   # Kilograms
+  UnitLength_in_cgs:      100.    # Metres
+  UnitVelocity_in_cgs:    100.    # Metres per second
+  UnitCurrent_in_cgs:     1       # Amperes
+  UnitTemp_in_cgs:        1       # Kelvin
+
+# Parameters governing the time integration
+TimeIntegration:
+  time_begin: 0.      # The starting time of the simulation (in internal units).
+  time_end:   0.1     # The end time of the simulation (in internal units).
+  dt_min:     1e-10   # The minimal time-step size of the simulation (in internal units).
+  dt_max:     1e-4    # The maximal time-step size of the simulation (in internal units).
+
+# Parameters governing the snapshots
+Snapshots:
+  basename:            dam_break   # Common part of the name of output files
+  time_first:          0.          # Time of the first output (in internal units)
+  delta_time:          2e-3        # Time difference between consecutive outputs (in internal units)
+
+# Parameters governing the conserved quantities statistics
+Statistics:
+  delta_time:          2e-3   # Time between statistics output
+
+# Parameters for the hydrodynamics scheme
+SPH:
+  resolution_eta:        1.487    # Target smoothing length in units of the mean inter-particle separation (1.487 == 100Ngbs with the Wendland C2 kernel).
+  CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
+  h_max:                 0.1      # Maximal allowed smoothing length (in internal units), limits the reach of isolated spray particles.
+
+# Parameters related to the initial conditions
+InitialConditions:
+  file_name:  ./dam_break.hdf5     # The file to read
+
+# Closed tank: all six faces of the box reflect particles
+BoundaryConditions:
+  type:   reflective
+  walls:  [x_min, x_max, y_min, y_max, z_min, z_max]
+
+# Parameters related to the equation of state
+EoS:
+  planetary_use_Til_water:   1     # Tillotson water, material ID 102
+
+# Gravity is scaled up so that the flow stays weakly compressible (Mach ~0.1)
+# without the tiny time-steps the sound speed of water would otherwise impose.
+ConstantPotential:
+  g_cgs: [0, 0, -5e5]
