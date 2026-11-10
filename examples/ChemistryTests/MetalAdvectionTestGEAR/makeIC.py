@@ -21,7 +21,7 @@ import math
 
 # ---------------------------------------------------------------------
 # Test the diffusion/advection of metals by creating regions with/without
-# initial metallicities. Run with EAGLE chemistry.
+# initial metallicities. Run with GEAR or AGORA chemistry.
 # ---------------------------------------------------------------------
 
 import numpy as np

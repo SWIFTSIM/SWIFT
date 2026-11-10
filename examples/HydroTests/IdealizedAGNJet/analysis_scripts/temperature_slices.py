@@ -1,16 +1,9 @@
-import pylab
-import unyt
-from pylab import *
-from scipy import stats
-import h5py as h5
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.colors import LogNorm
 import swiftsimio as sw
-import glob
-import re
-import os
-from swiftsimio.visualisation.projection_backends.fast import scatter
-from swiftsimio import mask, load
+from swiftsimio.visualisation import project_gas
+from swiftsimio import mask, load, cosmo_array
 
 matplotlib.use("Agg")
 
@@ -34,7 +27,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -76,65 +69,74 @@ def wrap(dx, box):
 
 def temperature_scatter(center, snapFile, slice_factor):
 
-    # set center of box
-    xChoice = center[0]
-    yChoice = center[1]
-    zChoice = center[2]
+    # set center of box (in kpc)
+    xChoice, yChoice, zChoice = center
     mapRes = 1024
 
-    xCen = unyt.unyt_quantity(xChoice, "kpc")
-    yCen = unyt.unyt_quantity(yChoice, "kpc")
-    zCen = unyt.unyt_quantity(zChoice, "kpc")
+    # Half-extent of the image along the jet axis (z) in kpc; the image is
+    # half as wide along x
+    maxRegion = 250.0
 
-    # Max. region in both z and y-> needs to be a box
-    maxRegion = unyt.unyt_quantity(250, "kpc")
+    # Half-thickness of the slice along y in kpc
+    depth = slice_factor * maxRegion
 
-    # depth of slice
-    depth = unyt.unyt_quantity(slice_factor * maxRegion, "kpc")
     maskRegion = mask(snapFile)
+    metadata = maskRegion.metadata
+
+    def to_cosmo(values):
+        return cosmo_array(
+            values,
+            "kpc",
+            comoving=metadata.boxsize.comoving,
+            scale_factor=metadata.scale_factor,
+            scale_exponent=1,
+        )
 
     # spatially mask the snapshot data around the center of jet
-    region = [
-        [xCen - 0.5 * maxRegion, xCen + 0.5 * maxRegion],
-        [yCen - depth, yCen + depth],
-        [zCen - maxRegion, zCen + maxRegion],
-    ]
-
-    maskRegion.constrain_spatial(region)
+    maskRegion.constrain_spatial(
+        to_cosmo(
+            [
+                [xChoice - 0.5 * maxRegion, xChoice + 0.5 * maxRegion],
+                [yChoice - depth, yChoice + depth],
+                [zChoice - maxRegion, zChoice + maxRegion],
+            ]
+        )
+    )
 
     # load the data for only the masked region
     data = load(snapFile, mask=maskRegion)
-    dx = data.gas.coordinates.value[:, 0] - xChoice
-    dy = data.gas.coordinates.value[:, 1] - yChoice
-    dz = data.gas.coordinates.value[:, 2] - zChoice
 
-    h = data.gas.smoothing_lengths.value
-    m = data.gas.masses.value
-    t = data.gas.temperatures.value
-    d = data.gas.densities.value
+    # Rotate the box so that we project along y. The returned image is indexed
+    # [z, x], so the jet axis (z) is vertical in imshow without a transpose.
+    rotation_matrix = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    rotation_center = to_cosmo([xChoice, yChoice, zChoice])
 
-    # mask the data
-    ind_mask = np.where(
-        (dx > -maxRegion.value)
-        & (dx < maxRegion.value)
-        & (dy > -depth)
-        & (dy < depth)
-        & (dz > -maxRegion.value)
-        & (dz < maxRegion.value)
+    # Image region in the rotated frame, which stays centred on rotation_center:
+    # [z range, x range, y range (the depth of the slice)]
+    region = to_cosmo(
+        [
+            xChoice - maxRegion,
+            xChoice + maxRegion,
+            yChoice - 0.5 * maxRegion,
+            yChoice + 0.5 * maxRegion,
+            zChoice - depth,
+            zChoice + depth,
+        ]
     )
 
-    dx = (dx[ind_mask] + maxRegion.value) / (2.0 * maxRegion.value)
-    dy = (dy[ind_mask] + maxRegion.value) / (2.0 * maxRegion.value)
-    dz = (dz[ind_mask] + maxRegion.value) / (2.0 * maxRegion.value)
-    h = h[ind_mask] / (2.0 * maxRegion.value)
-    m = m[ind_mask]
-    t = t[ind_mask]
-    d = d[ind_mask]
+    # Mass-weighted temperature
+    data.gas.mass_weighted_temperatures = data.gas.masses * data.gas.temperatures
 
-    # scatter the particles, scatter function inverts x and y axes
-    mapUp = scatter(x=dz, y=dx, h=h, m=m * t, res=mapRes)
-    mapDo = scatter(x=dz, y=dx, h=h, m=m, res=mapRes)
-    map_final = mapUp / mapDo
+    projection_args = dict(
+        resolution=mapRes,
+        region=region,
+        rotation_matrix=rotation_matrix,
+        rotation_center=rotation_center,
+        periodic=False,
+    )
+    mapUp = project_gas(data, project="mass_weighted_temperatures", **projection_args)
+    mapDo = project_gas(data, project="masses", **projection_args)
+    map_final = (mapUp / mapDo).to_value("K")
 
     return np.log10(map_final)
 
@@ -150,7 +152,6 @@ mintemp = 6.5  # minimum of color bar scale for temperature
 maxtemp = 9.5  # maximum of color bar scale for temperature
 aspect_ratio = 0.5  # aspect ratio of images, x:y
 
-import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 fig = plt.figure(figsize=(23, 10.5))
@@ -176,7 +177,12 @@ for i in range(4):
     plt.subplot(gs[i])
     # plot the temperature
     im = plt.imshow(
-        img_gas_temp, vmin=mintemp, vmax=maxtemp, cmap="inferno", extent=ext_gas
+        img_gas_temp,
+        vmin=mintemp,
+        vmax=maxtemp,
+        cmap="inferno",
+        extent=ext_gas,
+        origin="lower",
     )
 
     # Some jet parameters for an analytical estimate

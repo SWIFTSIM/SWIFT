@@ -1,12 +1,5 @@
 # Context
 
-This example tests the usage of an external potential provided by the AGAMA library (https://agama.software/).
-A Plummer sphere is generated and used to create a potential from a multipole expansion using AGAMA.
-This potential, stored in the potential.txt file is then used inside SWIFT to evolve the Plummer sphere,
-switching off its self-gravity.
-The conservation of the density profile as well as the energy is used as a proxy.
-
-
 This example demonstrates the use of an external potential provided by the AGAMA library (https://agama.software/).
 A Plummer sphere is generated and used to construct a potential through a multipole expansion with AGAMA.
 The resulting potential is stored in the `potential.txt` file and then used within SWIFT to evolve the
@@ -24,8 +17,8 @@ Then, configure swift to take into account external potentials. Type:
 
 `./configure --with-agama=path_to_agama_directory --with-ext-potential=agama`
 
-where `path_to_agama_directory` is the AGAMA root directory that must contains `agama.so` and `agama.a`.
-See the next section to check how to complile this library.
+where `path_to_agama_directory` is the AGAMA root directory that must contain `agama.so` and `agama.a`.
+See the next section to check how to compile this library.
 
 Feel free to adapt other configurations parameters depending on your system. Then, build the code by typing:
 
@@ -36,9 +29,9 @@ Finally, to run this example, open a terminal in the present directory and type:
 `./run.sh`
 
 
-Note that the AGAMA potential file `potiential.txt` can be created by running:
+Note that the AGAMA potential file `potential.txt` can be created by running:
 
-`./makePlummerPotential.py`
+`python3 makePlummerPotential.py`
 
 
 # How to compile AGAMA

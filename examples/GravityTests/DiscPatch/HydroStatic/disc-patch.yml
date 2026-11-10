@@ -26,7 +26,6 @@ Snapshots:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2349   # Target smoothing length in units of the mean inter-particle separation (1.2349 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   max_ghost_iterations:  30       # Maximal number of iterations allowed to converge towards the smoothing length.
   h_max:                 60.      # Maximal smoothing length allowed (in internal units).

@@ -17,7 +17,7 @@
 #
 ##############################################################################
 
-# Generates a distorted 1D grid with a density profile that balances out the
+# Generates a distorted 3D grid with a density profile that balances out the
 # external sine wave potential if run with an isothermal equation of state.
 
 import numpy as np

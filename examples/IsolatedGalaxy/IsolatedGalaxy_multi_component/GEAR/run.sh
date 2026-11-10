@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 with_sinks=${with_sinks=0} # Run with sinks (1) or with SF (0)?
 with_bh=${with_bh=0}       # Seed a central black hole (1) or not (0)?

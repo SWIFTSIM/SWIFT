@@ -102,8 +102,8 @@ other parameters which SWIFT needs to use. In the case of
 the Small Cosmological Volume DMO example we can run a simulation with halo
 finder as::
 
-  cd examples/SmallCosmoVolume_DM
-  ../swift --cosmology --hydro --self-gravity --velociraptor --threads=8 small_cosmo_volume_dm.yml
+  cd examples/SmallCosmoVolume/SmallCosmoVolume_DM
+  ../../../swift --cosmology --self-gravity --velociraptor --threads=8 small_cosmo_volume_dm.yml
 
 Which activates the VELOCIraptor interface.
 

@@ -3,7 +3,7 @@ MetaData:
 
 InternalUnitSystem:
   UnitMass_in_cgs: 1.988409870698051e+43       # 1e10 solar masses
-  UnitLength_in_cgs: 3.0856775814913673e+23    # 1 kpc
+  UnitLength_in_cgs: 3.0856775814913673e+21    # 1 kpc
   UnitVelocity_in_cgs: 1e5                     # km/s
   UnitCurrent_in_cgs: 1                        # Amperes
   UnitTemp_in_cgs: 1                           # Kelvin
@@ -84,8 +84,6 @@ GrackleCooling:
   with_UV_background: 1                           # Enable or not the UV background
   redshift: -1                                    # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                           # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0             # User provide volumetric heating rates
-  provide_specific_heating_rates: 0               # User provide specific heating rates
   self_shielding_method: 0                        # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007    # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 1000

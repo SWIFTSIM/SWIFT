@@ -3,17 +3,19 @@ rate from each of the elements depending on internal energy, density
 and redshift based on the EAGLE tables. To do so, the function in
 src/cooling/EAGLE returning the cooling rate is run for multiple
 values of the internal energy. The resulting cooling rates are written
-to files and plotted with a python3 script (cooling_rates_plot.py).
+to files and plotted with a python3 script (plot_cooling_rates.py).
 
 The test may be run by:
-./getCoolingTables.sh
+../getEagleCoolingTable.sh
 ./cooling_rates -z X -d Y
 python3 plot_cooling_rates.py
 
 where X is the redshift at which the cooling rates are evaluated and Y
 is the base 10 logarithm of the hydrogen number density expressed in
 cgs (i.e. cm^-3). Different metallicities may be specified in
-testCooling.yml
+cooling_rates.yml (EAGLEChemistry section). The cooling_rates program is
+built alongside SWIFT when it is configured with
+  ./configure --with-cooling=EAGLE --with-chemistry=EAGLE
 
 Running with -z 3 -d -4 should reproduce the Fig.4 of Wiersma+09 with
 the added Compton cooling contribution.

@@ -22,7 +22,7 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
 
 
@@ -100,7 +100,7 @@ for i in range(n_snaps):
     radius_over_virial_radius = radius_cgs / r_vir_cgs
 
     # get the internal energies
-    u_dset = f["PartType0/InternalEnergy"]
+    u_dset = f["PartType0/InternalEnergies"]
     u = np.array(u_dset)
 
     # make dimensionless
@@ -116,16 +116,16 @@ for i in range(n_snaps):
     )
     binned_u = u_totals / hist
 
-    figure()
-    plot(radial_bin_mids, binned_u, "ko", label="Numerical solution")
-    legend(loc="lower right")
-    xlabel(r"$r / r_{vir}$")
-    ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
-    title(
+    plt.figure()
+    plt.plot(radial_bin_mids, binned_u, "ko", label="Numerical solution")
+    plt.legend(loc="lower right")
+    plt.xlabel(r"$r / r_{vir}$")
+    plt.ylabel(r"$u / (v_c^2 / (2(\gamma - 1)) $")
+    plt.title(
         r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
         % (snap_time_cgs, N, v_c)
     )
-    ylim((0, 2))
+    plt.ylim((0, 2))
     plot_filename = "./plots/internal_energy/internal_energy_profile_%03d.png" % i
-    savefig(plot_filename, format="png")
-    close()
+    plt.savefig(plot_filename, format="png")
+    plt.close()

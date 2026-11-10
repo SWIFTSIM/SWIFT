@@ -23,17 +23,18 @@ import numpy
 import sys
 import math
 
-# Generates N particles in a box of [-2scale_height:2scale_height, 0:BoxSize, 0:BoxSize]
+# Generates N particles in a box of [0:BoxSize, 0:BoxSize, 0:BoxSize], with the
+# disc mid-plane at x = BoxSize/2 (i.e. up to 3 scale heights on either side).
 #
-# The potential is long the x-axis.
+# The potential is along the x-axis.
 #
 # see Creasey, Theuns & Bower, 2013, for the equations:
 # disc parameters are: surface density sigma
 #                      scale height b
 # density: rho(x) = (sigma/2b) sech^2(x/b)
-# isothermal velocity dispersion = <v_x^2? = b pi G sigma
-# grad potential  = 2 pi G sigma tanh(z/b)
-# potential       = ln(cosh(x/b)) + const
+# isothermal velocity dispersion = <v_x^2> = b pi G sigma
+# grad potential  = 2 pi G sigma tanh(x/b)
+# potential       = 2 pi G sigma b ln(cosh(x/b)) + const
 # Dynamical time  = sqrt(b / (G sigma))
 # to obtain the 1/ch^2(x/b) profile from a uniform profile (a glass, say, or a uniform random variable), note that, when integrating in x
 # \int 0^x dx/ch^2(x) = tanh(x)-tanh(0) = \int_0^u du = u (where the last integral refers to a uniform density distribution), so that x = atanh(u)
@@ -78,7 +79,7 @@ print(" velocity dispersion = ", v_disp)
 # Parameters
 periodic = 1  # 1 For periodic box
 boxSize = 600.0  #
-Radius = 100.0  # maximum radius of particles [kpc]
+Radius = 100.0  # maximum radius of particles [pc] (not used)
 G = const_G
 mass = 1
 numPart = int(sys.argv[1])  # Number of particles

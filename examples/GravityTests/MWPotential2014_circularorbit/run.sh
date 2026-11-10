@@ -1,61 +1,63 @@
 #!/bin/bash
 
+set -eo pipefail
+
 #Creates a directory for the outputs
 DIR=output_1 #First test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm $DIR/output_*
+    rm -f $DIR/output_*
 else
     echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    mkdir -p $DIR
 fi
 
 DIR=output_2 #Second test of units conversion
 if [ -d "$DIR" ];
 then
     echo "$DIR directory exists. Its content will be removed."
-    rm $DIR/output_*
+    rm -f $DIR/output_*
 else
     echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    mkdir -p $DIR
 fi
 
 #Clears the previous figures
 echo "Clearing existing figures."
 if [ -f "circular_orbits_simulation_kpc.png" ];
 then
-    rm circular_orbits_simulation_kpc.png
+    rm -f circular_orbits_simulation_kpc.png
 fi
 
 if [ -f "circular_orbits_simulation_Mpc.png" ];
 then
-    rm circular_orbits_simulation_Mpc.png
+    rm -f circular_orbits_simulation_Mpc.png
 fi
 
 if [ -f "deviation_simulation_kpc.png" ];
 then
-    rm deviation_simulation_kpc.png
+    rm -f deviation_simulation_kpc.png
 fi
 if [ -f "deviation_simulation_Mpc.png" ];
 then
-    rm deviation_simulation_Mpc.png
+    rm -f deviation_simulation_Mpc.png
 fi
 
 if [ -f "deviation_from_original_data_simulation_kpc.png" ];
 then
-    rm deviation_from_original_data_simulation_kpc.png
+    rm -f deviation_from_original_data_simulation_kpc.png
 fi
 
 if [ -f "deviation_from_original_data_simulation_Mpc.png" ];
 then
-    rm deviation_from_original_data_simulation_Mpc.png
+    rm -f deviation_from_original_data_simulation_Mpc.png
 fi
 
 #Clears the IC file
 if [ -f "circular_orbits_MW.hdf5" ];
 then
-    rm circular_orbits_MW.hdf5
+    rm -f circular_orbits_MW.hdf5
 fi
 
 
