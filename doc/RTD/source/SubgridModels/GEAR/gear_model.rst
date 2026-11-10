@@ -205,4 +205,4 @@ Here is the complete section in the parameter file:
     initial_nHDI_to_nH_ratio:    -1              # initial nHDI   to nH ratio (number density ratio). Value is ignored if set to -1.
 
 .. note::
-   A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``. ``examples/Cooling/CoolingWithPrimordialElements/`` runs a uniform cosmological box with imposed abundances and let them evolve down to redshift 0.
+   A simple example running SWIFT with Grackle can be found in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``. ``examples/Cooling/CoolingWithPrimordialElements/`` runs a uniform cosmological box with imposed abundances and let them evolve down to redshift 0.
