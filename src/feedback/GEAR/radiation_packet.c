@@ -2884,6 +2884,8 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
     error("Particle %lld still holds a packet at its merge.", p->id);
 #endif
 
+  if (ti_step > 0) pk->has_merged_step = 1;
+
   if (!radiation_packet_light_speed_limited) {
     pk->step_end_ti = ti_current + ti_step;
     pk->step_ti = ti_step;
@@ -2930,6 +2932,42 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
   pk->step_ti = ti_step;
   radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale, -1.,
                           0., salt);
+  radiation_packet_refresh_occupied(pk);
+}
+
+/**
+ * @brief Give the lattices of its first step to a particle that is not active
+ * at its first merge.
+ *
+ * Light that arrives before the step is known waits in the far cells of a
+ * one-tick lattice until the first merge. It moves to the lattices of the step
+ * here instead. Without a speed limit nothing is done.
+ *
+ * @param p The particle, not active, with its time bin set.
+ * @param ti_current Current integer time.
+ * @param ti_step Length of the current step of the particle.
+ * @param ti_end End of the current step of the particle.
+ */
+void radiation_packet_set_first_step(struct part *p,
+                                     const integertime_t ti_current,
+                                     const integertime_t ti_step,
+                                     const integertime_t ti_end) {
+
+  struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+  if (!radiation_packet_light_speed_limited || pk->step_ti > 0 || ti_step <= 0)
+    return;
+
+  const integertime_t old_first = radiation_packet_bin_end(pk, 0);
+  const integertime_t old_width = radiation_packet_step_width(pk);
+  const int old_scale = pk->far_scale;
+  integertime_t old_far_end[RADIATION_PACKET_FAR_CELLS];
+  for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+    old_far_end[c] = radiation_packet_far_end(pk, c);
+
+  pk->step_end_ti = ti_end;
+  pk->step_ti = ti_step;
+  radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale, -1.,
+                          0., radiation_packet_salt(p->id, ti_current));
   radiation_packet_refresh_occupied(pk);
 }
 

@@ -425,6 +425,11 @@ struct feedback_isrf_packet_data {
       before the 8-byte members, where it fills padding. */
   unsigned char far_scale;
 
+  /*! Set at the first merge with a step of non-zero length. Until then the
+      test beams (#radiation_packet_inject_test_beams) are injected at every
+      merge. Fills padding. */
+  unsigned char has_merged_step;
+
   /*! Bit `s` is set when the held packet of slot `s` has energy in any band
       (#radiation_packet_slot_is_empty is false). Kept by every writer of the
       held energy, see #radiation_packet_refresh_occupied. Fills padding. */

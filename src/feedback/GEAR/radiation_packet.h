@@ -241,6 +241,10 @@ void radiation_packet_redshift_share(const double H, const double path_phys,
 void radiation_packet_merge(struct part *p, const integertime_t ti_current,
                             const integertime_t ti_step, const double time_base,
                             const struct cosmology *cosmo);
+void radiation_packet_set_first_step(struct part *p,
+                                     const integertime_t ti_current,
+                                     const integertime_t ti_step,
+                                     const integertime_t ti_end);
 void radiation_packet_end_gradient(struct part *p, const float a, const float c,
                                    const float dt, const float tau);
 void radiation_packet_end_force(struct part *p);
@@ -453,7 +457,8 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
   radiation_packet_check_occupied(pk, s->id);
 #endif
-  /* A set-bit walk here changes the rounding of the inlined hydro gradient loop. */
+  /* A set-bit walk here changes the rounding of the inlined hydro gradient
+   * loop. */
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
     if (!((pk->occupied_slots >> k) & 1u)) continue;

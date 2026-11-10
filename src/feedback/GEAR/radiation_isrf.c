@@ -162,8 +162,13 @@ void radiation_snapshot_part_propagation(struct part *p,
   p->feedback_data.dt_prev = dt_phys;
 
   /* The drift runs for inactive particles too: they keep their inbox. */
+  if (!part_is_active(p, e) && p->time_bin > 0)
+    radiation_packet_set_first_step(
+        p, e->ti_current, ti_step,
+        get_integer_time_end(e->ti_current, p->time_bin));
+
   if (part_is_active(p, e)) {
-    if (p->feedback_data.isrf_packet.step_end_ti == 0)
+    if (!p->feedback_data.isrf_packet.has_merged_step)
       radiation_packet_inject_test_beams(
           p, e->feedback_props->ISRF_packet_test_beam,
           e->feedback_props->ISRF_packet_test_beam_origin_distance_h,
