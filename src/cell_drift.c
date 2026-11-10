@@ -163,6 +163,7 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const unsigned int walls = e->s->boundary_conditions.walls;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float hydro_h_max = e->hydro_properties->h_max;
   const float hydro_h_min = e->hydro_properties->h_min;
@@ -292,8 +293,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* Open boundaries remove escaped particles in the following task. */
-      if (!periodic && cell_boundary_outside(p->x, dim)) continue;
+      /* Particles escaping through open faces are removed by the following
+       * task; those crossing reflective walls are mirrored there. */
+      if (!periodic && cell_boundary_outside(p->x, dim, walls)) continue;
 
       /* Limit h to within the allowed range */
       p->h = min(p->h, hydro_h_max);
@@ -381,6 +383,7 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const unsigned int walls = e->s->boundary_conditions.walls;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const integertime_t ti_old_gpart = c->grav.ti_old_part;
   const integertime_t ti_current = e->ti_current;
@@ -480,8 +483,9 @@ void cell_drift_gpart(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* Open boundaries remove escaped particles in the following task. */
-      if (!periodic && cell_boundary_outside(gp->x, dim)) continue;
+      /* Particles escaping through open faces are removed by the following
+       * task; those crossing reflective walls are mirrored there. */
+      if (!periodic && cell_boundary_outside(gp->x, dim, walls)) continue;
 
       /* Init gravity force fields. */
       if (init_particles && gpart_is_active(gp, e)) {
@@ -520,6 +524,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const unsigned int walls = e->s->boundary_conditions.walls;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const int with_rt = (e->policy & engine_policy_rt);
   const float stars_h_max = e->hydro_properties->h_max;
@@ -625,8 +630,9 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* Open boundaries remove escaped particles in the following task. */
-      if (!periodic && cell_boundary_outside(sp->x, dim)) continue;
+      /* Particles escaping through open faces are removed by the following
+       * task; those crossing reflective walls are mirrored there. */
+      if (!periodic && cell_boundary_outside(sp->x, dim, walls)) continue;
 
       /* Limit h to within the allowed range */
       sp->h = min(sp->h, stars_h_max);
@@ -703,6 +709,7 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const unsigned int walls = e->s->boundary_conditions.walls;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float black_holes_h_max = e->hydro_properties->h_max;
   const float black_holes_h_min = e->hydro_properties->h_min;
@@ -808,8 +815,9 @@ void cell_drift_bpart(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* Open boundaries remove escaped particles in the following task. */
-      if (!periodic && cell_boundary_outside(bp->x, dim)) continue;
+      /* Particles escaping through open faces are removed by the following
+       * task; those crossing reflective walls are mirrored there. */
+      if (!periodic && cell_boundary_outside(bp->x, dim, walls)) continue;
 
       /* Limit h to within the allowed range */
       bp->h = min(bp->h, black_holes_h_max);
@@ -879,6 +887,7 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
 
   const int periodic = e->s->periodic;
   const double dim[3] = {e->s->dim[0], e->s->dim[1], e->s->dim[2]};
+  const unsigned int walls = e->s->boundary_conditions.walls;
   const int with_cosmology = (e->policy & engine_policy_cosmology);
   const float sinks_h_max = e->hydro_properties->h_max;
   const float sinks_h_min = e->hydro_properties->h_min;
@@ -974,8 +983,9 @@ void cell_drift_sink(struct cell *c, const struct engine *e, int force,
       }
 #endif
 
-      /* Open boundaries remove escaped particles in the following task. */
-      if (!periodic && cell_boundary_outside(sink->x, dim)) continue;
+      /* Particles escaping through open faces are removed by the following
+       * task; those crossing reflective walls are mirrored there. */
+      if (!periodic && cell_boundary_outside(sink->x, dim, walls)) continue;
 
       /* Limit h to within the allowed range */
       sink->h = min(sink->h, sinks_h_max);

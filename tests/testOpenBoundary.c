@@ -57,5 +57,39 @@ int main(void) {
   cell_boundary_gpart(&c, &e);
   assert(gparts[1].time_bin == time_bin_inhibited);
   assert(s.nr_inhibited_gparts == 2); /* No double removal. */
+
+  /* Reflective lower and upper x walls; all other faces stay open. */
+  s.boundary_conditions.type = boundary_condition_reflective;
+  s.boundary_conditions.walls = boundary_wall_x_min | boundary_wall_x_max;
+  bzero(gparts, sizeof(gparts));
+  for (int i = 0; i < 3; i++) {
+    gparts[i].type = swift_type_dark_matter;
+    gparts[i].time_bin = 1;
+    gparts[i].x[1] = gparts[i].x[2] = 0.5;
+  }
+
+  /* Crossed the lower wall: mirrored with its normal velocity flipped. */
+  gparts[0].x[0] = -0.125;
+  gparts[0].v_full[0] = -1.f;
+  gparts[0].v_full[1] = 2.f;
+  /* Crossed the upper wall. */
+  gparts[1].x[0] = 1.25;
+  gparts[1].v_full[0] = 1.f;
+  /* Crossed a wall and an open face: removed. */
+  gparts[2].x[0] = -0.125;
+  gparts[2].x[1] = -0.125;
+  cell_boundary_gpart(&c, &e);
+  assert(gparts[0].x[0] == 0.125 && gparts[0].v_full[0] == 1.f);
+  assert(gparts[0].x[1] == 0.5 && gparts[0].v_full[1] == 2.f);
+  assert(gparts[0].time_bin != time_bin_inhibited);
+  assert(gparts[1].x[0] == 0.75 && gparts[1].v_full[0] == -1.f);
+  assert(gparts[1].time_bin != time_bin_inhibited);
+  assert(gparts[2].time_bin == time_bin_inhibited);
+  assert(s.nr_inhibited_gparts == 3);
+
+  /* A second pass leaves the reflected particles alone. */
+  cell_boundary_gpart(&c, &e);
+  assert(gparts[0].x[0] == 0.125 && gparts[0].v_full[0] == 1.f);
+  assert(s.nr_inhibited_gparts == 3);
   return 0;
 }

@@ -16,8 +16,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#include <config.h>
-
 #include "cell_boundary.h"
 
 #include "active.h"
@@ -28,7 +26,10 @@
 #include "hydro.h"
 #include "lock.h"
 
-/** Apply open box boundaries to gas particles in a cell hierarchy. */
+#include <config.h>
+
+/** Apply open and reflective box boundaries to gas particles in a cell
+ * hierarchy. */
 void cell_boundary_part(struct cell *c, const struct engine *e) {
   if (c->hydro.count == 0) return;
   if (c->split) {
@@ -38,10 +39,27 @@ void cell_boundary_part(struct cell *c, const struct engine *e) {
   }
 
   const double *dim = e->s->dim;
+  const unsigned int walls = e->s->boundary_conditions.walls;
+  double shift[3];
   for (int k = 0; k < c->hydro.count; k++) {
     struct part *p = &c->hydro.parts[k];
     struct xpart *xp = &c->hydro.xparts[k];
-    if (part_is_inhibited(p, e) || !cell_boundary_outside(p->x, dim)) continue;
+    if (part_is_inhibited(p, e)) continue;
+
+    /* Mirror particles that crossed a wall, unless they also left the box
+     * through an open face. */
+    if (!cell_boundary_outside(p->x, dim, walls)) {
+      if (cell_boundary_reflect(p->x, dim, walls, shift)) {
+        for (int j = 0; j < 3; j++) {
+          if (shift[j] == 0.) continue;
+          p->v[j] = -p->v[j];
+          xp->v_full[j] = -xp->v_full[j];
+          xp->x_diff[j] -= shift[j];
+          xp->x_diff_sort[j] -= shift[j];
+        }
+      }
+      continue;
+    }
 
     lock_lock(&e->s->lock);
     if (!part_is_inhibited(p, e)) {
@@ -57,7 +75,8 @@ void cell_boundary_part(struct cell *c, const struct engine *e) {
   }
 }
 
-/** Apply open box boundaries to gravity particles in a cell hierarchy. */
+/** Apply open and reflective box boundaries to gravity particles in a cell
+ * hierarchy. */
 void cell_boundary_gpart(struct cell *c, const struct engine *e) {
   if (c->grav.count == 0) return;
   if (c->split) {
@@ -67,11 +86,25 @@ void cell_boundary_gpart(struct cell *c, const struct engine *e) {
   }
 
   const double *dim = e->s->dim;
+  const unsigned int walls = e->s->boundary_conditions.walls;
+  double shift[3];
   for (int k = 0; k < c->grav.count; k++) {
     struct gpart *gp = &c->grav.parts[k];
-    if (gpart_is_inhibited(gp, e) || !cell_boundary_outside(gp->x, dim))
+    if (gpart_is_inhibited(gp, e)) continue;
+
+    /* Mirror particles that crossed a wall, unless they also left the box
+     * through an open face. */
+    if (!cell_boundary_outside(gp->x, dim, walls)) {
+      if (cell_boundary_reflect(gp->x, dim, walls, shift)) {
+        for (int j = 0; j < 3; j++) {
+          if (shift[j] == 0.) continue;
+          gp->v_full[j] = -gp->v_full[j];
+        }
+      }
       continue;
-    /* Baryonic gparts are removed with their counterparts. */
+    }
+    /* Baryonic gparts are removed with their counterparts (but are mirrored
+     * here, as their drift matches their counterparts'). */
     if (gp->type != swift_type_dark_matter) continue;
 
     lock_lock(&e->s->lock);
@@ -87,7 +120,8 @@ void cell_boundary_gpart(struct cell *c, const struct engine *e) {
   }
 }
 
-/** Apply open box boundaries to star particles in a cell hierarchy. */
+/** Apply open and reflective box boundaries to star particles in a cell
+ * hierarchy. */
 void cell_boundary_spart(struct cell *c, const struct engine *e) {
   if (c->stars.count == 0) return;
   if (c->split) {
@@ -97,10 +131,25 @@ void cell_boundary_spart(struct cell *c, const struct engine *e) {
   }
 
   const double *dim = e->s->dim;
+  const unsigned int walls = e->s->boundary_conditions.walls;
+  double shift[3];
   for (int k = 0; k < c->stars.count; k++) {
     struct spart *sp = &c->stars.parts[k];
-    if (spart_is_inhibited(sp, e) || !cell_boundary_outside(sp->x, dim))
+    if (spart_is_inhibited(sp, e)) continue;
+
+    /* Mirror particles that crossed a wall, unless they also left the box
+     * through an open face. */
+    if (!cell_boundary_outside(sp->x, dim, walls)) {
+      if (cell_boundary_reflect(sp->x, dim, walls, shift)) {
+        for (int j = 0; j < 3; j++) {
+          if (shift[j] == 0.) continue;
+          sp->v[j] = -sp->v[j];
+          sp->x_diff[j] -= shift[j];
+          sp->x_diff_sort[j] -= shift[j];
+        }
+      }
       continue;
+    }
 
     lock_lock(&e->s->lock);
     if (!spart_is_inhibited(sp, e)) {
@@ -115,7 +164,8 @@ void cell_boundary_spart(struct cell *c, const struct engine *e) {
   }
 }
 
-/** Apply open box boundaries to black hole particles in a cell hierarchy. */
+/** Apply open and reflective box boundaries to black hole particles in a cell
+ * hierarchy. */
 void cell_boundary_bpart(struct cell *c, const struct engine *e) {
   if (c->black_holes.count == 0) return;
   if (c->split) {
@@ -125,10 +175,24 @@ void cell_boundary_bpart(struct cell *c, const struct engine *e) {
   }
 
   const double *dim = e->s->dim;
+  const unsigned int walls = e->s->boundary_conditions.walls;
+  double shift[3];
   for (int k = 0; k < c->black_holes.count; k++) {
     struct bpart *bp = &c->black_holes.parts[k];
-    if (bpart_is_inhibited(bp, e) || !cell_boundary_outside(bp->x, dim))
+    if (bpart_is_inhibited(bp, e)) continue;
+
+    /* Mirror particles that crossed a wall, unless they also left the box
+     * through an open face. */
+    if (!cell_boundary_outside(bp->x, dim, walls)) {
+      if (cell_boundary_reflect(bp->x, dim, walls, shift)) {
+        for (int j = 0; j < 3; j++) {
+          if (shift[j] == 0.) continue;
+          bp->v[j] = -bp->v[j];
+          bp->x_diff[j] -= shift[j];
+        }
+      }
       continue;
+    }
 
     lock_lock(&e->s->lock);
     if (!bpart_is_inhibited(bp, e)) {
@@ -142,7 +206,8 @@ void cell_boundary_bpart(struct cell *c, const struct engine *e) {
   }
 }
 
-/** Apply open box boundaries to sink particles in a cell hierarchy. */
+/** Apply open and reflective box boundaries to sink particles in a cell
+ * hierarchy. */
 void cell_boundary_sink(struct cell *c, const struct engine *e) {
   if (c->sinks.count == 0) return;
   if (c->split) {
@@ -152,10 +217,24 @@ void cell_boundary_sink(struct cell *c, const struct engine *e) {
   }
 
   const double *dim = e->s->dim;
+  const unsigned int walls = e->s->boundary_conditions.walls;
+  double shift[3];
   for (int k = 0; k < c->sinks.count; k++) {
     struct sink *sink = &c->sinks.parts[k];
-    if (sink_is_inhibited(sink, e) || !cell_boundary_outside(sink->x, dim))
+    if (sink_is_inhibited(sink, e)) continue;
+
+    /* Mirror particles that crossed a wall, unless they also left the box
+     * through an open face. */
+    if (!cell_boundary_outside(sink->x, dim, walls)) {
+      if (cell_boundary_reflect(sink->x, dim, walls, shift)) {
+        for (int j = 0; j < 3; j++) {
+          if (shift[j] == 0.) continue;
+          sink->v[j] = -sink->v[j];
+          sink->x_diff[j] -= shift[j];
+        }
+      }
       continue;
+    }
 
     lock_lock(&e->s->lock);
     if (!sink_is_inhibited(sink, e)) {
