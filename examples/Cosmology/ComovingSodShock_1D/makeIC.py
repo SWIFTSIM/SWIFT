@@ -18,8 +18,9 @@
 #
 ##############################################################################
 
-import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Generates a swift IC file for the 1D Sod Shock in a periodic box
 
@@ -56,12 +57,12 @@ offset_L = delta_L / 2
 offset_R = delta_R / 2
 
 # Build the arrays
-coords = zeros((numPart, 3))
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-h = zeros(numPart)
-u = zeros(numPart)
+coords = np.zeros((numPart, 3))
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+h = np.zeros(numPart)
+u = np.zeros(numPart)
 
 # Set the particles on the left
 for i in range(numPart_L):
@@ -86,36 +87,24 @@ coords[:, 0] -= x_min
 u /= a_beg ** (3.0 * (gamma - 1.0))
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(unit_l_in_cgs * unyt.cm)
+UM = unyt.Unit(unit_m_in_cgs * unyt.g)
+Ut = unyt.Unit(unit_t_in_cgs * unyt.s)
+units = unyt.UnitSystem("comoving_sod_1d_units", UL, UM, Ut)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 1
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize], UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=1,
+)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = unit_l_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = unit_m_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = unit_t_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.gas.coordinates = coords * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=coords, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-
-
-file.close()
+w.write(fileName)

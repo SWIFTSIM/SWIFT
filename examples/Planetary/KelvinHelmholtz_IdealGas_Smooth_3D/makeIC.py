@@ -20,6 +20,8 @@
 
 import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
 
 # Generates a swift IC file for the Kelvin-Helmholtz test in a periodic box
 
@@ -101,42 +103,29 @@ A2_vel[:, 1] = vel_perturb_factor * np.sin(
 )
 
 # Write ICs to file
-with h5py.File(fileOutputName, "w") as f:
-    # Header
-    grp = f.create_group("/Header")
-    grp.attrs["BoxSize"] = [boxsize_l, boxsize_l, boxsize_depth]
-    grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFileOutputsPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["Dimension"] = 3
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [boxsize_l, boxsize_l, boxsize_depth],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-    # Units
-    grp = f.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 1.0
-    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.gas.coordinates = A2_coords * unyt.cm * w.a.comoving
+w.gas.velocities = A2_vel * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = A1_m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = A1_h * unyt.cm * w.a.comoving
+w.gas.internal_energy = A1_u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = A1_ids.astype(np.uint64)
 
-    # Particle group
-    grp = f.create_group("/PartType0")
-    ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-    ds[()] = A2_coords
-    ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-    ds[()] = A2_vel
-    ds = grp.create_dataset("Masses", (numPart, 1), "f")
-    ds[()] = A1_m.reshape((numPart, 1))
-    ds = grp.create_dataset("Density", (numPart, 1), "f")
-    ds[()] = A1_rho.reshape((numPart, 1))
-    ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-    ds[()] = A1_h.reshape((numPart, 1))
-    ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-    ds[()] = A1_u.reshape((numPart, 1))
-    ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-    ds[()] = A1_ids.reshape((numPart, 1))
-    ds = grp.create_dataset("MaterialIDs", (numPart, 1), "i")
-    ds[()] = A1_mat.reshape((numPart, 1))
+w.write(fileOutputName)
+
+# Add the extra fields
+with h5py.File(fileOutputName, "r+") as f:
+    grp = f["PartType0"]
+    grp.create_dataset("Density", data=A1_rho, dtype="f")
+    grp.create_dataset("MaterialIDs", data=A1_mat, dtype="i")

@@ -217,7 +217,7 @@ where :math:`b = \frac{2}{c^2}(\ln(1+c) - \frac{c}{1+c})`.
 
 Two examples using the Hernquist potential can be found in ``swiftsim/examples/GravityTests/``. 
 The ``Hernquist_radialinfall`` example puts 5 particles with zero velocity in a Hernquist 
-potential, resulting in radial orbits. The ``Hernquist_circularorbit``example puts three
+potential, resulting in radial orbits. The ``Hernquist_circularorbit`` example puts three
 particles on a circular orbit in a Hernquist potential, one at the inner region, one at the
 maximal circular velocity, and one in the outer region. To run these examples, SWIFT must
 be configured with the flag ``--with-ext-potential=hernquist``, or ``hernquist-sdmh05``
@@ -537,6 +537,7 @@ Installing AGAMA and linking SWIFT with it
 
 Installing the ``python`` AGAMA interface is done with ``pip``.
 After having cloned AGAMA, in the root directory, type::
+
   pip install --no-build-isolation .
 
 Note that during the installation process, the UNSIO and NEMO

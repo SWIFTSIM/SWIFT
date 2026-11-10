@@ -50,7 +50,8 @@ P = np.array(file["/PartType0/Pressures"])
 u = np.array(file["/PartType0/InternalEnergies"])
 m = np.array(file["/PartType0/Masses"])
 vs = np.array(file["/PartType0/Velocities"])
-ids = np.array(file["/PartType0/ParticleIDs"])
+# IDs are 1-based; shift them to recover the 0-based lattice index
+ids = np.array(file["/PartType0/ParticleIDs"]) - 1
 
 x = np.linspace(0.0, 1.0, 1000)
 rho_x = 1000.0 * np.exp(-0.5 * A / np.pi / cs2 * np.cos(2.0 * np.pi * x))
