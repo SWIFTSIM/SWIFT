@@ -1138,7 +1138,8 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                size_t Nspart, size_t Nbpart, size_t Nnupart,
+                const struct boundary_conditions *boundary_conditions,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int self_gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
@@ -1151,6 +1152,8 @@ void space_init(struct space *s, struct swift_params *params,
   s->dim[0] = dim[0];
   s->dim[1] = dim[1];
   s->dim[2] = dim[2];
+  s->boundary_conditions = *boundary_conditions;
+  const int periodic = boundary_conditions->type == boundary_condition_periodic;
   s->periodic = periodic;
   s->with_self_gravity = self_gravity;
   s->with_hydro = hydro;

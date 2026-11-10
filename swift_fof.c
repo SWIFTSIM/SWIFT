@@ -421,8 +421,9 @@ int main(int argc, char *argv[]) {
   /* Read particles and space information from ICs */
   char ICfileName[200] = "";
   parser_get_param_string(params, "InitialConditions:file_name", ICfileName);
-  const int periodic =
-      parser_get_param_int(params, "InitialConditions:periodic");
+  struct boundary_conditions boundary_conditions;
+  boundary_conditions_init(&boundary_conditions, params);
+  const int periodic = boundary_conditions.type == boundary_condition_periodic;
   const int replicate =
       parser_get_opt_param_int(params, "InitialConditions:replicate", 1);
   const int clean_smoothing_length_values = parser_get_opt_param_int(
@@ -572,7 +573,7 @@ int main(int argc, char *argv[]) {
   if (myrank == 0) clocks_gettime(&tic);
   space_init(&s, params, &cosmo, dim, /*hydro_props=*/NULL, parts, gparts,
              sinks, sparts, bparts, Ngas, Ngpart, Nsink, Nspart, Nbpart,
-             Nnupart, periodic, replicate, /*remap_ids=*/0,
+             Nnupart, &boundary_conditions, replicate, /*remap_ids=*/0,
              /*generate_gas_in_ics=*/0, /*hydro=*/N_total[0] > 0, /*gravity=*/1,
              /*with_star_formation=*/0, /*sink=*/N_total[swift_type_sink],
              with_DM_particles, with_DM_background_particles, with_neutrinos,

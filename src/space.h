@@ -30,6 +30,7 @@
 #include <stddef.h>
 
 /* Includes. */
+#include "boundary_conditions.h"
 #include "hydro_space.h"
 #include "lock.h"
 #include "parser.h"
@@ -115,6 +116,9 @@ struct space {
 
   /*! Is the space periodic? */
   int periodic;
+
+  /*! Boundary policy and reflective box faces. */
+  struct boundary_conditions boundary_conditions;
 
   /*! Extra space information needed for some hydro schemes. */
   struct hydro_space hs;
@@ -408,7 +412,8 @@ void space_init(struct space *s, struct swift_params *params,
                 const struct hydro_props *hydro_properties, struct part *parts,
                 struct gpart *gparts, struct sink *sinks, struct spart *sparts,
                 struct bpart *bparts, size_t Npart, size_t Ngpart, size_t Nsink,
-                size_t Nspart, size_t Nbpart, size_t Nnupart, int periodic,
+                size_t Nspart, size_t Nbpart, size_t Nnupart,
+                const struct boundary_conditions *boundary_conditions,
                 int replicate, int remap_ids, int generate_gas_in_ics,
                 int hydro, int gravity, int star_formation, int with_sink,
                 int with_DM, int with_DM_background, int neutrinos, int verbose,
