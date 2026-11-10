@@ -877,18 +877,21 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 }
 
 /*! Number of independent sub-trees per thread into which the top-level
- * cells too large for a single thread are cut (see space_split_large_cell()).
+ * cells too large for a single thread are cut (see space_split_large_cells()).
  */
 #define space_split_subtrees_per_thread 8
 
 /**
- * @brief A cell being split by space_split_large_cell(), the parts of the
+ * @brief A cell being split by space_split_large_cells(), the parts of the
  * sorting buffers holding its particles, and its number of particles.
  */
 struct space_split_item {
   struct cell *c;
   struct cell_buff *buff, *sbuff, *bbuff, *gbuff, *sink_buff;
   long long load;
+
+  /*! Is this a top-level cell split whole by one thread (no buffers)? */
+  int whole_cell_in_one_thread;
 };
 
 /**
@@ -1027,6 +1030,13 @@ static void space_split_level_mapper(void *map_data, int num_elements,
   for (int k = 0; k < num_elements; k++) {
     struct space_split_item *item = &items[k];
 
+    /* A small top-level cell: split it all here, as space_split_mapper()
+     * does. */
+    if (item->whole_cell_in_one_thread) {
+      space_split_recursive(s, item->c, NULL, NULL, NULL, NULL, NULL, tpid);
+      continue;
+    }
+
     if (item->c->depth > space_cell_maxdepth)
       error(
           "Exceeded maximum depth (%d) when splitting cells, aborting. This "
@@ -1063,57 +1073,105 @@ static void space_split_subtrees_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Split a top-level cell holding too many particles to be split by a
- * single thread, using all the threads.
+ * @brief Split the top-level cells holding too many particles to be split by
+ * a single thread, all together and using all the threads, along with the
+ * other top-level cells.
+ *
+ * Produces the same trees and the same order of the particles as
+ * space_split_recursive(). The positions of the particles of the large cells
+ * are copied into sorting buffers in parallel. The tops of the trees of all
+ * the large cells are then split level by level, all the cells of a level in
+ * parallel. The first level also holds the small cells, which are split whole
+ * by one thread each while the large cells are cut, largest first. The large
+ * cells are cut down to cells holding fewer than 1/(
+ * space_split_subtrees_per_thread x number of threads) of the particles of all
+ * the large cells. These independent sub-trees are split recursively in
+ * parallel, largest first. Finally, the properties of the cells of the tops of
+ * the trees are collected from their progeny, deepest first.
  *
  * Must not be called from within a threadpool mapper.
  *
  * @param s The #space.
- * @param c The top-level #cell, which must need to be split.
+ * @param large_cells The indices of the large top-level cells, which must all
+ * need to be split.
+ * @param nr_large The number of large cells.
+ * @param small_cells The indices of the other top-level cells.
+ * @param nr_small The number of other cells.
  */
-static void space_split_large_cell(struct space *s, struct cell *c) {
+static void space_split_large_cells(struct space *s, const int *large_cells,
+                                    const int nr_large, const int *small_cells,
+                                    const int nr_small) {
 
   const int nr_threads = s->e->threadpool.num_threads;
 
-  /* Set the top level cell tpid. */
-  c->tpid = 0;
-
-  /* Sorting buffers holding the positions of the particles
-   * We fill them in parallel using all the threads */
-  struct space_split_item top;
-  top.c = c;
-  top.load = space_split_cell_load(s, c);
-  top.buff =
-      space_split_copy_positions(s, "tempbuff", c->hydro.parts, c->hydro.count,
-                                 space_split_copy_parts_mapper);
-  top.gbuff =
-      space_split_copy_positions(s, "tempgbuff", c->grav.parts, c->grav.count,
-                                 space_split_copy_gparts_mapper);
-  top.sbuff =
-      space_split_copy_positions(s, "tempsbuff", c->stars.parts, c->stars.count,
-                                 space_split_copy_sparts_mapper);
-  top.bbuff = space_split_copy_positions(s, "tempbbuff", c->black_holes.parts,
-                                         c->black_holes.count,
-                                         space_split_copy_bparts_mapper);
-  top.sink_buff =
-      space_split_copy_positions(s, "temp_sink_buff", c->sinks.parts,
-                                 c->sinks.count, space_split_copy_sinks_mapper);
-
-  /* Largest number of particles in an independent sub-tree */
-  const long long max_subtree_load =
-      max(top.load / (space_split_subtrees_per_thread * nr_threads),
-          (long long)space_splitsize);
-
-  /* Split the top of the tree level by level */
   struct space_split_item *level = NULL, *next = NULL, *subtrees = NULL;
   struct cell **top_cells = NULL;
   int level_count = 0, level_size = 0, next_count = 0, next_size = 0;
   int subtrees_count = 0, subtrees_size = 0, top_cells_count = 0;
-  space_split_item_push(&level, &level_count, &level_size, &top);
 
-  /* We now recurse from the cell to construct a list of sub-cells for which
-     the workload is small */
+  /* The large cells, with sorting buffers holding the positions of their
+   * particles, start the first level */
+  long long large_load = 0;
+  for (int k = 0; k < nr_large; k++) {
+    struct cell *c = &s->cells_top[large_cells[k]];
 
+    /* Set the top level cell tpid. space_split_recursive() records the id of
+     * the thread splitting the cell, but this function runs on the main
+     * thread outside any threadpool mapper, where threadpool_gettid() must
+     * not be called: it would read the id stored by the last
+     * threadpool_map() call, a local variable of a function that has
+     * returned. Top-level cells are never returned to a cell buffer, so any
+     * valid id will do. */
+    c->tpid = 0;
+
+    struct space_split_item top;
+    top.c = c;
+    top.whole_cell_in_one_thread = 0;
+    top.load = space_split_cell_load(s, c);
+    top.buff = space_split_copy_positions(s, "tempbuff", c->hydro.parts,
+                                          c->hydro.count,
+                                          space_split_copy_parts_mapper);
+    top.gbuff =
+        space_split_copy_positions(s, "tempgbuff", c->grav.parts, c->grav.count,
+                                   space_split_copy_gparts_mapper);
+    top.sbuff = space_split_copy_positions(s, "tempsbuff", c->stars.parts,
+                                           c->stars.count,
+                                           space_split_copy_sparts_mapper);
+    top.bbuff = space_split_copy_positions(s, "tempbbuff", c->black_holes.parts,
+                                           c->black_holes.count,
+                                           space_split_copy_bparts_mapper);
+    top.sink_buff = space_split_copy_positions(s, "temp_sink_buff",
+                                               c->sinks.parts, c->sinks.count,
+                                               space_split_copy_sinks_mapper);
+    space_split_item_push(&level, &level_count, &level_size, &top);
+    large_load += top.load;
+  }
+
+  /* Keep the buffers of the large cells to free them at the end */
+  struct space_split_item *tops = (struct space_split_item *)malloc(
+      nr_large * sizeof(struct space_split_item));
+  if (tops == NULL) error("Failed to allocate the split work list.");
+  memcpy(tops, level, nr_large * sizeof(struct space_split_item));
+
+  /* Largest first, then the small cells, largest first, split whole */
+  qsort(level, nr_large, sizeof(struct space_split_item), space_split_item_cmp);
+  for (int k = 0; k < nr_small; k++) {
+    struct space_split_item item;
+    bzero(&item, sizeof(item));
+    item.c = &s->cells_top[small_cells[k]];
+    item.whole_cell_in_one_thread = 1;
+    item.load = space_split_cell_load(s, item.c);
+    space_split_item_push(&level, &level_count, &level_size, &item);
+  }
+  qsort(level + nr_large, nr_small, sizeof(struct space_split_item),
+        space_split_item_cmp);
+
+  /* Largest number of particles in an independent sub-tree */
+  const long long max_subtree_load =
+      max(large_load / (space_split_subtrees_per_thread * nr_threads),
+          (long long)space_splitsize);
+
+  /* Split the tops of the trees level by level */
   while (level_count > 0) {
 
     /* Create the progeny of all the cells of this level */
@@ -1121,7 +1179,7 @@ static void space_split_large_cell(struct space *s, struct cell *c) {
                    level_count, sizeof(struct space_split_item),
                    /*chunk=*/1, s);
 
-    /* Remember the cells of the top of the tree */
+    /* Remember the cells of the tops of the trees */
     top_cells = (struct cell **)realloc(
         top_cells, (top_cells_count + level_count) * sizeof(struct cell *));
     if (top_cells == NULL) error("Failed to allocate the split work list.");
@@ -1129,6 +1187,10 @@ static void space_split_large_cell(struct space *s, struct cell *c) {
     next_count = 0;
     for (int i = 0; i < level_count; i++) {
       const struct space_split_item *item = &level[i];
+
+      /* Small cells are done */
+      if (item->whole_cell_in_one_thread) continue;
+
       top_cells[top_cells_count++] = item->c;
 
       /* Buffers for the progenitors */
@@ -1174,23 +1236,29 @@ static void space_split_large_cell(struct space *s, struct cell *c) {
                  subtrees_count, sizeof(struct space_split_item),
                  /*chunk=*/1, s);
 
-  /* Collect the properties of the top of the tree, deepest cells first */
+  /* Collect the properties of the tops of the trees, deepest cells first
+   * (the progeny of a cell are always further down the list) */
   for (int i = top_cells_count - 1; i >= 0; i--)
     space_split_collect_progeny(s, top_cells[i]);
 
   /* Store the global max depth */
-  atomic_max(&s->maxdepth, c->maxdepth);
+  for (int k = 0; k < nr_large; k++)
+    atomic_max(&s->maxdepth, s->cells_top[large_cells[k]].maxdepth);
 
   /* Clean up. */
   free(level);
   free(next);
   free(subtrees);
   free(top_cells);
-  if (top.buff != NULL) swift_free("tempbuff", top.buff);
-  if (top.gbuff != NULL) swift_free("tempgbuff", top.gbuff);
-  if (top.sbuff != NULL) swift_free("tempsbuff", top.sbuff);
-  if (top.bbuff != NULL) swift_free("tempbbuff", top.bbuff);
-  if (top.sink_buff != NULL) swift_free("temp_sink_buff", top.sink_buff);
+  for (int k = 0; k < nr_large; k++) {
+    if (tops[k].buff != NULL) swift_free("tempbuff", tops[k].buff);
+    if (tops[k].gbuff != NULL) swift_free("tempgbuff", tops[k].gbuff);
+    if (tops[k].sbuff != NULL) swift_free("tempsbuff", tops[k].sbuff);
+    if (tops[k].bbuff != NULL) swift_free("tempbbuff", tops[k].bbuff);
+    if (tops[k].sink_buff != NULL)
+      swift_free("temp_sink_buff", tops[k].sink_buff);
+  }
+  free(tops);
 }
 
 /**
@@ -1211,7 +1279,7 @@ void space_split(struct space *s, int verbose) {
   bzero(s->max_mpole_power, (SELF_GRAVITY_MULTIPOLE_ORDER + 1) * sizeof(float));
 
   /* Find the top-level cells holding more than a thread's share of the
-   * particles: they are split using all the threads, after the others. */
+   * particles: they are split together using all the threads. */
   const int nr_threads = s->e->threadpool.num_threads;
   const int nr_cells = s->nr_local_cells_with_particles;
   long long total_load = 0;
@@ -1240,30 +1308,38 @@ void space_split(struct space *s, int verbose) {
     }
   }
 
-  /* We start by working on all the "small" cells. The threadpool will assign
-     each cell to the threads. */
-  threadpool_map(&s->e->threadpool, space_split_mapper, small_cells, nr_small,
-                 sizeof(int), threadpool_auto_chunk_size, s);
+  if (nr_large == 0) {
 
-  /* Now, we work on the large cells using all the threads together */
-  for (int k = 0; k < nr_large; k++) {
-    struct cell *c = &s->cells_top[large_cells[k]];
-    space_split_large_cell(s, c);
+    /* All the cells are split by one thread each */
+    threadpool_map(&s->e->threadpool, space_split_mapper, small_cells, nr_small,
+                   sizeof(int), threadpool_auto_chunk_size, s);
 
-#ifdef SWIFT_DEBUG_CHECKS
-    /* All cells and particles should have consistent h_max values. */
-    int depth = 0;
-    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
-#endif
+  } else {
+
+    /* The large cells are split together using all the threads, the
+     * small ones alongside */
+    space_split_large_cells(s, large_cells, nr_large, small_cells, nr_small);
 
     /* Collect some global information about the top-level m-poles */
-    if (s->with_self_gravity) {
-      atomic_min_f(&s->min_a_grav,
-                   c->grav.multipole->m_pole.min_old_a_grav_norm);
-      atomic_max_f(&s->max_softening, c->grav.multipole->m_pole.max_softening);
-      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-        atomic_max_f(&s->max_mpole_power[n],
-                     c->grav.multipole->m_pole.power[n]);
+    for (int k = 0; k < nr_cells; k++) {
+      const struct cell *c =
+          &s->cells_top[s->local_cells_with_particles_top[k]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+      /* All cells and particles should have consistent h_max values. */
+      int depth = 0;
+      if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
+#endif
+
+      if (s->with_self_gravity) {
+        s->min_a_grav =
+            min(s->min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+        s->max_softening =
+            max(s->max_softening, c->grav.multipole->m_pole.max_softening);
+        for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+          s->max_mpole_power[n] =
+              max(s->max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+      }
     }
   }
 
