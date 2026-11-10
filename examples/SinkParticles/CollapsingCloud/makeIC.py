@@ -44,7 +44,6 @@ into its Helmholtz components, and recombines them with weights set by
 
 import argparse
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -364,7 +363,6 @@ if __name__ == "__main__":
     print(f"  E_pot        = {E_pot:.3e} (code units, analytic uniform-sphere value)")
 
     pos, vel, mass = sphere.generate_particles(N, seed=opt.seed)
-    rho = np.full(N, sphere.rho_0)
 
     # Isothermal internal energy per unit mass: u = k_B*T / ((gamma-1)*mu*m_p)
     gamma = 5.0 / 3.0
@@ -450,8 +448,5 @@ if __name__ == "__main__":
     w.gas.particle_ids = ids
 
     w.write(opt.outputfilename)
-
-    with h5py.File(opt.outputfilename, "r+") as f:
-        f["PartType0"].create_dataset("Densities", data=rho, dtype="f")
 
     print(f"\n{opt.outputfilename} saved.")

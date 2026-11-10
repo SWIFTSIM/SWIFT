@@ -17,7 +17,6 @@
 #
 ################################################################################
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -139,7 +138,6 @@ print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / uni
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength**3).value
 sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
@@ -149,7 +147,6 @@ mass = np.ones(N) * m
 u = np.ones(N) * sigma**2
 ids = np.arange(1, N + 1)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
-rho = np.ones(N) * rho
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
@@ -177,8 +174,5 @@ w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
 w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(opt.outputfilename)
-
-with h5py.File(opt.outputfilename, "r+") as fileOutput:
-    fileOutput["PartType0"].create_dataset("Densities", data=rho, dtype="f")
 
 print("{} saved.".format(opt.outputfilename))

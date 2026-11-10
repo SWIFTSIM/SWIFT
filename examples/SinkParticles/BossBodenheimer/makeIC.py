@@ -36,7 +36,6 @@ from gravitational collapse and fragmentation.
 
 import argparse
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -119,13 +118,6 @@ def apply_azimuthal_density_perturbation(pos, amplitude, m_pert):
     pos[:, 1] = r * np.sin(phi_prime) * np.sin(theta)
     # pos[:, 2] (= r * cos(theta)) is unchanged: the perturbation is azimuthal only.
     return pos
-
-
-def boss_bodenheimer_density(pos, rho_0, amplitude, m_pert):
-    """Local gas density at each particle, following the same perturbation used
-    to displace the particles. Used only to populate the IC's Densities field."""
-    phi = np.arctan2(pos[:, 1], pos[:, 0])
-    return rho_0 * (1.0 + amplitude * np.cos(m_pert * phi))
 
 
 def apply_rigid_rotation(pos, Omega):
@@ -263,13 +255,9 @@ if __name__ == "__main__":
 
     pos, vel, mass = sphere.generate_particles(N, seed=opt.seed)
 
-    # Azimuthal density perturbation (displaces particles; recomputed density is
-    # only used to populate the IC's Densities field).
+    # Azimuthal density perturbation (displaces particles).
     pos = apply_azimuthal_density_perturbation(
         pos, amplitude=opt.density_amplitude, m_pert=opt.m
-    )
-    rho = boss_bodenheimer_density(
-        pos, rho_0=sphere.rho_0, amplitude=opt.density_amplitude, m_pert=opt.m
     )
 
     # Rigid rotation
@@ -322,8 +310,5 @@ if __name__ == "__main__":
     w.gas.particle_ids = ids
 
     w.write(opt.outputfilename)
-
-    with h5py.File(opt.outputfilename, "r+") as f:
-        f["PartType0"].create_dataset("Densities", data=rho, dtype="f")
 
     print(f"\n{opt.outputfilename} saved.")
