@@ -125,7 +125,8 @@ static int radiation_packet_ticks_are_ln_a = 0;
 /*! Number of times the far cells of a particle became wider, of pieces of
     light that fell beyond the widest far cells, and of deliveries to a
     receiver that moves away faster than the clamp allows, on this rank since
-    the start. Rare events: one atomic operation each. */
+    the start of this run segment (reset at a restart). Rare events: one
+    atomic operation each. */
 static long long radiation_packet_coarsening_count = 0;
 static long long radiation_packet_overflow_count = 0;
 static long long radiation_packet_clamp_count = 0;
@@ -214,7 +215,8 @@ static struct radiation_packet_placed *radiation_packet_placed_record(void) {
 }
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
-/*! Counters of the arrival containers, per step and since the start. */
+/*! Counters of the arrival containers, per step and since the start of this
+    run segment. */
 enum radiation_packet_diag {
   rpd_placed_new,
   rpd_placed_again,
@@ -544,7 +546,7 @@ void radiation_packet_far_share_report(const struct engine *e) {
 }
 
 /**
- * @brief Print the far share of the whole run, at its end.
+ * @brief Print the far share of this run segment, at its end.
  *
  * Collective: called by every rank from engine_clean(). Does nothing without
  * a light speed limit, without placed light, or when no step ran (a dry run,
@@ -591,9 +593,9 @@ void radiation_packet_far_share_final(const struct engine *e) {
 /**
  * @brief Print the far light of the packet transport at the statistics
  * cadence: the far share of the new light in the window since the last call
- * and over the run, the share placed in receivers without a known step, the
- * stock of light that waits in the far cells now, and the counters of the far
- * cells.
+ * and over this run segment, the share placed in receivers without a known
+ * step, the stock of light that waits in the far cells now, and the counters
+ * of the far cells.
  *
  * The stock is the sum of the far cell energy over the local gas: it holds the
  * light parked in receivers that have not merged since it arrived, which
@@ -1330,7 +1332,8 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
 /**
- * @brief Counters of the arrival bins on this rank since the start, for tests.
+ * @brief Counters of the arrival bins on this rank since the start of this run
+ * segment, for tests.
  *
  * @param widened (return) Times the far cells of a particle became wider.
  * @param beyond (return) Pieces of light beyond the widest far cells.
