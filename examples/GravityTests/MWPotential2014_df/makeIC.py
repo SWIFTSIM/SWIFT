@@ -21,7 +21,6 @@ import unyt
 import swiftsimio as sw
 
 box_size = 1000.0
-print("Initial conditions written to 'IC.hdf5'")
 
 pos = np.zeros((1, 3))
 pos[0, 0] = 0.1
@@ -67,3 +66,4 @@ w.dark_matter.masses = mass * UM * w.a.comoving**0
 w.dark_matter.particle_ids = ids.astype(np.uint64)
 
 w.write("IC.hdf5")
+print("Initial conditions written to 'IC.hdf5'")

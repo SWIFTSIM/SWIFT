@@ -42,7 +42,7 @@ internalEnergy = P / ((gamma - 1.0) * rho)
 
 # ---------------------------------------------------
 
-n_iterations = numPart / N
+n_iterations = numPart // N
 remainder = numPart % N
 
 print(
@@ -169,7 +169,7 @@ coords = np.zeros((remainder, 3))
 coords[:, 0] = z[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 1] = y[:, 0] * boxSize / L + boxSize / (2 * L)
 coords[:, 2] = x[:, 0] * boxSize / L + boxSize / (2 * L)
-ods_x[offset : offset + remainder, :] = coords
+ds_x[offset : offset + remainder, :] = coords
 
 print("Done", offset + remainder, "/", numPart)
 
