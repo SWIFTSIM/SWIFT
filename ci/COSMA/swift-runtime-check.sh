@@ -31,6 +31,7 @@ source ci/setup.sh
 
 #  Extra modules for runtime.
 module load grackle-swift/3.3.dev1
+pip3.12 install --user --upgrade swiftsimio
 
 #  Need 2.70 for Fortran support.
 module load autoconf
