@@ -18,9 +18,13 @@
 #
 ##############################################################################
 
-import h5py
 import sys
 import numpy as np
+import unyt
+import swiftsimio as sw
+
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
 
 # Generates a swift IC file containing a cartesian distribution of DM particles
 # with a density of 1
@@ -39,42 +43,29 @@ mass = boxSize**3 * rho / numPart
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [0, numPart, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [0, numPart, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, mass, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = file.create_group("/PartType1")
-
 v = np.zeros((numPart, 3))
-ds = grp.create_dataset("Velocities", (numPart, 3), "f", data=v)
 
-m = np.full((numPart, 1), mass)
-ds = grp.create_dataset("Masses", (numPart, 1), "f", data=m)
+m = np.full(numPart, mass)
 
-ids = np.linspace(0, numPart, numPart, endpoint=False).reshape((numPart, 1))
-ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-ds[()] = ids + 1
+ids = np.linspace(0, numPart, numPart, endpoint=False)
 coords = np.random.rand(numPart, 3) * boxSize
-ds = grp.create_dataset("Coordinates", (numPart, 3), "d", data=coords)
 
-file.close()
+w.dark_matter.coordinates = coords * unyt.cm * w.a.comoving
+w.dark_matter.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.dark_matter.masses = m * unyt.g * w.a.comoving**0
+w.dark_matter.particle_ids = (ids + 1).astype(np.uint64)
+
+w.write(fileName)

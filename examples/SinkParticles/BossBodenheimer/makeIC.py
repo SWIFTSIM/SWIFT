@@ -36,8 +36,9 @@ from gravitational collapse and fragmentation.
 
 import argparse
 
-import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
 from astropy import constants as cte
 from astropy import units as u
 
@@ -117,13 +118,6 @@ def apply_azimuthal_density_perturbation(pos, amplitude, m_pert):
     pos[:, 1] = r * np.sin(phi_prime) * np.sin(theta)
     # pos[:, 2] (= r * cos(theta)) is unchanged: the perturbation is azimuthal only.
     return pos
-
-
-def boss_bodenheimer_density(pos, rho_0, amplitude, m_pert):
-    """Local gas density at each particle, following the same perturbation used
-    to displace the particles. Used only to populate the IC's Densities field."""
-    phi = np.arctan2(pos[:, 1], pos[:, 0])
-    return rho_0 * (1.0 + amplitude * np.cos(m_pert * phi))
 
 
 def apply_rigid_rotation(pos, Omega):
@@ -261,13 +255,9 @@ if __name__ == "__main__":
 
     pos, vel, mass = sphere.generate_particles(N, seed=opt.seed)
 
-    # Azimuthal density perturbation (displaces particles; recomputed density is
-    # only used to populate the IC's Densities field).
+    # Azimuthal density perturbation (displaces particles).
     pos = apply_azimuthal_density_perturbation(
         pos, amplitude=opt.density_amplitude, m_pert=opt.m
-    )
-    rho = boss_bodenheimer_density(
-        pos, rho_0=sphere.rho_0, amplitude=opt.density_amplitude, m_pert=opt.m
     )
 
     # Rigid rotation
@@ -297,34 +287,28 @@ if __name__ == "__main__":
     print(f"  boxsize    = {L:.3e} AU")
     print(f"  shift      = {L / 2:.3e} AU (set this in params.yml)")
 
-    ids = np.arange(N, dtype=np.uint64)
+    ids = np.arange(1, N + 1, dtype=np.uint64)
 
-    with h5py.File(opt.outputfilename, "w") as f:
-        grp = f.create_group("/Header")
-        grp.attrs["BoxSize"] = [L, L, L]
-        grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-        grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-        grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-        grp.attrs["Time"] = 0.0
-        grp.attrs["NumFileOutputsPerSnapshot"] = 1
-        grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        grp.attrs["Flag_Entropy_ICs"] = 0
-        grp.attrs["Dimension"] = 3
+    UL = unyt.Unit(UnitLength_in_cgs * unyt.cm)
+    UM = unyt.Unit(UnitMass_in_cgs * unyt.g)
+    Ut = unyt.Unit(UnitTime_in_cgs * unyt.s)
+    unit_system = unyt.UnitSystem("boss_bodenheimer", UL, UM, Ut)
 
-        grp = f.create_group("/Units")
-        grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
-        grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
-        grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
-        grp.attrs["Unit current in cgs (U_I)"] = 1.0
-        grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+    w = sw.Writer(
+        unit_system=unit_system,
+        boxsize=sw.cosmo_array(
+            [L, L, L], UL, comoving=True, scale_factor=1.0, scale_exponent=1
+        ),
+        dimension=3,
+    )
 
-        grp = f.create_group("/PartType0")
-        grp.create_dataset("Coordinates", data=pos, dtype="d")
-        grp.create_dataset("Velocities", data=vel, dtype="f")
-        grp.create_dataset("Masses", data=mass, dtype="f")
-        grp.create_dataset("SmoothingLength", data=h, dtype="f")
-        grp.create_dataset("InternalEnergy", data=U_int_per_part, dtype="f")
-        grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-        grp.create_dataset("Densities", data=rho, dtype="f")
+    w.gas.coordinates = pos * UL * w.a.comoving
+    w.gas.velocities = vel * UL / Ut * w.a.comoving**0
+    w.gas.masses = mass * UM * w.a.comoving**0
+    w.gas.smoothing_lengths = h * UL * w.a.comoving
+    w.gas.internal_energy = U_int_per_part * UL**2 / Ut**2 * w.a.comoving**0
+    w.gas.particle_ids = ids
+
+    w.write(opt.outputfilename)
 
     print(f"\n{opt.outputfilename} saved.")

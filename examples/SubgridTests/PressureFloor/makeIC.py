@@ -17,13 +17,13 @@
 #
 ##############################################################################
 
-import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
 
 # Generates a SWIFT IC file with a constant density and pressure
 
 # Parameters
-periodic = 1  # 1 For periodic box
 boxSize = 200  # 200 kiloparsec
 rho = 200  # Density in code units
 T = 3000  # Initial Temperature
@@ -45,10 +45,10 @@ unit_mass = 2.0e33  # solar mass
 unit_time = 3.0857e16  # ~ Gyr
 
 # Read id, position and h from glass
-glass = h5py.File("glassCube_16.hdf5", "r")
-ids = glass["/PartType0/ParticleIDs"][:]
-pos = glass["/PartType0/Coordinates"][:, :] * boxSize
-h = glass["/PartType0/SmoothingLength"][:] * boxSize
+glass = sw.load("glassCube_16.hdf5")
+ids = glass.gas.particle_ids.value
+pos = glass.gas.coordinates.value * boxSize
+h = glass.gas.smoothing_lengths.value * boxSize
 
 # Compute basic properties
 numPart = np.size(pos) // 3
@@ -57,57 +57,35 @@ internalEnergy = k_b_cgs * T * mu / ((gamma - 1.0) * m_h_cgs)
 internalEnergy *= (unit_time / unit_length) ** 2
 
 # File
-f = h5py.File(fileName, "w")
+UL = unyt.Unit(unit_length * unyt.cm)
+UM = unyt.Unit(unit_mass * unyt.g)
+Ut = unyt.Unit(unit_time * unyt.s)
+units = unyt.UnitSystem("pressure_floor", UL, UM, Ut)
 
-# Header
-grp = f.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-
-# Runtime parameters
-grp = f.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = periodic
-
-# Units
-grp = f.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = unit_length
-grp.attrs["Unit mass in cgs (U_M)"] = unit_mass
-grp.attrs["Unit time in cgs (U_t)"] = unit_time
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize] * 3, UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = f.create_group("/PartType0")
-
 v = np.zeros((numPart, 3))
-ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = v
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
 
-m = np.full((numPart, 1), mass)
-ds = grp.create_dataset("Masses", (numPart, 1), "f")
-ds[()] = m
+m = np.full(numPart, mass)
+w.gas.masses = m * UM * w.a.comoving**0
 
-h = np.reshape(h, (numPart, 1))
-ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-ds[()] = h
+w.gas.smoothing_lengths = h * UL * w.a.comoving
 
-u = np.full((numPart, 1), internalEnergy)
-ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-ds[()] = u
+u = np.full(numPart, internalEnergy)
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
 
-ids = np.reshape(ids, (numPart, 1))
-ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-ds[()] = ids
+w.gas.particle_ids = ids.astype(np.uint64)
 
-ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-ds[()] = pos
+w.gas.coordinates = pos * UL * w.a.comoving
 
-f.close()
+w.write(fileName)
 
 print("Initial condition generated")

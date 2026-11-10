@@ -1,0 +1,17 @@
+# Python packages needed by the scripts of the examples (making the initial
+# conditions and plotting the results). Install them with:
+#
+#   python3 -m pip install -r examples/requirements.txt
+#
+# swiftsimio needs Python >= 3.11. It also installs numba.
+# A few examples need additional packages, listed in the documentation
+# (Getting Started > Running an Example) and in their README.
+
+numpy
+scipy
+matplotlib
+h5py
+unyt
+swiftsimio>=12.4.0
+astropy
+tqdm

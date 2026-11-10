@@ -34,6 +34,13 @@ Note that the AGAMA potential file `potential.txt` can be created by running:
 `python3 makePlummerPotential.py`
 
 
+# Python requirements
+
+Besides the packages of `examples/requirements.txt`, `makePlummerPotential.py`
+needs the python packages of AGAMA (see below) and pNbody
+(https://lastro.epfl.ch/projects/pNbody/).
+
+
 # How to compile AGAMA
 
 1. clone AGAMA from the official repository

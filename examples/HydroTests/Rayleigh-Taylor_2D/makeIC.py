@@ -19,6 +19,8 @@
 
 import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
 from scipy.optimize import bisect
 
 # Generates a swift IC file for the Rayleigh-Taylor instability in a periodic
@@ -211,43 +213,23 @@ if __name__ == "__main__":
     vel[:, 1] = vy(coords[:, 0], coords[:, 1])
 
     # File
-    fileOutput = h5py.File(fileOutputName, "w")
+    w = sw.Writer(
+        unit_system=unyt.unit_systems.cgs_unit_system,
+        boxsize=sw.cosmo_array(
+            box_size, unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+        ),
+        dimension=2,
+    )
 
-    # Header
-    grp = fileOutput.create_group("/Header")
-    grp.attrs["BoxSize"] = box_size
-    grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFileOutputsPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 2
+    w.gas.coordinates = coords * unyt.cm * w.a.comoving
+    w.gas.velocities = vel * unyt.cm / unyt.s * w.a.comoving**0
+    w.gas.masses = m * unyt.g * w.a.comoving**0
+    w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+    w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+    w.gas.particle_ids = ids.astype(np.uint64)
 
-    # Units
-    grp = fileOutput.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 1.0
-    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+    w.write(fileOutputName)
 
-    # Particle group
-    grp = fileOutput.create_group("/PartType0")
-    ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-    ds[()] = coords
-    ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-    ds[()] = vel
-    ds = grp.create_dataset("Masses", (numPart, 1), "f")
-    ds[()] = m.reshape((numPart, 1))
-    ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-    ds[()] = h.reshape((numPart, 1))
-    ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-    ds[()] = u.reshape((numPart, 1))
-    ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-    ds[()] = ids.reshape((numPart, 1))
-    ds = grp.create_dataset("Density", (numPart, 1), "f")
-    ds[()] = rho.reshape((numPart, 1))
-
-    fileOutput.close()
+    # Add the extra fields not handled by the Writer
+    with h5py.File(fileOutputName, "r+") as f:
+        f["PartType0"].create_dataset("Density", data=rho, dtype="f")
