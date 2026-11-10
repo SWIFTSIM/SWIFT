@@ -30,6 +30,7 @@
 #include "random.h"
 #include "restart.h"
 #include "star_gas_weights.h"
+#include "threadpool.h"
 
 #if defined(HAVE_CHEALPIX)
 #include <chealpix.h>
@@ -590,6 +591,59 @@ void radiation_packet_far_share_final(const struct engine *e) {
       1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
 }
 
+/*! Number of particles per chunk of the far stock sum. Fixed, so that the
+ * partial sums and their order do not depend on the number of threads. */
+#define RADIATION_PACKET_FAR_STOCK_CHUNK 8192
+
+/*! Partial far stock of one chunk of particles. */
+struct far_stock_chunk {
+  double stock[2];
+  long long holders[2];
+};
+
+/*! Extra data of #radiation_packet_far_stock_mapper. */
+struct far_stock_data {
+  const struct part *parts;
+  struct far_stock_chunk *chunks;
+};
+
+/**
+ * @brief Threadpool mapper summing the far cell energy of a chunk of gas.
+ *
+ * The partial sum goes into the slot of the chunk, so the caller can add the
+ * chunks in a fixed order.
+ *
+ * @param map_data The first #part of the chunk.
+ * @param num_elements The number of #part in the chunk.
+ * @param extra_data The #far_stock_data.
+ */
+static void radiation_packet_far_stock_mapper(void *map_data, int num_elements,
+                                              void *extra_data) {
+  const struct part *restrict parts = (const struct part *)map_data;
+  struct far_stock_data *data = (struct far_stock_data *)extra_data;
+  struct far_stock_chunk *out = &data->chunks[(size_t)(parts - data->parts) /
+                                              RADIATION_PACKET_FAR_STOCK_CHUNK];
+  for (int i = 0; i < num_elements; i++) {
+    const struct part *p = &parts[i];
+    if (p->time_bin == time_bin_inhibited ||
+        p->time_bin == time_bin_not_created)
+      continue;
+    const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+    double held = 0.;
+    for (int k = 0; k < RADIATION_PACKET_SLOTS; k++)
+      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
+        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+          held += (double)pk->slot[k].band[b].far_energy[c];
+    if (held == 0.) continue;
+    out->stock[0] += held;
+    out->holders[0]++;
+    if (pk->step_ti == 0) {
+      out->stock[1] += held;
+      out->holders[1]++;
+    }
+  }
+}
+
 /**
  * @brief Print the far light of the packet transport at the statistics
  * cadence: the far share of the new light in the window since the last call
@@ -615,22 +669,24 @@ void radiation_packet_far_diagnostics(const struct engine *e) {
   const struct space *s = e->s;
   double stock[2] = {0., 0.};
   long long holders[2] = {0, 0};
-  for (size_t i = 0; i < s->nr_parts; i++) {
-    const struct part *p = &s->parts[i];
-    if (p->time_bin == time_bin_inhibited) continue;
-    const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
-    double held = 0.;
-    for (int k = 0; k < RADIATION_PACKET_SLOTS; k++)
-      for (int b = 0; b < ISRF_OPERATOR_COUNT; b++)
-        for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
-          held += (double)pk->slot[k].band[b].far_energy[c];
-    if (held == 0.) continue;
-    stock[0] += held;
-    holders[0]++;
-    if (pk->step_ti == 0) {
-      stock[1] += held;
-      holders[1]++;
+  if (s->nr_parts > 0) {
+    const size_t n_chunks =
+        (s->nr_parts + RADIATION_PACKET_FAR_STOCK_CHUNK - 1) /
+        RADIATION_PACKET_FAR_STOCK_CHUNK;
+    struct far_stock_chunk *chunks =
+        (struct far_stock_chunk *)calloc(n_chunks, sizeof(*chunks));
+    if (chunks == NULL) error("Failed to allocate the far stock partial sums.");
+    struct far_stock_data data = {s->parts, chunks};
+    threadpool_map(&s->e->threadpool, radiation_packet_far_stock_mapper,
+                   s->parts, s->nr_parts, sizeof(struct part),
+                   RADIATION_PACKET_FAR_STOCK_CHUNK, &data);
+    for (size_t c = 0; c < n_chunks; c++) {
+      for (int k = 0; k < 2; k++) {
+        stock[k] += chunks[c].stock[k];
+        holders[k] += chunks[c].holders[k];
+      }
     }
+    free(chunks);
   }
   long long counts[3] = {radiation_packet_coarsening_count,
                          radiation_packet_overflow_count,
