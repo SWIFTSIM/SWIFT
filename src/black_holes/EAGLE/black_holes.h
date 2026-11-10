@@ -886,9 +886,12 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
 
   /* Now also compute NSC growth rate based on mass deficit from *assumed* relation with BH mass.
   * We use combined scaling relations M_BH - M_gal (Greene+20, section 8.2) and 
-  * M_gal - M_NSC (Neumayer+20), in units of Msun */
+  * M_gal - M_NSC, in units of Msun. The latter was first from Neumayer+20, now from Pfister+20 */
   const double m_bh_msun = bp->subgrid_mass * props->mass_to_solar_mass;
-  const double logm_nsc = 0.35 * log10f(m_bh_msun) + 4.61;
+  // Neumayer:
+  // const double logm_nsc = 0.35 * log10f(m_bh_msun) + 4.61;
+  // Pfister, consistent with their TDE rate model:
+  const double logm_nsc = 0.65 * log10f(m_bh_msun) + 2.54;
   const double m_nsc_supposed = pow(10, logm_nsc) * constants->const_solar_mass;
   bp->nsc_mass_deficit = m_nsc_supposed - bp->nsc_mass;
   
