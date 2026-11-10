@@ -58,6 +58,11 @@ enum task_types {
   task_type_drift_sink,
   task_type_drift_bpart,
   task_type_drift_gpart,
+  task_type_boundary_part,
+  task_type_boundary_spart,
+  task_type_boundary_sink,
+  task_type_boundary_bpart,
+  task_type_boundary_gpart,
   task_type_drift_gpart_out, /* Implicit */
   task_type_end_hydro_force,
   task_type_kick1,
@@ -162,6 +167,9 @@ enum task_subtypes {
   task_subtype_sink_do_gas_swallow,
   task_subtype_rt_gradient,
   task_subtype_rt_transport,
+  task_subtype_boundary_open,
+  task_subtype_boundary_periodic,
+  task_subtype_boundary_reflective,
   task_subtype_count
 } __attribute__((packed));
 

@@ -45,6 +45,9 @@ struct cell_black_holes {
     /*! The drift task for bparts */
     struct task *drift;
 
+    /*! The boundary task for bparts */
+    struct task *boundary;
+
     /*! Implicit tasks marking the entry of the BH physics block of tasks */
     struct task *black_holes_in;
 

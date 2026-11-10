@@ -69,6 +69,9 @@ struct cell_grav {
   /*! The drift task for gparts */
   struct task *drift;
 
+  /*! The boundary task for gparts */
+  struct task *boundary;
+
   /*! Implicit task (going up- and down the tree) for the #gpart drifts */
   struct task *drift_out;
 

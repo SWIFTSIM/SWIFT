@@ -400,6 +400,13 @@ void *runner_main(void *data) {
         case task_type_drift_gpart:
           runner_do_drift_gpart(r, ci, 1);
           break;
+        case task_type_boundary_part:
+        case task_type_boundary_spart:
+        case task_type_boundary_sink:
+        case task_type_boundary_bpart:
+        case task_type_boundary_gpart:
+          /* Boundary operations are introduced in the next step. */
+          break;
         case task_type_kick1:
           runner_do_kick1(r, ci, 1);
           break;

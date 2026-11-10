@@ -62,6 +62,33 @@ extern int engine_star_resort_task_depth;
 extern int engine_max_parts_per_cooling;
 
 /**
+ * @brief Add the boundary task following a species' drift.
+ */
+static struct task *engine_maketasks_boundary_conditions(
+    struct engine *e, struct cell *c, struct task *drift,
+    const enum task_types type) {
+
+  enum task_subtypes subtype = task_subtype_boundary_open;
+  switch (e->s->boundary_conditions.type) {
+    case boundary_condition_periodic:
+      subtype = task_subtype_boundary_periodic;
+      break;
+    case boundary_condition_reflective:
+      subtype = task_subtype_boundary_reflective;
+      break;
+    case boundary_condition_open:
+      break;
+    default:
+      error("Unknown boundary condition type");
+  }
+
+  struct task *boundary =
+      scheduler_addtask(&e->sched, type, subtype, 0, 0, c, NULL);
+  scheduler_addunlock(&e->sched, drift, boundary);
+  return boundary;
+}
+
+/**
  * @brief Add send tasks for the gravity pairs to a hierarchy of cells.
  *
  * @param e The #engine.
@@ -154,7 +181,7 @@ void engine_addtasks_send_gravity(struct engine *e, struct cell *ci,
         scheduler_addunlock(s, t_grav, ci->top->hydro.star_formation);
 
       /* Drift before you pack + send */
-      scheduler_addunlock(s, ci->grav.super->grav.drift, t_pack_grav);
+      scheduler_addunlock(s, ci->grav.super->grav.boundary, t_pack_grav);
 
       if (gravity_after_hydro_density)
         scheduler_addunlock(s, ci->grav.super->grav.init_out, t_pack_grav);
@@ -305,10 +332,10 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
 #endif
 
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rho);
+      scheduler_addunlock(s, ci->hydro.super->hydro.boundary, t_rho);
 
       /* Drift before you send */
-      scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_xv);
+      scheduler_addunlock(s, ci->hydro.super->hydro.boundary, t_xv);
 
       if (with_limiter)
         scheduler_addunlock(s, ci->super->timestep, t_pack_limiter);
@@ -343,8 +370,8 @@ void engine_addtasks_send_hydro(struct engine *e, struct cell *ci,
 
         /* Drift before you send. Especially intended to cover inactive cells
          * being sent. */
-        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_gradient);
-        scheduler_addunlock(s, ci->hydro.super->hydro.drift, t_rt_transport);
+        scheduler_addunlock(s, ci->hydro.super->hydro.boundary, t_rt_gradient);
+        scheduler_addunlock(s, ci->hydro.super->hydro.boundary, t_rt_transport);
 
         /* Make sure the gradient sends don't run before the xv is finished.
          * This can occur when a cell itself is inactive for both hydro and
@@ -478,7 +505,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       scheduler_addunlock(s, ci->hydro.super->stars.ghost_out, t_density);
 
       /* Drift before first send */
-      scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
+      scheduler_addunlock(s, ci->hydro.super->stars.boundary, t_density);
 
       /* t_sf_counts covers the whole subtree, so gate on its existence. */
       if (t_sf_counts != NULL) {
@@ -575,7 +602,7 @@ void engine_addtasks_send_black_holes(struct engine *e, struct cell *ci,
                           t_feedback);
 
       /* Ghost before you send */
-      scheduler_addunlock(s, ci->hydro.super->black_holes.drift, t_rho);
+      scheduler_addunlock(s, ci->hydro.super->black_holes.boundary, t_rho);
       scheduler_addunlock(s, ci->hydro.super->black_holes.density_ghost, t_rho);
       scheduler_addunlock(s, t_rho,
                           ci->hydro.super->black_holes.swallow_ghost_1);
@@ -1557,11 +1584,17 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
 
-        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+        c->stars.boundary = engine_maketasks_boundary_conditions(
+            e, c, c->stars.drift, task_type_boundary_spart);
+
+        scheduler_addunlock(s, c->stars.boundary, c->super->kick2);
       }
 
       c->grav.drift = scheduler_addtask(s, task_type_drift_gpart,
                                         task_subtype_none, 0, 0, c, NULL);
+
+      c->grav.boundary = engine_maketasks_boundary_conditions(
+          e, c, c->grav.drift, task_type_boundary_gpart);
 
       c->grav.end_force = scheduler_addtask(s, task_type_end_grav_force,
                                             task_subtype_none, 0, 0, c, NULL);
@@ -1602,7 +1635,7 @@ void engine_make_hierarchical_tasks_gravity(struct engine *e, struct cell *c) {
 
         /* Link in the implicit tasks */
         scheduler_addunlock(s, c->grav.init, c->grav.init_out);
-        scheduler_addunlock(s, c->grav.drift, c->grav.drift_out);
+        scheduler_addunlock(s, c->grav.boundary, c->grav.drift_out);
         scheduler_addunlock(s, c->grav.down_in, c->grav.down);
       }
     }
@@ -1824,6 +1857,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.drift = scheduler_addtask(s, task_type_drift_part,
                                          task_subtype_none, 0, 0, c, NULL);
 
+      c->hydro.boundary = engine_maketasks_boundary_conditions(
+          e, c, c->hydro.drift, task_type_boundary_part);
+
       /* Add the task finishing the force calculation */
       c->hydro.end_force = scheduler_addtask(s, task_type_end_hydro_force,
                                              task_subtype_none, 0, 0, c, NULL);
@@ -1847,17 +1883,22 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       if (with_stars) {
         c->stars.drift = scheduler_addtask(s, task_type_drift_spart,
                                            task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->stars.drift, c->super->kick2);
+        c->stars.boundary = engine_maketasks_boundary_conditions(
+            e, c, c->stars.drift, task_type_boundary_spart);
+        scheduler_addunlock(s, c->stars.boundary, c->super->kick2);
 
         if (with_star_formation && c->top->hydro.count > 0)
-          scheduler_addunlock(s, c->stars.drift, c->top->hydro.star_formation);
+          scheduler_addunlock(s, c->stars.boundary,
+                              c->top->hydro.star_formation);
       }
 
       /* Sinks */
       if (with_sinks) {
         c->sinks.drift = scheduler_addtask(s, task_type_drift_sink,
                                            task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->sinks.drift, c->super->kick2);
+        c->sinks.boundary = engine_maketasks_boundary_conditions(
+            e, c, c->sinks.drift, task_type_boundary_sink);
+        scheduler_addunlock(s, c->sinks.boundary, c->super->kick2);
 
         c->sinks.sink_in =
             scheduler_addtask(s, task_type_sink_in, task_subtype_none, 0,
@@ -1894,7 +1935,9 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       if (with_black_holes) {
         c->black_holes.drift = scheduler_addtask(
             s, task_type_drift_bpart, task_subtype_none, 0, 0, c, NULL);
-        scheduler_addunlock(s, c->black_holes.drift, c->super->kick2);
+        c->black_holes.boundary = engine_maketasks_boundary_conditions(
+            e, c, c->black_holes.drift, task_type_boundary_bpart);
+        scheduler_addunlock(s, c->black_holes.boundary, c->super->kick2);
       }
 
       /* Subgrid tasks: cooling */
@@ -2478,8 +2521,8 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
       if (ci_nodeID != nodeID) error("Non-local self task");
 #endif
 
-      /* drift -----> gravity --> end_gravity_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      /* drift --> boundary --> gravity --> end_gravity_force */
+      scheduler_addunlock(sched, ci->grav.super->grav.boundary, t);
       scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
     }
 
@@ -2527,8 +2570,8 @@ void engine_link_gravity_tasks_mapper(void *map_data, int num_elements,
       if (ci_nodeID != nodeID) error("Non-local sub-self task");
 #endif
 
-      /* drift -----> gravity --> end_force */
-      scheduler_addunlock(sched, ci->grav.super->grav.drift, t);
+      /* drift --> boundary --> gravity --> end_force */
+      scheduler_addunlock(sched, ci->grav.super->grav.boundary, t);
       scheduler_addunlock(sched, t, ci->grav.super->grav.end_force);
     }
 
@@ -2692,14 +2735,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
     if (t->type == task_type_star_formation_sink) continue;
     if (t->type == task_type_sink_formation) continue;
 
-    /* Sort tasks depend on the drift of the cell (gas version). */
+    /* Sort tasks depend on the boundary task of the cell (gas version). */
     if (t_type == task_type_sort && ci->nodeID == nodeID) {
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.boundary, t);
     }
 
-    /* Sort tasks depend on the drift of the cell (stars version). */
+    /* Sort tasks depend on the boundary task of the cell (stars version). */
     else if (t_type == task_type_stars_sort && ci->nodeID == nodeID) {
-      scheduler_addunlock(sched, ci->hydro.super->stars.drift, t);
+      scheduler_addunlock(sched, ci->hydro.super->stars.boundary, t);
     }
 
     /* Otherwise, self interaction? */
@@ -2708,7 +2751,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       const int bcount_i = ci->black_holes.count;
 
       /* Make all density tasks depend on the drift and sorts. */
-      scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+      scheduler_addunlock(sched, ci->hydro.super->hydro.boundary, t);
       scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t);
 
       /* Start by constructing the task for the second hydro loop */
@@ -2856,9 +2899,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 t_star_self_density[iself]);
           }
 
-          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+          scheduler_addunlock(sched, ci->hydro.super->stars.boundary,
                               t_star_self_density[iself]);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
                               t_star_self_density[iself]);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                               t_star_self_density[iself]);
@@ -2896,9 +2939,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       if (with_sink) {
 
         /* Sink density */
-        scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+        scheduler_addunlock(sched, ci->hydro.super->sinks.boundary,
                             t_sink_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+        scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
                             t_sink_density);
         scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                             t_sink_density);
@@ -2938,9 +2981,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
                               t_bh_density);
 
-        scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+        scheduler_addunlock(sched, ci->hydro.super->black_holes.boundary,
                             t_bh_density);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
+                            t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->black_holes.black_holes_in,
                             t_bh_density);
         scheduler_addunlock(sched, t_bh_density,
@@ -2968,7 +3012,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_timestep_limiter) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.boundary, t_limiter);
         scheduler_addunlock(sched, ci->super->timestep, t_limiter);
         scheduler_addunlock(sched, t_limiter, ci->super->kick1);
         scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
@@ -2982,7 +3026,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
 
       if (with_rt) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_rt_gradient);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
+                            t_rt_gradient);
         scheduler_addunlock(sched, ci->hydro.super->hydro.sorts, t_rt_gradient);
         scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                             t_rt_gradient);
@@ -3003,10 +3048,10 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
       /* Make all density tasks depend on the drift */
       if (ci->nodeID == nodeID) {
-        scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, ci->hydro.super->hydro.boundary, t);
       }
       if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-        scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t);
+        scheduler_addunlock(sched, cj->hydro.super->hydro.boundary, t);
       }
 
       /* Make all density tasks depend on the sorts */
@@ -3231,9 +3276,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
           scheduler_addunlock(sched, ci->hydro.super->stars.sorts,
                               t_star_pair_density);
-          scheduler_addunlock(sched, ci->hydro.super->stars.drift,
+          scheduler_addunlock(sched, ci->hydro.super->stars.boundary,
                               t_star_pair_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
                               t_star_pair_density);
           scheduler_addunlock(sched, ci->hydro.super->stars.stars_in,
                               t_star_pair_density);
@@ -3265,9 +3310,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         if (with_sink) {
 
           /* Sink density */
-          scheduler_addunlock(sched, ci->hydro.super->sinks.drift,
+          scheduler_addunlock(sched, ci->hydro.super->sinks.boundary,
                               t_sink_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
                               t_sink_density);
           scheduler_addunlock(sched, ci->hydro.super->sinks.sink_in,
                               t_sink_density);
@@ -3307,9 +3352,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
                                 t_bh_density);
 
-          scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
+          scheduler_addunlock(sched, ci->hydro.super->black_holes.boundary,
                               t_bh_density);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
                               t_bh_density);
           scheduler_addunlock(
               sched, ci->hydro.super->black_holes.black_holes_in, t_bh_density);
@@ -3341,7 +3386,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_timestep_limiter) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_limiter);
+          scheduler_addunlock(sched, ci->hydro.super->hydro.boundary, t_limiter);
           scheduler_addunlock(sched, ci->super->timestep, t_limiter);
           scheduler_addunlock(sched, t_limiter, ci->super->kick1);
           scheduler_addunlock(sched, t_limiter, ci->super->timestep_limiter);
@@ -3356,7 +3401,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
         }
 
         if (with_rt) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
+          scheduler_addunlock(sched, ci->hydro.super->hydro.boundary,
                               t_rt_gradient);
           scheduler_addunlock(sched, ci->hydro.super->rt.rt_ghost1,
                               t_rt_gradient);
@@ -3398,9 +3443,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             scheduler_addunlock(sched, cj->hydro.super->stars.sorts,
                                 t_star_pair_density);
-            scheduler_addunlock(sched, cj->hydro.super->stars.drift,
+            scheduler_addunlock(sched, cj->hydro.super->stars.boundary,
                                 t_star_pair_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+            scheduler_addunlock(sched, cj->hydro.super->hydro.boundary,
                                 t_star_pair_density);
             scheduler_addunlock(sched, cj->hydro.super->stars.stars_in,
                                 t_star_pair_density);
@@ -3432,9 +3477,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           if (with_sink) {
 
             /* Sink density */
-            scheduler_addunlock(sched, cj->hydro.super->sinks.drift,
+            scheduler_addunlock(sched, cj->hydro.super->sinks.boundary,
                                 t_sink_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+            scheduler_addunlock(sched, cj->hydro.super->hydro.boundary,
                                 t_sink_density);
             scheduler_addunlock(sched, cj->hydro.super->sinks.sink_in,
                                 t_sink_density);
@@ -3474,9 +3519,9 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
               scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
                                   t_bh_density);
 
-            scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,
+            scheduler_addunlock(sched, cj->hydro.super->black_holes.boundary,
                                 t_bh_density);
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+            scheduler_addunlock(sched, cj->hydro.super->hydro.boundary,
                                 t_bh_density);
             scheduler_addunlock(sched,
                                 cj->hydro.super->black_holes.black_holes_in,
@@ -3509,7 +3554,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                 cj->hydro.super->black_holes.black_holes_out);
           }
           if (with_rt) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift,
+            scheduler_addunlock(sched, cj->hydro.super->hydro.boundary,
                                 t_rt_gradient);
             scheduler_addunlock(sched, cj->hydro.super->rt.rt_ghost1,
                                 t_rt_gradient);
@@ -3522,7 +3567,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           }
 
           if (with_timestep_limiter) {
-            scheduler_addunlock(sched, cj->hydro.super->hydro.drift, t_limiter);
+            scheduler_addunlock(sched, cj->hydro.super->hydro.boundary,
+                                t_limiter);
           }
         }
 

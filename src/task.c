@@ -65,6 +65,11 @@ const char *taskID_names[task_type_count] = {
     "drift_sink",
     "drift_bpart",
     "drift_gpart",
+    "boundary_part",
+    "boundary_spart",
+    "boundary_sink",
+    "boundary_bpart",
+    "boundary_gpart",
     "drift_gpart_out",
     "hydro_end_force",
     "kick1",
@@ -166,6 +171,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "boundary_open",
+    "boundary_periodic",
+    "boundary_reflective",
 };
 
 const char *task_category_names[task_category_count] = {
@@ -228,6 +236,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_drift_part:
+    case task_type_boundary_part:
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
@@ -242,6 +251,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       return task_action_all;
 
     case task_type_drift_spart:
+    case task_type_boundary_spart:
     case task_type_stars_ghost:
     case task_type_stars_sort:
     case task_type_stars_resort:
@@ -249,11 +259,13 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_drift_sink:
+    case task_type_boundary_sink:
     case task_type_sink_density_ghost:
       return task_action_sink;
       break;
 
     case task_type_drift_bpart:
+    case task_type_boundary_bpart:
     case task_type_bh_density_ghost:
     case task_type_bh_swallow_ghost3:
       return task_action_bpart;
@@ -351,6 +363,7 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
       break;
 
     case task_type_drift_gpart:
+    case task_type_boundary_gpart:
     case task_type_grav_down:
     case task_type_end_grav_force:
       return task_action_gpart;
@@ -541,6 +554,7 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_part:
+    case task_type_boundary_part:
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
@@ -556,12 +570,22 @@ void task_unlock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_boundary_gpart:
     case task_type_end_grav_force:
       cell_gunlocktree(ci);
       break;
 
     case task_type_drift_sink:
+    case task_type_boundary_sink:
       cell_sink_unlocktree(ci);
+      break;
+
+    case task_type_boundary_spart:
+      cell_sunlocktree(ci, /*split_task=*/0);
+      break;
+
+    case task_type_boundary_bpart:
+      cell_bunlocktree(ci);
       break;
 
     case task_type_stars_sort:
@@ -761,6 +785,7 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_part:
+    case task_type_boundary_part:
     case task_type_sort:
     case task_type_ghost:
     case task_type_extra_ghost:
@@ -783,14 +808,26 @@ int task_lock(struct task *t) {
       break;
 
     case task_type_drift_gpart:
+    case task_type_boundary_gpart:
     case task_type_end_grav_force:
       if (ci->grav.phold) return 0;
       if (cell_glocktree(ci) != 0) return 0;
       break;
 
     case task_type_drift_sink:
+    case task_type_boundary_sink:
       if (ci->sinks.hold) return 0;
       if (cell_sink_locktree(ci) != 0) return 0;
+      break;
+
+    case task_type_boundary_spart:
+      if (ci->stars.hold) return 0;
+      if (cell_slocktree(ci, /*split_task=*/0) != 0) return 0;
+      break;
+
+    case task_type_boundary_bpart:
+      if (ci->black_holes.hold) return 0;
+      if (cell_blocktree(ci) != 0) return 0;
       break;
 
     case task_type_self:
@@ -1686,6 +1723,11 @@ enum task_categories task_get_category(const struct task *t) {
     case task_type_drift_sink:
     case task_type_drift_bpart:
     case task_type_drift_gpart:
+    case task_type_boundary_part:
+    case task_type_boundary_spart:
+    case task_type_boundary_sink:
+    case task_type_boundary_bpart:
+    case task_type_boundary_gpart:
       return task_category_drift;
 
     case task_type_sort:

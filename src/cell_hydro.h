@@ -58,6 +58,9 @@ struct cell_hydro {
     /*! The drift task for parts */
     struct task *drift;
 
+    /*! The boundary task for parts */
+    struct task *boundary;
+
     /*! Linked list of the tasks computing this cell's hydro density. */
     struct link *density;
 

@@ -57,6 +57,9 @@ struct cell_sinks {
     /*! The drift task for sinks */
     struct task *drift;
 
+    /*! The boundary task for sinks */
+    struct task *boundary;
+
     /*! Implicit tasks marking the entry of the sink block of tasks */
     struct task *sink_in;
 

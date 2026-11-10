@@ -81,6 +81,9 @@ struct cell_stars {
     /*! The drift task for sparts */
     struct task *drift;
 
+    /*! The boundary task for sparts */
+    struct task *boundary;
+
     /*! Implicit tasks marking the entry of the stellar physics block of tasks
      */
     struct task *stars_in;

@@ -1173,10 +1173,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   int n2 = 0;
   if (e->policy & engine_policy_hydro) {
     /* 2 self (density, force), 1 sort, 26/2 density pairs
-       26/2 force pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       26/2 force pairs, 1 drift, 1 boundary, 3 ghosts, 2 kicks, 1 time-step,
        1 end_force, 1 collect, 2 extra space
      */
-    n1 += 38;
+    n1 += 39;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;
@@ -1215,10 +1215,10 @@ int engine_estimate_nr_tasks(const struct engine *e) {
   }
   if (e->policy & engine_policy_stars) {
     /* 2 self (density, feedback), 1 sort, 26/2 density pairs
-       26/2 feedback pairs, 1 drift, 3 ghosts, 2 kicks, 1 time-step,
+       26/2 feedback pairs, 1 drift, 1 boundary, 3 ghosts, 2 kicks, 1 time-step,
        1 end_force, 2 extra space
      */
-    n1 += 37;
+    n1 += 38;
     n2 += 2;
 #ifdef WITH_MPI
     n1 += 6;
@@ -1232,7 +1232,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
        do_sink_swallow: 1 self + 13 pairs                  | 14
        ghosts: density_ghost, sink_ghost_1, sink_ghost_2   | 3
        implicit: sink_in,  sink_out                        | 2 */
-    n1 += 66;
+    n1 += 67;
     n2 += 3;
     if (e->policy & engine_policy_stars) {
       /* 1 star formation */
@@ -1289,6 +1289,11 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #endif
 #endif
   }
+
+  /* One boundary task per species drift (gas, gravity, stars, sinks, BHs). */
+  if (e->policy & (engine_policy_self_gravity | engine_policy_external_gravity))
+    n1 += 1;
+  if (e->policy & engine_policy_black_holes) n1 += 1;
 
 #ifdef WITH_MPI
 
@@ -1793,7 +1798,12 @@ void engine_skip_force_and_kick(struct engine *e) {
     /* Skip everything that updates the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink || t->type == task_type_kick1 ||
+        t->type == task_type_drift_sink ||
+        t->type == task_type_boundary_part ||
+        t->type == task_type_boundary_gpart ||
+        t->type == task_type_boundary_spart ||
+        t->type == task_type_boundary_bpart ||
+        t->type == task_type_boundary_sink || t->type == task_type_kick1 ||
         t->type == task_type_kick2 || t->type == task_type_timestep ||
         t->type == task_type_timestep_limiter ||
         t->type == task_type_timestep_sync || t->type == task_type_collect ||
@@ -1867,7 +1877,12 @@ void engine_skip_drift(struct engine *e) {
     /* Skip everything that moves the particles */
     if (t->type == task_type_drift_part || t->type == task_type_drift_gpart ||
         t->type == task_type_drift_spart || t->type == task_type_drift_bpart ||
-        t->type == task_type_drift_sink)
+        t->type == task_type_drift_sink ||
+        t->type == task_type_boundary_part ||
+        t->type == task_type_boundary_gpart ||
+        t->type == task_type_boundary_spart ||
+        t->type == task_type_boundary_bpart ||
+        t->type == task_type_boundary_sink)
       t->skip = 1;
   }
 

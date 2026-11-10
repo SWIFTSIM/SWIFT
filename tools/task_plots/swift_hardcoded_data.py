@@ -31,6 +31,11 @@ TASKTYPES = [
     "drift_sink",
     "drift_bpart",
     "drift_gpart",
+    "boundary_part",
+    "boundary_spart",
+    "boundary_sink",
+    "boundary_bpart",
+    "boundary_gpart",
     "drift_gpart_out",
     "hydro_end_force",
     "kick1",
@@ -132,6 +137,9 @@ SUBTYPES = [
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "boundary_open",
+    "boundary_periodic",
+    "boundary_reflective",
     #  "count",
 ]
 
