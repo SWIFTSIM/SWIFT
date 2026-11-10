@@ -753,7 +753,9 @@ GeajayCooling:
   specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
   h2_three_body_fit: Abel+2002                 # (optional) H2 three-body formation rate by name: Abel+2002, Palla+1983, Cohen+Westberg1983, Flower+Harris2007, Glover2008 or Forrey2013; 0 to 5 also accepted (Grackle) (default: Abel+2002)
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
-  h2_formation_on_dust: 0                      # (optional) Enable/disable H2 formation on dust grains (default: 0)
+  dust_model: none                             # (optional) Dust chemistry: none or basic (or 0, 1). basic turns on the gas-grain heat exchange, the dust temperature, H2 formation on grains, photoelectric heating and the recombination cooling on grains. It reads the metal mass fraction of each particle to compute the dust-to-gas ratio (default: none)
+  dust_to_gas_model: linear                    # (optional) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014, linear above its transition). Read only with dust_model: basic or h2_formation_on_dust: enabled (default: linear)
+  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1) (default: default)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   compton_xray_heating: 0                      # (optional) Enable/disable the Compton exchange with the X-ray background, k_X (T_x - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
                                                # Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)

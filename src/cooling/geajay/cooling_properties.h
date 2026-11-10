@@ -99,7 +99,16 @@ struct cooling_function_data {
    * (2004) */
   int H2_cie_cooling;
 
-  /*! Flag to enable H2 formation on dust grains */
+  /*! Dust chemistry (GeajayCooling:dust_model, chemistry_data.dust_chemistry):
+   * 0 none, 1 basic. */
+  int dust_model;
+
+  /*! Dust-to-gas ratio as a function of the metallicity
+   * (GeajayCooling:dust_to_gas_model, chemistry_data.dust_to_gas_model):
+   * 0 linear, 1 remy_ruyer_2014. */
+  int dust_to_gas_model;
+
+  /*! H2 formation on dust grains: -1 unset (follows dust_model), 0 off, 1 on */
   int H2_on_dust;
 
   /*! Flag to enable heating from H2 photodissociation and UV pumping */
