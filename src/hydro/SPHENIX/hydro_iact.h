@@ -426,9 +426,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   const float visc_acc_term =
       0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
+  /* Compute gradient terms. Done in double precision as with fast-math the
+   * compiler may reorder this to (P * f * w_dr) / rho^2, which can overflow
+   * a float for hot, dense gas with small h. */
+  const double P_over_rho2_i = (double)pressurei / ((double)rhoi * rhoi) * f_ij;
+  const double P_over_rho2_j = (double)pressurej / ((double)rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
   const float sph_acc_term =
@@ -575,9 +577,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   const float visc_acc_term =
       0.5f * visc * (wi_dr * f_ij + wj_dr * f_ji) * r_inv;
 
-  /* Compute gradient terms */
-  const float P_over_rho2_i = pressurei / (rhoi * rhoi) * f_ij;
-  const float P_over_rho2_j = pressurej / (rhoj * rhoj) * f_ji;
+  /* Compute gradient terms. Done in double precision as with fast-math the
+   * compiler may reorder this to (P * f * w_dr) / rho^2, which can overflow
+   * a float for hot, dense gas with small h. */
+  const double P_over_rho2_i = (double)pressurei / ((double)rhoi * rhoi) * f_ij;
+  const double P_over_rho2_j = (double)pressurej / ((double)rhoj * rhoj) * f_ji;
 
   /* SPH acceleration term */
   const float sph_acc_term =
