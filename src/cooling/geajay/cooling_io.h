@@ -33,6 +33,7 @@
 #include <float.h>
 #include <geajay_message.h>
 #include <geajay_options.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -314,7 +315,12 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
 
   char *end;
   const long number = strtol(text, &end, 10);
-  if (end != text && *end == '\0') return (int)number;
+  if (end != text && *end == '\0') {
+    if (number < INT_MIN || number > INT_MAX)
+      error("%s must be a name or a number that fits an int, got %s.", key,
+            text);
+    return (int)number;
+  }
 
   if (swift_name != NULL && strcmp(text, swift_name) == 0) return swift_value;
 
@@ -943,8 +949,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->H2_on_dust = cooling_read_choice(
       parameter_file, "GeajayCooling:h2_formation_on_dust",
       "h2_formation_on_dust", GEAJAY_H2_ON_DUST_DEFAULT, NULL, 0);
-  if (cooling->H2_on_dust < 0) cooling->H2_on_dust = GEAJAY_H2_ON_DUST_DEFAULT;
-  if (cooling->H2_on_dust > GEAJAY_H2_ON_DUST_ENABLED)
+  if (cooling->H2_on_dust < GEAJAY_H2_ON_DUST_DEFAULT ||
+      cooling->H2_on_dust > GEAJAY_H2_ON_DUST_ENABLED)
     error(
         "GeajayCooling:h2_formation_on_dust must be default (-1), disabled "
         "(0) or enabled (1), got %d.",
