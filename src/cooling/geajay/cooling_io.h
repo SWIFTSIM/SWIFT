@@ -966,6 +966,26 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GeajayCooling:dust_model is none and h2_formation_on_dust is not "
         "enabled, so no dust is computed");
 
+  cooling->photoelectric_heating_model = cooling_read_choice(
+      parameter_file, "GeajayCooling:photoelectric_heating_model",
+      "photoelectric_heating_model", GEAJAY_PHOTOELECTRIC_DEFAULT, NULL, 0);
+  if (cooling->photoelectric_heating_model < GEAJAY_PHOTOELECTRIC_DEFAULT ||
+      cooling->photoelectric_heating_model >
+          GEAJAY_PHOTOELECTRIC_DENSITY_EPSILON)
+    error(
+        "GeajayCooling:photoelectric_heating_model must be default (-1), "
+        "none (0), fixed_rate (1), constant_efficiency (2), "
+        "grain_charge_epsilon (3) or density_epsilon (4), got %d.",
+        cooling->photoelectric_heating_model);
+
+  /* The heating reads the dust density, which only dust_model: basic sets */
+  if (cooling->dust_model == GEAJAY_DUST_MODEL_NONE &&
+      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE)
+    error(
+        "GeajayCooling:photoelectric_heating_model is set to %d, but it is "
+        "not read: GeajayCooling:dust_model is none, so no dust is computed.",
+        cooling->photoelectric_heating_model);
+
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
 #if COOLING_GEAJAY_MODE < 2
