@@ -270,8 +270,9 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
-    if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-                                           /*periodic=*/1)) {
+    if (gcount_j > 1 &&
+        gravity_M2P_accept(grav_props, grav_props->r_s_inv, gpi, multi_j,
+                           r2_multi, /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -550,8 +551,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
-    if (gcount_j > 1 && gravity_M2P_accept(grav_props, gpi, multi_j, r2_multi,
-                                           /*periodic=*/1)) {
+    if (gcount_j > 1 &&
+        gravity_M2P_accept(grav_props, r_s_inv, gpi, multi_j,
+                           r2_multi, /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -1144,6 +1146,8 @@ static INLINE void runner_dopair_grav_pp_truncated(
  * @param periodic Is the calculation using periodic BCs ?
  * @param dim The size of the simulation volume.
  *
+ * @param r_s_inv The inverse of the scale of the gravity mesh used by this
+ * interaction (for debugging checks only).
  * @param e The #engine (for debugging checks only).
  * @param gparts_i The #gpart in cell i (for debugging checks only).
  * @param gcount_i The number of particles in the cell i (for debugging checks
@@ -1153,9 +1157,9 @@ static INLINE void runner_dopair_grav_pp_truncated(
 static INLINE void runner_dopair_grav_pm_full(
     struct gravity_cache *ci_cache, const int gcount_padded_i,
     const float CoM_j[3], const struct multipole *restrict multi_j,
-    const int periodic, const float dim[3], const struct engine *restrict e,
-    struct gpart *restrict gparts_i, const int gcount_i,
-    const struct cell *restrict cj) {
+    const int periodic, const float dim[3], const float r_s_inv,
+    const struct engine *restrict e, struct gpart *restrict gparts_i,
+    const int gcount_i, const struct cell *restrict cj) {
 
   /* Make the compiler understand we are in happy vectorization land */
   swift_declare_aligned_ptr(float, x, ci_cache->x, SWIFT_CACHE_ALIGNMENT);
@@ -1237,7 +1241,7 @@ static INLINE void runner_dopair_grav_pm_full(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+    if (!gravity_M2P_accept(e->gravity_properties, r_s_inv, &gparts_i[pid],
                             cj->grav.multipole, r2 * 1.01, periodic))
       error("use_mpole[i] set when M2P accept fails");
 #endif
@@ -1386,7 +1390,7 @@ static INLINE void runner_dopair_grav_pm_truncated(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (!gravity_M2P_accept(e->gravity_properties, &gparts_i[pid],
+    if (!gravity_M2P_accept(e->gravity_properties, r_s_inv, &gparts_i[pid],
                             cj->grav.multipole, r2 * 1.01, /*periodic=*/1))
       error("use_mpole[i] set when M2P accept fails");
 #endif
@@ -1450,11 +1454,13 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
   float r_s_inv = e->mesh->r_s_inv;
+  float r_s_inv_MAC = e->gravity_properties->r_s_inv;
   double min_trunc = e->mesh->r_cut_min;
 
   /* Cells covered by the zoom mesh use its force split */
   if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
+    r_s_inv_MAC = e->zoom_mesh->r_s_inv;
     min_trunc = e->zoom_mesh->r_cut_min;
   }
 
@@ -1518,7 +1524,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     gravity_cache_populate(e->max_active_bin, allow_multipole_j, periodic, dim,
                            ci_cache, ci->grav.parts, gcount_i, gcount_padded_i,
                            shift_i, CoM_j, cj->grav.multipole, ci,
-                           e->gravity_properties);
+                           e->gravity_properties, r_s_inv_MAC);
   } else {
     gravity_cache_populate_foreign(
         periodic, dim, ci_cache, ci->grav.parts_foreign, gcount_i,
@@ -1529,7 +1535,7 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
     gravity_cache_populate(e->max_active_bin, allow_multipole_i, periodic, dim,
                            cj_cache, cj->grav.parts, gcount_j, gcount_padded_j,
                            shift_j, CoM_i, ci->grav.multipole, cj,
-                           e->gravity_properties);
+                           e->gravity_properties, r_s_inv_MAC);
   } else {
     gravity_cache_populate_foreign(
         periodic, dim, cj_cache, cj->grav.parts_foreign, gcount_j,
@@ -1553,8 +1559,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       /* Then the M2P */
       if (allow_multipole_j)
         runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                   periodic, dim, e, ci->grav.parts, gcount_i,
-                                   cj);
+                                   periodic, dim, r_s_inv_MAC, e,
+                                   ci->grav.parts, gcount_i, cj);
     }
     if (cj_active && symmetric) {
 
@@ -1567,8 +1573,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
       /* Then the M2P */
       if (allow_multipole_i)
         runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                   periodic, dim, e, cj->grav.parts, gcount_j,
-                                   ci);
+                                   periodic, dim, r_s_inv_MAC, e,
+                                   cj->grav.parts, gcount_j, ci);
     }
 
   } else { /* Periodic BC */
@@ -1638,8 +1644,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         /* Then the M2P */
         if (allow_multipole_j)
           runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                     periodic, dim, e, ci->grav.parts, gcount_i,
-                                     cj);
+                                     periodic, dim, r_s_inv_MAC, e,
+                                     ci->grav.parts, gcount_i, cj);
       }
       if (cj_active && symmetric) {
 
@@ -1652,8 +1658,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
         /* Then the M2P */
         if (allow_multipole_i)
           runner_dopair_grav_pm_full(cj_cache, gcount_padded_j, CoM_i, multi_i,
-                                     periodic, dim, e, cj->grav.parts, gcount_j,
-                                     ci);
+                                     periodic, dim, r_s_inv_MAC, e,
+                                     cj->grav.parts, gcount_j, ci);
       }
     }
   }
@@ -2183,10 +2189,13 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
   float r_s_inv = e->mesh->r_s_inv;
+  float r_s_inv_MAC = e->gravity_properties->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
+    r_s_inv_MAC = e->zoom_mesh->r_s_inv;
+  }
 
   /* Anything to do here? */
   if (!(cell_is_active_gravity(ci, e) && ci->nodeID == e->nodeID)) return;
@@ -2238,14 +2247,15 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
     /* Fill the cache */
     gravity_cache_populate_all_mpole(
         e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties);
+        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties,
+        r_s_inv_MAC);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {
 
       runner_dopair_grav_pm_full(ci_cache, gcount_padded_i, CoM_j, multi_j,
-                                 periodic, dim, e, ci->grav.parts, gcount_i,
-                                 cj);
+                                 periodic, dim, r_s_inv_MAC, e, ci->grav.parts,
+                                 gcount_i, cj);
 
     } else {
 
@@ -2294,10 +2304,13 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   double max_distance = e->mesh->r_cut_max;
+  float r_s_inv_MAC = e->gravity_properties->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     max_distance = e->zoom_mesh->r_cut_max;
+    r_s_inv_MAC = e->zoom_mesh->r_s_inv;
+  }
 
   /* Anything to do here? */
   if (!((cell_is_active_gravity(ci, e) && ci->nodeID == nodeID) ||
@@ -2380,8 +2393,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
     runner_dopair_grav_pp_no_cache(r, cj, ci);
 
     /* Can we use M-M interactions ? */
-  } else if (gravity_M2L_accept_symmetric(e->gravity_properties, multi_i,
-                                          multi_j, r2,
+  } else if (gravity_M2L_accept_symmetric(e->gravity_properties, r_s_inv_MAC,
+                                          multi_i, multi_j, r2,
                                           /* use_rebuild_sizes=*/0, periodic)) {
 
     /* Go M-M */

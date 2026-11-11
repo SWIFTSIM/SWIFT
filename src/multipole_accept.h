@@ -71,6 +71,8 @@ __attribute__((const)) INLINE static float gravity_f_MAC_inverse(
  * is used.
  *
  * @param props The properties of the gravity scheme.
+ * @param r_s_inv The inverse of the scale of the gravity mesh used by this
+ * interaction.
  * @param A The gravity tensors that we want to update (sink).
  * @param B The gravity tensors that act as a source.
  * @param r2 The square of the distance between the centres of mass of A and B.
@@ -79,7 +81,8 @@ __attribute__((const)) INLINE static float gravity_f_MAC_inverse(
  * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
-    const struct gravity_props *props, const struct gravity_tensors *restrict A,
+    const struct gravity_props *props, const float r_s_inv,
+    const struct gravity_tensors *restrict A,
     const struct gravity_tensors *restrict B, const float r2,
     const int use_rebuild_sizes, const int periodic) {
 
@@ -115,7 +118,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
 
   float f_MAC_inv;
   if (periodic && props->consider_truncation_in_MAC) {
-    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
+    f_MAC_inv = gravity_f_MAC_inverse(max_softening, r_s_inv, r2);
   } else {
     f_MAC_inv = r2;
   }
@@ -190,6 +193,8 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
  * We use the MAC of Dehnen 2014 eq. 16.
  *
  * @param props The properties of the gravity scheme.
+ * @param r_s_inv The inverse of the scale of the gravity mesh used by this
+ * interaction.
  * @param A The first set of multipole and gravity tensors.
  * @param B The second set of multipole and gravity tensors.
  * @param r2 The square of the distance between the centres of mass of A and B.
@@ -198,12 +203,15 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept(
  * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2L_accept_symmetric(
-    const struct gravity_props *props, const struct gravity_tensors *restrict A,
+    const struct gravity_props *props, const float r_s_inv,
+    const struct gravity_tensors *restrict A,
     const struct gravity_tensors *restrict B, const float r2,
     const int use_rebuild_sizes, const int periodic) {
 
-  return gravity_M2L_accept(props, A, B, r2, use_rebuild_sizes, periodic) &&
-         gravity_M2L_accept(props, B, A, r2, use_rebuild_sizes, periodic);
+  return gravity_M2L_accept(props, r_s_inv, A, B, r2, use_rebuild_sizes,
+                            periodic) &&
+         gravity_M2L_accept(props, r_s_inv, B, A, r2, use_rebuild_sizes,
+                            periodic);
 }
 
 /**
@@ -284,14 +292,17 @@ gravity_M2L_min_accept_distance(
  * We use the MAC of Dehnen 2014 eq. 16.
  *
  * @param props The properties of the gravity scheme.
+ * @param r_s_inv The inverse of the scale of the gravity mesh used by this
+ * interaction.
  * @param pa The particle we want to compute forces for (sink)
  * @param B The gravity tensors that act as a source.
  * @param r2 The square of the distance between pa and the centres of mass of B.
  * @param periodic Are we using periodic BCs?
  */
 __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
-    const struct gravity_props *props, const struct gpart *pa,
-    const struct gravity_tensors *B, const float r2, const int periodic) {
+    const struct gravity_props *props, const float r_s_inv,
+    const struct gpart *pa, const struct gravity_tensors *B, const float r2,
+    const int periodic) {
 
   /* Order of the expansion */
   const int p = 2;
@@ -315,7 +326,7 @@ __attribute__((nonnull, pure)) INLINE static int gravity_M2P_accept(
 
   float f_MAC_inv;
   if (periodic && props->consider_truncation_in_MAC) {
-    f_MAC_inv = gravity_f_MAC_inverse(max_softening, props->r_s_inv, r2);
+    f_MAC_inv = gravity_f_MAC_inverse(max_softening, r_s_inv, r2);
   } else {
     f_MAC_inv = r2;
   }

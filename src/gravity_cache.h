@@ -196,13 +196,16 @@ INLINE static void gravity_cache_zero_output(struct gravity_cache *c,
  * @param multipole The mulipole to check for.
  * @param cell The cell we play with (to get reasonable padding positions).
  * @param grav_props The global gravity properties.
+ * @param r_s_inv The inverse of the scale of the gravity mesh used by this
+ * interaction.
  */
 INLINE static void gravity_cache_populate(
     const timebin_t max_active_bin, const int allow_mpole, const int periodic,
     const float dim[3], struct gravity_cache *c, const struct gpart *gparts,
     const int gcount, const int gcount_padded, const double shift[3],
     const float CoM[3], const struct gravity_tensors *multipole,
-    const struct cell *cell, const struct gravity_props *grav_props) {
+    const struct cell *cell, const struct gravity_props *grav_props,
+    const float r_s_inv) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -265,8 +268,9 @@ INLINE static void gravity_cache_populate(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     /* Check whether we can use the multipole instead of P-P */
-    use_mpole[i] = allow_mpole && gravity_M2P_accept(grav_props, &gparts[i],
-                                                     multipole, r2, periodic);
+    use_mpole[i] =
+        allow_mpole && gravity_M2P_accept(grav_props, r_s_inv, &gparts[i],
+                                          multipole, r2, periodic);
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -491,13 +495,15 @@ INLINE static void gravity_cache_populate_no_mpole(
  * @param CoM The position of the multipole.
  * @param multipole The mulipole to check for.
  * @param grav_props The global gravity properties.
+ * @param r_s_inv The inverse of the scale of the gravity mesh used by this
+ * interaction.
  */
 INLINE static void gravity_cache_populate_all_mpole(
     const timebin_t max_active_bin, const int periodic, const float dim[3],
     struct gravity_cache *c, const struct gpart *restrict gparts,
     const int gcount, const int gcount_padded, const struct cell *cell,
     const float CoM[3], const struct gravity_tensors *multipole,
-    const struct gravity_props *grav_props) {
+    const struct gravity_props *grav_props, const float r_s_inv) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (gcount_padded < gcount) error("Invalid padded cache size. Too small.");
@@ -544,7 +550,8 @@ INLINE static void gravity_cache_populate_all_mpole(
     }
     const float r2 = dx * dx + dy * dy + dz * dz;
 
-    if (!gravity_M2P_accept(grav_props, &gparts[i], multipole, r2, periodic))
+    if (!gravity_M2P_accept(grav_props, r_s_inv, &gparts[i], multipole, r2,
+                            periodic))
       error("Using m-pole where the test fails");
 #endif
   }

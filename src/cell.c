@@ -1725,7 +1725,6 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
                          const int use_mesh) {
 
   const struct gravity_props *props = e->gravity_properties;
-  struct gravity_props zoom_props;
   const double dim[3] = {s->dim[0], s->dim[1], s->dim[2]};
 
   /* Check for trivial cases */
@@ -1739,15 +1738,12 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
   const double r2 =
       cell_mpole_CoM_dist2(multi_i, multi_j, use_rebuild_data, periodic, dim);
 
-  /* If both cells are covered by the zoom mesh, make the MAC truncation
-   * estimator match the split used by the eventual M-M interaction. */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
-    zoom_props = *props;
-    zoom_props.r_s_inv = e->zoom_mesh->r_s_inv;
-    props = &zoom_props;
-  }
+  /* Cells covered by the zoom mesh use its force split */
+  float r_s_inv = props->r_s_inv;
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    r_s_inv = e->zoom_mesh->r_s_inv;
 
-  return gravity_M2L_accept_symmetric(props, multi_i, multi_j, r2,
+  return gravity_M2L_accept_symmetric(props, r_s_inv, multi_i, multi_j, r2,
                                       use_rebuild_data, use_mesh);
 }
 
