@@ -239,4 +239,4 @@ The paper's flow IV (vz = sin x) is a different flow from Roberts' motion IV.
 
 Method: G. O. Roberts (1972), *Phil. Trans. R. Soc. Lond. A* 271, 411–454.
 Initial version developed with the assistance of Claude (Opus 5.5, Anthropic), November 2026;
-reviewed and validated by M. Schaller and N. Shchutskyi.
+reviewed and validated by N. Shchutskyi.
