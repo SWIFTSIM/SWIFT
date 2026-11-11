@@ -138,7 +138,7 @@ static double zoom_mesh_expected_acceleration_x(const double cell_fac,
  * zoom mesh. The regular PM cutoff is deliberately set too large to prune the
  * pair so that #cell_can_use_mesh must rely on the zoom mesh fallback. The test
  * then checks inside/outside bounds handling and the between-rebuild dx_max
- * safety path. With FFTW it also tests the isolated solve, neutrino response,
+ * safety path. With FFTW it also tests the isolated solve,
  * deposition methods and kernel invalidation after regridding.
  */
 int main(int argc, char *argv[]) {
@@ -153,7 +153,6 @@ int main(int argc, char *argv[]) {
   struct gravity_props props;
   struct phys_const phys_const;
   struct neutrino_props neutrino_props;
-  struct neutrino_response neutrino_response;
   struct cosmology cosmology;
   struct zoom_region_properties zoom_props;
   bzero(&e, sizeof(struct engine));
@@ -163,7 +162,6 @@ int main(int argc, char *argv[]) {
   bzero(&props, sizeof(struct gravity_props));
   bzero(&phys_const, sizeof(struct phys_const));
   bzero(&neutrino_props, sizeof(struct neutrino_props));
-  bzero(&neutrino_response, sizeof(struct neutrino_response));
   bzero(&cosmology, sizeof(struct cosmology));
   bzero(&zoom_props, sizeof(struct zoom_region_properties));
 
@@ -210,7 +208,6 @@ int main(int argc, char *argv[]) {
   e.gravity_properties = &props;
   e.physical_constants = &phys_const;
   e.neutrino_properties = &neutrino_props;
-  e.neutrino_response = &neutrino_response;
   e.cosmology = &cosmology;
   s.e = &e;
   s.with_zoom_region = 1;
@@ -322,41 +319,6 @@ int main(int argc, char *argv[]) {
 
   threadpool_init(&e.threadpool, /*num_threads=*/4);
 
-  /* Exercise the shared linear-response multiplier on a minimal FFT. */
-  double neutrino_density = 0.5;
-  cosmology.a = 1.;
-  cosmology.N_nu = 1;
-  cosmology.Omega_cdm = 1.;
-  cosmology.log_a_long_begin = 1.;
-  cosmology.neutrino_density_early_table = &neutrino_density;
-  neutrino_response.fixed_bg_density = 1;
-  neutrino_response.log_a_min = -100.;
-  neutrino_response.delta_log_a = 1000.;
-  neutrino_response.log_k_min = -100.;
-  neutrino_response.delta_log_k = 1000.;
-  neutrino_response.pt_density_ratio =
-      (double *)malloc(10002 * sizeof(double));
-  if (neutrino_response.pt_density_ratio == NULL)
-    error("Failed to allocate synthetic neutrino response");
-  for (int i = 0; i < 10002; ++i)
-    neutrino_response.pt_density_ratio[i] = 2.;
-
-  fftw_complex response_mesh[8];
-  for (int i = 0; i < 8; ++i) {
-    response_mesh[i][0] = 1.;
-    response_mesh[i][1] = -1.;
-  }
-  neutrino_response_compute_mesh(
-      &s, &e.threadpool, response_mesh, /*slice_offset=*/0,
-      /*slice_width=*/2, /*N=*/2, /*boxlen=*/2., /*clear_dc=*/0,
-      /*verbose=*/0);
-  if (response_mesh[0][0] != 1. || response_mesh[0][1] != -1.)
-    error("Isolated neutrino response changed the DC mode");
-  for (int i = 1; i < 8; ++i)
-    if (fabs(response_mesh[i][0] - 2.) > 1e-12 ||
-        fabs(response_mesh[i][1] + 2.) > 1e-12)
-      error("Linear neutrino response multiplier mismatch");
-
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 
   const double expected_ax = zoom_mesh_expected_acceleration_x(
@@ -409,6 +371,8 @@ int main(int argc, char *argv[]) {
   /* Delta-f deposition is linear in the mesh-only particle weight. */
   double neutrino_mass = 1.;
   double neutrino_degeneracy = 1.;
+  cosmology.a = 1.;
+  cosmology.N_nu = 1;
   cosmology.M_nu_eV = &neutrino_mass;
   cosmology.deg_nu = &neutrino_degeneracy;
   cosmology.T_nu_0_eV = 1.;
@@ -433,20 +397,6 @@ int main(int argc, char *argv[]) {
     error("Zoom mesh did not apply delta-f deposition weighting");
   neutrino_props.use_delta_f_mesh_only = 0;
   mesh_cells[0].grav.parts[0].type = swift_type_dark_matter;
-
-  /* The synthetic response has a constant factor of two for every non-DC
-   * mode, so the acceleration correction must double exactly. */
-  for (int axis = 0; axis < 3; ++axis)
-    mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
-#ifndef SWIFT_GRAVITY_NO_POTENTIAL
-  mesh_cells[1].grav.parts[0].potential_mesh = 0.f;
-#endif
-  neutrino_props.use_linear_response = 1;
-  zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
-  if (fabs(mesh_cells[1].grav.parts[0].a_grav_mesh[0] -
-           2. * measured_fractional_ax) > 1e-7)
-    error("Zoom mesh did not apply the linear neutrino response");
-  neutrino_props.use_linear_response = 0;
 
   /* A zoom regrid changes the mesh origin and spacing and invalidates the
    * cached Fourier kernel before the next force calculation. */
@@ -477,7 +427,6 @@ int main(int argc, char *argv[]) {
 
   zoom_mesh_clean(&zoom_mesh);
   threadpool_clean(&e.threadpool);
-  free(neutrino_response.pt_density_ratio);
 
   free_cell(&mesh_cells[0]);
   free_cell(&mesh_cells[1]);

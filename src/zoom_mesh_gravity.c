@@ -1331,19 +1331,6 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
                  sizeof(fftw_complex), threadpool_auto_chunk_size,
                  &multiply_data);
 
-  /* Apply the same linear neutrino response as the global PM solve, using the
-   * physical mode spacing of the zero-padded isolated FFT. Unlike the periodic
-   * mesh, the isolated correction retains its potential's DC offset. */
-  if (s->e->neutrino_properties->use_linear_response) {
-    const ticks response_tic = getticks();
-    neutrino_response_compute_mesh(s, tp, frho, /*slice_offset=*/0,
-                                   /*slice_width=*/M, M, 2. * mesh->dim[0],
-                                   /*clear_dc=*/0, verbose);
-    if (verbose)
-      message("Applying zoom mesh neutrino response took %.3f %s.",
-              clocks_from_ticks(getticks() - response_tic), clocks_getunit());
-  }
-
   /* Transform back to real space; rho now stores the potential correction. */
   fftw_execute(inverse);
 

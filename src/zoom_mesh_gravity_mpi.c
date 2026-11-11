@@ -951,10 +951,6 @@ void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
     threadpool_map(tp, zoom_mpi_multiply_mapper, frho, fourier_count,
                    sizeof(fftw_complex), threadpool_auto_chunk_size,
                    &multiply_data);
-  if (s->e->neutrino_properties->use_linear_response)
-    neutrino_response_compute_mesh(s, tp, frho, layout.local_1_start,
-                                   layout.local_n1, M, 2. * mesh->dim[0],
-                                   /*clear_dc=*/0, verbose);
   if (verbose)
     message("Distributed zoom Fourier response took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
