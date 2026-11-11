@@ -41,6 +41,7 @@
 #include "kernel_long_gravity.h"
 #include "memuse.h"
 #include "mesh_gravity.h"
+#include "mesh_gravity_patch.h"
 #include "neutrino.h"
 #include "parser.h"
 #include "part.h"
@@ -528,13 +529,6 @@ struct zoom_cic_mapper_data {
   const struct neutrino_model *nu_model;
 };
 
-/** @brief Private non-periodic density patch for one top-level cell. */
-struct zoom_mesh_patch {
-  int mesh_min[3];
-  int mesh_size[3];
-  double *values;
-};
-
 /**
  * @brief Compute the zoom mesh CIC index and coefficients for a #gpart.
  *
@@ -613,219 +607,224 @@ int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
 }
 
 /**
- * @brief Recursively deposit covered local cells on the zoom mesh.
+ * @brief Assigns all the #gpart of a #cell to the zoom density mesh using the
+ * CIC method.
  *
- * @param c The #cell to deposit.
+ * @param c The #cell.
  * @param data The shared CIC mapper data.
  */
-static void zoom_mesh_deposit_cell(const struct cell *c,
-                                    const struct zoom_cic_mapper_data *data) {
-
-  /* Recurse until we find covered leaves. */
-  if (c->split) {
-    for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL) zoom_mesh_deposit_cell(c->progeny[k], data);
-    return;
-  }
-
-  /* The zoom mesh correction follows the same cell coverage predicate as the
-   * tree split. Particles in partially covered cells keep the global PM split.
-   */
-  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
-
-  struct gpart *gparts = c->grav.parts;
-  for (int n = 0; n < c->grav.count; ++n) {
-    const struct gpart *gp = &gparts[n];
-    if (gp->time_bin == time_bin_inhibited) continue;
-
-    int ind[3];
-    double d[3], t[3];
-    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
-      error(
-          "Covered cell contains a particle outside the zoom mesh "
-          "(x=[%g %g %g], index=[%d %d %d]).",
-          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
-
-    double weight = 1.;
-    if (gp->type == swift_type_neutrino)
-      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
-
-    zoom_mesh_CIC_set(data->rho, data->M, ind[0], ind[1], ind[2], t[0], t[1],
-                       t[2], d[0], d[1], d[2], gp->mass * weight);
-  }
-}
-
-/**
- * @brief Extend patch bounds with particles in covered leaf cells.
- *
- * @param c The cell whose particles define the bounds.
- * @param data The mesh geometry and particle data.
- * @param mesh_min The lowest mesh indices reached (updated).
- * @param mesh_max The highest mesh indices reached (updated).
- * @param has_particles Whether any covered particles were found (updated).
- */
-static void zoom_mesh_patch_bounds(const struct cell *c,
-                                   const struct zoom_cic_mapper_data *data,
-                                   int mesh_min[3], int mesh_max[3],
-                                   int *has_particles) {
-
-  if (c->split) {
-    for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL)
-        zoom_mesh_patch_bounds(c->progeny[k], data, mesh_min, mesh_max,
-                               has_particles);
-    return;
-  }
-
-  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
-
-  for (int n = 0; n < c->grav.count; ++n) {
-    const struct gpart *gp = &c->grav.parts[n];
-    if (gp->time_bin == time_bin_inhibited) continue;
-
-    int ind[3];
-    double d[3], t[3];
-    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
-      error(
-          "Covered cell contains a particle outside the zoom mesh "
-          "(x=[%g %g %g], index=[%d %d %d]).",
-          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
-
-    for (int axis = 0; axis < 3; ++axis) {
-      mesh_min[axis] = min(mesh_min[axis], ind[axis]);
-      mesh_max[axis] = max(mesh_max[axis], ind[axis] + 1);
-    }
-    *has_particles = 1;
-  }
-}
-
-/**
- * @brief Return a private zoom-patch row-major index.
- *
- * @param patch The private patch.
- * @param i Index along x.
- * @param j Index along y.
- * @param k Index along z.
- * @return The row-major index within the patch.
- */
-__attribute__((always_inline, const)) INLINE static size_t
-zoom_mesh_patch_index(const struct zoom_mesh_patch *patch, const int i,
-                      const int j, const int k) {
-  return ((size_t)i * patch->mesh_size[1] + j) * patch->mesh_size[2] + k;
-}
-
-/**
- * @brief Deposit covered leaf particles into a private patch.
- *
- * @param c The cell containing the particles.
- * @param data The mesh geometry and neutrino weights.
- * @param patch The patch receiving the particles.
- */
-static void zoom_mesh_deposit_cell_to_patch(
-    const struct cell *c, const struct zoom_cic_mapper_data *data,
-    const struct zoom_mesh_patch *patch) {
-
-  if (c->split) {
-    for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL)
-        zoom_mesh_deposit_cell_to_patch(c->progeny[k], data, patch);
-    return;
-  }
-
-  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
-
-  for (int n = 0; n < c->grav.count; ++n) {
-    const struct gpart *gp = &c->grav.parts[n];
-    if (gp->time_bin == time_bin_inhibited) continue;
-
-    int ind[3];
-    double d[3], t[3];
-    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
-      error("Covered cell contains a particle outside the zoom mesh.");
-
-    const int i = ind[0] - patch->mesh_min[0];
-    const int j = ind[1] - patch->mesh_min[1];
-    const int k = ind[2] - patch->mesh_min[2];
-    double weight = 1.;
-    if (gp->type == swift_type_neutrino)
-      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
-    const double value = gp->mass * weight;
-
-#define ZOOM_PATCH_ADD(ii, jj, kk, w)                                      \
-  patch->values[zoom_mesh_patch_index(patch, ii, jj, kk)] += value * (w)
-    ZOOM_PATCH_ADD(i, j, k, t[0] * t[1] * t[2]);
-    ZOOM_PATCH_ADD(i, j, k + 1, t[0] * t[1] * d[2]);
-    ZOOM_PATCH_ADD(i, j + 1, k, t[0] * d[1] * t[2]);
-    ZOOM_PATCH_ADD(i, j + 1, k + 1, t[0] * d[1] * d[2]);
-    ZOOM_PATCH_ADD(i + 1, j, k, d[0] * t[1] * t[2]);
-    ZOOM_PATCH_ADD(i + 1, j, k + 1, d[0] * t[1] * d[2]);
-    ZOOM_PATCH_ADD(i + 1, j + 1, k, d[0] * d[1] * t[2]);
-    ZOOM_PATCH_ADD(i + 1, j + 1, k + 1, d[0] * d[1] * d[2]);
-#undef ZOOM_PATCH_ADD
-  }
-}
-
-/**
- * @brief Deposit one top-level cell through a private non-periodic patch.
- *
- * @param c The top-level cell.
- * @param data The mesh and density array receiving its patch.
- */
-static void zoom_mesh_deposit_cell_with_patch(
+static void zoom_mesh_cell_gpart_to_mesh_CIC(
     const struct cell *c, const struct zoom_cic_mapper_data *data) {
 
-  int mesh_min[3] = {INT_MAX, INT_MAX, INT_MAX};
-  int mesh_max[3] = {INT_MIN, INT_MIN, INT_MIN};
-  int has_particles = 0;
-  zoom_mesh_patch_bounds(c, data, mesh_min, mesh_max, &has_particles);
-  if (!has_particles) return;
+  const int gcount = c->grav.count;
+  const struct gpart *gparts = c->grav.parts;
 
-  struct zoom_mesh_patch patch;
-  size_t nr_cells = 1;
-  for (int axis = 0; axis < 3; ++axis) {
-    patch.mesh_min[axis] = mesh_min[axis];
-    patch.mesh_size[axis] = mesh_max[axis] - mesh_min[axis] + 1;
-    nr_cells *= patch.mesh_size[axis];
+  /* Assign all the gpart of that cell to the mesh */
+  for (int n = 0; n < gcount; ++n) {
+
+    const struct gpart *gp = &gparts[n];
+
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    /* Workout the CIC coefficients */
+    int ind[3];
+    double d[3], t[3];
+    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
+      error(
+          "Covered cell contains a particle outside the zoom mesh "
+          "(x=[%g %g %g], index=[%d %d %d]).",
+          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
+
+    /* Compute weight (for neutrino delta-f weighting) */
+    double weight = 1.0;
+    if (gp->type == swift_type_neutrino)
+      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
+
+    const double mass = gp->mass;
+    const double value = mass * weight;
+
+    /* CIC ! */
+    zoom_mesh_CIC_set(data->rho, data->M, ind[0], ind[1], ind[2], t[0], t[1],
+                      t[2], d[0], d[1], d[2], value);
   }
-  if (swift_memalign("zoom_mesh_patch", (void **)&patch.values,
-                     SWIFT_CACHE_ALIGNMENT, nr_cells * sizeof(double)) != 0)
-    error("Failed to allocate zoom mesh patch.");
-  bzero(patch.values, nr_cells * sizeof(double));
-
-  zoom_mesh_deposit_cell_to_patch(c, data, &patch);
-
-  for (int i = 0; i < patch.mesh_size[0]; ++i)
-    for (int j = 0; j < patch.mesh_size[1]; ++j)
-      for (int k = 0; k < patch.mesh_size[2]; ++k)
-        atomic_add_d(
-            &data->rho[zoom_mesh_index(i + patch.mesh_min[0],
-                                       j + patch.mesh_min[1],
-                                       k + patch.mesh_min[2], data->M)],
-            patch.values[zoom_mesh_patch_index(&patch, i, j, k)]);
-
-  swift_free("zoom_mesh_patch", patch.values);
 }
 
 /**
- * @brief Threadpool mapper for depositing top-level cells on the zoom mesh.
+ * @brief Initialize a mesh patch to cover the particles of a cell on the zoom
+ * mesh.
  *
- * @param map_data The top-level cell indices to process.
- * @param num The number of cell indices.
- * @param extra The shared #zoom_cic_mapper_data.
+ * Zoom mesh equivalent of pm_mesh_patch_init(). The patch coordinates are
+ * indices into the zero-padded zoom mesh, which is never wrapped.
+ *
+ * @param patch A pointer to the mesh patch.
+ * @param mesh The #zoom_pm_mesh.
+ * @param c The #cell which the patch should cover.
+ * @return 1 if a patch was allocated, 0 if the cell has no particle to assign.
+ */
+static int zoom_mesh_patch_init(struct pm_mesh_patch *patch,
+                                const struct zoom_pm_mesh *mesh,
+                                const struct cell *c) {
+
+  const int gcount = c->grav.count;
+  const struct gpart *gparts = c->grav.parts;
+
+  /* The patch indexes the zero-padded mesh */
+  patch->N = 2 * mesh->N[0];
+  patch->fac = mesh->cell_fac[0];
+
+  /* No wrapping on the isolated mesh */
+  for (int i = 0; i < 3; i++) {
+    patch->wrap_min[i] = mesh->loc[i];
+    patch->wrap_max[i] = mesh->loc[i] + mesh->dim[i];
+  }
+
+  /* Find the extent of the particle distribution in the cell */
+  int found = 0;
+  for (int i = 0; i < 3; i++) {
+    patch->mesh_min[i] = INT_MAX;
+    patch->mesh_max[i] = INT_MIN;
+  }
+  for (int ipart = 0; ipart < gcount; ipart++) {
+
+    const struct gpart *gp = &gparts[ipart];
+
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    int ind[3];
+    double d[3], t[3];
+    if (!zoom_mesh_gpart_index(mesh, gp, ind, d, t, /*need_stencil=*/0))
+      error(
+          "Covered cell contains a particle outside the zoom mesh "
+          "(x=[%g %g %g], index=[%d %d %d]).",
+          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
+
+    for (int i = 0; i < 3; i++) {
+      if (ind[i] < patch->mesh_min[i]) patch->mesh_min[i] = ind[i];
+      /* CIC interpolation requires one extra element in the positive
+       * direction */
+      if (ind[i] + 1 > patch->mesh_max[i]) patch->mesh_max[i] = ind[i] + 1;
+    }
+    found = 1;
+  }
+  if (!found) return 0;
+
+  /* Determine the integer size of the mesh */
+  int num_cells = 1;
+  for (int i = 0; i < 3; i++) {
+    patch->mesh_size[i] = patch->mesh_max[i] - patch->mesh_min[i] + 1;
+    num_cells *= patch->mesh_size[i];
+  }
+
+  /* Allocate the mesh */
+  if (swift_memalign("mesh_patch", (void **)&patch->mesh, SWIFT_CACHE_ALIGNMENT,
+                     num_cells * sizeof(double)) != 0)
+    error("Failed to allocate array for mesh patch!");
+
+  return 1;
+}
+
+/**
+ * @brief Accumulate contributions from a cell to a local zoom mesh patch.
+ *
+ * Zoom mesh equivalent of accumulate_cell_to_local_patch().
+ *
+ * @param c The #cell containing the particles.
+ * @param data The shared CIC mapper data.
+ * @param patch The local mesh patch.
+ * @return 1 if a patch was allocated, 0 if the cell has no particle to assign.
+ */
+static int zoom_mesh_accumulate_cell_to_local_patch(
+    const struct cell *c, const struct zoom_cic_mapper_data *data,
+    struct pm_mesh_patch *patch) {
+
+  /* Initialise the local mesh patch */
+  if (!zoom_mesh_patch_init(patch, data->mesh, c)) return 0;
+  pm_mesh_patch_zero(patch);
+
+  /* Loop over particles in this cell */
+  for (int ipart = 0; ipart < c->grav.count; ipart++) {
+
+    const struct gpart *gp = &(c->grav.parts[ipart]);
+
+    if (gp->time_bin == time_bin_inhibited) continue;
+
+    /* Workout the CIC coefficients */
+    int ind[3];
+    double d[3], t[3];
+    zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0);
+
+    /* Get coordinates within the mesh patch */
+    const int ii = ind[0] - patch->mesh_min[0];
+    const int jj = ind[1] - patch->mesh_min[1];
+    const int kk = ind[2] - patch->mesh_min[2];
+
+    /* Compute weight (for neutrino delta-f weighting) */
+    double weight = 1.0;
+    if (gp->type == swift_type_neutrino)
+      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
+
+    /* Accumulate contributions to the local mesh patch */
+    const double mass = gp->mass;
+    const double value = mass * weight;
+    pm_mesh_patch_CIC_set(patch, ii, jj, kk, t[0], t[1], t[2], d[0], d[1], d[2],
+                          value);
+  }
+
+  return 1;
+}
+
+/**
+ * @brief Threadpool mapper function for the zoom mesh CIC assignment of a
+ * cell.
+ *
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
  */
 static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
-                                            void *extra) {
+                                           void *extra) {
 
+  /* Unpack the shared information */
   const struct zoom_cic_mapper_data *data =
       (const struct zoom_cic_mapper_data *)extra;
-  const int *cell_ids = (const int *)map_data;
+  const struct cell *cells = data->cells;
 
-  for (int n = 0; n < num; ++n) {
-    const struct cell *c = &data->cells[cell_ids[n]];
-    if (data->mesh->use_local_patches)
-      zoom_mesh_deposit_cell_with_patch(c, data);
-    else
-      zoom_mesh_deposit_cell(c, data);
+  /* Pointer to the chunk to be processed */
+  int *local_cells = (int *)map_data;
+
+  /* A temporary patch of the zoom mesh */
+  struct pm_mesh_patch patch;
+
+  /* Loop over the elements assigned to this thread */
+  for (int i = 0; i < num; ++i) {
+
+    /* Pointer to local cell */
+    const struct cell *c = &cells[local_cells[i]];
+
+    /* Skip empty cells */
+    if (c->grav.count == 0) continue;
+
+    /* Particles in cells the zoom mesh does not cover keep the global PM
+     * split. This is the same predicate as used for the tree split. */
+    if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) continue;
+
+    if (data->mesh->use_local_patches) {
+
+      /* Do a CIC interpolation of all the particles in this cell onto
+         the local patch (allocates memory in the patch) */
+      if (!zoom_mesh_accumulate_cell_to_local_patch(c, data, &patch)) continue;
+
+      /* Copy the local patch values back onto the zoom mesh */
+      pm_add_patch_to_global_mesh(data->rho, &patch);
+
+      /* Free the allocated memory */
+      pm_mesh_patch_clean(&patch);
+
+    } else {
+
+      /* Assign this cell's content directly atomically to the mesh */
+      zoom_mesh_cell_gpart_to_mesh_CIC(c, data);
+    }
   }
 }
 
@@ -939,49 +938,41 @@ static void zoom_mesh_to_gpart_CIC_mapper(void *map_data, int num,
     gp->a_grav_mesh[0] += const_G * mesh->cell_fac[0] * a[0];
     gp->a_grav_mesh[1] += const_G * mesh->cell_fac[1] * a[1];
     gp->a_grav_mesh[2] += const_G * mesh->cell_fac[2] * a[2];
-#ifndef SWIFT_GRAVITY_NO_POTENTIAL
-    gp->potential_mesh += const_G * p;
-#endif
+    gravity_add_comoving_mesh_potential(gp, const_G * p);
   }
 }
 
 /**
- * @brief Recursively interpolate the zoom mesh correction to covered cells.
+ * @brief Threadpool mapper function for the zoom mesh CIC interpolation of a
+ * cell.
  *
- * @param c The #cell to update.
- * @param data The shared CIC mapper data.
- */
-static void zoom_mesh_interpolate_cell(
-    struct cell *c, const struct zoom_cic_mapper_data *data) {
-
-  if (c->split) {
-    for (int k = 0; k < 8; ++k)
-      if (c->progeny[k] != NULL)
-        zoom_mesh_interpolate_cell(c->progeny[k], data);
-    return;
-  }
-
-  if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) return;
-
-  zoom_mesh_to_gpart_CIC_mapper(c->grav.parts, c->grav.count, (void *)data);
-}
-
-/**
- * @brief Threadpool mapper for interpolating top-level zoom mesh cells.
- *
- * @param map_data The top-level cell indices to process.
- * @param num The number of cell indices.
- * @param extra The shared #zoom_cic_mapper_data.
+ * @param map_data A chunk of the list of local cells.
+ * @param num The number of cells in the chunk.
+ * @param extra The information about the mesh and cells.
  */
 static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
-                                                void *extra) {
+                                               void *extra) {
 
+  /* Unpack the shared information */
   const struct zoom_cic_mapper_data *data =
       (const struct zoom_cic_mapper_data *)extra;
-  const int *cell_ids = (const int *)map_data;
+  const struct cell *cells = data->cells;
 
-  for (int n = 0; n < num; ++n)
-    zoom_mesh_interpolate_cell(&data->cells[cell_ids[n]], data);
+  /* Pointer to the chunk to be processed */
+  int *local_cells = (int *)map_data;
+
+  /* Loop over the elements assigned to this thread */
+  for (int i = 0; i < num; ++i) {
+
+    /* Pointer to local cell */
+    const struct cell *c = &cells[local_cells[i]];
+
+    /* Only cells covered by the zoom mesh receive the correction */
+    if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) continue;
+
+    /* Interpolate the correction onto this cell's content */
+    zoom_mesh_to_gpart_CIC_mapper(c->grav.parts, c->grav.count, (void *)data);
+  }
 }
 
 /**
