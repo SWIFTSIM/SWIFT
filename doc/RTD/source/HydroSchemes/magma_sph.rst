@@ -208,7 +208,7 @@ cold supersonic shear (Keplerian discs) is relieved of it.
 A per-particle coefficient :math:`\alpha_a` of the Cullen & Dehnen (2010)
 form is evolved for every particle (source :math:`\xi_a H^2 \max(0,
 -d(\nabla\cdot\mathbf{v})/dt)`, raised to :math:`\alpha A/(A + c_s^2)`,
-floor ``SPH:viscosity_alpha_min``, implicit decay over :math:`H / (2\,
+floor ``SPH:viscosity_alpha_min``, exponential decay over :math:`H / (2\,
 \ell\, c_s)` with :math:`\ell =` ``SPH:viscosity_length``), but it never
 enters :math:`Q`: it is the shock measure of the conduction cap below. Using
 it in :math:`Q` as well would apply the limiter :math:`\xi_a` twice, in the
@@ -398,8 +398,10 @@ divergence used by the GEAR star formation and sink models is the trace of
 the matrix velocity gradient recorded at the last force preparation (zero
 for particles that fell back to standard SPH). Cosmological runs are
 supported: the Hubble flow enters the approach test, :math:`\mu_a`, the
-viscous heating, the conduction signal speed and the velocity limiter, and
-the adiabatic :math:`P\,dV` term uses the peculiar velocity only.
+viscous heating, the conduction signal speed, the velocity limiter and the
+divergence seen by the shear limiter, the shock-presence sum and the
+:math:`\alpha_a` trigger, and the adiabatic :math:`P\,dV` term uses the
+peculiar velocity only.
 
 Known limitations
 -----------------

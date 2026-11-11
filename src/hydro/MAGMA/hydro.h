@@ -868,6 +868,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   float convergence_fraction = 1.f;
   float viscosity_limiter = 1.f;
   const float div_v = gradient_vx[0] + gradient_vy[1] + gradient_vz[2];
+  /* The flow's full divergence includes the Hubble flow (d H in physical
+   * units, d H a^2 in the comoving units of the gradient): the limiter and
+   * the alpha trigger see the expansion, as in SPHENIX. The traceless shear
+   * does not (the Hubble term is pure trace), nor does p->div_v, which keeps
+   * the comoving peculiar divergence that hydro_get_div_v() promises. */
+  const float div_v_tot =
+      div_v + hydro_dimension * cosmo->H * cosmo->a * cosmo->a;
   /* Traceless symmetric part S = (V + V^T)/2 - (div v / d) I, with only
    * the d diagonal entries that exist in d dimensions (the absent ones
    * would contribute -(div v / d)^2 each and make a pure compression
@@ -889,7 +896,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float Syz = 0.5f * (gradient_vy[2] + gradient_vz[1]);
   const float S2 = Sxx * Sxx + Syy * Syy + Szz * Szz +
                    2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
-  const float div2 = div_v * div_v;
+  const float div2 = div_v_tot * div_v_tot;
   convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
 
   /* Viscosity limiter: the same comparison with the
@@ -938,7 +945,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * constant alpha, see hydro_parameters.h. */
   const float H = kernel_gamma * p->h * cosmo->a;
   const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
-  const float div_v_phys = div_v * cosmo->a2_inv;
+  const float div_v_phys = div_v_tot * cosmo->a2_inv;
   const float div_v_dt =
       dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
   const float A = div_v_phys < 0.f
@@ -951,13 +958,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   if (alpha_loc > alpha_v) {
     alpha_v = alpha_loc;
   } else {
-    /* Implicit decay, stable for any time step (Price et al. 2018),
-     * over Cullen & Dehnen's tau = h / (2 l v_sig), where their h is the
-     * kernel support radius (their footnote 2: W = 0 beyond h), i.e. our
-     * H, and with v_sig -> c_s: H / (2 l c_s). */
-    const float ratio =
+    /* Exponential decay towards alpha_loc (Cullen & Dehnen 2010, eq. 16)
+     * over their tau = h / (2 l v_sig), where their h is the kernel support
+     * radius (their footnote 2: W = 0 beyond h), i.e. our H, and with
+     * v_sig -> c_s: H / (2 l c_s). Exact for any time step. */
+    const float dt_over_tau =
         dt_alpha * 2.f * hydro_props->viscosity.length * c_phys / H;
-    alpha_v = (alpha_v + alpha_loc * ratio) / (1.f + ratio);
+    alpha_v = alpha_loc + (alpha_v - alpha_loc) * expf(-dt_over_tau);
   }
   p->alpha_visc = fmaxf(alpha_v, hydro_props->viscosity.alpha_min);
   p->div_v_previous = div_v_phys;
