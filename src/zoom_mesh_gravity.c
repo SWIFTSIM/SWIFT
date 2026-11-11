@@ -1002,21 +1002,14 @@ static void zoom_mesh_interpolate_bkg_cells_mapper(void *map_data, int num,
 static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp,
                                      const struct zoom_cic_mapper_data *data) {
 
-  if (s->with_zoom_region && s->zoom_props != NULL) {
-    threadpool_map(tp, zoom_mesh_deposit_zoom_cells_mapper,
-                   s->zoom_props->local_zoom_cells_with_particles_top,
-                   s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
-    threadpool_map(tp, zoom_mesh_deposit_bkg_cells_mapper,
-                   s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
-  } else if (s->cells_top != NULL) {
-    threadpool_map(tp, zoom_mesh_deposit_cells_mapper,
-                   s->local_cells_with_particles_top,
-                   s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_auto_chunk_size, (void *)data);
-  }
+  threadpool_map(tp, zoom_mesh_deposit_zoom_cells_mapper,
+                 s->zoom_props->local_zoom_cells_with_particles_top,
+                 s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, (void *)data);
+  threadpool_map(tp, zoom_mesh_deposit_bkg_cells_mapper,
+                 s->zoom_props->local_bkg_cells_with_particles_top,
+                 s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, (void *)data);
 }
 
 /**
@@ -1030,21 +1023,14 @@ static void zoom_mesh_interpolate_cells(
     const struct space *s, struct threadpool *tp,
     const struct zoom_cic_mapper_data *data) {
 
-  if (s->with_zoom_region && s->zoom_props != NULL) {
-    threadpool_map(tp, zoom_mesh_interpolate_zoom_cells_mapper,
-                   s->zoom_props->local_zoom_cells_with_particles_top,
-                   s->zoom_props->nr_local_zoom_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
-    threadpool_map(tp, zoom_mesh_interpolate_bkg_cells_mapper,
-                   s->zoom_props->local_bkg_cells_with_particles_top,
-                   s->zoom_props->nr_local_bkg_cells_with_particles,
-                   sizeof(int), threadpool_auto_chunk_size, (void *)data);
-  } else if (s->cells_top != NULL) {
-    threadpool_map(tp, zoom_mesh_interpolate_cells_mapper,
-                   s->local_cells_with_particles_top,
-                   s->nr_local_cells_with_particles, sizeof(int),
-                   threadpool_auto_chunk_size, (void *)data);
-  }
+  threadpool_map(tp, zoom_mesh_interpolate_zoom_cells_mapper,
+                 s->zoom_props->local_zoom_cells_with_particles_top,
+                 s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, (void *)data);
+  threadpool_map(tp, zoom_mesh_interpolate_bkg_cells_mapper,
+                 s->zoom_props->local_bkg_cells_with_particles_top,
+                 s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
+                 threadpool_auto_chunk_size, (void *)data);
 }
 
 /** @brief Shared data for constructing the isolated kernel. */

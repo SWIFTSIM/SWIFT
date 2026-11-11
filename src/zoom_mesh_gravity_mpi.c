@@ -383,10 +383,8 @@ static int zoom_mpi_collect_cells(const struct space *s,
  *
  * @param send Counts sent to each rank.
  * @param recv Counts received from each rank (returned).
- * @param nr_nodes Number of MPI ranks.
  */
-static void zoom_mpi_exchange_counts(const size_t *send, size_t *recv,
-                                     const int nr_nodes) {
+static void zoom_mpi_exchange_counts(const size_t *send, size_t *recv) {
   MPI_Alltoall((void *)send, sizeof(size_t), MPI_BYTE, recv, sizeof(size_t),
                MPI_BYTE, MPI_COMM_WORLD);
 }
@@ -449,7 +447,7 @@ static void zoom_mpi_patches_to_density(struct zoom_mpi_patch *patches,
     swift_free("zoom_mpi_density_patch", patch->values);
     patch->values = NULL;
   }
-  zoom_mpi_exchange_counts(send_count, recv_count, layout->nr_nodes);
+  zoom_mpi_exchange_counts(send_count, recv_count);
   size_t recv_total = 0;
   for (int rank = 0; rank < layout->nr_nodes; ++rank)
     recv_total += recv_count[rank];
@@ -731,7 +729,7 @@ static void zoom_mpi_request_potential(struct zoom_mpi_patch *patches,
           request->value = 0.;
         }
   }
-  zoom_mpi_exchange_counts(send_count, recv_count, layout->nr_nodes);
+  zoom_mpi_exchange_counts(send_count, recv_count);
   size_t recv_total = 0;
   for (int rank = 0; rank < layout->nr_nodes; ++rank)
     recv_total += recv_count[rank];
