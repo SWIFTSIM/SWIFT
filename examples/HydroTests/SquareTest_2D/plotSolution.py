@@ -31,7 +31,7 @@ import numpy as np
 from scipy import stats
 
 from swiftsimio import load
-from swiftsimio.visualisation import project_gas_pixel_grid
+from swiftsimio.visualisation import project_pixel_grid
 
 snap = int(sys.argv[1])
 
@@ -39,7 +39,7 @@ sim = load(f"square_{snap:04d}.hdf5")
 resolution = 512
 
 # First create a grid that gets the particle density so we can divide it out later
-unweighted_grid = project_gas_pixel_grid(sim, 512, None)
+unweighted_grid = project_pixel_grid(sim.gas, 512, None)
 
 # Set up plotting stuff
 try:
@@ -114,7 +114,7 @@ for key, label in plot.items():
         # Raw data
         try:
             grid = (
-                project_gas_pixel_grid(sim, resolution=resolution, project=key)
+                project_pixel_grid(sim.gas, resolution=resolution, project=key)
                 / unweighted_grid
             )
             axis.imshow(grid, origin="lower", extent=[0, 1, 0, 1], cmap="cividis")

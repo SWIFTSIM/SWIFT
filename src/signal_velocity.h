@@ -22,7 +22,7 @@
 /* Config parameters. */
 #include <config.h>
 
-#ifndef NONE_MHD
+#if !defined(NONE_MHD)
 
 /* Include MHD definition of signal velocity */
 #include "mhd.h"
@@ -42,9 +42,34 @@
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
     const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a, const float mu_0) {
+  return mhd_signal_velocity(dx, pi, pj, mu_ij, beta, a, mu_0);
+}
 
-  return mhd_signal_velocity(dx, pi, pj, mu_ij, beta);
+#elif defined(MAGMA_SPMHD_DI) || defined(MAGMA_SPMHD_VP)
+
+/* Include MHD definition of signal velocity */
+#include "hydro.h"
+
+/**
+ * @brief Compute the signal velocity between two gas particles,
+ * MHD case.
+ *
+ * Warning ONLY to be called just after preparation of the force loop.
+ *
+ * @param dx Comoving vector separating both particles (pi - pj).
+ * @brief pi The first #part.
+ * @brief pj The second #part.
+ * @brief mu_ij The velocity on the axis linking the particles, or zero if the
+ * particles are moving away from each other,
+ * @brief beta The non-linear viscosity constant.
+ */
+__attribute__((always_inline)) INLINE static float signal_velocity(
+    const float dx[3], const struct part *restrict pi,
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a, const float mu_0) {
+  return hydro_signal_velocity(dx, pi, pj, mu_ij, beta, mu_0);
 }
 
 #else
@@ -67,7 +92,8 @@ __attribute__((always_inline)) INLINE static float signal_velocity(
  */
 __attribute__((always_inline)) INLINE static float signal_velocity(
     const float dx[3], const struct part *restrict pi,
-    const struct part *restrict pj, const float mu_ij, const float beta) {
+    const struct part *restrict pj, const float mu_ij, const float beta,
+    const float a, const float mu_0) {
 
   return hydro_signal_velocity(dx, pi, pj, mu_ij, beta);
 }

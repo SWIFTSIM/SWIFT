@@ -1,0 +1,77 @@
+Initial Conditions Generation
+-----------------------------
+To make the initial conditions we distribute gas particles randomly in
+a cube with a side length twice that of the virial radius. The density
+profile of the gas is proportional to r^(-2) where r is the distance
+from the centre of the cube.
+
+
+The parameter v_rot (in makeIC.py) sets the circular
+velocity of the halo, and by extension, the viral radius, viral mass,
+and the internal energy of the gas such that hydrostatic equilibrium
+is achieved.
+
+The gas is given some angular momentum about the z-axis. This is
+defined by the 'spin_lambda' variable in makeIC.py
+
+A uniform magnetic field pointing along the angular momentum 
+axis is seeded through the B0_Gaussian_Units variable. It is set
+by default to 1muG.
+
+While the system is initially in hydrostatic equilibrium, the cooling
+of the gas and the non-zero angular momentum means that the halo will
+collapse into a spinning disc.
+
+Compilation
+-----------
+
+for runs with EAGLE cooling+chemistry+entropy floor+star formation + feedback
+./configure --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc --with-stars=EAGLE --with-star-formation=EAGLE --with-tracers=EAGLE --with-feedback=EAGLE
+
+for runs with EAGLE cooling+chemistry+entropy floor+star formation
+./configure --with-spmhd=direct-induction --with-cooling=EAGLE --with-chemistry=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc --with-stars=EAGLE --with-star-formation=EAGLE
+
+for runs with lambda cooling
+./configure --with-spmhd=direct-induction --with-cooling=const-lambda --with-ext-potential=nfw --with-kernel=quintic-spline --disable-hand-vec --disable-compiler-warnings --disable-doxygen-doc
+
+Note: when running with self gravity but without feedback excessive clumping will happen. Since there is no density limiter, the clumps collapse until they reach sizes ~ softening length. Rotation can dilute and destabilize these clums, so adding more angular momentum might help in this case.
+
+Setup
+-----
+IC generation similar to R. Pakmor, V. Springel, 1212.1452
+Run parameters for EAGLE model mostly follow run L025N0376 from J. Schaye et al. 1407.7040  
+
+Snapshot slices
+---------------
+The plotSolutionReference.py plotting script draws slices of density, magnetic feild, divergence errors and plasma beta in z=0 and y=0 planes. Parameter Lslice_kPc sets plotting area around the simulation center.
+
+Correlation plots
+-----------------
+plotCorrelation.py script plots correlation space or histograms for the selected variables. to_plot variable defines the regime.
+
+Energy time evolution
+---------------------
+To produce Energy vs simulation time plot, use statistics_reader.py scirpt
+
+Checking Results
+----------------
+The plotting scripts produce a plot of the density, internal energy
+and radial velocity profile for each
+snapshot. test_energy_conservation.py shows the evolution of energy
+with time. These can be used to check if the example has run properly.
+
+Generating Video
+----------------
+If you want to generate a video of the simulation, the frequency of 
+the snaphots needs to be increased. This can be modified in cooling.yml 
+by changing 'delta_time' to 0.01. 
+
+To produce series of images with a given script, you can use plotMovie.py
+
+Once you have the snapshots, 'gadgetviewer' can be used to create a 
+series of snapshot frames. The frames can then be combined together with 
+'ffmpeg' to produce a video. The following command can be used:
+
+ffmpeg -r 20 -i frame_%05d.image.png -c:v ffv1 -qscale:v 0 movie.avi
+
+to produce the video.
