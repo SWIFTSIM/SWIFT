@@ -179,11 +179,19 @@ void fof_init(struct fof_props *props, struct swift_params *params,
   props->l_x_absolute =
       parser_get_opt_param_double(params, "FOF:absolute_linking_length", -1.);
 
-  if (props->l_x_ratio == -1. && props->l_x_absolute <= 0.)
-    error("The FOF linking length can't be negative!");
+  /* -1 means the parameter was not given. Any value given must be positive. */
+  if (props->l_x_absolute != -1. && props->l_x_absolute <= 0.)
+    error("FOF:absolute_linking_length must be positive (got %e).",
+          props->l_x_absolute);
 
-  if (props->l_x_ratio <= 0. && props->l_x_absolute == -1.)
-    error("The FOF linking length ratio can't be negative!");
+  if (props->l_x_ratio != -1. && props->l_x_ratio <= 0.)
+    error("FOF:linking_length_ratio must be positive (got %e).",
+          props->l_x_ratio);
+
+  if (props->l_x_ratio == -1. && props->l_x_absolute == -1.)
+    error(
+        "One of FOF:linking_length_ratio or FOF:absolute_linking_length must "
+        "be specified.");
 
   if (!stand_alone_fof && props->seed_black_holes_enabled) {
 
