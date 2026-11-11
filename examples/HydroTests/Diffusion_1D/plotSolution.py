@@ -35,7 +35,7 @@ matplotlib.use("Agg")
 
 
 def solve_analytic(u_0, u_1, t_0, t_1, alpha=0.1):
-    """
+    r"""
     Solves the analytic equation:
 
     $$

@@ -1,100 +1,95 @@
 """
-Makes a movie using sphviewer and ffmpeg.
+Plots the star formation history of the isolated galaxy, computed two ways:
 
-Edit low_frac and up_frac to focus on a certain view of the box.
-The colour map can also be changed via colour_map.
+ - from the summed star formation rates of the gas particles in each of the
+   snapshots output_0001.hdf5 onwards;
+ - from a mass-weighted histogram of the birth times of the star particles in
+   the last snapshot.
 
-Usage: python3 makeMovie.py CoolingHalo_
+Only particles within a 20x20x4 kpc slab centred on the box are used.
+The two curves should agree if star formation behaves as expected.
 
-Written by James Willis (james.s.willis@durham.ac.uk)
+Usage: python3 SFH.py
 """
 
 import glob
-import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
+import swiftsimio as sw
 
 from tqdm import tqdm
 
+# Half-sizes of the slab centred on the box, in kpc
+absmaxxy = 10.0
+absmaxz = 2.0
+
+
+def in_slab(coordinates, boxsize):
+    """
+    Mask selecting the particles within the slab centred on the box.
+    """
+
+    offset = coordinates.to_value("kpc") - boxsize.to_value("kpc") / 2.0
+
+    return (
+        (np.abs(offset[:, 0]) < absmaxxy)
+        & (np.abs(offset[:, 1]) < absmaxxy)
+        & (np.abs(offset[:, 2]) < absmaxz)
+    )
+
 
 def getSFH(filename):
+    """
+    Star formation rate (in Msun/yr) from the birth times of the star
+    particles, in 200 time bins (in Myr) from the start of the simulation to
+    the time of the snapshot.
+    """
 
-    # Read the data
-    with h5.File(filename, "r") as f:
-        box_size = f["/Header"].attrs["BoxSize"][0]
-        coordinates = f["/PartType4/Coordinates"][:, :]
-        mass = f["/PartType4/Masses"][:]
-        # flag = f["/PartType4/NewStarFlag"][:]
-        birth_time = f["/PartType4/BirthTimes"][:]
+    data = sw.load(filename)
 
-    absmaxz = 2  # kpc
-    absmaxxy = 10  # kpc
+    mask = in_slab(data.stars.coordinates, data.metadata.boxsize)
+    birth_time = data.stars.birth_times[mask].to_value("Myr")
+    mass = data.stars.masses[mask].to_value("Msun")
 
-    part_mask = (
-        ((coordinates[:, 0] - box_size / 2.0) > -absmaxxy)
-        & ((coordinates[:, 0] - box_size / 2.0) < absmaxxy)
-        & ((coordinates[:, 1] - box_size / 2.0) > -absmaxxy)
-        & ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
-        & ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
-        & ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
-    )  # & (flag==1)
+    bins = np.linspace(0.0, data.metadata.t.to_value("Myr"), 201)
+    mass_formed, edges = np.histogram(birth_time, bins=bins, weights=mass)
 
-    birth_time = birth_time[part_mask]
-    mass = mass[part_mask]
-
-    histogram = np.histogram(birth_time, bins=200, weights=mass * 2e4, range=[0, 0.1])
-    values = histogram[0]
-    xvalues = (histogram[1][:-1] + histogram[1][1:]) / 2.0
-    return xvalues, values
+    bin_width = (edges[1] - edges[0]) * 1e6  # yr
+    xvalues = (edges[:-1] + edges[1:]) / 2.0
+    return xvalues, mass_formed / bin_width
 
 
-def getsfrsnapwide():
+def getsfrsnapwide(filenames):
+    """
+    Time (in Myr) and summed star formation rate of the gas particles (in
+    Msun/yr) of each snapshot.
+    """
 
-    time = np.arange(1, 101, 1)
-    SFR_sparticles = np.zeros(100)
-    SFR_gparticles = np.zeros(100)
-    new_sparticles = np.zeros(100)
-    previous_mass = 0
-    previous_numb = 0
-    for i in tqdm(range(1, 100)):
-        # Read the data
-        filename = "output_%04d.hdf5" % i
-        with h5.File(filename, "r") as f:
-            box_size = f["/Header"].attrs["BoxSize"][0]
-            coordinates = f["/PartType0/Coordinates"][:, :]
-            SFR = f["/PartType0/StarFormationRates"][:]
-            coordinates_star = f["/PartType4/Coordinates"][:, :]
-            masses_star = f["/PartType4/Masses"][:]
+    time = np.zeros(len(filenames))
+    SFR_gparticles = np.zeros(len(filenames))
 
-        absmaxz = 2  # kpc
-        absmaxxy = 10  # kpc
+    for i, filename in enumerate(tqdm(filenames)):
+        data = sw.load(filename)
 
-        part_mask = (
-            ((coordinates[:, 0] - box_size / 2.0) > -absmaxxy)
-            & ((coordinates[:, 0] - box_size / 2.0) < absmaxxy)
-            & ((coordinates[:, 1] - box_size / 2.0) > -absmaxxy)
-            & ((coordinates[:, 1] - box_size / 2.0) < absmaxxy)
-            & ((coordinates[:, 2] - box_size / 2.0) > -absmaxz)
-            & ((coordinates[:, 2] - box_size / 2.0) < absmaxz)
-            & (SFR > 0)
-        )
+        SFR = data.gas.star_formation_rates.to_value("Msun/yr")
+        part_mask = in_slab(data.gas.coordinates, data.metadata.boxsize) & (SFR > 0)
 
-        SFR = SFR[part_mask]
+        time[i] = data.metadata.t.to_value("Myr")
+        SFR_gparticles[i] = np.sum(SFR[part_mask])
 
-        total_SFR = np.sum(SFR)
-        SFR_gparticles[i] = total_SFR * 10
-
-    return time[:-1], SFR_gparticles[1:]
+    return time, SFR_gparticles
 
 
 if __name__ == "__main__":
 
-    time, SFR1 = getsfrsnapwide()  # , SFR2, SFR_error = getsfrsnapwide()
-    time2, SFR3 = getSFH("output_%04d.hdf5" % 100)
-    plt.plot(time2[1:] * 1e3, SFR3[1:], label="Using birth_time of star particles")
+    snapshots = sorted(glob.glob("output_[0-9][0-9][0-9][0-9].hdf5"))
+
+    time, SFR1 = getsfrsnapwide(snapshots[1:])
+    time2, SFR3 = getSFH(snapshots[-1])
+    plt.plot(time2[1:], SFR3[1:], label="Using birth_time of star particles")
     plt.plot(time, SFR1, label="Using SFR of gas particles", color="g")
     plt.xlabel("Time (Myr)")
-    plt.ylabel("SFH ($\\rm M_\odot \\rm yr^{-1}$)")
+    plt.ylabel(r"SFH ($\rm M_\odot \rm yr^{-1}$)")
     plt.ylim(0, 20)
     plt.legend()
     plt.savefig("SFH.png")

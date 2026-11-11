@@ -3,7 +3,6 @@
 # by testCooling.
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 # Number of metals tracked by EAGLE cooling
 elements = 11
@@ -48,6 +47,6 @@ ax.set_position([0.15, 0.15, 0.75, 0.75])
 plt.xlim([1e3, 1e8])
 plt.ylim([1e-24, 1e-21])
 plt.xlabel("Temperature ${\\rm{[K]}}$", fontsize=14)
-plt.ylabel("${\Lambda/n_H^2 }$ ${\\rm{[erg \cdot cm^3 \cdot s^{-1}]}}$", fontsize=14)
+plt.ylabel("${\\Lambda/n_H^2 }$ ${\\rm{[erg \\cdot cm^3 \\cdot s^{-1}]}}$", fontsize=14)
 plt.legend(handles=[p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10])
 plt.savefig("cooling_rates", dpi=200)

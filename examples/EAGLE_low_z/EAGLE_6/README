@@ -7,7 +7,7 @@ The particle distribution here is the snapshot 27 (z=0.1) of the 6.25Mpc
 Ref-model. h- and a- factors from the original Gadget code have been
 corrected for. Variables not used in a pure hydro & gravity code have
 been removed. 
-Everything is ready to be run without cosmological integration. 
+The parameter files run them with cosmological integration from z = 0.1 (a = 0.909) to z = 0. 
 
 MD5 checksum of the ICs:
 ddd26b959815b131cd1af1479e752da7  EAGLE_ICs_6.hdf5

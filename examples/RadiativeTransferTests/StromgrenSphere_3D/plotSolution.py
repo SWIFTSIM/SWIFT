@@ -27,15 +27,16 @@
 import gc
 import sys
 
-import matplotlib as mpl
 import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from swiftsimio.visualisation.slice import slice_gas
+from swiftsimio.visualisation import slice_gas
 
 import stromgren_plotting_tools as spt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -59,8 +60,6 @@ try:
 except IndexError:
     plot_all = True
 
-mpl.rcParams["text.usetex"] = True
-
 
 def set_colorbar(ax, im):
     """
@@ -83,7 +82,6 @@ def plot_result(filename):
     meta = data.metadata
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [
         0.0 * meta.boxsize[0].v,
         0.9 * meta.boxsize[0].v,
@@ -241,7 +239,7 @@ def plot_result(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", "\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.1f}".format(meta.time.to("Myr"))

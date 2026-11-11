@@ -26,12 +26,14 @@
 import os
 import sys
 
-import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 from matplotlib import pyplot as plt
 from matplotlib.colors import SymLogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 
@@ -48,7 +50,6 @@ projection_kwargs = {"resolution": 512, "parallel": True}
 
 # -----------------------------------------------------------------------
 
-mpl.rcParams["text.usetex"] = True
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False
 
@@ -113,7 +114,6 @@ def plot_ionization(filename):
     data = swiftsimio.load(filename)
     meta = data.metadata
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [
         0.01 * meta.boxsize[0].v,
         0.99 * meta.boxsize[0].v,
@@ -121,9 +121,7 @@ def plot_ionization(filename):
         0.99 * meta.boxsize[1].v,
     ]
 
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
 
     data.gas.mXHI = data.gas.ion_mass_fractions.HI * data.gas.masses
     data.gas.mXHII = data.gas.ion_mass_fractions.HII * data.gas.masses
@@ -131,21 +129,11 @@ def plot_ionization(filename):
     data.gas.mXHeII = data.gas.ion_mass_fractions.HeII * data.gas.masses
     data.gas.mXHeIII = data.gas.ion_mass_fractions.HeIII * data.gas.masses
 
-    mass_weighted_XHImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHI", **projection_kwargs
-    )
-    mass_weighted_XHIImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHII", **projection_kwargs
-    )
-    mass_weighted_XHeImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHeI", **projection_kwargs
-    )
-    mass_weighted_XHeIImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHeII", **projection_kwargs
-    )
-    mass_weighted_XHeIIImap = swiftsimio.visualisation.projection.project_gas(
-        data, project="mXHeIII", **projection_kwargs
-    )
+    mass_weighted_XHImap = project_gas(data, project="mXHI", **projection_kwargs)
+    mass_weighted_XHIImap = project_gas(data, project="mXHII", **projection_kwargs)
+    mass_weighted_XHeImap = project_gas(data, project="mXHeI", **projection_kwargs)
+    mass_weighted_XHeIImap = project_gas(data, project="mXHeII", **projection_kwargs)
+    mass_weighted_XHeIIImap = project_gas(data, project="mXHeIII", **projection_kwargs)
 
     XHImap = mass_weighted_XHImap / mass_map
     XHIImap = mass_weighted_XHIImap / mass_map
@@ -218,7 +206,7 @@ def plot_ionization(filename):
         ax.set_xlabel("[kpc]")
         ax.set_ylabel("[kpc]")
 
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to("Myr"))

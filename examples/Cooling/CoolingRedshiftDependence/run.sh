@@ -1,24 +1,33 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e gravity_glassCube_32.hdf5 ]
 then
-    echo "Fetching initial gravity glass file for the constant cosmological box example..."
+    echo "Fetching initial gravity glass file for the cooling redshift dependence example..."
     ./getGlass.sh
 fi
 
-# Fetch the cooling tables
+# Generate the initial conditions if they are not present.
 if [ ! -e ics_no_z.hdf5 ]
 then
-    echo "Generating initial conditions for the uniform cosmo box example..."
+    echo "Generating initial conditions for the cooling redshift dependence example..."
     python3 makeIC.py
+fi
+
+# Fetch the cooling tables
+if [ ! -e coolingtables ]
+then
+    echo "Fetching EAGLE cooling tables..."
+    ../getEagleCoolingTable.sh
 fi
 
 swift_location="../../../swift"
 
-rm data/redshift_dependence_*_z_*.hdf5
+rm -f data/redshift_dependence_*_z_*.hdf5
 
-mkdir data
+mkdir -p data
 
 # Run SWIFT
 $swift_location --hydro --cosmology --cooling --limiter --threads=4 cooling_redshift_dependence_high_z.yml 2>&1 | tee output_high.log

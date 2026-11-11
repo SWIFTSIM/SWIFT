@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 d1=gizmo/png
 d2=anarchy/png
 d3=pu/png

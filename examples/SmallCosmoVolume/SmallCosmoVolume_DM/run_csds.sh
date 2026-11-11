@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 #Path to velociraptor executable
 velociraptor_path=/path/to/velociraptor
 
@@ -15,7 +17,7 @@ fi
 
 if [ ! -d "stf_output" ]
 then
-    mkdir stf_output
+    mkdir -p stf_output
 fi
 
 # Run velociraptor
