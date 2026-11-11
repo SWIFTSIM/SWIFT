@@ -415,97 +415,75 @@ double zoom_mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
 #ifdef HAVE_FFTW
 
 /**
- * @brief Returns the 1D index of a 3D MxMxM zoom mesh array.
- *
- * Unlike the regular PM mesh helpers, this does not wrap periodically. The
- * zero padded Hockney-Eastwood embedding stores negative Green-function offsets
- * explicitly in the upper half of the zero-padded domain.
- *
- * @param i Index along x.
- * @param j Index along y.
- * @param k Index along z.
- * @param M Size of the zero-padded array along one axis.
- * @return The row-major 1D index.
- */
-__attribute__((always_inline, const)) INLINE static size_t zoom_mesh_index(
-    const int i, const int j, const int k, const int M) {
-
-  /* Standard row-major indexing without periodic wrapping. */
-  return ((size_t)i * M + (size_t)j) * M + (size_t)k;
-}
-
-/**
- * @brief Interpolate a value to the zero-padded zoom mesh using CIC.
- *
- * @param mesh The mesh to write to.
- * @param M The size of the zero-padded mesh along one axis.
- * @param i The index of the cell along x.
- * @param j The index of the cell along y.
- * @param k The index of the cell along z.
- * @param tx First CIC coefficient along x.
- * @param ty First CIC coefficient along y.
- * @param tz First CIC coefficient along z.
- * @param dx Second CIC coefficient along x.
- * @param dy Second CIC coefficient along y.
- * @param dz Second CIC coefficient along z.
- * @param value The value to interpolate.
- */
-__attribute__((always_inline)) INLINE static void zoom_mesh_CIC_set(
-    double *mesh, const int M, const int i, const int j, const int k,
-    const double tx, const double ty, const double tz, const double dx,
-    const double dy, const double dz, const double value) {
-
-  /* Classic CIC assignment to the eight surrounding mesh vertices. */
-  atomic_add_d(&mesh[zoom_mesh_index(i + 0, j + 0, k + 0, M)],
-               value * tx * ty * tz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 0, j + 0, k + 1, M)],
-               value * tx * ty * dz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 0, j + 1, k + 0, M)],
-               value * tx * dy * tz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 0, j + 1, k + 1, M)],
-               value * tx * dy * dz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 1, j + 0, k + 0, M)],
-               value * dx * ty * tz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 1, j + 0, k + 1, M)],
-               value * dx * ty * dz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 1, j + 1, k + 0, M)],
-               value * dx * dy * tz);
-  atomic_add_d(&mesh[zoom_mesh_index(i + 1, j + 1, k + 1, M)],
-               value * dx * dy * dz);
-}
-
-/**
- * @brief Interpolate values from the zero-padded zoom mesh using CIC.
+ * @brief Interpolate values from a the mesh using CIC.
  *
  * @param mesh The mesh to read from.
- * @param M The size of the zero-padded mesh along one axis.
- * @param i The index of the cell along x.
- * @param j The index of the cell along y.
- * @param k The index of the cell along z.
- * @param tx First CIC coefficient along x.
- * @param ty First CIC coefficient along y.
- * @param tz First CIC coefficient along z.
- * @param dx Second CIC coefficient along x.
- * @param dy Second CIC coefficient along y.
- * @param dz Second CIC coefficient along z.
- * @return The interpolated value.
+ * @param i The index of the cell along x
+ * @param j The index of the cell along y
+ * @param k The index of the cell along z
+ * @param tx First CIC coefficient along x
+ * @param ty First CIC coefficient along y
+ * @param tz First CIC coefficient along z
+ * @param dx Second CIC coefficient along x
+ * @param dy Second CIC coefficient along y
+ * @param dz Second CIC coefficient along z
  */
 __attribute__((always_inline, const)) INLINE static double zoom_mesh_CIC_get(
-    const double *mesh, const int M, const int i, const int j, const int k,
+    double mesh[6][6][6], const int i, const int j, const int k,
     const double tx, const double ty, const double tz, const double dx,
     const double dy, const double dz) {
 
-  /* Classic CIC interpolation from the eight surrounding mesh vertices. */
-  double value = mesh[zoom_mesh_index(i + 0, j + 0, k + 0, M)] * tx * ty * tz;
-  value += mesh[zoom_mesh_index(i + 0, j + 0, k + 1, M)] * tx * ty * dz;
-  value += mesh[zoom_mesh_index(i + 0, j + 1, k + 0, M)] * tx * dy * tz;
-  value += mesh[zoom_mesh_index(i + 0, j + 1, k + 1, M)] * tx * dy * dz;
-  value += mesh[zoom_mesh_index(i + 1, j + 0, k + 0, M)] * dx * ty * tz;
-  value += mesh[zoom_mesh_index(i + 1, j + 0, k + 1, M)] * dx * ty * dz;
-  value += mesh[zoom_mesh_index(i + 1, j + 1, k + 0, M)] * dx * dy * tz;
-  value += mesh[zoom_mesh_index(i + 1, j + 1, k + 1, M)] * dx * dy * dz;
+  double temp;
+  temp = mesh[i + 0][j + 0][k + 0] * tx * ty * tz;
+  temp += mesh[i + 0][j + 0][k + 1] * tx * ty * dz;
+  temp += mesh[i + 0][j + 1][k + 0] * tx * dy * tz;
+  temp += mesh[i + 0][j + 1][k + 1] * tx * dy * dz;
+  temp += mesh[i + 1][j + 0][k + 0] * dx * ty * tz;
+  temp += mesh[i + 1][j + 0][k + 1] * dx * ty * dz;
+  temp += mesh[i + 1][j + 1][k + 0] * dx * dy * tz;
+  temp += mesh[i + 1][j + 1][k + 1] * dx * dy * dz;
 
-  return value;
+  return temp;
+}
+
+/**
+ * @brief Interpolate a value to a mesh using CIC.
+ *
+ * @param mesh The mesh to write to
+ * @param N The side-length of the mesh
+ * @param i The index of the cell along x
+ * @param j The index of the cell along y
+ * @param k The index of the cell along z
+ * @param tx First CIC coefficient along x
+ * @param ty First CIC coefficient along y
+ * @param tz First CIC coefficient along z
+ * @param dx Second CIC coefficient along x
+ * @param dy Second CIC coefficient along y
+ * @param dz Second CIC coefficient along z
+ * @param value The value to interpolate.
+ */
+__attribute__((always_inline)) INLINE static void zoom_mesh_CIC_set(
+    double *mesh, const int N, const int i, const int j, const int k,
+    const double tx, const double ty, const double tz, const double dx,
+    const double dy, const double dz, const double value) {
+
+  /* Classic CIC interpolation */
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 0, N)],
+               value * tx * ty * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 0, k + 1, N)],
+               value * tx * ty * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 1, k + 0, N)],
+               value * tx * dy * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 0, j + 1, k + 1, N)],
+               value * tx * dy * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 0, k + 0, N)],
+               value * dx * ty * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 0, k + 1, N)],
+               value * dx * ty * dz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 1, k + 0, N)],
+               value * dx * dy * tz);
+  atomic_add_d(&mesh[row_major_id_periodic(i + 1, j + 1, k + 1, N)],
+               value * dx * dy * dz);
 }
 
 /**
@@ -526,50 +504,12 @@ struct zoom_cic_mapper_data {
   /*! The potential mesh to read from. */
   const double *potential;
 
-  /*! The size of the zero-padded mesh along one axis. */
-  int M;
-
   /*! Newton's constant in internal units. */
   float const_G;
 
   /*! Constants used for neutrino delta-f mesh weighting. */
   const struct neutrino_model *nu_model;
 };
-
-/**
- * @brief Compute the zoom mesh CIC index and coefficients for a #gpart.
- *
- * @param mesh The #zoom_pm_mesh.
- * @param gp The #gpart.
- * @param ind The integer mesh index along each axis (return).
- * @param d The second CIC coefficient along each axis (return).
- * @param t The first CIC coefficient along each axis (return).
- * @param need_stencil Should the point be far enough from the active mesh
- * edges for the five-point force stencil?
- * @return 1 if the particle can be represented on the mesh, 0 otherwise.
- */
-__attribute__((always_inline)) INLINE static int zoom_mesh_gpart_index(
-    const struct zoom_pm_mesh *mesh, const struct gpart *gp, int ind[3],
-    double d[3], double t[3], const int need_stencil) {
-
-  /* Convert the particle position from box coordinates to mesh coordinates. */
-  for (int axis = 0; axis < 3; ++axis) {
-    const double x = (gp->x[axis] - mesh->loc[axis]) * mesh->cell_fac[axis];
-    ind[axis] = (int)floor(x);
-    d[axis] = x - ind[axis];
-    t[axis] = 1. - d[axis];
-
-    /* Force interpolation needs two mesh cells on either side for the
-     * five-point stencil. Density assignment only needs the CIC cell. */
-    if (need_stencil) {
-      if (ind[axis] < 2 || ind[axis] >= mesh->N[axis] - 3) return 0;
-    } else {
-      if (ind[axis] < 0 || ind[axis] >= mesh->N[axis] - 1) return 0;
-    }
-  }
-
-  return 1;
-}
 
 /**
  * @brief Is a cell fully covered by the high-resolution zoom mesh?
@@ -614,45 +554,79 @@ int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
 }
 
 /**
+ * @brief Assigns a given #gpart to the zoom density mesh using the CIC method.
+ *
+ * @param gp The #gpart.
+ * @param rho The density mesh.
+ * @param mesh The #zoom_pm_mesh.
+ * @param nu_model Struct with neutrino constants
+ */
+INLINE static void zoom_mesh_gpart_to_mesh_CIC(
+    const struct gpart *gp, double *rho, const struct zoom_pm_mesh *mesh,
+    const struct neutrino_model *nu_model) {
+
+  const int N = mesh->N[0];
+  const double fac = mesh->cell_fac[0];
+
+  /* Position relative to the corner of the zoom mesh */
+  const double pos_x = gp->x[0] - mesh->loc[0];
+  const double pos_y = gp->x[1] - mesh->loc[1];
+  const double pos_z = gp->x[2] - mesh->loc[2];
+
+  /* Workout the CIC coefficients */
+  int i = (int)floor(fac * pos_x);
+  const double dx = fac * pos_x - i;
+  const double tx = 1. - dx;
+
+  int j = (int)floor(fac * pos_y);
+  const double dy = fac * pos_y - j;
+  const double ty = 1. - dy;
+
+  int k = (int)floor(fac * pos_z);
+  const double dz = fac * pos_z - k;
+  const double tz = 1. - dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created)
+    error("Found an extra particle in mesh CIC.");
+
+  if (i < 0 || i >= N) error("Invalid gpart position in x");
+  if (j < 0 || j >= N) error("Invalid gpart position in y");
+  if (k < 0 || k >= N) error("Invalid gpart position in z");
+#endif
+
+  /* Compute weight (for neutrino delta-f weighting) */
+  double weight = 1.0;
+  if (gp->type == swift_type_neutrino)
+    gpart_neutrino_weight_mesh_only(gp, nu_model, &weight);
+
+  const double mass = gp->mass;
+  const double value = mass * weight;
+
+  /* CIC ! (on the zero-padded mesh) */
+  zoom_mesh_CIC_set(rho, 2 * N, i, j, k, tx, ty, tz, dx, dy, dz, value);
+}
+
+/**
  * @brief Assigns all the #gpart of a #cell to the zoom density mesh using the
  * CIC method.
  *
  * @param c The #cell.
- * @param data The shared CIC mapper data.
+ * @param rho The density mesh.
+ * @param mesh The #zoom_pm_mesh.
+ * @param nu_model Struct with neutrino constants
  */
 static void zoom_mesh_cell_gpart_to_mesh_CIC(
-    const struct cell *c, const struct zoom_cic_mapper_data *data) {
+    const struct cell *c, double *rho, const struct zoom_pm_mesh *mesh,
+    const struct neutrino_model *nu_model) {
 
   const int gcount = c->grav.count;
   const struct gpart *gparts = c->grav.parts;
 
   /* Assign all the gpart of that cell to the mesh */
-  for (int n = 0; n < gcount; ++n) {
-
-    const struct gpart *gp = &gparts[n];
-
-    if (gp->time_bin == time_bin_inhibited) continue;
-
-    /* Workout the CIC coefficients */
-    int ind[3];
-    double d[3], t[3];
-    if (!zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0))
-      error(
-          "Covered cell contains a particle outside the zoom mesh "
-          "(x=[%g %g %g], index=[%d %d %d]).",
-          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
-
-    /* Compute weight (for neutrino delta-f weighting) */
-    double weight = 1.0;
-    if (gp->type == swift_type_neutrino)
-      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
-
-    const double mass = gp->mass;
-    const double value = mass * weight;
-
-    /* CIC ! */
-    zoom_mesh_CIC_set(data->rho, data->M, ind[0], ind[1], ind[2], t[0], t[1],
-                      t[2], d[0], d[1], d[2], value);
+  for (int i = 0; i < gcount; ++i) {
+    if (gparts[i].time_bin == time_bin_inhibited) continue;
+    zoom_mesh_gpart_to_mesh_CIC(&gparts[i], rho, mesh, nu_model);
   }
 }
 
@@ -707,7 +681,7 @@ static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
     } else {
 
       /* Assign this cell's content directly atomically to the mesh */
-      zoom_mesh_cell_gpart_to_mesh_CIC(c, data);
+      zoom_mesh_cell_gpart_to_mesh_CIC(c, data->rho, data->mesh, data->nu_model);
     }
   }
 }
@@ -737,92 +711,135 @@ static void zoom_mesh_deposit_bkg_cells_mapper(void *map_data, int num,
 }
 
 /**
- * @brief Threadpool mapper function for zoom mesh force interpolation.
+ * @brief Adds the zoom mesh correction to a gpart from a given mesh using the
+ * CIC method.
  *
- * Interpolates the isolated zoom mesh correction to particles and adds it to
- * the existing mesh acceleration and potential fields.
+ * Zoom mesh equivalent of mesh_to_gpart_CIC(). The correction is added to the
+ * forces and potential of the periodic mesh.
  *
- * @param map_data A chunk of #gpart objects.
- * @param num The number of #gpart objects in the chunk.
- * @param extra The shared #zoom_cic_mapper_data.
+ * @param gp The #gpart.
+ * @param pot The potential mesh.
+ * @param mesh The #zoom_pm_mesh.
+ * @param const_G Gravitional constant
  */
-static void zoom_mesh_to_gpart_CIC_mapper(void *map_data, int num,
-                                          void *extra) {
+static void zoom_mesh_to_gpart_CIC(struct gpart *gp, const double *pot,
+                                   const struct zoom_pm_mesh *mesh,
+                                   const float const_G) {
 
-  /* Unpack the shared mapper data. */
-  const struct zoom_cic_mapper_data *data =
-      (const struct zoom_cic_mapper_data *)extra;
-  const struct zoom_pm_mesh *mesh = data->mesh;
-  struct gpart *gparts = (struct gpart *)map_data;
-  const double *potential = data->potential;
-  const int M = data->M;
-  const float const_G = data->const_G;
+  /* The potential is stored on the zero-padded mesh */
+  const int N = 2 * mesh->N[0];
+  const double fac = mesh->cell_fac[0];
 
-  /* Interpolate the force correction onto all valid particles in this chunk. */
-  for (int n = 0; n < num; ++n) {
-    struct gpart *gp = &gparts[n];
+  /* Position relative to the corner of the zoom mesh */
+  const double pos_x = gp->x[0] - mesh->loc[0];
+  const double pos_y = gp->x[1] - mesh->loc[1];
+  const double pos_z = gp->x[2] - mesh->loc[2];
+
+  int i = (int)floor(fac * pos_x);
+  const double dx = fac * pos_x - i;
+  const double tx = 1. - dx;
+
+  int j = (int)floor(fac * pos_y);
+  const double dy = fac * pos_y - j;
+  const double ty = 1. - dy;
+
+  int k = (int)floor(fac * pos_z);
+  const double dz = fac * pos_z - k;
+  const double tz = 1. - dz;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  if (gp->time_bin == time_bin_not_created)
+    error("Found an extra particle when computing gravity from mesh.");
+
+  if (i < 0 || i >= mesh->N[0]) error("Invalid gpart position in x");
+  if (j < 0 || j >= mesh->N[1]) error("Invalid gpart position in y");
+  if (k < 0 || k >= mesh->N[2]) error("Invalid gpart position in z");
+#endif
+
+  /* First, copy the necessary part of the mesh for stencil operations */
+  double phi[6][6][6];
+  for (int iii = -2; iii <= 3; ++iii) {
+    for (int jjj = -2; jjj <= 3; ++jjj) {
+      for (int kkk = -2; kkk <= 3; ++kkk) {
+        phi[iii + 2][jjj + 2][kkk + 2] =
+            pot[row_major_id_periodic(i + iii, j + jjj, k + kkk, N)];
+      }
+    }
+  }
+
+  /* Some local accumulators */
+  double p = 0.;
+  double a[3] = {0.};
+
+  /* Indices of (i,j,k) in the local copy of the mesh */
+  const int ii = 2, jj = 2, kk = 2;
+
+  /* Simple CIC for the potential itself */
+  p += zoom_mesh_CIC_get(phi, ii, jj, kk, tx, ty, tz, dx, dy, dz);
+
+  /* ---- */
+
+  /* 5-point stencil along each axis for the accelerations */
+  a[0] += (1. / 12.) *
+          zoom_mesh_CIC_get(phi, ii + 2, jj, kk, tx, ty, tz, dx, dy, dz);
+  a[0] -=
+      (2. / 3.) * zoom_mesh_CIC_get(phi, ii + 1, jj, kk, tx, ty, tz, dx, dy, dz);
+  a[0] +=
+      (2. / 3.) * zoom_mesh_CIC_get(phi, ii - 1, jj, kk, tx, ty, tz, dx, dy, dz);
+  a[0] -= (1. / 12.) *
+          zoom_mesh_CIC_get(phi, ii - 2, jj, kk, tx, ty, tz, dx, dy, dz);
+
+  a[1] += (1. / 12.) *
+          zoom_mesh_CIC_get(phi, ii, jj + 2, kk, tx, ty, tz, dx, dy, dz);
+  a[1] -=
+      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj + 1, kk, tx, ty, tz, dx, dy, dz);
+  a[1] +=
+      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj - 1, kk, tx, ty, tz, dx, dy, dz);
+  a[1] -= (1. / 12.) *
+          zoom_mesh_CIC_get(phi, ii, jj - 2, kk, tx, ty, tz, dx, dy, dz);
+
+  a[2] += (1. / 12.) *
+          zoom_mesh_CIC_get(phi, ii, jj, kk + 2, tx, ty, tz, dx, dy, dz);
+  a[2] -=
+      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj, kk + 1, tx, ty, tz, dx, dy, dz);
+  a[2] +=
+      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj, kk - 1, tx, ty, tz, dx, dy, dz);
+  a[2] -= (1. / 12.) *
+          zoom_mesh_CIC_get(phi, ii, jj, kk - 2, tx, ty, tz, dx, dy, dz);
+
+  /* ---- */
+
+  /* Add the correction to the existing mesh contribution */
+  gp->a_grav_mesh[0] += const_G * fac * a[0];
+  gp->a_grav_mesh[1] += const_G * fac * a[1];
+  gp->a_grav_mesh[2] += const_G * fac * a[2];
+  gravity_add_comoving_mesh_potential(gp, const_G * p);
+}
+
+/**
+ * @brief Adds the zoom mesh correction to all the #gpart of a #cell.
+ *
+ * @param c The #cell.
+ * @param potential The potential mesh.
+ * @param mesh The #zoom_pm_mesh.
+ * @param const_G Gravitional constant
+ */
+static void zoom_mesh_cell_mesh_to_gpart_CIC(const struct cell *c,
+                                             const double *potential,
+                                             const struct zoom_pm_mesh *mesh,
+                                             const float const_G) {
+
+  const int gcount = c->grav.count;
+  struct gpart *gparts = c->grav.parts;
+
+  /* Interpolate the mesh onto all the gpart of that cell */
+  for (int i = 0; i < gcount; ++i) {
+
+    struct gpart *gp = &gparts[i];
+
     if (gp->time_bin == time_bin_inhibited) continue;
 
-    /* Skip particles outside the active mesh or too close to the stencil edge.
-     */
-    int ind[3];
-    double d[3], t[3];
-    if (!zoom_mesh_gpart_index(mesh, gp, ind, d, t, /*need_stencil=*/1))
-      continue;
-
-    double p = 0.;
-    double a[3] = {0.};
-
-    /* Interpolate the potential using CIC. */
-    p = zoom_mesh_CIC_get(potential, M, ind[0], ind[1], ind[2], t[0], t[1],
-                          t[2], d[0], d[1], d[2]);
-
-    /* Compute accelerations using the same five-point stencil as the regular
-     * PM mesh, with CIC interpolation applied at each stencil point. */
-    a[0] +=
-        (1. / 12.) * zoom_mesh_CIC_get(potential, M, ind[0] + 2, ind[1], ind[2],
-                                       t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[0] -=
-        (2. / 3.) * zoom_mesh_CIC_get(potential, M, ind[0] + 1, ind[1], ind[2],
-                                      t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[0] +=
-        (2. / 3.) * zoom_mesh_CIC_get(potential, M, ind[0] - 1, ind[1], ind[2],
-                                      t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[0] -=
-        (1. / 12.) * zoom_mesh_CIC_get(potential, M, ind[0] - 2, ind[1], ind[2],
-                                       t[0], t[1], t[2], d[0], d[1], d[2]);
-
-    a[1] +=
-        (1. / 12.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1] + 2, ind[2],
-                                       t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[1] -=
-        (2. / 3.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1] + 1, ind[2],
-                                      t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[1] +=
-        (2. / 3.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1] - 1, ind[2],
-                                      t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[1] -=
-        (1. / 12.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1] - 2, ind[2],
-                                       t[0], t[1], t[2], d[0], d[1], d[2]);
-
-    a[2] +=
-        (1. / 12.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1], ind[2] + 2,
-                                       t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[2] -=
-        (2. / 3.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1], ind[2] + 1,
-                                      t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[2] +=
-        (2. / 3.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1], ind[2] - 1,
-                                      t[0], t[1], t[2], d[0], d[1], d[2]);
-    a[2] -=
-        (1. / 12.) * zoom_mesh_CIC_get(potential, M, ind[0], ind[1], ind[2] - 2,
-                                       t[0], t[1], t[2], d[0], d[1], d[2]);
-
-    /* Add the correction to the existing mesh contribution. */
-    gp->a_grav_mesh[0] += const_G * mesh->cell_fac[0] * a[0];
-    gp->a_grav_mesh[1] += const_G * mesh->cell_fac[1] * a[1];
-    gp->a_grav_mesh[2] += const_G * mesh->cell_fac[2] * a[2];
-    gravity_add_comoving_mesh_potential(gp, const_G * p);
+    zoom_mesh_to_gpart_CIC(gp, potential, mesh, const_G);
   }
 }
 
@@ -855,7 +872,8 @@ static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
     if (!zoom_mesh_cell_is_covered(data->mesh, c, /*use_max_dx=*/0)) continue;
 
     /* Interpolate the correction onto this cell's content */
-    zoom_mesh_to_gpart_CIC_mapper(c->grav.parts, c->grav.count, (void *)data);
+    zoom_mesh_cell_mesh_to_gpart_CIC(c, data->potential, data->mesh,
+                                     data->const_G);
   }
 }
 
@@ -1224,7 +1242,6 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   data.cells = s->cells_top;
   data.rho = rho;
   data.potential = NULL;
-  data.M = M;
   data.const_G = 0.f;
 
   /* Match the global PM mesh's delta-f neutrino mass weighting. */

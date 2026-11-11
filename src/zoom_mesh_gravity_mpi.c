@@ -165,9 +165,9 @@ void zoom_mesh_accumulate_cell_to_local_patch(
     const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (i < 0 || i >= mesh->N[0] - 1) error("Invalid gpart position in x");
-    if (j < 0 || j >= mesh->N[1] - 1) error("Invalid gpart position in y");
-    if (k < 0 || k >= mesh->N[2] - 1) error("Invalid gpart position in z");
+    if (i < 0 || i >= mesh->N[0]) error("Invalid gpart position in x");
+    if (j < 0 || j >= mesh->N[1]) error("Invalid gpart position in y");
+    if (k < 0 || k >= mesh->N[2]) error("Invalid gpart position in z");
 #endif
 
     /* Get coordinates within the mesh patch */
