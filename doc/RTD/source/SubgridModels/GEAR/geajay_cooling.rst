@@ -24,7 +24,8 @@ particle: 0 (tabulated cooling), 1 (H and He), 2 (with H\ :sub:`2`) or 3 (with H
 Run SWIFT with ``--hydro --cooling``. SWIFT reads the section ``GeajayCooling`` of the parameter
 file. Five keys have no default: ``cloudy_table_file``, ``with_uv_background``, ``redshift``,
 ``with_metal_cooling`` and ``thermal_time_myr``. A key that the chosen options do not read stops
-SWIFT at start-up when its value differs from its default. The message names the key and the reason.
+SWIFT at start-up when its value differs from its default, or when it is set at all and has no
+default. The message names the key and the reason.
 
 ``primordial_chemistry_network`` may select a network below the one chosen at configure time, not
 above it.
@@ -49,7 +50,7 @@ Table, background and metals
      - Name of the Cloudy table.
    * - ``primordial_chemistry_network``
      - (optional) Primordial chemistry network: ``tabulated``, ``H_He``, ``H_He_H2`` or ``H_He_H2_D``
-       (or 0 to 3), not above the mode selected at configure time (default: that mode).
+       (or 0 to 3), not above the network selected at configure time (default: that network).
    * - ``with_uv_background``
      - Enable or not the UV background.
    * - ``redshift``
@@ -71,8 +72,9 @@ Table, background and metals
        the value of ``GrackleCooling:maximal_density_Hpcm3``. Zero or negative: no cap (default: -1).
    * - ``hydrogen_mass_fraction``
      - (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's:
-       0.76 in modes 1 to 3, X of the Cloudy table (about 0.716) in mode 0, which refuses any other
-       value (default: -1).
+       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table (0.7614 for the
+       HM12 tables, 0.715768 for a table without that group), and network 0 refuses any other value
+       (default: -1).
 
 Solver
 ------
@@ -96,8 +98,7 @@ Solver
    * - ``energy_change_limit``
      - (optional) Largest fraction of the internal energy that one solver sub-step may change, in
        (0, 1], or 0 for the geajay default: 0.03 with ``cheap_energy_update`` 1, 0.1 with 0 (the value
-       Grackle fixes). The accurate solver (``solver`` 1) does not read it. Smaller values take more
-       sub-steps (default: 0).
+       Grackle fixes). Smaller values take more sub-steps (default: 0).
    * - ``cheap_energy_update``
      - (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order
        (default: the geajay default, 1).
