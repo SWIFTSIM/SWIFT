@@ -29,7 +29,8 @@ Writes drivenTurbulence.hdf5.
 
 import sys
 import numpy as np
-import h5py
+import unyt
+import swiftsimio as sw
 
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 64
 gamma = float(sys.argv[2]) if len(sys.argv) > 2 else 1.001
@@ -46,31 +47,21 @@ g = (np.arange(N) + 0.5) * L / N
 x, y, z = np.meshgrid(g, g, g, indexing="ij")
 pos = np.stack([x.ravel(), y.ravel(), z.ravel()], axis=1)
 
-with h5py.File(fileName, "w") as f:
-    grp = f.create_group("Header")
-    grp.attrs["BoxSize"] = [L, L, L]
-    grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFilesPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 3
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [L, L, L], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
-    grp = f.create_group("Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 1.0
-    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = np.zeros((numPart, 3)) * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = np.full(numPart, rho * L**3 / numPart) * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = np.full(numPart, eta * L / N) * unyt.cm * w.a.comoving
+w.gas.internal_energy = np.full(numPart, u) * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = np.arange(1, numPart + 1, dtype=np.uint64)
 
-    grp = f.create_group("PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=np.zeros((numPart, 3)), dtype="f")
-    grp.create_dataset("Masses", data=np.full(numPart, rho * L**3 / numPart), dtype="f")
-    grp.create_dataset("SmoothingLength", data=np.full(numPart, eta * L / N), dtype="f")
-    grp.create_dataset("InternalEnergy", data=np.full(numPart, u), dtype="f")
-    grp.create_dataset("ParticleIDs", data=np.arange(1, numPart + 1), dtype="L")
+w.write(fileName)
 
 print(f"Wrote {fileName}: {N}^3 particles, u = {u:g}, h = {eta * L / N:g}")

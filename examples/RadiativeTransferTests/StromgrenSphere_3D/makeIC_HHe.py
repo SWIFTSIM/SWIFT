@@ -8,7 +8,6 @@
 # Pawlik & Schaye 2011 doi:10.1111/j.1365-2966.2010.18032.x.
 # ---------------------------------------------------------------------
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
@@ -25,11 +24,10 @@ replace_gas = True
 
 if __name__ == "__main__":
 
-    glass = h5py.File("glassCube_64.hdf5", "r")
-    parts = glass["PartType0"]
-    xp = parts["Coordinates"][:]
-    h = parts["SmoothingLength"][:]
-    glass.close()
+    glass = sw.load("glassCube_64.hdf5")
+    parts = glass.gas
+    xp = parts.coordinates.value
+    h = parts.smoothing_lengths.value
 
     r = np.sqrt(np.sum((0.5 - xp) ** 2, axis=1))
 

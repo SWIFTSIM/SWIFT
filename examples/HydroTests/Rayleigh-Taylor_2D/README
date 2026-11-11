@@ -20,3 +20,6 @@ BoundaryParticles:
   boundary_particle_max_id:        3072
 
 This value is provided by the script makeIC.py and depends on the resolution.
+
+The script makeMovie.py needs the python package p_tqdm, besides the packages
+of examples/requirements.txt.

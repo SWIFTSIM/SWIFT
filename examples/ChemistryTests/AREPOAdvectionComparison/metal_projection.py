@@ -26,7 +26,7 @@ import swiftsimio as sw
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from swiftsimio.visualisation.projection import project_gas
+from swiftsimio.visualisation import project_gas
 
 # %%
 

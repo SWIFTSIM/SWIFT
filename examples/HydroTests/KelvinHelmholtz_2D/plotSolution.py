@@ -17,7 +17,8 @@
 #
 ##############################################################################
 
-# Computes the analytical solution of the Gresho-Chan vortex and plots the SPH answer
+# Plots maps of the x-velocity, density, pressure, internal energy and entropy
+# of the particles in the 2D Kelvin-Helmholtz instability test
 
 # Parameters
 gas_gamma = 5.0 / 3.0  # Gas adiabatic index
@@ -50,8 +51,8 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 
 pos = sim["/PartType0/Coordinates"][:, :]

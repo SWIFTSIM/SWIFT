@@ -1,13 +1,7 @@
-import pylab
-from pylab import *
-from scipy import stats
-import h5py as h5
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.colors import LogNorm
 import swiftsimio as sw
-import glob
-import re
-import os
 
 matplotlib.use("Agg")
 
@@ -31,7 +25,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -112,8 +106,6 @@ for i in snapshots:
     lobe_radii.append(lobe_radius)
 
 # Make the plot
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
 plt.style.use("classic")
 fig = plt.figure(figsize=(8, 6))
@@ -158,7 +150,7 @@ plt.plot(
     color="blue",
     linestyle="-",
     linewidth=1,
-    label="Kaiser & Best (2007), analytical, $L\propto t^{0.6}$",
+    label=r"Kaiser & Best (2007), analytical, $L\propto t^{0.6}$",
 )
 plt.plot(
     times_in_Myr, lobe_radius_analytical, color="blue", linestyle="--", linewidth=1

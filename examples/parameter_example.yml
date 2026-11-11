@@ -467,7 +467,6 @@ NFW_MNPotential:
   useabspos:         0         # 0 -> positions based on centre, 1 -> absolute positions
   position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:          0.01       # Softening size (internal units)
   concentration:    10.0       # concentration of the Halo
   M_200:            150.0      # M200 of the galaxy disk (internal units)
   critical_density: 1.37E-8    # Critical density of the Universe (internal units)
@@ -687,8 +686,6 @@ GrackleCooling:
   with_UV_background: 1                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
@@ -851,7 +848,6 @@ GEARFeedback:
   stellar_winds_efficiency: 1.0                            # Stellar winds energy efficiency. The energy released effectively is E_SW = stellar_winds_efficiency*E_pre_SW
   yields_table: POPII.hdf5                                 # Table containing the yields.
   yields_table_first_stars: POPIII_PISNe.hdf5               # Table containing the yields of the first stars.
-  metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
   imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
@@ -1007,7 +1003,6 @@ SPINJETAGN:
   fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
-  include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
   delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5. This parameter is only used if turn_off_secondary_feedback is set to 0.
   include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
@@ -1101,10 +1096,6 @@ Sinks:
   h_tolerance:                          1e-4         # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
   max_ghost_iterations:                 30           # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
   max_volume_change:                     1.4         # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
-
-# Default sink particles
-DefaultSink:
-  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
 
 BasicSink:
   use_nibbling: 1                             # Use nibbling to accrete gas? If zero, do swallowing instead.
@@ -1249,6 +1240,10 @@ LightconeCommon:
   particles_lossy_compression: 0  # Apply lossy compression to lightcone particles
   particles_gzip_level:        6  # Apply lossless (deflate) compression to lightcone particles
   maps_gzip_level:             6  # Apply lossless (deflate) compression to healpix maps
+
+  xray_maps_recent_AGN_injection_exclusion_time_myr: 15    # (Optional) Exclude gas heated by AGN in the last this many Myr from the X-ray and SZ maps (default: -1, i.e. no exclusion)
+  xray_maps_recent_AGN_injection_delta_logT_min:    -1.0   # Recently AGN-heated gas is excluded if log10(T) > log10(AGN_delta_T) + this value (must be <= 0; required if the exclusion time is > 0)
+  xray_maps_recent_AGN_injection_delta_logT_max:     0.3   # Recently AGN-heated gas is excluded if log10(T) < log10(AGN_delta_T) + this value (must be >= 0; required if the exclusion time is > 0)
 
 # Parameters specific to lightcone 0 - any lightcone parameters not found here are taken from LightconeCommon, above,
 # except for 'enabled' and 'basename'.

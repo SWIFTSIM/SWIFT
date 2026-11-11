@@ -22,10 +22,14 @@
 """
 
 import numpy as np
-import write_gadget as wg
 import h5py as h5
+import unyt
+import swiftsimio as sw
 
 from scipy.special import erfinv
+
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
 
 
 class Particles(object):
@@ -265,36 +269,33 @@ class Particles(object):
 
         Uses the internal options, but you must specify a filename.
         """
-        with h5.File(filename, "w") as handle:
-            wg.write_header(
-                handle,
-                boxsize=boxsize,
-                flag_entropy=0,
-                np_total=np.array([self.nparts, 0, 0, 0, 0, 0]),
-                np_total_hw=np.array([0, 0, 0, 0, 0, 0]),
-                other={
-                    "MassTable": np.array([self.particlemass, 0, 0, 0, 0, 0]),
-                    "Time": 0,
-                },
-            )
+        w = sw.Writer(
+            unit_system=unyt.unit_systems.cgs_unit_system,
+            boxsize=sw.cosmo_array(
+                [float(boxsize)] * 3,
+                unyt.cm,
+                comoving=True,
+                scale_factor=1.0,
+                scale_exponent=1,
+            ),
+            dimension=3,
+        )
 
-            wg.write_runtime_pars(handle, periodic_boundary=1)
+        w.gas.coordinates = self.positions * unyt.cm * w.a.comoving
+        w.gas.velocities = self.velocities * unyt.cm / unyt.s * w.a.comoving**0
+        w.gas.masses = self.masses * unyt.g * w.a.comoving**0
+        w.gas.smoothing_lengths = self.smoothing * unyt.cm * w.a.comoving
+        w.gas.internal_energy = (
+            self.internalenergy * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+        )
+        # SWIFT does not accept a particle ID of 0
+        w.gas.particle_ids = self.ids.astype(np.uint64) + 1
 
-            wg.write_units(
-                handle, current=1.0, length=1.0, mass=1, temperature=1.0, time=1.0
-            )
+        w.write(filename)
 
-            wg.write_block(
-                handle,
-                0,  # gas
-                self.positions,
-                self.velocities,
-                self.ids,
-                mass=self.masses,
-                int_energy=self.internalenergy,
-                smoothing=self.smoothing,
-                other={"Density": self.densities},
-            )
+        # Add the densities, which are not handled by the Writer
+        with h5.File(filename, "r+") as handle:
+            handle["PartType0"].create_dataset("Density", data=self.densities)
 
         return
 
@@ -404,7 +405,6 @@ def QSP_fix(r_i, theta_i):
     for circle in circles:
         n_particles = len(circle[0])
         radius = sum(circle[0]) / n_particles
-        theta_initial = circle[1][0]
 
         theta_sep = 2 * np.pi / n_particles
 
@@ -529,7 +529,6 @@ def gen_particles_gaussian(meta):
         meta["boxsize"] / 2.0,
         meta["boxsize"] / 2.0,
     )
-    max_r = meta["boxsize"] / 2.0
 
     m = (np.arange(particles.nparts) + 0.5) / particles.nparts
     error_function = erfinv(2 * m - 1)

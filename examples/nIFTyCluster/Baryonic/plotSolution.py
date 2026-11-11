@@ -4,8 +4,8 @@ NIFTY Cluster Solution
 Josh Borrow (joshua.borrow@durham.ac.uk)
 """
 
-from swiftsimio import load, SWIFTDataset
-from swiftsimio.visualisation.projection_backends.subsampled_extreme import scatter_parallel
+from swiftsimio import load, SWIFTDataset, cosmo_array
+from swiftsimio.visualisation import project_gas
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,10 +16,7 @@ from matplotlib.colors import LogNorm
 import unyt
 import h5py
 
-try:
-    plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
-except:
-    pass
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Global constants
 radial_bin_units = unyt.Mpc
@@ -51,26 +48,22 @@ def image(
     Creates the image of the gas density.
     """
 
-    delta = image_bounds[1] - image_bounds[0]
+    # Square region spanning image_bounds around the halo centre
+    left = (center[0] + image_bounds[0]).to_value(unyt.Mpc)
+    right = (center[0] + image_bounds[1]).to_value(unyt.Mpc)
+    bottom = (center[1] + image_bounds[0]).to_value(unyt.Mpc)
+    top = (center[1] + image_bounds[1]).to_value(unyt.Mpc)
+    region = cosmo_array(
+        [left, right, bottom, top],
+        unyt.Mpc,
+        comoving=True,
+        scale_factor=data.metadata.scale_factor,
+        scale_exponent=1,
+    )
 
-    # Need to re-scale our x, y to 0:1
-    x = data.gas.coordinates[:, 0]
-    y = data.gas.coordinates[:, 1]
-
-    left = center[0] + image_bounds[0]
-    bottom = center[1] + image_bounds[0]
-
-    x = x - left
-    x = x / delta
-    y = y - bottom
-    y = y / delta
-
-    h = data.gas.smoothing_lengths
-    h = h / delta
-
-    m = data.gas.masses
-
-    image = scatter_parallel(y, x, m, h, image_res)
+    # project_gas returns an [x, y] array; imshow wants [y, x]
+    image = project_gas(data, image_res, "masses", region=region, parallel=True)
+    image = image.to_comoving_value("Msun/Mpc**2").T
 
     ax.imshow(image, cmap=image_cmap, norm=LogNorm(), origin="lower")
 
@@ -305,12 +298,12 @@ def info(
 
     try:
         viscosity = metadata.viscosity_info
-    except:
+    except KeyError:
         viscosity = "No info"
 
     try:
         diffusion = metadata.diffusion_info
-    except:
+    except KeyError:
         diffusion = "No info"
 
     output = (
@@ -344,7 +337,7 @@ def info(
 
 
 def get_center(snapshot):
-    catalogue_filename = f"halo_0303.properties"
+    catalogue_filename = "halo_0303.properties"
 
     with h5py.File(catalogue_filename, "r") as handle:
         highest_mass = handle["Mass_200crit"][...].argsort()[-1]

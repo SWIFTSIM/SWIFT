@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 beta=(1.0 0.1 0.01 0.001)
 swift_location="../../../swift"
 flags="--hydro --limiter --threads=2"
@@ -10,7 +12,7 @@ plot_script="plotSolution.py"
 
 for i in ${beta[@]};
 do
-    mkdir beta_$i
+    mkdir -p beta_$i
     cd beta_$i
 
     python3 ../$make_ic_script
@@ -20,7 +22,7 @@ do
     ../$swift_location $flags -P "SPH:diffusion_beta:${i}" ../$parameter_fixed
     python3 ../$plot_script -s diffusion_fixed_alpha -o diffusion_fixed_alpha.png
 
-    rm *.hdf5
+    rm -f *.hdf5
 
     cd ..
 done

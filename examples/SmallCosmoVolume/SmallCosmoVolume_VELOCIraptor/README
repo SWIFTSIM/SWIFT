@@ -14,3 +14,6 @@ volume, this is done by using haloevol.py.
 
 MD5 checksum of the ICs:
 08736c3101fd738e22f5159f78e6022b  small_cosmo_volume.hdf5
+
+The script getHMF.py needs the python package hmf, besides the packages of
+examples/requirements.txt.
