@@ -59,9 +59,6 @@ EAGLEChemistry:
 EoS:
   isothermal_internal_energy: 1240419161676.6465
 
-LambdaTTableCooling:
-  file_name: cooling.dat
-
 ConstCooling:
   cooling_rate: 1.e6
   min_energy: 0.01

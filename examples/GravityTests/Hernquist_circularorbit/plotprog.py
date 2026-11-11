@@ -20,7 +20,6 @@
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
-from scipy.integrate import odeint
 
 t = np.linspace(0, 40, 100000)
 y0 = [0, 10]

@@ -17,8 +17,11 @@
 #
 ################################################################################
 
+import math
 import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Parameters
 T_i = 100.0  # Initial temperature of the gas (in K)
@@ -56,14 +59,13 @@ unit_u_in_si = unit_v_in_si**2
 # ---------------------------------------------------
 
 # Read the glass file
-glass = h5py.File(glassFile, "r")
+glass = sw.load(glassFile)
 
 # Read particle positions and h from the glass
-pos = glass["/PartType1/Coordinates"][:, :]
-glass.close()
+pos = glass.dark_matter.coordinates.value
 
 # Total number of particles
-numPart = size(pos) / 3
+numPart = np.size(pos) / 3
 if numPart != numPart_1D**3:
     print("Non-matching glass file")
 numPart = numPart_1D**3
@@ -78,11 +80,15 @@ m_i = boxSize**3 * rho_0 / numPart
 
 # Build the arrays
 pos *= boxSize
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-h = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+h = np.zeros(numPart)
+u = np.zeros(numPart)
+
+# Add in densities and material ids
+rhos = np.ones(numPart) * rho_0
+material_ids = np.zeros(numPart)
 
 # Set the particles on the left
 for i in range(numPart_1D):
@@ -105,47 +111,40 @@ v /= unit_v_in_si
 m /= unit_m_in_si
 h /= unit_l_in_si
 u /= unit_u_in_si
+rhos /= unit_m_in_si
+rhos *= unit_l_in_si**3
 
 boxSize /= unit_l_in_si
 
 # File
-file = h5py.File(fileName, "w")
+UL = unyt.Unit(100.0 * unit_l_in_si * unyt.cm)
+UM = unyt.Unit(1000.0 * unit_m_in_si * unyt.g)
+Ut = unyt.Unit(1.0 * unit_t_in_si * unyt.s)
+units = unyt.UnitSystem("constant_cosmo_volume_units", UL, UM, Ut)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize, boxSize, boxSize]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
-
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 1
-
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 100.0 * unit_l_in_si
-grp.attrs["Unit mass in cgs (U_M)"] = 1000.0 * unit_m_in_si
-grp.attrs["Unit time in cgs (U_t)"] = 1.0 * unit_t_in_si
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d", compression="gzip", shuffle=True)
-grp.create_dataset("Velocities", data=v, dtype="f", compression="gzip", shuffle=True)
-grp.create_dataset("Masses", data=m, dtype="f", compression="gzip", shuffle=True)
-grp.create_dataset(
-    "SmoothingLength", data=h, dtype="f", compression="gzip", shuffle=True
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
 )
-grp.create_dataset(
-    "InternalEnergy", data=u, dtype="f", compression="gzip", shuffle=True
-)
-grp.create_dataset("ParticleIDs", data=ids, dtype="L", compression="gzip", shuffle=True)
 
-file.close()
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
+
+w.write(fileName)
+
+# Add the material IDs and densities
+with h5py.File(fileName, "r+") as f:
+    grp = f["PartType0"]
+    grp.create_dataset("MaterialIDs", data=material_ids, dtype="i")
+    grp.create_dataset("Density", data=rhos, dtype="f")

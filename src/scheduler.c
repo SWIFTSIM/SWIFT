@@ -352,27 +352,17 @@ void scheduler_set_unlocks(struct scheduler *s, struct threadpool *tp) {
   /* Verify that there are no duplicate unlocks. */
   for (int k = 0; k < s->nr_tasks; k++) {
     struct task *t = &s->tasks[k];
+
     for (int i = 0; i < t->nr_unlock_tasks; i++) {
       for (int j = i + 1; j < t->nr_unlock_tasks; j++) {
-        if (t->unlock_tasks[i] == t->unlock_tasks[j])
-          if (t->unlock_tasks[i]->type == task_type_pack ||
-            t->type == task_type_pack) {
-          error("Duplicate unlock edge detected. "
-                "source task=%p type=%s subtype=%s "
-                "target task=%p type=%s subtype=%s "
-                "i=%d j=%d nr_unlock_tasks=%d",
-                (void *)t,
+
+        if (t->unlock_tasks[i] == t->unlock_tasks[j]) {
+          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
                 taskID_names[t->type],
                 subtaskID_names[t->subtype],
-                (void *)t->unlock_tasks[i],
-                taskID_names[t->unlock_tasks[i]->type],
-                subtaskID_names[t->unlock_tasks[i]->subtype],
-                i, j, t->nr_unlock_tasks);
-        }
-          error("duplicate unlock! t->type=%s/%s unlocking type=%s/%s",
-                taskID_names[t->type], subtaskID_names[t->subtype],
                 taskID_names[t->unlock_tasks[i]->type],
                 subtaskID_names[t->unlock_tasks[i]->subtype]);
+        }
       }
     }
   }
@@ -1377,7 +1367,7 @@ struct task *scheduler_done(struct scheduler *s, struct task *t) {
   t->total_ticks += t->toc - t->tic;
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(WITH_GPU) && defined(SWIFT_DEBUG_CHECKS)
   else if (t->toc == 0) {
     error(
         "GPU task completed without CPU-side timing being closed: "

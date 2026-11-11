@@ -22,7 +22,7 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
 
 
@@ -121,16 +121,18 @@ for i in range(n_snaps):
     )
     binned_v_r = v_r_totals / hist
 
-    figure()
-    plot(radial_bin_mids, binned_v_r, "ko", label="Average radial velocity in shell")
-    legend(loc="upper right")
-    xlabel(r"$r / r_{vir}$")
-    ylabel(r"$v_r / v_c$")
-    title(
+    plt.figure()
+    plt.plot(
+        radial_bin_mids, binned_v_r, "ko", label="Average radial velocity in shell"
+    )
+    plt.legend(loc="upper right")
+    plt.xlabel(r"$r / r_{vir}$")
+    plt.ylabel(r"$v_r / v_c$")
+    plt.title(
         r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
         % (snap_time_cgs, N, v_c)
     )
-    ylim((-1, 1))
+    plt.ylim((-1, 1))
     plot_filename = "./plots/radial_velocity_profile/velocity_profile_%03d.png" % i
-    savefig(plot_filename, format="png")
-    close()
+    plt.savefig(plot_filename, format="png")
+    plt.close()

@@ -226,7 +226,11 @@ void *runner_main(void *data) {
   if (t == NULL) {
 
     #ifdef WITH_GPU
-    if (runner_gpu_flush_leftover_pair(r) == flushed_pair_task) {
+     if (runner_gpu_flush_leftover_pair(r) == flushed_pair_task) {
+      continue;
+    }
+	  
+    if (runner_gpu_flush_leftover_self(r) == flushed_self_task) {
       continue;
     }
     

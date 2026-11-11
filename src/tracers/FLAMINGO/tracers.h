@@ -432,6 +432,9 @@ static INLINE void tracers_after_snapshot_sink(struct sink *sink) {}
  * @param n The number of pieces to split into.
  */
 __attribute__((always_inline)) INLINE static void tracers_split_part(
-    struct part *p, struct xpart *xp, const double n) {}
+    struct part *p, struct xpart *xp, const double n) {
+
+  xp->tracers_data.jet_feedback_energy /= n;
+}
 
 #endif /* SWIFT_TRACERS_FLAMINGO_H */

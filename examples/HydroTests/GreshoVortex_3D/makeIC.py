@@ -19,7 +19,9 @@
 ################################################################################
 
 import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Generates a swift IC file for the Gresho-Chan vortex in a periodic box
 
@@ -32,18 +34,21 @@ fileGlass = "glassCube_64.hdf5"
 # ---------------------------------------------------
 
 # Get position and smoothing lengths from the glass
-fileInput = h5py.File(fileGlass, "r")
-coords = fileInput["/PartType0/Coordinates"][:, :]
-h = fileInput["/PartType0/SmoothingLength"][:]
-ids = fileInput["/PartType0/ParticleIDs"][:]
-boxSize = fileInput["/Header"].attrs["BoxSize"][0]
-numPart = size(h)
-fileInput.close()
+fileInput = sw.load(fileGlass)
+coords = fileInput.gas.coordinates.value
+h = fileInput.gas.smoothing_lengths.value
+ids = fileInput.gas.particle_ids.value
+boxSize = fileInput.metadata.boxsize[0].value
+numPart = np.size(h)
 
 # Now generate the rest
-m = ones(numPart) * rho0 * boxSize**3 / numPart
-u = zeros(numPart)
-v = zeros((numPart, 3))
+m = np.ones(numPart) * rho0 * boxSize**3 / numPart
+u = np.zeros(numPart)
+v = np.zeros((numPart, 3))
+
+# Add rho and material ids
+rho = np.ones(numPart)  # given rho0=1, this is easily done
+material_ids = np.zeros(numPart)  # assuming ideal gas particles
 
 for i in range(numPart):
 
@@ -51,7 +56,7 @@ for i in range(numPart):
     y = coords[i, 1]
 
     r2 = (x - boxSize / 2) ** 2 + (y - boxSize / 2) ** 2
-    r = sqrt(r2)
+    r = np.sqrt(r2)
 
     v_phi = 0.0
     if r < 0.2:
@@ -68,48 +73,35 @@ for i in range(numPart):
     if r < 0.2:
         P = P + 5.0 + 12.5 * r2
     elif r < 0.4:
-        P = P + 9.0 + 12.5 * r2 - 20.0 * r + 4.0 * log(r / 0.2)
+        P = P + 9.0 + 12.5 * r2 - 20.0 * r + 4.0 * np.log(r / 0.2)
     else:
-        P = P + 3.0 + 4.0 * log(2.0)
+        P = P + 3.0 + 4.0 * np.log(2.0)
     u[i] = P / ((gamma - 1.0) * rho0)
 
 
 # File
-fileOutput = h5py.File(fileOutputName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [boxSize, boxSize, boxSize]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFileOutputsPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
+w.gas.coordinates = coords * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.write(fileOutputName)
 
-# Particle group
-grp = fileOutput.create_group("/PartType0")
-ds = grp.create_dataset("Coordinates", (numPart, 3), "d")
-ds[()] = coords
-ds = grp.create_dataset("Velocities", (numPart, 3), "f")
-ds[()] = v
-ds = grp.create_dataset("Masses", (numPart, 1), "f")
-ds[()] = m.reshape((numPart, 1))
-ds = grp.create_dataset("SmoothingLength", (numPart, 1), "f")
-ds[()] = h.reshape((numPart, 1))
-ds = grp.create_dataset("InternalEnergy", (numPart, 1), "f")
-ds[()] = u.reshape((numPart, 1))
-ds = grp.create_dataset("ParticleIDs", (numPart, 1), "L")
-ds[()] = ids.reshape((numPart, 1))
-
-fileOutput.close()
+# Add the extra fields not handled by the Writer
+with h5py.File(fileOutputName, "r+") as f:
+    f["PartType0"].create_dataset("MaterialIDs", data=material_ids, dtype="i")
+    f["PartType0"].create_dataset("Density", data=rho, dtype="f")

@@ -256,34 +256,6 @@ void runner_gpu_bind_device(struct runner *r) {
 }
 
 /**
- * @brief Record debugging information when a GPU task is completed.
- *
- * Increments the GPU completion counter for the task and records the runner,
- * queue, MPI rank, and code location responsible for the completion. An error
- * is raised if the task has already been marked as completed previously.
- *
- * @param r The #runner completing the task.
- * @param t The #task being marked as complete.
- * @param where String identifying the code location performing the completion.
- */
-static void runner_gpu_mark_done_debug(
-    struct runner *r,
-    struct task *t,
-    const char *where) {
-
-  if (t == NULL)
-    error("%s: NULL task passed to GPU completion marker.", where);
-
-#ifdef WITH_MPI
-  int rank = -1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#else
-  int rank = 0;
-#endif
-
-}
-
-/**
  * @brief GPU error check
  *
  * @param where	The string for the function that causes the error
@@ -576,6 +548,10 @@ static void runner_gpu_write_timing_row(
     double d2h_s,
     double unpack_s) {
 
+	#ifdef SWIFT_USE_TIMERS
+	const ticks io_tic = getticks();
+	#endif
+
   const char *path = getenv("SWIFT_GPU_TIMING_FILE");
 
   if (path == NULL || path[0] == '\0')
@@ -611,6 +587,10 @@ static void runner_gpu_write_timing_row(
         unpack_s);
 
   fclose(fp);
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_timing_io, io_tic);
+  #endif
 }
 #endif
 
@@ -911,8 +891,6 @@ static void runner_gpu_complete_self_task(struct runner *r,
 
 	t->gpu_counted = 0;
 
-  runner_gpu_mark_done_debug(r, t, "runner_gpu_complete_self_task");
-
   scheduler_done(sched, t);
 }
 
@@ -986,8 +964,6 @@ void runner_gpu_complete_pair_task(struct runner *r, struct scheduler *sched,
   (void)lock_unlock(&sched->queues[r->qid].lock);
 
   t->gpu_counted = 0;
-
-  runner_gpu_mark_done_debug(r, t, "runner_gpu_complete_pair_task");
 
   scheduler_done(sched, t);
 }
@@ -1245,6 +1221,10 @@ static void runner_dopair_grav_pp_pack(
     struct task *t, int internal_from_self,
     int max_cell_size, GPUStream stream) {
 
+	#ifdef SWIFT_USE_TIMERS
+	const ticks pair_pack_tic = getticks();
+	#endif
+
   (void)symmetric;
   (void)stream;
 
@@ -1445,6 +1425,10 @@ static void runner_dopair_grav_pp_pack(
   #ifdef SWIFT_GPU_TIMING 
   runner_gpu_pair_pack_time_s += runner_gpu_walltime_s() - pack_time_start;
   #endif
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_pair_pack_cpu, pair_pack_tic);
+  #endif
 }
 
 /**
@@ -1545,6 +1529,10 @@ static void runner_dopair_grav_pp_flush(
 
   if (npairs == 0 || ncells_flush == 0)
     return;
+
+  #ifdef SWIFT_USE_TIMERS
+  const ticks pair_flush_tic = getticks();
+  #endif
     
   #ifdef SWIFT_DEBUG_TASKS
 
@@ -1793,7 +1781,15 @@ GPUEventRecord(h2d_start, stream);
     GPUEventRecord(d2h_stop, stream);
     #endif 
     GPUEventRecord(substream->done, stream);
+    #ifdef SWIFT_USE_TIMERS
+    const ticks gpu_wait_tic = getticks();
+    #endif
+
     GPUEventSynchronize(substream->done);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+    #endif
     
     #ifdef SWIFT_DEBUG_TASKS
   gpu_sync_toc = getticks();
@@ -1904,7 +1900,36 @@ runner_gpu_write_timeline_row(
           grav_cells_pair[2 * pair_id + 1],
           slot_j,
           recv_j);
+          
+      #ifdef SWIFT_DEBUG_CHECKS
+/* Account for direct particle-particle interactions processed on the GPU. */
+struct cell *ci_pair = grav_cells_pair[2 * pair_id];
+struct cell *cj_pair = grav_cells_pair[2 * pair_id + 1];
+
+const int count_i = ci_pair->grav.count;
+const int count_j = cj_pair->grav.count;
+
+/* Only local, active cells receive force contributions. */
+if (ci_pair->nodeID == e->nodeID &&
+    cell_is_active_gravity(ci_pair, e)) {
+
+  for (int i = 0; i < count_i; i++) {
+    accumulate_add_ll(
+        &ci_pair->grav.parts[i].num_interacted, count_j);
+  }
+}
+
+if (cj_pair->nodeID == e->nodeID &&
+    cell_is_active_gravity(cj_pair, e)) {
+
+  for (int j = 0; j < count_j; j++) {
+    accumulate_add_ll(
+        &cj_pair->grav.parts[j].num_interacted, count_i);
+  }
+}
+#endif
     }
+    
 
     TIMER_TOC(timer_dopair_grav_pp);
 
@@ -1955,7 +1980,7 @@ runner_gpu_write_timeline_row(
 /* ---- Timing output ---- */
 runner_gpu_write_timing_row(
     "pair",
-    (long long)e->ti_current,
+    (long long)e->step,
     r->id,
     0,
     nslots,
@@ -2021,6 +2046,10 @@ runner_gpu_write_timing_row(
       r,
       &r->e->sched,
       "runner_dopair_grav_pp_flush:end");
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_pair_flush_cpu, pair_flush_tic);
+  #endif
 }
 
 /**
@@ -2166,6 +2195,10 @@ static void runner_doself_grav_pp_flush(
   const double pack_time_start = runner_gpu_walltime_s();
   #endif
 
+  #ifdef SWIFT_USE_TIMERS
+  const ticks self_pack_tic = getticks();
+  #endif
+
   const struct engine *e = r->e;
   const int periodic = e->mesh->periodic;
   const double min_trunc = e->mesh->r_cut_min;
@@ -2251,6 +2284,10 @@ static void runner_doself_grav_pp_flush(
 
   #ifdef SWIFT_GPU_TIMING 
   runner_gpu_self_pack_time_s += runner_gpu_walltime_s() - pack_time_start;
+  #endif
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_self_pack_cpu, self_pack_tic);
   #endif
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -2410,7 +2447,15 @@ static void runner_doself_grav_pp_flush(
     GPUEventRecord(d2h_stop, substream->stream);
     #endif
     GPUEventRecord(substream->done, substream->stream);
+    #ifdef SWIFT_USE_TIMERS
+    const ticks gpu_wait_tic = getticks();
+    #endif
+
     GPUEventSynchronize(substream->done);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+    #endif
     
     #ifdef SWIFT_DEBUG_TASKS
   gpu_sync_toc = getticks();
@@ -2676,6 +2721,7 @@ enum runner_gpu_task_type runner_dopair_recursive_grav_gpu(
       accumulate_add_ll(&multi_j->pot.num_interacted_pm,
                         multi_i->m_pole.num_gpart);
 #endif
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
     return regular_task;
   }
 
@@ -2685,7 +2731,17 @@ enum runner_gpu_task_type runner_dopair_recursive_grav_gpu(
   if (ci->grav.count <= 1 || cj->grav.count <= 1) {
 
     /* We have two cheap cells. Go P-P. */
+    #ifdef SWIFT_USE_TIMERS
+    const ticks cpu_fallback_tic = getticks();
+    #endif
+
     runner_dopair_recursive_grav(r, ci, cj, 0);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_cpu_fallback, cpu_fallback_tic);
+    #endif
+
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
     return regular_task;
 
     /* Can we use M-M interactions ? */
@@ -2694,20 +2750,33 @@ enum runner_gpu_task_type runner_dopair_recursive_grav_gpu(
                                           /*use_rebuild_sizes=*/0, periodic)) {
 
     /* Go M-M */
+    #ifdef SWIFT_USE_TIMERS
+    const ticks cpu_fallback_tic = getticks();
+    #endif
+
     runner_dopair_recursive_grav(r, ci, cj, 0);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_cpu_fallback, cpu_fallback_tic);
+    #endif
+
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
     return regular_task;
 
     /* Did we reach the bottom? */
   } else if (!ci->split && !cj->split) {
 
     /* We have two leaves. Go P-P. */
-    return runner_dopair_grav_pp_gpu(
+    const enum runner_gpu_task_type result = runner_dopair_grav_pp_gpu(
     r, substream, ci, cj, 1, 1,
     substream->grav_cells_pair,
     substream->grav_tasks_pair,
     substream->grav_pair_internal_from_self,
     t, internal_from_self,
     ncells, max_cell_size, substream->stream);
+
+    if (gettimer) TIMER_TOC(timer_dosub_pair_grav);
+    return result;
 
   } else {
 
@@ -2852,10 +2921,13 @@ static int runner_gpu_choose_batch_ncells(const struct engine *e,
   const int nstreams = parser_get_opt_param_int(
       e->parameter_file, "GPU:nstreams", 1);
 
+  /* Estimate memory for self and pair gravity buffers. */
+  const size_t bytes_per_particle =
+    2 * (sizeof(float4) + sizeof(float)) +
+    2 * sizeof(struct gravity_gpu_values_recv);
+
   const size_t bytes_per_cell_per_substream =
-      (size_t)max_cell_size *
-      (2 * sizeof(struct gravity_gpu_values_send) +
-       2 * sizeof(struct gravity_gpu_values_recv));
+    (size_t)max_cell_size * bytes_per_particle;
 
   const size_t bytes_per_cell_per_runner =
       (size_t)nstreams * bytes_per_cell_per_substream;
@@ -3397,18 +3469,22 @@ void runner_gpu_init(struct runner *r) {
   if (gpu->substreams == NULL)
     error("Failed to allocate GPU substreams");
 
-  const size_t send_bytes =
-      (size_t)gpu->grav_batch_ncells *
-      (size_t)gpu->grav_max_cell_size *
-      sizeof(struct gravity_gpu_values_send);
+  const size_t nparticles =
+    (size_t)gpu->grav_batch_ncells *
+    (size_t)gpu->grav_max_cell_size;
+
+  const size_t pos_mass_bytes =
+    nparticles * sizeof(float4);
+
+  const size_t h_bytes =
+    nparticles * sizeof(float);
 
   const size_t recv_bytes =
-      (size_t)gpu->grav_batch_ncells *
-      (size_t)gpu->grav_max_cell_size *
-      sizeof(struct gravity_gpu_values_recv);
+    nparticles * sizeof(struct gravity_gpu_values_recv);
 
+  /* Conservative estimate for self and pair gravity buffers. */
   const size_t bytes_per_substream =
-      2 * send_bytes + 2 * recv_bytes; /* self + pair */
+    2 * (pos_mass_bytes + h_bytes + recv_bytes);
 
   size_t free_bytes = 0, total_bytes = 0;
   GPUMemGetInfo(&free_bytes, &total_bytes);
@@ -3561,9 +3637,6 @@ void runner_gpu_init(struct runner *r) {
 
     GPUMalloc((void **)&substream->send_self_h_d, h_bytes);
     GPUHostMalloc((void **)&substream->send_self_h, h_bytes);
-
-    GPUMalloc((void **)&substream->recv_self_d, recv_bytes);
-    GPUHostMalloc((void **)&substream->recv_self, recv_bytes);
     
     GPUMalloc((void **)&substream->recv_self_active_d, active_recv_bytes);
     GPUHostMalloc((void **)&substream->recv_self_active, active_recv_bytes);
@@ -3591,8 +3664,6 @@ void runner_gpu_init(struct runner *r) {
     substream->self_rmax_h =
         malloc((size_t)gpu->grav_batch_ncells * sizeof(float));
 
-    GPUMalloc((void **)&substream->self_rmax_d,
-              (size_t)gpu->grav_batch_ncells * sizeof(float));
     GPUMalloc((void **)&substream->self_counts_d,
               (size_t)gpu->grav_batch_ncells * sizeof(int));
     GPUMalloc((void **)&substream->self_offsets_d,
@@ -3790,8 +3861,17 @@ runner_gpu_acquire_substream(struct runner *r) {
   struct gpu_runner_substream *substream =
       &gpu->substreams[gpu->next_substream];
 
+  #ifdef SWIFT_USE_TIMERS
+  const ticks gpu_wait_tic = getticks();
+  #endif
+
   const GPUError serr = GPUEventSynchronize(substream->done);
-  if (serr != GPUSuccess)
+
+  #ifdef SWIFT_USE_TIMERS
+  timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+  #endif
+  if (serr != GPU_SUCCESS)
+
     error("runner_gpu_acquire_substream: GPUEventSynchronize failed: %s",
           GPUGetErrorString(serr));
 
@@ -3870,9 +3950,6 @@ void runner_gpu_clean(struct runner *r) {
 
     free(substream->self_use_full_h);
     GPUFree(substream->self_use_full_d);
-    
-    GPUFreeHost(substream->recv_self);
-    GPUFree(substream->recv_self_d);
 
     free(substream->grav_cells_self);
     free(substream->grav_tasks_self);
@@ -3895,7 +3972,6 @@ void runner_gpu_clean(struct runner *r) {
     GPUFree(substream->recv_self_active_d);
     
     free(substream->self_rmax_h);
-    GPUFree(substream->self_rmax_d);
 
     /* Stream/event */
     GPUEventDestroy(substream->done);
@@ -3918,8 +3994,6 @@ void runner_gpu_clean(struct runner *r) {
     substream->send_self_pos_mass_d = NULL;
     substream->send_self_h = NULL;
     substream->send_self_h_d = NULL;
-    substream->recv_self = NULL;
-    substream->recv_self_d = NULL;
     substream->grav_cells_self = NULL;
     substream->grav_tasks_self = NULL;
     substream->grav_batch_self_count = 0;
@@ -3929,7 +4003,6 @@ void runner_gpu_clean(struct runner *r) {
     substream->self_offsets_d = NULL;
     substream->self_total_count = 0;
     substream->self_rmax_h = NULL;
-    substream->self_rmax_d = NULL;
 
     substream->busy = 0;
   }
@@ -4133,7 +4206,15 @@ enum runner_gpu_task_type runner_gpu_flush_leftover_self(struct runner *r) {
     #endif
 
     GPUEventRecord(substream->done, substream->stream);
+    #ifdef SWIFT_USE_TIMERS
+    const ticks gpu_wait_tic = getticks();
+    #endif
+
     GPUEventSynchronize(substream->done);
+
+    #ifdef SWIFT_USE_TIMERS
+    timers_toc(timer_gpu_grav_wait, gpu_wait_tic);
+    #endif
     
     #ifdef SWIFT_DEBUG_TASKS
   gpu_sync_toc = getticks();
@@ -4398,6 +4479,26 @@ enum runner_gpu_task_type runner_doself_recursive_grav_gpu(
 	}
       
 
+  /*
+	 * A self-gravity scheduler task can generate pair interactions while
+	 * recursively walking its children. These internal pair interactions belong
+	 * to the parent self task and must be completed before that task can be
+	 * released to the scheduler.
+	 */
+	if (gettimer && substream->grav_batch_pair_count > 0) {
+
+	  runner_dopair_grav_pp_flush(
+	      r,
+	      substream,
+	      substream->grav_cells_pair,
+	      substream->grav_tasks_pair,
+	      t,  /* current parent self task */
+	      ncells,
+	      max_cell_size,
+	      substream->stream);
+	}
+      
+
     enum runner_gpu_task_type final_type = regular_task;
 
   if (substream->grav_batch_self_count > 0) {
@@ -4407,15 +4508,13 @@ enum runner_gpu_task_type runner_doself_recursive_grav_gpu(
   } else {
   final_type = regular_task;
   }
-
-  if (gettimer) {
-
-    TIMER_TOC(timer_doself_grav_pp);
-  }
   
   #ifdef SWIFT_DEBUG_CHECKS
-  if (gettimer && substream->grav_batch_self_count != 0)
-    error("Top-level self task returned with leftover packed self work.");
+  if (gettimer && final_type == packed_task) {
+    if (!t->gpu_counted || t->gpu_completed) {
+      error("Self task deferred without valid GPU bookkeeping.");
+    }
+  }
   #endif
 
   if (gettimer) TIMER_TOC(timer_dosub_self_grav);

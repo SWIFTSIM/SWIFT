@@ -42,7 +42,8 @@ rho = np.array(file["/PartType0/Densities"])
 u = np.array(file["/PartType0/InternalEnergies"])
 agrav = np.array(file["/PartType0/GravAcceleration"])
 m = np.array(file["/PartType0/Masses"])
-ids = np.array(file["/PartType0/ParticleIDs"])
+# IDs are 1-based; shift them to recover the 0-based lattice index
+ids = np.array(file["/PartType0/ParticleIDs"]) - 1
 
 # ids_reverse gives the index original particle 0 now has in the particle arrays
 # and so on

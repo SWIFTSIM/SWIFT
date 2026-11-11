@@ -35,11 +35,10 @@ outputfilename = "advect_ions.hdf5"
 
 if __name__ == "__main__":
 
-    glass = h5py.File("glassPlane_64.hdf5", "r")
-    parts = glass["PartType0"]
-    xp = parts["Coordinates"][:]
-    h = parts["SmoothingLength"][:]
-    glass.close()
+    glass = sw.load("glassPlane_64.hdf5")
+    parts = glass.gas
+    xp = parts.coordinates.value
+    h = parts.smoothing_lengths.value
 
     # Set up metadata
     unitL = unyt.Mpc

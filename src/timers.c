@@ -149,6 +149,12 @@ const char *timers_names[timer_count] = {
     "rt_collect_times",
     "do_sync",
     "neutrino_weighting",
+    "gpu_grav_pair_pack_cpu",
+    "gpu_grav_self_pack_cpu",
+    "gpu_grav_pair_flush_cpu",
+    "gpu_grav_wait",
+    "gpu_grav_timing_io",
+    "gpu_grav_cpu_fallback",
 };
 
 /* File to store the timers */

@@ -119,10 +119,8 @@ GEARPressureFloor:
 GrackleCooling:
   cloudy_table: CloudyData_UVB=HM2012.h5       # Name of the Cloudy Table (available on the grackle bitbucket repository)
   with_UV_background: 1                        # Enable or not the UV background
-  redshift: 0                                  # Redshift to use (-1 means time based redshift)
+  redshift: -1                                 # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                        # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0          # (optional) User provide volumetric heating rates
-  provide_specific_heating_rates: 0            # (optional) User provide specific heating rates
   max_steps: 10000                             # (optional) Max number of step when computing the initial composition
   convergence_limit: 1e-2                      # (optional) Convergence threshold (relative) for initial composition
   thermal_time_myr: 5                          # (optional) Time (in Myr) for adiabatic cooling after a feedback event.
@@ -148,6 +146,6 @@ GEARFeedback:
   supernovae_Ia_energy_erg: 1e51                             # Energy released by a single supernova.
   supernovae_efficiency: 0.1                                 # Supernovae energy efficiency, used for both SNIa and SNII. The energy released effectively is E_sn = supernovae_efficiency*E_sn
   with_stellar_wind_feedback: 0                              # Deactivate the stellar wind feedback
-  yields_table:  chemistry-AGB+OMgSFeZnSrYBaEu-16072013.h5   # Table containing the yields of the first stars.
+  yields_table:  POPII.hdf5                                  # Table containing the yields.
   discrete_yields: 0                                         # Should we use discrete yields or the IMF integrated one?
 

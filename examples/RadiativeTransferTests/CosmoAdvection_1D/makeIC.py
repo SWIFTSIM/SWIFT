@@ -101,9 +101,6 @@ def initial_condition(x, unitsystem):
     F = np.zeros(3, dtype=np.float64)
     F[0] = (E * c_internal).to(unit_flux)
 
-    E1 = E
-    F1 = F[0]
-
     E_list.append(E)
     F_list.append(F)
 
@@ -124,9 +121,6 @@ def initial_condition(x, unitsystem):
     E_list.append(E)
     F_list.append(F)
 
-    E2 = E
-    F2 = F[0]
-
     # Group 3 Photons:
     # -------------------
     sigma = 0.1 * boxsize
@@ -140,9 +134,6 @@ def initial_condition(x, unitsystem):
 
     E_list.append(E)
     F_list.append(F)
-
-    E3 = E
-    F3 = F[0]
 
     return E_list, F_list
 

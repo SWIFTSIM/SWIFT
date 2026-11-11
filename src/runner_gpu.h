@@ -103,7 +103,6 @@ struct gpu_runner_substream {
   /*! Number of pair cells currently packed in this substream's GPU batch. */
   int grav_batch_pair_count;
   
-  /*NEW BIT*/
   int pair_unique_cell_count;
   struct cell **pair_unique_cells;
 
@@ -309,12 +308,6 @@ void runner_gpu_complete_self_batch(struct runner *r, struct scheduler *sched,
  */
 void runner_gpu_complete_pair_task(struct runner *r, struct scheduler *sched,
                                    struct task *t);
-
-/**
- * @brief Complete all unique pair tasks currently stored in a substream GPU batch.
- */
-void runner_gpu_complete_pair_batch(struct runner *r, struct scheduler *sched,
-                                    struct gpu_runner_substream *substream);
                                     
 void runner_gpu_bind_device(struct runner *r);
 

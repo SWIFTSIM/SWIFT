@@ -149,6 +149,12 @@ enum {
   timer_do_rt_collect_times,
   timer_do_sync,
   timer_neutrino_weighting,
+  timer_gpu_grav_pair_pack_cpu,
+  timer_gpu_grav_self_pack_cpu,
+  timer_gpu_grav_pair_flush_cpu,
+  timer_gpu_grav_wait,
+  timer_gpu_grav_timing_io,
+  timer_gpu_grav_cpu_fallback,
   timer_count,
 };
 

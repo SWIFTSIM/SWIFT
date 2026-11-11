@@ -485,7 +485,7 @@ float task_overlap(const struct task *restrict ta,
     if (size_union == 0) return 0.f;
 
     /* Compute the intersection of the cell data. */
-    const size_t size_intersect = task_cell_overlap_spart(ta->ci, tb->ci) +
+    const size_t size_intersect = task_cell_overlap_sink(ta->ci, tb->ci) +
                                   task_cell_overlap_sink(ta->ci, tb->cj) +
                                   task_cell_overlap_sink(ta->cj, tb->ci) +
                                   task_cell_overlap_sink(ta->cj, tb->cj);
@@ -1293,10 +1293,8 @@ static inline ticks task_get_plot_toc(const struct task *t) {
       t->gpu_host_toc > t->tic) {
     return t->gpu_host_toc;
   }
-
-  return t->toc;
-  
   #endif
+  return t->toc;
 }
 #endif
 

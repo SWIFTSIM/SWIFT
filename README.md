@@ -54,7 +54,6 @@ make -j
 If you pass both `--with-cuda` and `--with-hip`, configure will stop with an
 error.
 
-
 This GitHub repository is designed to be an issue tracker, and a space for
 the public to submit patches through pull requests. It is synchronised with
 the main development repository that is available on the

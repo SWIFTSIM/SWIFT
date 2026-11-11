@@ -1,6 +1,8 @@
 #!/bin/bash
 
-with_subgrid={$with_subgrid="EAGLE"} # EAGLE or GEAR
+set -eo pipefail
+
+with_subgrid="${with_subgrid:-"EAGLE-XL"}" # EAGLE-XL or GEAR
 
 if [ ! -e H15_fid.hdf5 ]
 then
@@ -8,17 +10,17 @@ then
     ./getIC.sh
 fi
 
-if [ "$with_subgrid" = "EAGLE" ]
+if [ "$with_subgrid" = "EAGLE-XL" ]
 then
    if [ ! -e UV_dust1_CR1_G1_shield1.hdf5 ]
    then
-       echo "Fetching PS2020 cooling tables for the isolated galaxy example..."
+       echo "Fetching PS2020 cooling tables for the idealised cluster example..."
        ../getPS2020CoolingTables.sh
    fi
 
    if [ ! -e yieldtables ]
    then
-       echo "Fetching EAGLE stellar yield tables for the isolated galaxy example..."
+       echo "Fetching EAGLE stellar yield tables for the idealised cluster example..."
        ../getYieldTable.sh
    fi
 
