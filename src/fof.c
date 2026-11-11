@@ -1602,7 +1602,7 @@ static INLINE void add_foreign_link_to_list(
     size_t *local_link_count, size_t *group_links_size,
     struct fof_mpi **group_links, struct fof_mpi **local_group_links,
     const size_t root_i, const size_t root_j, const size_t size_i,
-    const size_t size_j) {
+    const size_t size_j, const int verbose) {
 
   /* If the group_links array is not big enough re-allocate it. */
   if (*local_link_count + 1 > *group_links_size) {
@@ -1631,8 +1631,9 @@ static INLINE void add_foreign_link_to_list(
     /* Reset the local pointer */
     (*local_group_links) = *group_links;
 
-    message("Re-allocating local group links from %zu to %zu elements.",
-            old_size, new_size);
+    if (verbose)
+      message("Re-allocating local group links from %zu to %zu elements.",
+              old_size, new_size);
   }
 
   /* Store the particle group properties for communication. */
@@ -1655,7 +1656,8 @@ void fof_search_pair_cells_foreign(
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *restrict ci,
     const struct cell *restrict cj, size_t *restrict link_count,
-    struct fof_mpi **group_links, size_t *restrict group_links_size) {
+    struct fof_mpi **group_links, size_t *restrict group_links_size,
+    const int verbose) {
 
 #ifdef WITH_MPI
   const size_t count_i = ci->grav.count;
@@ -1792,7 +1794,8 @@ void fof_search_pair_cells_foreign(
           add_foreign_link_to_list(
               &local_link_count, group_links_size, group_links,
               &local_group_links, root_i, pj->fof_data.group_id,
-              group_size[root_i - node_offset], pj->fof_data.group_size);
+              group_size[root_i - node_offset], pj->fof_data.group_size,
+              verbose);
       }
     }
   }
@@ -1876,7 +1879,7 @@ void rec_fof_search_pair_foreign(
     const int periodic, const struct gpart *const space_gparts,
     const size_t nr_gparts, const struct cell *ci, const struct cell *cj,
     size_t *restrict link_count, struct fof_mpi **group_links,
-    size_t *restrict group_links_size) {
+    size_t *restrict group_links_size, const int verbose) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   if (ci == cj) error("Pair FOF called on same cell!!!");
@@ -1900,7 +1903,7 @@ void rec_fof_search_pair_foreign(
             rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                         space_gparts, nr_gparts, ci->progeny[k],
                                         cj->progeny[l], link_count, group_links,
-                                        group_links_size);
+                                        group_links_size, verbose);
       }
     }
   } else if (ci->split) {
@@ -1909,21 +1912,23 @@ void rec_fof_search_pair_foreign(
       if (ci->progeny[k] != NULL)
         rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                     space_gparts, nr_gparts, ci->progeny[k], cj,
-                                    link_count, group_links, group_links_size);
+                                    link_count, group_links, group_links_size,
+                                    verbose);
     }
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
         rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
                                     space_gparts, nr_gparts, ci, cj->progeny[k],
-                                    link_count, group_links, group_links_size);
+                                    link_count, group_links, group_links_size,
+                                    verbose);
     }
   } else {
     /* Perform FOF search between pairs of cells that are within the linking
      * length and not the same cell. */
     fof_search_pair_cells_foreign(props, dim, search_r2, periodic, space_gparts,
                                   nr_gparts, ci, cj, link_count, group_links,
-                                  group_links_size);
+                                  group_links_size, verbose);
 #if FOF_COUNT_CANDIDATES
     fof_count_link_pair(ci, cj, /*foreign_j=*/1, dim, periodic, search_r2);
 #endif
@@ -2836,7 +2841,7 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
     rec_fof_search_pair_foreign(props, dim, search_r2, periodic, gparts,
                                 nr_gparts, local_cell, foreign_cell,
                                 &local_link_count, &local_group_links,
-                                &local_group_links_size);
+                                &local_group_links_size, e->verbose);
   }
 
   /* TEMPORARY: FOF scaling timers. */
@@ -2881,8 +2886,9 @@ void fof_find_foreign_links_mapper(void *map_data, int num_elements,
       (*group_links) = temp;
       *group_links_size = new_size;
 
-      message("Re-allocating global group links from %zu to %zu elements.",
-              old_size, new_size);
+      if (e->verbose)
+        message("Re-allocating global group links from %zu to %zu elements.",
+                old_size, new_size);
     }
 
     /* Copy the local links to the global list. */
