@@ -538,7 +538,7 @@ static void zoom_mpi_deconvolve_mapper(void *map_data, int num, void *extra) {
       for (int kz = 0; kz < data->complex_width; ++kz) {
         const size_t q =
             ((size_t)local_y * data->M + ix) * data->complex_width + kz;
-        const double correction = mesh_CIC_deconvolution(kx, ky, kz, data->M);
+        const double correction = zoom_mesh_CIC_deconvolution(kx, ky, kz, data->M);
         data->field[q][0] *= correction;
         data->field[q][1] *= correction;
       }

@@ -74,6 +74,62 @@ static void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh) {
 }
 
 /**
+ * @brief Set the zoom mesh geometry from the current zoom region.
+ *
+ * The mesh covers the zoom region plus a buffer of background top-level
+ * cells. The side length and buffer size must already be set.
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param s The #space.
+ * @param props The properties of the gravity scheme.
+ * @param r_cut_max_ratio The maximal truncation distance in units of r_s.
+ * @param r_cut_min_ratio The minimal truncation distance in units of r_s.
+ */
+static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
+                                   const struct space *s,
+                                   const struct gravity_props *props,
+                                   const double r_cut_max_ratio,
+                                   const double r_cut_min_ratio) {
+
+  const struct zoom_region_properties *z = s->zoom_props;
+
+  /* The physical domain actually covered by the active zoom mesh. */
+  for (int i = 0; i < 3; ++i) {
+    const double buffer = mesh->buffer_cells * z->bkg_cells_top[0].width[i];
+    mesh->loc[i] = z->region_lower_bounds[i] - buffer;
+    mesh->dim[i] = z->dim[i] + 2. * buffer;
+    mesh->cell_fac[i] = mesh->N[i] / mesh->dim[i];
+  }
+  if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2])
+    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
+
+  /* The smoothing scale must track the zoom mesh's own grid resolution
+   * (mirroring how the background mesh derives r_s from dim/mesh_size in
+   * gravity_props_init), NOT the zoom region's top-level tree cell width.
+   * The tree cdim is set independently for domain-decomposition/load
+   * balancing and can be far coarser than the requested mesh resolution. */
+  mesh->r_s = props->a_smooth * mesh->dim[0] / mesh->N[0];
+  mesh->r_s_inv = 1. / mesh->r_s;
+  mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
+  mesh->r_cut_min = mesh->r_s * r_cut_min_ratio;
+
+  /* The zoom mesh only makes sense if it is strictly higher resolution than
+   * the background mesh it is correcting. If it isn't, the mesh-tree
+   * splitting criterion becomes *more* conservative inside the zoom region
+   * (not less), silently exploding the gravity task count instead of
+   * reducing it. */
+  if (mesh->r_s >= props->r_s)
+    error(
+        "The zoom gravity mesh must be higher resolution than the "
+        "background mesh, but its smoothing scale (r_s=%.6e, from "
+        "Gravity:zoom_mesh_side_length=%d over a domain of %.6e) is not "
+        "smaller than the background mesh's (r_s=%.6e, from "
+        "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
+        "or shrink the zoom region.",
+        mesh->r_s, mesh->N[0], mesh->dim[0], props->r_s);
+}
+
+/**
  * @brief Initialize the high-resolution zoom gravity mesh geometry.
  *
  * The mesh is disabled unless the parameter Gravity:zoom_mesh is non-zero. When
@@ -161,60 +217,14 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
       s->zoom_props->zoom_cells_top == NULL)
     error("Gravity:zoom_mesh requires zoom top-level cells.");
 
-  /* Compute the buffer width in each dimension. */
-  const double buffer[3] = {
-      buffer_cells * s->zoom_props->bkg_cells_top[0].width[0],
-      buffer_cells * s->zoom_props->bkg_cells_top[0].width[1],
-      buffer_cells * s->zoom_props->bkg_cells_top[0].width[2]};
-
-  /* The physical domain actually covered by the active zoom mesh. */
-  const double zoom_mesh_dim[3] = {s->zoom_props->dim[0] + 2. * buffer[0],
-                                   s->zoom_props->dim[1] + 2. * buffer[1],
-                                   s->zoom_props->dim[2] + 2. * buffer[2]};
-  if (zoom_mesh_dim[0] != zoom_mesh_dim[1] ||
-      zoom_mesh_dim[0] != zoom_mesh_dim[2])
-    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
-
-  /* The smoothing scale must track the zoom mesh's own grid resolution
-   * (mirroring how the background mesh derives r_s from dim/mesh_size in
-   * gravity_props_init), NOT the zoom region's top-level tree cell width.
-   * The tree cdim is set independently for domain-decomposition/load
-   * balancing and can be far coarser than the requested mesh resolution. */
-  const double zoom_cell_width = zoom_mesh_dim[0] / side_length;
-  const double zoom_r_s = props->a_smooth * zoom_cell_width;
-
-  /* The zoom mesh only makes sense if it is strictly higher resolution than
-   * the background mesh it is correcting. If it isn't, the mesh-tree
-   * splitting criterion becomes *more* conservative inside the zoom region
-   * (not less), silently exploding the gravity task count instead of
-   * reducing it. */
-  if (zoom_r_s >= props->r_s)
-    error(
-        "The zoom gravity mesh must be higher resolution than the "
-        "background mesh, but its smoothing scale (r_s=%.6e, from "
-        "Gravity:zoom_mesh_side_length=%d over a domain of %.6e) is not "
-        "smaller than the background mesh's (r_s=%.6e, from "
-        "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
-        "or shrink the zoom region.",
-        zoom_r_s, side_length, zoom_mesh_dim[0], props->r_s);
-
   /* Fill in the mesh structure. */
   mesh->enabled = 1;
   mesh->distributed_mesh = props->distributed_mesh;
   mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->buffer_cells = buffer_cells;
-  mesh->r_s = zoom_r_s;
-  mesh->r_s_inv = 1. / mesh->r_s;
-  mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
-  mesh->r_cut_min = mesh->r_s * r_cut_min_ratio;
   mesh->potential_global = NULL;
-
-  for (int i = 0; i < 3; ++i) {
-    mesh->N[i] = side_length;
-    mesh->loc[i] = s->zoom_props->region_lower_bounds[i] - buffer[i];
-    mesh->dim[i] = zoom_mesh_dim[i];
-    mesh->cell_fac[i] = side_length / mesh->dim[i];
-  }
+  for (int i = 0; i < 3; ++i) mesh->N[i] = side_length;
+  zoom_mesh_set_geometry(mesh, s, props, r_cut_max_ratio, r_cut_min_ratio);
 
   /* Report the mesh geometry to the user if requested. */
   if (verbose)
@@ -262,34 +272,13 @@ void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s) {
 
   if (mesh == NULL || !mesh->enabled) return;
 
-  const struct zoom_region_properties *z = s->zoom_props;
-  const struct gravity_props *props = s->e->gravity_properties;
-  double dim[3], loc[3];
-  for (int i = 0; i < 3; ++i) {
-    const double buffer = mesh->buffer_cells * z->bkg_cells_top[0].width[i];
-    dim[i] = z->dim[i] + 2. * buffer;
-    loc[i] = z->region_lower_bounds[i] - buffer;
-  }
-  if (dim[0] != dim[1] || dim[0] != dim[2])
-    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
+  /* Keep the configured cut-offs in units of the smoothing scale. */
+  const double r_cut_max_ratio = mesh->r_cut_max / mesh->r_s;
+  const double r_cut_min_ratio = mesh->r_cut_min / mesh->r_s;
 
-  const double r_s = props->a_smooth * dim[0] / mesh->N[0];
-  if (r_s >= props->r_s)
-    error("Regridded zoom mesh must remain higher resolution than the "
-          "background mesh.");
-  /* Keep the configured cutoffs in units of the smoothing length. */
-  const double cut_max_ratio = mesh->r_cut_max / mesh->r_s;
-  const double cut_min_ratio = mesh->r_cut_min / mesh->r_s;
   zoom_mesh_free(mesh);
-  for (int i = 0; i < 3; ++i) {
-    mesh->loc[i] = loc[i];
-    mesh->dim[i] = dim[i];
-    mesh->cell_fac[i] = mesh->N[i] / dim[i];
-  }
-  mesh->r_s = r_s;
-  mesh->r_s_inv = 1. / r_s;
-  mesh->r_cut_max = r_s * cut_max_ratio;
-  mesh->r_cut_min = r_s * cut_min_ratio;
+  zoom_mesh_set_geometry(mesh, s, s->e->gravity_properties, r_cut_max_ratio,
+                         r_cut_min_ratio);
   zoom_mesh_allocate(mesh);
 }
 
@@ -386,6 +375,33 @@ void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream) {
   mesh->potential_global = NULL;
   mesh->kernel_fft = NULL;
   if (mesh->enabled && !mesh->distributed_mesh) zoom_mesh_allocate(mesh);
+}
+
+/**
+ * @brief Return the Fourier-space correction for CIC assignment and sampling.
+ *
+ * Same correction as applied to the periodic mesh in
+ * mesh_apply_Green_function_mapper().
+ *
+ * @param kx Fourier mode along x.
+ * @param ky Fourier mode along y.
+ * @param kz Fourier mode along z.
+ * @param N Mesh side length.
+ * @return The CIC deconvolution factor.
+ */
+double zoom_mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
+                                   const int N) {
+
+  const double k_fac = M_PI / (double)N;
+  const double fx = k_fac * (double)kx;
+  const double fy = k_fac * (double)ky;
+  const double fz = k_fac * (double)kz;
+  const double sinc_kx_inv = (kx != 0) ? fx / sin(fx) : 1.;
+  const double sinc_ky_inv = (ky != 0) ? fy / sin(fy) : 1.;
+  const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
+  const double CIC_cor = sinc_kx_inv * sinc_ky_inv * sinc_kz_inv;
+  const double CIC_cor2 = CIC_cor * CIC_cor;
+  return CIC_cor2 * CIC_cor2;
 }
 
 #ifdef HAVE_FFTW
@@ -1161,7 +1177,7 @@ static void zoom_mesh_deconvolve_mapper(void *map_data, int num, void *extra) {
     const int kz = remainder % complex_width;
     const int kx = kx_index > M / 2 ? kx_index - M : kx_index;
     const int ky = ky_index > M / 2 ? ky_index - M : ky_index;
-    const double CIC_cor4 = mesh_CIC_deconvolution(kx, ky, kz, M);
+    const double CIC_cor4 = zoom_mesh_CIC_deconvolution(kx, ky, kz, M);
     kernel[i][0] *= CIC_cor4;
     kernel[i][1] *= CIC_cor4;
   }
@@ -1427,24 +1443,26 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 }
 
 /**
- * @brief Test whether a distance is safely beyond a mesh cutoff.
+ * @brief Bounds of the zoom mesh region in which forces can be interpolated.
  *
- * Matches the tolerance convention used by the regular gravity mesh
- * predicate.
+ * The five-point force stencil needs two cells on the low side for i-2 and
+ * three on the high side because the i+2 stencil point is CIC-interpolated
+ * and therefore also reads i+3. A small tolerance allows for roundoff in the
+ * cell construction.
  *
- * @param min_radius2 The squared minimal pair separation.
- * @param max_distance2 The squared PM truncation cutoff distance.
- * @return 1 if the pair is safely beyond the cutoff, 0 otherwise.
+ * @param mesh The #zoom_pm_mesh.
+ * @param i The axis.
+ * @param active_min The lower bound in box coordinates (return).
+ * @param active_max The upper bound in box coordinates (return).
  */
-__attribute__((const)) INLINE static int zoom_mesh_distance_is_above_cutoff(
-    const double min_radius2, const double max_distance2) {
+static void zoom_mesh_get_active_bounds(const struct zoom_pm_mesh *mesh,
+                                        const int i, double *active_min,
+                                        double *active_max) {
 
-  /* Derive a scale-aware tolerance. (128 is arbitrarily "big enough") */
-  const double scale = fmax(1.0, fmax(fabs(min_radius2), fabs(max_distance2)));
-  const double tol = 128.0 * DBL_EPSILON * scale;
-
-  /* Only accept distances safely above the cutoff. */
-  return min_radius2 > max_distance2 + tol;
+  const double cell_width = 1. / mesh->cell_fac[i];
+  const double tol = 1e-6 * mesh->dim[i];
+  *active_min = mesh->loc[i] + 2. * cell_width - tol;
+  *active_max = mesh->loc[i] + mesh->dim[i] - 3. * cell_width + tol;
 }
 
 /**
@@ -1463,24 +1481,18 @@ __attribute__((nonnull)) static int zoom_mesh_cell_is_inside(
   /* Check containment independently along each axis. */
   for (int i = 0; i < 3; ++i) {
     /* Mesh bounds in box coordinates, restricted to the active-mesh region
-     * where the five-point force stencil is valid. The negative side needs two
-     * cells for i-2. The positive side needs three cells because the i+2
-     * stencil point is CIC-interpolated and therefore also reads i+3. */
-    const double cell_width = 1. / mesh->cell_fac[i];
-    const double mesh_min = mesh->loc[i] + 2. * cell_width;
-    const double mesh_max = mesh->loc[i] + mesh->dim[i] - 3. * cell_width;
+     * where the five-point force stencil is valid. */
+    double mesh_min, mesh_max;
+    zoom_mesh_get_active_bounds(mesh, i, &mesh_min, &mesh_max);
 
     /* Inflate the cell by the maximal particle displacement if requested. */
     const double dx_max = use_max_dx ? c->grav.multipole->dx_max[i] : 0.;
     const double cell_min = c->loc[i] - dx_max;
     const double cell_max = c->loc[i] + c->width[i] + dx_max;
 
-    /* Allow a small geometry tolerance for roundoff in cell construction. */
-    const double tol = 1e-6 * mesh->dim[i];
-
     /* Any excursion outside the mesh bounds disqualifies the cell. */
-    if (cell_min < mesh_min - tol) return 0;
-    if (cell_max > mesh_max + tol) return 0;
+    if (cell_min < mesh_min) return 0;
+    if (cell_max > mesh_max) return 0;
   }
 
   return 1;
@@ -1529,16 +1541,12 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           z->width[i], cell_width, i, (int)ceil(mesh->dim[i] / z->width[i]),
           mesh->N[i]);
 
-    /* 2. The active region must contain the whole zoom region. The bounds here
-     * must match zoom_mesh_cell_is_inside: two cells of inset on the low side
-     * for the i-2 stencil point, three on the high side because the i+2 point
-     * is CIC-interpolated and so also reads i+3. */
-    const double active_min = mesh->loc[i] + 2. * cell_width;
-    const double active_max = mesh->loc[i] + mesh->dim[i] - 3. * cell_width;
-    const double tol = 1e-6 * mesh->dim[i];
+    /* 2. The active region must contain the whole zoom region. */
+    double active_min, active_max;
+    zoom_mesh_get_active_bounds(mesh, i, &active_min, &active_max);
 
-    if (z->region_lower_bounds[i] < active_min - tol ||
-        z->region_upper_bounds[i] > active_max + tol)
+    if (z->region_lower_bounds[i] < active_min ||
+        z->region_upper_bounds[i] > active_max)
       error(
           "The active zoom mesh region ([%.4f, %.4f] along axis %d) does not "
           "contain the zoom region ([%.4f, %.4f]), so some zoom cells would "
@@ -1584,7 +1592,7 @@ int zoom_mesh_can_use_mesh(const struct zoom_pm_mesh *mesh,
   const double max_distance2 = mesh->r_cut_max * mesh->r_cut_max;
   const double min_radius2 = cell_min_dist2(ci, cj, /*periodic=*/0, s->dim);
 
-  return zoom_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
 }
 
 /**
@@ -1622,5 +1630,5 @@ int zoom_mesh_can_use_mesh_between_rebuilds(const struct zoom_pm_mesh *mesh,
   const double min_radius2 =
       cell_min_dist2_with_max_dx(ci, cj, /*periodic=*/0, s->dim);
 
-  return zoom_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
+  return cell_mesh_distance_is_above_cutoff(min_radius2, max_distance2);
 }

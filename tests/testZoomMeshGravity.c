@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
     const double x = M_PI * test_mode[axis] / 32.;
     expected_deconvolution *= pow(x / sin(x), 4.);
   }
-  const double measured_deconvolution = mesh_CIC_deconvolution(
+  const double measured_deconvolution = zoom_mesh_CIC_deconvolution(
       test_mode[0], test_mode[1], test_mode[2], 32);
   if (fabs(measured_deconvolution - expected_deconvolution) > 1e-12)
     error("Shared CIC deconvolution differs from the global PM convention");

@@ -826,6 +826,8 @@ int cell_can_use_pair_mm(const struct cell *ci, const struct cell *cj,
                          const struct engine *e, const struct space *s,
                          const int use_rebuild_data, const int is_tree_walk,
                          const int periodic, const int use_mesh);
+int cell_mesh_distance_is_above_cutoff(const double min_radius2,
+                                       const double max_distance2);
 int cell_can_use_mesh(struct engine *e, const struct cell *ci,
                       const struct cell *cj);
 int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,

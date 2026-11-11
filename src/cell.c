@@ -1770,7 +1770,7 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
  * @param max_distance2 The squared PM truncation cutoff distance.
  * @return 1 if the pair is safely beyond the cutoff, 0 otherwise.
  */
-__attribute__((const)) INLINE static int cell_mesh_distance_is_above_cutoff(
+__attribute__((const)) int cell_mesh_distance_is_above_cutoff(
     const double min_radius2, const double max_distance2) {
 
   /* Derive a scale aware tolerance. (128 is arbitrarily "big enough") */
