@@ -31,6 +31,7 @@
 /* Local headers. */
 #include "engine.h"
 #include "error.h"
+#include "fof.h"
 #include "sort_part.h"
 #include "space.h"
 #include "space_getsid.h"
@@ -440,6 +441,18 @@ static void scheduler_splittask_gravity(struct task *t, struct scheduler *s) {
 /**
  * @brief Split a FOF task if too large.
  *
+ * Both the linking (fof_self) and attaching (fof_attach_self) self tasks are
+ * split into self tasks on the progeny and pair tasks between them, of the
+ * same kind as the original.
+ *
+ * The linking (fof_pair) and attaching (fof_attach_pair) pair tasks are split
+ * into pair tasks between the progeny of the two cells (or between the
+ * progeny of one cell and the other cell if only one of them can be split).
+ * As in the recursion of the FOF pair functions (rec_fof_search_pair() and
+ * rec_fof_attach_pair()), only the pairs of sub-cells whose minimal distance
+ * is not larger than the linking length are kept. This is the exact same
+ * test (cell_min_dist()) such that splitting does not lose any link.
+ *
  * @param t The #task
  * @param s The #scheduler we are working in.
  */
@@ -453,7 +466,10 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
     redo = 0;
 
     /* Non-splittable task? */
-    if ((t->ci == NULL) || (t->type == task_type_fof_pair && t->cj == NULL) ||
+    if ((t->ci == NULL) ||
+        ((t->type == task_type_fof_pair ||
+          t->type == task_type_fof_attach_pair) &&
+         t->cj == NULL) ||
         t->ci->grav.count == 0 || (t->cj != NULL && t->cj->grav.count == 0)) {
       t->type = task_type_none;
       t->subtype = task_subtype_none;
@@ -464,10 +480,16 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
     }
 
     /* Self-interaction? */
-    if (t->type == task_type_fof_self) {
+    if (t->type == task_type_fof_self || t->type == task_type_fof_attach_self) {
 
       /* Get a handle on the cell involved. */
       struct cell *ci = t->ci;
+
+      /* Linking or attaching? The progeny tasks are of the same kind. */
+      const enum task_types self_type = t->type;
+      const enum task_types pair_type = (t->type == task_type_fof_self)
+                                            ? task_type_fof_pair
+                                            : task_type_fof_attach_pair;
 
       /* Foreign task? */
       if (ci->nodeID != s->nodeID) {
@@ -488,7 +510,7 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
         for (int k = first_child + 1; k < 8; k++)
           if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
             scheduler_splittask_fof(
-                scheduler_addtask(s, task_type_fof_self, t->subtype, 0, 0,
+                scheduler_addtask(s, self_type, t->subtype, 0, 0,
                                   ci->progeny[k], NULL),
                 s);
 
@@ -498,12 +520,92 @@ static void scheduler_splittask_fof(struct task *t, struct scheduler *s) {
             for (int k = j + 1; k < 8; k++)
               if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
                 scheduler_splittask_fof(
-                    scheduler_addtask(s, task_type_fof_pair, t->subtype, 0, 0,
+                    scheduler_addtask(s, pair_type, t->subtype, 0, 0,
                                       ci->progeny[j], ci->progeny[k]),
                     s);
       } /* Cell is split */
 
     } /* Self interaction */
+
+    /* Pair interaction? */
+    else if (t->type == task_type_fof_pair ||
+             t->type == task_type_fof_attach_pair) {
+
+      /* Get a handle on the cells involved. */
+      struct cell *ci = t->ci;
+      struct cell *cj = t->cj;
+
+      /* Can we recurse on either side? */
+      const int split_i = cell_can_split_pair_fof_task(ci);
+      const int split_j = cell_can_split_pair_fof_task(cj);
+      if (!split_i && !split_j) break;
+
+      /* Collect the non-empty sub-cells on each side. A side that cannot be
+       * split is kept as a whole. */
+      struct cell *sub_i[8], *sub_j[8];
+      int count_i = 0, count_j = 0;
+      if (split_i) {
+        for (int k = 0; k < 8; k++)
+          if (ci->progeny[k] != NULL && ci->progeny[k]->grav.count)
+            sub_i[count_i++] = ci->progeny[k];
+      } else {
+        sub_i[count_i++] = ci;
+      }
+      if (split_j) {
+        for (int k = 0; k < 8; k++)
+          if (cj->progeny[k] != NULL && cj->progeny[k]->grav.count)
+            sub_j[count_j++] = cj->progeny[k];
+      } else {
+        sub_j[count_j++] = cj;
+      }
+
+      /* The geometry and linking length used by the FOF tasks */
+      const struct space *sp = s->space;
+      const double l_x2 = sp->e->fof_properties->l_x2;
+
+      /* Make a task for each pair of sub-cells in range. Same test as in
+       * rec_fof_search_pair() and rec_fof_attach_pair(): only pairs further
+       * apart than the linking length are dropped. */
+      int recycled = 0;
+      for (int k = 0; k < count_i; k++) {
+        for (int l = 0; l < count_j; l++) {
+
+          if (cell_min_dist(sub_i[k], sub_j[l], sp->dim) > l_x2) continue;
+
+          if (!recycled) {
+
+            /* Recycle the current task for the first pair... */
+            t->ci = sub_i[k];
+            t->cj = sub_j[l];
+            recycled = 1;
+
+          } else {
+
+            /* ... and add new ones for all the other pairs. */
+            scheduler_splittask_fof(scheduler_addtask(s, t->type, t->subtype, 0,
+                                                      0, sub_i[k], sub_j[l]),
+                                    s);
+          }
+        }
+      }
+
+      if (recycled) {
+
+        /* Take a step back and see whether the recycled task can be split
+         * further. */
+        redo = 1;
+
+      } else {
+
+        /* No pair of (non-empty) sub-cells in range: nothing to do. */
+        t->type = task_type_none;
+        t->subtype = task_subtype_none;
+        t->ci = NULL;
+        t->cj = NULL;
+        t->skip = 1;
+      }
+
+    } /* Pair interaction */
 
   } /* iterate over the current task. */
 }
@@ -525,7 +627,9 @@ void scheduler_splittasks_fof_mapper(void *map_data, int num_elements,
     struct task *t = &tasks[ind];
 
     /* Invoke the correct splitting strategy */
-    if (t->type == task_type_fof_self || t->type == task_type_fof_pair) {
+    if (t->type == task_type_fof_self || t->type == task_type_fof_pair ||
+        t->type == task_type_fof_attach_self ||
+        t->type == task_type_fof_attach_pair) {
       scheduler_splittask_fof(t, s);
     }
   }

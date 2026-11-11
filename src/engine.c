@@ -839,6 +839,7 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
 
   /* Allocate space for the foreign particles we will receive */
   size_t old_size_gparts_foreign = s->size_gparts_foreign;
+  size_t old_size_gparts_fof_foreign = s->size_gparts_fof_foreign;
   if (!fof && count_gparts_in > s->size_gparts_foreign) {
     if (s->gparts_foreign != NULL)
       swift_free("gparts_foreign", s->gparts_foreign);
@@ -850,13 +851,13 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   }
 
   /* Allocate space for the foreign FOF particles we will receive */
-  if (fof && count_gparts_in > s->size_gparts_foreign) {
-    if (s->gparts_foreign != NULL)
+  if (fof && count_gparts_in > s->size_gparts_fof_foreign) {
+    if (s->gparts_fof_foreign != NULL)
       swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
-    s->size_gparts_foreign = engine_foreign_alloc_margin * count_gparts_in;
+    s->size_gparts_fof_foreign = engine_foreign_alloc_margin * count_gparts_in;
     if (swift_memalign(
             "gparts_fof_foreign", (void **)&s->gparts_fof_foreign, gpart_align,
-            sizeof(struct gpart_fof_foreign) * s->size_gparts_foreign) != 0)
+            sizeof(struct gpart_fof_foreign) * s->size_gparts_fof_foreign) != 0)
       error("Failed to allocate foreign FOF gpart data.");
   }
 
@@ -915,19 +916,28 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
   }
 
   if (e->verbose) {
+
+    /* Report the gpart buffer we are dealing with */
+    const size_t size_gparts =
+        fof ? s->size_gparts_fof_foreign : s->size_gparts_foreign;
+    const size_t old_size_gparts =
+        fof ? old_size_gparts_fof_foreign : old_size_gparts_foreign;
+    const size_t sizeof_gpart =
+        fof ? sizeof(struct gpart_fof_foreign) : sizeof(struct gpart_foreign);
+
     message(
         "Allocating %zd/%zd/%zd/%zd/%zd foreign part/gpart/spart/bpart/sink "
         "(%zd/%zd/%zd/%zd/%zd MB)",
-        s->size_parts_foreign, s->size_gparts_foreign, s->size_sparts_foreign,
+        s->size_parts_foreign, size_gparts, s->size_sparts_foreign,
         s->size_bparts_foreign, s->size_sinks_foreign,
         s->size_parts_foreign * sizeof(struct part) / (1024 * 1024),
-        s->size_gparts_foreign * sizeof(struct gpart_foreign) / (1024 * 1024),
+        size_gparts * sizeof_gpart / (1024 * 1024),
         s->size_sparts_foreign * sizeof(struct spart) / (1024 * 1024),
         s->size_bparts_foreign * sizeof(struct bpart) / (1024 * 1024),
         s->size_sinks_foreign * sizeof(struct sink) / (1024 * 1024));
 
     if ((s->size_parts_foreign - old_size_parts_foreign) > 0 ||
-        (s->size_gparts_foreign - old_size_gparts_foreign) > 0 ||
+        (size_gparts - old_size_gparts) > 0 ||
         (s->size_sparts_foreign - old_size_sparts_foreign) > 0 ||
         (s->size_bparts_foreign - old_size_bparts_foreign) > 0 ||
         (s->size_sinks_foreign - old_size_sinks_foreign) > 0) {
@@ -935,16 +945,13 @@ void engine_allocate_foreign_particles(struct engine *e, const int fof) {
           "Re-allocations %zd/%zd/%zd/%zd/%zd part/gpart/spart/bpart/sink "
           "(%zd/%zd/%zd/%zd/%zd MB)",
           (s->size_parts_foreign - old_size_parts_foreign),
-          (s->size_gparts_foreign - old_size_gparts_foreign),
+          (size_gparts - old_size_gparts),
           (s->size_sparts_foreign - old_size_sparts_foreign),
           (s->size_bparts_foreign - old_size_bparts_foreign),
           (s->size_sinks_foreign - old_size_sinks_foreign),
           (s->size_parts_foreign - old_size_parts_foreign) *
               sizeof(struct part) / (1024 * 1024),
-          fof ? (s->size_gparts_foreign - old_size_gparts_foreign) *
-                    sizeof(struct gpart_fof_foreign) / (1024 * 1024)
-              : (s->size_gparts_foreign - old_size_gparts_foreign) *
-                    sizeof(struct gpart_foreign) / (1024 * 1024),
+          (size_gparts - old_size_gparts) * sizeof_gpart / (1024 * 1024),
           (s->size_sparts_foreign - old_size_sparts_foreign) *
               sizeof(struct spart) / (1024 * 1024),
           (s->size_bparts_foreign - old_size_bparts_foreign) *
@@ -1607,6 +1614,23 @@ int engine_prepare(struct engine *e) {
      * properties for th FOF (BH seeding in particular) */
     engine_drift_all(e, /*drift_mpole=*/0, /*init_particles=*/0);
     drifted_all = 1;
+
+    /* The FOF decides which cells can contain links based on their geometry.
+     * The particles have moved since the last rebuild and may now lie outside
+     * their cell, so rebuild the tree with the drifted positions first.
+     * engine_rebuild() clears these flags but we still need the rebuild
+     * below to take the newly seeded black holes into account. */
+    const int restarting = e->restarting;
+    const ticks tic_seed_rebuild = getticks(); /* TEMPORARY: FOF timers. */
+    engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
+    e->forcerebuild = 1;
+    e->restarting = restarting;
+
+    /* TEMPORARY: FOF scaling timers. */
+    if (e->nodeID == 0)
+      message("FOF timers: rebuild before the seeding FOF took %.3f %s.",
+              clocks_from_ticks(getticks() - tic_seed_rebuild),
+              clocks_getunit());
 
     engine_fof(e, e->dump_catalogue_when_seeding, /*dump_debug=*/0,
                /*seed_black_holes=*/1, /*foreign buffers allocated=*/1);
@@ -2704,9 +2728,17 @@ int engine_step(struct engine *e) {
 
   /* When restarting, we may have had some i/o to do on the step
    * where we decided to stop. We have to do this now.
-   * We need some cells to exist but not the whole task stuff. */
-  if (e->restarting) space_rebuild(e->s, 0, e->verbose);
-  if (e->restarting) engine_io(e);
+   * We need a full rebuild (not just the space) such that the foreign cells
+   * and the communication tasks exist in case FOF runs over MPI. */
+  if (e->restarting) {
+    engine_rebuild(e, /*repartitioned=*/0, /*clean_h_values=*/0);
+    engine_io(e);
+
+    /* engine_rebuild() clears these but the rest of the restart step needs
+     * them: drift everything below and rebuild again at the new time. */
+    e->restarting = 1;
+    e->forcerebuild = 1;
+  }
 
 #ifdef SWIFT_RT_DEBUG_CHECKS
   /* If we're restarting, clean up some flags and counters first. If would
