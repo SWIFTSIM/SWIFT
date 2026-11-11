@@ -27,7 +27,6 @@ Statistics:
 # Parameters for the hydrodynamics scheme
 SPH:
   resolution_eta:        1.2348   # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
-  delta_neighbours:      0.1      # The tolerance for the targetted number of neighbours.
   CFL_condition:         0.1      # Courant-Friedrich-Levy condition for time integration.
   h_max:                 3.       # Particles in the Gaussian tails or ejected from the ring have few neighbours; cap h so that they do not stop the run (the top-level cells follow h_max and must fit the box at least 3 times).
 

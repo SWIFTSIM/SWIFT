@@ -62,11 +62,12 @@ SPH schemes converge at first order on this smooth problem, and the error is
 viscous: the total energy is conserved to 1e-5 but the artificial viscosity
 thermalises part of the vortex's kinetic energy at a rate that falls with
 resolution. With MAGMA (quintic spline, eta = 1.5, CFL 0.2, i.e. the
-SWIFT_ARGS line above) the slope of L1(rho) is -0.76 (-0.91 for the profile) with errors two to three times those
-of the paper's first-order Arepo at equal N, and 1.2 % of the kinetic energy
-is lost by t = 10 at 512^2. SPHENIX with the Wendland C2 kernel at the
-parameter file's eta = 1.2348 does not converge in L1(rho): that is only 17 neighbours in 2D,
-where the Wendland density estimate is biased high by 1.9 % everywhere (the
+SWIFT_ARGS line above) the slope of L1(rho) is -0.76 (-0.91 for the profile)
+with errors two to three times those of the paper's first-order Arepo at
+equal N, and 1.2 % of the kinetic energy is lost by t = 10 at 512^2. SPHENIX
+with the Wendland C2 kernel at the parameter file's eta = 1.2348 does not
+converge in L1(rho): that is only 17 neighbours in 2D, where the Wendland
+density estimate is biased high by 1.9 % everywhere (the
 self-contribution bias of Dehnen & Aly 2012), a floor of 1.8e-2 in L1(rho);
 its velocity error converges at slope -0.4 and 13 % of the kinetic energy is
 lost by t = 10 at 512^2. With the quintic spline at eta = 1.5 SPHENIX

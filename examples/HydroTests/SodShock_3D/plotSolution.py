@@ -54,6 +54,11 @@ snap = int(sys.argv[1])
 
 # Read the simulation data
 sim = h5py.File("sodShock_%04d.hdf5" % snap, "r")
+# ICs made with makeIC.py --P-right record their states
+if "SodShockStates" in sim["/Header"].attrs:
+    rho_L, v_L, P_L, rho_R, v_R, P_R = [
+        float(a) for a in sim["/Header"].attrs["SodShockStates"]
+    ]
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"].decode("utf-8")

@@ -80,3 +80,16 @@ accordingly.
    not come from the units: the same differences appear between two runs
    in the same units with different numbers of threads, which is a useful
    control run if the check fails.
+
+Glass variant
+-------------
+
+`makeIC_glass.py` sets the same pancake up on a glass instead of a lattice
+(`getGlass.sh` fetches glassCube_32.hdf5), which breaks the lattice symmetry
+that keeps the particles in columns along the collapse direction. Because the
+glass noise grows with the expansion factor and the cold gas is Jeans-unstable
+at every resolved scale, the run starts later, at z_start = 10 by default
+(`--z_start`), with the thermal state of the z = 100 start: run it with
+`-P Cosmology:a_begin:0.0909091` (1 / (1 + z_start); the script prints the
+value), everything else as for the lattice version. The script records the
+starting redshift in the file and plotSolution.py uses it.

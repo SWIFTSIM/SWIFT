@@ -20,7 +20,7 @@
 """Velocity power spectrum and Mach-number history of the driven-turbulence
 box, compared with the curves of Bauer & Springel (2012). The spectrum of every
 snapshot with t >= 10 is computed with power_spectrum.py (cached in spectra/)
-and averaged, as in the paper. The reference curves in reference/ were
+and averaged, as in the paper. The reference curves next to this script were
 digitised from figures 2, 5 and 6 of the paper (bs12_*.txt; Arepo = moving mesh,
 SPH = alpha = 1 artificial viscosity, SPH-tav = time-variable viscosity).
 

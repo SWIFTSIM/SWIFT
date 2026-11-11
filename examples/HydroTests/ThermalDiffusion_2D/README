@@ -5,8 +5,12 @@ A cold, dense slab (density contrast 4, the middle half of a 2 x 1 periodic
 box made of two copies of a 2D glass) in pressure equilibrium with the hot
 gas around it, at rest. The particles keep the spacing of the glass and carry
 the contrast in their masses; their internal energies are set from the SPH
-density of the particle set (Wendland C4, eta 1.5), so that the pressure is
-uniform at the start to the accuracy of the kernel-sum density.
+density of the particle set (Wendland C4, eta 1.5, the parameter file's
+resolution_eta), so that the pressure is uniform at the start to the accuracy
+of the kernel-sum density. Run with that kernel (configure with
+--with-kernel=wendland-C4); with another kernel, or another eta, the initial
+pressure is uniform only to the accuracy of the kernel sum (makeIC.py --eta
+sets the eta of the IC density).
 
 The exact solution is static, so every change is numerical:
 

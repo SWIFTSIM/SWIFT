@@ -11,5 +11,4 @@ fi
 
 # Run SWIFT (2D code, softened point-mass potential:
 # ./configure --with-hydro-dimension=2 --with-ext-potential=point-mass-softened)
-rm -rf keplerian_ring_*.hdf5
 ../../../swift --external-gravity --hydro --threads=4 keplerian_ring.yml 2>&1 | tee output.log

@@ -17,6 +17,7 @@
 #
 ##############################################################################
 """u and P profiles of every snapshot, width of the interfaces and the effective conductivity."""
+
 import glob
 
 import h5py
@@ -43,7 +44,9 @@ def width(x, u, xi, sign):
     sel = np.abs(x - xi) < 0.3
     theta = (u[sel] - u_cold) / (u_hot - u_cold)
     model = lambda xx, s, x0: 0.5 * (1.0 + sign * erf((xx - x0) / (np.sqrt(2.0) * s)))
-    p, _ = curve_fit(model, x[sel], theta, p0=[0.02, xi], bounds=([1e-4, xi - 0.1], [0.3, xi + 0.1]))
+    p, _ = curve_fit(
+        model, x[sel], theta, p0=[0.02, xi], bounds=([1e-4, xi - 0.1], [0.3, xi + 0.1])
+    )
     return p[0]
 
 
@@ -52,7 +55,7 @@ fig, ax = plt.subplots(1, 3, figsize=(12, 3.4))
 t, sig, blip, vmax = [], [], [], []
 for i, fn in enumerate(files):
     with h5py.File(fn, "r") as f:
-        time = float(f["/Header"].attrs["Time"])
+        time = float(np.atleast_1d(f["/Header"].attrs["Time"])[0])
         x = f["/PartType0/Coordinates"][:, 0]
         u = f["/PartType0/InternalEnergies"][:]
         P = f["/PartType0/Pressures"][:]
@@ -66,7 +69,9 @@ for i, fn in enumerate(files):
     xb = np.linspace(0, Lx, 201)
     ub = np.array([np.mean(u[(x >= a) & (x < b)]) for a, b in zip(xb[:-1], xb[1:])])
     Pb = np.array([np.mean(P[(x >= a) & (x < b)]) for a, b in zip(xb[:-1], xb[1:])])
-    ax[0].plot(0.5 * (xb[1:] + xb[:-1]), ub / u_hot, color=c, lw=1, label=f"t = {time:.2f}")
+    ax[0].plot(
+        0.5 * (xb[1:] + xb[:-1]), ub / u_hot, color=c, lw=1, label=f"t = {time:.2f}"
+    )
     ax[1].plot(0.5 * (xb[1:] + xb[:-1]), Pb / P0, color=c, lw=1)
 t, sig = np.array(t), np.array(sig)
 kappa = np.polyfit(t, sig**2, 1)[0] / 2.0
@@ -83,5 +88,7 @@ ax[2].set_yscale("log")
 ax[2].legend(fontsize=7)
 fig.tight_layout()
 fig.savefig("thermalDiffusion.png", dpi=200)
-print(f"interface width {sig[0]:.4f} -> {sig[-1]:.4f}, kappa_eff = {kappa:.3e}, "
-      f"pressure blip max {max(blip):.3f}, max |v| / cs_cold {max(vmax):.3f}")
+print(
+    f"interface width {sig[0]:.4f} -> {sig[-1]:.4f}, kappa_eff = {kappa:.3e}, "
+    f"pressure blip max {max(blip):.3f}, max |v| / cs_cold {max(vmax):.3f}"
+)

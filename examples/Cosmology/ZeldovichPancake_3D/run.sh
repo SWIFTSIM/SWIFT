@@ -12,8 +12,8 @@ fi
 # Run SWIFT
 ../../../swift --hydro --cosmology --self-gravity --threads=8 zeldovichPancake.yml 2>&1 | tee output.log
 
-# Plot the result
-for i in {0..119}
-do 
-    python3 plotSolution.py $i
+# Plot the result (one figure per snapshot)
+for f in zeldovichPancake_[0-9][0-9][0-9][0-9].hdf5
+do
+    python3 plotSolution.py ${f:17:4}
 done

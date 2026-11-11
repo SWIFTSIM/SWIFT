@@ -44,7 +44,7 @@ parser.add_argument(
          initial conditions are reproducible between invocations).
          """,
     required=False,
-    default=42,
+    default=1,
     type=int,
 )
 

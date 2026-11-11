@@ -18,6 +18,7 @@
 ##############################################################################
 """Kinetic-energy decay of the Taylor-Green vortex and the effective numerical
 viscosity nu_eff defined by E_kin(t) = E_kin(0) exp(-16 pi^2 nu_eff t)."""
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -34,7 +35,12 @@ print(f"E_kin(t_end) / E_kin(0) = {E[-1] / E[0]:.4f}, nu_eff = {nu_eff:.3e}")
 
 plt.figure(figsize=(5, 4))
 plt.semilogy(t, E / E[0], "k-", label="SWIFT")
-plt.semilogy(t, np.exp(-16.0 * np.pi**2 * nu_eff * t), "r--", label=rf"$\nu_{{\rm eff}}$ = {nu_eff:.2e}")
+plt.semilogy(
+    t,
+    np.exp(-16.0 * np.pi**2 * nu_eff * t),
+    "r--",
+    label=rf"$\nu_{{\rm eff}}$ = {nu_eff:.2e}",
+)
 plt.xlabel("t")
 plt.ylabel(r"$E_{\rm kin}(t) / E_{\rm kin}(0)$")
 plt.legend()

@@ -162,17 +162,17 @@ print(
 )
 print(f"  Gaussian truncated at {n_w:g} widths: r in [{r.min():.2f}, {r.max():.2f}]")
 
-w = sw.Writer(
+writer = sw.Writer(
     unit_system=unyt.unit_systems.cgs_unit_system,
     boxsize=sw.cosmo_array(
         [L, L], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
     ),
     dimension=2,
 )
-w.gas.coordinates = pos * unyt.cm * w.a.comoving
-w.gas.velocities = vel * unyt.cm / unyt.s * w.a.comoving**0
-w.gas.masses = m * unyt.g * w.a.comoving**0
-w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
-w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
-w.gas.particle_ids = np.asarray(ids).astype(np.uint64)
-w.write(args.output)
+writer.gas.coordinates = pos * unyt.cm * writer.a.comoving
+writer.gas.velocities = vel * unyt.cm / unyt.s * writer.a.comoving**0
+writer.gas.masses = m * unyt.g * writer.a.comoving**0
+writer.gas.smoothing_lengths = h * unyt.cm * writer.a.comoving
+writer.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * writer.a.comoving**0
+writer.gas.particle_ids = np.asarray(ids).astype(np.uint64)
+writer.write(args.output)

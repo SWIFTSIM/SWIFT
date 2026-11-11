@@ -22,11 +22,17 @@ measure it: nearest-particle sampling of the velocity on a Cartesian grid
 twice finer than the particle resolution, FFT, spherical shells in fine
 logarithmic k bins merged to >= 12 modes, E(k) = 4 pi k^2 <P(k)> (L/2pi)^3 so that int E(k) dk = <|v|^2> over the grid.
 Writes k, E(k), k E(k) and the rms Mach number.
-Usage: python3 -I power_spectrum.py snapshot.hdf5 out.txt [grid] [cs]
+Usage: python3 power_spectrum.py snapshot.hdf5 out.txt [grid] [cs]
 """
 
-import sys, numpy as np, h5py
+import sys
+
+import numpy as np
+import h5py
 from scipy.spatial import cKDTree
+
+# numpy >= 2 renamed trapz
+trapezoid = getattr(np, "trapezoid", None) or np.trapz
 
 fn, out = sys.argv[1], sys.argv[2]
 with h5py.File(fn) as f:
@@ -84,7 +90,6 @@ rows = []
 acc_p = 0
 acc_k = 0
 acc_n = 0
-lo = edges[0]
 for i in range(len(power)):
     acc_p += power[i]
     acc_k += kc[i] * count[i]
@@ -96,7 +101,6 @@ for i in range(len(power)):
         E = 4 * np.pi * k**2 * (acc_p / acc_n) * (L / (2 * np.pi)) ** 3
         rows.append((k, E, k * E, acc_n))
         acc_p = acc_k = acc_n = 0
-        lo = edges[i + 1]
 rows = np.array(rows)
 np.savetxt(
     out,
@@ -104,5 +108,5 @@ np.savetxt(
     header=f"t={t:g} N={N} grid={G} sigma2={sigma2:.6e} mach_rms_massweighted={mach:.5f}\nk  E(k)  k*E(k)  n_modes",
 )
 print(
-    f"{fn}: t={t:g} Mach={mach:.4f} sigma2={sigma2:.4e} int E dk={np.trapezoid(rows[:, 1], rows[:, 0]):.4e}"
+    f"{fn}: t={t:g} Mach={mach:.4f} sigma2={sigma2:.4e} int E dk={trapezoid(rows[:, 1], rows[:, 0]):.4e}"
 )

@@ -17,6 +17,7 @@
 #
 ##############################################################################
 """Profiles of the strong blast wave against the exact Riemann solution."""
+
 import sys
 
 import h5py
@@ -50,8 +51,13 @@ rho_s, v_s, P_s, _ = solver.solve(1.0, 0.0, P_L, 1.0, 0.0, P_R, (xs - 0.5 * L) /
 u_s = P_s / (rho_s * (gamma - 1.0))
 
 fig, axes = plt.subplots(2, 2, figsize=(9, 6))
-for ax, y, ys, lab, log in zip(axes.flat, [rho, v, P, u], [rho_s, v_s, P_s, u_s],
-                               [r"$\rho$", r"$v_x$", r"$P$", r"$u$"], [False, False, True, True]):
+for ax, y, ys, lab, log in zip(
+    axes.flat,
+    [rho, v, P, u],
+    [rho_s, v_s, P_s, u_s],
+    [r"$\rho$", r"$v_x$", r"$P$", r"$u$"],
+    [False, False, True, True],
+):
     ax.plot(x, y, ".", ms=1, alpha=0.3, color="0.4")
     ax.plot(xs, ys, "r-", lw=1)
     ax.set_xlabel("x")

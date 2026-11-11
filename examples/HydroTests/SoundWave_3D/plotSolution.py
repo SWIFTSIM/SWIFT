@@ -17,6 +17,7 @@
 #
 ##############################################################################
 """Mode amplitude, phase speed and damping of the sound wave from all snapshots."""
+
 import glob
 import sys
 
@@ -41,11 +42,13 @@ omega = cs * k
 t, Zv, Zr = [], [], []
 for fn in sorted(glob.glob("soundWave_[0-9][0-9][0-9][0-9].hdf5")):
     with h5py.File(fn, "r") as f:
-        x = f["/PartType0/Coordinates"][:, 0] - boost * float(f["/Header"].attrs["Time"])
+        x = f["/PartType0/Coordinates"][:, 0] - boost * float(
+            np.atleast_1d(f["/Header"].attrs["Time"])[0]
+        )
         vx = f["/PartType0/Velocities"][:, 0] - boost
         m = f["/PartType0/Masses"][:]
         rho = f["/PartType0/Densities"][:]
-        t.append(float(f["/Header"].attrs["Time"]))
+        t.append(float(np.atleast_1d(f["/Header"].attrs["Time"])[0]))
     w = m / m.sum()
     e = np.exp(-1j * k * x)
     Zv.append(2.0 * np.sum(w * vx * e))
@@ -57,9 +60,13 @@ if standing:
     damping = -0.5 * np.polyfit(t, np.log(E / (A * cs) ** 2), 1)[0]
     a = np.real(Zr * np.exp(1j * np.angle(Zr[0])) / np.abs(Zr[0]))  # ~ cos(omega t)
     crossings = np.where(np.diff(np.sign(a)) != 0)[0]
-    omega_meas = np.pi / np.mean(np.diff(t[crossings])) if len(crossings) > 2 else float("nan")
-    print(f"standing wave: omega / (cs k) = {omega_meas / omega:.4f}, "
-          f"damping rate {damping:.3e} = {damping * 2 * np.pi / omega:.3e} per period")
+    omega_meas = (
+        np.pi / np.mean(np.diff(t[crossings])) if len(crossings) > 2 else float("nan")
+    )
+    print(
+        f"standing wave: omega / (cs k) = {omega_meas / omega:.4f}, "
+        f"damping rate {damping:.3e} = {damping * 2 * np.pi / omega:.3e} per period"
+    )
     plt.semilogy(t, E / (A * cs) ** 2, ".-")
     plt.xlabel("t")
     plt.ylabel(r"$E_{\rm mode} / (A c_s)^2$")
@@ -67,8 +74,10 @@ else:
     phase = np.unwrap(np.angle(Zv))
     omega_meas = -np.polyfit(t, phase, 1)[0]
     damping = -np.polyfit(t, np.log(np.abs(Zv) / (A * cs)), 1)[0]
-    print(f"travelling wave: phase speed / cs = {omega_meas / omega:.4f}, "
-          f"damping rate {damping:.3e} = {damping * 2 * np.pi / omega:.3e} per period")
+    print(
+        f"travelling wave: phase speed / cs = {omega_meas / omega:.4f}, "
+        f"damping rate {damping:.3e} = {damping * 2 * np.pi / omega:.3e} per period"
+    )
     fig, ax = plt.subplots(1, 2, figsize=(8, 3.2))
     ax[0].plot(t, np.abs(Zv) / (A * cs), ".-")
     ax[0].set_xlabel("t")

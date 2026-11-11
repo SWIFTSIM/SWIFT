@@ -263,26 +263,34 @@ class Particles(object):
 
         return
 
-    def save_to_gadget(self, filename, boxsize=10.0):
+    def save_to_gadget(self, filename, boxsize=10.0, dimension=3):
         """
         Save the particle data to a GADGET .hdf5 file.
 
         Uses the internal options, but you must specify a filename.
         """
+        positions = self.positions.copy()
+        velocities = self.velocities.copy()
+        if dimension == 2:
+            # The 2D code: particles in the z = 0 plane (run with the point
+            # mass at z = 0, -P PointMassPotential:position:[5.,5.,0.])
+            positions[:, 2] = 0.0
+            velocities[:, 2] = 0.0
+
         w = sw.Writer(
             unit_system=unyt.unit_systems.cgs_unit_system,
             boxsize=sw.cosmo_array(
-                [float(boxsize)] * 3,
+                [float(boxsize)] * dimension,
                 unyt.cm,
                 comoving=True,
                 scale_factor=1.0,
                 scale_exponent=1,
             ),
-            dimension=3,
+            dimension=dimension,
         )
 
-        w.gas.coordinates = self.positions * unyt.cm * w.a.comoving
-        w.gas.velocities = self.velocities * unyt.cm / unyt.s * w.a.comoving**0
+        w.gas.coordinates = positions * unyt.cm * w.a.comoving
+        w.gas.velocities = velocities * unyt.cm / unyt.s * w.a.comoving**0
         w.gas.masses = self.masses * unyt.g * w.a.comoving**0
         w.gas.smoothing_lengths = self.smoothing * unyt.cm * w.a.comoving
         w.gas.internal_energy = (
@@ -449,9 +457,7 @@ def gen_particles_grid(meta):
     # match the density profile (the tails of sigma() are for mesh codes);
     # --background keeps the 100:1 lower-density gas outside the disc.
     outer = 100.0 if meta["background"] else 2.0
-    particles.exclude_particles(
-        (max(particles.softening, meta["innerradius"]), outer)
-    )
+    particles.exclude_particles((max(particles.softening, meta["innerradius"]), outer))
 
     particles.densities = sigma(particles.radii)
     particles.calculate_velocities()
@@ -493,9 +499,7 @@ def gen_particles_spiral(meta):
     particles.convert_polar_to_cartesian(centre_of_ring, meta["boxsize"])
     particles.nparts = len(particles.radii)
 
-    particles.exclude_particles(
-        (max(particles.softening, meta["innerradius"]), 100.0)
-    )
+    particles.exclude_particles((max(particles.softening, meta["innerradius"]), 100.0))
 
     # This way of doing densities does not work for different sized patches.
     # Therefore we need to weight by effecitve area.
@@ -544,9 +548,7 @@ def gen_particles_gaussian(meta):
     particles.convert_polar_to_cartesian(centre_of_ring, meta["boxsize"])
     particles.nparts = len(particles.radii)
 
-    particles.exclude_particles(
-        (max(particles.softening, meta["innerradius"]), 100.0)
-    )
+    particles.exclude_particles((max(particles.softening, meta["innerradius"]), 100.0))
 
     # This way of doing densities does not work for different sized patches.
     particles.densities = np.zeros_like(particles.radii)
@@ -565,10 +567,10 @@ if __name__ == "__main__":
     import argparse as ap
 
     PARSER = ap.ArgumentParser(description="""
-                    Initial conditions generator for the Keplerian Ring
-                    example. It has sensible defaults for GIZMO, but if you
-                    wish to run the example with SPH you sould use
-                    --generationmethod spiral.
+                    Initial conditions generator for the Keplerian disc
+                    example (Hopkins 2015, section 4.2.4). The defaults are
+                    the grid placement of the paper; the spiral and gaussian
+                    placements are kept for experiments.
                     """)
 
     PARSER.add_argument(
@@ -695,6 +697,20 @@ if __name__ == "__main__":
     )
 
     PARSER.add_argument(
+        "-d",
+        "--dimension",
+        help="""
+             2 or 3: write the particles in the z = 0 plane for the 2D code
+             (default 3, a planar disc for the 3D code). Run the 2D file with
+             -P PointMassPotential:position:[5.,5.,0.].
+             """,
+        required=False,
+        default=3,
+        type=int,
+        choices=[2, 3],
+    )
+
+    PARSER.add_argument(
         "-b",
         "--boxsize",
         help="""
@@ -755,4 +771,8 @@ if __name__ == "__main__":
 
     PARTICLES = gen_particles(META)
 
-    PARTICLES.save_to_gadget(filename=ARGS["filename"], boxsize=ARGS["boxsize"])
+    PARTICLES.save_to_gadget(
+        filename=ARGS["filename"],
+        boxsize=ARGS["boxsize"],
+        dimension=int(ARGS["dimension"]),
+    )

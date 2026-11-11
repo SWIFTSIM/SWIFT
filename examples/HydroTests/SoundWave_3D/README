@@ -24,7 +24,8 @@ Two variants (makeIC.py options):
 the wave linear for ~100 periods (the shock-formation time is
 2 / ((gamma + 1) A cs k)); the mode projection averages the glass noise out.
 
-plotSolution.py reads all snapshots and prints the measured phase speed,
-frequency and damping rate per period.
+plotSolution.py reads all snapshots, prints the measured phase speed,
+frequency and damping rate per period, and plots the mode amplitude and phase
+against time (soundWave.png).
 
 The code needs to be compiled with --with-hydro-dimension=3 (the default).

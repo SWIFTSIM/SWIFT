@@ -44,6 +44,9 @@ snap = int(sys.argv[1])
 
 # Read the simulation data
 sim = h5py.File("zeldovichPancake_%04d.hdf5" % snap, "r")
+# ICs made with makeIC_glass.py start later than z = 100 and record it
+if "Zeldovich_z_start" in sim["/Header"].attrs:
+    z_i = float(np.atleast_1d(sim["/Header"].attrs["Zeldovich_z_start"])[0])
 boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 redshift = sim["/Header"].attrs["Redshift"][0]

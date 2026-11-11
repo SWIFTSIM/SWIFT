@@ -179,7 +179,6 @@ h /= unit_l_in_si
 u /= unit_u_in_si
 boxSize /= unit_l_in_si
 
-# File
 # File (the units of the lattice test: Mpc, 1e10 Msun, Gyr)
 UL = unyt.Unit(100.0 * unit_l_in_si * unyt.cm)
 UM = unyt.Unit(1000.0 * unit_m_in_si * unyt.g)

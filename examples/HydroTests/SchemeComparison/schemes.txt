@@ -1,6 +1,7 @@
 # Hydro schemes to compare: one per line, "<name> <extra configure flags> [| <run-time -P overrides>]".
-# Each scheme is built twice (2D and 3D) with the common flags set in
-# run_suite.sh (kernel, external potential, ...).
+# Each scheme is built in up to five flavours (1d, 2d, 2drt, 3d, 3dnfw, see
+# run_suite.sh) with the common flags set there (kernel, external potential,
+# ...); schemes with identical configure flags share one build.
 sphenix          --with-hydro=sphenix
 magma_mi2        --with-hydro=magma2-MI2
 magma_mi2_eta15  --with-hydro=magma2-MI2 | -P SPH:resolution_eta:1.5

@@ -32,7 +32,9 @@
 # Every test directory contains the example's own plotSolution.py output and
 # the SWIFT output.log, so that the standard views are available too.
 
-set -u
+# Not set -e: every build and run is checked explicitly (|| exit 1) so that a
+# failing scheme or test is reported and the others continue.
+set -uo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SRC_DIR=$(cd "$SCRIPT_DIR/../../.." && pwd)
@@ -52,7 +54,7 @@ ICS_ONLY=0
 : "${KH_L2:=128}"               # KH: particles per edge in the low-density region
 : "${EVRARD_NPARTS:=100000}"    # Evrard: number of particles
 : "${KEPLERIAN_T_END:=50}"      # Keplerian ring: end time
-: "${KEPLERIAN2D_T_END:=30}"    # Keplerian ring, 2D code: end time (the 2D run segfaults later on particles without neighbours)
+: "${KEPLERIAN2D_T_END:=30}"    # Keplerian ring, 2D code: end time
 : "${KEPLERIAN_N:=64}"          # Keplerian disc (Hopkins): effective resolution across the disc (makeIC.py -n; Hopkins: 256)
 : "${KEPLERIAN_DT_MIN:=1e-9}"   # Keplerian disc/ring: minimal time step (particles plunging onto the point mass need it)
 : "${KEPLERIAN_CD10_T_END:=40}" # Keplerian ring (Cullen & Dehnen): end time (paper: 40 = 6.4 orbits at the ring centre)
@@ -305,14 +307,6 @@ test_blob() {
   make_ic() {
     sed -i "s/num_on_side=64/num_on_side=$BLOB_N/" makeIC.py
     python3 makeIC.py
-    # Recent swiftsimio writers use the plural dataset name; SWIFT reads the singular one
-    python3 -c "
-import h5py
-with h5py.File('blob.hdf5', 'r+') as f:
-    g = f['PartType0']
-    if 'SmoothingLength' not in g and 'SmoothingLengths' in g:
-        g.move('SmoothingLengths', 'SmoothingLength')
-"
   }
 }
 # Gas in hydrostatic equilibrium in a fixed NFW potential (plus self-gravity);
@@ -320,8 +314,8 @@ with h5py.File('blob.hdf5', 'r+') as f:
 test_nfw() {
   DIM=3; BUILD=3dnfw; EXAMPLE=HydroTests/NFW_Hydrostatic; YML=NFW_Hydrostatic.yml; IC=nfw.hdf5
   FLAGS="--hydro --external-gravity --self-gravity"
-  # Current SWIFT requires Gravity:epsilon_fmm > 0 even with the geometric MAC of
-  # the example's file; use the standard adaptive MAC instead.
+  # The example's file uses the geometric MAC; the suite runs the halo with the
+  # adaptive MAC at epsilon_fmm 0.001, the setting of production runs.
   PARAMS="-P TimeIntegration:time_end:$NFW_T_END -P Gravity:MAC:adaptive -P Gravity:epsilon_fmm:0.001"
   PLOT_SNAP=""
   make_ic() { [[ -e nfw.hdf5 ]] || wget -q $GLASS_URL/NFW_Hydrostatic/nfw.hdf5; }

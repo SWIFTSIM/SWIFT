@@ -6,9 +6,8 @@ set -eo pipefail
 # Usage: [SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"] ./run_convergence.sh [N ...]
 #        (default 32 64 128 256; 256 needs about ten minutes on 4 threads; SWIFT_ARGS
 #        are extra swift arguments, e.g. MAGMA's recommended eta and CFL)
-set -e
 E=$(cd "$(dirname "$0")" && pwd)
-[ -e "$E/glassPlane_128.hdf5" ] && [ -e "$E/glassPlane_32.hdf5" ] || ( cd "$E" && ./getGlass.sh )
+[ -e "$E/glassPlane_128.hdf5" ] && [ -e "$E/glassPlane_64.hdf5" ] && [ -e "$E/glassPlane_32.hdf5" ] || ( cd "$E" && ./getGlass.sh )
 for N in ${@:-32 64 128 256}; do
     D=$E/run_N$N
     mkdir -p "$D"

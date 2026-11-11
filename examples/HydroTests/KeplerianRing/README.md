@@ -36,10 +36,11 @@ velocity error at r = 1 exceeds 0.01 and the L1 density error exceeds 0.25.
 Code setup
 ----------
 
-The disc can be run with the 2D code (particles in the z = 0 plane, the point
-mass at z = 0) or as a razor-thin disc with the 3D code (all particles in the
-z = 5 plane). In both cases SWIFT has to be configured with the softened
-point-mass potential:
+The disc can be run with the 2D code (`makeIC.py --dimension 2` puts the
+particles in the z = 0 plane; run with `-P PointMassPotential:position:[5.,5.,0.]`
+so that the point mass is in that plane) or, by default, as a razor-thin disc
+with the 3D code (all particles in the z = 5 plane). In both cases SWIFT has
+to be configured with the softened point-mass potential:
 
     ./configure --with-ext-potential=point-mass-softened              # 3D planar
     ./configure --with-hydro-dimension=2 --with-ext-potential=point-mass-softened
@@ -50,6 +51,16 @@ time step: particles that fall onto the point mass orbit at the softening
 radius with very short time steps, and the run must not abort on them (the
 number of such particles is one measure of the viscosity of a scheme).
 
+Running and plotting
+--------------------
+
+`run.sh` generates the initial conditions with the defaults, runs SWIFT on 4
+threads (`--external-gravity --hydro`) and calls `plotSolution.py`, which
+plots the surface density and the particle positions of the snapshots and
+writes a png; `python3 plotSolution.py --help` lists its options. The run to
+t = 120 writes a snapshot every two time units. `make_movie.py` makes a movie from them and
+`testplots.py` needs the `yt` package.
+
 Initial conditions
 ------------------
 
@@ -58,7 +69,8 @@ Initial conditions
 `-n` effective resolution (default 256), `-i` internal energy (default
 1.5e-6), `-e` softening (default 0.05, also the inner exclusion radius unless
 `-c` is larger), `-c` inner exclusion radius (default 0.5), `--background`
-(default 0), `-m` GM (default 1; change `PointMassPotential:mass` in the
-parameter file accordingly), `-g` generation method (`grid` for this test;
+(default 0), `-m` GM (default 1; set `PointMassPotential:mass` in the
+parameter file to GM / G, with G = 6.674e-8 in its cgs units), `-d` dimension
+(3 or 2, see above), `-g` generation method (`grid` for this test;
 `spiral` and `gaussian` place the particles with the method of Cartwright et
 al. 2009 and are kept for experiments).

@@ -31,7 +31,7 @@
 # Any dependence on the units reveals a hidden dimensional constant in the
 # scheme (e.g. an absolute epsilon or a missing factor of h).
 #
-# Usage: python3 compareUnits.py [basename_1] [basename_2] [z_caustic_margin]
+# Usage: python3 compareUnits.py [basename_1] [basename_2] [z_particle]
 
 import glob
 import sys
@@ -67,7 +67,9 @@ def read(filename):
 def profile(x, y):
     bins = np.linspace(0.0, 1.0, num_bins + 1)
     idx = np.clip(np.digitize(x, bins) - 1, 0, num_bins - 1)
-    return np.array([np.mean(y[idx == b]) if np.any(idx == b) else np.nan for b in range(num_bins)])
+    return np.array(
+        [np.mean(y[idx == b]) if np.any(idx == b) else np.nan for b in range(num_bins)]
+    )
 
 
 def redshift(filename):

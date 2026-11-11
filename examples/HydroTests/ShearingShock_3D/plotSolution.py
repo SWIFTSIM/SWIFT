@@ -19,6 +19,7 @@
 """Profiles of the shearing shock against the exact 1D solution of the
 collision (central Riemann problem) and of the receding streams at the box
 edge, and the change of each particle's v_y, which should be zero."""
+
 import sys
 
 import h5py
@@ -63,9 +64,12 @@ v_s = np.where(central, v_c, v_e)
 P_s = np.where(central, P_c, P_e)
 
 fig, axes = plt.subplots(2, 2, figsize=(9, 6))
-for ax, y, ys, lab in zip(axes.flat, [rho, v[:, 0], P, v[:, 1] - vy0],
-                          [rho_s, v_s, P_s, np.zeros_like(xs)],
-                          [r"$\rho$", r"$v_x$", r"$P$", r"$v_y - v_{y,0}$"]):
+for ax, y, ys, lab in zip(
+    axes.flat,
+    [rho, v[:, 0], P, v[:, 1] - vy0],
+    [rho_s, v_s, P_s, np.zeros_like(xs)],
+    [r"$\rho$", r"$v_x$", r"$P$", r"$v_y - v_{y,0}$"],
+):
     ax.plot(x, y, ".", ms=1, alpha=0.3, color="0.4")
     ax.plot(xs, ys, "r-", lw=1)
     ax.set_xlabel("x")

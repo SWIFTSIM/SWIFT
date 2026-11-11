@@ -21,8 +21,8 @@ Definitions (Cullen & Dehnen 2010, Section 4.3):
 + N = 9745 equal-mass particles placed with the method of Cartwright,
   Stamatellos & Whitworth (2009);
 + sound speed c = 0.01 everywhere (Mach 1000 at the ring centre);
-+ evolved for more than five orbits; their Figure 8 shows the particle
-  positions at t = 10, 15 and a later time for each scheme.
++ evolved for more than six orbits (t = 40 here); their Figure 8 shows the
+  particle positions at t = 10, 15 and a later time for each scheme.
 
 Deviations in this example: SWIFT's point-mass potential is softened, with a
 softening of 0.1 (1% of the ring radius) and circular velocities computed for
@@ -60,5 +60,16 @@ Initial conditions
 `-n` number of particles (default 9745), `-c` sound speed (default 0.01),
 `-e` softening (default 0.1; keep `PointMassPotential:softening` consistent),
 `--truncate` Gaussian truncation in widths (default 2; 0 for the paper's untruncated ring),
-`-m` GM (default 1000; keep `PointMassPotential:mass` consistent, G = 6.6743e-8
+`-m` GM (default 1000; keep `PointMassPotential:mass` consistent, G = 6.674e-8
 in the cgs internal units of the parameter file).
+
+Outputs
+-------
+
+`run.sh` writes a snapshot every unit of time (41 to t = 40). The test has no
+exact solution to plot against: what to look at is the particle positions at
+t = 10, 15 and 40 (the paper's Figure 8), i.e. whether the ring keeps its
+Gaussian profile or breaks up, and how many particles fall onto the point
+mass. The scheme-comparison suite (`../SchemeComparison`, test
+`keplerian_cd10`) plots the ring profile and the positions and reports the
+mass that leaves the annulus and the plunging particles.

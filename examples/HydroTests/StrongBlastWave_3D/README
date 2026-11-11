@@ -12,5 +12,6 @@ plotSolution.py compares the profiles with the exact Riemann solution. The
 code needs to be compiled in 3D (the default).
 
 The periodic boundary carries the same pressure jump, so a second blast
-propagates in from the box edge; the comparison is restricted to the middle
-half of the box, which the waves from the edge do not reach before t = 0.02.
+propagates in from the box edge. The plot shows the whole box against the
+exact solution of the central jump; the solution is valid in the middle half
+of the box, which the waves from the edge do not reach before t = 0.02.

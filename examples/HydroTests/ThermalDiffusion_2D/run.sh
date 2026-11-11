@@ -14,7 +14,8 @@ then
     python3 makeIC.py
 fi
 
-# Run SWIFT (configure with --with-hydro-dimension=2)
+# Run SWIFT (configure with --with-hydro-dimension=2 --with-kernel=wendland-C4,
+# the kernel the initial conditions assume)
 ../../../swift --hydro --threads=4 thermalDiffusion.yml 2>&1 | tee output.log
 
 # Profiles and the effective conductivity
