@@ -21,6 +21,7 @@
 #define SWIFT_COOLING_GEAJAY_IO_H
 
 /* Local includes */
+#include "../../feedback/GEAR/radiation_selection.h"
 #include "adiabatic_index.h"
 #include "cooling.h"
 #include "cooling_properties.h"
@@ -919,6 +920,18 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   if (cooling->primordial_chemistry > COOLING_GEAJAY_MODE)
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GEAJAY_MODE);
+
+  cooling->HII_couple_ionization_rate = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:HII_couple_ionization_rate",
+      RADIATION_COMPILED_HII);
+  cooling->with_ISRF = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:with_interstellar_radiation_field",
+      RADIATION_COMPILED_ISRF);
+  if (cooling->HII_couple_ionization_rate || cooling->with_ISRF)
+    error(
+        "The geajay cooling does not yet take the ISRF or the HII ionization "
+        "rate as inputs. Set GEARFeedback:with_interstellar_radiation_field "
+        "and GEARFeedback:HII_couple_ionization_rate to 0.");
 
   cooling->H2_three_body_rate =
       cooling_read_choice(parameter_file, "GeajayCooling:h2_three_body_fit",

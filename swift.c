@@ -1248,20 +1248,22 @@ int main(int argc, char *argv[]) {
        crash or warning otherwise, so fail loudly instead. */
     if (feedback_props_needs_cooling_initialized(&feedback_properties) &&
         !(with_cooling || with_temperature)) {
+#ifdef COOLING_GEAJAY
+      const char *const cooling_pass_hint = "--cooling or --temperature.";
+#else
+      const char *const cooling_pass_hint =
+          "--cooling or --temperature (with a working GrackleCooling: "
+          "block), or set GrackleCooling:disable_cooling_for_debugging "
+          "to keep chemistry_data initialization correct while skipping "
+          "the actual per-particle cooling/heating update.";
+#endif
       error(
           "A feedback channel that needs Grackle's chemistry_data "
           "resolved (e.g. GEARFeedback:with_interstellar_radiation_field) "
           "is enabled, but neither --cooling nor --temperature was passed: "
           "chemistry_data (including local_dust_to_gas_ratio) is never "
-          "resolved, silently zeroing that channel's dust opacity. Pass "
-#ifdef COOLING_GEAJAY
-          "--cooling or --temperature.");
-#else
-          "--cooling or --temperature (with a working GrackleCooling: "
-          "block), or set GrackleCooling:disable_cooling_for_debugging "
-          "to keep chemistry_data initialization correct while skipping "
-          "the actual per-particle cooling/heating update.");
-#endif
+          "resolved, silently zeroing that channel's dust opacity. Pass %s",
+          cooling_pass_hint);
     }
 
     /* Prepare and verify the selection of outputs. This comes after

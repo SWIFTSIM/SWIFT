@@ -1006,6 +1006,7 @@ GEARFeedback:
                                                            # from the stars. (Default: 0)
 
   # Subgrid radiation. A channel left out by ./configure --with-subgrid-radiation has its keys ignored, with one warning.
+  # The parts hii and isrf are compiled with Grackle and with geajay cooling; geajay does not yet take the ISRF or the HII ionization rate as inputs, so the switches with_interstellar_radiation_field and HII_couple_ionization_rate stop a geajay run at start-up.
   # Radiation pressure (--with-subgrid-radiation part rp)
   with_radiation_pressure:      0                         # 1: run the radiation-pressure momentum channel, 0: do not. (Default: 0)
   radiation_pressure_efficiency: 1                        # Multiplier on the table L_bol; 1 is the physical coupling. Must be positive when with_radiation_pressure is 1. (Default: 0.0, an error then)

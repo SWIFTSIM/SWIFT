@@ -121,6 +121,14 @@ struct cooling_function_data {
    * flag on. */
   int compton_xray_heating;
 
+  /*! Does the ISRF act on the gas
+   * (GEARFeedback:with_interstellar_radiation_field)? */
+  int with_ISRF;
+
+  /*! Do the HII regions feed their ionization rate to the cooling
+   * (GEARFeedback:HII_couple_ionization_rate)? */
+  int HII_couple_ionization_rate;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double reference_dust_to_gas_ratio;
 

@@ -604,6 +604,14 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Using geajay = %i", cooling->chemistry_data.use_grackle);
   message("Chemical network = %i",
           cooling->chemistry_data.primordial_chemistry);
+  message(
+      "geajay radiation coupling: ISRF %s, HII rate coupling %s, network %i; "
+      "compiled parts: hii %s, isrf %s",
+      cooling->with_ISRF ? "on" : "off",
+      cooling->HII_couple_ionization_rate ? "on" : "off",
+      cooling->chemistry_data.primordial_chemistry,
+      RADIATION_COMPILED_HII ? "yes" : "no",
+      RADIATION_COMPILED_ISRF ? "yes" : "no");
   message("CloudyTable = %s", cooling->cloudy_table);
   message("Redshift = %g", cooling->redshift);
   message("UV background = %d", cooling->with_uv_background);

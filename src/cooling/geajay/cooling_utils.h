@@ -32,6 +32,25 @@
 #include <math.h>
 
 /**
+ * @brief Specific internal energy of an ideal gas at a given temperature and
+ * mean molecular weight.
+ *
+ * A non-positive mean molecular weight is floored so that the division
+ * cannot give an infinite value.
+ *
+ * @param T Temperature of the gas.
+ * @param mu Mean molecular weight of the gas.
+ * @param kB Boltzmann constant.
+ * @param mp Proton mass.
+ * */
+__attribute__((always_inline)) INLINE static float
+cooling_internal_energy_from_T(const double T, const double mu, const double kB,
+                               const double mp) {
+  const double mu_safe = mu > 0.0 ? mu : 1.e-20;
+  return kB * T * hydro_one_over_gamma_minus_one / (mu_safe * mp);
+}
+
+/**
  * Compute the Hydrogen mass fraction.
  *
  * @param cooling The #cooling_function_data used in the run.

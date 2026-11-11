@@ -3190,15 +3190,19 @@ if test "$with_feedback" = "GEAR"; then
       ;;
    esac
 
-   # HII regions and the ISRF act on the gas through Grackle only.
-   if test "$with_cooling" != "grackle"; then
+   # HII regions and the ISRF act on the gas through Grackle or geajay only.
+   if test "$with_cooling" != "grackle" -a "$with_cooling" != "geajay"; then
       if test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"; then
          if test "$subgrid_radiation_explicit" = "yes"; then
-            AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation: the parts hii and isrf need --with-cooling=grackle_*, they act on the gas through Grackle only. Choose rp or none for another cooling model.])
+            AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation: the parts hii and isrf need --with-cooling=grackle_* or geajay_*, they act on the gas through these two only. Choose rp or none for another cooling model.])
          fi
-         AC_MSG_WARN([The GEAR subgrid radiation parts hii and isrf need --with-cooling=grackle_*: only rp is compiled. Set --with-subgrid-radiation to silence this warning.])
+         AC_MSG_WARN([The GEAR subgrid radiation parts hii and isrf need --with-cooling=grackle_* or geajay_*: only rp is compiled. Set --with-subgrid-radiation to silence this warning.])
          with_subgrid_radiation_hii=no
          with_subgrid_radiation_isrf=no
+      fi
+   elif test "$with_cooling" = "geajay"; then
+      if test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"; then
+         AC_MSG_NOTICE([The GEAR subgrid radiation parts hii and isrf are enabled with the geajay cooling])
       fi
    fi
 
@@ -3307,8 +3311,8 @@ case "$with_sink" in
     if test "$with_feedback" != "GEAR"; then
        AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR: the GEAR sink model reads the GEAR feedback module's stellar model (initial mass function) to sample star masses, so it cannot be built against any other feedback module])
     fi
-    if test "$with_cooling" != "grackle"; then
-       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from Grackle's equilibrium mean molecular weight])
+    if test "$with_cooling" != "grackle" -a "$with_cooling" != "geajay"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* or geajay_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from the equilibrium mean molecular weight of the cooling module])
     fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
@@ -3704,10 +3708,10 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
-# Define GEAR_COOLING if GEAR feedback, grackle cooling and the HII regions or
-# the ISRF of the subgrid radiation are selected: these two parts act on the
-# gas through it
-AS_IF([test "$with_feedback" = "GEAR" && test "$with_cooling" = "grackle" && test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"],
+# Define GEAR_COOLING if GEAR feedback, grackle or geajay cooling and the HII
+# regions or the ISRF of the subgrid radiation are selected: these two parts
+# act on the gas through the cooling module
+AS_IF([test "$with_feedback" = "GEAR" && test "$with_cooling" = "grackle" -o "$with_cooling" = "geajay" && test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"],
   [AC_DEFINE([GEAR_COOLING], [1], [Use GEAR cooling subgrid logic])]
 )
 

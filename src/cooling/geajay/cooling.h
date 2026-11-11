@@ -33,6 +33,10 @@
 #include "error.h"
 #include "inline.h"
 
+/* Network level read by the shared radiation coupling. */
+#define COOLING_NETWORK COOLING_GEAJAY_MODE
+#include "../radiation_rates_to_chemistry.h"
+
 struct part;
 struct xpart;
 struct cosmology;
@@ -216,5 +220,28 @@ INLINE static double cooling_get_electron_pressure(
     const struct xpart *xp) {
   return 0;
 }
+
+#if defined(GEAR_COOLING)
+/**
+ * @brief Dust-to-gas ratio of a particle in units of the Milky Way value.
+ *
+ * Uses the dust-to-gas model of the library. A negative metal mass fraction
+ * counts as zero, so the ratio is never negative.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param Z The gas metal mass fraction.
+ * @param rho_physical The physical gas density, internal units.
+ * @return The dust-to-gas ratio relative to the Milky Way.
+ */
+INLINE static float cooling_get_dust_to_gas_ratio_relative_to_MW(
+    const struct cooling_function_data *cooling, const float Z,
+    const float rho_physical) {
+  const double Z_clamped = Z > 0.f ? Z : 0.;
+  return (float)(geajay_dust_to_gas_ratio(&cooling->chemistry_data,
+                                          Z_clamped * rho_physical,
+                                          rho_physical) /
+                 RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
+}
+#endif
 
 #endif /* SWIFT_COOLING_GEAJAY_H */
