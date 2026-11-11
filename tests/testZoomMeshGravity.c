@@ -310,11 +310,11 @@ int main(int argc, char *argv[]) {
   s.cells_top = mesh_cells;
   s.nr_local_cells_with_particles = 2;
   s.local_cells_with_particles_top = local_cells_with_particles_top;
-  zoom_props.nr_local_zoom_cells_with_particles = 1;
-  zoom_props.local_zoom_cells_with_particles_top =
+  zoom_props.nr_local_zoom_cells = 1;
+  zoom_props.local_zoom_cells_top =
       &local_cells_with_particles_top[0];
-  zoom_props.nr_local_bkg_cells_with_particles = 1;
-  zoom_props.local_bkg_cells_with_particles_top =
+  zoom_props.nr_local_bkg_cells = 1;
+  zoom_props.local_bkg_cells_top =
       &local_cells_with_particles_top[1];
 
   threadpool_init(&e.threadpool, /*num_threads=*/4);

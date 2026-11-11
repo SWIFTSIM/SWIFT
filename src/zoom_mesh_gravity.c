@@ -220,6 +220,7 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 
   /* Fill in the mesh structure. */
   mesh->enabled = 1;
+  mesh->nr_threads = nr_threads;
   mesh->distributed_mesh = props->distributed_mesh;
   mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->buffer_cells = buffer_cells;
@@ -236,12 +237,9 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         mesh->loc[2], mesh->dim[0], mesh->dim[1], mesh->dim[2], buffer_cells,
         mesh->r_cut_max);
 
-  /* Allocate the zero-padded FFT mesh. */
-#ifdef HAVE_THREADED_FFTW
-  const int padded_side_length = 2 * side_length;
-  if (padded_side_length >= 64 && props->mesh_size < 64) fftw_init_threads();
-  if (padded_side_length >= 64) fftw_plan_with_nthreads(nr_threads);
-#endif
+  /* The FFTs are performed on the zero-padded mesh. */
+  initialise_fftw(2 * side_length, mesh->nr_threads);
+
   zoom_mesh_allocate(mesh);
 }
 
@@ -372,10 +370,15 @@ void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream) {
   restart_read_blocks((void *)mesh, sizeof(struct zoom_pm_mesh), 1, stream,
                       NULL, "zoom gravity mesh");
 
-  /* Recreate the transient FFT storage from the restored geometry. */
+  /* The FFT arrays are not part of the dump. */
   mesh->potential_global = NULL;
   mesh->kernel_fft = NULL;
-  if (mesh->enabled && !mesh->distributed_mesh) zoom_mesh_allocate(mesh);
+
+  if (mesh->enabled) {
+
+    initialise_fftw(2 * mesh->N[0], mesh->nr_threads);
+    zoom_mesh_allocate(mesh);
+  }
 }
 
 /**
@@ -1010,12 +1013,12 @@ static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp
                                      const struct zoom_cic_mapper_data *data) {
 
   threadpool_map(tp, zoom_mesh_deposit_zoom_cells_mapper,
-                 s->zoom_props->local_zoom_cells_with_particles_top,
-                 s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
+                 s->zoom_props->local_zoom_cells_top,
+                 s->zoom_props->nr_local_zoom_cells, sizeof(int),
                  threadpool_auto_chunk_size, (void *)data);
   threadpool_map(tp, zoom_mesh_deposit_bkg_cells_mapper,
-                 s->zoom_props->local_bkg_cells_with_particles_top,
-                 s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
+                 s->zoom_props->local_bkg_cells_top,
+                 s->zoom_props->nr_local_bkg_cells, sizeof(int),
                  threadpool_auto_chunk_size, (void *)data);
 }
 
@@ -1031,12 +1034,12 @@ static void zoom_mesh_interpolate_cells(
     const struct zoom_cic_mapper_data *data) {
 
   threadpool_map(tp, zoom_mesh_interpolate_zoom_cells_mapper,
-                 s->zoom_props->local_zoom_cells_with_particles_top,
-                 s->zoom_props->nr_local_zoom_cells_with_particles, sizeof(int),
+                 s->zoom_props->local_zoom_cells_top,
+                 s->zoom_props->nr_local_zoom_cells, sizeof(int),
                  threadpool_auto_chunk_size, (void *)data);
   threadpool_map(tp, zoom_mesh_interpolate_bkg_cells_mapper,
-                 s->zoom_props->local_bkg_cells_with_particles_top,
-                 s->zoom_props->nr_local_bkg_cells_with_particles, sizeof(int),
+                 s->zoom_props->local_bkg_cells_top,
+                 s->zoom_props->nr_local_bkg_cells, sizeof(int),
                  threadpool_auto_chunk_size, (void *)data);
 }
 
@@ -1254,16 +1257,23 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
    * cell predicate used to select the zoom split in the tree. */
   zoom_mesh_deposit_cells(s, tp, &data);
 
-#ifdef WITH_MPI
-  /* This implementation stores the full mesh on every rank, so sum the mass
-   * assignment from all ranks before doing the serial FFT. */
-  MPI_Allreduce(MPI_IN_PLACE, rho, real_size, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
-#endif
-
   if (verbose)
     message("Zoom mesh gpart assignment took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#ifdef WITH_MPI
+
+  MPI_Barrier(MPI_COMM_WORLD);
+  tic = getticks();
+
+  /* Merge everybody's share of the density mesh */
+  MPI_Allreduce(MPI_IN_PLACE, rho, real_size, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  if (verbose)
+    message("Zoom mesh MPI-reduction took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+#endif
 
   tic = getticks();
 
@@ -1400,10 +1410,10 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   double max_softening = 0.;
   if (s->cells_top != NULL && s->zoom_props != NULL) {
     const struct zoom_region_properties *z = s->zoom_props;
-    const int *lists[2] = {z->local_zoom_cells_with_particles_top,
-                           z->local_bkg_cells_with_particles_top};
-    const int counts[2] = {z->nr_local_zoom_cells_with_particles,
-                           z->nr_local_bkg_cells_with_particles};
+    const int *lists[2] = {z->local_zoom_cells_top,
+                           z->local_bkg_cells_top};
+    const int counts[2] = {z->nr_local_zoom_cells,
+                           z->nr_local_bkg_cells};
     for (int type = 0; type < 2; ++type) {
       for (int i = 0; i < counts[type]; ++i) {
         const struct cell *c = &s->cells_top[lists[type][i]];

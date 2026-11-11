@@ -40,6 +40,9 @@ struct zoom_pm_mesh {
   /*! Is the zoom mesh enabled? */
   int enabled;
 
+  /*! The number of threads used by the FFTW library. */
+  int nr_threads;
+
   /*! Use FFTW-MPI slab decomposition, matching the global mesh option. */
   int distributed_mesh;
 

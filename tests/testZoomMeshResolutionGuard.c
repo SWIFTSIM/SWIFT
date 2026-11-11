@@ -159,8 +159,8 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length,
       zoom_cell.grav.count = 1;
       int cell_index = 0;
       s.cells_top = &zoom_cell;
-      zoom_props.local_zoom_cells_with_particles_top = &cell_index;
-      zoom_props.nr_local_zoom_cells_with_particles = 1;
+      zoom_props.local_zoom_cells_top = &cell_index;
+      zoom_props.nr_local_zoom_cells = 1;
       if (!zoom_mesh_cell_is_covered(&zoom_mesh, &zoom_cell, 0))
         error("Mock DM particle must be covered by the zoom mesh");
 #ifdef WITH_MPI
