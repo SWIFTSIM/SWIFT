@@ -1281,14 +1281,23 @@ __attribute__((always_inline)) INLINE static double black_holes_do_tde_accretion
     struct bpart *restrict bp, const struct black_holes_props *props,
     const struct phys_const *constants, const double star_mass_loss_rate,
     const double dt) {
+  
+  const double m_bh_msun = bp->subgrid_mass * props->mass_to_solar_mass;
+  double bh_mass_gain;
 
-  const double epsilon_r = props->epsilon_r;
-  const double bh_mass_gain = (1.0 - epsilon_r) * star_mass_loss_rate * dt;
-  bp->subgrid_mass += bh_mass_gain;
+  if (m_bh_msun > 1e8){
+    const double bh_mass_gain = star_mass_loss_rate * dt;
+    bp->subgrid_mass += bh_mass_gain;
+  }
+  else{
+    const double epsilon_r = props->epsilon_r;
+    const double bh_mass_gain = (1.0 - epsilon_r) * star_mass_loss_rate * dt;
+    bp->subgrid_mass += bh_mass_gain;
 
-  const double c = constants->const_speed_light_c;
-  bp->energy_reservoir +=
+    const double c = constants->const_speed_light_c;
+    bp->energy_reservoir +=
       epsilon_r * star_mass_loss_rate * c * c * props->epsilon_f * dt;
+  }
 
   return bh_mass_gain;
 }
