@@ -132,17 +132,16 @@ void radiation_snapshot_part_propagation(struct part *p,
 
   const float rho_phys = hydro_get_physical_density(p, e->cosmology);
   const float Z = chemistry_get_total_metal_mass_fraction_for_cooling(p);
-  /* Resolved value, not the raw `-1` sentinel. */
-  const float local_dust_to_gas_ratio =
-      (float)e->cooling_func->chemistry_data.local_dust_to_gas_ratio;
+  const float D_relative = cooling_get_dust_to_gas_ratio_relative_to_MW(
+      e->cooling_func, Z, rho_phys);
   p->feedback_data.isrf_operator[ISRF_OPERATOR_PE].kappa =
       radiation_get_part_linear_absorption_rate(
-          e->internal_units, e->physical_constants, Z, rho_phys,
-          RADIATION_SIGMA_D_PE_CGS, local_dust_to_gas_ratio);
+          e->internal_units, e->physical_constants, D_relative, rho_phys,
+          RADIATION_SIGMA_D_PE_CGS);
   p->feedback_data.isrf_operator[ISRF_OPERATOR_LW].kappa =
       radiation_get_part_linear_absorption_rate(
-          e->internal_units, e->physical_constants, Z, rho_phys,
-          RADIATION_SIGMA_D_LW_CGS, local_dust_to_gas_ratio);
+          e->internal_units, e->physical_constants, D_relative, rho_phys,
+          RADIATION_SIGMA_D_LW_CGS);
 
   /* Physical timestep of this particle. Can be exactly 0 before its first
    * step: cached unfloored so readers can detect that case. */
@@ -324,45 +323,20 @@ radiation_get_comoving_gas_column_density_at_part(const struct part *p,
 }
 
 /**
- * @brief Dust-to-gas ratio relative to the Milky Way, following Grackle:
- * `(fgr/fgr_default) * Z/z_solar`.
- *
- * See #RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO.
- *
- * @param Z Gas metal mass fraction.
- * @param local_dust_to_gas_ratio Resolved chemistry_data value, not the raw
- * `-1` sentinel.
- * @return Dust-to-gas ratio relative to the Milky Way.
- */
-__attribute__((always_inline)) INLINE static float
-radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
-                                               float local_dust_to_gas_ratio) {
-  const float D_relative_Z =
-      max(Z, 0.f) / RADIATION_GRACKLE_SOLAR_METAL_FRACTION;
-  return D_relative_Z * (local_dust_to_gas_ratio /
-                         (float)RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
-}
-
-/**
  * @brief Band dust mass opacity in internal units (area/mass):
  * `sigma_d_band * D(Z) / (mu_H * m_H)`.
  *
  * @param us Unit system.
  * @param phys_const Physical constants (for the proton mass).
- * @param Z Gas metal mass fraction.
+ * @param D_relative Dust-to-gas ratio relative to the Milky Way, from
+ * #cooling_get_dust_to_gas_ratio_relative_to_MW.
  * @param sigma_d_band_cgs Band cross-section per hydrogen nucleon, cm^2.
- * @param local_dust_to_gas_ratio See
- * #radiation_get_dust_to_gas_ratio_relative_to_MW.
  * @return Dust mass opacity, internal units.
  */
 __attribute__((always_inline)) INLINE static float
 radiation_get_dust_mass_opacity(const struct unit_system *us,
-                                const struct phys_const *phys_const, float Z,
-                                float sigma_d_band_cgs,
-                                float local_dust_to_gas_ratio) {
-
-  const float D_relative = radiation_get_dust_to_gas_ratio_relative_to_MW(
-      Z, local_dust_to_gas_ratio);
+                                const struct phys_const *phys_const,
+                                float D_relative, float sigma_d_band_cgs) {
   return sigma_d_band_cgs * D_relative /
          (RADIATION_MU_H * phys_const->const_proton_mass *
           units_cgs_conversion_factor(us, UNIT_CONV_AREA));
@@ -373,22 +347,19 @@ radiation_get_dust_mass_opacity(const struct unit_system *us,
  *
  * @param us Unit system.
  * @param phys_const Physical constants.
- * @param Z Gas metal mass fraction.
+ * @param D_relative Dust-to-gas ratio relative to the Milky Way.
  * @param sigma_d_band_cgs Band cross-section per hydrogen nucleon, cm^2.
  * @param Sigma_gas_p Physical gas column density, internal units.
- * @param local_dust_to_gas_ratio See
- * #radiation_get_dust_to_gas_ratio_relative_to_MW.
  * @return Dust extinction factor, in (0, 1].
  */
 __attribute__((always_inline)) INLINE static float
 radiation_get_dust_extinction_factor(const struct unit_system *us,
                                      const struct phys_const *phys_const,
-                                     float Z, float sigma_d_band_cgs,
-                                     float Sigma_gas_p,
-                                     float local_dust_to_gas_ratio) {
+                                     float D_relative, float sigma_d_band_cgs,
+                                     float Sigma_gas_p) {
 
   const float kappa_eff = radiation_get_dust_mass_opacity(
-      us, phys_const, Z, sigma_d_band_cgs, local_dust_to_gas_ratio);
+      us, phys_const, D_relative, sigma_d_band_cgs);
   return expf(-kappa_eff * Sigma_gas_p);
 }
 
@@ -398,21 +369,18 @@ radiation_get_dust_extinction_factor(const struct unit_system *us,
  *
  * @param us Unit system.
  * @param phys_const Physical constants.
- * @param Z Gas metal mass fraction.
+ * @param D_relative Dust-to-gas ratio relative to the Milky Way.
  * @param rho_p Physical gas density, internal units.
  * @param sigma_d_band_cgs Band cross-section per hydrogen nucleon, cm^2.
- * @param local_dust_to_gas_ratio See
- * #radiation_get_dust_to_gas_ratio_relative_to_MW.
  * @return Local linear dust absorption rate, internal units (1/length).
  */
 __attribute__((always_inline)) INLINE float
 radiation_get_part_linear_absorption_rate(const struct unit_system *us,
                                           const struct phys_const *phys_const,
-                                          float Z, float rho_p,
-                                          float sigma_d_band_cgs,
-                                          float local_dust_to_gas_ratio) {
-  return radiation_get_dust_mass_opacity(us, phys_const, Z, sigma_d_band_cgs,
-                                         local_dust_to_gas_ratio) *
+                                          float D_relative, float rho_p,
+                                          float sigma_d_band_cgs) {
+  return radiation_get_dust_mass_opacity(us, phys_const, D_relative,
+                                         sigma_d_band_cgs) *
          rho_p;
 }
 
@@ -424,8 +392,8 @@ radiation_get_part_linear_absorption_rate(const struct unit_system *us,
  * @param cosmo The current cosmological model.
  * @param p The receiving #part.
  * @param Z The receiving particle's own metal mass fraction.
- * @param cooling The cooling function properties (for the resolved
- * chemistry_data.local_dust_to_gas_ratio).
+ * @param cooling The cooling function properties (for the dust-to-gas
+ * ratio, see #cooling_get_dust_to_gas_ratio_relative_to_MW).
  * @param extinction_path Comoving extinction path length, from
  * #radiation_get_comoving_extinction_path.
  * @param extinction (return) Extinction factor of each operator, indexed by
@@ -441,14 +409,11 @@ radiation_get_part_ISRF_extinction_factors(
   const float Sigma_gas_p =
       radiation_get_comoving_gas_column_density_at_part(p, extinction_path) *
       cosmo->a2_inv;
-  /* Resolved value, not the raw `-1` sentinel. */
-  const float local_dust_to_gas_ratio =
-      (float)cooling->chemistry_data.local_dust_to_gas_ratio;
+  const float D_relative = cooling_get_dust_to_gas_ratio_relative_to_MW(
+      cooling, Z, hydro_get_physical_density(p, cosmo));
 
   extinction[ISRF_OPERATOR_PE] = radiation_get_dust_extinction_factor(
-      us, phys_const, Z, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p,
-      local_dust_to_gas_ratio);
+      us, phys_const, D_relative, RADIATION_SIGMA_D_PE_CGS, Sigma_gas_p);
   extinction[ISRF_OPERATOR_LW] = radiation_get_dust_extinction_factor(
-      us, phys_const, Z, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p,
-      local_dust_to_gas_ratio);
+      us, phys_const, D_relative, RADIATION_SIGMA_D_LW_CGS, Sigma_gas_p);
 }

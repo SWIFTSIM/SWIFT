@@ -864,22 +864,15 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     gr_float *RT_heating_rate = (gr_float *)malloc(sizeof(gr_float));
     gr_float *RT_HI_ionization_rate = (gr_float *)malloc(sizeof(gr_float));
 
-    double heating_rate_cgs, HI_ionization_rate;
-    if (cooling_get_rate_coupled_RT_fields_subgrid(cooling, p, xp, time_units,
-                                                   &heating_rate_cgs,
-                                                   &HI_ionization_rate)) {
-      *RT_heating_rate = heating_rate_cgs;
-      *RT_HI_ionization_rate = HI_ionization_rate;
-    } else {
-      /* Fall back to a single global scalar from the YAML parameter file.
-         Assumed already normalized per nHI, as provided via the YAML
-         parameter. */
-      *RT_heating_rate = cooling->RT_heating_rate;
-
-      *RT_HI_ionization_rate = cooling->RT_HI_ionization_rate;
-      /* Grackle wants it in 1/internal_time_units */
-      *RT_HI_ionization_rate /= (1. / time_units);
-    }
+    /* A tagged particle gets its own rates. Any other particle gets the
+       single global scalars from the YAML parameter file, assumed already
+       normalized per nHI. */
+    double heating_rate, HI_ionization_rate;
+    cooling_resolve_RT_rates_subgrid(cooling, p, xp, cooling->RT_heating_rate,
+                                     cooling->RT_HI_ionization_rate, time_units,
+                                     &heating_rate, &HI_ionization_rate);
+    *RT_heating_rate = heating_rate;
+    *RT_HI_ionization_rate = HI_ionization_rate;
     data->RT_heating_rate = RT_heating_rate;
     data->RT_HI_ionization_rate = RT_HI_ionization_rate;
 
@@ -903,16 +896,9 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
        YAML scalar, mirroring RT_HI_ionization_rate's own local-vs-global
        fallback above. */
     gr_float *RT_H2_dissociation_rate = (gr_float *)malloc(sizeof(gr_float));
-    const double LW_dissociation_rate =
-        cooling_get_LW_dissociation_rate_subgrid(phys_const, us, cosmo, cooling,
-                                                 p);
-    if (LW_dissociation_rate != 0.) {
-      *RT_H2_dissociation_rate = LW_dissociation_rate;
-    } else {
-      *RT_H2_dissociation_rate = cooling->RT_H2_dissociation_rate;
-      /* Grackle wants it in 1/internal_time_units */
-      *RT_H2_dissociation_rate /= (1. / time_units);
-    }
+    *RT_H2_dissociation_rate = cooling_resolve_LW_dissociation_rate_subgrid(
+        phys_const, us, cosmo, cooling, p, cooling->RT_H2_dissociation_rate,
+        time_units);
     data->RT_H2_dissociation_rate = RT_H2_dissociation_rate;
 
   } else {

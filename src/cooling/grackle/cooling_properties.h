@@ -98,7 +98,7 @@ struct cooling_function_data {
       onto the tagged particle, itself frozen unconditionally per star in
       feedback/GEAR/stellar_evolution.c) ->
       cooling/grackle/cooling.c (cooling_copy_to_grackle, both call sites)
-      -> cooling/grackle/cooling_gear_subgrid.h
+      -> cooling/radiation_rates_to_chemistry.h
       (cooling_ionize_part_subgrid, cooling_expire_rate_coupled_tag_subgrid)
       -> cooling/grackle/cooling_io.h (parsing, forces
       use_radiative_transfer). Keep this list in sync when adding a new
@@ -126,7 +126,8 @@ struct cooling_function_data {
       photodissociation) fields, instead of Grackle's spatially-uniform
       scalars. Forces use_isrf_field/dust_chemistry/photoelectric_heating
       on internally (cooling_init_grackle) and, at COOLING_GRACKLE_MODE >
-      1, use_radiative_transfer (cooling_io.h). See cooling_gear_subgrid.h's
+      1, use_radiative_transfer (cooling_io.h). See
+      radiation_rates_to_chemistry.h's
       cooling_get_isrf_habing_subgrid/cooling_get_LW_dissociation_rate_
       subgrid. */
   int with_ISRF;

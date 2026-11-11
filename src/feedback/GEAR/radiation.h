@@ -29,6 +29,7 @@
 #include "cooling_properties.h"
 #include "hdf5_functions.h"
 #include "hydro.h"
+#include "minmax.h"
 #include "part.h"
 #include "physical_constants.h"
 #include "radiation_isrf.h"
@@ -76,6 +77,26 @@
 /*! Grackle's default local_dust_to_gas_ratio (Pollack et al. 1994), used when
     GrackleCooling:local_dust_to_gas_ratio is unset. */
 #define RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO 0.009387
+
+/**
+ * @brief Dust-to-gas ratio relative to the Milky Way, following Grackle:
+ * `(fgr/fgr_default) * Z/z_solar`.
+ *
+ * See #RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO.
+ *
+ * @param Z Gas metal mass fraction.
+ * @param local_dust_to_gas_ratio Resolved chemistry_data value, not the raw
+ * `-1` sentinel.
+ * @return Dust-to-gas ratio relative to the Milky Way.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
+                                               float local_dust_to_gas_ratio) {
+  const float D_relative_Z =
+      max(Z, 0.f) / RADIATION_GRACKLE_SOLAR_METAL_FRACTION;
+  return D_relative_Z * (local_dust_to_gas_ratio /
+                         (float)RADIATION_GRACKLE_DEFAULT_DUST_TO_GAS_RATIO);
+}
 
 /*! Habing flux, erg/s/cm^2: G0=1 is this flux over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
