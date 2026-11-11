@@ -19,21 +19,33 @@
 #ifndef SWIFT_ZOOM_MESH_GRAVITY_MPI_H
 #define SWIFT_ZOOM_MESH_GRAVITY_MPI_H
 
+/* Config parameters. */
+#include <config.h>
+
+/* Forward declarations */
 struct space;
+struct cell;
 struct threadpool;
 struct zoom_pm_mesh;
+struct pm_mesh_patch;
+struct neutrino_model;
 
-/**
- * @brief Compute the isolated zoom correction with a distributed FFT.
- *
- * @param mesh The #zoom_pm_mesh with its cached Fourier kernel.
- * @param s The #space containing locally owned gravity particles.
- * @param tp The #threadpool used for deposition and interpolation.
- * @param verbose Are we talkative?
- */
-void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
-                                             const struct space *s,
-                                             struct threadpool *tp,
-                                             int verbose);
+void zoom_mesh_accumulate_cell_to_local_patch(
+    const struct zoom_pm_mesh *mesh, const struct cell *cell,
+    struct pm_mesh_patch *patch, const struct neutrino_model *nu_model);
+
+void zoom_mpi_mesh_accumulate_gparts_to_local_patches(
+    struct threadpool *tp, const struct zoom_pm_mesh *mesh,
+    const struct space *s, struct pm_mesh_patch *local_patches);
+
+void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
+                                   const struct space *s, int local_0_start,
+                                   int local_n0, double *potential_slice,
+                                   struct pm_mesh_patch *local_patches,
+                                   struct threadpool *tp, const int verbose);
+
+void zoom_mpi_mesh_update_gparts(struct pm_mesh_patch *local_patches,
+                                 const struct zoom_pm_mesh *mesh,
+                                 const struct space *s, struct threadpool *tp);
 
 #endif /* SWIFT_ZOOM_MESH_GRAVITY_MPI_H */

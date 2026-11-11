@@ -22,6 +22,9 @@
 
 #ifdef HAVE_FFTW
 #include <fftw3.h>
+#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
+#include <fftw3-mpi.h>
+#endif
 #endif
 #ifdef WITH_MPI
 #include <mpi.h>
@@ -41,6 +44,7 @@
 #include "kernel_long_gravity.h"
 #include "memuse.h"
 #include "mesh_gravity.h"
+#include "mesh_gravity_mpi.h"
 #include "mesh_gravity_patch.h"
 #include "neutrino.h"
 #include "parser.h"
@@ -653,130 +657,6 @@ static void zoom_mesh_cell_gpart_to_mesh_CIC(
 }
 
 /**
- * @brief Initialize a mesh patch to cover the particles of a cell on the zoom
- * mesh.
- *
- * Zoom mesh equivalent of pm_mesh_patch_init(). The patch coordinates are
- * indices into the zero-padded zoom mesh, which is never wrapped.
- *
- * @param patch A pointer to the mesh patch.
- * @param mesh The #zoom_pm_mesh.
- * @param c The #cell which the patch should cover.
- * @return 1 if a patch was allocated, 0 if the cell has no particle to assign.
- */
-static int zoom_mesh_patch_init(struct pm_mesh_patch *patch,
-                                const struct zoom_pm_mesh *mesh,
-                                const struct cell *c) {
-
-  const int gcount = c->grav.count;
-  const struct gpart *gparts = c->grav.parts;
-
-  /* The patch indexes the zero-padded mesh */
-  patch->N = 2 * mesh->N[0];
-  patch->fac = mesh->cell_fac[0];
-
-  /* No wrapping on the isolated mesh */
-  for (int i = 0; i < 3; i++) {
-    patch->wrap_min[i] = mesh->loc[i];
-    patch->wrap_max[i] = mesh->loc[i] + mesh->dim[i];
-  }
-
-  /* Find the extent of the particle distribution in the cell */
-  int found = 0;
-  for (int i = 0; i < 3; i++) {
-    patch->mesh_min[i] = INT_MAX;
-    patch->mesh_max[i] = INT_MIN;
-  }
-  for (int ipart = 0; ipart < gcount; ipart++) {
-
-    const struct gpart *gp = &gparts[ipart];
-
-    if (gp->time_bin == time_bin_inhibited) continue;
-
-    int ind[3];
-    double d[3], t[3];
-    if (!zoom_mesh_gpart_index(mesh, gp, ind, d, t, /*need_stencil=*/0))
-      error(
-          "Covered cell contains a particle outside the zoom mesh "
-          "(x=[%g %g %g], index=[%d %d %d]).",
-          gp->x[0], gp->x[1], gp->x[2], ind[0], ind[1], ind[2]);
-
-    for (int i = 0; i < 3; i++) {
-      if (ind[i] < patch->mesh_min[i]) patch->mesh_min[i] = ind[i];
-      /* CIC interpolation requires one extra element in the positive
-       * direction */
-      if (ind[i] + 1 > patch->mesh_max[i]) patch->mesh_max[i] = ind[i] + 1;
-    }
-    found = 1;
-  }
-  if (!found) return 0;
-
-  /* Determine the integer size of the mesh */
-  int num_cells = 1;
-  for (int i = 0; i < 3; i++) {
-    patch->mesh_size[i] = patch->mesh_max[i] - patch->mesh_min[i] + 1;
-    num_cells *= patch->mesh_size[i];
-  }
-
-  /* Allocate the mesh */
-  if (swift_memalign("mesh_patch", (void **)&patch->mesh, SWIFT_CACHE_ALIGNMENT,
-                     num_cells * sizeof(double)) != 0)
-    error("Failed to allocate array for mesh patch!");
-
-  return 1;
-}
-
-/**
- * @brief Accumulate contributions from a cell to a local zoom mesh patch.
- *
- * Zoom mesh equivalent of accumulate_cell_to_local_patch().
- *
- * @param c The #cell containing the particles.
- * @param data The shared CIC mapper data.
- * @param patch The local mesh patch.
- * @return 1 if a patch was allocated, 0 if the cell has no particle to assign.
- */
-static int zoom_mesh_accumulate_cell_to_local_patch(
-    const struct cell *c, const struct zoom_cic_mapper_data *data,
-    struct pm_mesh_patch *patch) {
-
-  /* Initialise the local mesh patch */
-  if (!zoom_mesh_patch_init(patch, data->mesh, c)) return 0;
-  pm_mesh_patch_zero(patch);
-
-  /* Loop over particles in this cell */
-  for (int ipart = 0; ipart < c->grav.count; ipart++) {
-
-    const struct gpart *gp = &(c->grav.parts[ipart]);
-
-    if (gp->time_bin == time_bin_inhibited) continue;
-
-    /* Workout the CIC coefficients */
-    int ind[3];
-    double d[3], t[3];
-    zoom_mesh_gpart_index(data->mesh, gp, ind, d, t, /*need_stencil=*/0);
-
-    /* Get coordinates within the mesh patch */
-    const int ii = ind[0] - patch->mesh_min[0];
-    const int jj = ind[1] - patch->mesh_min[1];
-    const int kk = ind[2] - patch->mesh_min[2];
-
-    /* Compute weight (for neutrino delta-f weighting) */
-    double weight = 1.0;
-    if (gp->type == swift_type_neutrino)
-      gpart_neutrino_weight_mesh_only(gp, data->nu_model, &weight);
-
-    /* Accumulate contributions to the local mesh patch */
-    const double mass = gp->mass;
-    const double value = mass * weight;
-    pm_mesh_patch_CIC_set(patch, ii, jj, kk, t[0], t[1], t[2], d[0], d[1], d[2],
-                          value);
-  }
-
-  return 1;
-}
-
-/**
  * @brief Threadpool mapper function for the zoom mesh CIC assignment of a
  * cell.
  *
@@ -815,7 +695,8 @@ static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
 
       /* Do a CIC interpolation of all the particles in this cell onto
          the local patch (allocates memory in the patch) */
-      if (!zoom_mesh_accumulate_cell_to_local_patch(c, data, &patch)) continue;
+      zoom_mesh_accumulate_cell_to_local_patch(data->mesh, c, &patch,
+                                               data->nu_model);
 
       /* Copy the local patch values back onto the zoom mesh */
       pm_add_patch_to_global_mesh(data->rho, &patch);
@@ -1043,139 +924,239 @@ static void zoom_mesh_interpolate_cells(
                  threadpool_auto_chunk_size, (void *)data);
 }
 
-/** @brief Shared data for constructing the isolated kernel. */
-struct zoom_kernel_mapper_data {
+/**
+ * @brief Shared information about the zoom mesh kernel to be used by all the
+ * threads in the pool.
+ */
+struct zoom_kernel_data {
+
+  /*! The zoom mesh geometry and smoothing scale. */
   const struct zoom_pm_mesh *mesh;
+
+  /*! The real-space kernel. */
   double *kernel;
+
+  /*! The Fourier-space kernel. */
+  fftw_complex *fkernel;
+
+  /*! Inverse of the smoothing scale of the periodic mesh. */
   double global_r_s_inv;
+
+  /*! Padding of the last dimension of the real-space array. */
+  int pad;
+
+  /*! The x coordinate of the start of the slice on this MPI rank. */
+  int slice_offset;
 };
 
 /**
- * @brief Threadpool mapper constructing slices of the isolated kernel.
+ * @brief Mapper function for the construction of the real-space kernel.
  *
- * @param map_data The first real-space kernel slab in this chunk.
- * @param num The number of slabs in the chunk.
- * @param extra The mesh geometry and global smoothing scale.
+ * The kernel is the long-range potential of the zoom mesh split minus the
+ * long-range potential already provided by the periodic mesh. Indices in the
+ * upper half of the zero-padded domain are negative offsets.
+ *
+ * @param map_data The array of the real-space kernel.
+ * @param num The number of elements to iterate on (along the x-axis).
+ * @param extra The properties of the kernel.
  */
-static void zoom_mesh_apply_kernel_mapper(void *map_data, int num,
-                                          void *extra) {
+static void zoom_mesh_kernel_mapper(void *map_data, const int num,
+                                    void *extra) {
 
-  const struct zoom_kernel_mapper_data *data =
-      (const struct zoom_kernel_mapper_data *)extra;
+  const struct zoom_kernel_data *data = (const struct zoom_kernel_data *)extra;
+
+  /* Unpack the array */
+  double *const kernel = data->kernel;
   const struct zoom_pm_mesh *mesh = data->mesh;
-  double *kernel = (double *)map_data;
-
-  /* Unpack the active and zero-padded mesh sizes. */
   const int N = mesh->N[0];
   const int M = 2 * N;
+  const size_t M_pad = M + data->pad;
 
-  /* Unpack the split scales for the zoom and global PM meshes. */
+  /* Unpack the split scales of the zoom and periodic meshes */
   const double r_s_inv = mesh->r_s_inv;
   const double global_r_s_inv = data->global_r_s_inv;
-  const double global_r_s = global_r_s_inv > 0. ? 1. / global_r_s_inv : 0.;
-  const int i_start = (int)((kernel - data->kernel) / ((size_t)M * M));
 
-  /* Fill the embedded real-space correction Green's function. */
-  for (int i = i_start; i < i_start + num; ++i) {
-    /* Indices in the upper half of the padded domain are negative offsets. */
-    const int ii = i < N ? i : i - M;
+  /* Find what slice of the full mesh is stored on this MPI rank */
+  const int slice_offset = data->slice_offset;
+
+  /* Range of x coordinates in the full mesh handled by this call */
+  const int i_start =
+      (int)(((double *)map_data - kernel) / ((size_t)M * M_pad)) + slice_offset;
+  const int i_end = i_start + num;
+
+  /* Loop over the x range corresponding to this thread */
+  for (int i = i_start; i < i_end; ++i) {
+
+    const int ii = (i < N ? i : i - M);
     const double dx = ii / mesh->cell_fac[0];
+
     for (int j = 0; j < M; ++j) {
-      const int jj = j < N ? j : j - M;
+
+      const int jj = (j < N ? j : j - M);
       const double dy = jj / mesh->cell_fac[1];
+
       for (int k = 0; k < M; ++k) {
-        const int kk = k < N ? k : k - M;
+
+        const int kk = (k < N ? k : k - M);
         const double dz = kk / mesh->cell_fac[2];
+
         const double r = sqrt(dx * dx + dy * dy + dz * dz);
 
-        /* Long-range potential represented by the zoom split. */
-        double zoom_long;
-        if (r == 0.)
-          zoom_long = -M_2_SQRTPI * 0.5 * r_s_inv;
-        else
-          zoom_long = -erf(0.5 * r * r_s_inv) / r;
+        /* Long-range potential of the zoom mesh split */
+        const double zoom_long = (r == 0.) ? -M_2_SQRTPI * 0.5 * r_s_inv
+                                           : -erf(0.5 * r * r_s_inv) / r;
 
-        /* Long-range potential already represented by the global PM split. */
-        double global_long = 0.;
-        if (global_r_s_inv > 0.) {
-          if (r == 0.)
-            global_long = -M_2_SQRTPI * 0.5 / global_r_s;
-          else
-            global_long = -erf(0.5 * r * global_r_s_inv) / r;
-        }
+        /* Long-range potential already provided by the periodic mesh */
+        const double global_long = (r == 0.)
+                                       ? -M_2_SQRTPI * 0.5 * global_r_s_inv
+                                       : -erf(0.5 * r * global_r_s_inv) / r;
 
-        /* Store only the correction that must be added to the global PM field.
-         */
-        data->kernel[zoom_mesh_index(i, j, k, M)] = zoom_long - global_long;
+        /* Store the correction to the periodic mesh */
+        const size_t index =
+            ((size_t)(i - slice_offset) * M + j) * M_pad + (size_t)k;
+        kernel[index] = zoom_long - global_long;
       }
     }
   }
 }
 
 /**
- * @brief Construct the zero padded Hockney-Eastwood isolated-convolution
- * kernel using the threadpool.
+ * @brief Construct the real-space kernel of the zoom mesh correction.
  *
+ * @param tp The threadpool.
  * @param mesh The #zoom_pm_mesh.
- * @param kernel The zero-padded real-space kernel to fill.
- * @param s The #space.
- * @param tp The #threadpool object used for parallelisation.
+ * @param kernel The MxMx(M+pad) real array of the kernel.
+ * @param global_r_s_inv Inverse of the smoothing scale of the periodic mesh.
+ * @param slice_offset The x coordinate of the start of the slice on this MPI
+ * rank
+ * @param slice_width The width of the local slice on this MPI rank
+ * @param pad Padding of the last dimension of the array.
  */
-static void zoom_mesh_apply_kernel(struct zoom_pm_mesh *mesh, double *kernel,
-                                   const struct space *s,
-                                   struct threadpool *tp) {
+static void zoom_mesh_kernel(struct threadpool *tp,
+                             const struct zoom_pm_mesh *mesh, double *kernel,
+                             const double global_r_s_inv,
+                             const int slice_offset, const int slice_width,
+                             const int pad) {
 
   const int M = 2 * mesh->N[0];
-  struct zoom_kernel_mapper_data data = {
-      .mesh = mesh,
-      .kernel = kernel,
-      .global_r_s_inv = s->periodic ? s->e->mesh->r_s_inv : 0.};
 
-  threadpool_map(tp, zoom_mesh_apply_kernel_mapper, kernel, M,
-                 M * M * (int)sizeof(double), threadpool_auto_chunk_size,
+  struct zoom_kernel_data data;
+  data.mesh = mesh;
+  data.kernel = kernel;
+  data.fkernel = NULL;
+  data.global_r_s_inv = global_r_s_inv;
+  data.pad = pad;
+  data.slice_offset = slice_offset;
+
+  /* Parallelize the kernel construction using the threadpool
+     to split the x-axis loop over the threads. */
+  threadpool_map(tp, zoom_mesh_kernel_mapper, kernel, slice_width,
+                 M * (M + pad) * sizeof(double), threadpool_auto_chunk_size,
                  &data);
 }
 
-struct zoom_multiply_mapper_data {
-  fftw_complex *density;
-  const fftw_complex *kernel;
-  double norm;
-};
-
-struct zoom_deconvolution_mapper_data {
-  fftw_complex *kernel;
-  int M;
-};
-
 /**
- * @brief Apply the global PM CIC deconvolution to the cached zoom kernel.
+ * @brief Mapper function for the CIC deconvolution of the kernel.
  *
- * @param map_data The Fourier coefficients in this chunk.
- * @param num The number of coefficients.
- * @param extra The full kernel and its mesh side length.
+ * @param map_data The array of the kernel Fourier transform.
+ * @param num The number of elements to iterate on (along the x-axis).
+ * @param extra The properties of the kernel.
  */
-static void zoom_mesh_deconvolve_mapper(void *map_data, int num, void *extra) {
+static void zoom_mesh_deconvolve_kernel_mapper(void *map_data, const int num,
+                                               void *extra) {
 
-  fftw_complex *kernel = (fftw_complex *)map_data;
-  const struct zoom_deconvolution_mapper_data *data =
-      (const struct zoom_deconvolution_mapper_data *)extra;
-  const size_t offset = kernel - data->kernel;
-  const int M = data->M;
-  const int complex_width = M / 2 + 1;
+  const struct zoom_kernel_data *data = (const struct zoom_kernel_data *)extra;
 
-  for (int i = 0; i < num; ++i) {
-    const size_t index = offset + i;
-    const int kx_index = index / ((size_t)M * complex_width);
-    const int remainder = index % ((size_t)M * complex_width);
-    const int ky_index = remainder / complex_width;
-    const int kz = remainder % complex_width;
-    const int kx = kx_index > M / 2 ? kx_index - M : kx_index;
-    const int ky = ky_index > M / 2 ? ky_index - M : ky_index;
-    const double CIC_cor4 = zoom_mesh_CIC_deconvolution(kx, ky, kz, M);
-    kernel[i][0] *= CIC_cor4;
-    kernel[i][1] *= CIC_cor4;
+  /* Unpack the array */
+  fftw_complex *const fkernel = data->fkernel;
+  const int M = 2 * data->mesh->N[0];
+  const int M_half = M / 2;
+
+  /* Find what slice of the full mesh is stored on this MPI rank */
+  const int slice_offset = data->slice_offset;
+
+  /* Range of x coordinates in the full mesh handled by this call */
+  const int i_start = ((fftw_complex *)map_data - fkernel) + slice_offset;
+  const int i_end = i_start + num;
+
+  /* Loop over the x range corresponding to this thread */
+  for (int i = i_start; i < i_end; ++i) {
+
+    /* kx component of vector in Fourier space */
+    const int kx = (i > M_half ? i - M : i);
+
+    for (int j = 0; j < M; ++j) {
+
+      /* ky component of vector in Fourier space */
+      const int ky = (j > M_half ? j - M : j);
+
+      for (int k = 0; k < M_half + 1; ++k) {
+
+        /* kz component of vector in Fourier space */
+        const int kz = (k > M_half ? k - M : k);
+
+        /* Deconvolution of CIC */
+        const double CIC_cor4 = zoom_mesh_CIC_deconvolution(kx, ky, kz, M);
+
+        /* Apply to the mesh */
+        const size_t index = (size_t)M * (M_half + 1) * (i - slice_offset) +
+                             (size_t)(M_half + 1) * j + k;
+        fkernel[index][0] *= CIC_cor4;
+        fkernel[index][1] *= CIC_cor4;
+      }
+    }
   }
 }
+
+/**
+ * @brief Deconvolve the CIC kernel from the Fourier transform of the zoom
+ * mesh kernel.
+ *
+ * @param tp The threadpool.
+ * @param mesh The #zoom_pm_mesh.
+ * @param fkernel The MxMx(M/2+1) complex array of the Fourier transform of the
+ * kernel.
+ * @param slice_offset The x coordinate of the start of the slice on this MPI
+ * rank
+ * @param slice_width The width of the local slice on this MPI rank
+ */
+static void zoom_mesh_deconvolve_kernel(struct threadpool *tp,
+                                        const struct zoom_pm_mesh *mesh,
+                                        fftw_complex *fkernel,
+                                        const int slice_offset,
+                                        const int slice_width) {
+
+  struct zoom_kernel_data data;
+  data.mesh = mesh;
+  data.kernel = NULL;
+  data.fkernel = fkernel;
+  data.global_r_s_inv = 0.;
+  data.pad = 0;
+  data.slice_offset = slice_offset;
+
+  /* Parallelize the deconvolution using the threadpool
+     to split the x-axis loop over the threads.
+     The array is M x M x (M/2). We use the thread to each deal with
+     a range [i_min, i_max[ x M x (M/2) */
+  threadpool_map(tp, zoom_mesh_deconvolve_kernel_mapper, fkernel, slice_width,
+                 sizeof(fftw_complex), threadpool_auto_chunk_size, &data);
+}
+
+/**
+ * @brief Shared information about the kernel multiplication to be used by all
+ * the threads in the pool.
+ */
+struct zoom_multiply_mapper_data {
+
+  /*! The Fourier transform of the density field. */
+  fftw_complex *density;
+
+  /*! The Fourier transform of the kernel. */
+  const fftw_complex *kernel;
+
+  /*! The normalisation of the inverse transform. */
+  double norm;
+};
 
 /**
  * @brief Threadpool mapper multiplying density by the Fourier-space kernel.
@@ -1305,17 +1286,15 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
     memuse_log_allocation("fftw_zoom_mesh.kernel_fft", fkernel, 1,
                           complex_size * sizeof(fftw_complex));
 
-    zoom_mesh_apply_kernel(mesh, kernel, s, tp);
+    zoom_mesh_kernel(tp, mesh, kernel, s->e->mesh->r_s_inv, /*slice_offset=*/0,
+                     /*slice_width=*/M, /*pad=*/0);
     fftw_plan kernel_forward =
         fftw_plan_dft_r2c_3d(M, M, M, kernel, fkernel,
                              FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
     fftw_execute(kernel_forward);
     fftw_destroy_plan(kernel_forward);
-    struct zoom_deconvolution_mapper_data deconvolution_data = {
-        .kernel = fkernel, .M = M};
-    threadpool_map(tp, zoom_mesh_deconvolve_mapper, fkernel, complex_size,
-                   sizeof(fftw_complex), threadpool_auto_chunk_size,
-                   &deconvolution_data);
+    zoom_mesh_deconvolve_kernel(tp, mesh, fkernel, /*slice_offset=*/0,
+                                /*slice_width=*/M);
     memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 0, 0);
     fftw_free(kernel);
     mesh->kernel_fft = fkernel;
@@ -1386,6 +1365,203 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   error("No FFTW library found. Cannot compute zoom mesh gravity.");
 }
 #endif
+
+/**
+ * @brief Compute the zoom mesh correction to the gravity forces.
+ *
+ * This version uses the MPI version of FFTW with the zero-padded mesh
+ * distributed in slices over the MPI ranks, as done for the periodic mesh in
+ * compute_potential_distributed().
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param s The #space containing the particles.
+ * @param tp The #threadpool object used for parallelisation.
+ * @param verbose Are we talkative?
+ */
+static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
+                                                    const struct space *s,
+                                                    struct threadpool *tp,
+                                                    const int verbose) {
+
+#if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
+
+  const int nr_local_cells = s->nr_local_cells;
+
+  /* Some useful constants. The FFTs are performed on the zero-padded mesh. */
+  const int M = 2 * mesh->N[0];
+
+  ticks tic = getticks();
+
+  /* Create an array of mesh patches. One per local top-level cell. */
+  struct pm_mesh_patch *local_patches = (struct pm_mesh_patch *)malloc(
+      nr_local_cells * sizeof(struct pm_mesh_patch));
+  if (local_patches == NULL)
+    error("Could not allocate array of local mesh patches!");
+  memset(local_patches, 0, nr_local_cells * sizeof(struct pm_mesh_patch));
+
+  /* Calculate contributions to density field on this MPI rank */
+  zoom_mpi_mesh_accumulate_gparts_to_local_patches(tp, mesh, s, local_patches);
+  if (verbose)
+    message("Accumulating mass to local patches took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Ask FFTW what slice of the density field we need to store on this task.
+     Note that fftw_mpi_local_size_3d works in terms of the size of the complex
+     output. The last dimension of the real input is padded to 2*(M/2+1). */
+  ptrdiff_t local_n0, local_0_start;
+  ptrdiff_t nalloc =
+      fftw_mpi_local_size_3d((ptrdiff_t)M, (ptrdiff_t)M, (ptrdiff_t)(M / 2 + 1),
+                             MPI_COMM_WORLD, &local_n0, &local_0_start);
+  if (verbose)
+    message("Local density field slice has thickness %d.", (int)local_n0);
+  if (verbose)
+    message("local patch size = %d, local mesh cells = %lld", nr_local_cells,
+            (long long)(local_n0 * M * M));
+
+  /* Allocate storage for mesh slices.
+   *
+   * Note: nalloc is the number of *complex* values.
+   */
+  double *rho_slice = (double *)fftw_malloc(2 * nalloc * sizeof(double));
+  memset(rho_slice, 0, 2 * nalloc * sizeof(double));
+
+  tic = getticks();
+
+  /* Construct density field slices from contributions stored in the local
+   * patches.
+   * Note: This cleans up the local_patches entries. */
+  mpi_mesh_local_patches_to_slices(M, (int)local_n0, local_patches,
+                                   nr_local_cells, rho_slice, tp, verbose);
+  if (verbose)
+    message("Assembling mesh slices took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* Build and transform the static correction kernel only once. */
+  if (mesh->kernel_fft == NULL) {
+
+    tic = getticks();
+
+    double *kernel_slice = (double *)fftw_malloc(2 * nalloc * sizeof(double));
+    fftw_complex *fkernel_slice =
+        (fftw_complex *)fftw_malloc(nalloc * sizeof(fftw_complex));
+    if (kernel_slice == NULL || fkernel_slice == NULL)
+      error("Error allocating zoom mesh kernel arrays.");
+    memset(kernel_slice, 0, 2 * nalloc * sizeof(double));
+    memuse_log_allocation("fftw_zoom_mesh.kernel_fft", fkernel_slice, 1,
+                          nalloc * sizeof(fftw_complex));
+
+    /* The last dimension of the real input is padded to 2*(M/2+1). */
+    zoom_mesh_kernel(tp, mesh, kernel_slice, s->e->mesh->r_s_inv,
+                     (int)local_0_start, (int)local_n0, /*pad=*/2);
+
+    fftw_plan mpi_kernel_plan = fftw_mpi_plan_dft_r2c_3d(
+        M, M, M, kernel_slice, fkernel_slice, MPI_COMM_WORLD,
+        FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT | FFTW_DESTROY_INPUT);
+    fftw_execute(mpi_kernel_plan);
+    fftw_destroy_plan(mpi_kernel_plan);
+
+    zoom_mesh_deconvolve_kernel(tp, mesh, fkernel_slice, (int)local_0_start,
+                                (int)local_n0);
+
+    fftw_free(kernel_slice);
+    mesh->kernel_fft = fkernel_slice;
+
+    if (verbose)
+      message("Constructing the zoom mesh kernel took %.3f %s.",
+              clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
+
+  tic = getticks();
+
+  /* Allocate storage for the slices of the FFT of the density mesh */
+  fftw_complex *frho_slice =
+      (fftw_complex *)fftw_malloc(nalloc * sizeof(fftw_complex));
+
+  /* Carry out the MPI Fourier transform. We can save a bit of time
+   * if we allow FFTW to transpose the first two dimensions of the output.
+   *
+   * Layout of the MPI FFTW input and output:
+   *
+   * Input mesh contains M*M*M reals, padded to M*M*(2*(M/2+1)).
+   * Output Fourier transform is M*M*(M/2+1) complex values.
+   *
+   * The first two dimensions of the transform are transposed in
+   * the output. Each MPI rank has slice of thickness local_n0
+   * starting at local_0_start in the first dimension.
+   */
+  fftw_plan mpi_plan = fftw_mpi_plan_dft_r2c_3d(
+      M, M, M, rho_slice, frho_slice, MPI_COMM_WORLD,
+      FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT | FFTW_DESTROY_INPUT);
+  fftw_execute(mpi_plan);
+  fftw_destroy_plan(mpi_plan);
+  if (verbose)
+    message("MPI Forward Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Multiply the local slice of the MPI mesh by the kernel. The inverse FFTW
+   * transform is unnormalised, hence the explicit 1 / M^3 factor here. */
+  struct zoom_multiply_mapper_data multiply_data = {
+      .density = frho_slice,
+      .kernel = (const fftw_complex *)mesh->kernel_fft,
+      .norm = 1. / ((double)M * M * M)};
+  threadpool_map(tp, zoom_mesh_multiply_mapper, frho_slice,
+                 (size_t)local_n0 * M * (M / 2 + 1), sizeof(fftw_complex),
+                 threadpool_auto_chunk_size, &multiply_data);
+  if (verbose)
+    message("Applying zoom mesh kernel took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  tic = getticks();
+
+  /* Carry out the reverse MPI Fourier transform */
+  fftw_plan mpi_inverse_plan = fftw_mpi_plan_dft_c2r_3d(
+      M, M, M, frho_slice, rho_slice, MPI_COMM_WORLD,
+      FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_IN | FFTW_DESTROY_INPUT);
+  fftw_execute(mpi_inverse_plan);
+  fftw_destroy_plan(mpi_inverse_plan);
+
+  if (verbose)
+    message("MPI Reverse Fourier transform took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* We can now free the Fourier-space data */
+  fftw_free(frho_slice);
+
+  tic = getticks();
+
+  /* Fetch MPI mesh entries we need on this rank from other ranks */
+  zoom_mpi_mesh_fetch_potential(mesh, s, local_0_start, local_n0, rho_slice,
+                                local_patches, tp, verbose);
+
+  if (verbose)
+    message("Fetching local potential took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+  /* Free the local slice of the potential */
+  fftw_free(rho_slice);
+
+  tic = getticks();
+
+  /* Compute accelerations and potentials for the gparts */
+  zoom_mpi_mesh_update_gparts(local_patches, mesh, s, tp);
+
+  /* Clean the local patches array */
+  for (int i = 0; i < nr_local_cells; ++i)
+    pm_mesh_patch_clean(&local_patches[i]);
+  free(local_patches);
+
+  if (verbose)
+    message("Computing mesh accelerations took %.3f %s.",
+            clocks_from_ticks(getticks() - tic), clocks_getunit());
+
+#else
+  error("No FFTW MPI library available. Cannot compute distributed mesh.");
+#endif
+}
 
 /**
  * @brief Add the isolated zoom mesh correction to covered particles.
