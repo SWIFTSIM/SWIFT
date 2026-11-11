@@ -39,17 +39,20 @@
  * support) and the gradient finishing, the matrix gradients of v and u must
  * reproduce A and c, the divergence the trace of A, and the SPH Laplacian of u
  * with its linear correction must vanish (from the second gradient pass on,
- * since the correction uses the gradient of the previous pass). The fields
- * are not periodic, so only
+ * since the correction uses the gradient of the previous pass). With SPHENIX
+ * the same set-up reports the errors of its kernel-gradient divergence and
+ * uncorrected Laplacian for comparison, without an exactness requirement
+ * (they are exact on the lattice by symmetry only). The fields are not
+ * periodic, so only
  * the particles whose kernel support stays inside the box are checked. The
  * test runs in the configured dimension and does nothing for the other hydro
  * schemes.
  */
 
-#ifndef MAGMA_SPH
+#if !defined(MAGMA_SPH) && !defined(SPHENIX_SPH)
 
 int main(int argc, char *argv[]) {
-  message("Not a MAGMA build: nothing to test.");
+  message("Neither a MAGMA nor a SPHENIX build: nothing to test.");
   return 0;
 }
 
@@ -151,11 +154,17 @@ static int run_configuration(const int n, const double jitter, const double eta,
     hydro_reset_gradient(&parts[i]);
   }
 
-  /* Gradient loop and finishing, twice: the SPH Laplacian of u removes the
-   * linear part of the field with the gradient of the previous evaluation
-   * (hydro_prepare_force() stores it), so it is only exact from the second
-   * pass on; the matrix gradients are exact from the first. */
-  for (int pass = 0; pass < 2; ++pass) {
+  /* Gradient loop and finishing. With MAGMA twice: its SPH Laplacian of u
+   * removes the linear part of the field with the gradient of the previous
+   * evaluation (hydro_prepare_force() stores it), so it is only exact from
+   * the second pass on; the matrix gradients are exact from the first.
+   * SPHENIX resets its Laplacian in the density phase only, so one pass. */
+#if defined(MAGMA_SPH)
+  const int n_passes = 2;
+#else
+  const int n_passes = 1;
+#endif
+  for (int pass = 0; pass < n_passes; ++pass) {
     if (pass > 0)
       for (int i = 0; i < N; ++i) hydro_reset_gradient(&parts[i]);
     for (int i = 0; i < N; ++i) {
@@ -180,8 +189,13 @@ static int run_configuration(const int n, const double jitter, const double eta,
 
   /* Check the interior particles */
   const double margin = 2.0 * H;
+#if defined(MAGMA_SPH)
   const double tol_grad = 1e-4; /* relative to the gradient norm */
   const double tol_lap = 1e-3;  /* |laplace u| h / |c| */
+#else
+  const double tol_grad = 1.; /* a kernel estimate: sanity only */
+  const double tol_lap = 1.;
+#endif
   double norm_A = 0., norm_c = 0.;
   for (int k = 0; k < (int)hydro_dimension; ++k) {
     norm_c += c[k] * c[k];
@@ -201,6 +215,7 @@ static int run_configuration(const int n, const double jitter, const double eta,
       if (p->x[k] < margin || p->x[k] > L - margin) interior = 0;
     if (!interior) continue;
     ++checked;
+#if defined(MAGMA_SPH)
     if (p->fallback_flags & magma_fallback_base_sph_mask) {
       ++fallbacks;
       continue;
@@ -222,6 +237,14 @@ static int run_configuration(const int n, const double jitter, const double eta,
 
     const double err_div = fabs(p->div_v - trace_A) / norm_A;
     const double err_lap = fabs(p->laplace_u) * h / norm_c;
+#else
+    /* SPHENIX: no gradient tensor nor gradient of u; the kernel-gradient
+     * divergence and the uncorrected Laplacian are reported, not required
+     * to be exact. */
+    const double err_v = 0., err_u = 0.;
+    const double err_div = fabs(p->viscosity.div_v - trace_A) / norm_A;
+    const double err_lap = fabs(p->diffusion.laplace_u) * h / norm_c;
+#endif
 
     worst_v = fmax(worst_v, err_v);
     worst_u = fmax(worst_u, err_u);
