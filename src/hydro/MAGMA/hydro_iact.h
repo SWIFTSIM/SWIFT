@@ -373,31 +373,38 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float eta_crit = fminf(pi->force.eta_crit, pj->force.eta_crit);
     const float width_inv = 1.f / const_limiter_width;
 
-    /* Van Leer limiter fraction (eq. 22) */
-    const float A_ij_vel_num = pi->force.gradient_vx[0] * dx[0] * dx[0] +
-                               pi->force.gradient_vx[1] * dx[0] * dx[1] +
-                               pi->force.gradient_vx[2] * dx[0] * dx[2] +
-                               pi->force.gradient_vy[0] * dx[1] * dx[0] +
-                               pi->force.gradient_vy[1] * dx[1] * dx[1] +
-                               pi->force.gradient_vy[2] * dx[1] * dx[2] +
-                               pi->force.gradient_vz[0] * dx[2] * dx[0] +
-                               pi->force.gradient_vz[1] * dx[2] * dx[1] +
-                               pi->force.gradient_vz[2] * dx[2] * dx[2] +
-                               a2_Hubble * r2; /* Hubble flow: a^2 H I */
+    /* Van Leer limiter fraction (eq. 22): the ratio of the two particles'
+     * slopes along the separation, dx . V . dx, with the Hubble flow a^2 H I
+     * in V. g = V . dx is the velocity change over the separation. */
+    const float g_i[3] = {
+        pi->force.gradient_vx[0] * dx[0] + pi->force.gradient_vx[1] * dx[1] +
+            pi->force.gradient_vx[2] * dx[2] + a2_Hubble * dx[0],
+        pi->force.gradient_vy[0] * dx[0] + pi->force.gradient_vy[1] * dx[1] +
+            pi->force.gradient_vy[2] * dx[2] + a2_Hubble * dx[1],
+        pi->force.gradient_vz[0] * dx[0] + pi->force.gradient_vz[1] * dx[1] +
+            pi->force.gradient_vz[2] * dx[2] + a2_Hubble * dx[2]};
+    const float g_j[3] = {
+        pj->force.gradient_vx[0] * dx[0] + pj->force.gradient_vx[1] * dx[1] +
+            pj->force.gradient_vx[2] * dx[2] + a2_Hubble * dx[0],
+        pj->force.gradient_vy[0] * dx[0] + pj->force.gradient_vy[1] * dx[1] +
+            pj->force.gradient_vy[2] * dx[2] + a2_Hubble * dx[1],
+        pj->force.gradient_vz[0] * dx[0] + pj->force.gradient_vz[1] * dx[1] +
+            pj->force.gradient_vz[2] * dx[2] + a2_Hubble * dx[2]};
+    const float A_ij_vel_num = g_i[0] * dx[0] + g_i[1] * dx[1] + g_i[2] * dx[2];
+    const float A_ij_vel_den = g_j[0] * dx[0] + g_j[1] * dx[1] + g_j[2] * dx[2];
 
-    const float A_ij_vel_den = pj->force.gradient_vx[0] * dx[0] * dx[0] +
-                               pj->force.gradient_vx[1] * dx[0] * dx[1] +
-                               pj->force.gradient_vx[2] * dx[0] * dx[2] +
-                               pj->force.gradient_vy[0] * dx[1] * dx[0] +
-                               pj->force.gradient_vy[1] * dx[1] * dx[1] +
-                               pj->force.gradient_vy[2] * dx[1] * dx[2] +
-                               pj->force.gradient_vz[0] * dx[2] * dx[0] +
-                               pj->force.gradient_vz[1] * dx[2] * dx[1] +
-                               pj->force.gradient_vz[2] * dx[2] * dx[2] +
-                               a2_Hubble * r2; /* Hubble flow: a^2 H I */
-
+    /* Round-off guard: in a rigid rotation (antisymmetric V) both slopes
+     * along the separation vanish while the velocity changes do not, and
+     * their ratio is noise. The slopes then agree and the field is linear:
+     * A = 1, the reconstruction is exact. */
+    const float g2_r2 = (g_i[0] * g_i[0] + g_i[1] * g_i[1] + g_i[2] * g_i[2] +
+                         g_j[0] * g_j[0] + g_j[1] * g_j[1] + g_j[2] * g_j[2]) *
+                        r2;
     const float A_ij_vel =
-        A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f;
+        (A_ij_vel_num * A_ij_vel_num + A_ij_vel_den * A_ij_vel_den >
+         1e-12f * g2_r2)
+            ? (A_ij_vel_den != 0.f ? A_ij_vel_num / A_ij_vel_den : 0.f)
+            : 1.f;
 
     /* Slope limiter exponential term (eq. 21, right term): no reconstruction
      * for pairs closer than eta_crit, a guard against particles converging

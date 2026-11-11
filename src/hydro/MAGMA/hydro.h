@@ -897,7 +897,18 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   const float S2 = Sxx * Sxx + Syy * Syy + Szz * Szz +
                    2.f * (Sxy * Sxy + Sxz * Sxz + Syz * Syz);
   const float div2 = div_v_tot * div_v_tot;
-  convergence_fraction = (div2 + S2 > 0.f) ? div2 / (div2 + S2) : 1.f;
+  /* Round-off guard: in a uniform flow or a rigid rotation both the
+   * divergence and the shear vanish and their ratio is noise; measure them
+   * against the rotation (the remaining part of the velocity gradient) and
+   * treat the degenerate case as pure compression (no limiting), as in
+   * exact arithmetic. */
+  const float Rxy = 0.5f * (gradient_vx[1] - gradient_vy[0]);
+  const float Rxz = 0.5f * (gradient_vx[2] - gradient_vz[0]);
+  const float Ryz = 0.5f * (gradient_vy[2] - gradient_vz[1]);
+  const float rot2 = 2.f * (Rxy * Rxy + Rxz * Rxz + Ryz * Ryz);
+  const float gradient_floor = 1e-12f * (div2 + S2 + rot2);
+  convergence_fraction =
+      (div2 + S2 > gradient_floor) ? div2 / (div2 + S2) : 1.f;
 
   /* Viscosity limiter: the same comparison with the
    * shock-presence boost of Cullen & Dehnen (2010, eq. 17-18). R = (1/rho)
@@ -925,7 +936,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
     const float boost =
         2.f * one_minus_R * one_minus_R * one_minus_R * one_minus_R;
     const float bdiv2 = boost * boost * div2;
-    viscosity_limiter = (bdiv2 + S2 > 0.f) ? bdiv2 / (bdiv2 + S2) : 1.f;
+    viscosity_limiter =
+        (bdiv2 + S2 > gradient_floor) ? bdiv2 / (bdiv2 + S2) : 1.f;
     viscosity_limiter =
         fmaxf(viscosity_limiter, hydro_props->viscosity.limiter_floor);
   }
