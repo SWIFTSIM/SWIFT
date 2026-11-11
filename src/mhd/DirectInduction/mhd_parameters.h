@@ -45,6 +45,11 @@
  *        as well as a number of compile-time parameters.
  */
 
+/* Choice of comoving coordinate conversion:
+ * B_phi = a^MHD_COMOVING_FACTOR * B_co
+ */
+#define mhd_comoving_factor -1.5f*hydro_gamma  
+
 /* Tensile instability correction factor */
 
 #define mhd_props_tensile_instability_correction_prefactor 1.0f
