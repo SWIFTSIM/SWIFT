@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e glassPlane_128.hdf5 ]
 then
@@ -12,7 +14,7 @@ then
     python3 makeIC.py
 fi
 
-# Run SWIFT
+# Run SWIFT (configure with --with-hydro-dimension=2)
 ../../../swift --hydro --threads=4 thermalDiffusion.yml 2>&1 | tee output.log
 
 # Profiles and the effective conductivity

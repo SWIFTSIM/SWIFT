@@ -34,7 +34,8 @@
 
 import sys
 import numpy as np
-import h5py
+import unyt
+import swiftsimio as sw
 
 # Parameters
 gamma = 7.0 / 5.0  # Gas adiabatic index
@@ -51,10 +52,9 @@ if tiles * base != N:
     raise ValueError("N must be 32, 64 or a multiple of 128")
 fileGlass = "glassPlane_%d.hdf5" % base
 
-with h5py.File(fileGlass, "r") as f:
-    glass = f["/PartType0/Coordinates"][:, :2] / f["/Header"].attrs["BoxSize"][0]
-    h_glass = f["/PartType0/SmoothingLength"][:]
-
+glass_file = sw.load(fileGlass)
+glass = glass_file.gas.coordinates.value[:, :2] / glass_file.metadata.boxsize[0].value
+h_glass = glass_file.gas.smoothing_lengths.value
 pos = np.concatenate(
     [(glass + [i, j]) / tiles for i in range(tiles) for j in range(tiles)]
 )
@@ -81,38 +81,21 @@ coords = np.zeros((numPart, 3))
 coords[:, :2] = pos
 
 # File
-fileOutput = h5py.File(fileOutputName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [L, L], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=2,
+)
+w.gas.coordinates = coords * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = np.asarray(np.arange(1, numPart + 1)).astype(np.uint64)
+w.write(fileOutputName)
 
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, 1.0]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 2
-
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = fileOutput.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=coords, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=np.arange(1, numPart + 1), dtype="L")
-
-fileOutput.close()
 
 print(
     "%s: %d^2 particles, rho %.3f..%.3f, max |v| %.3f, c_s(inf) %.3f"

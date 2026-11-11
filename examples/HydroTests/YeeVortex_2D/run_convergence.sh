@@ -1,4 +1,6 @@
 #!/bin/bash
+
+set -eo pipefail
 # Convergence study: one run per resolution in run_N<N>/, then the L1 errors against N
 # compared with the Arepo curves of Pakmor et al. 2016 (figure 4).
 # Usage: [SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"] ./run_convergence.sh [N ...]

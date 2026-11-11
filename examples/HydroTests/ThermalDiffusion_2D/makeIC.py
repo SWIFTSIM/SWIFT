@@ -34,18 +34,34 @@ pressure blip that develops at the interfaces and the spurious velocities it
 drives. A scheme with no conduction keeps the profiles and the blip; too much
 conduction smears the contact.
 """
+
 import argparse
 
 import h5py
+import unyt
+import swiftsimio as sw
 import numpy as np
 from scipy.spatial import cKDTree
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--glass", default="glassPlane_128.hdf5", help="2D glass file")
-parser.add_argument("--ncopies", type=int, default=2, help="copies of the glass along x")
-parser.add_argument("--contrast", type=float, default=4.0, help="density contrast of the slab")
-parser.add_argument("--eta", type=float, default=1.5, help="resolution eta for the SPH density of the ICs")
-parser.add_argument("--nominal", action="store_true", help="internal energies from the nominal (step) density instead of the SPH density")
+parser.add_argument(
+    "--ncopies", type=int, default=2, help="copies of the glass along x"
+)
+parser.add_argument(
+    "--contrast", type=float, default=4.0, help="density contrast of the slab"
+)
+parser.add_argument(
+    "--eta",
+    type=float,
+    default=1.5,
+    help="resolution eta for the SPH density of the ICs",
+)
+parser.add_argument(
+    "--nominal",
+    action="store_true",
+    help="internal energies from the nominal (step) density instead of the SPH density",
+)
 parser.add_argument("-o", "--output", default="thermalDiffusion.hdf5")
 args = parser.parse_args()
 
@@ -54,10 +70,10 @@ P0 = 1.0
 rho_hot = 1.0
 rho_cold = args.contrast * rho_hot
 
-with h5py.File(args.glass, "r") as glass:
-    pos1 = glass["/PartType0/Coordinates"][:, :]
-    h1 = glass["/PartType0/SmoothingLength"][:]
-    L1 = float(np.atleast_1d(glass["/Header"].attrs["BoxSize"])[0])
+glass = sw.load(args.glass)
+pos1 = glass.gas.coordinates.value
+h1 = glass.gas.smoothing_lengths.value
+L1 = float(glass.metadata.boxsize[0].value)
 n1 = len(h1)
 Lx = args.ncopies * L1
 pos = np.concatenate([pos1 + np.array([i * L1, 0.0, 0.0]) for i in range(args.ncopies)])
@@ -114,31 +130,31 @@ u = P0 / ((gamma - 1.0) * rho)
 v = np.zeros((N, 3))
 ids = np.arange(1, N + 1)
 
-with h5py.File(args.output, "w") as f:
-    grp = f.create_group("/Header")
-    grp.attrs["BoxSize"] = [Lx, L1, 1.0]
-    grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFileOutputsPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 2
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [Lx, L1], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=2,
+)
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h_ic * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = np.asarray(ids).astype(np.uint64)
+w.write(args.output)
+
+# The parameters of the set-up, for the analysis scripts (not handled by the
+# Writer)
+with h5py.File(args.output, "r+") as f:
+    grp = f["Header"]
     grp.attrs["ThermalDiffusionContrast"] = args.contrast
     grp.attrs["ThermalDiffusionPressure"] = P0
     grp.attrs["ThermalDiffusionInterfaces"] = [0.25 * Lx, 0.75 * Lx]
-    grp = f.create_group("/Units")
-    for key in ["Unit length in cgs (U_L)", "Unit mass in cgs (U_M)", "Unit time in cgs (U_t)",
-                "Unit current in cgs (U_I)", "Unit temperature in cgs (U_T)"]:
-        grp.attrs[key] = 1.0
-    grp = f.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=v, dtype="f")
-    grp.create_dataset("Masses", data=m, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h_ic, dtype="f")
-    grp.create_dataset("InternalEnergy", data=u, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+
 blip = np.abs((gamma - 1.0) * rho * u / P0 - 1.0).max()
-print(f"thermal discontinuity: {N} particles in a {Lx} x {L1} box, contrast {args.contrast}, "
-      f"u from the {'nominal' if args.nominal else 'SPH'} density (max |P / P0 - 1| = {blip:.1e})")
+print(
+    f"thermal discontinuity: {N} particles in a {Lx} x {L1} box, contrast {args.contrast}, "
+    f"u from the {'nominal' if args.nominal else 'SPH'} density (max |P / P0 - 1| = {blip:.1e})"
+)

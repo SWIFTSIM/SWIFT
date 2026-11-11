@@ -40,32 +40,67 @@ the ring (see --truncate).
 
 Usage: makeIC.py [-n 9745] [-c 0.01] [-e 0.1] [-m 1000] [--truncate 2] [-o initial_conditions.hdf5]
 """
+
 import argparse
 
-import h5py
+import unyt
+import swiftsimio as sw
 import numpy as np
 
 parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-parser.add_argument("-n", "--nparts", type=int, default=9745, help="number of particles (paper: 9745)")
-parser.add_argument("-c", "--soundspeed", type=float, default=0.01, help="sound speed (paper: 0.01)")
-parser.add_argument("-e", "--softening", type=float, default=0.1,
-                    help="softening of the point mass (the paper has none); PointMassPotential:softening")
-parser.add_argument("-m", "--gravitymass", type=float, default=1000.0, help="GM of the point mass (paper: 1000)")
-parser.add_argument("-r", "--radius", type=float, default=10.0, help="ring radius (paper: 10)")
-parser.add_argument("-w", "--width", type=float, default=2.5, help="Gaussian width of the ring (paper: 2.5)")
+parser.add_argument(
+    "-n", "--nparts", type=int, default=9745, help="number of particles (paper: 9745)"
+)
+parser.add_argument(
+    "-c", "--soundspeed", type=float, default=0.01, help="sound speed (paper: 0.01)"
+)
+parser.add_argument(
+    "-e",
+    "--softening",
+    type=float,
+    default=0.1,
+    help="softening of the point mass (the paper has none); PointMassPotential:softening",
+)
+parser.add_argument(
+    "-m",
+    "--gravitymass",
+    type=float,
+    default=1000.0,
+    help="GM of the point mass (paper: 1000)",
+)
+parser.add_argument(
+    "-r", "--radius", type=float, default=10.0, help="ring radius (paper: 10)"
+)
+parser.add_argument(
+    "-w",
+    "--width",
+    type=float,
+    default=2.5,
+    help="Gaussian width of the ring (paper: 2.5)",
+)
 parser.add_argument("-L", "--boxsize", type=float, default=50.0, help="box size")
-parser.add_argument("-g", "--gamma", type=float, default=5.0 / 3.0, help="adiabatic index")
-parser.add_argument("--truncate", type=float, default=2.0,
-                    help="truncate the Gaussian at this many widths from the ring centre (0: no truncation). "
-                         "The paper's ring has no truncation, but the isolated particles of its tails "
-                         "(surface density below a few per cent of the peak, many spacings apart) cannot be "
-                         "resolved by the kernel: they orbit much faster than the ring, fall onto the point "
-                         "mass within an orbit and act on the ring's inner edge through kernels the size of "
-                         "the gap (CD10 report the resulting central features as artefacts; here they break "
-                         "the ring). The default of 2 widths keeps 95%% of the mass as a resolved annulus; "
-                         "3 widths (0.3%% of the mass removed) still leaves isolated tail particles.")
-parser.add_argument("--hcap", type=float, default=3.0,
-                    help="cap on the initial smoothing length (Gaussian tails); keep SPH:h_max consistent")
+parser.add_argument(
+    "-g", "--gamma", type=float, default=5.0 / 3.0, help="adiabatic index"
+)
+parser.add_argument(
+    "--truncate",
+    type=float,
+    default=2.0,
+    help="truncate the Gaussian at this many widths from the ring centre (0: no truncation). "
+    "The paper's ring has no truncation, but the isolated particles of its tails "
+    "(surface density below a few per cent of the peak, many spacings apart) cannot be "
+    "resolved by the kernel: they orbit much faster than the ring, fall onto the point "
+    "mass within an orbit and act on the ring's inner edge through kernels the size of "
+    "the gap (CD10 report the resulting central features as artefacts; here they break "
+    "the ring). The default of 2 widths keeps 95%% of the mass as a resolved annulus; "
+    "3 widths (0.3%% of the mass removed) still leaves isolated tail particles.",
+)
+parser.add_argument(
+    "--hcap",
+    type=float,
+    default=3.0,
+    help="cap on the initial smoothing length (Gaussian tails); keep SPH:h_max consistent",
+)
 parser.add_argument("-o", "--output", default="initial_conditions.hdf5")
 args = parser.parse_args()
 
@@ -78,7 +113,14 @@ centre = 0.5 * L
 n_w = args.truncate if args.truncate > 0 else 6.0
 r_grid = np.linspace(max(0.0, r0 - n_w * w), r0 + n_w * w, 200001)
 sigma = np.exp(-0.5 * ((r_grid - r0) / w) ** 2)
-cum = np.concatenate(([0.0], np.cumsum(0.5 * (sigma[1:] * r_grid[1:] + sigma[:-1] * r_grid[:-1]) * np.diff(r_grid))))
+cum = np.concatenate(
+    (
+        [0.0],
+        np.cumsum(
+            0.5 * (sigma[1:] * r_grid[1:] + sigma[:-1] * r_grid[:-1]) * np.diff(r_grid)
+        ),
+    )
+)
 cum /= cum[-1]
 mass_fraction = (np.arange(N) + 0.5) / N
 r = np.interp(mass_fraction, cum, r_grid)
@@ -104,7 +146,9 @@ vel[:, 1] = v_phi * np.cos(theta)
 m = np.full(N, 1.0 / N)
 u = np.full(N, args.soundspeed**2 / (args.gamma * (args.gamma - 1.0)))
 # Sigma normalised to a ring mass of 1: Sigma(r) ~ exp(..) / (2 pi r0 w sqrt(2 pi)) for w << r0
-sigma_local = np.exp(-0.5 * ((r - r0) / w) ** 2) / (2.0 * np.pi * r0 * w * np.sqrt(2.0 * np.pi))
+sigma_local = np.exp(-0.5 * ((r - r0) / w) ** 2) / (
+    2.0 * np.pi * r0 * w * np.sqrt(2.0 * np.pi)
+)
 # Capped for the few particles in the Gaussian tails (their neighbours are far
 # apart; SWIFT's cell size follows the largest h and must fit the box)
 h = np.minimum(1.2348 * np.sqrt(m / sigma_local), args.hcap)
@@ -112,33 +156,23 @@ ids = np.arange(1, N + 1)
 
 v_centre = np.sqrt(GM / r0)
 print(f"Cullen & Dehnen (2010) ring: N = {N}, r0 = {r0}, width = {w}, GM = {GM}")
-print(f"  v_phi(r0) = {v_centre:.3f}, orbital period at r0 = {2.0 * np.pi * r0 / v_centre:.3f}, "
-      f"c_s = {args.soundspeed} (Mach {v_centre / args.soundspeed:.0f}), softening = {eps}")
+print(
+    f"  v_phi(r0) = {v_centre:.3f}, orbital period at r0 = {2.0 * np.pi * r0 / v_centre:.3f}, "
+    f"c_s = {args.soundspeed} (Mach {v_centre / args.soundspeed:.0f}), softening = {eps}"
+)
 print(f"  Gaussian truncated at {n_w:g} widths: r in [{r.min():.2f}, {r.max():.2f}]")
 
-with h5py.File(args.output, "w") as f:
-    grp = f.create_group("/Header")
-    grp.attrs["BoxSize"] = [L, L, L]
-    grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFilesPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 2
-
-    grp = f.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 1.0
-    grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-    grp = f.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=vel, dtype="f")
-    grp.create_dataset("Masses", data=m, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h, dtype="f")
-    grp.create_dataset("InternalEnergy", data=u, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [L, L], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=2,
+)
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = vel * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = np.asarray(ids).astype(np.uint64)
+w.write(args.output)

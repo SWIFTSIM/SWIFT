@@ -32,17 +32,31 @@ Lagrangian displacement xi = -(A / k) sin kx of the glass particles.
 
 A bulk velocity --boost adds a uniform v_x (Galilean-invariance check).
 """
+
 import argparse
 
 import h5py
+import unyt
+import swiftsimio as sw
 import numpy as np
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--glass", default="glassCube_32.hdf5", help="3D glass file")
-parser.add_argument("--amplitude", type=float, default=1e-3, help="relative density amplitude A")
+parser.add_argument(
+    "--amplitude", type=float, default=1e-3, help="relative density amplitude A"
+)
 parser.add_argument("--nwave", type=int, default=1, help="wavelengths across the box")
-parser.add_argument("--standing", action="store_true", help="standing wave (v = 0) instead of a travelling one")
-parser.add_argument("--boost", type=float, default=0.0, help="uniform bulk velocity along x in units of cs")
+parser.add_argument(
+    "--standing",
+    action="store_true",
+    help="standing wave (v = 0) instead of a travelling one",
+)
+parser.add_argument(
+    "--boost",
+    type=float,
+    default=0.0,
+    help="uniform bulk velocity along x in units of cs",
+)
 parser.add_argument("-o", "--output", default="soundWave.hdf5")
 args = parser.parse_args()
 
@@ -53,10 +67,10 @@ P0 = rho0 * cs**2 / gamma
 u0 = P0 / ((gamma - 1.0) * rho0)
 A = args.amplitude
 
-with h5py.File(args.glass, "r") as glass:
-    pos = glass["/PartType0/Coordinates"][:, :]
-    h = glass["/PartType0/SmoothingLength"][:]
-    L = float(np.atleast_1d(glass["/Header"].attrs["BoxSize"])[0])
+glass = sw.load(args.glass)
+pos = glass.gas.coordinates.value
+h = glass.gas.smoothing_lengths.value
+L = float(glass.metadata.boxsize[0].value)
 N = len(h)
 k = 2.0 * np.pi * args.nwave / L
 
@@ -73,34 +87,33 @@ if not args.standing:
 v[:, 0] += args.boost * cs
 ids = np.arange(1, N + 1)
 
-with h5py.File(args.output, "w") as f:
-    grp = f.create_group("/Header")
-    grp.attrs["BoxSize"] = [L, L, L]
-    grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFileOutputsPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 3
-    # The parameters of the wave, for the analysis scripts
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [L, L, L], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = np.asarray(ids).astype(np.uint64)
+w.write(args.output)
+
+# The parameters of the wave, for the analysis scripts (not handled by the
+# Writer)
+with h5py.File(args.output, "r+") as f:
+    grp = f["Header"]
     grp.attrs["SoundWaveAmplitude"] = A
     grp.attrs["SoundWaveNWave"] = args.nwave
     grp.attrs["SoundWaveStanding"] = int(args.standing)
     grp.attrs["SoundWaveBoost"] = args.boost * cs
     grp.attrs["SoundWaveSoundSpeed"] = cs
-    grp = f.create_group("/Units")
-    for key in ["Unit length in cgs (U_L)", "Unit mass in cgs (U_M)", "Unit time in cgs (U_t)",
-                "Unit current in cgs (U_I)", "Unit temperature in cgs (U_T)"]:
-        grp.attrs[key] = 1.0
-    grp = f.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=v, dtype="f")
-    grp.create_dataset("Masses", data=m, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h, dtype="f")
-    grp.create_dataset("InternalEnergy", data=u, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+
 kind = "standing" if args.standing else "travelling"
-print(f"{kind} sound wave: {N} particles, A = {A}, {args.nwave} wavelength(s) per box "
-      f"({round(N ** (1 / 3)) / args.nwave:.0f} particles per wavelength), period {L / (cs * args.nwave)}")
+print(
+    f"{kind} sound wave: {N} particles, A = {A}, {args.nwave} wavelength(s) per box "
+    f"({round(N ** (1 / 3)) / args.nwave:.0f} particles per wavelength), period {L / (cs * args.nwave)}"
+)

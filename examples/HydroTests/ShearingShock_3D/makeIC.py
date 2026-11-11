@@ -30,17 +30,30 @@ magnitude, and how much shear momentum is diffused in the process.
 
 The box is N unit glass cubes along x, with dv = sound speed (Mach 1 streams).
 """
+
 import argparse
 
-import h5py
+import unyt
+import swiftsimio as sw
 import numpy as np
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("-n", "--ncubes", type=int, default=4, help="number of glass cubes along x")
-parser.add_argument("--glass", default="glassCube_32.hdf5", help="3D glass file (unit cube)")
-parser.add_argument("--dv", type=float, default=1.0, help="stream speed (the sound speed is 1)")
-parser.add_argument("-s", "--shear", type=float, default=10.0,
-                    help="amplitude of v_y (paper: 100 dv, which heats the gas by 10-100x through the diffused shear in every SPH scheme)")
+parser.add_argument(
+    "-n", "--ncubes", type=int, default=4, help="number of glass cubes along x"
+)
+parser.add_argument(
+    "--glass", default="glassCube_32.hdf5", help="3D glass file (unit cube)"
+)
+parser.add_argument(
+    "--dv", type=float, default=1.0, help="stream speed (the sound speed is 1)"
+)
+parser.add_argument(
+    "-s",
+    "--shear",
+    type=float,
+    default=10.0,
+    help="amplitude of v_y (paper: 100 dv, which heats the gas by 10-100x through the diffused shear in every SPH scheme)",
+)
 parser.add_argument("-o", "--output", default="shearingShock.hdf5")
 args = parser.parse_args()
 
@@ -49,9 +62,9 @@ rho0 = 1.0
 cs = 1.0
 P0 = rho0 * cs**2 / gamma
 
-with h5py.File(args.glass, "r") as glass:
-    pos_g = glass["/PartType0/Coordinates"][:, :]
-    h_g = glass["/PartType0/SmoothingLength"][:]
+glass = sw.load(args.glass)
+pos_g = glass.gas.coordinates.value
+h_g = glass.gas.smoothing_lengths.value
 n_g = len(h_g)
 L = float(args.ncubes)
 pos = np.concatenate([pos_g + np.array([i, 0.0, 0.0]) for i in range(args.ncubes)])
@@ -66,26 +79,21 @@ m = np.ones(N) * rho0 / n_g
 u = np.ones(N) * P0 / (rho0 * (gamma - 1.0))
 ids = np.arange(1, N + 1)
 
-with h5py.File(args.output, "w") as f:
-    grp = f.create_group("/Header")
-    grp.attrs["BoxSize"] = [L, 1.0, 1.0]
-    grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFilesPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 3
-    grp = f.create_group("/Units")
-    for key in ["Unit length in cgs (U_L)", "Unit mass in cgs (U_M)", "Unit time in cgs (U_t)",
-                "Unit current in cgs (U_I)", "Unit temperature in cgs (U_T)"]:
-        grp.attrs[key] = 1.0
-    grp = f.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=pos, dtype="d")
-    grp.create_dataset("Velocities", data=v, dtype="f")
-    grp.create_dataset("Masses", data=m, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h, dtype="f")
-    grp.create_dataset("InternalEnergy", data=u, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-print(f"Shearing shock: {N} particles in a {L:g} x 1 x 1 box, dv = {args.dv}, shear amplitude s = {args.shear}")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [L, 1.0, 1.0], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = np.asarray(ids).astype(np.uint64)
+w.write(args.output)
+
+print(
+    f"Shearing shock: {N} particles in a {L:g} x 1 x 1 box, dv = {args.dv}, shear amplitude s = {args.shear}"
+)

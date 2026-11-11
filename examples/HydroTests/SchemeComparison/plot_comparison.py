@@ -41,11 +41,37 @@ SCHEME_COLORS = {"sphenix": "C2", "mi3": "C3", "mi2": "C0", "mi1": "C1"}
 def scheme_color(scheme, j):
     return SCHEME_COLORS.get(scheme, COLORS[j % len(COLORS)])
 
-ALL_TESTS = ["sod", "sedov", "noh", "gresho", "evrard", "kh", "square", "square_mass", "keplerian", "keplerian2d",
-             "keplerian_cd10", "zeldovich",
-             "zeldovich_glass", "zeldovich_pert", "blob", "taylorgreen", "shearing", "blast", "rt",
-             "khgr", "ibw", "soundwave", "wavedamping", "thermal", "gresho_boost", "kh8",
-             "sod_weak", "sod_strong"]  # "nfw" on request
+
+ALL_TESTS = [
+    "sod",
+    "sedov",
+    "noh",
+    "gresho",
+    "evrard",
+    "kh",
+    "square",
+    "square_mass",
+    "keplerian",
+    "keplerian2d",
+    "keplerian_cd10",
+    "zeldovich",
+    "zeldovich_glass",
+    "zeldovich_pert",
+    "blob",
+    "taylorgreen",
+    "shearing",
+    "blast",
+    "rt",
+    "khgr",
+    "ibw",
+    "soundwave",
+    "wavedamping",
+    "thermal",
+    "gresho_boost",
+    "kh8",
+    "sod_weak",
+    "sod_strong",
+]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
@@ -55,7 +81,9 @@ scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
 
 
 def snapshot_files(run_dir, basename):
-    files = sorted(glob.glob(os.path.join(run_dir, f"{basename}_[0-9][0-9][0-9][0-9].hdf5")))
+    files = sorted(
+        glob.glob(os.path.join(run_dir, f"{basename}_[0-9][0-9][0-9][0-9].hdf5"))
+    )
     return files
 
 
@@ -69,22 +97,39 @@ def load(filename):
         d["time"] = float(np.atleast_1d(f["/Header"].attrs.get("Time", 0.0))[0])
         d["a"] = float(np.atleast_1d(f["/Header"].attrs.get("Scale-factor", 1.0))[0])
         d["z"] = float(np.atleast_1d(f["/Header"].attrs.get("Redshift", 0.0))[0])
-        d["scheme"] = str(f["/HydroScheme"].attrs.get("Scheme", "")) if "/HydroScheme" in f else ""
+        d["scheme"] = (
+            str(f["/HydroScheme"].attrs.get("Scheme", ""))
+            if "/HydroScheme" in f
+            else ""
+        )
         g = f["/PartType0"]
         d["pos"] = g["Coordinates"][:]
         d["vel"] = g["Velocities"][:]
         d["m"] = g["Masses"][:].reshape(-1)
         d["ids"] = g["ParticleIDs"][:].reshape(-1)
         # Fields absent from initial-condition files
-        for key, name in [("rho", "Densities"), ("u", "InternalEnergies"), ("P", "Pressures"),
-                          ("S", "Entropies"), ("h", "SmoothingLengths")]:
+        for key, name in [
+            ("rho", "Densities"),
+            ("u", "InternalEnergies"),
+            ("P", "Pressures"),
+            ("S", "Entropies"),
+            ("h", "SmoothingLengths"),
+        ]:
             d[key] = g[name][:].reshape(-1) if name in g else None
         if "/Units" in f:
-            d["U_L"] = float(np.atleast_1d(f["/Units"].attrs["Unit length in cgs (U_L)"])[0])
-            d["U_M"] = float(np.atleast_1d(f["/Units"].attrs["Unit mass in cgs (U_M)"])[0])
-            d["U_t"] = float(np.atleast_1d(f["/Units"].attrs["Unit time in cgs (U_t)"])[0])
+            d["U_L"] = float(
+                np.atleast_1d(f["/Units"].attrs["Unit length in cgs (U_L)"])[0]
+            )
+            d["U_M"] = float(
+                np.atleast_1d(f["/Units"].attrs["Unit mass in cgs (U_M)"])[0]
+            )
+            d["U_t"] = float(
+                np.atleast_1d(f["/Units"].attrs["Unit time in cgs (U_t)"])[0]
+            )
         if "/Cosmology" in f and "H0 [internal units]" in f["/Cosmology"].attrs:
-            d["H0"] = float(np.atleast_1d(f["/Cosmology"].attrs["H0 [internal units]"])[0])
+            d["H0"] = float(
+                np.atleast_1d(f["/Cosmology"].attrs["H0 [internal units]"])[0]
+            )
     return d
 
 
@@ -123,7 +168,11 @@ def run_stats(run_dir):
         data = np.loadtxt(st, comments="#", ndmin=2)
         E = data[:, 13] + data[:, 14] + data[:, 15]
         cosmological = np.any(data[:, 2] != 1.0)
-        out["energy_drift"] = float((E[-1] - E[0]) / abs(E[0])) if (E[0] != 0 and not cosmological) else float("nan")
+        out["energy_drift"] = (
+            float((E[-1] - E[0]) / abs(E[0]))
+            if (E[0] != 0 and not cosmological)
+            else float("nan")
+        )
         out["E_kin_end"] = float(data[-1, 13])
         out["E_int_end"] = float(data[-1, 14])
     # Fallback diagnostics of the MAGMA scheme (final snapshot)
@@ -139,7 +188,9 @@ def run_stats(run_dir):
                 out["frac_cond_fallback_final"] = float(np.mean((flags & 1) != 0))
                 out["frac_regularised_final"] = float(np.mean((flags & 4) != 0))
             if "GradientFallbackPairs" in g:
-                out["mean_pair_fallbacks_final"] = float(np.mean(g["GradientFallbackPairs"][:]))
+                out["mean_pair_fallbacks_final"] = float(
+                    np.mean(g["GradientFallbackPairs"][:])
+                )
     log = os.path.join(run_dir, "output.log")
     if os.path.exists(log):
         n_base = 0
@@ -169,12 +220,28 @@ def column_schemes(schemes):
 def setup_figure(schemes, quantities, extra_rows=0, width=3.6, height=2.8):
     ncol = len(schemes) + 1
     nrow = len(quantities) + extra_rows
-    fig, axes = plt.subplots(nrow, ncol, figsize=(width * ncol, height * nrow), squeeze=False)
+    fig, axes = plt.subplots(
+        nrow, ncol, figsize=(width * ncol, height * nrow), squeeze=False
+    )
     return fig, axes
 
 
-def profile_panels(axes, row, schemes, data, xkey_fn, ykey_fn, edges, exact=None, xlabel="",
-                   ylabel="", xlim=None, ylim=None, logx=False, logy=False):
+def profile_panels(
+    axes,
+    row,
+    schemes,
+    data,
+    xkey_fn,
+    ykey_fn,
+    edges,
+    exact=None,
+    xlabel="",
+    ylabel="",
+    xlim=None,
+    ylim=None,
+    logx=False,
+    logy=False,
+):
     """One row of panels: raw + binned per scheme, plus an overlay of the binned profiles."""
     over = axes[row, -1]
     for j, s in enumerate(schemes):
@@ -187,7 +254,9 @@ def profile_panels(axes, row, schemes, data, xkey_fn, ykey_fn, edges, exact=None
         y = ykey_fn(d)
         ax.scatter(x, y, color="0.4", **scatter_props)
         xb, yb, sb = binned(x, y, edges)
-        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+        ax.errorbar(
+            xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3
+        )
         over.plot(xb, yb, "-", color=scheme_color(s, j), lw=1.3, label=s)
         if exact is not None:
             ax.plot(exact[0], exact[1], "-", color="k", lw=1, alpha=0.8, zorder=2)
@@ -204,7 +273,15 @@ def profile_panels(axes, row, schemes, data, xkey_fn, ykey_fn, edges, exact=None
         if logy:
             ax.set_yscale("log")
     if exact is not None:
-        over.plot(exact[0], exact[1], "-", color="k", lw=1, alpha=0.8, label="exact / reference")
+        over.plot(
+            exact[0],
+            exact[1],
+            "-",
+            color="k",
+            lw=1,
+            alpha=0.8,
+            label="exact / reference",
+        )
     if row == 0:
         over.set_title("binned overlay")
         over.legend(fontsize=7, loc="best")
@@ -220,7 +297,9 @@ def profile_panels(axes, row, schemes, data, xkey_fn, ykey_fn, edges, exact=None
         over.set_yscale("log")
 
 
-def image_panels(axes, row, schemes, data, ckey, clim, title_fn=None, cmap="viridis", log=False):
+def image_panels(
+    axes, row, schemes, data, ckey, clim, title_fn=None, cmap="viridis", log=False
+):
     """One row of density maps (one per scheme); the last column is left for a curve."""
     for j, s in enumerate(schemes):
         ax = axes[row, j]
@@ -231,14 +310,25 @@ def image_panels(axes, row, schemes, data, ckey, clim, title_fn=None, cmap="viri
         c = d[ckey]
         if log:
             c = np.log10(c)
-        sc = ax.scatter(d["pos"][:, 0], d["pos"][:, 1], c=c, s=1.5, vmin=clim[0], vmax=clim[1],
-                        cmap=cmap, linewidths=0, rasterized=True)
+        sc = ax.scatter(
+            d["pos"][:, 0],
+            d["pos"][:, 1],
+            c=c,
+            s=1.5,
+            vmin=clim[0],
+            vmax=clim[1],
+            cmap=cmap,
+            linewidths=0,
+            rasterized=True,
+        )
         ax.set_aspect("equal")
         ax.set_xlim(0, d["boxsize"][0])
         ax.set_ylim(0, d["boxsize"][1])
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_title(f"{s}, " + (title_fn(d) if title_fn else f"t={d['time']:.2f}"), fontsize=9)
+        ax.set_title(
+            f"{s}, " + (title_fn(d) if title_fn else f"t={d['time']:.2f}"), fontsize=9
+        )
     plt.colorbar(sc, ax=axes[row, len(schemes) - 1], fraction=0.046)
 
 
@@ -252,7 +342,11 @@ def pick_snapshot(run_dir, basename, index=None, z=None, time=None):
         best, best_d = None, np.inf
         for f in files:
             with h5py.File(f, "r") as h:
-                val = float(np.atleast_1d(h["/Header"].attrs["Redshift" if z is not None else "Time"])[0])
+                val = float(
+                    np.atleast_1d(
+                        h["/Header"].attrs["Redshift" if z is not None else "Time"]
+                    )[0]
+                )
             dist = abs(val - (z if z is not None else time))
             if dist < best_d:
                 best, best_d = f, dist
@@ -283,7 +377,8 @@ def sedov_solution(t, E0, rho0, g, n=1000, nu=3):
     a[5] = 2 / (g - 2)
     a[6] = g / (2 * (g - 1) + nu)
     a[1] = (((nu + 2) * g) / (2.0 + nu * (g - 1.0))) * (
-        (2.0 * nu * (2.0 - g)) / (g * (nu + 2.0) ** 2) - a[2])
+        (2.0 * nu * (2.0 - g)) / (g * (nu + 2.0) ** 2) - a[2]
+    )
     a[4] = a[1] * (nu + 2) / (2 - g)
     a[7] = (2 + nu * (g - 1)) * a[1] / (nu * (2 - g))
 
@@ -291,19 +386,40 @@ def sedov_solution(t, E0, rho0, g, n=1000, nu=3):
     v_max = 4.0 / ((nu + 2) * (g + 1))
     v = v_min + np.arange(n) * (v_max - v_min) / (n - 1.0)
 
-    beta = (nu + 2) * (g + 1) * np.array((
-        0.25, (g / (g - 1)) * 0.5,
-        -(2 + nu * (g - 1)) / 2.0 / ((nu + 2) * (g + 1) - 2 * (2 + nu * (g - 1))),
-        -0.5 / (g - 1)), dtype=np.float64)
+    beta = (
+        (nu + 2)
+        * (g + 1)
+        * np.array(
+            (
+                0.25,
+                (g / (g - 1)) * 0.5,
+                -(2 + nu * (g - 1))
+                / 2.0
+                / ((nu + 2) * (g + 1) - 2 * (2 + nu * (g - 1))),
+                -0.5 / (g - 1),
+            ),
+            dtype=np.float64,
+        )
+    )
     beta = np.outer(beta, v)
-    beta += (g + 1) * np.array((
-        0.0, -1.0 / (g - 1), (nu + 2) / ((nu + 2) * (g + 1) - 2.0 * (2 + nu * (g - 1))),
-        1.0 / (g - 1)), dtype=np.float64).reshape((4, 1))
+    beta += (g + 1) * np.array(
+        (
+            0.0,
+            -1.0 / (g - 1),
+            (nu + 2) / ((nu + 2) * (g + 1) - 2.0 * (2 + nu * (g - 1))),
+            1.0 / (g - 1),
+        ),
+        dtype=np.float64,
+    ).reshape((4, 1))
     lbeta = np.log(beta)
 
     r = np.exp(-a[0] * lbeta[0] - a[2] * lbeta[1] - a[1] * lbeta[2])
-    rho = ((g + 1.0) / (g - 1.0)) * np.exp(a[3] * lbeta[1] + a[5] * lbeta[3] + a[4] * lbeta[2])
-    p = np.exp(nu * a[0] * lbeta[0] + (a[5] + 1) * lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2])
+    rho = ((g + 1.0) / (g - 1.0)) * np.exp(
+        a[3] * lbeta[1] + a[5] * lbeta[3] + a[4] * lbeta[2]
+    )
+    p = np.exp(
+        nu * a[0] * lbeta[0] + (a[5] + 1) * lbeta[3] + (a[4] - 2 * a[1]) * lbeta[2]
+    )
     u = beta[0] * r * 4.0 / ((g + 1) * (nu + 2))
     p *= 8.0 / ((g + 1) * (nu + 2) * (nu + 2))
     u[0] = 0.0
@@ -314,7 +430,7 @@ def sedov_solution(t, E0, rho0, g, n=1000, nu=3):
     vol = (np.pi ** (nu / 2.0) / Gamma(nu / 2.0 + 1)) * np.power(r, nu)
     de = rho * u * u * 0.5 + p / (g - 1)
     q = np.inner(de[1:] + de[:-1], np.diff(vol)) * 0.5
-    fac = (q * (t ** nu) * rho0 / E0) ** (-1.0 / (nu + 2))
+    fac = (q * (t**nu) * rho0 / E0) ** (-1.0 / (nu + 2))
     shock_speed = fac * (2.0 / (nu + 2))
     r_s = shock_speed * t * (nu + 2) / 2.0
     r *= fac * t
@@ -325,9 +441,15 @@ def sedov_solution(t, E0, rho0, g, n=1000, nu=3):
 
 
 def gresho_solution(r):
-    P = np.where(r < 0.2, 5.0 + 12.5 * r ** 2,
-                 np.where(r < 0.4, 9.0 + 12.5 * r ** 2 - 20.0 * r + 4.0 * np.log(np.maximum(r, 1e-10) / 0.2),
-                          3.0 + 4.0 * np.log(2.0)))
+    P = np.where(
+        r < 0.2,
+        5.0 + 12.5 * r**2,
+        np.where(
+            r < 0.4,
+            9.0 + 12.5 * r**2 - 20.0 * r + 4.0 * np.log(np.maximum(r, 1e-10) / 0.2),
+            3.0 + 4.0 * np.log(2.0),
+        ),
+    )
     v = np.where(r < 0.2, 5.0 * r, np.where(r < 0.4, 2.0 - 5.0 * r, 0.0))
     return P, v
 
@@ -349,48 +471,77 @@ def test_sod(root, schemes, out, test="sod"):
     t = ref["time"]
     states = [1.0, 0.0, 1.0, 0.125, 0.0, 0.1]
     for s in schemes:
-        att = ic_attrs(os.path.join(root, "runs", s, test), "sodShock.hdf5", "SodShockStates")
+        att = ic_attrs(
+            os.path.join(root, "runs", s, test), "sodShock.hdf5", "SodShockStates"
+        )
         if att is not None:
             states = [float(v) for v in att[0]]
             break
     solver = RiemannSolver(GAS_GAMMA)
-    x_s = np.linspace(-1.0, 1.0, 8000)  # the whole tube (the hot right state of the weak tube sends its shock past 0.5)
+    x_s = np.linspace(
+        -1.0, 1.0, 8000
+    )  # the whole tube (the hot right state of the weak tube sends its shock past 0.5)
     rho_s, v_s, P_s, _ = solver.solve(*states, x_s / t)
     u_s = P_s / (rho_s * (GAS_GAMMA - 1.0))
     # Contact: the density jump without a pressure jump; shock: the largest pressure jump to its right
     jumps = np.abs(np.diff(rho_s))
     dP = np.abs(np.diff(P_s))
-    contact_candidates = np.where((jumps > 0.05 * jumps.max()) & (dP < 1e-3 * P_s.max()))[0]
-    i_c = contact_candidates[np.argmax(jumps[contact_candidates])] if len(contact_candidates) else int(np.argmax(jumps))
+    contact_candidates = np.where(
+        (jumps > 0.05 * jumps.max()) & (dP < 1e-3 * P_s.max())
+    )[0]
+    i_c = (
+        contact_candidates[np.argmax(jumps[contact_candidates])]
+        if len(contact_candidates)
+        else int(np.argmax(jumps))
+    )
     x_c = 0.5 * (x_s[i_c] + x_s[i_c + 1])
     right = np.arange(i_c + 1, len(dP))
     i_sh = right[np.argmax(dP[right])] if len(right) else i_c
     x_sh = 0.5 * (x_s[i_sh] + x_s[i_sh + 1])
     w = float(min(0.12, 0.6 * (x_sh - x_c))) if x_sh > x_c + 0.02 else 0.12
     P_star = float(P_s[i_c])
-    print(f"{test}: contact at x = {x_c:.3f}, shock at x = {x_sh:.3f}, window +-{w:.3f}")
+    print(
+        f"{test}: contact at x = {x_c:.3f}, shock at x = {x_sh:.3f}, window +-{w:.3f}"
+    )
     rho_star_L, rho_star_R = float(rho_s[i_c - 5]), float(rho_s[i_c + 6])
 
     def xf(d):
         return d["pos"][:, 0] - 1.0
 
     edges = np.arange(-0.6, 0.6, 0.02)
-    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
-                  ("v", lambda d: d["vel"][:, 0], v_s, r"$v_x$"),
-                  ("P", lambda d: d["P"], P_s, r"$P$"),
-                  ("u", lambda d: d["u"], u_s, r"$u$")]
+    quantities = [
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
+        ("v", lambda d: d["vel"][:, 0], v_s, r"$v_x$"),
+        ("P", lambda d: d["P"], P_s, r"$P$"),
+        ("u", lambda d: d["u"], u_s, r"$u$"),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, ex, lab) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="x",
-                       ylabel=lab, xlim=(-0.6, 0.6))
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            xf,
+            yf,
+            edges,
+            exact=(x_s, ex),
+            xlabel="x",
+            ylabel=lab,
+            xlim=(-0.6, 0.6),
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             x = xf(data[s])
             mask = np.abs(x) < 0.5
             metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, mask)
-    label = {"sod": "Sod shock", "sod_weak": "weak Sod shock", "sod_strong": "strong Sod shock"}.get(test, test)
+    label = {
+        "sod": "Sod shock",
+        "sod_weak": "weak Sod shock",
+        "sod_strong": "strong Sod shock",
+    }.get(test, test)
     fig.suptitle(f"{label} (3D, P_R = {states[5]:g}), t = {t:.3f}")
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
@@ -403,9 +554,23 @@ def test_sod(root, schemes, out, test="sod"):
     in_w = np.abs(x_s - x_c) < w
     for i, (name, yf, ex, lab) in enumerate(quantities):
         lo, hi = float(np.min(ex[in_w])), float(np.max(ex[in_w]))
-        pad = max(0.3 * (hi - lo), 0.6 * abs(hi))  # the contact's pressure blip can reach +-70 per cent
-        profile_panels(axes, i, schemes, data, xf, yf, edges_c, exact=(x_s, ex), xlabel="x",
-                       ylabel=lab, xlim=(x_c - w, x_c + w), ylim=(lo - pad, hi + pad))
+        pad = max(
+            0.3 * (hi - lo), 0.6 * abs(hi)
+        )  # the contact's pressure blip can reach +-70 per cent
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            xf,
+            yf,
+            edges_c,
+            exact=(x_s, ex),
+            xlabel="x",
+            ylabel=lab,
+            xlim=(x_c - w, x_c + w),
+            ylim=(lo - pad, hi + pad),
+        )
         for s in schemes:
             if data[s] is None:
                 continue
@@ -424,9 +589,17 @@ def test_sod(root, schemes, out, test="sod"):
         jump = rho_star_L - rho_star_R
         hi = np.where(rb < rho_star_L - 0.1 * jump)[0]
         lo = np.where(rb < rho_star_R + 0.1 * jump)[0]
-        metrics[s]["contact_width_rho"] = float(xb[lo[0]] - xb[hi[0]]) if len(hi) and len(lo) and lo[0] >= hi[0] else float("nan")
-        axes[0, [j for j, ss in enumerate(schemes) if ss == s][0]].axvline(x_c, color="k", lw=0.5, ls=":")
-    fig.suptitle(f"{label}: the contact discontinuity (x_c = {x_c:.3f}, window +-{w:.2f}), t = {t:.3f}")
+        metrics[s]["contact_width_rho"] = (
+            float(xb[lo[0]] - xb[hi[0]])
+            if len(hi) and len(lo) and lo[0] >= hi[0]
+            else float("nan")
+        )
+        axes[0, [j for j, ss in enumerate(schemes) if ss == s][0]].axvline(
+            x_c, color="k", lw=0.5, ls=":"
+        )
+    fig.suptitle(
+        f"{label}: the contact discontinuity (x_c = {x_c:.3f}, window +-{w:.2f}), t = {t:.3f}"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}_contact.png"), dpi=150)
     plt.close(fig)
@@ -455,28 +628,43 @@ def test_sedov(root, schemes, out):
     def vr(d):
         c = 0.5 * d["boxsize"]
         dx = d["pos"] - c
-        r = np.sqrt(np.sum(dx ** 2, axis=1))
+        r = np.sqrt(np.sum(dx**2, axis=1))
         return np.sum(dx * d["vel"], axis=1) / np.maximum(r, 1e-10)
 
     edges = np.arange(0.0, 0.5, 0.01)
-    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
-                  ("v", vr, v_s, r"$v_r$"),
-                  ("P", lambda d: d["P"], P_s, r"$P$"),
-                  ("u", lambda d: d["u"], u_s, r"$u$")]
+    quantities = [
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
+        ("v", vr, v_s, r"$v_r$"),
+        ("P", lambda d: d["P"], P_s, r"$P$"),
+        ("u", lambda d: d["u"], u_s, r"$u$"),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, ex, lab) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, rf, yf, edges, exact=(r_s, ex), xlabel="r",
-                       ylabel=lab, xlim=(0, 0.5), ylim=(0, None) if name != "u" else None,
-                       logy=(name == "u"))
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            rf,
+            yf,
+            edges,
+            exact=(r_s, ex),
+            xlabel="r",
+            ylabel=lab,
+            xlim=(0, 0.5),
+            ylim=(0, None) if name != "u" else None,
+            logy=(name == "u"),
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             r = rf(data[s])
             mask = r < 1.3 * r_shock
             # normalised by the post-shock value of the exact solution
-            metrics.setdefault(s, {})[f"L1_{name}"] = l1(r, yf(data[s]), r_s, ex, mask,
-                                                       norm=np.max(np.abs(ex)))
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(
+                r, yf(data[s]), r_s, ex, mask, norm=np.max(np.abs(ex))
+            )
     for s in schemes:
         if data[s] is not None:
             r = rf(data[s])
@@ -509,25 +697,39 @@ def test_noh(root, schemes, out):
     def vr(d):
         c = 0.5 * d["boxsize"]
         dx = d["pos"] - c
-        r = np.sqrt(np.sum(dx ** 2, axis=1))
+        r = np.sqrt(np.sum(dx**2, axis=1))
         return np.sum(dx * d["vel"], axis=1) / np.maximum(r, 1e-10)
 
     edges = np.arange(0.0, 1.0, 0.02)
-    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
-                  ("v", vr, v_s, r"$v_r$"),
-                  ("u", lambda d: d["u"], u_s, r"$u$")]
+    quantities = [
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
+        ("v", vr, v_s, r"$v_r$"),
+        ("u", lambda d: d["u"], u_s, r"$u$"),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, ex, lab) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, rf, yf, edges, exact=(r_s, ex), xlabel="r",
-                       ylabel=lab, xlim=(0, 1.0))
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            rf,
+            yf,
+            edges,
+            exact=(r_s, ex),
+            xlabel="r",
+            ylabel=lab,
+            xlim=(0, 1.0),
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             r = rf(data[s])
             mask = r < 0.8
-            metrics.setdefault(s, {})[f"L1_{name}"] = l1(r, yf(data[s]), r_s, ex, mask,
-                                                       norm=np.max(np.abs(ex)))
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(
+                r, yf(data[s]), r_s, ex, mask, norm=np.max(np.abs(ex))
+            )
     fig.suptitle(f"Noh implosion (3D), t = {t:.3f}")
     fig.tight_layout()
     fig.savefig(os.path.join(out, "noh.png"), dpi=150)
@@ -538,7 +740,8 @@ def test_noh(root, schemes, out):
 def test_gresho(root, schemes, out, test="gresho"):
     """Gresho vortex; test="gresho_boost" is the same vortex advected by a bulk velocity (Galilean
     invariance): the bulk velocity is the mass-weighted mean velocity of the box, the vortex centre
-    has moved by it, and the metrics are also compared with the static run of the same scheme."""
+    has moved by it, and the metrics are also compared with the static run of the same scheme.
+    """
     data = load_all(root, schemes, test, "gresho", index=10)
     ref = next((d for d in data.values() if d), None)
     if ref is None:
@@ -574,22 +777,41 @@ def test_gresho(root, schemes, out, test="gresho"):
         return (dx[:, 0] * v[:, 0] + dx[:, 1] * v[:, 1]) / np.maximum(r, 1e-10)
 
     edges = np.arange(0.0, 0.8, 0.02)
-    quantities = [("vphi", vphi, v_s, r"$v_\phi$"),
-                  ("vr", vrad, np.zeros_like(r_s), r"$v_r$"),
-                  ("P", lambda d: d["P"], P_s, r"$P$"),
-                  ("rho", lambda d: d["rho"], rho_s, r"$\rho$")]
+    quantities = [
+        ("vphi", vphi, v_s, r"$v_\phi$"),
+        ("vr", vrad, np.zeros_like(r_s), r"$v_r$"),
+        ("P", lambda d: d["P"], P_s, r"$P$"),
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, ex, lab) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, rf, yf, edges, exact=(r_s, ex), xlabel="r",
-                       ylabel=lab, xlim=(0, 0.8))
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            rf,
+            yf,
+            edges,
+            exact=(r_s, ex),
+            xlabel="r",
+            ylabel=lab,
+            xlim=(0, 0.8),
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             r = rf(data[s])
             mask = r < 0.8
-            metrics.setdefault(s, {})[f"L1_{name}"] = l1(r, yf(data[s]), r_s, ex, mask,
-                                                       norm=1.0 if name in ("vphi", "vr") else None)
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(
+                r,
+                yf(data[s]),
+                r_s,
+                ex,
+                mask,
+                norm=1.0 if name in ("vphi", "vr") else None,
+            )
     if test == "gresho_boost":
         # Galilean invariance: the same error as the static vortex of the same scheme?
         static = load_all(root, schemes, "gresho", "gresho", index=10)
@@ -600,7 +822,9 @@ def test_gresho(root, schemes, out, test="gresho"):
             L1_static = l1(r, vphi(static[s]), r_s, v_s, r < 0.8, norm=1.0)
             metrics[s]["L1_vphi_static"] = L1_static
             metrics[s]["dL1_vphi"] = metrics[s]["L1_vphi"] - L1_static
-            vb = np.sum(data[s]["m"][:, None] * data[s]["vel"], axis=0) / np.sum(data[s]["m"])
+            vb = np.sum(data[s]["m"][:, None] * data[s]["vel"], axis=0) / np.sum(
+                data[s]["m"]
+            )
             metrics[s]["boost"] = float(np.sqrt(np.sum(vb**2)))
         title = f"Gresho vortex (2D) advected at |v| = {metrics[schemes[0]].get('boost', 0):.1f}, t = {t:.3f} (vortex frame)"
     else:
@@ -632,14 +856,16 @@ def test_evrard(root, schemes, out):
     def vr(d):
         c = 0.5 * d["boxsize"]
         dx = d["pos"] - c
-        r = np.sqrt(np.sum(dx ** 2, axis=1))
+        r = np.sqrt(np.sum(dx**2, axis=1))
         return np.sum(dx * d["vel"], axis=1) / np.maximum(r, 1e-10)
 
     edges = np.logspace(-2.5, np.log10(2.0), 60)
-    quantities = [("rho", lambda d: d["rho"], 1, r"$\rho$", True),
-                  ("v", vr, 2, r"$v_r$", False),
-                  ("P", lambda d: d["P"], 3, r"$P$", True),
-                  ("S", lambda d: d["S"], None, r"$P/\rho^\gamma$", True)]
+    quantities = [
+        ("rho", lambda d: d["rho"], 1, r"$\rho$", True),
+        ("v", vr, 2, r"$v_r$", False),
+        ("P", lambda d: d["P"], 3, r"$P$", True),
+        ("S", lambda d: d["S"], None, r"$P/\rho^\gamma$", True),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, col, lab, logy) in enumerate(quantities):
@@ -665,8 +891,22 @@ def test_evrard(root, schemes, out):
                     hi.append(np.percentile(y, 99.9))
             if lo:
                 ylim = (0.3 * min(lo), 3.0 * max(hi))
-        profile_panels(axes, i, schemes, data, rf, yf, edges, exact=ex, xlabel="r",
-                       ylabel=lab, xlim=(3e-3, 2.0), ylim=ylim, logx=True, logy=logy)
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            rf,
+            yf,
+            edges,
+            exact=ex,
+            xlabel="r",
+            ylabel=lab,
+            xlim=(3e-3, 2.0),
+            ylim=ylim,
+            logx=True,
+            logy=logy,
+        )
         for s in schemes:
             if data[s] is None or ex is None:
                 continue
@@ -674,8 +914,16 @@ def test_evrard(root, schemes, out):
             mask = (r > 0.01) & (r < 1.0)
             y = yf(data[s])
             if logy:
-                metrics.setdefault(s, {})[f"L1_log_{name}"] = float(np.mean(np.abs(
-                    np.log10(np.maximum(y[mask], 1e-30)) - np.log10(np.maximum(np.interp(r[mask], ex[0], ex[1]), 1e-30)))))
+                metrics.setdefault(s, {})[f"L1_log_{name}"] = float(
+                    np.mean(
+                        np.abs(
+                            np.log10(np.maximum(y[mask], 1e-30))
+                            - np.log10(
+                                np.maximum(np.interp(r[mask], ex[0], ex[1]), 1e-30)
+                            )
+                        )
+                    )
+                )
             else:
                 metrics.setdefault(s, {})[f"L1_{name}"] = l1(r, y, ex[0], ex[1], mask)
     fig.suptitle(f"Evrard collapse (3D), t = {t:.3f}")
@@ -687,12 +935,24 @@ def test_evrard(root, schemes, out):
 
 def test_kh(root, schemes, out, test="kh"):
     """Kelvin-Helmholtz; test="kh8" is the same set-up at a density contrast of 8 (longer run)."""
-    last = max((load(f)["time"] for s in schemes
-                for f in snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")[-1:]), default=4.5)
+    last = max(
+        (
+            load(f)["time"]
+            for s in schemes
+            for f in snapshot_files(
+                os.path.join(root, "runs", s, test), "kelvinHelmholtz"
+            )[-1:]
+        ),
+        default=4.5,
+    )
     times = [last / 3.0, 2.0 * last / 3.0, last]
     cols = column_schemes(schemes)
-    fig, axes = plt.subplots(len(times), len(cols) + 1,
-                             figsize=(3.6 * (len(cols) + 1), 3.4 * len(times)), squeeze=False)
+    fig, axes = plt.subplots(
+        len(times),
+        len(cols) + 1,
+        figsize=(3.6 * (len(cols) + 1), 3.4 * len(times)),
+        squeeze=False,
+    )
     metrics = {}
     rho_max, contrast = 2.0, 2
     for i, t in enumerate(times):
@@ -701,10 +961,20 @@ def test_kh(root, schemes, out, test="kh"):
         if ref is not None and i == 0:
             rho_max = float(np.percentile(ref["rho"], 99.5))
             # Density contrast of the initial conditions (first snapshot of the reference run)
-            first = next((snapshot_files(os.path.join(root, "runs", s, test), "kelvinHelmholtz")[:1]
-                          for s in cols if data[s] is not None), [])
+            first = next(
+                (
+                    snapshot_files(
+                        os.path.join(root, "runs", s, test), "kelvinHelmholtz"
+                    )[:1]
+                    for s in cols
+                    if data[s] is not None
+                ),
+                [],
+            )
             rho_ic = load(first[0])["rho"] if first else ref["rho"]
-            contrast = round(float(np.percentile(rho_ic, 90)) / float(np.percentile(rho_ic, 10)))
+            contrast = round(
+                float(np.percentile(rho_ic, 90)) / float(np.percentile(rho_ic, 10))
+            )
         log = rho_max > 3.0
         clim = (np.log10(0.8), np.log10(rho_max + 0.2)) if log else (0.8, rho_max + 0.2)
         image_panels(axes, i, cols, data, "rho", clim, cmap="RdBu_r", log=log)
@@ -721,11 +991,17 @@ def test_kh(root, schemes, out, test="kh"):
             vy.append(np.sqrt(np.mean(d["vel"][:, 1] ** 2)))
         if tt:
             ax.semilogy(tt, vy, "-o", ms=3, color=scheme_color(s, j), label=s)
-            metrics[s] = {"rms_vy_final": float(vy[-1]), f"rms_vy_t{times[0]:.3g}": float(np.interp(times[0], tt, vy))}
+            metrics[s] = {
+                "rms_vy_final": float(vy[-1]),
+                f"rms_vy_t{times[0]:.3g}": float(np.interp(times[0], tt, vy)),
+            }
     ax.set_xlabel("t")
     ax.set_ylabel(r"rms $v_y$")
     ax.legend(fontsize=7)
-    fig.suptitle(f"Kelvin-Helmholtz (2D, density contrast {contrast}), " + ("log10 density" if rho_max > 3.0 else "density"))
+    fig.suptitle(
+        f"Kelvin-Helmholtz (2D, density contrast {contrast}), "
+        + ("log10 density" if rho_max > 3.0 else "density")
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
@@ -735,14 +1011,20 @@ def test_kh(root, schemes, out, test="kh"):
 def test_square(root, schemes, out, test="square"):
     times = [1.0, 4.0]
     cols = column_schemes(schemes)
-    fig, axes = plt.subplots(len(times) + 1, len(cols) + 1,
-                             figsize=(3.6 * (len(cols) + 1), 3.4 * (len(times) + 1)), squeeze=False)
+    fig, axes = plt.subplots(
+        len(times) + 1,
+        len(cols) + 1,
+        figsize=(3.6 * (len(cols) + 1), 3.4 * (len(times) + 1)),
+        squeeze=False,
+    )
     metrics = {}
     for i, t in enumerate(times):
         data = load_all(root, cols, test, "square", time=t)
         image_panels(axes, i, cols, data, "rho", (0.5, 4.5))
         for j, s in enumerate(cols):
-            axes[i, j].add_patch(plt.Rectangle((0.25, 0.25), 0.5, 0.5, fill=False, ec="k", lw=0.8))
+            axes[i, j].add_patch(
+                plt.Rectangle((0.25, 0.25), 0.5, 0.5, fill=False, ec="k", lw=0.8)
+            )
         axes[i, -1].axis("off")
     # Density along a slice through the middle at the final time
     data = load_all(root, schemes, test, "square", time=times[-1])
@@ -775,19 +1057,36 @@ def test_square(root, schemes, out, test="square"):
             # target density from the initial positions
             order = np.argsort(ic["ids"])
             pos0 = ic["pos"][order][np.searchsorted(ic["ids"][order], d["ids"])]
-            inside = (np.abs(pos0[:, 0] - 0.5) < 0.25) & (np.abs(pos0[:, 1] - 0.5) < 0.25)
+            inside = (np.abs(pos0[:, 0] - 0.5) < 0.25) & (
+                np.abs(pos0[:, 1] - 0.5) < 0.25
+            )
             target = np.where(inside, 4.0, 1.0)
             # Shape: dense gas that left the initial square (rotation into a
             # diamond, fingers); the per-particle L1 is blind to it.
-            now_inside = (np.abs(d["pos"][:, 0] - 0.5) < 0.25) & (np.abs(d["pos"][:, 1] - 0.5) < 0.25)
+            now_inside = (np.abs(d["pos"][:, 0] - 0.5) < 0.25) & (
+                np.abs(d["pos"][:, 1] - 0.5) < 0.25
+            )
             dense = d["rho"] > 2.5
-            metrics[s] = {"L1_rho_vs_initial": float(np.mean(np.abs(d["rho"] / target - 1.0))),
-                          "frac_dense_outside_square": float(np.sum(dense & ~now_inside) / max(np.sum(dense), 1))}
-    axes[row, -1].plot([0, 0.25, 0.25, 0.75, 0.75, 1], [1, 1, 4, 4, 1, 1], "k-", lw=0.8, label="initial")
+            metrics[s] = {
+                "L1_rho_vs_initial": float(np.mean(np.abs(d["rho"] / target - 1.0))),
+                "frac_dense_outside_square": float(
+                    np.sum(dense & ~now_inside) / max(np.sum(dense), 1)
+                ),
+            }
+    axes[row, -1].plot(
+        [0, 0.25, 0.25, 0.75, 0.75, 1],
+        [1, 1, 4, 4, 1, 1],
+        "k-",
+        lw=0.8,
+        label="initial",
+    )
     axes[row, -1].set_xlabel("x")
     axes[row, -1].set_ylabel(r"$\rho$")
     axes[row, -1].legend(fontsize=7)
-    fig.suptitle("Square test (2D), density" + (" -- equal spacing, 4:1 masses" if test == "square_mass" else ""))
+    fig.suptitle(
+        "Square test (2D), density"
+        + (" -- equal spacing, 4:1 masses" if test == "square_mass" else "")
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
@@ -801,15 +1100,28 @@ def ring_positions_figure(runs, times, out_path, half_width=2.5, title=None):
 
     runs: list of (label, run_dir) pairs; times: list of output times.
     """
-    fig, axes = plt.subplots(len(times), len(runs), figsize=(2.6 * len(runs), 2.6 * len(times)),
-                             squeeze=False, sharex=True, sharey=True)
+    fig, axes = plt.subplots(
+        len(times),
+        len(runs),
+        figsize=(2.6 * len(runs), 2.6 * len(times)),
+        squeeze=False,
+        sharex=True,
+        sharey=True,
+    )
     for j, (label, run_dir) in enumerate(runs):
         axes[0, j].set_title(label, fontsize=9)
         for i, t in enumerate(times):
             ax = axes[i, j]
             f = pick_snapshot(run_dir, "keplerian_ring", time=t)
             if f is None:
-                ax.text(0.5, 0.5, "no output", transform=ax.transAxes, ha="center", va="center")
+                ax.text(
+                    0.5,
+                    0.5,
+                    "no output",
+                    transform=ax.transAxes,
+                    ha="center",
+                    va="center",
+                )
                 continue
             with h5py.File(f, "r") as h:
                 pos = h["/PartType0/Coordinates"][:]
@@ -818,7 +1130,15 @@ def ring_positions_figure(runs, times, out_path, half_width=2.5, title=None):
             x = pos[:, 0] - 0.5 * box[0]
             y = pos[:, 1] - 0.5 * box[min(1, len(box) - 1)]
             ax.plot(x, y, ",", color="k", rasterized=True)
-            ax.text(0.04, 0.95, f"t={t_snap:.0f}", transform=ax.transAxes, ha="left", va="top", fontsize=9)
+            ax.text(
+                0.04,
+                0.95,
+                f"t={t_snap:.0f}",
+                transform=ax.transAxes,
+                ha="left",
+                va="top",
+                fontsize=9,
+            )
             ax.set_xlim(-half_width, half_width)
             ax.set_ylim(-half_width, half_width)
             ax.set_aspect("equal")
@@ -838,13 +1158,31 @@ def ring_positions_figure(runs, times, out_path, half_width=2.5, title=None):
 # (annulus = +-2 widths). "plunge" radii define the plunger metrics, "half"
 # the window of the position plots.
 RING_GEOMETRY = {
-    "keplerian": dict(r_in=0.5, r_out=2.0, plunge=(0.25, 0.1), half=2.5,
-                      times=[0.0, 10.0, 25.0, 50.0], pos_times=[5.0, 10.0, 20.0, 30.0]),
-    "keplerian2d": dict(r_in=0.5, r_out=2.0, plunge=(0.25, 0.1), half=2.5,
-                        times=[0.0, 10.0, 25.0, 50.0], pos_times=[5.0, 10.0, 20.0, 30.0]),
+    "keplerian": dict(
+        r_in=0.5,
+        r_out=2.0,
+        plunge=(0.25, 0.1),
+        half=2.5,
+        times=[0.0, 10.0, 25.0, 50.0],
+        pos_times=[5.0, 10.0, 20.0, 30.0],
+    ),
+    "keplerian2d": dict(
+        r_in=0.5,
+        r_out=2.0,
+        plunge=(0.25, 0.1),
+        half=2.5,
+        times=[0.0, 10.0, 25.0, 50.0],
+        pos_times=[5.0, 10.0, 20.0, 30.0],
+    ),
     # the Gaussian's inner tail reaches r ~ 1.7 in the IC: plunge radii below it
-    "keplerian_cd10": dict(r_in=5.0, r_out=15.0, plunge=(1.5, 0.5), half=16.0,
-                           times=[0.0, 10.0, 20.0, 40.0], pos_times=[10.0, 15.0, 25.0, 40.0]),
+    "keplerian_cd10": dict(
+        r_in=5.0,
+        r_out=15.0,
+        plunge=(1.5, 0.5),
+        half=16.0,
+        times=[0.0, 10.0, 20.0, 40.0],
+        pos_times=[10.0, 15.0, 25.0, 40.0],
+    ),
 }
 
 
@@ -854,13 +1192,24 @@ def test_keplerian(root, schemes, out, test="keplerian"):
     # Initial mass in the ring annulus, for the ring-mass metric
     ring_mass_0 = {}
     for s in schemes:
-        f0 = pick_snapshot(os.path.join(root, "runs", s, test), "keplerian_ring", index=0)
+        f0 = pick_snapshot(
+            os.path.join(root, "runs", s, test), "keplerian_ring", index=0
+        )
         if f0:
             d0 = load(f0)
-            r0 = np.hypot(d0["pos"][:, 0] - 0.5 * d0["boxsize"][0], d0["pos"][:, 1] - 0.5 * d0["boxsize"][1])
-            ring_mass_0[s] = float(np.sum(d0["m"][(r0 > geo["r_in"]) & (r0 < geo["r_out"])]))
-    fig, axes = plt.subplots(len(schemes) + 1, len(times),
-                             figsize=(3.4 * len(times), 3.4 * (len(schemes) + 1)), squeeze=False)
+            r0 = np.hypot(
+                d0["pos"][:, 0] - 0.5 * d0["boxsize"][0],
+                d0["pos"][:, 1] - 0.5 * d0["boxsize"][1],
+            )
+            ring_mass_0[s] = float(
+                np.sum(d0["m"][(r0 > geo["r_in"]) & (r0 < geo["r_out"])])
+            )
+    fig, axes = plt.subplots(
+        len(schemes) + 1,
+        len(times),
+        figsize=(3.4 * len(times), 3.4 * (len(schemes) + 1)),
+        squeeze=False,
+    )
     metrics = {}
     clim = (-1.0, 0.3)
     edges = np.linspace(0, 2.0 * geo["half"], 51)
@@ -879,8 +1228,17 @@ def test_keplerian(root, schemes, out, test="keplerian"):
             if i == 0 and j == 0:
                 # colour range from the initial ring (same for all panels)
                 clim = np.log10(np.percentile(d["rho"], [1, 99.5]))
-            sc = ax.scatter(x, y, c=np.log10(d["rho"]), s=1.5, cmap="viridis", linewidths=0,
-                            rasterized=True, vmin=clim[0], vmax=clim[1])
+            ax.scatter(
+                x,
+                y,
+                c=np.log10(d["rho"]),
+                s=1.5,
+                cmap="viridis",
+                linewidths=0,
+                rasterized=True,
+                vmin=clim[0],
+                vmax=clim[1],
+            )
             ax.set_aspect("equal")
             ax.set_xlim(-2.0 * geo["half"], 2.0 * geo["half"])
             ax.set_ylim(-2.0 * geo["half"], 2.0 * geo["half"])
@@ -890,13 +1248,22 @@ def test_keplerian(root, schemes, out, test="keplerian"):
             r = np.sqrt(x * x + y * y)
             mass, _ = np.histogram(r, bins=edges, weights=d["m"])
             sigma = mass / areas
-            axes[-1, i].plot(0.5 * (edges[1:] + edges[:-1]), sigma, "-", color=scheme_color(s, j), label=s)
+            axes[-1, i].plot(
+                0.5 * (edges[1:] + edges[:-1]),
+                sigma,
+                "-",
+                color=scheme_color(s, j),
+                label=s,
+            )
             # Fraction of the ring's mass that left the initial ring annulus
             # (0.5 < r < 2.0 in the example's IC; the gas beyond r = 2 is a
             # 100:1 lower-density background filling the periodic box)
             in_ring = (r > geo["r_in"]) & (r < geo["r_out"])
-            metrics.setdefault(s, {})[f"mass_frac_outside_ring_t{t:.0f}"] = float(
-                1.0 - np.sum(d["m"][in_ring]) / ring_mass_0[s]) if ring_mass_0.get(s) else float("nan")
+            metrics.setdefault(s, {})[f"mass_frac_outside_ring_t{t:.0f}"] = (
+                float(1.0 - np.sum(d["m"][in_ring]) / ring_mass_0[s])
+                if ring_mass_0.get(s)
+                else float("nan")
+            )
         axes[-1, i].set_xlabel("r")
         axes[-1, i].set_ylabel(r"$\Sigma$")
         axes[-1, i].set_title(f"surface density, t={t:.0f}", fontsize=9)
@@ -909,7 +1276,9 @@ def test_keplerian(root, schemes, out, test="keplerian"):
     # inside the inner edge; deep in the potential (see RING_GEOMETRY)
     r_plunge = {"": geo["plunge"][0], f"_r{geo['plunge'][1]:g}": geo["plunge"][1]}
     for s in schemes:
-        files = sorted(glob.glob(os.path.join(root, "runs", s, test, "keplerian_ring_[0-9]*.hdf5")))
+        files = sorted(
+            glob.glob(os.path.join(root, "runs", s, test, "keplerian_ring_[0-9]*.hdf5"))
+        )
         t_first = {k: None for k in r_plunge}
         n_final = {k: 0 for k in r_plunge}
         mass_final = {k: 0.0 for k in r_plunge}
@@ -920,7 +1289,9 @@ def test_keplerian(root, schemes, out, test="keplerian"):
                 pos = h["/PartType0/Coordinates"][:]
                 mass = h["/PartType0/Masses"][:].reshape(-1)
                 box = np.atleast_1d(h["/Header"].attrs["BoxSize"])
-            r = np.hypot(pos[:, 0] - 0.5 * box[0], pos[:, 1] - 0.5 * box[min(1, len(box) - 1)])
+            r = np.hypot(
+                pos[:, 0] - 0.5 * box[0], pos[:, 1] - 0.5 * box[min(1, len(box) - 1)]
+            )
             r_min_final = float(r.min())
             m_tot = float(mass.sum())
             for k, rp in r_plunge.items():
@@ -933,23 +1304,35 @@ def test_keplerian(root, schemes, out, test="keplerian"):
             m = metrics.setdefault(s, {})
             for k in r_plunge:
                 # No plunger by the end: report the end time (a lower bound)
-                m[f"t_first_plunger{k}"] = float(t_first[k] if t_first[k] is not None else t_last)
+                m[f"t_first_plunger{k}"] = float(
+                    t_first[k] if t_first[k] is not None else t_last
+                )
                 m[f"plunger_free_to_end{k}"] = float(t_first[k] is None)
                 m[f"n_plungers_final{k}"] = n_final[k]
                 # Mass fraction, comparable between resolutions (the particle
                 # masses follow the ring's density profile)
                 m[f"plunger_mass_frac_final{k}"] = mass_final[k] / m_tot
             m["r_min_final"] = r_min_final
-    fig.suptitle(f"Keplerian ring ({'2D code' if test.endswith('2d') else '3D planar'}), log density")
+    fig.suptitle(
+        f"Keplerian ring ({'2D code' if test.endswith('2d') else '3D planar'}), log density"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
     # Particle positions, Cullen & Dehnen (2010) Fig. 8 style
-    runs = [(s, os.path.join(root, "runs", s, test)) for s in schemes
-            if glob.glob(os.path.join(root, "runs", s, test, "keplerian_ring_[0-9]*.hdf5"))]
+    runs = [
+        (s, os.path.join(root, "runs", s, test))
+        for s in schemes
+        if glob.glob(os.path.join(root, "runs", s, test, "keplerian_ring_[0-9]*.hdf5"))
+    ]
     if runs:
-        ring_positions_figure(runs, geo["pos_times"], os.path.join(out, f"{test}_positions.png"), half_width=geo["half"],
-                              title=f"Keplerian ring ({test}), particle positions")
+        ring_positions_figure(
+            runs,
+            geo["pos_times"],
+            os.path.join(out, f"{test}_positions.png"),
+            half_width=geo["half"],
+            title=f"Keplerian ring ({test}), particle positions",
+        )
     return metrics
 
 
@@ -958,14 +1341,19 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
     mH, kB = 1.6737236e-27, 1.38064852e-23  # SI
     rows = [("z = 3 (before the caustic)", dict(z=3.0)), ("final", dict())]
     quantities = ["rho", "v", "T", "S"]
-    fig, axes = plt.subplots(len(rows) * len(quantities), len(schemes) + 1,
-                             figsize=(3.6 * (len(schemes) + 1), 2.6 * len(rows) * len(quantities)),
-                             squeeze=False)
+    fig, axes = plt.subplots(
+        len(rows) * len(quantities),
+        len(schemes) + 1,
+        figsize=(3.6 * (len(schemes) + 1), 2.6 * len(rows) * len(quantities)),
+        squeeze=False,
+    )
     metrics = {}
     # Reference entropy from the first snapshot (for the adiabaticity check)
     S0 = {}
     for s in schemes:
-        f = pick_snapshot(os.path.join(root, "runs", s, test), "zeldovichPancake", index=0)
+        f = pick_snapshot(
+            os.path.join(root, "runs", s, test), "zeldovichPancake", index=0
+        )
         if f:
             d0 = load(f)
             order = np.argsort(d0["ids"])
@@ -976,9 +1364,8 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
         if ref is None:
             continue
         z = ref["z"]
-        a = ref["a"]
         L = ref["boxsize"][0]
-        rho_0 = np.sum(ref["m"]) / L ** 3
+        rho_0 = np.sum(ref["m"]) / L**3
         H0 = ref["H0"]
         # Analytic (Zel'dovich) solution, valid before the caustic only
         q = np.linspace(-0.5 * L, 0.5 * L, 512)
@@ -998,15 +1385,41 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
             return u_phys * (GAS_GAMMA - 1.0) * mH / kB
 
         pre_caustic = z > z_c
-        qs = [("rho", lambda d: d["rho"] / rho_0, (x_s, rho_s / rho_0) if pre_caustic else None, r"$\rho/\rho_0$ (comoving)", True),
-              ("v", lambda d: d["vel"][:, 0], (x_s, v_s) if pre_caustic else None, r"$v_x$ (peculiar)", False),
-              ("T", temp, (x_s, T_s) if pre_caustic else None, r"$T$ [K]", True),
-              ("S", lambda d: d["S"], None, r"$A = P/\rho^\gamma$ (comoving)", True)]
+        qs = [
+            (
+                "rho",
+                lambda d: d["rho"] / rho_0,
+                (x_s, rho_s / rho_0) if pre_caustic else None,
+                r"$\rho/\rho_0$ (comoving)",
+                True,
+            ),
+            (
+                "v",
+                lambda d: d["vel"][:, 0],
+                (x_s, v_s) if pre_caustic else None,
+                r"$v_x$ (peculiar)",
+                False,
+            ),
+            ("T", temp, (x_s, T_s) if pre_caustic else None, r"$T$ [K]", True),
+            ("S", lambda d: d["S"], None, r"$A = P/\rho^\gamma$ (comoving)", True),
+        ]
         edges = np.linspace(-0.5 * L, 0.5 * L, 129)
         for qi, (name, yf, ex, lab, logy) in enumerate(qs):
             row = ri * len(quantities) + qi
-            profile_panels(axes, row, schemes, data, xf, yf, edges, exact=ex, xlabel="x [Mpc, comoving]",
-                           ylabel=lab, xlim=(-0.5 * L, 0.5 * L), logy=logy)
+            profile_panels(
+                axes,
+                row,
+                schemes,
+                data,
+                xf,
+                yf,
+                edges,
+                exact=ex,
+                xlabel="x [Mpc, comoving]",
+                ylabel=lab,
+                xlim=(-0.5 * L, 0.5 * L),
+                logy=logy,
+            )
             if qi == 0:
                 for ax in axes[row, :]:
                     ax.set_title(ax.get_title() + f"\n{label}, z = {z:.2f}", fontsize=9)
@@ -1018,7 +1431,9 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
                 # order the analytic solution in x for interpolation (single-valued before caustic)
                 o = np.argsort(ex[0])
                 mask = np.ones_like(x, dtype=bool)
-                metrics.setdefault(s, {})[f"L1_{name}_z{z:.1f}"] = l1(x, yf(d), ex[0][o], ex[1][o], mask)
+                metrics.setdefault(s, {})[f"L1_{name}_z{z:.1f}"] = l1(
+                    x, yf(d), ex[0][o], ex[1][o], mask
+                )
         # Adiabaticity: entropy change since the ICs (should be 0 before the caustic)
         for s in schemes:
             d = data[s]
@@ -1028,10 +1443,15 @@ def test_zeldovich(root, schemes, out, test="zeldovich"):
             idx = np.searchsorted(ids0, d["ids"])
             dS = d["S"] / s0[idx] - 1.0
             key = f"z{z:.1f}"
-            metrics.setdefault(s, {})[f"max_dS_over_S_{key}"] = float(np.max(np.abs(dS)))
+            metrics.setdefault(s, {})[f"max_dS_over_S_{key}"] = float(
+                np.max(np.abs(dS))
+            )
             metrics[s][f"median_dS_over_S_{key}"] = float(np.median(np.abs(dS)))
             metrics[s][f"frac_dS_gt_1pc_{key}"] = float(np.mean(np.abs(dS) > 0.01))
-    variant = {"zeldovich_glass": " -- glass IC", "zeldovich_pert": " -- lattice symmetry broken"}.get(test, "")
+    variant = {
+        "zeldovich_glass": " -- glass IC",
+        "zeldovich_pert": " -- lattice symmetry broken",
+    }.get(test, "")
     fig.suptitle("Zel'dovich pancake (3D, cosmological)" + variant)
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
@@ -1047,8 +1467,12 @@ def test_blob(root, schemes, out):
     tau_kh = (1.0 + 10.0) * 0.1 / (1.0 * np.sqrt(10.0))
     times = [1.0, 2.0, 4.0]  # in tau_KH
     cols = column_schemes(schemes)
-    fig, axes = plt.subplots(len(times), len(cols) + 1,
-                             figsize=(3.6 * (len(cols) + 1), 2.0 * len(times) + 1.0), squeeze=False)
+    fig, axes = plt.subplots(
+        len(times),
+        len(cols) + 1,
+        figsize=(3.6 * (len(cols) + 1), 2.0 * len(times) + 1.0),
+        squeeze=False,
+    )
     metrics = {}
     for i, t in enumerate(times):
         data = load_all(root, cols, "blob", "blob", time=t * tau_kh)
@@ -1061,13 +1485,26 @@ def test_blob(root, schemes, out):
             # Mass-weighted projection along z
             # Mass-weighted projection along z of the region around the blob and its wake
             xmax = 0.6 * d["boxsize"][0]
-            H, xe, ye = np.histogram2d(d["pos"][:, 0], d["pos"][:, 1], bins=(300, 125),
-                                       range=[[0, xmax], [0, d["boxsize"][1]]], weights=d["m"])
-            ax.imshow(np.log10(H.T + 1e-10 * H.max()), origin="lower", extent=(0, xmax, 0, d["boxsize"][1]),
-                      cmap="viridis", vmin=np.log10(H.max()) - 1.5, vmax=np.log10(H.max()))
+            H, xe, ye = np.histogram2d(
+                d["pos"][:, 0],
+                d["pos"][:, 1],
+                bins=(300, 125),
+                range=[[0, xmax], [0, d["boxsize"][1]]],
+                weights=d["m"],
+            )
+            ax.imshow(
+                np.log10(H.T + 1e-10 * H.max()),
+                origin="lower",
+                extent=(0, xmax, 0, d["boxsize"][1]),
+                cmap="viridis",
+                vmin=np.log10(H.max()) - 1.5,
+                vmax=np.log10(H.max()),
+            )
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.set_title(f"{s}, t={d['time'] / tau_kh:.1f} " + r"$\tau_{\rm KH}$", fontsize=9)
+            ax.set_title(
+                f"{s}, t={d['time'] / tau_kh:.1f} " + r"$\tau_{\rm KH}$", fontsize=9
+            )
         axes[i, -1].axis("off")
     # Surviving blob mass fraction
     ax = axes[0, -1]
@@ -1080,7 +1517,9 @@ def test_blob(root, schemes, out):
             continue
         ic = load(ic_file)
         centre = np.array([0.5, 0.5, 0.5])
-        blob_ids = np.sort(ic["ids"][np.sum((ic["pos"] - centre) ** 2, axis=1) < 0.1 ** 2])
+        blob_ids = np.sort(
+            ic["ids"][np.sum((ic["pos"] - centre) ** 2, axis=1) < 0.1**2]
+        )
         # Reference blob density and ambient internal energy from the first snapshot
         # (the example's units give rho_bg = 1024, not 1)
         d0 = load(files[0])
@@ -1095,8 +1534,11 @@ def test_blob(root, schemes, out):
             tt.append(d["time"] / tau_kh)
             frac.append(float(np.sum(in_blob & cold_dense) / max(np.sum(in_blob), 1)))
         ax.plot(tt, frac, "-o", ms=3, color=scheme_color(s, j), label=s)
-        metrics[s] = {"blob_mass_frac_2tau": float(np.interp(2.0, tt, frac)),
-                      "blob_mass_frac_final": float(frac[-1]), "t_final_tauKH": float(tt[-1])}
+        metrics[s] = {
+            "blob_mass_frac_2tau": float(np.interp(2.0, tt, frac)),
+            "blob_mass_frac_final": float(frac[-1]),
+            "t_final_tauKH": float(tt[-1]),
+        }
     ax.set_xlabel(r"$t / \tau_{\rm KH}$")
     ax.set_ylabel("blob mass fraction")
     ax.set_ylim(0, 1.05)
@@ -1111,7 +1553,9 @@ def test_blob(root, schemes, out):
 def test_nfw(root, schemes, out):
     """Gas in hydrostatic equilibrium in an NFW potential: density profile at
     the end compared with the initial one."""
-    fig, axes = plt.subplots(2, len(schemes) + 1, figsize=(3.6 * (len(schemes) + 1), 6.0), squeeze=False)
+    fig, axes = plt.subplots(
+        2, len(schemes) + 1, figsize=(3.6 * (len(schemes) + 1), 6.0), squeeze=False
+    )
     metrics = {}
     edges = np.logspace(np.log10(0.5), np.log10(100.0), 36)
     rb = np.sqrt(edges[1:] * edges[:-1])
@@ -1127,14 +1571,18 @@ def test_nfw(root, schemes, out):
         ic_file = os.path.join(run_dir, "nfw.hdf5")
         f = pick_snapshot(run_dir, "snapshot")
         if f is None or not os.path.exists(ic_file):
-            axes[0, j].text(0.5, 0.5, "missing", ha="center", transform=axes[0, j].transAxes)
+            axes[0, j].text(
+                0.5, 0.5, "missing", ha="center", transform=axes[0, j].transAxes
+            )
             continue
         ic, d = load(ic_file), load(f)
         r0, rho0 = profile(ic)
         r1, rho1 = profile(d)
         ax = axes[0, j]
         ax.loglog(r0, rho0, "k-", lw=1, label="initial")
-        ax.loglog(r1, rho1, "-", color=scheme_color(s, j), lw=1.3, label=f"t={d['time']:.2f}")
+        ax.loglog(
+            r1, rho1, "-", color=scheme_color(s, j), lw=1.3, label=f"t={d['time']:.2f}"
+        )
         ax.set_title(s)
         ax.set_ylabel(r"$\rho$")
         ax.set_xlabel("r")
@@ -1146,10 +1594,14 @@ def test_nfw(root, schemes, out):
         ax.set_xlabel("r")
         ax.set_ylabel(r"$\rho / \rho_{\rm initial}$")
         axes[0, -1].loglog(r1, rho1, "-", color=scheme_color(s, j), lw=1.3, label=s)
-        axes[1, -1].semilogx(r1, rho1 / rho0, "-", color=scheme_color(s, j), lw=1.3, label=s)
+        axes[1, -1].semilogx(
+            r1, rho1 / rho0, "-", color=scheme_color(s, j), lw=1.3, label=s
+        )
         sel = (rb > 1.0) & (rb < 50.0) & np.isfinite(rho1) & np.isfinite(rho0)
-        metrics[s] = {"L1_logrho_1-50": float(np.mean(np.abs(np.log10(rho1[sel] / rho0[sel])))),
-                      "rho_ratio_r<2": float(np.nanmean((rho1 / rho0)[rb < 2.0]))}
+        metrics[s] = {
+            "L1_logrho_1-50": float(np.mean(np.abs(np.log10(rho1[sel] / rho0[sel])))),
+            "rho_ratio_r<2": float(np.nanmean((rho1 / rho0)[rb < 2.0])),
+        }
         if j == 0:
             axes[0, -1].loglog(r0, rho0, "k-", lw=1, label="initial")
     axes[0, -1].set_title("overlay")
@@ -1215,7 +1667,9 @@ def test_taylorgreen(root, schemes, out):
     if ref is None:
         return {}
     t_end = ref["time"]
-    fig, axes = plt.subplots(2, len(schemes) + 1, figsize=(3.6 * (len(schemes) + 1), 3.2 * 2), squeeze=False)
+    fig, axes = plt.subplots(
+        2, len(schemes) + 1, figsize=(3.6 * (len(schemes) + 1), 3.2 * 2), squeeze=False
+    )
     metrics = {}
     axE = axes[0, -1]
     for j, s in enumerate(schemes):
@@ -1228,7 +1682,13 @@ def test_taylorgreen(root, schemes, out):
             nu = -slope / (16.0 * np.pi**2)
             metrics.setdefault(s, {})["nu_eff"] = float(nu)
             metrics[s]["E_kin_ratio_end"] = float(E[-1] / E[0])
-            axE.semilogy(t, E / E[0], "-", color=scheme_color(s, j), label=f"{s}: nu_eff = {nu:.1e}")
+            axE.semilogy(
+                t,
+                E / E[0],
+                "-",
+                color=scheme_color(s, j),
+                label=f"{s}: nu_eff = {nu:.1e}",
+            )
         d = data[s]
         if d is None:
             continue
@@ -1246,7 +1706,9 @@ def test_taylorgreen(root, schemes, out):
         xs = np.linspace(0, 1, 200)
         ax.plot(xs, np.sin(k * xs), "k-", lw=1)
         xb, vb, sb = binned(x[strip], d["vel"][strip, 0] / v0, np.linspace(0, 1, 26))
-        ax.errorbar(xb, vb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+        ax.errorbar(
+            xb, vb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3
+        )
         axes[1, -1].plot(xb, vb, "-", color=scheme_color(s, j), lw=1.3, label=s)
         ax.set_xlabel("x (|y| < 0.02)")
         ax.set_ylabel(r"$v_x / v_0$")
@@ -1260,7 +1722,9 @@ def test_taylorgreen(root, schemes, out):
     axes[1, -1].set_xlabel("x")
     axes[1, -1].set_ylabel(r"$v_x / v_0$")
     axes[1, -1].legend(fontsize=7)
-    fig.suptitle(f"Taylor-Green vortex (2D, Mach 0.1), t = {t_end:.2f}: |v| / v0 and kinetic-energy decay")
+    fig.suptitle(
+        f"Taylor-Green vortex (2D, Mach 0.1), t = {t_end:.2f}: |v| / v0 and kinetic-energy decay"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, "taylorgreen.png"), dpi=150)
     plt.close(fig)
@@ -1280,8 +1744,13 @@ def test_shearing(root, schemes, out):
     xc = 0.5 * L
     # Stream speed, shear amplitude and pressure from the initial conditions
     first = next(s for s in schemes if data[s] is not None)
-    ic = ic_arrays(os.path.join(root, "runs", first, "shearing"), "shearingShock.hdf5",
-                   "Velocities", "ParticleIDs", "InternalEnergy")
+    ic = ic_arrays(
+        os.path.join(root, "runs", first, "shearing"),
+        "shearingShock.hdf5",
+        "Velocities",
+        "ParticleIDs",
+        "InternalEnergy",
+    )
     if ic is None:
         return {}
     v_ic, ids_ic, u_ic = ic
@@ -1309,18 +1778,34 @@ def test_shearing(root, schemes, out):
         return d["pos"][:, 0]
 
     edges = np.linspace(0, L, 161)
-    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
-                  ("vx", lambda d: d["vel"][:, 0], v_s, r"$v_x$"),
-                  ("P", lambda d: d["P"], P_s, r"$P$")]
+    quantities = [
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$"),
+        ("vx", lambda d: d["vel"][:, 0], v_s, r"$v_x$"),
+        ("P", lambda d: d["P"], P_s, r"$P$"),
+    ]
     fig, axes = setup_figure(schemes, quantities, extra_rows=1)
     metrics = {}
     for i, (name, yf, ex, lab) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="x", ylabel=lab, xlim=(0, L))
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            xf,
+            yf,
+            edges,
+            exact=(x_s, ex),
+            xlabel="x",
+            ylabel=lab,
+            xlim=(0, L),
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             x = xf(data[s])
-            metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, np.ones_like(x, dtype=bool))
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(
+                x, yf(data[s]), x_s, ex, np.ones_like(x, dtype=bool)
+            )
     row = len(quantities)
     for j, s in enumerate(schemes):
         d = data[s]
@@ -1333,11 +1818,15 @@ def test_shearing(root, schemes, out):
         dvy = d["vel"][:, 1] - vy0
         metrics[s]["L1_vy_lagrangian"] = float(np.mean(np.abs(dvy)) / s_amp)
         post = np.abs(x - xc) < 0.8 * x_shock
-        metrics[s]["vx_noise_postshock"] = float(np.std(d["vel"][post, 0]) / dv) if np.any(post) else float("nan")
+        metrics[s]["vx_noise_postshock"] = (
+            float(np.std(d["vel"][post, 0]) / dv) if np.any(post) else float("nan")
+        )
         metrics[s]["x_shock_exact"] = x_shock
         ax.scatter(x, dvy / s_amp, color="0.4", **scatter_props)
         xb, yb, sb = binned(x, dvy / s_amp, edges)
-        ax.errorbar(xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+        ax.errorbar(
+            xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3
+        )
         axes[row, -1].plot(xb, sb, "-", color=scheme_color(s, j), lw=1.3, label=s)
         ax.axhline(0, color="k", lw=1)
         ax.set_xlim(0, L)
@@ -1348,7 +1837,9 @@ def test_shearing(root, schemes, out):
     axes[row, -1].set_ylabel(r"rms$(v_y - v_{y,0}) / s$ per bin")
     axes[row, -1].set_yscale("log")
     axes[row, -1].legend(fontsize=7)
-    fig.suptitle(f"Shearing shock (3D), t = {t:.3f}, streams at Mach {dv:g}, shear amplitude {s_amp:g}")
+    fig.suptitle(
+        f"Shearing shock (3D), t = {t:.3f}, streams at Mach {dv:g}, shear amplitude {s_amp:g}"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, "shearing.png"), dpi=150)
     plt.close(fig)
@@ -1366,10 +1857,14 @@ def test_blast(root, schemes, out):
     t = ref["time"]
     L = float(ref["boxsize"][0])
     first = next(s for s in schemes if data[s] is not None)
-    ic = ic_arrays(os.path.join(root, "runs", first, "blast"), "blastWave.hdf5", "InternalEnergy")
+    ic = ic_arrays(
+        os.path.join(root, "runs", first, "blast"), "blastWave.hdf5", "InternalEnergy"
+    )
     if ic is None:
         return {}
-    P_L, P_R = (GAS_GAMMA - 1.0) * float(ic[0].max()), (GAS_GAMMA - 1.0) * float(ic[0].min())
+    P_L, P_R = (GAS_GAMMA - 1.0) * float(ic[0].max()), (GAS_GAMMA - 1.0) * float(
+        ic[0].min()
+    )
     # The periodic boundary carries the same jump: only the middle half of the
     # box, |x - L/2| < L/4, is free of the waves from it until the end time.
     solver = RiemannSolver(GAS_GAMMA)
@@ -1381,20 +1876,36 @@ def test_blast(root, schemes, out):
         return d["pos"][:, 0]
 
     edges = np.linspace(0.25 * L, 0.75 * L, 101)
-    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$", False),
-                  ("v", lambda d: d["vel"][:, 0], v_s, r"$v_x$", False),
-                  ("P", lambda d: d["P"], P_s, r"$P$", True),
-                  ("u", lambda d: d["u"], u_s, r"$u$", True)]
+    quantities = [
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$", False),
+        ("v", lambda d: d["vel"][:, 0], v_s, r"$v_x$", False),
+        ("P", lambda d: d["P"], P_s, r"$P$", True),
+        ("u", lambda d: d["u"], u_s, r"$u$", True),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, ex, lab, logy) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="x", ylabel=lab,
-                       xlim=(0.25 * L, 0.75 * L), logy=logy)
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            xf,
+            yf,
+            edges,
+            exact=(x_s, ex),
+            xlabel="x",
+            ylabel=lab,
+            xlim=(0.25 * L, 0.75 * L),
+            logy=logy,
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             x = xf(data[s])
-            metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, np.abs(x - 0.5 * L) < 0.25 * L)
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(
+                x, yf(data[s]), x_s, ex, np.abs(x - 0.5 * L) < 0.25 * L
+            )
     # Particle interpenetration: velocity noise behind the shock
     shocked = (rho_s > 0.5 * (rho_s.max() + 1.0)) & (x_s > 0.5 * L)
     if np.any(shocked):
@@ -1405,7 +1916,11 @@ def test_blast(root, schemes, out):
             x = xf(data[s])
             post = (x > x0 + 0.2 * (x1 - x0)) & (x < x1 - 0.2 * (x1 - x0))
             vref = float(np.interp(0.5 * (x0 + x1), x_s, v_s))
-            metrics[s]["v_noise_postshock"] = float(np.std(data[s]["vel"][post, 0]) / vref) if np.any(post) else float("nan")
+            metrics[s]["v_noise_postshock"] = (
+                float(np.std(data[s]["vel"][post, 0]) / vref)
+                if np.any(post)
+                else float("nan")
+            )
     fig.suptitle(f"Strong blast wave (3D), t = {t:.4f}, P_L / P_R = {P_L / P_R:g}")
     fig.tight_layout()
     fig.savefig(os.path.join(out, "blast.png"), dpi=150)
@@ -1415,11 +1930,15 @@ def test_blast(root, schemes, out):
 
 def test_rt(root, schemes, out):
     """Rayleigh-Taylor: growth of the seeded mode against linear theory, bubble and spike heights."""
-    gamma, g, k = 1.4, 0.5, 4.0 * np.pi  # the seed is cos(4 pi x): wavelength 1/2
+    g, k = 0.5, 4.0 * np.pi  # the seed is cos(4 pi x): wavelength 1/2
     y_if = 0.75
     times = [1.0, 2.0, 3.0, 4.0]
-    fig, axes = plt.subplots(len(times), len(schemes) + 1,
-                             figsize=(3.0 * (len(schemes) + 1), 4.2 * len(times)), squeeze=False)
+    fig, axes = plt.subplots(
+        len(times),
+        len(schemes) + 1,
+        figsize=(3.0 * (len(schemes) + 1), 4.2 * len(times)),
+        squeeze=False,
+    )
     metrics = {}
     sigma_th = None
     for i, tt in enumerate(times):
@@ -1474,14 +1993,24 @@ def test_rt(root, schemes, out):
                 m[f"bubble_height_t{tq:g}"] = float(np.interp(tq, t, bubble))
                 m[f"spike_depth_t{tq:g}"] = float(np.interp(tq, t, spike))
         m["mixing_width_end"] = float(bubble[-1] + spike[-1])
-        ax.semilogy(t, amp, "-", color=scheme_color(s, j), label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
+        ax.semilogy(
+            t,
+            amp,
+            "-",
+            color=scheme_color(s, j),
+            label=f"{s}: {sigma / sigma_th:.2f} sigma_th",
+        )
         axes[1, -1].axis("on")
         axes[1, -1].plot(t, bubble, "-", color=scheme_color(s, j), label=s)
         axes[1, -1].plot(t, spike, "--", color=scheme_color(s, j))
     if sigma_th is not None:
         tt = np.linspace(0, 1.2, 20)
-        ax.semilogy(tt, 0.02 * np.exp(sigma_th * tt), "k:",
-                    label=rf"$e^{{\sigma t}}$, $\sigma$ = {sigma_th:.2f}")
+        ax.semilogy(
+            tt,
+            0.02 * np.exp(sigma_th * tt),
+            "k:",
+            label=rf"$e^{{\sigma t}}$, $\sigma$ = {sigma_th:.2f}",
+        )
     ax.set_xlabel("t")
     ax.set_ylabel("mode amplitude of $v_y$")
     ax.legend(fontsize=6)
@@ -1502,8 +2031,12 @@ def test_khgr(root, schemes, out):
     arg = np.exp(-4.0 * k * d_ramp) - (2.0 * k * d_ramp - 1.0) ** 2
     sigma_th = float(U0 / (2.0 * d_ramp) * np.sqrt(max(arg, 0.0)))
     times = [1.0, 2.0]
-    fig, axes = plt.subplots(len(times), len(schemes) + 1,
-                             figsize=(3.4 * (len(schemes) + 1), 3.4 * len(times)), squeeze=False)
+    fig, axes = plt.subplots(
+        len(times),
+        len(schemes) + 1,
+        figsize=(3.4 * (len(schemes) + 1), 3.4 * len(times)),
+        squeeze=False,
+    )
     metrics = {}
     for i, tt in enumerate(times):
         data = load_all(root, schemes, "khgr", "kelvinHelmholtzGrowthRate", time=tt)
@@ -1529,8 +2062,14 @@ def test_khgr(root, schemes, out):
     series = {}
     for j, s in enumerate(schemes):
         run_dir = os.path.join(root, "runs", s, "khgr")
-        t, vals = snapshot_series(run_dir, "kelvinHelmholtzGrowthRate",
-                                  lambda d: (mode_amplitude(d), float(np.sum(0.5 * d["m"] * d["vel"][:, 1] ** 2))))
+        t, vals = snapshot_series(
+            run_dir,
+            "kelvinHelmholtzGrowthRate",
+            lambda d: (
+                mode_amplitude(d),
+                float(np.sum(0.5 * d["m"] * d["vel"][:, 1] ** 2)),
+            ),
+        )
         if len(t) == 0:
             continue
         M, Ey = vals[:, 0], vals[:, 1]
@@ -1548,11 +2087,22 @@ def test_khgr(root, schemes, out):
         m["t_mode_amp_max"] = float(t[np.argmax(M)])
         # Incoherent v_y generated by the shear flow itself (gradient noise), early on
         m["E_y_noise_t0.2"] = float(np.interp(0.2, t, Ey))
-        ax.semilogy(t, M, "-", color=scheme_color(s, j), label=f"{s}: {sigma / sigma_th:.2f} sigma_th")
+        ax.semilogy(
+            t,
+            M,
+            "-",
+            color=scheme_color(s, j),
+            label=f"{s}: {sigma / sigma_th:.2f} sigma_th",
+        )
     tt = np.linspace(0, 0.8, 20)
     if series:
         M0 = float(np.mean([np.interp(0.1, *ser) for ser in series.values()]))
-        ax.semilogy(tt + 0.1, M0 * np.exp(sigma_th * tt), "k:", label=rf"$e^{{\sigma t}}$, $\sigma$ = {sigma_th:.2f}")
+        ax.semilogy(
+            tt + 0.1,
+            M0 * np.exp(sigma_th * tt),
+            "k:",
+            label=rf"$e^{{\sigma t}}$, $\sigma$ = {sigma_th:.2f}",
+        )
     ax.set_xlabel("t")
     ax.set_ylabel("mode amplitude of $v_y$")
     ax.legend(fontsize=6)
@@ -1572,7 +2122,9 @@ def test_ibw(root, schemes, out):
         return {}
     t = ref["time"]
     first = next(s for s in schemes if data[s] is not None)
-    ref_file = os.path.join(root, "runs", first, "ibw", "interactingBlastWaves1D_exact.txt")
+    ref_file = os.path.join(
+        root, "runs", first, "ibw", "interactingBlastWaves1D_exact.txt"
+    )
     if not os.path.exists(ref_file):
         return {}
     exact = np.loadtxt(ref_file)
@@ -1586,22 +2138,46 @@ def test_ibw(root, schemes, out):
         return np.minimum(x, 2.0 - x)
 
     edges = np.linspace(0, 1, 201)
-    quantities = [("rho", lambda d: d["rho"], rho_s, r"$\rho$", False),
-                  # the mirror image has the opposite velocity
-                  ("v", lambda d: d["vel"][:, 0] * np.where(d["pos"][:, 0] < 1.0, 1.0, -1.0), v_s, r"$v_x$", False),
-                  ("P", lambda d: d["P"], P_s, r"$P$", True),
-                  ("u", lambda d: d["u"], u_s, r"$u$", True)]
+    quantities = [
+        ("rho", lambda d: d["rho"], rho_s, r"$\rho$", False),
+        # the mirror image has the opposite velocity
+        (
+            "v",
+            lambda d: d["vel"][:, 0] * np.where(d["pos"][:, 0] < 1.0, 1.0, -1.0),
+            v_s,
+            r"$v_x$",
+            False,
+        ),
+        ("P", lambda d: d["P"], P_s, r"$P$", True),
+        ("u", lambda d: d["u"], u_s, r"$u$", True),
+    ]
     fig, axes = setup_figure(schemes, quantities)
     metrics = {}
     for i, (name, yf, ex, lab, logy) in enumerate(quantities):
-        profile_panels(axes, i, schemes, data, xf, yf, edges, exact=(x_s, ex), xlabel="min(x, 2 - x)", ylabel=lab,
-                       xlim=(0.4, 1.0) if name != "u" else (0, 1), logy=logy)
+        profile_panels(
+            axes,
+            i,
+            schemes,
+            data,
+            xf,
+            yf,
+            edges,
+            exact=(x_s, ex),
+            xlabel="min(x, 2 - x)",
+            ylabel=lab,
+            xlim=(0.4, 1.0) if name != "u" else (0, 1),
+            logy=logy,
+        )
         for s in schemes:
             if data[s] is None:
                 continue
             x = xf(data[s])
-            metrics.setdefault(s, {})[f"L1_{name}"] = l1(x, yf(data[s]), x_s, ex, np.ones_like(x, dtype=bool))
-    fig.suptitle(f"Interacting blast waves (1D), t = {t:.3f}; the two mirrored halves of the box are folded together")
+            metrics.setdefault(s, {})[f"L1_{name}"] = l1(
+                x, yf(data[s]), x_s, ex, np.ones_like(x, dtype=bool)
+            )
+    fig.suptitle(
+        f"Interacting blast waves (1D), t = {t:.3f}; the two mirrored halves of the box are folded together"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, "ibw.png"), dpi=150)
     plt.close(fig)
@@ -1628,12 +2204,26 @@ def test_soundwave(root, schemes, out, test="soundwave"):
     params = {}
     for s in schemes:
         run_dir = os.path.join(root, "runs", s, test)
-        att = ic_attrs(run_dir, "soundWave.hdf5", "SoundWaveAmplitude", "SoundWaveNWave",
-                       "SoundWaveStanding", "SoundWaveBoost", "SoundWaveSoundSpeed", "BoxSize")
+        att = ic_attrs(
+            run_dir,
+            "soundWave.hdf5",
+            "SoundWaveAmplitude",
+            "SoundWaveNWave",
+            "SoundWaveStanding",
+            "SoundWaveBoost",
+            "SoundWaveSoundSpeed",
+            "BoxSize",
+        )
         if att is None:
             continue
-        A, n, standing, boost, cs, L = (float(att[0]), int(att[1]), bool(att[2]), float(att[3]),
-                                        float(att[4]), float(np.atleast_1d(att[5])[0]))
+        A, n, standing, boost, cs, L = (
+            float(att[0]),
+            int(att[1]),
+            bool(att[2]),
+            float(att[3]),
+            float(att[4]),
+            float(np.atleast_1d(att[5])[0]),
+        )
         k = 2.0 * np.pi * n / L
         omega = cs * k
         params[s] = (A, k, omega, standing, boost, cs, L)
@@ -1667,9 +2257,15 @@ def test_soundwave(root, schemes, out, test="soundwave"):
         m["L1_v_end"] = float(np.mean(np.abs(d["vel"][:, 0] - boost - v_ex)) / (A * cs))
         # Particle scatter about the exact wave, in units of the amplitude:
         # the noise a scheme adds to a linear wave (1 = as large as the wave)
-        m["scatter_v_end"] = float(np.sqrt(np.mean((d["vel"][:, 0] - boost - v_ex) ** 2)) / (A * cs))
-        m["scatter_rho_end"] = float(np.sqrt(np.mean((d["rho"] / np.mean(d["rho"]) - 1.0 - r_ex) ** 2)) / A)
-        m["transverse_noise_end"] = float(np.sqrt(np.mean(d["vel"][:, 1] ** 2 + d["vel"][:, 2] ** 2)) / (A * cs))
+        m["scatter_v_end"] = float(
+            np.sqrt(np.mean((d["vel"][:, 0] - boost - v_ex) ** 2)) / (A * cs)
+        )
+        m["scatter_rho_end"] = float(
+            np.sqrt(np.mean((d["rho"] / np.mean(d["rho"]) - 1.0 - r_ex) ** 2)) / A
+        )
+        m["transverse_noise_end"] = float(
+            np.sqrt(np.mean(d["vel"][:, 1] ** 2 + d["vel"][:, 2] ** 2)) / (A * cs)
+        )
         if standing:
             E = np.abs(Zv) ** 2 + cs**2 * np.abs(Zr) ** 2
             gam = -0.5 * np.polyfit(tt, np.log(E / (A * cs) ** 2), 1)[0]
@@ -1677,7 +2273,9 @@ def test_soundwave(root, schemes, out, test="soundwave"):
             crossings = np.where(np.diff(np.sign(a)) != 0)[0]
             if len(crossings) > 2:
                 # linear interpolation of the zero crossings
-                tc = tt[crossings] - a[crossings] * (tt[crossings + 1] - tt[crossings]) / (a[crossings + 1] - a[crossings])
+                tc = tt[crossings] - a[crossings] * (
+                    tt[crossings + 1] - tt[crossings]
+                ) / (a[crossings + 1] - a[crossings])
                 omega_meas = np.pi / np.mean(np.diff(tc))
             else:
                 omega_meas = float("nan")
@@ -1695,7 +2293,9 @@ def test_soundwave(root, schemes, out, test="soundwave"):
         return {}
     present = [s for s in schemes if s in series]
     A, k, omega, standing, boost, cs, L = params[present[0]]
-    fig, axes = plt.subplots(2, len(present) + 1, figsize=(3.6 * (len(present) + 1), 3.0 * 2), squeeze=False)
+    fig, axes = plt.subplots(
+        2, len(present) + 1, figsize=(3.6 * (len(present) + 1), 3.0 * 2), squeeze=False
+    )
     xs = np.linspace(0, L, 400)
     for j, s in enumerate(present):
         d = final[s]
@@ -1707,33 +2307,75 @@ def test_soundwave(root, schemes, out, test="soundwave"):
         else:
             v_ex = np.cos(k * xs - omega * t_end)
             r_ex = v_ex
-        for row, (y, ex, lab) in enumerate([((d["vel"][:, 0] - boost) / (A * cs), v_ex, r"$v_x / (A c_s)$"),
-                                            ((d["rho"] / np.mean(d["rho"]) - 1.0) / A, r_ex, r"$\delta\rho / (A \rho_0)$")]):
+        for row, (y, ex, lab) in enumerate(
+            [
+                ((d["vel"][:, 0] - boost) / (A * cs), v_ex, r"$v_x / (A c_s)$"),
+                (
+                    (d["rho"] / np.mean(d["rho"]) - 1.0) / A,
+                    r_ex,
+                    r"$\delta\rho / (A \rho_0)$",
+                ),
+            ]
+        ):
             ax = axes[row, j]
             ax.scatter(x, y, color="0.4", **scatter_props)
             xb, yb, sb = binned(x, y, np.linspace(0, L, 33))
-            ax.errorbar(xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3)
+            ax.errorbar(
+                xb, yb, yerr=sb, fmt=".", color=scheme_color(s, j), ms=4, lw=1, zorder=3
+            )
             ax.plot(xs, ex, "k-", lw=1)
             ax.set_ylim(-2.5, 2.5)
             ax.set_xlabel("x")
             ax.set_ylabel(lab)
             sc = metrics[s]["scatter_v_end" if row == 0 else "scatter_rho_end"]
-            ax.text(0.03, 0.95, f"scatter {sc:.2f}", transform=ax.transAxes, fontsize=8, va="top",
-                    bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8))
+            ax.text(
+                0.03,
+                0.95,
+                f"scatter {sc:.2f}",
+                transform=ax.transAxes,
+                fontsize=8,
+                va="top",
+                bbox=dict(boxstyle="round,pad=0.2", fc="white", ec="none", alpha=0.8),
+            )
             if row == 0:
                 ax.set_title(s, fontsize=9)
         tt, Zv, Zr = series[s]
         c = scheme_color(s, j)
         if standing:
             E = np.abs(Zv) ** 2 + cs**2 * np.abs(Zr) ** 2
-            axes[0, -1].semilogy(tt, E / (A * cs) ** 2, "-", color=c, lw=1.2,
-                                 label=f"{s}: {metrics[s]['damping_per_period']:.1e} / period")
-            axes[1, -1].plot(tt, Zr.real / A, "-", color=c, lw=1, label=f"{s}: omega / (c k) = {metrics[s]['omega_ratio']:.4f}")
+            axes[0, -1].semilogy(
+                tt,
+                E / (A * cs) ** 2,
+                "-",
+                color=c,
+                lw=1.2,
+                label=f"{s}: {metrics[s]['damping_per_period']:.1e} / period",
+            )
+            axes[1, -1].plot(
+                tt,
+                Zr.real / A,
+                "-",
+                color=c,
+                lw=1,
+                label=f"{s}: omega / (c k) = {metrics[s]['omega_ratio']:.4f}",
+            )
         else:
-            axes[0, -1].plot(tt, np.abs(Zv) / (A * cs), "-", color=c, lw=1.2,
-                             label=f"{s}: {metrics[s]['damping_per_period']:.1e} / period")
-            axes[1, -1].plot(tt, np.unwrap(np.angle(Zv)) + omega * tt, "-", color=c, lw=1.2,
-                             label=f"{s}: c / c_s = {metrics[s]['phase_speed_ratio']:.4f}")
+            axes[0, -1].plot(
+                tt,
+                np.abs(Zv) / (A * cs),
+                "-",
+                color=c,
+                lw=1.2,
+                label=f"{s}: {metrics[s]['damping_per_period']:.1e} / period",
+            )
+            axes[1, -1].plot(
+                tt,
+                np.unwrap(np.angle(Zv)) + omega * tt,
+                "-",
+                color=c,
+                lw=1.2,
+                label=f"{s}: c / c_s = {metrics[s]['phase_speed_ratio']:.4f}",
+            )
     if standing:
         axes[1, -1].plot(xs * 0 + tt[0], xs * 0, "k:", lw=0.5)
         axes[0, -1].set_ylabel(r"$E_{\rm mode} / (A c_s)^2$")
@@ -1746,7 +2388,9 @@ def test_soundwave(root, schemes, out, test="soundwave"):
     for ax in axes[:, -1]:
         ax.set_xlabel("t")
         ax.legend(fontsize=6)
-    fig.suptitle(f"{kind} sound wave (3D, A = {A:g}, {2 * np.pi * n / L / k * round(len(final[present[0]]['m']) ** (1 / 3)):.0f} particles per wavelength), t = {t_end:.2f}")
+    fig.suptitle(
+        f"{kind} sound wave (3D, A = {A:g}, {2 * np.pi * n / L / k * round(len(final[present[0]]['m']) ** (1 / 3)):.0f} particles per wavelength), t = {t_end:.2f}"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
     plt.close(fig)
@@ -1764,8 +2408,14 @@ def test_thermal(root, schemes, out):
     profiles = {}
     for s in schemes:
         run_dir = os.path.join(root, "runs", s, "thermal")
-        att = ic_attrs(run_dir, "thermalDiffusion.hdf5", "ThermalDiffusionContrast", "ThermalDiffusionPressure",
-                       "ThermalDiffusionInterfaces", "BoxSize")
+        att = ic_attrs(
+            run_dir,
+            "thermalDiffusion.hdf5",
+            "ThermalDiffusionContrast",
+            "ThermalDiffusionPressure",
+            "ThermalDiffusionInterfaces",
+            "BoxSize",
+        )
         if att is None:
             continue
         C, P0 = float(att[0]), float(att[1])
@@ -1779,9 +2429,17 @@ def test_thermal(root, schemes, out):
         def width(x, u, xi, sign):
             sel = np.abs(x - xi) < 0.3
             theta = (u[sel] - u_cold) / (u_hot - u_cold)
-            model = lambda xx, w, x0: 0.5 * (1.0 + sign * erf((xx - x0) / (np.sqrt(2.0) * w)))
+            model = lambda xx, w, x0: 0.5 * (
+                1.0 + sign * erf((xx - x0) / (np.sqrt(2.0) * w))
+            )
             try:
-                p, _ = curve_fit(model, x[sel], theta, p0=[0.02, xi], bounds=([1e-4, xi - 0.1], [0.3, xi + 0.1]))
+                p, _ = curve_fit(
+                    model,
+                    x[sel],
+                    theta,
+                    p0=[0.02, xi],
+                    bounds=([1e-4, xi - 0.1], [0.3, xi + 0.1]),
+                )
                 return p[0]
             except RuntimeError:
                 return float("nan")
@@ -1791,19 +2449,34 @@ def test_thermal(root, schemes, out):
             xb, ub, _ = binned(x, d["u"], edges)
             _, Pb, _ = binned(x, d["P"], edges)
             vmag = np.sqrt(np.sum(d["vel"] ** 2, axis=1))
-            return [0.5 * (width(x, d["u"], x1, -1) + width(x, d["u"], x2, +1)),
-                    np.nanmax(np.abs(Pb / P0 - 1.0)), np.max(vmag) / cs_cold,
-                    np.sqrt(np.mean(vmag**2)) / cs_cold] + list(ub / u_hot) + list(Pb / P0)
+            return (
+                [
+                    0.5 * (width(x, d["u"], x1, -1) + width(x, d["u"], x2, +1)),
+                    np.nanmax(np.abs(Pb / P0 - 1.0)),
+                    np.max(vmag) / cs_cold,
+                    np.sqrt(np.mean(vmag**2)) / cs_cold,
+                ]
+                + list(ub / u_hot)
+                + list(Pb / P0)
+            )
 
         tt, vals = snapshot_series(run_dir, "thermalDiffusion", measure)
         if len(tt) < 2:
             continue
         sig, blip, vmax, vrms = vals[:, 0], vals[:, 1], vals[:, 2], vals[:, 3]
         nb = len(edges) - 1
-        profiles[s] = (0.5 * (edges[1:] + edges[:-1]), vals[:, 4:4 + nb], vals[:, 4 + nb:4 + 2 * nb])
+        profiles[s] = (
+            0.5 * (edges[1:] + edges[:-1]),
+            vals[:, 4 : 4 + nb],
+            vals[:, 4 + nb : 4 + 2 * nb],
+        )
         series[s] = (tt, sig, blip, vmax, vrms)
         ok = np.isfinite(sig)
-        kappa = np.polyfit(tt[ok], sig[ok] ** 2, 1)[0] / 2.0 if np.sum(ok) > 2 else float("nan")
+        kappa = (
+            np.polyfit(tt[ok], sig[ok] ** 2, 1)[0] / 2.0
+            if np.sum(ok) > 2
+            else float("nan")
+        )
         m = metrics.setdefault(s, {})
         m["sigma_0"] = float(sig[0])
         m["sigma_end"] = float(sig[-1])
@@ -1815,13 +2488,21 @@ def test_thermal(root, schemes, out):
     if not series:
         return {}
     present = [s for s in schemes if s in series]
-    fig, axes = plt.subplots(2, len(present) + 1, figsize=(3.6 * (len(present) + 1), 3.0 * 2), squeeze=False)
+    fig, axes = plt.subplots(
+        2, len(present) + 1, figsize=(3.6 * (len(present) + 1), 3.0 * 2), squeeze=False
+    )
     for j, s in enumerate(present):
         xb, up, Pp = profiles[s]
         tt = series[s][0]
         for i in range(len(tt)):
             c = plt.cm.viridis(i / max(len(tt) - 1, 1))
-            axes[0, j].plot(xb, up[i], color=c, lw=0.8, label=f"t = {tt[i]:.2f}" if i in (0, len(tt) - 1) else None)
+            axes[0, j].plot(
+                xb,
+                up[i],
+                color=c,
+                lw=0.8,
+                label=f"t = {tt[i]:.2f}" if i in (0, len(tt) - 1) else None,
+            )
             axes[1, j].plot(xb, Pp[i], color=c, lw=0.8)
         axes[0, j].set_title(s, fontsize=9)
         axes[0, j].set_ylabel(r"$u / u_{\rm hot}$")
@@ -1832,7 +2513,15 @@ def test_thermal(root, schemes, out):
             ax.set_xlabel("x")
         tt, sig, blip, vmax, vrms = series[s]
         c = scheme_color(s, j)
-        axes[0, -1].plot(tt, sig, "o-", color=c, ms=3, lw=1, label=f"{s}: kappa = {metrics[s]['kappa_eff']:.1e}")
+        axes[0, -1].plot(
+            tt,
+            sig,
+            "o-",
+            color=c,
+            ms=3,
+            lw=1,
+            label=f"{s}: kappa = {metrics[s]['kappa_eff']:.1e}",
+        )
         axes[1, -1].semilogy(tt, vrms, "-", color=c, lw=1.2, label=f"{s} rms")
         axes[1, -1].semilogy(tt, blip, "--", color=c, lw=1, label=f"{s} P blip")
     axes[0, -1].set_ylabel(r"interface width $\sigma$")
@@ -1840,32 +2529,64 @@ def test_thermal(root, schemes, out):
     for ax in axes[:, -1]:
         ax.set_xlabel("t")
         ax.legend(fontsize=6)
-    fig.suptitle(f"Thermal discontinuity in pressure equilibrium (2D, contrast {C:g}), t = {tt[-1]:.2f}")
+    fig.suptitle(
+        f"Thermal discontinuity in pressure equilibrium (2D, contrast {C:g}), t = {tt[-1]:.2f}"
+    )
     fig.tight_layout()
     fig.savefig(os.path.join(out, "thermal.png"), dpi=150)
     plt.close(fig)
     return metrics
 
 
-TESTS = {"sod": test_sod, "sedov": test_sedov, "noh": test_noh, "gresho": test_gresho,
-         "evrard": test_evrard, "kh": test_kh, "square": test_square,
-         "square_mass": lambda root, schemes, out: test_square(root, schemes, out, test="square_mass"),
-         "keplerian": test_keplerian,
-         "keplerian2d": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian2d"),
-         "keplerian_cd10": lambda root, schemes, out: test_keplerian(root, schemes, out, test="keplerian_cd10"),
-         "zeldovich": test_zeldovich,
-         "zeldovich_glass": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_glass"),
-         "zeldovich_pert": lambda root, schemes, out: test_zeldovich(root, schemes, out, test="zeldovich_pert"),
-         "blob": test_blob, "nfw": test_nfw,
-         "taylorgreen": test_taylorgreen, "shearing": test_shearing, "blast": test_blast,
-         "rt": test_rt, "khgr": test_khgr, "ibw": test_ibw,
-         "soundwave": test_soundwave,
-         "wavedamping": lambda root, schemes, out: test_soundwave(root, schemes, out, test="wavedamping"),
-         "thermal": test_thermal,
-         "gresho_boost": lambda root, schemes, out: test_gresho(root, schemes, out, test="gresho_boost"),
-         "kh8": lambda root, schemes, out: test_kh(root, schemes, out, test="kh8"),
-         "sod_weak": lambda root, schemes, out: test_sod(root, schemes, out, test="sod_weak"),
-         "sod_strong": lambda root, schemes, out: test_sod(root, schemes, out, test="sod_strong")}
+TESTS = {
+    "sod": test_sod,
+    "sedov": test_sedov,
+    "noh": test_noh,
+    "gresho": test_gresho,
+    "evrard": test_evrard,
+    "kh": test_kh,
+    "square": test_square,
+    "square_mass": lambda root, schemes, out: test_square(
+        root, schemes, out, test="square_mass"
+    ),
+    "keplerian": test_keplerian,
+    "keplerian2d": lambda root, schemes, out: test_keplerian(
+        root, schemes, out, test="keplerian2d"
+    ),
+    "keplerian_cd10": lambda root, schemes, out: test_keplerian(
+        root, schemes, out, test="keplerian_cd10"
+    ),
+    "zeldovich": test_zeldovich,
+    "zeldovich_glass": lambda root, schemes, out: test_zeldovich(
+        root, schemes, out, test="zeldovich_glass"
+    ),
+    "zeldovich_pert": lambda root, schemes, out: test_zeldovich(
+        root, schemes, out, test="zeldovich_pert"
+    ),
+    "blob": test_blob,
+    "nfw": test_nfw,
+    "taylorgreen": test_taylorgreen,
+    "shearing": test_shearing,
+    "blast": test_blast,
+    "rt": test_rt,
+    "khgr": test_khgr,
+    "ibw": test_ibw,
+    "soundwave": test_soundwave,
+    "wavedamping": lambda root, schemes, out: test_soundwave(
+        root, schemes, out, test="wavedamping"
+    ),
+    "thermal": test_thermal,
+    "gresho_boost": lambda root, schemes, out: test_gresho(
+        root, schemes, out, test="gresho_boost"
+    ),
+    "kh8": lambda root, schemes, out: test_kh(root, schemes, out, test="kh8"),
+    "sod_weak": lambda root, schemes, out: test_sod(
+        root, schemes, out, test="sod_weak"
+    ),
+    "sod_strong": lambda root, schemes, out: test_sod(
+        root, schemes, out, test="sod_strong"
+    ),
+}
 
 
 # ---------------------------------------------------------------------------
@@ -1887,11 +2608,11 @@ def main():
     tests = []
     for a in args:
         if a.startswith("--schemes="):
-            only = a[len("--schemes="):].split(",")
+            only = a[len("--schemes=") :].split(",")
         elif a.startswith("--out="):
-            out = a[len("--out="):]
+            out = a[len("--out=") :]
         elif a.startswith("--overlay-only="):
-            OVERLAY_ONLY.update(a[len("--overlay-only="):].split(","))
+            OVERLAY_ONLY.update(a[len("--overlay-only=") :].split(","))
         else:
             tests.append(a)
     tests = tests or ALL_TESTS
@@ -1904,7 +2625,11 @@ def main():
         if t not in TESTS:
             print(f"Unknown test {t}")
             continue
-        present = [s for s in schemes if os.path.exists(os.path.join(root, "runs", s, t, "DONE"))]
+        present = [
+            s
+            for s in schemes
+            if os.path.exists(os.path.join(root, "runs", s, t, "DONE"))
+        ]
         if not present:
             print(f"{t}: no finished run")
             continue
@@ -1913,6 +2638,7 @@ def main():
             metrics = TESTS[t](root, present, out)
         except Exception as e:  # keep going with the other tests
             import traceback
+
             traceback.print_exc()
             print(f"{t}: plotting failed: {e}")
             metrics = {}

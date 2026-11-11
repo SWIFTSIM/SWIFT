@@ -42,17 +42,30 @@ Usage: makeIC_glass.py [--glass glassCube_32.hdf5] [--z_start 10]
                        [--z_end 0.9] [--T_i 100] [-o zeldovichPancake.hdf5]
 The run must start at z_start: Cosmology:a_begin = 1 / (1 + z_start).
 """
+
 import argparse
 
 import h5py
+import unyt
+import swiftsimio as sw
 import numpy as np
 
 parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-parser.add_argument("--glass", default="glassCube_32.hdf5", help="glass file (unit cube)")
-parser.add_argument("--z_start", type=float, default=10.0, help="starting redshift of the run")
-parser.add_argument("--z_end", type=float, default=0.9, help="final redshift (diagnostics only)")
-parser.add_argument("--T_i", type=float, default=100.0,
-                    help="temperature at mean density at z = 100 in K (as makeIC.py)")
+parser.add_argument(
+    "--glass", default="glassCube_32.hdf5", help="glass file (unit cube)"
+)
+parser.add_argument(
+    "--z_start", type=float, default=10.0, help="starting redshift of the run"
+)
+parser.add_argument(
+    "--z_end", type=float, default=0.9, help="final redshift (diagnostics only)"
+)
+parser.add_argument(
+    "--T_i",
+    type=float,
+    default=100.0,
+    help="temperature at mean density at z = 100 in K (as makeIC.py)",
+)
 parser.add_argument("-o", "--output", default="zeldovichPancake.hdf5")
 args = parser.parse_args()
 
@@ -90,10 +103,8 @@ unit_u_in_si = unit_v_in_si**2
 # ---------------------------------------------------
 
 # Lagrangian positions from the glass
-with h5py.File(args.glass, "r") as f:
-    glass = f["/PartType0/Coordinates"][:]
-    glass_box = f["/Header"].attrs["BoxSize"]
-glass /= np.asarray(glass_box, dtype=float).ravel()[0]
+glass_file = sw.load(args.glass)
+glass = glass_file.gas.coordinates.value / glass_file.metadata.boxsize[0].value
 glass = np.mod(glass, 1.0)
 numPart = len(glass)
 numPart_1D = int(round(numPart ** (1.0 / 3.0)))
@@ -126,12 +137,20 @@ zfac_end = (1.0 + z_c) / (1.0 + args.z_end)
 rho_void_end = 1.0 / (1.0 + zfac_end)
 v_infall_c = H_0 * (1.0 + z_c) / np.sqrt(1.0 + z_c) / k_i  # peculiar, at the caustic
 c_s_c = np.sqrt(gamma * kB_in_SI * temperature(z_c, 1.0) / mH_in_kg)
-print(f"Glass: {args.glass}, {numPart} particles ({numPart_1D}^3), spacing {delta_x / Mpc_in_m:.3f} Mpc/h")
-print(f"Start at z = {z_i:g} (zfac = {zfac:.3f}), T = {T_start:.3g} K at mean density "
-      f"(T_i = {T_i:g} K at z = {z_ref:g})")
-print(f"  comoving Jeans length / spacing: {jeans_length_comoving(z_i, 1.0) / delta_x:.1e} at the start, "
-      f"{jeans_length_comoving(args.z_end, rho_void_end) / delta_x:.1e} in the void at z = {args.z_end:g}")
-print(f"  linear growth factor of the glass noise to z = {args.z_end:g}: {(1.0 + z_i) / (1.0 + args.z_end):.1f}")
+print(
+    f"Glass: {args.glass}, {numPart} particles ({numPart_1D}^3), spacing {delta_x / Mpc_in_m:.3f} Mpc/h"
+)
+print(
+    f"Start at z = {z_i:g} (zfac = {zfac:.3f}), T = {T_start:.3g} K at mean density "
+    f"(T_i = {T_i:g} K at z = {z_ref:g})"
+)
+print(
+    f"  comoving Jeans length / spacing: {jeans_length_comoving(z_i, 1.0) / delta_x:.1e} at the start, "
+    f"{jeans_length_comoving(args.z_end, rho_void_end) / delta_x:.1e} in the void at z = {args.z_end:g}"
+)
+print(
+    f"  linear growth factor of the glass noise to z = {args.z_end:g}: {(1.0 + z_i) / (1.0 + args.z_end):.1f}"
+)
 print(f"  infall velocity at the caustic / sound speed: {v_infall_c / c_s_c:.0f}")
 print(f"  run with Cosmology:a_begin = {1.0 / (1.0 + z_i):.6g}")
 
@@ -161,30 +180,31 @@ u /= unit_u_in_si
 boxSize /= unit_l_in_si
 
 # File
-with h5py.File(args.output, "w") as file:
-    grp = file.create_group("/Header")
-    grp.attrs["BoxSize"] = [boxSize, boxSize, boxSize]
-    grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-    grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-    grp.attrs["Time"] = 0.0
-    grp.attrs["NumFilesPerSnapshot"] = 1
-    grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    grp.attrs["Flag_Entropy_ICs"] = 0
-    grp.attrs["Dimension"] = 3
-    grp.attrs["Zeldovich_z_start"] = z_i
+# File (the units of the lattice test: Mpc, 1e10 Msun, Gyr)
+UL = unyt.Unit(100.0 * unit_l_in_si * unyt.cm)
+UM = unyt.Unit(1000.0 * unit_m_in_si * unyt.g)
+Ut = unyt.Unit(1.0 * unit_t_in_si * unyt.s)
+units = unyt.UnitSystem("zeldovich_pancake_units", UL, UM, Ut)
 
-    grp = file.create_group("/Units")
-    grp.attrs["Unit length in cgs (U_L)"] = 100.0 * unit_l_in_si
-    grp.attrs["Unit mass in cgs (U_M)"] = 1000.0 * unit_m_in_si
-    grp.attrs["Unit time in cgs (U_t)"] = 1.0 * unit_t_in_si
-    grp.attrs["Unit current in cgs (U_I)"] = 1.0
-    grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w = sw.Writer(
+    unit_system=units,
+    boxsize=sw.cosmo_array(
+        [boxSize, boxSize, boxSize],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
+w.gas.coordinates = coords * UL * w.a.comoving
+w.gas.velocities = v * UL / Ut * w.a.comoving**0
+w.gas.masses = m * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
+w.write(args.output)
 
-    grp = file.create_group("/PartType0")
-    grp.create_dataset("Coordinates", data=coords, dtype="d")
-    grp.create_dataset("Velocities", data=v, dtype="f")
-    grp.create_dataset("Masses", data=m, dtype="f")
-    grp.create_dataset("SmoothingLength", data=h, dtype="f")
-    grp.create_dataset("InternalEnergy", data=u, dtype="f")
-    grp.create_dataset("ParticleIDs", data=ids, dtype="L")
+# The starting redshift, for the analysis scripts (not handled by the Writer)
+with h5py.File(args.output, "r+") as f:
+    f["Header"].attrs["Zeldovich_z_start"] = z_i
