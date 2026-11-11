@@ -471,7 +471,9 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
 #if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
 #if COOLING_NETWORK == 0
   const double mu = cooling_get_equilibrium_mean_molecular_weight(
-      u, phys_const, hydro_props, cooling);
+      u, hydro_get_physical_density(p, cosmo),
+      chemistry_get_total_metal_mass_fraction_for_cooling(p), -1., phys_const,
+      hydro_props, cooling);
 #else
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);

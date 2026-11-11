@@ -1092,10 +1092,6 @@ int main(int argc, char *argv[]) {
 
   } else {
 
-    /* Prepare and verify the selection of outputs */
-    io_prepare_output_fields(output_options, with_cosmology, with_fof,
-                             with_structure_finding, e.verbose);
-
 #if defined(SWIFT_DEBUG_TASKS)
     task_create_name_files("task_labels");
 #endif
@@ -1258,11 +1254,21 @@ int main(int argc, char *argv[]) {
           "is enabled, but neither --cooling nor --temperature was passed: "
           "chemistry_data (including local_dust_to_gas_ratio) is never "
           "resolved, silently zeroing that channel's dust opacity. Pass "
+#ifdef COOLING_GEAJAY
+          "--cooling or --temperature.");
+#else
           "--cooling or --temperature (with a working GrackleCooling: "
           "block), or set GrackleCooling:disable_cooling_for_debugging "
           "to keep chemistry_data initialization correct while skipping "
           "the actual per-particle cooling/heating update.");
+#endif
     }
+
+    /* Prepare and verify the selection of outputs. This comes after
+     * cooling_init() because the cooling chooses its snapshot fields from its
+     * parameters. */
+    io_prepare_output_fields(output_options, with_cosmology, with_fof,
+                             with_structure_finding, e.verbose);
 
     /* Initialise the star formation law and its properties */
     bzero(&starform, sizeof(struct star_formation));

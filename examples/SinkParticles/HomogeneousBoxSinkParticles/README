@@ -11,6 +11,10 @@ To run this example with GEAR model,
 
 ./configure --with-chemistry=GEAR_10 --with-cooling=grackle_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle --enable-debug --enable-debugging-checks
 
+or, with geajay instead of Grackle:
+
+./configure --with-chemistry=GEAR_10 --with-cooling=geajay_0 --with-stars=GEAR --with-star-formation=GEAR --with-feedback=GEAR --with-sink=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --enable-debug --enable-debugging-checks
+
 and then
 
 make -j

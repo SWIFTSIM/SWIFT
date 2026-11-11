@@ -45,6 +45,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
+        testCoolingSplit \
 	    testLog testDistance testTimeline testSubsetRecursion \
 	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
 
@@ -58,7 +59,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
-		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testCoolingSplit testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
@@ -201,6 +202,8 @@ testEOS_SOURCES = testEOS.c
 testUtilities_SOURCES = testUtilities.c
 
 testCooling_SOURCES = testCooling.c
+
+testCoolingSplit_SOURCES = testCoolingSplit.c
 
 testComovingCooling_SOURCES = testComovingCooling.c
 
