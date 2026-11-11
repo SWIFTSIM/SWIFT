@@ -221,13 +221,18 @@ void engine_fof(struct engine *e, const int dump_results,
 
 #ifdef WITH_MPI
 
-  /* Activate the tasks exchanging all the required gparts */
-  tic_phase = getticks();
-  engine_activate_gpart_comms(e);
+  /* The gparts only need to be exchanged again if there is something to attach
+   */
+  if (e->fof_properties->with_attachables) {
 
-  /* Perform send and receive tasks. */
-  engine_launch(e, "fof comms");
-  fof_timers[fof_timer_attach_comms] = getticks() - tic_phase;
+    /* Activate the tasks exchanging all the required gparts */
+    tic_phase = getticks();
+    engine_activate_gpart_comms(e);
+
+    /* Perform send and receive tasks. */
+    engine_launch(e, "fof comms");
+    fof_timers[fof_timer_attach_comms] = getticks() - tic_phase;
+  }
 
 #endif
 

@@ -80,6 +80,10 @@ struct fof_props {
   /*! The types of particles to use for attaching */
   int fof_attach_types[swift_type_count];
 
+  /*! Are there attachable particles anywhere in the simulation?
+   * (Set at the start of each FOF call) */
+  int with_attachables;
+
   /* ------------  Group properties ----------------- */
 
   /*! Number of groups */

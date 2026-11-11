@@ -453,6 +453,42 @@ void fof_allocate(const struct space *s, struct fof_props *props) {
         "Linking length greater than the width of a top-level cell. Need to "
         "check more than one layer of top-level cells for links.");
 
+  /* Are there any particles to attach? The attaching tasks and the
+   * associated communications are only needed if there are. For the types
+   * that only exist as gparts we have no separate count, so assume they are
+   * present. Note that the counts include the extra (not yet created)
+   * particles, which is conservative. */
+  props->with_attachables = 0;
+  for (int i = 0; i < swift_type_count; ++i) {
+    if (!props->fof_attach_types[i]) continue;
+    switch (i) {
+      case swift_type_gas:
+        if (s->nr_parts > 0) props->with_attachables = 1;
+        break;
+      case swift_type_sink:
+        if (s->nr_sinks > 0) props->with_attachables = 1;
+        break;
+      case swift_type_stars:
+        if (s->nr_sparts > 0) props->with_attachables = 1;
+        break;
+      case swift_type_black_hole:
+        if (s->nr_bparts > 0) props->with_attachables = 1;
+        break;
+      default:
+        props->with_attachables = 1;
+        break;
+    }
+  }
+
+#ifdef WITH_MPI
+  /* All ranks must agree as the attaching requires communications */
+  MPI_Allreduce(MPI_IN_PLACE, &props->with_attachables, 1, MPI_INT, MPI_LOR,
+                MPI_COMM_WORLD);
+#endif
+
+  if (s->e->nodeID == 0 && !props->with_attachables && verbose)
+    message("No particles to attach. Skipping the attaching phase.");
+
   /* Allocate and initialise a group index array. */
   if (swift_memalign("fof_group_index", (void **)&props->group_index, 64,
                      s->nr_gparts * sizeof(size_t)) != 0)
@@ -3773,7 +3809,7 @@ void fof_link_attachable_particles(struct fof_props *props,
                                    const struct space *s) {
 
   /* Is there anything to attach? */
-  if (!current_fof_attach_type) return;
+  if (!current_fof_attach_type || !props->with_attachables) return;
 
   const ticks tic_total = getticks();
 
