@@ -651,8 +651,7 @@ void mesh_apply_Green_function_mapper(void *map_data, const int num,
         const int kz = (k > N_half ? k - N : k);
         const double kz_d = (double)kz;
         const double fz = k_fac * kz_d;
-        const double sinc_kz_inv =
-            (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
+        const double sinc_kz_inv = (kz != 0) ? fz / (sin(fz) + FLT_MIN) : 1.;
 
         /* Norm of vector in Fourier space */
         const double k2 = (kx_d * kx_d + ky_d * ky_d + kz_d * kz_d);
