@@ -132,6 +132,16 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
         "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
         "or shrink the zoom region.",
         mesh->r_s, mesh->N[0], mesh->dim[0], props->r_s);
+
+  /* The search ranges used when constructing the gravity tasks are set by the
+   * cut-off of the background mesh, so the zoom mesh cannot truncate the tree
+   * forces further out than the background mesh does. */
+  if (mesh->r_cut_max > props->r_s * props->r_cut_max_ratio)
+    error(
+        "The zoom gravity mesh truncates the tree forces at a larger distance "
+        "(%.6e) than the background mesh (%.6e). Decrease "
+        "Gravity:zoom_r_cut_max or increase Gravity:zoom_mesh_side_length.",
+        mesh->r_cut_max, props->r_s * props->r_cut_max_ratio);
 }
 
 /**
@@ -1776,12 +1786,6 @@ int zoom_mesh_can_use_mesh(const struct zoom_pm_mesh *mesh,
   /* Both cells must be fully covered by the high-resolution mesh. */
   if (!zoom_mesh_cells_are_covered(mesh, ci, cj, /*use_max_dx=*/0)) return 0;
 
-  /* The gravity task recursion must only compare equal-sized cell pairs here.
-   */
-  if (ci->width[0] != cj->width[0] || ci->width[1] != cj->width[1] ||
-      ci->width[2] != cj->width[2])
-    error("Cells of different size in zoom mesh pair predicate!");
-
   /* Check whether the cells are safely beyond the zoom mesh cutoff. */
   const double max_distance2 = mesh->r_cut_max * mesh->r_cut_max;
   const double min_radius2 = cell_min_dist2(ci, cj, /*periodic=*/0, s->dim);
@@ -1812,12 +1816,6 @@ int zoom_mesh_can_use_mesh_between_rebuilds(const struct zoom_pm_mesh *mesh,
 
   /* Include particle motion since rebuild when checking mesh coverage. */
   if (!zoom_mesh_cells_are_covered(mesh, ci, cj, /*use_max_dx=*/1)) return 0;
-
-  /* The gravity task recursion must only compare equal-sized cell pairs here.
-   */
-  if (ci->width[0] != cj->width[0] || ci->width[1] != cj->width[1] ||
-      ci->width[2] != cj->width[2])
-    error("Cells of different size in zoom mesh pair predicate!");
 
   /* Check whether the cells remain safely beyond the cutoff after drift. */
   const double max_distance2 = mesh->r_cut_max * mesh->r_cut_max;

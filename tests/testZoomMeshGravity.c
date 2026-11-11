@@ -409,6 +409,7 @@ int main(int argc, char *argv[]) {
   zoom_props.bkg_cells_top = &bkg_cell;
   props.a_smooth = zoom_mesh.r_s * zoom_mesh.cell_fac[0];
   props.r_s = mesh.r_s;
+  props.r_cut_max_ratio = mesh.r_cut_max / mesh.r_s;
   zoom_mesh.buffer_cells = 1;
   if (zoom_mesh.kernel_fft == NULL)
     error("Zoom mesh kernel should have been cached before regrid");

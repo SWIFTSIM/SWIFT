@@ -74,6 +74,7 @@ static void setup_mock_engine(struct swift_params *params,
   props->a_smooth = 1.25;
   props->r_s = 0.9765625;
   props->r_s_inv = 1. / props->r_s;
+  props->r_cut_max_ratio = 4.5;
 
   s->periodic = 1;
   s->with_zoom_region = 1;
