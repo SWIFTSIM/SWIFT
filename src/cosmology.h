@@ -70,6 +70,10 @@ struct cosmology {
   /*! Power of the scale-factor used for magnetic field conversion to physical */
   double a_factor_magnetic_field;
 
+  /*! Inverse power of the scale factor used for the magnetic field conversion 
+   *to comoving*/
+  double a_factor_magnetic_field_inv;
+
   /*! Current redshift */
   double z;
 

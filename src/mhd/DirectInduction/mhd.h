@@ -35,7 +35,7 @@ __attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_fiel
     const float B[3]) {
 
   const float rho_inv = 1.f / hydro_get_comoving_density(p);
-  const float a_fact = 1.f / cosmo->a_factor_magnetic_field;
+  const float a_fact = cosmo->a_factor_magnetic_field_inv;
 
   xp->mhd_data.B_over_rho_full[0] = rho_inv * a_fact * B[0];
   xp->mhd_data.B_over_rho_full[1] = rho_inv * a_fact * B[1];

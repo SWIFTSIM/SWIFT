@@ -33,7 +33,7 @@ __attribute__((always_inline)) INLINE static void mhd_set_physical_magnetic_fiel
     const struct part *p, struct xpart *xp, const struct cosmology *cosmo, 
     const float B[3]) {
 
-  const float a_fact = 1.f / cosmo->a_factor_magnetic_field;
+  const float a_fact = cosmo->a_factor_magnetic_field_inv;
 
   xp->mhd_data.Bfld_full[0] = a_fact * B[0];
   xp->mhd_data.Bfld_full[1] = a_fact * B[1];

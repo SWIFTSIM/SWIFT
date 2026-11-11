@@ -251,6 +251,8 @@ void cosmology_update(struct cosmology *c, const struct phys_const *phys_const,
   c->a_factor_magnetic_field = 
       pow(a, mhd_comoving_factor);
 
+  c->a_factor_magnetic_field_inv = 1. / c->a_factor_magnetic_field;
+
   /* Redshift */
   c->z = a_inv - 1.;
 
