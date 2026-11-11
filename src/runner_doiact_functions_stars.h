@@ -1372,6 +1372,94 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
 }
 
 /**
+ * @brief Compute the interactions between two progeny of a split self task.
+ *
+ * Split (multiplexed) self tasks interact the pairs of progeny directly, as we
+ * do not have the machinery to split sub-pairs and cannot sort cells on the
+ * fly. We use the sorted interactions if all the required sorts exist and
+ * are still valid, and fall back on the naive interactions otherwise.
+ *
+ * WARNING: Can only be called in a SELF recursion.
+ *
+ * @param r The #runner.
+ * @param ci The first #cell (progeny of the self task's cell).
+ * @param cj The second #cell (progeny of the self task's cell).
+ * @param offset First particle to be treated.
+ * @param ntasks Interval between successive particles that are treated.
+ * @param limit_min_h Only consider particles with h >= c->dmin/2.
+ * @param limit_max_h Only consider particles with h < c->dmin.
+ */
+void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                           const int offset, const int ntasks,
+                           const int limit_min_h, const int limit_max_h) {
+
+  const struct engine *restrict e = r->e;
+
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS_STARS)
+  const int always_naive = 1;
+#else
+  const int always_naive = 0;
+#endif
+
+  /* Get the sort ID. */
+  double shift[3] = {0.0, 0.0, 0.0};
+  const int sid = space_getsid_and_swap_cells(e->s, &ci, &cj, shift);
+
+  const int do_ci = ci->stars.count != 0 && cj->hydro.count != 0 &&
+                    cell_is_active_stars(ci, e);
+  const int do_cj = cj->stars.count != 0 && ci->hydro.count != 0 &&
+                    cell_is_active_stars(cj, e);
+
+  /* Anything to do here? */
+  if (!do_ci && !do_cj) return;
+
+  /* Note: Reading the sort arrays is safe. The self task holds the lock on the
+   * parent cell's gas and stars, so no other task can sort these progeny
+   * concurrently, and the split tasks themselves never sort. */
+
+  /* Are all the sorts we need there and still valid? */
+  int sorted = 1;
+  if (do_ci) {
+
+    /* Verify that the conditions for sorted interactions are not violated */
+    const int ci_stars_sorted = (ci->stars.sorted & (1 << sid));
+    const int cj_hydro_sorted = (cj->hydro.sorted & (1 << sid));
+    const int ci_stars_disp_ok =
+        (ci->stars.dx_max_sort_old <= space_maxreldx * ci->dmin);
+    const int cj_hydro_disp_ok =
+        (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
+
+    sorted = sorted && ci_stars_sorted && cj_hydro_sorted && ci_stars_disp_ok &&
+             cj_hydro_disp_ok;
+  }
+  if (do_cj) {
+
+    /* Verify that the conditions for sorted interactions are not violated */
+    const int cj_stars_sorted = (cj->stars.sorted & (1 << sid));
+    const int ci_hydro_sorted = (ci->hydro.sorted & (1 << sid));
+    const int cj_stars_disp_ok =
+        (cj->stars.dx_max_sort_old <= space_maxreldx * cj->dmin);
+    const int ci_hydro_disp_ok =
+        (ci->hydro.dx_max_sort_old <= space_maxreldx * ci->dmin);
+
+    sorted = sorted && cj_stars_sorted && ci_hydro_sorted && cj_stars_disp_ok &&
+             ci_hydro_disp_ok;
+  }
+
+  if (sorted && !always_naive) {
+    DO_SYM_PAIR1_STARS(r, ci, cj, offset, ntasks, limit_min_h, limit_max_h, sid,
+                       shift);
+  } else {
+
+    /* Naive interactions in both directions */
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, ci, cj, offset, ntasks, limit_min_h,
+                                limit_max_h);
+    DO_NONSYM_PAIR1_STARS_NAIVE(r, cj, ci, offset, ntasks, limit_min_h,
+                                limit_max_h);
+  }
+}
+
+/**
  * @brief Compute grouped sub-cell interactions for pairs
  *
  * @param r The #runner.
@@ -1597,16 +1685,11 @@ void DOSUB_SELF1_STARS(struct runner *r, struct cell *c, const int offset,
             } else {
 
               /* We don't have the machinery to do multi-plexed sub-pairs
-               * so we switch to interactions already here
-               * Note: we use the naive version as we are unsure of the sort
-               * status*/
-
-              DO_NONSYM_PAIR1_STARS_NAIVE(r, c->progeny[k], c->progeny[j],
-                                          offset, ntasks, /*limit_h_min=*/0,
-                                          recurse_below_h_max);
-              DO_NONSYM_PAIR1_STARS_NAIVE(r, c->progeny[j], c->progeny[k],
-                                          offset, ntasks, /*limit_h_min=*/0,
-                                          recurse_below_h_max);
+               * so we switch to interactions already here, using the sorted
+               * version if the sorts are available */
+              DOPAIR1_PROGENY_STARS(r, c->progeny[k], c->progeny[j], offset,
+                                    ntasks, /*limit_h_min=*/0,
+                                    recurse_below_h_max);
             }
           }
         }
@@ -1665,9 +1748,14 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
+  /* Largest smoothing length of the stars of the subset (all in ci) */
+  float h_subset_max = 0.f;
+  for (int k = 0; k < scount; k++) {
+    h_subset_max = max(h_subset_max, sparts[ind[k]].h);
+  }
+
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci) &&
-      cell_can_recurse_in_pair_stars_task(cj)) {
+  if (cell_can_recurse_in_pair_stars_subset(ci, cj, h_subset_max)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
@@ -1710,8 +1798,14 @@ void DOSUB_SELF_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (ci->stars.count == 0) return;
   if (!cell_is_active_stars(ci, e)) return;
 
+  /* Largest smoothing length of the stars of the subset */
+  float h_subset_max = 0.f;
+  for (int k = 0; k < scount; k++) {
+    h_subset_max = max(h_subset_max, sparts[ind[k]].h);
+  }
+
   /* Recurse? */
-  if (ci->split && cell_can_recurse_in_self_stars_task(ci)) {
+  if (cell_can_recurse_in_self_stars_subset(ci, h_subset_max)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
