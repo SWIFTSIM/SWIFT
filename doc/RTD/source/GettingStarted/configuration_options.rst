@@ -16,7 +16,13 @@ A description of the available options of the below flags can be found by using
 ``--with-hydro=sphenix``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 There are several hydrodynamical schemes available in SWIFT. You can choose
-between them at compile-time with this option.
+between them at compile-time with this option: ``gadget2``, ``minimal``,
+``pressure-entropy``, ``pressure-energy``, ``pressure-energy-monaghan``,
+``phantom``, ``gizmo-mfv``, ``gizmo-mfm``, ``shadowswift``, ``planetary``,
+``remix``, ``sphenix`` (the default), ``gasoline``, ``anarchy-pu`` and
+``magma2`` (the MI3 formulation; ``magma2-MI1``, ``magma2-MI2`` and
+``magma2-MI3`` select one explicitly). MAGMA2 should be built with
+``--with-kernel=quintic-spline``, see :ref:`magma_sph`.
 
 ``--with-riemann-solver=none``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

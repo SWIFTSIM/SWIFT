@@ -24,6 +24,15 @@
  * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
  * interactions)
  *
+ * Equation numbers in the comments refer to Rosswog (2020). Departures from
+ * the paper in these loops: the reconstruction to the pair mid-point is
+ * linear (the first-order term of eq. 17 only, no quadratic term); its
+ * distance cut-off is scaled by the convergence fraction of the flow; the
+ * viscous pressure is applied only to approaching pairs with positive
+ * heating and is scaled by each particle's Cullen & Dehnen (2010) limiter;
+ * mu uses SWIFT's h (the paper's is half the kernel support); the conduction
+ * signal speed carries a pressure-residual term on top of the paper's
+ * velocity-based one. See doc/RTD/source/HydroSchemes/magma_sph.rst.
  */
 
 #include "adiabatic_index.h"
@@ -418,7 +427,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
     const float Phi_ij_vel = fminf(1.f, fraction_vel) * exp_term;
     Phi_vel = Phi_ij_vel;
 
-    /* Mid-point reconstruction, first order (eq. 17) */
+    /* Mid-point reconstruction: the linear term of eq. 17 only */
     v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[0] * delta_i[0];
     v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[1] * delta_i[1];
     v_rec_i[0] += Phi_ij_vel * pi->force.gradient_vx[2] * delta_i[2];
@@ -457,7 +466,7 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
 
     const float Phi_ij_u = fminf(1.f, fraction_u) * exp_term;
 
-    /* Mid-point reconstruction, first order (eq. 17) */
+    /* Mid-point reconstruction: the linear term of eq. 17 only */
     u_rec_i += Phi_ij_u * pi->force.gradient_u[0] * delta_i[0];
     u_rec_i += Phi_ij_u * pi->force.gradient_u[1] * delta_i[1];
     u_rec_i += Phi_ij_u * pi->force.gradient_u[2] * delta_i[2];

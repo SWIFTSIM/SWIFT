@@ -423,13 +423,15 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
 /**
  * @brief Update the value of the viscosity alpha for the scheme.
  *
+ * The viscosity of this scheme uses the compile-time constant alpha; the
+ * per-particle coefficient alpha_visc is the shock measure of the conduction
+ * cap and is set by hydro_diffusive_feedback_reset(), not here.
+ *
  * @param p the particle of interest
- * @param alpha the new value for the viscosity coefficient.
+ * @param alpha the new value for the viscosity coefficient (ignored).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
-    struct part *p, const float alpha) {
-  /* This scheme has fixed alpha */
-}
+    struct part *p, const float alpha) {}
 
 /**
  * @brief Update the value of the diffusive coefficients to the
@@ -496,11 +498,11 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
  * This is eq. (103) of Price D., JCoPh, 2012, Vol. 231, Issue 3.
  *
  * @param dx Comoving vector separating both particles (pi - pj).
- * @brief pi The first #part.
- * @brief pj The second #part.
- * @brief mu_ij The velocity on the axis linking the particles, or zero if the
+ * @param pi The first #part.
+ * @param pj The second #part.
+ * @param mu_ij The velocity on the axis linking the particles, or zero if the
  * particles are moving away from each other,
- * @brief beta The non-linear viscosity constant.
+ * @param beta The non-linear viscosity constant.
  */
 __attribute__((always_inline)) INLINE static float hydro_signal_velocity(
     const float dx[3], const struct part *pi, const struct part *pj,
@@ -1053,7 +1055,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values(
   p->v[1] = xp->v_full[1];
   p->v[2] = xp->v_full[2];
 
-  /* Re-set the entropy */
+  /* Re-set the internal energy */
   p->u = xp->u_full;
 
   /* Re-compute the pressure */

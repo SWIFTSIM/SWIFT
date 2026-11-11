@@ -27,7 +27,11 @@ Configuration
 
 The gas must be nearly isothermal. Configure SWIFT with
 
-    ./configure --with-forcing=driven-turbulence --with-adiabatic-index=1.001 [--with-hydro=...]
+    ./configure --with-forcing=driven-turbulence --with-adiabatic-index=1.001 [--with-hydro=... --with-kernel=...]
+
+For MAGMA2 use --with-hydro=magma2 --with-kernel=quintic-spline and run with
+SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2" ./run.sh (the
+parameter file carries SWIFT's generic eta 1.2348 and CFL 0.1).
 
 (gamma = 1.001 gives P = rho c_s^2 to 0.1 % with u = 1000 for c_s = 1).
 GSL is required by the forcing. The run script uses 64^3 particles; change the
@@ -43,8 +47,9 @@ purely solenoidal driving. With amplitude_factor = 1 the box reaches a
 stationary rms Mach number of about 0.35 for SPH, above the 0.33 (Arepo) and
 0.30 (SPH with time-variable viscosity) of the paper. With
 amplitude_factor = 1/sqrt(3/2) = 0.8165, i.e. without the solenoidal-weight
-normalisation, which the 2012 code did not have, SPHENIX at 32^3 and 64^3
-gives 0.30 and MAGMA 0.33, matching the paper for the respective class of
+normalisation, which the 2012 code did not have, SPHENIX (Wendland C2, eta
+1.2348, CFL 0.1) at 32^3 and 64^3 gives 0.30 and MAGMA MI3 (quintic spline,
+eta 1.5, CFL 0.2) 0.33, matching the paper for the respective class of
 scheme. The parameter file therefore uses 0.8165. The Mach number is
 insensitive to the resolution (as the paper also notes), so a 32^3 run of a
 few minutes is enough to check the calibration of a new scheme.
@@ -72,3 +77,5 @@ Cost
 
 With SPHENIX on 4 threads, 64^3 to t = 25.6 takes about 2.5 hours (16 000
 steps, the CFL condition at 0.1 sets dt = 1.6e-3); 32^3 takes 10 minutes.
+MAGMA at eta 1.5 has 2.6 times the neighbours and costs about three times
+as much per step; its 256^3 run took 31 hours on 4 threads (32 000 steps).

@@ -180,8 +180,9 @@
 /*! Floor of the time-dependent viscosity coefficient. */
 #define hydro_props_default_viscosity_alpha_min 0.1f
 
-/*! Inverse decay time of the time-dependent viscosity coefficient in units
- * of the sound-crossing time of the kernel support (Cullen & Dehnen's l). */
+/*! Decay rate of the per-particle viscosity coefficient, Cullen & Dehnen's
+ * l: the decay time is H / (2 l c_s), i.e. 10 sound-crossing times of the
+ * kernel support at the default. */
 #define hydro_props_default_viscosity_length 0.05f
 
 /*! Maximal condition number of the inverse C-matrix. Directions in which the

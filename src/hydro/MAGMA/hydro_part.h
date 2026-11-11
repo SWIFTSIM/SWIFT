@@ -24,11 +24,13 @@
  * @brief MAGMA-2 implementation of SPH following Rosswog+2020 (Particle
  * definition)
  *
- * The thermal variable is the internal energy (u). MI1 or MI2 formulation of
- * the equations of motion (selected at configure time via
- * --with-hydro=magma2-MI1 / magma2-MI2), using only 1st-order reconstruction
- * of v and u at the interface and a diffusion signal velocity compatible with
- * gravity.
+ * The thermal variable is the internal energy (u). MI1, MI2 or MI3
+ * formulation of the equations of motion (selected at configure time via
+ * --with-hydro=magma2-MI1 / magma2-MI2 / magma2-MI3; --with-hydro=magma2 is
+ * MI3), using only the linear (first-order) reconstruction of v and u at the
+ * interface and a diffusion signal velocity compatible with gravity. See
+ * doc/RTD/source/HydroSchemes/magma_sph.rst for the scheme and its
+ * departures from the paper.
  */
 
 #ifdef ADAPTIVE_SOFTENING

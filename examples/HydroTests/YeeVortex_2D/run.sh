@@ -12,8 +12,10 @@ then
     python3 makeIC.py 128
 fi
 
-# Run SWIFT (configure with --with-hydro-dimension=2 --with-adiabatic-index=7/5)
-../../../swift --hydro --threads=4 yeeVortex.yml 2>&1 | tee output.log
+# Run SWIFT (configure with --with-hydro-dimension=2 --with-adiabatic-index=7/5).
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --hydro --threads=4 $SWIFT_ARGS yeeVortex.yml 2>&1 | tee output.log
 
 # Plot the solution at t = 10 against the analytic (stationary) vortex
 python3 plotSolution.py 4

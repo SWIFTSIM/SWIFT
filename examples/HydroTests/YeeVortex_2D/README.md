@@ -23,7 +23,14 @@ least-squares version second order).
 Configuration
 -------------
 
-    ./configure --with-hydro-dimension=2 --with-adiabatic-index=7/5 [--with-hydro=... --with-kernel=...]
+    ./configure --with-hydro-dimension=2 --with-adiabatic-index=7/5 --with-hydro=magma2 --with-kernel=quintic-spline
+    ./configure --with-hydro-dimension=2 --with-adiabatic-index=7/5 --with-hydro=sphenix [--with-kernel=quintic-spline]
+
+The parameter file carries SWIFT's generic eta 1.2348 and CFL 0.1; MAGMA's
+recommended values are eta 1.5 and CFL 0.2, which the scripts below pass to
+swift when SWIFT_ARGS is set, e.g.
+
+    SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2" ./run_convergence.sh
 
 Initial conditions
 ------------------
@@ -54,11 +61,11 @@ What to expect
 SPH schemes converge at first order on this smooth problem, and the error is
 viscous: the total energy is conserved to 1e-5 but the artificial viscosity
 thermalises part of the vortex's kinetic energy at a rate that falls with
-resolution. With MAGMA (quintic spline, eta = 1.5, CFL 0.2) the slope of
-L1(rho) is -0.76 (-0.91 for the profile) with errors two to three times those
+resolution. With MAGMA (quintic spline, eta = 1.5, CFL 0.2, i.e. the
+SWIFT_ARGS line above) the slope of L1(rho) is -0.76 (-0.91 for the profile) with errors two to three times those
 of the paper's first-order Arepo at equal N, and 1.2 % of the kinetic energy
-is lost by t = 10 at 512^2. SPHENIX with its default Wendland C2 at
-eta = 1.2348 does not converge in L1(rho): that is only 17 neighbours in 2D,
+is lost by t = 10 at 512^2. SPHENIX with the Wendland C2 kernel at the
+parameter file's eta = 1.2348 does not converge in L1(rho): that is only 17 neighbours in 2D,
 where the Wendland density estimate is biased high by 1.9 % everywhere (the
 self-contribution bias of Dehnen & Aly 2012), a floor of 1.8e-2 in L1(rho);
 its velocity error converges at slope -0.4 and 13 % of the kinetic energy is

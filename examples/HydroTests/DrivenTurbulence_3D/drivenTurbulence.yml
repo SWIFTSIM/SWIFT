@@ -31,6 +31,7 @@ Statistics:
 SPH:
   resolution_eta: 1.2348  # Target smoothing length in units of the mean inter-particle separation (1.2348 == 48Ngbs with the cubic spline kernel).
   CFL_condition:  0.1     # Courant-Friedrich-Levy condition for time integration.
+  # MAGMA2 (--with-hydro=magma2 --with-kernel=quintic-spline): resolution_eta 1.5, CFL_condition 0.2
   h_min_ratio:    0.
   h_max:          0.2
 
