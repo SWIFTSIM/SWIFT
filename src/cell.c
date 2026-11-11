@@ -1785,6 +1785,9 @@ __attribute__((const)) int cell_mesh_distance_is_above_cutoff(
  *
  * This is the rebuild-time predicate used when creating the task graph.
  *
+ * A pair can use either the periodic mesh or, if both cells are covered by
+ * it, the high-resolution zoom mesh.
+ *
  * @param e The #engine.
  * @param ci The first #cell.
  * @param cj The second #cell.
@@ -1818,6 +1821,9 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
  *
  * This uses the current cell geometry and inflates the occupied region by the
  * maximal particle displacement since the last rebuild.
+ *
+ * A pair can use either the periodic mesh or, if both cells are covered by
+ * it, the high-resolution zoom mesh.
  *
  * @param e The #engine.
  * @param ci The first #cell.
@@ -1894,6 +1900,8 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
    * longer do so */
   if (could_use_mesh_at_rebuild && !can_use_mesh_now) {
     struct space *s = e->s;
+
+    /* Report the distances relative to the mesh the pair was using */
     const int zoom_mesh_pair = zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
     const double max_distance =
         zoom_mesh_pair ? e->zoom_mesh->r_cut_max : e->mesh->r_cut_max;

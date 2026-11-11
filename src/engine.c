@@ -4241,7 +4241,8 @@ void engine_recompute_displacement_constraint(struct engine *e) {
     const float vel_norm_b =
         vel_norm[0] + vel_norm[3] + vel_norm[4] + vel_norm[5];
 
-    /* Mesh forces smoothing scale */
+    /* Mesh forces smoothing scale (the smallest one if there is a zoom
+     * mesh) */
     float r_s;
     if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {
       r_s = e->mesh->r_s;
