@@ -1799,11 +1799,11 @@ void fof_search_pair_cells_foreign(
 
         /* Add a possible link to the list */
         if (!found)
-          add_foreign_link_to_list(
-              &local_link_count, group_links_size, group_links,
-              &local_group_links, root_i, pj->fof_data.group_id,
-              group_size[root_i - node_offset], pj->fof_data.group_size,
-              verbose);
+          add_foreign_link_to_list(&local_link_count, group_links_size,
+                                   group_links, &local_group_links, root_i,
+                                   pj->fof_data.group_id,
+                                   group_size[root_i - node_offset],
+                                   pj->fof_data.group_size, verbose);
       }
     }
   }
@@ -1926,10 +1926,9 @@ void rec_fof_search_pair_foreign(
   } else if (cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL)
-        rec_fof_search_pair_foreign(props, dim, search_r2, periodic,
-                                    space_gparts, nr_gparts, ci, cj->progeny[k],
-                                    link_count, group_links, group_links_size,
-                                    verbose);
+        rec_fof_search_pair_foreign(
+            props, dim, search_r2, periodic, space_gparts, nr_gparts, ci,
+            cj->progeny[k], link_count, group_links, group_links_size, verbose);
     }
   } else {
     /* Perform FOF search between pairs of cells that are within the linking
