@@ -227,6 +227,13 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
     hydro_first_init_part(p, &c->hydro.xparts[i]);
     p->time_bin = 1;
 #endif
+#if defined(MAGMA_SPH)
+    /* The per-particle coefficients, the previous divergence and the previous
+     * gradient of u evolve in hydro_prepare_force(): start both runs from
+     * the same state. */
+    hydro_first_init_part(p, &c->hydro.xparts[i]);
+    p->time_bin = 1;
+#endif
 
     hydro_init_part(p, hs);
     adaptive_softening_init_part(p);
@@ -381,7 +388,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %13e %13e %13e %13e\n",
             main_cell->hydro.parts[pid].id, main_cell->hydro.parts[pid].x[0],
             main_cell->hydro.parts[pid].x[1], main_cell->hydro.parts[pid].x[2],
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
@@ -390,10 +397,13 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #if defined(MINIMAL_SPH) || defined(PLANETARY_SPH) ||              \
     defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) ||            \
     defined(HOPKINS_PU_SPH) || defined(HOPKINS_PU_SPH_MONAGHAN) || \
-    defined(GASOLINE_SPH) || defined(REMIX_SPH) || defined(MAGMA_SPH)
+    defined(GASOLINE_SPH) || defined(REMIX_SPH)
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
+#elif defined(MAGMA_SPH)
+            /* Trace of the matrix velocity gradient */
+            main_cell->hydro.parts[pid].div_v,
 #else
             main_cell->hydro.parts[pid].density.div_v,
 #endif
@@ -416,6 +426,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || \
     defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
+            main_cell->hydro.parts[pid].u_dt
+#elif defined(MAGMA_SPH)
+            /* Maximal sound speed of the particle and its neighbours (the
+             * Courant signal speed) and the conduction + PdV heating */
+            main_cell->hydro.parts[pid].force.c_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else
             0.f, 0.f, 0.f
