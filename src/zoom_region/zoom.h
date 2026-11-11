@@ -75,6 +75,7 @@ void zoom_link_void_leaves(struct space *s, struct cell *c);
 int zoom_need_regrid(const struct space *s, const int new_cdim[3]);
 void zoom_prepare_cells(struct space *s, const int zoom_cdim[3], int verbose);
 void zoom_allocate_cells(struct space *s);
+void zoom_space_shift_extras(struct space *s);
 
 /* Void cell tree construction function. */
 void zoom_void_split_recursive(struct space *s, struct cell *c,
@@ -105,6 +106,12 @@ void zoom_engine_makeproxies(struct engine *e);
 void partition_zoom_grid(struct partition *initial_partition, int nr_nodes,
                          struct space *s);
 void partition_zoom_vector(int nr_nodes, struct space *s);
+int zoom_partition_space_to_space(const double old_bkg_width[3],
+                                  const int old_bkg_cdim[3],
+                                  const double old_zoom_width[3],
+                                  const int old_zoom_cdim[3],
+                                  const double old_zoom_lower[3],
+                                  const int *oldnodeIDs, struct space *s);
 void zoom_partition_voids(struct space *s, int nodeID);
 
 #if defined(WITH_MPI) && (defined(HAVE_METIS) || defined(HAVE_PARMETIS))

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# crash if anything in this script fails
+set -euo pipefail
+
+MPIRUN="@MPIRUN@"
+
+# No launcher available (e.g. batch systems that forbid mpirun on the login
+# nodes): report the test as skipped rather than failed.
+if [ -z "$MPIRUN" ] || [ "$MPIRUN" = "notfound" ]; then
+  echo "mpirun not found, skipping testCustomMPI"
+  exit 77
+fi
+
+# Allow more ranks than cores on small CI machines. Only Open MPI reads these;
+# other implementations ignore them.
+export OMPI_MCA_rmaps_base_oversubscribe=1
+export PRTE_MCA_rmaps_default_mapping_policy=:oversubscribe
+
+for n in 1 2 3 4; do
+  echo ""
+  echo "Running $MPIRUN -np $n ./testCustomMPI"
+  $MPIRUN -np $n ./testCustomMPI
+done
+
+exit 0

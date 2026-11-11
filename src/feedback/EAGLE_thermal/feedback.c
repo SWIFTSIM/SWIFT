@@ -548,6 +548,18 @@ void feedback_props_init(struct feedback_props *fp,
   fp->n_0_cgs = parser_get_param_double(
       params, "EAGLEFeedback:SNII_energy_fraction_n_0_H_p_cm3");
 
+  if (fp->f_E_max < fp->f_E_min)
+    error(
+        "EAGLEFeedback:SNII_energy_fraction_max (%e) must be >= "
+        "SNII_energy_fraction_min (%e).",
+        fp->f_E_max, fp->f_E_min);
+  if (fp->Z_0 <= 0.)
+    error("EAGLEFeedback:SNII_energy_fraction_Z_0 must be > 0, got %e.",
+          fp->Z_0);
+  if (fp->n_0_cgs <= 0.)
+    error("EAGLEFeedback:SNII_energy_fraction_n_0_H_p_cm3 must be > 0, got %e.",
+          fp->n_0_cgs);
+
   /* Indicies can either be included in the parameter file as powers,
    * or as widths - but not both! The width and power are always related
    * by the relation power = 1.0 / (ln(10) * width) */

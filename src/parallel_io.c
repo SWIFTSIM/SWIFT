@@ -1675,10 +1675,9 @@ void write_output_parallel(struct engine *e,
    * background cells, so compute separate counts and offsets for each region.
    */
   if (e->s->with_zoom_region) {
-    zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N,
-                                    N_total, offset, comm, N_in_cells,
-                                    N_total_in_cells, offset_in_cells,
-                                    offset_outside_cells);
+    zoom_io_prepare_particle_layout(
+        e, subsample, subsample_fraction, N, N_total, offset, comm, N_in_cells,
+        N_total_in_cells, offset_in_cells, offset_outside_cells);
   }
 
   /* Now everybody konws its offset and the total number of

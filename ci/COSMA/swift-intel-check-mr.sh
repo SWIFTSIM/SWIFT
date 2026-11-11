@@ -96,5 +96,13 @@ do_configure --with-subgrid=GEAR-G3 --with-hydro=sphenix --disable-hand-vec --wi
 do_make
 do_make clean
 
+echo
+echo "-------------------"
+echo "GEAR with BHs build"
+echo "-------------------"
+do_configure --with-subgrid=GEAR-BH --with-hydro=sphenix --disable-hand-vec --with-grackle=${GRACKLE_HOME}/lib
+do_make
+do_make clean
+
 #  Keep simple, may have a number of these happening.
 exit

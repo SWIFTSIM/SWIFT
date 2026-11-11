@@ -74,7 +74,9 @@ void lightcone_io_field_list_append(struct lightcone_io_field_list *list,
   struct lightcone_io_field *r =
       (struct lightcone_io_field *)malloc(sizeof(struct lightcone_io_field));
   bzero(r, sizeof(struct lightcone_io_field));
-  strcpy(r->name, name);
+  if (snprintf(r->name, FIELD_BUFFER_SIZE, "%s", name) >= FIELD_BUFFER_SIZE)
+    error("Lightcone field name '%s' is too long (max %d characters).", name,
+          FIELD_BUFFER_SIZE - 1);
   r->type = type;
   r->dimension = dimension;
   r->offset = offset;
@@ -513,7 +515,7 @@ int lightcone_store_stars(const struct engine *e, struct lightcone_props *props,
 
 #ifdef STARS_EAGLE
   data->mass_init = sp->mass_init;
-  data->birth_scale_factor = sp->birth_scale_factor;
+  data->birth_scale_factor = (float)sp->birth_scale_factor;
   data->birth_density = sp->birth_density;
   stars_get_luminosities(sp, e->policy & engine_policy_cosmology, e->cosmology,
                          e->time, e->physical_constants, e->stars_properties,

@@ -315,13 +315,6 @@ void zoom_get_region_dim_and_shift(struct space *s, const int verbose) {
     s->zoom_props->zoom_shift[i] = box_mid[i] - midpoint[i];
   }
 
-  /* We shouldn't shift if the shift is incremental. */
-  for (int i = 0; i < 3; i++) {
-    if (fabs(s->zoom_props->zoom_shift[i]) < 0.01 * s->dim[i]) {
-      s->zoom_props->zoom_shift[i] = 0.0;
-    }
-  }
-
   /* If the volume isn't periodic then we can't shift. */
   if (!s->periodic) {
     for (int i = 0; i < 3; i++) {

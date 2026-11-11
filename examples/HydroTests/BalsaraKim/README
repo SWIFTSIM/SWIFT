@@ -5,6 +5,8 @@ This example is based on the supernova-driven turbulence test from Balsara & Kim
 
 It consists of a series of energy injections at pre-determined times and locations, artificially simulating supernova energy injections. These injections will form interacting shock shells driving turbulence (and magnetic field amplification), and in turn result in a filamentary structure.
 
+Note: there is a typo in Price+ (2018). The correct physical density is 2.3e-24 g/cm^3. (Private communication) The units here have been set to the correct values.
+
 Note: the test takes quite some time to run due to the imposed timestepping procedure
 
 Running the test

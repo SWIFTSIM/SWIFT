@@ -1198,10 +1198,9 @@ void write_output_serial(struct engine *e,
    * background cells, so compute separate counts and offsets for each region.
    */
   if (e->s->with_zoom_region) {
-    zoom_io_prepare_particle_layout(e, subsample, subsample_fraction, N,
-                                    N_total, offset, comm, N_in_cells,
-                                    N_total_in_cells, offset_in_cells,
-                                    offset_outside_cells);
+    zoom_io_prepare_particle_layout(
+        e, subsample, subsample_fraction, N, N_total, offset, comm, N_in_cells,
+        N_total_in_cells, offset_in_cells, offset_outside_cells);
   }
 
   /* List what fields to write.

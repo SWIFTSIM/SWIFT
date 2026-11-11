@@ -39,10 +39,41 @@ directory of the MakeNewDisk repository.
 Swift should be configured using a NFW profile and the desired subgrid
 models:
 ./configure --with-subgrid=x --with-ext-potential=nfw --with-forcing=boundary-particles
-where x is EAGLE if the desired subgrid model is similar to that used in
-Nobels et al. (2022) and SPIN_JET_EAGLE for the model used in Husko et al. 
+where x is EAGLE-XL if the desired subgrid model is similar to that used in
+Nobels et al. (2022) and SPIN_JET_EAGLE-XL for the model used in Husko et al. 
 (2022), which has jet AGN feedback instead of thermal isotropic feedback.
 
 The remaining arguments set the external potential to an NFW profile and pin
 the supermassive BH of the simulation to the centre of the halo.
 
+To compile with GEAR black holes, configure swift with:
+
+./configure --with-subgrid=GEAR-BH --with-ext-potential=nfw --with-forcing=boundary-particles --with-grackle=$GRACKLE_ROOT
+
+Notice that you need to have installed Grackle on your machine. You also need to update
+the parameter files from:
+
+```
+  particle_splitting:            0    # Particle splitting is ON
+  recording_triggers_part: [-1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1]  # Not recording as we have many snapshots 
+```
+
+to
+
+```
+  particle_splitting:                1    # Particle splitting is OFF. GEAR does not have splitting.
+  recording_triggers_part: [-1, -1, -1]   # Not recording as we have many snapshots
+  recording_triggers_bpart: [-1, -1, -1]  # Not recording as we have many snapshots
+  recording_triggers_sink: [-1, -1, -1]   # Not recording as we have many snapshots
+```
+
+To run with EAGLE-XL, type:
+
+with_subgrid=EAGLE-XL ./run.sh
+
+and to run wiht GEAR, type:
+
+with_subgrid=GEAR ./run.sh
+
+This command downloads the required tables for the desired subgrid model.

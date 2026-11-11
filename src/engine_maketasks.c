@@ -481,7 +481,8 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
       /* Drift before first send */
       scheduler_addunlock(s, ci->hydro.super->stars.drift, t_density);
 
-      if (with_star_formation && ci->hydro.count > 0) {
+      /* t_sf_counts covers the whole subtree, so gate on its existence. */
+      if (t_sf_counts != NULL) {
         scheduler_addunlock(s, t_sf_counts, t_density);
 #ifdef EXTRA_STAR_LOOPS
         scheduler_addunlock(s, t_sf_counts, t_prep2);
@@ -493,7 +494,7 @@ void engine_addtasks_send_stars(struct engine *e, struct cell *ci,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &ci->mpi.send, t_prep2);
 #endif
-    if (with_star_formation && ci->hydro.count > 0) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &ci->mpi.send, t_sf_counts);
     }
   }
@@ -1051,7 +1052,8 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
     t_prep2 = scheduler_addtask(s, task_type_recv, task_subtype_spart_prep2,
                                 c->mpi.tag, 0, c, NULL);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
+    /* t_sf_counts covers the whole subtree, so gate on its existence. */
+    if (t_sf_counts != NULL) {
 
       /* Receive the stars only once the counts have been received */
       scheduler_addunlock(s, t_sf_counts, c->stars.sorts);
@@ -1067,7 +1069,7 @@ void engine_addtasks_recv_stars(struct engine *e, struct cell *c,
 #ifdef EXTRA_STAR_LOOPS
     engine_addlink(e, &c->mpi.recv, t_prep2);
 #endif
-    if (with_star_formation && c->hydro.count > 0) {
+    if (t_sf_counts != NULL) {
       engine_addlink(e, &c->mpi.recv, t_sf_counts);
     }
 
@@ -1696,8 +1698,14 @@ void engine_add_ghosts(struct engine *e, struct cell *c, struct task *ghost_in,
 void engine_add_star_ghosts(struct engine *e, struct cell *c,
                             struct task *ghost_in, struct task *ghost_out) {
 
-  /* Abort as there are no hydro particles here? */
-  if (c->stars.count_total + c->hydro.count_total == 0) return;
+  const int with_star_formation_sink =
+      (e->policy & engine_policy_sinks) && (e->policy & engine_policy_stars);
+
+  /* Abort unless there are hydro/star particles, or sinks that may spawn stars
+   * later. */
+  if (c->stars.count_total + c->hydro.count_total == 0 &&
+      !(with_star_formation_sink && c->sinks.count > 0))
+    return;
 
   /* If we have reached the leaf OR have to few particles to play with*/
   if (!c->split || c->stars.count_total < engine_max_sparts_per_ghost) {
@@ -2402,8 +2410,16 @@ void engine_make_self_gravity_tasks_mapper(void *map_data, int num_elements,
   /* We always use the mesh if the volume is periodic. */
   const int use_mesh = s->periodic;
 
+  /* The P2P search range computed once per rebuild. */
   const int delta_m = s->grav_P2P_search_delta_m;
   const int delta_p = s->grav_P2P_search_delta_p;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Ensure the deltas are non-zero */
+  if (delta_m <= 0 || delta_p <= 0) {
+    error("Invalid P2P search range: delta_m=%d delta_p=%d", delta_m, delta_p);
+  }
+#endif
 
   /* Loop through the elements, which are just byte offsets from NULL. */
   for (int ind = 0; ind < num_elements; ind++) {
@@ -3066,6 +3082,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
           scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
                               t_bh_density);
 
+        /* BH smoothing-length convergence and swallow marking must see the
+         * gas field after sinks have removed their share, not before. Sink
+         * gas removal is committed by sink_ghost2 (no need to wait for the
+         * later sink-sink merger step too). */
+        if (with_sink)
+          scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                              t_bh_density);
+
         scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                             t_bh_density);
         scheduler_addunlock(sched, ci->hydro.super->hydro.drift, t_bh_density);
@@ -3429,6 +3453,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
             scheduler_addunlock(sched, ci->hydro.super->hydro.cooling_out,
                                 t_bh_density);
 
+          /* BH smoothing-length convergence and swallow marking must see
+           * the gas field after sinks have removed their share, not before.
+           * Sink gas removal is committed by sink_ghost2 (no need to wait
+           * for the later sink-sink merger step too). */
+          if (with_sink)
+            scheduler_addunlock(sched, ci->hydro.super->sinks.sink_ghost2,
+                                t_bh_density);
+
           scheduler_addunlock(sched, ci->hydro.super->black_holes.drift,
                               t_bh_density);
           scheduler_addunlock(sched, ci->hydro.super->hydro.drift,
@@ -3586,6 +3618,14 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
 
             if (with_cooling)
               scheduler_addunlock(sched, cj->hydro.super->hydro.cooling_out,
+                                  t_bh_density);
+
+            /* BH smoothing-length convergence and swallow marking must see
+             * the gas field after sinks have removed their share, not
+             * before. Sink gas removal is committed by sink_ghost2 (no need
+             * to wait for the later sink-sink merger step too). */
+            if (with_sink)
+              scheduler_addunlock(sched, cj->hydro.super->sinks.sink_ghost2,
                                   t_bh_density);
 
             scheduler_addunlock(sched, cj->hydro.super->black_holes.drift,

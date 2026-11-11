@@ -31,6 +31,60 @@
 #include "feedback.h"
 #include "space_getsid.h"
 
+/**
+ * @brief Has there been too much motion in a pair of cells for the stars of
+ * ci to find their gas neighbours in cj, considering only the stars that
+ * interact with their neighbours (via feedback_is_active) in this step?
+ *
+ * @param e The #engine.
+ * @param ci The #cell holding the stars.
+ * @param cj The #cell holding the gas.
+ */
+static int cell_need_rebuild_for_stars_pair_feedback(const struct engine *e,
+                                                     const struct cell *ci,
+                                                     const struct cell *cj) {
+
+  /* Conservative test using all the stars */
+  if (!cell_need_rebuild_for_stars_pair(ci, cj)) return 0;
+
+  /* cell_need_rebuild_for_stars_pair() uses the largest smoothing length of
+   * all the stars of ci. Only the active stars doing feedback (or all the
+   * active stars when running with RT) take part in the stars loops of the
+   * step, so the motion part of the test only needs to hold for them. Stars
+   * with a large smoothing length that are inactive for feedback don't
+   * trigger rebuilds. */
+
+  /* Are the smoothing lengths alone too large? */
+  if (kernel_gamma * max(ci->stars.h_max, cj->hydro.h_max) > cj->dmin) return 1;
+
+  /* No active star in ci: only the gas smoothing lengths matter */
+  if (!cell_is_active_stars(ci, e))
+    return kernel_gamma * cj->hydro.h_max + ci->stars.dx_max_part +
+               cj->hydro.dx_max_part >
+           cj->dmin;
+
+  /* We do not know which stars of a foreign cell are active */
+  if (ci->nodeID != e->nodeID) return 1;
+
+  /* With RT, all the active stars interact */
+  if (e->policy & engine_policy_rt) return 1;
+
+  /* Largest smoothing length of the stars interacting in this step */
+  float h_max = 0.f;
+  for (int k = 0; k < ci->stars.count; k++) {
+    const struct spart *sp = &ci->stars.parts[k];
+    if (spart_is_inhibited(sp, e) || !spart_is_active(sp, e)) continue;
+    if (!feedback_is_active(sp, e)) continue;
+    h_max = max(h_max, sp->h);
+  }
+
+  /* Same test as the test above but now also considering the max active h in ci
+   */
+  return kernel_gamma * max(h_max, cj->hydro.h_max) + ci->stars.dx_max_part +
+             cj->hydro.dx_max_part >
+         cj->dmin;
+}
+
 extern int engine_star_resort_task_depth;
 
 /**
@@ -68,10 +122,26 @@ void cell_activate_star_resort_tasks(struct cell *c, struct scheduler *s) {
 #endif
 
   /* The resort tasks are at either the chosen depth or the super level,
-   * whichever comes first. */
-  if ((c->depth == engine_star_resort_task_depth || c->hydro.super == c) &&
-      c->hydro.count > 0) {
-    scheduler_activate(s, c->hydro.stars_resort);
+   * whichever comes first. Stop descending here unconditionally: whether
+   * there is anything to activate must not gate the recursion itself. */
+  if (c->depth == engine_star_resort_task_depth || c->hydro.super == c) {
+
+    /* Mirror engine_make_hierarchical_tasks_hydro()'s creation criterion
+     * exactly, so we only activate a task that was actually created. */
+    const int with_stars = (s->space->e->policy & engine_policy_stars);
+    const int with_sinks = (s->space->e->policy & engine_policy_sinks);
+    const int with_star_formation =
+        (s->space->e->policy & engine_policy_star_formation);
+    const int with_star_formation_sink = with_sinks && with_stars;
+
+    const int resort_for_star_formation =
+        with_star_formation && (c->hydro.count > 0);
+    const int resort_for_star_formation_sink =
+        with_star_formation_sink && (c->hydro.count > 0 || c->sinks.count > 0);
+
+    if (resort_for_star_formation || resort_for_star_formation_sink) {
+      scheduler_activate(s, c->hydro.stars_resort);
+    }
   } else {
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
@@ -2266,8 +2336,8 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
     if (t->type == task_type_pair) {
       /* Check whether there was too much particle motion, i.e. the
          cell neighbour conditions were violated. */
-      if (cell_need_rebuild_for_stars_pair(ci, cj)) rebuild = 1;
-      if (cell_need_rebuild_for_stars_pair(cj, ci)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair_feedback(e, ci, cj)) rebuild = 1;
+      if (cell_need_rebuild_for_stars_pair_feedback(e, cj, ci)) rebuild = 1;
 
 #ifdef WITH_MPI
       /* Activate the send/recv tasks. */
@@ -2279,13 +2349,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, ci->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_density,
-                                  ci_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, cj->mpi.send, task_subtype_spart_density, ci_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, cj->mpi.send, task_subtype_spart_prep2,
                                   ci_nodeID);
 #endif
-          cell_activate_drift_spart(cj, s);
+          /* Drift the cell actually named by the send task, not cj: they
+             can differ when the send task is shared across depths. */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (ci_active) {
@@ -2315,13 +2387,15 @@ int cell_unskip_stars_tasks(struct cell *c, struct scheduler *s,
           scheduler_activate_recv(s, cj->mpi.recv, task_subtype_part_prep1);
 #endif
           /* If the local cell is active, more stuff will be needed. */
-          scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_density,
-                                  cj_nodeID);
+          struct link *l_send_spart = scheduler_activate_send(
+              s, ci->mpi.send, task_subtype_spart_density, cj_nodeID);
 #ifdef EXTRA_STAR_LOOPS
           scheduler_activate_send(s, ci->mpi.send, task_subtype_spart_prep2,
                                   cj_nodeID);
 #endif
-          cell_activate_drift_spart(ci, s);
+          /* Drift the cell actually named by the send task, not ci: they
+             can differ when the send task is shared across depths. */
+          cell_activate_drift_spart(l_send_spart->t->ci, s);
         }
 
         if (cj_active) {

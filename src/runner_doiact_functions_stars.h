@@ -275,7 +275,12 @@ void DO_NONSYM_PAIR1_STARS_NAIVE(struct runner *r,
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (hi > ci->stars.h_max_active)
-      error("Particle has h larger than h_max_active");
+      error(
+          "Particle has h larger than h_max_active: hi=%e "
+          "ci->stars.h_max_active=%e ci->cellID=%lld ci->nodeID=%d "
+          "ci->depth=%d ci->stars.count=%d e->ti_current=%lld si->id=%lld",
+          hi, ci->stars.h_max_active, ci->cellID, ci->nodeID, ci->depth,
+          ci->stars.count, e->ti_current, si->id);
 #endif
 
     /* Skip particles not in the range of h we care about */
@@ -464,7 +469,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (hi > ci->stars.h_max_active)
-        error("Particle has h larger than h_max_active");
+        error(
+            "Particle has h larger than h_max_active: hi=%e "
+            "ci->stars.h_max_active=%e ci->cellID=%lld ci->nodeID=%d "
+            "ci->depth=%d ci->stars.count=%d e->ti_current=%lld spi->id=%lld",
+            hi, ci->stars.h_max_active, ci->cellID, ci->nodeID, ci->depth,
+            ci->stars.count, e->ti_current, spi->id);
 #endif
 
       /* Skip particles not in the range of h we care about */
@@ -631,7 +641,12 @@ void DO_SYM_PAIR1_STARS(struct runner *r, const struct cell *restrict ci,
 
 #ifdef SWIFT_DEBUG_CHECKS
       if (hj > cj->stars.h_max_active)
-        error("Particle has h larger than h_max_active");
+        error(
+            "Particle has h larger than h_max_active: hj=%e "
+            "cj->stars.h_max_active=%e cj->cellID=%lld cj->nodeID=%d "
+            "cj->depth=%d cj->stars.count=%d e->ti_current=%lld spj->id=%lld",
+            hj, cj->stars.h_max_active, cj->cellID, cj->nodeID, cj->depth,
+            cj->stars.count, e->ti_current, spj->id);
 #endif
 
       /* Skip particles not in the range of h we care about */
@@ -1202,10 +1217,6 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
       (cj->hydro.sorted & (1 << sid)) &&
       (cj->hydro.dx_max_sort_old <= space_maxreldx * cj->dmin);
 
-  /* Unlock if it wasn't sorted as we will not use the sort array */
-  if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
-    error("Impossible to unlock cell!");
-
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   const int force_naive = 1;
 #else
@@ -1214,9 +1225,20 @@ void DOPAIR1_SUBSET_BRANCH_STARS(struct runner *r,
 
   /* Can we use the sorted interactions or do we default to naive? */
   if (force_naive || !is_sorted) {
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
+
     DOPAIR1_SUBSET_STARS_NAIVE(r, ci, sparts_i, ind, scount, cj, shift);
+
   } else {
+
     DOPAIR1_SUBSET_STARS(r, ci, sparts_i, ind, scount, cj, sid, flipped, shift);
+
+    /* Unlock if it wasn't sorted as we will not use the sort array */
+    if (lock_unlock(&cj->hydro.extra_sort_lock) != 0)
+      error("Impossible to unlock cell!");
   }
 }
 

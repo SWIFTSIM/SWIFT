@@ -65,7 +65,11 @@ struct chemistry_spart_data {
 /**
  * @brief Chemical abundances traced by the #bpart in the GEAR model.
  */
-struct chemistry_bpart_data {};
+struct chemistry_bpart_data {
+
+  /*! Fraction of the particle mass in a given element */
+  double metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT];
+};
 
 /**
  * @brief Chemical abundances traced by the #sink in the GEAR model.

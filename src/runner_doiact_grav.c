@@ -96,8 +96,13 @@ void runner_do_grav_down(struct runner *r, struct cell *c, int timer) {
     for (int k = 0; k < 8; ++k) {
       struct cell *cp = c->progeny[k];
 
-      /* Do we have a progenitor with any active g-particles ? */
-      if (cp != NULL && cell_is_active_gravity(cp, e)) {
+      /* Do we have a local progenitor with any active g-particles?
+       * NOTE: the rank check is explicitly for zoom scenarios where you are
+       * recursing in a void cell and hit the zoom top level where the partition
+       * was done. There is no guarantee that all your progeny will be on the
+       * same rank! */
+      if (cp != NULL && cp->nodeID == e->nodeID &&
+          cell_is_active_gravity(cp, e)) {
 
 #ifdef SWIFT_DEBUG_CHECKS
         if (cp->grav.ti_old_multipole != e->ti_current)
