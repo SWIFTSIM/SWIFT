@@ -390,14 +390,17 @@ struct feedback_isrf_packet_slot_data {
           arrives evenly between this time and the one of #far_last_below. A
           negative value marks a cell that holds the light of several shares,
           or of a particle with a known step. Rounded so that the time is
-          later. */
+          later. For a particle with a known step, this and #far_last_below
+          hold the shape of the light over the sub-steps of the cell as bits
+          (sign bit set, top four exponent bits zero; see radiation_packet.c).
+       */
       float far_first_below[RADIATION_PACKET_FAR_CELLS];
 
       /*! Distance from the end of each far cell down to the latest arrival
-          time of its light, rounded so that the time is later. Zero once the
-          particle has a known step: the light then leaves at the end of the
-          cell. Negative for light that arrives beyond the end of the last
-          cell. Valid for a cell that holds energy. */
+          time of its light, rounded so that the time is later. Negative for
+          light that arrives beyond the end of the last cell, which then leaves
+          as one pulse. Bits of the shape for a shaped cell. Valid for a cell
+          that holds energy. */
       float far_last_below[RADIATION_PACKET_FAR_CELLS];
     };
   };

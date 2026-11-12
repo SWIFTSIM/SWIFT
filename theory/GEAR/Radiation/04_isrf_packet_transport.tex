@@ -1158,21 +1158,38 @@ and they are $8$ steps wide again when that light has left. Faint light does
 not widen them: a piece whose energy, summed over both bands, is below
 $\epsilon_{\rm f}$ times the energy that waits does not count, nor does light
 due after the end of the time line. Faint light that falls beyond the last
-cell takes the end of that cell, and it never changes when other light leaves,
-in either order of arrival. Light due after the end of the time line keeps its
+cell counts in the last sub-step of that cell (below). It holds back the shape
+of the cell by its share of the light of its band, so it can delay
+the light of the other bands of that cell. A faint band with no other light in
+the cell sets the shared shape to zero, and the cell leaves whole at its end. Light due after the end of the time line keeps its
 latest arrival time in the last cell, so it holds the other light of that cell
 for as long. Light that widens the cells delays all the light
 beyond the near bins, from every source, by up to one widened cell: the widest
-width is set by the farthest non-faint source. A particle that has not yet merged has no step. Its far width is the smallest power of two of steps at which all
+width is set by the farthest non-faint source. A far cell of a receiver with a step keeps the shape of its light: the fraction
+that has arrived by the end of each of $8$ equal sub-steps but the last, in
+$1000$ levels. The $7$ fractions do not decrease, and a cell stores their rank
+among the non-decreasing sequences, which takes $35$ per cent of the $59$ bits
+of the two stamps of the cell. When a piece joins the cell, each fraction becomes
+the mean of the stored one and the one of the piece, weighted by the light before
+and by the piece, rounded down to a level. The smallest over the energy and the
+photon number of each band is kept, so that no band leaves before it has
+arrived. The shape is shared by the bands, so late light of one band holds back
+the light of the other bands of the cell.
+A particle that has not yet merged has no step. Its far width is the smallest power of two of steps at which all
 waiting light fits, and a far cell that holds one share keeps the interval of
 that share and releases the part that has arrived.
 
 A near bin leaves whole at the first merge at or after its end, so its light
 waits less than one step after it has arrived. A far cell leaves whole at
 its end, so its light waits less than $W$ steps, $W$ the width of the cells.
-When the step or the width changes, the light of a cell is placed again as a
-pulse at its end, in the cell that holds that time: it does not move if the
-new width divides the old one, and moves by less than the new width otherwise.
+When the step or the width changes, the light of a cell is placed again as
+pulses, one at the end of each sub-step that holds light, each in the cell that
+holds that time, and a cell that has no shape as a pulse at its end. Each pulse but the last is
+rounded down, so that the light that has left by a time is never above the
+stored fraction, and the last takes the rest. A far lattice that only slides
+by one cell keeps the shaped cells whole. The pulse at the end of a cell does
+not move if the new width divides the old one, and moves by less than the new
+width otherwise.
 Only a width above all earlier ones adds a wait, so light that arrived at $T$
 leaves no later than the first merge at or after $T+W_{\max}\Delta t$, with
 $W_{\max}\Delta t$ the width in time of the widest cell that held it ($\Delta t$
@@ -1183,7 +1200,7 @@ width this is $T+W\Delta t$. Non-faint light due beyond the end of the last
 cell at the widest width, and light due after the end of the time line, goes
 to that cell as a pulse at its latest arrival time and leaves at the first merge
 at or after that time. Faint light also goes beyond the last cell, at any width;
-it takes the end of the cell. The held packet departs at the merge time. Along a chain of
+it counts in the last sub-step of the cell. The held packet departs at the merge time. Along a chain of
 particles a hop adds a wait of less than one receiver step when its light time
 is at most $N_{\rm n}$ receiver steps, and of less than $W_{\max}\Delta t+\Delta t$ when it is
 longer, with $W_{\max}\Delta t=8\Delta t$ while its light fits the last cell of
@@ -1251,8 +1268,11 @@ choice does not matter.
 $t$ (drawn with four near bins): $N_{\rm n}$ near bins one step wide, then two far cells $2^n$ steps wide ($n=3$
 once the step is known; the drawing uses $n=2$). A share
 from a sender with twice the step is spread over three bins.
-(b) A far share is cut at the cell ends, and each piece leaves whole at the end
-of its cell (black), never ahead of the arrived light (orange).}
+(b) A far share is cut at the cell ends. A far cell of a receiver with a step
+keeps its light as a shape of $8$ sub-steps and leaves by the end of each
+sub-step (black), never ahead of the arrived light (orange), except for faint
+light, which leaves at the end of the last cell. A cell with no shape leaves
+whole at its end.}
 \label{fig:isrf-bins}
 \end{figure}
 
@@ -1805,8 +1825,9 @@ field of several sources at a single particle.
 \subsubsection{Limit: the far light at a slow speed}
 \label{sec:isrf-far-limit}
 
-A far cell keeps one time for all its light and leaves whole at its end, so
-light that arrives beyond the $N_{\rm n}$ near bins leaves in lumps. Take one
+A far cell keeps the arrival of its light only as the shape of $8$ sub-steps,
+so light that arrives beyond the $N_{\rm n}$ near bins leaves in lumps of at
+most the bound below, which the shape lowers. Take one
 receiver fed by one steady sender. A merge releases at most the light that
 arrived within one cell width $W$ steps, which is $W$ times the mean per
 merge. The largest $|{\rm held}-{\rm mean}|/{\rm mean}$ is therefore 0 while
@@ -1816,7 +1837,8 @@ cell of $8$ steps. A sender farther than that cell widens the cells to $W>8$
 steps, and the bound is then $W-1$ with the widened $W$. It grows with the part
 of the light beyond the $N_{\rm n}$ near bins: for $N_{\rm n}=4$, a sender 2 or 4 times coarser than the receiver gives 0 when its
 whole window lies in the near bins, between 0.15 and 6.1 when part of it does
-not, and 7 at a delay of 10 receiver steps. The mean over a window of $n$ merges is
+not. At a delay of 10 receiver steps the bound is 7, and the shape leaves a
+largest deviation of 0.008 in the test of this case. The mean over a window of $n$ merges is
 off by at most one cell content, $W/n$ of the mean. It does not occur at the
 default $v=0.99c$, nor in the step-bounding mode with $f_{\Delta t}=0.5$,
 except for the outermost neighbours: a hop to the kernel edge is 3.9 receiver
