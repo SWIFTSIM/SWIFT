@@ -185,20 +185,16 @@ int main(int argc, char *argv[]) {
 
   zoom_mesh.enabled = 1;
   zoom_mesh.use_local_patches = 1;
-  zoom_mesh.N[0] = 16;
-  zoom_mesh.N[1] = 16;
-  zoom_mesh.N[2] = 16;
+  zoom_mesh.N = 16;
   zoom_mesh.loc[0] = 10.;
   zoom_mesh.loc[1] = 10.;
   zoom_mesh.loc[2] = 10.;
   zoom_mesh.dim[0] = 30.;
   zoom_mesh.dim[1] = 30.;
   zoom_mesh.dim[2] = 30.;
-  zoom_mesh.cell_fac[0] = zoom_mesh.N[0] / zoom_mesh.dim[0];
-  zoom_mesh.cell_fac[1] = zoom_mesh.N[1] / zoom_mesh.dim[1];
-  zoom_mesh.cell_fac[2] = zoom_mesh.N[2] / zoom_mesh.dim[2];
+  zoom_mesh.cell_fac = zoom_mesh.N / zoom_mesh.dim[0];
   for (int i = 0; i < 3; ++i) {
-    const double cell_width = 1. / zoom_mesh.cell_fac[i];
+    const double cell_width = 1. / zoom_mesh.cell_fac;
     const double tol = 1e-6 * zoom_mesh.dim[i];
     zoom_mesh.active_min[i] = zoom_mesh.loc[i] + 2. * cell_width - tol;
     zoom_mesh.active_max[i] =
@@ -300,14 +296,14 @@ int main(int argc, char *argv[]) {
    * sampled reference slightly at this deliberately small mesh size. */
   const int source_i = 6;
   const int probe_i = 9;
-  const double y_node = zoom_mesh.loc[1] + source_i / zoom_mesh.cell_fac[1];
-  const double z_node = zoom_mesh.loc[2] + source_i / zoom_mesh.cell_fac[2];
+  const double y_node = zoom_mesh.loc[1] + source_i / zoom_mesh.cell_fac;
+  const double z_node = zoom_mesh.loc[2] + source_i / zoom_mesh.cell_fac;
 
   struct cell mesh_cells[2];
   int local_cells_with_particles_top[2] = {0, 1};
   const double source_x[3] = {
-      zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac[0], y_node, z_node};
-  const double probe_x[3] = {zoom_mesh.loc[0] + probe_i / zoom_mesh.cell_fac[0],
+      zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac, y_node, z_node};
+  const double probe_x[3] = {zoom_mesh.loc[0] + probe_i / zoom_mesh.cell_fac,
                              y_node, z_node};
   const double source_loc[3] = {source_x[0] - 0.5, source_x[1] - 0.5,
                                 source_x[2] - 0.5};
@@ -330,14 +326,14 @@ int main(int argc, char *argv[]) {
   threadpool_init(&e.threadpool, /*num_threads=*/4);
 
   /* Allocate the zero-padded mesh */
-  const size_t M = 2 * zoom_mesh.N[0];
+  const size_t M = 2 * zoom_mesh.N;
   zoom_mesh.potential_global =
       (double *)fftw_malloc(sizeof(double) * M * M * M);
 
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 
   const double expected_ax = zoom_mesh_expected_acceleration_x(
-      zoom_mesh.cell_fac[0], source_i, probe_i, zoom_mesh.r_s, mesh.r_s);
+      zoom_mesh.cell_fac, source_i, probe_i, zoom_mesh.r_s, mesh.r_s);
   const double measured_ax = mesh_cells[1].grav.parts[0].a_grav_mesh[0];
   const double analytic_tolerance = 4e-3 * max(1., fabs(expected_ax));
 
@@ -365,7 +361,7 @@ int main(int argc, char *argv[]) {
 
   /* Shift both particles off the nodes to exercise fractional CIC assignment
    * and interpolation with the cached, deconvolved kernel. */
-  const double shift = 0.37 / zoom_mesh.cell_fac[0];
+  const double shift = 0.37 / zoom_mesh.cell_fac;
   for (int cell = 0; cell < 2; ++cell) {
     mesh_cells[cell].loc[0] += shift;
     mesh_cells[cell].grav.parts[0].x[0] += shift;
@@ -422,7 +418,7 @@ int main(int argc, char *argv[]) {
     zoom_props.region_lower_bounds[axis] = 21.;
   }
   zoom_props.bkg_cells_top = &bkg_cell;
-  props.a_smooth = zoom_mesh.r_s * zoom_mesh.cell_fac[0];
+  props.a_smooth = zoom_mesh.r_s * zoom_mesh.cell_fac;
   props.r_s = mesh.r_s;
   props.r_cut_max_ratio = mesh.r_cut_max / mesh.r_s;
   zoom_mesh.buffer_cells = 1;

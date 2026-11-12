@@ -63,10 +63,10 @@ static void zoom_mesh_patch_init(struct pm_mesh_patch *patch,
 
   const int gcount = cell->grav.count;
   const struct gpart *gparts = cell->grav.parts;
-  const double fac = mesh->cell_fac[0];
+  const double fac = mesh->cell_fac;
 
   /* The FFTs are performed on the zero-padded mesh */
-  patch->N = 2 * mesh->N[0];
+  patch->N = 2 * mesh->N;
   patch->fac = fac;
 
   /* No wrapping on the isolated mesh, positions are relative to its corner */
@@ -133,7 +133,7 @@ void zoom_mesh_accumulate_cell_to_local_patch(
      (and the code to find the extent of the cell would fail) */
   if (cell->grav.count == 0) return;
 
-  const double fac = mesh->cell_fac[0];
+  const double fac = mesh->cell_fac;
 
   /* Initialise the local mesh patch */
   zoom_mesh_patch_init(patch, mesh, cell, /*boundary_size=*/1);
@@ -165,9 +165,9 @@ void zoom_mesh_accumulate_cell_to_local_patch(
     const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (i < 0 || i >= mesh->N[0]) error("Invalid gpart position in x");
-    if (j < 0 || j >= mesh->N[1]) error("Invalid gpart position in y");
-    if (k < 0 || k >= mesh->N[2]) error("Invalid gpart position in z");
+    if (i < 0 || i >= mesh->N) error("Invalid gpart position in x");
+    if (j < 0 || j >= mesh->N) error("Invalid gpart position in y");
+    if (k < 0 || k >= mesh->N) error("Invalid gpart position in z");
 #endif
 
     /* Get coordinates within the mesh patch */
@@ -306,7 +306,7 @@ static size_t zoom_count_required_mesh_cells(const struct zoom_pm_mesh *mesh,
 
   const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
-  const double fac = mesh->cell_fac[0];
+  const double fac = mesh->cell_fac;
 
   size_t count = 0;
 
@@ -375,10 +375,10 @@ static size_t zoom_init_required_mesh_cells(
 
   const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
-  const double fac = mesh->cell_fac[0];
+  const double fac = mesh->cell_fac;
 
   /* The FFTs are performed on the zero-padded mesh */
-  const int N = 2 * mesh->N[0];
+  const int N = 2 * mesh->N;
 
   size_t count = 0;
 
@@ -482,7 +482,7 @@ static void zoom_fill_local_patches_from_mesh_cells(
 
   const int *local_cells = s->local_cells_top;
   const int nr_local_cells = s->nr_local_cells;
-  const double fac = mesh->cell_fac[0];
+  const double fac = mesh->cell_fac;
 
   size_t offset = 0;
 
@@ -499,7 +499,7 @@ static void zoom_fill_local_patches_from_mesh_cells(
     if (!zoom_mesh_cell_is_covered(mesh, cell, /*use_max_dx=*/0)) continue;
 
     /* The FFTs are performed on the zero-padded mesh */
-    patch->N = 2 * mesh->N[0];
+    patch->N = 2 * mesh->N;
     patch->fac = fac;
 
     /* No wrapping on the isolated mesh, positions are relative to its corner */
@@ -606,7 +606,7 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
 #if defined(WITH_MPI) && defined(HAVE_MPI_FFTW)
 
   /* The FFTs are performed on the zero-padded mesh */
-  const int N = 2 * mesh->N[0];
+  const int N = 2 * mesh->N;
 
   /* Determine rank, number of MPI ranks */
   int nr_nodes, nodeID;

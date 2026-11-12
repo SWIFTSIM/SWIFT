@@ -52,8 +52,8 @@ struct zoom_pm_mesh {
   /*! Number of background top-level cell shells around the zoom region. */
   int buffer_cells;
 
-  /*! Side-length of the mesh along each axis. */
-  int N[3];
+  /*! Side-length of the mesh */
+  int N;
 
   /*! Lower corner of the mesh in box coordinates. */
   double loc[3];
@@ -61,8 +61,8 @@ struct zoom_pm_mesh {
   /*! Side-length of the mesh region along each axis. */
   double dim[3];
 
-  /*! Conversion factor between box and mesh coordinates. */
-  double cell_fac[3];
+  /*! Conversion factor between box and mesh size */
+  double cell_fac;
 
   /*! Lower bound of the region in which forces can be interpolated. */
   double active_min[3];

@@ -102,27 +102,30 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
     const double buffer = mesh->buffer_cells * z->bkg_cells_top[0].width[i];
     mesh->loc[i] = z->region_lower_bounds[i] - buffer;
     mesh->dim[i] = z->dim[i] + 2. * buffer;
-    mesh->cell_fac[i] = mesh->N[i] / mesh->dim[i];
+  }
+  if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2])
+    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
+  mesh->cell_fac = mesh->N / mesh->dim[0];
+
+  for (int i = 0; i < 3; ++i) {
 
     /* The region in which forces can be interpolated. The five-point force
      * stencil needs two cells on the low side for i-2 and three on the high
      * side because the i+2 stencil point is CIC-interpolated and therefore
      * also reads i+3. A small tolerance allows for roundoff in the cell
      * construction. */
-    const double cell_width = 1. / mesh->cell_fac[i];
+    const double cell_width = 1. / mesh->cell_fac;
     const double tol = 1e-6 * mesh->dim[i];
     mesh->active_min[i] = mesh->loc[i] + 2. * cell_width - tol;
     mesh->active_max[i] = mesh->loc[i] + mesh->dim[i] - 3. * cell_width + tol;
   }
-  if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2])
-    error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
 
   /* The smoothing scale must track the zoom mesh's own grid resolution
    * (mirroring how the background mesh derives r_s from dim/mesh_size in
    * gravity_props_init), NOT the zoom region's top-level tree cell width.
    * The tree cdim is set independently for domain-decomposition/load
    * balancing and can be far coarser than the requested mesh resolution. */
-  mesh->r_s = props->a_smooth * mesh->dim[0] / mesh->N[0];
+  mesh->r_s = props->a_smooth * mesh->dim[0] / mesh->N;
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * r_cut_min_ratio;
@@ -140,7 +143,7 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
         "smaller than the background mesh's (r_s=%.6e, from "
         "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
         "or shrink the zoom region.",
-        mesh->r_s, mesh->N[0], mesh->dim[0], props->r_s);
+        mesh->r_s, mesh->N, mesh->dim[0], props->r_s);
 
   /* The search ranges used when constructing the gravity tasks are set by the
    * cut-off of the background mesh, so the zoom mesh cannot truncate the tree
@@ -245,17 +248,16 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->buffer_cells = buffer_cells;
   mesh->potential_global = NULL;
-  for (int i = 0; i < 3; ++i) mesh->N[i] = side_length;
+  mesh->N = side_length;
   zoom_mesh_set_geometry(mesh, s, props, r_cut_max_ratio, r_cut_min_ratio);
 
   /* Report the mesh geometry to the user if requested. */
   if (verbose)
     message(
-        "Zoom gravity mesh: enabled with N=[%d %d %d], loc=[%.6e %.6e %.6e], "
+        "Zoom gravity mesh: enabled with N=%d, loc=[%.6e %.6e %.6e], "
         "dim=[%.6e %.6e %.6e], buffer_cells=%d, r_cut_max=%.6e.",
-        mesh->N[0], mesh->N[1], mesh->N[2], mesh->loc[0], mesh->loc[1],
-        mesh->loc[2], mesh->dim[0], mesh->dim[1], mesh->dim[2], buffer_cells,
-        mesh->r_cut_max);
+        mesh->N, mesh->loc[0], mesh->loc[1], mesh->loc[2], mesh->dim[0],
+        mesh->dim[1], mesh->dim[2], buffer_cells, mesh->r_cut_max);
 
   /* The FFTs are performed on the zero-padded mesh. */
   initialise_fftw(2 * side_length, mesh->nr_threads);
@@ -315,7 +317,7 @@ static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
 
   /* The zero padded Hockney-Eastwood method embeds the active N^3 mesh in a
    * (2N)^3 FFT domain. */
-  const int N = mesh->N[0];
+  const int N = mesh->N;
   const int M = 2 * N;
   const size_t nr_mesh_cells = (size_t)M * M * M;
 
@@ -396,7 +398,7 @@ void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream) {
 
   if (mesh->enabled) {
 
-    initialise_fftw(2 * mesh->N[0], mesh->nr_threads);
+    initialise_fftw(2 * mesh->N, mesh->nr_threads);
     zoom_mesh_allocate(mesh);
   }
 }
@@ -539,8 +541,8 @@ INLINE static void zoom_mesh_gpart_to_mesh_CIC(
     const struct gpart *gp, double *rho, const struct zoom_pm_mesh *mesh,
     const struct neutrino_model *nu_model) {
 
-  const int N = mesh->N[0];
-  const double fac = mesh->cell_fac[0];
+  const int N = mesh->N;
+  const double fac = mesh->cell_fac;
 
   /* Position relative to the corner of the zoom mesh */
   const double pos_x = gp->x[0] - mesh->loc[0];
@@ -701,8 +703,8 @@ static void zoom_mesh_to_gpart_CIC(struct gpart *gp, const double *pot,
                                    const float const_G) {
 
   /* The potential is stored on the zero-padded mesh */
-  const int N = 2 * mesh->N[0];
-  const double fac = mesh->cell_fac[0];
+  const int N = 2 * mesh->N;
+  const double fac = mesh->cell_fac;
 
   /* Position relative to the corner of the zoom mesh */
   const double pos_x = gp->x[0] - mesh->loc[0];
@@ -725,9 +727,9 @@ static void zoom_mesh_to_gpart_CIC(struct gpart *gp, const double *pot,
   if (gp->time_bin == time_bin_not_created)
     error("Found an extra particle when computing gravity from mesh.");
 
-  if (i < 0 || i >= mesh->N[0]) error("Invalid gpart position in x");
-  if (j < 0 || j >= mesh->N[1]) error("Invalid gpart position in y");
-  if (k < 0 || k >= mesh->N[2]) error("Invalid gpart position in z");
+  if (i < 0 || i >= mesh->N) error("Invalid gpart position in x");
+  if (j < 0 || j >= mesh->N) error("Invalid gpart position in y");
+  if (k < 0 || k >= mesh->N) error("Invalid gpart position in z");
 #endif
 
   /* First, copy the necessary part of the mesh for stencil operations */
@@ -960,7 +962,7 @@ static void zoom_mesh_kernel_mapper(void *map_data, const int num,
   /* Unpack the array */
   double *const kernel = data->kernel;
   const struct zoom_pm_mesh *mesh = data->mesh;
-  const int N = mesh->N[0];
+  const int N = mesh->N;
   const int M = 2 * N;
   const size_t M_pad = M + data->pad;
 
@@ -980,17 +982,17 @@ static void zoom_mesh_kernel_mapper(void *map_data, const int num,
   for (int i = i_start; i < i_end; ++i) {
 
     const int ii = (i < N ? i : i - M);
-    const double dx = ii / mesh->cell_fac[0];
+    const double dx = ii / mesh->cell_fac;
 
     for (int j = 0; j < M; ++j) {
 
       const int jj = (j < N ? j : j - M);
-      const double dy = jj / mesh->cell_fac[1];
+      const double dy = jj / mesh->cell_fac;
 
       for (int k = 0; k < M; ++k) {
 
         const int kk = (k < N ? k : k - M);
-        const double dz = kk / mesh->cell_fac[2];
+        const double dz = kk / mesh->cell_fac;
 
         const double r = sqrt(dx * dx + dy * dy + dz * dz);
 
@@ -1030,7 +1032,7 @@ static void zoom_mesh_kernel(struct threadpool *tp,
                              const int slice_offset, const int slice_width,
                              const int pad) {
 
-  const int M = 2 * mesh->N[0];
+  const int M = 2 * mesh->N;
 
   struct zoom_kernel_data data;
   data.mesh = mesh;
@@ -1061,7 +1063,7 @@ static void zoom_mesh_deconvolve_kernel_mapper(void *map_data, const int num,
 
   /* Unpack the array */
   fftw_complex *const fkernel = data->fkernel;
-  const int M = 2 * data->mesh->N[0];
+  const int M = 2 * data->mesh->N;
   const int M_half = M / 2;
 
   /* Find what slice of the full mesh is stored on this MPI rank */
@@ -1200,7 +1202,7 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   if (mesh == NULL || !mesh->enabled) return;
 
   /* Unpack sizes and memory requirements for the zero-padded FFT domain. */
-  const int N = mesh->N[0];
+  const int N = mesh->N;
   const int M = 2 * N;
   const int M_half = M / 2;
   const size_t real_size = (size_t)M * M * M;
@@ -1378,7 +1380,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   const int nr_local_cells = s->nr_local_cells;
 
   /* Some useful constants. The FFTs are performed on the zero-padded mesh. */
-  const int M = 2 * mesh->N[0];
+  const int M = 2 * mesh->N;
 
   ticks tic = getticks();
 
@@ -1668,7 +1670,7 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
 
   for (int i = 0; i < 3; ++i) {
 
-    const double cell_width = 1. / mesh->cell_fac[i];
+    const double cell_width = 1. / mesh->cell_fac;
 
     /* 1. The zoom mesh must resolve the top-level zoom cells. */
     if (cell_width > z->width[i])
@@ -1678,7 +1680,7 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           "Gravity:zoom_mesh_side_length should be at least %d (currently: "
           "%d).",
           z->width[i], cell_width, i, (int)ceil(mesh->dim[i] / z->width[i]),
-          mesh->N[i]);
+          mesh->N);
 
     /* 2. The active region must contain the whole zoom region. */
     const double active_min = mesh->active_min[i];
