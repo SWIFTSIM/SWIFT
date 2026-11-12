@@ -153,6 +153,21 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
         "(%.6e) than the background mesh (%.6e). Decrease "
         "Gravity:zoom_r_cut_max or increase Gravity:zoom_mesh_side_length.",
         mesh->r_cut_max, props->r_s * props->r_cut_max_ratio);
+
+  /* Positions are not wrapped on the zoom mesh, so it has to lie inside the
+   * box and no pair of covered particles can be closer through the periodic
+   * boundary than the cut-off of the background mesh. */
+  for (int i = 0; i < 3; ++i) {
+    if (mesh->loc[i] < 0. || mesh->loc[i] + mesh->dim[i] > s->dim[i] ||
+        mesh->dim[i] > s->dim[i] - props->r_s * props->r_cut_max_ratio)
+      error(
+          "The zoom gravity mesh ([%.6e, %.6e] along axis %d) must lie inside "
+          "the box (size %.6e) and be smaller than the box by at least the "
+          "cut-off of the background mesh (%.6e). Decrease "
+          "Gravity:zoom_mesh_bkg_buffer_cells or shrink the zoom region.",
+          mesh->loc[i], mesh->loc[i] + mesh->dim[i], i, s->dim[i],
+          props->r_s * props->r_cut_max_ratio);
+  }
 }
 
 /**
