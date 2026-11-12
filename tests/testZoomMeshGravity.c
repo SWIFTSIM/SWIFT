@@ -193,6 +193,13 @@ int main(int argc, char *argv[]) {
   zoom_mesh.cell_fac[0] = zoom_mesh.N[0] / zoom_mesh.dim[0];
   zoom_mesh.cell_fac[1] = zoom_mesh.N[1] / zoom_mesh.dim[1];
   zoom_mesh.cell_fac[2] = zoom_mesh.N[2] / zoom_mesh.dim[2];
+  for (int i = 0; i < 3; ++i) {
+    const double cell_width = 1. / zoom_mesh.cell_fac[i];
+    const double tol = 1e-6 * zoom_mesh.dim[i];
+    zoom_mesh.active_min[i] = zoom_mesh.loc[i] + 2. * cell_width - tol;
+    zoom_mesh.active_max[i] =
+        zoom_mesh.loc[i] + zoom_mesh.dim[i] - 3. * cell_width + tol;
+  }
   zoom_mesh.r_cut_max = 2.;
   zoom_mesh.r_cut_min = 0.;
   zoom_mesh.r_s = 1.;

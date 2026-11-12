@@ -64,6 +64,12 @@ struct zoom_pm_mesh {
   /*! Conversion factor between box and mesh coordinates. */
   double cell_fac[3];
 
+  /*! Lower bound of the region in which forces can be interpolated. */
+  double active_min[3];
+
+  /*! Upper bound of the region in which forces can be interpolated. */
+  double active_max[3];
+
   /*! Scale over which we smooth the forces. */
   double r_s;
 

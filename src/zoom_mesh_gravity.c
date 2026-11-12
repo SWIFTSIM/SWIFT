@@ -104,6 +104,16 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
     mesh->loc[i] = z->region_lower_bounds[i] - buffer;
     mesh->dim[i] = z->dim[i] + 2. * buffer;
     mesh->cell_fac[i] = mesh->N[i] / mesh->dim[i];
+
+    /* The region in which forces can be interpolated. The five-point force
+     * stencil needs two cells on the low side for i-2 and three on the high
+     * side because the i+2 stencil point is CIC-interpolated and therefore
+     * also reads i+3. A small tolerance allows for roundoff in the cell
+     * construction. */
+    const double cell_width = 1. / mesh->cell_fac[i];
+    const double tol = 1e-6 * mesh->dim[i];
+    mesh->active_min[i] = mesh->loc[i] + 2. * cell_width - tol;
+    mesh->active_max[i] = mesh->loc[i] + mesh->dim[i] - 3. * cell_width + tol;
   }
   if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2])
     error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
@@ -1605,29 +1615,6 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 }
 
 /**
- * @brief Bounds of the zoom mesh region in which forces can be interpolated.
- *
- * The five-point force stencil needs two cells on the low side for i-2 and
- * three on the high side because the i+2 stencil point is CIC-interpolated
- * and therefore also reads i+3. A small tolerance allows for roundoff in the
- * cell construction.
- *
- * @param mesh The #zoom_pm_mesh.
- * @param i The axis.
- * @param active_min The lower bound in box coordinates (return).
- * @param active_max The upper bound in box coordinates (return).
- */
-static void zoom_mesh_get_active_bounds(const struct zoom_pm_mesh *mesh,
-                                        const int i, double *active_min,
-                                        double *active_max) {
-
-  const double cell_width = 1. / mesh->cell_fac[i];
-  const double tol = 1e-6 * mesh->dim[i];
-  *active_min = mesh->loc[i] + 2. * cell_width - tol;
-  *active_max = mesh->loc[i] + mesh->dim[i] - 3. * cell_width + tol;
-}
-
-/**
  * @brief Is a cell fully inside the zoom mesh bounds?
  *
  * @param mesh The #zoom_pm_mesh.
@@ -1642,19 +1629,14 @@ __attribute__((nonnull)) static int zoom_mesh_cell_is_inside(
 
   /* Check containment independently along each axis. */
   for (int i = 0; i < 3; ++i) {
-    /* Mesh bounds in box coordinates, restricted to the active-mesh region
-     * where the five-point force stencil is valid. */
-    double mesh_min, mesh_max;
-    zoom_mesh_get_active_bounds(mesh, i, &mesh_min, &mesh_max);
-
     /* Inflate the cell by the maximal particle displacement if requested. */
     const double dx_max = use_max_dx ? c->grav.multipole->dx_max[i] : 0.;
     const double cell_min = c->loc[i] - dx_max;
     const double cell_max = c->loc[i] + c->width[i] + dx_max;
 
     /* Any excursion outside the mesh bounds disqualifies the cell. */
-    if (cell_min < mesh_min) return 0;
-    if (cell_max > mesh_max) return 0;
+    if (cell_min < mesh->active_min[i]) return 0;
+    if (cell_max > mesh->active_max[i]) return 0;
   }
 
   return 1;
@@ -1704,8 +1686,8 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           mesh->N[i]);
 
     /* 2. The active region must contain the whole zoom region. */
-    double active_min, active_max;
-    zoom_mesh_get_active_bounds(mesh, i, &active_min, &active_max);
+    const double active_min = mesh->active_min[i];
+    const double active_max = mesh->active_max[i];
 
     if (z->region_lower_bounds[i] < active_min ||
         z->region_upper_bounds[i] > active_max)
