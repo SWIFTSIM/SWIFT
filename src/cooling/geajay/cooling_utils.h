@@ -42,6 +42,7 @@
  * @param mu Mean molecular weight of the gas.
  * @param kB Boltzmann constant.
  * @param mp Proton mass.
+ * @return The specific internal energy.
  * */
 __attribute__((always_inline)) INLINE static float
 cooling_internal_energy_from_T(const double T, const double mu, const double kB,

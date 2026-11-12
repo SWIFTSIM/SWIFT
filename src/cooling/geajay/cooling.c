@@ -605,13 +605,22 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("Chemical network = %i",
           cooling->chemistry_data.primordial_chemistry);
   message(
-      "geajay radiation coupling: ISRF %s, HII rate coupling %s, network %i; "
-      "compiled parts: hii %s, isrf %s",
+      "geajay radiation coupling: ISRF %s, photoionization %s, HII rate "
+      "coupling %s, network %i; compiled parts: hii %s, isrf %s",
       cooling->with_ISRF ? "on" : "off",
+      cooling->with_photoionization ? "on" : "off",
       cooling->HII_couple_ionization_rate ? "on" : "off",
       cooling->chemistry_data.primordial_chemistry,
       RADIATION_COMPILED_HII ? "yes" : "no",
       RADIATION_COMPILED_ISRF ? "yes" : "no");
+  message(
+      "geajay radiation flags: dust chemistry %i, photoelectric heating %i, "
+      "ISRF field %i, RT fields %i, hydrogen-only RT %i",
+      cooling->chemistry_data.dust_chemistry,
+      cooling->chemistry_data.photoelectric_heating,
+      cooling->chemistry_data.use_isrf_field,
+      cooling->chemistry_data.use_radiative_transfer,
+      cooling->chemistry_data.radiative_transfer_hydrogen_only);
   message("CloudyTable = %s", cooling->cloudy_table);
   message("Redshift = %g", cooling->redshift);
   message("UV background = %d", cooling->with_uv_background);
@@ -803,15 +812,24 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
  * The species are not part of the inputs: geajay reads them in place in the
  * #xpart, through the layout of the cooling.
  *
+ * The radiation inputs of the particle (G0, LW and HII rates) are filled only
+ * when @c xp is not NULL. A caller that needs none of them passes NULL for
+ * @c phys_const, @c us and @c xp.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
  * @param cooling The #cooling_function_data used in the run.
  * @param p The #part.
+ * @param xp The #xpart, or NULL.
  * @param cosmo The #cosmology.
  * @param density The physical density passed to geajay.
  * @param energy The physical specific internal energy passed to geajay.
  * @param inputs (return) The inputs.
  */
-static void cooling_fill_inputs(const struct cooling_function_data *cooling,
-                                const struct part *p,
+static void cooling_fill_inputs(const struct phys_const *phys_const,
+                                const struct unit_system *us,
+                                const struct cooling_function_data *cooling,
+                                const struct part *p, const struct xpart *xp,
                                 const struct cosmology *cosmo,
                                 const double density, const double energy,
                                 geajay_particle_inputs *inputs) {
@@ -835,16 +853,34 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
 
   /* The rates are given in 1/s: the library wants 1/internal_time_units */
   if (cooling->chemistry_data.use_radiative_transfer) {
-    inputs->RT_heating_rate = cooling->rt_heating_rate;
-    inputs->RT_HI_ionization_rate =
-        cooling->rt_hi_ionisation_rate / (1. / time_units);
     inputs->RT_HeI_ionization_rate =
         cooling->rt_hei_ionisation_rate / (1. / time_units);
     inputs->RT_HeII_ionization_rate =
         cooling->rt_heii_ionisation_rate / (1. / time_units);
-    inputs->RT_H2_dissociation_rate =
-        cooling->rt_h2_dissociation_rate / (1. / time_units);
+
+    if (xp != NULL) {
+      /* A tagged particle gets its own HII rates, any other the constants */
+      cooling_resolve_RT_rates_subgrid(cooling, p, xp, cooling->rt_heating_rate,
+                                       cooling->rt_hi_ionisation_rate,
+                                       time_units, &inputs->RT_heating_rate,
+                                       &inputs->RT_HI_ionization_rate);
+      inputs->RT_H2_dissociation_rate =
+          cooling_resolve_LW_dissociation_rate_subgrid(
+              phys_const, us, cosmo, cooling, p,
+              cooling->rt_h2_dissociation_rate, time_units);
+    } else {
+      inputs->RT_heating_rate = cooling->rt_heating_rate;
+      inputs->RT_HI_ionization_rate =
+          cooling->rt_hi_ionisation_rate / (1. / time_units);
+      inputs->RT_H2_dissociation_rate =
+          cooling->rt_h2_dissociation_rate / (1. / time_units);
+    }
   }
+
+  /* Local ISRF strength in Habing units, read instead of the scalar G0 */
+  if (cooling->chemistry_data.use_isrf_field && xp != NULL)
+    inputs->isrf_habing =
+        cooling_get_isrf_habing_subgrid(phys_const, us, cosmo, cooling, p);
 
   /* The length is the full chosen path of
      h2_shielding_path_in_kernel_radii kernel support radii H =
@@ -1080,7 +1116,8 @@ static geajay_float cooling_new_energy_or_keep_previous(
   }
 
   geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, energy, &inputs);
+  cooling_fill_inputs(phys_const, us, cooling, p, xp, cosmo, density, energy,
+                      &inputs);
 
   /* The particle keeps its previous state on a final failure */
   inputs.store_on_failure = 0;
@@ -1198,7 +1235,8 @@ double cooling_time(const struct phys_const *phys_const,
   energy = max(energy, hydro_props->minimal_internal_energy);
 
   geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, energy, &inputs);
+  cooling_fill_inputs(phys_const, us, cooling, p, xp, cosmo, density, energy,
+                      &inputs);
 
   double cooling_time;
   const int ok =
@@ -1243,7 +1281,8 @@ void cooling_energy_rates(const struct phys_const *phys_const,
   energy = max(energy, hydro_props->minimal_internal_energy);
 
   geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, energy, &inputs);
+  cooling_fill_inputs(phys_const, us, cooling, p, xp, cosmo, density, energy,
+                      &inputs);
 
   geajay_particle_rates result;
   result.size = sizeof(result);
@@ -1382,7 +1421,7 @@ double cooling_get_temperature_at_energy(
   const double density = cooling_get_physical_density(p, cosmo, cooling);
 
   geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
+  cooling_fill_inputs(NULL, NULL, cooling, p, NULL, cosmo, density, u, &inputs);
 
   double temperature;
   if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
@@ -1432,7 +1471,7 @@ static double cooling_get_mean_molecular_weight_at_energy(
   const double density = cooling_get_physical_density(p, cosmo, cooling);
 
   geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density, u, &inputs);
+  cooling_fill_inputs(NULL, NULL, cooling, p, NULL, cosmo, density, u, &inputs);
 
   double mu;
   if (geajay_particle_mean_molecular_weight(cooling->context, &cooling->layout,
@@ -1491,7 +1530,7 @@ double cooling_get_internal_energy_from_temperature(
 
   /* In mode 0 the energy is the first guess of the iteration. */
   geajay_particle_inputs inputs;
-  cooling_fill_inputs(cooling, p, cosmo, density,
+  cooling_fill_inputs(phys_const, us, cooling, p, xp, cosmo, density,
                       hydro_get_drifted_physical_internal_energy(p, cosmo),
                       &inputs);
 
@@ -1784,6 +1823,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->cie_cooling = cooling->H2_cie_cooling;
   chemistry->dust_chemistry = cooling->dust_model;
   chemistry->dust_to_gas_model = cooling->dust_to_gas_model;
+  chemistry->photoelectric_heating = cooling->photoelectric_heating_model;
   chemistry->h2_on_dust = cooling->H2_on_dust;
   chemistry->H2_photodissociation_heating =
       cooling->H2_photodissociation_heating;
@@ -1803,6 +1843,33 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 #endif
 
   chemistry->use_radiative_transfer = cooling->rt_use_fields;
+
+  /* The ISRF gives the LW rate when H2 is tracked, the HII rate gives the
+     ionization rate of the H and He species. Both are rate inputs of the
+     radiative transfer fields. The flags come from the persistent members,
+     so that a restart sets them again. */
+  if ((cooling->with_ISRF && cooling->primordial_chemistry >= 2) ||
+      (cooling->HII_couple_ionization_rate &&
+       cooling->primordial_chemistry >= 1))
+    chemistry->use_radiative_transfer = 1;
+
+  /* The HII rates are of hydrogen only: the He rates are not an RT source */
+  if (cooling->HII_couple_ionization_rate)
+    chemistry->radiative_transfer_hydrogen_only = 1;
+
+#if defined(WITH_MPI)
+  /* The claim report across ranks does not carry the rates of the owner */
+  if (cooling->HII_couple_ionization_rate) {
+    int nr_nodes = 1;
+    MPI_Comm_size(MPI_COMM_WORLD, &nr_nodes);
+    if (nr_nodes > 1)
+      error(
+          "GEARFeedback:HII_couple_ionization_rate is not supported on more "
+          "than one MPI rank (%d ranks requested): the cross-rank HII claim "
+          "report does not carry the per-particle photoionization rate.",
+          nr_nodes);
+  }
+#endif
 
   if (cooling->volumetric_heating_rates > 0)
     chemistry->use_volumetric_heating_rate = 1;
@@ -1844,7 +1911,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   if (cooling->lw_background_j21 >= 0.)
     chemistry->LWbackground_intensity = cooling->lw_background_j21;
-  if (cooling->isrf_from_field) chemistry->use_isrf_field = 1;
+  if (cooling->isrf_from_field || cooling->with_ISRF)
+    chemistry->use_isrf_field = 1;
 
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of
      a state integrated over only part of the time-step. */
@@ -1874,6 +1942,20 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   /* geajay resolves a negative hydrogen mass fraction to its own value */
   cooling->HydrogenFractionByMass =
       cooling->chemistry_data.HydrogenFractionByMass;
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF)
+  /* The transport scales its dust opacity with the same solar value */
+  if (cooling->with_ISRF &&
+      fabs(cooling->chemistry_data.SolarMetalFractionByMass /
+               RADIATION_GRACKLE_SOLAR_METAL_FRACTION -
+           1.) > 1e-6)
+    error(
+        "The solar metal mass fraction of geajay (%g) differs from the one "
+        "of the ISRF transport (%g): the dust opacity and the dust heating "
+        "would use different dust-to-gas ratios.",
+        cooling->chemistry_data.SolarMetalFractionByMass,
+        RADIATION_GRACKLE_SOLAR_METAL_FRACTION);
+#endif
 
   /* Here, so that a restart pads the reloaded tables again */
   if (geajay_set_table_density_edge(&cooling->chemistry_rates,

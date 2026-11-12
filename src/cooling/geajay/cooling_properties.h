@@ -108,6 +108,13 @@ struct cooling_function_data {
    * 0 linear, 1 remy_ruyer_2014. */
   int dust_to_gas_model;
 
+  /*! Photoelectric heating of the dust
+   * (GeajayCooling:photoelectric_heating_model,
+   * chemistry_data.photoelectric_heating): -1 unset (2 with dust_model basic,
+   * else 0), 0 none, 1 fixed_rate, 2 constant_efficiency,
+   * 3 grain_charge_epsilon, 4 density_epsilon. */
+  int photoelectric_heating_model;
+
   /*! H2 formation on dust grains: -1 unset (follows dust_model), 0 off, 1 on */
   int H2_on_dust;
 
@@ -124,6 +131,10 @@ struct cooling_function_data {
   /*! Does the ISRF act on the gas
    * (GEARFeedback:with_interstellar_radiation_field)? */
   int with_ISRF;
+
+  /*! Does the HII photoionization tag gas
+   * (GEARFeedback:with_photoionization)? */
+  int with_photoionization;
 
   /*! Do the HII regions feed their ionization rate to the cooling
    * (GEARFeedback:HII_couple_ionization_rate)? */

@@ -927,11 +927,19 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
-  if (cooling->HII_couple_ionization_rate || cooling->with_ISRF)
+  cooling->with_photoionization = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:with_photoionization",
+      RADIATION_COMPILED_HII);
+  if (cooling->with_photoionization)
     error(
-        "The geajay cooling does not yet take the ISRF or the HII ionization "
-        "rate as inputs. Set GEARFeedback:with_interstellar_radiation_field "
-        "and GEARFeedback:HII_couple_ionization_rate to 0.");
+        "GEARFeedback:with_photoionization is not supported by the geajay "
+        "cooling yet: it does not hold the tagged gas at the ionized floor, "
+        "so the HII regions would not act on the gas. Set it to 0.");
+  if (cooling->HII_couple_ionization_rate && cooling->primordial_chemistry < 1)
+    error(
+        "GEARFeedback:HII_couple_ionization_rate needs geajay mode 1 or "
+        "higher: the ionization rate acts on the H and He species, which the "
+        "tabulated network (mode 0) does not track.");
 
   cooling->H2_three_body_rate =
       cooling_read_choice(parameter_file, "GeajayCooling:h2_three_body_fit",
@@ -948,6 +956,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       cooling->dust_model != GEAJAY_DUST_MODEL_BASIC)
     error("GeajayCooling:dust_model must be none (0) or basic (1), got %d.",
           cooling->dust_model);
+
+  /* The ISRF heats through the dust, so it forces the dust chemistry on. */
+  if (cooling->with_ISRF) cooling->dust_model = GEAJAY_DUST_MODEL_BASIC;
 
   cooling->dust_to_gas_model = cooling_read_choice(
       parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
@@ -978,6 +989,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         GEAJAY_DUST_TO_GAS_LINEAR,
         "GeajayCooling:dust_model is none and h2_formation_on_dust is not "
         "enabled, so no dust is computed");
+
+  cooling->photoelectric_heating_model = GEAJAY_PHOTOELECTRIC_DEFAULT;
 
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
@@ -1159,6 +1172,19 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
   cooling->h2_shielding_length_method =
       (enum cooling_h2_shielding_length)h2_shielding;
+
+  /* Without a column length, the local LW dissociation rate reaches the
+     solver unshielded and H2 cannot survive in an illuminated cloud. */
+  if (cooling->with_ISRF && cooling->primordial_chemistry >= 2 &&
+      cooling->h2_shielding_length_method == cooling_h2_shielding_length_none)
+    warning(
+        "GEARFeedback:with_interstellar_radiation_field is on with "
+        "GeajayCooling:species_network >= 2 (H2 tracked) and "
+        "GeajayCooling:h2_shielding_length_method is none: the local LW "
+        "dissociation rate reaches geajay with no H2 self-shielding applied. "
+        "Set h2_shielding_length_method to given_length (2, column set by "
+        "h2_shielding_path) or Jeans (3, local Jeans length) unless this is "
+        "deliberate.");
 
   char H2_path[PARSER_MAX_LINE_SIZE] = "kernel_radius";
   if (cooling->h2_shielding_length_method == cooling_h2_shielding_length_given)

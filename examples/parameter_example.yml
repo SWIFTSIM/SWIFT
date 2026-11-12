@@ -778,7 +778,7 @@ GeajayCooling:
   uv_shielding_length_factor: 1                # (optional) Factor R_sh on the length, above 0 (default: 1)
   uv_shielding_path: kernel_radius             # (optional) Read only with uv_shielding_length_method: given_length. Path in kernel support radii: kernel_radius or kernel_diameter (default: kernel_radius)
   # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
-  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported.
+  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported. With GEARFeedback:with_interstellar_radiation_field on and species_network >= 2, none leaves the H2 unshielded against the local LW rate and the run warns: set given_length or Jeans for an ISRF run.
   h2_shielding_path: kernel_radius             # (optional) Path for given_length, also the path of the dust column of the backgrounds: kernel_radius (kernel_gamma * h) or kernel_diameter (default: kernel_radius)
   metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
@@ -1006,7 +1006,7 @@ GEARFeedback:
                                                            # from the stars. (Default: 0)
 
   # Subgrid radiation. A channel left out by ./configure --with-subgrid-radiation has its keys ignored, with one warning.
-  # The parts hii and isrf are compiled with Grackle and with geajay cooling; geajay does not yet take the ISRF or the HII ionization rate as inputs, so the switches with_interstellar_radiation_field and HII_couple_ionization_rate stop a geajay run at start-up.
+  # The parts hii and isrf are compiled with Grackle and with geajay cooling. With geajay, with_interstellar_radiation_field gives the local field to the photoelectric heating and, with H2 (species_network >= 2), the LW rate to the H2 chemistry. It forces GeajayCooling:dust_model to basic. with_photoionization stops a geajay run at start-up until the geajay cooling holds tagged gas at the ionized floor. HII_couple_ionization_rate needs species_network >= 1 and one MPI rank.
   # Radiation pressure (--with-subgrid-radiation part rp)
   with_radiation_pressure:      0                         # 1: run the radiation-pressure momentum channel, 0: do not. (Default: 0)
   radiation_pressure_efficiency: 1                        # Multiplier on the table L_bol; 1 is the physical coupling. Must be positive when with_radiation_pressure is 1. (Default: 0.0, an error then)
