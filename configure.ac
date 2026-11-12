@@ -3519,6 +3519,7 @@ AC_CONFIG_FILES([tests/test27cellsStars.sh], [chmod +x tests/test27cellsStars.sh
 AC_CONFIG_FILES([tests/test27cellsStarsPerturbed.sh], [chmod +x tests/test27cellsStarsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/test125cellsInactive.sh], [chmod +x tests/test125cellsInactive.sh])
 AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
 AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
 AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])

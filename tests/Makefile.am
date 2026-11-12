@@ -30,7 +30,7 @@ AM_LDFLAGS = ../src/.libs/libswiftsim.a $(COMMON_LIBS)
 TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testKernelLongGrav \
         testActivePair.sh test27cells.sh test27cellsPerturbed.sh testExp \
-        testParser.sh test125cells.sh test125cellsPerturbed.sh testFFT \
+        testParser.sh test125cells.sh test125cellsPerturbed.sh test125cellsInactive.sh testFFT \
         testAdiabaticIndex testRandom testRandomSpacing testRandomPoisson testErfc \
         testThreadpool testDump testCSDS testInteractions.sh \
         testGravityDerivatives testPeriodicBC.sh testPeriodicBCPerturbed.sh \
@@ -191,7 +191,7 @@ endif
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cells.sh test27cellsPerturbed.sh testParser.sh testPeriodicBC.sh \
-             testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh testParserInput.yaml \
+             testPeriodicBCPerturbed.sh test125cells.sh test125cellsPerturbed.sh test125cellsInactive.sh testParserInput.yaml \
              difffloat.py tolerance_125_normal.dat tolerance_125_perturbed.dat \
              tolerance_27_normal.dat tolerance_27_perturbed.dat tolerance_27_perturbed_h.dat tolerance_27_perturbed_h2.dat \
              tolerance_testInteractions.dat tolerance_pair_active.dat tolerance_pair_force_active.dat \
