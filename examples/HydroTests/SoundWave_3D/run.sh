@@ -15,7 +15,9 @@ then
 fi
 
 # Run SWIFT
-../../../swift --hydro --threads=4 soundWave.yml 2>&1 | tee output.log
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --hydro --threads=4 $SWIFT_ARGS soundWave.yml 2>&1 | tee output.log
 
 # Phase speed and damping of the mode
 python3 plotSolution.py

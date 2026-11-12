@@ -11,6 +11,10 @@ The box is N glass cubes along x (default 4, glassCube_32, 131k particles).
 plotSolution.py compares the profiles with the exact Riemann solution. The
 code needs to be compiled in 3D (the default).
 
+For MAGMA2 configure with --with-hydro=magma2 --with-kernel=quintic-spline
+and run with SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+./run.sh (the parameter file carries SWIFT's generic eta 1.2348 and CFL 0.1).
+
 The periodic boundary carries the same pressure jump, so a second blast
 propagates in from the box edge. The plot shows the whole box against the
 exact solution of the central jump; the solution is valid in the middle half

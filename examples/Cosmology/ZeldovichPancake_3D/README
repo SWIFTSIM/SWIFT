@@ -16,7 +16,10 @@ Running the test
 generates the initial conditions (makeIC.py), runs SWIFT with hydro,
 cosmology and self-gravity, and plots every snapshot with
 plotSolution.py, which overplots the analytic solution (valid before the
-caustic).
+caustic). The hydro scheme is the one SWIFT was configured with; for MAGMA2
+configure with --with-hydro=magma2 --with-kernel=quintic-spline and run with
+SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2" ./run.sh (the
+parameter files carry SWIFT's generic eta 1.2348 and CFL 0.1).
 
 Validation scripts
 ------------------

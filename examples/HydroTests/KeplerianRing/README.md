@@ -45,6 +45,10 @@ to be configured with the softened point-mass potential:
     ./configure --with-ext-potential=point-mass-softened              # 3D planar
     ./configure --with-hydro-dimension=2 --with-ext-potential=point-mass-softened
 
+For MAGMA2 add `--with-hydro=magma2 --with-kernel=quintic-spline` and run with
+`SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2" ./run.sh`
+(the parameter file carries SWIFT's generic eta 1.2348 and CFL 0.1).
+
 The parameter file caps the smoothing length (`SPH:h_max`) because particles
 ejected from the disc can lose all their neighbours, and uses a small minimal
 time step: particles that fall onto the point mass orbit at the softening

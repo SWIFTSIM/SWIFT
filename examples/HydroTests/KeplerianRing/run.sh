@@ -11,7 +11,9 @@ then
 fi
 
 # Run SWIFT (configure with --with-ext-potential=point-mass-softened)
-../../../swift --external-gravity --hydro --threads=4 keplerian_ring.yml 2>&1 | tee output.log
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --external-gravity --hydro --threads=4 $SWIFT_ARGS keplerian_ring.yml 2>&1 | tee output.log
 
 # Surface density and particle positions
 python3 plotSolution.py

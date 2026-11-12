@@ -26,4 +26,8 @@ The exact solution is static, so every change is numerical:
 makeIC.py: --contrast, --ncopies, --eta, --nominal (u from the step density,
 i.e. with the initial pressure blip of a naive set-up).
 
-The code needs to be compiled with --with-hydro-dimension=2.
+The code needs to be compiled with --with-hydro-dimension=2. For MAGMA2
+configure with --with-hydro-dimension=2 --with-hydro=magma2
+--with-kernel=wendland-C4 (the kernel the initial conditions assume) and run
+with SWIFT_ARGS="-P SPH:CFL_condition:0.2" ./run.sh (the parameter file
+already carries MAGMA's eta 1.5, which the initial conditions need).

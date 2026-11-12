@@ -29,3 +29,7 @@ frequency and damping rate per period, and plots the mode amplitude and phase
 against time (soundWave.png).
 
 The code needs to be compiled with --with-hydro-dimension=3 (the default).
+
+For MAGMA2 configure with --with-hydro=magma2 --with-kernel=quintic-spline
+and run with SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+./run.sh (the parameter file carries SWIFT's generic eta 1.2348 and CFL 0.1).

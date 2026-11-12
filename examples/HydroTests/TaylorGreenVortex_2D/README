@@ -14,4 +14,8 @@ numerical viscosity nu_eff of the scheme in a smooth subsonic flow (artificial
 viscosity, its switches and limiters, gradient errors). plotSolution.py reads
 statistics.txt and reports nu_eff.
 
-The code needs to be compiled with --with-hydro-dimension=2.
+The code needs to be compiled with --with-hydro-dimension=2. For MAGMA2
+configure with --with-hydro-dimension=2 --with-hydro=magma2
+--with-kernel=quintic-spline and run with
+SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2" ./run.sh (the
+parameter file carries SWIFT's generic eta 1.2348 and CFL 0.1).

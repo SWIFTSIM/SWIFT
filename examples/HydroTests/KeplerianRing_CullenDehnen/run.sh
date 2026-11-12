@@ -11,4 +11,6 @@ fi
 
 # Run SWIFT (2D code, softened point-mass potential:
 # ./configure --with-hydro-dimension=2 --with-ext-potential=point-mass-softened)
-../../../swift --external-gravity --hydro --threads=4 keplerian_ring.yml 2>&1 | tee output.log
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --external-gravity --hydro --threads=4 $SWIFT_ARGS keplerian_ring.yml 2>&1 | tee output.log

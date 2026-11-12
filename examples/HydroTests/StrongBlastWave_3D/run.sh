@@ -15,7 +15,9 @@ then
 fi
 
 # Run SWIFT
-../../../swift --hydro --threads=4 blastWave.yml 2>&1 | tee output.log
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --hydro --threads=4 $SWIFT_ARGS blastWave.yml 2>&1 | tee output.log
 
 # Plot the solution
 python3 plotSolution.py 2

@@ -10,7 +10,9 @@ then
 fi
 
 # Run SWIFT
-../../../swift --hydro --cosmology --self-gravity --threads=8 zeldovichPancake.yml 2>&1 | tee output.log
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --hydro --cosmology --self-gravity --threads=8 $SWIFT_ARGS zeldovichPancake.yml 2>&1 | tee output.log
 
 # Plot the result (one figure per snapshot)
 for f in zeldovichPancake_[0-9][0-9][0-9][0-9].hdf5

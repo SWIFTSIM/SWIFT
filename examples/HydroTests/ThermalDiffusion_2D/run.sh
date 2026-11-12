@@ -16,7 +16,9 @@ fi
 
 # Run SWIFT (configure with --with-hydro-dimension=2 --with-kernel=wendland-C4,
 # the kernel the initial conditions assume)
-../../../swift --hydro --threads=4 thermalDiffusion.yml 2>&1 | tee output.log
+# SWIFT_ARGS passes extra arguments, e.g. MAGMA's recommended
+# SWIFT_ARGS="-P SPH:resolution_eta:1.5 -P SPH:CFL_condition:0.2"
+../../../swift --hydro --threads=4 $SWIFT_ARGS thermalDiffusion.yml 2>&1 | tee output.log
 
 # Profiles and the effective conductivity
 python3 plotSolution.py
