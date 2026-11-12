@@ -97,7 +97,7 @@ expect_refused remy_no_switch "dust_to_gas_model = 1" "dust_to_gas_model: remy_r
 expect_ok rate_default photoelectric_heating_rate=8.5e-26 ""
 expect_ok rate_minus_1 photoelectric_heating_rate=8.5e-26 "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: -1"
 expect_ok rate_double photoelectric_heating_rate=1.7e-25 "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: 1.7e-25"
-expect_ok rate_zero photoelectric_heating_rate=0 "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: 0"
+expect_ok rate_zero "photoelectric_heating=1 photoelectric_heating_rate=0" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: 0"
 expect_ok rate_unread_model photoelectric_heating_rate=3e-25 "photoelectric_heating_model: density_epsilon;photoelectric_heating_rate: 3e-25"
 expect_refused rate_negative "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: -2e-26"
 expect_refused rate_inf "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: inf"
