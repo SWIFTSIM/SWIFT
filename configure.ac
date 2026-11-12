@@ -576,11 +576,11 @@ AC_ARG_ENABLE([vec],
 #  Disable hand written vectorisation. Slightly odd implementation as want
 # to describe as --disable-hand-vec, but macro is enable (there is no enable action).
 AC_ARG_ENABLE([hand-vec],
-   [AS_HELP_STRING([--disable-hand-vec],
-     [Disable intrinsic vectorization]
+   [AS_HELP_STRING([--enable-hand-vec],
+     [Enable hand-written intrinsic vectorization]
    )],
    [enable_hand_vec="$enableval"],
-   [enable_hand_vec="yes"]
+   [enable_hand_vec="no"]
 )
 
 HAVEVECTORIZATION=0
@@ -2326,7 +2326,7 @@ fi
 # Hydro scheme.
 AC_ARG_WITH([hydro],
    [AS_HELP_STRING([--with-hydro=<scheme>],
-      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu default: sphenix@:>@]
+      [Hydro dynamics to use @<:@gadget2, minimal, pressure-entropy, pressure-energy, pressure-energy-monaghan, phantom, gizmo-mfv, gizmo-mfm, shadowswift, planetary, remix, sphenix, gasoline, anarchy-pu, magma2 (same as magma2-MI3), magma2-MI1, magma2-MI2, magma2-MI3 default: sphenix@:>@]
    )],
    [with_hydro="$withval"],
    [with_hydro="sphenix"]
@@ -2378,6 +2378,21 @@ case "$with_hydro" in
    ;;
    sphenix)
       AC_DEFINE([SPHENIX_SPH], [1], [SPHENIX SPH])
+   ;;
+   magma2)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+      AC_DEFINE([MAGMA_MI3_FORMULATION], [1], [MI2 volume weighting with each pressure on its own gradient function])
+   ;;
+   magma2-MI1)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+      AC_DEFINE([TRADITIONAL_SPH_ACCELERATION_TERM], [1], [Use MI1 discretization of MAGMA])
+   ;;
+   magma2-MI2)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+   ;;
+   magma2-MI3)
+      AC_DEFINE([MAGMA_SPH], [1], [MAGMA SPH])
+      AC_DEFINE([MAGMA_MI3_FORMULATION], [1], [MI2 volume weighting with each pressure on its own gradient function])
    ;;
    gasoline)
       AC_DEFINE([GASOLINE_SPH], [1], [Gasoline SPH])
@@ -3504,6 +3519,7 @@ AC_CONFIG_FILES([tests/test27cellsStars.sh], [chmod +x tests/test27cellsStars.sh
 AC_CONFIG_FILES([tests/test27cellsStarsPerturbed.sh], [chmod +x tests/test27cellsStarsPerturbed.sh])
 AC_CONFIG_FILES([tests/test125cells.sh], [chmod +x tests/test125cells.sh])
 AC_CONFIG_FILES([tests/test125cellsPerturbed.sh], [chmod +x tests/test125cellsPerturbed.sh])
+AC_CONFIG_FILES([tests/test125cellsInactive.sh], [chmod +x tests/test125cellsInactive.sh])
 AC_CONFIG_FILES([tests/testPeriodicBC.sh], [chmod +x tests/testPeriodicBC.sh])
 AC_CONFIG_FILES([tests/testPeriodicBCPerturbed.sh], [chmod +x tests/testPeriodicBCPerturbed.sh])
 AC_CONFIG_FILES([tests/testInteractions.sh], [chmod +x tests/testInteractions.sh])

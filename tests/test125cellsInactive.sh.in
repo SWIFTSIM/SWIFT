@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# crash if anything in this script fails
+set -euo pipefail
+
+# A step with a third of the particles inactive must give the same result as
+# a step with everything active (the inactive particles hold the state of
+# their last active step): catches reads of neighbour fields that are not
+# valid for inactive particles. Lattice and perturbed lattice.
+for pert in 0 0.1
+do
+    if [ "$pert" == "0" ]; then tol=@srcdir@/tolerance_125_normal.dat; else tol=@srcdir@/tolerance_125_perturbed.dat; fi
+    for v in {0..3}
+    do
+	for p in {0..2}
+	do
+	    echo ""
+
+	    rm -f swift_active_all_125_inactive.dat swift_active_subset_125_inactive.dat
+
+	    echo "Running ./test125cells -n 6 -r 1 -d $pert -v $v -p $p -f inactive -i 0.33"
+	    ./test125cells -n 6 -r 1 -d $pert -v $v -p $p -f inactive -i 0.33
+
+	    if [ -e swift_active_all_125_inactive.dat ]
+	    then
+		if python3 @srcdir@/difffloat.py swift_active_all_125_inactive.dat swift_active_subset_125_inactive.dat $tol 6
+		then
+		    echo "Inactive-particle test passed"
+		else
+		    echo "Inactive-particle test failed"
+		    exit 1
+		fi
+	    else
+		echo "Inactive-particle step not run for this scheme"
+	    fi
+
+	    echo "------------"
+
+	done
+    done
+done
+
+exit $?

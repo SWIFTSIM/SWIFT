@@ -111,9 +111,10 @@ void set_energy_state(struct part *part, enum pressure_field press, float size,
   part->entropy = pressure / pow_gamma(density);
 #elif defined(PHANTOM_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
-#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||           \
-    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) || \
-    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
+#elif defined(MINIMAL_SPH) || defined(HOPKINS_PU_SPH) ||                     \
+    defined(HOPKINS_PU_SPH_MONAGHAN) || defined(ANARCHY_PU_SPH) ||           \
+    defined(SPHENIX_SPH) || defined(PHANTOM_SPH) || defined(GASOLINE_SPH) || \
+    defined(MAGMA_SPH)
   part->u = pressure / (hydro_gamma_minus_one * density);
 #elif defined(PLANETARY_SPH) || defined(REMIX_SPH)
   set_idg_def(&eos.idg_def, 0);
@@ -223,6 +224,13 @@ void reset_particles(struct cell *c, struct hydro_space *hs,
 #endif
 #if defined(REMIX_SPH)
     p->rho = density;
+    hydro_first_init_part(p, &c->hydro.xparts[i]);
+    p->time_bin = 1;
+#endif
+#if defined(MAGMA_SPH)
+    /* The per-particle coefficients, the previous divergence and the previous
+     * gradient of u evolve in hydro_prepare_force(): start both runs from
+     * the same state. */
     hydro_first_init_part(p, &c->hydro.xparts[i]);
     p->time_bin = 1;
 #endif
@@ -380,7 +388,7 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
     fprintf(file,
             "%6llu %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f %8.5f "
             "%8.5f "
-            "%8.5f %8.5f %13e %13e %13e %13e %13e %8.5f %8.5f\n",
+            "%8.5f %8.5f %13e %13e %13e %13e %13e %13e %13e\n",
             main_cell->hydro.parts[pid].id, main_cell->hydro.parts[pid].x[0],
             main_cell->hydro.parts[pid].x[1], main_cell->hydro.parts[pid].x[2],
             main_cell->hydro.parts[pid].v[0], main_cell->hydro.parts[pid].v[1],
@@ -393,6 +401,9 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
             0.f,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || defined(PHANTOM_SPH)
             main_cell->hydro.parts[pid].viscosity.div_v,
+#elif defined(MAGMA_SPH)
+            /* Trace of the matrix velocity gradient */
+            main_cell->hydro.parts[pid].div_v,
 #else
             main_cell->hydro.parts[pid].density.div_v,
 #endif
@@ -415,6 +426,11 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 #elif defined(ANARCHY_PU_SPH) || defined(SPHENIX_SPH) || \
     defined(PHANTOM_SPH) || defined(GASOLINE_SPH)
             main_cell->hydro.parts[pid].viscosity.v_sig, 0.f,
+            main_cell->hydro.parts[pid].u_dt
+#elif defined(MAGMA_SPH)
+            /* Maximal sound speed of the particle and its neighbours (the
+             * Courant signal speed) and the conduction + PdV heating */
+            main_cell->hydro.parts[pid].force.c_sig, 0.f,
             main_cell->hydro.parts[pid].u_dt
 #else
             0.f, 0.f, 0.f
@@ -475,6 +491,195 @@ void runner_doself2_branch_force(struct runner *r, struct cell *ci,
 void runner_doself2_force_vec(struct runner *r, struct cell *ci);
 
 /* And go... */
+/**
+ * @brief One hydro step of the active particles along the SWIFT task path:
+ * drift, density loop and ghost on the 27 inner cells, gradient loop and
+ * extra ghost where the scheme has them, force loop and end-of-force on the
+ * main cell.
+ *
+ * @param r The runner (its engine decides which particles are active).
+ * @param cells The 125 cells.
+ * @param inner_cells The 27 inner cells.
+ * @param main_cell The central cell.
+ * @param hs The hydro space.
+ * @param timings (return) The 27 force-loop timings (26 pairs + self).
+ */
+void swift_step(struct runner *r, struct cell **cells,
+                struct cell **inner_cells, struct cell *main_cell,
+                struct hydro_space *hs, ticks *timings) {
+
+  /* Initialise the particles */
+  for (int j = 0; j < 125; ++j) runner_do_drift_part(r, cells[j], 0);
+
+  /* Reset the active particles (the inactive ones keep the state of their
+   * last active step, as in a run with a time-step hierarchy). */
+  for (int i = 0; i < 125; ++i) {
+    for (int pid = 0; pid < cells[i]->hydro.count; ++pid) {
+      if (!part_is_active(&cells[i]->hydro.parts[pid], r->e)) continue;
+      hydro_init_part(&cells[i]->hydro.parts[pid], hs);
+      adaptive_softening_init_part(&cells[i]->hydro.parts[pid]);
+      mhd_init_part(&cells[i]->hydro.parts[pid]);
+    }
+  }
+
+  /* First, sort stuff */
+  for (int j = 0; j < 125; ++j)
+    runner_do_hydro_sort(r, cells[j], 0x1FFF, 0, 0, 0, 0);
+
+  /* Do the density calculation */
+
+/* Initialise the particle cache. */
+#ifdef WITH_VECTORIZATION
+  r->ci_cache.count = 0;
+  r->cj_cache.count = 0;
+  cache_init(r.ci_cache, 512);
+  cache_init(r.cj_cache, 512);
+#endif
+
+  /* Run all the  (only once !)*/
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < 5; j++) {
+      for (int k = 0; k < 5; k++) {
+
+        struct cell *ci = cells[i * 25 + j * 5 + k];
+
+        for (int ii = -1; ii < 2; ii++) {
+          int iii = i + ii;
+          if (iii < 0 || iii >= 5) continue;
+          iii = (iii + 5) % 5;
+          for (int jj = -1; jj < 2; jj++) {
+            int jjj = j + jj;
+            if (jjj < 0 || jjj >= 5) continue;
+            jjj = (jjj + 5) % 5;
+            for (int kk = -1; kk < 2; kk++) {
+              int kkk = k + kk;
+              if (kkk < 0 || kkk >= 5) continue;
+              kkk = (kkk + 5) % 5;
+
+              struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+
+              if (cj > ci)
+                runner_dopair1_branch_density(r, ci, cj, /*limit_h_min=*/0,
+                                              /*limit_h_max=*/0);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* And now the self-interaction for the central cells*/
+  for (int j = 0; j < 27; ++j)
+    runner_doself1_branch_density(r, inner_cells[j], /*limit_h_min=*/0,
+                                  /*limit_h_max=*/0);
+
+  /* Ghost to finish everything on the central cells */
+  for (int j = 0; j < 27; ++j)
+    runner_do_ghost(r, inner_cells[j],
+                    /*offset=*/0, /*ntasks=*/1,
+                    /*timer=*/0);
+
+#ifdef EXTRA_HYDRO_LOOP
+  /* We need to do the gradient loop and the extra ghost! */
+  message("Extra hydro loop detected, running gradient loop in test125cells.");
+
+  /* Run all the pairs (only once !)*/
+  for (int i = 0; i < 5; i++) {
+    for (int j = 0; j < 5; j++) {
+      for (int k = 0; k < 5; k++) {
+
+        struct cell *ci = cells[i * 25 + j * 5 + k];
+
+        for (int ii = -1; ii < 2; ii++) {
+          int iii = i + ii;
+          if (iii < 0 || iii >= 5) continue;
+          iii = (iii + 5) % 5;
+          for (int jj = -1; jj < 2; jj++) {
+            int jjj = j + jj;
+            if (jjj < 0 || jjj >= 5) continue;
+            jjj = (jjj + 5) % 5;
+            for (int kk = -1; kk < 2; kk++) {
+              int kkk = k + kk;
+              if (kkk < 0 || kkk >= 5) continue;
+              kkk = (kkk + 5) % 5;
+
+              struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
+
+              if (cj > ci) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+                runner_dopair2_branch_gradient(r, ci, cj, /*limit_h_min=*/0,
+                                               /*limit_h_max=*/0);
+#else
+                runner_dopair1_branch_gradient(r, ci, cj, /*limit_h_min=*/0,
+                                               /*limit_h_max=*/0);
+#endif
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* And now the self-interaction for the central cells */
+  for (int j = 0; j < 27; ++j) {
+#ifdef EXTRA_HYDRO_LOOP_TYPE2
+    runner_doself2_branch_gradient(r, inner_cells[j], /*limit_h_min=*/0,
+                                   /*limit_h_max=*/0);
+#else
+    runner_doself1_branch_gradient(r, inner_cells[j], /*limit_h_min=*/0,
+                                   /*limit_h_max=*/0);
+#endif
+  }
+
+  /* Extra ghost to finish everything on the central cells */
+  for (int j = 0; j < 27; ++j) runner_do_extra_ghost(r, inner_cells[j], 0);
+
+#endif /* EXTRA_HYDRO_LOOP */
+
+  /* Do the force calculation */
+
+#ifdef WITH_VECTORIZATION
+  /* Initialise the cache. */
+  cache_clean(r.ci_cache);
+  cache_clean(r.cj_cache);
+  cache_init(r.ci_cache, 512);
+  cache_init(r.cj_cache, 512);
+#endif
+
+  int ctr = 0;
+  /* Do the pairs (for the central 27 cells) */
+  for (int i = 1; i < 4; i++) {
+    for (int j = 1; j < 4; j++) {
+      for (int k = 1; k < 4; k++) {
+
+        struct cell *cj = cells[i * 25 + j * 5 + k];
+
+        if (main_cell != cj) {
+
+          const ticks sub_tic = getticks();
+
+          runner_dopair2_branch_force(r, main_cell, cj,
+                                      /*limit_h_min=*/0, /*limit_h_max=*/0);
+
+          timings[ctr++] += getticks() - sub_tic;
+        }
+      }
+    }
+  }
+
+  ticks self_tic = getticks();
+
+  /* And now the self-interaction for the main cell */
+  runner_doself2_branch_force(r, main_cell, /*limit_h_min=*/0,
+                              /*limit_h_max=*/0);
+
+  timings[26] += getticks() - self_tic;
+
+  /* Finally, give a gentle kick */
+  runner_do_end_hydro_force(r, main_cell, 0);
+}
+
 int main(int argc, char *argv[]) {
 
 #ifdef HAVE_SETAFFINITY
@@ -484,6 +689,7 @@ int main(int argc, char *argv[]) {
   size_t runs = 0, particles = 0;
   double h = 1.23485, size = 1., rho = 2.5;
   double perturbation = 0.;
+  double inactive_fraction = 0.;
   char outputFileNameExtension[100] = "";
   char outputFileName[200] = "";
   enum velocity_field vel = velocity_zero;
@@ -502,7 +708,7 @@ int main(int argc, char *argv[]) {
   srand(0);
 
   int c;
-  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:")) != -1) {
+  while ((c = getopt(argc, argv, "m:s:h:n:r:t:d:f:v:p:i:")) != -1) {
     switch (c) {
       case 'h':
         sscanf(optarg, "%lf", &h);
@@ -531,6 +737,9 @@ int main(int argc, char *argv[]) {
       case 'p':
         sscanf(optarg, "%d", (int *)&press);
         break;
+      case 'i':
+        sscanf(optarg, "%lf", &inactive_fraction);
+        break;
       case '?':
         error("Unknown option.");
         break;
@@ -552,7 +761,10 @@ int main(int argc, char *argv[]) {
         "\n-v type (0,1,2,3)  - Velocity field: (zero, constant, divergent, "
         "rotating)"
         "\n-p type (0,1,2)    - Pressure field: (constant, gradient divergent)"
-        "\n-f fileName        - Part of the file name used to save the dumps\n",
+        "\n-f fileName        - Part of the file name used to save the dumps"
+        "\n-i fraction        - Also run a step with this fraction of the "
+        "particles inactive and compare it with the all-active step (files "
+        "swift_active_all_125_* and swift_active_subset_125_*)\n",
         argv[0]);
     exit(1);
   }
@@ -675,176 +887,7 @@ int main(int argc, char *argv[]) {
 
     const ticks tic = getticks();
 
-    /* Initialise the particles */
-    for (int j = 0; j < 125; ++j) runner_do_drift_part(&runner, cells[j], 0);
-
-    /* Reset particles. */
-    for (int i = 0; i < 125; ++i) {
-      for (int pid = 0; pid < cells[i]->hydro.count; ++pid) {
-        hydro_init_part(&cells[i]->hydro.parts[pid], &space.hs);
-        adaptive_softening_init_part(&cells[i]->hydro.parts[pid]);
-        mhd_init_part(&cells[i]->hydro.parts[pid]);
-      }
-    }
-
-    /* First, sort stuff */
-    for (int j = 0; j < 125; ++j)
-      runner_do_hydro_sort(&runner, cells[j], 0x1FFF, 0, 0, 0, 0);
-
-    /* Do the density calculation */
-
-/* Initialise the particle cache. */
-#ifdef WITH_VECTORIZATION
-    runner.ci_cache.count = 0;
-    runner.cj_cache.count = 0;
-    cache_init(&runner.ci_cache, 512);
-    cache_init(&runner.cj_cache, 512);
-#endif
-
-    /* Run all the  (only once !)*/
-    for (int i = 0; i < 5; i++) {
-      for (int j = 0; j < 5; j++) {
-        for (int k = 0; k < 5; k++) {
-
-          struct cell *ci = cells[i * 25 + j * 5 + k];
-
-          for (int ii = -1; ii < 2; ii++) {
-            int iii = i + ii;
-            if (iii < 0 || iii >= 5) continue;
-            iii = (iii + 5) % 5;
-            for (int jj = -1; jj < 2; jj++) {
-              int jjj = j + jj;
-              if (jjj < 0 || jjj >= 5) continue;
-              jjj = (jjj + 5) % 5;
-              for (int kk = -1; kk < 2; kk++) {
-                int kkk = k + kk;
-                if (kkk < 0 || kkk >= 5) continue;
-                kkk = (kkk + 5) % 5;
-
-                struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
-
-                if (cj > ci)
-                  runner_dopair1_branch_density(
-                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    /* And now the self-interaction for the central cells*/
-    for (int j = 0; j < 27; ++j)
-      runner_doself1_branch_density(&runner, inner_cells[j], /*limit_h_min=*/0,
-                                    /*limit_h_max=*/0);
-
-    /* Ghost to finish everything on the central cells */
-    for (int j = 0; j < 27; ++j)
-      runner_do_ghost(&runner, inner_cells[j],
-                      /*offset=*/0, /*ntasks=*/1,
-                      /*timer=*/0);
-
-#ifdef EXTRA_HYDRO_LOOP
-    /* We need to do the gradient loop and the extra ghost! */
-    message(
-        "Extra hydro loop detected, running gradient loop in test125cells.");
-
-    /* Run all the pairs (only once !)*/
-    for (int i = 0; i < 5; i++) {
-      for (int j = 0; j < 5; j++) {
-        for (int k = 0; k < 5; k++) {
-
-          struct cell *ci = cells[i * 25 + j * 5 + k];
-
-          for (int ii = -1; ii < 2; ii++) {
-            int iii = i + ii;
-            if (iii < 0 || iii >= 5) continue;
-            iii = (iii + 5) % 5;
-            for (int jj = -1; jj < 2; jj++) {
-              int jjj = j + jj;
-              if (jjj < 0 || jjj >= 5) continue;
-              jjj = (jjj + 5) % 5;
-              for (int kk = -1; kk < 2; kk++) {
-                int kkk = k + kk;
-                if (kkk < 0 || kkk >= 5) continue;
-                kkk = (kkk + 5) % 5;
-
-                struct cell *cj = cells[iii * 25 + jjj * 5 + kkk];
-
-                if (cj > ci) {
-#ifdef EXTRA_HYDRO_LOOP_TYPE2
-                  runner_dopair2_branch_gradient(
-                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
-#else
-                  runner_dopair1_branch_gradient(
-                      &runner, ci, cj, /*limit_h_min=*/0, /*limit_h_max=*/0);
-#endif
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    /* And now the self-interaction for the central cells */
-    for (int j = 0; j < 27; ++j) {
-#ifdef EXTRA_HYDRO_LOOP_TYPE2
-      runner_doself2_branch_gradient(&runner, inner_cells[j], /*limit_h_min=*/0,
-                                     /*limit_h_max=*/0);
-#else
-      runner_doself1_branch_gradient(&runner, inner_cells[j], /*limit_h_min=*/0,
-                                     /*limit_h_max=*/0);
-#endif
-    }
-
-    /* Extra ghost to finish everything on the central cells */
-    for (int j = 0; j < 27; ++j)
-      runner_do_extra_ghost(&runner, inner_cells[j], 0);
-
-#endif /* EXTRA_HYDRO_LOOP */
-
-    /* Do the force calculation */
-
-#ifdef WITH_VECTORIZATION
-    /* Initialise the cache. */
-    cache_clean(&runner.ci_cache);
-    cache_clean(&runner.cj_cache);
-    cache_init(&runner.ci_cache, 512);
-    cache_init(&runner.cj_cache, 512);
-#endif
-
-    int ctr = 0;
-    /* Do the pairs (for the central 27 cells) */
-    for (int i = 1; i < 4; i++) {
-      for (int j = 1; j < 4; j++) {
-        for (int k = 1; k < 4; k++) {
-
-          struct cell *cj = cells[i * 25 + j * 5 + k];
-
-          if (main_cell != cj) {
-
-            const ticks sub_tic = getticks();
-
-            runner_dopair2_branch_force(&runner, main_cell, cj,
-                                        /*limit_h_min=*/0, /*limit_h_max=*/0);
-
-            timings[ctr++] += getticks() - sub_tic;
-          }
-        }
-      }
-    }
-
-    ticks self_tic = getticks();
-
-    /* And now the self-interaction for the main cell */
-    runner_doself2_branch_force(&runner, main_cell, /*limit_h_min=*/0,
-                                /*limit_h_max=*/0);
-
-    timings[26] += getticks() - self_tic;
-
-    /* Finally, give a gentle kick */
-    runner_do_end_hydro_force(&runner, main_cell, 0);
+    swift_step(&runner, cells, inner_cells, main_cell, &space.hs, timings);
     const ticks toc = getticks();
     time += toc - tic;
 
@@ -887,6 +930,84 @@ int main(int argc, char *argv[]) {
           clocks_from_ticks(self_time / runs), clocks_getunit());
   message("SWIFT calculation took:       %.3f %s.",
           clocks_from_ticks(time / runs), clocks_getunit());
+
+  /* Inactive-neighbour check: a step in which part of the particles are
+   * inactive must give the active ones the same result as a step in which
+   * everything is active, since the inactive particles' fields are those
+   * of their last active step. Any read of a neighbour field that is not
+   * valid for an inactive particle (the density or gradient member of the
+   * union, which then holds the force data of its last step) shows up as a
+   * difference. Two warm-up steps first bring the state to a fixed point
+   * (the previous-step quantities some schemes keep, e.g. the divergence
+   * or the viscosity coefficient, then reproduce step after step), then
+   * the all-active step is the reference and the subset step the test. */
+  if (inactive_fraction > 0.) {
+
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH) || defined(SHADOWSWIFT)
+    message("Inactive-particle step not done for finite-volume schemes.");
+#else
+    ticks dummy_timings[27];
+
+    /* Warm up */
+    for (int n = 0; n < 2; ++n)
+      swift_step(&runner, cells, inner_cells, main_cell, &space.hs,
+                 dummy_timings);
+
+    /* Snapshot the state */
+    struct part *saved_parts[125];
+    struct xpart *saved_xparts[125];
+    for (int i = 0; i < 125; ++i) {
+      const size_t np = cells[i]->hydro.count;
+      saved_parts[i] = (struct part *)malloc(np * sizeof(struct part));
+      saved_xparts[i] = (struct xpart *)malloc(np * sizeof(struct xpart));
+      memcpy(saved_parts[i], cells[i]->hydro.parts, np * sizeof(struct part));
+      memcpy(saved_xparts[i], cells[i]->hydro.xparts,
+             np * sizeof(struct xpart));
+    }
+
+    /* Reference: a step with everything active */
+    swift_step(&runner, cells, inner_cells, main_cell, &space.hs,
+               dummy_timings);
+    sprintf(outputFileName, "swift_active_all_125_%.150s.dat",
+            outputFileNameExtension);
+    dump_particle_fields(outputFileName, main_cell, solution, 0);
+
+    /* Back to the snapshot, with a fraction of the particles inactive (a
+     * time bin above the engine's maximal active one) */
+    engine.max_active_bin = 20;
+    int n_inactive = 0, n_total = 0;
+    for (int i = 0; i < 125; ++i) {
+      const size_t np = cells[i]->hydro.count;
+      memcpy(cells[i]->hydro.parts, saved_parts[i], np * sizeof(struct part));
+      memcpy(cells[i]->hydro.xparts, saved_xparts[i],
+             np * sizeof(struct xpart));
+      for (size_t pid = 0; pid < np; ++pid) {
+        struct part *p = &cells[i]->hydro.parts[pid];
+        const int inactive = (p->id % 1000) < 1000 * inactive_fraction;
+        p->time_bin = inactive ? 30 : 1;
+        n_inactive += inactive;
+        ++n_total;
+      }
+      free(saved_parts[i]);
+      free(saved_xparts[i]);
+    }
+    message("Inactive-particle step: %d of %d particles inactive.", n_inactive,
+            n_total);
+
+    /* Test: the same step with the subset active */
+    swift_step(&runner, cells, inner_cells, main_cell, &space.hs,
+               dummy_timings);
+    sprintf(outputFileName, "swift_active_subset_125_%.150s.dat",
+            outputFileNameExtension);
+    dump_particle_fields(outputFileName, main_cell, solution, 0);
+
+    /* Everything active again for the brute-force run */
+    engine.max_active_bin = num_time_bins;
+    for (int i = 0; i < 125; ++i)
+      for (int pid = 0; pid < cells[i]->hydro.count; ++pid)
+        cells[i]->hydro.parts[pid].time_bin = 1;
+#endif
+  }
 
   for (int j = 0; j < 125; ++j)
     reset_particles(cells[j], &space.hs, vel, press, size, rho);

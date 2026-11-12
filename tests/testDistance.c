@@ -64,8 +64,10 @@ void test(void) {
   const float H = 1.f;
   const float mu_0 = 4. * M_PI;
 
-  /* Create two random particles (don't do this at home !) */
+  /* Create two random particles (don't do this at home !). */
   struct part pi, pj;
+  memset(&pi, 0, sizeof(struct part));
+  memset(&pj, 0, sizeof(struct part));
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
     *(((float *)&pi) + i) = (float)random_uniform(0., 2.);
     *(((float *)&pj) + i) = (float)random_uniform(0., 2.);

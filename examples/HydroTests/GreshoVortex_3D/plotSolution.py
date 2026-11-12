@@ -287,4 +287,4 @@ plt.yticks([])
 
 plt.tight_layout()
 
-plt.savefig("GreshoVortex.png")
+plt.savefig("GreshoVortex_%d.png" % snap)

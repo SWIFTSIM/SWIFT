@@ -393,3 +393,18 @@ plt.yticks([])
 plt.tight_layout()
 
 plt.savefig("Sedov.png")
+
+# Energy history from the statistics file
+data = np.loadtxt("statistics.txt")
+t = data[:, 1]
+E_kin = data[:, 13]
+E_int = data[:, 14]
+E_tot = E_kin + E_int
+plt.figure()
+plt.plot(t, E_tot, label="total")
+plt.plot(t, E_int, "--", label="internal")
+plt.plot(t, E_kin, ":", label="kinetic")
+plt.xlabel("t")
+plt.ylabel("Energy")
+plt.legend()
+plt.savefig("Energy.png")

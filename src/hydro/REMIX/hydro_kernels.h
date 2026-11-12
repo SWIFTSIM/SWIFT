@@ -29,6 +29,8 @@
 #include "hydro_parameters.h"
 #include "math.h"
 
+#include <float.h>
+
 /**
  * @brief Prepares extra kernel parameters for a particle for the density
  * calculation.
@@ -438,7 +440,12 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
   for (int i = 0; i < 6; i++) {
     m2_bar_over_h2.elements[i] = p->gradient.m2_bar.elements[i] / (p->h * p->h);
   }
-  sym_matrix_invert(&m2_bar_inv, &m2_bar_over_h2);
+  /* Only reject (numerically) singular matrices. */
+  if (sym_matrix_invert(&m2_bar_inv, &m2_bar_over_h2,
+                        /*max_cond_num=*/DBL_MAX)) {
+    sym_matrix_print(&m2_bar_over_h2);
+    error("Error inverting matrix of particle ID %lld", p->id);
+  }
   for (int i = 0; i < 6; i++) {
     m2_bar_inv.elements[i] /= (p->h * p->h);
   }

@@ -41,6 +41,7 @@ In case the case of a 2 loop scheme, SWIFT removes the gradient loop and the ext
    gasoline_sph
    phantom_sph
    remix_sph
+   magma_sph
    adaptive_softening
    gizmo
    shadowswift

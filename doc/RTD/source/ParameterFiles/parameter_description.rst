@@ -369,7 +369,8 @@ SPH
 
 The ``SPH`` section is used to set parameters that describe the SPH
 calculations. There are some scheme-specific values that are detailed in the
-:ref:`hydro` section. The common parameters are detailed below.
+:ref:`hydro` section (e.g. :ref:`sphenix_sph`, :ref:`remix_sph`,
+:ref:`magma_sph`). The common parameters are detailed below.
 
 In all cases, users have to specify two values:
 

@@ -1,0 +1,28 @@
+Shearing shock (3D)
+-------------------
+
+The test of section 5.3 of Cullen & Dehnen (2010): two uniform streams
+collide head-on at Mach 1 (v_x = +-dv with dv = sound speed) in a periodic
+box, with a strong sinusoidal shear v_y = s sin(2 pi x / L), s = 100 dv,
+superposed. The shear rate at the shock plane exceeds the compression rate by
+two orders of magnitude, so any viscosity switch or limiter that reads the
+shear as "no shock" fails this test by letting the streams interpenetrate.
+
+The exact solution is the 1D Riemann problem of the collision (two shocks
+moving out from x = L/2) and of the receding streams at the box edge (two
+rarefactions), while every particle keeps its initial v_y exactly (there is
+no pressure gradient along y). plotSolution.py compares the density, v_x and
+pressure profiles with that solution and reports the mean change of v_y per
+particle in units of s, a measure of the shear momentum diffused by the
+viscosity.
+
+The box is made of N glass cubes along x (default 4, glassCube_32, 131k
+particles). The code needs to be compiled in 3D (the default).
+
+Note on the shear amplitude: with the paper's s = 100 dv, the few per cent
+of the shear momentum that any SPH viscosity diffuses carry an energy of
+order (0.03 s)^2, i.e. 10 to 100 times the thermal energy of the gas, so the
+box heats and blows apart in every scheme and the Riemann solution is lost.
+The default here is s = 10 dv (makeIC.py -s sets it): the shear rate at the
+shock still exceeds the compression rate, and the heating stays at the per
+cent level.

@@ -20,6 +20,8 @@
 import unyt
 import swiftsimio as sw
 import numpy as np
+import h5py
+import argparse
 
 # Generates a swift IC file for the 3D Sod Shock in a periodic box
 
@@ -34,6 +36,19 @@ v_R = 0.0  # Velocity right state
 P_L = 1.0  # Pressure left state
 P_R = 0.1  # Pressure right state
 fileName = "sodShock.hdf5"
+
+# Optional: other right-state pressures (the densities are set by the two
+# glasses, 1 : 0.125 with equal particle masses): a weaker or stronger shock
+# and a different entropy jump at the contact.
+parser = argparse.ArgumentParser(description="3D Sod shock ICs")
+parser.add_argument(
+    "--P-right",
+    type=float,
+    default=P_R,
+    help="pressure of the right state (default 0.1)",
+)
+args = parser.parse_args()
+P_R = args.P_right
 
 
 # ---------------------------------------------------
@@ -101,3 +116,7 @@ w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
 w.gas.particle_ids = ids.astype(np.uint64)
 
 w.write(fileName)
+
+# Record the two states for the analysis scripts (not handled by the Writer)
+with h5py.File(fileName, "r+") as f:
+    f["Header"].attrs["SodShockStates"] = [rho_L, v_L, P_L, rho_R, v_R, P_R]

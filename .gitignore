@@ -120,6 +120,10 @@ tests/brute_force_125_standard.dat
 tests/swift_dopair_125_standard.dat
 tests/brute_force_125_perturbed.dat
 tests/swift_dopair_125_perturbed.dat
+tests/brute_force_125_inactive.dat
+tests/swift_dopair_125_inactive.dat
+tests/swift_active_all_125_inactive.dat
+tests/swift_active_subset_125_inactive.dat
 tests/brute_force_pair_active.dat
 tests/brute_force_dopair2_active.dat
 tests/swift_dopair2_force_active.dat
@@ -149,6 +153,7 @@ tests/testFFT
 tests/testInteractions
 tests/testInteractions.sh
 tests/testSymmetry
+tests/testHydroLinearGradients
 tests/testDistance
 tests/testHydroMPIrules
 tests/testMaths
@@ -169,6 +174,7 @@ tests/test27cellsStars.sh
 tests/test27cellsStarsPerturbed.sh
 tests/test125cells.sh
 tests/test125cellsPerturbed.sh
+tests/test125cellsInactive.sh
 tests/testParser.sh
 tests/testReading.sh
 tests/testNeutrinoCosmology.sh
@@ -181,7 +187,7 @@ tests/testAdiabaticIndex
 tests/testRiemannExact
 tests/testRiemannTRRS
 tests/testRiemannHLLC
-tests/testMatrixInversion
+tests/testSymmetricMatrix
 tests/testVoronoi1D
 tests/testVoronoi2D
 tests/testVoronoi3D

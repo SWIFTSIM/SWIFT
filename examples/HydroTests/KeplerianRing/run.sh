@@ -10,11 +10,8 @@ then
     python3 makeIC.py
 fi
 
-rm -rf keplerian_ring_*.hdf5
-../../../swift --external-gravity --hydro --threads=1 --verbose=1 keplerian_ring.yml 2>&1 | tee output.log
+# Run SWIFT (configure with --with-ext-potential=point-mass-softened)
+../../../swift --external-gravity --hydro --threads=4 keplerian_ring.yml 2>&1 | tee output.log
 
-echo
-echo
-echo "This test is expected to fail, please read the README.md file"
-echo
-echo
+# Surface density and particle positions
+python3 plotSolution.py

@@ -20,6 +20,20 @@
 import unyt
 import swiftsimio as sw
 import numpy as np
+import argparse
+
+# Optional bulk velocity: the vortex advected through the periodic box
+# (Galilean-invariance test; the sound speed outside the vortex is 3.1)
+parser = argparse.ArgumentParser(description="Gresho-Chan vortex ICs")
+parser.add_argument(
+    "--boost",
+    type=float,
+    nargs=2,
+    default=[0.0, 0.0],
+    metavar=("VX", "VY"),
+    help="uniform velocity added to the whole box (default 0 0)",
+)
+args = parser.parse_args()
 
 # Generates a swift IC file for the Gresho-Chan vortex in a periodic box
 
@@ -59,8 +73,8 @@ for i in range(numPart):
         v_phi = 2.0 - 5.0 * r
     else:
         v_phi = 0.0
-    v[i, 0] = -v_phi * (y - boxSize / 2) / r
-    v[i, 1] = v_phi * (x - boxSize / 2) / r
+    v[i, 0] = -v_phi * (y - boxSize / 2) / r + args.boost[0]
+    v[i, 1] = v_phi * (x - boxSize / 2) / r + args.boost[1]
     v[i, 2] = 0.0
 
     P = P0

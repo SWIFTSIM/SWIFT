@@ -53,7 +53,8 @@ except ImportError:
 
 from make_movie import get_metadata
 
-yt.funcs.mylog.setLevel(50)
+if ytavail:
+    yt.funcs.mylog.setLevel(50)
 tqdm.monitor_interval = 0
 
 

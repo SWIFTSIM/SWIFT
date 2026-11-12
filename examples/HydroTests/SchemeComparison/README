@@ -1,0 +1,73 @@
+Hydro scheme comparison suite
+=============================
+
+Runs the standard hydro tests (Sod at three pressure jumps, Sedov, Noh,
+Gresho, Evrard, Kelvin-Helmholtz at density contrast 2 and 8, square
+(spacing-based and mass-based ICs), blob, Keplerian disc of Hopkins 2015 in 3D
+(planar) and in 2D, Keplerian ring of Cullen & Dehnen 2010, Zel'dovich pancake
+on a lattice, on a glass and on a lattice with random transverse perturbations,
+Taylor-Green vortex, shearing shock, strong blast wave, Rayleigh-Taylor, KH
+growth rate, interacting blast waves, travelling and standing sound waves
+(dispersion and damping), thermal discontinuity in pressure equilibrium
+(artificial conduction) and the Gresho vortex advected at Mach 1 (Galilean
+invariance); the NFW hydrostatic halo on request with -t nfw) with several hydro
+schemes built from the same source tree and produces comparison plots and a
+summary table (steps, wall-clock time, energy conservation, L1 errors w.r.t.
+the analytic or reference solutions).
+
+  ./run_suite.sh -o /path/to/output            # everything, all tests
+  ./run_suite.sh -o /path/to/output -t sod,sedov
+  ./run_suite.sh -o /path/to/output -c my_schemes.txt -k cubic-spline
+  ./run_suite.sh -h                             # all options
+
+The schemes are listed in schemes.txt ("<name> <configure flags> [| -P
+overrides]"). The default list compares SPHENIX with the three MAGMA
+formulations: MI2 at three neighbour numbers (eta 1.2348, 1.5 and 1.75) and
+MI1 and MI3 at eta 1.5; magma_mi3_eta15 is the scheme's recommended
+configuration (--with-hydro=magma2 selects MI3) apart from the kernel: the
+suite builds every scheme with the Wendland C4 kernel by default (option -k;
+use -k quintic-spline for MAGMA's recommended kernel), in up to five flavours
+per scheme: 1d (interacting blast waves), 2d, 2drt (Rayleigh-Taylor: constant
+potential, boundary particles, gamma = 7/5), 3d and 3dnfw (NFW potential). The
+point-mass-softened potential is in the common flags (needed by the Keplerian
+rings). Schemes with identical configure flags share one build:
+builds/<scheme>_<flavour> is a symbolic link into builds/by_flags/. Builds are
+only redone when the binary is missing or -b is given. All runs use the
+examples' own parameter files (CFL 0.1 unless a scheme line overrides it);
+eta is set per scheme line.
+
+Resolutions / durations can be changed through environment variables, see
+the top of run_suite.sh (KH_L2, EVRARD_NPARTS, KEPLERIAN_T_END,
+KEPLERIAN2D_T_END, KEPLERIAN_N, KEPLERIAN_DT_MIN, KEPLERIAN_CD10_T_END,
+KEPLERIAN_CD10_N, ZELDOVICH_Z_END, ZELDOVICH_N, ZELDOVICH_GLASS,
+ZELDOVICH_Z_START, ZELDOVICH_PERTURB, SEDOV_GLASS, NOH_GLASS, BLOB_N,
+BLOB_T_END, NFW_T_END, TG_T_END, SHEARING_*, BLAST_*, RT_*, KHGR_*, KERNEL_1D,
+SOUNDWAVE_*, WAVEDAMPING_T_END, THERMAL_*, GRESHO_BOOST, KH8_*,
+SOD_WEAK_P_RIGHT, SOD_STRONG_P_RIGHT).
+
+Finished runs (marked by a DONE file) are not repeated: delete the run
+directory to redo it. The comparison plots can be regenerated on their own:
+
+  python3 plot_comparison.py /path/to/output [test ...]
+  (options: --schemes=a,b restricts to those runs, --out=DIR puts the figures
+   elsewhere, --overlay-only=c draws scheme c only in the all-schemes panel of the
+   image-based figures: KH, squares, blob)
+
+Outputs:
+  builds/<scheme>_{1d,2d,2drt,3d,3dnfw}/  links to builds/by_flags/<hash>_<flavour>/,
+                             copies of the source tree with the binaries
+  ics/<test>/                initial conditions shared by all schemes
+  runs/<scheme>/<test>/      snapshots, output.log, statistics, the
+                             example's own plotSolution.py figure
+  plots/<test>.png           comparison figures
+  plots/summary.md, .json    summary table
+
+For the MAGMA schemes the summary table also reports, from the last snapshot
+of each run, the fraction of particles that used standard SPH gradients
+(frac_base_SPH_final: FallbackFlags bits 0 or 1), the fraction whose
+correction matrix was regularised (frac_regularised_final) and the mean
+number of neighbour pairs per particle that fell back to kernel gradients
+(mean_pair_fallbacks_final), plus the number of "will use base SPH" and "no
+neighbours" warnings in output.log. Expect all four to be 0 or below 1e-3 on
+the 3D tests; the planar 3D Keplerian disc (keplerian) is the exception by
+construction, every particle there has a singular matrix.

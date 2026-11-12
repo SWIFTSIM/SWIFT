@@ -21,6 +21,6 @@ thus adapting with the changes in density field.  To use adaptive softening, use
 
     ./configure --with-adaptive-softening=yes
 
-The adaptive softening scheme is implemented for all the SPH schemes above but
-only for the Wendland-C2 kernel as it is the kernel used for the gravity
+The adaptive softening scheme is implemented for all the SPH schemes above
+except MAGMA2, and only for the Wendland-C2 kernel as it is the kernel used for the gravity
 softening throughout the code.

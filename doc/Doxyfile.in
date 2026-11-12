@@ -940,6 +940,7 @@ INPUT                  = @top_srcdir@ \
                          @top_srcdir@/src/hydro/Minimal \
                          @top_srcdir@/src/hydro/Gadget2 \
                          @top_srcdir@/src/hydro/SPHENIX \
+                         @top_srcdir@/src/hydro/MAGMA \
                          @top_srcdir@/src/gravity/Default \
                          @top_srcdir@/src/gravity/MultiSoftening \
                          @top_srcdir@/src/riemann \

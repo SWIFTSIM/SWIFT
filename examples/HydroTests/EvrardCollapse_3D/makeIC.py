@@ -22,9 +22,6 @@ import swiftsimio as sw
 import argparse as ap
 import numpy as np
 
-# Fixed seed so that the initial conditions are reproducible
-np.random.seed(1)
-
 parser = ap.ArgumentParser(
     description="Generates a swift IC file for the Evrard collapse"
 )
@@ -39,7 +36,22 @@ parser.add_argument(
     default=100000,
 )
 
+parser.add_argument(
+    "-s",
+    "--seed",
+    help="""
+         Seed of the random number generator (fixed by default so that the
+         initial conditions are reproducible between invocations).
+         """,
+    required=False,
+    default=1,
+    type=int,
+)
+
 args = vars(parser.parse_args())
+
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(args["seed"])
 
 # Parameters
 gamma = 5.0 / 3.0  # Gas adiabatic index
