@@ -276,8 +276,9 @@ Molecules and dust
      - (optional) Dust-to-gas ratio as a function of the metallicity: ``linear`` (D =
        ``reference_dust_to_gas_ratio`` Z / Z\ :sub:`sun`) or ``remy_ruyer_2014`` (broken power law of
        Remy-Ruyer et al. 2014, linear above its transition). Needs a dust switch
-       (``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled`` or a
-       ``photoelectric_heating_model`` above ``none``): without one, ``remy_ruyer_2014`` stops the run
+       (``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled``, ``dust_recombination_cooling``
+       ``enabled`` or a ``photoelectric_heating_model`` above ``none``): without one,
+       ``remy_ruyer_2014`` stops the run
        (default: ``linear``).
    * - ``reference_dust_to_gas_ratio``
      - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; any other value stops the run).
@@ -295,6 +296,10 @@ Molecules and dust
      - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
        ratio [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
        8.5e-26 (default: -1).
+   * - ``dust_recombination_cooling``
+     - (optional) Recombination cooling on grains: ``default`` (-1, on with ``dust_model`` ``basic``,
+       else off), ``disabled`` (0) or ``enabled`` (1). It reads the metal mass fraction of each
+       particle, so ``enabled`` also works with ``dust_model`` ``none`` (default: ``default``).
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
        and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works

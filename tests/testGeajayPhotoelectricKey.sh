@@ -101,6 +101,16 @@ expect_ok rate_zero photoelectric_heating_rate=0 "photoelectric_heating_model: f
 expect_ok rate_unread_model photoelectric_heating_rate=3e-25 "photoelectric_heating_model: density_epsilon;photoelectric_heating_rate: 3e-25"
 expect_refused rate_negative "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: -2e-26"
 expect_refused rate_inf "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: inf"
+expect_ok recomb_default dust_recombination_cooling=0 ""
+expect_ok recomb_default_dust dust_recombination_cooling=1 "$basic"
+expect_ok recomb_default_name dust_recombination_cooling=1 "$basic;dust_recombination_cooling: default"
+expect_ok recomb_enabled dust_recombination_cooling=1 "dust_recombination_cooling: enabled"
+expect_ok recomb_number dust_recombination_cooling=1 "dust_recombination_cooling: 1"
+expect_ok recomb_disabled_dust dust_recombination_cooling=0 "$basic;dust_recombination_cooling: disabled"
+expect_ok remy_with_recomb dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;dust_recombination_cooling: enabled"
+expect_refused recomb_bad_name "dust_recombination_cooling" "dust_recombination_cooling: bogus"
+expect_refused recomb_bad_high "dust_recombination_cooling must be default (-1)" "dust_recombination_cooling: 2"
+expect_refused recomb_bad_low "dust_recombination_cooling must be default (-1)" "dust_recombination_cooling: -2"
 expect_ok ref_ratio_default local_dust_to_gas_ratio=0.00939 ""
 expect_ok ref_ratio_minus_1 local_dust_to_gas_ratio=0.00939 "reference_dust_to_gas_ratio: -1"
 expect_ok ref_ratio_set local_dust_to_gas_ratio=0.01 "reference_dust_to_gas_ratio: 0.01"
@@ -110,9 +120,10 @@ expect_refused ref_ratio_negative "reference_dust_to_gas_ratio must be -1" "refe
 expect_refused ref_ratio_nan "reference_dust_to_gas_ratio .*must be finite" "reference_dust_to_gas_ratio: nan"
 expect_refused ref_ratio_inf "reference_dust_to_gas_ratio must be -1" "reference_dust_to_gas_ratio: inf"
 
-# expect_heating <name> <positive|zero>: the "Dust" component of CoolingRates in
-# the first snapshot of the run <name>, for every particle. Without a dust
-# model it is the photoelectric heating alone, and positive means heating.
+# expect_heating <name> <positive|zero|nonzero>: the "Dust" component of
+# CoolingRates in the first snapshot of the run <name>, for every particle.
+# With no dust_model it is the rate of the one switch that is on, and positive
+# means heating.
 expect_heating() {
   local out
   out=$(python3 -I -c "
@@ -120,7 +131,8 @@ import sys, h5py, numpy as np
 f = h5py.File(sys.argv[1], 'r')
 names = [n.decode() for n in f['SubgridScheme/NamedColumns/CoolingRates'][:]]
 rate = f['PartType0/CoolingRates'][:, names.index('Dust')]
-ok = bool(np.all(np.isfinite(rate)) and (np.all(rate > 0) if sys.argv[2] == 'positive' else np.all(rate == 0)))
+test = {'positive': np.all(rate > 0), 'zero': np.all(rate == 0), 'nonzero': np.all(rate != 0)}
+ok = bool(np.all(np.isfinite(rate)) and test[sys.argv[2]])
 print(ok, rate.min(), rate.max())
 " "$work/$1/coolingBox_0000.hdf5" "$2" 2>&1 | tail -n 1)
   if [ "${out%% *}" != "True" ]; then
@@ -159,6 +171,8 @@ expect_heating pe_fixed_no_dust positive
 expect_heating pe_density_no_dust positive
 expect_heating rate_zero zero
 expect_ratio pe_fixed_no_dust rate_double 2
+expect_heating recomb_default zero
+expect_heating recomb_enabled nonzero
 
 echo "failures: $failures"
 [ $failures -eq 0 ]

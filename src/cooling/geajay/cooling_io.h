@@ -978,6 +978,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "value) or a finite number >= 0, got %g.",
         cooling->photoelectric_heating_rate);
 
+  cooling->dust_recombination_cooling = cooling_read_choice(
+      parameter_file, "GeajayCooling:dust_recombination_cooling",
+      "dust_recombination_cooling", GEAJAY_DUST_RECOMBINATION_DEFAULT, NULL, 0);
+  if (cooling->dust_recombination_cooling < GEAJAY_DUST_RECOMBINATION_DEFAULT ||
+      cooling->dust_recombination_cooling > GEAJAY_DUST_RECOMBINATION_ENABLED)
+    error(
+        "GeajayCooling:dust_recombination_cooling must be default (-1), "
+        "disabled (0) or enabled (1), got %d.",
+        cooling->dust_recombination_cooling);
+
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
 #if COOLING_GEAJAY_MODE < 2
