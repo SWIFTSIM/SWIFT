@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Parse test of GeajayCooling:photoelectric_heating_model.
+# Parse test of the GeajayCooling dust and photoelectric keys.
 #
 # Needs a SWIFT built with --with-cooling=geajay_X, so it is not part of
 # "make check". Usage:
@@ -35,15 +35,20 @@ run() {
   status=$?
 }
 
-# expect_ok <name> <resolved value> <extra lines>
+# expect_ok <name> <chemistry_data values, as "member=value ..."> <extra lines>
 expect_ok() {
-  run "$1" "${@:3}"
-  if [ $status -ne 0 ] ||
-    ! grep -q "chemistry_data.photoelectric_heating = $2\$" "$work/$1/out.log"; then
-    echo "FAIL $1: exit $status, wanted photoelectric_heating = $2"
+  local name=$1 wanted=$2 item bad=""
+  run "$name" "${@:3}"
+  [ $status -ne 0 ] && bad="exit $status"
+  for item in $wanted; do
+    grep -q "chemistry_data.${item%%=*} = ${item#*=}\$" "$work/$name/out.log" ||
+      bad="$bad, wanted ${item%%=*} = ${item#*=}"
+  done
+  if [ -n "$bad" ]; then
+    echo "FAIL $name: $bad"
     failures=$((failures + 1))
   else
-    echo "ok   $1 (photoelectric_heating = $2)"
+    echo "ok   $name ($wanted)"
   fi
 }
 
@@ -60,22 +65,60 @@ expect_refused() {
 
 basic="dust_model: basic"
 
-expect_ok default 0 ""
-expect_ok default_dust 2 "$basic"
-expect_ok none_dust 0 "$basic;photoelectric_heating_model: none"
-expect_ok fixed_rate 1 "$basic;photoelectric_heating_model: fixed_rate"
-expect_ok constant_efficiency 2 "$basic;photoelectric_heating_model: constant_efficiency"
-expect_ok grain_charge_epsilon 3 "$basic;photoelectric_heating_model: grain_charge_epsilon"
-expect_ok density_epsilon 4 "$basic;photoelectric_heating_model: density_epsilon"
-expect_ok number_4 4 "$basic;photoelectric_heating_model: 4"
-expect_ok default_name 2 "$basic;photoelectric_heating_model: default"
-expect_ok no_dust_none 0 "photoelectric_heating_model: none"
+expect_ok default photoelectric_heating=0 ""
+expect_ok default_dust photoelectric_heating=2 "$basic"
+expect_ok none_dust photoelectric_heating=0 "$basic;photoelectric_heating_model: none"
+expect_ok fixed_rate photoelectric_heating=1 "$basic;photoelectric_heating_model: fixed_rate"
+expect_ok constant_efficiency photoelectric_heating=2 "$basic;photoelectric_heating_model: constant_efficiency"
+expect_ok grain_charge_epsilon photoelectric_heating=3 "$basic;photoelectric_heating_model: grain_charge_epsilon"
+expect_ok density_epsilon photoelectric_heating=4 "$basic;photoelectric_heating_model: density_epsilon"
+expect_ok number_4 photoelectric_heating=4 "$basic;photoelectric_heating_model: 4"
+expect_ok default_name photoelectric_heating=2 "$basic;photoelectric_heating_model: default"
+expect_ok no_dust_none photoelectric_heating=0 "photoelectric_heating_model: none"
 
 expect_refused bad_name "photoelectric_heating_model" "$basic;photoelectric_heating_model: bogus"
 expect_refused bad_high "must be default (-1), none (0)" "$basic;photoelectric_heating_model: 5"
 expect_refused bad_low "must be default (-1), none (0)" "$basic;photoelectric_heating_model: -2"
 expect_refused bad_huge "photoelectric_heating_model" "$basic;photoelectric_heating_model: 4294967297"
-expect_refused no_dust_model "dust_model is none" "photoelectric_heating_model: constant_efficiency"
+
+# SWIFT passes the metal mass fraction of every particle, so a dust switch
+# alone is enough: the checks are the ones of the library.
+expect_ok pe_no_dust photoelectric_heating=2 "photoelectric_heating_model: constant_efficiency"
+expect_ok pe_fixed_no_dust photoelectric_heating=1 "photoelectric_heating_model: fixed_rate"
+expect_ok pe_density_no_dust photoelectric_heating=4 "photoelectric_heating_model: density_epsilon"
+expect_ok h2dust_network_1 h2_on_dust=1 "primordial_chemistry_network: H_He;h2_formation_on_dust: enabled"
+expect_ok h2dust_network_0 h2_on_dust=1 "primordial_chemistry_network: tabulated;h2_formation_on_dust: enabled"
+expect_refused h2dust_network_1_basic "h2_formation_on_dust is on with the network H_He" "primordial_chemistry_network: H_He;$basic;h2_formation_on_dust: enabled"
+expect_ok remy_with_pe dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;photoelectric_heating_model: constant_efficiency"
+expect_ok remy_with_h2dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;h2_formation_on_dust: enabled"
+expect_ok remy_with_dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;$basic"
+expect_refused remy_no_switch "dust_to_gas_model = 1" "dust_to_gas_model: remy_ruyer_2014"
+
+# expect_heating <name> <positive|zero>: the "Dust" component of CoolingRates in
+# the first snapshot of the run <name>, for every particle. Without a dust
+# model it is the photoelectric heating alone, and positive means heating.
+expect_heating() {
+  local out
+  out=$(python3 -I -c "
+import sys, h5py, numpy as np
+f = h5py.File(sys.argv[1], 'r')
+names = [n.decode() for n in f['SubgridScheme/NamedColumns/CoolingRates'][:]]
+rate = f['PartType0/CoolingRates'][:, names.index('Dust')]
+ok = bool(np.all(np.isfinite(rate)) and (np.all(rate > 0) if sys.argv[2] == 'positive' else np.all(rate == 0)))
+print(ok, rate.min(), rate.max())
+" "$work/$1/coolingBox_0000.hdf5" "$2" 2>&1 | tail -n 1)
+  if [ "${out%% *}" != "True" ]; then
+    echo "FAIL $1: wanted Dust rate $2 in every particle, got: $out"
+    failures=$((failures + 1))
+  else
+    echo "ok   $1 (Dust rate $2: ${out#True })"
+  fi
+}
+
+expect_heating no_dust_none zero
+expect_heating pe_no_dust positive
+expect_heating pe_fixed_no_dust positive
+expect_heating pe_density_no_dust positive
 
 echo "failures: $failures"
 [ $failures -eq 0 ]

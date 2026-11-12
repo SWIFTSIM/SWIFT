@@ -956,16 +956,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "(0) or enabled (1), got %d.",
         cooling->H2_on_dust);
 
-  /* The dust-to-gas ratio is read with the dust chemistry or with the H2
-     formation on grains */
-  if (cooling->dust_model == GEAJAY_DUST_MODEL_NONE &&
-      cooling->H2_on_dust != GEAJAY_H2_ON_DUST_ENABLED)
-    cooling_refuse_unread_choice(
-        parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
-        GEAJAY_DUST_TO_GAS_LINEAR,
-        "GeajayCooling:dust_model is none and h2_formation_on_dust is not "
-        "enabled, so no dust is computed");
-
   cooling->photoelectric_heating_model = cooling_read_choice(
       parameter_file, "GeajayCooling:photoelectric_heating_model",
       "photoelectric_heating_model", GEAJAY_PHOTOELECTRIC_DEFAULT, NULL, 0);
@@ -976,14 +966,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GeajayCooling:photoelectric_heating_model must be default (-1), "
         "none (0), fixed_rate (1), constant_efficiency (2), "
         "grain_charge_epsilon (3) or density_epsilon (4), got %d.",
-        cooling->photoelectric_heating_model);
-
-  /* The heating reads the dust density, which only dust_model: basic sets */
-  if (cooling->dust_model == GEAJAY_DUST_MODEL_NONE &&
-      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE)
-    error(
-        "GeajayCooling:photoelectric_heating_model is set to %d, but it is "
-        "not read: GeajayCooling:dust_model is none, so no dust is computed.",
         cooling->photoelectric_heating_model);
 
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
@@ -1005,8 +987,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     } h2_switches[] = {
         {"GeajayCooling:h2_three_body_fit", cooling->H2_three_body_rate},
         {"GeajayCooling:h2_cie_cooling", cooling->H2_cie_cooling},
-        {"GeajayCooling:h2_formation_on_dust",
-         cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED},
         {"GeajayCooling:h2_photodissociation_heating",
          cooling->H2_photodissociation_heating}};
     for (size_t i = 0; i < sizeof(h2_switches) / sizeof(h2_switches[0]); i++)
