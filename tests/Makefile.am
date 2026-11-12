@@ -197,4 +197,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              output_list_scale_factor.txt testEOS_plot.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
+             testGeajayPhotoelectricKey.sh
