@@ -1,22 +1,24 @@
+import os
+import re
 import numpy as np
 
 # import h5py
-import unyt
 import matplotlib.pyplot as plt
 import argparse
 import scipy as sp
 
-from swiftsimio import load
-from swiftsimio.visualisation.volume_render import render_gas
-from swiftsimio.visualisation.slice import slice_gas
 from matplotlib.image import imread
 from matplotlib.colors import LinearSegmentedColormap
 
-from astropy.io import fits
-import matplotlib.pyplot as plt
-import numpy as np
-
-# import pencil as pc
+# SWIFT-only dependencies: Pencil snapshots can be processed without them
+try:
+    import unyt
+    from swiftsimio import load
+    from swiftsimio.visualisation.slice import slice_gas
+except ImportError as _e:
+    _swift_import_error = _e
+else:
+    _swift_import_error = None
 
 plt.rcParams.update(
     {
@@ -293,6 +295,8 @@ def generate_test_field(data):
 
 
 def read_hdf5_B(input_filename, res_xy, res_z):
+    if _swift_import_error is not None:
+        raise ImportError(f"SWIFT snapshots need swiftsimio and unyt: {_swift_import_error}")
     # Load snapshot
     data = load(input_filename)
 
@@ -310,34 +314,108 @@ def read_hdf5_B(input_filename, res_xy, res_z):
     return Bx, By, Bz, Lbox.value
 
 
-# def read_VAR_B(input_filename):
-#    snapshotid = int(input_filename.split('/')[-1].split('.VAR')[0])
-#    name = str(snapshotid)+'.VAR'
-#    datafolder = input_filename.split(name)[0]
-#    snap = pc.read.var(datadir=datafolder,ivar=snapshotid,trimall=True)
-#    aa = snap.aa
-#    uu = snap.uu.transpose(3, 2, 1,0)
-#    uu2 = np.sum(uu * uu, axis=-1)
-#    vrms = np.sqrt(np.mean(uu2))
-#    print('vrms',vrms)
-#    pad = 6  # depends on stencil (likely 3 for Pencil)
-#    aa = np.pad(
-#        aa,
-#        ((0,0), (pad,pad), (pad,pad), (pad,pad)),
-#        mode='wrap'
-#    )
-#    bb = pc.math.derivatives.div_grad_curl.curl(
-#        aa,
-#        dx=snap.dx,
-#        dy=snap.dy,
-#        dz=snap.dz
-#    )
-#    bb = bb[:, pad:-pad, pad:-pad, pad:-pad]
-#    bb = bb.transpose(0, 3, 2, 1)
-#    Bx,By,Bz = bb
-#    Lbox = [2*np.pi,2*np.pi, 4*np.pi]
-#    del aa, bb, snap, pad, datafolder, name, snapshotid
-#    return Bx,By,Bz, Lbox
+def _read_dim(filename):
+    """Pencil dim.dat -> (mx, my, mz, precision, nghost (3,), last line (3,)).
+    The last line is (nprocx, nprocy, nprocz) in data/dim.dat and (ipx, ipy, ipz) in procN/dim.dat."""
+    with open(filename) as f:
+        lines = [l.split() for l in f if l.strip()]
+    mx, my, mz = map(int, lines[0][:3])
+    return mx, my, mz, lines[1][0], tuple(map(int, lines[2][:3])), tuple(map(int, lines[3][:3]))
+
+
+def read_pencil_var(datadir, varfile):
+    """Vector potential from a Pencil snapshot data/proc*/varfile, read without the pencil package
+    (fallback for read_VAR_B).
+
+    Parameters: datadir: Pencil data directory (dim.dat, index.pro, proc0, ...)
+                varfile: snapshot name, e.g. 'VAR2' or 'var.dat'
+    Returns:
+                A: array (3, nx, ny, nz) indexed [component, x, y, z], ghost zones removed
+                t: snapshot time;  x, y, z: grid coordinates
+    """
+    mx, my, mz, prec, (gx, gy, gz), (npx, npy, npz) = _read_dim(os.path.join(datadir, "dim.dat"))
+    nx, ny, nz = mx - 2 * gx, my - 2 * gy, mz - 2 * gz
+    dtype = np.dtype("<f8" if prec == "D" else "<f4")
+    with open(os.path.join(datadir, "index.pro")) as f:
+        iax = int(re.search(r"^\s*iax\s*=\s*(\d+)", f.read(), re.M).group(1)) - 1
+    A = np.zeros((3, nx, ny, nz))
+    x, y, z = np.zeros(nx), np.zeros(ny), np.zeros(nz)
+    for p in range(npx * npy * npz):
+        pdir = os.path.join(datadir, f"proc{p}")
+        lmx, lmy, lmz, _, _, (ipx, ipy, ipz) = _read_dim(os.path.join(pdir, "dim.dat"))
+        lnx, lny, lnz = lmx - 2 * gx, lmy - 2 * gy, lmz - 2 * gz
+        with open(os.path.join(pdir, varfile), "rb") as f:
+            raw = f.read()
+        # record 1: f(mx, my, mz, nvar), Fortran order
+        n1 = int(np.frombuffer(raw[:4], "<i4")[0])
+        nvar = n1 // (lmx * lmy * lmz * dtype.itemsize)
+        fa = np.frombuffer(raw[4 : 4 + n1], dtype).reshape(nvar, lmz, lmy, lmx)
+        # record 2: t, x(mx), y(my), z(mz), dx, dy, dz
+        o = 4 + n1 + 4
+        n2 = int(np.frombuffer(raw[o : o + 4], "<i4")[0])
+        r2 = np.frombuffer(raw[o + 4 : o + 4 + n2], dtype)
+        t = float(r2[0])
+        i0, j0, k0 = ipx * lnx, ipy * lny, ipz * lnz
+        a = fa[iax : iax + 3, gz : gz + lnz, gy : gy + lny, gx : gx + lnx]
+        A[:, i0 : i0 + lnx, j0 : j0 + lny, k0 : k0 + lnz] = a.transpose(0, 3, 2, 1)
+        x[i0 : i0 + lnx] = r2[1 : 1 + lmx][gx : gx + lnx]
+        y[j0 : j0 + lny] = r2[1 + lmx : 1 + lmx + lmy][gy : gy + lny]
+        z[k0 : k0 + lnz] = r2[1 + lmx + lmy : 1 + lmx + lmy + lmz][gz : gz + lnz]
+    return A, t, x, y, z
+
+
+def spectral_curl(A, d):
+    """B = curl A on a periodic grid, computed with FFTs: exact for the Fourier interpolant of A,
+    so no finite-difference error is added in post-processing.  The Nyquist wavenumber of an
+    even-sized axis is set to zero (its derivative is undefined for a real field).
+
+    Parameters: A: array (3, nx, ny, nz) indexed [component, x, y, z]
+                d: grid spacings (dx, dy, dz)
+    Returns:
+                B: array (3, nx, ny, nz)
+    """
+    k = []
+    for ax, (n, h) in enumerate(zip(A.shape[1:], d)):
+        kk = 2 * np.pi * np.fft.fftfreq(n, d=h)
+        if n % 2 == 0:
+            kk[n // 2] = 0.0
+        shape = [1, 1, 1]
+        shape[ax] = n
+        k.append(kk.reshape(shape))
+    kx, ky, kz = k
+    Ax, Ay, Az = np.fft.fftn(A, axes=(1, 2, 3))
+    Bk = 1j * np.array([ky * Az - kz * Ay, kz * Ax - kx * Az, kx * Ay - ky * Ax])
+    return np.real(np.fft.ifftn(Bk, axes=(1, 2, 3)))
+
+
+def read_VAR_B(input_filename):
+    """B = curl A from a Pencil snapshot, with the curl taken spectrally (spectral_curl).
+
+    Parameters: input_filename: 'path/to/data/N.VAR' -> snapshot data/proc*/VARN
+    Returns:
+                Bx, By, Bz: arrays (nx, ny, nz) indexed [x, y, z];  Lbox: [Lx, Ly, Lz]
+    """
+    snapshotid = int(input_filename.split("/")[-1].split(".VAR")[0])
+    datafolder = input_filename.split(str(snapshotid) + ".VAR")[0] or "."
+    try:
+        import pencil as pc
+    except ImportError:
+        pc = None
+    if pc is not None:
+        snap = pc.read.var(datadir=datafolder, ivar=snapshotid, trimall=True)
+        aa = snap.aa.transpose(0, 3, 2, 1)  # (3, nz, ny, nx) -> (3, nx, ny, nz)
+        t, x, y, z = snap.t, snap.x, snap.y, snap.z
+        uu = snap.uu.transpose(3, 2, 1, 0)
+        print("vrms", np.sqrt(np.mean(np.sum(uu * uu, axis=-1))))
+    else:
+        print("pencil package not found: reading the snapshot directly")
+        aa, t, x, y, z = read_pencil_var(datafolder, f"VAR{snapshotid}")
+    d = (x[1] - x[0], y[1] - y[0], z[1] - z[0])
+    Lbox = [len(x) * d[0], len(y) * d[1], len(z) * d[2]]
+    print(f"Pencil VAR{snapshotid}: t = {float(t):.4f}, grid {aa.shape[1:]}, first point "
+          f"x0 = {x[0]:.6f}, y0 = {y[0]:.6f} (pass -x0 to eigen_patterns.py if non-zero)")
+    Bx, By, Bz = spectral_curl(aa, d)
+    return Bx, By, Bz, Lbox
 
 if __name__ == "__main__":
 
@@ -367,6 +445,12 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
+        "-modez",
+        help="index of the z Fourier mode, kz = 2*pi*modez/Lz (kz = 1 in Lz = 4*pi -> 2)",
+        default=2,
+        type=int,
+    )
+    parser.add_argument(
         "-out",
         "--out_slice",
         help="output slice name",
@@ -394,18 +478,21 @@ if __name__ == "__main__":
         Bx, By, Bz, Lbox = read_hdf5_B(filename, res_xy=res_xy, res_z=res_z)
     #    elif extension == 'fits':
     #        Bx, By, Bz, Lbox = read_fits_B(filename)
-    #    elif extension == 'VAR':
-    #        Bx, By, Bz, Lbox = read_VAR_B(filename)
+    elif extension == 'VAR':
+        # Pencil: the grid sets the resolution (-res_xy, -res_z are ignored)
+        Bx, By, Bz, Lbox = read_VAR_B(filename)
+        if Bx.shape[0] != Bx.shape[1]:
+            raise Exception("Pencil grid must have nx == ny, got ", Bx.shape)
+        res_xy, res_z = Bx.shape[0], Bx.shape[2]
     else:
         raise Exception(
-            "file extension could be either .hdf5 or .fits, not ", extension
+            "input must be a SWIFT .hdf5 snapshot or a Pencil 'data/N.VAR', not ", filename
         )
 
     # Plotting
 
     # Pick specific mode, nz
-    # modez = -1
-    modez = 1  # 1
+    modez = args.modez
 
     # Load grid
     B_data = np.array([Bx, By, Bz])
