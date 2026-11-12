@@ -283,7 +283,7 @@ Molecules and dust
        ``remy_ruyer_2014`` stops the run
        (default: ``linear``).
    * - ``reference_dust_to_gas_ratio``
-     - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; any other value stops the run).
+     - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run).
    * - ``photoelectric_heating_model``
      - (optional) Photoelectric heating of the dust: ``default`` (-1, ``constant_efficiency`` with
        ``dust_model`` ``basic``, else ``none``), ``none`` (0), ``fixed_rate`` (1, the constant
