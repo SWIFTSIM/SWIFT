@@ -2,8 +2,9 @@
 #
 # Parse test of the GeajayCooling dust and photoelectric keys.
 #
-# Needs a SWIFT built with --with-cooling=geajay_X, so it is not part of
-# "make check". Usage:
+# Needs a SWIFT built with --with-cooling=geajay_X and a libgeajay that refuses
+# h2_formation_on_dust at the network H_He (geajay commit 4dc6dd9a), so it is
+# not part of "make check". Usage:
 #
 #   tests/testGeajayPhotoelectricKey.sh <swift binary> <fixture dir> <work dir>
 #
@@ -90,9 +91,9 @@ expect_refused bad_huge "photoelectric_heating_model" "$basic;photoelectric_heat
 expect_ok pe_no_dust photoelectric_heating=2 "photoelectric_heating_model: constant_efficiency"
 expect_ok pe_fixed_no_dust photoelectric_heating=1 "photoelectric_heating_model: fixed_rate"
 expect_ok pe_density_no_dust photoelectric_heating=4 "photoelectric_heating_model: density_epsilon"
-expect_ok h2dust_network_1 h2_on_dust=1 "primordial_chemistry_network: H_He;h2_formation_on_dust: enabled"
+expect_refused h2dust_network_1 "h2_formation_on_dust is enabled with the network H_He" "primordial_chemistry_network: H_He;h2_formation_on_dust: enabled"
 expect_ok h2dust_network_0 h2_on_dust=1 "primordial_chemistry_network: tabulated;h2_formation_on_dust: enabled"
-expect_refused h2dust_network_1_basic "h2_formation_on_dust is on with the network H_He" "primordial_chemistry_network: H_He;$basic;h2_formation_on_dust: enabled"
+expect_refused h2dust_network_1_basic "h2_formation_on_dust is enabled with the network H_He" "primordial_chemistry_network: H_He;$basic;h2_formation_on_dust: enabled"
 expect_ok remy_with_pe dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;photoelectric_heating_model: constant_efficiency"
 expect_ok remy_with_h2dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;h2_formation_on_dust: enabled"
 expect_ok remy_with_dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;$basic"
@@ -159,13 +160,12 @@ print(ok, rate.min(), rate.max())
 }
 
 # expect_ratio <name a> <name b> <ratio> [differ]: the "Dust" component of run b
-# over that of run a, in every particle, to 1e-6 (the environment variable
-# ratio_tol replaces it). With a 4th argument the ratio must differ from <ratio>
-# by more than 1e-3 in every particle.
+# over that of run a, in every particle, to 1e-6. With a 4th argument the ratio
+# must differ from <ratio> by more than 1e-3 in every particle.
 expect_ratio() {
   local out
   out=$(python3 -I -c "
-import os, sys, h5py, numpy as np
+import sys, h5py, numpy as np
 def dust(path):
     f = h5py.File(path, 'r')
     names = [n.decode() for n in f['SubgridScheme/NamedColumns/CoolingRates'][:]]
@@ -173,7 +173,7 @@ def dust(path):
 a, b = dust(sys.argv[1]), dust(sys.argv[2])
 r = b / a
 dev = np.abs(r / float(sys.argv[3]) - 1)
-ok = np.all(dev < float(os.environ.get('ratio_tol', '1e-6'))) if len(sys.argv) < 5 else np.all(dev > 1e-3)
+ok = np.all(dev < 1e-6) if len(sys.argv) < 5 else np.all(dev > 1e-3)
 print(bool(ok), r.min(), r.max())
 " "$work/$1/coolingBox_0000.hdf5" "$work/$2/coolingBox_0000.hdf5" "$3" $4 2>&1 | tail -n 1)
   if [ "${out%% *}" != "True" ]; then
@@ -202,13 +202,25 @@ expect_heating recomb_enabled nonzero
 # differ.
 zsun=0.01295
 ref=0.00939
-z_remy=0.002
-z_linear=$(python3 -I -c "
-import math, sys
-zsun, z = float(sys.argv[1]), float(sys.argv[2])
-x = z / zsun
-print(repr(zsun * 10 ** (1.239 + 3.1 * math.log10(x))))
-" $zsun $z_remy)
+# SWIFT stores the metallicity in single precision. Pick the single-precision
+# Z_remy near 0.002 whose D, rounded to single precision, equals f Z_sun to
+# better than 1e-9.
+read -r z_remy z_linear <<< "$(python3 -I -c "
+import math, struct, sys
+zsun = float(sys.argv[1])
+def f32(i):
+    return struct.unpack('f', struct.pack('I', i))[0]
+i0 = struct.unpack('I', struct.pack('f', 0.002))[0]
+best = None
+for i in range(i0 - 3000, i0 + 3000):
+    z = f32(i)
+    d = zsun * 10 ** (1.239 + 3.1 * math.log10(z / zsun))
+    zl = f32(struct.unpack('I', struct.pack('f', d))[0])
+    err = abs(zl / d - 1)
+    if best is None or err < best[0]:
+        best = (err, z, zl)
+print(repr(best[1]), repr(best[2]))
+" $zsun)"
 thick="dust_cross_section_pe_cm2: 3e-16"
 thin="dust_cross_section_pe_cm2: 0"
 remy="dust_to_gas_model: remy_ruyer_2014;reference_dust_to_gas_ratio: $ref"
@@ -220,12 +232,42 @@ metallicity=$z_linear
 expect_ok att_linear_thin "" "$per_band;$thin;$linear"
 expect_ok att_linear_thick "" "$per_band;$thick;$linear"
 metallicity=
-# The runs differ in Z. Their thin rates differ by up to 1.3e-6 (measured, cause
-# not isolated), against 0.84 for the thick pair of the old code.
-export ratio_tol=1e-5
-expect_ratio att_remy_thin att_linear_thin 1
-expect_ratio att_remy_thick att_linear_thick 1
-unset ratio_tol
+
+# expect_dust_ratio <name a> <name b>: a is a remy_ruyer_2014 run, b a linear
+# run. The Dust rate is proportional to D. Per particle, D_linear / D_remy is
+# (Z_b / Z_sun) / 10^(1.239 + 3.1 log10(Z_a / Z_sun)) with Z the smoothed total
+# metal fraction of the snapshot. It is not 1: that Z varies by 1e-6 from
+# particle to particle and the remy_ruyer_2014 fit has the slope 3.1 against 1.
+# The rate ratio must equal that value to 1e-6. For the thick pair the
+# attenuation adds at most tau * 2.1e-6 = 7e-7, with tau = 0.32 (the heating
+# ratio thick over thin is 0.72).
+expect_dust_ratio() {
+  local out
+  out=$(python3 -I -c "
+import sys, h5py, numpy as np
+zsun = float(sys.argv[3])
+def read(path):
+    f = h5py.File(path, 'r')
+    names = [n.decode() for n in f['SubgridScheme/NamedColumns/CoolingRates'][:]]
+    part = f['PartType0']
+    return (part['CoolingRates'][:, names.index('Dust')],
+            part['SmoothedMetalMassFractions'][:][:, -1].astype(float))
+a, za = read(sys.argv[1])
+b, zb = read(sys.argv[2])
+wanted = (zb / zsun) / 10 ** (1.239 + 3.1 * np.log10(za / zsun))
+dev = np.abs(b / a / wanted - 1)
+print(bool(np.all(dev < 1e-6)), dev.max(), wanted.min(), wanted.max())
+" "$work/$1/coolingBox_0000.hdf5" "$work/$2/coolingBox_0000.hdf5" "$zsun" 2>&1 | tail -n 1)
+  if [ "${out%% *}" != "True" ]; then
+    echo "FAIL $2 over $1: wanted the Dust rate ratio of the two dust-to-gas ratios, got: $out"
+    failures=$((failures + 1))
+  else
+    echo "ok   $2 over $1 (Dust rate ratio of the dust-to-gas ratios, largest deviation ${out#True })"
+  fi
+}
+
+expect_dust_ratio att_remy_thin att_linear_thin
+expect_dust_ratio att_remy_thick att_linear_thick
 expect_ratio att_remy_thin att_remy_thick 1 differ
 
 echo "failures: $failures"

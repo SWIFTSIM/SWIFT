@@ -341,8 +341,9 @@ Molecules and dust
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
        and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works
-       with ``dust_model`` ``none`` and below the network ``H_He_H2``, but with ``dust_model`` ``basic``
-       the library stops the run at the network ``H_He`` (default: ``default``).
+       with ``dust_model`` ``none`` and with the network ``tabulated``. At the network ``H_He``
+       (``primordial_chemistry`` 1) the library refuses it with a start-up error, whatever
+       ``dust_model`` is. SWIFT does not check this itself (default: ``default``).
    * - ``h2_photodissociation_heating``
      - (optional) Enable/disable the heating by H\ :sub:`2` photodissociation (default: 0).
    * - ``compton_xray_heating``
