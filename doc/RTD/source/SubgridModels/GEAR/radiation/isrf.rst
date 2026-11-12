@@ -40,6 +40,16 @@ To keep the energy ledgers of the transport and write them to the snapshot, add 
 
 See :ref:`gear_radiation` for the per-band Grackle mode gating shared by every radiation channel (and why ``--with-subgrid=GEAR`` is the wrong shortcut here), and :ref:`gear_grackle_cooling` for the cooling module itself.
 
+.. _gear_isrf_geajay:
+
+**Running the ISRF with the geajay cooling.** The ISRF also runs with ``--with-cooling=geajay_N`` (``N`` from 0 to 3) and ``--with-geajay=<path>`` in place of Grackle. The field is the same: the sum of the PE and Lyman-Werner band energies in Habing units feeds the photoelectric heating and the dust chemistry, and the Lyman-Werner band alone feeds the :math:`\mathrm{H}_2` photodissociation rate. Points that differ from the Grackle cooling:
+
+- The run-time key ``GeajayCooling:primordial_chemistry_network`` (``tabulated``, ``H_He``, ``H_He_H2`` or ``H_He_H2_D``, or 0 to 3) selects the species that the solver follows. It cannot exceed the mode chosen at configure time. :math:`\mathrm{H}_2` photodissociation acts only with ``H_He_H2`` or above.
+- ``GEARFeedback:with_interstellar_radiation_field`` sets ``GeajayCooling:dust_model`` to ``basic``, whatever the parameter file says.
+- ``GeajayCooling:isrf_from_field`` has no effect. With the ISRF on, the cooling always reads the field of the particle.
+- **H2 self-shielding.** Set ``GeajayCooling:h2_shielding_length_method`` to ``Jeans`` (local Jeans length) or ``given_length`` (column set by ``GeajayCooling:h2_shielding_path``) in every ISRF run that tracks :math:`\mathrm{H}_2`. The default ``none`` applies no :math:`\mathrm{H}_2` self-shielding to the local Lyman-Werner rate, and the gas can not keep its :math:`\mathrm{H}_2` in an illuminated cloud. If you leave ``none`` with the ISRF on and ``H_He_H2`` or above, SWIFT prints a warning at start-up and the run goes on. The shipped examples set the key explicitly.
+- **HII photoionization needs a species network.** With ``GEARFeedback:with_photoionization`` on and ``GeajayCooling:primordial_chemistry_network`` set to ``tabulated`` (0) in a build of mode 1 or higher, SWIFT stops at start-up. The tabulated solve does not write the species back, so the neutral hydrogen of gas that leaves an HII region would stay at zero. Use ``H_He`` or above, or build ``geajay_0`` to run with the tabulated network.
+
 **The yields table must carry the ISRF datasets.** This module additionally needs the ``L_PE``, ``L_LW``, ``Integrated_L_PE`` and ``Integrated_L_LW`` datasets in the table's ``Data/Radiation`` group, on top of the datasets every radiation channel needs. See :ref:`gear_radiation_tables` for the full requirement and how to get and check a table.
 
 Switching the module on

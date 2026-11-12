@@ -81,6 +81,7 @@ GrackleCooling:
   disable_cooling_for_debugging: 0              # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
 GeajayCooling:
+  h2_shielding_length_method: Jeans              # H2 self-shielding length: none, given_length or Jeans. Set Jeans or given_length when the ISRF is on and H2 is tracked
   cloudy_table_file: CloudyData_UVB=HM2012.h5   # Name of the Cloudy table
   with_uv_background: 0                         # Enable or not the UV background
   redshift: -1                                  # Redshift to use (-1 means time based redshift)

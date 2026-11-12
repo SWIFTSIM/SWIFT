@@ -1182,7 +1182,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       cooling->h2_shielding_length_method == cooling_h2_shielding_length_none)
     warning(
         "GEARFeedback:with_interstellar_radiation_field is on with "
-        "GeajayCooling:species_network >= 2 (H2 tracked) and "
+        "GeajayCooling:primordial_chemistry_network at H_He_H2 or above (H2 "
+        "tracked) and "
         "GeajayCooling:h2_shielding_length_method is none: the local LW "
         "dissociation rate reaches geajay with no H2 self-shielding applied. "
         "Set h2_shielding_length_method to given_length (2, column set by "

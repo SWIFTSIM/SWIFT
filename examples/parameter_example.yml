@@ -824,10 +824,10 @@ GeajayCooling:
   cosmic_ray_heating: atomic_molecular_fit     # (optional) Read only with cosmic_rays: reduced. Heat per primary ionisation: atomic_molecular_fit (Gong et al. 2017) or fixed_energy (default: atomic_molecular_fit)
   cosmic_ray_heat_per_ionisation: 20           # (optional) Read only with cosmic_ray_heating: fixed_energy. Heat per ionisation [eV] (default: 20)
   lw_background_j21: -1                        # (optional) Constant Lyman-Werner background J21 (Grackle LWbackground_intensity); negative: the library default. Above 0 it replaces the table k31 and adds to rt_h2_dissociation_rate_per_s (default: -1)
-  isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field) (default: 0)
+  isrf_from_field: 0                           # (optional) No effect: the cooling reads the particle G_0 whenever GEARFeedback:with_interstellar_radiation_field is on (default: 0)
   # With background_mode: grackle the cooling passes the library value of interstellar_radiation_field (1.7 Habing) for every particle.
   # With per_band it passes 0, the local field only, to which the background G_0 is added.
-  # A radiation module would write the local field.
+  # With the ISRF on, the local field comes from the ISRF module.
   background_mode: grackle                     # (optional) Background rules: grackle (Grackle's) or per_band (one switch per band; the options below) (default: grackle)
   ionising_background_model: default           # (optional) Read only with background_mode: per_band. Ionising band: default (follows with_uv_background), none or uv_table (default: default)
   lw_background_model: default                 # (optional) Read only with background_mode: per_band. Lyman-Werner band: default, none, uv_table, constant_j21, Brown+2025_strong or Brown+2025_weak;
@@ -1006,7 +1006,7 @@ GEARFeedback:
                                                            # from the stars. (Default: 0)
 
   # Subgrid radiation. A channel left out by ./configure --with-subgrid-radiation has its keys ignored, with one warning.
-  # The parts hii and isrf are compiled with Grackle and with geajay cooling. With geajay, with_interstellar_radiation_field gives the local field to the photoelectric heating and, with H2 (species_network >= 2), the LW rate to the H2 chemistry. It forces GeajayCooling:dust_model to basic. With geajay, with_photoionization holds the tagged gas at the ionized floor, as with Grackle. In a geajay build of mode 1 or higher it needs species_network >= 1: network 0 stops at start-up (build geajay_0 to run network 0). HII_couple_ionization_rate needs species_network >= 1 and one MPI rank.
+  # The parts hii and isrf are compiled with Grackle and with geajay cooling. With geajay, with_interstellar_radiation_field gives the local field to the photoelectric heating and, with H2 (GeajayCooling:primordial_chemistry_network H_He_H2 or above), the LW rate to the H2 chemistry. It forces GeajayCooling:dust_model to basic. With geajay, with_photoionization holds the tagged gas at the ionized floor, as with Grackle. In a geajay build of mode 1 or higher it needs primordial_chemistry_network H_He or above: network 0 stops at start-up (build geajay_0 to run network 0). HII_couple_ionization_rate needs primordial_chemistry_network H_He or above and one MPI rank.
   # Radiation pressure (--with-subgrid-radiation part rp)
   with_radiation_pressure:      0                         # 1: run the radiation-pressure momentum channel, 0: do not. (Default: 0)
   radiation_pressure_efficiency: 1                        # Multiplier on the table L_bol; 1 is the physical coupling. Must be positive when with_radiation_pressure is 1. (Default: 0.0, an error then)
