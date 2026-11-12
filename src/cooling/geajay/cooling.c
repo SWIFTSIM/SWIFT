@@ -860,17 +860,18 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
 
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
-     ratio scaled by Z / Z_sun as geajay does. */
+     ratio of the library, as the heating uses. */
   if (cooling->dust_background_attenuation ==
       GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
     const double path = inputs->H2_self_shielding_length;
     /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
     const double dust_ratio =
-        max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f) /
-        cooling->chemistry_data.SolarMetalFractionByMass *
-        (cooling->chemistry_data.local_dust_to_gas_ratio /
-         COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO);
+        geajay_dust_to_gas_ratio(
+            &cooling->chemistry_data,
+            max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f),
+            1.) /
+        COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO;
     inputs->lw_background_attenuation =
         exp(-cooling->dust_cross_section_lw_cgs * dust_ratio * column);
     inputs->pe_background_attenuation =
