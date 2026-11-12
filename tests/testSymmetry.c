@@ -251,9 +251,9 @@ void test(void) {
 
 /* Check that the particles are the same */
 #if defined(GIZMO_MFV_SPH) || defined(MAGMA_SPH)
-  /* MAGMA: the symmetric force function is the two non-symmetric calls
-   * inlined in one body, which -ffast-math is free to evaluate differently
-   * from the two separate calls by a rounding error. */
+  /* MAGMA: the symmetric force function derives particle j's update from
+   * the pair terms evaluated in particle i's orientation, which -ffast-math
+   * is free to round differently from the reversed non-symmetric call. */
   i_not_ok = 0;
   j_not_ok = 0;
   for (size_t i = 0; i < sizeof(struct part) / sizeof(float); ++i) {
