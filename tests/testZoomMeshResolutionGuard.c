@@ -159,6 +159,9 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length,
       zoom_cell.top = &zoom_cell;
       zoom_cell.grav.parts = &gp;
       zoom_cell.grav.count = 1;
+      struct gravity_tensors multipole = {0};
+      multipole.m_pole.max_softening = softening;
+      zoom_cell.grav.multipole = &multipole;
       int cell_index = 0;
       s.cells_top = &zoom_cell;
       zoom_props.local_zoom_cells_top = &cell_index;

@@ -1562,8 +1562,9 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
 /**
  * @brief Add the isolated zoom mesh correction to covered particles.
  *
- * Check the softening of particles that actually receive the correction, then
- * select the replicated or distributed FFT solve.
+ * Check the softening of the cells that actually receive the correction, using
+ * the maximal softening recorded in their multipoles, then select the
+ * replicated or distributed FFT solve.
  *
  * @param mesh The #zoom_pm_mesh, or NULL when disabled.
  * @param s The #space containing the particles.
@@ -1588,12 +1589,9 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
       for (int i = 0; i < counts[type]; ++i) {
         const struct cell *c = &s->cells_top[lists[type][i]];
         if (!zoom_mesh_cell_is_covered(mesh, c, /*use_max_dx=*/0)) continue;
-        for (int j = 0; j < c->grav.count; ++j) {
-          const struct gpart *gp = &c->grav.parts[j];
-          if (gp->time_bin == time_bin_inhibited) continue;
-          max_softening = max(max_softening, (double)gravity_get_softening(
-                                                 gp, s->e->gravity_properties));
-        }
+        if (c->grav.count == 0) continue;
+        max_softening =
+            max(max_softening, (double)c->grav.multipole->m_pole.max_softening);
       }
     }
   }
