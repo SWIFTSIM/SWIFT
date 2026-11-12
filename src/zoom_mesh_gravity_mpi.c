@@ -685,6 +685,9 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
     /* Find the first mesh cell in that bucket */
     const size_t j = sorted_offsets[i];
 
+    /* This bucket and all the following ones are empty */
+    if (j == nr_send_tot) break;
+
     /* Get the x coordinate of this mesh cell in the global mesh */
     const int mesh_x =
         get_xcoord_from_padded_row_major_id((size_t)send_cells[j].key, N);
