@@ -20,6 +20,8 @@ Optionally, a star's ionizing budget can be split across several independent ang
 
 By default, an ionized particle is simply flagged and held at its floor temperature by the cooling module until its tag expires. Setting ``GEARFeedback:HII_couple_ionization_rate`` instead derives a physically motivated, distance-dependent photoionization rate coefficient (:math:`\Gamma_\mathrm{HI} = \sigma_\mathrm{HI} \times` ionizing flux, with :math:`\sigma_\mathrm{HI} = 6.3 \times 10^{-18}\,\mathrm{cm}^2` at the Lyman limit, Osterbrock and Ferland 2006) and feeds it into Grackle's own radiative-transfer rate fields every step, instead of the instant flag-and-floor scheme. This requires Grackle mode 1 or higher and runs on one MPI rank only: SWIFT stops at start-up on more ranks. The mean photon energy above the Lyman limit is held in erg, since its absolute per-particle value underflows float precision in internal units.
 
+**HII photoionization needs a species network.** With ``GEARFeedback:with_photoionization`` on and ``GrackleCooling:primordial_chemistry`` set to 0 in a build of ``grackle_1`` or higher, SWIFT stops at start-up. The tabulated solve does not write the species back, so the neutral hydrogen of gas that leaves an HII region would stay at zero. Set ``primordial_chemistry`` to 1 or higher, or build ``grackle_0`` to run with the tabulated solve.
+
 ``GEARFeedback:HII_rebuild_time_Myr`` also bounds the timestep of every star still young enough to do photoionization (below ``HII_max_age_Myr``), not just the ionization cadence: a smaller value forces smaller, more numerous steps.
 
 Configuring and compiling

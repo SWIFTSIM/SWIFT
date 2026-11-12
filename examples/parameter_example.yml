@@ -909,7 +909,7 @@ GEARFeedback:
   radiation_pressure_efficiency: 1                        # Multiplier on the table L_bol; 1 is the physical coupling. Must be positive when with_radiation_pressure is 1. (Default: 0.0, an error then)
 
   # HII regions (subgrid photoionization, Strömgren-sphere model; --with-subgrid-radiation part hii)
-  with_photoionization:          0                        # 1: run the subgrid photoionization (Stromgren sphere) model, 0: do not. (Default: 0)
+  with_photoionization:          0                        # 1: run the subgrid photoionization (Stromgren sphere) model, 0: do not. In a grackle_1 or higher build it needs GrackleCooling:primordial_chemistry >= 1: network 0 stops at start-up. (Default: 0)
   HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The default suits cosmological runs; an idealised low-density box needs a lower value. (Default: 1)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5                             # Time between HII region rebuilds (Myr); also a star timestep constraint. Negative: every step. (Default: 0.5)
