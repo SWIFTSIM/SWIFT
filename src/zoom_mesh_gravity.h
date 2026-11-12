@@ -40,52 +40,52 @@ struct zoom_pm_mesh {
   /*! Is the zoom mesh enabled? */
   int enabled;
 
-  /*! The number of threads used by the FFTW library. */
+  /*! The number of threads used by the FFTW library */
   int nr_threads;
 
-  /*! Use FFTW-MPI slab decomposition, matching the global mesh option. */
+  /*! Use FFTW-MPI slab decomposition, matching the global mesh option */
   int distributed_mesh;
 
-  /*! Use private cell patches instead of per-particle atomic writes. */
+  /*! Use private cell patches instead of per-particle atomic writes */
   int use_local_patches;
 
-  /*! Number of background top-level cell shells around the zoom region. */
+  /*! Number of background top-level cell shells around the zoom region */
   int buffer_cells;
 
   /*! Side-length of the mesh */
   int N;
 
-  /*! Lower corner of the mesh in box coordinates. */
+  /*! Lower corner of the mesh in box coordinates */
   double loc[3];
 
-  /*! Side-length of the mesh region along each axis. */
+  /*! Side-length of the mesh region along each axis */
   double dim[3];
 
   /*! Conversion factor between box and mesh size */
   double cell_fac;
 
-  /*! Lower bound of the region in which forces can be interpolated. */
+  /*! Lower bound of the region in which forces can be interpolated */
   double active_min[3];
 
-  /*! Upper bound of the region in which forces can be interpolated. */
+  /*! Upper bound of the region in which forces can be interpolated */
   double active_max[3];
 
-  /*! Scale over which we smooth the forces. */
+  /*! Scale over which we smooth the forces */
   double r_s;
 
-  /*! Inverse of the scale over which we smooth the forces. */
+  /*! Inverse of the scale over which we smooth the forces */
   double r_s_inv;
 
-  /*! Distance beyond which tree forces are handled by the zoom mesh. */
+  /*! Distance beyond which tree forces are handled by the zoom mesh */
   double r_cut_max;
 
-  /*! Distance below which tree forces are retained. */
+  /*! Distance below which tree forces are retained */
   double r_cut_min;
 
-  /*! Full zero-padded mesh used as density and potential field. */
+  /*! Full zero-padded mesh used as density and potential field */
   double *potential_global;
 
-  /*! Fourier transform of the static isolated-convolution kernel. */
+  /*! Fourier transform of the static isolated-convolution kernel */
   void *kernel_fft;
 };
 

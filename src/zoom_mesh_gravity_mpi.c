@@ -144,8 +144,6 @@ void zoom_mesh_accumulate_cell_to_local_patch(
 
     const struct gpart *gp = &(cell->grav.parts[ipart]);
 
-    if (gp->time_bin == time_bin_inhibited) continue;
-
     /* Position relative to the corner of the zoom mesh */
     const double pos_x = gp->x[0] - mesh->loc[0];
     const double pos_y = gp->x[1] - mesh->loc[1];
@@ -394,15 +392,16 @@ static size_t zoom_init_required_mesh_cells(
     if (!zoom_mesh_cell_is_covered(mesh, cell, /*use_max_dx=*/0)) continue;
 
     /* Determine range of FFT mesh cells we need for particles in this top
-     * level cell. The 5 point stencil used for accelerations requires
-     * 2 neighbouring FFT mesh cells in each direction and for CIC
-     * evaluation of the accelerations we need one extra FFT mesh cell
-     * in the +ve direction.
-     *
-     * We also have to add a small buffer to avoid problems with rounding
-     *
-     * TODO: can we calculate exactly how big the rounding error can be?
-     * Will just assume that 1% of a mesh cell is enough for now.*/
+       level cell. The 5 point stencil used for accelerations requires
+       2 neighbouring FFT mesh cells in each direction and for CIC
+       evaluation of the accelerations we need one extra FFT mesh cell
+       in the +ve direction.
+
+       We also have to add a small buffer to avoid problems with rounding
+
+       TODO: can we calculate exactly how big the rounding error can be?
+       Will just assume that 1% of a mesh cell is enough for now.
+    */
     int ixmin[3];
     int ixmax[3];
     for (int idim = 0; idim < 3; idim++) {

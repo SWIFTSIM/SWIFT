@@ -261,7 +261,6 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   mesh->distributed_mesh = props->distributed_mesh;
   mesh->use_local_patches = props->mesh_uses_local_patches;
   mesh->buffer_cells = buffer_cells;
-  mesh->potential_global = NULL;
   mesh->N = side_length;
   zoom_mesh_set_geometry(mesh, s, props, r_cut_max_ratio, r_cut_min_ratio);
 
@@ -1219,9 +1218,6 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
                                                struct threadpool *tp,
                                                int verbose) {
 
-  /* Nothing to compute if the zoom mesh is disabled. */
-  if (mesh == NULL || !mesh->enabled) return;
-
   /* Unpack sizes and memory requirements for the zero-padded FFT domain. */
   const int N = mesh->N;
   const int M = 2 * N;
@@ -1369,9 +1365,6 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
                                                struct threadpool *tp,
                                                int verbose) {
 
-  /* Disabled zoom meshes must remain harmless in non-FFTW builds. */
-  if (mesh == NULL || !mesh->enabled) return;
-
   error("No FFTW library found. Cannot compute zoom mesh gravity.");
 }
 #endif
@@ -1412,7 +1405,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   /* Calculate contributions to density field on this MPI rank */
   zoom_mpi_mesh_accumulate_gparts_to_local_patches(tp, mesh, s, local_patches);
   if (verbose)
-    message("Accumulating mass to local patches took %.3f %s.",
+    message("Zoom mesh: Accumulating mass to local patches took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -1425,10 +1418,11 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
       fftw_mpi_local_size_3d((ptrdiff_t)M, (ptrdiff_t)M, (ptrdiff_t)(M / 2 + 1),
                              MPI_COMM_WORLD, &local_n0, &local_0_start);
   if (verbose)
-    message("Local density field slice has thickness %d.", (int)local_n0);
+    message("Zoom mesh: Local density field slice has thickness %d.",
+            (int)local_n0);
   if (verbose)
-    message("local patch size = %d, local mesh cells = %lld", nr_local_cells,
-            (long long)(local_n0 * M * M));
+    message("Zoom mesh: local patch size = %d, local mesh cells = %lld",
+            nr_local_cells, (long long)(local_n0 * M * M));
 
   /* Allocate storage for mesh slices.
    *
@@ -1445,7 +1439,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   mpi_mesh_local_patches_to_slices(M, (int)local_n0, local_patches,
                                    nr_local_cells, rho_slice, tp, verbose);
   if (verbose)
-    message("Assembling mesh slices took %.3f %s.",
+    message("Zoom mesh: Assembling mesh slices took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Build and transform the static correction kernel only once. */
@@ -1507,7 +1501,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   fftw_execute(mpi_plan);
   fftw_destroy_plan(mpi_plan);
   if (verbose)
-    message("MPI Forward Fourier transform took %.3f %s.",
+    message("Zoom mesh: MPI Forward Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   tic = getticks();
@@ -1535,7 +1529,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   fftw_destroy_plan(mpi_inverse_plan);
 
   if (verbose)
-    message("MPI Reverse Fourier transform took %.3f %s.",
+    message("Zoom mesh: MPI Reverse Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* We can now free the Fourier-space data */
@@ -1548,7 +1542,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
                                 local_patches, tp, verbose);
 
   if (verbose)
-    message("Fetching local potential took %.3f %s.",
+    message("Zoom mesh: Fetching local potential took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
   /* Free the local slice of the potential */
@@ -1565,7 +1559,7 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   free(local_patches);
 
   if (verbose)
-    message("Computing mesh accelerations took %.3f %s.",
+    message("Zoom mesh: Computing mesh accelerations took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
 
 #else

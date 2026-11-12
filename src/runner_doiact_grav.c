@@ -1452,6 +1452,8 @@ void runner_dopair_grav_pp(struct runner *r, struct cell *ci, struct cell *cj,
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
   float r_s_inv = e->mesh->r_s_inv;
+
+  /* The MAC uses the copy of the scale stored in the gravity properties */
   float r_s_inv_MAC = e->gravity_properties->r_s_inv;
   double min_trunc = e->mesh->r_cut_min;
 
@@ -2187,6 +2189,8 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
   const float dim[3] = {(float)e->mesh->dim[0], (float)e->mesh->dim[1],
                         (float)e->mesh->dim[2]};
   float r_s_inv = e->mesh->r_s_inv;
+
+  /* The MAC uses the copy of the scale stored in the gravity properties */
   float r_s_inv_MAC = e->gravity_properties->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
@@ -2302,6 +2306,8 @@ void runner_dopair_recursive_grav(struct runner *r, struct cell *ci,
   const int periodic = e->mesh->periodic;
   const double dim[3] = {e->mesh->dim[0], e->mesh->dim[1], e->mesh->dim[2]};
   double max_distance = e->mesh->r_cut_max;
+
+  /* The MAC uses the copy of the scale stored in the gravity properties */
   float r_s_inv_MAC = e->gravity_properties->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
