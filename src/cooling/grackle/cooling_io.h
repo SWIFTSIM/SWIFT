@@ -189,6 +189,19 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("Cannot run primordial chemistry %i when compiled with %i",
           cooling->primordial_chemistry, COOLING_GRACKLE_MODE);
 
+#if COOLING_GRACKLE_MODE >= 1
+  if (cooling->primordial_chemistry < 1 &&
+      radiation_selection_get_switch(parameter_file,
+                                     "GEARFeedback:with_photoionization",
+                                     RADIATION_COMPILED_HII))
+    error(
+        "GEARFeedback:with_photoionization needs "
+        "GrackleCooling:primordial_chemistry to be 1 or higher. The "
+        "tabulated solve (network 0) does not write the species back, so the "
+        "neutral hydrogen of expired HII gas would stay at 0. Build with "
+        "grackle_0 to run network 0.");
+#endif
+
   cooling->H2_three_body_rate = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:H2_three_body_rate", 0);
 
