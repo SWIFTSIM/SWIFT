@@ -522,48 +522,6 @@ struct zoom_cic_mapper_data {
 };
 
 /**
- * @brief Is a cell fully covered by the high-resolution zoom mesh?
- *
- * @param mesh The #zoom_pm_mesh.
- * @param c The #cell.
- * @param use_max_dx Should we include the maximal particle displacement since
- * rebuild?
- * @return 1 if the cell is fully covered by the zoom mesh, 0 otherwise.
- */
-int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
-                              const struct cell *c, const int use_max_dx) {
-
-  /* Disabled or absent meshes cannot cover any cell. */
-  if (mesh == NULL) return 0;
-  if (!mesh->enabled) return 0;
-
-  /* Long-range gravity can interact at the top-cell level. Do not apply a
-   * fine-mesh correction to a covered leaf if its parent top cell still uses
-   * the coarse tree split. */
-  return zoom_mesh_cell_is_inside(mesh, c->top, use_max_dx) &&
-         zoom_mesh_cell_is_inside(mesh, c, use_max_dx);
-}
-
-/**
- * @brief Are two cells fully covered by the high-resolution zoom mesh?
- *
- * @param mesh The #zoom_pm_mesh.
- * @param ci The first #cell.
- * @param cj The second #cell.
- * @param use_max_dx Should we include the maximal particle displacement since
- * rebuild?
- * @return 1 if both cells are fully covered by the zoom mesh, 0 otherwise.
- */
-int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
-                                const struct cell *ci, const struct cell *cj,
-                                const int use_max_dx) {
-
-  /* Both cells must be fully contained before the zoom mesh is applicable. */
-  return zoom_mesh_cell_is_covered(mesh, ci, use_max_dx) &&
-         zoom_mesh_cell_is_covered(mesh, cj, use_max_dx);
-}
-
-/**
  * @brief Assigns a given #gpart to the zoom density mesh using the CIC method.
  *
  * @param gp The #gpart.
@@ -1760,6 +1718,48 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           active_min, active_max, i, z->region_lower_bounds[i],
           z->region_upper_bounds[i]);
   }
+}
+
+/**
+ * @brief Is a cell fully covered by the high-resolution zoom mesh?
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param c The #cell.
+ * @param use_max_dx Should we include the maximal particle displacement since
+ * rebuild?
+ * @return 1 if the cell is fully covered by the zoom mesh, 0 otherwise.
+ */
+int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
+                              const struct cell *c, const int use_max_dx) {
+
+  /* Disabled or absent meshes cannot cover any cell. */
+  if (mesh == NULL) return 0;
+  if (!mesh->enabled) return 0;
+
+  /* Long-range gravity can interact at the top-cell level. Do not apply a
+   * fine-mesh correction to a covered leaf if its parent top cell still uses
+   * the coarse tree split. */
+  return zoom_mesh_cell_is_inside(mesh, c->top, use_max_dx) &&
+         zoom_mesh_cell_is_inside(mesh, c, use_max_dx);
+}
+
+/**
+ * @brief Are two cells fully covered by the high-resolution zoom mesh?
+ *
+ * @param mesh The #zoom_pm_mesh.
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param use_max_dx Should we include the maximal particle displacement since
+ * rebuild?
+ * @return 1 if both cells are fully covered by the zoom mesh, 0 otherwise.
+ */
+int zoom_mesh_cells_are_covered(const struct zoom_pm_mesh *mesh,
+                                const struct cell *ci, const struct cell *cj,
+                                const int use_max_dx) {
+
+  /* Both cells must be fully contained before the zoom mesh is applicable. */
+  return zoom_mesh_cell_is_covered(mesh, ci, use_max_dx) &&
+         zoom_mesh_cell_is_covered(mesh, cj, use_max_dx);
 }
 
 /**
