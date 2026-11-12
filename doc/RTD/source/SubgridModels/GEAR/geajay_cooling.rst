@@ -72,8 +72,8 @@ Table, background and metals
        the value of ``GrackleCooling:maximal_density_Hpcm3``. Zero or negative: no cap (default: -1).
    * - ``hydrogen_mass_fraction``
      - (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's:
-       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table (0.7614 for the
-       HM12 tables, 0.715768 for a table without that group), and network 0 refuses any other value
+       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table (0.7614, He/H 0.0789,
+       for the HM12 tables, 0.715768 for a table without that group), and network 0 refuses any other value
        (default: -1).
 
 Solver
