@@ -223,8 +223,8 @@ int main(int argc, char *argv[]) {
     const double x = M_PI * test_mode[axis] / 32.;
     expected_deconvolution *= pow(x / sin(x), 4.);
   }
-  const double measured_deconvolution = zoom_mesh_CIC_deconvolution(
-      test_mode[0], test_mode[1], test_mode[2], 32);
+  const double measured_deconvolution =
+      zoom_mesh_CIC_deconvolution(test_mode[0], test_mode[1], test_mode[2], 32);
   if (fabs(measured_deconvolution - expected_deconvolution) > 1e-12)
     error("Shared CIC deconvolution differs from the global PM convention");
 #endif
@@ -297,8 +297,8 @@ int main(int argc, char *argv[]) {
 
   struct cell mesh_cells[2];
   int local_cells_with_particles_top[2] = {0, 1};
-  const double source_x[3] = {
-      zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac, y_node, z_node};
+  const double source_x[3] = {zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac,
+                              y_node, z_node};
   const double probe_x[3] = {zoom_mesh.loc[0] + probe_i / zoom_mesh.cell_fac,
                              y_node, z_node};
   const double source_loc[3] = {source_x[0] - 0.5, source_x[1] - 0.5,
@@ -313,11 +313,9 @@ int main(int argc, char *argv[]) {
   s.cells_top = mesh_cells;
   s.local_cells_with_particles_top = local_cells_with_particles_top;
   zoom_props.nr_local_zoom_cells = 1;
-  zoom_props.local_zoom_cells_top =
-      &local_cells_with_particles_top[0];
+  zoom_props.local_zoom_cells_top = &local_cells_with_particles_top[0];
   zoom_props.nr_local_bkg_cells = 1;
-  zoom_props.local_bkg_cells_top =
-      &local_cells_with_particles_top[1];
+  zoom_props.local_bkg_cells_top = &local_cells_with_particles_top[1];
 
   threadpool_init(&e.threadpool, /*num_threads=*/4);
 

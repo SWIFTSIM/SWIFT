@@ -270,9 +270,8 @@ static INLINE void runner_dopair_grav_pp_full_no_cache(
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
-    if (gcount_j > 1 &&
-        gravity_M2P_accept(grav_props, grav_props->r_s_inv, gpi, multi_j,
-                           r2_multi, /*periodic=*/1)) {
+    if (gcount_j > 1 && gravity_M2P_accept(grav_props, grav_props->r_s_inv, gpi,
+                                           multi_j, r2_multi, /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -551,9 +550,8 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
         dx_multi * dx_multi + dy_multi * dy_multi + dz_multi * dz_multi;
 
     /* Can we use the Mulipole here? */
-    if (gcount_j > 1 &&
-        gravity_M2P_accept(grav_props, r_s_inv, gpi, multi_j,
-                           r2_multi, /*periodic=*/1)) {
+    if (gcount_j > 1 && gravity_M2P_accept(grav_props, r_s_inv, gpi, multi_j,
+                                           r2_multi, /*periodic=*/1)) {
 
       const float h_inv_i = 1.f / h_i;
 
@@ -2245,10 +2243,10 @@ void runner_dopair_recursive_grav_pm(struct runner *r, struct cell *ci,
 #endif
 
     /* Fill the cache */
-    gravity_cache_populate_all_mpole(
-        e->max_active_bin, periodic, dim, ci_cache, ci->grav.parts, gcount_i,
-        gcount_padded_i, ci, CoM_j, cj->grav.multipole, e->gravity_properties,
-        r_s_inv_MAC);
+    gravity_cache_populate_all_mpole(e->max_active_bin, periodic, dim, ci_cache,
+                                     ci->grav.parts, gcount_i, gcount_padded_i,
+                                     ci, CoM_j, cj->grav.multipole,
+                                     e->gravity_properties, r_s_inv_MAC);
 
     /* Can we use the Newtonian version or do we need the truncated one ? */
     if (!periodic) {

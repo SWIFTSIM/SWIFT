@@ -108,7 +108,8 @@ static void setup_mock_engine(struct swift_params *params,
  * @param zoom_mesh_side_length The value of Gravity:zoom_mesh_side_length.
  * @param softening The current internal DM gravitational softening radius.
  * @param regrid_bkg_width New background-cell width, or 0 for no regrid.
- * @param check_covered Whether to test the force guard with a covered DM particle.
+ * @param check_covered Whether to test the force guard with a covered DM
+ * particle.
  * @return 1 if setup completed normally, 0 if it errored.
  */
 static int zoom_mesh_init_survives(const int zoom_mesh_side_length,

@@ -662,7 +662,8 @@ static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
     } else {
 
       /* Assign this cell's content directly atomically to the mesh */
-      zoom_mesh_cell_gpart_to_mesh_CIC(c, data->rho, data->mesh, data->nu_model);
+      zoom_mesh_cell_gpart_to_mesh_CIC(c, data->rho, data->mesh,
+                                       data->nu_model);
     }
   }
 }
@@ -675,7 +676,7 @@ static void zoom_mesh_deposit_cells_mapper(void *map_data, int num,
  * @param extra The shared #zoom_cic_mapper_data.
  */
 static void zoom_mesh_deposit_zoom_cells_mapper(void *map_data, int num,
-                                                 void *extra) {
+                                                void *extra) {
   zoom_mesh_deposit_cells_mapper(map_data, num, extra);
 }
 
@@ -687,7 +688,7 @@ static void zoom_mesh_deposit_zoom_cells_mapper(void *map_data, int num,
  * @param extra The shared #zoom_cic_mapper_data.
  */
 static void zoom_mesh_deposit_bkg_cells_mapper(void *map_data, int num,
-                                                void *extra) {
+                                               void *extra) {
   zoom_mesh_deposit_cells_mapper(map_data, num, extra);
 }
 
@@ -763,28 +764,28 @@ static void zoom_mesh_to_gpart_CIC(struct gpart *gp, const double *pot,
   /* 5-point stencil along each axis for the accelerations */
   a[0] += (1. / 12.) *
           zoom_mesh_CIC_get(phi, ii + 2, jj, kk, tx, ty, tz, dx, dy, dz);
-  a[0] -=
-      (2. / 3.) * zoom_mesh_CIC_get(phi, ii + 1, jj, kk, tx, ty, tz, dx, dy, dz);
-  a[0] +=
-      (2. / 3.) * zoom_mesh_CIC_get(phi, ii - 1, jj, kk, tx, ty, tz, dx, dy, dz);
+  a[0] -= (2. / 3.) *
+          zoom_mesh_CIC_get(phi, ii + 1, jj, kk, tx, ty, tz, dx, dy, dz);
+  a[0] += (2. / 3.) *
+          zoom_mesh_CIC_get(phi, ii - 1, jj, kk, tx, ty, tz, dx, dy, dz);
   a[0] -= (1. / 12.) *
           zoom_mesh_CIC_get(phi, ii - 2, jj, kk, tx, ty, tz, dx, dy, dz);
 
   a[1] += (1. / 12.) *
           zoom_mesh_CIC_get(phi, ii, jj + 2, kk, tx, ty, tz, dx, dy, dz);
-  a[1] -=
-      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj + 1, kk, tx, ty, tz, dx, dy, dz);
-  a[1] +=
-      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj - 1, kk, tx, ty, tz, dx, dy, dz);
+  a[1] -= (2. / 3.) *
+          zoom_mesh_CIC_get(phi, ii, jj + 1, kk, tx, ty, tz, dx, dy, dz);
+  a[1] += (2. / 3.) *
+          zoom_mesh_CIC_get(phi, ii, jj - 1, kk, tx, ty, tz, dx, dy, dz);
   a[1] -= (1. / 12.) *
           zoom_mesh_CIC_get(phi, ii, jj - 2, kk, tx, ty, tz, dx, dy, dz);
 
   a[2] += (1. / 12.) *
           zoom_mesh_CIC_get(phi, ii, jj, kk + 2, tx, ty, tz, dx, dy, dz);
-  a[2] -=
-      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj, kk + 1, tx, ty, tz, dx, dy, dz);
-  a[2] +=
-      (2. / 3.) * zoom_mesh_CIC_get(phi, ii, jj, kk - 1, tx, ty, tz, dx, dy, dz);
+  a[2] -= (2. / 3.) *
+          zoom_mesh_CIC_get(phi, ii, jj, kk + 1, tx, ty, tz, dx, dy, dz);
+  a[2] += (2. / 3.) *
+          zoom_mesh_CIC_get(phi, ii, jj, kk - 1, tx, ty, tz, dx, dy, dz);
   a[2] -= (1. / 12.) *
           zoom_mesh_CIC_get(phi, ii, jj, kk - 2, tx, ty, tz, dx, dy, dz);
 
@@ -866,7 +867,7 @@ static void zoom_mesh_interpolate_cells_mapper(void *map_data, int num,
  * @param extra The shared #zoom_cic_mapper_data.
  */
 static void zoom_mesh_interpolate_zoom_cells_mapper(void *map_data, int num,
-                                                     void *extra) {
+                                                    void *extra) {
   zoom_mesh_interpolate_cells_mapper(map_data, num, extra);
 }
 
@@ -878,7 +879,7 @@ static void zoom_mesh_interpolate_zoom_cells_mapper(void *map_data, int num,
  * @param extra The shared #zoom_cic_mapper_data.
  */
 static void zoom_mesh_interpolate_bkg_cells_mapper(void *map_data, int num,
-                                                    void *extra) {
+                                                   void *extra) {
   zoom_mesh_interpolate_cells_mapper(map_data, num, extra);
 }
 
@@ -889,8 +890,9 @@ static void zoom_mesh_interpolate_bkg_cells_mapper(void *map_data, int num,
  * @param tp The #threadpool used to process the cells.
  * @param data The shared CIC mapper data.
  */
-static void zoom_mesh_deposit_cells(const struct space *s, struct threadpool *tp,
-                                     const struct zoom_cic_mapper_data *data) {
+static void zoom_mesh_deposit_cells(const struct space *s,
+                                    struct threadpool *tp,
+                                    const struct zoom_cic_mapper_data *data) {
 
   threadpool_map(tp, zoom_mesh_deposit_zoom_cells_mapper,
                  s->zoom_props->local_zoom_cells_top,
@@ -1257,19 +1259,17 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
 
   fftw_complex *frho =
       (fftw_complex *)fftw_malloc(complex_size * sizeof(fftw_complex));
-  if (frho == NULL)
-    error("Error allocating zoom mesh FFT work arrays.");
+  if (frho == NULL) error("Error allocating zoom mesh FFT work arrays.");
 
   /* Record the temporary allocations in the memory-use logger. */
   memuse_log_allocation("fftw_zoom_mesh.frho", frho, 1,
                         complex_size * sizeof(fftw_complex));
 
   /* Prepare transforms of the density and resulting potential. */
-  fftw_plan rho_forward =
-      fftw_plan_dft_r2c_3d(M, M, M, rho, frho,
-                           FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
-  fftw_plan inverse = fftw_plan_dft_c2r_3d(
-      M, M, M, frho, rho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+  fftw_plan rho_forward = fftw_plan_dft_r2c_3d(
+      M, M, M, rho, frho, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+  fftw_plan inverse = fftw_plan_dft_c2r_3d(M, M, M, frho, rho,
+                                           FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
 
   /* Build and transform the static correction kernel only once. */
   if (mesh->kernel_fft == NULL) {
@@ -1285,9 +1285,8 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
 
     zoom_mesh_kernel(tp, mesh, kernel, s->e->mesh->r_s_inv, /*slice_offset=*/0,
                      /*slice_width=*/M, /*pad=*/0);
-    fftw_plan kernel_forward =
-        fftw_plan_dft_r2c_3d(M, M, M, kernel, fkernel,
-                             FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
+    fftw_plan kernel_forward = fftw_plan_dft_r2c_3d(
+        M, M, M, kernel, fkernel, FFTW_ESTIMATE | FFTW_DESTROY_INPUT);
     fftw_execute(kernel_forward);
     fftw_destroy_plan(kernel_forward);
     zoom_mesh_deconvolve_kernel(tp, mesh, fkernel, /*slice_offset=*/0,
@@ -1583,10 +1582,8 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   double max_softening = 0.;
   if (s->cells_top != NULL && s->zoom_props != NULL) {
     const struct zoom_region_properties *z = s->zoom_props;
-    const int *lists[2] = {z->local_zoom_cells_top,
-                           z->local_bkg_cells_top};
-    const int counts[2] = {z->nr_local_zoom_cells,
-                           z->nr_local_bkg_cells};
+    const int *lists[2] = {z->local_zoom_cells_top, z->local_bkg_cells_top};
+    const int counts[2] = {z->nr_local_zoom_cells, z->nr_local_bkg_cells};
     for (int type = 0; type < 2; ++type) {
       for (int i = 0; i < counts[type]; ++i) {
         const struct cell *c = &s->cells_top[lists[type][i]];
@@ -1594,9 +1591,8 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
         for (int j = 0; j < c->grav.count; ++j) {
           const struct gpart *gp = &c->grav.parts[j];
           if (gp->time_bin == time_bin_inhibited) continue;
-          max_softening = max(max_softening,
-                              (double)gravity_get_softening(
-                                  gp, s->e->gravity_properties));
+          max_softening = max(max_softening, (double)gravity_get_softening(
+                                                 gp, s->e->gravity_properties));
         }
       }
     }
@@ -1606,9 +1602,10 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
                 MPI_COMM_WORLD);
 #endif
   if (max_softening > mesh->r_s)
-    error("Zoom mesh smoothing scale r_s=%g is smaller than the softening "
-          "radius h=%g of a covered gravity particle.",
-          mesh->r_s, max_softening);
+    error(
+        "Zoom mesh smoothing scale r_s=%g is smaller than the softening "
+        "radius h=%g of a covered gravity particle.",
+        mesh->r_s, max_softening);
 
   if (mesh->distributed_mesh)
     zoom_mesh_compute_potential_distributed(mesh, s, tp, verbose);
