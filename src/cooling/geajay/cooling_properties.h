@@ -115,6 +115,11 @@ struct cooling_function_data {
    * 3 grain_charge_epsilon, 4 density_epsilon. */
   int photoelectric_heating_model;
 
+  /*! Heating rate of the fixed_rate model per H atom, in erg s^-1
+   * (GeajayCooling:photoelectric_heating_rate,
+   * chemistry_data.photoelectric_heating_rate): -1 keeps the library value. */
+  double photoelectric_heating_rate;
+
   /*! H2 formation on dust grains: -1 unset (follows dust_model), 0 off, 1 on */
   int H2_on_dust;
 

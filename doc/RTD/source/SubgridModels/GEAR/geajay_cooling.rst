@@ -281,6 +281,20 @@ Molecules and dust
        (default: ``linear``).
    * - ``reference_dust_to_gas_ratio``
      - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; any other value stops the run).
+   * - ``photoelectric_heating_model``
+     - (optional) Photoelectric heating of the dust: ``default`` (-1, ``constant_efficiency`` with
+       ``dust_model`` ``basic``, else ``none``), ``none`` (0), ``fixed_rate`` (1, the constant
+       ``photoelectric_heating_rate``), ``constant_efficiency`` (2, 0.05 G\ :sub:`0` x 1e-24 erg/s per
+       H atom, Wolfire et al. 1995 eq. 1), ``grain_charge_epsilon`` (3, an efficiency set by the grain
+       charge, Bakes and Tielens 1994 eq. 43 with the coefficients of Wolfire et al. 2003 eq. 24) or
+       ``density_epsilon`` (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and
+       A2); 0 to 4 are also accepted. Every model scales with D / D\ :sub:`ref` and the hydrogen density
+       and gives no heating above 2e4 K. A model above ``none`` also works with ``dust_model``
+       ``none``, because SWIFT passes the metal mass fraction of every particle (default: ``default``).
+   * - ``photoelectric_heating_rate``
+     - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
+       ratio [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
+       8.5e-26 (default: -1).
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
        and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works

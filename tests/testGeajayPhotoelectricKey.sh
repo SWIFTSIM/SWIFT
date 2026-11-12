@@ -94,6 +94,13 @@ expect_ok remy_with_h2dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_20
 expect_ok remy_with_dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;$basic"
 expect_refused remy_no_switch "dust_to_gas_model = 1" "dust_to_gas_model: remy_ruyer_2014"
 
+expect_ok rate_default photoelectric_heating_rate=8.5e-26 ""
+expect_ok rate_minus_1 photoelectric_heating_rate=8.5e-26 "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: -1"
+expect_ok rate_double photoelectric_heating_rate=1.7e-25 "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: 1.7e-25"
+expect_ok rate_zero photoelectric_heating_rate=0 "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: 0"
+expect_ok rate_unread_model photoelectric_heating_rate=3e-25 "photoelectric_heating_model: density_epsilon;photoelectric_heating_rate: 3e-25"
+expect_refused rate_negative "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: -2e-26"
+expect_refused rate_inf "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: inf"
 expect_ok ref_ratio_default local_dust_to_gas_ratio=0.00939 ""
 expect_ok ref_ratio_minus_1 local_dust_to_gas_ratio=0.00939 "reference_dust_to_gas_ratio: -1"
 expect_ok ref_ratio_set local_dust_to_gas_ratio=0.01 "reference_dust_to_gas_ratio: 0.01"
@@ -124,10 +131,34 @@ print(ok, rate.min(), rate.max())
   fi
 }
 
+# expect_ratio <name a> <name b> <ratio>: the "Dust" component of run b over
+# that of run a, in every particle, to 1e-6.
+expect_ratio() {
+  local out
+  out=$(python3 -I -c "
+import sys, h5py, numpy as np
+def dust(path):
+    f = h5py.File(path, 'r')
+    names = [n.decode() for n in f['SubgridScheme/NamedColumns/CoolingRates'][:]]
+    return f['PartType0/CoolingRates'][:, names.index('Dust')]
+a, b = dust(sys.argv[1]), dust(sys.argv[2])
+r = b / a
+print(bool(np.all(np.abs(r / float(sys.argv[3]) - 1) < 1e-6)), r.min(), r.max())
+" "$work/$1/coolingBox_0000.hdf5" "$work/$2/coolingBox_0000.hdf5" "$3" 2>&1 | tail -n 1)
+  if [ "${out%% *}" != "True" ]; then
+    echo "FAIL $2 over $1: wanted Dust rate ratio $3, got: $out"
+    failures=$((failures + 1))
+  else
+    echo "ok   $2 over $1 (Dust rate ratio $3: ${out#True })"
+  fi
+}
+
 expect_heating no_dust_none zero
 expect_heating pe_no_dust positive
 expect_heating pe_fixed_no_dust positive
 expect_heating pe_density_no_dust positive
+expect_heating rate_zero zero
+expect_ratio pe_fixed_no_dust rate_double 2
 
 echo "failures: $failures"
 [ $failures -eq 0 ]

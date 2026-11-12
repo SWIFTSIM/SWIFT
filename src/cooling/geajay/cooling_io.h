@@ -968,6 +968,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "grain_charge_epsilon (3) or density_epsilon (4), got %d.",
         cooling->photoelectric_heating_model);
 
+  cooling->photoelectric_heating_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:photoelectric_heating_rate", -1.);
+  if (cooling->photoelectric_heating_rate != -1. &&
+      !(cooling->photoelectric_heating_rate >= 0. &&
+        cooling->photoelectric_heating_rate < DBL_MAX))
+    error(
+        "GeajayCooling:photoelectric_heating_rate must be -1 (the library "
+        "value) or a finite number >= 0, got %g.",
+        cooling->photoelectric_heating_rate);
+
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
 #if COOLING_GEAJAY_MODE < 2
