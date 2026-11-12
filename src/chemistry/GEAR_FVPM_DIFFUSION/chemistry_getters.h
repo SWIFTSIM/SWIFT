@@ -610,9 +610,11 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
  */
 __attribute__((always_inline)) INLINE static double
 chemistry_get_sink_total_metal_mass_fraction(const struct sink *restrict sink) {
-
-  return sink->chemistry_data
-      .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1];
+  double Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += sink->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot;
 }
 
 /**
