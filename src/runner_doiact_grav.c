@@ -498,8 +498,9 @@ static INLINE void runner_dopair_grav_pp_truncated_no_cache(
   float r_s_inv = grav_props->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
+  }
 
   /* Prepare the i cache */
   const int gcount_padded_i = gcount_i - (gcount_i % VEC_SIZE) + VEC_SIZE;
@@ -1240,8 +1241,9 @@ static INLINE void runner_dopair_grav_pm_full(
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gravity_M2P_accept(e->gravity_properties, r_s_inv, &gparts_i[pid],
-                            cj->grav.multipole, r2 * 1.01, periodic))
+                            cj->grav.multipole, r2 * 1.01, periodic)) {
       error("use_mpole[i] set when M2P accept fails");
+    }
 #endif
 
     /* Interact! */
@@ -1389,8 +1391,9 @@ static INLINE void runner_dopair_grav_pm_truncated(
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!gravity_M2P_accept(e->gravity_properties, r_s_inv, &gparts_i[pid],
-                            cj->grav.multipole, r2 * 1.01, /*periodic=*/1))
+                            cj->grav.multipole, r2 * 1.01, /*periodic=*/1)) {
       error("use_mpole[i] set when M2P accept fails");
+    }
 #endif
 
     /* Interact! */

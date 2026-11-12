@@ -674,8 +674,9 @@ void space_regrid(struct space *s, int verbose) {
     if (s->with_zoom_region && s->e != NULL) zoom_space_shift_extras(s);
 
     /* Refresh the isolated mesh after rebuilding the zoom top-level cells. */
-    if (s->with_zoom_region && s->e != NULL)
+    if (s->with_zoom_region && s->e != NULL) {
       zoom_mesh_regrid(s->e->zoom_mesh, s);
+    }
 
   } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */

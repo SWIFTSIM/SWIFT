@@ -107,8 +107,9 @@ static void zoom_mesh_patch_init(struct pm_mesh_patch *patch,
 
   /* Allocate the mesh */
   if (swift_memalign("mesh_patch", (void **)&patch->mesh, SWIFT_CACHE_ALIGNMENT,
-                     num_cells * sizeof(double)) != 0)
+                     num_cells * sizeof(double)) != 0) {
     error("Failed to allocate array for mesh patch!");
+  }
 }
 
 /**
@@ -175,8 +176,9 @@ void zoom_mesh_accumulate_cell_to_local_patch(
 
     /* Compute weight (for neutrino delta-f weighting) */
     double weight = 1.0;
-    if (gp->type == swift_type_neutrino)
+    if (gp->type == swift_type_neutrino) {
       gpart_neutrino_weight_mesh_only(gp, nu_model, &weight);
+    }
 
     /* Accumulate contributions to the local mesh patch */
     const double mass = gp->mass;
@@ -269,8 +271,9 @@ void zoom_mpi_mesh_accumulate_gparts_to_local_patches(
   /* Gather some neutrino constants if using delta-f weighting on the mesh */
   struct neutrino_model nu_model;
   bzero(&nu_model, sizeof(struct neutrino_model));
-  if (s->e->neutrino_properties->use_delta_f_mesh_only)
+  if (s->e->neutrino_properties->use_delta_f_mesh_only) {
     gather_neutrino_consts(s, &nu_model);
+  }
 
   /* Use the threadpool to parallelize over cells */
   struct zoom_accumulate_mapper_data data;
@@ -344,12 +347,15 @@ static size_t zoom_count_required_mesh_cells(const struct zoom_pm_mesh *mesh,
     const int delta_k = (ixmax[2] - ixmin[2]) + 1;
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (delta_i > (1 << 12))
+    if (delta_i > (1 << 12)) {
       error("Not enough bits to store local x-axis index");
-    if (delta_j > (1 << 12))
+    }
+    if (delta_j > (1 << 12)) {
       error("Not enough bits to store local y-axis index");
-    if (delta_k > (1 << 12))
+    }
+    if (delta_k > (1 << 12)) {
       error("Not enough bits to store local z-axis index");
+    }
 #endif
 
     count += delta_i * delta_j * delta_k;
@@ -417,12 +423,15 @@ static size_t zoom_init_required_mesh_cells(
     const int delta_j = (ixmax[1] - ixmin[1]) + 1;
     const int delta_k = (ixmax[2] - ixmin[2]) + 1;
 
-    if (delta_i > (1 << 12))
+    if (delta_i > (1 << 12)) {
       error("Not enough bits to store local x-axis index");
-    if (delta_j > (1 << 12))
+    }
+    if (delta_j > (1 << 12)) {
       error("Not enough bits to store local y-axis index");
-    if (delta_k > (1 << 12))
+    }
+    if (delta_k > (1 << 12)) {
       error("Not enough bits to store local z-axis index");
+    }
 #endif
 
     /* Add the required cells to the map */
@@ -520,8 +529,10 @@ static void zoom_fill_local_patches_from_mesh_cells(
 
     /* Allocate the mesh */
     if (swift_memalign("mesh_patch", (void **)&patch->mesh,
-                       SWIFT_CACHE_ALIGNMENT, num_cells * sizeof(double)) != 0)
+                       SWIFT_CACHE_ALIGNMENT,
+                       num_cells * sizeof(double)) != 0) {
       error("Failed to allocate array for mesh patch!");
+    }
 
 #ifdef SWIFT_DEBUG_CHECKS
     int count = 0;
@@ -531,11 +542,12 @@ static void zoom_fill_local_patches_from_mesh_cells(
       const int temp = cell_index_extract_patch_index(cell_index);
       if (temp == icell) ++count;
     }
-    if (count != num_cells)
+    if (count != num_cells) {
       error(
           "Invalide number of cells to fill the patch! icell=%d count=%d "
           "num_cells=%d",
           icell, count, num_cells);
+    }
 #endif
 
     /* Now, we can start filling the mesh patch cells from the array of
@@ -552,11 +564,12 @@ static void zoom_fill_local_patches_from_mesh_cells(
 #ifdef SWIFT_DEBUG_CHECKS
       const int temp = cell_index_extract_patch_index(cell_index);
 
-      if (patch_index != icell)
+      if (patch_index != icell) {
         error(
             "mesh cell not sorted in the right order icell=%d patch_index=%d "
             "cell_index=%zd i=%d j=%d k=%d imesh=%zd temp=%d",
             icell, patch_index, cell_index, i, j, k, imesh, temp);
+      }
 #endif
 
       /* Flatten out the i,j,k index */
@@ -617,15 +630,17 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   /* Determine how many mesh cells we will need to request */
   const size_t nr_send_tot = zoom_count_required_mesh_cells(mesh, s);
 
-  if (verbose)
+  if (verbose) {
     message(" - Counting required mesh patches took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   struct mesh_key_value_pot *send_cells_unsorted;
   if (swift_memalign("send_cells_unsorted", (void **)&send_cells_unsorted,
                      SWIFT_CACHE_ALIGNMENT,
-                     nr_send_tot * sizeof(struct mesh_key_value_pot)) != 0)
+                     nr_send_tot * sizeof(struct mesh_key_value_pot)) != 0) {
     error("Failed to allocate array for cells to request!");
+  }
 
   tic = getticks();
 
@@ -633,19 +648,22 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   const size_t check_count =
       zoom_init_required_mesh_cells(mesh, s, send_cells_unsorted);
 
-  if (nr_send_tot != check_count)
+  if (nr_send_tot != check_count) {
     error("Count and initialisation incompatible!");
+  }
 
-  if (verbose)
+  if (verbose) {
     message(" - Init required mesh patches took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
   struct mesh_key_value_pot *send_cells;
   if (swift_memalign("send_cells", (void **)&send_cells, SWIFT_CACHE_ALIGNMENT,
-                     nr_send_tot * sizeof(struct mesh_key_value_pot)) != 0)
+                     nr_send_tot * sizeof(struct mesh_key_value_pot)) != 0) {
     error("Failed to allocate array for cells to request!");
+  }
 
   size_t *sorted_offsets = (size_t *)malloc(N * sizeof(size_t));
 
@@ -657,9 +675,10 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   swift_free("send_cells_unsorted", send_cells_unsorted);
   send_cells_unsorted = NULL;
 
-  if (verbose)
+  if (verbose) {
     message(" - 1st mesh patches sort took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -698,10 +717,11 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
     }
 
     /* Add all the mesh cells in this bucket */
-    if (i < N - 1)
+    if (i < N - 1) {
       nr_send[dest_node] += sorted_offsets[i + 1] - sorted_offsets[i];
-    else
+    } else {
       nr_send[dest_node] += nr_send_tot - sorted_offsets[i];
+    }
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -715,8 +735,9 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
            slice_width[dest_node_check] == 0) {
       dest_node_check++;
     }
-    if (dest_node_check >= nr_nodes || dest_node_check < 0)
+    if (dest_node_check >= nr_nodes || dest_node_check < 0) {
       error("Destination node out of range");
+    }
     nr_send_check[dest_node_check]++;
   }
 
@@ -739,25 +760,28 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
     nr_recv_tot += nr_recv[i];
   }
 
-  if (verbose)
+  if (verbose) {
     message(" - Preparing comms buffers took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
   /* Allocate buffer to receive requests */
   struct mesh_key_value_pot *recv_cells;
   if (swift_memalign("recv_cells", (void **)&recv_cells, SWIFT_CACHE_ALIGNMENT,
-                     nr_recv_tot * sizeof(struct mesh_key_value_pot)) != 0)
+                     nr_recv_tot * sizeof(struct mesh_key_value_pot)) != 0) {
     error("Failed to allocate array for mesh receive buffer!");
+  }
 
   /* Send requests for cells to other ranks */
   exchange_structs(nr_send, (char *)send_cells, nr_recv, (char *)recv_cells,
                    sizeof(struct mesh_key_value_pot));
 
-  if (verbose)
+  if (verbose) {
     message(" - 1st exchange took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -776,15 +800,17 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
         get_index_in_local_slice(recv_cells[i].key, N, local_0_start);
 #ifdef SWIFT_DEBUG_CHECKS
     const size_t Ns = N;
-    if (local_id >= Ns * (2 * (Ns / 2 + 1)) * local_n0)
+    if (local_id >= Ns * (2 * (Ns / 2 + 1)) * local_n0) {
       error("Local potential mesh cell ID is out of range");
+    }
 #endif
     recv_cells[i].value = potential_slice[local_id];
   }
 
-  if (verbose)
+  if (verbose) {
     message(" - Filling of the potential values took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -792,9 +818,10 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   exchange_structs(nr_recv, (char *)recv_cells, nr_send, (char *)send_cells,
                    sizeof(struct mesh_key_value_pot));
 
-  if (verbose)
+  if (verbose) {
     message(" - 2nd exchange took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -808,8 +835,9 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   struct mesh_key_value_pot *send_cells_sorted;
   if (swift_memalign("send_cells_sorted", (void **)&send_cells_sorted,
                      SWIFT_CACHE_ALIGNMENT,
-                     nr_send_tot * sizeof(struct mesh_key_value_pot)) != 0)
+                     nr_send_tot * sizeof(struct mesh_key_value_pot)) != 0) {
     error("Failed to allocate array for cells to request!");
+  }
 
   /* Now sort the mesh cells by top-level cell index (i.e. by the patch they
    * belong to) */
@@ -819,9 +847,10 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   swift_free("send_cells", send_cells);
   send_cells = NULL;
 
-  if (verbose)
+  if (verbose) {
     message(" - 2nd mesh patches sort took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -829,9 +858,10 @@ void zoom_mpi_mesh_fetch_potential(const struct zoom_pm_mesh *mesh,
   zoom_fill_local_patches_from_mesh_cells(mesh, s, send_cells_sorted,
                                           local_patches, nr_send_tot);
 
-  if (verbose)
+  if (verbose) {
     message(" - Filling the local patches took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   swift_free("send_cells_sorted", send_cells_sorted);
 

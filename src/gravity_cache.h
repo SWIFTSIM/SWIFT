@@ -551,8 +551,9 @@ INLINE static void gravity_cache_populate_all_mpole(
     const float r2 = dx * dx + dy * dy + dz * dz;
 
     if (!gravity_M2P_accept(grav_props, r_s_inv, &gparts[i], multipole, r2,
-                            periodic))
+                            periodic)) {
       error("Using m-pole where the test fails");
+    }
 #endif
   }
 

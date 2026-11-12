@@ -79,8 +79,9 @@ static INLINE void runner_dopair_grav_mm_nonsym(struct runner *r,
   float r_s_inv = e->mesh->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
+  }
 
   TIMER_TIC;
 
@@ -151,8 +152,9 @@ static INLINE void runner_dopair_grav_mm_symmetric(struct runner *r,
   float r_s_inv = e->mesh->r_s_inv;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
+  }
 
   TIMER_TIC;
 

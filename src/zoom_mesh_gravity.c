@@ -102,8 +102,9 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
     mesh->loc[i] = z->region_lower_bounds[i] - buffer;
     mesh->dim[i] = z->dim[i] + 2. * buffer;
   }
-  if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2])
+  if (mesh->dim[0] != mesh->dim[1] || mesh->dim[0] != mesh->dim[2]) {
     error("Gravity:zoom_mesh requires a cubic zoom mesh domain.");
+  }
   mesh->cell_fac = mesh->N / mesh->dim[0];
 
   for (int i = 0; i < 3; ++i) {
@@ -134,7 +135,7 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
    * splitting criterion becomes *more* conservative inside the zoom region
    * (not less), silently exploding the gravity task count instead of
    * reducing it. */
-  if (mesh->r_s >= props->r_s)
+  if (mesh->r_s >= props->r_s) {
     error(
         "The zoom gravity mesh must be higher resolution than the "
         "background mesh, but its smoothing scale (r_s=%.6e, from "
@@ -143,23 +144,25 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
         "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
         "or shrink the zoom region.",
         mesh->r_s, mesh->N, mesh->dim[0], props->r_s);
+  }
 
   /* The search ranges used when constructing the gravity tasks are set by the
    * cut-off of the background mesh, so the zoom mesh cannot truncate the tree
    * forces further out than the background mesh does. */
-  if (mesh->r_cut_max > props->r_s * props->r_cut_max_ratio)
+  if (mesh->r_cut_max > props->r_s * props->r_cut_max_ratio) {
     error(
         "The zoom gravity mesh truncates the tree forces at a larger distance "
         "(%.6e) than the background mesh (%.6e). Decrease "
         "Gravity:zoom_r_cut_max or increase Gravity:zoom_mesh_side_length.",
         mesh->r_cut_max, props->r_s * props->r_cut_max_ratio);
+  }
 
   /* Positions are not wrapped on the zoom mesh, so it has to lie inside the
    * box and no pair of covered particles can be closer through the periodic
    * boundary than the cut-off of the background mesh. */
   for (int i = 0; i < 3; ++i) {
     if (mesh->loc[i] < 0. || mesh->loc[i] + mesh->dim[i] > s->dim[i] ||
-        mesh->dim[i] > s->dim[i] - props->r_s * props->r_cut_max_ratio)
+        mesh->dim[i] > s->dim[i] - props->r_s * props->r_cut_max_ratio) {
       error(
           "The zoom gravity mesh ([%.6e, %.6e] along axis %d) must lie inside "
           "the box (size %.6e) and be smaller than the box by at least the "
@@ -167,6 +170,7 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
           "Gravity:zoom_mesh_bkg_buffer_cells or shrink the zoom region.",
           mesh->loc[i], mesh->loc[i] + mesh->dim[i], i, s->dim[i],
           props->r_s * props->r_cut_max_ratio);
+    }
   }
 }
 
@@ -199,31 +203,35 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   if (!s->with_zoom_region) error("Gravity:zoom_mesh requires a zoom region.");
 
   /* Ensure that the box is periodic */
-  if (!s->periodic)
+  if (!s->periodic) {
     error(
         "Can't run with a high resolution mesh without periodic boundary "
         "conditions to support the low resolution mesh.");
+  }
 
   /* Ensure that the zoom region has been initialized. */
-  if (s->zoom_props == NULL)
+  if (s->zoom_props == NULL) {
     error("Gravity:zoom_mesh requested before zoom region initialization.");
+  }
 
   /* Unpack the active mesh parameters and sanity check them. The user-provided
    * side length refers to the inner N^3 zoom mesh, not the zero-padded FFT
    * domain used by the zero padded Hockney-Eastwood method. */
   const int side_length =
       parser_get_param_int(params, "Gravity:zoom_mesh_side_length");
-  if (side_length < 8)
+  if (side_length < 8) {
     error("Gravity:zoom_mesh_side_length must be at least 8.");
+  }
 
   /* Replicated transforms retain the global mesh's practical serial limit. */
-  if (!props->distributed_mesh && 2 * side_length > 1290)
+  if (!props->distributed_mesh && 2 * side_length > 1290) {
     error(
         "Gravity:zoom_mesh_side_length is too large for the current "
         "zero-padded zoom mesh implementation. The active side length N is "
         "%d, but the zero padded Hockney-Eastwood FFT uses side length 2N=%d. "
         "Use N <= 645 or enable Gravity:distributed_mesh.",
         side_length, 2 * side_length);
+  }
 
   const double r_cut_max_ratio =
       parser_get_param_double(params, "Gravity:zoom_r_cut_max");
@@ -232,28 +240,34 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   const double r_cut_min_ratio =
       parser_get_opt_param_double(params, "Gravity:zoom_r_cut_min", 0.);
   if (r_cut_min_ratio < 0.) error("Gravity:zoom_r_cut_min must be >= 0.");
-  if (r_cut_min_ratio > r_cut_max_ratio)
+  if (r_cut_min_ratio > r_cut_max_ratio) {
     error("Gravity:zoom_r_cut_min must be <= Gravity:zoom_r_cut_max.");
+  }
 
   /* The truncated tree force must fit inside the mesh domain, mirroring the
    * background mesh's own r_cut_max check in gravity_props_init. */
-  if (2. * props->a_smooth * r_cut_max_ratio > side_length)
+  if (2. * props->a_smooth * r_cut_max_ratio > side_length) {
     error(
         "Zoom mesh too small given Gravity:zoom_r_cut_max. "
         "Gravity:zoom_mesh_side_length should be at least %d cells wide "
         "(currently: %d).",
         (int)(2. * props->a_smooth * r_cut_max_ratio) + 1, side_length);
+  }
 
   const int buffer_cells =
       parser_get_opt_param_int(params, "Gravity:zoom_mesh_bkg_buffer_cells", 1);
-  if (buffer_cells < 1)
+  if (buffer_cells < 1) {
     error("Gravity:zoom_mesh_bkg_buffer_cells must be >= 1.");
+  }
 
-  if (s->zoom_props->nr_bkg_cells <= 0 || s->zoom_props->bkg_cells_top == NULL)
+  if (s->zoom_props->nr_bkg_cells <= 0 ||
+      s->zoom_props->bkg_cells_top == NULL) {
     error("Gravity:zoom_mesh requires background top-level cells.");
+  }
   if (s->zoom_props->nr_zoom_cells <= 0 ||
-      s->zoom_props->zoom_cells_top == NULL)
+      s->zoom_props->zoom_cells_top == NULL) {
     error("Gravity:zoom_mesh requires zoom top-level cells.");
+  }
 
   /* Fill in the mesh structure. */
   mesh->enabled = 1;
@@ -265,12 +279,13 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
   zoom_mesh_set_geometry(mesh, s, props, r_cut_max_ratio, r_cut_min_ratio);
 
   /* Report the mesh geometry to the user if requested. */
-  if (verbose)
+  if (verbose) {
     message(
         "Zoom gravity mesh: enabled with N=%d, loc=[%.6e %.6e %.6e], "
         "dim=[%.6e %.6e %.6e], buffer_cells=%d, r_cut_max=%.6e.",
         mesh->N, mesh->loc[0], mesh->loc[1], mesh->loc[2], mesh->dim[0],
         mesh->dim[1], mesh->dim[2], buffer_cells, mesh->r_cut_max);
+  }
 
   /* The FFTs are performed on the zero-padded mesh. */
   initialise_fftw(2 * side_length, mesh->nr_threads);
@@ -336,8 +351,9 @@ void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
 
     /* Allocate the memory for the combined density and potential array */
     mesh->potential_global = (double *)fftw_malloc(sizeof(double) * N * N * N);
-    if (mesh->potential_global == NULL)
+    if (mesh->potential_global == NULL) {
       error("Error allocating memory for the zoom gravity mesh.");
+    }
     memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 1,
                           sizeof(double) * N * N * N);
   }
@@ -581,8 +597,9 @@ INLINE static void zoom_mesh_gpart_to_mesh_CIC(
   const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (gp->time_bin == time_bin_not_created)
+  if (gp->time_bin == time_bin_not_created) {
     error("Found an extra particle in mesh CIC.");
+  }
 
   if (i < 0 || i >= N) error("Invalid gpart position in x");
   if (j < 0 || j >= N) error("Invalid gpart position in y");
@@ -591,8 +608,9 @@ INLINE static void zoom_mesh_gpart_to_mesh_CIC(
 
   /* Compute weight (for neutrino delta-f weighting) */
   double weight = 1.0;
-  if (gp->type == swift_type_neutrino)
+  if (gp->type == swift_type_neutrino) {
     gpart_neutrino_weight_mesh_only(gp, nu_model, &weight);
+  }
 
   const double mass = gp->mass;
   const double value = mass * weight;
@@ -743,8 +761,9 @@ static void zoom_mesh_to_gpart_CIC(struct gpart *gp, const double *pot,
   const double tz = 1. - dz;
 
 #ifdef SWIFT_DEBUG_CHECKS
-  if (gp->time_bin == time_bin_not_created)
+  if (gp->time_bin == time_bin_not_created) {
     error("Found an extra particle when computing gravity from mesh.");
+  }
 
   if (i < 0 || i >= mesh->N) error("Invalid gpart position in x");
   if (j < 0 || j >= mesh->N) error("Invalid gpart position in y");
@@ -1239,17 +1258,19 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   /* Match the global PM mesh's delta-f neutrino mass weighting. */
   struct neutrino_model nu_model;
   bzero(&nu_model, sizeof(struct neutrino_model));
-  if (s->e->neutrino_properties->use_delta_f_mesh_only)
+  if (s->e->neutrino_properties->use_delta_f_mesh_only) {
     gather_neutrino_consts(s, &nu_model);
+  }
   data.nu_model = &nu_model;
 
   /* Assign the local covered cells to the active zoom mesh. This mirrors the
    * cell predicate used to select the zoom split in the tree. */
   zoom_mesh_deposit_cells(s, tp, &data);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh gpart assignment took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
 #ifdef WITH_MPI
 
@@ -1260,9 +1281,10 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   MPI_Allreduce(MPI_IN_PLACE, rho, real_size, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh MPI-reduction took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 #endif
 
   tic = getticks();
@@ -1286,8 +1308,9 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
     double *kernel = (double *)fftw_malloc(real_size * sizeof(double));
     fftw_complex *fkernel =
         (fftw_complex *)fftw_malloc(complex_size * sizeof(fftw_complex));
-    if (kernel == NULL || fkernel == NULL)
+    if (kernel == NULL || fkernel == NULL) {
       error("Error allocating zoom mesh kernel arrays.");
+    }
     memuse_log_allocation("fftw_zoom_mesh.kernel", kernel, 1,
                           real_size * sizeof(double));
     memuse_log_allocation("fftw_zoom_mesh.kernel_fft", fkernel, 1,
@@ -1330,9 +1353,10 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   memuse_log_allocation("fftw_zoom_mesh.frho", frho, 0, 0);
   fftw_free(frho);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh convolution took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -1344,9 +1368,10 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
 
   zoom_mesh_interpolate_cells(s, tp, &data);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh acceleration interpolation took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 }
 
 #endif /* HAVE_FFTW */
@@ -1398,15 +1423,17 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   /* Create an array of mesh patches. One per local top-level cell. */
   struct pm_mesh_patch *local_patches = (struct pm_mesh_patch *)malloc(
       nr_local_cells * sizeof(struct pm_mesh_patch));
-  if (local_patches == NULL)
+  if (local_patches == NULL) {
     error("Could not allocate array of local mesh patches!");
+  }
   memset(local_patches, 0, nr_local_cells * sizeof(struct pm_mesh_patch));
 
   /* Calculate contributions to density field on this MPI rank */
   zoom_mpi_mesh_accumulate_gparts_to_local_patches(tp, mesh, s, local_patches);
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: Accumulating mass to local patches took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -1417,12 +1444,14 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   ptrdiff_t nalloc =
       fftw_mpi_local_size_3d((ptrdiff_t)M, (ptrdiff_t)M, (ptrdiff_t)(M / 2 + 1),
                              MPI_COMM_WORLD, &local_n0, &local_0_start);
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: Local density field slice has thickness %d.",
             (int)local_n0);
-  if (verbose)
+  }
+  if (verbose) {
     message("Zoom mesh: local patch size = %d, local mesh cells = %lld",
             nr_local_cells, (long long)(local_n0 * M * M));
+  }
 
   /* Allocate storage for mesh slices.
    *
@@ -1438,9 +1467,10 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
    * Note: This cleans up the local_patches entries. */
   mpi_mesh_local_patches_to_slices(M, (int)local_n0, local_patches,
                                    nr_local_cells, rho_slice, tp, verbose);
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: Assembling mesh slices took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   /* Build and transform the static correction kernel only once. */
   if (mesh->kernel_fft == NULL) {
@@ -1450,8 +1480,9 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
     double *kernel_slice = (double *)fftw_malloc(2 * nalloc * sizeof(double));
     fftw_complex *fkernel_slice =
         (fftw_complex *)fftw_malloc(nalloc * sizeof(fftw_complex));
-    if (kernel_slice == NULL || fkernel_slice == NULL)
+    if (kernel_slice == NULL || fkernel_slice == NULL) {
       error("Error allocating zoom mesh kernel arrays.");
+    }
     memset(kernel_slice, 0, 2 * nalloc * sizeof(double));
     memuse_log_allocation("fftw_zoom_mesh.kernel_fft", fkernel_slice, 1,
                           nalloc * sizeof(fftw_complex));
@@ -1472,9 +1503,10 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
     fftw_free(kernel_slice);
     mesh->kernel_fft = fkernel_slice;
 
-    if (verbose)
+    if (verbose) {
       message("Constructing the zoom mesh kernel took %.3f %s.",
               clocks_from_ticks(getticks() - tic), clocks_getunit());
+    }
   }
 
   tic = getticks();
@@ -1500,9 +1532,10 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
       FFTW_ESTIMATE | FFTW_MPI_TRANSPOSED_OUT | FFTW_DESTROY_INPUT);
   fftw_execute(mpi_plan);
   fftw_destroy_plan(mpi_plan);
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: MPI Forward Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -1515,9 +1548,10 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   threadpool_map(tp, zoom_mesh_multiply_mapper, frho_slice,
                  (size_t)local_n0 * M * (M / 2 + 1), sizeof(fftw_complex),
                  threadpool_auto_chunk_size, &multiply_data);
-  if (verbose)
+  if (verbose) {
     message("Applying zoom mesh kernel took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   tic = getticks();
 
@@ -1528,9 +1562,10 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   fftw_execute(mpi_inverse_plan);
   fftw_destroy_plan(mpi_inverse_plan);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: MPI Reverse Fourier transform took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   /* We can now free the Fourier-space data */
   fftw_free(frho_slice);
@@ -1541,9 +1576,10 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   zoom_mpi_mesh_fetch_potential(mesh, s, local_0_start, local_n0, rho_slice,
                                 local_patches, tp, verbose);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: Fetching local potential took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
   /* Free the local slice of the potential */
   fftw_free(rho_slice);
@@ -1554,13 +1590,15 @@ static void zoom_mesh_compute_potential_distributed(struct zoom_pm_mesh *mesh,
   zoom_mpi_mesh_update_gparts(local_patches, mesh, s, tp);
 
   /* Clean the local patches array */
-  for (int i = 0; i < nr_local_cells; ++i)
+  for (int i = 0; i < nr_local_cells; ++i) {
     pm_mesh_patch_clean(&local_patches[i]);
+  }
   free(local_patches);
 
-  if (verbose)
+  if (verbose) {
     message("Zoom mesh: Computing mesh accelerations took %.3f %s.",
             clocks_from_ticks(getticks() - tic), clocks_getunit());
+  }
 
 #else
   error("No FFTW MPI library available. Cannot compute distributed mesh.");
@@ -1607,16 +1645,18 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
   MPI_Allreduce(MPI_IN_PLACE, &max_softening, 1, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
-  if (max_softening > mesh->r_s)
+  if (max_softening > mesh->r_s) {
     error(
         "Zoom mesh smoothing scale r_s=%g is smaller than the softening "
         "radius h=%g of a covered gravity particle.",
         mesh->r_s, max_softening);
+  }
 
-  if (mesh->distributed_mesh)
+  if (mesh->distributed_mesh) {
     zoom_mesh_compute_potential_distributed(mesh, s, tp, verbose);
-  else
+  } else {
     zoom_mesh_compute_potential_global(mesh, s, tp, verbose);
+  }
 }
 
 /**
@@ -1681,7 +1721,7 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
     const double cell_width = 1. / mesh->cell_fac;
 
     /* 1. The zoom mesh must resolve the top-level zoom cells. */
-    if (cell_width > z->width[i])
+    if (cell_width > z->width[i]) {
       error(
           "Zoom mesh too coarse given the size of top-level zoom cells "
           "(zoom cell width= %.4f, zoom mesh cell width= %.4f along axis %d). "
@@ -1689,13 +1729,14 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           "%d).",
           z->width[i], cell_width, i, (int)ceil(mesh->dim[i] / z->width[i]),
           mesh->N);
+    }
 
     /* 2. The active region must contain the whole zoom region. */
     const double active_min = mesh->active_min[i];
     const double active_max = mesh->active_max[i];
 
     if (z->region_lower_bounds[i] < active_min ||
-        z->region_upper_bounds[i] > active_max)
+        z->region_upper_bounds[i] > active_max) {
       error(
           "The active zoom mesh region ([%.4f, %.4f] along axis %d) does not "
           "contain the zoom region ([%.4f, %.4f]), so some zoom cells would "
@@ -1704,6 +1745,7 @@ void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
           "Gravity:zoom_mesh_bkg_buffer_cells.",
           active_min, active_max, i, z->region_lower_bounds[i],
           z->region_upper_bounds[i]);
+    }
   }
 }
 

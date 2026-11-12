@@ -1740,8 +1740,9 @@ int cell_can_use_pair_mm(const struct cell *restrict ci,
 
   /* Cells covered by the zoom mesh use its force split */
   float r_s_inv = props->r_s_inv;
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     r_s_inv = e->zoom_mesh->r_s_inv;
+  }
 
   return gravity_M2L_accept_symmetric(props, r_s_inv, multi_i, multi_j, r2,
                                       use_rebuild_data, use_mesh);
@@ -1798,8 +1799,9 @@ int cell_can_use_mesh(struct engine *e, const struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     return zoom_mesh_can_use_mesh(e->zoom_mesh, s, ci, cj);
+  }
 
   /* If not periodic then we cannot use the mesh */
   if (!s->periodic) {
@@ -1836,8 +1838,9 @@ int cell_can_use_mesh_between_rebuilds(struct engine *e, const struct cell *ci,
   const double max_distance2 = max_distance * max_distance;
 
   /* Cells covered by the zoom mesh use its force split */
-  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+  if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
     return zoom_mesh_can_use_mesh_between_rebuilds(e->zoom_mesh, s, ci, cj);
+  }
 
   /* If not periodic then we cannot use the mesh */
   if (!s->periodic) {
@@ -1901,8 +1904,9 @@ int cell_cant_use_mesh_anymore(struct engine *e, const struct cell *ci,
     double max_distance = e->mesh->r_cut_max;
 
     /* Cells covered by the zoom mesh use its force split */
-    if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0))
+    if (zoom_mesh_cells_are_covered(e->zoom_mesh, ci, cj, /*use_max_dx=*/0)) {
       max_distance = e->zoom_mesh->r_cut_max;
+    }
     const double max_distance2 = max_distance * max_distance;
     const double min_radius2_rebuild =
         cell_min_dist2(ci, cj, s->periodic, s->dim);
