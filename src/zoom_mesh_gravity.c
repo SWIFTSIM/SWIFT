@@ -61,8 +61,7 @@
 #include <string.h>
 
 /* Local function prototypes. */
-static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh);
-static void zoom_mesh_free(struct zoom_pm_mesh *mesh);
+static void zoom_mesh_free_kernel(struct zoom_pm_mesh *mesh);
 static int zoom_mesh_cell_is_inside(const struct zoom_pm_mesh *mesh,
                                     const struct cell *c, const int use_max_dx);
 
@@ -273,9 +272,10 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 void zoom_mesh_clean(struct zoom_pm_mesh *mesh) {
 
   /* Nothing to do if the mesh was never created. */
-  if (mesh == NULL) return;
+  if (mesh == NULL || !mesh->enabled) return;
 
   /* Release any allocated FFT storage and reset to a no-mesh state. */
+  zoom_mesh_free_kernel(mesh);
   zoom_mesh_free(mesh);
   zoom_mesh_init_no_mesh(mesh);
 }
@@ -297,6 +297,7 @@ void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s) {
   const double r_cut_max_ratio = mesh->r_cut_max / mesh->r_s;
   const double r_cut_min_ratio = mesh->r_cut_min / mesh->r_s;
 
+  zoom_mesh_free_kernel(mesh);
   zoom_mesh_free(mesh);
   zoom_mesh_set_geometry(mesh, s, s->e->gravity_properties, r_cut_max_ratio,
                          r_cut_min_ratio);
@@ -304,65 +305,69 @@ void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s) {
 }
 
 /**
- * @brief Allocates the zero-padded zoom mesh grid.
+ * @brief Allocates the zero-padded potential grid to be ready for an FFT
+ * calculation
  *
  * @param mesh The #zoom_pm_mesh structure.
  */
-static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
-
-  /* Nothing to allocate for a disabled or absent mesh. */
-  if (mesh == NULL || !mesh->enabled || mesh->distributed_mesh) return;
+void zoom_mesh_allocate(struct zoom_pm_mesh *mesh) {
 
 #ifdef HAVE_FFTW
 
-  /* The zero padded Hockney-Eastwood method embeds the active N^3 mesh in a
-   * (2N)^3 FFT domain. */
-  const int N = mesh->N;
-  const int M = 2 * N;
-  const size_t nr_mesh_cells = (size_t)M * M * M;
+  if (mesh->distributed_mesh) {
 
-  /* Allocate storage used for both the density and potential fields. */
-  mesh->potential_global =
-      (double *)fftw_malloc(sizeof(double) * nr_mesh_cells);
-  if (mesh->potential_global == NULL)
-    error("Error allocating memory for the zoom gravity mesh.");
+  } else {
 
-  /* Record the FFTW allocation in the memory-use logger. */
-  memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 1,
-                        sizeof(double) * nr_mesh_cells);
+    /* The active mesh is embedded in a zero-padded mesh twice as large */
+    const size_t N = 2 * mesh->N;
+
+    /* Allocate the memory for the combined density and potential array */
+    mesh->potential_global = (double *)fftw_malloc(sizeof(double) * N * N * N);
+    if (mesh->potential_global == NULL)
+      error("Error allocating memory for the zoom gravity mesh.");
+    memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 1,
+                          sizeof(double) * N * N * N);
+  }
 #else
   error("No FFTW library found. Cannot compute zoom mesh gravity.");
 #endif
 }
 
 /**
- * @brief Frees the zero-padded zoom mesh grid.
+ * @brief Frees the potential grid.
  *
  * @param mesh The #zoom_pm_mesh structure.
  */
-static void zoom_mesh_free(struct zoom_pm_mesh *mesh) {
-
-  /* Nothing to release if the mesh was never allocated. */
-  if (mesh == NULL ||
-      (mesh->potential_global == NULL && mesh->kernel_fft == NULL))
-    return;
+void zoom_mesh_free(struct zoom_pm_mesh *mesh) {
 
 #ifdef HAVE_FFTW
 
-  if (mesh->potential_global != NULL) {
+  if (!mesh->distributed_mesh && mesh->potential_global) {
     memuse_log_allocation("fftw_zoom_mesh.potential", mesh->potential_global, 0,
                           0);
     fftw_free(mesh->potential_global);
     mesh->potential_global = NULL;
   }
 
-  if (mesh->kernel_fft != NULL) {
+#else
+  error("No FFTW library found. Cannot compute zoom mesh gravity.");
+#endif
+}
+
+/**
+ * @brief Frees the cached Fourier transform of the kernel.
+ *
+ * @param mesh The #zoom_pm_mesh structure.
+ */
+static void zoom_mesh_free_kernel(struct zoom_pm_mesh *mesh) {
+
+#ifdef HAVE_FFTW
+
+  if (mesh->kernel_fft) {
     memuse_log_allocation("fftw_zoom_mesh.kernel_fft", mesh->kernel_fft, 0, 0);
     fftw_free(mesh->kernel_fft);
     mesh->kernel_fft = NULL;
   }
-#else
-  error("No FFTW library found. Cannot compute zoom mesh gravity.");
 #endif
 }
 

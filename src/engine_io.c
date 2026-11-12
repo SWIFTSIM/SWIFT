@@ -553,6 +553,8 @@ void engine_io(struct engine *e) {
         /* Free the mesh memory to get some breathing space */
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_free(e->mesh);
+        if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+          zoom_mesh_free(e->zoom_mesh);
 
         /* Free the foreign particles to get more breathing space.
          * If called, the FOF code itself will reallocate what it needs. */
@@ -599,6 +601,8 @@ void engine_io(struct engine *e) {
         /* Reallocate freed memory */
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
+        if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+          zoom_mesh_allocate(e->zoom_mesh);
 #ifdef WITH_MPI
         engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif
@@ -622,6 +626,8 @@ void engine_io(struct engine *e) {
         /* Free the mesh memory to get some breathing space */
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_free(e->mesh);
+        if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+          zoom_mesh_free(e->zoom_mesh);
 #ifdef WITH_MPI
         space_free_foreign_parts(e->s, /*clear_cell_pointers=*/1);
 #endif
@@ -636,6 +642,8 @@ void engine_io(struct engine *e) {
         /* Reallocate freed memory */
         if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
           pm_mesh_allocate(e->mesh);
+        if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+          zoom_mesh_allocate(e->zoom_mesh);
 #ifdef WITH_MPI
         engine_allocate_foreign_particles(e, /*fof=*/0);
 #endif

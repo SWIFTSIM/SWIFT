@@ -1964,6 +1964,8 @@ int engine_prepare(struct engine *e) {
     /* Free the PM grid */
     if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
       pm_mesh_free(e->mesh);
+    if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+      zoom_mesh_free(e->zoom_mesh);
 
     /* And repartition */
     engine_repartition(e);
@@ -1972,6 +1974,8 @@ int engine_prepare(struct engine *e) {
     /* Reallocate the mesh */
     if ((e->policy & engine_policy_self_gravity) && e->s->periodic)
       pm_mesh_allocate(e->mesh);
+    if (e->zoom_mesh != NULL && e->zoom_mesh->enabled)
+      zoom_mesh_allocate(e->zoom_mesh);
   }
 
   /* Do we need rebuilding ? */

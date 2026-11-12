@@ -102,6 +102,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
                     const int nr_threads, const int verbose);
 void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh);
 void zoom_mesh_clean(struct zoom_pm_mesh *mesh);
+void zoom_mesh_allocate(struct zoom_pm_mesh *mesh);
+void zoom_mesh_free(struct zoom_pm_mesh *mesh);
 void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s);
 void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,
                               const struct space *s);
