@@ -100,6 +100,7 @@ int zoom_mesh_can_use_mesh_between_rebuilds(const struct zoom_pm_mesh *mesh,
 void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
                     const struct gravity_props *props, const struct space *s,
                     const int nr_threads, const int verbose);
+void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh);
 void zoom_mesh_clean(struct zoom_pm_mesh *mesh);
 void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s);
 void zoom_mesh_check_geometry(const struct zoom_pm_mesh *mesh,

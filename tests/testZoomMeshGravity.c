@@ -28,6 +28,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef HAVE_FFTW
+#include <fftw3.h>
+#endif
+
 /**
  * @brief Set up a gravity cell with one particle and a multipole.
  *
@@ -315,7 +319,6 @@ int main(int argc, char *argv[]) {
   mesh_cells[1].grav.parts[0].mass = 0.;
 
   s.cells_top = mesh_cells;
-  s.nr_local_cells_with_particles = 2;
   s.local_cells_with_particles_top = local_cells_with_particles_top;
   zoom_props.nr_local_zoom_cells = 1;
   zoom_props.local_zoom_cells_top =
@@ -325,6 +328,11 @@ int main(int argc, char *argv[]) {
       &local_cells_with_particles_top[1];
 
   threadpool_init(&e.threadpool, /*num_threads=*/4);
+
+  /* Allocate the zero-padded mesh */
+  const size_t M = 2 * zoom_mesh.N[0];
+  zoom_mesh.potential_global =
+      (double *)fftw_malloc(sizeof(double) * M * M * M);
 
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 

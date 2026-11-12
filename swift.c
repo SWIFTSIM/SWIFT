@@ -1539,9 +1539,13 @@ int main(int argc, char *argv[]) {
       pm_mesh_init_no_mesh(&mesh, s.dim);
     }
 
-    /* Initialise the high-resolution zoom gravity mesh. */
-    zoom_mesh_init(&zoom_mesh, with_self_gravity ? params : NULL,
-                   &gravity_properties, &s, nr_threads, talking);
+    /* Initialise the high-resolution zoom gravity mesh */
+    if (with_self_gravity) {
+      zoom_mesh_init(&zoom_mesh, params, &gravity_properties, &s, nr_threads,
+                     talking);
+    } else {
+      zoom_mesh_init_no_mesh(&zoom_mesh);
+    }
 
     /* Also update the total counts (in case of changes due to replication) */
     Nbaryons = s.nr_parts + s.nr_sparts + s.nr_bparts + s.nr_sinks;

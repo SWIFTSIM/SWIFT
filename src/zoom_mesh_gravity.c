@@ -63,7 +63,6 @@
 /* Local function prototypes. */
 static void zoom_mesh_allocate(struct zoom_pm_mesh *mesh);
 static void zoom_mesh_free(struct zoom_pm_mesh *mesh);
-static void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh);
 static int zoom_mesh_cell_is_inside(const struct zoom_pm_mesh *mesh,
                                     const struct cell *c, const int use_max_dx);
 
@@ -72,7 +71,7 @@ static int zoom_mesh_cell_is_inside(const struct zoom_pm_mesh *mesh,
  *
  * @param mesh The #zoom_pm_mesh to initialise.
  */
-static void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh) {
+void zoom_mesh_init_no_mesh(struct zoom_pm_mesh *mesh) {
 
   /* Zero out everything. */
   bzero(mesh, sizeof(struct zoom_pm_mesh));
@@ -174,9 +173,6 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
 
   /* Start with a clean mesh which is identical to there being no mesh. */
   zoom_mesh_init_no_mesh(mesh);
-
-  /* Simulations without self-gravity never create a zoom gravity mesh. */
-  if (params == NULL) return;
 
   /* Check if the zoom mesh is enabled, if not we are done. */
   const int enabled = parser_get_opt_param_int(params, "Gravity:zoom_mesh", 0);
@@ -1209,7 +1205,6 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
   const int M_half = M / 2;
   const size_t real_size = (size_t)M * M * M;
   const size_t complex_size = (size_t)M * M * (M_half + 1);
-  if (mesh->potential_global == NULL) zoom_mesh_allocate(mesh);
   double *rho = mesh->potential_global;
 
   ticks tic = getticks();
