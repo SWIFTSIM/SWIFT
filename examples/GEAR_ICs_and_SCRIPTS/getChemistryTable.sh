@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Define target paths
 DEST_DIR="./"
 

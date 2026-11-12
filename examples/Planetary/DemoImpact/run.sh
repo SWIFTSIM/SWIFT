@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Resolution
 N_label=n50
 

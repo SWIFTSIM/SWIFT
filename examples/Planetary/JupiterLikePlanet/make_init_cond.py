@@ -20,7 +20,6 @@
 """Create initial conditions for settling, using WoMa. See README.md for more info."""
 
 import numpy as np
-import h5py
 import woma
 
 # Number of particles

@@ -30,10 +30,11 @@
 import os
 import sys
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 snapshot_base = "output"  # snapshot basename
@@ -57,7 +58,6 @@ analytical_solution_kwargs = {"linewidth": 1.0, "ls": "--", "c": "k", "alpha": 0
 if plot_analytical_solutions:
     from makeIC import initial_condition
 
-mpl.rcParams["text.usetex"] = True
 
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False  # plot all snapshots
@@ -210,7 +210,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
         ax2.set_xlabel("x [$" + part_positions.units.latex_representation() + "$]")
 
     # add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time)

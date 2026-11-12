@@ -31,11 +31,12 @@ import os
 import sys
 import argparse
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
 import unyt
 from matplotlib import pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
@@ -63,7 +64,6 @@ analytical_solution_kwargs = {"linewidth": 1.0, "ls": "--", "c": "k", "alpha": 0
 if plot_analytical_solutions:
     from makeIC import initial_condition
 
-mpl.rcParams["text.usetex"] = True
 plot_all = False  # plot all snapshots
 
 
@@ -128,7 +128,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # Read in data firt
     data = swiftsimio.load(filename)
     meta = data.metadata
-    cosmology = meta.cosmology_raw
 
     scheme = str(meta.subgrid_scheme["RT Scheme"].decode("utf-8"))
 
@@ -159,7 +158,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     # get analytical solutions
     if plot_analytical_solutions:
         # Grab unit system used in IC
-        IC_units = swiftsimio.units.cosmo_units
+        IC_units = swiftsimio.metadata.writer.unit_systems.cosmo_units
 
         # Grab unit system used in snapshot
         snapshot_units = meta.units
@@ -202,7 +201,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     if plot_all_data:
 
         fig = plt.figure(figsize=(5.05 * ngroups, 5.4), dpi=200)
-        figname = filename[:-5] + f"-all-quantities.png"
+        figname = filename[:-5] + "-all-quantities.png"
 
         for g in range(ngroups):
 
@@ -249,7 +248,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
             # plot flux X
             new_attribute_str = "radiation_flux" + str(g + 1) + "X"
             photon_flux = getattr(data.gas, new_attribute_str)
-            physical_photon_flux = photon_flux.to_physical()
 
             if scheme.startswith("GEAR M1closure"):
                 photon_flux = photon_flux.to("erg/cm**2/s")
@@ -323,7 +321,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylim(fixed_min, fixed_max)
 
     # add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.3e}".format(1 * meta.time)

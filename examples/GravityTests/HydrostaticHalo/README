@@ -7,14 +7,15 @@ profile of the gas is proportional to r^(-2) where r is the distance
 from the centre of the cube.
 
 The parameter v_rot (in makeIC.py and hydrostatic.yml) sets the circular
-velocity of the halo, and by extension, the viral radius, viral mass,
+velocity of the halo, and by extension, the virial radius, virial mass,
 and the internal energy of the gas such that hydrostatic equilibrium
 is achieved.
 
-To run this example, make such that the code is compiled with either
-the isothermal potential or softened isothermal potential set in
-src/const.h. In the latter case, a (small) value of epsilon needs to
-be set in hydrostatic.yml.  ~1 kpc should work well.
+To run this example, configure the code with the isothermal potential:
+  ./configure --with-ext-potential=isothermal
+The potential is softened by IsothermalPotential:epsilon in
+hydrostatic.yml. A (small) value should be used; ~1 kpc should work
+well.
 
 The plotting scripts produce a plot of the density, internal energy
 and radial velocity profile for each snapshot and divides the profile

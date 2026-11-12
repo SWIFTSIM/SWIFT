@@ -75,6 +75,24 @@
 static const int io_max_size_output_list = 100;
 
 /**
+ * @brief Moves the pointers of an #io_props to the particle @c n places
+ * further, for the next chunk of a parallel read or write.
+ *
+ * @param props The #io_props to update.
+ * @param n The number of particles to skip.
+ */
+static void io_props_advance(struct io_props *props, const size_t n) {
+
+  props->field += n * props->partSize;
+  if (props->parts != NULL) props->parts += n;
+  if (props->xparts != NULL) props->xparts += n;
+  if (props->gparts != NULL) props->gparts += n;
+  if (props->sparts != NULL) props->sparts += n;
+  if (props->sinks != NULL) props->sinks += n;
+  if (props->bparts != NULL) props->bparts += n;
+}
+
+/**
  * @brief Reads a chunk of data from an open HDF5 dataset
  *
  * @param h_data The HDF5 dataset to write to.
@@ -355,12 +373,7 @@ void read_array_parallel(hid_t grp, struct io_props props, size_t N,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
-      props.field += max_chunk_size * props.partSize; /* char* on the field */
-      props.parts += max_chunk_size;                  /* part* on the part */
-      props.xparts += max_chunk_size;                 /* xpart* on the xpart */
-      props.gparts += max_chunk_size;                 /* gpart* on the gpart */
-      props.sparts += max_chunk_size;                 /* spart* on the spart */
-      props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      io_props_advance(&props, max_chunk_size);
       offset += max_chunk_size;
       redo = 1;
     } else {
@@ -708,12 +721,7 @@ void write_array_parallel(const struct engine *e, hid_t grp,
     /* Compute how many items are left */
     if (N > max_chunk_size) {
       N -= max_chunk_size;
-      props.field += max_chunk_size * props.partSize; /* char* on the field */
-      props.parts += max_chunk_size;                  /* part* on the part */
-      props.xparts += max_chunk_size;                 /* xpart* on the xpart */
-      props.gparts += max_chunk_size;                 /* gpart* on the gpart */
-      props.sparts += max_chunk_size;                 /* spart* on the spart */
-      props.bparts += max_chunk_size;                 /* bpart* on the bpart */
+      io_props_advance(&props, max_chunk_size);
       offset += max_chunk_size;
       redo = 1;
     } else {

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ ! -e 3e11-star-only-static-potential-galaxy.hdf5 ]
 then
     echo "Fetching initial conditons for the isolated galaxy with an external potential ..."

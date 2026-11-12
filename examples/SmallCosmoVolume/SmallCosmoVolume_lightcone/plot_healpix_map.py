@@ -1,8 +1,7 @@
 #!/bin/env python
 
-import h5py
-import numpy as np
 import healpy as hp
+import matplotlib.pyplot as plt
 
 import read_lightcone as rl
 
@@ -31,3 +30,4 @@ xray_map = rl.read_map(
 hp.mollview(xray_map + 1e50, norm="log", title="ROSAT photons", hold=True)
 
 plt.suptitle("SmallCosmoVolume lightcone")
+plt.savefig("lightcone_maps.png")
