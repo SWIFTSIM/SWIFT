@@ -227,6 +227,41 @@ change ``uv_self_shielding``. The defaults are those of Kim et al. 2023, Table 3
 3.1, per H nucleon, mu\ :sub:`H` = 1.4). D/D\ :sub:`sun` uses the reference dust-to-gas ratio 0.009387
 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.
 
+Shielded metals with a column-shielded H and He
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+A shielded Cloudy table (for example ``HM12_shielded.h5``) holds metal cooling and heating that
+already include the self-shielding of the gas. ``uv_self_shielding`` ``HI_HeI_HeII_column`` (the
+library method 4, "mode 4") shields only the H I, He I, He II and H\ :sub:`2` rates. Use both
+together with these keys:
+
+.. code-block:: yaml
+
+   GeajayCooling:
+     background_mode: per_band
+     cloudy_table_file: HM12_shielded.h5
+     uv_rates_file: HM12_thin.h5
+     uv_self_shielding: HI_HeI_HeII_column
+     uv_shielding_table_file: HM12_column_shielding.h5
+     uv_shielding_length_method: Jeans
+     uv_shielding_length_factor: 0.28209479
+
+With ``per_band``, the metals see the shielded table. The H and He photo-rates come from the thin
+table ``uv_rates_file``, and the column shields them. The ``/UVBRates`` of the shielded table and of the
+thin table are equal, so mode 4 does not shield the H and He rates twice.
+
+Two refusals apply to the other ways of combining these files:
+
+* With ``background_mode`` ``grackle``, geajay takes the UV rates from ``cloudy_table_file``. A
+  shielded table records no spectrum hash, so mode 4 refuses it: "the UV rates file ... records no
+  spectrum SHA-256 (/Provenance spectrum_sha256; a shielded or old table): no column file can belong
+  to it".
+* With ``background_mode`` ``grackle``, ``uv_rates_file`` stops the run: "GeajayCooling:uv_rates_file
+  is set, but it is not read: GeajayCooling:background_mode is not per_band".
+
+The recipe is tested for H and He (and H\ :sub:`2`) without dust, in one-zone boxes. It is not tested
+with the Lyman-Werner band, the background G\ :sub:`0` or ``dust_background_attenuation``.
+
 Heating and rates from the parameter file
 -----------------------------------------
 
