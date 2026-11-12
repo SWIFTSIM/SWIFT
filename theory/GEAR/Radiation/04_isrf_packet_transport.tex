@@ -845,14 +845,16 @@ fractions are
 \end{equation}
 A particle has a known step from its first merge, or from the drift of its
 first step when it is inactive then (\code{radiation\_packet\_set\_first\_step}).
-Its far cell also ends at $T_\beta$ and is released
-whole, $g_\beta=g_\beta^{\rm near}$. Light that arrives beyond the end of the
-last cell widens the cells (Section~\ref{sec:packet-lightspeed}), so it is
-released whole at the end of its cell. Light beyond the cells at the widest
+Its far cell also ends at $T_\beta$. Its light is a set of pulses, one at the
+end of each sub-step of the cell that holds light, and the cell is empty at its
+end (Section~\ref{sec:packet-lightspeed}). Light that arrives beyond the end of the
+last cell widens the cells, and it leaves at the end of its sub-step of the
+widened cell. Light beyond the cells at the widest
 width, and light that arrives after the end of the time line, stay in the last
 cell as a pulse at their latest arrival time, released by $g_\beta^{\rm far}$
 with $t_{{\rm f},\beta}=t_{{\rm l},\beta}$. Faint light that falls beyond the
-last cell is released whole at its end.
+last cell counts in the last sub-step of that cell, and a faint band with no
+other light in the cell leaves whole at the end of the cell.
 The third mode, the no-delay test mode, is a limit case with two stores: an
 inbox, with $g=1$, and a reservoir $B_{k,b}$, with $g=f_{{\rm rel},k}$
 (Section~\ref{sec:packet-reservoir}).
@@ -1154,7 +1156,11 @@ hold the light that arrives after the last near bin. Once the receiver has a
 step, they are $W=2^3=8$ steps wide, on the multiples of $W$ steps, as long as
 all the waiting light fits. Light that arrives beyond the last cell widens the
 cells to the smallest power of two of steps, at least $8$, at which it fits,
-and they are $8$ steps wide again when that light has left. Faint light does
+and they are $8$ steps wide again when that light has left. The remainders
+that the rounding down of a level leaves in the later sub-steps of a cell (below)
+leave later than they arrived. Along a chain of hops they can arrive beyond the
+last cell and widen the cells to twice the width that the nominal arrival times
+give, for example $64$ steps instead of $32$ at the seventh hop of a chain. Faint light does
 not widen them: a piece whose energy, summed over both bands, is below
 $\epsilon_{\rm f}$ times the energy that waits does not count, nor does light
 due after the end of the time line. Faint light that falls beyond the last
@@ -1180,8 +1186,9 @@ waiting light fits, and a far cell that holds one share keeps the interval of
 that share and releases the part that has arrived.
 
 A near bin leaves whole at the first merge at or after its end, so its light
-waits less than one step after it has arrived. A far cell leaves whole at
-its end, so its light waits less than $W$ steps, $W$ the width of the cells.
+waits less than one step after it has arrived. A far cell leaves at the end of
+each sub-step by its shape, and at the end of the cell at the latest, so its
+light waits less than $W$ steps, $W$ the width of the cells.
 When the step or the width changes, the light of a cell is placed again as
 pulses, one at the end of each sub-step that holds light, each in the cell that
 holds that time, and a cell that has no shape as a pulse at its end. Each pulse but the last is
@@ -1255,9 +1262,11 @@ placements (\code{RADIATION\_PACKET\_FAR\_SHARE\_LIMIT}, \code{:163}, and
 from $n$ placements has a relative error of about $1/\sqrt{f\,n}$, a third at
 $n=9/f$). At the end of the run it prints the share of the whole run
 (\code{radiation\_packet\_far\_share\_final}, \code{:545}). After a restart the
-sums start again. The limit follows from a lump of at most $W-1$ steps: a share
-$f$ slows the light by about $f\,(W-1)/(2R)$ for a hop of $R$ receiver steps,
-which is $0.035$ to $0.053$ at $f=0.03$, $W=8$ and $R$ between 3 and 2. With the default $v=0.99c$ the light time
+sums start again. The far light waits at most $W-1$ steps
+(Section~\ref{sec:isrf-far-limit}). A share
+$f$ slows the light by at most about $f\,(W-1)/(2R)$ for a hop of $R$ receiver steps,
+which is $0.035$ to $0.053$ at $f=0.03$, $W=8$ and $R$ between 3 and 2. The shape
+of the cells lowers the slowing below this ceiling. With the default $v=0.99c$ the light time
 of a hop is in practice far below a step, the shares fall into bin $0$, and the
 choice does not matter.
 
@@ -1449,7 +1458,7 @@ origin of the packet & mean of the origin offsets, weighted by the energy of
 direction $\boldsymbol{n}_k$, distance $d_k$ & taken from the mean origin
   (Eq.~\eqref{eq:packet-merge-origin}) \\
 near bins (capped mode) & a bin that has ended is released whole \\
-far cells (capped mode) & a cell is released whole at its end \\
+far cells (capped mode) & a cell is released at the end of each of its $8$ sub-steps by its shape, and whole at its end if it has no shape \\
 origin sum (capped mode) & one sum for all waiting light; the fraction of the
   waiting energy that is released takes the same fraction of the sum \\
 departure time (capped mode) & the merge time, kept as the end of the step minus the step \\
@@ -1828,26 +1837,62 @@ field of several sources at a single particle.
 A far cell keeps the arrival of its light only as the shape of $8$ sub-steps,
 so light that arrives beyond the $N_{\rm n}$ near bins leaves in lumps of at
 most the bound below, which the shape lowers. Take one
-receiver fed by one steady sender. A merge releases at most the light that
-arrived within one cell width $W$ steps, which is $W$ times the mean per
-merge. The largest $|{\rm held}-{\rm mean}|/{\rm mean}$ is therefore 0 while
+receiver fed by one steady sender. Without a shape, a merge would release at
+most the light that arrived within one cell width $W$ steps, which is $W$ times
+the mean per merge. This is the ceiling, since a cell leaves at
+its end at the latest. With the shape, a merge releases the light of one
+sub-step. A sub-step is $W/8$ receiver steps wide, so it holds $W/8$ times the
+mean per merge, and the mean itself at $W=8$. Add the roundings. The fractions are rounded down
+to $1/1000$ of the cell light, and a merge moves at most two such parts. The largest $|{\rm held}-{\rm mean}|/{\rm mean}$ is therefore 0 while
 all the light of the sender arrives within $N_{\rm n}$ receiver steps of the booking,
-and at most $W-1$ beyond, with $W=8$ as long as no light is beyond the last
+and at most the ceiling $W-1$ beyond, with $W=8$ as long as no light is beyond the last
 cell of $8$ steps. A sender farther than that cell widens the cells to $W>8$
-steps, and the bound is then $W-1$ with the widened $W$. It grows with the part
+steps, and the ceiling is then $W-1$ with the widened $W$. It grows with the part
 of the light beyond the $N_{\rm n}$ near bins: for $N_{\rm n}=4$, a sender 2 or 4 times coarser than the receiver gives 0 when its
 whole window lies in the near bins, between 0.15 and 6.1 when part of it does
-not. At a delay of 10 receiver steps the bound is 7, and the shape leaves a
-largest deviation of 0.008 in the test of this case. The mean over a window of $n$ merges is
+not. At a delay of 10 receiver steps the ceiling is 7, and the shape leaves a
+largest deviation of 0.008 in the test of this case, against a bound of
+$1+2W/1000=1.016$ at $W=8$ from the shape. The mean over a window of $n$ merges is
 off by at most one cell content, $W/n$ of the mean. It does not occur at the
 default $v=0.99c$, nor in the step-bounding mode with $f_{\Delta t}=0.5$,
 except for the outermost neighbours: a hop to the kernel edge is 3.9 receiver
 steps, up to 7.7 with the bin rounding, so with $N_{\rm n}=4$ their light
-leaves in lumps of up to $W-1$. With the default 8 bins the demand
+leaves in lumps of up to $W-1$ without the shape, and in much smaller ones with it. With the default 8 bins the demand
 $\lceil 1.94/f_{\Delta t}\rceil+s$ is 8 at $s=4$ and $f_{\Delta t}=0.5$, so
 it fits for a sender up to 4 times coarser than the receiver, and lumps only
 for a coarser sender, which the time-step limiter does not allow at the choice
 of a step but can occur after a drop of the receiver step.
+
+\paragraph{Lateness of the far light at 8 near bins.} The lateness $L$ of a
+run is the sum over its first $N$ snapshots, one per step, of
+$(C_{24}-C_X)/C_{24}(T)$, in steps. $C$ is the cumulative light held by the gas.
+$C_{24}$ is that of a run with $24$ near bins and no far cells, the
+reference. The control is the run with $24$ near bins at $0.965$ of the speed of
+light in the capped mode. Its lateness is the bar: the lateness that the
+speed limit alone allows. The test box is a gas box heated by one star, with a
+small time step (sw3), of $190$ steps. Its far share is $0.74$ to $0.82$ at $8$ near bins, so
+it is the fixture most sensitive to the far cells. Table~\ref{tab:isrf-far-lateness}
+gives $L$ at $N=33$, $65$, $97$ and $192$ snapshots. With the shape, the far
+light leaves at its sub-step, and not in lumps at the end of the cell. It never
+leaves before it has arrived, up to the float rounding of the weights. The
+$L$ of $8$ near bins falls below the bar at all four windows, at $0.26$ to
+$0.71$ times the bar. Without a shape the cell leaves whole at its end, and $L$ is $6$ to $11$ times the bar.
+
+\begin{table}[htbp]
+\centering
+\caption{Lateness $L$ (steps) of the test box sw3 at $8$ near bins, against the
+bar of the control ($24$ near bins at $0.965$ of the speed of light), at $N$ snapshots.}
+\label{tab:isrf-far-lateness}
+\begin{tabular}{lrrrr}
+\toprule
+$N$ & 33 & 65 & 97 & 192 \\
+\midrule
+bar of the control & 0.456 & 0.638 & 0.735 & 0.843 \\
+far cells with the shape & 0.117 & 0.451 & 0.463 & 0.451 \\
+far cells released whole at their end & 2.727 & 4.904 & 6.709 & 8.978 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % ---------------------------------------------------------------------------
 \subsection{Comparison with TRAPHIC}
