@@ -797,6 +797,10 @@ GeajayCooling:
   isrf_background_habing: -1                   # (optional) Read only with background_mode: per_band. Background G_0 of the model constant [Habing] (default: -1, unset)
   # uv_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file whose /UVBRates is the UV background, e.g. an FG20 file; the metal table always comes
                                                # from cloudy_table_file. Leave the line out (an empty value is invalid) to use cloudy_table_file (default: cloudy_table_file)
+  # Shielded metals with a column-shielded H and He: set background_mode: per_band, cloudy_table_file: HM12_shielded.h5, uv_rates_file: HM12_thin.h5, uv_self_shielding: HI_HeI_HeII_column,
+  # uv_shielding_table_file: HM12_column_shielding.h5, uv_shielding_length_method: Jeans and uv_shielding_length_factor: 0.28209479. The metals see the shielded table. The H and He photo-rates
+  # come from the thin table and the column shields them. The two tables hold equal /UVBRates, so the H and He rates are not shielded twice. With background_mode: grackle, the shielded
+  # table is refused with HI_HeI_HeII_column (it records no spectrum hash) and uv_rates_file stops the run. Not tested with the LW band, G_0 or dust_background_attenuation.
   # ionising_rates_file: CloudyData_UVB=HM2012.h5 # (optional) Read only with background_mode: per_band. HDF5 file of the ionising band (k24 to k26, k29, k30, photoheating, cross sections). Needs
                                                 # ionising_background_model: uv_table. Leave the line out to use uv_rates_file (default: uv_rates_file)
   # lw_rates_file: CloudyData_UVB=HM2012.h5      # (optional) Read only with background_mode: per_band. HDF5 file of the Lyman-Werner band (k27, k28, k31). Needs lw_background_model: uv_table or a Brown
