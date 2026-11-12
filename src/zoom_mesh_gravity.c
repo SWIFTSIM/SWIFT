@@ -298,8 +298,9 @@ void zoom_mesh_clean(struct zoom_pm_mesh *mesh) {
 /**
  * @brief Rebuild the zoom mesh after rebuilding the zoom top-level cells.
  *
- * The Fourier kernel depends on the mesh spacing, so invalidate it along with
- * the old potential before updating the mesh position and smoothing scale.
+ * The Fourier kernel depends on the mesh spacing, so invalidate it before
+ * updating the mesh position and smoothing scale. The side-length of the mesh
+ * does not change so the potential grid is kept.
  *
  * @param mesh The #zoom_pm_mesh to rebuild.
  * @param s The #space containing the new zoom region geometry.
@@ -313,10 +314,8 @@ void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s) {
   const double r_cut_min_ratio = mesh->r_cut_min / mesh->r_s;
 
   zoom_mesh_free_kernel(mesh);
-  zoom_mesh_free(mesh);
   zoom_mesh_set_geometry(mesh, s, s->e->gravity_properties, r_cut_max_ratio,
                          r_cut_min_ratio);
-  zoom_mesh_allocate(mesh);
 }
 
 /**
