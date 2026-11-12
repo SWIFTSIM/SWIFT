@@ -935,6 +935,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GEARFeedback:HII_couple_ionization_rate needs geajay mode 1 or "
         "higher: the ionization rate acts on the H and He species, which the "
         "tabulated network (mode 0) does not track.");
+#if COOLING_GEAJAY_MODE >= 1
+  if (cooling->with_photoionization && cooling->primordial_chemistry < 1)
+    error(
+        "GEARFeedback:with_photoionization needs the run-time network to be "
+        "1 or higher. The tabulated solve (network 0) does not write the "
+        "species back, so the neutral hydrogen of expired HII gas would stay "
+        "at 0. Build with geajay_0 to run network 0.");
+#endif
 
   cooling->H2_three_body_rate =
       cooling_read_choice(parameter_file, "GeajayCooling:h2_three_body_fit",

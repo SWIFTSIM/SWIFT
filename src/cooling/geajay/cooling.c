@@ -877,8 +877,10 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
     }
   }
 
-  /* Local ISRF strength in Habing units, read instead of the scalar G0 */
-  if (cooling->chemistry_data.use_isrf_field && xp != NULL)
+  /* Local ISRF strength in Habing units, read instead of the scalar G0. Without
+     the ISRF the library default stays. */
+  if (cooling->chemistry_data.use_isrf_field && cooling->with_ISRF &&
+      xp != NULL)
     inputs->isrf_habing =
         cooling_get_isrf_habing_subgrid(phys_const, us, cosmo, cooling, p);
 
