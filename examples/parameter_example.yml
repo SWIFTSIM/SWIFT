@@ -1006,7 +1006,7 @@ GEARFeedback:
                                                            # from the stars. (Default: 0)
 
   # Subgrid radiation. A channel left out by ./configure --with-subgrid-radiation has its keys ignored, with one warning.
-  # The parts hii and isrf are compiled with Grackle and with geajay cooling. With geajay, with_interstellar_radiation_field gives the local field to the photoelectric heating and, with H2 (species_network >= 2), the LW rate to the H2 chemistry. It forces GeajayCooling:dust_model to basic. with_photoionization stops a geajay run at start-up until the geajay cooling holds tagged gas at the ionized floor. HII_couple_ionization_rate needs species_network >= 1 and one MPI rank.
+  # The parts hii and isrf are compiled with Grackle and with geajay cooling. With geajay, with_interstellar_radiation_field gives the local field to the photoelectric heating and, with H2 (species_network >= 2), the LW rate to the H2 chemistry. It forces GeajayCooling:dust_model to basic. With geajay, with_photoionization holds the tagged gas at the ionized floor, as with Grackle. HII_couple_ionization_rate needs species_network >= 1 and one MPI rank.
   # Radiation pressure (--with-subgrid-radiation part rp)
   with_radiation_pressure:      0                         # 1: run the radiation-pressure momentum channel, 0: do not. (Default: 0)
   radiation_pressure_efficiency: 1                        # Multiplier on the table L_bol; 1 is the physical coupling. Must be positive when with_radiation_pressure is 1. (Default: 0.0, an error then)

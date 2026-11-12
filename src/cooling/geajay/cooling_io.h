@@ -930,11 +930,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_photoionization = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_photoionization",
       RADIATION_COMPILED_HII);
-  if (cooling->with_photoionization)
-    error(
-        "GEARFeedback:with_photoionization is not supported by the geajay "
-        "cooling yet: it does not hold the tagged gas at the ionized floor, "
-        "so the HII regions would not act on the gas. Set it to 0.");
   if (cooling->HII_couple_ionization_rate && cooling->primordial_chemistry < 1)
     error(
         "GEARFeedback:HII_couple_ionization_rate needs geajay mode 1 or "

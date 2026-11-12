@@ -1030,6 +1030,40 @@ static double cooling_new_energy_cosmic_rays(
 }
 
 /**
+ * @brief Expire the HII tag and refresh the caches of the HII path after a
+ * solve.
+ *
+ * The tag expires only after a successful solve, so a failed solve leaves
+ * the rate alive for the next one.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param hydro_props The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
+ * @param time The current simulation time.
+ * @param solved 1 if the solve succeeded, 0 otherwise.
+ * @param u The internal energy after the solve.
+ */
+static void cooling_finish_hii_after_solve(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, const double time, const int solved, const double u) {
+
+  if (solved) {
+    cooling_expire_rate_coupled_tag_subgrid(cooling, p, xp, time);
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u);
+  } else {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+  }
+}
+
+/**
  * @brief Compute the energy of a particle after dt and update the particle
  * chemistry data, or keep the previous state if geajay fails.
  *
@@ -1070,6 +1104,35 @@ static geajay_float cooling_new_energy_or_keep_previous(
     int *kept_previous_state) {
 
   *kept_previous_state = 0;
+
+  /* A particle held at the subgrid-ionized floor this step skips the solve:
+     the solver does not know the forcing and would cool the floored energy
+     back down within the same step. The floor sets the species itself. */
+  float u_ionized;
+  if (cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props,
+                                  pressure_floor, cooling, p, xp, dt, dt_therm,
+                                  time, &u_ionized)) {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ionized);
+    if (cooling->cosmic_ray_context != NULL)
+      cooling_set_cosmic_ray_loss(xp, 0.);
+    return u_ionized;
+  }
+
+  {
+    float u_o;
+    if (cooling_debug_fix_neutral_temperature_subgrid(
+            phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
+            &u_o)) {
+      cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+      cooling_cache_eligibility_temperature_subgrid(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_o);
+      if (cooling->cosmic_ray_context != NULL)
+        cooling_set_cosmic_ray_loss(xp, 0.);
+      return u_o;
+    }
+  }
 
   /* A non-finite stored value, or a non-positive stored density, cannot be
      integrated: geajay would freeze the cell at its energy floor. The
@@ -1112,6 +1175,7 @@ static geajay_float cooling_new_energy_or_keep_previous(
       cooling_set_cosmic_ray_loss(xp, cooling_stored_nan());
     atomic_inc(&cooling_geajay_failed_solves);
     *kept_previous_state = 1;
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
     return energy;
   }
 
@@ -1124,9 +1188,13 @@ static geajay_float cooling_new_energy_or_keep_previous(
 
   geajay_particle_status status = {.size = sizeof(status)};
 
-  if (cooling->cosmic_ray_context != NULL)
-    return cooling_new_energy_cosmic_rays(cooling, p, xp, &inputs, dt, energy,
-                                          &status, kept_previous_state);
+  if (cooling->cosmic_ray_context != NULL) {
+    const double u_cr = cooling_new_energy_cosmic_rays(
+        cooling, p, xp, &inputs, dt, energy, &status, kept_previous_state);
+    cooling_finish_hii_after_solve(phys_const, us, cosmo, hydro_props, cooling,
+                                   p, xp, time, !*kept_previous_state, u_cr);
+    return u_cr;
+  }
 
   geajay_particle_output output = {.size = sizeof(output)};
 
@@ -1151,11 +1219,17 @@ static geajay_float cooling_new_energy_or_keep_previous(
     if (status.reason == GEAJAY_PARTICLE_SPECIES_NOT_FINITE)
       atomic_inc(&cooling_geajay_not_finite_solves);
     *kept_previous_state = 1;
+    cooling_finish_hii_after_solve(phys_const, us, cosmo, hydro_props, cooling,
+                                   p, xp, time, /*solved=*/0, energy);
     return energy;
   }
 
   if (status.retries > 0) atomic_inc(&cooling_geajay_recovered_solves);
   cooling_count_accuracy_bound(p, &status);
+
+  cooling_finish_hii_after_solve(phys_const, us, cosmo, hydro_props, cooling, p,
+                                 xp, time, /*solved=*/1,
+                                 output.internal_energy);
 
   return output.internal_energy;
 }
@@ -1326,8 +1400,17 @@ void cooling_cool_part(const struct phys_const *phys_const,
                        struct part *p, struct xpart *xp, const double dt,
                        const double dt_therm, const double time) {
 
-  /* Nothing to do here? */
-  if (dt == 0.) return;
+  /* Nothing to do here? The first step has dt = 0: write the caches a
+     foreign copy reads, so that gas not yet cooled is not left at the
+     "not yet primed" sentinel and excluded from the HII search of another
+     rank. */
+  if (dt == 0.) {
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp,
+        hydro_get_physical_internal_energy(p, xp, cosmo));
+    return;
+  }
 
   /* Current energy */
   const float u_old = hydro_get_physical_internal_energy(p, xp, cosmo);
@@ -1364,6 +1447,9 @@ void cooling_cool_part(const struct phys_const *phys_const,
     u_new = u_ad_before;
     if (cooling->cosmic_ray_context != NULL)
       cooling_set_cosmic_ray_loss(xp, 0.);
+    cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
+    cooling_cache_eligibility_temperature_subgrid(
+        phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
   } else {
     int kept_previous_state;
     u_new = cooling_new_energy_or_keep_previous(
@@ -1371,7 +1457,11 @@ void cooling_cool_part(const struct phys_const *phys_const,
         dt_therm, time, &kept_previous_state);
 
     /* No cooling this step: exactly the adiabatic energy */
-    if (kept_previous_state) u_new = u_ad_before;
+    if (kept_previous_state) {
+      u_new = u_ad_before;
+      cooling_cache_eligibility_temperature_subgrid(
+          phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ad_before);
+    }
 
     /* The solve evolves the ion/molecule fractions that set mu;
        recompute the floor from the post-solve composition. */
