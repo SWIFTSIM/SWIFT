@@ -705,9 +705,8 @@ INLINE static void cooling_read_background_parameters(
   /* Kim et al. 2023, Table 3 (WD01 R_V = 3.1, per H nucleon, mu_H = 1.4):
      LW (11.2-13.6 eV) 1.5e-21 cm^2, PE (6-11.2 eV) 8.6e-22 cm^2. They are
      scaled by D/D_sun, with the reference dust-to-gas ratio 0.009387
-     (Grackle's) taken as Kim's Zd' = 1, which is 0.0081 by mass. SWIFT's
-     GEAR radiation module (branch darwin/gear_radiation) keeps 9e-22 for
-     the PE band. */
+     (Grackle's) taken as Kim's Zd' = 1, which is 0.0081 by mass. The
+     GEAR ISRF transport uses 9e-22 for the PE band. */
   cooling->dust_cross_section_lw_cgs =
       parser_get_opt_param_double(parameter_file, per_band_keys[5], 1.5e-21);
   cooling->dust_cross_section_pe_cgs =
@@ -849,52 +848,6 @@ INLINE static void cooling_read_column_shielding_parameters(
 }
 
 /**
- * @brief Stop if the file holds a retired name or a removed key.
- *
- * @param parameter_file The parser parameter file.
- */
-INLINE static void cooling_refuse_retired_keys(
-    struct swift_params *parameter_file) {
-
-  static const char *retired[][2] = {
-      {"with_UV_background", "with_uv_background"},
-      {"use_radiative_transfer_fields", "rt_use_fields"},
-      {"RT_heating_rate_cgs", "rt_heating_rate_cgs"},
-      {"RT_HI_ionization_rate_cgs", "rt_hi_ionisation_rate_per_s"},
-      {"RT_HeI_ionization_rate_cgs", "rt_hei_ionisation_rate_per_s"},
-      {"RT_HeII_ionization_rate_cgs", "rt_heii_ionisation_rate_per_s"},
-      {"RT_H2_dissociation_rate_cgs", "rt_h2_dissociation_rate_per_s"},
-      {"initial_nHII_to_nH_ratio", "initial_hii_to_h_ratio"},
-      {"initial_nHeI_to_nH_ratio", "initial_hei_to_h_ratio"},
-      {"initial_nHeII_to_nH_ratio", "initial_heii_to_h_ratio"},
-      {"initial_nHeIII_to_nH_ratio", "initial_heiii_to_h_ratio"},
-      {"initial_nDI_to_nH_ratio", "initial_di_to_h_ratio"},
-      {"initial_nDII_to_nH_ratio", "initial_dii_to_h_ratio"},
-      {"initial_nHM_to_nH_ratio", "initial_hm_to_h_ratio"},
-      {"initial_nH2I_to_nH_ratio", "initial_h2i_to_h_ratio"},
-      {"initial_nH2II_to_nH_ratio", "initial_h2ii_to_h_ratio"},
-      {"initial_nHDI_to_nH_ratio", "initial_hdi_to_h_ratio"},
-      {"self_shielding_threshold_atom_per_cm3",
-       "uv_shielding_threshold_nucleon_per_cm3"},
-      {"H2_self_shielding_path", "h2_shielding_path"},
-      {"maximal_density_Hpcm3", "maximal_density_nucleon_per_cm3"}};
-
-  char key[PARSER_MAX_LINE_SIZE];
-  for (size_t i = 0; i < sizeof(retired) / sizeof(retired[0]); i++) {
-    snprintf(key, sizeof(key), "GeajayCooling:%s", retired[i][0]);
-    if (parser_does_param_exist(parameter_file, key))
-      error("%s is a retired name: use GeajayCooling:%s.", key, retired[i][1]);
-  }
-
-  static const char *removed[] = {"disable_cooling_for_debugging"};
-  for (size_t i = 0; i < sizeof(removed) / sizeof(removed[0]); i++) {
-    snprintf(key, sizeof(key), "GeajayCooling:%s", removed[i]);
-    if (parser_does_param_exist(parameter_file, key))
-      error("%s was removed, no replacement.", key);
-  }
-}
-
-/**
  * @brief Parser the parameter file and initialize the #cooling_function_data
  *
  * @param parameter_file The parser parameter file
@@ -904,8 +857,6 @@ INLINE static void cooling_refuse_retired_keys(
 __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     struct swift_params *parameter_file, struct cooling_function_data *cooling,
     const struct phys_const *phys_const, const struct unit_system *us) {
-
-  cooling_refuse_retired_keys(parameter_file);
 
   parser_get_param_string(parameter_file, "GeajayCooling:cloudy_table_file",
                           cooling->cloudy_table);
