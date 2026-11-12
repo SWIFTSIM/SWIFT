@@ -94,6 +94,15 @@ expect_ok remy_with_h2dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_20
 expect_ok remy_with_dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;$basic"
 expect_refused remy_no_switch "dust_to_gas_model = 1" "dust_to_gas_model: remy_ruyer_2014"
 
+expect_ok ref_ratio_default local_dust_to_gas_ratio=0.00939 ""
+expect_ok ref_ratio_minus_1 local_dust_to_gas_ratio=0.00939 "reference_dust_to_gas_ratio: -1"
+expect_ok ref_ratio_set local_dust_to_gas_ratio=0.01 "reference_dust_to_gas_ratio: 0.01"
+expect_refused ref_ratio_zero "reference_dust_to_gas_ratio must be -1" "reference_dust_to_gas_ratio: 0"
+expect_refused ref_ratio_negative "reference_dust_to_gas_ratio must be -1" "reference_dust_to_gas_ratio: -0.5"
+# -ffast-math lets the compiler drop a NaN test, so the library refuses this one
+expect_refused ref_ratio_nan "reference_dust_to_gas_ratio .*must be finite" "reference_dust_to_gas_ratio: nan"
+expect_refused ref_ratio_inf "reference_dust_to_gas_ratio must be -1" "reference_dust_to_gas_ratio: inf"
+
 # expect_heating <name> <positive|zero>: the "Dust" component of CoolingRates in
 # the first snapshot of the run <name>, for every particle. Without a dust
 # model it is the photoelectric heating alone, and positive means heating.

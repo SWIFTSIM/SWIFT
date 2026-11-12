@@ -280,7 +280,7 @@ Molecules and dust
        ``photoelectric_heating_model`` above ``none``): without one, ``remy_ruyer_2014`` stops the run
        (default: ``linear``).
    * - ``reference_dust_to_gas_ratio``
-     - (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default).
+     - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; any other value stops the run).
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
        and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works

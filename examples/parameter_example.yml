@@ -760,7 +760,7 @@ GeajayCooling:
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   compton_xray_heating: 0                      # (optional) Enable/disable the Compton exchange with the X-ray background, k_X (T_x - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
                                                # Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)
-  reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default)
+  reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; any other value stops the run)
   initial_hii_to_h_ratio: -1                   # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_hei_to_h_ratio: -1                   # (optional) Initial nHeI to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_heii_to_h_ratio: -1                  # (optional) Initial nHeII to nH ratio (number density ratio). Ignored if -1 (default: -1)

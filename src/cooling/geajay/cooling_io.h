@@ -1006,6 +1006,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
+  if (cooling->reference_dust_to_gas_ratio != -1. &&
+      !(cooling->reference_dust_to_gas_ratio > 0. &&
+        cooling->reference_dust_to_gas_ratio < DBL_MAX))
+    error(
+        "GeajayCooling:reference_dust_to_gas_ratio must be -1 (the library "
+        "value) or a finite number above 0, got %g.",
+        cooling->reference_dust_to_gas_ratio);
 
   cooling->cmb_temperature_floor = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:metal_cooling_cmb_floor", 1);
