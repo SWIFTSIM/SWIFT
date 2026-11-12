@@ -789,8 +789,6 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->chemistry_data.dust_recombination_cooling);
   message("chemistry_data.photoelectric_heating_rate = %.3g",
           cooling->chemistry_data.photoelectric_heating_rate);
-  message("chemistry_data.use_dust_density_field = %d",
-          cooling->chemistry_data.use_dust_density_field);
   message("chemistry_data.local_dust_to_gas_ratio = %.3g",
           cooling->chemistry_data.local_dust_to_gas_ratio);
 }
