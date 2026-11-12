@@ -72,8 +72,10 @@ Table, background and metals
        the value of ``GrackleCooling:maximal_density_Hpcm3``. Zero or negative: no cap (default: -1).
    * - ``hydrogen_mass_fraction``
      - (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's:
-       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table (0.7614 for the
-       HM12 tables, 0.715768 for a table without that group), and network 0 refuses any other value
+       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table: the tables of the
+       geajay tools are built at X = 0.7614 (He/H 0.0789). Other tables, for example the SWIFT example
+       table ``CloudyData_UVB=HM2012.h5``, carry their own composition, and network 0 takes the X of the
+       table (0.715768 for a table without a ``/Composition`` group). Network 0 refuses any other value
        (default: -1).
 
 Solver
@@ -275,14 +277,36 @@ Molecules and dust
    * - ``dust_to_gas_model``
      - (optional) Dust-to-gas ratio as a function of the metallicity: ``linear`` (D =
        ``reference_dust_to_gas_ratio`` Z / Z\ :sub:`sun`) or ``remy_ruyer_2014`` (broken power law of
-       Remy-Ruyer et al. 2014, linear above its transition). Read only with ``dust_model`` ``basic``
-       or ``h2_formation_on_dust`` ``enabled`` (default: ``linear``).
+       Remy-Ruyer et al. 2014, linear above its transition). Needs a dust switch
+       (``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled``, ``dust_recombination_cooling``
+       ``enabled`` or a ``photoelectric_heating_model`` above ``none``): without one,
+       ``remy_ruyer_2014`` stops the run
+       (default: ``linear``).
    * - ``reference_dust_to_gas_ratio``
-     - (optional) Ratio of dust mass to gas mass in the local Universe (-1 for the library default).
+     - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run).
+   * - ``photoelectric_heating_model``
+     - (optional) Photoelectric heating of the dust: ``default`` (-1, ``constant_efficiency`` with
+       ``dust_model`` ``basic``, else ``none``), ``none`` (0), ``fixed_rate`` (1, the constant
+       ``photoelectric_heating_rate``), ``constant_efficiency`` (2, 0.05 G\ :sub:`0` x 1e-24 erg/s per
+       H atom, Wolfire et al. 1995 eq. 1), ``grain_charge_epsilon`` (3, an efficiency set by the grain
+       charge, Bakes and Tielens 1994 eq. 43 with the coefficients of Wolfire et al. 2003 eq. 24) or
+       ``density_epsilon`` (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and
+       A2); 0 to 4 are also accepted. Every model scales with D / D\ :sub:`ref` and the hydrogen density
+       and gives no heating above 2e4 K. A model above ``none`` also works with ``dust_model``
+       ``none``, because SWIFT passes the metal mass fraction of every particle (default: ``default``).
+   * - ``photoelectric_heating_rate``
+     - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
+       ratio [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
+       8.5e-26 (default: -1).
+   * - ``dust_recombination_cooling``
+     - (optional) Recombination cooling on grains: ``default`` (-1, on with ``dust_model`` ``basic``,
+       else off), ``disabled`` (0) or ``enabled`` (1). It reads the metal mass fraction of each
+       particle, so ``enabled`` also works with ``dust_model`` ``none`` (default: ``default``).
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
-       and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1)
-       (default: ``default``).
+       and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works
+       with ``dust_model`` ``none`` and below the network ``H_He_H2``, but with ``dust_model`` ``basic``
+       the library stops the run at the network ``H_He`` (default: ``default``).
    * - ``h2_photodissociation_heating``
      - (optional) Enable/disable the heating by H\ :sub:`2` photodissociation (default: 0).
    * - ``compton_xray_heating``

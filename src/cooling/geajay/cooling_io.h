@@ -956,15 +956,37 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "(0) or enabled (1), got %d.",
         cooling->H2_on_dust);
 
-  /* The dust-to-gas ratio is read with the dust chemistry or with the H2
-     formation on grains */
-  if (cooling->dust_model == GEAJAY_DUST_MODEL_NONE &&
-      cooling->H2_on_dust != GEAJAY_H2_ON_DUST_ENABLED)
-    cooling_refuse_unread_choice(
-        parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
-        GEAJAY_DUST_TO_GAS_LINEAR,
-        "GeajayCooling:dust_model is none and h2_formation_on_dust is not "
-        "enabled, so no dust is computed");
+  cooling->photoelectric_heating_model = cooling_read_choice(
+      parameter_file, "GeajayCooling:photoelectric_heating_model",
+      "photoelectric_heating_model", GEAJAY_PHOTOELECTRIC_DEFAULT, NULL, 0);
+  if (cooling->photoelectric_heating_model < GEAJAY_PHOTOELECTRIC_DEFAULT ||
+      cooling->photoelectric_heating_model >
+          GEAJAY_PHOTOELECTRIC_DENSITY_EPSILON)
+    error(
+        "GeajayCooling:photoelectric_heating_model must be default (-1), "
+        "none (0), fixed_rate (1), constant_efficiency (2), "
+        "grain_charge_epsilon (3) or density_epsilon (4), got %d.",
+        cooling->photoelectric_heating_model);
+
+  cooling->photoelectric_heating_rate = parser_get_opt_param_double(
+      parameter_file, "GeajayCooling:photoelectric_heating_rate", -1.);
+  if (cooling->photoelectric_heating_rate != -1. &&
+      !(cooling->photoelectric_heating_rate >= 0. &&
+        cooling->photoelectric_heating_rate < DBL_MAX))
+    error(
+        "GeajayCooling:photoelectric_heating_rate must be -1 (the library "
+        "value) or a finite number >= 0, got %g.",
+        cooling->photoelectric_heating_rate);
+
+  cooling->dust_recombination_cooling = cooling_read_choice(
+      parameter_file, "GeajayCooling:dust_recombination_cooling",
+      "dust_recombination_cooling", GEAJAY_DUST_RECOMBINATION_DEFAULT, NULL, 0);
+  if (cooling->dust_recombination_cooling < GEAJAY_DUST_RECOMBINATION_DEFAULT ||
+      cooling->dust_recombination_cooling > GEAJAY_DUST_RECOMBINATION_ENABLED)
+    error(
+        "GeajayCooling:dust_recombination_cooling must be default (-1), "
+        "disabled (0) or enabled (1), got %d.",
+        cooling->dust_recombination_cooling);
 
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
@@ -985,8 +1007,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     } h2_switches[] = {
         {"GeajayCooling:h2_three_body_fit", cooling->H2_three_body_rate},
         {"GeajayCooling:h2_cie_cooling", cooling->H2_cie_cooling},
-        {"GeajayCooling:h2_formation_on_dust",
-         cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED},
         {"GeajayCooling:h2_photodissociation_heating",
          cooling->H2_photodissociation_heating}};
     for (size_t i = 0; i < sizeof(h2_switches) / sizeof(h2_switches[0]); i++)
@@ -1006,6 +1026,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
+  if (cooling->reference_dust_to_gas_ratio != -1. &&
+      !(cooling->reference_dust_to_gas_ratio > 0. &&
+        cooling->reference_dust_to_gas_ratio < DBL_MAX))
+    error(
+        "GeajayCooling:reference_dust_to_gas_ratio must be -1 (the library "
+        "value) or a finite number above 0, got %g.",
+        cooling->reference_dust_to_gas_ratio);
 
   cooling->cmb_temperature_floor = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:metal_cooling_cmb_floor", 1);
