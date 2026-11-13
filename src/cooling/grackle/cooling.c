@@ -890,11 +890,10 @@ void cooling_copy_to_grackle(grackle_field_data *data, const struct part *p,
     *RT_HeII_ionization_rate /= (1. / time_units);
     data->RT_HeII_ionization_rate = RT_HeII_ionization_rate;
 
-    /* H2 dissociation rate: local Lyman-Werner/PE feedback's own
-       per-particle rate (cooling_get_LW_dissociation_rate_subgrid,
-       already internal 1/time) takes priority over the single global
-       YAML scalar, mirroring RT_HI_ionization_rate's own local-vs-global
-       fallback above. */
+    /* H2 dissociation rate: the local Lyman-Werner/PE rate
+       (cooling_get_LW_dissociation_rate_subgrid, internal 1/time) when the
+       run has that field, zero included; else the single global YAML
+       scalar. */
     gr_float *RT_H2_dissociation_rate = (gr_float *)malloc(sizeof(gr_float));
     *RT_H2_dissociation_rate = cooling_resolve_LW_dissociation_rate_subgrid(
         phys_const, us, cosmo, cooling, p, cooling->RT_H2_dissociation_rate,

@@ -341,6 +341,25 @@ INLINE static double cooling_get_isrf_habing_subgrid(
 }
 
 /**
+ * @brief Tell whether the run provides a local Lyman-Werner field.
+ *
+ * This is a property of the run, not of the particle: a local rate of
+ * exactly zero is then dark gas, not a missing field.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @return 1 if the radiation model supplies the H2 dissociation rate of
+ * every particle (with_ISRF on and COOLING_NETWORK > 1), 0 otherwise.
+ */
+INLINE static int cooling_has_local_LW_dissociation_rate_subgrid(
+    const struct cooling_function_data *cooling) {
+#if COOLING_NETWORK > 1
+  return cooling->with_ISRF;
+#else
+  return 0;
+#endif
+}
+
+/**
  * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
  * local Lyman-Werner/PE feedback. COOLING_NETWORK > 1 only: H2 is
  * untracked otherwise.
@@ -553,6 +572,18 @@ INLINE static double cooling_get_isrf_habing_subgrid(
 }
 
 /**
+ * @brief Tell whether the run provides a local Lyman-Werner field. No-op
+ * here: this subgrid model has no radiation model to source it from.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @return Always 0.
+ */
+INLINE static int cooling_has_local_LW_dissociation_rate_subgrid(
+    const struct cooling_function_data *cooling) {
+  return 0;
+}
+
+/**
  * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
  * local Lyman-Werner/PE feedback. No-op here: this subgrid model has no
  * radiation model to source it from.
@@ -647,8 +678,10 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
 /**
  * @brief Resolve the H2 dissociation rate given to the chemistry solver.
  *
- * The local Lyman-Werner rate of the radiation model takes priority over the
- * constant rate of the parameter file, which is converted to internal units.
+ * When the run has a local Lyman-Werner field (see
+ * #cooling_has_local_LW_dissociation_rate_subgrid), its rate is used, zero
+ * included. Only a run without that field takes the constant rate of the
+ * parameter file, converted to internal units.
  *
  * @param phys_const The physical constants in internal units.
  * @param us The internal system of units.
@@ -664,10 +697,9 @@ INLINE static double cooling_resolve_LW_dissociation_rate_subgrid(
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p, const float constant_rate_cgs,
     const float time_units) {
-  const double LW_dissociation_rate = cooling_get_LW_dissociation_rate_subgrid(
-      phys_const, us, cosmo, cooling, p);
-  if (LW_dissociation_rate != 0.) {
-    return LW_dissociation_rate;
+  if (cooling_has_local_LW_dissociation_rate_subgrid(cooling)) {
+    return cooling_get_LW_dissociation_rate_subgrid(phys_const, us, cosmo,
+                                                    cooling, p);
   }
   double rate = constant_rate_cgs;
   rate /= (1. / time_units);

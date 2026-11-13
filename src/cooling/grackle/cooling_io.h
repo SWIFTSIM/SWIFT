@@ -342,9 +342,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     warning(
         "GEARFeedback:with_interstellar_radiation_field is on and "
         "GrackleCooling:RT_H2_dissociation_rate_cgs is nonzero. That "
-        "constant is applied as an all-gas background on top of the "
-        "per-particle LW-band-derived rate -- if it is a leftover from "
-        "before with_interstellar_radiation_field was enabled, set it to 0.");
+        "constant is ignored: the per-particle LW-band-derived rate replaces "
+        "it, zero included. If it is a leftover from before "
+        "with_interstellar_radiation_field was enabled, set it to 0.");
   }
 #endif
 
