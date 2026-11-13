@@ -603,6 +603,21 @@ chemistry_get_sink_total_iron_mass_fraction_for_feedback(
 }
 
 /**
+ * @brief Returns the total metallicity (metal mass fraction) of the
+ * sink particle.
+ *
+ * @param sink Pointer to the sink particle data.
+ */
+__attribute__((always_inline)) INLINE static double
+chemistry_get_sink_total_metal_mass_fraction(const struct sink *restrict sink) {
+  double Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += sink->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot;
+}
+
+/**
  * @brief Returns the abundances (metal mass fraction) of the star particle to
  * be used in feedback/enrichment related routines.
  *
@@ -698,8 +713,11 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart *restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
-  error("No BH yet in GEAR");
-  return 0.f;
+  float Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += bp->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot * bp->mass;
 }
 
 /* Import the right chemistry_part_data definition */

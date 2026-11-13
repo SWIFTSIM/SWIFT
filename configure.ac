@@ -1527,6 +1527,69 @@ AC_SUBST([GRACKLE_LIBS])
 AC_SUBST([GRACKLE_INCS])
 AM_CONDITIONAL([HAVEGRACKLE],[test -n "$GRACKLE_LIBS"])
 
+# Check for geajay.
+have_geajay="no"
+AC_ARG_WITH([geajay],
+    [AS_HELP_STRING([--with-geajay=PATH],
+       [root directory where geajay is installed @<:@yes/no@:>@]
+    )],
+    [with_geajay="$withval"],
+    [with_geajay="no"]
+)
+if test "x$with_geajay" != "xno"; then
+   if test "x$with_geajay" != "xyes" -a "x$with_geajay" != "x"; then
+      GEAJAY_LIBS="-L$with_geajay/lib -lgeajay -lhdf5 -lm"
+      GEAJAY_INCS="-I$with_geajay/include"
+   else
+      GEAJAY_LIBS="-lgeajay -lhdf5 -lm"
+      GEAJAY_INCS=""
+   fi
+
+   if test "$have_grackle" = "yes"; then
+      AC_MSG_ERROR([geajay and Grackle both define the Grackle C API: use only one of --with-geajay and --with-grackle.])
+   fi
+
+   # The header of the particle API is in the include directory of geajay.
+   geajay_save_CPPFLAGS="$CPPFLAGS"
+   CPPFLAGS="$CPPFLAGS $GEAJAY_INCS"
+   AC_CHECK_HEADER(
+      [geajay_particle.h],
+      [ : ],
+      [AC_MSG_ERROR(Cannot find geajay_particle.h! A geajay with the particle API is needed.)])
+   AC_CHECK_HEADER(
+      [geajay_choices.h],
+      [ : ],
+      [AC_MSG_ERROR(Cannot find geajay_choices.h! This geajay is too old: it cannot read the names of the choice parameters.)])
+   AC_CHECK_HEADER(
+      [geajay.h],
+      [ : ],
+      [AC_MSG_ERROR(Cannot find geajay.h! This geajay is too old: it has only the Grackle names.)])
+   CPPFLAGS="$geajay_save_CPPFLAGS"
+
+   AC_CHECK_LIB(
+      [geajay],
+      [geajay_particle_solve],
+      [AC_DEFINE([HAVE_GEAJAY],1,[The geajay library appears to be present.])
+       have_geajay="yes"
+      ],
+      [AC_MSG_ERROR(Cannot find the geajay library with the particle API! Please check --with-geajay.)],
+      [$HDF5_LDFLAGS $GEAJAY_LIBS])
+   AC_CHECK_LIB(
+      [geajay],
+      [geajay_choice_from_string],
+      [ : ],
+      [AC_MSG_ERROR(This geajay is too old: it has no geajay_choice_from_string to read the names of the choice parameters. Please check --with-geajay.)],
+      [$HDF5_LDFLAGS $GEAJAY_LIBS])
+   AC_CHECK_LIB(
+      [geajay],
+      [geajay_context_create_from_options],
+      [ : ],
+      [AC_MSG_ERROR(This geajay is too old: it has no geajay_context_create_from_options for the background options. Please check --with-geajay.)],
+      [$HDF5_LDFLAGS $GEAJAY_LIBS])
+fi
+AC_SUBST([GEAJAY_LIBS])
+AC_SUBST([GEAJAY_INCS])
+
 # Check for Agama (All-purpose Galaxy Modelling Architecture).
 # See https://agama.software/ for details.
 # Agama is linked as a static archive (agama.a) and requires two companion
@@ -2789,7 +2852,7 @@ fi
 AC_ARG_WITH([cooling],
    [AS_HELP_STRING([--with-cooling=<model>],
       [cooling function @<:@none, const-du, const-lambda, TREECOOL, QLA, EAGLE, PS2020, Wiersma, grackle_* default: none@:>@.
-      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0)]
+      For Grackle, you need to provide the primordial chemistry parameter (e.g. grackle_0). The same holds for geajay_* (e.g. geajay_3)]
    )],
    [with_cooling="$withval"],
    [with_cooling="none"]
@@ -2827,6 +2890,18 @@ case "$with_cooling" in
       AC_DEFINE_UNQUOTED([COOLING_GRACKLE_MODE], [$primordial_chemistry], [Grackle chemistry network])
       with_cooling_name="Grackle $primordial_chemistry"
       with_cooling="grackle"
+   ;;
+   geajay_*)
+
+      if test "$have_geajay" != "yes"; then
+        AC_MSG_ERROR([geajay cooling: You need the geajay library for geajay cooling. (--with-geajay=PATH)])
+      fi
+
+      AC_DEFINE([COOLING_GEAJAY], [1], [Cooling via the geajay library])
+      primordial_chemistry=${with_cooling#*_}
+      AC_DEFINE_UNQUOTED([COOLING_GEAJAY_MODE], [$primordial_chemistry], [geajay species network])
+      with_cooling_name="geajay $primordial_chemistry"
+      with_cooling="geajay"
    ;;
    QLA)
       AC_DEFINE([COOLING_QLA], [1], [Cooling following the Quick-Lyman-alpha model])
@@ -3115,15 +3190,19 @@ if test "$with_feedback" = "GEAR"; then
       ;;
    esac
 
-   # HII regions and the ISRF act on the gas through Grackle only.
-   if test "$with_cooling" != "grackle"; then
+   # HII regions and the ISRF act on the gas through Grackle or geajay only.
+   if test "$with_cooling" != "grackle" -a "$with_cooling" != "geajay"; then
       if test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"; then
          if test "$subgrid_radiation_explicit" = "yes"; then
-            AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation: the parts hii and isrf need --with-cooling=grackle_*, they act on the gas through Grackle only. Choose rp or none for another cooling model.])
+            AC_MSG_ERROR([--with-subgrid-radiation=$with_subgrid_radiation: the parts hii and isrf need --with-cooling=grackle_* or geajay_*, they act on the gas through these two only. Choose rp or none for another cooling model.])
          fi
-         AC_MSG_WARN([The GEAR subgrid radiation parts hii and isrf need --with-cooling=grackle_*: only rp is compiled. Set --with-subgrid-radiation to silence this warning.])
+         AC_MSG_WARN([The GEAR subgrid radiation parts hii and isrf need --with-cooling=grackle_* or geajay_*: only rp is compiled. Set --with-subgrid-radiation to silence this warning.])
          with_subgrid_radiation_hii=no
          with_subgrid_radiation_isrf=no
+      fi
+   elif test "$with_cooling" = "geajay"; then
+      if test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"; then
+         AC_MSG_NOTICE([The GEAR subgrid radiation parts hii and isrf are enabled with the geajay cooling])
       fi
    fi
 
@@ -3232,8 +3311,8 @@ case "$with_sink" in
     if test "$with_feedback" != "GEAR"; then
        AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR: the GEAR sink model reads the GEAR feedback module's stellar model (initial mass function) to sample star masses, so it cannot be built against any other feedback module])
     fi
-    if test "$with_cooling" != "grackle"; then
-       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from Grackle's equilibrium mean molecular weight])
+    if test "$with_cooling" != "grackle" -a "$with_cooling" != "geajay"; then
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* or geajay_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from the equilibrium mean molecular weight of the cooling module])
     fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
@@ -3629,12 +3708,15 @@ AM_CONDITIONAL([HAVEEAGLEKINETICFEEDBACK], [test "$with_feedback" = "EAGLE-kinet
 # check if using grackle cooling
 AM_CONDITIONAL([HAVEGRACKLECOOLING], [test "$with_cooling" = "grackle"])
 
-# Define GEAR_COOLING if GEAR feedback, grackle cooling and the HII regions or
-# the ISRF of the subgrid radiation are selected: these two parts act on the
-# gas through it
-AS_IF([test "$with_feedback" = "GEAR" && test "$with_cooling" = "grackle" && test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"],
+# Define GEAR_COOLING if GEAR feedback, grackle or geajay cooling and the HII
+# regions or the ISRF of the subgrid radiation are selected: these two parts
+# act on the gas through the cooling module
+AS_IF([test "$with_feedback" = "GEAR" && test "$with_cooling" = "grackle" -o "$with_cooling" = "geajay" && test "$with_subgrid_radiation_hii" = "yes" -o "$with_subgrid_radiation_isrf" = "yes"],
   [AC_DEFINE([GEAR_COOLING], [1], [Use GEAR cooling subgrid logic])]
 )
+
+# check if using geajay cooling
+AM_CONDITIONAL([HAVEGEAJAYCOOLING], [test "$with_cooling" = "geajay"])
 
 # check if using EAGLE floor
 AM_CONDITIONAL([HAVEEAGLEFLOOR], [test "$with_entropy_floor" = "EAGLE"])
@@ -3755,6 +3837,7 @@ AC_MSG_RESULT([
    HEALPix C enabled    : $have_chealpix
    libNUMA enabled      : $have_numa
    GRACKLE enabled      : $have_grackle
+   geajay enabled       : $have_geajay
    AGAMA enabled        : $have_agama
    Sundials enabled     : $have_sundials
    Special allocators   : $have_special_allocator

@@ -1,0 +1,403 @@
+/*******************************************************************************
+ * This file is part of SWIFT.
+ * Copyright (c) 2016 Matthieu Schaller (schaller@strw.leidenuniv.nl)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ******************************************************************************/
+#ifndef SWIFT_COOLING_PROPERTIES_GEAJAY_H
+#define SWIFT_COOLING_PROPERTIES_GEAJAY_H
+
+/* Hide the deprecated separate-array functions of geajay. */
+#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
+
+/* geajay: the chemistry API and the particle API */
+#include <geajay.h>
+#include <geajay_cosmic_ray.h>
+#include <geajay_particle.h>
+
+/* PARSER_MAX_LINE_SIZE */
+#include "parser.h"
+
+/**
+ * @file src/cooling/geajay/cooling_properties.h
+ * @brief Properties of the cooling with the geajay library.
+ */
+
+/**
+ * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
+ *
+ * The values 0 to 4 are those of geajay_uv_self_shielding.
+ */
+enum cooling_uv_self_shielding {
+  /*! Density threshold, handled by SWIFT (option "density_threshold") */
+  cooling_uv_self_shielding_density_threshold = -1,
+  /*! None */
+  cooling_uv_self_shielding_none = 0,
+  /*! HI only */
+  cooling_uv_self_shielding_HI = 1,
+  /*! HI and HeI, HeII thin */
+  cooling_uv_self_shielding_HI_HeI = 2,
+  /*! HI and HeI, no HeII ionisation and heating */
+  cooling_uv_self_shielding_HI_HeI_no_HeII = 3,
+  /*! Factors from the H I, He I and He II columns, read from a column file
+   * (option "HI_HeI_HeII_column") */
+  cooling_uv_self_shielding_HI_HeI_HeII_column = 4
+};
+
+/**
+ * @brief Length of the H2 self-shielding column
+ * (GeajayCooling:h2_shielding_length_method).
+ *
+ * The values are those of geajay_h2_shielding_length_method.
+ */
+enum cooling_h2_shielding_length {
+  /*! No H2 self-shielding */
+  cooling_h2_shielding_length_none = 0,
+  /*! Sobolev-like length (rejected at start-up) */
+  cooling_h2_shielding_length_Sobolev = 1,
+  /*! Length supplied per particle */
+  cooling_h2_shielding_length_given = 2,
+  /*! Local Jeans length, computed by geajay */
+  cooling_h2_shielding_length_Jeans = 3
+};
+
+/* The structure is dumped raw in the restart files */
+_Static_assert(sizeof(enum cooling_uv_self_shielding) == sizeof(int) &&
+                   sizeof(enum cooling_h2_shielding_length) == sizeof(int),
+               "The shielding enums must keep the size of an int.");
+
+/**
+ * @brief Properties of the cooling function.
+ */
+struct cooling_function_data {
+
+  /*! Filename of the Cloudy Table */
+  char cloudy_table[PARSER_MAX_LINE_SIZE];
+
+  /*! Enable/Disable UV backgroud */
+  int with_uv_background;
+
+  /*! Chemistry network */
+  int primordial_chemistry;
+
+  /*! Set the three-body reaction rate fit (see geajay_options) */
+  int H2_three_body_rate;
+
+  /*! Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel
+   * (2004) */
+  int H2_cie_cooling;
+
+  /*! Dust chemistry (GeajayCooling:dust_model, chemistry_data.dust_chemistry):
+   * 0 none, 1 basic. */
+  int dust_model;
+
+  /*! Dust-to-gas ratio as a function of the metallicity
+   * (GeajayCooling:dust_to_gas_model, chemistry_data.dust_to_gas_model):
+   * 0 linear, 1 remy_ruyer_2014. */
+  int dust_to_gas_model;
+
+  /*! Photoelectric heating of the dust
+   * (GeajayCooling:photoelectric_heating_model,
+   * chemistry_data.photoelectric_heating): -1 unset (2 with dust_model basic,
+   * else 0), 0 none, 1 fixed_rate, 2 constant_efficiency,
+   * 3 grain_charge_epsilon, 4 density_epsilon. */
+  int photoelectric_heating_model;
+
+  /*! Heating rate of the fixed_rate model per H atom, in erg s^-1
+   * (GeajayCooling:photoelectric_heating_rate,
+   * chemistry_data.photoelectric_heating_rate): -1 keeps the library value. */
+  double photoelectric_heating_rate;
+
+  /*! Recombination cooling on grains
+   * (GeajayCooling:dust_recombination_cooling,
+   * chemistry_data.dust_recombination_cooling): -1 unset (on with dust_model
+   * basic, else off), 0 off, 1 on. */
+  int dust_recombination_cooling;
+
+  /*! H2 formation on dust grains: -1 unset (follows dust_model), 0 off, 1 on */
+  int H2_on_dust;
+
+  /*! Flag to enable heating from H2 photodissociation and UV pumping */
+  int H2_photodissociation_heating;
+
+  /*! Compton exchange with the X-ray background, k_X (T_x - T) per electron
+   * (GeajayCooling:compton_xray_heating, chemistry_data.Compton_xray_heating).
+   * It is the term of Madau & Efstathiou (1999). Grackle's term is 1e4 to 1e6
+   * times larger at T = 1e4 K, z = 0 to 3, so the two codes differ with the
+   * flag on. */
+  int compton_xray_heating;
+
+  /*! Does the ISRF act on the gas
+   * (GEARFeedback:with_interstellar_radiation_field)? */
+  int with_ISRF;
+
+  /*! Does the HII photoionization tag gas
+   * (GEARFeedback:with_photoionization)? */
+  int with_photoionization;
+
+  /*! Do the HII regions feed their ionization rate to the cooling
+   * (GEARFeedback:HII_couple_ionization_rate)? */
+  int HII_couple_ionization_rate;
+
+  /*! The ratio of total dust mass to gas mass in the local Universe. */
+  double reference_dust_to_gas_ratio;
+
+  /*! Enable/disable CMB temperature floor */
+  int cmb_temperature_floor;
+
+  /*! Flag to enable the AGORA redshift dependent CMB floor:
+                    T_CMB = T_CMB,0 * (1+z)
+      This floor is different from the `cmb_temperature_floor`, which is
+      internal to geajay.
+  */
+  char agora_cmb_temperature_floor;
+
+  /*! Redshift to use for the UV backgroud (-1 to use cosmological one) */
+  double redshift;
+
+  /*! unit system */
+  geajay_code_units units;
+
+  /*! geajay chemistry parameters */
+  geajay_chemistry_data chemistry_data;
+
+  /*! geajay rate storage (kept alive for as long as the context) */
+  geajay_chemistry_data_storage chemistry_rates;
+
+  /*! Chemistry parameters and unit factors, shared by all threads between two
+   * calls of cooling_update(). Created in cooling_init_geajay(), not valid
+   * after a restart read. */
+  geajay_context *context;
+
+  /*! Copy of #context on given_length for the sink calls, built only with the
+   * column shielding on the Jeans length, so that a sink gets its cut-off
+   * radius; NULL otherwise. Same lifetime as #context. */
+  geajay_context *sink_context;
+
+  /*! Where the species live in the #xpart, checked against the context. */
+  geajay_species_layout layout;
+
+  /*! Cosmic-ray settings (GeajayCooling:cosmic_rays and the options after
+   * it). */
+  geajay_cosmic_ray_settings cosmic_ray_settings;
+
+  /*! Context of the reduced cosmic-ray network over #context; NULL without
+   * cosmic rays. Created in cooling_init_geajay(), not valid after a restart
+   * read. */
+  geajay_cosmic_ray_reduced_context *cosmic_ray_context;
+
+  /*! Background rules (GeajayCooling:background_mode), a
+   * #geajay_background_mode. With "grackle" the context is built from the
+   * chemistry as before; with "per_band" from geajay_options. */
+  int background_mode;
+
+  /*! Per-band choices of "per_band" (geajay_choices.h); -1 for "default". */
+  int ionising_background_model, lw_background_model, isrf_background_model;
+
+  /*! Background G_0 of isrf_background_model "constant" [Habing]; negative:
+   * unset. */
+  double isrf_background_habing;
+
+  /*! Dust attenuation of the background, a #geajay_dust_background_attenuation.
+   */
+  int dust_background_attenuation;
+
+  /*! UV rates file of "per_band"; empty: the Cloudy table file. */
+  char uv_rates_file[PARSER_MAX_LINE_SIZE];
+
+  /*! Files of single bands of "per_band" (ionising, Lyman-Werner, G_0); empty:
+   * uv_rates_file. */
+  char ionising_rates_file[PARSER_MAX_LINE_SIZE],
+      lw_rates_file[PARSER_MAX_LINE_SIZE],
+      isrf_rates_file[PARSER_MAX_LINE_SIZE];
+
+  /*! Constant LW background J21 (Grackle LWbackground_intensity); negative:
+   * the library default. */
+  double lw_background_j21;
+
+  /*! G_0 is read from the particle field (Grackle use_isrf_field). */
+  int isrf_from_field;
+
+  /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and PE
+   * (6-11.2 eV) bands [cm^2]. */
+  double dust_cross_section_lw_cgs, dust_cross_section_pe_cgs;
+
+  /*! Converts rho * path (internal units) to the H nucleon column [cm^-2]. */
+  double column_factor;
+
+  /*! Initial cosmic-ray value of every particle, in the unit of the input
+   * (GeajayCooling:cosmic_ray_initial_value); 0 with the input "constant". */
+  float cosmic_ray_initial_value;
+
+  /*! Enable/Disable metal cooling */
+  int with_metal_cooling;
+
+  /*! Arrays of ionization and heating rates are provided */
+  int rt_use_fields;
+
+  /*! rt_heating_rate_cgs (in cgs) */
+  float rt_heating_rate;
+
+  /*! rt_hi_ionisation_rate_per_s (in 1/s) */
+  float rt_hi_ionisation_rate;
+
+  /*! rt_hei_ionisation_rate_per_s (in 1/s) */
+  float rt_hei_ionisation_rate;
+
+  /*! rt_heii_ionisation_rate_per_s (in 1/s) */
+  float rt_heii_ionisation_rate;
+
+  /*! rt_h2_dissociation_rate_per_s (in 1/s) */
+  float rt_h2_dissociation_rate;
+
+  /*! Volumetric heating rates */
+  float volumetric_heating_rates;
+
+  /*! Specific heating rates */
+  float specific_heating_rates;
+
+  /*! Hydrogen fraction by mass (negative in the parameter file: the library
+   * value, resolved at initialisation) */
+  double HydrogenFractionByMass;
+
+  /*! initial nHII to nH ratio (number density ratio) */
+  float initial_hii_to_h_ratio;
+
+  /*! initial nHeI to nH ratio (number density ratio) */
+  float initial_hei_to_h_ratio;
+
+  /*! initial nHeII to nH ratio (number density ratio) */
+  float initial_heii_to_h_ratio;
+
+  /*! initial nHeIII to nH ratio (number density ratio) */
+  float initial_heiii_to_h_ratio;
+
+  /*! initial nDI to nH ratio (number density ratio) */
+  float initial_di_to_h_ratio;
+
+  /*! initial nDII to nH ratio (number density ratio) */
+  float initial_dii_to_h_ratio;
+
+  /*! initial nHM to nH ratio (number density ratio) */
+  float initial_hm_to_h_ratio;
+
+  /*! initial nH2I to nH ratio (number density ratio) */
+  float initial_h2i_to_h_ratio;
+
+  /*! initial nH2II to nH ratio (number density ratio) */
+  float initial_h2ii_to_h_ratio;
+
+  /*! initial nHDI to nH ratio (number density ratio) */
+  float initial_hdi_to_h_ratio;
+
+  /*! Self shielding method (1 -> 4 for the library's ones, 0 for none and -1
+   * for a density threshold) */
+  enum cooling_uv_self_shielding uv_self_shielding;
+
+  /*! Self shielding threshold */
+  float uv_shielding_threshold;
+
+  /*! H2 self-shielding mode (chemistry_data.H2_self_shielding):
+   * 0 = off, 2 = shielding length supplied per particle, the full column
+   * path set by h2_shielding_path (one kernel support radius
+   * kernel_gamma * h, physical, by default), 3 = local Jeans length
+   * (computed internally by geajay).
+   * Mode 1 (Sobolev-like, differences neighbouring grid cells) is rejected
+   * at start-up, since SWIFT calls geajay on a single particle. Unrelated
+   * to uv_self_shielding above, which is a separate field
+   * gating UV-background self-shielding. */
+  enum cooling_h2_shielding_length h2_shielding_length_method;
+
+  /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
+   * for "kernel_radius" (default), 2 for "kernel_diameter"
+   * (GeajayCooling:h2_shielding_path). The length handed to geajay is
+   * this path, and geajay forms N_H2 = n_H2 l from it. The dust column of the
+   * backgrounds uses the same path. */
+  float h2_shielding_path_in_kernel_radii;
+
+  /*! Source of the length of the column shielding, with the method 4
+   * (GeajayCooling:uv_shielding_length_method):
+   * GEAJAY_UV_SHIELDING_LENGTH_GIVEN or GEAJAY_UV_SHIELDING_LENGTH_JEANS. */
+  int uv_shielding_length_method;
+
+  /*! Factor that multiplies the length of the column shielding, applied by
+   * geajay (GeajayCooling:uv_shielding_length_factor). */
+  double uv_shielding_length_factor;
+
+  /*! Path of the column shielding with a given length, in kernel support
+   * radii kernel_gamma * h: 1 for "kernel_radius" (default), 2 for
+   * "kernel_diameter" (GeajayCooling:uv_shielding_path). */
+  float uv_shielding_path_in_kernel_radii;
+
+  /*! Column file of the UV background of the method 4; empty otherwise. */
+  char uv_shielding_table_file[PARSER_MAX_LINE_SIZE];
+
+  /*! Maximal number of sub-cycle iterations per solve, or 0 for the geajay
+   * default (10000 x 0.1 / energy limit)
+   * (GeajayCooling:max_substeps, chemistry_data.max_iterations). */
+  int max_substeps;
+
+  /*! Number of retries of a failed solve
+   * (GeajayCooling:subcycle_on_failure). Retry i splits the time-step into
+   * 2^i sub-steps. 0 disables the retries. */
+  int subcycle_on_failure;
+
+  /*! Largest fraction of the internal energy that one sub-step of the solver
+   * may change, in (0, 1], or 0 for the geajay default (0.03 with the second
+   * order energy update, 0.1 with the explicit one)
+   * (GeajayCooling:energy_change_limit, chemistry_data.energy_change_limit).
+   * Grackle fixes 0.1. */
+  double energy_change_limit;
+
+  /*! Energy update of the cheap solver: 0 explicit, 1 second order, -1 the
+   * geajay default (GeajayCooling:cheap_energy_update,
+   * chemistry_data.cheap_energy_update). */
+  int cheap_energy_update;
+
+  /*! Solver of networks 1 to 3: 0 cheap, 1 accurate, -1 the geajay default
+   * (GeajayCooling:solver, chemistry_data.solver). */
+  int solver;
+
+  /*! Relative and absolute tolerances of the accurate solver, <= 0 for the
+   * geajay defaults (GeajayCooling:accurate_relative_tolerance and
+   * GeajayCooling:accurate_absolute_tolerance). */
+  double accurate_relative_tolerance;
+  double accurate_absolute_tolerance;
+
+  /*! Duration for switching off cooling after an event (e.g. supernovae) */
+  double thermal_time;
+
+  /*! Lookup beyond the density range of the Cloudy table
+   * (GeajayCooling:table_density_edge). */
+  geajay_table_edge table_density_edge;
+
+  /*! Proton mass [g] */
+  double proton_mass_cgs;
+
+  /*! Hydrogen number density range of the Cloudy table [cm^-3], set by
+   * cooling_init_geajay(). [0, inf] without a table. */
+  double table_density_min_Hpcm3, table_density_max_Hpcm3;
+
+  /*! Physical density (internal units) whose X_H rho / m_p is
+   * table_density_max_Hpcm3. */
+  double table_edge_density;
+
+  /*! Largest physical density passed to geajay, in internal units, from
+   * GeajayCooling:maximal_density_nucleon_per_cm3 (rho / m_p). Zero or
+   * negative: no cap. */
+  double maximal_density;
+};
+
+#endif /* SWIFT_COOLING_PROPERTIES_GEAJAY_H */

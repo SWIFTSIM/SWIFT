@@ -5,3 +5,6 @@ after 0.5 Myr. While the cooling is present, gas heats up and ionize.
 
 To run with GEAR-RT, configure swift with:
   ./configure --with-cooling=grackle_1 --with-grackle=$GRACKLE_ROOT
+
+To run with geajay, configure swift with:
+  ./configure --with-cooling=geajay_1 --with-geajay=$GEAJAY_ROOT

@@ -88,6 +88,21 @@ GrackleCooling:
   # Debug.
   disable_cooling_for_debugging: 0                     # Debug only: skip the per-particle cooling update, cooling_init() still runs (Default: 0)
 
+GeajayCooling:
+  h2_shielding_length_method: Jeans                    # H2 self-shielding length: none, given_length or Jeans. Set Jeans or given_length when the ISRF is on and H2 is tracked
+  cloudy_table_file: CloudyData_UVB=HM2012_high_density.h5 # Name of the Cloudy table
+  with_uv_background: 0                                # Enable or not the UV background
+  redshift: -1                                         # Redshift to use (-1 means time based redshift)
+  with_metal_cooling: 1                                # Enable or not the metal cooling
+  uv_self_shielding: density_threshold                 # Self shielding: none, HI, HI_HeI, HI_HeI_no_HeII or density_threshold (GEAR's)
+  uv_shielding_threshold_nucleon_per_cm3: 0.007        # Required only with GEAR's self shielding. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
+  thermal_time_myr: 5
+  compton_xray_heating: 0                                  # (optional) Enable/disable the Compton heating by the X-ray background (default: 0)
+  energy_change_limit: 0                                   # (optional) Largest fraction of the internal energy that one solver sub-step may change, in (0, 1], or 0 for the geajay default (0.03 with
+                                                           # the second order energy update, 0.1 with the explicit one) (default: 0)
+  table_density_edge: extrapolate                          # (optional) Cloudy table lookup beyond its n_H range: extrapolate or edge (default: extrapolate). It does not cap the density
+  maximal_density_nucleon_per_cm3: 1e10                    # (optional) Largest density passed to geajay, as the nucleon density rho / m_p [cm^-3], as in GrackleCooling. Zero or negative: no cap (default: -1)
+
 GEARChemistry:
   initial_metallicity: -1                              # If < 0, use the metallicity sotred in the ICs
 

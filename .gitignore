@@ -238,6 +238,7 @@ tests/testOutputList
 tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
+tests/testCoolingSplit
 tests/testComovingCooling
 tests/testHashmap
 tests/testNeutrinoCosmology

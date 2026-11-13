@@ -11,4 +11,8 @@ To run with Grackle mode 2, configure swift with:
   ./configure --with-cooling=grackle_2 --with-grackle=$GRACKLE_ROOT
   
 To run with Grackle mode 3, configure swift with:
-  ./configure --with-cooling=grackle_3 --with-grackle=$GRACKLE_ROOT    
+  ./configure --with-cooling=grackle_3 --with-grackle=$GRACKLE_ROOT
+
+To run with geajay, use the same mode N (0 to 3) with:
+  ./configure --with-cooling=geajay_N --with-geajay=$GEAJAY_ROOT
+geajay reads the section GeajayCooling of coolingBox.yml.

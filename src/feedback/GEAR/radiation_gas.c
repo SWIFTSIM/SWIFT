@@ -38,10 +38,14 @@
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
+#ifndef COOLING_NETWORK
+#error "COOLING_NETWORK is not defined by the cooling module"
+#endif
+
 /**
  * @brief Total hydrogen mass fraction of this #part, from its composition.
  *
- * Not cooling_get_hydrogen_mass_fraction(): at COOLING_GRACKLE_MODE >= 2 that
+ * Not cooling_get_hydrogen_mass_fraction(): at COOLING_NETWORK >= 2 that
  * omits the hydrogen bound in H2/H-.
  *
  * @param cooling The #cooling_function_data used in the run.
@@ -94,7 +98,7 @@ radiation_get_part_number_hydrogen_atoms(
  *
  * Prices only the one-off cost of claiming a fresh candidate: an already
  * (partly) ionized particle need not pay again. The maintenance cost uses the
- * total. At COOLING_GRACKLE_MODE == 0 it falls back to the total N_H.
+ * total. At COOLING_NETWORK == 0 it falls back to the total N_H.
  *
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
@@ -112,7 +116,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-#if COOLING_GRACKLE_MODE >= 1
+#if COOLING_NETWORK >= 1
   double X_HI;
 #ifdef WITH_MPI
   if (xp == NULL) {
@@ -136,7 +140,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
   {
     const struct cooling_xpart_data *cool_data = &xp->cooling_data;
     X_HI = cool_data->HI_frac;
-#if COOLING_GRACKLE_MODE >= 2
+#if COOLING_NETWORK >= 2
     /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
        already singly-ionized, so it is excluded: the same H2II
        approximation radiation_get_part_total_hydrogen_mass_fraction's own
@@ -793,7 +797,7 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
  * Only the quotient is constrained (Sternberg et al. 2014), so it is read from
  * #RADIATION_SIGMA_H2_OVER_E_LW_CGS. #radiation_lw_photon_energy_cgs is a
  * diagnostic and has no effect here. Feeds Grackle's RT_H2_dissociation_rate
- * (COOLING_GRACKLE_MODE > 1 only). The band and the rate are both clamped to
+ * (COOLING_NETWORK > 1 only). The band and the rate are both clamped to
  * be non-negative.
  *
  * @param phys_const Physical constants.

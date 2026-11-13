@@ -98,8 +98,8 @@ void radiation_get_part_ISRF_extinction_factors(
     const struct cooling_function_data *cooling, const float extinction_path,
     float extinction[ISRF_OPERATOR_COUNT]);
 float radiation_get_part_linear_absorption_rate(
-    const struct unit_system *us, const struct phys_const *phys_const, float Z,
-    float rho_p, float sigma_d_band_cgs, float local_dust_to_gas_ratio);
+    const struct unit_system *us, const struct phys_const *phys_const,
+    float D_relative, float rho_p, float sigma_d_band_cgs);
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 

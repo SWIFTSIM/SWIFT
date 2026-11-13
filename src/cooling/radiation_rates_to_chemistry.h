@@ -16,20 +16,89 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  ******************************************************************************/
-#ifndef SWIFT_GEAR_COOLING_SUBGRID_H
-#define SWIFT_GEAR_COOLING_SUBGRID_H
+#ifndef SWIFT_RADIATION_RATES_TO_CHEMISTRY_H
+#define SWIFT_RADIATION_RATES_TO_CHEMISTRY_H
 
-#include "../../feedback/GEAR/radiation.h"
+/**
+ * @file src/cooling/radiation_rates_to_chemistry.h
+ * @brief Coupling of the GEAR radiation model to a cooling module.
+ *
+ * Shared by the cooling modules that solve a chemistry network. A module
+ * defines #COOLING_NETWORK, its network level (0 to 3), and includes its own
+ * cooling_utils.h before this file. The header reads no library type.
+ */
+
+#ifndef COOLING_NETWORK
+#error "COOLING_NETWORK must be defined before radiation_rates_to_chemistry.h"
+#endif
+
+#if defined(GEAR_COOLING)
+#if (defined(COOLING_GRACKLE) + defined(COOLING_GEAJAY)) != 1
+#error "GEAR_COOLING needs exactly one of COOLING_GRACKLE and COOLING_GEAJAY"
+#endif
+
+#include "../feedback/GEAR/radiation.h"
 #include "chemistry.h"
-#include "cooling.h"
-#include "cooling_utils.h"
 #include "hydro.h"
 #include "minmax.h"
 
 /**
- * @file src/cooling/grackle/cooling_gear_subgrid.h
- * @brief Subgrid model for GEAR cooling, independent from grackle.
+ * @brief Habing field of a particle, from the radiation model.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param p Pointer to the particle data.
+ * @return G0 in Habing units.
  */
+INLINE static double rates_to_chemistry_get_isrf_habing(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+  return radiation_get_part_isrf_habing(phys_const, us, cosmo, p);
+}
+
+/**
+ * @brief Lyman-Werner H2 dissociation rate of a particle, from the radiation
+ * model.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param p Pointer to the particle data.
+ * @return H2 photodissociation rate, internal 1/time.
+ */
+INLINE static double rates_to_chemistry_get_LW_dissociation_rate(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+  return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
+                                                          p);
+}
+
+/**
+ * @brief HI photoionization rate coefficient of a tagged particle, from the
+ * radiation model.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @return Photoionization rate coefficient, internal 1/time.
+ */
+INLINE static double rates_to_chemistry_get_photoionization_rate(
+    const struct part *p, const struct xpart *xp) {
+  return radiation_get_part_photoionization_rate_coefficient(p, xp);
+}
+
+/**
+ * @brief Mean excess photon energy per HI photoionization of a tagged
+ * particle, from the radiation model.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @return Excess energy, in cgs (erg).
+ */
+INLINE static double rates_to_chemistry_get_photoheating_excess_energy(
+    const struct part *p, const struct xpart *xp) {
+  return (double)radiation_get_part_excess_photon_energy_HI(p, xp);
+}
 
 /**
  * @brief Ionize gas particles due to stellar feedback.
@@ -70,7 +139,7 @@ INLINE static int cooling_ionize_part_subgrid(
     return 0;
   }
 
-#if COOLING_GRACKLE_MODE > 0
+#if COOLING_NETWORK > 0
   if (cooling->HII_couple_ionization_rate) {
     /* Rate-coupled path: cooling_copy_to_grackle() injects this particle's
        Gamma_HI/RT_heating_rate and Grackle's own solver computes the
@@ -94,7 +163,7 @@ INLINE static int cooling_ionize_part_subgrid(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
   *u_out = u_new;
 
-#if COOLING_GRACKLE_MODE > 0
+#if COOLING_NETWORK > 0
   /* With the non-equilibrium network we can also set the ionization state
      directly and let Grackle solve from there. Hydrogen becomes fully ionized
      at fixed hydrogen mass fraction: HI + HII must still sum to X_H, which is
@@ -230,14 +299,13 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp, double time_units, double *heating_rate_cgs,
     double *HI_ionization_rate) {
-#if COOLING_GRACKLE_MODE > 0
+#if COOLING_NETWORK > 0
   if (!cooling->HII_couple_ionization_rate ||
       !radiation_is_part_tagged_as_ionized(p, xp)) {
     return 0;
   }
 
-  const double Gamma_HI =
-      radiation_get_part_photoionization_rate_coefficient(p, xp);
+  const double Gamma_HI = rates_to_chemistry_get_photoionization_rate(p, xp);
   *HI_ionization_rate = Gamma_HI;
 
   /* excess_photon_energy_HI is cached in cgs already (see
@@ -245,7 +313,7 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
      radiation_get_mean_excess_photon_energy_HI_from_integral). */
   const double Gamma_HI_cgs = Gamma_HI / time_units;
   const double E_excess_cgs =
-      (double)radiation_get_part_excess_photon_energy_HI(p, xp);
+      rates_to_chemistry_get_photoheating_excess_energy(p, xp);
   *heating_rate_cgs = Gamma_HI_cgs * E_excess_cgs;
   return 1;
 #else
@@ -269,12 +337,12 @@ INLINE static double cooling_get_isrf_habing_subgrid(
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p) {
   if (!cooling->with_ISRF) return 0.;
-  return radiation_get_part_isrf_habing(phys_const, us, cosmo, p);
+  return rates_to_chemistry_get_isrf_habing(phys_const, us, cosmo, p);
 }
 
 /**
  * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
- * local Lyman-Werner/PE feedback. COOLING_GRACKLE_MODE > 1 only: H2 is
+ * local Lyman-Werner/PE feedback. COOLING_NETWORK > 1 only: H2 is
  * untracked otherwise.
  *
  * @param phys_const The physical constants in internal units.
@@ -283,16 +351,15 @@ INLINE static double cooling_get_isrf_habing_subgrid(
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @return H2 photodissociation rate, internal 1/time; 0 if with_ISRF is
- * off or COOLING_GRACKLE_MODE <= 1.
+ * off or COOLING_NETWORK <= 1.
  */
 INLINE static double cooling_get_LW_dissociation_rate_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p) {
-#if COOLING_GRACKLE_MODE > 1
+#if COOLING_NETWORK > 1
   if (!cooling->with_ISRF) return 0.;
-  return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
-                                                          p);
+  return rates_to_chemistry_get_LW_dissociation_rate(phys_const, us, cosmo, p);
 #else
   return 0.;
 #endif
@@ -312,7 +379,7 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
 INLINE static void cooling_expire_rate_coupled_tag_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp, double time) {
-#if COOLING_GRACKLE_MODE > 0
+#if COOLING_NETWORK > 0
   if (cooling->HII_couple_ionization_rate &&
       radiation_is_part_tagged_as_ionized(p, xp) &&
       time >= radiation_get_part_ionized_end_time(p, xp)) {
@@ -343,9 +410,9 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
 INLINE static void cooling_cache_neutral_H_fraction_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp) {
-#if COOLING_GRACKLE_MODE > 0
+#if COOLING_NETWORK > 0
   float X_HI = xp->cooling_data.HI_frac;
-#if COOLING_GRACKLE_MODE >= 2
+#if COOLING_NETWORK >= 2
   /* Hydrogen locked in H2/H- is also neutral (not yet stripped): must match
      radiation_get_part_number_neutral_hydrogen_atoms's own convention, or
      a foreign copy reading this cache disagrees with a local particle's
@@ -376,7 +443,7 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
  * rather than reading it off @p p, so a caller can pass the target energy
  * of the subgrid-ionized floor (cooling_ionize_part_subgrid) before that
  * value has actually landed on the particle through the caller's own
- * du/dt integration. That same u also fixes mu at COOLING_GRACKLE_MODE 0,
+ * du/dt integration. That same u also fixes mu at COOLING_NETWORK 0,
  * where mu is an equilibrium function of the gas energy alone
  * (cooling_get_equilibrium_mean_molecular_weight) rather than of tracked
  * species: taking it off @p p there would pair a temperature evaluated at
@@ -402,9 +469,11 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp, const double u) {
 #if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
-#if COOLING_GRACKLE_MODE == 0
+#if COOLING_NETWORK == 0
   const double mu = cooling_get_equilibrium_mean_molecular_weight(
-      u, phys_const, hydro_props, cooling);
+      u, hydro_get_physical_density(p, cosmo),
+      chemistry_get_total_metal_mass_fraction_for_cooling(p), -1., phys_const,
+      hydro_props, cooling);
 #else
   const double mu = cooling_get_mean_molecular_weight(
       phys_const, us, cosmo, hydro_props, cooling, p, xp);
@@ -415,4 +484,229 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
 #endif
 }
 
-#endif /* SWIFT_GEAR_COOLING_SUBGRID_H */
+#else /* GEAR_COOLING */
+
+/**
+ * @brief Update the gas properties with subgrid physics.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param hydro_props The #hydro_props.
+ * @param pressure_floor Properties of the pressure floor.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the particle extra data
+ * @param dt The time-step of this particle.
+ * @param dt_therm The time-step operator used for thermal quantities.
+ * @param time The current simulation time.
+ * @param u_out (return) The forced internal energy. Unused.
+ * @return Always 0: this subgrid model never floors a particle's energy.
+ */
+INLINE static int cooling_update_part_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
+  return 0;
+}
+
+/**
+ * @brief Compute Grackle's RT_heating_rate/RT_HI_ionization_rate for a
+ * particle tagged by GEAR's rate-coupled HII feedback. No-op here: this
+ * subgrid model never tags particles as rate-coupled.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param time_units Internal-time-to-cgs-time conversion factor.
+ * @param heating_rate_cgs (return) Heating rate, in raw cgs. Unused.
+ * @param HI_ionization_rate (return) Photoionization rate coefficient, in
+ *        internal 1/time. Unused.
+ * @return Always 0: no per-particle rates from this subgrid model.
+ */
+INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp, double time_units, double *heating_rate_cgs,
+    double *HI_ionization_rate) {
+  return 0;
+}
+
+/**
+ * @brief Compute Grackle's per-particle isrf_habing for the local
+ * Lyman-Werner/PE feedback. No-op here: this subgrid model has no
+ * radiation model to source it from.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_isrf_habing_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  return 0.;
+}
+
+/**
+ * @brief Compute Grackle's per-particle RT_H2_dissociation_rate for the
+ * local Lyman-Werner/PE feedback. No-op here: this subgrid model has no
+ * radiation model to source it from.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_LW_dissociation_rate_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p) {
+  return 0.;
+}
+
+/**
+ * @brief Debug-only: hold every non-ionized particle fixed at a fixed
+ * temperature. No-op here: this subgrid model never forces a particle's
+ * energy.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param hydro_props The #hydro_props.
+ * @param pressure_floor Properties of the pressure floor.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param u_out (return) The forced internal energy. Unused.
+ * @return Always 0: this subgrid model never forces a particle's energy.
+ */
+INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct pressure_floor_props *pressure_floor,
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, float *u_out) {
+  return 0;
+}
+
+/**
+ * @brief Expire a GEAR rate-coupled HII tag once Grackle has consumed it
+ * for this step's solve. No-op here: this subgrid model never tags
+ * particles as rate-coupled.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param time The current simulation time.
+ */
+INLINE static void cooling_expire_rate_coupled_tag_subgrid(
+    const struct cooling_function_data *cooling, struct part *p,
+    struct xpart *xp, double time) {}
+
+/**
+ * @brief Cache this step's neutral hydrogen mass fraction on the
+ * particle's feedback-model core. No-op here: this subgrid model has no
+ * tag core to cache into.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ */
+INLINE static void cooling_cache_neutral_H_fraction_subgrid(
+    const struct cooling_function_data *cooling, struct part *p,
+    const struct xpart *xp) {}
+
+/**
+ * @brief Cache the HII eligibility temperature and mean molecular weight.
+ * No-op here: this subgrid model has no HII.
+ *
+ * @param phys_const Physical constants.
+ * @param us Unit system.
+ * @param cosmo The current cosmological model.
+ * @param hydro_props The #hydro_props.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param u The specific internal energy.
+ */
+INLINE static void cooling_cache_eligibility_temperature_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct hydro_props *hydro_props,
+    const struct cooling_function_data *cooling, struct part *p,
+    const struct xpart *xp, const double u) {}
+
+#endif /* GEAR_COOLING */
+
+/**
+ * @brief Resolve the H2 dissociation rate given to the chemistry solver.
+ *
+ * The local Lyman-Werner rate of the radiation model takes priority over the
+ * constant rate of the parameter file, which is converted to internal units.
+ *
+ * @param phys_const The physical constants in internal units.
+ * @param us The internal system of units.
+ * @param cosmo The #cosmology.
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param constant_rate_cgs The constant rate of the parameter file, in 1/s.
+ * @param time_units Internal-time-to-cgs-time conversion factor.
+ * @return The H2 dissociation rate, internal 1/time.
+ */
+INLINE static double cooling_resolve_LW_dissociation_rate_subgrid(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct cooling_function_data *cooling,
+    const struct part *p, const float constant_rate_cgs,
+    const float time_units) {
+  const double LW_dissociation_rate = cooling_get_LW_dissociation_rate_subgrid(
+      phys_const, us, cosmo, cooling, p);
+  if (LW_dissociation_rate != 0.) {
+    return LW_dissociation_rate;
+  }
+  double rate = constant_rate_cgs;
+  rate /= (1. / time_units);
+  return rate;
+}
+
+/**
+ * @brief Resolve the HI photoionization rate and the photoheating rate given
+ * to the chemistry solver.
+ *
+ * A particle tagged by the rate-coupled HII feedback gets its own rates. Any
+ * other particle gets the constants of the parameter file.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data.
+ * @param constant_heating_rate The constant heating rate of the parameter
+ *        file, per HI atom, in cgs.
+ * @param constant_HI_ionization_rate_cgs The constant HI ionization rate of
+ *        the parameter file, in 1/s.
+ * @param time_units Internal-time-to-cgs-time conversion factor.
+ * @param heating_rate (return) Heating rate per HI atom, in cgs.
+ * @param HI_ionization_rate (return) HI ionization rate, internal 1/time.
+ */
+INLINE static void cooling_resolve_RT_rates_subgrid(
+    const struct cooling_function_data *cooling, const struct part *p,
+    const struct xpart *xp, const float constant_heating_rate,
+    const float constant_HI_ionization_rate_cgs, const float time_units,
+    double *heating_rate, double *HI_ionization_rate) {
+  double heating_rate_cgs, HI_rate;
+  if (cooling_get_rate_coupled_RT_fields_subgrid(cooling, p, xp, time_units,
+                                                 &heating_rate_cgs, &HI_rate)) {
+    *heating_rate = heating_rate_cgs;
+    *HI_ionization_rate = HI_rate;
+  } else {
+    *heating_rate = constant_heating_rate;
+    *HI_ionization_rate = constant_HI_ionization_rate_cgs;
+    *HI_ionization_rate /= (1. / time_units);
+  }
+}
+
+#endif /* SWIFT_RADIATION_RATES_TO_CHEMISTRY_H */

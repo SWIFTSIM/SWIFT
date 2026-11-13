@@ -33,11 +33,9 @@
 #include "error.h"
 #include "inline.h"
 
-#if defined(GEAR_COOLING)
-#include "cooling_gear_subgrid.h"
-#else
-#include "cooling_none_subgrid.h"
-#endif
+/* Network level read by the shared radiation coupling. */
+#define COOLING_NETWORK COOLING_GRACKLE_MODE
+#include "../radiation_rates_to_chemistry.h"
 
 struct part;
 struct xpart;
@@ -191,6 +189,26 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
                          FILE *stream);
 void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
                             const struct cosmology *cosmo);
+
+#if defined(GEAR_COOLING)
+/**
+ * @brief Dust-to-gas ratio of a particle in units of the Milky Way value.
+ *
+ * Grackle has no dust model: the ratio scales with the metallicity from the
+ * resolved dust-to-gas ratio of the chemistry data.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param Z The gas metal mass fraction.
+ * @param rho_physical The physical gas density, internal units. Unused.
+ * @return The dust-to-gas ratio relative to the Milky Way.
+ */
+INLINE static float cooling_get_dust_to_gas_ratio_relative_to_MW(
+    const struct cooling_function_data *cooling, const float Z,
+    const float rho_physical) {
+  return radiation_get_dust_to_gas_ratio_relative_to_MW(
+      Z, (float)cooling->chemistry_data.local_dust_to_gas_ratio);
+}
+#endif
 
 /**
  * @brief Compute the electron pressure of a #part based on the cooling

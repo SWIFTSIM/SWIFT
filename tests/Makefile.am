@@ -45,6 +45,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testIOOptionalFieldDefaultWidth \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
+        testCoolingSplit \
 	    testLog testDistance testTimeline testSubsetRecursion \
 	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
 
@@ -58,7 +59,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
          testRiemannHLLC testMatrixInversion testDump testCSDS \
 		 testPeriodicBC testGravityDerivatives testPotentialSelf testPotentialPair testEOS \
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
-		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testComovingCooling testFeedback \
+		 test27cellsStars test27cellsStars_subset test27cellsHydroSinks testCooling testCoolingSplit testComovingCooling testFeedback \
 		 testSinkApertureRebuild testSinkFormationGasCompleteness testSinkOverlapCriteria \
 		 testSinkApertureEdgeRounding testSinkDriftFlags \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
@@ -202,6 +203,8 @@ testUtilities_SOURCES = testUtilities.c
 
 testCooling_SOURCES = testCooling.c
 
+testCoolingSplit_SOURCES = testCoolingSplit.c
+
 testComovingCooling_SOURCES = testComovingCooling.c
 
 testFeedback_SOURCES = testFeedback.c
@@ -242,4 +245,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              test27cellsHydroSinks.sh hydro_sinks_tolerance_27_normal.dat \
-             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh
+             testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
+             testGeajayPhotoelectricKey.sh

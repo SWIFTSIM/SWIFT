@@ -74,9 +74,9 @@ f = h5py.File(snap_filename, "r")
 
 # Read the units parameters from the snapshot
 units = f["InternalCodeUnits"]
-unit_mass = units.attrs["Unit mass in cgs (U_M)"]
-unit_length = units.attrs["Unit length in cgs (U_L)"]
-unit_time = units.attrs["Unit time in cgs (U_t)"]
+unit_mass = units.attrs["Unit mass in cgs (U_M)"][0]
+unit_length = units.attrs["Unit length in cgs (U_L)"][0]
+unit_time = units.attrs["Unit time in cgs (U_t)"][0]
 
 
 # Read snapshots
@@ -91,7 +91,7 @@ for i in range(N):
     u = snap["/PartType0/InternalEnergies"][:] * masses
     u = sum(u) / masses.sum()
     energy_snap[i] = u
-    time_snap_cgs[i] = snap["/Header"].attrs["Time"] * unit_time
+    time_snap_cgs[i] = snap["/Header"].attrs["Time"][0] * unit_time
 
 
 ##########################################
