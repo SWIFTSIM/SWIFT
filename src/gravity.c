@@ -621,6 +621,13 @@ void gravity_exact_force_compute_mapper(void *map_data, int nr_gparts,
         }
       }
 
+      /* Add the potential of the particle's own periodic images */
+      if (periodic) {
+        double corr_f[3], corr_pot;
+        gravity_exact_force_ewald_evaluate(0., 0., 0., corr_f, &corr_pot);
+        pot += gpi->mass * corr_pot;
+      }
+
       /* Store the exact answer */
       for (int k = 0; k < 3; k++) {
         gpi->a_grav_exact[k] = a_grav[k] * const_G;

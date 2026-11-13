@@ -903,10 +903,17 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
     /* Potential normalisation in the case of periodic gravity */
     float potential_normalisation = 0.;
+    float potential_self = 0.;
     if (periodic && with_self_gravity) {
       const double volume = s->dim[0] * s->dim[1] * s->dim[2];
       const double r_s = e->mesh->r_s;
       potential_normalisation = 4. * M_PI * e->total_mass * r_s * r_s / volume;
+
+      /* The mesh potential of a particle includes the potential of its own
+       * mass smoothed on the scale r_s, -m / (sqrt(pi) r_s) at the position
+       * of the particle. This has no counterpart in the tree. */
+      const double r_s_inv = e->mesh->r_s_inv;
+      potential_self = 0.5 * M_2_SQRTPI * r_s_inv;
     }
 
     const int gcount = c->grav.count;
@@ -920,8 +927,12 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
       if (gpart_is_active(gp, e)) {
 
+        /* Correction to the potential of this particle */
+        const float potential_correction =
+            potential_normalisation + potential_self * gp->mass;
+
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton, potential_normalisation, periodic,
+        gravity_end_force(gp, G_newton, potential_correction, periodic,
                           with_self_gravity);
 
         /* Get the ID of the gpart */
