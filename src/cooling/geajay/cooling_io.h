@@ -971,6 +971,21 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "grain_charge_epsilon (3) or density_epsilon (4), got %d.",
         cooling->photoelectric_heating_model);
 
+  /* Models above fixed_rate read the ISRF field; none and fixed_rate do not. */
+  if (cooling->with_ISRF &&
+      (cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_NONE ||
+       cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_FIXED_RATE))
+    warning(
+        "GEARFeedback:with_interstellar_radiation_field is on and "
+        "GeajayCooling:photoelectric_heating_model is %s (%d): the "
+        "photoelectric heating does not use the ISRF field. Use "
+        "constant_efficiency (2), grain_charge_epsilon (3) or density_epsilon "
+        "(4) for a photoelectric heating that follows the ISRF.",
+        cooling->photoelectric_heating_model == GEAJAY_PHOTOELECTRIC_NONE
+            ? "none"
+            : "fixed_rate",
+        cooling->photoelectric_heating_model);
+
   cooling->photoelectric_heating_rate = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:photoelectric_heating_rate", -1.);
   if (!cooling_double_is_finite(cooling->photoelectric_heating_rate) ||
