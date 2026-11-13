@@ -20,9 +20,7 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration. See README for how the
-# run duration was chosen (a few local cooling/heating times at this
-# example's density, not Tier 1's own propagation-convergence value).
+# Parameters governing the time integration.
 TimeIntegration:
   time_begin:        0.
   time_end:          1.5e-4
@@ -71,7 +69,7 @@ GEARChemistry:
 
 GeajayCooling:
   cloudy_table_file: CloudyData_UVB=HM2012.h5   # Cloudy table file (required)
-  primordial_chemistry_network: 3               # 0 tabulated, 1 H/He, 2 + H2, 3 + D (required)
+  primordial_chemistry_network: 3               # 0 tabulated, 1 H/He, 2 + H2, 3 + D; run.sh sets it from the build (required)
   with_uv_background: 0                         # Metagalactic UV background on or off (required)
   redshift: -1                                  # Redshift of the UV background, -1 follows the simulation time (required)
   with_metal_cooling: 1                         # Metal cooling on or off (required)
@@ -79,7 +77,7 @@ GeajayCooling:
   h2_shielding_length_method: none              # H2 self-shielding length (required with a network that tracks H2)
   # Photoelectric heating model: none (0), fixed_rate (1), constant_efficiency (2), grain_charge_epsilon (3) or
   # density_epsilon (4). run.sh sets it from pe_model.
-  photoelectric_heating_model: grain_charge_epsilon
+  photoelectric_heating_model: constant_efficiency
 
 GEARFeedback:
   # Stellar evolution

@@ -28,19 +28,29 @@ pe_model=${pe_model:=""} #Photoelectric heating model of the cooling library (se
 extra_args=${extra_args:=""} #Further swift arguments, e.g. "-P GEARFeedback:ISRF_propagation:0"
 
 # The cooling library is read from the binary's configure line.
-cooling_library=$(strings "$swift_bin" | grep -o 'with-cooling=[a-z_0-9]*' | head -1 | cut -d= -f2)
+cooling_library=$(strings "$swift_bin" | grep -o 'with-cooling=[a-z_0-9]*' | head -1 | cut -d= -f2 || true)
+if [ -z "$cooling_library" ] && strings "$swift_bin" | grep -q 'with-subgrid=GEAR'; then
+    cooling_library=grackle_0  # --with-subgrid=GEAR selects grackle_0
+fi
+if [ -z "$cooling_library" ]; then
+    echo "Cannot read the cooling library from $swift_bin: its configure line" \
+         "has no with-cooling= or with-subgrid=GEAR. Set swift_bin to a swift" \
+         "built with --with-cooling=grackle_N or geajay_N." >&2
+    exit 1
+fi
 params_file=params.yml
 pe_key=GrackleCooling:photoelectric_heating_efficiency
 case "$cooling_library" in
     geajay_*)
         params_file=params_geajay.yml
         pe_key=GeajayCooling:photoelectric_heating_model
+        extra_args="-P GeajayCooling:primordial_chemistry_network:${cooling_library#geajay_} $extra_args"
         ;;
     grackle_0)
         if [ "$with_pe_heating" != "0" ] && [ "$grackle_0_pe_ok" != "1" ]; then
-            echo "Photoelectric heating needs a cooling mode that tracks species:" \
-                 "grackle_0 has no electron density, and the Grackle grain" \
-                 "recombination term returns NaN for cold gas there." \
+            echo "Photoelectric heating at grackle_0 gives NaN: the Grackle grain" \
+                 "recombination term divides by the electron density, which" \
+                 "this mode estimates as zero for cold gas." \
                  "Build with grackle_1 or higher, or with geajay." \
                  "A Grackle library that guards a zero electron density" \
                  "can set grackle_0_pe_ok=1." >&2

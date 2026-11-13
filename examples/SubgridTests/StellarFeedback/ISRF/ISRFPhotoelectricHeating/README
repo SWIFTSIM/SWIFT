@@ -24,21 +24,20 @@ Solar (`Z/Zsun=1`, `initial_metallicity` in `run.sh`): the dust heating and
 extinction scale with the metallicity.
 
 # Cooling library and heating model
-Photoelectric heating needs a cooling mode that tracks species, because the
-heating models and the recombination cooling use the electron density.
-`pe_model=<name> ./run.sh` selects the heating model.
+`pe_model=<name> ./run.sh` selects the heating model. `run.sh` reads the
+cooling library from the binary.
 
 | Build | Heating model |
 |-------|---------------|
-| `grackle_0` | Not supported: `run.sh` stops. The Grackle grain recombination term returns NaN for gas without free electrons, and this mode estimates none for cold gas. A Grackle library that guards a zero electron density can run it with `grackle_0_pe_ok=1`. |
+| `grackle_0` | Not supported: `run.sh` stops. The Grackle grain recombination term returns NaN for gas without free electrons, and this mode estimates none for cold gas. A Grackle library that guards a zero electron density can run it with `grackle_0_pe_ok=1`; its heating is then 0.9418 of the Wolfire et al. 1995 Eq. 1 value (5.8 per cent lower), for any metallicity and temperature. |
 | `grackle_1` and above | `constant` (default, Wolfire et al. 1995 Eq. 1 with efficiency 0.05), `wolfire1995` (efficiency from the grain charge, needs free electrons), `density_dependent` (only on a Grackle build that provides it; SWIFT stops at start-up otherwise) |
-| `geajay_N` | `none`, `fixed_rate`, `constant_efficiency`, `grain_charge_epsilon`, `density_epsilon`; `run.sh` then reads `params_geajay.yml` |
+| `geajay_N` | `none`, `fixed_rate`, `constant_efficiency` (default), `grain_charge_epsilon`, `density_epsilon`; `run.sh` then reads `params_geajay.yml` and sets the network N from the build (tested with `geajay_3`) |
 
 `wolfire1995` and `grain_charge_epsilon` heat through the free electron
-fraction only. The initial gas is neutral, so with Grackle their heating is
-negligible here and the sign check does not pass. With geajay,
-`extra_args="-P GeajayCooling:initial_hii_to_h_ratio:1e-3"` gives the gas free
-electrons.
+fraction. The initial gas is neutral, so their heating is negligible here and
+the sign check does not pass. Give the gas free electrons with
+`extra_args="-P GrackleCooling:initial_nHII_to_nH_ratio:1e-3"` (Grackle) or
+`extra_args="-P GeajayCooling:initial_hii_to_h_ratio:1e-3"` (geajay).
 
 # Configure
 ```
@@ -80,10 +79,13 @@ sign/magnitude pair's, and a correspondingly short `time_end`.
 with_pe_heating=1 run_name=rate_on  time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
 with_pe_heating=0 run_name=rate_off time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
 ```
-With geajay, run the reference as `with_pe_heating=1 pe_model=none`, so that
-both runs carry the same ISRF, and the difference is the heating alone. Run
-the heating run with the model to check, for example
-`pe_model=constant_efficiency`.
+The ISRF also adds a small dust cooling, so the reference run should carry
+the ISRF too. With geajay, run the reference as `with_pe_heating=1
+pe_model=none`, so that both runs carry the same ISRF, and the difference is
+the heating alone. With Grackle, use `with_pe_heating=1 pe_model=wolfire1995`
+on the neutral gas (its heating is negligible) and pass
+`--reference-field on` to the check. Run the heating run with the model to
+check, for example `pe_model=constant_efficiency`.
 
 # Checking
 ```
@@ -110,8 +112,7 @@ Rate check: measures each illuminated, sub-2e4-K particle's own `du/dt`
 over the fine-cadence pair's first inter-snapshot interval with a
 non-negligible field, subtracts the reference run from the heating run to
 isolate the photoelectric contribution, and compares the median with the
-model formula. The bar follows from the window (the truncation of the
-finite difference and the rounding of the stored energies); the script's
+model formula. The bar is a bound set by the window; the script's
 docstring gives it. The check fails if the heating is too small to resolve.
 Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
 given.
