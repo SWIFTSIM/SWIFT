@@ -56,8 +56,11 @@ constants this script reuses rather than retyping.
 Without a species network (COOLING_GRACKLE_MODE 0, `ispecies=0`), Grackle forms `n_H` as
 ``HydrogenFractionByMass * (rho - rho*Z) / m_H`` (`cool1d_multi_g.F`,
 the `imetal=1` branch of the `ispecies=0` temperature block), not the
-naive `HydrogenFractionByMass * rho / m_H`; this script reproduces that
-exact expression. Note `n_H / rho` is then a pure constant
+naive `HydrogenFractionByMass * rho / m_H`; this script uses that
+expression. The library's heating at `ispecies=0` is nevertheless 0.9418 of
+the Eq. 1 value for any Z (0.001 to 0.04) and T (100 and 1000 K), in the
+official library and in the fork; the Fortran line that sets this factor was
+not found. Note `n_H / rho` is then a pure constant
 (`HydrogenFractionByMass * (1-Z) / m_H`, independent of `rho`), so
 `Gamma_PE / rho` depends only on `G0` and `Z'`, not on the gas density at
 all -- relevant to the error budget below, since it means a particle's
@@ -116,30 +119,44 @@ both.
 Heating models
 --------------
 ``--pe-model`` selects the reference formula; each model is compared with
-its own formula only. The Grackle models (``grackle-constant``,
-``grackle-wolfire1995``) use the heating-off run as the reference run, and
-the reference subtracts the Wolfire et al. (1995) Eq. 9 grain recombination
-cooling, because the dust chemistry that SWIFT switches on with the ISRF
-adds it to the heating-on run only. The geajay models
-(``geajay-fixed-rate``, ``geajay-constant-efficiency``,
-``geajay-grain-charge``, ``geajay-density-epsilon``) use as the reference
-run the same ISRF-on run with ``pe_model=none``: both runs then carry the
-recombination cooling and the difference is the heating alone. The electron
-density of the models that read it is the snapshot's ``e`` field.
+its own formula only. The heating run minus the reference run isolates the
+heating only if both runs carry the same non-heating terms of the dust
+chemistry that SWIFT switches on with the ISRF (grain recombination cooling
+and a small dust cooling that depends little on G0). ``--reference-field``
+says which reference run is used:
+
+* ``on`` (default for the geajay models): a run with the ISRF on and the
+  heating switched off or negligible. For geajay it is ``pe_model=none``. For
+  Grackle it can be a ``wolfire1995`` run on neutral gas, whose heating is
+  negligible. Both runs carry the same terms and none is subtracted.
+* ``off`` (default for the Grackle models): the ISRF-off run. It lacks those
+  terms, so the reference subtracts the Wolfire et al. (1995) Eq. 9 grain
+  recombination cooling. The small dust cooling is not modelled: it is
+  1.08e-3 of the heating at G0 = 520 in a one-zone call of the Grackle
+  library, so this choice cannot pass a bar of that size.
+
+The electron density of the models that read it is the snapshot's ``e``
+field.
 
 Pass bar
 --------
-The bar follows from the measurement itself, not from any earlier run:
+The bar is a judgment bound, not a derived error. It has the form
 
     bar = 0.5 * P + 4 * 2^-24 / P + ``--rate-extra-tol``
 
-with ``P`` the median ``Gamma_PE * dt / u`` of the window. The first term is
-the truncation error of a forward difference of a rate that is constant over
-the window. The second term is the rounding of the four stored float32
-energies (two snapshots in each of two runs), each limited to a relative
-2^-24 of ``u``, against a signal of ``P * u``. ``--rate-extra-tol`` (default
-0) is for terms the reference does not model. The check also needs a finite
-measurement, ``P`` below ``--perturbation-tol``, and identical on/off starts.
+with ``P`` the median ``Gamma_PE * dt / u`` of the window. The first term
+allows for the response of the cooling to the higher energy of the heating
+run; the coefficient 0.5 is assumed, not derived. The second term assumes
+the rounding of four float32 energies, each 2^-24 of ``u``. SPHENIX holds
+``u`` in float32 and updates it at every step, so the real rounding is larger
+and grows with the number of steps in the window; a run with ten steps per
+window gave an error 2.4 times this term. The measured errors of the
+geajay models stay at about 0.1 per cent while ``P`` changes by a factor 8,
+which neither term describes. ``--rate-extra-tol`` (default 0) is for terms
+the reference does not model. The bar was written before the runs it judges
+and is not changed after them. The check also needs a finite measurement, a
+bar below 0.5, ``P`` above 0 and below ``--perturbation-tol``, and identical
+on/off starts.
 
 ``--reference-scale`` and ``--inject-nan`` are positive controls: a scaled
 reference, a reference of another model and a NaN in a measured value must
@@ -149,7 +166,7 @@ each fail.
 import argparse
 import glob
 import sys
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import h5py
 import numpy as np
@@ -251,6 +268,14 @@ def parse_options():
         default="grackle-constant",
         help="Heating model of the run; its own reference formula is used "
         "(default: %(default)s).",
+    )
+    parser.add_argument(
+        "--reference-field",
+        choices=("on", "off"),
+        default=None,
+        help="Whether the reference run has the ISRF on (heating off or "
+        "negligible) or off. Default: on for the geajay models, off for the "
+        "Grackle models.",
     )
     parser.add_argument(
         "--rate-extra-tol",
@@ -424,8 +449,9 @@ def pe_rate_over_rho_predicted(
     snapshot: Dict[str, np.ndarray],
     selected: np.ndarray,
     hydrogen_fraction: float,
-):
-    """Reference photoelectric heating per unit mass for one heating model.
+    subtract_recombination: bool,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Compute the reference photoelectric heating per unit mass of one model.
 
     Each model uses only its own published formula, with the gas state and
     the field G0 read from the heating-on snapshot.
@@ -440,15 +466,17 @@ def pe_rate_over_rho_predicted(
         Boolean mask of the particles to evaluate.
     hydrogen_fraction : float
         GrackleCooling:HydrogenFractionByMass (Grackle models only).
+    subtract_recombination : bool
+        Whether to return the Wolfire et al. (1995) Eq. 9 recombination
+        cooling (a reference run with the ISRF off).
 
     Returns
     -------
     tuple of numpy.ndarray
         ``(Gamma_PE / rho, Lambda_rec / rho)`` in erg g^-1 s^-1. The second
         entry is the Wolfire et al. (1995) Eq. 9 grain recombination cooling
-        for the Grackle models, whose heating-on minus heating-off difference
-        contains it; it is zero for the geajay models, which are differenced
-        against a heating-on run with the heating model switched off.
+        when ``subtract_recombination`` is set and the snapshot has
+        electrons; otherwise it is zero.
     """
     rho = snapshot["density_cgs"][selected]
     z = snapshot["metallicity"][selected]
@@ -494,7 +522,7 @@ def pe_rate_over_rho_predicted(
     # Without a species network (grackle_0) the electron density is internal
     # to the library, so the recombination cooling is not modelled.
     has_electrons = snapshot["electron_density_cgs"] is not None
-    if model in ("grackle-wolfire1995", "grackle-constant") and has_electrons:
+    if subtract_recombination and has_electrons:
         with np.errstate(divide="ignore", invalid="ignore"):
             x = g0 * np.sqrt(temperature) / snapshot["electron_density_cgs"][selected]
             beta = 0.74 / temperature**0.068
@@ -506,7 +534,8 @@ def pe_rate_over_rho_predicted(
                 * n_h
                 * z_prime
             )
-        recombination = np.where(np.isfinite(recombination), recombination, 0.0)
+        n_e_all = snapshot["electron_density_cgs"][selected]
+        recombination = np.where(n_e_all > 0.0, recombination, 0.0)
     return heating / rho, recombination / rho
 
 
@@ -562,6 +591,9 @@ def bin_by_radius(r, values, edges):
 
 def main():
     opt = parse_options()
+    reference_field = opt.reference_field or (
+        "on" if opt.pe_model.startswith("geajay") else "off"
+    )
 
     on_files = sorted(glob.glob(opt.on_snapshot))
     off_files = sorted(glob.glob(opt.off_snapshot))
@@ -818,7 +850,11 @@ def main():
                 )
 
                 heating, recombination = pe_rate_over_rho_predicted(
-                    opt.pe_model, on0, selected, opt.hydrogen_fraction
+                    opt.pe_model,
+                    on0,
+                    selected,
+                    opt.hydrogen_fraction,
+                    reference_field == "off",
                 )
                 predicted_unscaled = heating - recombination
                 predicted = predicted_unscaled * opt.reference_scale
@@ -834,6 +870,12 @@ def main():
                 # docstring, "Why this needs its own...").
                 perturbation = np.abs(heating * dt / on0["u"][selected])
                 median_perturbation = float(np.median(perturbation))
+                if not median_perturbation > 0.0:
+                    rate_failures.append(
+                        "the reference heating is zero in this window: "
+                        "nothing to compare"
+                    )
+                    median_perturbation = np.nan
                 print(
                     f"Perturbation Gamma_PE*dt/u over the window "
                     f"(linearity precondition), median "
