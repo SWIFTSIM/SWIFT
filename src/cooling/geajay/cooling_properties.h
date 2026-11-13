@@ -19,9 +19,6 @@
 #ifndef SWIFT_COOLING_PROPERTIES_GEAJAY_H
 #define SWIFT_COOLING_PROPERTIES_GEAJAY_H
 
-/* Hide the deprecated separate-array functions of geajay. */
-#define OMIT_LEGACY_INTERNAL_GRACKLE_FUNC
-
 /* geajay: the chemistry API and the particle API */
 #include <geajay.h>
 #include <geajay_cosmic_ray.h>
