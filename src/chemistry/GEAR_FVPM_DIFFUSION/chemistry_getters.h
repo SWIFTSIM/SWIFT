@@ -713,10 +713,11 @@ chemistry_get_star_total_metal_mass_for_stats(const struct spart *restrict sp) {
  */
 __attribute__((always_inline)) INLINE static float
 chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
-
-  return bp->chemistry_data
-             .metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] *
-         bp->mass;
+  float Z_tot = 0.0;
+  for (int i = 0; i < GEAR_CHEMISTRY_ELEMENT_COUNT; i++) {
+    Z_tot += bp->chemistry_data.metal_mass_fraction[i];
+  }
+  return Z_tot * bp->mass;
 }
 
 /* Import the right chemistry_part_data definition */
