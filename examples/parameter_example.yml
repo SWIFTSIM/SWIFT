@@ -810,6 +810,7 @@ GeajayCooling:
                                                # heating above 2e4 K. A value above none also works with dust_model: none, because SWIFT passes the metal mass fraction of every particle.
                                                # With GEARFeedback:with_interstellar_radiation_field on, none and fixed_rate do not use the ISRF field and the run warns (default: default)
   photoelectric_heating_rate: -1               # (optional) Heating rate of the model fixed_rate per H atom at the reference dust-to-gas ratio [erg/s]. It is read only with fixed_rate. Zero or above, or -1 for the library value, 8.5e-26 (default: -1)
+                                               # The heating per volume is this rate times n_H times D / D_ref, so the model needs a dust density (D is the dust-to-gas ratio, D_ref the reference ratio).
   dust_recombination_cooling: default          # (optional) Recombination cooling on grains: default (-1, on with dust_model: basic, else off), disabled (0) or enabled (1). It reads the metal mass fraction of each particle, so enabled also works
                                                # with dust_model: none (default: default)
   h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none and with the
@@ -903,7 +904,7 @@ GEARChemistry:
   # MFVP hyperbolic diffusion only
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
   tau: 1e0                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
-  hyperbolic_limiter_scope: AllComponents # (Optional, hyperbolic diffusion only) Which F_diss components the limiters rescale. AllComponents = mass + flux components (default) ; Density = mass component only.
+  hyperbolic_limiter_scope: AllComponents # (Optional, hyperbolic diffusion only) Which F_diss components the causal bound (factor min(1, c dt/l), at least 0.01) rescales. AllComponents = mass + flux components (default) ; Density = mass component only.
 
 # AGORA chemistry model (Kim et al. 2014)
 AGORAChemistry:
