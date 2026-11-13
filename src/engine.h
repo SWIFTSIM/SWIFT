@@ -50,6 +50,7 @@
 #include "tracers_triggers.h"
 #include "units.h"
 #include "velociraptor_interface.h"
+#include "zoom_mesh_gravity.h"
 
 struct black_holes_properties;
 struct extra_io_properties;
