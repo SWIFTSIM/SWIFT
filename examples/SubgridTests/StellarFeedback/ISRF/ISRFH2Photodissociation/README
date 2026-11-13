@@ -29,7 +29,16 @@ density, not by the size of the cloud. With mode 3, `thin` gives
 Draine and Bertoldi (1996) rate `3.3e-11 G_0 s^-1` assumes (the 29.7 Msun
 star gives 0.36). The code's rate is then 0.92 times that rate, instead of
 2.24. The star is fainter in the LW band, so the run is 12.5 times longer, with
-snapshots 6.2 times further apart.
+snapshots 40 times further apart.
+
+## Snapshot spacing
+`thin` and `thick` write one snapshot per gas step (`Snapshots:delta_time`
+1.015625e-10, 257 snapshots). The light a gas particle receives pulses with a
+period of 8 gas steps, and the check integrates the rate over the snapshots, so
+a coarser spacing aliases the pulses and the thin error depends on where the
+snapshots fall. If you change `time_end`, `dt_max` or `level`, set
+`delta_time` to the new gas step, which is the step the run prints in
+`timesteps.txt`.
 
 ## Self-shielding modes
 `h2_self_shielding` sets `GrackleCooling:H2_self_shielding`:

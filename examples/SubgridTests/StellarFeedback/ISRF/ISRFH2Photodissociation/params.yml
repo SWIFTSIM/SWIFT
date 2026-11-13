@@ -28,7 +28,7 @@ Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 6.5e-10
+  delta_time: 1.015625e-10                   # One gas step, time_end / 2^8, see README
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -40,7 +40,7 @@ Scheduler:
   tasks_per_cell: 150
 
 Statistics:
-  delta_time:           6.5e-10
+  delta_time:           1.015625e-10
   time_first:             0.
 
 InitialConditions:
