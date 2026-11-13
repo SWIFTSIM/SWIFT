@@ -220,7 +220,7 @@ int main(int argc, char *argv[]) {
    * lower resolution than the global mesh. We can't have that. */
   if (zoom_mesh_init_survives(8, 0.3f, 0., 0)) {
     error(
-        "A zoom mesh lower resolution than the background mesh should have "
+        "A zoom mesh lower resolution than the global mesh should have "
         "been rejected by zoom_mesh_init.");
   }
 

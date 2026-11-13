@@ -126,9 +126,9 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
   if (mesh->r_s >= props->r_s) {
     error(
         "The zoom gravity mesh must be higher resolution than the "
-        "background mesh, but its smoothing scale (r_s=%.6e, from "
+        "global mesh, but its smoothing scale (r_s=%.6e, from "
         "Gravity:zoom_mesh_side_length=%d over a domain of %.6e) is not "
-        "smaller than the background mesh's (r_s=%.6e, from "
+        "smaller than the global mesh's (r_s=%.6e, from "
         "Gravity:mesh_side_length). Increase Gravity:zoom_mesh_side_length "
         "or shrink the zoom region.",
         mesh->r_s, mesh->N, mesh->dim[0], props->r_s);
@@ -139,7 +139,7 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
   if (mesh->r_cut_max > props->r_s * props->r_cut_max_ratio) {
     error(
         "The zoom gravity mesh truncates the tree forces at a larger distance "
-        "(%.6e) than the background mesh (%.6e). Decrease "
+        "(%.6e) than the global mesh (%.6e). Decrease "
         "Gravity:zoom_r_cut_max or increase Gravity:zoom_mesh_side_length.",
         mesh->r_cut_max, props->r_s * props->r_cut_max_ratio);
   }
@@ -153,7 +153,7 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
       error(
           "The zoom gravity mesh ([%.6e, %.6e] along axis %d) must lie inside "
           "the box (size %.6e) and be smaller than the box by at least the "
-          "cut-off of the background mesh (%.6e). Decrease "
+          "cut-off of the global mesh (%.6e). Decrease "
           "Gravity:zoom_mesh_bkg_buffer_cells or shrink the zoom region.",
           mesh->loc[i], mesh->loc[i] + mesh->dim[i], i, s->dim[i],
           props->r_s * props->r_cut_max_ratio);
