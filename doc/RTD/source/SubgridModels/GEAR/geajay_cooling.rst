@@ -222,8 +222,8 @@ local field only, to which the background G\ :sub:`0` is added.
        PE band (6-11.2 eV) [cm\ :sup:`2`] (default: 8.6e-22).
 
 The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D\ :sub:`sun`) N\ :sub:`H`)
-of the LW and PE backgrounds, with N\ :sub:`H` the column of the H\ :sub:`2` shielding. They do not
-change ``uv_self_shielding``. The defaults are those of Kim et al. 2023, Table 3 (WD01 R\ :sub:`V` =
+of the LW and PE backgrounds, with N\ :sub:`H` the column of the H\ :sub:`2` shielding. D is the
+dust-to-gas ratio of ``dust_to_gas_model``, the one the heating uses. The cross-sections do not change ``uv_self_shielding``. The defaults are those of Kim et al. 2023, Table 3 (WD01 R\ :sub:`V` =
 3.1, per H nucleon, mu\ :sub:`H` = 1.4). D/D\ :sub:`sun` uses the reference dust-to-gas ratio 0.009387
 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.
 

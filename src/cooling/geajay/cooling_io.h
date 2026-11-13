@@ -301,6 +301,7 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
  * or isfinite() test of a NaN.
  *
  * @param x The value.
+ * @return 1 if @p x is neither NaN nor infinite, else 0.
  */
 INLINE static int cooling_double_is_finite(double x) {
   uint64_t bits;
