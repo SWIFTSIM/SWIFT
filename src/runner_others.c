@@ -927,10 +927,13 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
       if (gpart_is_active(gp, e)) {
 
+        /* Correction to the potential of this particle */
+        const float potential_correction =
+            potential_normalisation + potential_self * gp->mass;
+
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton,
-                          potential_normalisation + potential_self * gp->mass,
-                          periodic, with_self_gravity);
+        gravity_end_force(gp, G_newton, potential_correction, periodic,
+                          with_self_gravity);
 
         /* Get the ID of the gpart */
         long long id = 0;
