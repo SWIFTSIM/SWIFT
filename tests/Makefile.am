@@ -40,7 +40,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testLog testDistance testTimeline testZoomInit.sh testGetZoomIJKFunc.sh \
-        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown
+        testZoomRegrid.sh testSpaceSplit testZoomVoidTree.sh testZoomGravityDown \
+        testZoomMeshGravity testZoomMeshResolutionGuard
         # testMatrixInversion
 
 # List of test programs to compile
@@ -57,7 +58,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology testNeutrinoFermiDirac testLog testTimeline \
 		 testZoomInit testGetZoomIJKFunc testZoomRegrid testSpaceSplit \
-		 testZoomVoidTree testZoomGravityDown
+		 testZoomVoidTree testZoomGravityDown \
+		 testZoomMeshGravity testZoomMeshResolutionGuard
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -68,6 +70,10 @@ testGreetings_SOURCES = testGreetings.c
 testMaths_SOURCES = testMaths.c
 
 testMeshGravityRebuildCheck_SOURCES = testMeshGravityRebuildCheck.c
+
+testZoomMeshGravity_SOURCES = testZoomMeshGravity.c
+
+testZoomMeshResolutionGuard_SOURCES = testZoomMeshResolutionGuard.c
 
 testAtomic_SOURCES = testAtomic.c
 
