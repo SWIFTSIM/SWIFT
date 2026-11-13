@@ -130,6 +130,24 @@ cooling_get_equilibrium_mean_molecular_weight(
 }
 
 /**
+ * @brief Total mass density in units of the proton mass: the numerator of mu.
+ *
+ * Grackle takes the pressure from the total density, metals included, so the
+ * mass of the metals belongs in the numerator as well as in the number density.
+ * Returns 0 when no tracked species carries mass, so mu stays 0 for such a
+ * particle (see cooling_internal_energy_from_T()).
+ *
+ * @param rho Physical gas density.
+ * @param m_H Proton mass.
+ * @param tracked_mass Mass density of the tracked species in units of m_H.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_total_mass_number_density(const double rho, const double m_H,
+                                  const double tracked_mass) {
+  return (tracked_mass > 0.0) ? rho / m_H : 0.0;
+}
+
+/**
  * Compute gas mean molecular weight.
  *
  * @TODO: This function may be moved into a future improved Grackle version.
@@ -178,7 +196,8 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double nHeII = XHeII * rho / (4 * m_H);
   const double nHeIII = XHeIII * rho / (4 * m_H);
 
-  /* Match Grackle's own mu (calculate_temperature.c: MU_METAL = 16). */
+  /* One metal particle weighs MU_METAL proton masses, as in Grackle
+     (calculate_temperature.c). */
   const double MU_METAL = 16.0;
   const double n_metal =
       chemistry_get_total_metal_mass_fraction_for_cooling(p) * rho /
@@ -188,8 +207,9 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   const double nel = nHII + nHeII + 2 * nHeIII;
   double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nel + n_metal;
   if (total_density == 0.0) total_density = 1.e-20; /* Grackle's tiny_number */
-  const double mu =
-      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4) / total_density;
+  const double mu = cooling_total_mass_number_density(
+                        rho, m_H, (nHI + nHII) + (nHeI + nHeII + nHeIII) * 4) /
+                    total_density;
   return mu;
 
 #else /* COOLING_GRACKLE_MODE >= 2: also track H2I, H2II, HM */
@@ -206,9 +226,11 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   double total_density =
       nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II + nHM + nel + n_metal;
   if (total_density == 0.0) total_density = 1.e-20; /* Grackle's tiny_number */
-  const double mu =
-      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
-      total_density;
+  const double mu = cooling_total_mass_number_density(
+                        rho, m_H,
+                        (nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                            (nH2I + nH2II) * 2 + nHM) /
+                    total_density;
   return mu;
 
 #else  /* COOLING_GRACKLE_MODE == 3: also track HDI */
@@ -219,8 +241,10 @@ cooling_get_mean_molecular_weight(const struct phys_const *phys_const,
   double total_density = nHI + nHII + nHeI + nHeII + nHeIII + nH2I + nH2II +
                          nHM + nHDI + nel + n_metal;
   if (total_density == 0.0) total_density = 1.e-20; /* Grackle's tiny_number */
-  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
-                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
+  const double mu = cooling_total_mass_number_density(
+                        rho, m_H,
+                        (nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                            (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
                     total_density;
   return mu;
 #endif /* COOLING_GRACKLE_MODE == 3 */
@@ -329,15 +353,19 @@ cooling_get_h2_species_densities(const struct phys_const *phys_const,
 #if COOLING_GRACKLE_MODE == 2
   double total_density = number_density_noH2 + nH2 + n_metal;
   if (total_density == 0.0) total_density = tiny_number;
-  const double mu =
-      ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 + (nH2I + nH2II) * 2 + nHM) /
-      total_density;
+  const double mu = cooling_total_mass_number_density(
+                        rho, m_H,
+                        (nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                            (nH2I + nH2II) * 2 + nHM) /
+                    total_density;
 #else /* COOLING_GRACKLE_MODE == 3: also track HDI */
   const double nHDI = cool_data->HDI_frac * rho / (3 * m_H);
   double total_density = number_density_noH2 + nH2 + nHDI + n_metal;
   if (total_density == 0.0) total_density = tiny_number;
-  const double mu = ((nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
-                     (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
+  const double mu = cooling_total_mass_number_density(
+                        rho, m_H,
+                        (nHI + nHII) + (nHeI + nHeII + nHeIII) * 4 +
+                            (nH2I + nH2II) * 2 + nHM + nHDI * 3) /
                     total_density;
 #endif
 
