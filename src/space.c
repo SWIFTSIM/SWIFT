@@ -4033,6 +4033,10 @@ void apply_NGS(struct threadpool *tp, const double *rho, double *u, struct MG_pr
 
     if (counter%50 == 0) message("The residual is %E", residual);
     counter +=1;
+    if (counter > 1000) {
+      warning("Newton-Gauss-Seidel not converging at scale factor %E. Final residual was %E", MG->a, residual);
+      break;
+    }
   }
   message("We needed %d steps to converge", counter);
 
@@ -4432,6 +4436,10 @@ void apply_multigrid_fR(struct threadpool *tp, const double *rho, double *u, str
     perform_red_black_sweep_fR(tp, u, rho, MG, cdim, mean_density, delta);
     residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
     counter +=1;
+    if (counter > 500) {
+      warning("Newton-Gauss-Seidel not converging at scale factor %E for grid size %d. Final residual was %E", MG->a, N_max, residual);
+      break;
+    }
     message("The counter is %d and the residual %E", counter, residual);
   }
   residual = get_residual_fR(tp, u, rho, MG, cdim, mean_density, delta, 0);
