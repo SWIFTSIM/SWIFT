@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Parse test of the GeajayCooling dust and photoelectric keys.
+# Test of the GeajayCooling dust and photoelectric keys: which values the
+# start-up accepts or refuses, and the "Dust" cooling rate of the first snapshot.
 #
 # Needs a SWIFT built with --with-cooling=geajay_X and a libgeajay that refuses
 # h2_formation_on_dust at the network H_He (geajay commit 4dc6dd9a), so it is
