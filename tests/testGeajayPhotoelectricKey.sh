@@ -2,8 +2,8 @@
 #
 # Parse test of the GeajayCooling dust and photoelectric keys.
 #
-# Needs a SWIFT built with --with-cooling=geajay_X and a libgeajay that refuses
-# h2_formation_on_dust at the network H_He (geajay commit 4dc6dd9a), so it is
+# Needs a SWIFT built with --with-cooling=geajay_3 (a network with H2) and a libgeajay that refuses
+# h2_formation_on_dust at the networks tabulated and H_He (geajay commit a1423e46), so it is
 # not part of "make check". Usage:
 #
 #   tests/testGeajayPhotoelectricKey.sh <swift binary> <fixture dir> <work dir>
@@ -92,7 +92,7 @@ expect_ok pe_no_dust photoelectric_heating=2 "photoelectric_heating_model: const
 expect_ok pe_fixed_no_dust photoelectric_heating=1 "photoelectric_heating_model: fixed_rate"
 expect_ok pe_density_no_dust photoelectric_heating=4 "photoelectric_heating_model: density_epsilon"
 expect_refused h2dust_network_1 "h2_formation_on_dust is enabled with the network H_He" "primordial_chemistry_network: H_He;h2_formation_on_dust: enabled"
-expect_ok h2dust_network_0 h2_on_dust=1 "primordial_chemistry_network: tabulated;h2_formation_on_dust: enabled"
+expect_refused h2dust_network_0 "h2_formation_on_dust is enabled with the network tabulated" "primordial_chemistry_network: tabulated;h2_formation_on_dust: enabled"
 expect_refused h2dust_network_1_basic "h2_formation_on_dust is enabled with the network H_He" "primordial_chemistry_network: H_He;$basic;h2_formation_on_dust: enabled"
 expect_ok remy_with_pe dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;photoelectric_heating_model: constant_efficiency"
 expect_ok remy_with_h2dust dust_to_gas_model=1 "dust_to_gas_model: remy_ruyer_2014;h2_formation_on_dust: enabled"

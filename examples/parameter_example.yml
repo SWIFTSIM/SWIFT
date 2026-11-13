@@ -770,8 +770,8 @@ GeajayCooling:
   photoelectric_heating_rate: -1               # (optional) Heating rate of the model fixed_rate per H atom at the reference dust-to-gas ratio [erg/s]. It is read only with fixed_rate. Zero or above, or -1 for the library value, 8.5e-26 (default: -1)
   dust_recombination_cooling: default          # (optional) Recombination cooling on grains: default (-1, on with dust_model: basic, else off), disabled (0) or enabled (1). It reads the metal mass fraction of each particle, so enabled also works
                                                # with dust_model: none (default: default)
-  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none and with the
-                                               # network tabulated, but the library refuses it at the network H_He (primordial_chemistry 1) with a start-up error, whatever dust_model is; SWIFT does not check it itself (default: default)
+  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none, but the
+                                               # library refuses it at the networks tabulated (primordial_chemistry 0) and H_He (1) with a start-up error, whatever dust_model is; SWIFT does not check it itself (default: default)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   compton_xray_heating: 0                      # (optional) Enable/disable the Compton exchange with the X-ray background, k_X (T_x - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
                                                # Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)
