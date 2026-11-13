@@ -76,7 +76,7 @@
  * @brief Error message for a feedback channel that needs the cooling module
  * initialised when neither --cooling nor --temperature was passed.
  *
- * @return The message text, with the module's own parameter block and keys.
+ * @return The message text.
  */
 __attribute__((always_inline)) INLINE static const char *
 cooling_get_missing_init_message(void) {

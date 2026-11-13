@@ -1240,12 +1240,10 @@ int main(int argc, char *argv[]) {
     }
     if (myrank == 0) cooling_print(&cooling_func);
 
-    /* Safety net: a subgrid channel that reads Grackle's resolved
-       chemistry_data (e.g. GEAR's local Lyman-Werner/PE dust opacity,
-       local_dust_to_gas_ratio) silently sees an unresolved, zeroed
-       struct if cooling_init() never ran -- neither --cooling nor
-       --temperature was passed. That zeroes real physics without any
-       crash or warning otherwise, so fail loudly instead. */
+    /* Safety net: a subgrid channel that reads the cooling module's
+       chemistry data (e.g. the local dust-to-gas ratio) sees a zeroed
+       struct if cooling_init() never ran because neither --cooling nor
+       --temperature was passed. Fail loudly instead of using it. */
     if (feedback_props_needs_cooling_initialized(&feedback_properties) &&
         !(with_cooling || with_temperature)) {
       error("%s", cooling_get_missing_init_message());
