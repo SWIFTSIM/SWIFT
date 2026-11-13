@@ -105,32 +105,24 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
 
   for (int i = 0; i < 3; ++i) {
 
-    /* The region in which forces can be interpolated. The five-point force
-     * stencil needs two cells on the low side for i-2 and three on the high
-     * side because the i+2 stencil point is CIC-interpolated and therefore
-     * also reads i+3. A small tolerance allows for roundoff in the cell
-     * construction. */
+    /* Where can we interpolate forces? The five-point stencil with CIC reads
+     * two cells below and three above, so we keep that far from the edges
+     * (with a small tolerance for roundoff). */
     const double cell_width = 1. / mesh->cell_fac;
     const double tol = 1e-6 * mesh->dim[i];
     mesh->active_min[i] = mesh->loc[i] + 2. * cell_width - tol;
     mesh->active_max[i] = mesh->loc[i] + mesh->dim[i] - 3. * cell_width + tol;
   }
 
-  /* The smoothing scale must track the zoom mesh's own grid resolution
-   * (mirroring how the background mesh derives r_s from dim/mesh_size in
-   * gravity_props_init), NOT the zoom region's top-level tree cell width.
-   * The tree cdim is set independently for domain-decomposition/load
-   * balancing and can be far coarser than the requested mesh resolution. */
+  /* Set the smoothing scale and cut-offs from the mesh cell size, as the
+   * global mesh does in gravity_props_init. */
   mesh->r_s = props->a_smooth * mesh->dim[0] / mesh->N;
   mesh->r_s_inv = 1. / mesh->r_s;
   mesh->r_cut_max = mesh->r_s * r_cut_max_ratio;
   mesh->r_cut_min = mesh->r_s * r_cut_min_ratio;
 
-  /* The zoom mesh only makes sense if it is strictly higher resolution than
-   * the background mesh it is correcting. If it isn't, the mesh-tree
-   * splitting criterion becomes *more* conservative inside the zoom region
-   * (not less), silently exploding the gravity task count instead of
-   * reducing it. */
+  /* The zoom mesh must be higher resolution than the global mesh, otherwise
+   * we'd be making more gravity tasks in the zoom region, not fewer. */
   if (mesh->r_s >= props->r_s) {
     error(
         "The zoom gravity mesh must be higher resolution than the "
@@ -142,9 +134,8 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
         mesh->r_s, mesh->N, mesh->dim[0], props->r_s);
   }
 
-  /* The search ranges used when constructing the gravity tasks are set by the
-   * cut-off of the background mesh, so the zoom mesh cannot truncate the tree
-   * forces further out than the background mesh does. */
+  /* The gravity tasks are only made out to the cut-off of the global mesh, so
+   * the zoom mesh can't truncate the tree further out than that. */
   if (mesh->r_cut_max > props->r_s * props->r_cut_max_ratio) {
     error(
         "The zoom gravity mesh truncates the tree forces at a larger distance "
@@ -153,9 +144,9 @@ static void zoom_mesh_set_geometry(struct zoom_pm_mesh *mesh,
         mesh->r_cut_max, props->r_s * props->r_cut_max_ratio);
   }
 
-  /* Positions are not wrapped on the zoom mesh, so it has to lie inside the
-   * box and no pair of covered particles can be closer through the periodic
-   * boundary than the cut-off of the background mesh. */
+  /* We don't wrap positions on the zoom mesh, so it has to sit inside the box
+   * and far enough from its own periodic images (the cut-off of the global
+   * mesh). */
   for (int i = 0; i < 3; ++i) {
     if (mesh->loc[i] < 0. || mesh->loc[i] + mesh->dim[i] > s->dim[i] ||
         mesh->dim[i] > s->dim[i] - props->r_s * props->r_cut_max_ratio) {
@@ -210,9 +201,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
     error("Gravity:zoom_mesh requested before zoom region initialization.");
   }
 
-  /* Unpack the active mesh parameters and sanity check them. The user-provided
-   * side length refers to the inner N^3 zoom mesh, not the zero-padded FFT
-   * domain used by the zero padded Hockney-Eastwood method. */
+  /* How many cells along each axis? This is the active N^3 mesh, not the
+   * zero-padded one we do the FFT on. */
   const int side_length =
       parser_get_param_int(params, "Gravity:zoom_mesh_side_length");
   if (side_length < 8) {
@@ -224,7 +214,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
     error("The zoom gravity mesh does not support Gravity:distributed_mesh.");
   }
 
-  /* Replicated transforms retain the global mesh's practical serial limit. */
+  /* The global mesh can't go above 1290 cells without being distributed, and
+   * our FFT is twice the side length. */
   if (2 * side_length > 1290) {
     error(
         "Gravity:zoom_mesh_side_length is too large for the current "
@@ -234,10 +225,13 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         side_length, 2 * side_length);
   }
 
+  /* Beyond what distance (in units of r_s) does the zoom mesh take over from
+   * the tree? */
   const double r_cut_max_ratio =
       parser_get_param_double(params, "Gravity:zoom_r_cut_max");
   if (r_cut_max_ratio <= 0.) error("Gravity:zoom_r_cut_max must be positive.");
 
+  /* Below what distance (in units of r_s) do we not truncate the tree? */
   const double r_cut_min_ratio =
       parser_get_opt_param_double(params, "Gravity:zoom_r_cut_min", 0.);
   if (r_cut_min_ratio < 0.) error("Gravity:zoom_r_cut_min must be >= 0.");
@@ -245,8 +239,8 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
     error("Gravity:zoom_r_cut_min must be <= Gravity:zoom_r_cut_max.");
   }
 
-  /* The truncated tree force must fit inside the mesh domain, mirroring the
-   * background mesh's own r_cut_max check in gravity_props_init. */
+  /* The tree cut-off has to fit inside the mesh, as checked for the global
+   * mesh in gravity_props_init. */
   if (2. * props->a_smooth * r_cut_max_ratio > side_length) {
     error(
         "Zoom mesh too small given Gravity:zoom_r_cut_max. "
@@ -255,12 +249,14 @@ void zoom_mesh_init(struct zoom_pm_mesh *mesh, struct swift_params *params,
         (int)(2. * props->a_smooth * r_cut_max_ratio) + 1, side_length);
   }
 
+  /* How many shells of background cells around the zoom region do we cover? */
   const int buffer_cells =
       parser_get_opt_param_int(params, "Gravity:zoom_mesh_bkg_buffer_cells", 1);
   if (buffer_cells < 1) {
     error("Gravity:zoom_mesh_bkg_buffer_cells must be >= 1.");
   }
 
+  /* We need the top-level cells to place the mesh. */
   if (s->zoom_props->nr_bkg_cells <= 0 ||
       s->zoom_props->bkg_cells_top == NULL) {
     error("Gravity:zoom_mesh requires background top-level cells.");
@@ -312,9 +308,9 @@ void zoom_mesh_clean(struct zoom_pm_mesh *mesh) {
 /**
  * @brief Rebuild the zoom mesh after rebuilding the zoom top-level cells.
  *
- * The Fourier kernel depends on the mesh spacing, so invalidate it before
- * updating the mesh position and smoothing scale. The side-length of the mesh
- * does not change so the potential grid is kept.
+ * The kernel depends on the mesh cell size so we throw it away and rebuild it
+ * at the next force calculation. The side-length of the mesh does not change,
+ * so the potential grid is kept.
  *
  * @param mesh The #zoom_pm_mesh to rebuild.
  * @param s The #space containing the new zoom region geometry.
@@ -435,7 +431,7 @@ void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream) {
 /**
  * @brief Return the Fourier-space correction for CIC assignment and sampling.
  *
- * Same correction as applied to the periodic mesh in
+ * Same correction as applied to the global mesh in
  * mesh_apply_Green_function_mapper().
  *
  * @param kx Fourier mode along x.
@@ -723,7 +719,7 @@ static void zoom_mesh_deposit_bkg_cells_mapper(void *map_data, int num,
  * CIC method.
  *
  * Zoom mesh equivalent of mesh_to_gpart_CIC(). The correction is added to the
- * forces and potential of the periodic mesh.
+ * forces and potential of the global mesh.
  *
  * @param gp The #gpart.
  * @param pot The potential mesh.
@@ -967,7 +963,7 @@ struct zoom_kernel_data {
   /*! The Fourier-space kernel. */
   fftw_complex *fkernel;
 
-  /*! Inverse of the smoothing scale of the periodic mesh. */
+  /*! Inverse of the smoothing scale of the global mesh. */
   double global_r_s_inv;
 
   /*! Padding of the last dimension of the real-space array. */
@@ -980,9 +976,9 @@ struct zoom_kernel_data {
 /**
  * @brief Mapper function for the construction of the real-space kernel.
  *
- * The kernel is the long-range potential of the zoom mesh split minus the
- * long-range potential already provided by the periodic mesh. Indices in the
- * upper half of the zero-padded domain are negative offsets.
+ * The kernel is the long-range potential with the zoom mesh split minus the
+ * one the global mesh already provides. Indices in the upper half of the
+ * zero-padded mesh are negative offsets.
  *
  * @param map_data The array of the real-space kernel.
  * @param num The number of elements to iterate on (along the x-axis).
@@ -1000,7 +996,7 @@ static void zoom_mesh_kernel_mapper(void *map_data, const int num,
   const int M = 2 * N;
   const size_t M_pad = M + data->pad;
 
-  /* Unpack the split scales of the zoom and periodic meshes */
+  /* Unpack the split scales of the zoom and global meshes */
   const double r_s_inv = mesh->r_s_inv;
   const double global_r_s_inv = data->global_r_s_inv;
 
@@ -1034,12 +1030,12 @@ static void zoom_mesh_kernel_mapper(void *map_data, const int num,
         const double zoom_long = (r == 0.) ? -M_2_SQRTPI * 0.5 * r_s_inv
                                            : -erf(0.5 * r * r_s_inv) / r;
 
-        /* Long-range potential already provided by the periodic mesh */
+        /* Long-range potential already provided by the global mesh */
         const double global_long = (r == 0.)
                                        ? -M_2_SQRTPI * 0.5 * global_r_s_inv
                                        : -erf(0.5 * r * global_r_s_inv) / r;
 
-        /* Store the correction to the periodic mesh */
+        /* Store the correction to the global mesh */
         const size_t index =
             ((size_t)(i - slice_offset) * M + j) * M_pad + (size_t)k;
         kernel[index] = zoom_long - global_long;
@@ -1054,7 +1050,7 @@ static void zoom_mesh_kernel_mapper(void *map_data, const int num,
  * @param tp The threadpool.
  * @param mesh The #zoom_pm_mesh.
  * @param kernel The MxMx(M+pad) real array of the kernel.
- * @param global_r_s_inv Inverse of the smoothing scale of the periodic mesh.
+ * @param global_r_s_inv Inverse of the smoothing scale of the global mesh.
  * @param slice_offset The x coordinate of the start of the slice on this MPI
  * rank
  * @param slice_width The width of the local slice on this MPI rank
@@ -1195,11 +1191,15 @@ struct zoom_multiply_mapper_data {
  */
 static void zoom_mesh_multiply_mapper(void *map_data, int num, void *extra) {
 
+  /* Unpack the mapper data */
   fftw_complex *density = (fftw_complex *)map_data;
   const struct zoom_multiply_mapper_data *data =
       (const struct zoom_multiply_mapper_data *)extra;
+
+  /* Where are we in the full array? */
   const size_t offset = density - data->density;
 
+  /* Complex multiplication (a + ib)(c + id) of the density by the kernel */
   for (int i = 0; i < num; ++i) {
     const size_t k = offset + i;
     const double a = density[i][0];
@@ -1214,13 +1214,12 @@ static void zoom_mesh_multiply_mapper(void *map_data, int num, void *extra) {
 /**
  * @brief Compute the zoom mesh correction to the gravity forces.
  *
- * This uses the zero padded Hockney-Eastwood method for isolated boundary
- * conditions: particle mass is deposited on the active N^3 zoom mesh, both the
- * density and Green's function are embedded in a zero-padded (2N)^3 FFT domain,
- * and the resulting circular convolution is therefore the isolated linear
- * convolution on the active mesh. The resulting correction is then interpolated
- * back to particles and added to their existing mesh acceleration and
- * potential.
+ * This is the zero-padded method of Hockney & Eastwood for isolated boundary
+ * conditions. The mass is deposited on the active N^3 mesh, which sits in a
+ * zero-padded (2N)^3 mesh along with the kernel, so the periodic convolution
+ * done by the FFT is the isolated one on the active mesh. The result is
+ * interpolated back to the particles and added to what the global mesh gave
+ * them.
  *
  * @param mesh The #zoom_pm_mesh.
  * @param s The #space containing the particles.
@@ -1392,8 +1391,8 @@ static void zoom_mesh_compute_potential_global(struct zoom_pm_mesh *mesh,
 /**
  * @brief Add the isolated zoom mesh correction to covered particles.
  *
- * Check the softening of the cells that actually receive the correction, using
- * the maximal softening recorded in their multipoles, then do the FFT solve.
+ * We first check the softening of the cells that will receive the correction
+ * (using the maximal softening in their multipoles), then do the FFT solve.
  *
  * @param mesh The #zoom_pm_mesh, or NULL when disabled.
  * @param s The #space containing the particles.
@@ -1406,28 +1405,36 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
 
   if (mesh == NULL || !mesh->enabled) return;
 
-  /* Background particles can have mass-dependent softenings larger than the
-   * configured high-resolution values. Check only cells receiving the zoom
-   * correction; uncovered cells keep the global tree-PM split. */
+  /* Find the largest softening of the particles we are about to give a zoom
+   * mesh force to. Background particles can have softenings larger than the
+   * high-resolution ones, so we have to look. */
   double max_softening = 0.;
   if (s->cells_top != NULL && s->zoom_props != NULL) {
+
+    /* Loop over the local zoom and background top-level cells */
     const struct zoom_region_properties *z = s->zoom_props;
     const int *lists[2] = {z->local_zoom_cells_top, z->local_bkg_cells_top};
     const int counts[2] = {z->nr_local_zoom_cells, z->nr_local_bkg_cells};
     for (int type = 0; type < 2; ++type) {
       for (int i = 0; i < counts[type]; ++i) {
         const struct cell *c = &s->cells_top[lists[type][i]];
+
+        /* Skip cells that don't use the zoom mesh and empty ones */
         if (!zoom_mesh_cell_is_covered(mesh, c, /*use_max_dx=*/0)) continue;
         if (c->grav.count == 0) continue;
+
         max_softening =
             max(max_softening, (double)c->grav.multipole->m_pole.max_softening);
       }
     }
   }
 #ifdef WITH_MPI
+  /* We want the largest one over all the ranks */
   MPI_Allreduce(MPI_IN_PLACE, &max_softening, 1, MPI_DOUBLE, MPI_MAX,
                 MPI_COMM_WORLD);
 #endif
+
+  /* The force split only works if the softening is below the split scale */
   if (max_softening > mesh->r_s) {
     error(
         "Zoom mesh smoothing scale r_s=%g is smaller than the softening "
@@ -1435,6 +1442,7 @@ void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
         mesh->r_s, max_softening);
   }
 
+  /* All good, do the calculation */
   zoom_mesh_compute_potential_global(mesh, s, tp, verbose);
 }
 
@@ -1482,9 +1490,8 @@ int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
   if (mesh == NULL) return 0;
   if (!mesh->enabled) return 0;
 
-  /* Long-range gravity can interact at the top-cell level. Do not apply a
-   * fine-mesh correction to a covered leaf if its parent top cell still uses
-   * the coarse tree split. */
+  /* Long-range gravity can interact at the top level, so the cell's top-level
+   * cell has to be inside the zoom mesh too. */
   return zoom_mesh_cell_is_inside(mesh, c->top, use_max_dx) &&
          zoom_mesh_cell_is_inside(mesh, c, use_max_dx);
 }

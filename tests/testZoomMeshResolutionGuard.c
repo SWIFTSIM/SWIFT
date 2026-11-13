@@ -33,13 +33,11 @@
 /**
  * @brief Build the minimal engine-adjacent structures #zoom_mesh_init needs.
  *
- * The background mesh's smoothing scale (@p props->r_s) is fixed by the
- * caller; @p zoom_mesh_side_length is varied to make the zoom mesh either
- * higher or lower resolution than that background mesh.
+ * The smoothing scale of the global mesh is fixed. We vary the side length of
+ * the zoom mesh to make it higher or lower resolution than the global mesh.
  *
  * @param params The #swift_params to fill in.
- * @param props The #gravity_props to fill in (background mesh already
- * "initialised").
+ * @param props The #gravity_props to fill in.
  * @param s The #space to fill in.
  * @param zoom_props The #zoom_region_properties to fill in.
  * @param bkg_cell A mock background top-level #cell.
@@ -52,6 +50,7 @@ static void setup_mock_engine(struct swift_params *params,
                               struct cell *bkg_cell, struct cell *zoom_cell,
                               const int zoom_mesh_side_length) {
 
+  /* Start from nothing */
   bzero(params, sizeof(struct swift_params));
   bzero(props, sizeof(struct gravity_props));
   bzero(s, sizeof(struct space));
@@ -59,6 +58,7 @@ static void setup_mock_engine(struct swift_params *params,
   bzero(bkg_cell, sizeof(struct cell));
   bzero(zoom_cell, sizeof(struct cell));
 
+  /* The zoom mesh parameters */
   parser_init("test_zoom_mesh_resolution_guard", params);
   parser_set_param(params, "Gravity:zoom_mesh:1");
   {
@@ -69,13 +69,14 @@ static void setup_mock_engine(struct swift_params *params,
   }
   parser_set_param(params, "Gravity:zoom_r_cut_max:4.5");
 
-  /* A pre-"initialised" background (global) periodic mesh: a_smooth=1.25,
-   * box=100, mesh_side_length=128 -> r_s = 1.25 * 100 / 128 = 0.9765625. */
+  /* The global mesh: 128 cells over a box of 100 with a_smooth = 1.25, so
+   * r_s = 1.25 * 100 / 128 = 0.9765625. */
   props->a_smooth = 1.25;
   props->r_s = 0.9765625;
   props->r_s_inv = 1. / props->r_s;
   props->r_cut_max_ratio = 4.5;
 
+  /* A periodic box with a zoom region */
   s->periodic = 1;
   s->with_zoom_region = 1;
   s->dim[0] = 100.;
@@ -119,6 +120,7 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length,
                                    const double regrid_bkg_width,
                                    const int check_covered) {
 
+  /* Set up the mock engine */
   struct swift_params params;
   struct gravity_props props;
   struct space s;
@@ -136,19 +138,22 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length,
   if (pid < 0) error("fork() failed");
 
   if (pid == 0) {
-    /* Child: this either returns (success) or calls error()/exit(1)
-     * (rejected). The diagnostic message printed to stderr on rejection is
-     * expected and not a test failure. */
+    /* In the child we either get through (accepted) or hit an error
+     * (rejected). The error message printed in that case is expected. */
     struct zoom_pm_mesh zoom_mesh;
     bzero(&zoom_mesh, sizeof(struct zoom_pm_mesh));
     zoom_mesh_init(&zoom_mesh, &params, &props, &s, /*nr_threads=*/1,
                    /*verbose=*/0);
+
+    /* Do we want to regrid with different background cells? */
     if (regrid_bkg_width > 0.) {
       for (int i = 0; i < 3; ++i) {
         bkg_cell.width[i] = regrid_bkg_width;
       }
       zoom_mesh_regrid(&zoom_mesh, &s);
     }
+
+    /* Do we want to compute forces for a particle covered by the mesh? */
     if (check_covered) {
       struct gpart gp = {0};
       gp.type = swift_type_dark_matter;
@@ -183,6 +188,7 @@ static int zoom_mesh_init_survives(const int zoom_mesh_side_length,
     _exit(0);
   }
 
+  /* Back in the parent, how did the child get on? */
   int status;
   if (waitpid(pid, &status, 0) < 0) error("waitpid() failed");
   if (!WIFEXITED(status)) {
@@ -202,33 +208,29 @@ int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
 
-  /* A zoom mesh with side_length=128 over the ~35-wide padded zoom domain
-   * (10 + 2 * 1 buffer cell of width 12.5) is far higher resolution than the
-   * r_s=0.9765625 background mesh: r_s_zoom = 1.25 * 35/128 ~ 0.342. This
-   * must be accepted even though the unused baryon softening is 0.6. */
+  /* 128 cells over the zoom mesh (35 across: the region of 10 plus a buffer
+   * cell of 12.5 either side) gives r_s = 1.25 * 35 / 128 ~ 0.342, well below
+   * the global mesh. This is fine, even with the unused baryon softening of
+   * 0.6. */
   if (!zoom_mesh_init_survives(128, 0.3f, 0., 0)) {
     error("A genuinely higher-resolution zoom mesh should not be rejected.");
   }
 
-  /* A zoom mesh with the minimum allowed side_length=8 over the same ~35-wide
-   * domain is far *lower* resolution than the background mesh: r_s_zoom =
-   * 1.25 * 35/8 ~ 5.47 >> r_s_background = 0.9765625. This must be rejected;
-   * accepting it silently makes the mesh-tree splitting criterion *more*
-   * conservative inside the zoom region, exploding the gravity task count
-   * instead of reducing it. */
+  /* 8 cells over the same mesh gives r_s = 1.25 * 35 / 8 ~ 5.47, which is
+   * lower resolution than the global mesh. We can't have that. */
   if (zoom_mesh_init_survives(8, 0.3f, 0., 0)) {
     error(
         "A zoom mesh lower resolution than the background mesh should have "
         "been rejected by zoom_mesh_init.");
   }
 
-  /* Only a covered DM particle with softening above r_s should be rejected. */
+  /* A covered DM particle with a softening above r_s can't be allowed. */
   if (zoom_mesh_init_survives(128, 0.4f, 0., 1)) {
     error("Covered DM softening larger than the smoothing scale was accepted.");
   }
 
-  /* A regrid shrinking the padded mesh from 35 to 24 units reduces r_s from
-   * ~0.342 to ~0.234, which must now be rejected for h=0.3. */
+  /* Regridding the mesh from 35 to 24 across takes r_s from ~0.342 to ~0.234,
+   * which is now below the softening of 0.3. */
   if (zoom_mesh_init_survives(128, 0.3f, 7., 1)) {
     error("Covered DM softening above the regridded scale was accepted.");
   }

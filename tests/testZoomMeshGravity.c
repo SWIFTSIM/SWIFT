@@ -82,12 +82,12 @@ static void free_cell(struct cell *c) {
 /**
  * @brief Compute the analytic zoom mesh correction kernel at a separation.
  *
- * This matches the real-space correction Green's function used by the Hockney
- * zero-padded zoom mesh solve.
+ * This is the kernel the zoom mesh uses: the long-range potential with the zoom
+ * mesh split minus the one with the global mesh split.
  *
  * @param r The separation.
  * @param r_s_zoom The zoom mesh smoothing scale.
- * @param r_s_global The regular PM mesh smoothing scale.
+ * @param r_s_global The global mesh smoothing scale.
  * @return The correction potential for unit mass and G=1.
  */
 static double zoom_mesh_test_kernel(const double r, const double r_s_zoom,
@@ -110,7 +110,7 @@ static double zoom_mesh_test_kernel(const double r, const double r_s_zoom,
  * @param source_i The source mesh index along x.
  * @param probe_i The probe mesh index along x.
  * @param r_s_zoom The zoom mesh smoothing scale.
- * @param r_s_global The regular PM mesh smoothing scale.
+ * @param r_s_global The global mesh smoothing scale.
  * @return The expected x acceleration for unit mass and G=1.
  */
 static double zoom_mesh_expected_acceleration_x(const double cell_fac,
@@ -138,7 +138,7 @@ static double zoom_mesh_expected_acceleration_x(const double cell_fac,
 /**
  * @brief Test zoom mesh coverage and, with FFTW, its force correction.
  *
- * This constructs a mock periodic engine with both a regular PM mesh and a
+ * This constructs a mock periodic engine with both a global mesh and a
  * zoom mesh. The test checks which cells are covered by the zoom mesh. With
  * FFTW it also tests the isolated solve, deposition methods and kernel
  * invalidation after regridding.
@@ -167,11 +167,13 @@ int main(int argc, char *argv[]) {
   bzero(&cosmology, sizeof(struct cosmology));
   bzero(&zoom_props, sizeof(struct zoom_region_properties));
 
+  /* A periodic box */
   s.periodic = 1;
   s.dim[0] = 100.;
   s.dim[1] = 100.;
   s.dim[2] = 100.;
 
+  /* The global mesh */
   mesh.periodic = 1;
   mesh.dim[0] = s.dim[0];
   mesh.dim[1] = s.dim[1];
@@ -181,6 +183,7 @@ int main(int argc, char *argv[]) {
   mesh.r_s = 10.;
   mesh.r_s_inv = 0.1;
 
+  /* The zoom mesh */
   zoom_mesh.enabled = 1;
   zoom_mesh.use_local_patches = 1;
   zoom_mesh.N = 16;
@@ -191,6 +194,8 @@ int main(int argc, char *argv[]) {
   zoom_mesh.dim[1] = 30.;
   zoom_mesh.dim[2] = 30.;
   zoom_mesh.cell_fac = zoom_mesh.N / zoom_mesh.dim[0];
+
+  /* Where can forces be interpolated? (As done in zoom_mesh_gravity.c) */
   for (int i = 0; i < 3; ++i) {
     const double cell_width = 1. / zoom_mesh.cell_fac;
     const double tol = 1e-6 * zoom_mesh.dim[i];
@@ -203,10 +208,12 @@ int main(int argc, char *argv[]) {
   zoom_mesh.r_s = 1.;
   zoom_mesh.r_s_inv = 1.;
 
+  /* Softenings and constants */
   props.epsilon_DM_cur = 0.1f;
   props.epsilon_baryon_cur = 0.1f;
   phys_const.const_newton_G = 1.;
 
+  /* Link everything into the mock engine */
   e.s = &s;
   e.mesh = &mesh;
   e.gravity_properties = &props;
@@ -218,6 +225,7 @@ int main(int argc, char *argv[]) {
   s.zoom_props = &zoom_props;
 
 #ifdef HAVE_FFTW
+  /* Check the CIC deconvolution against the analytic expression */
   const int test_mode[3] = {3, -2, 5};
   double expected_deconvolution = 1.;
   for (int axis = 0; axis < 3; ++axis) {
@@ -231,6 +239,7 @@ int main(int argc, char *argv[]) {
   }
 #endif
 
+  /* Two cells with one particle each, both inside the zoom mesh */
   const double width[3] = {1., 1., 1.};
   const double loc_i[3] = {16., 16., 16.};
   const double loc_j[3] = {21., 16., 16.};
@@ -245,6 +254,7 @@ int main(int argc, char *argv[]) {
   cell_make_multipoles(&ci, /*ti_current=*/0, &props);
   cell_make_multipoles(&cj, /*ti_current=*/0, &props);
 
+  /* Both should be covered */
   if (!zoom_mesh_cell_is_covered(&zoom_mesh, &ci, /*use_max_dx=*/0)) {
     error("ci should be covered by the zoom mesh");
   }
@@ -252,8 +262,8 @@ int main(int argc, char *argv[]) {
     error("cj should be covered by the zoom mesh");
   }
 
-  /* A leaf inside the fine mesh cannot use it when its top cell straddles
-   * the mesh boundary: long-range tree interactions use that top cell. */
+  /* A cell inside the zoom mesh can't use it if its top-level cell sticks out
+   * of the mesh. */
   struct cell straddling_top = {0};
   for (int axis = 0; axis < 3; ++axis) {
     straddling_top.loc[axis] = 12.;
@@ -266,14 +276,16 @@ int main(int argc, char *argv[]) {
   ci.top = &ci;
 
 #ifdef HAVE_FFTW
-  /* Check the Hockney solve against the analytic correction kernel sampled
-   * with the same finite-difference stencil. CIC deconvolution modifies this
-   * sampled reference slightly at this deliberately small mesh size. */
+  /* Check the force of a source on a probe against the analytic kernel
+   * sampled with the same stencil. Both sit on mesh nodes. The CIC
+   * deconvolution changes the answer slightly on such a small mesh, hence the
+   * tolerance below. */
   const int source_i = 6;
   const int probe_i = 9;
   const double y_node = zoom_mesh.loc[1] + source_i / zoom_mesh.cell_fac;
   const double z_node = zoom_mesh.loc[2] + source_i / zoom_mesh.cell_fac;
 
+  /* One cell for the source and one for the (massless) probe */
   struct cell mesh_cells[2];
   int local_cells_with_particles_top[2] = {0, 1};
   const double source_x[3] = {zoom_mesh.loc[0] + source_i / zoom_mesh.cell_fac,
@@ -289,6 +301,7 @@ int main(int argc, char *argv[]) {
   setup_cell(&mesh_cells[1], probe_loc, width, probe_x);
   mesh_cells[1].grav.parts[0].mass = 0.;
 
+  /* Make these the local top-level cells */
   s.cells_top = mesh_cells;
   s.local_cells_with_particles_top = local_cells_with_particles_top;
   zoom_props.nr_local_zoom_cells = 1;
@@ -298,10 +311,11 @@ int main(int argc, char *argv[]) {
 
   threadpool_init(&e.threadpool, /*num_threads=*/4);
 
+  /* Do the calculation */
   zoom_mesh_allocate(&zoom_mesh);
-
   zoom_mesh_compute_potential(&zoom_mesh, &s, &e.threadpool, /*verbose=*/0);
 
+  /* Did we get the force we expected? */
   const double expected_ax = zoom_mesh_expected_acceleration_x(
       zoom_mesh.cell_fac, source_i, probe_i, zoom_mesh.r_s, mesh.r_s);
   const double measured_ax = mesh_cells[1].grav.parts[0].a_grav_mesh[0];
@@ -319,7 +333,8 @@ int main(int argc, char *argv[]) {
     error("Zoom mesh force should be aligned with the x-axis");
   }
 
-  /* Exercise the cached-kernel path and require the same force. */
+  /* Go again with the atomic deposit and the cached kernel. We should get the
+   * same force. */
   for (int axis = 0; axis < 3; ++axis) {
     mesh_cells[1].grav.parts[0].a_grav_mesh[axis] = 0.f;
   }
@@ -333,8 +348,7 @@ int main(int argc, char *argv[]) {
   }
   zoom_mesh.use_local_patches = 1;
 
-  /* Shift both particles off the nodes to exercise fractional CIC assignment
-   * and interpolation with the cached, deconvolved kernel. */
+  /* Now shift both particles off the mesh nodes to test the CIC weights. */
   const double shift = 0.37 / zoom_mesh.cell_fac;
   for (int cell = 0; cell < 2; ++cell) {
     mesh_cells[cell].loc[0] += shift;
@@ -387,8 +401,8 @@ int main(int argc, char *argv[]) {
   neutrino_props.use_delta_f_mesh_only = 0;
   mesh_cells[0].grav.parts[0].type = swift_type_dark_matter;
 
-  /* A zoom regrid changes the mesh origin and spacing and invalidates the
-   * cached Fourier kernel before the next force calculation. */
+  /* Regrid: the mesh moves, its cell size changes and the cached kernel has to
+   * be thrown away. */
   struct cell bkg_cell = {0};
   for (int axis = 0; axis < 3; ++axis) {
     bkg_cell.width[axis] = 10.;
