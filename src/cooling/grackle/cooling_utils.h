@@ -140,6 +140,8 @@ cooling_get_equilibrium_mean_molecular_weight(
  * @param rho Physical gas density.
  * @param m_H Proton mass.
  * @param tracked_mass Mass density of the tracked species in units of m_H.
+ * @return Total mass density in units of m_H, or 0 if tracked_mass is not
+ * positive.
  */
 __attribute__((always_inline)) INLINE static double
 cooling_total_mass_number_density(const double rho, const double m_H,
