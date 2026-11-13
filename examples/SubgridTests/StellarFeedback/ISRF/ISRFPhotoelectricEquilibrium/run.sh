@@ -9,7 +9,7 @@ set -eo pipefail
 
 n_threads=${n_threads:=8}                      # Number of threads to use
 gas_density=${gas_density:=10}                 # Gas density in H atoms/cm^3
-g0=${g0:=1.65}                                 # Far-UV field in Habing units (1.65 is chi = 1 of Draine 1978)
+g0=${g0:=1.65}                                 # Far-UV field in Habing units (1.65 stands for chi = 1 of the Draine field, approximately)
 initial_temperature=${initial_temperature:=1000} # Starting temperature in K; use a hot and a cold start to find both branches
 gas_particle_mass=${gas_mass:=0.1}             # Mass of the gas particles (Msun)
 level=${level:=5}                              # Resolution level: N = (2**level)**3 gas particles

@@ -3,7 +3,7 @@ A star-free periodic box of gas at solar metallicity, bathed in a uniform far-UV
 field, evolved to thermal equilibrium. Photoelectric heating from dust balances
 the metal and H/He cooling, so the final temperature and pressure at a given
 density are the equilibrium curves of the two-phase interstellar medium
-(Kim et al. 2023, ApJ 946, 3, Sections 7.1.1 and 8.2). A scan over the density
+(Kim, Gong, Kim and Ostriker 2023, ApJS 264, 10, Sections 7.1.1 and 8.2). A scan over the density
 gives T(n) and P(n). In a density range, runs started hot and runs started cold
 end on different branches, which is the thermal instability.
 
@@ -32,7 +32,7 @@ Settings in `run.sh`, each overridable on the command line:
 | Variable | Default | Meaning |
 |---|---|---|
 | `gas_density` | 10 | density in H atoms per cm^3 |
-| `g0` | 1.65 | field in Habing units (1.65 is chi = 1 of Draine 1978) |
+| `g0` | 1.65 | field in Habing units; 1.65 stands for chi = 1 of the Draine field (approximate conversion) |
 | `initial_temperature` | 1000 | start in K; run a hot and a cold start to find both branches |
 | `metallicity` | 0.6475 | `GEARChemistry:initial_metallicity`; 0.6475 is a metal mass fraction of 0.01295, the solar value of both libraries |
 | `field` | seeded | `seeded`, `none` (control, no field) or `background` (geajay only: constant G0 from the library, ISRF module off) |

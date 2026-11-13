@@ -50,7 +50,7 @@ def parse_options():
         "--g0",
         type=float,
         default=1.65,
-        help="Far-UV field in Habing units (1.65 is chi = 1 of Draine 1978)",
+        help="Far-UV field in Habing units (1.65 stands for chi = 1 of the Draine field, approximately)",
     )
     parser.add_argument(
         "--pe_fraction",
