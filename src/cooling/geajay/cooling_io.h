@@ -1092,6 +1092,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->rt_heii_ionisation_rate = rt_rates[3];
   cooling->rt_h2_dissociation_rate = rt_rates[4];
 
+  if (cooling->with_ISRF && cooling->primordial_chemistry >= 2 &&
+      cooling->rt_h2_dissociation_rate != 0.)
+    warning(
+        "GEARFeedback:with_interstellar_radiation_field is on and "
+        "GeajayCooling:rt_h2_dissociation_rate_per_s is nonzero. That "
+        "constant is ignored: the per-particle LW-band-derived rate replaces "
+        "it, zero included. If it is a leftover from before "
+        "with_interstellar_radiation_field was enabled, set it to 0.");
+
   cooling->volumetric_heating_rates = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:volumetric_heating_rates_cgs", 0);
 
