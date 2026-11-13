@@ -298,15 +298,17 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 /**
  * @brief Whether a double is finite, by its bits.
  *
- * SWIFT compiles with -ffast-math, which lets the compiler drop a comparison
- * or isfinite() test of a NaN.
+ * -ffast-math lets the compiler drop a comparison or isfinite() test of a
+ * NaN, and clang marks a double passed by value nofpclass(nan inf), which
+ * makes a bit test foldable even in a noinline function. A pointer to the
+ * stored value carries no such annotation.
  *
- * @param x The value.
- * @return 1 if @p x is neither NaN nor infinite, else 0.
+ * @param x Pointer to the value.
+ * @return 1 if *x is neither NaN nor infinite, else 0.
  */
-INLINE static int cooling_double_is_finite(double x) {
+__attribute__((noinline)) static int cooling_double_is_finite(const double *x) {
   uint64_t bits;
-  memcpy(&bits, &x, sizeof(bits));
+  memcpy(&bits, x, sizeof(bits));
   return ((bits >> 52) & 0x7ffULL) != 0x7ffULL;
 }
 
@@ -727,11 +729,11 @@ INLINE static void cooling_read_background_parameters(
       parser_get_opt_param_double(parameter_file, per_band_keys[5], 1.5e-21);
   cooling->dust_cross_section_pe_cgs =
       parser_get_opt_param_double(parameter_file, per_band_keys[6], 8.6e-22);
-  if (!cooling_double_is_finite(cooling->dust_cross_section_lw_cgs) ||
+  if (!cooling_double_is_finite(&cooling->dust_cross_section_lw_cgs) ||
       !(cooling->dust_cross_section_lw_cgs >= 0.))
     error("%s must be a finite number >= 0, got %g.", per_band_keys[5],
           cooling->dust_cross_section_lw_cgs);
-  if (!cooling_double_is_finite(cooling->dust_cross_section_pe_cgs) ||
+  if (!cooling_double_is_finite(&cooling->dust_cross_section_pe_cgs) ||
       !(cooling->dust_cross_section_pe_cgs >= 0.))
     error("%s must be a finite number >= 0, got %g.", per_band_keys[6],
           cooling->dust_cross_section_pe_cgs);
@@ -988,7 +990,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->photoelectric_heating_rate = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:photoelectric_heating_rate", -1.);
-  if (!cooling_double_is_finite(cooling->photoelectric_heating_rate) ||
+  if (!cooling_double_is_finite(&cooling->photoelectric_heating_rate) ||
       (cooling->photoelectric_heating_rate != -1. &&
        !(cooling->photoelectric_heating_rate >= 0.)))
     error(
@@ -1044,7 +1046,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
-  if (!cooling_double_is_finite(cooling->reference_dust_to_gas_ratio) ||
+  if (!cooling_double_is_finite(&cooling->reference_dust_to_gas_ratio) ||
       (cooling->reference_dust_to_gas_ratio != -1. &&
        !(cooling->reference_dust_to_gas_ratio > 0.)))
     error(
