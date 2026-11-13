@@ -209,7 +209,7 @@ Three ``GrackleCooling`` parameters control how the field is turned into heating
 Two further parameters are worth checking:
 
 - ``GrackleCooling:local_dust_to_gas_ratio`` sets the dust content that the photoelectric rate is proportional to. A negative value uses Grackle's own default.
-- ``GrackleCooling:RT_H2_dissociation_rate_cgs`` applies a constant :math:`\mathrm{H}_2` dissociation rate to all gas, on top of the per-particle rate this module computes. Set it to ``0`` in an ISRF run. SWIFT warns if it is nonzero.
+- ``GrackleCooling:RT_H2_dissociation_rate_cgs`` is a constant :math:`\mathrm{H}_2` dissociation rate for all gas. It is ignored while this module is on and :math:`\mathrm{H}_2` is tracked: the per-particle rate this module computes replaces it, zero included. Set it to ``0`` in an ISRF run. SWIFT warns if it is nonzero.
 
 Receiver-side extinction
 ------------------------
