@@ -143,6 +143,7 @@ cooling_get_equilibrium_mean_molecular_weight(
  * @param rho Physical gas density.
  * @param m_H Proton mass.
  * @param tracked_mass Mass density of the tracked species in units of m_H.
+ *        Only its sign is used, as the test for a particle with no species.
  * @return Total mass density in units of m_H, or 0 if tracked_mass is not
  * positive.
  */
