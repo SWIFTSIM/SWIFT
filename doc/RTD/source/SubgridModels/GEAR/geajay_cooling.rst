@@ -333,8 +333,9 @@ Molecules and dust
    * - ``photoelectric_heating_rate``
      - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
        ratio [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
-       8.5e-26. The heating per volume is this rate times n\ :sub:`H` times D / D\ :sub:`ref`, so the model
-       needs a dust density (D is the dust-to-gas ratio, D\ :sub:`ref` the reference ratio) (default: -1).
+       8.5e-26. The heating per volume is this rate times n\ :sub:`H` times D / D\ :sub:`ref`, where D
+       is the dust-to-gas ratio from the metal mass fraction of each particle and
+       D\ :sub:`ref` the reference ratio (default: -1).
    * - ``dust_recombination_cooling``
      - (optional) Recombination cooling on grains: ``default`` (-1, on with ``dust_model`` ``basic``,
        else off), ``disabled`` (0) or ``enabled`` (1). It reads the metal mass fraction of each

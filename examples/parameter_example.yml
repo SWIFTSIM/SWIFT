@@ -809,8 +809,8 @@ GeajayCooling:
                                                # coefficients of Wolfire et al. 2003 eq. 24) or density_epsilon (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and A2). Every model scales with D / D_ref and n_H and gives no
                                                # heating above 2e4 K. A value above none also works with dust_model: none, because SWIFT passes the metal mass fraction of every particle.
                                                # With GEARFeedback:with_interstellar_radiation_field on, none and fixed_rate do not use the ISRF field and the run warns (default: default)
-  photoelectric_heating_rate: -1               # (optional) Heating rate of the model fixed_rate per H atom at the reference dust-to-gas ratio [erg/s]. It is read only with fixed_rate. Zero or above, or -1 for the library value, 8.5e-26 (default: -1)
-                                               # The heating per volume is this rate times n_H times D / D_ref, so the model needs a dust density (D is the dust-to-gas ratio, D_ref the reference ratio).
+  photoelectric_heating_rate: -1               # (optional) Heating rate of the model fixed_rate per H atom at the reference dust-to-gas ratio [erg/s]. It is read only with fixed_rate. Zero or above, or -1 for the library value, 8.5e-26
+                                               # The heating per volume is this rate times n_H times D / D_ref, where D is the dust-to-gas ratio from the metal mass fraction of each particle and D_ref the reference ratio (default: -1)
   dust_recombination_cooling: default          # (optional) Recombination cooling on grains: default (-1, on with dust_model: basic, else off), disabled (0) or enabled (1). It reads the metal mass fraction of each particle, so enabled also works
                                                # with dust_model: none (default: default)
   h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none and with the
