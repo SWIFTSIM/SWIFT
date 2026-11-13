@@ -70,8 +70,8 @@ __attribute__((always_inline)) INLINE static float material_P_min_yield_envelope
     error("Material %d: P_min_scheme yield_envelope needs "
           "YieldStressCollins:mu_d > 0", mat_id);
 
-  /* The yield stress is Y = (1 - D) Y_i + D Y_d, with Y_d not capped at zero.
-   * Find the pressure at which Y is zero. */
+  /* The yield stress is Y = (1 - D) Y_i + D Y_d, with Y_d not capped at zero
+   * but capped at Y_i. Find the pressure at which Y is zero. */
 
   /* Constant Y_i = Y_0i, when it does not depend on pressure. Intact material
    * then never reaches zero, and otherwise the zero is linear in P. */
@@ -90,7 +90,11 @@ __attribute__((always_inline)) INLINE static float material_P_min_yield_envelope
 
   /* Use the larger root, the first zero reached in tension down from P = 0:
    * (-b + sqrt(b^2 - 4 a c)) / (2 a), rewritten to avoid dividing by a. */
-  return -2.f * c / (b + sqrtf(fmaxf(b * b - 4.f * a * c, 0.f)));
+  const float P_zero = -2.f * c / (b + sqrtf(fmaxf(b * b - 4.f * a * c, 0.f)));
+
+  /* Y_d is capped at Y_i, so Y also reaches zero no later than Y_i does. */
+  const float P_zero_intact = -Y_0i * (Y_Mi - Y_0i) / (mu_i * Y_Mi);
+  return fmaxf(P_zero, P_zero_intact);
 #else
   error("Material %d: P_min_scheme yield_envelope needs the Collins yield "
         "stress", mat_id);

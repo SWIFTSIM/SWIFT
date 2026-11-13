@@ -60,7 +60,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strengt
  * @param wave_speed The wave speed to be updated.
  * @param p The particle of interest.
  * @param soundspeed The sound speed.
- * @param density The sound density.
+ * @param density The density.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {}

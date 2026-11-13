@@ -109,7 +109,7 @@ def generate_target(
     num_target = len(A2_pos_target)
     print(f"Target particles: {num_target}")
 
-    # Fill qunatities
+    # Fill quantities
     A2_vel_target = np.zeros((num_target, 3))
     A1_h_target = np.full(num_target, (boxsize / L_target) * 1.2348)
     A1_m_target = np.full(num_target, vol * rho_target / numPart_grid)
@@ -171,7 +171,7 @@ def generate_impactor(
     num_impactor = len(A2_pos_impactor)
     print(f"Impactor particles: {num_impactor}")
 
-    # Fill qunatities
+    # Fill quantities
     A2_vel_impactor = np.zeros((num_impactor, 3))
     A1_h_impactor = np.full(num_impactor, (boxsize / L_target) * 1.2348)
     A1_m_impactor = np.full(num_impactor, vol * rho_impactor / numPart_grid)

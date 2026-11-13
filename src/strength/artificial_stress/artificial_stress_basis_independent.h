@@ -86,8 +86,6 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   }
 
   /* Calculate separation factors, artif_stress_f. */
-  // ### note that I changed this from what was in the thesis, so that it is more simple
-  // and it takes values 0 and 1 exactly
   const float artif_stress_f_i = fmaxf(0.f, fminf(1.f, mp_i->artif_stress_basis_independent_transition_factor * (1.f - eta_ab / eta_crit)));
   const float artif_stress_f_j = fmaxf(0.f, fminf(1.f, mp_j->artif_stress_basis_independent_transition_factor * (1.f - eta_ab / eta_crit)));
 

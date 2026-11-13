@@ -42,54 +42,18 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
     const struct mat_params *mp) {}
 
 /**
- * @brief Compute damaged deviatoric stress tensor.
+ * @brief Returns the damage factor by which damage scales the stress and pressure.
  *
- * Yield stress method dependent way of adding contribution of damage to
- * deviatoric stress tensor. Note that this does not "apply" damage to the
- * deviatoric stress tensor, since the deviatoric stress tensor that is evolved
- * in time doesn't get modified by the damage. Instead this function returns a
- * new tensor, which gets used, for example, to construct the pairwise stress
- * tensors for the interaction of a particle pair.
+ * Damage scales the deviatoric stress tensor and negative pressures by (1 - D),
+ * so that fully damaged material acts as a fluid. See Benz&Asphaug95 Eqn. 13.
  *
- * With the Benz&Asphaug95 yield stress method, damage acts to reduce all
- * elements of the deviatoric stress tensor, meaning that a fully damaged
- * material acts as a fluid. See Benz&Asphaug95 Eqn. 13.
-
- * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(
-    struct sym_matrix deviatoric_stress_tensor, struct strength_state *s,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float yield_damage_factor(
+    struct strength_state *s, const struct mat_params *mp) {
 
-  /* Compute elements of damaged deviatoric stress tensor. */
-  struct sym_matrix damaged_deviatoric_stress_tensor = deviatoric_stress_tensor;
-  damaged_deviatoric_stress_tensor.xx *= (1.f - s->damage.total);
-  damaged_deviatoric_stress_tensor.yy *= (1.f - s->damage.total);
-  damaged_deviatoric_stress_tensor.zz *= (1.f - s->damage.total);
-  damaged_deviatoric_stress_tensor.xy *= (1.f - s->damage.total);
-  damaged_deviatoric_stress_tensor.xz *= (1.f - s->damage.total);
-  damaged_deviatoric_stress_tensor.yz *= (1.f - s->damage.total);
-
-  return damaged_deviatoric_stress_tensor;
-}
-
-/**
- * @brief Apply damage to the pressure.
- *
- * Damage weakens negative pressures, so that fully damaged material cannot be
- * in tension.
- *
- * @param pressure The pressure, to be weakened.
- * @param damage The total damage.
- */
-__attribute__((always_inline)) INLINE static void yield_apply_damage_to_pressure(
-    float *pressure, const float damage) {
-
-  if (*pressure < 0.f) {
-    *pressure *= 1.f - damage;
-  }
+  return 1.f - s->damage.total;
 }
 
 /**
@@ -181,7 +145,8 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
 /**
  * @brief Apply the yield stress to a symmetric matrix.
  *
- * ### Something about yield criterion
+ * von Mises yield criterion: the matrix is scaled by
+ * f = min(Y^2 / (3 J_2), 1), Benz&Asphaug94.
  *
  * @param M The symmetric matrix to be modified.
  * @param deviatoric_stress_tensor The deviatoric stress tensor to check
@@ -199,7 +164,7 @@ yield_apply_yield_stress_to_sym_matrix(
 
   const float yield_stress = strength_state_get_yield_stress(s, mp);
 
-  /* ### Comment with name of yield criterion */
+  /* von Mises yield criterion, sqrt(3 J_2) >= Y. */
   float f = 1.f;
   const float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
   if (J_2 > 0.f) {

@@ -42,40 +42,19 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
     const struct mat_params *mp) {}
 
 /**
- * @brief Compute damaged deviatoric stress tensor.
+ * @brief Returns the damage factor by which damage scales the stress and pressure.
  *
- * Yield stress method dependent way of adding contribution of damage to
- * deviatoric stress tensor. Note that this does not "apply" damage to the
- * deviatoric stress tensor, since the deviatoric stress tensor that is evolved
- * in time doesn't get modified by the damage. Instead this function returns a
- * new tensor, which gets used, for example, to construct the pairwise stress
- * tensors for the interaction of a particle pair.
+ * Damage does not scale the stress. It is instead applied to the yield stress,
+ * and tension is limited by the minimum pressure.
  *
- * With the Collins+2004 yield stress method, damage does not act on the
- * deviatoric stress tensor. Damage is instead applied to the yield stress.
- *
- * @param deviatoric_stress_tensor (sym_matrix) The deviatoric stress tensor.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static struct sym_matrix yield_compute_damaged_deviatoric_stress_tensor(
-    struct sym_matrix deviatoric_stress_tensor, struct strength_state *s,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float yield_damage_factor(
+    struct strength_state *s, const struct mat_params *mp) {
 
-  return deviatoric_stress_tensor;
+  return 1.f;
 }
-
-/**
- * @brief Apply damage to the pressure.
- *
- * Damage does not weaken the pressure. Tension is instead limited by the
- * minimum pressure.
- *
- * @param pressure The pressure.
- * @param damage The total damage.
- */
-__attribute__((always_inline)) INLINE static void yield_apply_damage_to_pressure(
-    float *pressure, const float damage) {}
 
 /**
  * @brief Compute damaged yield stress.

@@ -373,7 +373,7 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
  * @param wave_speed The wave speed to be updated.
  * @param p The particle of interest.
  * @param soundspeed The sound speed.
- * @param density The sound density.
+ * @param density The density.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_compute_max_wave_speed(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {

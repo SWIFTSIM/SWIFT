@@ -36,8 +36,6 @@
 __attribute__((always_inline)) INLINE static float strength_compute_deviatoric_sym_matrix_J_2(
     const struct sym_matrix M) {
 
-  // ### Does j_2 need to be decreased by a factor of (1 - damage)^2 for B&A?
-
   /* Compute J_2 invariant. */
   return 0.5f * M.xx * M.xx + 0.5f * M.yy * M.yy + 0.5f * M.zz * M.zz +
          M.xy * M.xy + M.xz * M.xz + M.yz * M.yz;

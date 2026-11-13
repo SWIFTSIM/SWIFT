@@ -68,7 +68,7 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_stre
  * @param wave_speed The wave speed to be updated.
  * @param p The particle of interest.
  * @param soundspeed The sound speed.
- * @param density The sound density.
+ * @param density The density.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void
@@ -83,30 +83,20 @@ strength_compute_max_wave_speed_stress_tensor(float *wave_speed, const struct pa
 }
 
 /**
- * @brief Compute the stress tensor.
+ * @brief Modify the pressure when in tension.
  *
- * Constructs the full stress tensor by combining the deviatoric stress
- * and hydrostatic pressure. Applies any method-specific modifications,
- * such due to the accumulation of damage.
+ * Damage scales negative pressures by the damage factor of the yield stress method.
  *
- * @param stress_tensor The stress tensor to be computed.
+ * @param pressure The pressure, to be modified if negative.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void strength_compute_stress_tensor(
-    struct sym_matrix *stress_tensor, struct strength_state *s,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void strength_modify_pressure_in_tension(
+    float *pressure, struct strength_state *s, const struct mat_params *mp) {
 
-  /* How damage acts on the deviatoric stress tensor depends on the yield
-   * stress method. Damage is already applied to the pressure, if at all. */
-  *stress_tensor = yield_compute_damaged_deviatoric_stress_tensor(
-      s->deviatoric_stress_tensor, s, mp);
-  const float pressure = strength_state_get_pressure(s, mp);
-
-  /* Construct stress tensor. */
-  stress_tensor->xx -= pressure;
-  stress_tensor->yy -= pressure;
-  stress_tensor->zz -= pressure;
+  if (*pressure < 0.f) {
+    *pressure *= yield_damage_factor(s, mp);
+  }
 }
 
 /**
@@ -167,7 +157,8 @@ __attribute__((always_inline)) INLINE static void strength_reset_predicted_value
 /**
  * @brief Calculate time derivative of the deviatoric stress tensor.
  *
- * ### Description of how this ties in with Hooke's law
+ * Hooke's law in rate form, dS/dt = 2 G (eps_dot - tr(eps_dot) I / 3), plus
+ * the rotation terms that make it frame invariant.
  *
  * @param dS_dt The time derivative of the deviatoric stress tensor.
  * @param rotation_rate_tensor The rotation rate tensor.

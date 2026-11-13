@@ -147,7 +147,7 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
                                        const float Gj[3]) {
 
   /* Add contribution to dv/dr for interactions with strength. */
-  /* NOTE: currently not linear exact at non-strength boudnaries, since
+  /* NOTE: currently not linear exact at non-strength boundaries, since
    * particles across boundary are still used to construct the kernel. */
   if (!strength_is_strengthless_interaction(pi, pj)) {
     strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
@@ -172,7 +172,7 @@ hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
                                               const float Gi[3]) {
 
   /* Add contribution to dv/dr for interactions with strength. */
-  /* NOTE: currently not linear exact at non-strength boudnaries, since
+  /* NOTE: currently not linear exact at non-strength boundaries, since
    * particles across boundary are still used to construct the kernel. */
   if (!strength_is_strengthless_interaction(pi, pj)) {
     strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,

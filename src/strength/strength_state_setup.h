@@ -128,7 +128,7 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     float pressure =
         gas_pressure_from_internal_energy(s->density, s->u, s->mat_id);
     pressure = fmaxf(pressure, strength_state_get_P_min(s, mp));
-    yield_apply_damage_to_pressure(&pressure, s->damage.total);
+    strength_modify_pressure_in_tension(&pressure, s, mp);
     s->cache.pressure = pressure;
     s->cache.pressure_computed = true;
   }
@@ -280,7 +280,18 @@ strength_state_get_stress_tensor(struct strength_state *s,
                                  const struct mat_params *mp) {
 
   if (!s->cache.stress_tensor_computed) {
-    strength_compute_stress_tensor(&s->cache.stress_tensor, s, mp);
+    /* Damage scales the deviatoric stress tensor by the damage factor, and is
+     * already applied to the pressure. */
+    const float damage_factor = yield_damage_factor(s, mp);
+    const float pressure = strength_state_get_pressure(s, mp);
+    struct sym_matrix stress_tensor = s->deviatoric_stress_tensor;
+    stress_tensor.xx = damage_factor * stress_tensor.xx - pressure;
+    stress_tensor.yy = damage_factor * stress_tensor.yy - pressure;
+    stress_tensor.zz = damage_factor * stress_tensor.zz - pressure;
+    stress_tensor.xy *= damage_factor;
+    stress_tensor.xz *= damage_factor;
+    stress_tensor.yz *= damage_factor;
+    s->cache.stress_tensor = stress_tensor;
     s->cache.stress_tensor_computed = true;
   }
   return s->cache.stress_tensor;

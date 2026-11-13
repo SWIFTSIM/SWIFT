@@ -106,8 +106,12 @@ hydro_get_comoving_pressure_strength(const struct part *restrict p,
                                      const float pressure) {
 
   float limited_pressure = fmaxf(pressure, p->strength_data.P_min);
-  yield_apply_damage_to_pressure(&limited_pressure,
-                                 strength_get_damage(p).total);
+
+  /* Strength state from the drifted values. */
+  const struct mat_params *mp = material_params(p->mat_id);
+  struct strength_state s;
+  hydro_strength_state_init_drift(&s, p, mp);
+  strength_modify_pressure_in_tension(&limited_pressure, &s, mp);
 
   return limited_pressure;
 }
@@ -141,7 +145,7 @@ __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strengt
  * @param wave_speed The wave speed to be updated.
  * @param p The particle of interest.
  * @param soundspeed The sound speed.
- * @param density The sound density.
+ * @param density The density.
  */
 __attribute__((always_inline)) INLINE static void
 hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
@@ -274,8 +278,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
 __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginning(
     struct part *restrict p, const float dt_therm) {
 
-  // ### FOR LEAPFROG: dS_dt and the damage rates are calculated similarly to e.g. du_dt, and S and damage are updated similarly to u
-  // ## Damage depends on S and S can depend on damage through Y makes.
+  /* S and damage are evolved like u, with the rates from the last force loop. */
 
   /* Strength state from the drifted values, before they are evolved. */
   const struct mat_params *mp = material_params(p->mat_id);
@@ -314,7 +317,7 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_end(
   const float h_inv_dim = pow_dimension(1.0f / p->h); /* 1/h^d */
   const float min_rho = p->mass * kernel_root * h_inv_dim;
 
-  /* Overwrite stored hydro quantities with those calculated based on evolved density. */
+  /* Use the evolved density as the hydro density. */
   p->strength_data.rho_evol = max(p->strength_data.rho_evol, min_rho);
   p->rho = p->strength_data.rho_evol;
 

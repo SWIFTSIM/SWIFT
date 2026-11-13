@@ -239,7 +239,7 @@ hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
  *
  * @param Qi (return) Viscous pressure for first particle.
  * @param Qj (return) Viscous pressure for second particle.
- * @param visc_signal_velocity (return) Signal velocity of artificial viscosity.
+ * @param beta_mu_ij (return) Viscous term of the signal velocity.
  * @param difn_signal_velocity (return) Signal velocity of artificial diffusion.
  * @param pi First particle.
  * @param pj Second particle.
@@ -363,7 +363,6 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   *Qj = (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
         (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
-  // ### CHECK THIS: This is now different from REMIX (REMIX has 2.f * (beta / alpha)), but more similar to other schemes
   *beta_mu_ij = beta * fminf(mu_i, mu_j);
 
   /* Signal velocity used for the artificial diffusion (Sandnes+2025 Eqns. 42

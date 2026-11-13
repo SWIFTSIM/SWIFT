@@ -123,13 +123,14 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   const float bulk_mod = mp->bulk_mod;
   const float E = 9.f * bulk_mod * shear_mod / (3.f * bulk_mod + shear_mod);
 
-  /* Compute local scalar strain, Benz&Asphaug95 Eqn. 21. */
-  const float local_scalar_strain = max_principal_stress / ((1.f - s->damage.total) * E);
+  /* Compute local scalar strain, Benz&Asphaug95 Eqn. 21. Damage reduces the
+   * stress for a given strain by the damage factor, so divide it back out. */
+  const float local_scalar_strain =
+      max_principal_stress / (yield_damage_factor(s, mp) * E);
 
   /* The number of activated flaws is defined as the number of flaws for which
    * the local scalar strain has reached or exceeded the flaw's activation
    * threshold. */
-  // ### this can be done nicer if we sort thresholds in order and then break in this loop
   int number_of_activated_flaws = 0;
   for (int i = 0; i < number_of_flaws; i++) {
     if (local_scalar_strain > activation_thresholds[i]) {
