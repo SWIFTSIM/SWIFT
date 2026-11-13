@@ -28,6 +28,7 @@
 #include <config.h>
 
 /* Local includes */
+#include "inline.h"
 #include "parser.h"
 #include "physical_constants.h"
 #include "restart.h"
@@ -60,6 +61,27 @@
 #else
 #error "Invalid choice of cooling function."
 #endif
+
+/* A module defines COOLING_MISSING_INIT_MESSAGE in its header to name its own
+ * parameter block and keys in cooling_get_missing_init_message(). */
+#ifndef COOLING_MISSING_INIT_MESSAGE
+#define COOLING_MISSING_INIT_MESSAGE                                       \
+  "A feedback channel that needs the cooling module initialised "          \
+  "(e.g. GEARFeedback:with_interstellar_radiation_field) is enabled, but " \
+  "neither --cooling nor --temperature was passed. Pass --cooling or "     \
+  "--temperature."
+#endif
+
+/**
+ * @brief Error message for a feedback channel that needs the cooling module
+ * initialised when neither --cooling nor --temperature was passed.
+ *
+ * @return The message text, with the module's own parameter block and keys.
+ */
+__attribute__((always_inline)) INLINE static const char *
+cooling_get_missing_init_message(void) {
+  return COOLING_MISSING_INIT_MESSAGE;
+}
 
 /* Common functions */
 void cooling_init(struct swift_params *parameter_file,

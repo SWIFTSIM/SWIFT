@@ -232,4 +232,16 @@ INLINE static double cooling_get_electron_pressure(
   return 0;
 }
 
+/* Message of cooling_get_missing_init_message() (see cooling.h). */
+#define COOLING_MISSING_INIT_MESSAGE                                         \
+  "A feedback channel that needs Grackle's chemistry_data "                  \
+  "resolved (e.g. GEARFeedback:with_interstellar_radiation_field) "          \
+  "is enabled, but neither --cooling nor --temperature was passed: "         \
+  "chemistry_data (including local_dust_to_gas_ratio) is never "             \
+  "resolved, silently zeroing that channel's dust opacity. Pass "            \
+  "--cooling or --temperature (with a working GrackleCooling: block), or "   \
+  "set GrackleCooling:disable_cooling_for_debugging to keep chemistry_data " \
+  "initialization correct while skipping the actual per-particle "           \
+  "cooling/heating update."
+
 #endif /* SWIFT_COOLING_GRACKLE_H */

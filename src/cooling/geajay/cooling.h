@@ -244,4 +244,12 @@ INLINE static float cooling_get_dust_to_gas_ratio_relative_to_MW(
 }
 #endif
 
+/* Message of cooling_get_missing_init_message() (see cooling.h). */
+#define COOLING_MISSING_INIT_MESSAGE                                        \
+  "A feedback channel that needs the geajay cooling inputs resolved "       \
+  "(e.g. GEARFeedback:with_interstellar_radiation_field) is enabled, but "  \
+  "neither --cooling nor --temperature was passed: the local dust-to-gas "  \
+  "ratio is never resolved, silently zeroing that channel's dust opacity. " \
+  "Pass --cooling or --temperature (with a working GeajayCooling: block)."
+
 #endif /* SWIFT_COOLING_GEAJAY_H */
