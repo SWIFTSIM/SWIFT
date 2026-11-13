@@ -95,8 +95,13 @@ void zoom_mesh_clean(struct zoom_pm_mesh *mesh);
 void zoom_mesh_allocate(struct zoom_pm_mesh *mesh);
 void zoom_mesh_free(struct zoom_pm_mesh *mesh);
 void zoom_mesh_regrid(struct zoom_pm_mesh *mesh, const struct space *s);
+void zoom_mesh_compute_potential(struct zoom_pm_mesh *mesh,
+                                 const struct space *s, struct threadpool *tp,
+                                 int verbose);
 int zoom_mesh_cell_is_covered(const struct zoom_pm_mesh *mesh,
                               const struct cell *c, const int use_max_dx);
+double zoom_mesh_CIC_deconvolution(const int kx, const int ky, const int kz,
+                                   const int N);
 void zoom_mesh_struct_dump(const struct zoom_pm_mesh *mesh, FILE *stream);
 void zoom_mesh_struct_restore(struct zoom_pm_mesh *mesh, FILE *stream);
 
