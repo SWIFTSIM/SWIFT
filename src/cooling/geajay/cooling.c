@@ -800,8 +800,12 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("chemistry_data.h2_on_dust = %d", cooling->chemistry_data.h2_on_dust);
   message("chemistry_data.dust_to_gas_model = %d",
           cooling->chemistry_data.dust_to_gas_model);
-  message("chemistry_data.use_dust_density_field = %d",
-          cooling->chemistry_data.use_dust_density_field);
+  message("chemistry_data.photoelectric_heating = %d",
+          cooling->chemistry_data.photoelectric_heating);
+  message("chemistry_data.dust_recombination_cooling = %d",
+          cooling->chemistry_data.dust_recombination_cooling);
+  message("chemistry_data.photoelectric_heating_rate = %.3g",
+          cooling->chemistry_data.photoelectric_heating_rate);
   message("chemistry_data.local_dust_to_gas_ratio = %.3g",
           cooling->chemistry_data.local_dust_to_gas_ratio);
 }
@@ -902,17 +906,18 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
 
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
-     ratio scaled by Z / Z_sun as geajay does. */
+     ratio of the library, as the heating uses. */
   if (cooling->dust_background_attenuation ==
       GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
     const double path = inputs->H2_self_shielding_length;
     /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
     const double dust_ratio =
-        max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f) /
-        cooling->chemistry_data.SolarMetalFractionByMass *
-        (cooling->chemistry_data.local_dust_to_gas_ratio /
-         COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO);
+        geajay_dust_to_gas_ratio(
+            &cooling->chemistry_data,
+            max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f),
+            1.) /
+        COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO;
     inputs->lw_background_attenuation =
         exp(-cooling->dust_cross_section_lw_cgs * dust_ratio * column);
     inputs->pe_background_attenuation =
@@ -1916,7 +1921,10 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->dust_chemistry = cooling->dust_model;
   chemistry->dust_to_gas_model = cooling->dust_to_gas_model;
   chemistry->photoelectric_heating = cooling->photoelectric_heating_model;
+  if (cooling->photoelectric_heating_rate >= 0.)
+    chemistry->photoelectric_heating_rate = cooling->photoelectric_heating_rate;
   chemistry->h2_on_dust = cooling->H2_on_dust;
+  chemistry->dust_recombination_cooling = cooling->dust_recombination_cooling;
   chemistry->H2_photodissociation_heating =
       cooling->H2_photodissociation_heating;
   chemistry->Compton_xray_heating = cooling->compton_xray_heating;

@@ -14,6 +14,7 @@ and run with the option ``--gear``. A few examples exist and can be found in ``e
    :caption: Table of Contents
 
    gear_model
+   geajay_cooling
    chemistry
    feedback
    stellar_evolution_table
