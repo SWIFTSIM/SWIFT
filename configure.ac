@@ -3662,9 +3662,7 @@ AM_CONDITIONAL([HAVE_GADGET2], [test "$with_hydro" = "gadget2"])
 AM_CONDITIONAL([HAVE_CHEMISTRY_NONE], [test "$with_chemistry" = "none"])
 
 # check if using GEAR chemistry
-AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test
-"$with_chemistry" = "GEAR_DIFFUSION" || test "$with_chemistry" =
-"GEAR_FVPM_DIFFUSION" || test "$with_chemistry" = "CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION"])
+AM_CONDITIONAL([HAVE_CHEMISTRY_GEAR], [test "$with_chemistry" = "GEAR" || test "$with_chemistry" = "GEAR_DIFFUSION" || test "$with_chemistry" = "GEAR_FVPM_DIFFUSION" || test "$with_chemistry" = "CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION"])
 
 # check if using AGORA chemistry
 AM_CONDITIONAL([HAVE_CHEMISTRY_AGORA], [test "$with_chemistry" = "AGORA" || test "$with_chemistry" = "GEAR_DIFFUSION"])
