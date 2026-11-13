@@ -176,7 +176,8 @@ Scheduler:
   task_level_output_frequency:      0  # (Optional) Dumping frequency of the task level data. By default, writes only at the first step.
   free_foreign_during_restart:      0  # (Optional) Should the code free the foreign data when dumping restart files in order to get breathing space?
   free_foreign_during_rebuild:      0  # (Optional) Should the code free the foreign data when calling a rebuld in order to get breathing space?
-  deadlock_waiting_time_s:          0. # (Optional) If runners didn't fetch a new task from a queue after this many seconds, assume swift deadlocked and abort. Non-positive values turn the detector off. Needs --enable-debugging-checks and MPI to take effect.
+  deadlock_waiting_time_s:          0. # (Optional) If runners didn't fetch a new task from a queue after this many seconds, assume swift deadlocked and abort. Non-positive values turn the detector off. Needs --enable-debugging-checks and MPI to
+                                       # take effect.
 
 # Parameters governing the time integration (Set dt_min and dt_max to the same value for a fixed time-step run.)
 TimeIntegration:
@@ -624,9 +625,11 @@ LambdaCooling:
 TREECOOLCooling:
   TREECOOL_file:                ./TREECOOL_UV_background.txt # Location of the TREECOOL table giving the UV background photo-ionization and photo-heating rates as a function of redshift (7 numbers per line, no header or comment lines)
   rapid_cooling_threshold:      0.333333            # (Optional) Switch to the rapid cooling regime for dt / t_cool above this threshold. Use a negative value to always use the slow-cooling regime. Default: 0.333333.
-  UV_background_start_redshift: 1e30                # (Optional) Redshift above which the UV background is switched off, to start it later than the highest redshift of the table. Default: no limit, i.e. the UV background starts at the highest redshift of the table.
+  UV_background_start_redshift: 1e30                # (Optional) Redshift above which the UV background is switched off, to start it later than the highest redshift of the table. Default: no limit, i.e. the UV background starts at the highest
+                                                    # redshift of the table.
   with_Compton_cooling:         1                   # (Optional) Include the inverse Compton cooling off the CMB (1, default) or not (0).
-  log10_T_min:                  1.0                 # (Optional) log10 of the lowest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully neutral below this. Should be at least one below log10(SPH:minimal_temperature). Default: 1.0.
+  log10_T_min:                  1.0                 # (Optional) log10 of the lowest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully neutral below this. Should be at least one below
+                                                    # log10(SPH:minimal_temperature). Default: 1.0.
   log10_T_max:                  9.0                 # (Optional) log10 of the highest temperature (in K) at which the rate coefficients are tabulated. The gas is assumed to be fully ionized above this. Default: 9.0.
 
 # Parameters of the EAGLE cooling model (Wiersma+08 cooling tables).
@@ -679,7 +682,8 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007 # Required only with GEAR's self shielding. Density threshold of the self shielding
   cmb_temperature_floor: 1                     # (optional) Enable/disable Grackle's internal CMB temperature floor
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT rather than internally by Grackle)
-  maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
+  maximal_density_Hpcm3:   1e4                 # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value <
+                                               # 0 deactivates this parameter.
   HydrogenFractionByMass : 1.                  # Hydrogen fraction by mass (default is 0.76)
   use_radiative_transfer : 1                   # Arrays of ionization and heating rates are provided
   RT_heating_rate_cgs    : 0                   # heating         rate in units of / nHI_cgs 
@@ -742,7 +746,8 @@ GeajayCooling:
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate (the line of the end cell, as Grackle) or edge (the value at the edge) (default: extrapolate)
   maximal_density_nucleon_per_cm3: -1          # (optional) Largest density passed to geajay, as the nucleon density rho / m_p [cm^-3], the value of GrackleCooling:maximal_density_Hpcm3. Zero or negative: no cap (default: -1)
   hydrogen_mass_fraction: -1                   # (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's: 0.76 in modes 1 to 3. In mode 0 it is X of the Cloudy
-                                               # table: the tables of the geajay tools are built at X = 0.7614 (He/H 0.0789), other tables (for example the SWIFT example HM2012 table) carry their own composition, and a table without that information gives 0.7158. Mode 0 refuses any other value (default: -1)
+                                               # table: the tables of the geajay tools are built at X = 0.7614 (He/H 0.0789), other tables (for example the SWIFT example HM2012 table) carry their own composition, and a table without that information
+                                               # gives 0.7158. Mode 0 refuses any other value (default: -1)
   rt_use_fields: 0                             # (optional) Arrays of ionization and heating rates are provided (default: 0)
   rt_heating_rate_cgs:     0                   # (optional) Heating rate in units of / nHI_cgs
   rt_hi_ionisation_rate_per_s:   0             # (optional) HI ionisation rate [1/s]
@@ -753,12 +758,20 @@ GeajayCooling:
   specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
   h2_three_body_fit: Abel+2002                 # (optional) H2 three-body formation rate by name: Abel+2002, Palla+1983, Cohen+Westberg1983, Flower+Harris2007, Glover2008 or Forrey2013; 0 to 5 also accepted (Grackle) (default: Abel+2002)
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
-  dust_model: none                             # (optional) Dust chemistry: none or basic (or 0, 1). basic turns on the gas-grain heat exchange, the dust temperature, H2 formation on grains, photoelectric heating and the recombination cooling on grains. It reads the metal mass fraction of each particle to compute the dust-to-gas ratio (default: none)
-  dust_to_gas_model: linear                    # (optional) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014, linear above its transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one, remy_ruyer_2014 stops the run (default: linear)
-  photoelectric_heating_model: default         # (optional) Photoelectric heating of the dust: default (-1, constant_efficiency with dust_model: basic, else none), none (0), fixed_rate (1, the constant photoelectric_heating_rate), constant_efficiency (2, 0.05 G_0 x 1e-24 erg/s per H atom, Wolfire et al. 1995 eq. 1), grain_charge_epsilon (3, an efficiency set by the grain charge, Bakes and Tielens 1994 eq. 43 with the coefficients of Wolfire et al. 2003 eq. 24) or density_epsilon (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and A2). Every model scales with D / D_ref and n_H and gives no heating above 2e4 K. A value above none also works with dust_model: none, because SWIFT passes the metal mass fraction of every particle (default: default)
+  dust_model: none                             # (optional) Dust chemistry: none or basic (or 0, 1). basic turns on the gas-grain heat exchange, the dust temperature, H2 formation on grains, photoelectric heating and the recombination cooling on
+                                               # grains. It reads the metal mass fraction of each particle to compute the dust-to-gas ratio (default: none)
+  dust_to_gas_model: linear                    # (optional) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014, linear above its
+                                               # transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one, remy_ruyer_2014 stops
+                                               # the run (default: linear)
+  photoelectric_heating_model: default         # (optional) Photoelectric heating of the dust: default (-1, constant_efficiency with dust_model: basic, else none), none (0), fixed_rate (1, the constant photoelectric_heating_rate),
+                                               # constant_efficiency (2, 0.05 G_0 x 1e-24 erg/s per H atom, Wolfire et al. 1995 eq. 1), grain_charge_epsilon (3, an efficiency set by the grain charge, Bakes and Tielens 1994 eq. 43 with the
+                                               # coefficients of Wolfire et al. 2003 eq. 24) or density_epsilon (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and A2). Every model scales with D / D_ref and n_H and gives no
+                                               # heating above 2e4 K. A value above none also works with dust_model: none, because SWIFT passes the metal mass fraction of every particle (default: default)
   photoelectric_heating_rate: -1               # (optional) Heating rate of the model fixed_rate per H atom at the reference dust-to-gas ratio [erg/s]. It is read only with fixed_rate. Zero or above, or -1 for the library value, 8.5e-26 (default: -1)
-  dust_recombination_cooling: default          # (optional) Recombination cooling on grains: default (-1, on with dust_model: basic, else off), disabled (0) or enabled (1). It reads the metal mass fraction of each particle, so enabled also works with dust_model: none (default: default)
-  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none and below network H_He_H2, but the library stops the run with dust_model: basic at the network H_He (default: default)
+  dust_recombination_cooling: default          # (optional) Recombination cooling on grains: default (-1, on with dust_model: basic, else off), disabled (0) or enabled (1). It reads the metal mass fraction of each particle, so enabled also works
+                                               # with dust_model: none (default: default)
+  h2_formation_on_dust: default                # (optional) H2 formation on dust grains: default (-1, on with dust_model: basic and a network with H2, else off), disabled (0), enabled (1); enabled also works with dust_model: none and with the
+                                               # network tabulated, but the library refuses it at the network H_He (primordial_chemistry 1) with a start-up error, whatever dust_model is; SWIFT does not check it itself (default: default)
   h2_photodissociation_heating: 0              # (optional) Enable/disable the heating by H2 photodissociation (default: 0)
   compton_xray_heating: 0                      # (optional) Enable/disable the Compton exchange with the X-ray background, k_X (T_x - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
                                                # Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)
@@ -808,6 +821,7 @@ GeajayCooling:
   # isrf_rates_file: CloudyData_UVB=HM2012.h5    # (optional) Read only with background_mode: per_band. HDF5 file of the background G_0. Needs isrf_background_model: uv_table. Leave the line out to use uv_rates_file (default: uv_rates_file)
   dust_background_attenuation: none            # (optional) Read only with background_mode: per_band. Dust attenuation of the backgrounds: none or per_band; per_band needs h2_shielding_length_method: given_length (default: none)
   # The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D_sun) N_H) of the LW and PE backgrounds, with N_H the column of the H2 shielding. They do not change uv_self_shielding.
+  # D is the dust-to-gas ratio of dust_to_gas_model, the one the heating uses.
   # Defaults: Kim et al. 2023, Table 3 (WD01 R_V = 3.1, per H nucleon, mu_H = 1.4). D/D_sun uses the reference dust-to-gas ratio 0.009387 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.
   # SWIFT's GEAR radiation module (branch darwin/gear_radiation) keeps 9e-22 cm^2 for the PE band, so the two now differ.
   dust_cross_section_lw_cm2: 1.5e-21           # (optional) Read only with dust_background_attenuation: per_band. Dust cross-section of the LW band (11.2-13.6 eV) [cm^2] (default: 1.5e-21)
@@ -993,7 +1007,8 @@ EAGLEAGN:
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
   AGN_feedback_model:                 Random     # Feedback modes: Random, Isotropic, MinimumDistance, MinimumDensity
   AGN_use_deterministic_feedback:     0          # Deterministic (reservoir) [1] or stochastic [0] AGN feedback?
-  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, this is used for the constant AGN model, for the mass dependend heating model we use this as an initialization value for the IC and birth properties of the BHs
+  AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, this is used for the constant AGN model, for the mass dependend heating model we use this as an initialization
+                                                 # value for the IC and birth properties of the BHs
   use_variable_delta_T:               1             # Switch to enable adaptive calculation of AGN dT [1], rather than using a constant value [0].
   AGN_with_locally_adaptive_delta_T:  1             # Switch to enable additional dependence of AGN dT on local gas density and temperature (only used if use_variable_delta_T is 1).
   AGN_delta_T_mass_norm:              3e8           # Normalisation temperature of AGN dT scaling with BH subgrid mass [K] (only used if use_variable_delta_T is 1).
@@ -1047,9 +1062,11 @@ SPINJETAGN:
   use_nibbling:                       1          # Continuously transfer small amounts of mass from all gas neighbours to a black hole [1] or stochastically swallow whole gas particles [0]? 
   min_gas_mass_for_nibbling_Msun:     9e5        # Minimum mass for a gas particle to be nibbled from [M_Sun]. Only used if use_nibbling is 1.
   coupling_efficiency:                0.15       # Fraction of the radiated energy that couples to the gas in feedback events.
-  AGN_delta_T_model:                  Constant   # How the AGN heating temperature is set. If 'Constant', the value of AGN_delta_T_K is used. If 'Local', the heating temperature follows the Dalla Vecchia & Schaye (2012) condition scaled by delta_T_xi and bounded by delta_T_min_K and delta_T_max_K.
+  AGN_delta_T_model:                  Constant   # How the AGN heating temperature is set. If 'Constant', the value of AGN_delta_T_K is used. If 'Local', the heating temperature follows the Dalla Vecchia & Schaye (2012) condition scaled by
+                                                 # delta_T_xi and bounded by delta_T_min_K and delta_T_max_K.
   AGN_delta_T_K:                      3.16228e8  # Change in temperature to apply to the gas particle in an AGN feedback event in Kelvin, if 'AGN_heating_temperature_model' is 'Constant'.
-  delta_T_xi:                         1.         # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are not rescaled.
+  delta_T_xi:                         1.         # The numerical multiplier by which the heating temperature formula is scaled, if 'AGN_heating_temperature_model' is 'Local'. If a value of 1 is used, the formulas are used as derived, i.e. they are
+                                                 # not rescaled.
   delta_T_min_K:                      1e8        # The minimal heating temperature in Kelvin. This is used if 'AGN_heating_temperature_model' is 'Local'.
   delta_T_max_K:                      1e11       # The maximal heating temperature in Kelvin. This is used if 'AGN_heating_temperature_model' is 'Local'.
   temperature_hot_gas_min_K:          1e5        # Minimal temperature of the hot gas in Kelvin, used to define the minimal sound speed entering the heating temperature and jet velocity models.
@@ -1072,10 +1089,13 @@ SPINJETAGN:
   minimum_timestep_yr:                1000.0     # Minimum time-step of black-hole particles
   include_jets:                       1          # Global switch whether to include jet feedback [1] or not [0].
   turn_off_radiative_feedback:        0          # Global switch whether to turn off radiative (thermal) feedback [1] or not [0]. This should only be used if 'include_jets' is set to 1, since we want feedback in some form or another.
-  alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 * alpha^2.
-  mdot_crit_ADAF:                     0.01       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to thermal isotropic, respectively.
+  alpha_acc:                          0.2        # Viscous alpha of the subgrid accretion disks. Likely to be within the 0.1-0.3 range. The main effect is that it sets the transition accretion rate between the thin and thick disk, as dot(m) = 0.2 *
+                                                 # alpha^2.
+  mdot_crit_ADAF:                     0.01       # The transition normalized accretion rate (Eddington ratio) at which the disc goes from thick (low accretion rates) to thin (high accretion rates). The feedback also changes from kinetic jets to
+                                                 # thermal isotropic, respectively.
   seed_spin:                          0.01       # The (randomly-directed) black hole spin assigned to BHs when they are seeded. Should be strictly between 0 and 1.
-  AGN_jet_velocity_model:             Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet velocities. 'HaloMass' is currently not supported. 
+  AGN_jet_velocity_model:             Constant   # How AGN jet velocities are calculated. If 'Constant', a single value is used. If 'BlackHoleMass', then an empirical relation between halo mass and black hole mass is used to calculate jet
+                                                 # velocities. 'HaloMass' is currently not supported. 
   v_jet_km_p_s:                       3160.      # Jet velocity to use if 'AGN_jet_velocity_model' is 'Constant'. Units are km/s.
   v_jet_BH_mass_scaling_reference_mass_Msun: 1e9 # The reference mass used in the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
   v_jet_BH_mass_scaling_slope:        0.5        # The slope of the relation between halo mass and BH mass used to calculate jet velocities. Only used if 'AGN_jet_velocity_model' is 'BlackHoleMass'.
@@ -1084,14 +1104,17 @@ SPINJETAGN:
   v_jet_mass_loading:                 10.        # Jet mass loading factor used to set the jet velocity if 'AGN_jet_velocity_model' is 'MassLoading'.
   v_jet_xi:                           1.         # Numerical multiplier by which the local jet velocity formula is scaled if 'AGN_jet_velocity_model' is 'Local'. A value of 1 uses the formula as derived.
   opening_angle_in_degrees:           7.5        # The half-opening angle of the jet in degrees. Should use values < 15 unless for tests.
-  N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each 'side' of the BH, relative to the spin vector).
+  N_jet:                              2          # Target number of particles to kick as part of a single jet feedback event. Should be a multiple of 2 to ensure approximate momentum conservation (we always kick particles in pairs, one from each
+                                                 # 'side' of the BH, relative to the spin vector).
   AGN_jet_feedback_model:             MinimumDistance # Which particles to kick from the black hole smoothing kernels. Should be 'SpinAxis', 'MinimumDistance', 'MaximumDistance' or 'MinimumDensity'
   eps_f_jet:                          1.         # Coupling efficiency for jet feedback. No reason to expect this to be less than 1.
   fix_jet_efficiency:                 0          # Global switch whether to fix jet efficiency to a particular value [1], or use a spin-dependant formula [0].
   jet_efficiency:                     0.1        # The constant jet efficiency used if 'fix_jet_efficiency' is set to 1.
   fix_jet_direction:                  0          # Global switch whether to fix the jet direction to be along the z-axis, instead of along the spin vector.
-  accretion_efficiency_mode:          Variable   # How the accretion efficiencies are calculated for the thick accretion disc. If 'Constant', the value of 'accretion_efficiency_thick' will be used. If 'Variable', the accretion efficiency will scale with Eddington ratio.
-  accretion_efficiency_thick:         0.01       # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid ADIOS winds that take away most of the mass flowing through the accretion disc.
+  accretion_efficiency_mode:          Variable   # How the accretion efficiencies are calculated for the thick accretion disc. If 'Constant', the value of 'accretion_efficiency_thick' will be used. If 'Variable', the accretion efficiency will scale
+                                                 # with Eddington ratio.
+  accretion_efficiency_thick:         0.01       # The accretion efficiency (suppression factor of the accretion rate) to use in the thick disc (ADAF), to represent the effects of subgrid ADIOS winds that take away most of the mass flowing through
+                                                 # the accretion disc.
   accretion_efficiency_slim:          1          # The constant accretion efficiency to use in the slim disc, at super-Eddington rates.
   ADIOS_s:                            0.5        # The exponent of the scaling between accretion efficiency and transition radius of the accretion disc, used if 'accretion_efficiency_mode' is 'Variable'.
   ADIOS_R_in:                         1e4        # The normalisation (the value) of the transition radius of the accretion disc at the critical Eddington ratio (0.01), used if 'accretion_efficiency_mode' is 'Variable'.
@@ -1103,7 +1126,8 @@ SPINJETAGN:
   include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
   use_ADIOS_winds:                    1          # Whether to include ADIOS winds in the thick disc as thermal isotropic feedback (same channel as thin disc quasar feedback, but with a different efficiency). 
-  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is implemented in the thermal isotropic feedback channel.
+  slim_disc_wind_factor:              1          # The relative efficiency of slim disc winds at super-Eddington rates. If '1', full winds will be used, while '0' will lead to no winds. Any value in between those can also be used. The wind is
+                                                 # implemented in the thermal isotropic feedback channel.
 
 # GEAR AGN model
 # The numerical values below are carried over from the EAGLEAGN example above

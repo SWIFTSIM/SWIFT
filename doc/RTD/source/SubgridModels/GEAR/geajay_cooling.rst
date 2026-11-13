@@ -222,8 +222,8 @@ local field only, to which the background G\ :sub:`0` is added.
        PE band (6-11.2 eV) [cm\ :sup:`2`] (default: 8.6e-22).
 
 The dust cross-sections per H nucleon set the dust attenuation exp(-sigma (D/D\ :sub:`sun`) N\ :sub:`H`)
-of the LW and PE backgrounds, with N\ :sub:`H` the column of the H\ :sub:`2` shielding. They do not
-change ``uv_self_shielding``. The defaults are those of Kim et al. 2023, Table 3 (WD01 R\ :sub:`V` =
+of the LW and PE backgrounds, with N\ :sub:`H` the column of the H\ :sub:`2` shielding. D is the
+dust-to-gas ratio of ``dust_to_gas_model``, the one the heating uses. The cross-sections do not change ``uv_self_shielding``. The defaults are those of Kim et al. 2023, Table 3 (WD01 R\ :sub:`V` =
 3.1, per H nucleon, mu\ :sub:`H` = 1.4). D/D\ :sub:`sun` uses the reference dust-to-gas ratio 0.009387
 (Grackle's) as Kim's Zd' = 1, which is 0.0081 by mass.
 
@@ -341,8 +341,9 @@ Molecules and dust
    * - ``h2_formation_on_dust``
      - (optional) H\ :sub:`2` formation on dust grains: ``default`` (-1, on with ``dust_model`` ``basic``
        and a network with H\ :sub:`2`, else off), ``disabled`` (0), ``enabled`` (1). ``enabled`` also works
-       with ``dust_model`` ``none`` and below the network ``H_He_H2``, but with ``dust_model`` ``basic``
-       the library stops the run at the network ``H_He`` (default: ``default``).
+       with ``dust_model`` ``none`` and with the network ``tabulated``. At the network ``H_He``
+       (``primordial_chemistry`` 1) the library refuses it with a start-up error, whatever
+       ``dust_model`` is. SWIFT does not check this itself (default: ``default``).
    * - ``h2_photodissociation_heating``
      - (optional) Enable/disable the heating by H\ :sub:`2` photodissociation (default: 0).
    * - ``compton_xray_heating``

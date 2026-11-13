@@ -34,6 +34,7 @@
 #include <geajay_message.h>
 #include <geajay_options.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -291,6 +292,21 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 #endif
 
   return num;
+}
+
+/**
+ * @brief Whether a double is finite, by its bits.
+ *
+ * SWIFT compiles with -ffast-math, which lets the compiler drop a comparison
+ * or isfinite() test of a NaN.
+ *
+ * @param x The value.
+ * @return 1 if @p x is neither NaN nor infinite, else 0.
+ */
+INLINE static int cooling_double_is_finite(double x) {
+  uint64_t bits;
+  memcpy(&bits, &x, sizeof(bits));
+  return ((bits >> 52) & 0x7ffULL) != 0x7ffULL;
 }
 
 /**
@@ -711,9 +727,14 @@ INLINE static void cooling_read_background_parameters(
       parser_get_opt_param_double(parameter_file, per_band_keys[5], 1.5e-21);
   cooling->dust_cross_section_pe_cgs =
       parser_get_opt_param_double(parameter_file, per_band_keys[6], 8.6e-22);
-  if (!(cooling->dust_cross_section_lw_cgs >= 0.) ||
+  if (!cooling_double_is_finite(cooling->dust_cross_section_lw_cgs) ||
+      !(cooling->dust_cross_section_lw_cgs >= 0.))
+    error("%s must be a finite number >= 0, got %g.", per_band_keys[5],
+          cooling->dust_cross_section_lw_cgs);
+  if (!cooling_double_is_finite(cooling->dust_cross_section_pe_cgs) ||
       !(cooling->dust_cross_section_pe_cgs >= 0.))
-    error("The dust cross-sections must be >= 0.");
+    error("%s must be a finite number >= 0, got %g.", per_band_keys[6],
+          cooling->dust_cross_section_pe_cgs);
 
   /* Mass per H nucleon, He included, that pairs with the cross-sections per
      H. 1.4 m_p is the value of RADIATION_MU_H of the GEAR radiation, so both
@@ -943,8 +964,12 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
     error(
         "GeajayCooling:dust_to_gas_model must be linear (0) or "
-        "remy_ruyer_2014 (1), got %d.",
-        cooling->dust_to_gas_model);
+        "remy_ruyer_2014 (1), got %d.%s",
+        cooling->dust_to_gas_model,
+        cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_FROM_FIELD
+            ? " from_field is not available: SWIFT has no per-particle dust "
+              "field."
+            : "");
 
   cooling->H2_on_dust = cooling_read_choice(
       parameter_file, "GeajayCooling:h2_formation_on_dust",
@@ -970,9 +995,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->photoelectric_heating_rate = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:photoelectric_heating_rate", -1.);
-  if (cooling->photoelectric_heating_rate != -1. &&
-      !(cooling->photoelectric_heating_rate >= 0. &&
-        cooling->photoelectric_heating_rate < DBL_MAX))
+  if (!cooling_double_is_finite(cooling->photoelectric_heating_rate) ||
+      (cooling->photoelectric_heating_rate != -1. &&
+       !(cooling->photoelectric_heating_rate >= 0.)))
     error(
         "GeajayCooling:photoelectric_heating_rate must be -1 (the library "
         "value) or a finite number >= 0, got %g.",
@@ -1026,9 +1051,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
-  if (cooling->reference_dust_to_gas_ratio != -1. &&
-      !(cooling->reference_dust_to_gas_ratio > 0. &&
-        cooling->reference_dust_to_gas_ratio < DBL_MAX))
+  if (!cooling_double_is_finite(cooling->reference_dust_to_gas_ratio) ||
+      (cooling->reference_dust_to_gas_ratio != -1. &&
+       !(cooling->reference_dust_to_gas_ratio > 0.)))
     error(
         "GeajayCooling:reference_dust_to_gas_ratio must be -1 (the library "
         "value) or a finite number above 0, got %g.",
