@@ -1,36 +1,54 @@
 # Intro
 A single, fixed-mass star at the center of a uniform, periodic glass-IC gas
-box, with photoelectric heating on (ISRF injection, no propagation)
-and real Grackle cooling. Compares a `GEARFeedback:with_interstellar_radiation_field:
-1` run against an otherwise identical `0` run to check both the basic sign/
-magnitude of the thermal response (gas near the star should reach a HIGHER
-equilibrium temperature with heating on) and, quantitatively, the measured
-heating rate against Wolfire et al. (1995) Eq. 1 (see
-`isrf_photoelectric_heating_check.py`'s docstring for both derivations).
+box, with photoelectric (PE) heating of the gas by the star's interstellar
+radiation field (ISRF injection, no propagation) and real cooling. The
+example compares a `GEARFeedback:with_interstellar_radiation_field: 1` run
+against an otherwise identical `0` run. Gas near the star should reach a
+higher equilibrium temperature with heating on, and the measured heating
+rate should match the formula of the chosen heating model (Wolfire et al.
+1995, Eq. 1, for the default). `isrf_photoelectric_heating_check.py` does
+both checks.
 
 ## Propagation
-`ISRF_propagation: 0`: this example is about the thermal response to
-whatever field a particle receives directly from the star, not about
-the transport of the field. Only gas within the star's own SPH kernel is illuminated.
+`ISRF_propagation: 0`: only gas within the star's own SPH kernel is
+illuminated. The example is about the thermal response to the field a
+particle receives directly from the star, not about the transport of the field.
 
 ## Cooling
-`GrackleCooling:disable_cooling_for_debugging` is `0`: this example's whole
-point is to measure the gas's actual thermal response, so cooling and
-heating are both fully active.
+`disable_cooling_for_debugging` is `0`: cooling and heating are both active.
+The ISRF also switches on the grain recombination cooling of the dust. It is
+part of the heating-on run, so it lowers the net heating of a particle.
 
 ## Metallicity
-Solar (`Z/Zsun=1`, `run.sh`'s `initial_metallicity`): the receiver-side dust
-extinction this example also exercises needs a nonzero, known metallicity.
+Solar (`Z/Zsun=1`, `initial_metallicity` in `run.sh`): the dust heating and
+extinction scale with the metallicity.
+
+# Cooling library and heating model
+Photoelectric heating needs a cooling mode that tracks species, because the
+heating models and the recombination cooling use the electron density.
+`pe_model=<name> ./run.sh` selects the heating model.
+
+| Build | Heating model |
+|-------|---------------|
+| `grackle_0` | Not supported: `run.sh` stops. The Grackle grain recombination term returns NaN for gas without free electrons, and this mode estimates none for cold gas. A Grackle library that guards a zero electron density can run it with `grackle_0_pe_ok=1`. |
+| `grackle_1` and above | `constant` (default, Wolfire et al. 1995 Eq. 1 with efficiency 0.05), `wolfire1995` (efficiency from the grain charge, needs free electrons), `density_dependent` (only on a Grackle build that provides it; SWIFT stops at start-up otherwise) |
+| `geajay_N` | `none`, `fixed_rate`, `constant_efficiency`, `grain_charge_epsilon`, `density_epsilon`; `run.sh` then reads `params_geajay.yml` |
+
+`wolfire1995` and `grain_charge_epsilon` heat through the free electron
+fraction only. The initial gas is neutral, so with Grackle their heating is
+negligible here and the sign check does not pass. With geajay,
+`extra_args="-P GeajayCooling:initial_hii_to_h_ratio:1e-3"` gives the gas free
+electrons.
 
 # Configure
 ```
-./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_0 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=grackle_1 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-grackle=path/to/grackle
 make -j
 ```
-The GEAR feedback module registers the `PESpecificEnergies`/`LWSpecificEnergies`
-snapshot output. Photoelectric heating
-itself only needs `GrackleCooling:with_metal_cooling: 1` (set in
-`params.yml`); any Grackle cooling mode works, `grackle_0` included.
+For geajay, replace `--with-cooling=grackle_1 --with-grackle=...` with
+`--with-cooling=geajay_3 --with-geajay=path/to/geajay`. The GEAR feedback
+module registers the `PESpecificEnergies`/`LWSpecificEnergies` snapshot
+output.
 
 The radiation table is the stellar evolution table with the `Data/Radiation`
 group. The pychem table generator produces it from its parameter file
@@ -48,10 +66,11 @@ Override any other parameter via the matching env var: gas density
 (`gas_density`, atom/cm^3), gas particle mass (`gas_mass`, Msun), star mass
 and type (`star_mass`, `star_type`), resolution level (`level`, N =
 `(2**level)**3` gas particles), run duration and stepping (`time_end`,
-`dt_max`, `delta_time`), metallicity (`initial_metallicity`), and thread
-count (`n_threads`); see `run.sh` for the full list and defaults.
+`dt_max`, `delta_time`), metallicity (`initial_metallicity`), heating model
+(`pe_model`), further swift arguments (`extra_args`) and thread count
+(`n_threads`); see `run.sh` for the full list and defaults.
 `run_name=<dir> ./run.sh` moves the run's outputs into `<dir>` once done, to
-keep the two runs' outputs side by side.
+keep the runs' outputs side by side.
 
 The quantitative rate check needs a SEPARATE, much finer-cadence pair (see
 `isrf_photoelectric_heating_check.py`'s docstring for why `ISRF_propagation:
@@ -61,6 +80,10 @@ sign/magnitude pair's, and a correspondingly short `time_end`.
 with_pe_heating=1 run_name=rate_on  time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
 with_pe_heating=0 run_name=rate_off time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
 ```
+With geajay, run the reference as `with_pe_heating=1 pe_model=none`, so that
+both runs carry the same ISRF, and the difference is the heating alone. Run
+the heating run with the model to check, for example
+`pe_model=constant_efficiency`.
 
 # Checking
 ```
@@ -68,8 +91,13 @@ python3 isrf_photoelectric_heating_check.py \
     --on-snapshot  "heating_on/snap/snapshot_*.hdf5" \
     --off-snapshot "heating_off/snap/snapshot_*.hdf5" \
     --rate-on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
-    --rate-off-snapshot "rate_off/snap/snapshot_*.hdf5"
+    --rate-off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --pe-model grackle-constant
 ```
+`--pe-model` is one of `grackle-constant`, `grackle-wolfire1995`,
+`geajay-fixed-rate`, `geajay-constant-efficiency`, `geajay-grain-charge`,
+`geajay-density-epsilon`; each is compared with its own formula only.
+
 Sign/magnitude check: bins gas by radius from the star at each run's final
 snapshot, restricts the comparison to bins where the on-run's own ISRF
 field is non-negligible, and checks there that (1) the heating-on
@@ -80,8 +108,10 @@ a numerical blow-up. Produces a comparison plot (`--output`, default
 
 Rate check: measures each illuminated, sub-2e4-K particle's own `du/dt`
 over the fine-cadence pair's first inter-snapshot interval with a
-non-negligible field, subtracts the off-run from the on-run to isolate
-the photoelectric contribution, and compares the median against Wolfire
-et al. (1995) Eq. 1 (`--rate-tol`, default 0.12; see the script's
-docstring for the error budget behind that bar). Skipped, not failed, if
-`--rate-on-snapshot`/`--rate-off-snapshot` are not given.
+non-negligible field, subtracts the reference run from the heating run to
+isolate the photoelectric contribution, and compares the median with the
+model formula. The bar follows from the window (the truncation of the
+finite difference and the rounding of the stored energies); the script's
+docstring gives it. The check fails if the heating is too small to resolve.
+Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
+given.

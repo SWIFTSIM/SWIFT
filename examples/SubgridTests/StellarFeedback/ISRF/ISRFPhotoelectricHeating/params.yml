@@ -88,7 +88,7 @@ GrackleCooling:
   self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
 
   # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
-  photoelectric_heating_efficiency: constant    # constant, wolfire1995 or density_dependent (Default: constant)
+  photoelectric_heating_efficiency: constant    # constant, wolfire1995 (needs the electron density, so grackle_1 or higher) or density_dependent (stops at start-up on a Grackle build without it) (Default: constant)
   local_dust_to_gas_ratio: -1                   # Grackle's own compiled default (Default: -1)
 
   # Radiation field and RT rates (cgs).

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Shared GEAR example scripts (tables, plotting)
-scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
+scripts_location=${scripts_location:="../../../../GEAR_ICs_and_SCRIPTS"}
+swift_bin=${swift_bin:="../../../../../swift"}
 
 # make run.sh fail if a subcommand fails. pipefail matters here specifically:
 # swift's own exit code is piped into `tee output.log`, and without it a
@@ -22,6 +23,35 @@ delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1} #GEARChemistry:initial_metallicity override (Z/Zsun)
 with_pe_heating=${with_pe_heating:=1} #GEARFeedback:with_interstellar_radiation_field override (1=on, 0=off)
 run_name=${run_name:=""}
+grackle_0_pe_ok=${grackle_0_pe_ok:=0} #1 allows photoelectric heating at grackle_0 (library with a zero electron density guard)
+pe_model=${pe_model:=""} #Photoelectric heating model of the cooling library (see README); empty keeps the params file value
+extra_args=${extra_args:=""} #Further swift arguments, e.g. "-P GEARFeedback:ISRF_propagation:0"
+
+# The cooling library is read from the binary's configure line.
+cooling_library=$(strings "$swift_bin" | grep -o 'with-cooling=[a-z_0-9]*' | head -1 | cut -d= -f2)
+params_file=params.yml
+pe_key=GrackleCooling:photoelectric_heating_efficiency
+case "$cooling_library" in
+    geajay_*)
+        params_file=params_geajay.yml
+        pe_key=GeajayCooling:photoelectric_heating_model
+        ;;
+    grackle_0)
+        if [ "$with_pe_heating" != "0" ] && [ "$grackle_0_pe_ok" != "1" ]; then
+            echo "Photoelectric heating needs a cooling mode that tracks species:" \
+                 "grackle_0 has no electron density, and the Grackle grain" \
+                 "recombination term returns NaN for cold gas there." \
+                 "Build with grackle_1 or higher, or with geajay." \
+                 "A Grackle library that guards a zero electron density" \
+                 "can set grackle_0_pe_ok=1." >&2
+            exit 1
+        fi
+        ;;
+esac
+pe_arg=""
+if [ -n "$pe_model" ]; then
+    pe_arg="-P $pe_key:$pe_model"
+fi
 
 # Remove the ICs
 if [ -e ICs_isrf_photoelectric_heating.hdf5 ]
@@ -80,14 +110,14 @@ printf "Running simulation..."
 # force. --cooling with GrackleCooling:disable_cooling_for_debugging left
 # at 0 (params.yml) means gas actually cools and is heated by Grackle
 # every step: see README.
-../../../../../swift --hydro --stars --external-gravity --feedback --cooling \
+"$swift_bin" --hydro --stars --external-gravity --feedback --cooling \
 		   --sync --limiter --verbose=0 --threads=$n_threads \
 		   -P TimeIntegration:time_end:$time_end \
 		   -P TimeIntegration:dt_max:$dt_max \
 		   -P Snapshots:delta_time:$delta_time \
 		   -P GEARChemistry:initial_metallicity:$initial_metallicity \
 		   -P GEARFeedback:with_interstellar_radiation_field:$with_pe_heating \
-		   params.yml 2>&1 | tee output.log
+		   $pe_arg $extra_args $params_file 2>&1 | tee output.log
 
 if [ -z "$run_name" ]; then
     echo "run_name is empty."
