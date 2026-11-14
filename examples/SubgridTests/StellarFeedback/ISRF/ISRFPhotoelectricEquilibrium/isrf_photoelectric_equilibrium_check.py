@@ -28,7 +28,7 @@ mechanism and no fitted number:
           less than float32 rounding plus the work of the flow, per relaxation time
   equil   median specific energy against the one-zone value at the same time, within
           the decay left (times the starting offset), the work of the flow in one
-          relaxation time and rounding, plus the float32 stall of the integrator
+          relaxation time and rounding, plus the float32 stall ceiling of the integrator
           (below)
   settled the one-zone value at the run's own end time is within the same bar of its
           value ten times later, so the run is long enough to compare an equilibrium;
@@ -37,14 +37,20 @@ mechanism and no fitted number:
   control (optional) a run without field ends at least ten times colder (specific
           energy, proportional to temperature)
 
-Float32 stall. The integrator adds the cooling update to the specific energy in float32.
-Each step moves u a fraction of about dt/tau of the way to its equilibrium. An update
-smaller than half a unit in the last place (ulp) of u is rounded away, so u stops
-changing once |u/u_eq - 1| * dt/tau < 0.5 ulp(u)/u. The gap to the one-zone value can
-therefore be as large as 0.5 (ulp(u)/u) tau/dt, with dt the step of the run and tau the
-one-zone relaxation time. The bar carries this term. It follows from the update rule and
-is not fitted: it shrinks when the step is not small against tau, and halving the step
-doubles it.
+Float32 stall ceiling. The integrator adds the cooling update to the specific energy in
+float32, in two half-kicks per step (end of one step, start of the next), each rounded on
+its own. Each half-kick moves u a fraction of about dt/(2 tau) of the way to its
+equilibrium. A half-kick smaller than half a unit in the last place (ulp) of u is rounded
+away, so a gap |u/u_eq - 1| below (ulp(u)/u) tau/dt can survive. The bar carries this
+term as a ceiling, not as a prediction: the gap is usually below it. It shrinks when the
+step is not small against tau, and halving the step doubles it.
+The step is read from timesteps.txt and is accepted only if every step of the last 20 per
+cent of the run updated all the particles.
+
+Detection window. The check cannot tell a stall from a real offset of the same size. With
+g the signed gap u/u_eq - 1 of the run, a real error that lowers u passes if it is smaller
+than bar + g, and one that raises u passes if it is smaller than bar - g. At
+n_H = 1000 cm^-3 these limits are 1e-5 to 5e-5 of u. The output prints both limits.
 
 The output also gives the per-particle spread of the specific energy at the end. A ratio
 of the 95th to the 5th percentile above 1.5 means the box split into two populations.
@@ -147,18 +153,30 @@ def read_run(run_dir):
     return snaps, conv
 
 
-def read_step_myr(run_dir, conv, t_from_myr):
-    """Return the median time step [Myr] of the steps after t_from_myr, from timesteps.txt."""
+def read_step_myr(run_dir, conv, t_from_myr, n_part):
+    """Return the median time step [Myr] of the steps after t_from_myr, from timesteps.txt.
+
+    Fail if any of these steps updated fewer than n_part gas particles: the step is then
+    not the step of every particle.
+    """
     path = os.path.join(run_dir, "timesteps.txt")
     if not os.path.isfile(path):
         raise RuntimeError(f"{path} is missing: the float32 stall bar needs the step")
-    data = np.loadtxt(path, usecols=(1, 4), comments="#", ndmin=2)
+    # Columns: step, time, a, z, time-step, bin min, bin max, gas updates.
+    data = np.loadtxt(path, usecols=(1, 4, 7), comments="#", ndmin=2)
     finite_or_die("timesteps", [data])
     t_myr = data[:, 0] * conv["time"] / MYR_CGS
     dt_myr = data[:, 1] * conv["time"] / MYR_CGS
     keep = (t_myr >= t_from_myr) & (dt_myr > 0.0)
     if not np.any(keep):
         raise RuntimeError(f"No step with dt > 0 in {path} after {t_from_myr} Myr")
+    partial = int(np.count_nonzero(data[keep, 2] != n_part))
+    if partial:
+        print(
+            f"FAIL {partial} of {int(np.count_nonzero(keep))} steps after {t_from_myr:.4g} Myr "
+            f"in {path} updated fewer than {n_part} particles: the stall ceiling needs one step"
+        )
+        sys.exit(1)
     return float(np.median(dt_myr[keep]))
 
 
@@ -211,14 +229,15 @@ def evaluate(snaps, conv, ref, label, dt_myr, ref_long=None, constant_field=Fals
     b_steady = b_round * tau_myr / dt_win + b_pdv
 
     u_cgs = np.median(last["u"]) * conv["energy_per_mass"]
-    equil = abs(u_cgs / ref["u_cgs"] - 1.0)
+    gap_signed = u_cgs / ref["u_cgs"] - 1.0
+    equil = abs(gap_signed)
     offset = abs(
         np.median(snaps[0]["u"]) * conv["energy_per_mass"] / ref["u_cgs"] - 1.0
     )
     b_conv = offset * np.exp(-t_end / tau_myr)
     b_equil_core = np.sqrt(b_conv**2 + b_pdv**2 + b_round**2)
     u_med = np.float32(np.median(last["u"]))
-    b_stall = 0.5 * float(np.spacing(u_med)) / float(u_med) * tau_myr / dt_myr
+    b_stall = float(np.spacing(u_med)) / float(u_med) * tau_myr / dt_myr
     b_equil = b_equil_core + b_stall
 
     field1 = snaps[0]["pe"] + snaps[0]["lw"]
@@ -252,6 +271,7 @@ def evaluate(snaps, conv, ref, label, dt_myr, ref_long=None, constant_field=Fals
         u_cgs=u_cgs,
         div_myr=div_myr,
         equil=equil,
+        gap_signed=gap_signed,
     )
 
 
@@ -262,7 +282,7 @@ def main():
         "snapshots", [s[k] for s in snaps for k in ("u", "rho", "pe", "lw", "div", "z")]
     )
     last = snaps[-1]
-    dt_myr = read_step_myr(opt.run_dir, conv, 0.8 * last["t_myr"])
+    dt_myr = read_step_myr(opt.run_dir, conv, 0.8 * last["t_myr"], last["u"].size)
     finite_or_die("time step", [np.array([dt_myr])])
 
     rho_cgs = last["rho"] * conv["density"]
@@ -312,8 +332,13 @@ def main():
         f"median u at the end = {info['u_cgs']:.6g} erg/g, median |div v| = {info['div_myr']:.3g} / Myr"
     )
     print(
-        f"step dt = {dt_myr:.4g} Myr (tau/dt = {ref['tau_Myr'] / dt_myr:.4g}), float32 stall term "
+        f"step dt = {dt_myr:.4g} Myr (tau/dt = {ref['tau_Myr'] / dt_myr:.4g}), float32 stall ceiling "
         f"{info['b_stall']:.4g}, bar without it {info['b_equil_core']:.4g}"
+    )
+    print(
+        f"detection window: a real error that lowers u passes below {info['b_equil'] + info['gap_signed']:.3g}, "
+        f"one that raises u passes below {info['b_equil'] - info['gap_signed']:.3g} (relative; measured gap "
+        f"{info['gap_signed']:.3g}, bar {info['b_equil']:.3g})"
     )
 
     if opt.control:
@@ -327,6 +352,14 @@ def main():
             (1.5, "u x 1.5"),
             (1.01, "u x 1.01"),
             (1.0 + 3.0 * info["b_equil"], "u x (1 + 3 bar)"),
+            (
+                1.0 - 1.1 * (info["b_equil"] + info["gap_signed"]),
+                "u lowered 1.1 x its detection limit",
+            ),
+            (
+                1.0 + 1.1 * (info["b_equil"] - info["gap_signed"]),
+                "u raised 1.1 x its detection limit",
+            ),
         ):
             bad = [dict(s, u=s["u"] * factor) for s in snaps]
             r, _ = evaluate(bad, conv, ref, name, dt_myr, None, constant)
