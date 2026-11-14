@@ -81,7 +81,8 @@ The equilibrium bar includes a float32 stall ceiling: the integrator rounds each
 the energy update in float32, so u can stay up to (ulp(u) / u) tau / dt away from the
 equilibrium (dt is the step of the run, read from `timesteps.txt` and accepted only if every
 step of the last 20 per cent updated all particles; tau is the one-zone relaxation time). It
-is a ceiling, not a prediction: the gap is usually below it. A real error of u
+is an upper limit, not a prediction, and holds for the step that `run.sh` sets and for steps
+down to a quarter of it; the check fails above tau/dt = 1400. A real error of u
 smaller than bar + g (lowering u) or bar - g (raising u) passes, with g the signed gap of the run; the
 output prints these limits. `--self-test` adds inputs that must fail.
 Use

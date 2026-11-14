@@ -37,20 +37,10 @@ mechanism and no fitted number:
   control (optional) a run without field ends at least ten times colder (specific
           energy, proportional to temperature)
 
-Float32 stall ceiling. The integrator adds the cooling update to the specific energy in
-float32, in two half-kicks per step (end of one step, start of the next), each rounded on
-its own. Each half-kick moves u a fraction of about dt/(2 tau) of the way to its
-equilibrium. A half-kick smaller than half a unit in the last place (ulp) of u is rounded
-away, so a gap |u/u_eq - 1| below (ulp(u)/u) tau/dt can survive. The bar carries this
-term as a ceiling, not as a prediction: the gap is usually below it. It shrinks when the
-step is not small against tau, and halving the step doubles it.
-The step is read from timesteps.txt and is accepted only if every step of the last 20 per
-cent of the run updated all the particles.
-
-Detection window. The check cannot tell a stall from a real offset of the same size. With
-g the signed gap u/u_eq - 1 of the run, a real error that lowers u passes if it is smaller
-than bar + g, and one that raises u passes if it is smaller than bar - g. At
-n_H = 1000 cm^-3 these limits are 1e-5 to 5e-5 of u. The output prints both limits.
+The equilibrium bar adds a float32 stall ceiling, (ulp(u)/u) tau/dt, an upper limit and
+not a prediction. It holds for the step that run.sh sets. The check fails above
+tau/dt = 1400, the end of the tested range. The output prints the detection window of the
+bar. The README gives both.
 
 The output also gives the per-particle spread of the specific energy at the end. A ratio
 of the 95th to the 5th percentile above 1.5 means the box split into two populations.
@@ -72,6 +62,8 @@ HYDROGEN_MASS_FRACTION = 0.76
 MYR_CGS = 3.15576e13
 FLOAT32_EPS = 2.0**-24
 GAMMA = 5.0 / 3.0
+# Largest tau/dt tested for the stall ceiling (largest measured: 1376).
+TAU_OVER_DT_MAX = 1400.0
 
 
 def parse_options():
@@ -153,11 +145,27 @@ def read_run(run_dir):
     return snaps, conv
 
 
-def read_step_myr(run_dir, conv, t_from_myr, n_part):
-    """Return the median time step [Myr] of the steps after t_from_myr, from timesteps.txt.
+def read_step_myr(run_dir: str, conv: dict, t_from_myr: float, n_part: int) -> float:
+    """Return the median time step of the steps after a time, from timesteps.txt.
 
-    Fail if any of these steps updated fewer than n_part gas particles: the step is then
-    not the step of every particle.
+    Exit with FAIL if any of these steps updated fewer than n_part gas particles: the
+    step is then not the step of every particle.
+
+    Parameters
+    ----------
+    run_dir : str
+        Directory of the run, holding timesteps.txt.
+    conv : dict
+        Unit factors of the run; the key "time" is the time unit in cgs.
+    t_from_myr : float
+        Only steps at or after this time [Myr] count.
+    n_part : int
+        Number of gas particles every step must update.
+
+    Returns
+    -------
+    float
+        Median time step [Myr] of the selected steps.
     """
     path = os.path.join(run_dir, "timesteps.txt")
     if not os.path.isfile(path):
@@ -335,11 +343,25 @@ def main():
         f"step dt = {dt_myr:.4g} Myr (tau/dt = {ref['tau_Myr'] / dt_myr:.4g}), float32 stall ceiling "
         f"{info['b_stall']:.4g}, bar without it {info['b_equil_core']:.4g}"
     )
-    print(
-        f"detection window: a real error that lowers u passes below {info['b_equil'] + info['gap_signed']:.3g}, "
-        f"one that raises u passes below {info['b_equil'] - info['gap_signed']:.3g} (relative; measured gap "
-        f"{info['gap_signed']:.3g}, bar {info['b_equil']:.3g})"
-    )
+    if ref["tau_Myr"] / dt_myr > TAU_OVER_DT_MAX:
+        print(
+            f"FAIL tau/dt = {ref['tau_Myr'] / dt_myr:.4g} is above {TAU_OVER_DT_MAX:g}: the "
+            "stall ceiling was tested up to 1376 (the limit only marks the end of the "
+            "tested range), so the bar is not known to hold"
+        )
+        sys.exit(1)
+    in_window = abs(info["gap_signed"]) < info["b_equil"]
+    if in_window:
+        print(
+            f"detection window: a real error that lowers u passes below {info['b_equil'] + info['gap_signed']:.3g}, "
+            f"one that raises u passes below {info['b_equil'] - info['gap_signed']:.3g} (relative; measured gap "
+            f"{info['gap_signed']:.3g}, bar {info['b_equil']:.3g})"
+        )
+    else:
+        print(
+            "detection window: not given, the run fails its equilibrium gate "
+            f"(gap {info['gap_signed']:.3g}, bar {info['b_equil']:.3g})"
+        )
 
     if opt.control:
         csnaps, cconv = read_run(opt.control)
@@ -348,19 +370,23 @@ def main():
         results.append(("control colder", ratio, 0.1, ratio < 0.1))
 
     if opt.self_test:
-        for factor, name in (
+        plants = [
             (1.5, "u x 1.5"),
             (1.01, "u x 1.01"),
             (1.0 + 3.0 * info["b_equil"], "u x (1 + 3 bar)"),
-            (
-                1.0 - 1.1 * (info["b_equil"] + info["gap_signed"]),
-                "u lowered 1.1 x its detection limit",
-            ),
-            (
-                1.0 + 1.1 * (info["b_equil"] - info["gap_signed"]),
-                "u raised 1.1 x its detection limit",
-            ),
-        ):
+        ]
+        if in_window:
+            plants += [
+                (
+                    1.0 - 1.1 * (info["b_equil"] + info["gap_signed"]),
+                    "u lowered 1.1 x its detection limit",
+                ),
+                (
+                    1.0 + 1.1 * (info["b_equil"] - info["gap_signed"]),
+                    "u raised 1.1 x its detection limit",
+                ),
+            ]
+        for factor, name in plants:
             bad = [dict(s, u=s["u"] * factor) for s in snaps]
             r, _ = evaluate(bad, conv, ref, name, dt_myr, None, constant)
             results.append(
