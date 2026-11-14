@@ -14,10 +14,18 @@ gas_mass=${gas_mass:=1e4} #Mass of the gas particles (Msun)
 temperature=${temperature:=100} #Initial gas temperature (K)
 expansion=${expansion:=1.25} #Ratio a_end / a_begin
 n_steps=${n_steps:=400} #Requested number of time steps; SWIFT rounds it up to a power of two
-n_snapshots=${n_snapshots:=8} #Number of snapshots after the first; keep it a power of two so all snapshots fall at the same point of a time step
+n_snapshots=${n_snapshots:=8} #Snapshots after the first; a power of two puts all at one point of a step
 swift_exe=${swift_exe:="$PWD/../../../swift"} #swift binary
 run_dir=${run_dir:=run_z${redshift}_floor${cmb_floor}} #Isolated directory of the run
 extra_args=${extra_args:=""} #Further swift arguments, e.g. "-P Snapshots:compression:4"
+
+# The run directory is emptied below: accept only a plain name of a directory under this one.
+case "$run_dir" in
+    ""|.|..|*/*)
+	echo "run_dir must be a plain directory name, not '$run_dir'." >&2
+	exit 1
+	;;
+esac
 
 glass_file="glassCube_32.hdf5"
 yields_table="POPIIsw.h5"
@@ -41,13 +49,6 @@ then
 fi
 
 here=$PWD
-# The run directory is emptied below: accept only a plain name of a directory under this one.
-case "$run_dir" in
-    ""|.|..|*/*)
-	echo "run_dir must be a plain directory name, not '$run_dir'." >&2
-	exit 1
-	;;
-esac
 if [ -d "$run_dir" ]
 then
     echo "$run_dir exists. Its content will be removed."
