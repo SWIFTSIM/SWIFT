@@ -441,6 +441,13 @@ int cell_link_foreign_gparts(struct cell *c,
 #endif
     return counts;
   } else {
+    /* No data is received at this level. The pointer is only a placeholder
+     * (the start of the progeny's data, which does not hold c->grav.count
+     * particles). The gravity tasks never read the particles of a foreign
+     * cell above the level of its recv task (interactions there use the
+     * multipoles) so this is safe. Unlike the FOF version,  the pointers can't
+     * be NULL: cell_unpack_grav_counts() re-derives parts_foreign from
+     * parts_foreign_rebuild at every level between rebuilds. */
     c->grav.parts_foreign = gparts_foreign;
     c->grav.parts_foreign_rebuild = gparts_foreign;
   }
