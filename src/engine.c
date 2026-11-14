@@ -4163,8 +4163,7 @@ void engine_struct_dump(struct engine *e, FILE *stream) {
   power_spectrum_struct_dump(e->power_data, stream);
   potential_struct_dump(e->external_potential, stream);
   forcing_terms_struct_dump(e->forcing_terms, stream);
-  if (e->policy & (engine_policy_cooling | engine_policy_temperature))
-    cooling_struct_dump(e->cooling_func, stream);
+  cooling_struct_dump(e->cooling_func, stream);
   starformation_struct_dump(e->star_formation, stream);
   feedback_struct_dump(e->feedback_props, stream);
   pressure_floor_struct_dump(e->pressure_floor_props, stream);
@@ -4289,10 +4288,7 @@ void engine_struct_restore(struct engine *e, FILE *stream) {
   struct cooling_function_data *cooling_func =
       (struct cooling_function_data *)malloc(
           sizeof(struct cooling_function_data));
-  if (e->policy & (engine_policy_cooling | engine_policy_temperature))
-    cooling_struct_restore(cooling_func, stream, e->cosmology);
-  else
-    bzero(cooling_func, sizeof(struct cooling_function_data));
+  cooling_struct_restore(cooling_func, stream, e->cosmology);
   e->cooling_func = cooling_func;
 
   struct star_formation *star_formation =
