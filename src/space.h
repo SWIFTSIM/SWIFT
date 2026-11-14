@@ -43,6 +43,7 @@ struct cosmology;
 struct gravity_props;
 struct star_formation;
 struct hydro_props;
+struct space_cell_buffers_chunk_list;
 
 /* Some constants. */
 #define space_cellallocchunk 1000
@@ -188,6 +189,16 @@ struct space {
 
   /*! Buffer of unused multipoles for the sub-cells. One chunk per thread. */
   struct gravity_tensors **multipoles_sub;
+
+  /*! Chunks of memory allocated for each buffer of cells_sub, used to
+   * re-order the buffers (see space_cell_buffers_relink()). */
+  struct space_cell_buffers_chunk_list *cells_sub_chunks;
+
+  /*! Chunks of memory allocated for each buffer of multipoles_sub. */
+  struct space_cell_buffers_chunk_list *multipoles_sub_chunks;
+
+  /*! Number of buffers in cells_sub, multipoles_sub and their chunk lists. */
+  int nr_sub_buffers;
 
   /*! The indices of the *local* top-level cells */
   int *local_cells_top;
@@ -491,8 +502,8 @@ void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
 void space_cell_buffers_relink(struct space *s);
-void space_cell_buffers_init(const int nr_buffers);
-void space_cell_buffers_clean(void);
+void space_cell_buffers_init(struct space *s, const int nr_buffers);
+void space_cell_buffers_clean(struct space *s);
 
 void space_free_foreign_parts(struct space *s, const int clear_cell_pointers);
 

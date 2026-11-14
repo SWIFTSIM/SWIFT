@@ -2519,7 +2519,7 @@ void space_clean(struct space *s) {
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
-  space_cell_buffers_clean();
+  space_cell_buffers_clean(s);
 
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");
@@ -2717,6 +2717,9 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->cells_sub = NULL;
   s->multipoles_top = NULL;
   s->multipoles_sub = NULL;
+  s->cells_sub_chunks = NULL;
+  s->multipoles_sub_chunks = NULL;
+  s->nr_sub_buffers = 0;
   s->local_cells_top = NULL;
   s->local_cells_with_tasks_top = NULL;
   s->cells_with_particles_top = NULL;
