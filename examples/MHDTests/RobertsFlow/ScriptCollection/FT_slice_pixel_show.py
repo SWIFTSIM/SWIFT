@@ -296,7 +296,9 @@ def generate_test_field(data):
 
 def read_hdf5_B(input_filename, res_xy, res_z):
     if _swift_import_error is not None:
-        raise ImportError(f"SWIFT snapshots need swiftsimio and unyt: {_swift_import_error}")
+        raise ImportError(
+            f"SWIFT snapshots need swiftsimio and unyt: {_swift_import_error}"
+        )
     # Load snapshot
     data = load(input_filename)
 
@@ -316,11 +318,19 @@ def read_hdf5_B(input_filename, res_xy, res_z):
 
 def _read_dim(filename):
     """Pencil dim.dat -> (mx, my, mz, precision, nghost (3,), last line (3,)).
-    The last line is (nprocx, nprocy, nprocz) in data/dim.dat and (ipx, ipy, ipz) in procN/dim.dat."""
+    The last line is (nprocx, nprocy, nprocz) in data/dim.dat and (ipx, ipy, ipz) in procN/dim.dat.
+    """
     with open(filename) as f:
         lines = [l.split() for l in f if l.strip()]
     mx, my, mz = map(int, lines[0][:3])
-    return mx, my, mz, lines[1][0], tuple(map(int, lines[2][:3])), tuple(map(int, lines[3][:3]))
+    return (
+        mx,
+        my,
+        mz,
+        lines[1][0],
+        tuple(map(int, lines[2][:3])),
+        tuple(map(int, lines[3][:3])),
+    )
 
 
 def read_pencil_var(datadir, varfile):
@@ -333,7 +343,9 @@ def read_pencil_var(datadir, varfile):
                 A: array (3, nx, ny, nz) indexed [component, x, y, z], ghost zones removed
                 t: snapshot time;  x, y, z: grid coordinates
     """
-    mx, my, mz, prec, (gx, gy, gz), (npx, npy, npz) = _read_dim(os.path.join(datadir, "dim.dat"))
+    mx, my, mz, prec, (gx, gy, gz), (npx, npy, npz) = _read_dim(
+        os.path.join(datadir, "dim.dat")
+    )
     nx, ny, nz = mx - 2 * gx, my - 2 * gy, mz - 2 * gz
     dtype = np.dtype("<f8" if prec == "D" else "<f4")
     with open(os.path.join(datadir, "index.pro")) as f:
@@ -412,10 +424,13 @@ def read_VAR_B(input_filename):
         aa, t, x, y, z = read_pencil_var(datafolder, f"VAR{snapshotid}")
     d = (x[1] - x[0], y[1] - y[0], z[1] - z[0])
     Lbox = [len(x) * d[0], len(y) * d[1], len(z) * d[2]]
-    print(f"Pencil VAR{snapshotid}: t = {float(t):.4f}, grid {aa.shape[1:]}, first point "
-          f"x0 = {x[0]:.6f}, y0 = {y[0]:.6f} (pass -x0 to eigen_patterns.py if non-zero)")
+    print(
+        f"Pencil VAR{snapshotid}: t = {float(t):.4f}, grid {aa.shape[1:]}, first point "
+        f"x0 = {x[0]:.6f}, y0 = {y[0]:.6f} (pass -x0 to eigen_patterns.py if non-zero)"
+    )
     Bx, By, Bz = spectral_curl(aa, d)
     return Bx, By, Bz, Lbox
+
 
 if __name__ == "__main__":
 
@@ -478,7 +493,7 @@ if __name__ == "__main__":
         Bx, By, Bz, Lbox = read_hdf5_B(filename, res_xy=res_xy, res_z=res_z)
     #    elif extension == 'fits':
     #        Bx, By, Bz, Lbox = read_fits_B(filename)
-    elif extension == 'VAR':
+    elif extension == "VAR":
         # Pencil: the grid sets the resolution (-res_xy, -res_z are ignored)
         Bx, By, Bz, Lbox = read_VAR_B(filename)
         if Bx.shape[0] != Bx.shape[1]:
@@ -486,7 +501,8 @@ if __name__ == "__main__":
         res_xy, res_z = Bx.shape[0], Bx.shape[2]
     else:
         raise Exception(
-            "input must be a SWIFT .hdf5 snapshot or a Pencil 'data/N.VAR', not ", filename
+            "input must be a SWIFT .hdf5 snapshot or a Pencil 'data/N.VAR', not ",
+            filename,
         )
 
     # Plotting
