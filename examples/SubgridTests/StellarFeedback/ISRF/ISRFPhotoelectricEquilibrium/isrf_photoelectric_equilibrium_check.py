@@ -28,13 +28,23 @@ mechanism and no fitted number:
           less than float32 rounding plus the work of the flow, per relaxation time
   equil   median specific energy against the one-zone value at the same time, within
           the decay left (times the starting offset), the work of the flow in one
-          relaxation time and rounding
+          relaxation time and rounding, plus the float32 stall of the integrator
+          (below)
   settled the one-zone value at the run's own end time is within the same bar of its
           value ten times later, so the run is long enough to compare an equilibrium;
           an unsettled run is excluded from the density ladder
   field   the seeded field is nonzero and identical in every snapshot (double precision)
   control (optional) a run without field ends at least ten times colder (specific
           energy, proportional to temperature)
+
+Float32 stall. The integrator adds the cooling update to the specific energy in float32.
+Each step moves u a fraction of about dt/tau of the way to its equilibrium. An update
+smaller than half a unit in the last place (ulp) of u is rounded away, so u stops
+changing once |u/u_eq - 1| * dt/tau < 0.5 ulp(u)/u. The gap to the one-zone value can
+therefore be as large as 0.5 (ulp(u)/u) tau/dt, with dt the step of the run and tau the
+one-zone relaxation time. The bar carries this term. It follows from the update rule and
+is not fitted: it shrinks when the step is not small against tau, and halving the step
+doubles it.
 
 The output also gives the per-particle spread of the specific energy at the end. A ratio
 of the 95th to the 5th percentile above 1.5 means the box split into two populations.
@@ -137,6 +147,21 @@ def read_run(run_dir):
     return snaps, conv
 
 
+def read_step_myr(run_dir, conv, t_from_myr):
+    """Return the median time step [Myr] of the steps after t_from_myr, from timesteps.txt."""
+    path = os.path.join(run_dir, "timesteps.txt")
+    if not os.path.isfile(path):
+        raise RuntimeError(f"{path} is missing: the float32 stall bar needs the step")
+    data = np.loadtxt(path, usecols=(1, 4), comments="#", ndmin=2)
+    finite_or_die("timesteps", [data])
+    t_myr = data[:, 0] * conv["time"] / MYR_CGS
+    dt_myr = data[:, 1] * conv["time"] / MYR_CGS
+    keep = (t_myr >= t_from_myr) & (dt_myr > 0.0)
+    if not np.any(keep):
+        raise RuntimeError(f"No step with dt > 0 in {path} after {t_from_myr} Myr")
+    return float(np.median(dt_myr[keep]))
+
+
 def run_onezone(opt, n_h, g0, z, t_end_myr):
     cmd = [
         opt.onezone,
@@ -168,7 +193,7 @@ def finite_or_die(name, arrays):
             sys.exit(1)
 
 
-def evaluate(snaps, conv, ref, label, ref_long=None, constant_field=False):
+def evaluate(snaps, conv, ref, label, dt_myr, ref_long=None, constant_field=False):
     """Return a list of (gate, value, bar, passed) for one run against the reference."""
     last = snaps[-1]
     tau_myr = ref["tau_Myr"]
@@ -191,7 +216,10 @@ def evaluate(snaps, conv, ref, label, ref_long=None, constant_field=False):
         np.median(snaps[0]["u"]) * conv["energy_per_mass"] / ref["u_cgs"] - 1.0
     )
     b_conv = offset * np.exp(-t_end / tau_myr)
-    b_equil = np.sqrt(b_conv**2 + b_pdv**2 + b_round**2)
+    b_equil_core = np.sqrt(b_conv**2 + b_pdv**2 + b_round**2)
+    u_med = np.float32(np.median(last["u"]))
+    b_stall = 0.5 * float(np.spacing(u_med)) / float(u_med) * tau_myr / dt_myr
+    b_equil = b_equil_core + b_stall
 
     field1 = snaps[0]["pe"] + snaps[0]["lw"]
     field_change = max(
@@ -208,13 +236,22 @@ def evaluate(snaps, conv, ref, label, ref_long=None, constant_field=False):
     ]
     if ref_long is not None:
         settled = abs(ref["u_cgs"] / ref_long["u_cgs"] - 1.0)
-        gates.append((f"{label} settled", settled, b_equil, settled < b_equil))
+        gates.append(
+            (f"{label} settled", settled, b_equil_core, settled < b_equil_core)
+        )
     if not constant_field:
         gates.append(
             (f"{label} field constant", field_change, b_field, field_change < b_field)
         )
     return gates, dict(
-        b_pdv=b_pdv, b_conv=b_conv, b_equil=b_equil, u_cgs=u_cgs, div_myr=div_myr
+        b_pdv=b_pdv,
+        b_conv=b_conv,
+        b_equil=b_equil,
+        b_equil_core=b_equil_core,
+        b_stall=b_stall,
+        u_cgs=u_cgs,
+        div_myr=div_myr,
+        equil=equil,
     )
 
 
@@ -225,6 +262,8 @@ def main():
         "snapshots", [s[k] for s in snaps for k in ("u", "rho", "pe", "lw", "div", "z")]
     )
     last = snaps[-1]
+    dt_myr = read_step_myr(opt.run_dir, conv, 0.8 * last["t_myr"])
+    finite_or_die("time step", [np.array([dt_myr])])
 
     rho_cgs = last["rho"] * conv["density"]
     n_h = float(np.median(rho_cgs) * HYDROGEN_MASS_FRACTION / PROTON_MASS_CGS)
@@ -257,7 +296,7 @@ def main():
     )
 
     constant = opt.constant_g0 is not None
-    results, info = evaluate(snaps, conv, ref, "run", ref_long, constant)
+    results, info = evaluate(snaps, conv, ref, "run", dt_myr, ref_long, constant)
     e_cgs = last["u"] * conv["energy_per_mass"]
     p5, p50, p95 = np.percentile(e_cgs, [5, 50, 95])
     print(
@@ -272,6 +311,10 @@ def main():
     print(
         f"median u at the end = {info['u_cgs']:.6g} erg/g, median |div v| = {info['div_myr']:.3g} / Myr"
     )
+    print(
+        f"step dt = {dt_myr:.4g} Myr (tau/dt = {ref['tau_Myr'] / dt_myr:.4g}), float32 stall term "
+        f"{info['b_stall']:.4g}, bar without it {info['b_equil_core']:.4g}"
+    )
 
     if opt.control:
         csnaps, cconv = read_run(opt.control)
@@ -282,10 +325,11 @@ def main():
     if opt.self_test:
         for factor, name in (
             (1.5, "u x 1.5"),
+            (1.01, "u x 1.01"),
             (1.0 + 3.0 * info["b_equil"], "u x (1 + 3 bar)"),
         ):
             bad = [dict(s, u=s["u"] * factor) for s in snaps]
-            r, _ = evaluate(bad, conv, ref, name, None, constant)
+            r, _ = evaluate(bad, conv, ref, name, dt_myr, None, constant)
             results.append(
                 (
                     f"self-test must fail: equilibrium, {name}",
@@ -302,7 +346,7 @@ def main():
             ):
                 bad = [dict(s) for s in snaps]
                 bad[-1] = dict(bad[-1], pe=bad[-1]["pe"] * factor)
-                r, _ = evaluate(bad, conv, ref, name)
+                r, _ = evaluate(bad, conv, ref, name, dt_myr)
                 results.append(
                     (f"self-test must fail: {name}", r[2][1], r[2][2], not r[2][3])
                 )

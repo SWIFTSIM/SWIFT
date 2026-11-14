@@ -76,7 +76,11 @@ five gates: the median specific energy is steady over the last 20 per cent of th
 it equals the one-zone value, that value is settled (the run is long enough to compare
 an equilibrium), the seeded field is nonzero and unchanged, and the run without field is at
 least ten times colder. It also prints the spread of the specific energy over the
-particles: a 95th to 5th percentile ratio above 1.5 means the box split into two phases. `--self-test` adds inputs that must fail.
+particles: a 95th to 5th percentile ratio above 1.5 means the box split into two phases.
+The equilibrium bar includes the float32 stall of the integrator: an energy update below half a
+unit in the last place of u is rounded away, so u can stop up to 0.5 (ulp(u) / u) tau / dt from
+the equilibrium (dt is the step of the run, read from `timesteps.txt`; tau is the one-zone
+relaxation time). `--self-test` adds inputs that must fail.
 Use
 `--constant-g0 <G0>` for a run with `field=background`.
 
