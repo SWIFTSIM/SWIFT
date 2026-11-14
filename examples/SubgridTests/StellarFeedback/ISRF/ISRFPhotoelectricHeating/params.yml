@@ -71,7 +71,7 @@ GEARChemistry:
 
 GrackleCooling:
   # H2 self-shielding: 0 is no shielding. Use 2 or 3 in a run that tracks H2 (grackle_2 or grackle_3).
-  H2_self_shielding: 0                          # 0 off, 2 kernel support radius, 3 local Jeans length (Default: 0)
+  H2_self_shielding: 0                          # 0 off, 2 column set by H2_self_shielding_path, 3 local Jeans length (Default: 0)
   # Core Grackle settings. Each optional key states its parser default.
   cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
   with_UV_background: 0                         # Metagalactic UV background on or off (required)
