@@ -48,7 +48,7 @@ INLINE static void sink_read_particles(struct sink *sinks,
   list[4] = io_make_input_field("SmoothingLength", FLOAT, 1, OPTIONAL,
                                 UNIT_CONV_LENGTH, sinks, h);
   list[5] = io_make_input_field("BirthTime", DOUBLE, 1, OPTIONAL,
-                                UNIT_CONV_MASS, sinks, birth_data.time);
+                                UNIT_CONV_NO_UNITS, sinks, birth_data.time);
 }
 
 INLINE static void convert_sink_pos(const struct engine *e,

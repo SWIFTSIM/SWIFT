@@ -594,14 +594,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
   double e_efficiency =
       parser_get_param_double(params, "GEARFeedback:supernovae_efficiency");
 
-  /* 0 is legal: it runs the enrichment channel without the thermal one. */
   if (e_efficiency < 0.0)
-    error(
-        "GEARFeedback:supernovae_efficiency is %g (< 0): a negative "
-        "efficiency makes a supernova take thermal energy out of its gas "
-        "neighbours instead of injecting it. Use 0 to inject no energy, or "
-        "a positive value.",
-        e_efficiency);
+    error("GEARFeedback:supernovae_efficiency must be >= 0 (got %g).",
+          e_efficiency);
 
   fp->supernovae_efficiency = e_efficiency;
 
@@ -655,15 +650,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         params, "GEARFeedback:stellar_winds_efficiency");
   }
 
-  /* A negative efficiency gives a NaN wind momentum, which -ffast-math cannot
-   * catch downstream. */
   if (w_efficiency < 0.0)
-    error(
-        "GEARFeedback:stellar_winds_efficiency is %g (< 0): the wind "
-        "momentum is a square root of the ejected energy, so a negative "
-        "efficiency produces NaN momentum and internal energy. Use 0 to "
-        "inject no wind energy, or a positive value.",
-        w_efficiency);
+    error("GEARFeedback:stellar_winds_efficiency must be >= 0 (got %g).",
+          w_efficiency);
 
   fp->winds_efficiency = w_efficiency;
 
