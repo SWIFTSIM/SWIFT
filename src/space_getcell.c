@@ -20,6 +20,10 @@
 /* Config parameters. */
 #include <config.h>
 
+/* Some standard headers. */
+#include <stdint.h>
+#include <stdlib.h>
+
 /* This object's header. */
 #include "space.h"
 
@@ -229,10 +233,15 @@ static int space_relink_buffers(struct space *s,
  */
 void space_relink_cell_sub_buffers(struct space *s) {
 
-  if (space_cell_chunks == NULL || s->e == NULL) return;
+  if (space_cell_chunks == NULL) return;
 
-  /* Safety check: Are all the sub-cells back in the buffers? */
+  /* Safety check: Are all the sub-cells back in the buffers? They should be,
+   * as this is called once all the trees have been recycled. */
   if (s->tot_cells != s->nr_cells) {
+#ifdef SWIFT_DEBUG_CHECKS
+    error("%d sub-cells still in use after recycling all the trees.",
+          s->tot_cells - s->nr_cells);
+#endif
     if (s->e->verbose)
       message("%d sub-cells still in use, not re-ordering the buffers.",
               s->tot_cells - s->nr_cells);
