@@ -455,94 +455,6 @@ void space_map_cells_pre(struct space *s, int full,
 }
 
 /**
- * @brief Get a new empty (sub-)#cell.
- *
- * If there are cells in the buffer, use the one at the end of the linked list.
- * If we have no cells, allocate a new chunk of memory and pick one from there.
- *
- * @param s The #space.
- * @param nr_cells Number of #cell to pick up.
- * @param cells Array of @c nr_cells #cell pointers in which to store the
- *        new cells.
- * @param tpid ID of threadpool threadpool associated with cells_sub.
- */
-void space_getcells(struct space *s, int nr_cells, struct cell **cells,
-                    const short int tpid) {
-
-  /* For each requested cell... */
-  for (int j = 0; j < nr_cells; j++) {
-
-    /* Is the cell buffer empty? */
-    if (s->cells_sub[tpid] == NULL) {
-      if (swift_memalign("cells_sub", (void **)&s->cells_sub[tpid], cell_align,
-                         space_cellallocchunk * sizeof(struct cell)) != 0)
-        error("Failed to allocate more cells.");
-
-      /* This allocation is never correctly freed, that is ok. */
-      swift_ignore_leak(s->cells_sub[tpid]);
-
-      /* Clear the newly-allocated cells. */
-      bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
-
-      /* Constructed a linked list */
-      for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->cells_sub[tpid][k].next = &s->cells_sub[tpid][k + 1];
-      s->cells_sub[tpid][space_cellallocchunk - 1].next = NULL;
-    }
-
-    /* Is the multipole buffer empty? */
-    if (s->with_self_gravity && s->multipoles_sub[tpid] == NULL) {
-      if (swift_memalign(
-              "multipoles_sub", (void **)&s->multipoles_sub[tpid],
-              multipole_align,
-              space_cellallocchunk * sizeof(struct gravity_tensors)) != 0)
-        error("Failed to allocate more multipoles.");
-
-      /* Constructed a linked list */
-      for (int k = 0; k < space_cellallocchunk - 1; k++)
-        s->multipoles_sub[tpid][k].next = &s->multipoles_sub[tpid][k + 1];
-      s->multipoles_sub[tpid][space_cellallocchunk - 1].next = NULL;
-    }
-
-    /* Pick off the next cell. */
-    cells[j] = s->cells_sub[tpid];
-    s->cells_sub[tpid] = cells[j]->next;
-
-    /* Hook the multipole */
-    if (s->with_self_gravity) {
-      cells[j]->grav.multipole = s->multipoles_sub[tpid];
-      s->multipoles_sub[tpid] = cells[j]->grav.multipole->next;
-    }
-  }
-
-  /* Unlock the space. */
-  atomic_add(&s->tot_cells, nr_cells);
-
-  /* Init some things in the cell we just got. */
-  for (int j = 0; j < nr_cells; j++) {
-    cell_free_hydro_sorts(cells[j]);
-    cell_free_stars_sorts(cells[j]);
-
-    struct gravity_tensors *temp = cells[j]->grav.multipole;
-    bzero(cells[j], sizeof(struct cell));
-    cells[j]->grav.multipole = temp;
-    cells[j]->nodeID = -1;
-    cells[j]->tpid = tpid;
-    if (lock_init(&cells[j]->hydro.lock) != 0 ||
-        lock_init(&cells[j]->hydro.extra_sort_lock) != 0 ||
-        lock_init(&cells[j]->grav.plock) != 0 ||
-        lock_init(&cells[j]->grav.mlock) != 0 ||
-        lock_init(&cells[j]->stars.lock) != 0 ||
-        lock_init(&cells[j]->sinks.lock) != 0 ||
-        lock_init(&cells[j]->sinks.sink_formation_lock) != 0 ||
-        lock_init(&cells[j]->black_holes.lock) != 0 ||
-        lock_init(&cells[j]->stars.star_formation_lock) != 0 ||
-        lock_init(&cells[j]->grav.star_formation_lock) != 0)
-      error("Failed to initialize cell spinlocks.");
-  }
-}
-
-/**
  * @brief Free sort arrays in any cells in the cell buffer.
  *
  * @param s The #space.
@@ -2607,6 +2519,7 @@ void space_clean(struct space *s) {
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
+  space_cell_sub_chunks_clean();
 
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");

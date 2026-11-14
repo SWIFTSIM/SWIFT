@@ -356,6 +356,10 @@ void space_free_cells(struct space *s) {
                  s);
   s->maxdepth = 0;
 
+  /* All the trees are back in the buffers: restore the memory layout of the
+   * buffers such that the next trees are not scattered over the pools. */
+  space_relink_cell_sub_buffers(s);
+
   if (s->e->verbose)
     message("took %.3f %s.", clocks_from_ticks(getticks() - tic),
             clocks_getunit());

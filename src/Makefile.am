@@ -173,7 +173,7 @@ SPHM1RT_RT_SOURCES += rt/SPHM1RT/rt_cooling.c
 endif
 
 # Common source files
-AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c
+AM_SOURCES = space.c space_rebuild.c space_regrid.c space_unique_id.c space_getcell.c
 AM_SOURCES += space_sort.c space_split.c space_extras.c space_first_init.c space_init.c
 AM_SOURCES += space_cell_index.c space_recycle.c
 AM_SOURCES += runner_main.c runner_doiact_hydro.c runner_doiact_limiter.c

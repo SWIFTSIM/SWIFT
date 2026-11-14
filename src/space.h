@@ -490,6 +490,9 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
 void space_reset_task_counters(struct space *s);
 void space_clean(struct space *s);
 void space_free_cells(struct space *s);
+void space_relink_cell_sub_buffers(struct space *s);
+void space_cell_sub_chunks_init(const int nr_buffers);
+void space_cell_sub_chunks_clean(void);
 
 void space_free_foreign_parts(struct space *s, const int clear_cell_pointers);
 
