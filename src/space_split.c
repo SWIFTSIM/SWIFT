@@ -424,8 +424,8 @@ void space_split_recursive(struct space *s, struct cell *c,
   const integertime_t ti_current = e->ti_current;
   const int with_rt = e->policy & engine_policy_rt;
 
-  /* Set the top level cell tpid. Doing it here ensures top level cells
-   * have the same tpid as their progeny. */
+  /* Record the id of the thread splitting a top-level cell. Top-level cells
+   * are never returned to a cell buffer, so this is informative only. */
   if (depth == 0) c->tpid = tpid;
 
   /* If the buff is NULL, allocate it, and remember to free it. */
@@ -912,8 +912,12 @@ struct space_split_item {
 };
 
 /**
- * @brief The amount of work in a cell for the split: the number of particles
- * that decide whether it is split.
+ * @brief An estimate of the amount of work in a cell for the split.
+ *
+ * With self-gravity, the number of #gpart. Otherwise, the total number of
+ * gas, star, black hole and sink particles. Unlike
+ * space_split_cell_needs_split(), this counts all the particles that will be
+ * sorted, not only those deciding whether the cell is split.
  *
  * @param s The #space.
  * @param c The #cell.
@@ -1100,9 +1104,11 @@ static void space_split_subtrees_mapper(void *map_data, int num_elements,
  * the large cells are then split level by level, all the cells of a level in
  * parallel. The first level also holds the small cells, which are split whole
  * by one thread each while the large cells are cut, largest first. The large
- * cells are cut down to cells holding fewer than 1/(
- * space_split_subtrees_per_thread x number of threads) of the particles of all
- * the large cells. These independent sub-trees are split recursively in
+ * cells are cut until every remaining cell either does not need splitting or
+ * has a load (see space_split_cell_load()) of at most max(L /
+ * (space_split_subtrees_per_thread x number of threads), space_splitsize),
+ * with L the total load of the large cells. These independent sub-trees are
+ * split recursively in
  * parallel, largest first. Finally, the properties of the cells of the tops of
  * the trees are collected from their progeny, deepest first.
  *
