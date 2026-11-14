@@ -251,6 +251,11 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
 /**
  * @brief Return a used cell to the buffer of unused sub-cells.
  *
+ * The cell and its multipole go back to the buffer of the thread they were
+ * taken from (@c c->tpid). The buffer is not locked: this may only be called
+ * by the thread owning that buffer (e.g. on a cell it just obtained from
+ * space_getcells()), or by the main thread outside of a #threadpool mapper.
+ *
  * @param s The #space.
  * @param c The #cell.
  */

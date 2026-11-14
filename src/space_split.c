@@ -1287,8 +1287,11 @@ static void space_split_large_cells(struct space *s, const int *large_cells,
 /**
  * @brief Split particles between cells of a hierarchy.
  *
- * This is done in parallel using threads in the #threadpool.
- * Only do this for the local non-empty top-level cells.
+ * Only do this for the local non-empty top-level cells, in parallel using
+ * the threads in the #threadpool. The cells that need splitting and hold more
+ * than a thread's share of the load (see space_split_cell_load()) are split
+ * together by all the threads in space_split_large_cells(). All the other
+ * cells are split whole, each by a single thread.
  *
  * @param s The #space.
  * @param verbose Are we talkative ?
@@ -1321,8 +1324,8 @@ void space_split(struct space *s, int verbose) {
     const int ind = s->local_cells_with_particles_top[k];
     const struct cell *c = &s->cells_top[ind];
 
-    /* Cells which have more than the average content go in the
-     * large cells list. */
+    /* Cells which need splitting and hold more than a thread's share of the
+     * load go in the large cells list. */
     if (nr_threads > 1 && space_split_cell_needs_split(s, c) &&
         space_split_cell_load(s, c) > total_load / nr_threads) {
       large_cells[nr_large++] = ind;
