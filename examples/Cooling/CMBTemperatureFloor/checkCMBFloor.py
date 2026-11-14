@@ -2,7 +2,8 @@
 """Check that the gas of a run holds the CMB temperature floor, in every snapshot after the first.
 
 The floor is T_CMB,0 (1 + z) at the redshift z of the snapshot. Official Grackle uses
-T_CMB,0 = 2.73 K and geajay 2.725 K: pass --t-cmb-0 for the library of the run.
+T_CMB,0 = 2.73 K and geajay 2.725 K. The script reads the library that ran from
+used_parameters.yml and takes its constant; --t-cmb-0 overrides it.
 
 The snapshots hold no temperature, so it is rebuilt as the cooling library computes it:
 T = (gamma - 1) u m_H / (k_B n), with u the physical specific internal energy and n the number of
@@ -14,8 +15,8 @@ it the check stops with an error. m_H and k_B are the values of the libraries.
 Checks, in this order. Finiteness: every temperature of every snapshot is finite. Floor held: in
 every snapshot the lowest temperature is at least the floor times (1 - TOLERANCE - dt_max / 2).
 Here dt_max is the largest time-step of the run in ln a (TimeIntegration:dt_max of
-used_parameters.yml). The snapshot energy is drifted to the snapshot time and carries up to half
-a step of expansion cooling that the floor did not see, so the lag is at most dt_max / 2.
+used_parameters.yml). The half step is an empirical lag: geajay sits at 1 - dt / 2 below the
+floor in every snapshot, and the lag halves when the step halves.
 Floor reached: in the last snapshot the highest temperature is at most the floor times
 (1 + REACH), so the gas did cool onto the floor. The script exits with status 1 if a check
 fails. A run without the floor must fail the floor-held check.
@@ -34,13 +35,15 @@ import numpy as np
 import yaml
 
 # Float32 round-off of the energy plus the lag of the gas behind the falling floor, relative.
-# Half the largest time-step in ln a is added from the run, for the drift of the snapshot energy.
+# Half the largest time-step in ln a is added from the run, for the empirical lag of the gas.
 TOLERANCE = 1e-4
 # Distance above the floor where the cooled gas must sit, relative.
 REACH = 1e-3
 # Largest H2 to other-particle ratio where the library adiabatic index is the simple formula.
 H2_RATIO_MAX = 1e-3
 
+T_CMB_0_GRACKLE = 2.73  # K, cool1d_multi_g.F
+T_CMB_0_GEAJAY = 2.725  # K, kernel_base.h
 GAMMA = 5.0 / 3.0
 M_H = 1.67262171e-24  # g, as in the libraries
 K_B = 1.3806504e-16  # erg/K, as in the libraries
@@ -128,11 +131,23 @@ def evaluate(snapshots, t_cmb_0, dt_max=0.0):
     return rows, top
 
 
+def library_t_cmb_0(used):
+    """Return T_CMB,0 (K) of the cooling library named in used_parameters."""
+    grackle = "GrackleCooling" in used
+    geajay = "GeajayCooling" in used
+    if grackle == geajay:
+        sys.exit("used_parameters.yml names no single cooling library: pass --t-cmb-0.")
+    return T_CMB_0_GRACKLE if grackle else T_CMB_0_GEAJAY
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run", help="Run directory")
     parser.add_argument(
-        "--t-cmb-0", type=float, required=True, help="T_CMB,0 of the library (K)"
+        "--t-cmb-0",
+        type=float,
+        default=None,
+        help="T_CMB,0 (K); default: the constant of the library that ran",
     )
     parser.add_argument(
         "--expect-below-floor",
@@ -146,8 +161,10 @@ def main():
         sys.exit(f"{opt.run}: need at least two snapshots.")
     snapshots = [read_snapshot(path) for path in files[1:]]
     with open(f"{opt.run}/used_parameters.yml") as stream:
-        dt_max = float(yaml.safe_load(stream)["TimeIntegration"]["dt_max"])
-    rows, _ = evaluate(snapshots, opt.t_cmb_0, dt_max)
+        used = yaml.safe_load(stream)
+    dt_max = float(used["TimeIntegration"]["dt_max"])
+    t_cmb_0 = opt.t_cmb_0 if opt.t_cmb_0 is not None else library_t_cmb_0(used)
+    rows, _ = evaluate(snapshots, t_cmb_0, dt_max)
     for name, passed, detail in rows:
         print(f"{name:14s} {'PASS' if passed else 'FAIL'}  {detail}")
 
@@ -155,7 +172,7 @@ def main():
         sys.exit(0 if all(passed for _, passed, _ in rows) else 1)
 
     temperature, z = snapshots[-1]
-    floor = opt.t_cmb_0 * (1.0 + z)
+    floor = t_cmb_0 * (1.0 + z)
     below = bool(np.all(np.isfinite(temperature))) and temperature.max() < 0.5 * floor
     print(
         f"{'below half':14s} {'PASS' if below else 'FAIL'}  "

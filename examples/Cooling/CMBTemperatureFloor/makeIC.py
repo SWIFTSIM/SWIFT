@@ -30,7 +30,7 @@ def main():
     p.add_argument(
         "--rho", type=float, default=10.0, help="Physical gas density in atom/cm^3"
     )
-    p.add_argument("--mass", type=float, default=1e5, help="Gas particle mass in Msun")
+    p.add_argument("--mass", type=float, default=1e4, help="Gas particle mass in Msun")
     p.add_argument(
         "--temperature", type=float, default=100.0, help="Gas temperature in K"
     )
