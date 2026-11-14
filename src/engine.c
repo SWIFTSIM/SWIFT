@@ -3937,8 +3937,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       /* RMS peculiar motion for the DM */
       const float rms_vel_dm = vel_norm_dm / N_dm;
 
-      /* Time-step based on maximum displacement */
-      dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
+      /* Time-step based on maximum displacement. Particles at rest do not
+       * limit it. */
+      if (rms_vel_dm > 0.f) dt_dm = a * a * min(r_s, d_dm) / sqrtf(rms_vel_dm);
     }
 
     /* Baryon case */
@@ -3957,8 +3958,9 @@ void engine_recompute_displacement_constraint(struct engine *e) {
       /* RMS peculiar motion for the baryons */
       const float rms_vel_b = vel_norm_b / N_b;
 
-      /* Time-step based on maximum displacement */
-      dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
+      /* Time-step based on maximum displacement. Particles at rest do not
+       * limit it. */
+      if (rms_vel_b > 0.f) dt_b = a * a * min(r_s, d_b) / sqrtf(rms_vel_b);
     }
 
     /* Use the minimum */
