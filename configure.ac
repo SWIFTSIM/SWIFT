@@ -3237,10 +3237,10 @@ case "$with_sink" in
     ;;
    GEAR)
     if test "$with_feedback" != "GEAR" -a "$with_feedback" != "GEAR-mechanical"; then
-       AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR or GEAR-mechanical_*: the GEAR sink model reads the GEAR feedback module's stellar model (initial mass function) to sample star masses, so it cannot be built against any other feedback module])
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-feedback=GEAR or GEAR-mechanical_N])
     fi
     if test "$with_cooling" != "grackle"; then
-       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_* (or --with-subgrid=GEAR): the GEAR sink model computes a spawned star's birth temperature from Grackle's equilibrium mean molecular weight])
+       AC_MSG_ERROR([--with-sink=GEAR requires --with-cooling=grackle_N (or --with-subgrid=GEAR)])
     fi
     AC_DEFINE([SINK_GEAR], [1], [GEAR sink particle model])
     AC_DEFINE_UNQUOTED([SINKS_WITH_FIXED_CUTOFF_RADIUS], [1], [Does this model
@@ -3430,6 +3430,12 @@ case "$with_star_formation" in
       AC_DEFINE([STAR_FORMATION_EAGLE], [1], [EAGLE star formation model (Schaye and Dalla Vecchia (2008))])
    ;;
    GEAR)
+      if test "$with_stars" != "GEAR"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-stars=GEAR])
+      fi
+      if test "$with_chemistry" != "GEAR" && test "$with_chemistry" != "AGORA"; then
+         AC_MSG_ERROR([--with-star-formation=GEAR requires --with-chemistry=GEAR_N or AGORA])
+      fi
       AC_DEFINE([STAR_FORMATION_GEAR], [1], [GEAR star formation model (Revaz and Jablonka (2018))])
    ;;
    *)
