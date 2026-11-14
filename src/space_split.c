@@ -822,6 +822,51 @@ void space_split_recursive(struct space *s, struct cell *c,
 }
 
 /**
+ * @brief Check the trees of some split top-level cells and collect the
+ * global information about their multipoles.
+ *
+ * @param s The #space.
+ * @param cell_indices The indices of the top-level cells.
+ * @param num_cells The number of cells.
+ */
+static void space_split_collect_top_info(struct space *s,
+                                         const int *cell_indices,
+                                         const int num_cells) {
+
+  const struct cell *cells_top = s->cells_top;
+
+  /* Collect some global information about the top-level m-poles */
+  float min_a_grav = FLT_MAX;
+  float max_softening = 0.f;
+  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+
+  for (int ind = 0; ind < num_cells; ind++) {
+    const struct cell *c = &cells_top[cell_indices[ind]];
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* All cells and particles should have consistent h_max values. */
+    int depth = 0;
+    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
+#endif
+
+    if (s->with_self_gravity) {
+      min_a_grav =
+          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
+      max_softening =
+          max(max_softening, c->grav.multipole->m_pole.max_softening);
+      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+        max_mpole_power[n] =
+            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
+    }
+  }
+
+  atomic_min_f(&s->min_a_grav, min_a_grav);
+  atomic_max_f(&s->max_softening, max_softening);
+  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
+    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
+}
+
+/**
  * @brief #threadpool mapper function to split cells if they contain
  *        too many particles.
  *
@@ -833,47 +878,19 @@ void space_split_mapper(void *map_data, int num_cells, void *extra_data) {
 
   /* Unpack the inputs. */
   struct space *s = (struct space *)extra_data;
-  struct cell *cells_top = s->cells_top;
-  int *local_cells_with_particles = (int *)map_data;
-
-  /* Collect some global information about the top-level m-poles */
-  float min_a_grav = FLT_MAX;
-  float max_softening = 0.f;
-  float max_mpole_power[SELF_GRAVITY_MULTIPOLE_ORDER + 1] = {0.f};
+  const int *local_cells_with_particles = (int *)map_data;
 
   /* Threadpool id of current thread. */
-  short int tpid = threadpool_gettid();
+  const short int tpid = threadpool_gettid();
 
-  /* Loop over the non-empty cells */
+  /* Split the non-empty cells */
   for (int ind = 0; ind < num_cells; ind++) {
-    struct cell *c = &cells_top[local_cells_with_particles[ind]];
+    struct cell *c = &s->cells_top[local_cells_with_particles[ind]];
     space_split_recursive(s, c, NULL, NULL, NULL, NULL, NULL, tpid);
-
-    if (s->with_self_gravity) {
-      min_a_grav =
-          min(min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
-      max_softening =
-          max(max_softening, c->grav.multipole->m_pole.max_softening);
-
-      for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-        max_mpole_power[n] =
-            max(max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
-    }
   }
 
-#ifdef SWIFT_DEBUG_CHECKS
-  /* All cells and particles should have consistent h_max values. */
-  for (int ind = 0; ind < num_cells; ind++) {
-    int depth = 0;
-    const struct cell *c = &cells_top[local_cells_with_particles[ind]];
-    if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
-  }
-#endif
-
-  atomic_min_f(&s->min_a_grav, min_a_grav);
-  atomic_max_f(&s->max_softening, max_softening);
-  for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-    atomic_max_f(&s->max_mpole_power[n], max_mpole_power[n]);
+  /* Check them and collect their global information */
+  space_split_collect_top_info(s, local_cells_with_particles, num_cells);
 }
 
 /*! Number of independent sub-trees per thread into which the top-level
@@ -1320,27 +1337,9 @@ void space_split(struct space *s, int verbose) {
      * small ones alongside */
     space_split_large_cells(s, large_cells, nr_large, small_cells, nr_small);
 
-    /* Collect some global information about the top-level m-poles */
-    for (int k = 0; k < nr_cells; k++) {
-      const struct cell *c =
-          &s->cells_top[s->local_cells_with_particles_top[k]];
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* All cells and particles should have consistent h_max values. */
-      int depth = 0;
-      if (!checkCellhdxmax(c, &depth)) message("    at cell depth %d", depth);
-#endif
-
-      if (s->with_self_gravity) {
-        s->min_a_grav =
-            min(s->min_a_grav, c->grav.multipole->m_pole.min_old_a_grav_norm);
-        s->max_softening =
-            max(s->max_softening, c->grav.multipole->m_pole.max_softening);
-        for (int n = 0; n < SELF_GRAVITY_MULTIPOLE_ORDER + 1; ++n)
-          s->max_mpole_power[n] =
-              max(s->max_mpole_power[n], c->grav.multipole->m_pole.power[n]);
-      }
-    }
+    /* Check the trees and collect their global information */
+    space_split_collect_top_info(s, s->local_cells_with_particles_top,
+                                 nr_cells);
   }
 
   free(small_cells);
