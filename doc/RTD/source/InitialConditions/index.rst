@@ -30,9 +30,51 @@ two of these types for stars and black holes.
 
 As the original documentation for the GADGET-2 initial conditions format is
 quite sparse, we lay out here all of the necessary components. If you are
-generating your initial conditions from python, we recommend you use the h5py
-package. We provide a writing wrapper for this for our initial conditions in
-``examples/KeplerianRing/write_gadget.py``.
+generating your initial conditions from python, we recommend you use the
+``Writer`` class of the `swiftsimio <https://swiftsimio.readthedocs.io>`_
+package (version 12.4 or later). It writes the header, the unit system and the
+particle data in the format described below, converting all quantities to the
+unit system you choose. Fields that the ``Writer`` does not know about can then
+be added by re-opening the file with the ``h5py`` package. Most of the
+``makeIC.py`` scripts in the ``examples/`` directory create their initial
+conditions this way. For example:
+
+.. code:: python
+
+    import h5py
+    import numpy as np
+    import unyt
+    import swiftsimio as sw
+
+    # A cube of side 1 kpc filled with 1000 gas particles
+    n = 1000
+    boxsize = 1.0  # kpc
+    rng = np.random.default_rng(seed=42)
+
+    # Choose the unit system of the file; all values are converted to it
+    units = unyt.UnitSystem(
+        "galaxy", unyt.kpc, unyt.unyt_quantity(1e10, "Msun"), unyt.Gyr
+    )
+
+    w = sw.Writer(
+        unit_system=units,
+        boxsize=sw.cosmo_array(
+            [boxsize] * 3, unyt.kpc, comoving=True, scale_factor=1.0, scale_exponent=1
+        ),
+    )
+
+    # Required fields; particle IDs are optional and default to 1..N
+    w.gas.coordinates = rng.random((n, 3)) * boxsize * unyt.kpc * w.a.comoving
+    w.gas.velocities = np.zeros((n, 3)) * unyt.km / unyt.s * w.a.comoving**0
+    w.gas.masses = np.full(n, 1e6) * unyt.Msun * w.a.comoving**0
+    w.gas.smoothing_lengths = np.full(n, 0.1) * unyt.kpc * w.a.comoving
+    w.gas.internal_energy = np.full(n, 1e4) * (unyt.km / unyt.s) ** 2 * w.a.comoving**0
+
+    w.write("my_ICs.hdf5")
+
+    # Fields the Writer does not know about can be appended with h5py
+    with h5py.File("my_ICs.hdf5", "r+") as f:
+        f["PartType0"].create_dataset("MetalMassFractions", data=np.full(n, 0.0134))
 
 You can find out more about the HDF5 format on their `webpages
 <https://support.hdfgroup.org/HDF5/doc/H5.intro.html>`_.
@@ -77,8 +119,8 @@ Necessary Components
 --------------------
 
 There are several necessary components (in particular header information) in a
-SWIFT initial conditions file. Again, we recommend that you use the ``write_gadget``
-script.
+SWIFT initial conditions file. Again, we recommend that you use the
+``swiftsimio`` ``Writer``, which writes all of them for you.
 
 Header
 ~~~~~~

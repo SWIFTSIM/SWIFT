@@ -17,13 +17,11 @@
 #
 ################################################################################
 import numpy as np
-import matplotlib.pyplot as plt
-from astropy import units
-import h5py as h5
+import unyt
+import swiftsimio as sw
 
 C = 8.0
 M_200 = 2.0
-N_PARTICLES = 3
 print("Initial conditions written to 'circularorbitshernquist.hdf5'")
 
 pos = np.zeros((3, 3))
@@ -39,40 +37,27 @@ ids = np.array([1.0, 2.0, 3.0])
 mass = np.array([1.0, 1.0, 1.0])
 
 # File
-file = h5.File("circularorbitshernquist.hdf5", "w")
+UL = unyt.Unit(3.086e21 * unyt.cm)
+UM = unyt.Unit(1.988e33 * unyt.g)
+Ut = unyt.Unit(3.086e16 * unyt.s)
+unit_system = unyt.UnitSystem("hernquist_circular_orbit", UL, UM, Ut)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 3.086e21
-grp.attrs["Unit mass in cgs (U_M)"] = 1.988e33
-grp.attrs["Unit time in cgs (U_t)"] = 3.086e16
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = 1000.0
-grp.attrs["NumPart_Total"] = [0, N_PARTICLES, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [0, N_PARTICLES, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
-
-# Runtime parameters
-grp = file.create_group("/RuntimePars")
-grp.attrs["PeriodicBoundariesOn"] = 1
+w = sw.Writer(
+    unit_system=unit_system,
+    boxsize=sw.cosmo_array(
+        [1000.0, 1000.0, 1000.0],
+        UL,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp1 = file.create_group("/PartType1")
-ds = grp1.create_dataset("Velocities", (N_PARTICLES, 3), "f", data=vel)
+w.dark_matter.coordinates = pos * UL * w.a.comoving
+w.dark_matter.velocities = vel * UL / Ut * w.a.comoving**0
+w.dark_matter.masses = mass * UM * w.a.comoving**0
+w.dark_matter.particle_ids = ids.astype(np.uint64)
 
-ds = grp1.create_dataset("Masses", (N_PARTICLES,), "f", data=mass)
-
-ds = grp1.create_dataset("ParticleIDs", (N_PARTICLES,), "L", data=ids)
-
-ds = grp1.create_dataset("Coordinates", (N_PARTICLES, 3), "d", data=pos)
-
-file.close()
+w.write("circularorbitshernquist.hdf5")

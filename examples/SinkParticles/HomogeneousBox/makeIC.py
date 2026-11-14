@@ -17,8 +17,9 @@
 #
 ################################################################################
 
-import h5py
 import numpy as np
+import unyt
+import swiftsimio as sw
 from optparse import OptionParser
 from astropy import units
 from astropy import constants
@@ -91,8 +92,6 @@ files, opt = parse_options()
 UnitMass_in_cgs = 1.988409870698051e43  # 10^10 M_sun in grams
 UnitLength_in_cgs = 3.0856775814913673e21  # kpc in centimeters
 UnitVelocity_in_cgs = 1e5  # km/s in centimeters per second
-UnitCurrent_in_cgs = 1  # Amperes
-UnitTemp_in_cgs = 1  # Kelvin
 UnitTime_in_cgs = UnitLength_in_cgs / UnitVelocity_in_cgs
 
 UnitMass = UnitMass_in_cgs * units.g
@@ -138,7 +137,6 @@ print("Equivalent velocity dispertion        : {}".format(sigma.to(units.m / uni
 # Convert to code units
 m = m.to(UnitMass).value
 L = L.to(UnitLength).value
-rho = rho.to(UnitMass / UnitLength**3).value
 sigma = sigma.to(UnitVelocity).value
 
 # Generate the particles
@@ -146,47 +144,34 @@ pos = np.random.random([N, 3]) * np.array([L, L, L])
 vel = np.zeros([N, 3])
 mass = np.ones(N) * m
 u = np.ones(N) * sigma**2
-ids = np.arange(N)
+ids = np.arange(1, N + 1)
 h = np.ones(N) * 3 * L / N ** (1 / 3.0)
-rho = np.ones(N) * rho
 
 print("Inter-particle distance (code unit)   : {}".format(L / N ** (1 / 3.0)))
 
 
 # File
-fileOutput = h5py.File(opt.outputfilename, "w")
-print("{} saved.".format(opt.outputfilename))
+UL = unyt.Unit(UnitLength_in_cgs * unyt.cm)
+UM = unyt.Unit(UnitMass_in_cgs * unyt.g)
+Ut = unyt.Unit(UnitTime_in_cgs * unyt.s)
+unit_system = unyt.UnitSystem("homogeneous_box", UL, UM, Ut)
 
-# Header
-grp = fileOutput.create_group("/Header")
-grp.attrs["BoxSize"] = [L, L, L]
-grp.attrs["NumPart_Total"] = [N, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [N, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFileOutputsPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["Dimension"] = 3
-
-
-# Units
-grp = fileOutput.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = UnitLength_in_cgs
-grp.attrs["Unit mass in cgs (U_M)"] = UnitMass_in_cgs
-grp.attrs["Unit time in cgs (U_t)"] = UnitTime_in_cgs
-grp.attrs["Unit current in cgs (U_I)"] = UnitCurrent_in_cgs
-grp.attrs["Unit temperature in cgs (U_T)"] = UnitTemp_in_cgs
-
+w = sw.Writer(
+    unit_system=unit_system,
+    boxsize=sw.cosmo_array(
+        [L, L, L], UL, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=3,
+)
 
 # Particle group
-grp = fileOutput.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=vel, dtype="f")
-grp.create_dataset("Masses", data=mass, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("Densities", data=rho, dtype="f")
+w.gas.coordinates = pos * UL * w.a.comoving
+w.gas.velocities = vel * UL / Ut * w.a.comoving**0
+w.gas.masses = mass * UM * w.a.comoving**0
+w.gas.smoothing_lengths = h * UL * w.a.comoving
+w.gas.internal_energy = u * UL**2 / Ut**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-fileOutput.close()
+w.write(opt.outputfilename)
+
+print("{} saved.".format(opt.outputfilename))

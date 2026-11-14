@@ -297,7 +297,7 @@ Here is an example:
         parts.create_dataset(dsetname, data=energydata)
 
         dsetname = "PhotonFluxesGroup{0:d}".format(grp + 1)
-        fluxdata = np.zeros((nparts, 3), dtype=np.float32) * some_value_you_want
+        fluxdata = np.ones((nparts, 3), dtype=np.float32) * some_value_you_want
         parts.create_dataset(dsetname, data=fluxdata)
 
     # Create initial ionization species mass fractions.     

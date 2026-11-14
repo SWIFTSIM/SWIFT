@@ -11,9 +11,11 @@
 #SBATCH -t 1:00:00
 
 
+set -eo pipefail
+
 for diffusion_alpha_max in 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0;
 do
-    mkdir default_diffmax_$diffusion_alpha_max
+    mkdir -p default_diffmax_$diffusion_alpha_max
 
     cd default_diffmax_$diffusion_alpha_max
 
@@ -21,7 +23,7 @@ do
 
     cd ..
     
-    mkdir nocool_diffmax_$diffusion_alpha_max
+    mkdir -p nocool_diffmax_$diffusion_alpha_max
 
     cd nocool_diffmax_$diffusion_alpha_max
 
