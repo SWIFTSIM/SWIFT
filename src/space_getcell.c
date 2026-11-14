@@ -59,7 +59,7 @@ struct space_relink_item {
   void *next;
 };
 
-/*! Chunks of the buffers of sub-cells, one rlist per buffer. */
+/*! Chunks of the buffers of sub-cells, one list per buffer. */
 static struct space_sub_chunks *space_cell_chunks = NULL;
 
 /*! Chunks of the buffers of multipoles, one list per buffer. */
@@ -72,7 +72,8 @@ static int space_sub_chunks_nr_buffers = 0;
 static const int space_sub_chunks_initial_size = 64;
 
 /**
- * @brief Release the list of chunks of the buffers of sub-cells.
+ * @brief Release the lists of chunks of the buffers of sub-cells and
+ * multipoles.
  *
  * The chunks themselves are not freed.
  */
@@ -90,11 +91,11 @@ void space_cell_sub_chunks_clean(void) {
 }
 
 /**
- * @brief Prepare the empty list of chunks of the buffers of
- * sub-cells.
+ * @brief Prepare the empty lists of chunks of the buffers of sub-cells and
+ * multipoles.
  *
- * Note: Must be called whenever the buffers (#space cells_sub and multipoles_sub)
- * are allocated empty.
+ * Note: Must be called whenever the buffers (#space cells_sub and
+ * multipoles_sub) are allocated empty, i.e. in engine_config().
  *
  * @param nr_buffers The number of buffers.
  */
@@ -151,7 +152,13 @@ static int space_sub_chunks_cmp(const void *a, const void *b) {
 }
 
 /**
- * @brief Re-link the cells of chunks in address order
+ * @brief #threadpool mapper function re-linking the cells of chunks of
+ * sub-cells: the cells of a chunk are linked in address order and the last
+ * one is linked to the first cell of the next chunk of its buffer.
+ *
+ * @param map_data Pointer towards the #space_relink_item of the chunks.
+ * @param num_elements The number of chunks to treat.
+ * @param extra_data Unused.
  */
 static void space_relink_cells_mapper(void *map_data, int num_elements,
                                       void *extra_data) {
@@ -165,7 +172,13 @@ static void space_relink_cells_mapper(void *map_data, int num_elements,
 }
 
 /**
- * @brief Re-link the multipoles of chunks in address order
+ * @brief #threadpool mapper function re-linking the multipoles of chunks of
+ * multipoles: the multipoles of a chunk are linked in address order and the
+ * last one is linked to the first multipole of the next chunk of its buffer.
+ *
+ * @param map_data Pointer towards the #space_relink_item of the chunks.
+ * @param num_elements The number of chunks to treat.
+ * @param extra_data Unused.
  */
 static void space_relink_multipoles_mapper(void *map_data, int num_elements,
                                            void *extra_data) {
@@ -180,6 +193,17 @@ static void space_relink_multipoles_mapper(void *map_data, int num_elements,
 
 /**
  * @brief Re-link one kind of buffers (cells or multipoles) in address order.
+ *
+ * Each buffer is rebuilt from the chunks it allocated, sorted by address and
+ * chained one after the other. The previous content of the buffers is
+ * discarded, so all their elements must be free.
+ *
+ * @param s The #space.
+ * @param lists The lists of chunks of the buffers (cells or multipoles).
+ * @param buffers The heads of the buffers (#space cells_sub or
+ * multipoles_sub), overwritten with the first chunk of each buffer (or
+ * @c NULL if the buffer has no chunk).
+ * @param fun The mapper re-linking the elements of the chunks.
  *
  * @return The number of chunks re-linked.
  */
@@ -222,12 +246,14 @@ static int space_relink_buffers(struct space *s,
  * address.
  *
  * Cells come back to the buffers in whatever order the trees are freed in,
- * so after many rebuilds consecutive cells of a buffer, and hence the
+ * and possibly to the buffer of another thread than the one that allocated
+ * them, so after many rebuilds consecutive cells of a buffer, and hence the
  * progeny of a cell in a freshly split tree, are scattered over all the
  * memory of the pools. Once *all* the sub-cells are back in the buffers,
- * the content of the buffers is exactly the set of chunks they own, so we
- * can re-link every buffer chunk by chunk in address order, which gives
- * the next trees the same layout as a fresh pool.
+ * the buffers together hold exactly all the chunks ever allocated, so we can
+ * rebuild every buffer from the chunks it allocated itself, chained chunk by
+ * chunk in address order. The next trees are then built from contiguous
+ * memory first touched by the thread using it.
  *
  * @param s The #space.
  */
@@ -294,14 +320,21 @@ void space_relink_cell_sub_buffers(struct space *s) {
 /**
  * @brief Get a new empty (sub-)#cell.
  *
- * If there are cells in the buffer, use the one at the end of the linked list.
- * If we have no cells, allocate a new chunk of memory and pick one from there.
+ * The cells (and their multipoles) are taken from the head of the buffer of
+ * thread @c tpid. If that buffer is empty, a new chunk of memory is allocated
+ * (and recorded for space_relink_cell_sub_buffers()) and the cells are picked
+ * from there.
+ *
+ * The buffers are not locked: a thread may only use its own buffer, i.e.
+ * pass its threadpool id as @c tpid from within a #threadpool mapper. Outside
+ * of a mapper, the main thread may use any buffer.
  *
  * @param s The #space.
  * @param nr_cells Number of #cell to pick up.
  * @param cells Array of @c nr_cells #cell pointers in which to store the
  *        new cells.
- * @param tpid ID of threadpool threadpool associated with cells_sub.
+ * @param tpid ID of the threadpool thread whose buffer (cells_sub and
+ *        multipoles_sub) is used.
  */
 void space_getcells(struct space *s, int nr_cells, struct cell **cells,
                     const short int tpid) {
@@ -359,7 +392,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
     }
   }
 
-  /* Unlock the space. */
+  /* Count the new cells. */
   atomic_add(&s->tot_cells, nr_cells);
 
   /* Init some things in the cell we just got. */
