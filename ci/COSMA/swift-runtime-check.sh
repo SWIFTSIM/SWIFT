@@ -31,7 +31,6 @@ source ci/setup.sh
 
 #  Extra modules for runtime.
 module load grackle-swift/3.3.dev1
-pip3.12 install --user --upgrade swiftsimio
 
 #  Need 2.70 for Fortran support.
 module load autoconf
@@ -44,6 +43,18 @@ function link_data {
 
 #  Clean sources.
 git clean -fdx
+
+#  Python packages needed by the example scripts, in a virtual environment
+#  built from the module's Python. Created after the clean so each run
+#  starts fresh; downloads are cached in ~/.cache/pip.
+echo "------------------------------------------"
+echo "Creating the Python virtual environment."
+echo "------------------------------------------"
+python3 -m venv "${WORKDIR}/.ci-venv" || exit 1
+source "${WORKDIR}/.ci-venv/bin/activate" || exit 1
+python3 -m pip install --upgrade pip || exit 1
+python3 -m pip install -r examples/requirements.txt || exit 1
+python3 -c "import swiftsimio; print('swiftsimio', swiftsimio.__version__)" || exit 1
 
 #  And off we go.
 ./autogen.sh
