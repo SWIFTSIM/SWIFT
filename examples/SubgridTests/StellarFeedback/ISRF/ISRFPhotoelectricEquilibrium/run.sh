@@ -15,13 +15,17 @@ gas_particle_mass=${gas_mass:=0.1}             # Mass of the gas particles (Msun
 level=${level:=5}                              # Resolution level: N = (2**level)**3 gas particles
 metallicity=${metallicity:=0.6475}             # GEARChemistry:initial_metallicity; 0.6475 is a metal mass fraction of 0.01295
 field=${field:=seeded}                         # seeded: field from the ICs; none: no field (control); background: geajay constant background
-duration_myr=${duration_myr:=""}               # Run length in Myr; empty: 5 / gas_density
+duration_myr=${duration_myr:=""}               # Run length in Myr; empty: 50 / gas_density from 100 H/cm^3, else 5 / gas_density
 pe_model=${pe_model:=""}                       # Heating model of the cooling library, empty keeps the params file value
 run_name=${run_name:=""}
 extra_args=${extra_args:=""}                   # Further swift arguments, e.g. "-P Snapshots:delta_time:1e-5"
 
 # The cooling library is read from the binary's configure line.
-cooling_library=$(strings "$swift_bin" | grep -o 'with-cooling=[a-z_0-9]*' | head -1 | cut -d= -f2)
+cooling_library=$(strings "$swift_bin" | grep -o 'with-cooling=[a-z_0-9]*' | head -1 | cut -d= -f2 || true)
+if [ -z "$cooling_library" ]; then
+    echo "No with-cooling= string in $swift_bin: set swift_bin to a swift binary built from this tree." >&2
+    exit 1
+fi
 params_file=params.yml
 pe_key=GrackleCooling:photoelectric_heating_efficiency
 case "$cooling_library" in
@@ -66,10 +70,12 @@ case "$field" in
     *) echo "field must be seeded, none or background." >&2; exit 1 ;;
 esac
 
-# Time step and run length from the density. The relaxation time scales as 1/n:
-# 0.0064 Myr at 10 H/cm^3 for the constant efficiency. dt_max stays below a sixth of it.
+# Time step and run length from the density. dt_max = 1e-5 / n internal units (0.00978 / n Myr)
+# gave the same equilibrium as much shorter steps in a one-zone integration at every density
+# from 0.1 to 1000 H/cm^3. The run length is 50 / n Myr from 100 H/cm^3 (the relaxation time
+# does not shrink further there) and 5 / n Myr below. 0.01 and 0.03 H/cm^3 do not settle in 50 / n Myr.
 if [ -z "$duration_myr" ]; then
-    duration_myr=$(python3 -c "print(5/$gas_density)")
+    duration_myr=$(python3 -c "n=$gas_density; print(50/n if n >= 100 else 5/n)")
 fi
 time_end=$(python3 -c "print($duration_myr*1.02271e-3)")
 dt_max=$(python3 -c "print(1e-5/$gas_density)")

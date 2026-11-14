@@ -24,11 +24,13 @@ each holding snap/. Each direction (hot start, cold start) gives one branch. The
 gates follow from the existence of a thermally unstable density range, with no number
 taken from a paper:
 
-  hysteresis  at some density the hot-start and cold-start temperatures differ by a
-              factor of at least 1.5
+  hysteresis  at some density in 0.16 to 0.20 H/cm^3 (the window of the one-zone
+              prediction, fixed before the runs) the hot-start and cold-start specific
+              energies differ by a factor of at least 1.5
   maximum     along the hot-start branch the pressure has a first local maximum, and the
               cold-start branch a local minimum after it, as in a two-phase medium
 
+Only runs whose check.txt holds no FAIL line count; the others are listed as excluded.
 With --onezone-table the same gates run on the one-zone ladder (lines FINAL of onezone).
 """
 
@@ -43,6 +45,7 @@ import numpy as np
 
 BOLTZMANN_CGS = 1.380649e-16
 HYSTERESIS_RATIO = 1.5
+HYSTERESIS_WINDOW = (0.16, 0.20)
 
 
 def from_runs(root):
@@ -53,14 +56,28 @@ def from_runs(root):
         files = sorted(glob.glob(os.path.join(path, "snap", "*.hdf5")))
         if not m or not files:
             continue
+        check = os.path.join(path, "check.txt")
+        if not os.path.exists(check) or any(
+            line.startswith("FAIL") for line in open(check)
+        ):
+            print(f"excluded (no check or a failed gate): {os.path.basename(path)}")
+            continue
         with h5py.File(files[-1], "r") as f:
             units = f["Units"].attrs
             u_mass = float(np.ravel(units["Unit mass in cgs (U_M)"])[0])
             u_len = float(np.ravel(units["Unit length in cgs (U_L)"])[0])
             u_time = float(np.ravel(units["Unit time in cgs (U_t)"])[0])
             g = f["PartType0"]
-            pressure = np.median(g["Pressures"][:]) * u_mass / u_len / u_time**2
-            energy = np.median(g["InternalEnergies"][:]) * (u_len / u_time) ** 2
+            pressure = (
+                np.median(g["Pressures"][:].astype(np.float64))
+                * u_mass
+                / u_len
+                / u_time**2
+            )
+            energy = (
+                np.median(g["InternalEnergies"][:].astype(np.float64))
+                * (u_len / u_time) ** 2
+            )
         table[(float(m.group(1)), m.group(2))] = (energy, pressure / BOLTZMANN_CGS)
     return table
 
@@ -91,7 +108,12 @@ def shape_gates(table):
     """Return (name, value, passed) for the hysteresis and the pressure extrema."""
     dens = sorted({n for n, _ in table})
     both = [n for n in dens if (n, "hot") in table and (n, "cold") in table]
-    ratio = [table[(n, "hot")][0] / table[(n, "cold")][0] for n in both]
+    in_window = [
+        n
+        for n in both
+        if HYSTERESIS_WINDOW[0] - 1e-9 <= n <= HYSTERESIS_WINDOW[1] + 1e-9
+    ]
+    ratio = [table[(n, "hot")][0] / table[(n, "cold")][0] for n in in_window]
     max_ratio = max(ratio) if ratio else float("nan")
     hot_p = np.array([table[(n, "hot")][1] for n in both])
     cold_p = np.array([table[(n, "cold")][1] for n in both])
@@ -101,7 +123,7 @@ def shape_gates(table):
     interior_min = i_cold >= 0
     return [
         (
-            "hysteresis: max hot/cold ratio",
+            "hysteresis in 0.16 to 0.20: max hot/cold ratio",
             max_ratio,
             bool(np.isfinite(max_ratio) and max_ratio >= HYSTERESIS_RATIO),
         ),

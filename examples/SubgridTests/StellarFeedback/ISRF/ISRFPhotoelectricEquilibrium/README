@@ -1,11 +1,14 @@
 # Intro
 A star-free periodic box of gas at solar metallicity, bathed in a uniform far-UV
 field, evolved to thermal equilibrium. Photoelectric heating from dust balances
-the metal and H/He cooling, so the final temperature and pressure at a given
-density are the equilibrium curves of the two-phase interstellar medium
-(Kim, Gong, Kim and Ostriker 2023, ApJS 264, 10, Sections 7.1.1 and 8.2). A scan over the density
-gives T(n) and P(n). In a density range, runs started hot and runs started cold
-end on different branches, which is the thermal instability.
+the metal and H/He cooling. The final temperature and pressure at each density give
+curves of the kind shown in Kim, Gong, Kim and Ostriker 2023 (ApJS 264, 10,
+Sections 7.1.1 and 8.2). With the constant heating efficiency and no cosmic rays
+used here, the box does not reproduce that paper's numbers. It is checked against a
+one-zone integration with the same cooling library (see Check). A scan over the density
+gives T(n) and P(n). In a density range the final state depends on the starting temperature: heating and
+cooling balance at more than one stable temperature there, so a hot start and a cold
+start end on different branches (hysteresis).
 
 The field is not produced by stars. `makeIC.py` writes it into the initial
 conditions as the two optional gas fields `PESpecificEnergy` and
@@ -37,18 +40,20 @@ Settings in `run.sh`, each overridable on the command line:
 | `metallicity` | 0.6475 | `GEARChemistry:initial_metallicity`; 0.6475 is a metal mass fraction of 0.01295, the solar value of both libraries |
 | `field` | seeded | `seeded`, `none` (control, no field) or `background` (geajay only: constant G0 from the library, ISRF module off) |
 | `pe_model` | library default | heating model: `constant`, `wolfire1995` for Grackle; `constant_efficiency`, `grain_charge_epsilon`, `density_epsilon` for geajay |
-| `duration_myr` | 5 / `gas_density` | run length in Myr |
+| `duration_myr` | 50 / `gas_density` from 100 H/cm^3, else 5 / `gas_density` | run length in Myr; 0.01 and 0.03 H/cm^3 do not settle |
 | `level` | 5 | 32768 particles |
 
-`run.sh` sets `dt_max` to 1e-5 / `gas_density` (internal units), below a sixth of
-the relaxation time of the gas (about 0.0064 Myr at 10 H/cm^3 for the constant
-efficiency, proportional to 1/n). A step much longer than the relaxation time can
-make the gas oscillate around the equilibrium.
+`run.sh` sets `dt_max` to 1e-5 / `gas_density` (internal units), which is 0.00978 / n Myr. In a
+one-zone integration this step gave the same equilibrium as much shorter steps at every
+density from 0.1 to 1000 H/cm^3. A step much longer than the relaxation time can make
+the gas oscillate around the equilibrium.
 The photoelectric heating of `wolfire1995` and `grain_charge_epsilon` scales with
 the free electron density. Neutral gas has almost none, so these models heat
 almost nothing here without cosmic-ray ionisation, which this setup does not include.
 
 # Run
+Set `swift_bin` to the binary (default `../../../../../swift`) and, outside the source tree,
+`scripts_location` to `examples/GEAR_ICs_and_SCRIPTS`.
 ```
 ./run.sh                                    # 10 H/cm^3, G0 = 1.65, 0.5 Myr
 gas_density=1 initial_temperature=10000 run_name=n1_hot ./run.sh
@@ -62,14 +67,22 @@ links, using the flags SWIFT sets. Build it as described in its header, then:
 python3 isrf_photoelectric_equilibrium_check.py <run directory> --onezone ./onezone_grackle \
     --table CloudyData_UVB=HM2012.h5 --control control --self-test
 ```
+The check assumes `--network 1` and `--pe-model 2` (constant efficiency). For `grackle_2` or
+`grackle_3` pass `--network 2` or `3`; for `wolfire1995` pass `--pe-model 3`. Add
+`--clean-library-path` if an old Grackle is on `LD_LIBRARY_PATH`.
 The check measures the median density, field and metallicity of the last
-snapshot, runs the one-zone program there, and reports four gates: the median
-specific energy is steady over the last 20 per cent of the run, it equals the
-one-zone equilibrium, the seeded field is unchanged, and the run without field
-is at least ten times colder. `--self-test` adds inputs that must fail. Use
+snapshot, runs the one-zone program there up to the end time of the run, and reports
+five gates: the median specific energy is steady over the last 20 per cent of the run,
+it equals the one-zone value, that value is settled (the run is long enough to compare
+an equilibrium), the seeded field is nonzero and unchanged, and the run without field is at
+least ten times colder. It also prints the spread of the specific energy over the
+particles: a 95th to 5th percentile ratio above 1.5 means the box split into two phases. `--self-test` adds inputs that must fail.
+Use
 `--constant-g0 <G0>` for a run with `field=background`.
 
 For a density scan, name the run directories `n<density>_hot` and `n<density>_cold`
-and run `isrf_photoelectric_equilibrium_ladder.py <directory>`: it prints the equilibrium
-specific energy and P(n) of each run and checks that the hot and cold branches differ over a density
-range and that P(n) has a maximum followed by a minimum.
+and write each run's check output to `<run>/check.txt`. Then run
+`isrf_photoelectric_equilibrium_ladder.py <directory>`. It leaves out runs whose check has a
+FAIL line, prints the equilibrium specific energy and P(n) of the others, and checks that the hot
+and cold branches differ by a factor of 1.5 or more somewhere between 0.16 and 0.20 H/cm^3 and
+that P(n) has a maximum followed by a minimum.

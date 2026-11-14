@@ -26,10 +26,18 @@ mechanism and no fitted number:
 
   steady  the median specific energy changes over the last 20 per cent of the run by
           less than float32 rounding plus the work of the flow, per relaxation time
-  equil   median specific energy against the one-zone value, within the decay left
-          after the run, the work of the flow in one relaxation time and rounding
-  field   the seeded field is the same in every snapshot, to float32 rounding
-  control (optional) a run without field ends at least ten times colder
+  equil   median specific energy against the one-zone value at the same time, within
+          the decay left (times the starting offset), the work of the flow in one
+          relaxation time and rounding
+  settled the one-zone value at the run's own end time is within the same bar of its
+          value ten times later, so the run is long enough to compare an equilibrium;
+          an unsettled run is excluded from the density ladder
+  field   the seeded field is nonzero and identical in every snapshot (double precision)
+  control (optional) a run without field ends at least ten times colder (specific
+          energy, proportional to temperature)
+
+The output also gives the per-particle spread of the specific energy at the end. A ratio
+of the 95th to the 5th percentile above 1.5 means the box split into two populations.
 """
 
 import argparse
@@ -75,6 +83,11 @@ def parse_options():
         type=float,
         default=None,
         help="G0 of a run with a constant library background instead of a field",
+    )
+    parser.add_argument(
+        "--clean-library-path",
+        action="store_true",
+        help="Remove LD_LIBRARY_PATH before running onezone (a laptop with an old Grackle on it)",
     )
     parser.add_argument(
         "--self-test", action="store_true", help="Feed the gates inputs that must fail"
@@ -139,7 +152,8 @@ def run_onezone(opt, n_h, g0, z, t_end_myr):
         repr(0.01 / n_h),
     ]
     env = dict(os.environ)
-    env.pop("LD_LIBRARY_PATH", None)
+    if opt.clean_library_path:
+        env.pop("LD_LIBRARY_PATH", None)
     out = subprocess.run(
         cmd, capture_output=True, text=True, env=env, check=True
     ).stdout
@@ -154,7 +168,7 @@ def finite_or_die(name, arrays):
             sys.exit(1)
 
 
-def evaluate(snaps, conv, ref, label):
+def evaluate(snaps, conv, ref, label, ref_long=None, constant_field=False):
     """Return a list of (gate, value, bar, passed) for one run against the reference."""
     last = snaps[-1]
     tau_myr = ref["tau_Myr"]
@@ -173,21 +187,35 @@ def evaluate(snaps, conv, ref, label):
 
     u_cgs = np.median(last["u"]) * conv["energy_per_mass"]
     equil = abs(u_cgs / ref["u_cgs"] - 1.0)
-    b_conv = np.exp(-t_end / tau_myr)
+    offset = abs(
+        np.median(snaps[0]["u"]) * conv["energy_per_mass"] / ref["u_cgs"] - 1.0
+    )
+    b_conv = offset * np.exp(-t_end / tau_myr)
     b_equil = np.sqrt(b_conv**2 + b_pdv**2 + b_round**2)
 
     field1 = snaps[0]["pe"] + snaps[0]["lw"]
-    field_change = np.max(
-        np.abs(win[-1]["pe"] + win[-1]["lw"] - field1)
-        / np.maximum(np.abs(field1), 1e-300)
+    field_change = max(
+        np.max(np.abs(s["pe"] + s["lw"] - field1) / np.maximum(np.abs(field1), 1e-300))
+        for s in snaps
     )
-    b_field = 3.0 * FLOAT32_EPS
+    if not np.all(field1 > 0.0):
+        field_change = np.inf
+    b_field = 4.0 * 2.0**-52
 
-    return [
+    gates = [
         (f"{label} steady", steady, b_steady, steady < b_steady),
         (f"{label} equilibrium", equil, b_equil, equil < b_equil),
-        (f"{label} field constant", field_change, b_field, field_change < b_field),
-    ], dict(b_pdv=b_pdv, b_conv=b_conv, u_cgs=u_cgs, div_myr=div_myr)
+    ]
+    if ref_long is not None:
+        settled = abs(ref["u_cgs"] / ref_long["u_cgs"] - 1.0)
+        gates.append((f"{label} settled", settled, b_equil, settled < b_equil))
+    if not constant_field:
+        gates.append(
+            (f"{label} field constant", field_change, b_field, field_change < b_field)
+        )
+    return gates, dict(
+        b_pdv=b_pdv, b_conv=b_conv, b_equil=b_equil, u_cgs=u_cgs, div_myr=div_myr
+    )
 
 
 def main():
@@ -209,14 +237,17 @@ def main():
     )
     g0 = float(np.median(g0_all)) if opt.constant_g0 is None else opt.constant_g0
     z = float(np.median(last["z"]))
-    t_end_myr = 50.0 / n_h
+    t_end_myr = last["t_myr"]
     ref = run_onezone(opt, n_h, g0, z, t_end_myr)
-    finite_or_die("one-zone", [np.array(list(ref.values()))])
+    ref_long = run_onezone(opt, n_h, g0, z, max(10.0 * t_end_myr, 50.0 / n_h))
+    finite_or_die(
+        "one-zone", [np.array(list(ref.values())), np.array(list(ref_long.values()))]
+    )
 
     print(f"run {opt.run_dir}")
     print(
         f"measured median n_H = {n_h:.6g} cm^-3, median G0 = {g0:.6g} Habing "
-        f"(spread {np.std(g0_all) / g0:.3g}), Z = {z:.6g}"
+        f"(spread {'n/a' if g0 == 0 else format(np.std(g0_all) / g0, '.3g')}), Z = {z:.6g}"
     )
     print(
         f"one-zone: T_eq = {ref['T']:.6g} K, u_eq = {ref['u_cgs']:.6g} erg/g, tau = {ref['tau_Myr']:.4g} Myr"
@@ -225,7 +256,19 @@ def main():
         f"run length {last['t_myr']:.4g} Myr = {last['t_myr'] / ref['tau_Myr']:.1f} tau"
     )
 
-    results, info = evaluate(snaps, conv, ref, "run")
+    constant = opt.constant_g0 is not None
+    results, info = evaluate(snaps, conv, ref, "run", ref_long, constant)
+    e_cgs = last["u"] * conv["energy_per_mass"]
+    p5, p50, p95 = np.percentile(e_cgs, [5, 50, 95])
+    print(
+        f"per-particle u at the end: p5 {p5:.4g}, p50 {p50:.4g}, p95 {p95:.4g} erg/g, "
+        f"p95/p5 = {p95 / p5:.4g}"
+        + (" SPLIT into two populations" if p95 / p5 > 1.5 else "")
+    )
+    print(
+        f"convergence of the reference: u at the run end / u at ten times later - 1 = "
+        f"{ref['u_cgs'] / ref_long['u_cgs'] - 1.0:.3g}"
+    )
     print(
         f"median u at the end = {info['u_cgs']:.6g} erg/g, median |div v| = {info['div_myr']:.3g} / Myr"
     )
@@ -236,22 +279,33 @@ def main():
         ratio = cu / info["u_cgs"]
         results.append(("control colder", ratio, 0.1, ratio < 0.1))
 
-    if opt.constant_g0 is not None:
-        results = [r for r in results if "field constant" not in r[0]]
-
     if opt.self_test:
-        bad = [dict(s, u=s["u"] * 1.5) for s in snaps]
-        r, _ = evaluate(bad, conv, ref, "self-test u x 1.5")
-        results.append(
-            ("self-test must fail: equilibrium", r[1][1], r[1][2], not r[1][3])
-        )
-        if opt.constant_g0 is None:
-            bad = [dict(s) for s in snaps]
-            bad[-1] = dict(bad[-1], pe=bad[-1]["pe"] * (1.0 + 1e-3))
-            r, _ = evaluate(bad, conv, ref, "self-test field x 1.001")
+        for factor, name in (
+            (1.5, "u x 1.5"),
+            (1.0 + 3.0 * info["b_equil"], "u x (1 + 3 bar)"),
+        ):
+            bad = [dict(s, u=s["u"] * factor) for s in snaps]
+            r, _ = evaluate(bad, conv, ref, name, None, constant)
             results.append(
-                ("self-test must fail: field", r[2][1], r[2][2], not r[2][3])
+                (
+                    f"self-test must fail: equilibrium, {name}",
+                    r[1][1],
+                    r[1][2],
+                    not r[1][3],
+                )
             )
+        if not constant:
+            b_field = 4.0 * 2.0**-52
+            for factor, name in (
+                (1.0 + 1e-3, "field x 1.001"),
+                (1.0 + 3.0 * b_field, "field x (1 + 3 bar)"),
+            ):
+                bad = [dict(s) for s in snaps]
+                bad[-1] = dict(bad[-1], pe=bad[-1]["pe"] * factor)
+                r, _ = evaluate(bad, conv, ref, name)
+                results.append(
+                    (f"self-test must fail: {name}", r[2][1], r[2][2], not r[2][3])
+                )
 
     failed = 0
     for name, value, bar, passed in results:

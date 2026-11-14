@@ -20,9 +20,7 @@ Gravity:
   max_physical_baryon_softening: 0.005
   mesh_side_length:        32
 
-# Parameters governing the time integration. See README for how the
-# run duration was chosen (a few local cooling/heating times at this
-# example's density, not Tier 1's own propagation-convergence value).
+# Parameters governing the time integration: run.sh sets time_end and dt_max from the density.
 TimeIntegration:
   time_begin:        0.
   time_end:          5.1e-4
