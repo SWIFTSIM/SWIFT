@@ -154,7 +154,7 @@ void space_free_foreign_parts(struct space *s, const int clear_cell_pointers) {
   }
   if (s->gparts_fof_foreign != NULL) {
     swift_free("gparts_fof_foreign", s->gparts_fof_foreign);
-    s->size_gparts_foreign = 0;
+    s->size_gparts_fof_foreign = 0;
     s->gparts_fof_foreign = NULL;
   }
   if (s->sparts_foreign != NULL) {
@@ -2815,6 +2815,8 @@ void space_struct_restore(struct space *s, FILE *stream) {
   s->size_parts_foreign = 0;
   s->gparts_foreign = NULL;
   s->size_gparts_foreign = 0;
+  s->gparts_fof_foreign = NULL;
+  s->size_gparts_fof_foreign = 0;
   s->sparts_foreign = NULL;
   s->size_sparts_foreign = 0;
   s->bparts_foreign = NULL;
