@@ -668,6 +668,11 @@ void space_regrid(struct space *s, int verbose) {
                           old_zoom_cdim, old_zoom_lower, no_regrid);
 #endif
 
+    /* When running a zoom we can regrid and change the zoom region geometry but
+     * leave the number of cells the same. In this case the extras get left in
+     * their old locations and we need to shift them to their new locations. */
+    if (s->with_zoom_region && s->e != NULL) zoom_space_shift_extras(s);
+
   } /* re-build upper-level cells? */
   else { /* Otherwise, just clean up the cells. */
 
