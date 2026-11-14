@@ -38,6 +38,12 @@ struct exact_density_data {
   int counter_global;
 };
 
+/*! Relative tolerance on r^2 / H^2 within which a gas particle is considered
+ * to be on the edge of the kernel. Whether such a neighbour is counted
+ * depends on round-off (SWIFT computes the distances in single precision
+ * relative to the cell, the brute-force loop in double precision) */
+#define stars_exact_density_edge_tolerance 1e-4
+
 /**
  * @brief Mapper function for the exact stars checks.
  *
@@ -76,6 +82,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
 
       /* Be ready for the calculation */
       int N_density_exact = 0;
+      int N_density_exact_edge = 0;
       double rho_exact = 0.;
       double n_exact = 0.;
 
@@ -97,6 +104,11 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
         }
 
         const double r2 = dx * dx + dy * dy + dz * dz;
+
+        /* Count the particles whose inclusion depends on round-off */
+        if (fabs(r2 - hig2) < stars_exact_density_edge_tolerance * hig2 &&
+            !part_is_inhibited(pj, e))
+          N_density_exact_edge++;
 
         /* Interact loop of type 1? */
         if (r2 < hig2) {
@@ -129,6 +141,7 @@ void stars_exact_density_compute_mapper(void *map_data, int nr_sparts,
 
       /* Store the exact answer */
       spi->N_density_exact = N_density_exact;
+      spi->N_density_exact_edge = N_density_exact_edge;
       spi->rho_exact = rho_exact * pow_dimension(hi_inv);
       spi->n_exact = n_exact * pow_dimension(hi_inv);
 
@@ -262,7 +275,10 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
           "id", "pos[0]", "pos[1]", "pos[2]", "h", "Nd", "Nf", "rho_exact",
           "n_rho_exact", "N_ngb");
 
+  int wrong_n = 0;
   int wrong_rho = 0;
+  int wrong_N_density = 0;
+  int edge_N_density = 0;
   int wrong_n_ngb = 0;
   int counter = 0;
 
@@ -290,15 +306,45 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
       /* Check that we did not go above the threshold.
        * Note that we ignore particles that saw an inhibted particle as a
        * neighbour as we don't know whether that neighbour became inhibited in
-       * that step or not. */
-      if (!found_inhibited && spi->N_density_exact != spi->N_density &&
-          spi->birth_time > -1 &&
+       * that step or not.
+       *
+       * The test is done on the number density n = sum_j W_ij, which only
+       * depends on the positions and the smoothing length. The density also
+       * depends on the gas masses, which feedback changes later in the step,
+       * so the brute-force density (computed at the end of the step) can
+       * legitimately differ. It is only reported. */
+      if (!found_inhibited && spi->birth_time > -1 &&
+          (fabsf(spi->n / spi->n_exact - 1.f) > rel_tol ||
+           fabsf(spi->n_exact / spi->n - 1.f) > rel_tol)) {
+        message("N: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e", id,
+                spi->n, spi->n_exact, spi->N_density_exact, spi->N_density,
+                spi->count_since_last_enrichment, spi->birth_time);
+        wrong_n++;
+      }
+
+      if (!found_inhibited && spi->birth_time > -1 &&
           (fabsf(spi->rho / spi->rho_exact - 1.f) > rel_tol ||
            fabsf(spi->rho_exact / spi->rho - 1.f) > rel_tol)) {
-        message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e", id,
-                spi->rho, spi->rho_exact, spi->N_density_exact, spi->N_density,
-                spi->count_since_last_enrichment, spi->birth_time);
+        if (e->verbose)
+          message("RHO: id=%lld swift=%e exact=%e N_true=%d N_swift=%d %d %e",
+                  id, spi->rho, spi->rho_exact, spi->N_density_exact,
+                  spi->N_density, spi->count_since_last_enrichment,
+                  spi->birth_time);
         wrong_rho++;
+      }
+
+      /* The number of neighbours must match exactly, up to the neighbours on
+       * the edge of the kernel (which have a vanishing weight) */
+      const int delta_N = abs(spi->N_density - spi->N_density_exact);
+      if (!found_inhibited && spi->birth_time > -1 && delta_N > 0) {
+        if (delta_N > spi->N_density_exact_edge) {
+          message("N_DENSITY: id=%lld N_true=%d N_swift=%d N_edge=%d", id,
+                  spi->N_density_exact, spi->N_density,
+                  spi->N_density_exact_edge);
+          wrong_N_density++;
+        } else {
+          edge_N_density++;
+        }
       }
 
       if (!found_inhibited && spi->birth_time > -1 &&
@@ -319,13 +365,17 @@ void stars_exact_density_check(struct space *s, const struct engine *e,
   /* Be nice */
   fclose(file_exact);
 
-  if (wrong_rho)
+  if (wrong_n || wrong_N_density)
     error(
-        "Density difference larger than the allowed tolerance for %d "
-        "star particles! (out of %d particles)",
-        wrong_rho, counter);
+        "Number density difference larger than the allowed tolerance for %d "
+        "star particles and wrong number of neighbours for %d star particles! "
+        "(out of %d particles)",
+        wrong_n, wrong_N_density, counter);
   else
-    message("Verified %d star particles", counter);
+    message(
+        "Verified %d star particles (%d neighbour count differences on the "
+        "edge of the kernel, %d mass-density differences above tolerance)",
+        counter, edge_N_density, wrong_rho);
 
   /* if (wrong_n_ngb) */
   /*   error( */
