@@ -2519,7 +2519,7 @@ void space_clean(struct space *s) {
 #endif
   free(s->cells_sub);
   free(s->multipoles_sub);
-  space_cell_sub_chunks_clean();
+  space_cell_buffers_clean();
 
   if (lock_destroy(&s->unique_id.lock) != 0)
     error("Failed to destroy spinlocks.");

@@ -930,7 +930,7 @@ void engine_config(int restart, int fof, struct engine *e,
       (struct cell **)calloc(nr_pool_threads + 1, sizeof(struct cell *));
   e->s->multipoles_sub = (struct gravity_tensors **)calloc(
       nr_pool_threads + 1, sizeof(struct gravity_tensors *));
-  space_cell_sub_chunks_init(nr_pool_threads + 1);
+  space_cell_buffers_init(nr_pool_threads + 1);
 
   /* First of all, init the barrier and lock it. */
   if (swift_barrier_init(&e->wait_barrier, NULL, e->nr_threads + 1) != 0 ||

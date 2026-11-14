@@ -39,7 +39,7 @@
  *
  * Note: The chunks are never freed.
  */
-struct space_sub_chunks {
+struct space_cell_buffers_chunk_list {
 
   /*! The start of each chunk. */
   void **chunks;
@@ -54,22 +54,24 @@ struct space_sub_chunks {
 /**
  * @brief One chunk to re-link and the chunk that follows it in its buffer.
  */
-struct space_relink_item {
+struct space_cell_buffers_relink_item {
   void *chunk;
   void *next;
 };
 
 /*! Chunks of the buffers of sub-cells, one list per buffer. */
-static struct space_sub_chunks *space_cell_chunks = NULL;
+static struct space_cell_buffers_chunk_list *space_cell_buffers_cell_chunks =
+    NULL;
 
 /*! Chunks of the buffers of multipoles, one list per buffer. */
-static struct space_sub_chunks *space_multipole_chunks = NULL;
+static struct space_cell_buffers_chunk_list
+    *space_cell_buffers_multipole_chunks = NULL;
 
 /*! Number of buffers (i.e. of entries in the two lists). */
-static int space_sub_chunks_nr_buffers = 0;
+static int space_cell_buffers_nr = 0;
 
 /*! Initial size of the lists */
-static const int space_sub_chunks_initial_size = 64;
+static const int space_cell_buffers_initial_list_size = 64;
 
 /**
  * @brief Release the lists of chunks of the buffers of sub-cells and
@@ -77,17 +79,17 @@ static const int space_sub_chunks_initial_size = 64;
  *
  * The chunks themselves are not freed.
  */
-void space_cell_sub_chunks_clean(void) {
+void space_cell_buffers_clean(void) {
 
-  for (int k = 0; k < space_sub_chunks_nr_buffers; k++) {
-    free(space_cell_chunks[k].chunks);
-    free(space_multipole_chunks[k].chunks);
+  for (int k = 0; k < space_cell_buffers_nr; k++) {
+    free(space_cell_buffers_cell_chunks[k].chunks);
+    free(space_cell_buffers_multipole_chunks[k].chunks);
   }
-  free(space_cell_chunks);
-  free(space_multipole_chunks);
-  space_cell_chunks = NULL;
-  space_multipole_chunks = NULL;
-  space_sub_chunks_nr_buffers = 0;
+  free(space_cell_buffers_cell_chunks);
+  free(space_cell_buffers_multipole_chunks);
+  space_cell_buffers_cell_chunks = NULL;
+  space_cell_buffers_multipole_chunks = NULL;
+  space_cell_buffers_nr = 0;
 }
 
 /**
@@ -99,16 +101,19 @@ void space_cell_sub_chunks_clean(void) {
  *
  * @param nr_buffers The number of buffers.
  */
-void space_cell_sub_chunks_init(const int nr_buffers) {
+void space_cell_buffers_init(const int nr_buffers) {
 
-  space_cell_sub_chunks_clean();
-  space_cell_chunks = (struct space_sub_chunks *)calloc(
-      nr_buffers, sizeof(struct space_sub_chunks));
-  space_multipole_chunks = (struct space_sub_chunks *)calloc(
-      nr_buffers, sizeof(struct space_sub_chunks));
-  if (space_cell_chunks == NULL || space_multipole_chunks == NULL)
+  space_cell_buffers_clean();
+  space_cell_buffers_cell_chunks =
+      (struct space_cell_buffers_chunk_list *)calloc(
+          nr_buffers, sizeof(struct space_cell_buffers_chunk_list));
+  space_cell_buffers_multipole_chunks =
+      (struct space_cell_buffers_chunk_list *)calloc(
+          nr_buffers, sizeof(struct space_cell_buffers_chunk_list));
+  if (space_cell_buffers_cell_chunks == NULL ||
+      space_cell_buffers_multipole_chunks == NULL)
     error("Failed to allocate the list of sub-cell chunks.");
-  space_sub_chunks_nr_buffers = nr_buffers;
+  space_cell_buffers_nr = nr_buffers;
 }
 
 /**
@@ -118,22 +123,22 @@ void space_cell_sub_chunks_init(const int nr_buffers) {
  * @param tpid The buffer the chunk belongs to.
  * @param chunk The start of the chunk.
  */
-static void space_sub_chunks_record(struct space_sub_chunks *lists,
-                                    const short int tpid, void *chunk) {
+static void space_cell_buffers_record_chunk(
+    struct space_cell_buffers_chunk_list *lists, const short int tpid,
+    void *chunk) {
 
   /* No list: return */
   if (lists == NULL) return;
 
   /* Get the list of our thread */
-  if (tpid < 0 || tpid >= space_sub_chunks_nr_buffers)
-    error("Invalid buffer index %d (%d buffers).", tpid,
-          space_sub_chunks_nr_buffers);
+  if (tpid < 0 || tpid >= space_cell_buffers_nr)
+    error("Invalid buffer index %d (%d buffers).", tpid, space_cell_buffers_nr);
 
-  struct space_sub_chunks *l = &lists[tpid];
+  struct space_cell_buffers_chunk_list *l = &lists[tpid];
 
   /* Does the list need to grow? */
   if (l->count == l->size) {
-    l->size = l->size > 0 ? 2 * l->size : space_sub_chunks_initial_size;
+    l->size = l->size > 0 ? 2 * l->size : space_cell_buffers_initial_list_size;
     l->chunks = (void **)realloc(l->chunks, l->size * sizeof(void *));
     if (l->chunks == NULL) error("Failed to grow the list of chunks.");
   }
@@ -145,7 +150,7 @@ static void space_sub_chunks_record(struct space_sub_chunks *lists,
 /**
  * @brief Comparison function sorting pointers by increasing address.
  */
-static int space_sub_chunks_cmp(const void *a, const void *b) {
+static int space_cell_buffers_chunk_cmp(const void *a, const void *b) {
   const uintptr_t pa = (uintptr_t)(*(void *const *)a);
   const uintptr_t pb = (uintptr_t)(*(void *const *)b);
   return (pa > pb) - (pa < pb);
@@ -156,14 +161,17 @@ static int space_sub_chunks_cmp(const void *a, const void *b) {
  * sub-cells: the cells of a chunk are linked in address order and the last
  * one is linked to the first cell of the next chunk of its buffer.
  *
- * @param map_data Pointer towards the #space_relink_item of the chunks.
+ * @param map_data Pointer towards the #space_cell_buffers_relink_item of the
+ * chunks.
  * @param num_elements The number of chunks to treat.
  * @param extra_data Unused.
  */
-static void space_relink_cells_mapper(void *map_data, int num_elements,
-                                      void *extra_data) {
+static void space_cell_buffers_relink_cells_mapper(void *map_data,
+                                                   int num_elements,
+                                                   void *extra_data) {
 
-  struct space_relink_item *items = (struct space_relink_item *)map_data;
+  struct space_cell_buffers_relink_item *items =
+      (struct space_cell_buffers_relink_item *)map_data;
   for (int i = 0; i < num_elements; i++) {
     struct cell *c = (struct cell *)items[i].chunk;
     for (int k = 0; k < space_cellallocchunk - 1; k++) c[k].next = &c[k + 1];
@@ -176,14 +184,17 @@ static void space_relink_cells_mapper(void *map_data, int num_elements,
  * multipoles: the multipoles of a chunk are linked in address order and the
  * last one is linked to the first multipole of the next chunk of its buffer.
  *
- * @param map_data Pointer towards the #space_relink_item of the chunks.
+ * @param map_data Pointer towards the #space_cell_buffers_relink_item of the
+ * chunks.
  * @param num_elements The number of chunks to treat.
  * @param extra_data Unused.
  */
-static void space_relink_multipoles_mapper(void *map_data, int num_elements,
-                                           void *extra_data) {
+static void space_cell_buffers_relink_multipoles_mapper(void *map_data,
+                                                        int num_elements,
+                                                        void *extra_data) {
 
-  struct space_relink_item *items = (struct space_relink_item *)map_data;
+  struct space_cell_buffers_relink_item *items =
+      (struct space_cell_buffers_relink_item *)map_data;
   for (int i = 0; i < num_elements; i++) {
     struct gravity_tensors *m = (struct gravity_tensors *)items[i].chunk;
     for (int k = 0; k < space_cellallocchunk - 1; k++) m[k].next = &m[k + 1];
@@ -207,25 +218,26 @@ static void space_relink_multipoles_mapper(void *map_data, int num_elements,
  *
  * @return The number of chunks re-linked.
  */
-static int space_relink_buffers(struct space *s,
-				struct space_sub_chunks *lists,
-				void **buffers, threadpool_map_function fun) {
+static int space_cell_buffers_relink_one(
+    struct space *s, struct space_cell_buffers_chunk_list *lists,
+    void **buffers, threadpool_map_function fun) {
 
   int nr_chunks = 0;
-  for (int k = 0; k < space_sub_chunks_nr_buffers; k++)
+  for (int k = 0; k < space_cell_buffers_nr; k++)
     nr_chunks += lists[k].count;
 
   /* Nothing to do? */
   if (nr_chunks == 0) return 0;
 
-  struct space_relink_item *items = (struct space_relink_item *)malloc(
-      nr_chunks * sizeof(struct space_relink_item));
+  struct space_cell_buffers_relink_item *items =
+      (struct space_cell_buffers_relink_item *)malloc(
+          nr_chunks * sizeof(struct space_cell_buffers_relink_item));
   if (items == NULL) error("Failed to allocate the list of chunks.");
 
   int n = 0;
-  for (int k = 0; k < space_sub_chunks_nr_buffers; k++) {
-    struct space_sub_chunks *l = &lists[k];
-    qsort(l->chunks, l->count, sizeof(void *), space_sub_chunks_cmp);
+  for (int k = 0; k < space_cell_buffers_nr; k++) {
+    struct space_cell_buffers_chunk_list *l = &lists[k];
+    qsort(l->chunks, l->count, sizeof(void *), space_cell_buffers_chunk_cmp);
     for (int i = 0; i < l->count; i++) {
       items[n].chunk = l->chunks[i];
       items[n].next = (i + 1 < l->count) ? l->chunks[i + 1] : NULL;
@@ -235,8 +247,8 @@ static int space_relink_buffers(struct space *s,
   }
 
   threadpool_map(&s->e->threadpool, fun, items, nr_chunks,
-                 sizeof(struct space_relink_item), threadpool_auto_chunk_size,
-                 NULL);
+                 sizeof(struct space_cell_buffers_relink_item),
+                 threadpool_auto_chunk_size, NULL);
   free(items);
   return nr_chunks;
 }
@@ -257,9 +269,9 @@ static int space_relink_buffers(struct space *s,
  *
  * @param s The #space.
  */
-void space_relink_cell_sub_buffers(struct space *s) {
+void space_cell_buffers_relink(struct space *s) {
 
-  if (space_cell_chunks == NULL) return;
+  if (space_cell_buffers_cell_chunks == NULL) return;
 
   /* Safety check: Are all the sub-cells back in the buffers? They should be,
    * as this is called once all the trees have been recycled. */
@@ -278,7 +290,7 @@ void space_relink_cell_sub_buffers(struct space *s) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   long long nr_free_cells = 0, nr_free_multipoles = 0;
-  for (int k = 0; k < space_sub_chunks_nr_buffers; k++) {
+  for (int k = 0; k < space_cell_buffers_nr; k++) {
     for (struct cell *c = s->cells_sub[k]; c != NULL; c = c->next)
       nr_free_cells++;
     if (s->with_self_gravity)
@@ -288,14 +300,15 @@ void space_relink_cell_sub_buffers(struct space *s) {
   }
 #endif
 
-  const int nr_cell_chunks =
-      space_relink_buffers(s, space_cell_chunks, (void **)s->cells_sub,
-                           space_relink_cells_mapper);
+  const int nr_cell_chunks = space_cell_buffers_relink_one(
+      s, space_cell_buffers_cell_chunks, (void **)s->cells_sub,
+      space_cell_buffers_relink_cells_mapper);
   const int nr_multipole_chunks =
       s->with_self_gravity
-          ? space_relink_buffers(s, space_multipole_chunks,
-                                 (void **)s->multipoles_sub,
-                                 space_relink_multipoles_mapper)
+          ? space_cell_buffers_relink_one(
+                s, space_cell_buffers_multipole_chunks,
+                (void **)s->multipoles_sub,
+                space_cell_buffers_relink_multipoles_mapper)
           : 0;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -322,7 +335,7 @@ void space_relink_cell_sub_buffers(struct space *s) {
  *
  * The cells (and their multipoles) are taken from the head of the buffer of
  * thread @c tpid. If that buffer is empty, a new chunk of memory is allocated
- * (and recorded for space_relink_cell_sub_buffers()) and the cells are picked
+ * (and recorded for space_cell_buffers_relink()) and the cells are picked
  * from there.
  *
  * The buffers are not locked: a thread may only use its own buffer, i.e.
@@ -352,7 +365,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
       swift_ignore_leak(s->cells_sub[tpid]);
 
       /* Record the chunk such that the buffer can be re-ordered later. */
-      space_sub_chunks_record(space_cell_chunks, tpid, s->cells_sub[tpid]);
+      space_cell_buffers_record_chunk(space_cell_buffers_cell_chunks, tpid,
+                                      s->cells_sub[tpid]);
 
       /* Clear the newly-allocated cells. */
       bzero(s->cells_sub[tpid], sizeof(struct cell) * space_cellallocchunk);
@@ -372,8 +386,8 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
         error("Failed to allocate more multipoles.");
 
       /* Record the chunk such that the buffer can be re-ordered later. */
-      space_sub_chunks_record(space_multipole_chunks, tpid,
-                              s->multipoles_sub[tpid]);
+      space_cell_buffers_record_chunk(space_cell_buffers_multipole_chunks, tpid,
+                                      s->multipoles_sub[tpid]);
 
       /* Constructed a linked list */
       for (int k = 0; k < space_cellallocchunk - 1; k++)
