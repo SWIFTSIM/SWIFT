@@ -41,15 +41,13 @@ python3 checkCMBFloor.py run_z9_floor1 --t-cmb-0 2.73
 Use `--t-cmb-0 2.725` for geajay. The snapshots hold no temperature, so the script rebuilds it
 from the internal energy, the species and the metal mass fraction, as the cooling library does.
 In every snapshot after the first it checks that all temperatures are finite and that the lowest
-one is at least T_CMB(z) within 1e-4 plus the time step in ln a (floor held). In the last snapshot
-it checks that the highest one is within 1e-3 above T_CMB(z) (floor reached). It exits with
-status 1 if a check fails. A run with `cmb_floor=0` is expected to fail the floor-held check:
+one is at least T_CMB(z) within 1e-4 plus half the time step in ln a (floor held). In the last
+snapshot it checks that the highest one is within 1e-3 above T_CMB(z) (floor reached). It exits
+with status 1 if a check fails. A run with `cmb_floor=0` is expected to fail the floor-held check:
 
 ```
 python3 checkCMBFloor.py run_z9_floor0 --t-cmb-0 2.73 --expect-below-floor
 ```
 exits with status 0 only if that run fails the floor-held check and all its temperatures end
 below half of T_CMB(z). A leg takes a few minutes on 4 threads with the default 400 steps. The
-time step matters: a cooling library that updates the energy explicitly can overshoot the floor
-when the step is much longer than the time the metal cooling needs to restore it. Raise
-`n_steps` to test this.
+result depends on the time step of the run: raise `n_steps` to check that it has converged.

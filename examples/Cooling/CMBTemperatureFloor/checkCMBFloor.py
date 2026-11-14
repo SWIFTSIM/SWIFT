@@ -12,13 +12,13 @@ H2 correction of the adiabatic index is exact below an H2 to other-particle rati
 it the check stops with an error. m_H and k_B are the values of the libraries.
 
 Checks, in this order. Finiteness: every temperature of every snapshot is finite. Floor held: in
-every snapshot the lowest temperature is at least the floor times (1 - TOLERANCE - dt_max), where
-dt_max is the largest time-step of the run in ln a (TimeIntegration:dt_max of used_parameters.yml).
-The snapshot energy is drifted to the snapshot time and carries up to one step of expansion
-cooling that the floor did not see; the lag is at most H dt = dt_max. Floor reached:
-in the last snapshot the highest temperature is at most the floor times (1 + REACH), so the gas
-did cool onto the floor. The script exits with status 1 if a check fails. A run without the floor
-must fail the floor-held check.
+every snapshot the lowest temperature is at least the floor times (1 - TOLERANCE - dt_max / 2).
+Here dt_max is the largest time-step of the run in ln a (TimeIntegration:dt_max of
+used_parameters.yml). The snapshot energy is drifted to the snapshot time and carries up to half
+a step of expansion cooling that the floor did not see, so the lag is at most dt_max / 2.
+Floor reached: in the last snapshot the highest temperature is at most the floor times
+(1 + REACH), so the gas did cool onto the floor. The script exits with status 1 if a check
+fails. A run without the floor must fail the floor-held check.
 
 With --expect-below-floor the script checks a run made without the floor. It exits with status 0
 only if the floor-held check fails and every temperature of the last snapshot lies below half of
@@ -34,7 +34,7 @@ import numpy as np
 import yaml
 
 # Float32 round-off of the energy plus the lag of the gas behind the falling floor, relative.
-# The drift of the snapshot energy over one time-step is added from the run.
+# Half the largest time-step in ln a is added from the run, for the drift of the snapshot energy.
 TOLERANCE = 1e-4
 # Distance above the floor where the cooled gas must sit, relative.
 REACH = 1e-3
@@ -104,6 +104,7 @@ def evaluate(snapshots, t_cmb_0, dt_max=0.0):
             count = np.sum(~np.isfinite(temperature))
             return [("finite", False, f"{count} non-finite values")], None
     rows = [("finite", True, f"{len(snapshots)} snapshots")]
+    bar = 1.0 - TOLERANCE - 0.5 * dt_max
     ratios = [
         (temperature.min() / (t_cmb_0 * (1.0 + z)), z) for temperature, z in snapshots
     ]
@@ -111,8 +112,8 @@ def evaluate(snapshots, t_cmb_0, dt_max=0.0):
     rows.append(
         (
             "floor held",
-            worst >= 1.0 - TOLERANCE - dt_max,
-            f"lowest T / floor = {worst:.6g} (at z = {z_worst:.4g}), bar {1.0 - TOLERANCE - dt_max:.6g}",
+            worst >= bar,
+            f"lowest T / floor = {worst:.6g} (at z = {z_worst:.4g}), bar {bar:.6g}",
         )
     )
     temperature, z = snapshots[-1]
