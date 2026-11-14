@@ -339,15 +339,27 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
     multipoles_end[k] = NULL;
   }
 
+  /* The buffers receiving cells, such that only those are visited while
+   * holding the lock. */
+  int buffers_used[nr_buffers];
+  int nr_buffers_used = 0;
+
   struct gravity_tensors *m = multipole_list_begin;
   for (struct cell *c = cell_list_begin; c != NULL;) {
     struct cell *c_next = c->next;
-    short int tpid = c->tpid;
-    if (tpid < 0 || tpid >= nr_buffers) tpid = 0;
+    const short int tpid = c->tpid;
+
+#ifdef SWIFT_DEBUG_CHECKS
+    if (tpid < 0 || tpid >= nr_buffers)
+      error("Cell with invalid tpid=%d (nr. buffers=%d)", tpid, nr_buffers);
+#endif
 
     c->next = cells_begin[tpid];
     cells_begin[tpid] = c;
-    if (cells_end[tpid] == NULL) cells_end[tpid] = c;
+    if (cells_end[tpid] == NULL) {
+      cells_end[tpid] = c;
+      buffers_used[nr_buffers_used++] = tpid;
+    }
 
     if (s->with_self_gravity) {
       struct gravity_tensors *m_next = m->next;
@@ -364,8 +376,8 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
   lock_lock(&s->lock);
 
   /* Hook the cells and multipoles into their buffers. */
-  for (int tpid = 0; tpid < nr_buffers; tpid++) {
-    if (cells_begin[tpid] == NULL) continue;
+  for (int k = 0; k < nr_buffers_used; k++) {
+    const int tpid = buffers_used[k];
     cells_end[tpid]->next = s->cells_sub[tpid];
     s->cells_sub[tpid] = cells_begin[tpid];
     if (s->with_self_gravity) {
