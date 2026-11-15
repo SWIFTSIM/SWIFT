@@ -30,7 +30,9 @@ taken from a paper:
   maximum     along the hot-start branch the pressure has a first local maximum, and the
               cold-start branch a local minimum after it, as in a two-phase medium
 
-Only runs whose check.txt holds no FAIL line count; the others are listed as excluded.
+Only runs whose check.txt holds no FAIL line and no SPLIT mark count; the others are listed
+as excluded. A SPLIT run (p95/p5 of the specific energy above 1.5) mixes two phases, so its
+median is no equilibrium, and the hot/cold pair of that density leaves both gates.
 With --onezone-table the same gates run on the one-zone ladder (lines FINAL of onezone).
 """
 
@@ -46,6 +48,20 @@ import numpy as np
 BOLTZMANN_CGS = 1.380649e-16
 HYSTERESIS_RATIO = 1.5
 HYSTERESIS_WINDOW = (0.16, 0.20)
+SPLIT_MARK = "SPLIT into"
+
+
+def run_verdict(check):
+    """Return "ok", "no check", "a failed gate" or "SPLIT" for the check.txt of a run."""
+    if not os.path.exists(check):
+        return "no check"
+    with open(check) as f:
+        lines = f.read().splitlines()
+    if any(line.startswith("FAIL") for line in lines):
+        return "a failed gate"
+    if any(SPLIT_MARK in line for line in lines):
+        return "SPLIT"
+    return "ok"
 
 
 def from_runs(root):
@@ -57,10 +73,9 @@ def from_runs(root):
         if not m or not files:
             continue
         check = os.path.join(path, "check.txt")
-        if not os.path.exists(check) or any(
-            line.startswith("FAIL") for line in open(check)
-        ):
-            print(f"excluded (no check or a failed gate): {os.path.basename(path)}")
+        verdict = run_verdict(check)
+        if verdict != "ok":
+            print(f"excluded ({verdict}): {os.path.basename(path)}")
             continue
         with h5py.File(files[-1], "r") as f:
             units = f["Units"].attrs

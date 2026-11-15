@@ -91,6 +91,6 @@ Use
 For a density scan, name the run directories `n<density>_hot` and `n<density>_cold`
 and write each run's check output to `<run>/check.txt`. Then run
 `isrf_photoelectric_equilibrium_ladder.py <directory>`. It leaves out runs whose check has a
-FAIL line, prints the equilibrium specific energy and P(n) of the others, and checks that the hot
+FAIL line or marks the run SPLIT (two phases in one box), prints the equilibrium specific energy and P(n) of the others, and checks that the hot
 and cold branches differ by a factor of 1.5 or more somewhere between 0.16 and 0.20 H/cm^3 and
 that P(n) has a maximum followed by a minimum.
