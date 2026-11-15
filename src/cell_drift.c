@@ -760,7 +760,7 @@ void cell_drift_spart(struct cell *c, const struct engine *e, int force,
 
     /* Now, get the maximal particle motion from its square */
     dx_max = sqrtf(dx2_max);
-    dx_max_sort = sqrtf(dx2_max_sort);
+    dx_max_sort = sqrtf(dx2_max_sort) + c->stars.dx_max_sort_offset;
 
     /* Store the values */
     c->stars.h_max = cell_h_max;
