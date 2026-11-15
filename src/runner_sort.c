@@ -399,6 +399,16 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
       }
       c->hydro.dx_max_sort_old = 0.f;
       c->hydro.dx_max_sort = 0.f;
+      c->hydro.dx_max_sort_offset = 0.f;
+
+    } else if (flags) {
+
+      /* We are adding directions to a cell sorted at an earlier time without
+       * resetting the shifts. As |x(t) - x(t_sort)| <= |x_diff_sort(t)| +
+       * |x_diff_sort(t_sort)|, remember the current maximal shift such that
+       * dx_max_sort keeps bounding the motion since the sort for these new
+       * directions. dx_max_sort already includes any previous offset. */
+      c->hydro.dx_max_sort_offset = c->hydro.dx_max_sort;
     }
 
     /* Fill the sort array. */
