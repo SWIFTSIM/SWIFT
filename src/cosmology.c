@@ -1101,6 +1101,8 @@ void cosmology_init_no_cosmo(struct cosmology *c) {
   c->a_factor_Balsara_eps = 1.;
   c->a_factor_hydro_accel = 1.;
   c->a_factor_grav_accel = 1.;
+  c->a_factor_magnetic_field = 1.;
+  c->a_factor_magnetic_field_inv = 1.;
 
   c->a_old = 1.;
   c->z_old = 0.;
