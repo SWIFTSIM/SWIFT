@@ -109,6 +109,12 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flag,
                           int cleanup, int clock);
 void runner_do_all_hydro_sort(struct runner *r, struct cell *c);
 void runner_do_all_stars_sort(struct runner *r, struct cell *c);
+void runner_check_sort_shift_hydro(const struct cell *c,
+                                   const struct cell *other, const int sid,
+                                   const struct engine *e);
+void runner_check_sort_shift_stars(const struct cell *c,
+                                   const struct cell *other, const int sid,
+                                   const struct engine *e);
 void runner_do_drift_part(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_gpart(struct runner *r, struct cell *c, int timer);
 void runner_do_drift_spart(struct runner *r, struct cell *c, int timer);

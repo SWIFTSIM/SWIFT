@@ -1291,36 +1291,6 @@ void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
   DOSELF1_STARS(r, c, offset, ntasks, limit_min_h, limit_max_h);
 }
 
-#define RUNNER_CHECK_SORT(TYPE, PART, cj, ci, sid)                          \
-  ({                                                                        \
-    const struct sort_entry *restrict sort_j =                              \
-        cell_get_##TYPE##_sorts(cj, sid);                                   \
-                                                                            \
-    for (int pjd = 0; pjd < cj->TYPE.count; pjd++) {                        \
-      const struct PART *p = &cj->TYPE.parts[sort_j[pjd].i];                \
-      if (PART##_is_inhibited(p, e)) continue;                              \
-                                                                            \
-      const float d = p->x[0] * runner_shift[sid][0] +                      \
-                      p->x[1] * runner_shift[sid][1] +                      \
-                      p->x[2] * runner_shift[sid][2];                       \
-      if ((fabsf(d - sort_j[pjd].d) - cj->TYPE.dx_max_sort) >               \
-              1.0e-4 * max(fabsf(d), cj->TYPE.dx_max_sort_old) &&           \
-          (fabsf(d - sort_j[pjd].d) - cj->TYPE.dx_max_sort) >               \
-              cj->width[0] * 1.0e-10)                                       \
-        error(                                                              \
-            "particle shift diff exceeds dx_max_sort in cell cj. "          \
-            "cj->nodeID=%d "                                                \
-            "ci->nodeID=%d d=%e sort_j[pjd].d=%e cj->" #TYPE                \
-            ".dx_max_sort=%e "                                              \
-            "cj->" #TYPE                                                    \
-            ".dx_max_sort_old=%e, cellID=%lld super->cellID=%lld"           \
-            "cj->depth=%d cj->maxdepth=%d",                                 \
-            cj->nodeID, ci->nodeID, d, sort_j[pjd].d, cj->TYPE.dx_max_sort, \
-            cj->TYPE.dx_max_sort_old, cj->cellID, cj->hydro.super->cellID,  \
-            cj->depth, cj->maxdepth);                                       \
-    }                                                                       \
-  })
-
 /**
  * @brief Determine which version of DOPAIR1_STARS needs to be called depending
  * on the orientation of the cells or whether DOPAIR1_STARS needs to be called
@@ -1394,14 +1364,16 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
     error("Interacting unsorted cells. (cj stars)");
 
 #ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
   if (do_ci) {
-    RUNNER_CHECK_SORT(hydro, part, cj, ci, sid);
-    RUNNER_CHECK_SORT(stars, spart, ci, cj, sid);
+    runner_check_sort_shift_hydro(cj, ci, sid, e);
+    runner_check_sort_shift_stars(ci, cj, sid, e);
   }
 
   if (do_cj) {
-    RUNNER_CHECK_SORT(hydro, part, ci, cj, sid);
-    RUNNER_CHECK_SORT(stars, spart, cj, ci, sid);
+    runner_check_sort_shift_hydro(ci, cj, sid, e);
+    runner_check_sort_shift_stars(cj, ci, sid, e);
   }
 #endif /* SWIFT_DEBUG_CHECKS */
 
