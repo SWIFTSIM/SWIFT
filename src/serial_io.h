@@ -49,7 +49,8 @@ void read_ic_serial(char *fileName, const struct unit_system *internal_units,
                     const int cleanup_sqrt_a, const double h, const double a,
                     const int mpi_rank, int mpi_size, MPI_Comm comm,
                     MPI_Info info, const int n_threads, const int dry_run,
-                    const int remap_ids, struct ic_info *ics_metadata);
+                    const int remap_ids, const int accept_snapshot,
+                    struct ic_info *ics_metadata);
 
 void write_output_serial(struct engine *e,
                          const struct unit_system *internal_units,
