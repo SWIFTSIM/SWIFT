@@ -30,10 +30,10 @@ combines:
 + Three conservative formulations of the equations of motion, MI1 and MI2
   from the paper and MI3, a variant of MI2 introduced in SWIFT, selected at
   configure time (see below);
-+ Artificial viscosity with constant coefficients (:math:`\alpha = 1`,
-  :math:`\beta = 2`) acting on the difference of velocities reconstructed
-  to the pair mid-point with a van Leer slope limiter and a short-distance
-  cut-off (eqs. 14-23), multiplied by the shear limiter of
++ Artificial viscosity (:math:`\beta = 2`) acting on the difference of
+  velocities reconstructed to the pair mid-point with a van Leer slope
+  limiter and a short-distance cut-off (eqs. 14-23), with the time-dependent
+  per-particle :math:`\alpha_a` (maximum 1, floor 0.3) and the shear limiter of
   `Cullen & Dehnen (2010) <https://ui.adsabs.harvard.edu/abs/2010MNRAS.408..669C>`_;
 + Artificial conduction (eq. 24) with the paper's velocity-based signal
   speed plus a term driven by the pressure jump left after reconstruction,
@@ -176,9 +176,11 @@ The viscous pressure is the paper's eqs. 14-15, :math:`Q_a = \rho_a(-\alpha
 c_a \mu_a + \beta \mu_a^2)` with :math:`\mu_a = \min(0, \tilde{\mathbf{v}}_{ab}
 \cdot \boldsymbol{\eta}_a / (\eta_a^2 + \epsilon^2))` built from the
 reconstructed velocity difference, :math:`\boldsymbol{\eta}_a =
-\mathbf{r}_{ab} / h_a` and :math:`\epsilon = 0.1`. :math:`\alpha`,
-:math:`\beta` and :math:`\epsilon` are compile-time constants at the paper's
-values. :math:`Q` is only applied to pairs that approach (raw velocities,
+\mathbf{r}_{ab} / h_a` and :math:`\epsilon = 0.1`. :math:`\beta` and
+:math:`\epsilon` are compile-time constants at the paper's values;
+:math:`\alpha` is the particle's time-dependent coefficient :math:`\alpha_a`
+described below, with the paper's :math:`\alpha = 1` as its maximum.
+:math:`Q` is only applied to pairs that approach (raw velocities,
 including the Hubble flow) and only where its heating term
 :math:`\mathbf{v}_{ab} \cdot \mathbf{G}` is positive. Note that
 :math:`\mu_a` uses SWIFT's :math:`h`, see the departures below.
@@ -205,14 +207,44 @@ factor keeps its full strength in a front. The limiter is floored at
 layers keep the full linear viscosity that maintains their particle order,
 cold supersonic shear (Keplerian discs) is relieved of it.
 
-A per-particle coefficient :math:`\alpha_a` of the Cullen & Dehnen (2010)
-form is evolved for every particle (source :math:`\xi_a H^2 \max(0,
--d(\nabla\cdot\mathbf{v})/dt)`, raised to :math:`\alpha A/(A + c_s^2)`,
-floor ``SPH:viscosity_alpha_min``, exponential decay over :math:`H / (2\,
-\ell\, c_s)` with :math:`\ell =` ``SPH:viscosity_length``), but it never
-enters :math:`Q`: it is the shock measure of the conduction cap below. Using
-it in :math:`Q` as well would apply the limiter :math:`\xi_a` twice, in the
-trigger and on :math:`Q`, so no such switch is provided.
+The coefficient :math:`\alpha_a` is the time-dependent one of Cullen &
+Dehnen (2010) in the form used by SPHENIX: the source :math:`A_a = \xi_a H^2
+\max(0, -d(\nabla\cdot\mathbf{v})/dt)` of a converging flow sets
+:math:`\alpha_{\rm loc} = \alpha_{\max} A_a/(A_a + c_s^2)`, which is of order
+:math:`(kH)^2` times the amplitude in a linear wave and 1 in a shock;
+:math:`\alpha_a` jumps up to :math:`\alpha_{\rm loc}` and decays back
+towards it exponentially over :math:`H / (2\, \ell\, c_s)` with
+:math:`\ell =` ``SPH:viscosity_length`` (default 0.05, ten sound crossings of
+the support), and is floored at ``SPH:viscosity_alpha_min`` (default 0.3).
+:math:`\alpha_{\max} = 1` is a compile-time constant. Particles start at
+the floor. The same coefficient is the shock measure of the conduction cap
+below. Note that the limiter :math:`\xi_a` acts twice, in the trigger and on
+:math:`Q`.
+
+The floor is the viscosity of smooth flow. The reconstruction leaves a few
+per cent of the velocity jump of a pair to :math:`Q` (gradient noise and the
+first-order mid-point reconstruction), so the scheme is not inviscid in
+smooth flow and the residual is damped at the floor's strength. The floor
+was set in 2026-11 on the scheme-comparison suite: against the paper's
+constant :math:`\alpha = 1`, the floor of 0.3 halves the damping of a
+linear sound wave (4.5 to 2 per cent per period at 32 particles per
+wavelength; the damping is linear in the floor), cuts the numerical
+viscosity of the Taylor-Green vortex by 2.7, improves the Gresho vortex and
+the growth rate of the Kelvin-Helmholtz instability, and doubles the extent
+of the inertial range of driven subsonic turbulence at :math:`64^3` (the
+:math:`k = 50` to 100 band triples and reaches 80 per cent of Arepo's at the
+same particle number). Shocks, the Evrard collapse, the Zeldovich pancakes,
+the Keplerian rings, the blob test and Galilean invariance are unchanged.
+The price is particle noise at contact discontinuities, which the constant
+:math:`\alpha` was damping: the dense mass leaking out of the square of the
+square test rises from 2 to 6 per cent (the SPHENIX value), the transverse
+velocity noise of the contrast-8 Kelvin-Helmholtz test by half, the
+velocity error at shock-tube contacts doubles. This noise appears at any
+floor below 1 and is not reduced by raising the floor to 0.5, while a floor
+of 0.1 adds visible noise in shear layers, so 0.3 is the compromise.
+``SPH:viscosity_alpha_min: 1`` restores the paper's constant viscosity (and
+switches the conduction cap off, since the coefficient then carries no
+shock information).
 
 Artificial conduction
 ---------------------
@@ -254,17 +286,49 @@ Each particle takes the minimum of the acceleration criterion (eq. 35,
 form
 
 .. math::
-   \Delta t = C_{\rm CFL}\, \frac{H_a}{c^{\max}_a + 0.6\,\alpha\,(c^{\max}_a
+   \Delta t = C_{\rm CFL}\, \frac{H_a}{c^{\max}_a + 0.6\,\alpha_{\max}\,(c^{\max}_a
    + 2 \tilde\mu_a)},
 
 with :math:`H_a` the kernel support, :math:`c^{\max}_a` the largest sound
 speed of the particle and its neighbours (the paper uses a global time step
-set by the hottest particle) and :math:`\tilde\mu_a` the largest softened
-approach velocity over the particle's pairs. SWIFT's criteria are written
+set by the hottest particle), :math:`\alpha_{\max} = 1` the bound of the
+per-particle viscosity coefficient (which reaches it within a step of a
+shock forming, before the particle's next time-step computation) and
+:math:`\tilde\mu_a` the largest softened approach velocity over the
+particle's pairs. SWIFT's criteria are written
 with the kernel support :math:`H`, the paper's with :math:`h = H/2`, so
 **the recommended** ``SPH:CFL_condition: 0.2`` **is the paper's** :math:`C =
-0.4` and SWIFT's generic 0.1 is the paper's 0.2. The recommended 0.2 was
-stable on the whole scheme-comparison suite and 0.3 was not.
+0.4` and SWIFT's generic 0.1 is the paper's 0.2.
+
+The choice of the criterion and of the CFL number was tested in 2026-11 on
+16 tests of the scheme-comparison suite (shocks, smooth flows, cold flows,
+interfaces, self-gravity) with a scan over :math:`C_{\rm CFL} = 0.05` to
+0.4, for the form above, for the same form with the particle's own sound
+speed in place of :math:`c^{\max}_a`, for the pair form of the other SWIFT
+schemes, :math:`\max_b (c_a + c_b - \beta \mu_{ab})`, and for SPHENIX, with
+and without the time-step limiter. The outcome:
+
++ With the form above the errors are set by the resolution, not by the
+  time step, up to :math:`C_{\rm CFL} = 0.2` on every test; the Noh implosion
+  is the most demanding one and its density error is 8 per cent larger at
+  0.2 than at 0.1. At 0.3 the strong blast wave, the shearing shock and Noh
+  degrade by several to tens of per cent and the smooth 2D tests sit at their
+  stability edge; at 0.4 particles collapse onto each other. **Use 0.2;**
+  0.3 only for 3D shock problems where a 30 per cent saving in steps is
+  worth a few per cent of accuracy.
++ The two cheaper forms of the signal speed take 2.5 to 3 times fewer steps
+  at the same :math:`C_{\rm CFL}` but degrade on every shock from 0.2 and fail
+  from 0.3. At equal accuracy they need the same number of steps as the form
+  above (their 0.1 is its 0.2 on the Sod and blast tests), except next to a
+  hot region, where they are cheaper and lose energy conservation: on the
+  Sedov blast the relative energy error is :math:`3 \times 10^{-3}` with the
+  hottest-neighbour sound speed at 0.2 and 0.16 to 0.23 without it. The
+  time-step limiter does not repair this, since the acceleration criterion
+  already keeps the hot particles' neighbours within its reach. The
+  hottest-neighbour term is therefore kept.
++ The step count of this scheme at :math:`C_{\rm CFL} = 0.2` equals that of
+  SPHENIX at 0.1, the two schemes' recommended values, at equal accuracy:
+  the factor two between the conventions is not a cost.
 
 Kernel and neighbour number
 ---------------------------
@@ -314,7 +378,9 @@ for them.
   signal speed without gravity and the velocity-based eq. 26 with gravity;
   the code always uses the velocity-based form (plus the pressure-residual
   term above), chosen at compile time in ``hydro_parameters.h``.
-+ **Dissipation switches not in the paper**: the Cullen & Dehnen shear
++ **Dissipation switches not in the paper**: the time-dependent viscosity
+  coefficient in place of the constant :math:`\alpha = 1` (restored with
+  ``SPH:viscosity_alpha_min: 1``), the Cullen & Dehnen shear
   limiter on :math:`Q`, with its Mach threshold and dead zone, the
   convergence-scaled cut-off of the reconstruction, the pressure-residual
   conduction term and the per-particle conduction coefficient with its
@@ -329,7 +395,7 @@ Parameters
 
 Most of the scheme's constants are fixed at compile time in
 ``src/hydro/MAGMA/hydro_parameters.h`` at the values settled by the
-2026-10 tuning study on the test suite (:math:`\alpha = 1`,
+2026-10 tuning study on the test suite (:math:`\alpha_{\max} = 1`,
 :math:`\beta = 2`, :math:`\epsilon = 0.1`, the cut-off width, the shear
 limiter and its Mach threshold 0.5 and dead zone, the angle limit 0.5 rad,
 :math:`\alpha_u = 0.05`, :math:`\alpha_P = 1`, :math:`f_0 = 0.05`). The
@@ -344,7 +410,7 @@ run-time parameters and their defaults are:
       limiter_eta_crit:              -1.     # Cut-off distance of the reconstruction in units of h; < 0: 1 / resolution_eta (the paper's value)
       gradient_max_condition_number: 60.     # Clipping of the inverse C-matrix in degenerate directions
       viscosity_limiter_floor:        0.     # xi = max(xi, floor): fraction of the viscosity kept in pure shear
-      viscosity_alpha_min:            0.1    # Floor of the per-particle alpha (the conduction cap's shock measure)
+      viscosity_alpha_min:            0.3    # Floor of the per-particle viscosity alpha (its maximum is 1); 1 = the paper's constant viscosity
       viscosity_length:               0.05   # Cullen & Dehnen's l: its decay time is H / (2 l c_s)
       diffusion_beta:                 1.0    # Growth rate of the per-particle conduction coefficient (SPHENIX's beta_D)
       diffusion_alpha_min:            1.0    # Floor (and initial value) of the per-particle conduction coefficient; 0 = SPHENIX's behaviour
@@ -369,8 +435,7 @@ was regularised but the gradient functions were still used),
 ``GradientFallbackPairs`` (pairs that used kernel gradients in the last force
 loop), ``ConvergenceFraction``, ``ViscosityLimiter`` (the Cullen & Dehnen
 :math:`\xi_a`), ``DiffusionFactors`` (:math:`\alpha^D_a`) and
-``ViscosityAlpha`` (the per-particle :math:`\alpha_a` of the conduction
-cap). A healthy run has ``FallbackFlags`` equal to 0 for essentially all
+``ViscosityAlpha`` (the per-particle :math:`\alpha_a`). A healthy run has ``FallbackFlags`` equal to 0 for essentially all
 particles and a mean ``GradientFallbackPairs`` well below 1; the
 scheme-comparison suite reports both fractions in its summary table. The
 ``HydroScheme`` group records every constant and parameter of the
@@ -410,9 +475,10 @@ Known limitations
   ``--with-adaptive-softening`` fails to compile).
 + The reconstruction is linear; together with the gradient noise this
   leaves a few per cent of the velocity jump to the viscosity in smooth
-  flow, so a linear sound wave is damped by a few per cent per period at
-  the suite's resolutions (see the ``SoundWave_3D`` and
-  ``WaveDamping`` tests of the scheme-comparison suite).
+  flow, so a linear sound wave is damped by 2 per cent per period at the
+  suite's resolutions with the default floor of the viscosity coefficient
+  (see the ``SoundWave_3D`` and ``WaveDamping`` tests of the
+  scheme-comparison suite; SPHENIX damps it by 0.5 per cent).
 + The scheme is not hand-vectorised (``--enable-hand-vec`` applies to
   GADGET-2 only).
 + Angular momentum is conserved only approximately (as in the paper).

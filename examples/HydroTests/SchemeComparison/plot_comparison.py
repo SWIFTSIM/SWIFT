@@ -38,8 +38,14 @@ COLORS = ["C0", "C3", "C2", "C1", "C4", "C5", "C6", "C7", "C8", "C9"]
 SCHEME_COLORS = {"sphenix": "C2", "mi3": "C3", "mi2": "C0", "mi1": "C1"}
 
 
+_FREE_COLORS = [c for c in COLORS if c not in SCHEME_COLORS.values()]
+
+
 def scheme_color(scheme, j):
-    return SCHEME_COLORS.get(scheme, COLORS[j % len(COLORS)])
+    """Fixed colour for the named schemes; other schemes take the j-th colour
+    of the pool that excludes the fixed ones, so that a variant never shares
+    the colour of a reference scheme on the same figure."""
+    return SCHEME_COLORS.get(scheme, _FREE_COLORS[j % len(_FREE_COLORS)])
 
 
 ALL_TESTS = [

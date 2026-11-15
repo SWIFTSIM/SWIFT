@@ -298,9 +298,11 @@ INLINE static void hydro_write_particles(const struct part *parts,
 
   list[20] = io_make_output_field(
       "ViscosityAlpha", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_visc,
-      "Per-particle coefficient alpha of the Cullen & Dehnen (2010) form, "
-      "evolved as the shock measure of the conduction cap; the viscosity "
-      "itself uses the constant alpha.");
+      "Per-particle coefficient alpha of the viscous pressure, of the "
+      "Cullen & Dehnen (2010) form: raised towards the maximum where the "
+      "flow converges faster and faster, decaying towards "
+      "viscosity_alpha_min otherwise. Its neighbour maximum caps the "
+      "conduction coefficient.");
 }
 
 /**

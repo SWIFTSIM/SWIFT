@@ -412,10 +412,11 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
   const float dv = dv_phys / cosmo->a_factor_sound_speed;
 
   /* Raise the signal velocity of the Courant condition by beta * dv, as the
-   * other schemes do. Here v_sig = 2 (c + 0.6 alpha (c + 2 mu_tilde)) with
-   * c the maximal sound speed c_sig (hydro_compute_timestep()), so the kick
-   * enters as a raise of c_sig by beta dv / (2 (1 + 0.6 alpha)). (Through
-   * mu_tilde the raise would scale with alpha.) */
+   * other schemes do. Here v_sig = 2 (c + 0.6 alpha_max (c + 2 mu_tilde))
+   * with c the maximal sound speed c_sig (hydro_compute_timestep()), so the
+   * kick enters as a raise of c_sig by beta dv / (2 (1 + 0.6 alpha_max)).
+   * alpha_max is also what the feedback reset sets the kicked particle's
+   * coefficient to. */
   p->force.c_sig +=
       const_viscosity_beta * dv / (2.f * (1.f + 0.6f * const_viscosity_alpha));
 }
@@ -423,15 +424,13 @@ hydro_set_v_sig_based_on_velocity_kick(struct part *p,
 /**
  * @brief Update the value of the viscosity alpha for the scheme.
  *
- * The viscosity of this scheme uses the compile-time constant alpha; the
- * per-particle coefficient alpha_visc is the shock measure of the conduction
- * cap and is set by hydro_diffusive_feedback_reset(), not here.
- *
  * @param p the particle of interest
- * @param alpha the new value for the viscosity coefficient (ignored).
+ * @param alpha the new value for the viscosity coefficient.
  */
 __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
-    struct part *p, const float alpha) {}
+    struct part *p, const float alpha) {
+  p->alpha_visc = alpha;
+}
 
 /**
  * @brief Update the value of the diffusive coefficients to the
@@ -443,9 +442,10 @@ __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part *p) {
 
   /* As in SPHENIX: the viscosity coefficient to its maximum and the
-   * conduction coefficient to zero. The raised viscosity coefficient is what
-   * lasts: through the cap of hydro_prepare_force() it keeps the conduction
-   * of the particle and of its neighbours off until it has decayed, by which
+   * conduction coefficient to zero. The raised viscosity coefficient lasts
+   * ~10 H / c_s: it gives the heated particle the full viscosity of a shock
+   * and, through the cap of hydro_prepare_force(), keeps the conduction of
+   * the particle and of its neighbours off until it has decayed, by which
    * time the injected energy has done work on the gas around it. */
   p->alpha_visc = const_viscosity_alpha;
   p->alpha_diff = 0.f;
@@ -482,7 +482,10 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   /* Courant criterion (eq. 36) */
   /* Signal speed: maximal sound speed of the particle and its neighbours
-   * (the paper's global time-step limits every particle by the hottest one) */
+   * (the paper's global time-step limits every particle by the hottest one)
+   * and the maximum alpha, the bound of the per-particle coefficient: the
+   * coefficient jumps to it within a step of a shock forming, before the
+   * next time-step computation of the particle sees it. */
   const float c = p->force.c_sig;
   const float v_sig =
       2.f * (c + 0.6f * const_viscosity_alpha * (c + 2.f * p->force.mu_tilde));
@@ -952,9 +955,9 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
    * up to alpha_loc and decays back towards it over H / (2 length c_s);
    * floored at alpha_min. Divergence and sound speed are physical. */
-  /* The coefficient is the shock measure of the conduction cap only (the
-   * cap uses the neighbours' maximum); the viscosity itself uses the
-   * constant alpha, see hydro_parameters.h. */
+  /* The coefficient enters the particle's viscous pressure (force loop)
+   * and, through the neighbours' maximum, the conduction cap below; see
+   * hydro_parameters.h for the choice of the floor. */
   const float H = kernel_gamma * p->h * cosmo->a;
   const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
   const float div_v_phys = div_v_tot * cosmo->a2_inv;
@@ -1302,11 +1305,12 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
   /* The time-dependent viscosity coefficient starts at its floor: Cullen &
    * Dehnen (2010) start from alpha_loc, which vanishes in smooth initial
    * conditions, and the trigger raises it within a step of a shock forming.
-   * Starting at alpha_max would also switch the artificial conduction off
-   * everywhere (through the cap in hydro_prepare_force()) until alpha has
-   * decayed, i.e. for ~10 H / c_s. The compile-time defaults are used
-   * here (no access to the run-time floors); hydro_prepare_force() floors
-   * both coefficients at the run-time values on the first step. */
+   * Starting at alpha_max would make the first ~10 H / c_s of every run
+   * fully viscous and switch the artificial conduction off everywhere
+   * (through the cap in hydro_prepare_force()) until alpha has decayed.
+   * The compile-time defaults are used here (no access to the run-time
+   * floors); hydro_prepare_force() floors both coefficients at the run-time
+   * values on the first step. */
   p->alpha_visc = hydro_props_default_viscosity_alpha_min;
   p->alpha_diff = hydro_props_default_diffusion_alpha_min;
   p->alpha_visc_max_ngb = p->alpha_visc;

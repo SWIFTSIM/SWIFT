@@ -66,9 +66,10 @@
 
 /* Compile-time constants of the pair interactions */
 
-/*! Linear viscosity coefficient alpha (Rosswog 2020, eq. 14): the constant
- * coefficient, or the maximum of the time-dependent one. Also the value a
- * feedback event resets a particle to. */
+/*! Linear viscosity coefficient alpha (Rosswog 2020, eq. 14): the maximum of
+ * the time-dependent per-particle coefficient, the value it is raised to in
+ * a shock and the value a feedback event resets a particle to. The time step
+ * is written with this bound. */
 #define const_viscosity_alpha 1.0f
 
 /*! Quadratic viscosity coefficient beta (Rosswog 2020, eq. 14) */
@@ -102,19 +103,28 @@
  * on the Sedov pressure error, which is why 0.7 was the earlier choice). */
 #define const_viscosity_limiter_mach 0.5f
 
-/* The viscosity uses the constant alpha above (Rosswog 2020). A
- * per-particle coefficient of the Cullen & Dehnen (2010) form, raised to
+/* The paper uses the constant alpha above. The code evolves a per-particle
+ * coefficient of the Cullen & Dehnen (2010) form, raised to
  * alpha A / (A + c_s^2) with A = xi H^2 max(0, -d(div v)/dt) where the flow
  * is converging (xi the shock-boosted limiter above, H the kernel support)
  * and decaying back over H / (2 length c_s) otherwise, floored at
- * alpha_min, is evolved for every particle but only as the shock measure of
- * the conduction cap (hydro_prepare_force()); it never enters Q. Using it
- * in Q as well would apply the limiter xi twice, in the trigger and on Q.
- * The slope-limited reconstruction does not switch the viscosity off in
- * smooth flow to better than a few per cent of the velocity jump (gradient
- * noise and the first-order mid-point reconstruction), which with the
- * constant alpha = 1 damps a linear sound wave by 4-5 per cent per period
- * at 32 particles per wavelength. */
+ * viscosity_alpha_min (hydro_prepare_force()), and uses it in Q as well as
+ * for the shock measure of the conduction cap. The slope-limited
+ * reconstruction does not switch the viscosity off in smooth flow to better
+ * than a few per cent of the velocity jump (gradient noise and the
+ * first-order mid-point reconstruction); the residual is damped by the
+ * floor, not by alpha_max. The 2026-11 study of the scheme-comparison suite
+ * (doc/RTD/source/HydroSchemes/magma_sph.rst): the constant alpha = 1 damps
+ * a linear sound wave by 4.5 per cent per period at 32 particles per
+ * wavelength, the floor of 0.3 by 2 per cent, halves the numerical
+ * viscosity of the Taylor-Green vortex and doubles the inertial range of
+ * driven subsonic turbulence at 64^3, while shocks, collapse and pancakes
+ * are unchanged; the price is more particle noise at contact
+ * discontinuities (square test, high-contrast Kelvin-Helmholtz, shock-tube
+ * contacts) at any floor below 1, at about the SPHENIX level. A floor of
+ * 0.1 adds visible noise in shear layers; 0.3 is the compromise. The
+ * limiter xi acts twice, in the trigger of the coefficient and on Q; the
+ * study results include that. */
 
 /*! Dead zone of the shock-presence factor of the viscosity limiter, in
  * units of the particle noise of R. The factor 2 (1 - R)^4 of Cullen &
@@ -177,8 +187,11 @@
  * viscosity kept in pure shear. */
 #define hydro_props_default_viscosity_limiter_floor 0.f
 
-/*! Floor of the time-dependent viscosity coefficient. */
-#define hydro_props_default_viscosity_alpha_min 0.1f
+/*! Floor of the time-dependent viscosity coefficient (the viscosity of
+ * smooth flow; see the note above const_viscosity_limiter_mach). A floor of
+ * alpha_max gives the paper's constant viscosity (and switches the
+ * conduction cap off). */
+#define hydro_props_default_viscosity_alpha_min 0.3f
 
 /*! Decay rate of the per-particle viscosity coefficient, Cullen & Dehnen's
  * l: the decay time is H / (2 l c_s), i.e. 10 sound-crossing times of the
@@ -334,7 +347,7 @@ static INLINE void viscosity_init_no_hydro(
 static INLINE void viscosity_print(
     const struct viscosity_global_data *viscosity) {
   message(
-      "Artificial viscosity parameters set to alpha: %.3f, beta: %.3f, "
+      "Artificial viscosity parameters set to alpha_max: %.3f, beta: %.3f, "
       "epsilon: %.3f (compile-time).",
       const_viscosity_alpha, const_viscosity_beta, const_viscosity_epsilon);
   message("Slope limiter parameters set to eta_crit: %.4f h, width: %.4f h.",
@@ -356,8 +369,8 @@ static INLINE void viscosity_print(
   else
     message("Viscous pressure not scaled by the Cullen & Dehnen limiter.");
   message(
-      "Constant viscosity alpha %.2f (per-particle alpha evolved for the "
-      "conduction cap: alpha_min %.2f, decay length %.3f).",
+      "Time-dependent viscosity alpha: max %.2f, min %.2f, decay length "
+      "%.3f.",
       const_viscosity_alpha, viscosity->alpha_min, viscosity->length);
 }
 
