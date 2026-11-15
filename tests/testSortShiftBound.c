@@ -251,7 +251,7 @@ static int test_invariant(struct runner *r, struct engine *e, const int late) {
 
   /* A perturbed lattice of particles */
   const int count = N_SIDE * N_SIDE * N_SIDE;
-  double(*x)[3] = malloc(count * sizeof(double[3]));
+  double (*x)[3] = malloc(count * sizeof(double[3]));
   float *h = malloc(count * sizeof(float));
   for (int i = 0; i < count; i++) {
     const int ix = i / (N_SIDE * N_SIDE);
@@ -262,8 +262,8 @@ static int test_invariant(struct runner *r, struct engine *e, const int late) {
     x[i][2] = (iz + 0.5 + random_uniform(-0.3, 0.3)) / N_SIDE;
     h[i] = 0.01f;
   }
-  add_parts(c, count, (const double(*)[3])x, h, &id);
-  add_sparts(c, count, (const double(*)[3])x, &id);
+  add_parts(c, count, (const double (*)[3])x, h, &id);
+  add_sparts(c, count, (const double (*)[3])x, &id);
   free(x);
   free(h);
   e->ti_current = 8;
@@ -376,7 +376,8 @@ static int test_pair(struct runner *r, struct engine *e, const int late) {
   for (int k = 0; k < cj->hydro.count; k++) {
     const struct part *pj = &cj->hydro.parts[k];
     double r2 = 0.;
-    for (int d = 0; d < 3; d++) r2 += (pi->x[d] - pj->x[d]) * (pi->x[d] - pj->x[d]);
+    for (int d = 0; d < 3; d++)
+      r2 += (pi->x[d] - pj->x[d]) * (pi->x[d] - pj->x[d]);
     if (r2 < pi->h * pi->h * kernel_gamma2) n_brute++;
   }
 
@@ -387,10 +388,11 @@ static int test_pair(struct runner *r, struct engine *e, const int late) {
   /* Neighbour count of the SPH loop, from the un-normalised weight */
   const int n_pair = pi->density.wcount > 0.f ? 1 : 0;
 
-  message("[%s] pair: dx_max_sort(cj)=%.4e brute-force neighbours=%d "
-          "found by the pair=%d (wcount=%e)",
-          late ? "late " : "ctrl ", cj->hydro.dx_max_sort, n_brute, n_pair,
-          pi->density.wcount);
+  message(
+      "[%s] pair: dx_max_sort(cj)=%.4e brute-force neighbours=%d "
+      "found by the pair=%d (wcount=%e)",
+      late ? "late " : "ctrl ", cj->hydro.dx_max_sort, n_brute, n_pair,
+      pi->density.wcount);
 
   free_cell(ci);
   free_cell(cj);
