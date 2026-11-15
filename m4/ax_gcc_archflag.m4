@@ -109,15 +109,47 @@ case $host_cpu in
 	    *3?6[[ae]]?:*:*:*) ax_gcc_arch="ivybridge core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *3?6[[cf]]?:*:*:*|*4?6[[56]]?:*:*:*) ax_gcc_arch="haswell core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *3?6d?:*:*:*|*4?6[[7f]]?:*:*:*|*5?66?:*:*:*) ax_gcc_arch="broadwell core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
-	    *4?6[[de]]?:*:*:*|*5?6[[de]]?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
+	    *4?6e?:*:*:*|*5?6e?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *5?65[[ab]]:*:*:*) ax_gcc_arch="cooperlake cascadelake skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *5?65[[567]]:*:*:*) ax_gcc_arch="cascadelake skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *5?6[[56]]?:*:*:*) ax_gcc_arch="skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;	
-            *8?6[[de]]?:*:*:*|*9?6[[de]]?:*:*:*) ax_gcc_arch="kabylake skylake broadwell haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *8?6e?:*:*:*|*9?6e?:*:*:*) ax_gcc_arch="kabylake skylake broadwell haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
+	    *6?66?:*:*:*) ax_gcc_arch="cannonlake skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Cannon Lake
+	    *6?6[[ac]]?:*:*:*) ax_gcc_arch="icelake-server icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Ice Lake-SP
+	    *7?6[[de]]?:*:*:*) ax_gcc_arch="icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Ice Lake
+	    *9?6d?:*:*:*) ax_gcc_arch="icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Ice Lake NNPI
+	    *8?6[[cd]]?:*:*:*) ax_gcc_arch="tigerlake icelake-client skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Tiger Lake
+	    *8?6f?:*:*:*) ax_gcc_arch="sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Sapphire Rapids
+	    *9?6[[7a]]?:*:*:*) ax_gcc_arch="alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Alder Lake
+	    *a?6[[56]]?:*:*:*) ax_gcc_arch="skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Comet Lake
+	    *a?67?:*:*:*) ax_gcc_arch="rocketlake icelake-client skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Rocket Lake
+	    *a?6[[ac]]?:*:*:*) ax_gcc_arch="meteorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Meteor Lake
+	    *a?6d?:*:*:*) ax_gcc_arch="graniterapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Granite Rapids
+	    *a?6e?:*:*:*) ax_gcc_arch="graniterapids-d graniterapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Granite Rapids-D
+	    *a?6f?:*:*:*) ax_gcc_arch="sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Sierra Forest
+	    *b?6[[7af]]?:*:*:*) ax_gcc_arch="raptorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Raptor Lake
+	    *b?65?:*:*:*) ax_gcc_arch="arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake-U
+	    *b?66?:*:*:*) ax_gcc_arch="grandridge sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Grand Ridge
+	    *b?6e?:*:*:*) ax_gcc_arch="gracemont alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Alder Lake-N (Gracemont)
+	    *b?6d?:*:*:*) ax_gcc_arch="lunarlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Lunar Lake
+	    *c?65?:*:*:*) ax_gcc_arch="arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake-H
+	    *c?66?:*:*:*) ax_gcc_arch="arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Arrow Lake
+	    *c?6c?:*:*:*) ax_gcc_arch="pantherlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Panther Lake
+	    *c?6f?:*:*:*) ax_gcc_arch="emeraldrapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Emerald Rapids
+	    *d?65?:*:*:*) ax_gcc_arch="wildcatlake pantherlake arrowlake-s arrowlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Wildcat Lake
+	    *d?67?:*:*:*) ax_gcc_arch="raptorlake alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Bartlett Lake
+	    *d?6d?:*:*:*) ax_gcc_arch="clearwaterforest sierraforest alderlake skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Clearwater Forest
+	    *4??f??:*:*:*) ax_gcc_arch="diamondrapids graniterapids-d graniterapids sapphirerapids icelake-server skylake-avx512 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;; # Diamond Rapids (family 0x13)
 	    *1?6c?:*:*:*|*2?6[[67]]?:*:*:*|*3?6[[56]]?:*:*:*) ax_gcc_arch="bonnell atom core2 pentium-m pentium3 pentiumpro" ;;
-	    *3?67?:*:*:*|*[[45]]?6[[ad]]?:*:*:*) ax_gcc_arch="silvermont atom core2 pentium-m pentium3 pentiumpro" ;;
+	    *3?67?:*:*:*|*[[45]]?6[[ad]]?:*:*:*|*4?6c?:*:*:*|*7?65?:*:*:*) ax_gcc_arch="silvermont atom core2 pentium-m pentium3 pentiumpro" ;;
+	    *5?6[[cf]]?:*:*:*) ax_gcc_arch="goldmont silvermont atom core2 pentium-m pentium3 pentiumpro" ;; # Goldmont
+	    *7?6a?:*:*:*) ax_gcc_arch="goldmont-plus goldmont silvermont atom core2 pentium-m pentium3 pentiumpro" ;; # Goldmont Plus
+	    *8?6[[6a]]?:*:*:*|*9?6[[6c]]?:*:*:*) ax_gcc_arch="tremont goldmont-plus goldmont silvermont atom core2 pentium-m pentium3 pentiumpro" ;; # Tremont
 	    *000?f[[012]]?:*:*:*|?f[[012]]?:*:*:*|f[[012]]?:*:*:*) ax_gcc_arch="pentium4 pentiumpro" ;;
 	    *000?f[[346]]?:*:*:*|?f[[346]]?:*:*:*|f[[346]]?:*:*:*) ax_gcc_arch="nocona prescott pentium4 pentiumpro" ;;
 	    # fallback
 	    *5??:*:*:*) ax_gcc_arch=pentium ;;
+	    *[[9a-f]]?6??:*:*:*) ax_gcc_arch="x86-64-v3 x86-64-v2 skylake haswell sandybridge core-avx2 core-avx-i corei7-avx corei7 core2 pentium-m pentium3 pentiumpro" ;;
 	    *??6??:*:*:*) ax_gcc_arch="core2 pentiumpro" ;;
 	    *6??:*:*:*) ax_gcc_arch=pentiumpro ;;
 	    *00??f??:*:*:*|??f??:*:*:*|?f??:*:*:*|f??:*:*:*) ax_gcc_arch="pentium4 pentiumpro" ;;
@@ -146,9 +178,13 @@ case $host_cpu in
 	    *061?f??:*:*:*|61?f??:*:*:*) ax_gcc_arch="bdver2 bdver1 amdfam10 k8" ;;
 	    *06??f??:*:*:*|6??f??:*:*:*) ax_gcc_arch="bdver3 bdver2 bdver1 amdfam10 k8" ;;
 	    *070?f??:*:*:*|70?f??:*:*:*) ax_gcc_arch="btver2 btver1 amdfam10 k8" ;;
-                           83?f??:*:*:*) ax_gcc_arch="znver2 znver1 btver2 btver1 amdfam10 k8" ;;
-                           a0?f??:*:*:*) ax_gcc_arch="znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;;
-                           a1?f??:*:*:*) ax_gcc_arch="znver4 znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;;
+	    *8[[012]]?f??:*:*:*) ax_gcc_arch="znver1 btver2 btver1 amdfam10 k8" ;; # Zen / Zen+
+	    *8[[3-9a-f]]?f??:*:*:*) ax_gcc_arch="znver2 znver1 btver2 btver1 amdfam10 k8" ;; # Zen 2
+	    *a[[02345]]?f??:*:*:*) ax_gcc_arch="znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;; # Zen 3
+	    *a[[16789a]]?f??:*:*:*) ax_gcc_arch="znver4 znver3 znver2 znver1 btver2 btver1 amdfam10 k8" ;; # Zen 4
+	    *b[[01234]]?f??:*:*:*|*b6?f??:*:*:*|*b7?f[[0-7]]?:*:*:*|*bd?f[[0-7]]?:*:*:*) ax_gcc_arch="znver5 znver4 znver3 znver2 znver1 btver2 amdfam10 k8" ;; # Zen 5
+	    *b5?f??:*:*:*|*b[[89abc]]?f??:*:*:*|*bd?f[[89a-f]]?:*:*:*|*be?f[[0-7]]?:*:*:*) ax_gcc_arch="znver6 znver5 znver4 znver3 znver2 znver1 btver2 amdfam10 k8" ;; # Zen 6
+	    *[[89a-f]]??f??:*:*:*) ax_gcc_arch="znver1 x86-64-v3 x86-64-v2 btver2 amdfam10 k8" ;;
 	    *???f??:*:*:*) ax_gcc_arch="amdfam10 k8" ;;
           esac ;;
 	*:746e6543:736c7561:48727561) # IDT / VIA (Centaur)
@@ -212,22 +248,85 @@ case $host_cpu in
      esac
      ax_gcc_arch="$ax_gcc_arch powerpc"
      ;;
-  aarch64)
+  aarch64*|arm64*)
+     # Ask the compiler first. gcc and clang both implement -mcpu=native on
+     # aarch64 by reading MIDR_EL1, which is the same lookup the entries below
+     # do by hand, and they track cores that do not exist yet. It is also the
+     # only thing that can work on Darwin, where there is no /proc/cpuinfo and
+     # so no table here could ever match, which covers Apple silicon.
+     #
+     # The named cores follow it rather than replace it, as a fallback for a
+     # toolchain that will not accept -mcpu=native. Note the whole block is
+     # already skipped when cross compiling, so these never serve that case.
+     # They cover only the Broadcom and Cavium parts, which is what upstream
+     # carried; every other vendor, meaning every Neoverse part including
+     # NVIDIA Grace, as well as Ampere, Fujitsu and Apple, relies on native.
+     #
+     # The architecture names among them, armv8-a and the like, are rejected
+     # by -mcpu= but accepted by -march=, which the loop below tries on its
+     # second pass over the flag prefixes.
+     ax_gcc_arch="native"
      cpuimpl=`grep 'CPU implementer' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
      cpuarch=`grep 'CPU architecture' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
      cpuvar=`grep 'CPU variant' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
+     cpupart=`grep 'CPU part' /proc/cpuinfo 2> /dev/null | cut -d: -f2 | tr -d " " | head -n 1`
      case $cpuimpl in
+       0x41) # ARM Ltd: the Neoverse line and the server Cortex cores
+          case $cpupart in
+            0xd08) ax_gcc_arch="native cortex-a72 armv8-a" ;;
+            0xd0b|0xd0e) ax_gcc_arch="native cortex-a76 armv8-a" ;;
+            0xd0c) ax_gcc_arch="native neoverse-n1 cortex-a76 armv8-a" ;; # Graviton2, Altra
+            0xd40) ax_gcc_arch="native neoverse-v1 neoverse-n1 armv8-a" ;; # Graviton3
+            0xd41|0xd42|0xd4b) ax_gcc_arch="native cortex-a78 cortex-a76 armv8-a" ;;
+            0xd49) ax_gcc_arch="native neoverse-n2 neoverse-n1 armv8-a" ;;
+            0xd4f) ax_gcc_arch="native neoverse-v2 neoverse-n2 neoverse-v1 armv8-a" ;; # Grace, Graviton4
+            0xd83) ax_gcc_arch="native neoverse-v3ae neoverse-v3 neoverse-v2 armv8-a" ;;
+            0xd84) ax_gcc_arch="native neoverse-v3 neoverse-v2 armv8-a" ;;
+            0xd8e) ax_gcc_arch="native neoverse-n3 neoverse-n2 armv8-a" ;;
+          esac
+          ;;
+       0x46) # Fujitsu
+          case $cpupart in
+            0x001|0x1) ax_gcc_arch="native a64fx armv8.2-a+sve armv8-a" ;;
+            0x003|0x3) ax_gcc_arch="native fujitsu-monaka a64fx armv8-a" ;;
+          esac
+          ;;
+       0x48) # HiSilicon
+          case $cpupart in
+            0xd01) ax_gcc_arch="native tsv110 armv8-a" ;;
+          esac
+          ;;
+       0x4e) # NVIDIA. Grace is not here: it uses ARM's own Neoverse V2 above.
+          case $cpupart in
+            0x003|0x3|0x004|0x4) ax_gcc_arch="native carmel armv8-a" ;;
+            0x010|0x10) ax_gcc_arch="native olympus neoverse-v3 neoverse-v2 armv8-a" ;;
+            0x011|0x11) ax_gcc_arch="native rigel olympus neoverse-v3 armv8-a" ;;
+          esac
+          ;;
+       0x50) # Applied Micro
+          case $cpupart in
+            0x000|0x0) ax_gcc_arch="native xgene1 armv8-a" ;;
+          esac
+          ;;
+       0xc0) # Ampere Computing. Altra is Neoverse N1 and appears under 0x41.
+          case $cpupart in
+            0xac3) ax_gcc_arch="native ampere1 armv8-a" ;;
+            0xac4) ax_gcc_arch="native ampere1a ampere1 armv8-a" ;;
+            0xac5) ax_gcc_arch="native ampere1b ampere1a ampere1 armv8-a" ;;
+            0xac7) ax_gcc_arch="native ampere1c ampere1b ampere1a ampere1 armv8-a" ;;
+          esac
+          ;;
        0x42) case $cpuarch in
                8) case $cpuvar in
-                    0x0) ax_gcc_arch="native" ;;
+                    0x0) ax_gcc_arch="native thunderx2t99 vulcan armv8.1-a armv8-a+lse armv8-a" ;;
                   esac
                   ;;
              esac
              ;;
        0x43) case $cpuarch in
                8) case $cpuvar in
-                    0x0) ax_gcc_arch="native" ;;
-                    0x1) ax_gcc_arch="native" ;;
+                    0x0) ax_gcc_arch="native thunderx armv8-a" ;;
+                    0x1) ax_gcc_arch="native thunderx+lse armv8.1-a armv8-a+lse armv8-a" ;;
                   esac
                   ;;
              esac
@@ -247,6 +346,11 @@ if test "x[]m4_default([$1],yes)" = xyes; then # if we require portable code
   case $host_cpu in i*86|x86_64*|amd64*) flag_prefixes="$flag_prefixes -mcpu= -m";; esac
 else
   flag_prefixes="-march= -mcpu= -m"
+  # On aarch64 the two are not interchangeable the way they nearly are on x86:
+  # -march= takes an architecture name such as armv8.2-a and sets no tuning,
+  # while -mcpu= takes a core name and sets architecture and tuning together.
+  # Ask for -mcpu= first so core names resolve and the tuning model is kept.
+  case $host_cpu in aarch64*|arm64*) flag_prefixes="-mcpu= -march= -m" ;; esac
 fi
 for flag_prefix in $flag_prefixes; do
   for arch in $ax_gcc_arch; do
