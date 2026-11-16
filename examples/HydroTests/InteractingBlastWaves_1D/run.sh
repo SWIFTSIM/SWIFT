@@ -1,9 +1,14 @@
 #!/bin/bash
 
+# This example requires SWIFT to be configured with:
+#   --with-hydro-dimension=1 --with-adiabatic-index=7/5
+
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e interactingBlastWaves.hdf5 ]
 then
-    echo "Generating initial conditions for the Sedov blast example..."
+    echo "Generating initial conditions for the interacting blast waves example..."
     python3 makeIC.py
 fi
 

@@ -66,9 +66,9 @@ for j in itervalues:
     plt.xlim(10**11, 10**15.5)
 
     xplace = 10**14.5
-    plt.text(xplace, 10**-2.3, "$\Omega_m=0.276$")
-    plt.text(xplace, 10**-2.6, "$\Omega_b=0.0455$")
-    plt.text(xplace, 10**-2.9, "$\Omega_\Lambda=0.724$")
+    plt.text(xplace, 10**-2.3, r"$\Omega_m=0.276$")
+    plt.text(xplace, 10**-2.6, r"$\Omega_b=0.0455$")
+    plt.text(xplace, 10**-2.9, r"$\Omega_\Lambda=0.724$")
     plt.text(xplace, 10**-3.2, "$h=0.703$")
     plt.text(xplace, 10**-3.5, "$z=%2.2f$" % redshift)
 
@@ -78,8 +78,8 @@ for j in itervalues:
     m, dndlogm = getHMFztinker(redshift)
     plt.plot(m / h, dndlogm * h**3, label="Tinker et al. 2008")
 
-    plt.xlabel("M${}_{200}$ ($M_\odot$)")
-    plt.ylabel("dn/d($\log$10(M${}_{200}$) ($Mpc^{-3}$)")
+    plt.xlabel(r"M${}_{200}$ ($M_\odot$)")
+    plt.ylabel(r"dn/d($\log$10(M${}_{200}$) ($Mpc^{-3}$)")
     plt.axvline(x=32 * 3.5e11, linestyle="--", color="k")
     plt.yscale("log")
     plt.legend()

@@ -377,7 +377,7 @@ struct space {
   /*! Buffers for g-parts that we will receive from foreign cells. */
   struct gpart_foreign *gparts_foreign;
   struct gpart_fof_foreign *gparts_fof_foreign;
-  size_t nr_gparts_foreign, size_gparts_foreign;
+  size_t nr_gparts_foreign, size_gparts_foreign, size_gparts_fof_foreign;
 
   /*! Buffers for s-parts that we will receive from foreign cells. */
   struct spart *sparts_foreign;
@@ -608,12 +608,10 @@ void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct gravity_tensors *multipole_list_end);
 void space_regrid(struct space *s, int verbose);
 void space_allocate_extras(struct space *s, int verbose);
-void space_allocate_and_fill_buffers(const struct cell *c,
-                                     struct cell_buff *restrict *buff,
-                                     struct cell_buff *restrict *sbuff,
-                                     struct cell_buff *restrict *bbuff,
-                                     struct cell_buff *restrict *gbuff,
-                                     struct cell_buff *restrict *sink_buff);
+void space_split_allocate_and_fill_buffers(
+    const struct cell *c, struct cell_buff *restrict *buff,
+    struct cell_buff *restrict *sbuff, struct cell_buff *restrict *bbuff,
+    struct cell_buff *restrict *gbuff, struct cell_buff *restrict *sink_buff);
 void space_split_recursive(struct space *s, struct cell *c,
                            struct cell_buff *restrict buff,
                            struct cell_buff *restrict sbuff,
@@ -624,7 +622,7 @@ void space_split_recursive(struct space *s, struct cell *c,
 void space_split(struct space *s, int verbose);
 void space_construct_progeny(struct space *s, struct cell *c,
                              const short int tpid);
-void space_populate_multipole(struct cell *c);
+void space_split_collect_progeny_multipole(struct cell *c);
 void space_reorder_extras(struct space *s, int verbose);
 void space_list_useful_top_level_cells(struct space *s);
 void space_parts_get_cell_index(struct space *s, int *ind, int *cell_counts,

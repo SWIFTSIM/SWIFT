@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ ! -e particleSplitting.hdf5 ]
 then
     echo "Making initial conditions for the ParticleSplitting example"
