@@ -32,7 +32,7 @@ photon flux,
     k_diss,0 = (sigma_H2/E_LW) * c * rho * u_LW ,                        (1)
 
 with ``sigma_H2/E_LW = RADIATION_SIGMA_H2_OVER_E_LW_CGS`` (read from that
-header at run time), the one Sternberg-anchored quotient the rate depends on,
+header at run time), the one Draine-field quotient the rate depends on,
 and ``u_LW`` the snapshot's
 ``LWSpecificEnergies`` in CGS. This script takes ``u_LW`` from the snapshots
 rather than predicting it from a transport solution: the field the chemistry
@@ -176,12 +176,12 @@ what the run happens to produce.
 Rate normalisation (reported, never gated)
 ------------------------------------------
 
-Eq. (1) over ``3.3e-11 G_0`` is ``6.229 * u_LW / (u_PE + u_LW)``: the
+Eq. (1) over ``3.3e-11 G_0`` is ``6.994 * u_LW / (u_PE + u_LW)``: the
 constant is
 ``(sigma_H2/E_LW) * 1.6e-3 erg s^-1 cm^-2 / 3.3e-11 s^-1``. It is 1 only
-for an LW fraction of 0.161. The Draine (1978) field, which the
-``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 0.92). The
-script prints the measured ratio and ``6.229`` times the measured LW
+for an LW fraction of 0.143. The Draine (1978) field, which the
+``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 1.04). The
+script prints the measured ratio and ``6.994`` times the measured LW
 fraction; ``draine_spectrum`` uses a star with the Draine LW fraction.
 
 Mode-choice diagnostic (reported, never gated)
@@ -226,10 +226,10 @@ RADIATION_H = (
 # catches a copy that has drifted from the header. Falling back is announced
 # on stdout, since a stale copy would otherwise print a confident number.
 RADIATION_H_FALLBACK = {
-    "RADIATION_SIGMA_H2_OVER_E_LW_CGS": 1.2847106348798106e-07,
+    "RADIATION_SIGMA_H2_OVER_E_LW_CGS": 1.4425206587e-07,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
 }
-RADIATION_H_FALLBACK_SOURCE = "radiation.h at 18bcf76cb, copied 2026-09-24"
+RADIATION_H_FALLBACK_SOURCE = "radiation.h of darwin/fix/lw_quotient, copied 2026-11-16"
 RADIATION_H_FALLBACK_USED: List[str] = []
 
 
@@ -374,7 +374,7 @@ def check_run_lw_calibration(
     exist and the log tells them apart:
 
     * one printing ``sigma_H2/E_LW``: it multiplies the LW energy flux by the
-      Sternberg-anchored quotient, which is what `unshielded_rate` reproduces.
+      Draine-field quotient, which is what `unshielded_rate` reproduces.
       No bias is possible;
     * one printing only the table's mean LW photon energy: it divided the flux
       by that value while the cross section stayed pinned to 12.2 eV, so its
@@ -409,7 +409,7 @@ def check_run_lw_calibration(
         if LW_QUOTIENT_LOG_RE.search(text):
             print(
                 f"H2 calibration: {log} reports sigma_H2/E_LW, so that run used "
-                "the same Sternberg-anchored quotient as this script."
+                "the same Draine-field quotient as this script."
             )
             continue
         match = LW_TABLE_ENERGY_LOG_RE.search(text)
@@ -435,7 +435,7 @@ def check_run_lw_calibration(
 
 
 # The H2 photodissociation rate is the LW energy flux times this one
-# Sternberg-anchored quotient; no cross section or photon energy enters it.
+# Draine-field quotient; no cross section or photon energy enters it.
 SIGMA_H2_OVER_E_LW_CGS: float = read_radiation_h_constant(
     "RADIATION_SIGMA_H2_OVER_E_LW_CGS"
 )
@@ -1161,7 +1161,7 @@ def main() -> int:
         f"{measured_rate_ratio:.4g}; LW fraction u_LW/(u_PE+u_LW) "
         f"{lw_fraction:.4g}, times {RATE_RATIO_PER_LW_FRACTION:.4g} = "
         f"{RATE_RATIO_PER_LW_FRACTION * lw_fraction:.4g} (Draine 1978 field: "
-        f"LW fraction 0.148, ratio 0.92)"
+        f"LW fraction 0.148, ratio 1.04)"
     )
     print()
     print(f"Radial profiles at the last snapshot:")

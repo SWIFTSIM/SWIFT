@@ -31,10 +31,11 @@ flux here.
 
 Result is informational only (used to judge whether
 RADIATION_SIGMA_H2_OVER_E_LW_CGS, and so the cross section it is quoted
-through, is plausible), not a pass/fail gate. RESOLVED:
-with the LW-fraction-of-Habing correction below applied, k_diss/D0 =
-0.898, within the ~10% expected uncertainty, see radiation.h's own
-doxygen on that constant, updated to record this verification.
+through, is plausible), not a pass/fail gate. With the LW-fraction-of-Habing
+correction below applied, k_diss/D0 = 1.008. The constant is the mean of three
+independent values (an H2 line-list integral, Sternberg et al. 2014 and Draine
+and Bertoldi 1996 Table 2), derived in 04_isrf_packet_transport.tex, so this
+ratio is a cross-check of the field conversion, not the anchor of the constant.
 """
 
 from __future__ import annotations
@@ -196,10 +197,8 @@ def main() -> None:
     )
     print(
         f"k_diss/D0 = {ratios[0]:.3f} (LW-fraction-corrected; informational, "
-        "see module docstring; not a pass/fail gate). Within ~10% of "
-        "1.0 given the ~5-10% band-integration uncertainty above, "
-        "RADIATION_SIGMA_H2_OVER_E_LW_CGS looks plausible, not in need of a "
-        "fresh re-derivation."
+        "see module docstring; not a pass/fail gate). Expected near 1.01 "
+        "for the three-source constant."
     )
 
 
