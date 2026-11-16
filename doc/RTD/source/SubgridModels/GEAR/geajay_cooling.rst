@@ -150,11 +150,41 @@ Self-shielding
        [cm\ :sup:`-3`] above which the UV background is switched off.
    * - ``h2_shielding_length_method``
      - (optional) H\ :sub:`2` self-shielding length: ``none``, ``given_length`` (the full path below,
-       N\ :sub:`H2` = n\ :sub:`H2` * path) or ``Jeans`` (local Jeans length), or 0, 2, 3
+       N\ :sub:`H2` = n\ :sub:`H2` * path), ``Jeans`` (local Jeans length) or ``hybrid_chimes``
+       (length of each particle from its density and temperature, see below), or 0, 2, 3, 4
        (default: ``none``). Sobolev (1) is not supported.
+   * - ``h2_hybrid_chimes_factor``
+     - (optional) Read only with ``hybrid_chimes``. Dimensionless factor applied to the length, above 0
+       (default: 0.5).
+   * - ``h2_hybrid_chimes_turbulent_velocity_km_per_s``
+     - (optional) Read only with ``hybrid_chimes``. One-dimensional turbulent velocity of the gas
+       [km/s], 0 or above (default: 6).
+   * - ``h2_hybrid_chimes_max_length_low_z_kpc``
+     - (optional) Read only with ``hybrid_chimes``. Largest length allowed at low redshift [kpc]; 0
+       means no cap (default: 50).
+   * - ``h2_hybrid_chimes_max_length_high_z_kpc``
+     - (optional) Read only with ``hybrid_chimes``. Largest length allowed at high redshift [kpc]; 0
+       means no cap (default: 10).
+   * - ``h2_hybrid_chimes_transition_redshift``
+     - (optional) Read only with ``hybrid_chimes``. Redshift at which the cap changes from the low to
+       the high value, above 0.4 (default: 7).
    * - ``h2_shielding_path``
      - (optional) Path for ``given_length``, also the path of the dust column of the backgrounds:
        ``kernel_radius`` (kernel_gamma * h) or ``kernel_diameter`` (default: ``kernel_radius``).
+
+The ``hybrid_chimes`` length
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+With ``hybrid_chimes``, each gas particle gets its own H\ :sub:`2` shielding length, as in the
+HYBRID-CHIMES model. The length is a column density divided by the hydrogen density, multiplied by
+the factor. The column is the larger of a thermal and a turbulent column. It is reduced towards a
+small minimum column in hot gas, and the length cannot exceed the cap. The length is a proper
+(physical) length, not a comoving one. The temperature is the temperature of the particle at the
+start of the cooling step. The method is an alternative to the Jeans length: it is longer than the
+Jeans length in cold, dense gas, for example about twice as long at 100 K and 10 H cm\ :sup:`-3`.
+The cap is the low-redshift value at low redshift and the high-redshift value above the transition
+redshift, with a smooth change between them. With ``per_band`` dust
+attenuation, the same length also sets the dust column of the backgrounds.
 
 Backgrounds
 -----------
@@ -212,8 +242,8 @@ local field only, to which the background G\ :sub:`0` is added.
        (default: ``uv_rates_file``).
    * - ``dust_background_attenuation``
      - (optional) Read only with ``background_mode`` ``per_band``. Dust attenuation of the backgrounds:
-       ``none`` or ``per_band``; ``per_band`` needs ``h2_shielding_length_method`` ``given_length``
-       (default: ``none``).
+       ``none`` or ``per_band``; ``per_band`` needs ``h2_shielding_length_method`` ``given_length`` or
+       ``hybrid_chimes`` (default: ``none``).
    * - ``dust_cross_section_lw_cm2``
      - (optional) Read only with ``dust_background_attenuation`` ``per_band``. Dust cross-section of the
        LW band (11.2-13.6 eV) [cm\ :sup:`2`] (default: 1.5e-21).
