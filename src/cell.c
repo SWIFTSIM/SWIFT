@@ -56,6 +56,21 @@
 
 /* Global variables. */
 int cell_next_tag = 0;
+
+/* Cell names. */
+const char *cellID_names[3] = {
+    "Regular",
+    "Zoom",
+    "Background",
+};
+
+/* Sub-cell names. */
+const char *subcellID_names[4] = {
+    "Regular",
+    "Neighbour",
+    "Void",
+    "Mirror",
+};
 int cell_max_tag = cell_max_tag_default;
 
 /** List of cell pairs for sub-cell recursion. For any sid, the entries in

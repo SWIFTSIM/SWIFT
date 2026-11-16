@@ -66,6 +66,8 @@ struct replication_list;
 
 /* Global variables. */
 extern int cell_next_tag;
+extern const char *cellID_names[3];
+extern const char *subcellID_names[4];
 extern int cell_max_tag;
 
 /*! Counter for cell IDs (when exceeding max values for uniqueness) */
@@ -100,6 +102,35 @@ struct cell_split_pair {
   } pairs[16];
 };
 extern struct cell_split_pair cell_split_pairs[13];
+
+/**
+ * @brief What kind of top level cell is this cell?
+ *
+ * All cells are cell_type_regular when running a normal box. The other types
+ * are only used when running with a zoom region.
+ */
+enum cell_types {
+  cell_type_regular, /* A standard top level cell (for non-zoom boxes). */
+  cell_type_zoom,    /* A zoom cell (only applicable for zooms). */
+  cell_type_bkg,     /* A background cell (only applicable for zooms). */
+} __attribute__((__packed__));
+
+/**
+ * @brief What subtype of top level cell is this cell?
+ *
+ * Neighbour and void cells are only used when running with a zoom region.
+ *
+ * Mirror cells form a layer one top-level cell thick outside the walls of a
+ * box using mirror boundary conditions. They hold reflected copies of the
+ * particles in the cell they mirror and never contain real particles.
+ */
+enum cell_subtypes {
+  cell_subtype_regular,   /* A normal cell. */
+  cell_subtype_neighbour, /* A cell within the gravity criterion of the zoom
+                             region. */
+  cell_subtype_void,      /* A cell containing the zoom region (void cell). */
+  cell_subtype_mirror,    /* A cell of mirror particles outside a wall. */
+} __attribute__((__packed__));
 
 /**
  * @brief Packed cell for information correct at rebuild time.
@@ -239,6 +270,12 @@ struct pcell {
 
   /*! Relative indices of the cell's progeny. */
   int progeny[8];
+
+  /*! Cell type. */
+  enum cell_types type;
+
+  /*! Cell sub-type. */
+  enum cell_subtypes subtype;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Cell ID (for debugging) */
@@ -509,6 +546,12 @@ struct cell {
   /*! The maximal depth of this cell and its progenies */
   char maxdepth;
 
+  /*! What type of cell is this? */
+  enum cell_types type;
+
+  /*! What subtype of cell is this? */
+  enum cell_subtypes subtype;
+
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   long long cellID;
@@ -533,6 +576,23 @@ struct cell {
 /* Convert cell location to ID. */
 #define cell_getid(cdim, i, j, k) \
   ((int)(k) + (cdim)[2] * ((int)(j) + (cdim)[1] * (int)(i)))
+
+/**
+ * @brief Convert a coordinate to the ID of the top-level cell containing it.
+ *
+ * @param s The space.
+ * @param x, y, z Coordinates of particle/cell.
+ *
+ * @return The cell id.
+ */
+__attribute__((always_inline)) INLINE static int cell_getid_from_pos(
+    const struct space *s, const double x, const double y, const double z) {
+
+  const int i = x * s->iwidth[0];
+  const int j = y * s->iwidth[1];
+  const int k = z * s->iwidth[2];
+  return cell_getid(s->cdim, i, j, k);
+}
 
 /* Function prototypes. */
 void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,

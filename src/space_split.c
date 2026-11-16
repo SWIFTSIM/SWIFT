@@ -123,6 +123,8 @@ static void space_split_make_progeny(struct space *s, struct cell *c,
     cp->black_holes.h_max_active = 0.f;
     cp->black_holes.dx_max_part = 0.f;
     cp->nodeID = c->nodeID;
+    cp->type = c->type;
+    cp->subtype = c->subtype;
     cp->parent = c;
     cp->top = c->top;
     cp->super = NULL;

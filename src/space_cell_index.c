@@ -74,10 +74,6 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
@@ -117,13 +113,12 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
 
     /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+    if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
+            s->cdim[0], s->cdim[1], s->cdim[2], pos_x, pos_y, pos_z);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
@@ -194,10 +189,6 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
@@ -235,13 +226,12 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
 
     /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+    if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
+            s->cdim[0], s->cdim[1], s->cdim[2], pos_x, pos_y, pos_z);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
@@ -318,10 +308,6 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
@@ -359,13 +345,12 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
 
     /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+    if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
+            s->cdim[0], s->cdim[1], s->cdim[2], pos_x, pos_y, pos_z);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
@@ -438,10 +423,6 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
@@ -479,13 +460,12 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
 
     /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+    if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
+            s->cdim[0], s->cdim[1], s->cdim[2], pos_x, pos_y, pos_z);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)
@@ -558,10 +538,6 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
   const double dim_x = s->dim[0];
   const double dim_y = s->dim[1];
   const double dim_z = s->dim[2];
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih_x = s->iwidth[0];
-  const double ih_y = s->iwidth[1];
-  const double ih_z = s->iwidth[2];
 
   /* Init the local count buffer. */
   int *cell_counts = (int *)calloc(s->nr_cells, sizeof(int));
@@ -599,13 +575,12 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
 
     /* Get its cell index */
-    const int index =
-        cell_getid(cdim, pos_x * ih_x, pos_y * ih_y, pos_z * ih_z);
+    const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
 
 #ifdef SWIFT_DEBUG_CHECKS
-    if (index < 0 || index >= cdim[0] * cdim[1] * cdim[2])
-      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index, cdim[0],
-            cdim[1], cdim[2], pos_x, pos_y, pos_z);
+    if (index < 0 || index >= s->cdim[0] * s->cdim[1] * s->cdim[2])
+      error("Invalid index=%d cdim=[%d %d %d] p->x=[%e %e %e]", index,
+            s->cdim[0], s->cdim[1], s->cdim[2], pos_x, pos_y, pos_z);
 
     if (pos_x >= dim_x || pos_y >= dim_y || pos_z >= dim_z || pos_x < 0. ||
         pos_y < 0. || pos_z < 0.)

@@ -575,14 +575,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
     sink_index = sink_ind_new;
   }
 
-  const int cdim[3] = {s->cdim[0], s->cdim[1], s->cdim[2]};
-  const double ih[3] = {s->iwidth[0], s->iwidth[1], s->iwidth[2]};
-
   /* Assign each received part to its cell. */
   for (size_t k = nr_parts; k < s->nr_parts; k++) {
     const struct part *const p = &s->parts[k];
-    h_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    h_index[k] = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
     cell_part_counts[h_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[h_index[k]].nodeID != local_nodeID)
@@ -595,8 +591,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received spart to its cell. */
   for (size_t k = nr_sparts; k < s->nr_sparts; k++) {
     const struct spart *const sp = &s->sparts[k];
-    s_index[k] =
-        cell_getid(cdim, sp->x[0] * ih[0], sp->x[1] * ih[1], sp->x[2] * ih[2]);
+    s_index[k] = cell_getid_from_pos(s, sp->x[0], sp->x[1], sp->x[2]);
     cell_spart_counts[s_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[s_index[k]].nodeID != local_nodeID)
@@ -609,8 +604,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received bpart to its cell. */
   for (size_t k = nr_bparts; k < s->nr_bparts; k++) {
     const struct bpart *const bp = &s->bparts[k];
-    b_index[k] =
-        cell_getid(cdim, bp->x[0] * ih[0], bp->x[1] * ih[1], bp->x[2] * ih[2]);
+    b_index[k] = cell_getid_from_pos(s, bp->x[0], bp->x[1], bp->x[2]);
     cell_bpart_counts[b_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[b_index[k]].nodeID != local_nodeID)
@@ -623,8 +617,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received sink to its cell. */
   for (size_t k = nr_sinks; k < s->nr_sinks; k++) {
     const struct sink *const sink = &s->sinks[k];
-    sink_index[k] = cell_getid(cdim, sink->x[0] * ih[0], sink->x[1] * ih[1],
-                               sink->x[2] * ih[2]);
+    sink_index[k] = cell_getid_from_pos(s, sink->x[0], sink->x[1], sink->x[2]);
     cell_sink_counts[sink_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[sink_index[k]].nodeID != local_nodeID)
@@ -658,9 +651,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_ind =
-        cell_getid(s->cdim, p->x[0] * s->iwidth[0], p->x[1] * s->iwidth[1],
-                   p->x[2] * s->iwidth[2]);
+    const int new_ind = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
 
     /* New cell of this part */
     const struct cell *c = &s->cells_top[new_ind];
@@ -688,9 +679,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_sind =
-        cell_getid(s->cdim, sp->x[0] * s->iwidth[0], sp->x[1] * s->iwidth[1],
-                   sp->x[2] * s->iwidth[2]);
+    const int new_sind = cell_getid_from_pos(s, sp->x[0], sp->x[1], sp->x[2]);
 
     /* New cell of this spart */
     const struct cell *c = &s->cells_top[new_sind];
@@ -718,9 +707,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_bind =
-        cell_getid(s->cdim, bp->x[0] * s->iwidth[0], bp->x[1] * s->iwidth[1],
-                   bp->x[2] * s->iwidth[2]);
+    const int new_bind = cell_getid_from_pos(s, bp->x[0], bp->x[1], bp->x[2]);
 
     /* New cell of this bpart */
     const struct cell *c = &s->cells_top[new_bind];
@@ -749,8 +736,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
 
     /* New cell index */
     const int new_sink_ind =
-        cell_getid(s->cdim, sink->x[0] * s->iwidth[0],
-                   sink->x[1] * s->iwidth[1], sink->x[2] * s->iwidth[2]);
+        cell_getid_from_pos(s, sink->x[0], sink->x[1], sink->x[2]);
 
     /* New cell of this sink */
     const struct cell *c = &s->cells_top[new_sink_ind];
@@ -842,8 +828,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Assign each received gpart to its cell. */
   for (size_t k = nr_gparts; k < s->nr_gparts; k++) {
     const struct gpart *const p = &s->gparts[k];
-    g_index[k] =
-        cell_getid(cdim, p->x[0] * ih[0], p->x[1] * ih[1], p->x[2] * ih[2]);
+    g_index[k] = cell_getid_from_pos(s, p->x[0], p->x[1], p->x[2]);
     cell_gpart_counts[g_index[k]]++;
 #ifdef SWIFT_DEBUG_CHECKS
     if (cells_top[g_index[k]].nodeID != s->e->nodeID)
@@ -881,9 +866,7 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
       error("Inhibited particle sorted into a cell!");
 
     /* New cell index */
-    const int new_gind =
-        cell_getid(s->cdim, gp->x[0] * s->iwidth[0], gp->x[1] * s->iwidth[1],
-                   gp->x[2] * s->iwidth[2]);
+    const int new_gind = cell_getid_from_pos(s, gp->x[0], gp->x[1], gp->x[2]);
 
     /* New cell of this gpart */
     const struct cell *c = &s->cells_top[new_gind];
