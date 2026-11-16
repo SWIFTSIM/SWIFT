@@ -154,6 +154,11 @@ struct space {
   /*! Inverse of the top-level cell width */
   double iwidth[3];
 
+  /*! Origin of the boundary: the lower corner of the layer of mirror cells
+   * outside the box, below zero along axes with a mirror wall on the lower
+   * face and zero otherwise. */
+  double boundary_origin[3];
+
   /*! The minimum top-level cell width allowed. */
   double cell_min;
 

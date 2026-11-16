@@ -118,7 +118,7 @@ void space_regrid(struct space *s, int verbose) {
   if (verbose) message("h_max is %.3e (cell_min=%.3e).", h_max, s->cell_min);
 
   /* Get the new putative cell dimensions. */
-  const int cdim[3] = {
+  int cdim[3] = {
       (int)floor(s->dim[0] /
                  fmax(h_max * kernel_gamma * space_stretch, s->cell_min)),
       (int)floor(s->dim[1] /
@@ -134,6 +134,16 @@ void space_regrid(struct space *s, int verbose) {
         "lengths of the particles, e.g. a smoothing length that is comparable "
         "in size to the box size.",
         cdim[0], cdim[1], cdim[2]);
+  }
+
+  /* Add the layers of mirror cells outside the walls that want them. From
+   * here on cdim counts the cells of the padded grid. */
+  const struct boundary_conditions *bc = &s->boundary_conditions;
+  int pad_lo[3], pad_hi[3];
+  for (int k = 0; k < 3; k++) {
+    pad_lo[k] = boundary_conditions_mirror_pad(bc, k, /*upper=*/0);
+    pad_hi[k] = boundary_conditions_mirror_pad(bc, k, /*upper=*/1);
+    cdim[k] += pad_lo[k] + pad_hi[k];
   }
 
   /* Check if we have enough cells for periodicity. */
@@ -158,6 +168,11 @@ void space_regrid(struct space *s, int verbose) {
   double oldcdim[3] = {0., 0., 0.};
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
+
+    /* ponytail: the resampling of the old partition below ignores the
+     * padding; teach it the cell origin when mirror walls go over MPI. */
+    if (bc->wall_model == boundary_wall_model_mirror)
+      error("Regridding with mirror walls is not supported over MPI yet.");
 
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
@@ -218,8 +233,9 @@ void space_regrid(struct space *s, int verbose) {
     /* Set the new cell dimensions only if smaller. */
     for (int k = 0; k < 3; k++) {
       s->cdim[k] = cdim[k];
-      s->width[k] = s->dim[k] / cdim[k];
+      s->width[k] = s->dim[k] / (cdim[k] - pad_lo[k] - pad_hi[k]);
       s->iwidth[k] = 1.0 / s->width[k];
+      s->boundary_origin[k] = -pad_lo[k] * s->width[k];
     }
     const float dmin = min3(s->width[0], s->width[1], s->width[2]);
 
@@ -304,9 +320,21 @@ void space_regrid(struct space *s, int verbose) {
         for (int k = 0; k < cdim[2]; k++) {
           const size_t cid = cell_getid(cdim, i, j, k);
           struct cell *restrict c = &s->cells_top[cid];
-          c->loc[0] = i * s->width[0];
-          c->loc[1] = j * s->width[1];
-          c->loc[2] = k * s->width[2];
+          c->loc[0] = s->boundary_origin[0] + i * s->width[0];
+          c->loc[1] = s->boundary_origin[1] + j * s->width[1];
+          c->loc[2] = s->boundary_origin[2] + k * s->width[2];
+
+          /* Cells in the padding reflect a cell inside the box. */
+          const int ip = boundary_conditions_mirror_index(i, cdim[0], pad_lo[0],
+                                                          pad_hi[0]);
+          const int jp = boundary_conditions_mirror_index(j, cdim[1], pad_lo[1],
+                                                          pad_hi[1]);
+          const int kp = boundary_conditions_mirror_index(k, cdim[2], pad_lo[2],
+                                                          pad_hi[2]);
+          if (ip != i || jp != j || kp != k) {
+            c->subtype = cell_subtype_mirror;
+            c->mirror_of = &s->cells_top[cell_getid(cdim, ip, jp, kp)];
+          }
           c->width[0] = s->width[0];
           c->width[1] = s->width[1];
           c->width[2] = s->width[2];
@@ -336,7 +364,8 @@ void space_regrid(struct space *s, int verbose) {
 #endif  // WITH_MPI
           if (s->with_self_gravity) c->grav.multipole = &s->multipoles_top[cid];
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
-          cell_assign_top_level_cell_index(c, s->cdim, s->dim, s->iwidth);
+          cell_assign_top_level_cell_index(c, s->cdim, s->boundary_origin,
+                                           s->iwidth);
 #endif
         }
 

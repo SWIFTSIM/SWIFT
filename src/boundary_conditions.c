@@ -66,12 +66,26 @@ void boundary_conditions_init(struct boundary_conditions *bc,
   if (has_legacy && legacy_periodic != (bc->type == boundary_condition_periodic))
     error("BoundaryConditions:type conflicts with InitialConditions:periodic.");
 
+  const int has_wall_model =
+      parser_does_param_exist(params, "BoundaryConditions:wall_model");
+
   bc->walls = 0;
+  bc->wall_model = boundary_wall_model_bounce;
   if (bc->type != boundary_condition_reflective) {
     if (has_walls)
       error("BoundaryConditions:walls requires type: reflective.");
+    if (has_wall_model)
+      error("BoundaryConditions:wall_model requires type: reflective.");
     return;
   }
+
+  char wall_model[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(params, "BoundaryConditions:wall_model",
+                              wall_model, "bounce");
+  if (!strcmp(wall_model, "mirror"))
+    bc->wall_model = boundary_wall_model_mirror;
+  else if (strcmp(wall_model, "bounce"))
+    error("Unknown BoundaryConditions:wall_model '%s'.", wall_model);
 
   if (!has_walls) error("Reflective boundaries require BoundaryConditions:walls.");
 

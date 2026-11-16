@@ -552,6 +552,9 @@ struct cell {
   /*! What subtype of cell is this? */
   enum cell_subtypes subtype;
 
+  /*! The cell this one reflects (top-level mirror cells only). */
+  struct cell *mirror_of;
+
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   long long cellID;
@@ -588,9 +591,9 @@ struct cell {
 __attribute__((always_inline)) INLINE static int cell_getid_from_pos(
     const struct space *s, const double x, const double y, const double z) {
 
-  const int i = x * s->iwidth[0];
-  const int j = y * s->iwidth[1];
-  const int k = z * s->iwidth[2];
+  const int i = (x - s->boundary_origin[0]) * s->iwidth[0];
+  const int j = (y - s->boundary_origin[1]) * s->iwidth[1];
+  const int k = (z - s->boundary_origin[2]) * s->iwidth[2];
   return cell_getid(s->cdim, i, j, k);
 }
 
@@ -1746,11 +1749,11 @@ __attribute__((always_inline)) INLINE static struct task *cell_get_recv(
  *
  * @param c #cell to work with
  * @param cdim number of cells in each dimension
- * @param dim spatial extent.
+ * @param bounds origin of the boundary (see space::boundary_origin).
  * @param iwidth inverse of top cell width
  */
 __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
-    struct cell *c, int cdim[3], double dim[3], double iwidth[3]) {
+    struct cell *c, int cdim[3], double bounds[3], double iwidth[3]) {
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   if (c->depth != 0) {
@@ -1768,9 +1771,9 @@ __attribute__((always_inline)) INLINE void cell_assign_top_level_cell_index(
       /* Do this in same line. Otherwise, bad things happen. */
       c->cellID = atomic_inc(&last_cell_id);
     } else {
-      int i = (int)(c->loc[0] * iwidth[0] + 0.5);
-      int j = (int)(c->loc[1] * iwidth[1] + 0.5);
-      int k = (int)(c->loc[2] * iwidth[2] + 0.5);
+      int i = (int)((c->loc[0] - bounds[0]) * iwidth[0] + 0.5);
+      int j = (int)((c->loc[1] - bounds[1]) * iwidth[1] + 0.5);
+      int k = (int)((c->loc[2] - bounds[2]) * iwidth[2] + 0.5);
       c->cellID = (unsigned long long)(cell_getid(cdim, i, j, k) + 1);
     }
     /* in both cases, keep track of first prodigy index */

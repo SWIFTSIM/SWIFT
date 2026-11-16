@@ -1156,6 +1156,9 @@ void space_init(struct space *s, struct swift_params *params,
   const int periodic = boundary_conditions->type == boundary_condition_periodic;
   s->periodic = periodic;
   s->with_self_gravity = self_gravity;
+  if (self_gravity &&
+      boundary_conditions->wall_model == boundary_wall_model_mirror)
+    error("Mirror walls are not supported with self-gravity.");
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
   s->with_sink = with_sink;

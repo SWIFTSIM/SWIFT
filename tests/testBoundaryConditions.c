@@ -59,6 +59,35 @@ int main(int argc, char *argv[]) {
   assert(bc.type == boundary_condition_reflective);
   assert(bc.walls ==
          (boundary_wall_x_min | boundary_wall_x_max | boundary_wall_z_min));
+  assert(bc.wall_model == boundary_wall_model_bounce);
+
+  /* Bouncing walls get no mirror cells. */
+  assert(!boundary_conditions_mirror_pad(&bc, 0, 0));
+
+  /* Mirror walls pad the grid outside the listed faces only. */
+  parser_set_param(&params, "BoundaryConditions:wall_model:mirror");
+  boundary_conditions_init(&bc, &params);
+  assert(bc.wall_model == boundary_wall_model_mirror);
+  assert(boundary_conditions_mirror_pad(&bc, 0, 0));
+  assert(boundary_conditions_mirror_pad(&bc, 0, 1));
+  assert(!boundary_conditions_mirror_pad(&bc, 1, 0));
+  assert(!boundary_conditions_mirror_pad(&bc, 1, 1));
+  assert(boundary_conditions_mirror_pad(&bc, 2, 0));
+  assert(!boundary_conditions_mirror_pad(&bc, 2, 1));
+
+  /* Five cells, the outer two being mirrors: each reflects its neighbour. */
+  assert(boundary_conditions_mirror_index(0, 5, 1, 1) == 1);
+  assert(boundary_conditions_mirror_index(1, 5, 1, 1) == 1);
+  assert(boundary_conditions_mirror_index(3, 5, 1, 1) == 3);
+  assert(boundary_conditions_mirror_index(4, 5, 1, 1) == 3);
+
+  /* A single real cell is reflected on both sides. */
+  assert(boundary_conditions_mirror_index(0, 3, 1, 1) == 1);
+  assert(boundary_conditions_mirror_index(2, 3, 1, 1) == 1);
+
+  /* No padding, no reflection. */
+  assert(boundary_conditions_mirror_index(0, 4, 0, 0) == 0);
+  assert(boundary_conditions_mirror_index(3, 4, 0, 1) == 2);
 
   if (argc > 1) {
     bzero(&params, sizeof(params));
