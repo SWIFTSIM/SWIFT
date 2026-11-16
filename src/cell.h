@@ -1287,6 +1287,36 @@ cell_can_recurse_in_self_stars_subset(const struct cell *c,
 }
 
 /**
+ * @brief Can the re-run of the stars density loop for a subset of the stars
+ * (stars ghost) recurse to a lower level in a pair interaction?
+ *
+ * The recursion only visits the pairs of progeny that touch each other
+ * (cell_split_pairs). The pairs it skips are at least half a cell width
+ * apart, so no star of the subset may reach the gas of a skipped progeny of
+ * cj: the search radius of the stars of the subset plus the largest distance
+ * by which the stars of ci and the gas of cj lie outside their cells must be
+ * smaller than half the cell width. The stars of cj play no role here, as
+ * only the gas of cj is searched.
+ *
+ * @param ci The #cell holding the stars of the subset.
+ * @param cj The #cell holding the gas.
+ * @param h_subset_max The largest smoothing length of the stars of the
+ * subset.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_stars_subset(const struct cell *ci,
+                                      const struct cell *cj,
+                                      const float h_subset_max) {
+
+  /* Are both cells split ? */
+  /* If so, is the cut-off radius plus the distance the stars of ci and */
+  /* the gas of cj lie outside their cells smaller than the sub-cell sizes ? */
+  return ci->split && cj->split &&
+         ((kernel_gamma * h_subset_max + cell_get_stars_dx_outside_max(ci) +
+           cell_get_hydro_dx_outside_max(cj)) < 0.5f * min(ci->dmin, cj->dmin));
+}
+
+/**
  * @brief Can a pair sink task recurse to a lower level based
  * on the status of the particles in the cells.
  *

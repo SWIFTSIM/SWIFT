@@ -1759,7 +1759,7 @@ void DOSUB_PAIR_SUBSET_STARS(struct runner *r, struct cell *ci,
   if (!cell_is_active_stars(ci, e)) return;
 
   /* Recurse? */
-  if (cell_can_recurse_in_pair_stars_task(ci, cj, h_max_redo)) {
+  if (cell_can_recurse_in_pair_stars_subset(ci, cj, h_max_redo)) {
 
     /* Find in which sub-cell of ci the particles are */
     struct cell *const sub = FIND_SUB_STARS(ci, sparts, ind);
