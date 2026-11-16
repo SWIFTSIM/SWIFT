@@ -1159,10 +1159,6 @@ void space_init(struct space *s, struct swift_params *params,
   if (self_gravity &&
       boundary_conditions->wall_model == boundary_wall_model_mirror)
     error("Mirror walls are not supported with self-gravity.");
-#ifndef REMIX_SPH
-  if (boundary_conditions->wall_model == boundary_wall_model_mirror)
-    error("Mirror walls are only implemented for the REMIX hydro scheme.");
-#endif
   s->with_hydro = hydro;
   s->with_star_formation = star_formation;
   s->with_sink = with_sink;

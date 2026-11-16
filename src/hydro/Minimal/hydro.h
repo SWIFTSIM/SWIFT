@@ -1021,4 +1021,21 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
 __attribute__((always_inline)) INLINE static void hydro_remove_part(
     const struct part *p, const struct xpart *xp, const double time) {}
 
+/**
+ * @brief Reflect the vectors and tensors of a particle in a plane normal to
+ * one axis, to make it the mirror image of itself behind a wall.
+ *
+ * The position and velocity are dealt with by the caller. Not implemented
+ * for this scheme: every vector and tensor field read by neighbours in the
+ * hydro loops needs its components along the axis flipped (see REMIX).
+ *
+ * @param p The particle.
+ * @param k The axis normal to the wall.
+ */
+__attribute__((always_inline)) INLINE static void hydro_mirror_part(
+    struct part *p, const int k) {
+
+  error("Mirror walls are not implemented for this hydro scheme.");
+}
+
 #endif /* SWIFT_MINIMAL_HYDRO_H */

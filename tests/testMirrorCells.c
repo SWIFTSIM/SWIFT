@@ -195,6 +195,11 @@ static void test_kernel_sum(void) {
 }
 
 int main(void) {
+#ifndef REMIX_SPH
+  /* Only REMIX implements hydro_mirror_part() */
+  message("Mirror walls are not implemented for this hydro scheme, skipping.");
+  return 0;
+#endif
   test(boundary_wall_x_min, -1.);
   test(boundary_wall_x_max, 1.);
   test_kernel_sum();

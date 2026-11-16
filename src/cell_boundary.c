@@ -312,9 +312,7 @@ void cell_mirror_refresh(struct cell *c, const double dim[3], const int moved) {
         continue;
       }
       p.v[k] = -p.v[k];
-#ifdef REMIX_SPH
       hydro_mirror_part(&p, k);
-#endif
     }
     mirrors[i] = p;
   }
