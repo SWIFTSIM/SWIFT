@@ -123,10 +123,29 @@ static void add_parts(struct cell *c, const int count, const double (*x)[3],
     struct part *p = &c->hydro.parts[i];
     for (int k = 0; k < 3; k++) p->x[k] = x[i][k];
     p->h = h[i];
+    hydro_set_mass(p, 1.f);
+
+    /* Give the particles a valid thermodynamic state: the drift predicts
+     * the pressure and the sound speed, which would otherwise be 0/0. The
+     * density is set last as hydro_first_init_part() zeroes it. */
+#if defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
+    p->conserved.energy = 1.f;
+#else
+    p->rho = 1.f;
+    hydro_set_init_internal_energy(p, 1.f);
+#endif
+#if defined(PLANETARY_SPH) || defined(REMIX_SPH)
+    set_idg_def(&eos.idg_def, 0);
+    p->mat_id = 0;
+#endif
+    hydro_first_init_part(p, &c->hydro.xparts[i]);
+#if !defined(GIZMO_MFV_SPH) && !defined(GIZMO_MFM_SPH)
+    p->rho = 1.f;
+#endif
+
     p->id = ++(*id);
     p->time_bin = 1;
     p->depth_h = 0;
-    hydro_set_mass(p, 1.f);
 #ifdef SWIFT_DEBUG_CHECKS
     p->ti_drift = 8;
     p->ti_kick = 8;
