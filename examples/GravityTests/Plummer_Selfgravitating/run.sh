@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ ! -e plummer.hdf5 ]
 then
     echo "Generating initial conditions for Plummer example..."
@@ -9,7 +11,7 @@ fi
 # create output directory
 if [ ! -e snap ]
 then
-  mkdir snap
+  mkdir -p snap
 fi
 
 ../../../swift --self-gravity --threads=8 params.yml 2>&1 | tee output.log

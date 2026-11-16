@@ -74,6 +74,9 @@
 #define _DOPAIR1_BRANCH_STARS(f) PASTE(runner_dopair_branch_stars, f)
 #define DOPAIR1_BRANCH_STARS _DOPAIR1_BRANCH_STARS(FUNCTION)
 
+#define _DOPAIR1_PROGENY_STARS(f) PASTE(runner_dopair_progeny_stars, f)
+#define DOPAIR1_PROGENY_STARS _DOPAIR1_PROGENY_STARS(FUNCTION)
+
 #define _DOSUB_PAIR1_STARS(f) PASTE(runner_dosub_pair_stars, f)
 #define DOSUB_PAIR1_STARS _DOSUB_PAIR1_STARS(FUNCTION)
 
@@ -101,6 +104,9 @@ void DOSELF1_BRANCH_STARS(struct runner *r, const struct cell *c,
 void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                           const int offset, const int ntasks, float h_lo_i,
                           float h_hi_i, float h_lo_j, float h_hi_j);
+void DOPAIR1_PROGENY_STARS(struct runner *r, struct cell *ci, struct cell *cj,
+                           const int offset, const int ntasks, const float h_lo,
+                           const float h_hi);
 
 void DOSUB_SELF1_STARS(struct runner *r, struct cell *ci, const int offset,
                        const int ntasks, const float h_hi, const int gettimer);
