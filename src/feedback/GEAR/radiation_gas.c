@@ -335,8 +335,8 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
   sp->feedback_data.radiation.n_HII_pixels = n_HII_pixels;
 
   const double dot_N_ion_per_pixel = dot_N_ion_total / n_HII_pixels;
-  for (int p = 0; p < n_HII_pixels; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
+  for (int pixel = 0; pixel < n_HII_pixels; pixel++) {
+    sp->feedback_data.radiation.dot_N_ion_pix[pixel] = dot_N_ion_per_pixel;
   }
 }
 
@@ -359,19 +359,21 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
   double rate_prev_dbg = 0., rate_now_dbg = 0., rate_used_dbg = 0.;
 #endif
 
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+  for (int pixel = 0; pixel < sp->feedback_data.radiation.n_HII_pixels;
+       pixel++) {
     /* Unspent photons escaped. A pixel never ends a pass below zero: a won
        roll on a candidate costing more than the budget takes what is left,
        and the roll's p = budget / cost keeps the spend unbiased. */
-    const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[p];
-    const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[p];
+    const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[pixel];
+    const double rate_prev =
+        sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel];
     /* rate_prev < 0: first pass, no previous sample, so use rate_now. */
     const double rate_used =
         rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
     const double issued = rate_used * dt_back;
 
-    sp->feedback_data.radiation.N_ion_budget_pix[p] = issued;
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = rate_now;
+    sp->feedback_data.radiation.N_ion_budget_pix[pixel] = issued;
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel] = rate_now;
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     issued_total += issued;
@@ -403,9 +405,10 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 __attribute__((always_inline)) INLINE void
 radiation_resync_ionizing_photon_rate_cache(struct spart *sp) {
 
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] =
-        sp->feedback_data.radiation.dot_N_ion_pix[p];
+  for (int pixel = 0; pixel < sp->feedback_data.radiation.n_HII_pixels;
+       pixel++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel] =
+        sp->feedback_data.radiation.dot_N_ion_pix[pixel];
   }
 }
 
@@ -597,8 +600,9 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
   radiation_set_star_bolometric_luminosity(sp, 0.f);
   radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)m, 0.);
+  for (int moment = 0; moment < ISRF_MOMENT_COUNT; moment++)
+    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)moment,
+                                       0.);
   radiation_set_star_teff(sp, 0.f);
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }
@@ -625,8 +629,8 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
   p->feedback_data.is_illuminated_ISRF = 0;
 
   if (!e->feedback_props->ISRF_propagation) {
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-      p->feedback_data.isrf_moment[m].u = 0.f;
+    for (int moment = 0; moment < ISRF_MOMENT_COUNT; moment++)
+      p->feedback_data.isrf_moment[moment].u = 0.f;
   }
 }
 
@@ -690,19 +694,19 @@ _Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
  * particle. The stored value is unchanged.
  *
  * @param p The particle.
- * @param m The moment to read (#radiation_isrf_moment).
+ * @param moment The moment to read (#radiation_isrf_moment).
  * @return The band's specific energy, or 0 if it was negative.
  */
 static double radiation_get_band_u_nonnegative(const struct part *p,
-                                               const int m) {
+                                               const int moment) {
 
   static volatile long long band_clamp_count[ISRF_MOMENT_COUNT] = {0};
   static volatile double band_clamp_worst[ISRF_MOMENT_COUNT] = {0.};
 
   return radiation_clamp_nonnegative_for_grackle(
-      radiation_isrf_moment_clamp_name[m],
-      (double)p->feedback_data.isrf_moment[m].u, &band_clamp_count[m],
-      &band_clamp_worst[m]);
+      radiation_isrf_moment_clamp_name[moment],
+      (double)p->feedback_data.isrf_moment[moment].u, &band_clamp_count[moment],
+      &band_clamp_worst[moment]);
 }
 
 /**

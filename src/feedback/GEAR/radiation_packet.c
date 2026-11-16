@@ -480,17 +480,17 @@ static void radiation_packet_report_frame_width(const struct engine *e) {
  * The light of a hop arrives `r / (v dt_r) + s` receiver steps after the
  * departure of the sender: the hop of length `r h_r` takes `r / q` receiver
  * steps, and a sender `s` times coarser than the receiver spreads its light
- * over `s` more.
+ * over `s` more, `s` being @p step_ratio.
  *
  * @param reach Length of the hop over the smoothing length of the receiver.
  * @param q Distance that the light covers in one receiver step, over the
  * smoothing length of the receiver.
- * @param s Step ratio of the sender to the receiver, at least 1.
+ * @param step_ratio Step ratio of the sender to the receiver, at least 1.
  * @return The number of bins.
  */
 int radiation_packet_bin_demand(const double reach, const double q,
-                                const int s) {
-  return (int)ceil(reach / q) + s;
+                                const int step_ratio) {
+  return (int)ceil(reach / q) + step_ratio;
 }
 
 /**
@@ -945,22 +945,23 @@ __attribute__((always_inline)) INLINE static float radiation_packet_reach_guard(
  *
  * @param r2 Square distance, computed in the caller of this function from the
  * weight vector of #radiation_packet_weight_vector.
- * @param h_s Comoving smoothing length of the sender.
- * @param h_r Comoving smoothing length of the receiver.
- * @param r_active Is the receiver active in this step?
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the receiver.
+ * @param is_receiver_active Is the receiver active in this step?
  * @param want The part asked for: #RADIATION_PACKET_REACH_INNER,
  * #RADIATION_PACKET_REACH_OUTER or #RADIATION_PACKET_REACH_ALL.
  * @return 1 if the receiver is in the part asked for.
  */
 __attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
-    const float r2, const float h_s, const float h_r, const int r_active,
-    const int want) {
+    const float r2, const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want) {
 
-  const float cut_s = (1.f - radiation_packet_reach_guard(h_s)) * kernel_gamma2;
-  const int inner = r2 < cut_s * h_s * h_s;
-  const int outer = !inner && r_active &&
-                    r2 < (1.f - radiation_packet_reach_guard(h_r)) *
-                             kernel_gamma2 * h_r * h_r;
+  const float cut_s =
+      (1.f - radiation_packet_reach_guard(h_sender)) * kernel_gamma2;
+  const int inner = r2 < cut_s * h_sender * h_sender;
+  const int outer = !inner && is_receiver_active &&
+                    r2 < (1.f - radiation_packet_reach_guard(h_receiver)) *
+                             kernel_gamma2 * h_receiver * h_receiver;
   if (want == RADIATION_PACKET_REACH_INNER) return inner;
   if (want == RADIATION_PACKET_REACH_OUTER) return outer;
   return inner || outer;
@@ -970,8 +971,8 @@ __attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
  * @brief Transmission weight `V W(r, H) max(0, mu)^p` of a sender towards
  * one neighbour, with `mu` the cosine between the hop and the packet
  * direction, `V = mass / rho` the comoving volume of the neighbour and
- * `H = max(h_s, h_r)`. The expansion factor of the comoving density is common
- * to all neighbours and cancels in the shares.
+ * `H = max(h_sender, h_receiver)`. The expansion factor of the comoving density
+ * is common to all neighbours and cancels in the shares.
  *
  * The sum over the neighbours is the SPH quadrature of the integral of
  * `W mu^p`, so the share to a side follows the solid angle and not the number
@@ -985,9 +986,9 @@ __attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
  * caller's `r2` may be contracted differently at each call site.
  *
  * @param dx Comoving vector from the sender to the neighbour.
- * @param h_s Comoving smoothing length of the sender.
- * @param h_r Comoving smoothing length of the neighbour.
- * @param r_active Is the neighbour active in this step?
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the neighbour.
+ * @param is_receiver_active Is the neighbour active in this step?
  * @param want The part of the reach asked for.
  * @param n Unit direction of the packet.
  * @param power Power `p` of the cone.
@@ -996,19 +997,20 @@ __attribute__((always_inline)) INLINE static int radiation_packet_in_reach(
  * @return The weight.
  */
 __attribute__((noinline)) float radiation_packet_transmission_weight(
-    const float dx[3], const float h_s, const float h_r, const int r_active,
-    const int want, const float n[3], const float power, const float mass,
-    const float rho) {
+    const float dx[3], const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want, const float n[3],
+    const float power, const float mass, const float rho) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-  if (!(r2 > 0.f) || !radiation_packet_in_reach(r2, h_s, h_r, r_active, want))
+  if (!(r2 > 0.f) || !radiation_packet_in_reach(r2, h_sender, h_receiver,
+                                                is_receiver_active, want))
     return 0.f;
 
   const float r = sqrtf(r2);
   const float mu = (dx[0] * n[0] + dx[1] * n[1] + dx[2] * n[2]) / r;
   if (mu <= RADIATION_PACKET_MU_MIN) return 0.f;
 
-  const float h_inv = 1.f / fmaxf(h_s, h_r);
+  const float h_inv = 1.f / fmaxf(h_sender, h_receiver);
   float w;
   kernel_eval(r * h_inv, &w);
   return (mass / rho) * w * pow_dimension(h_inv) * powf(mu, power);
@@ -1026,16 +1028,16 @@ __attribute__((noinline)) float radiation_packet_transmission_weight(
  * #radiation_packet_set_box, called in `engine_config` on every rank; without
  * it the box is not periodic and no image is chosen.
  *
- * @param s The sender.
- * @param r The neighbour.
+ * @param sender The sender.
+ * @param receiver The neighbour.
  * @param dx The loop's comoving vector from the sender to the neighbour.
  * @param out (return) The vector, comoving.
  */
 __attribute__((noinline)) void radiation_packet_weight_vector(
-    const struct part *s, const struct part *r, const float dx[3],
+    const struct part *sender, const struct part *receiver, const float dx[3],
     float out[3]) {
   for (int k = 0; k < 3; k++) {
-    double d = r->x[k] - s->x[k];
+    double d = receiver->x[k] - sender->x[k];
     if (radiation_packet_box_periodic) {
       const double wrap = d - (double)dx[k];
       if (wrap > 0.5 * radiation_packet_box_dim[k])
@@ -1557,11 +1559,11 @@ void radiation_packet_book_star_left_box(const struct spart *sp) {
  * @brief A sink leaves a non-periodic box: add its ledger to the box ledger.
  * Called with `e->s->lock` held.
  *
- * @param s The sink particle.
+ * @param sink The sink particle.
  */
-void radiation_packet_book_sink_left_box(const struct sink *s) {
+void radiation_packet_book_sink_left_box(const struct sink *sink) {
   radiation_packet_add_removed(&radiation_packet_box.sinks_left_box,
-                               &s->feedback_data.isrf_packet);
+                               &sink->feedback_data.isrf_packet);
 }
 
 /**

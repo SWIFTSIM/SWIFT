@@ -371,26 +371,26 @@ double radiation_get_part_LW_dissociation_rate_internal(
  * @brief Set the luminosity of a star in one ISRF moment.
  *
  * @param sp The #spart.
- * @param m The #radiation_isrf_moment.
+ * @param moment The #radiation_isrf_moment.
  * @param L The luminosity (physical units).
  */
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_band_luminosity(struct spart *sp,
-                                   const enum radiation_isrf_moment m,
+                                   const enum radiation_isrf_moment moment,
                                    const double L) {
-  sp->feedback_data.radiation.L_band[m] = L;
+  sp->feedback_data.radiation.L_band[moment] = L;
 }
 
 /**
  * @brief Luminosity of a star in one ISRF moment (physical units).
  *
  * @param sp The #spart.
- * @param m The #radiation_isrf_moment.
+ * @param moment The #radiation_isrf_moment.
  */
 __attribute__((always_inline)) INLINE static double
 radiation_get_star_band_luminosity(const struct spart *sp,
-                                   const enum radiation_isrf_moment m) {
-  return sp->feedback_data.radiation.L_band[m];
+                                   const enum radiation_isrf_moment moment) {
+  return sp->feedback_data.radiation.L_band[moment];
 }
 
 /**
@@ -438,11 +438,11 @@ radiation_get_part_LW_dissociation_rate_internal(
 }
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_band_luminosity(struct spart *sp,
-                                   const enum radiation_isrf_moment m,
+                                   const enum radiation_isrf_moment moment,
                                    const double L) {}
 __attribute__((always_inline)) INLINE static double
 radiation_get_star_band_luminosity(const struct spart *sp,
-                                   const enum radiation_isrf_moment m) {
+                                   const enum radiation_isrf_moment moment) {
   return 0.;
 }
 __attribute__((always_inline)) INLINE static void
