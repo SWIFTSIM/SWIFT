@@ -247,3 +247,41 @@ void cell_boundary_sink(struct cell *c, const struct engine *e) {
     if (lock_unlock(&e->s->lock) != 0) error("Failed to unlock the space!");
   }
 }
+
+/**
+ * @brief Refresh the mirror particles of a mirror cell hierarchy.
+ *
+ * Each mirror particle becomes a copy of the particle with the same index in
+ * the leaf cell this one reflects, with its position reflected in the walls
+ * and its velocity normal to them reversed (free slip).
+ *
+ * @param c The mirror #cell.
+ * @param dim The box dimensions.
+ */
+void cell_mirror_refresh(struct cell *c, const double dim[3]) {
+  if (c->split) {
+    for (int k = 0; k < 8; k++)
+      if (c->progeny[k] != NULL) cell_mirror_refresh(c->progeny[k], dim);
+    return;
+  }
+
+  const struct part *restrict parts = c->mirror_of->hydro.parts;
+  struct part *restrict mirrors = c->hydro.parts;
+  const int count = c->hydro.count;
+  const unsigned int walls = c->mirror_walls;
+
+  for (int i = 0; i < count; i++) {
+    struct part *restrict p = &mirrors[i];
+    *p = parts[i];
+    p->gpart = NULL;
+    for (int k = 0; k < 3; k++) {
+      if (walls & (1u << (2 * k)))
+        p->x[k] = -p->x[k];
+      else if (walls & (1u << (2 * k + 1)))
+        p->x[k] = 2. * dim[k] - p->x[k];
+      else
+        continue;
+      p->v[k] = -p->v[k];
+    }
+  }
+}

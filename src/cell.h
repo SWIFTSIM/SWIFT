@@ -552,8 +552,12 @@ struct cell {
   /*! What subtype of cell is this? */
   enum cell_subtypes subtype;
 
-  /*! The cell this one reflects (top-level mirror cells only). */
+  /*! The cell this one reflects (mirror cells only). */
   struct cell *mirror_of;
+
+  /*! The walls this cell is reflected in (mirror cells only), as a bit mask
+   * of #boundary_wall. */
+  unsigned char mirror_walls;
 
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */

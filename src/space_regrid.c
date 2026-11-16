@@ -334,6 +334,8 @@ void space_regrid(struct space *s, int verbose) {
           if (ip != i || jp != j || kp != k) {
             c->subtype = cell_subtype_mirror;
             c->mirror_of = &s->cells_top[cell_getid(cdim, ip, jp, kp)];
+            c->mirror_walls = (ip > i) << 0 | (ip < i) << 1 | (jp > j) << 2 |
+                              (jp < j) << 3 | (kp > k) << 4 | (kp < k) << 5;
           }
           c->width[0] = s->width[0];
           c->width[1] = s->width[1];

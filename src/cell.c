@@ -763,6 +763,9 @@ void cell_check_part_drift_point(struct cell *c, void *data) {
   /* Only check cells with content */
   if (c->hydro.count == 0) return;
 
+  /* Mirror particles are copies, only as current as their last refresh */
+  if (c->subtype == cell_subtype_mirror) return;
+
   if (c->hydro.ti_old_part != ti_drift)
     error("Cell in an incorrect time-zone! c->hydro.ti_old=%lld ti_drift=%lld",
           c->hydro.ti_old_part, ti_drift);

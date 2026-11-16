@@ -2186,6 +2186,10 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
 
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
+
+    /* ponytail: mirror cells get no tasks until their refresh tasks exist. */
+    if (c->subtype == cell_subtype_mirror) continue;
+
     /* Make the common tasks (time integration) */
     engine_make_hierarchical_tasks_common(e, c);
     /* Add the hydro stuff */
@@ -3738,6 +3742,9 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
         (!with_black_holes || ci->black_holes.count == 0))
       continue;
 
+    /* ponytail: mirror cells get no tasks until their refresh tasks exist. */
+    if (ci->subtype == cell_subtype_mirror) continue;
+
     /* If the cell is local build a self-interaction */
     if (ci->nodeID == nodeID) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
@@ -3770,6 +3777,9 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
                (!with_black_holes || cj->black_holes.count == 0)) ||
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
+
+          /* ponytail: see above. */
+          if (cj->subtype == cell_subtype_mirror) continue;
 
           /* Construct the pair task */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];

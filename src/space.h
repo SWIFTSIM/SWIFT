@@ -159,6 +159,11 @@ struct space {
    * face and zero otherwise. */
   double boundary_origin[3];
 
+  /*! The mirror particles: reflected copies of the particles in the cells
+   * next to mirror walls, held by the mirror cells. */
+  struct part *parts_mirror;
+  size_t nr_parts_mirror, size_parts_mirror;
+
   /*! The minimum top-level cell width allowed. */
   double cell_min;
 
@@ -435,6 +440,9 @@ void space_map_parts_xparts(struct space *s,
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, int repartitioned, int verbose);
+void space_mirror_populate(struct space *s, int verbose);
+void space_mirror_clone(struct space *s, struct cell *cm, struct cell *c,
+                        struct part *parts);
 void space_recycle(struct space *s, struct cell *c);
 void space_recycle_list(struct space *s, struct cell *cell_list_begin,
                         struct cell *cell_list_end,

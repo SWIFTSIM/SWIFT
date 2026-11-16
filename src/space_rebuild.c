@@ -993,6 +993,10 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
      cell to get the full AMR grid. */
   space_split(s, verbose);
 
+  /* Now that the real cells have their trees, reflect the ones next to
+   * mirror walls into the mirror cells. */
+  space_mirror_populate(s, verbose);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */
   if (s->with_self_gravity)

@@ -2600,6 +2600,7 @@ void space_clean(struct space *s) {
              s->local_cells_with_particles_top);
   swift_free("parts", s->parts);
   swift_free("xparts", s->xparts);
+  swift_free("parts_mirror", s->parts_mirror);
   swift_free("gparts", s->gparts);
   swift_free("sparts", s->sparts);
   swift_free("bparts", s->bparts);
@@ -2832,6 +2833,9 @@ void space_struct_restore(struct space *s, FILE *stream) {
   /* More things to read. */
   s->parts = NULL;
   s->xparts = NULL;
+  s->parts_mirror = NULL;
+  s->nr_parts_mirror = 0;
+  s->size_parts_mirror = 0;
   if (s->nr_parts > 0) {
 
     /* Need the memory for these. */
