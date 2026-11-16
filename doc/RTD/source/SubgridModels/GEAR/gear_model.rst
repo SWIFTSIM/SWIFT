@@ -214,4 +214,4 @@ Here is the complete section in the parameter file:
    ``H2_self_shielding``, ``H2_self_shielding_path`` and ``photoelectric_heating_efficiency`` above matter for the GEAR interstellar radiation field (ISRF) module: copying the block as-is leaves H2 unshielded from the Lyman-Werner field. See :ref:`gear_isrf` for what each value means and which one to pick.
 
 .. note::
-   A simple example running SWIFT with Grackle can be find in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``. ``examples/Cooling/CoolingWithPrimordialElements/`` runs a uniform cosmological box with imposed abundances and let them evolve down to redshift 0.
+   A simple example running SWIFT with Grackle can be found in ``examples/Cooling/CoolingBox``. A more advanced example combining heating and cooling (with heating and ionization sources) is given in ``examples/Cooling/CoolingHeatingBox``. ``examples/Cooling/CoolingWithPrimordialElements/`` runs a uniform cosmological box with imposed abundances and let them evolve down to redshift 0.

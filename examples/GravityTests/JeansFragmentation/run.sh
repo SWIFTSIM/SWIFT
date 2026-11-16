@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e jeansbox.hdf5 ]
 then
@@ -10,7 +12,7 @@ fi
 # create output directory
 if [ ! -e snap ]
 then
-  mkdir snap
+  mkdir -p snap
 fi
 
 # Run for some sound crossing time

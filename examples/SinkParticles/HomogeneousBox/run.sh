@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 n_ranks=${n_ranks:=0}      # Number of ranks to use
 n_threads=${n_threads:=8}  # Number of threads to use
@@ -26,26 +26,6 @@ echo "========================================"
 $scripts_location/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 $scripts_location/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
 
-# Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
-then
-    rm ICs_homogeneous_box.hdf5
-fi
-
-# Remove the ICs
-if [ -e ICs_homogeneous_box.hdf5 ]
-then
-    rm ICs_homogeneous_box.hdf5
-fi
-
-#Create the ICs if they do not exist
-if [ ! -e ICs_homogeneous_box.hdf5 ]
-then
-    echo "Generating initial conditions to run the example..."
-    python3 makeIC.py --level $level -o ICs_homogeneous_box.hdf5 --lJ $jeans_length \
-	   --mass $gas_particle_mass
-fi
-
 # Get the Grackle cooling table
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]
 then
@@ -64,8 +44,21 @@ if [[ -z "$debug" || "$debug" -eq 1 ]]; then
     fi
 
     parameter_file="params_debug.yml"
+    ics_params=""
 else
+    # The ICs depend on the level, Jeans length and gas mass, so name them after all three
+    ics_file="ICs_homogeneous_box_level${level}_lJ${jeans_length}_m${gas_particle_mass}.hdf5"
+
+    # Create the ICs if they do not exist
+    if [ ! -e $ics_file ]
+    then
+	echo "Generating initial conditions to run the example..."
+	python3 makeIC.py --level $level -o $ics_file --lJ $jeans_length \
+	   --mass $gas_particle_mass
+    fi
+
     parameter_file="params.yml"
+    ics_params="--param=InitialConditions:file_name:$ics_file"
 fi
 
 if [[ "$restart" -eq 0 ]]; then
@@ -82,11 +75,11 @@ then
 
     # Don't remove the snap if we restart
     if [[ "$restart" -eq 0 ]]; then
-	rm -r $DIR
+	rm -rf $DIR
     fi
 else
     echo "$DIR directory does not exists. It will be created."
-    mkdir $DIR
+    mkdir -p $DIR
 fi
 
 if [[ $n_ranks -gt 0 ]]; then
@@ -106,7 +99,7 @@ echo "========================================"
 echo "Running simulation..."
 echo "========================================"
 $swift --hydro $runtime_params --stars --self-gravity --feedback \
-       --cooling --sync --limiter --threads=$n_threads \
+       --cooling --sync --limiter --threads=$n_threads $ics_params \
        $parameter_file 2>&1 | tee output.log
 
 echo "========================================"
@@ -114,7 +107,7 @@ echo "Detecting last snapshot..."
 echo "========================================"
 
 # Look for files matching 'snap/snapshot_XXXX.hdf5', strip strings, sort numerically, pick the last one
-last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1)
+last_snap_file=$(ls snap/snapshot_*.hdf5 2>/dev/null | sort | tail -n 1 || true)
 
 if [ -z "$last_snap_file" ]; then
     echo "Error: No snapshots found in snap/ directory! Defaulting analysis to 0."

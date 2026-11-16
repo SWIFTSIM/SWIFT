@@ -28,10 +28,11 @@
 import os
 import sys
 
-import matplotlib as mpl
 import numpy as np
 import swiftsimio
 from matplotlib import pyplot as plt
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 snapshot_base = "output"  # snapshot basename
@@ -39,7 +40,6 @@ snapshot_base = "output"  # snapshot basename
 
 # -----------------------------------------------------------------------
 
-mpl.rcParams["text.usetex"] = True
 
 # Read in cmdline arg: Are we plotting only one snapshot, or all?
 plot_all = False  # plot all snapshots
@@ -94,7 +94,6 @@ def plot_energies(snap_nrs, energy_sums):
     ax1.set_xlabel("Snapshot")
     ax1.set_ylabel(
         r"Total energy [$" + energy_sums.units.latex_representation() + "$]",
-        usetex=True,
     )
 
     # add title

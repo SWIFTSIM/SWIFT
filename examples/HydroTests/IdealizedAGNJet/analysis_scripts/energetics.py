@@ -1,13 +1,7 @@
-import pylab
-from pylab import *
-from scipy import stats
-import h5py as h5
+import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib
-from matplotlib.colors import LogNorm
 import swiftsimio as sw
-import glob
-import re
-import os
 
 matplotlib.use("Agg")
 
@@ -31,7 +25,7 @@ params = {
     "axes.facecolor": "black",
     "axes.edgecolor": "white",
 }
-rcParams.update(params)
+plt.rcParams.update(params)
 
 path_to_file = "../"
 snapshot_base = "output_"
@@ -117,8 +111,6 @@ for i in snapshots:
     )
 
 # Create plot
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
 plt.style.use("classic")
 fig = plt.figure(figsize=(8, 6))

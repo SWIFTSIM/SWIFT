@@ -17,8 +17,9 @@
 #
 ##############################################################################
 
-import h5py
-from numpy import *
+import unyt
+import swiftsimio as sw
+import numpy as np
 
 # Generates a swift IC file for the 2D Sod Shock in a periodic box
 
@@ -38,43 +39,43 @@ fileName = "sodShock.hdf5"
 # ---------------------------------------------------
 boxSize = x_max - x_min
 
-glass_L = h5py.File("glassPlane_128.hdf5", "r")
-glass_R = h5py.File("glassPlane_48.hdf5", "r")
+glass_L = sw.load("glassPlane_128.hdf5")
+glass_R = sw.load("glassPlane_48.hdf5")
 
-pos_L = glass_L["/PartType0/Coordinates"][:, :]
-pos_R = glass_R["/PartType0/Coordinates"][:, :]
-h_L = glass_L["/PartType0/SmoothingLength"][:]
-h_R = glass_R["/PartType0/SmoothingLength"][:]
+pos_L = glass_L.gas.coordinates.value
+pos_R = glass_R.gas.coordinates.value
+h_L = glass_L.gas.smoothing_lengths.value
+h_R = glass_R.gas.smoothing_lengths.value
 
-radius_L = sqrt((pos_L[:, 0] - 0.5) ** 2 + (pos_L[:, 1] - 0.5) ** 2)
+radius_L = np.sqrt((pos_L[:, 0] - 0.5) ** 2 + (pos_L[:, 1] - 0.5) ** 2)
 index_L = radius_L < 0.25
 pos_LL = pos_L[index_L]
 h_LL = h_L[index_L]
 
-radius_R = sqrt((pos_R[:, 0] - 0.5) ** 2 + (pos_R[:, 1] - 0.5) ** 2)
+radius_R = np.sqrt((pos_R[:, 0] - 0.5) ** 2 + (pos_R[:, 1] - 0.5) ** 2)
 index_R = radius_R > 0.25
 pos_RR = pos_R[index_R]
 h_RR = h_R[index_R]
 
 # Merge things
-pos = append(pos_LL, pos_RR, axis=0)
-h = append(h_LL, h_RR)
+pos = np.append(pos_LL, pos_RR, axis=0)
+h = np.append(h_LL, h_RR)
 
-numPart_L = size(h_LL)
-numPart_R = size(h_RR)
-numPart = size(h)
+numPart_L = np.size(h_LL)
+numPart_R = np.size(h_RR)
+numPart = np.size(h)
 
-vol_L = pi * 0.25**2
-vol_R = 1.0 - pi * 0.25**2
+vol_L = np.pi * 0.25**2
+vol_R = 1.0 - np.pi * 0.25**2
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = zeros(numPart)
-u = zeros(numPart)
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.zeros(numPart)
+u = np.zeros(numPart)
 
 for i in range(numPart):
-    x = sqrt((pos[i, 0] - 0.5) ** 2 + (pos[i, 1] - 0.5) ** 2)
+    x = np.sqrt((pos[i, 0] - 0.5) ** 2 + (pos[i, 1] - 0.5) ** 2)
 
     if x < 0.25:  # left
         u[i] = P_L / (rho_L * (gamma - 1.0))
@@ -86,36 +87,19 @@ for i in range(numPart):
         v[i, 0] = v_R
 
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [1.0, 1.0], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=2,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [1.0, 1.0, 1.0]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 2
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-
-
-file.close()
+w.write(fileName)

@@ -124,7 +124,7 @@ GEARFeedback:
   with_stellar_wind_feedback: 0                            # Deactivate the stellar wind feedback
   yields_table: POPIIsw.h5                                 # Table containing the yields.
   discrete_yields: 1                                       # Should we use discrete yields or the IMF integrated one?
-  imf_transition_metallicity: 0                            # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
+  imf_transition_metallicity: 0                            # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]             # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
   # Radiation parameters

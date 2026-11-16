@@ -1,7 +1,6 @@
 import numpy as np
 import h5py as h5
 import matplotlib.pyplot as plt
-import sys
 
 n_snaps = 11
 
@@ -20,7 +19,7 @@ H_0_cgs = 100.0 * h * KM_PER_SEC_IN_CGS / (1.0e6 * PARSEC_IN_CGS)
 
 # read some header/parameter information from the first snapshot
 
-filename = "Hydrostatic_0000.hdf5"
+filename = "CoolingHalo_0000.hdf5"
 f = h5.File(filename, "r")
 params = f["Parameters"]
 unit_mass_cgs = float(params.attrs["InternalUnitSystem:UnitMass_in_cgs"])
@@ -39,7 +38,7 @@ M_vir_cgs = r_vir_cgs * v_c_cgs**2 / CONST_G_CGS
 
 for i in range(n_snaps):
 
-    filename = "Hydrostatic_%04d.hdf5" % i
+    filename = "CoolingHalo_%04d.hdf5" % i
     f = h5.File(filename, "r")
     coords_dset = f["PartType0/Coordinates"]
     coords = np.array(coords_dset)
