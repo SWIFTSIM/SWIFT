@@ -21,6 +21,7 @@ unset LD_LIBRARY_PATH
 
 failures=0
 metallicity=""
+no_dtg_key=0
 
 # run <name> <extra GeajayCooling lines>: leaves the exit code in $status
 run() {
@@ -30,8 +31,15 @@ run() {
   rm -rf "$dir"
   mkdir -p "$dir"
   cp "$fixture"/coolingBox.hdf5 "$fixture"/*.h5 "$dir"/
-  # The new lines go right under the GeajayCooling: header
-  awk -v extra="$*" '{print} /^GeajayCooling:/ {n = split(extra, a, ";"); for (i = 1; i <= n; i++) print "  " a[i]}' \
+  # The new lines go right under the GeajayCooling: header. The key
+  # dust_to_gas_model is required: the fixture value is replaced by the one of
+  # the case, or by linear when the case sets none. A case with $no_dtg_key
+  # set to 1 leaves the key out.
+  local extra="$*"
+  if [ "$no_dtg_key" != 1 ] && [[ "$extra" != *dust_to_gas_model* ]]; then
+    extra="dust_to_gas_model: linear${extra:+;}$extra"
+  fi
+  awk -v extra="$extra" '/^  dust_to_gas_model:/ {next} {print} /^GeajayCooling:/ {n = split(extra, a, ";"); for (i = 1; i <= n; i++) if (a[i] != "") print "  " a[i]}' \
     "$fixture"/coolingBox.yml > "$dir"/coolingBox.yml
   # metallicity, when set, replaces GEARChemistry:initial_metallicity
   [ -n "$metallicity" ] &&
@@ -125,6 +133,9 @@ expect_refused ref_ratio_nan "reference_dust_to_gas_ratio must be -1" "reference
 expect_refused ref_ratio_inf "reference_dust_to_gas_ratio must be -1" "reference_dust_to_gas_ratio: inf"
 expect_refused rate_nan "photoelectric_heating_rate must be -1" "photoelectric_heating_model: fixed_rate;photoelectric_heating_rate: nan"
 
+no_dtg_key=1
+expect_refused dtg_missing "GeajayCooling:dust_to_gas_model is required" ""
+no_dtg_key=0
 expect_refused from_field_name "SWIFT has no per-particle dust field" "dust_to_gas_model: from_field"
 expect_refused from_field_values "linear (0) or remy_ruyer_2014 (1), got 2" "dust_to_gas_model: from_field"
 

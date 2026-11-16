@@ -58,6 +58,7 @@ GrackleCooling:
   maximal_density_Hpcm3: -1                    # Maximal density (in hydrogen atoms/cm^3) for cooling. Higher densities are floored to this value to ensure grackle works properly when interpolating beyond the cloudy_table maximal density. A value < 0 deactivates this parameter.
 
 GeajayCooling:
+  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required): linear or remy_ruyer_2014
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
   with_uv_background: 0                        # Enable or not the UV background
   redshift: 0                                  # Redshift to use (-1 means time based redshift)

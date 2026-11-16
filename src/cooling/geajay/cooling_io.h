@@ -959,6 +959,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:dust_model must be none (0) or basic (1), got %d.",
           cooling->dust_model);
 
+  if (!parser_does_param_exist(parameter_file,
+                               "GeajayCooling:dust_to_gas_model"))
+    error(
+        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
+        "it to linear or remy_ruyer_2014.");
   cooling->dust_to_gas_model = cooling_read_choice(
       parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
       GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);

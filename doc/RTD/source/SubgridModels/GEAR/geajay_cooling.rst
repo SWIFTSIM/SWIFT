@@ -310,14 +310,14 @@ Molecules and dust
        recombination cooling on grains. It reads the metal mass fraction of each particle to compute
        the dust-to-gas ratio (default: ``none``).
    * - ``dust_to_gas_model``
-     - (optional) Dust-to-gas ratio as a function of the metallicity: ``linear`` (D =
+     - (required, no default) Dust-to-gas ratio as a function of the metallicity: ``linear`` (D =
        ``reference_dust_to_gas_ratio`` Z / Z\ :sub:`sun`) or ``remy_ruyer_2014`` (broken power law of
        Remy-Ruyer et al. 2014, linear above its transition). Needs a dust switch
        (``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled``, ``dust_recombination_cooling``
        ``enabled`` or a ``photoelectric_heating_model`` above ``none``): without one,
        ``remy_ruyer_2014`` stops the run. The library has a third value, ``from_field`` (2), that takes
-       the dust density from a particle field. SWIFT has no such field and refuses it
-       (default: ``linear``).
+       the dust density from a particle field. SWIFT has no such field and refuses it.
+       The run stops if the key is absent.
    * - ``reference_dust_to_gas_ratio``
      - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run).
    * - ``photoelectric_heating_model``
