@@ -931,8 +931,9 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
                                     inputs, &temperature) != GEAJAY_SUCCESS)
       error("Particle %lld: geajay refused the arguments of the temperature.",
             p->id);
-    const double length =
-        cooling_hybrid_chimes_length(cooling, temperature, density, cosmo->z);
+    const double length = cooling_hybrid_chimes_length(
+        cooling, temperature, density,
+        cooling_hybrid_chimes_cap_redshift(cooling, cosmo));
     if (!cooling_double_is_finite(&length) || !(length > 0.))
       error(
           "Particle %lld: the HYBRID-CHIMES shielding length is %e for T = %e "

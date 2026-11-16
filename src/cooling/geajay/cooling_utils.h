@@ -244,6 +244,19 @@ cooling_agora_cmb_floor_internal_energy(
 }
 
 /**
+ * @brief Redshift of the HYBRID-CHIMES cap: GeajayCooling:redshift when it is
+ * set, else the redshift of the simulation.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param cosmo The #cosmology.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_hybrid_chimes_cap_redshift(const struct cooling_function_data *cooling,
+                                   const struct cosmology *cosmo) {
+  return (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
+}
+
+/**
  * @brief Proper HYBRID-CHIMES shielding length of a gas state, in internal
  * length units.
  *

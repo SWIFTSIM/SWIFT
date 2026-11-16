@@ -786,7 +786,7 @@ GeajayCooling:
   h2_hybrid_chimes_turbulent_velocity_km_per_s: 6 # (optional) Read only with hybrid_chimes. 1D turbulent velocity of the column [km/s], 0 or above (default: 6)
   h2_hybrid_chimes_max_length_low_z_kpc: 50    # (optional) Read only with hybrid_chimes. Cap of the length at low redshift [kpc], 0 for no cap (default: 50)
   h2_hybrid_chimes_max_length_high_z_kpc: 10   # (optional) Read only with hybrid_chimes. Cap of the length at high redshift [kpc], 0 for no cap (default: 10)
-  h2_hybrid_chimes_transition_redshift: 7      # (optional) Read only with hybrid_chimes. Redshift where the cap changes from the low to the high value, above 0.4 (default: 7)
+  h2_hybrid_chimes_transition_redshift: 7      # (optional) Read only with hybrid_chimes. Redshift where the cap changes from the low to the high value, above 0.4 (default: 7). The cap uses GeajayCooling:redshift if set, else the run redshift
   metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate (the line of the end cell, as Grackle) or edge (the value at the edge) (default: extrapolate)
