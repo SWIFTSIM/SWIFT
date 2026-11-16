@@ -40,6 +40,7 @@ InitialConditions:
 
 # Cooling with geajay and its reduced cosmic-ray network, with a rate stored in each particle
 GeajayCooling:
+  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required): linear or remy_ruyer_2014
   cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table (not read here: no metals, no UV background)
   primordial_chemistry_network: H_He           # Cosmic rays need a species network
   with_uv_background: 0                        # No UV background

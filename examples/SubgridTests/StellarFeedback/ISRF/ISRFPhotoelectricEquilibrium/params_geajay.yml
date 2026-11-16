@@ -67,6 +67,7 @@ GEARChemistry:
   diffusion_coefficient: 1e-3
 
 GeajayCooling:
+  dust_to_gas_model: linear                      # Dust-to-gas ratio model (required): linear or remy_ruyer_2014
   cloudy_table_file: CloudyData_UVB=HM2012.h5   # Cloudy table file (required)
   primordial_chemistry_network: 1               # 0 tabulated, 1 H/He, 2 + H2, 3 + D (required)
   with_uv_background: 0                         # Metagalactic UV background on or off (required)
