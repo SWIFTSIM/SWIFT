@@ -22,7 +22,11 @@ defaults to one million: `python3 makeIC.py --n_part 1000000`.
 `python3 makeMovie.py` renders every snapshot in the directory into
 `dam_break.mp4` (requires swiftsimio and ffmpeg). The frames are drawn in
 parallel on all available cores; use `--threads` to limit the number. Lower
-`Snapshots:delta_time` for a smoother movie.
+`Snapshots:delta_time` for a smoother movie. `--quantity density` and
+`--quantity pressure` instead make `dam_break_density.mp4` and
+`dam_break_pressure.mp4`, showing the mass-weighted mean of the particle
+densities or pressures along each line of sight; `--limits MIN MAX` sets the
+colour scale.
 
 Configuration options:
 
