@@ -77,6 +77,11 @@ ALL_TESTS = [
     "kh8",
     "sod_weak",
     "sod_strong",
+    "fbevent",
+    "fbevent_hook",
+    "sedov_cooling",
+    "galaxy",
+    "bkstars",
 ]  # "nfw" on request
 
 scatter_props = dict(marker=".", s=1, alpha=0.15, rasterized=True, linewidths=0)
@@ -2544,6 +2549,471 @@ def test_thermal(root, schemes, out):
     return metrics
 
 
+# ---------------------------------------------------------------------------
+# Feedback tests (2026-11-15): single feedback event, Sedov blast with
+# cooling, Balsara-Kim stars patch, isolated galaxy (EAGLE cooling and
+# feedback model). Energies in erg, temperatures from the snapshots'
+# Temperatures field (EAGLE cooling) or, failing that, from u with mu = 0.5
+# (ionised gas).
+# ---------------------------------------------------------------------------
+
+KB, MH, MSUN, MYR, KPC = (
+    1.380649e-16,
+    1.6726219e-24,
+    1.98841586e33,
+    3.15576e13,
+    3.0857e21,
+)
+
+
+def cgs_units(filename):
+    """Length, mass and time units of a snapshot or IC file, in cgs."""
+    with h5py.File(filename, "r") as f:
+        u = f["/Units"].attrs
+        return tuple(
+            float(np.ravel(u[k])[0])
+            for k in (
+                "Unit length in cgs (U_L)",
+                "Unit mass in cgs (U_M)",
+                "Unit time in cgs (U_t)",
+            )
+        )
+
+
+def gas_cgs(filename):
+    """Gas arrays of a snapshot in cgs (time in Myr), plus the radiated energy
+    and the stars' feedback-event count and mass where present."""
+    L, M, t = cgs_units(filename)
+    V = L / t
+    with h5py.File(filename, "r") as f:
+        g = f["/PartType0"]
+        d = dict(
+            time_myr=float(np.ravel(f["/Header"].attrs["Time"])[0]) * t / MYR,
+            box=float(np.ravel(f["/Header"].attrs["BoxSize"])[0]) * L,
+            pos=g["Coordinates"][:].astype(np.float64) * L,
+            vel=g["Velocities"][:].astype(np.float64) * V,
+            m=g["Masses"][:].astype(np.float64) * M,
+            u=g["InternalEnergies"][:].astype(np.float64) * V * V,
+            rho=g["Densities"][:].astype(np.float64) * M / L**3,
+            T=g["Temperatures"][:].astype(np.float64) if "Temperatures" in g else None,
+            E_rad=(
+                float(g["RadiatedEnergies"][:].astype(np.float64).sum()) * M * V * V
+                if "RadiatedEnergies" in g
+                else None
+            ),
+            E_forcing=(
+                float(g["ForcingInjectedEnergies"][:].astype(np.float64).sum())
+                * M
+                * V
+                * V
+                if "ForcingInjectedEnergies" in g
+                else 0.0
+            ),
+            n_fb=0,
+            m_star=0.0,
+        )
+        if "/PartType4" in f and f["/PartType4"]["Masses"].shape[0] > 0:
+            s = f["/PartType4"]
+            d["m_star"] = float(s["Masses"][:].astype(np.float64).sum()) * M
+            if "NumberOfFeedbackEvents" in s:
+                d["n_fb"] = int(s["NumberOfFeedbackEvents"][:].sum())
+    if d["T"] is None:
+        d["T"] = (GAS_GAMMA - 1.0) * 0.5 * MH * d["u"] / KB
+    return d
+
+
+def energy_history_cgs(run_dir, snapshot):
+    """Kinetic, thermal and radiated energies [erg] against time [Myr] from
+    statistics.txt (columns 13, 14, 16); None without the file."""
+    st = os.path.join(run_dir, "statistics.txt")
+    if not os.path.exists(st):
+        return None
+    L, M, t = cgs_units(snapshot)
+    a = np.loadtxt(st, comments="#", ndmin=2)
+    E = M * (L / t) ** 2
+    return dict(
+        time_myr=a[:, 1] * t / MYR,
+        E_kin=a[:, 13] * E,
+        E_th=a[:, 14] * E,
+        E_rad=a[:, 16] * E,
+    )
+
+
+def injected_energy(ic_file):
+    """Thermal energy above the background in an IC file [erg]: the energy
+    put into the heated particles of the event and cooling Sedov tests."""
+    L, M, t = cgs_units(ic_file)
+    with h5py.File(ic_file, "r") as f:
+        g = f["/PartType0"]
+        name = "InternalEnergy" if "InternalEnergy" in g else "InternalEnergies"
+        m = g["Masses"][:].astype(np.float64) * M
+        u = g[name][:].astype(np.float64) * (L / t) ** 2
+    return float(np.sum(m * np.clip(u - np.median(u), 0.0, None)))
+
+
+def radial_frame(d):
+    """Periodic offsets from the box centre, radii and radial velocities."""
+    x = d["pos"] - 0.5 * d["box"]
+    x -= d["box"] * np.round(x / d["box"])
+    r = np.sqrt((x * x).sum(1))
+    vr = (x * d["vel"]).sum(1) / np.maximum(r, 1e-30)
+    return x, r, vr
+
+
+def test_fbevent(root, schemes, out, test="fbevent"):
+    """Single feedback event with cooling: the fractions of the injected
+    energy retained (thermal excess over the background plus kinetic) and
+    radiated, the number of hot particles, the peak temperature and the
+    shock radius (outermost radial bin with a mean outflow above 5 km/s)
+    against time. The injected energy is the excess in the ICs (fbevent) or
+    the forcing module's injection record (fbevent_hook)."""
+    fig, ax = plt.subplots(2, 3, figsize=(13, 7))
+    metrics = {}
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, test)
+        files = snapshot_files(run_dir, "feedback")
+        if not files:
+            continue
+        ic = os.path.join(run_dir, "feedback.hdf5")
+        E_inj = injected_energy(ic) if os.path.exists(ic) else 0.0
+        if E_inj <= 0.0:
+            E_inj = gas_cgs(files[-1])["E_forcing"]
+        if E_inj <= 0.0:
+            continue
+        series = []
+        for fn in files:
+            d = gas_cgs(fn)
+            x, r, vr = radial_frame(d)
+            u_bg = np.median(d["u"][r > 0.4 * d["box"]])
+            edges = np.linspace(0.0, 0.5 * d["box"], 41)
+            _, vr_prof, _ = binned(r, vr, edges)
+            hot = np.nan_to_num(vr_prof) > 5e5
+            r_sh = edges[hot.nonzero()[0].max() + 1] / KPC if hot.any() else 0.0
+            series.append(
+                dict(
+                    t=d["time_myr"],
+                    E_th=float(np.sum(d["m"] * (d["u"] - u_bg))) / E_inj,
+                    E_kin=float(np.sum(0.5 * d["m"] * (d["vel"] ** 2).sum(1))) / E_inj,
+                    n_hot=int(np.sum(d["T"] > 1e5)),
+                    T_max=float(d["T"].max()),
+                    r_shock=r_sh,
+                )
+            )
+        t = [q["t"] for q in series]
+        col = scheme_color(s, j)
+        ax[0, 0].plot(t, [q["E_th"] + q["E_kin"] for q in series], color=col, label=s)
+        ax[0, 1].plot(t, [q["E_kin"] for q in series], color=col)
+        hist = energy_history_cgs(run_dir, files[0])
+        if hist is not None:
+            ax[0, 2].plot(hist["time_myr"], hist["E_rad"] / E_inj, color=col)
+        ax[1, 0].plot(t, [q["n_hot"] for q in series], color=col)
+        ax[1, 1].plot(t, [q["T_max"] for q in series], color=col)
+        ax[1, 2].plot(t, [q["r_shock"] for q in series], color=col)
+        last = series[-1]
+        metrics[s] = {
+            "retained_end": last["E_th"] + last["E_kin"],
+            "kinetic_end": last["E_kin"],
+            "radiated_end": (
+                float(hist["E_rad"][-1] / E_inj) if hist is not None else float("nan")
+            ),
+            "n_hot_max": max(q["n_hot"] for q in series),
+            "T_max_end": last["T_max"],
+            "r_shock_end_kpc": last["r_shock"],
+            "E_inj_erg": E_inj,
+        }
+    labels = [
+        "retained (E_th excess + E_kin) / E_inj",
+        "E_kin / E_inj",
+        "radiated / E_inj",
+        "N(T > 1e5 K)",
+        "T_max [K]",
+        "shock radius [kpc]",
+    ]
+    for a, yl in zip(ax.flat, labels):
+        a.set_ylabel(yl)
+        a.set_xlabel("t [Myr]")
+        a.grid(alpha=0.3)
+    ax[1, 0].set_yscale("symlog")
+    ax[1, 1].set_yscale("log")
+    ax[0, 0].legend(fontsize=8)
+    how = "heated in the ICs" if test == "fbevent" else "injected through the hooks"
+    fig.suptitle(
+        f"Feedback event with cooling: one particle at $10^{{7.5}}$ K in a 3200 K "
+        f"medium, {how}"
+    )
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, f"{test}.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_sedov_cooling(root, schemes, out):
+    """Sedov blast in cooling gas: radial profiles at the end and the energy
+    budget, hot mass and shell radius against time. The shell radius is the
+    density peak, the radial momentum the sum over outflowing particles
+    (Kim & Ostriker 2015 give ~4e5 Msun km/s at n = 0.1 for 1e51 erg)."""
+    fig, ax = plt.subplots(2, 3, figsize=(13, 7))
+    metrics = {}
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "sedov_cooling")
+        files = snapshot_files(run_dir, "sedov")
+        ic = os.path.join(run_dir, "sedov.hdf5")
+        if not files or not os.path.exists(ic):
+            continue
+        E0 = injected_energy(ic)
+        col = scheme_color(s, j)
+        t_s, m_hot_s, r_sh_s = [], [], []
+        step = max(1, len(files) // 25)
+        for fn in files[::step] + ([files[-1]] if (len(files) - 1) % step else []):
+            d = gas_cgs(fn)
+            x, r, vr = radial_frame(d)
+            edges = np.linspace(0.0, 0.5 * d["box"], 65)
+            rb, rho_p, _ = binned(r, d["rho"], edges)
+            t_s.append(d["time_myr"])
+            m_hot_s.append(float(d["m"][d["T"] > 1e5].sum()) / MSUN)
+            r_sh_s.append(rb[np.nanargmax(rho_p)] / KPC)
+        _, vr_p, _ = binned(r, vr, edges)
+        _, T_p, _ = binned(r, d["T"], edges)
+        ax[0, 0].semilogy(rb / KPC, rho_p / MH, color=col, label=s)
+        ax[0, 1].plot(rb / KPC, vr_p / 1e5, color=col)
+        ax[0, 2].semilogy(rb / KPC, T_p, color=col)
+        hist = energy_history_cgs(run_dir, files[0])
+        if hist is not None:
+            ax[1, 0].plot(
+                hist["time_myr"], hist["E_kin"] / E0, color=col, label=f"{s} kinetic"
+            )
+            ax[1, 0].plot(
+                hist["time_myr"],
+                hist["E_rad"] / E0,
+                "--",
+                color=col,
+                label=f"{s} radiated",
+            )
+        ax[1, 1].plot(t_s, m_hot_s, color=col)
+        ax[1, 2].plot(t_s, r_sh_s, color=col)
+        metrics[s] = {
+            "shell_radius_kpc": float(r_sh_s[-1]),
+            "radial_momentum_Msun_kms": float(np.sum(d["m"] * np.clip(vr, 0.0, None)))
+            / MSUN
+            / 1e5,
+            "radiated_over_E0": (
+                float(hist["E_rad"][-1] / E0) if hist is not None else float("nan")
+            ),
+            "kinetic_over_E0": float(np.sum(0.5 * d["m"] * (d["vel"] ** 2).sum(1)))
+            / E0,
+            "hot_mass_Msun": float(m_hot_s[-1]),
+            "T_max_end": float(d["T"].max()),
+            "E0_erg": E0,
+        }
+    for a, yl in zip(
+        ax.flat,
+        [
+            r"$\rho / m_{\rm H}$ [cm$^{-3}$]",
+            r"$v_r$ [km/s]",
+            "T [K]",
+            "energy / $E_0$",
+            r"gas mass with T > $10^5$ K [M$_\odot$]",
+            "shell radius [kpc]",
+        ],
+    ):
+        a.set_ylabel(yl)
+        a.grid(alpha=0.3)
+    for a in ax[0]:
+        a.set_xlabel("r [kpc]")
+    for a in ax[1]:
+        a.set_xlabel("t [Myr]")
+    ax[0, 0].legend(fontsize=8)
+    ax[1, 0].legend(fontsize=7)
+    fig.suptitle(f"Sedov blast with cooling, profiles at t = {d['time_myr']:.2f} Myr")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "sedov_cooling.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_bkstars(root, schemes, out):
+    """Balsara-Kim stars patch: energy budget (thermal + kinetic + radiated
+    change, radiated, injected as the number of feedback events times
+    1.06e51 erg), hot and cold mass fractions and 3D velocity dispersion
+    against time, mass-weighted density PDF at the end."""
+    E_SN = 1.06e51
+    fig, ax = plt.subplots(2, 2, figsize=(11, 8))
+    metrics = {}
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "bkstars")
+        files = snapshot_files(run_dir, "BK")
+        if not files:
+            continue
+        rows = []
+        for fn in files:
+            d = gas_cgs(fn)
+            M_tot = d["m"].sum()
+            v_mean = (d["m"][:, None] * d["vel"]).sum(0) / M_tot
+            dv = d["vel"] - v_mean
+            rows.append(
+                dict(
+                    t=d["time_myr"],
+                    E_th=float((d["m"] * d["u"]).sum()),
+                    E_kin=float(0.5 * (d["m"] * (d["vel"] ** 2).sum(1)).sum()),
+                    E_rad=d["E_rad"] or 0.0,
+                    n_fb=d["n_fb"],
+                    f_hot5=float(d["m"][d["T"] > 1e5].sum() / M_tot),
+                    f_hot6=float(d["m"][d["T"] > 1e6].sum() / M_tot),
+                    f_cold=float(d["m"][d["T"] < 5e3].sum() / M_tot),
+                    sigma=float(np.sqrt((d["m"] * (dv**2).sum(1)).sum() / M_tot)) / 1e5,
+                    T_max=float(d["T"].max()),
+                )
+            )
+        t = [q["t"] for q in rows]
+        col = scheme_color(s, j)
+        E0 = rows[0]["E_th"] + rows[0]["E_kin"]
+        ax[0, 0].plot(
+            t,
+            [(q["E_th"] + q["E_kin"] + q["E_rad"] - E0) / 1e51 for q in rows],
+            color=col,
+            label=s,
+        )
+        ax[0, 0].plot(t, [q["E_rad"] / 1e51 for q in rows], ":", color=col)
+        ax[0, 0].plot(
+            t, [q["n_fb"] * E_SN / 1e51 for q in rows], color=col, lw=0.8, alpha=0.5
+        )
+        ax[0, 1].plot(t, [q["f_hot5"] for q in rows], color=col, label=s)
+        ax[0, 1].plot(t, [q["f_hot6"] for q in rows], "--", color=col)
+        ax[1, 0].plot(t, [q["sigma"] for q in rows], color=col, label=s)
+        nH = 0.75 * d["rho"] / MH
+        bins = np.linspace(-3.0, 3.5, 66)
+        h, _ = np.histogram(np.log10(nH), bins=bins, weights=d["m"] / d["m"].sum())
+        ax[1, 1].step(bins[:-1], h / np.diff(bins), where="post", color=col, label=s)
+        last = rows[-1]
+        E_inj = max(last["n_fb"] * E_SN, 1.0)
+        metrics[s] = {
+            "n_feedback_events": last["n_fb"],
+            "E_inj_1e51": last["n_fb"] * E_SN / 1e51,
+            "f_rad": last["E_rad"] / E_inj,
+            "f_kin": last["E_kin"] / E_inj,
+            "dE_th_1e51": (last["E_th"] - rows[0]["E_th"]) / 1e51,
+            "f_hot5": last["f_hot5"],
+            "f_hot6": last["f_hot6"],
+            "f_cold": last["f_cold"],
+            "sigma_kms": last["sigma"],
+            "T_max": last["T_max"],
+        }
+    a = ax[0, 0]
+    a.plot([], [], "k-", label=r"$\Delta(E_{\rm th} + E_{\rm k} + E_{\rm rad})$")
+    a.plot([], [], "k:", label=r"$E_{\rm rad}$")
+    a.plot([], [], "k-", lw=0.8, alpha=0.5, label=r"$E_{\rm inj}$ (events x 1.06e51)")
+    a.set_ylabel("energy [$10^{51}$ erg]")
+    a.set_yscale("log")
+    a.set_ylim(0.05, 60)
+    a.legend(fontsize=7, ncol=2)
+    ax[0, 1].set_ylabel("mass fraction")
+    ax[0, 1].set_yscale("log")
+    ax[0, 1].set_ylim(1e-4, 1)
+    ax[0, 1].plot([], [], "k-", label="$T > 10^5$ K")
+    ax[0, 1].plot([], [], "k--", label="$T > 10^6$ K")
+    ax[0, 1].legend(fontsize=7)
+    ax[1, 0].set_ylabel("3D mass-weighted velocity dispersion [km/s]")
+    ax[1, 0].legend(fontsize=7)
+    ax[1, 1].set_ylabel("mass-weighted PDF at the end")
+    ax[1, 1].set_xlabel(r"log$_{10}$ $n_{\rm H}$ [cm$^{-3}$]")
+    ax[1, 1].set_yscale("log")
+    ax[1, 1].set_ylim(1e-4, 3)
+    ax[1, 1].legend(fontsize=7)
+    for a in ax.flat[:3]:
+        a.set_xlabel("t [Myr]")
+    for a in ax.flat:
+        a.grid(alpha=0.3)
+    fig.suptitle("Balsara-Kim patch with EAGLE star particles (30 supernovae, cooling)")
+    fig.tight_layout()
+    fig.savefig(os.path.join(out, "bkstars.png"), dpi=150)
+    plt.close(fig)
+    return metrics
+
+
+def test_galaxy(root, schemes, out):
+    """Isolated galaxy with the EAGLE model: density-temperature phase diagram
+    at the end and the star-formation history; hot gas fraction at the end
+    and at half time, mean SFR over the last 50 Myr, stellar mass formed."""
+    from matplotlib.colors import LogNorm
+
+    X_H = 0.7065
+    fig, axes = plt.subplots(
+        2, len(schemes), figsize=(5.2 * len(schemes), 9.5), squeeze=False
+    )
+    metrics = {}
+    im = None
+    for j, s in enumerate(schemes):
+        run_dir = os.path.join(root, "runs", s, "galaxy")
+        files = snapshot_files(run_dir, "output")
+        if not files:
+            continue
+        d0, d = gas_cgs(files[0]), gas_cgs(files[-1])
+        m = d["m"] / MSUN
+        hot = float(m[d["T"] > 1e5].sum() / m.sum())
+        warm = float(m[(d["T"] > 1e4) & (d["T"] <= 1e5)].sum() / m.sum())
+        d_mid = gas_cgs(files[len(files) // 2])
+        hot_mid = float(d_mid["m"][d_mid["T"] > 1e5].sum() / d_mid["m"].sum())
+        bins = (np.linspace(-6, 3, 121), np.linspace(1, 8, 121))
+        H, xe, ye = np.histogram2d(
+            np.log10(d["rho"] * X_H / MH), np.log10(d["T"]), bins=bins, weights=m
+        )
+        ax = axes[0, j]
+        im = ax.pcolormesh(
+            xe, ye, H.T, norm=LogNorm(vmin=1e4, vmax=max(H.max(), 1e5)), cmap="viridis"
+        )
+        ax.set_title(f"{s}, t = {d['time_myr']:.0f} Myr", fontsize=11)
+        ax.set_xlabel(r"log$_{10}$ $n_{\rm H}$ [cm$^{-3}$]")
+        ax.set_ylabel(r"log$_{10}$ T [K]")
+        ax.text(
+            0.03,
+            0.97,
+            f"T > 1e5 K: {100 * hot:.2f} % of the gas mass\n"
+            f"1e4 < T < 1e5 K: {100 * warm:.1f} %",
+            transform=ax.transAxes,
+            va="top",
+            fontsize=9,
+        )
+        # Star-formation history: column 1 time, column 7 the SFR of all
+        # particles, both in internal units
+        sfr_mean = float("nan")
+        sfr_file = os.path.join(run_dir, "SFR.txt")
+        ax = axes[1, j]
+        if os.path.exists(sfr_file):
+            L, M, tu = cgs_units(files[0])
+            a = np.loadtxt(sfr_file, comments="#", ndmin=2)
+            t_sfr = a[:, 1] * tu / MYR
+            sfr = a[:, 7] * (M / MSUN) / (tu / 3.15576e7)
+            ax.plot(t_sfr, sfr, color=scheme_color(s, j), lw=1)
+            sel = t_sfr > t_sfr.max() - 50.0
+            sfr_mean = float(sfr[sel].mean()) if sel.any() else float("nan")
+            ax.axhline(sfr_mean, color="k", lw=0.8, ls="--", label="mean, last 50 Myr")
+            ax.legend(fontsize=8)
+        ax.set_xlabel("t [Myr]")
+        ax.set_ylabel(r"SFR [M$_\odot$/yr]")
+        ax.set_ylim(0, None)
+        ax.grid(alpha=0.3)
+        metrics[s] = {
+            "f_hot_end": hot,
+            "f_warm_end": warm,
+            "f_hot_mid": hot_mid,
+            "sfr_last50Myr_Msun_yr": sfr_mean,
+            "stars_formed_Msun": (d["m_star"] - d0["m_star"]) / MSUN,
+            "n_feedback_events": d["n_fb"],
+            "T_max_end": float(d["T"].max()),
+        }
+    if im is not None:
+        fig.colorbar(
+            im,
+            ax=axes[0, :].tolist(),
+            label=r"gas mass per bin [M$_\odot$]",
+            shrink=0.8,
+        )
+    fig.suptitle("Isolated galaxy, EAGLE model")
+    fig.savefig(os.path.join(out, "galaxy.png"), dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return metrics
+
+
 TESTS = {
     "sod": test_sod,
     "sedov": test_sedov,
@@ -2592,6 +3062,13 @@ TESTS = {
     "sod_strong": lambda root, schemes, out: test_sod(
         root, schemes, out, test="sod_strong"
     ),
+    "fbevent": test_fbevent,
+    "fbevent_hook": lambda root, schemes, out: test_fbevent(
+        root, schemes, out, test="fbevent_hook"
+    ),
+    "sedov_cooling": test_sedov_cooling,
+    "galaxy": test_galaxy,
+    "bkstars": test_bkstars,
 }
 
 

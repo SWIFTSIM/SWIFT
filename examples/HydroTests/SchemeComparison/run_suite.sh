@@ -93,13 +93,23 @@ ICS_ONLY=0
 : "${KH8_L2:=128}"              # High-contrast KH: particles per edge in the low-density region
 : "${KH8_T_END:=6}"             # High-contrast KH: end time (the KH time of the seeded mode is 1.6 at contrast 8, 1.1 at contrast 2)
 : "${GRESHO_BOOST:=3}"          # Boosted Gresho vortex: bulk velocity along x (sound speed 2.9-3.1; integer: the vortex is back at the centre at t = 1)
+: "${SEDOV_COOLING_H_MAX:=0.035}" # Cooling Sedov blast: h_max (example 0.04; at eta 1.5 the kernel support of the rarefied interior exceeds box/3)
+: "${BK_T_END:=3.5688e-2}"      # Balsara-Kim stars: end time (2.9 Myr, the 30 supernovae go off every 0.1 Myr from t = 0)
+: "${BK_DT_SNAP:=1.2e-3}"       # Balsara-Kim stars: snapshot spacing (0.1 Myr; the example's 6e-4 gives 60 snapshots of 70 MB per run)
+: "${GALAXY_T_END:=0.2046}"     # Isolated galaxy: end time (200 Myr)
+: "${GALAXY_DT_SNAP:=0.01023}"  # Isolated galaxy: snapshot spacing (10 Myr)
 
 GLASS_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ICs
 REF_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage/ReferenceSolutions
+TABLES_URL=https://virgodb.cosma.dur.ac.uk/swift-webstorage
 
 # The NFW halo (nfw) is not in the default list: expensive and so far not
-# discriminating between schemes; run it with -t nfw.
-ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob taylorgreen shearing blast rt khgr ibw soundwave wavedamping thermal gresho_boost kh8 sod_weak sod_strong"
+# discriminating between schemes; run it with -t nfw. The four feedback tests
+# (fbevent, sedov_cooling, galaxy, bkstars) are part of every suite: the
+# artificial conduction is capped around feedback-heated gas, and the hydro
+# tests alone would reward tuning that cap away. bkstars is the expensive
+# one (hours); it comes last so that the rest of a suite is in first.
+ALL_TESTS="gresho square square_mass zeldovich zeldovich_glass sod keplerian keplerian2d keplerian_cd10 kh noh evrard sedov zeldovich_pert blob taylorgreen shearing blast rt khgr ibw soundwave wavedamping thermal gresho_boost kh8 sod_weak sod_strong fbevent fbevent_hook sedov_cooling galaxy bkstars"
 TESTS=$ALL_TESTS
 
 while getopts "s:o:c:t:j:k:bniph" opt; do
@@ -321,6 +331,105 @@ test_nfw() {
   make_ic() { [[ -e nfw.hdf5 ]] || wget -q $GLASS_URL/NFW_Hydrostatic/nfw.hdf5; }
 }
 
+# ---------------------------------------------------------------------------
+# Feedback tests (EAGLE cooling and feedback model; builds 3dfb / 3dfbconst).
+# What they measure is whether energy injected into a few particles survives
+# long enough to do work on the gas around it instead of being conducted
+# into neighbours that radiate it: the fraction retained, the fraction
+# radiated, the hot gas mass, the blast's radius and momentum.
+# ---------------------------------------------------------------------------
+# A single feedback event (Cooling/FeedbackEvent_3D): one particle of a
+# 32^3 glass at n = 0.1 cm^-3, T = 3200 K is set to 10^7.5 K in the ICs (no
+# hook), EAGLE cooling, 98 Myr. Seconds to run.
+test_fbevent() {
+  # The 3dfb build: the example's parameter file has the entropy floor that
+  # holds the background (without it the background's own cooling dominates
+  # the radiated energy)
+  DIM=3; BUILD=3dfb; EXAMPLE=Cooling/FeedbackEvent_3D; YML=feedback.yml; IC=feedback.hdf5
+  FLAGS="--hydro --cooling --limiter"; PARAMS=""; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_32; get_tables coolingtables; python3 makeIC.py; }
+}
+# The same event injected through the feedback hooks (the Balsara-Kim
+# forcing module sets the central particle to 10^7.5 K at t = 0.5 Myr, as
+# EAGLE's thermal feedback would): the hook raises the heated particle's
+# viscosity coefficient and so switches MAGMA's conduction off around it at
+# once, where the IC-heated version waits for the shock trigger.
+test_fbevent_hook() {
+  DIM=3; BUILD=3dfbforcing; EXAMPLE=Cooling/FeedbackEvent_3D; YML=feedback_hook.yml; IC=feedback_cold.hdf5
+  FLAGS="--hydro --cooling --limiter --sync"; PARAMS=""; PLOT_SNAP=""
+  make_ic() {
+    get_glass glassCube_32; get_tables coolingtables; python3 makeIC.py || return 1
+    # Cold copy of the ICs (the hot particle at the background energy) and
+    # the injection file at that particle's position
+    python3 - <<'EOF' || return 1
+import h5py, numpy as np, shutil
+shutil.copy("feedback.hdf5", "feedback_cold.hdf5")
+with h5py.File("feedback_cold.hdf5", "r+") as f:
+    u = f["/PartType0/InternalEnergy"][:]
+    hot = int(np.argmax(u))
+    x = f["/PartType0/Coordinates"][hot] / np.ravel(f["/Header"].attrs["BoxSize"])[0]
+    u[hot] = np.median(u)
+    for name in ("InternalEnergy", "InternalEnergies"):  # the writer stores both names
+        if name in f["/PartType0"]:
+            f["/PartType0"][name][...] = u
+open("injection_single.txt", "w").write(
+    "# Time [Myr], X, Y, Z [Lbox]\n0.5,%.8f,%.8f,%.8f\n" % tuple(x))
+EOF
+    sed 's|./feedback.hdf5|./feedback_cold.hdf5|' feedback.yml > feedback_hook.yml
+    cat >> feedback_hook.yml <<'EOF'
+
+# One injection into the central particle at t = 0.5 Myr, through the
+# feedback hooks (r_inj below the inter-particle spacing: one particle)
+BalsaraKimForcing:
+  coords:        ./injection_single.txt
+  inj_model:     set_const_u
+  r_inj_pc:      100.
+  E_inj_cgs:     0.
+  u_inj_cgs:     7.83081e+15            # 10^7.5 K at mu = 0.5
+  v_inj_kms:     0.
+EOF
+  }
+}
+# Sedov blast with cooling (Cooling/CoolingSedovBlast_3D): 1e51 erg in the
+# 32 central particles of a 64^3 glass at n = 0.1, T = 1e4 K, EAGLE cooling,
+# 1 Myr: shell radius and momentum against Kim & Ostriker (2015), radiated
+# and kinetic fractions, hot gas mass.
+test_sedov_cooling() {
+  DIM=3; BUILD=3dfbconst; EXAMPLE=Cooling/CoolingSedovBlast_3D; YML=sedov.yml; IC=sedov.hdf5
+  FLAGS="--hydro --cooling --limiter"
+  # 20 compressed snapshots instead of the example's 100 uncompressed ones
+  # (75 MB each with the EAGLE fields: 7 GB per run)
+  PARAMS="-P SPH:h_max:$SEDOV_COOLING_H_MAX -P Snapshots:delta_time:5e-5 -P Snapshots:compression:4"
+  PLOT_SNAP=""
+  make_ic() { get_glass glassCube_64; get_tables coolingtables; python3 makeIC.py; }
+}
+# Balsara-Kim supernova-driven patch (SubgridTests/BalsaraKimStars): 30 star
+# particles in a 64^3 glass at n_H = 1.4, T = 1e4 K, EAGLE cooling, each
+# injecting 1.06e51 erg by EAGLE's stochastic thermal feedback (through the
+# feedback hooks), every 0.1 Myr. Radiated and kinetic fractions, hot and
+# cold mass fractions, velocity dispersion. Hours to run.
+test_bkstars() {
+  DIM=3; BUILD=3dfbconst; EXAMPLE=SubgridTests/BalsaraKimStars; YML=balsarakim.yml; IC=BalsaraKim.hdf5
+  FLAGS="--hydro --external-gravity --cooling --stars --feedback --limiter --sync"
+  # Snapshots next to the run's other files (the example puts them in a sub-directory)
+  PARAMS="-P TimeIntegration:time_end:$BK_T_END -P Snapshots:delta_time:$BK_DT_SNAP -P Snapshots:subdir:."; PLOT_SNAP=""
+  make_ic() { get_glass glassCube_64; get_tables coolingtables yieldtables photometry; python3 makeIC.py; }
+}
+# Isolated disc galaxy (IsolatedGalaxy/IsolatedGalaxy_feedback, lowres8):
+# EAGLE cooling, entropy floor, star formation and feedback in a Hernquist
+# halo, 200 Myr. Hot gas fraction, star-formation rate, stellar mass formed.
+test_galaxy() {
+  DIM=3; BUILD=3dfb; EXAMPLE=IsolatedGalaxy/IsolatedGalaxy_feedback; YML=isolated_galaxy.yml; IC=lowres8.hdf5
+  FLAGS="--hydro --self-gravity --external-gravity --stars --star-formation --feedback --cooling --limiter --sync"
+  # As the NFW halo: adaptive MAC, the setting of production runs
+  PARAMS="-P TimeIntegration:time_end:$GALAXY_T_END -P Snapshots:delta_time:$GALAXY_DT_SNAP -P Gravity:MAC:adaptive -P Gravity:epsilon_fmm:0.001"
+  PLOT_SNAP=""
+  make_ic() {
+    [[ -e lowres8.hdf5 ]] || wget -q $GLASS_URL/IsolatedGalaxies/lowres8.hdf5 || { echo "Cannot fetch lowres8"; return 1; }
+    get_tables coolingtables yieldtables photometry
+  }
+}
+
 # Taylor-Green vortex (Phantom paper, section 5.4.1) at Mach 0.1 on a 2D
 # glass: a stationary Euler solution, so the kinetic-energy decay measures the
 # effective numerical viscosity of the scheme in a smooth subsonic flow.
@@ -428,18 +537,53 @@ get_glass() {
     [[ -e $g.hdf5 ]] || wget -q "$GLASS_URL/$g.hdf5" || { echo "Cannot fetch $g"; return 1; }
   done
 }
+# EAGLE cooling, yield and photometry tables (about 60 MB): downloaded once
+# into ics/tables, or into the directory TABLES_DIR shared between suites,
+# and linked into the test's IC directory (absolute links, so that the
+# copies made in the run directories still resolve).
+get_tables() {
+  local tdir=${TABLES_DIR:-$OUT_DIR/ics/tables}
+  mkdir -p "$tdir"
+  for t in "$@"; do
+    local url
+    case $t in
+      coolingtables) url=$TABLES_URL/CoolingTables/EAGLE/coolingtables.tar.gz ;;
+      yieldtables)   url=$TABLES_URL/YieldTables/EAGLE/yieldtables.tar.gz ;;
+      photometry)    url=$TABLES_URL/YieldTables/EAGLE/photometry.tar.gz ;;
+      *) echo "Unknown table set $t"; return 1 ;;
+    esac
+    if [[ ! -d $tdir/$t ]]; then
+      # Concurrent suite instances share the tables: one fetches, the others wait
+      (
+        if command -v flock > /dev/null; then flock 9 || exit 1; fi
+        [[ -d $tdir/$t ]] && exit 0
+        cd "$tdir" && wget -q "$url" && tar -xf "$(basename "$url")" && rm -f "$(basename "$url")"
+      ) 9> "$tdir/.lock_$t" || { echo "Cannot fetch $t"; return 1; }
+    fi
+    [[ -e $t ]] || ln -s "$tdir/$t" "$t"
+  done
+}
 
 # ---------------------------------------------------------------------------
 # Build
 # ---------------------------------------------------------------------------
 # Build flavours: suffix -> configure flags added to COMMON_FLAGS (the
-# external potential of COMMON_FLAGS is replaced for the NFW build).
+# external potential of COMMON_FLAGS is replaced for the NFW and feedback
+# builds). The feedback builds carry the EAGLE cooling and feedback model:
+# 3dfb with the Hernquist potential (isolated galaxy; star formation and the
+# entropy floor as well) and 3dfbconst with the constant potential
+# (Balsara-Kim stars; also used by the event and the cooling Sedov blast,
+# which run without external gravity).
+EAGLE_FLAGS="--with-cooling=EAGLE --with-chemistry=EAGLE --with-stars=EAGLE --with-feedback=EAGLE"
 declare -A BUILD_FLAGS=(
   [1d]="--with-hydro-dimension=1 --with-adiabatic-index=7/5 --with-kernel=$KERNEL_1D"
   [2d]="--with-hydro-dimension=2"
   [2drt]="--with-hydro-dimension=2 --with-ext-potential=constant --with-forcing=boundary-particles --with-adiabatic-index=7/5"
   [3d]=""
   [3dnfw]="--with-ext-potential=nfw"
+  [3dfb]="$EAGLE_FLAGS --with-star-formation=EAGLE --with-entropy-floor=EAGLE --with-ext-potential=hernquist"
+  [3dfbconst]="$EAGLE_FLAGS --with-ext-potential=constant"
+  [3dfbforcing]="$EAGLE_FLAGS --with-entropy-floor=EAGLE --with-ext-potential=constant --with-forcing=balsarakim"
 )
 
 build_one() {

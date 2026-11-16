@@ -10,10 +10,20 @@ Taylor-Green vortex, shearing shock, strong blast wave, Rayleigh-Taylor, KH
 growth rate, interacting blast waves, travelling and standing sound waves
 (dispersion and damping), thermal discontinuity in pressure equilibrium
 (artificial conduction) and the Gresho vortex advected at Mach 1 (Galilean
-invariance); the NFW hydrostatic halo on request with -t nfw) with several hydro
+invariance); the NFW hydrostatic halo on request with -t nfw) and four
+feedback tests with the EAGLE cooling and feedback model (a single feedback
+event, heated in the ICs and, as fbevent_hook, injected through the feedback
+hooks by the Balsara-Kim forcing module; the Sedov blast with cooling; the
+Balsara-Kim supernova-driven patch with EAGLE star particles; the isolated
+disc galaxy) with several hydro
 schemes built from the same source tree and produces comparison plots and a
 summary table (steps, wall-clock time, energy conservation, L1 errors w.r.t.
-the analytic or reference solutions).
+the analytic or reference solutions; for the feedback tests the fractions of
+the injected energy retained, radiated and turned kinetic, the hot gas mass,
+the blast's radius and momentum, the galaxy's hot fraction and star-formation
+rate). The feedback tests are part of every suite: MAGMA caps its artificial
+conduction around feedback-heated gas, and the hydro tests alone would reward
+tuning that cap away. The Balsara-Kim patch takes hours (it runs last).
 
   ./run_suite.sh -o /path/to/output            # everything, all tests
   ./run_suite.sh -o /path/to/output -t sod,sedov
@@ -26,11 +36,19 @@ formulations: MI2 at three neighbour numbers (eta 1.2348, 1.5 and 1.75) and
 MI1 and MI3 at eta 1.5; magma_mi3_eta15 is the scheme's recommended
 configuration (--with-hydro=magma2 selects MI3) apart from the kernel: the
 suite builds every scheme with the Wendland C4 kernel by default (option -k;
-use -k quintic-spline for MAGMA's recommended kernel), in up to five flavours
+use -k quintic-spline for MAGMA's recommended kernel), in up to seven flavours
 per scheme: 1d (interacting blast waves), 2d, 2drt (Rayleigh-Taylor: constant
-potential, boundary particles, gamma = 7/5), 3d and 3dnfw (NFW potential). The
-point-mass-softened potential is in the common flags (needed by the Keplerian
-rings). Schemes with identical configure flags share one build:
+potential, boundary particles, gamma = 7/5), 3d, 3dnfw (NFW potential), 3dfb
+(EAGLE cooling, chemistry, stars, feedback, star formation and entropy floor,
+Hernquist potential: the isolated galaxy and the IC-heated event), 3dfbconst
+(EAGLE cooling, chemistry, stars and feedback, constant potential: the
+cooling Sedov blast and the Balsara-Kim patch) and 3dfbforcing (3dfbconst
+plus the entropy floor and the Balsara-Kim forcing module: the hook-injected
+event).
+The EAGLE cooling, yield and photometry tables (about 60 MB) are downloaded
+once into ics/tables, or into TABLES_DIR if that variable is set (a cache
+shared between suites). The point-mass-softened potential is in the common flags (needed
+by the Keplerian rings). Schemes with identical configure flags share one build:
 builds/<scheme>_<flavour> is a symbolic link into builds/by_flags/. Builds are
 only redone when the binary is missing or -b is given. All runs use the
 examples' own parameter files (CFL 0.1 unless a scheme line overrides it);
@@ -43,7 +61,8 @@ KEPLERIAN_CD10_N, ZELDOVICH_Z_END, ZELDOVICH_N, ZELDOVICH_GLASS,
 ZELDOVICH_Z_START, ZELDOVICH_PERTURB, SEDOV_GLASS, NOH_GLASS, BLOB_N,
 BLOB_T_END, NFW_T_END, TG_T_END, SHEARING_*, BLAST_*, RT_*, KHGR_*, KERNEL_1D,
 SOUNDWAVE_*, WAVEDAMPING_T_END, THERMAL_*, GRESHO_BOOST, KH8_*,
-SOD_WEAK_P_RIGHT, SOD_STRONG_P_RIGHT).
+SOD_WEAK_P_RIGHT, SOD_STRONG_P_RIGHT, SEDOV_COOLING_H_MAX, BK_T_END,
+BK_DT_SNAP, GALAXY_T_END, GALAXY_DT_SNAP).
 
 Finished runs (marked by a DONE file) are not repeated: delete the run
 directory to redo it. The comparison plots can be regenerated on their own:
@@ -54,9 +73,11 @@ directory to redo it. The comparison plots can be regenerated on their own:
    image-based figures: KH, squares, blob)
 
 Outputs:
-  builds/<scheme>_{1d,2d,2drt,3d,3dnfw}/  links to builds/by_flags/<hash>_<flavour>/,
+  builds/<scheme>_{1d,2d,2drt,3d,3dnfw,3dfb,3dfbconst}/
+                             links to builds/by_flags/<hash>_<flavour>/,
                              copies of the source tree with the binaries
   ics/<test>/                initial conditions shared by all schemes
+  ics/tables/                EAGLE cooling, yield and photometry tables
   runs/<scheme>/<test>/      snapshots, output.log, statistics, the
                              example's own plotSolution.py figure
   plots/<test>.png           comparison figures
