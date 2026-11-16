@@ -24,12 +24,18 @@ density, not by the size of the cloud. With mode 3, `thin` gives
 `N_H2 ~ 1e13 cm^-2` (`f_shield ~ 0.96`) and `thick` gives
 `N_H2 ~ 6e17 cm^-2` (`f_shield ~ 1e-3`).
 
-`config=draine_spectrum` is `thin` with a 7.61 Msun star. Its LW fraction
-`u_LW/(u_PE+u_LW)` is 0.148, the value of the Draine (1978) field that the
-Draine and Bertoldi (1996) rate `3.3e-11 G_0 s^-1` assumes (the 29.7 Msun
-star gives 0.36). The code's rate is then 1.04 times that rate, instead of
-2.52. The star is fainter in the LW band, so the run is 12.5 times longer, with
-snapshots 40 times further apart.
+`config=draine_spectrum` is `thin` with a 7.61 Msun star, which emits less in
+the LW band, so the run is 12.5 times longer, with snapshots 40 times further
+apart.
+
+The LW fraction `u_LW/(u_PE+u_LW)` is the share of a gas particle's radiation
+energy density that sits in the LW band (11.2 to 13.6 eV) rather than in the
+PE band (6 to 11.2 eV). For a star it equals the ratio `L_LW/(L_PE+L_LW)` of
+its two band luminosities in the radiation table. The table named in `run.sh`
+gives 0.339 for the 7.61 Msun star and 0.384 for the 29.7 Msun star. The
+check prints the ratio of the code's LW photodissociation rate to the Draine
+and Bertoldi (1996) rate `3.3e-11 G_0 s^-1`: 2.37 and 2.68. Their ratio is
+`6.994` times the LW fraction, so it is 1 only for an LW fraction of 0.143.
 
 ## Snapshot spacing
 `thin` and `thick` write one snapshot per gas step (`Snapshots:delta_time`

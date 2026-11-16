@@ -14,9 +14,8 @@ config=${config:="thin"}  #thin, thick or draine_spectrum
 
 # thin and thick differ only in the initial H2 abundance, which sets the
 # column Grackle's local self-shielding estimate sees. draine_spectrum is thin
-# with a 7.61 Msun star, whose LW fraction u_LW/(u_PE+u_LW) = 0.148 matches
-# the Draine (1978) field; its LW luminosity is 184 times lower, hence the
-# longer run. Its field changes slowly, so it keeps a coarser snapshot spacing.
+# with a 7.61 Msun star, which is fainter in the LW band, hence the longer run.
+# Its field changes slowly, so it keeps a coarser snapshot spacing.
 # For thin and thick the spacing is one gas step: time_end / 2^8 for dt_max
 # 1.6e-10. Set delta_time to the new step if you change time_end, dt_max or level.
 star_mass_default=29.7

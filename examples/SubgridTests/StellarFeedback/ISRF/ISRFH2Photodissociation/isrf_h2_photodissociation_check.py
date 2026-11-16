@@ -182,7 +182,7 @@ constant is
 for an LW fraction of 0.143. The Draine (1978) field, which the
 ``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 1.04). The
 script prints the measured ratio and ``6.994`` times the measured LW
-fraction; ``draine_spectrum`` uses a star with the Draine LW fraction.
+fraction.
 
 Mode-choice diagnostic (reported, never gated)
 ----------------------------------------------
