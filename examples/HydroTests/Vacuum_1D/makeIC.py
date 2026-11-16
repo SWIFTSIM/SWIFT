@@ -22,6 +22,8 @@
 
 import numpy as np
 import h5py
+import unyt
+import swiftsimio as sw
 
 fileName = "vacuum.hdf5"
 numPart = 100
@@ -33,7 +35,7 @@ v = np.zeros((numPart, 3))
 m = np.zeros(numPart)
 h = np.zeros(numPart)
 u = np.zeros(numPart)
-ids = np.arange(numPart, dtype="L")
+ids = np.arange(1, numPart + 1, dtype="L")
 rho = np.zeros(numPart)
 
 # first set the positions, as we try to do a reasonable volume estimate to
@@ -49,36 +51,23 @@ for i in range(numPart):
     h[i] = 1.0 / numPart
 
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [boxSize], unyt.cm, comoving=True, scale_factor=1.0, scale_exponent=1
+    ),
+    dimension=1,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = boxSize
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 1
+w.gas.coordinates = coords * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
+w.write(fileName)
 
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=coords, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-grp.create_dataset("Density", data=rho, dtype="f")
-
-file.close()
+# Extra fields not handled by the Writer
+with h5py.File(fileName, "r+") as f:
+    f["PartType0"].create_dataset("Density", data=rho, dtype="f")

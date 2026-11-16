@@ -70,9 +70,6 @@ struct fof_props {
   /*! Default group ID to give to particles not in a group */
   size_t group_id_default;
 
-  /*! ID of the first (largest) group. */
-  size_t group_id_offset;
-
   /*! The base name of the output file */
   char base_name[PARSER_MAX_LINE_SIZE];
 
@@ -82,6 +79,10 @@ struct fof_props {
   /*! The types of particles to use for attaching */
   int fof_attach_types[swift_type_count];
 
+  /*! Are there attachable particles anywhere in the simulation?
+   * (Set at the start of each FOF call) */
+  int with_attachables;
+
   /* ------------  Group properties ----------------- */
 
   /*! Number of groups */
@@ -89,12 +90,6 @@ struct fof_props {
 
   /*! Index of the root particle of the group a given gpart belongs to. */
   size_t *group_index;
-
-  /*! Index of the root particle of the group a given gpart is attached to. */
-  size_t *attach_index;
-
-  /*! Has the particle found a linkable to attach to? */
-  char *found_attachable_link;
 
   /*! For attachable particles: distance to the current nearest linkable part */
   float *distance_to_link;

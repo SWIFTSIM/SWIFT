@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 VELOCIRAPTOR_PATH=/cosma7/data/dp004/dc-will2/VELOCIraptor-STF/stf
 SCRIPT_PATH=$VELOCIRAPTOR_PATH/examples
 TREEFROG_PATH=$VELOCIRAPTOR_PATH/bin
@@ -31,9 +33,9 @@ if [ "$RUN_DM" = "1" ]; then
     if [ ! -d $VEL_OUTPUT ]; then mkdir $VEL_OUTPUT; fi
 
     # Remove old comparison files
-    rm catcomp*
-    rm $OUTPUT/stf* 
-    rm $VEL_OUTPUT/vel_$TEST*
+    rm -f catcomp*
+    rm -f $OUTPUT/stf* 
+    rm -f $VEL_OUTPUT/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
     echo "Running: mpirun -np $NUM_MPI_PROC ../../../swift_mpi --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_dmonly"
@@ -75,9 +77,9 @@ if [ "$RUN_GAS" = "1" ]; then
     if [ ! -d $VEL_OUTPUT ]; then mkdir $VEL_OUTPUT; fi
 
     # Remove old comparison files
-    rm catcomp*
-    rm $OUTPUT/stf* 
-    rm $VEL_OUTPUT/vel_$TEST*
+    rm -f catcomp*
+    rm -f $OUTPUT/stf* 
+    rm -f $VEL_OUTPUT/vel_$TEST*
 
     # Run test using SWIFT + VELOCIraptor
     echo "Running: mpirun -np $NUM_MPI_PROC ../../../swift_mpi --hydro --self-gravity --threads=8 eagle_6.yml --velociraptor --steps=5 -P StructureFinding:basename:./$OUTPUT/stf -P StructureFinding:config_file_name:./stf_input_$TEST.cfg -P Snapshots:basename:./eagle_gas"
