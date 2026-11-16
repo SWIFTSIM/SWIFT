@@ -36,6 +36,11 @@
 #include "radiation.h"
 #include "units.h"
 
+/* Warning throttle of the negative-value clamps: the first N events are
+   reported, then one summary per interval. */
+#define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
+#define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
+
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
@@ -335,29 +340,6 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
   }
 }
 
-#endif /* GEAR_SUBGRID_RADIATION_HII */
-
-/**
- * @brief Zero a #spart's radiation output, for when no radiation table is
- * loaded (#radiation.is_active = 0).
- *
- * The zero-pointered tables must not be read, and n_HII_pixels=0 would divide
- * by zero in radiation_set_ionizing_photon_rate().
- *
- * @param sp The star to zero.
- */
-__attribute__((always_inline)) INLINE void radiation_zero_spart_output(
-    struct spart *sp) {
-  radiation_set_star_bolometric_luminosity(sp, 0.f);
-  radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)m, 0.);
-  radiation_set_star_teff(sp, 0.f);
-  radiation_set_ionizing_photon_rate(sp, 0.0, 1);
-}
-
-#ifdef GEAR_SUBGRID_RADIATION_HII
-
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
  * the photons emitted over dt_back. Nothing carries over from the last pass.
@@ -518,39 +500,6 @@ radiation_get_part_ionized_end_time(const struct part *p,
   return p->feedback_data.end_time;
 }
 
-#endif /* GEAR_SUBGRID_RADIATION_HII */
-
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-
-/**
- * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
- * window has lapsed. Called once per step per particle (feedback_reset_part).
- *
- * With LW/PE propagation off, the band u values are also zeroed: nothing else
- * decays them. With propagation on, the packet transport rewrites them every
- * step.
- *
- * @param p The particle.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE void
-radiation_reset_part_ISRF_illumination_tag(struct part *p,
-                                           const struct engine *e) {
-  if (!p->feedback_data.is_illuminated_ISRF) return;
-  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
-
-  p->feedback_data.is_illuminated_ISRF = 0;
-
-  if (!e->feedback_props->ISRF_propagation) {
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-      p->feedback_data.isrf_moment[m].u = 0.f;
-  }
-}
-
-#endif /* GEAR_SUBGRID_RADIATION_ISRF */
-
-#ifdef GEAR_SUBGRID_RADIATION_HII
-
 /**
  * @brief Id of the star that ionized this #part. Valid only while tagged
  * ionized.
@@ -635,12 +584,51 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
 
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
+/**
+ * @brief Zero a #spart's radiation output, for when no radiation table is
+ * loaded (#radiation.is_active = 0).
+ *
+ * The zero-pointered tables must not be read, and n_HII_pixels=0 would divide
+ * by zero in radiation_set_ionizing_photon_rate().
+ *
+ * @param sp The star to zero.
+ */
+__attribute__((always_inline)) INLINE void radiation_zero_spart_output(
+    struct spart *sp) {
+  radiation_set_star_bolometric_luminosity(sp, 0.f);
+  radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
+  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)m, 0.);
+  radiation_set_star_teff(sp, 0.f);
+  radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+}
+
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
-/* Warning throttle: the first N clamp events are reported, then one summary
-   per interval. */
-#define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
-#define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
+/**
+ * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
+ * window has lapsed. Called once per step per particle (feedback_reset_part).
+ *
+ * With LW/PE propagation off, the band u values are also zeroed: nothing else
+ * decays them. With propagation on, the packet transport rewrites them every
+ * step.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                           const struct engine *e) {
+  if (!p->feedback_data.is_illuminated_ISRF) return;
+  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
+
+  p->feedback_data.is_illuminated_ISRF = 0;
+
+  if (!e->feedback_props->ISRF_propagation) {
+    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
+      p->feedback_data.isrf_moment[m].u = 0.f;
+  }
+}
 
 /**
  * @brief Clamp a quantity about to reach Grackle to be non-negative, with a
