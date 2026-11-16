@@ -183,7 +183,8 @@ small minimum column in hot gas, and the length cannot exceed the cap. The lengt
 start of the cooling step. The method is an alternative to the Jeans length: it is longer than the
 Jeans length in cold, dense gas, for example about twice as long at 100 K and 10 H cm\ :sup:`-3`.
 The cap is the low-redshift value at low redshift and the high-redshift value above the transition
-redshift, with a smooth change between them. With ``per_band`` dust
+redshift, with a smooth change between them. The redshift of the cap is ``GeajayCooling:redshift``
+when that key is set, and the redshift of the simulation otherwise. With ``per_band`` dust
 attenuation, the same length also sets the dust column of the backgrounds.
 
 Backgrounds
