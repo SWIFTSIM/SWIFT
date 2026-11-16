@@ -107,7 +107,7 @@ is an output only; Grackle does not read it.
 \label{sec:isrf-lw-coefficient}
 The gas particle carries the LW energy flux and nothing about the shape of the
 spectrum. The dissociation rate therefore needs one number, the coefficient
-$c\equiv\sigma_{\rm H_2}/\bar E_{\rm LW}$, in cm$^2$\,erg$^{-1}$. Its value
+$\kappa_{\rm LW}\equiv\sigma_{\rm H_2}/\bar E_{\rm LW}$, in cm$^2$\,erg$^{-1}$. Its value
 depends on the spectrum of the light. The code uses the value for the Draine
 field \citep{Draine1978}, derived here.
 
@@ -130,18 +130,18 @@ The energy flux in the band is
 \end{equation}
 For a fixed spectrum shape the ratio of the two is a constant,
 \begin{equation}
-  c=\frac{k_{\rm diss}}{F_{\rm LW}}\qquad[{\rm cm^2\,erg^{-1}}],
+  \kappa_{\rm LW}=\frac{k_{\rm diss}}{F_{\rm LW}}\qquad[{\rm cm^2\,erg^{-1}}],
   \label{eq:isrf-c-def}
 \end{equation}
-and the code computes $k_{\rm diss}=c\,F_{\rm LW}$ with $F_{\rm LW}=c_{\rm
-light}\,\rho\,\tilde u_{\rm LW}$. Writing $c=\sigma_{\rm H_2}/\bar E_{\rm LW}$
+and the code computes $k_{\rm diss}=\kappa_{\rm LW}\,F_{\rm LW}$ with $F_{\rm LW}=c_{\rm
+light}\,\rho\,\tilde u_{\rm LW}$. Writing $\kappa_{\rm LW}=\sigma_{\rm H_2}/\bar E_{\rm LW}$
 with $\bar E_{\rm LW}=12.2$\,eV gives the effective cross section
-$\sigma_{\rm H_2}=c\,\bar E_{\rm LW}$; the rate does not read $\bar E_{\rm LW}$
+$\sigma_{\rm H_2}=\kappa_{\rm LW}\,\bar E_{\rm LW}$; the rate does not read $\bar E_{\rm LW}$
 separately.
 
 \emph{Three independent values for the Draine field.} In H$_2$, only the
 Lyman and Werner bands matter. Each value below gives $k_{\rm diss}$ and
-$F_{\rm LW}$ for the Draine field of unit strength, and so one $c$.
+$F_{\rm LW}$ for the Draine field of unit strength, and so one $\kappa_{\rm LW}$.
 \begin{enumerate}
   \item \emph{A line list.} The Leiden photodissociation database
     \citep{Heays2017} holds the H$_2$ band list of \citet{Abgrall2000}: $32$
@@ -153,13 +153,13 @@ $F_{\rm LW}$ for the Draine field of unit strength, and so one $c$.
     (photons\,s$^{-1}$\,cm$^{-2}$\,\AA$^{-1}$) taken at the wavelength
     $\lambda_\ell$ of band $\ell$. The Draine field is the fit of
     \citet{Sternberg2014}, their Eq.~2. Result:
-    $c=1.4515\times10^{-7}$\,cm$^2$\,erg$^{-1}$. As a test, the same sum with
+    $\kappa_{\rm LW}=1.4515\times10^{-7}$\,cm$^2$\,erg$^{-1}$. As a test, the same sum with
     the field files of the database reproduces the rates tabulated by the
     database for three of its fields to $1.7$ per cent at most.
   \item \emph{\citet{Sternberg2014}.} Their free-space rate is
     $5.8\times10^{-11}$\,s$^{-1}$ for a unit Draine field. The energy flux of
     their field in the LW band is $3.9596\times10^{-4}$\,erg\,s$^{-1}$\,cm$^{-2}$.
-    The ratio is $c=1.4648\times10^{-7}$\,cm$^2$\,erg$^{-1}$.
+    The ratio is $\kappa_{\rm LW}=1.4648\times10^{-7}$\,cm$^2$\,erg$^{-1}$.
   \item \emph{\citet{DraineBertoldi1996}, Table~2.} The table gives, for each of the
     two lowest H$_2$ levels, the rate at which the Draine-shaped field pumps
     the molecule and the probability that a pumping ends in dissociation:
@@ -169,7 +169,7 @@ $F_{\rm LW}$ for the Draine field of unit strength, and so one $c$.
     $3.320\times10^{-11}$\,s$^{-1}$. The energy flux of the same field in the
     LW band is $2.3245\times10^{-4}$\,erg\,s$^{-1}$\,cm$^{-2}$. The two
     levels give $1.394\times10^{-7}$ and $1.428\times10^{-7}$; their mean is
-    $c=1.4113\times10^{-7}$\,cm$^2$\,erg$^{-1}$. The field strength cancels in
+    $\kappa_{\rm LW}=1.4113\times10^{-7}$\,cm$^2$\,erg$^{-1}$. The field strength cancels in
     the ratio, so the convention of the field normalisation does not enter.
 \end{enumerate}
 The three values differ by at most $3.8$ per cent from one another.
@@ -177,7 +177,7 @@ The three values differ by at most $3.8$ per cent from one another.
 \emph{Result.} The code takes the mean of the three, and the half of their
 range as the uncertainty:
 \begin{equation}
-  c=\frac{\sigma_{\rm H_2}}{\bar E_{\rm LW}}
+  \kappa_{\rm LW}=\frac{\sigma_{\rm H_2}}{\bar E_{\rm LW}}
   =(1.4425\pm0.0027)\times10^{-7}\;{\rm cm^2\,erg^{-1}}
   \qquad(1.9\ {\rm per\ cent}).
   \label{eq:isrf-c-result}
@@ -206,22 +206,22 @@ $2.4$ per cent above the direct integral of the Draine field in the band
 the rate in a unit Draine field is $k_{\rm diss}=5.85\times10^{-11}$\,s$^{-1}$,
 $0.8$ per cent above the value of \citet{Sternberg2014}.
 
-\emph{The spectral shape matters.} The coefficient $c$ is not a property of
+\emph{The spectral shape matters.} The coefficient $\kappa_{\rm LW}$ is not a property of
 H$_2$ alone: the strong Lyman and Werner bands lie at $912$ to $1015$\,\AA,
 the short end of the band, and the Draine field falls by a factor of about $8$
 from $1108$ to $912$\,\AA. A spectrum with more energy at the short end puts
-more of the band energy where H$_2$ absorbs, and $c$ rises. The sum over the
+more of the band energy where H$_2$ absorbs, and $\kappa_{\rm LW}$ rises. The sum over the
 line list gives, relative to the Draine field: $+17$ per cent for a blackbody
 at $2\times10^4$\,K, $+36$ per cent at $5\times10^4$\,K, and $-18$ per cent
 at $10^4$\,K; the field of a B0 star, $u_\nu\propto\nu^{-2}$
 \citep{DraineBertoldi1996}, gives $+27$ per cent. Independently of this sum,
 Table~2 of \citet{DraineBertoldi1996} gives a ratio $1.26$ between that field
-and the Draine field. The mean photon energy in the band does not fix $c$: it
-moves by $2$ per cent between the blackbodies while $c$ moves by $42$ per
+and the Draine field. The mean photon energy in the band does not fix $\kappa_{\rm LW}$: it
+moves by $2$ per cent between the blackbodies while $\kappa_{\rm LW}$ moves by $42$ per
 cent. The blackbodies are only a proxy: the atmospheres of real stars absorb
 in the Lyman lines of hydrogen at the short end of the band, so the shifts are
 an upper envelope. The value of Eq.~\eqref{eq:isrf-c-result} applies to the
-Draine field. Gas lit by young stars has a rate $15$ to $40$ per cent above the
+Draine field. Gas lit by young stars can have a rate up to $15$ to $40$ per cent above the
 one the code computes, larger than the $1.9$ per cent uncertainty of the
 coefficient. The result is for the free-space, optically thin rate; the
 shielding by H$_2$ itself is a separate factor applied by Grackle.
