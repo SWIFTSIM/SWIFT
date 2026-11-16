@@ -1023,6 +1023,8 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
   /* Let's first lock the cell */
   lock_lock(&cj->hydro.extra_sort_lock);
 
+  runner_count_sort_state_hydro(cj, sid, runner_sort_site_fallback);
+
   /* Is it sorted, if not we use the naive interactions. */
   const int is_sorted =
       (cj->hydro.sorted & (1 << sid)) &&
@@ -2895,6 +2897,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
 
+    runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+    runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
+
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -2922,6 +2927,9 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
     if (h_lo < h_hi &&
         ((CELL_IS_ACTIVE(ci, e) && ci->hydro.h_max_active >= h_lo) ||
          (CELL_IS_ACTIVE(cj, e) && cj->hydro.h_max_active >= h_lo))) {
+
+      runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
 
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */
@@ -3055,6 +3063,9 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
   if (!ci->split || ci->hydro.count < space_recurse_size_pair_hydro ||
       !cj->split || cj->hydro.count < space_recurse_size_pair_hydro) {
 
+    runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+    runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
+
     /* Do any of the cells need to be sorted first?
      * Since h_max might have changed, we may not have sorted at this level */
     if (!(ci->hydro.sorted & (1 << sid)) ||
@@ -3081,6 +3092,9 @@ void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
     const float h_lo = cell_pair_hydro_h_split(ci, cj);
 
     if (h_lo < h_hi && max(ci->hydro.h_max, cj->hydro.h_max) >= h_lo) {
+
+      runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
+      runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
 
       /* Do any of the cells need to be sorted first?
        * Since h_max might have changed, we may not have sorted at this level */

@@ -185,4 +185,46 @@ void *runner_main(void *data);
 ticks runner_get_active_time(const struct runner *restrict r);
 void runner_reset_active_time(struct runner *restrict r);
 
+/*! Loops that read a sort, as indices of the sort state counters. */
+enum runner_sort_site {
+  /*! Leaf of a pair recursion, which sorts on demand. */
+  runner_sort_site_pair_leaf = 0,
+  /*! Subset and split-self pairs, which fall back on naive interactions. */
+  runner_sort_site_fallback = 1,
+};
+
+/*! Sort state of a cell along a direction, as indices of the counters. */
+enum runner_sort_state {
+  /*! Not sorted along the direction. */
+  runner_sort_state_unsorted = 0,
+  /*! Sorted, but dx_max_sort_old is above space_maxreldx * dmin. */
+  runner_sort_state_stale = 1,
+  /*! Sorted, dx_max_sort_old valid, dx_max_sort above the limit. */
+  runner_sort_state_beyond = 2,
+};
+
+/*! Debug counters of the sort states met by the loops in one step. */
+struct runner_sort_counters {
+
+  /*! Indexed by gas (0) or stars (1), site and state. */
+  int count[2][2][3];
+};
+
+#ifdef SWIFT_DEBUG_CHECKS
+void runner_sort_counters_reset(void);
+void runner_sort_counters_get(struct runner_sort_counters *counters);
+void runner_sort_counters_report(const struct engine *e);
+void runner_count_sort_state_hydro(const struct cell *c, const int sid,
+                                   const enum runner_sort_site site);
+void runner_count_sort_state_stars(const struct cell *c, const int sid,
+                                   const enum runner_sort_site site);
+#else
+static INLINE void runner_sort_counters_reset(void) {}
+static INLINE void runner_sort_counters_report(const struct engine *e) {}
+static INLINE void runner_count_sort_state_hydro(
+    const struct cell *c, const int sid, const enum runner_sort_site site) {}
+static INLINE void runner_count_sort_state_stars(
+    const struct cell *c, const int sid, const enum runner_sort_site site) {}
+#endif
+
 #endif /* SWIFT_RUNNER_H */
