@@ -414,16 +414,17 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
  * H2II is already singly ionized and is excluded. A foreign copy has no
  * #xpart: it reads the value cached by
  * #cooling_cache_neutral_H_fraction_subgrid, which follows the same
- * convention. A network that tracks no species reports all hydrogen as
- * neutral, the placeholder that cache also stores.
+ * convention. A network that tracks no species counts all hydrogen as neutral
+ * and returns the total fraction.
  *
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data, or NULL for a foreign
  * copy.
+ * @param total_fraction Total hydrogen mass fraction of the particle.
  * @return Neutral hydrogen mass fraction.
  */
 INLINE static double cooling_get_neutral_hydrogen_fraction_subgrid(
-    const struct part *p, const struct xpart *xp) {
+    const struct part *p, const struct xpart *xp, const double total_fraction) {
 #if COOLING_NETWORK >= 1
 #ifdef WITH_MPI
   if (xp == NULL) {
@@ -448,7 +449,7 @@ INLINE static double cooling_get_neutral_hydrogen_fraction_subgrid(
 #endif
   return X_HI;
 #else
-  return 1.;
+  return total_fraction;
 #endif
 }
 
@@ -685,6 +686,21 @@ INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
 INLINE static void cooling_expire_rate_coupled_tag_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp, double time) {}
+
+/**
+ * @brief Neutral hydrogen mass fraction of a #part. Here no species is
+ * tracked: all hydrogen counts as neutral.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data, or NULL for a foreign
+ * copy.
+ * @param total_fraction Total hydrogen mass fraction of the particle.
+ * @return The total hydrogen mass fraction.
+ */
+INLINE static double cooling_get_neutral_hydrogen_fraction_subgrid(
+    const struct part *p, const struct xpart *xp, const double total_fraction) {
+  return total_fraction;
+}
 
 /**
  * @brief Cache this step's neutral hydrogen mass fraction on the

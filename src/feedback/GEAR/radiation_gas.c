@@ -118,7 +118,9 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-  const double X_HI = cooling_get_neutral_hydrogen_fraction_subgrid(p, xp);
+  const double X_H =
+      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
+  const double X_HI = cooling_get_neutral_hydrogen_fraction_subgrid(p, xp, X_H);
 
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
