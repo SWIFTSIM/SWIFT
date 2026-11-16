@@ -41,6 +41,86 @@
 #include <stdint.h>
 #include <string.h>
 
+/* Constants. */
+
+/*! Largest share of the placed light that may land in the far cells before
+    #radiation_packet_far_share_report warns. Light in the far cells leaves
+    late, by up to `W - 1 = 2^RADIATION_PACKET_FAR_SCALE - 1` receiver steps and
+    by half of that on average, so a far share `f` slows the light by about `f
+    (W - 1) / (2 R)`, `R` the number of receiver steps of a hop. `R` is a
+    property of the run, not of the code: the limit is chosen for `R` between 2
+    and 3 (3 is the bulk of a hop at the step bound of the `fixed` mode), where
+    `f = 0.03` and `W = 8` slow the light by 0.035 to 0.053. */
+#define RADIATION_PACKET_FAR_SHARE_LIMIT 0.03
+
+/*! Smallest number of placements before the cumulative far share can warn.
+    A share `f` measured from `n` placements has a relative error of about `1 /
+    sqrt(f n)`; `n = 9 / f` makes it a third. The share is weighted by energy,
+    so a few large placements can dominate it: 300 is a floor on the noise,
+    not an effective sample size. */
+#define RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS \
+  ((int)(9. / RADIATION_PACKET_FAR_SHARE_LIMIT))
+
+/*! Number of sums of #radiation_packet_placed. */
+#define RADIATION_PACKET_PLACED_SUMS 6
+
+/*! Largest number of threads that place packet light. */
+#define RADIATION_PACKET_MAX_THREADS 1024
+
+/*! Number of particles per chunk of the far stock sum. Fixed, so that the
+ * partial sums and their order do not depend on the number of threads. */
+#define RADIATION_PACKET_FAR_STOCK_CHUNK 8192
+
+/*! Equal sub-steps over which a far cell of a particle with a known step keeps
+    the arrival of its light. */
+#define RADIATION_PACKET_FAR_SUBSTEPS 8
+
+#if RADIATION_PACKET_FAR_SUBSTEPS != 8
+#error "The packing of the far shape is written for 8 sub-steps."
+#endif
+
+/*! Levels of the stored arrived fraction at the end of each sub-step but the
+    last. The shape is stored as its rank among the non-decreasing sequences of
+    7 fractions, `C(levels + 7, 7)` of them, in 59 bits. */
+#define RADIATION_PACKET_FAR_LEVELS 1000
+
+/*! Number of bits of the packed shape: the 27 low bits of `far_first_below`
+    and the 32 of `far_last_below`. The ranks of 1000 levels use 35 per cent of
+    the range. */
+#define RADIATION_PACKET_FAR_PACK_BITS 59
+
+/*! Number of shapes of a far cell, `C(levels + 7, 7)`, as a 128-bit integer for
+    the compile-time check that they fit in #RADIATION_PACKET_FAR_PACK_BITS. */
+#define RADIATION_PACKET_FAR_RANKS                                         \
+  ((unsigned __int128)(RADIATION_PACKET_FAR_LEVELS + 7) *                  \
+   (RADIATION_PACKET_FAR_LEVELS + 6) * (RADIATION_PACKET_FAR_LEVELS + 5) * \
+   (RADIATION_PACKET_FAR_LEVELS + 4) * (RADIATION_PACKET_FAR_LEVELS + 3) * \
+   (RADIATION_PACKET_FAR_LEVELS + 2) * (RADIATION_PACKET_FAR_LEVELS + 1) / \
+   5040)
+_Static_assert(RADIATION_PACKET_FAR_RANKS <=
+                   ((unsigned __int128)1 << RADIATION_PACKET_FAR_PACK_BITS),
+               "The far shapes do not fit in the bits of their packing.");
+
+/*! Largest number of records of a slot that #radiation_packet_regrid places
+    again: the near bins and the sub-steps of the far cells. */
+#define RADIATION_PACKET_RECORDS \
+  (RADIATION_PACKET_BINS +       \
+   RADIATION_PACKET_FAR_CELLS * RADIATION_PACKET_FAR_SUBSTEPS)
+
+/*! Largest width of a far cell, in integer times. */
+#define RADIATION_PACKET_MAX_FAR_WIDTH ((integertime_t)1 << 60)
+
+/*! Largest far scale: the shift `s + 1` stays below the width of an integer
+    time. */
+#define RADIATION_PACKET_MAX_FAR_SCALE (8 * (int)sizeof(integertime_t) - 2)
+
+/*! Number of arrival containers of a slot: the near bins, then the far cells.
+ */
+#define RADIATION_PACKET_PIECES \
+  (RADIATION_PACKET_BINS + RADIATION_PACKET_FAR_CELLS)
+
+/* State set at start-up and counters of rare events. */
+
 /* The periodic box, set at start-up by radiation_packet_set_box(). */
 static double radiation_packet_box_dim[3] = {0.0, 0.0, 0.0};
 static int radiation_packet_box_periodic = 0;
@@ -49,6 +129,31 @@ static int radiation_packet_box_is_set = 0;
 /* Rounding scale of the reach margin per unit of 1 / h, set at every rebuild by
  * radiation_packet_set_frame_width(). 0 only before the first refresh. */
 static float radiation_packet_guard_scale = 0.f;
+
+/* The redshift constants, set at start-up by radiation_packet_set_redshift().
+ */
+static double radiation_packet_speed_of_light = 0.0;
+static double radiation_packet_weight_energy[ISRF_OPERATOR_COUNT] = {1.0, 1.0};
+static double radiation_packet_weight_photon_lw = 0.0;
+static int radiation_packet_redshift_is_set = 0;
+
+/* The speed limit of the light of a share, set once at start-up by
+   radiation_packet_set_light_speed(). */
+int radiation_packet_light_speed_limited = 0;
+float radiation_packet_cone_power = 0.f;
+float radiation_packet_octant_frame[9] = {0.f};
+static double radiation_packet_arrival_per_length = 0.0;
+static double radiation_packet_limit_speed = 0.0;
+static int radiation_packet_ticks_are_ln_a = 0;
+
+/*! Number of times the far cells of a particle became wider, of pieces of
+    light that fell beyond the widest far cells, and of deliveries to a
+    receiver that moves away faster than the clamp allows, on this rank since
+    the start of this run segment (reset at a restart). Rare events: one
+    atomic operation each. */
+static long long radiation_packet_coarsening_count = 0;
+static long long radiation_packet_overflow_count = 0;
+static long long radiation_packet_clamp_count = 0;
 
 /**
  * @brief Give the star emission the box, to wrap star-gas vectors.
@@ -88,13 +193,6 @@ void radiation_packet_set_frame_width(const double width) {
                  : 0.f;
 }
 
-/* The redshift constants, set at start-up by radiation_packet_set_redshift().
- */
-static double radiation_packet_speed_of_light = 0.0;
-static double radiation_packet_weight_energy[ISRF_OPERATOR_COUNT] = {1.0, 1.0};
-static double radiation_packet_weight_photon_lw = 0.0;
-static int radiation_packet_redshift_is_set = 0;
-
 /**
  * @brief Give the redshift of a share the speed of light and the band-edge
  * weights.
@@ -115,24 +213,6 @@ void radiation_packet_set_redshift(const double speed_of_light,
   radiation_packet_redshift_is_set = 1;
 }
 
-/* The speed limit of the light of a share, set once at start-up by
-   radiation_packet_set_light_speed(). */
-int radiation_packet_light_speed_limited = 0;
-float radiation_packet_cone_power = 0.f;
-float radiation_packet_octant_frame[9] = {0.f};
-static double radiation_packet_arrival_per_length = 0.0;
-static double radiation_packet_limit_speed = 0.0;
-static int radiation_packet_ticks_are_ln_a = 0;
-
-/*! Number of times the far cells of a particle became wider, of pieces of
-    light that fell beyond the widest far cells, and of deliveries to a
-    receiver that moves away faster than the clamp allows, on this rank since
-    the start of this run segment (reset at a restart). Rare events: one
-    atomic operation each. */
-static long long radiation_packet_coarsening_count = 0;
-static long long radiation_packet_overflow_count = 0;
-static long long radiation_packet_clamp_count = 0;
-
 /*! Count one widening of the far cells of a particle. */
 static void radiation_packet_count_coarsening(void) {
   __sync_fetch_and_add(&radiation_packet_coarsening_count, 1);
@@ -148,24 +228,6 @@ static void radiation_packet_count_overflow(void) {
 static void radiation_packet_count_clamp(void) {
   __sync_fetch_and_add(&radiation_packet_clamp_count, 1);
 }
-
-/*! Largest share of the placed light that may land in the far cells before
-    #radiation_packet_far_share_report warns. Light in the far cells leaves
-    late, by up to `W - 1 = 2^RADIATION_PACKET_FAR_SCALE - 1` receiver steps and
-    by half of that on average, so a far share `f` slows the light by about `f
-    (W - 1) / (2 R)`, `R` the number of receiver steps of a hop. `R` is a
-    property of the run, not of the code: the limit is chosen for `R` between 2
-    and 3 (3 is the bulk of a hop at the step bound of the `fixed` mode), where
-    `f = 0.03` and `W = 8` slow the light by 0.035 to 0.053. */
-#define RADIATION_PACKET_FAR_SHARE_LIMIT 0.03
-
-/*! Smallest number of placements before the cumulative far share can warn.
-    A share `f` measured from `n` placements has a relative error of about `1 /
-    sqrt(f n)`; `n = 9 / f` makes it a third. The share is weighted by energy,
-    so a few large placements can dominate it: 300 is a floor on the noise,
-    not an effective sample size. */
-#define RADIATION_PACKET_FAR_SHARE_MIN_PLACEMENTS \
-  ((int)(9. / RADIATION_PACKET_FAR_SHARE_LIMIT))
 
 /*! Energy of the new light placed in the arrival bins and cells, in all and in
     the far cells, and the number of placements, since the last
@@ -186,10 +248,6 @@ struct radiation_packet_placed {
   char pad[16];
 } __attribute__((aligned(64)));
 
-/*! Number of sums of #radiation_packet_placed. */
-#define RADIATION_PACKET_PLACED_SUMS 6
-
-#define RADIATION_PACKET_MAX_THREADS 1024
 static struct radiation_packet_placed
     radiation_packet_placed_threads[RADIATION_PACKET_MAX_THREADS];
 static int radiation_packet_placed_registered = 0;
@@ -591,10 +649,6 @@ void radiation_packet_far_share_final(const struct engine *e) {
       counts[0], counts[1], counts[2],
       1. - 1. / RADIATION_PACKET_RECEDING_MAX_FACTOR);
 }
-
-/*! Number of particles per chunk of the far stock sum. Fixed, so that the
- * partial sums and their order do not depend on the number of threads. */
-#define RADIATION_PACKET_FAR_STOCK_CHUNK 8192
 
 /*! Partial far stock of one chunk of particles. */
 struct far_stock_chunk {
@@ -1744,42 +1798,6 @@ static float radiation_packet_join_below_end(const float held,
   return fminf(held_below, piece_below);
 }
 
-/*! Equal sub-steps over which a far cell of a particle with a known step keeps
-    the arrival of its light. */
-#define RADIATION_PACKET_FAR_SUBSTEPS 8
-
-#if RADIATION_PACKET_FAR_SUBSTEPS != 8
-#error "The packing of the far shape is written for 8 sub-steps."
-#endif
-
-/*! Levels of the stored arrived fraction at the end of each sub-step but the
-    last. The shape is stored as its rank among the non-decreasing sequences of
-    7 fractions, `C(levels + 7, 7)` of them, in 59 bits. */
-#define RADIATION_PACKET_FAR_LEVELS 1000
-
-/*! Number of bits of the packed shape: the 27 low bits of `far_first_below`
-    and the 32 of `far_last_below`. The ranks of 1000 levels use 35 per cent of
-    the range. */
-#define RADIATION_PACKET_FAR_PACK_BITS 59
-
-/*! Number of shapes of a far cell, `C(levels + 7, 7)`, as a 128-bit integer for
-    the compile-time check that they fit in #RADIATION_PACKET_FAR_PACK_BITS. */
-#define RADIATION_PACKET_FAR_RANKS                                         \
-  ((unsigned __int128)(RADIATION_PACKET_FAR_LEVELS + 7) *                  \
-   (RADIATION_PACKET_FAR_LEVELS + 6) * (RADIATION_PACKET_FAR_LEVELS + 5) * \
-   (RADIATION_PACKET_FAR_LEVELS + 4) * (RADIATION_PACKET_FAR_LEVELS + 3) * \
-   (RADIATION_PACKET_FAR_LEVELS + 2) * (RADIATION_PACKET_FAR_LEVELS + 1) / \
-   5040)
-_Static_assert(RADIATION_PACKET_FAR_RANKS <=
-                   ((unsigned __int128)1 << RADIATION_PACKET_FAR_PACK_BITS),
-               "The far shapes do not fit in the bits of their packing.");
-
-/*! Largest number of records of a slot that #radiation_packet_regrid places
-    again: the near bins and the sub-steps of the far cells. */
-#define RADIATION_PACKET_RECORDS \
-  (RADIATION_PACKET_BINS +       \
-   RADIATION_PACKET_FAR_CELLS * RADIATION_PACKET_FAR_SUBSTEPS)
-
 /**
  * @brief The bits of a float.
  *
@@ -2141,13 +2159,6 @@ integertime_t radiation_packet_bin_end(
   return ((pk->step_end_ti + w - 1) / w) * w + (integertime_t)j * w;
 }
 
-/*! Largest width of a far cell, in integer times. */
-#define RADIATION_PACKET_MAX_FAR_WIDTH ((integertime_t)1 << 60)
-
-/*! Largest far scale: the shift `s + 1` stays below the width of an integer
-    time. */
-#define RADIATION_PACKET_MAX_FAR_SCALE (8 * (int)sizeof(integertime_t) - 2)
-
 /**
  * @brief Largest far scale for a step: the width stays below
  * #RADIATION_PACKET_MAX_FAR_WIDTH.
@@ -2194,11 +2205,6 @@ integertime_t radiation_packet_far_end(
     const struct feedback_isrf_packet_data *pk, const int c) {
   return radiation_packet_far_end_at(pk, pk->far_scale, c);
 }
-
-/*! Number of arrival containers of a slot: the near bins, then the far cells.
- */
-#define RADIATION_PACKET_PIECES \
-  (RADIATION_PACKET_BINS + RADIATION_PACKET_FAR_CELLS)
 
 /**
  * @brief Ends of the near bins and of the far cells of a receiver, as doubles.
