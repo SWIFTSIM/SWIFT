@@ -448,6 +448,12 @@ void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s) {
  * @brief Activate the #part drifts on the given cell.
  */
 void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
+  /* Mirror cells are refreshed from the cell they reflect instead */
+  if (c->subtype == cell_subtype_mirror) {
+    cell_activate_mirror_refresh(c, s);
+    return;
+  }
+
   /* If this cell is already marked for drift, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_drift)) return;
 
@@ -481,6 +487,53 @@ void cell_activate_drift_part(struct cell *c, struct scheduler *s) {
         break;
       }
     }
+  }
+}
+
+/**
+ * @brief Bring the search radius and displacement of a mirror cell up to
+ * those of the cell it reflects.
+ *
+ * Takes the larger of the two as neither is exact: the mirror cell's are
+ * from its last refresh and the real cell's are not maintained above its
+ * super level.
+ */
+static void cell_mirror_catch_up(struct cell *c) {
+  if (c->subtype != cell_subtype_mirror) return;
+  c->hydro.h_max = max(c->hydro.h_max, c->mirror_of->hydro.h_max);
+  c->hydro.dx_max_part =
+      max(c->hydro.dx_max_part, c->mirror_of->hydro.dx_max_part);
+}
+
+/**
+ * @brief Activate the drifts of a real cell, wherever its super cells are.
+ *
+ * Unlike cell_activate_drift_part() this can be called above the super level.
+ */
+static void cell_activate_drift_part_down(struct cell *c, struct scheduler *s) {
+  if (c->hydro.super != NULL) {
+    cell_activate_drift_part(c, s);
+  } else if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL)
+        cell_activate_drift_part_down(c->progeny[k], s);
+    }
+  }
+}
+
+/**
+ * @brief Activate the tasks refreshing the mirror particles of a mirror cell,
+ * and the drift of the cell it reflects.
+ */
+void cell_activate_mirror_refresh(struct cell *c, struct scheduler *s) {
+
+  /* The mirror cell need not have its tasks at the depth of the cell it
+   * reflects: their neighbours differ. */
+  cell_activate_drift_part_down(c->mirror_of, s);
+
+  for (int k = 0; k < 3; k++) {
+    struct task *t = c->hydro.super->mirror_refresh[k];
+    if (t != NULL) scheduler_activate(s, t);
   }
 }
 
@@ -698,6 +751,10 @@ void cell_activate_drift_sink(struct cell *c, struct scheduler *s) {
  * @brief Activate the drifts on the given cell.
  */
 void cell_activate_limiter(struct cell *c, struct scheduler *s) {
+  /* Mirror particles have no time-steps to limit. Any particle within reach
+   * of one is closer still to the particle it reflects. */
+  if (c->subtype == cell_subtype_mirror) return;
+
   /* If this cell is already marked for limiting, quit early. */
   if (cell_get_flag(c, cell_flag_do_hydro_limiter)) return;
 
@@ -783,8 +840,10 @@ void cell_activate_hydro_sorts(struct cell *c, int sid, struct scheduler *s) {
     }
   }
 
-  /* Has this cell been sorted at all for the given sid? */
-  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank) {
+  /* Has this cell been sorted at all for the given sid? Mirror cells always
+   * need sorting as their particles are replaced by the refresh. */
+  if (!(c->hydro.sorted & (1 << sid)) || c->nodeID != engine_rank ||
+      c->subtype == cell_subtype_mirror) {
     atomic_or(&c->hydro.do_sort, (1 << sid));
     cell_activate_hydro_sorts_up(c, s);
   }
@@ -956,6 +1015,11 @@ void cell_activate_subcell_hydro_tasks(struct cell *ci, struct cell *cj,
                                        struct scheduler *s,
                                        const int with_timestep_limiter) {
   const struct engine *e = s->space->e;
+
+  /* Mirror cells only caught up with the cells they reflect when they were
+   * last refreshed. */
+  cell_mirror_catch_up(ci);
+  if (cj != NULL) cell_mirror_catch_up(cj);
 
   /* Store the current dx_max and h_max values. */
   ci->hydro.dx_max_part_old = ci->hydro.dx_max_part;

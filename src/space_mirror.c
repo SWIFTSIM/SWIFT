@@ -49,13 +49,14 @@ void space_mirror_clone(struct space *s, struct cell *cm, struct cell *c,
 
   cm->mirror_of = c;
   cm->hydro.parts = parts;
+  cm->hydro.xparts = NULL;
   cm->hydro.count = c->hydro.count;
   cm->hydro.count_total = c->hydro.count;
-  cm->hydro.h_max = c->hydro.h_max;
-  cm->hydro.h_max_active = c->hydro.h_max_active;
-  cm->hydro.ti_old_part = c->hydro.ti_old_part;
-  cm->hydro.ti_end_min = c->hydro.ti_end_min;
-  cm->hydro.ti_beg_max = c->hydro.ti_beg_max;
+
+  /* Mirror particles are never updated, so mirror cells are never active.
+   * The rest of the cell's state comes with the first refresh. */
+  cm->hydro.ti_end_min = max_nr_timesteps;
+  cm->hydro.ti_beg_max = 0;
   cm->maxdepth = c->maxdepth;
   cm->split = c->split;
   if (!c->split) return;
@@ -150,7 +151,7 @@ void space_mirror_populate(struct space *s, int verbose) {
     if (c->nodeID != engine_rank || c->hydro.count == 0) continue;
 
     space_mirror_clone(s, cm, c, parts);
-    cell_mirror_refresh(cm, s->dim);
+    cell_mirror_refresh(cm, s->dim, /*moved=*/1);
     parts += c->hydro.count;
   }
 

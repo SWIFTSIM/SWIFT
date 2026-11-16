@@ -177,6 +177,9 @@ void cell_drift_part(struct cell *c, const struct engine *e, int force,
   float cell_h_max = 0.f;
   float cell_h_max_active = 0.f;
 
+  /* Mirror particles follow the particles they reflect instead */
+  if (c->subtype == cell_subtype_mirror) return;
+
   /* Drift irrespective of cell flags? */
   force = (force || cell_get_flag(c, cell_flag_do_hydro_drift));
 

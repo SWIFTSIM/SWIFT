@@ -632,6 +632,11 @@ void scheduler_reweight(struct scheduler *s, int verbose) {
           cost = 1.f * wscale * count_i * count_j;
         } else if (t->subtype == task_subtype_rt_transport) {
           cost = 1.f * wscale * count_i * count_j;
+        } else if (t->subtype == task_subtype_mirror_drift ||
+                   t->subtype == task_subtype_mirror_density ||
+                   t->subtype == task_subtype_mirror_gradient) {
+          /* A copy of the particles, like a drift */
+          cost = wscale * count_i;
         } else {
           error("Untreated sub-type for pairs: %s",
                 subtaskID_names[t->subtype]);

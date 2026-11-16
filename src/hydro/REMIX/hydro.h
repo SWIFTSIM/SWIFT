@@ -978,4 +978,35 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
       p->u, p->force.pressure, p->rho, p->h, p->mat_id, time);
 }
 
+/**
+ * @brief Reflect the vectors and tensors of a particle in a plane normal to
+ * one axis, to make it the mirror image of itself behind a wall.
+ *
+ * The position and velocity are dealt with by the caller. Only the fields
+ * neighbours read are reflected. Those of the force sub-structure are only
+ * meaningful, and only read, once the gradient ghost has run.
+ *
+ * @param p The particle.
+ * @param k The axis normal to the wall.
+ */
+__attribute__((always_inline)) INLINE static void hydro_mirror_part(
+    struct part *p, const int k) {
+
+  p->du_norm_kernel[k] = -p->du_norm_kernel[k];
+  p->drho_norm_kernel[k] = -p->drho_norm_kernel[k];
+  p->dh_norm_kernel[k] = -p->dh_norm_kernel[k];
+  p->grad_m0[k] = -p->grad_m0[k];
+  p->force.B[k] = -p->force.B[k];
+  p->force.grad_A[k] = -p->force.grad_A[k];
+
+  /* Tensor components with exactly one index along the axis change sign */
+  for (int i = 0; i < 3; i++) {
+    if (i == k) continue;
+    p->dv_norm_kernel[i][k] = -p->dv_norm_kernel[i][k];
+    p->dv_norm_kernel[k][i] = -p->dv_norm_kernel[k][i];
+    p->force.grad_B[i][k] = -p->force.grad_B[i][k];
+    p->force.grad_B[k][i] = -p->force.grad_B[k][i];
+  }
+}
+
 #endif /* SWIFT_REMIX_HYDRO_H */

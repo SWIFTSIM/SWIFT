@@ -48,7 +48,9 @@
       const struct cell *c, const int subsample, const float subsample_ratio, \
       const int snap_num, double min_pos[3], double max_pos[3]) {             \
                                                                               \
-    const int total_count = c->CELL_TYPE.count;                               \
+    /* Mirror particles are never written */                                  \
+    const int total_count =                                                   \
+        (c->subtype == cell_subtype_mirror) ? 0 : c->CELL_TYPE.count;         \
     const struct TYPE *parts = c->CELL_TYPE.parts;                            \
     long long count = 0;                                                      \
     min_pos[0] = min_pos[1] = min_pos[2] = DBL_MAX;                           \

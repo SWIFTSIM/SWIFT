@@ -88,6 +88,9 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     if (cell_rec_begin != NULL)
       space_recycle_list(s, cell_rec_begin, cell_rec_end, multipole_rec_begin,
                          multipole_rec_end);
+    /* Mirror cells are not in the list of cells with tasks that get their
+     * sorts cleaned ahead of a rebuild. */
+    if (c->subtype == cell_subtype_mirror) cell_free_hydro_sorts(c);
     c->hydro.sorts = NULL;
     c->stars.sorts = NULL;
 #ifdef SWIFT_DEBUG_CHECKS
@@ -171,6 +174,7 @@ void space_rebuild_recycle_mapper(void *map_data, int num_elements,
     c->hydro.end_force = NULL;
     c->hydro.drift = NULL;
     c->hydro.boundary = NULL;
+    for (int i = 0; i < 3; i++) c->mirror_refresh[i] = NULL;
     c->sinks.drift = NULL;
     c->sinks.boundary = NULL;
     c->stars.drift = NULL;

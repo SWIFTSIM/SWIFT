@@ -2187,7 +2187,7 @@ void engine_make_hierarchical_tasks_mapper(void *map_data, int num_elements,
   for (int ind = 0; ind < num_elements; ind++) {
     struct cell *c = &((struct cell *)map_data)[ind];
 
-    /* ponytail: mirror cells get no tasks until their refresh tasks exist. */
+    /* Mirror cells get all their tasks in engine_make_mirror_tasks() */
     if (c->subtype == cell_subtype_mirror) continue;
 
     /* Make the common tasks (time integration) */
@@ -2720,6 +2720,189 @@ static inline void engine_make_hydro_loops_dependencies(
 
 #endif
 
+/*
+ * Tasks of the mirror cells (mirror boundary conditions).
+ *
+ * Everything a mirror cell adds to the task network is built here, by
+ * engine_make_mirror_tasks(), once the network of the real cells is complete.
+ * The only other construction code that knows about mirror cells is
+ * engine_make_hydroloop_tasks_mapper(), which creates the density pair of a
+ * real cell and a mirror cell so that it is split and linked like any other
+ * pair. The hierarchical and extra-loop mappers skip mirror cells.
+ *
+ * A mirror cell (M) has no drift, ghost, kick or time-step tasks. In their
+ * place, pair tasks with the cell it reflects (R) copy the particles of R
+ * across once the task of R they stand in for has run. With X any real
+ * neighbour of M (which can be R itself):
+ *
+ *   R:      boundary             ghost                extra_ghost
+ *              |                   |                      |
+ *              v                   v                      v
+ *   (M,R):  mirror_drift        mirror_density         mirror_gradient
+ *              |                 ^     |                ^      |
+ *              v                 |     |                |      |
+ *   M:        sort               |     |                |      |
+ *              |                 |     v                |      v
+ *   (X,M):     +----> density ---+    gradient ---------+     force
+ *
+ * On the side of X these pairs have the dependencies of a pair of two real
+ * cells. Without the gradient loop, mirror_density unlocks the force.
+ *
+ * At run time the mirror tasks are activated by cell_activate_drift_part(),
+ * wherever a real cell would activate its drift.
+ */
+
+#ifdef EXTRA_HYDRO_LOOP
+#define engine_nr_mirror_refresh 3
+#else
+#define engine_nr_mirror_refresh 2
+#endif
+
+/**
+ * @brief Make the refreshes of a mirror cell wait for the tasks of the real
+ * cell whose results they copy.
+ *
+ * @param sched The #scheduler.
+ * @param real The #cell reflected by the mirror cell.
+ * @param refresh The refresh tasks of the mirror cell.
+ */
+static void engine_make_mirror_refresh_dependencies(struct scheduler *sched,
+                                                    const struct cell *real,
+                                                    struct task **refresh) {
+
+  /* The tasks of the real cell can be below the depth of the mirror cell's:
+   * their neighbours differ, and so does how far their pairs were split. */
+  if (real->hydro.super == NULL) {
+    for (int k = 0; k < 8; k++) {
+      if (real->progeny[k] != NULL) {
+        engine_make_mirror_refresh_dependencies(sched, real->progeny[k],
+                                                refresh);
+      }
+    }
+    return;
+  }
+
+  const struct cell *super = real->hydro.super;
+  scheduler_addunlock(sched, super->hydro.boundary, refresh[0]);
+  scheduler_addunlock(sched, super->hydro.ghost_out, refresh[1]);
+#ifdef EXTRA_HYDRO_LOOP
+  scheduler_addunlock(sched, super->hydro.extra_ghost, refresh[2]);
+#endif
+}
+
+/**
+ * @brief Duplicate the density task of a real cell and a mirror cell for the
+ * other hydro loops and construct their dependencies.
+ *
+ * @param e The #engine.
+ * @param t The density pair task.
+ */
+static void engine_make_mirror_pair_tasks(struct engine *e, struct task *t) {
+
+  struct scheduler *sched = &e->sched;
+  struct cell *ci = t->ci;
+  struct cell *cj = t->cj;
+  const int ci_mirror = (ci->subtype == cell_subtype_mirror);
+  struct cell *real = (ci_mirror ? cj : ci)->hydro.super;
+  struct cell *mirror = (ci_mirror ? ci : cj)->hydro.super;
+
+  /* The force loop */
+  struct task *t_force = scheduler_addtask(
+      sched, task_type_pair, task_subtype_force, t->flags, 0, ci, cj);
+  engine_addlink(e, &ci->hydro.force, t_force);
+  engine_addlink(e, &cj->hydro.force, t_force);
+
+  /* The real cell: boundary --> sorts --> loops and ghosts --> end_force */
+  scheduler_addunlock(sched, real->hydro.boundary, t);
+  scheduler_addunlock(sched, real->hydro.sorts, t);
+  scheduler_addunlock(sched, t_force, real->hydro.end_force);
+
+  /* The mirror cell: sorts --> density --> refresh --> ... --> force */
+  scheduler_addunlock(sched, mirror->hydro.sorts, t);
+  scheduler_addunlock(sched, t, mirror->mirror_refresh[1]);
+
+#ifdef EXTRA_HYDRO_LOOP
+  struct task *t_gradient = scheduler_addtask(
+      sched, task_type_pair, task_subtype_gradient, t->flags, 0, ci, cj);
+  engine_addlink(e, &ci->hydro.gradient, t_gradient);
+  engine_addlink(e, &cj->hydro.gradient, t_gradient);
+
+  engine_make_hydro_loops_dependencies(sched, t, t_gradient, t_force,
+                                       /*limiter=*/NULL, real,
+                                       /*with_cooling=*/0, /*with_limiter=*/0);
+  scheduler_addunlock(sched, mirror->mirror_refresh[1], t_gradient);
+  scheduler_addunlock(sched, t_gradient, mirror->mirror_refresh[2]);
+  scheduler_addunlock(sched, mirror->mirror_refresh[2], t_force);
+#else
+  engine_make_hydro_loops_dependencies(sched, t, t_force, /*limiter=*/NULL,
+                                       real, /*with_cooling=*/0,
+                                       /*with_limiter=*/0);
+  scheduler_addunlock(sched, mirror->mirror_refresh[1], t_force);
+#endif
+}
+
+/**
+ * @brief Construct the tasks of a mirror cell hierarchy.
+ *
+ * @param e The #engine.
+ * @param c The mirror #cell.
+ */
+static void engine_make_mirror_cell_tasks(struct engine *e, struct cell *c) {
+
+  struct scheduler *sched = &e->sched;
+
+  /* At the super level: the refreshes and the sort */
+  if (c->hydro.super == c) {
+    for (int k = 0; k < engine_nr_mirror_refresh; k++) {
+      c->mirror_refresh[k] = scheduler_addtask(sched, task_type_pair,
+                                               task_subtype_mirror_drift + k, 0,
+                                               0, c, c->mirror_of);
+    }
+    engine_make_mirror_refresh_dependencies(sched, c->mirror_of,
+                                            c->mirror_refresh);
+
+    c->hydro.sorts = scheduler_addtask(sched, task_type_sort, task_subtype_none,
+                                       0, 0, c, NULL);
+    scheduler_addunlock(sched, c->mirror_refresh[0], c->hydro.sorts);
+  }
+
+  /* At and below the super level: the pairs with real cells. No pair has two
+   * mirror cells, so each is found once. */
+  for (struct link *l = c->hydro.density; l != NULL; l = l->next) {
+    engine_make_mirror_pair_tasks(e, l->t);
+  }
+
+  if (c->split) {
+    for (int k = 0; k < 8; k++) {
+      if (c->progeny[k] != NULL) {
+        engine_make_mirror_cell_tasks(e, c->progeny[k]);
+      }
+    }
+  }
+}
+
+/**
+ * @brief Construct all the tasks and dependencies of the mirror cells.
+ *
+ * Must be called once the hydro tasks of the real cells have been
+ * constructed. See the diagram above.
+ *
+ * @param e The #engine.
+ */
+static void engine_make_mirror_tasks(struct engine *e) {
+
+  struct space *s = e->s;
+
+  /* ponytail: serial; the mirror cells are a surface layer. Use the
+   * threadpool if this shows up in the rebuild time. */
+  for (int k = 0; k < s->nr_cells; k++) {
+    struct cell *c = &s->cells_top[k];
+    if (c->subtype == cell_subtype_mirror) {
+      engine_make_mirror_cell_tasks(e, c);
+    }
+  }
+}
+
 /**
  * @brief Duplicates the first hydro loop and construct all the
  * dependencies for the hydro part
@@ -2791,6 +2974,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                            ? ci->hydro.super->hydro.drift
                                            : ci->hydro.super->hydro.boundary;
       scheduler_addunlock(sched, drift_or_boundary, t);
+    }
+
+    /* Pairs with a mirror cell are left to engine_make_mirror_tasks() */
+    else if (t_type == task_type_pair && (ci->subtype == cell_subtype_mirror ||
+                                          cj->subtype == cell_subtype_mirror)) {
+      continue;
     }
 
     /* Sort tasks depend on the drift or boundary task (stars version). */
@@ -3742,11 +3931,10 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
         (!with_black_holes || ci->black_holes.count == 0))
       continue;
 
-    /* ponytail: mirror cells get no tasks until their refresh tasks exist. */
-    if (ci->subtype == cell_subtype_mirror) continue;
-
-    /* If the cell is local build a self-interaction */
-    if (ci->nodeID == nodeID) {
+    /* If the cell is local build a self-interaction. Mirror particles do not
+     * interact with each other. */
+    const int ci_mirror = (ci->subtype == cell_subtype_mirror);
+    if (ci->nodeID == nodeID && !ci_mirror) {
       scheduler_addtask(sched, task_type_self, task_subtype_density, 0, 0, ci,
                         NULL);
     }
@@ -3778,8 +3966,13 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-          /* ponytail: see above. */
-          if (cj->subtype == cell_subtype_mirror) continue;
+          /* Mirror cells only pair with real cells.
+           * ponytail: local ones for now; the images seen by foreign cells
+           * come with the MPI rank rule. */
+          const int cj_mirror = (cj->subtype == cell_subtype_mirror);
+          if ((ci_mirror && (cj_mirror || cj->nodeID != nodeID)) ||
+              (cj_mirror && ci->nodeID != nodeID))
+            continue;
 
           /* Construct the pair task */
           const int sid = sortlistID[(kk + 1) + 3 * ((jj + 1) + 3 * (ii + 1))];
@@ -4363,6 +4556,9 @@ void engine_maketasks(struct engine *e) {
     /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
+
+    /* With the network of the real cells complete, attach the mirror cells */
+    engine_make_mirror_tasks(e);
   }
 
   if (e->verbose)

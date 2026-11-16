@@ -173,6 +173,9 @@ const char *subtaskID_names[task_subtype_count] = {
     "rt_transport",
     "boundary_open",
     "boundary_reflective",
+    "mirror_drift",
+    "mirror_density",
+    "mirror_gradient",
 };
 
 const char *task_category_names[task_category_count] = {
@@ -285,6 +288,9 @@ __attribute__((always_inline)) INLINE static enum task_actions task_acts_on(
         case task_subtype_gradient:
         case task_subtype_force:
         case task_subtype_limiter:
+        case task_subtype_mirror_drift:
+        case task_subtype_mirror_density:
+        case task_subtype_mirror_gradient:
           return task_action_part;
           break;
 
@@ -1804,6 +1810,9 @@ enum task_categories task_get_category(const struct task *t) {
         case task_subtype_density:
         case task_subtype_gradient:
         case task_subtype_force:
+        case task_subtype_mirror_drift:
+        case task_subtype_mirror_density:
+        case task_subtype_mirror_gradient:
           return task_category_hydro;
 
         case task_subtype_limiter:

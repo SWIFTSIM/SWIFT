@@ -31,7 +31,7 @@
 /** Apply open and reflective box boundaries to gas particles in a cell
  * hierarchy. */
 void cell_boundary_part(struct cell *c, const struct engine *e) {
-  if (c->hydro.count == 0) return;
+  if (c->hydro.count == 0 || c->subtype == cell_subtype_mirror) return;
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL) cell_boundary_part(c->progeny[k], e);
@@ -253,35 +253,69 @@ void cell_boundary_sink(struct cell *c, const struct engine *e) {
  *
  * Each mirror particle becomes a copy of the particle with the same index in
  * the leaf cell this one reflects, with its position reflected in the walls
- * and its velocity normal to them reversed (free slip).
+ * and its vectors normal to them reversed (free slip). The cells take the
+ * smoothing lengths, displacements and drift time of the cells they reflect.
  *
  * @param c The mirror #cell.
  * @param dim The box dimensions.
+ * @param moved Have the particles moved since the last refresh? If so the
+ * sorts of the mirror cells are stale.
  */
-void cell_mirror_refresh(struct cell *c, const double dim[3]) {
+void cell_mirror_refresh(struct cell *c, const double dim[3], const int moved) {
+
+  /* ponytail: mirror cells are re-sorted every step they are used; track
+   * their displacement since the last sort if that ever shows in a profile. */
+  if (moved) c->hydro.sorted = 0;
+
   if (c->split) {
-    for (int k = 0; k < 8; k++)
-      if (c->progeny[k] != NULL) cell_mirror_refresh(c->progeny[k], dim);
+    float h_max = 0.f, h_max_active = 0.f, dx_max_part = 0.f;
+    integertime_t ti_old_part = max_nr_timesteps;
+    for (int k = 0; k < 8; k++) {
+      struct cell *cp = c->progeny[k];
+      if (cp == NULL) continue;
+      cell_mirror_refresh(cp, dim, moved);
+      h_max = max(h_max, cp->hydro.h_max);
+      h_max_active = max(h_max_active, cp->hydro.h_max_active);
+      dx_max_part = max(dx_max_part, cp->hydro.dx_max_part);
+      ti_old_part = min(ti_old_part, cp->hydro.ti_old_part);
+    }
+    c->hydro.h_max = h_max;
+    c->hydro.h_max_active = h_max_active;
+    c->hydro.dx_max_part = dx_max_part;
+    c->hydro.ti_old_part = ti_old_part;
     return;
   }
 
-  const struct part *restrict parts = c->mirror_of->hydro.parts;
+  const struct cell *real = c->mirror_of;
+  c->hydro.h_max = real->hydro.h_max;
+  c->hydro.h_max_active = real->hydro.h_max_active;
+  c->hydro.dx_max_part = real->hydro.dx_max_part;
+  c->hydro.ti_old_part = real->hydro.ti_old_part;
+
+  const struct part *restrict parts = real->hydro.parts;
   struct part *restrict mirrors = c->hydro.parts;
   const int count = c->hydro.count;
   const unsigned int walls = c->mirror_walls;
 
   for (int i = 0; i < count; i++) {
-    struct part *restrict p = &mirrors[i];
-    *p = parts[i];
-    p->gpart = NULL;
+
+    /* Reflect a copy and store it in one go: the ghosts of neighbouring
+     * cells may be reading this mirror particle's (unchanged) position. */
+    struct part p = parts[i];
+    p.gpart = NULL;
     for (int k = 0; k < 3; k++) {
-      if (walls & (1u << (2 * k)))
-        p->x[k] = -p->x[k];
-      else if (walls & (1u << (2 * k + 1)))
-        p->x[k] = 2. * dim[k] - p->x[k];
-      else
+      if (walls & (1u << (2 * k))) {
+        p.x[k] = -p.x[k];
+      } else if (walls & (1u << (2 * k + 1))) {
+        p.x[k] = 2. * dim[k] - p.x[k];
+      } else {
         continue;
-      p->v[k] = -p->v[k];
+      }
+      p.v[k] = -p.v[k];
+#ifdef REMIX_SPH
+      hydro_mirror_part(&p, k);
+#endif
     }
+    mirrors[i] = p;
   }
 }

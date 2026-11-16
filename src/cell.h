@@ -559,6 +559,11 @@ struct cell {
    * of #boundary_wall. */
   unsigned char mirror_walls;
 
+  /*! The pair tasks refreshing the mirror particles from the cell this one
+   * reflects, of subtypes mirror_drift, mirror_density and mirror_gradient
+   * (mirror cells at the hydro super level only). */
+  struct task *mirror_refresh[3];
+
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
   /* Cell ID (for debugging) */
   long long cellID;
@@ -741,6 +746,7 @@ void cell_set_no_rt_sort_flag_up(struct cell *c);
 void cell_activate_super_spart_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_super_sink_drifts(struct cell *c, struct scheduler *s);
 void cell_activate_drift_part(struct cell *c, struct scheduler *s);
+void cell_activate_mirror_refresh(struct cell *c, struct scheduler *s);
 void cell_activate_drift_gpart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_spart(struct cell *c, struct scheduler *s);
 void cell_activate_drift_sink(struct cell *c, struct scheduler *s);
@@ -1308,6 +1314,9 @@ cell_need_rebuild_for_hydro_pair(const struct cell *ci, const struct cell *cj) {
   /* Is the cut-off radius plus the max distance the parts in both cells have */
   /* moved larger than the cell size ? */
   /* Note ci->dmin == cj->dmin */
+  /* Note also that a mirror cell lags the cell it reflects when it has not */
+  /* been refreshed lately. The pair of that cell with the same neighbour */
+  /* makes this same test with current values. */
   if (kernel_gamma * max(ci->hydro.h_max, cj->hydro.h_max) +
           ci->hydro.dx_max_part + cj->hydro.dx_max_part >
       cj->dmin) {

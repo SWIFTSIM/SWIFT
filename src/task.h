@@ -169,6 +169,12 @@ enum task_subtypes {
   task_subtype_rt_transport,
   task_subtype_boundary_open,
   task_subtype_boundary_reflective,
+  /* Pairs of a mirror cell (ci) and the cell it reflects (cj), copying the
+   * particles across after the drift, density ghost and gradient ghost of
+   * cj. Keep these three together and in this order. */
+  task_subtype_mirror_drift,
+  task_subtype_mirror_density,
+  task_subtype_mirror_gradient,
   task_subtype_count
 } __attribute__((packed));
 
