@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 if [ "$#" -ne 1 ]; then
     echo "You need to provide the resolution (e.g. ./getIC.sh LOW)."
     echo "The possible options are LOW and MED."

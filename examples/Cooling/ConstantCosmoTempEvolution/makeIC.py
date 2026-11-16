@@ -22,7 +22,6 @@ from swiftsimio.metadata.writer.unit_systems import cosmo_units
 
 import unyt
 import numpy as np
-import h5py as h5
 
 # Parameters
 boxsize = 100 * unyt.Mpc
@@ -39,13 +38,12 @@ Omega_bar = 0.0482519  # same as in param file
 
 
 # Read the glass file
-glass = h5.File(glassFile, "r")
+glass = sw.load(glassFile)
 
 # Total number of particles
 n_p = n_p_1D**3
 # Read particle positions and from the glass
-glass_pos = glass["/PartType1/Coordinates"][:, :]
-glass.close()
+glass_pos = glass.dark_matter.coordinates.value
 
 # Calculate mean baryon density today from comological parameters
 H_0 = 100.0 * hubble_param * unyt.km / unyt.s / unyt.Mpc

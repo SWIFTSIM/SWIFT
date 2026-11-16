@@ -31,12 +31,12 @@ import os
 import sys
 import argparse
 
-import unyt
-import numpy as np
-import matplotlib as mpl
 import swiftsimio
+from swiftsimio.visualisation import project_gas
 from matplotlib import pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Parameters users should/may tweak
 plot_all_data = True  # plot all groups and all photon quantities
@@ -53,7 +53,6 @@ projection_kwargs = {"resolution": 1024, "parallel": True}
 
 
 plot_all = False
-mpl.rcParams["text.usetex"] = True
 
 
 def parse_args():
@@ -128,7 +127,6 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
     ngroups = int(meta.subgrid_scheme["PhotonGroupNumber"][0])
     xlabel_units_str = meta.boxsize.units.latex_representation()
 
-    global imshow_kwargs
     imshow_kwargs["extent"] = [0, meta.boxsize[0].v, 0, meta.boxsize[1].v]
 
     for g in range(ngroups):
@@ -152,19 +150,17 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 setattr(data.gas, new_attribute_str, f)
 
     # get mass surface density projection that we'll use to remove density dependence in image
-    mass_map = swiftsimio.visualisation.projection.project_gas(
-        data, project="masses", **projection_kwargs
-    )
+    mass_map = project_gas(data, project="masses", **projection_kwargs)
 
     if plot_all_data:
         fig = plt.figure(figsize=(5 * 3, 5.05 * ngroups), dpi=200)
-        figname = filename[:-5] + f"-all-quantities.png"
+        figname = filename[:-5] + "-all-quantities.png"
 
         for g in range(ngroups):
 
             # get energy projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -182,7 +178,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux X projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "X"
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -200,7 +196,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get flux Y projection
             new_attribute_str = "mass_weighted_radiation_flux" + str(g + 1) + "Y"
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -222,7 +218,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
 
             # get projection
             new_attribute_str = "mass_weighted_radiation_energy" + str(g + 1)
-            photon_map = swiftsimio.visualisation.projection.project_gas(
+            photon_map = project_gas(
                 data, project=new_attribute_str, **projection_kwargs
             )
             photon_map = photon_map / mass_map
@@ -238,7 +234,7 @@ def plot_photons(filename, energy_boundaries=None, flux_boundaries=None):
                 ax.set_ylabel("Energies")
 
     # Add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     if meta.cosmology is not None:
         title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(1 * meta.time)

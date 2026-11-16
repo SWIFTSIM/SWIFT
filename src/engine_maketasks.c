@@ -4050,8 +4050,10 @@ void engine_make_fof_tasks(struct engine *e) {
   struct scheduler *sched = &e->sched;
   ticks tic = getticks();
 
-  if (e->restarting) {
-    /* Re-set the scheduler. */
+  /* Only re-set the scheduler if there are no tasks at all (e.g. after a
+   * restart). Otherwise we would wipe the communication tasks constructed by
+   * the last rebuild that FOF needs over MPI. */
+  if (sched->tasks == NULL) {
     scheduler_reset(sched, engine_estimate_nr_tasks(e));
   }
 
