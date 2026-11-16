@@ -21,17 +21,25 @@
 Makes a movie of the dam break: the density averaged through the thin (y)
 direction of the tank, for every snapshot found in the current directory.
 
+The frames are drawn in parallel, one snapshot per process, and then encoded
+into the movie by ffmpeg.
+
 Requires swiftsimio and ffmpeg.
 """
 
+import argparse
+import os
+import shutil
+import subprocess
+import tempfile
 from glob import glob
+from multiprocessing import Pool
 
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.animation import FuncAnimation
 from swiftsimio import cosmo_array, load
 from swiftsimio.visualisation.projection import project_gas
 
@@ -89,28 +97,77 @@ def get_image(filename):
     return density, data.metadata.t.to_value("s"), coords.shape[0], extent
 
 
-if __name__ == "__main__":
-    filenames = sorted(glob(f"{snapshot_name}_[0-9][0-9][0-9][0-9].hdf5"))
-    if len(filenames) == 0:
-        raise FileNotFoundError(f"No {snapshot_name}_XXXX.hdf5 snapshots found")
+def draw_frame(job):
+    """
+    Draws the frame of the movie for one snapshot and saves it as an image.
+    """
+    filename, frame_name = job
+    density, time, count, extent = get_image(filename)
 
-    images, times, counts, extents = zip(*[get_image(f) for f in filenames])
-
-    fig, ax = plt.subplots(figsize=(8, 8 * images[0].shape[0] / images[0].shape[1]))
+    fig, ax = plt.subplots(figsize=(8, 8 * density.shape[0] / density.shape[1]))
     fig.subplots_adjust(0.1, 0.1, 0.9, 0.95)
     image = ax.imshow(
-        images[0], extent=extents[0], origin="lower", cmap=cmap, vmin=0.0, vmax=1100.0
+        density, extent=extent, origin="lower", cmap=cmap, vmin=0.0, vmax=1100.0
     )
     ax.set_xlabel("x [m]")
     ax.set_ylabel("z [m]")
     fig.colorbar(image, ax=ax, label=r"Mean density [kg m$^{-3}$]", shrink=0.8)
-    title = ax.set_title("")
+    ax.set_title(f"t = {time:.4f} s, {count} particles")
+    fig.savefig(frame_name, dpi=150)
+    plt.close(fig)
 
-    def animate(n):
-        image.set_array(images[n])
-        title.set_text(f"t = {times[n]:.4f} s, {counts[n]} particles")
-        return (image,)
 
-    animation = FuncAnimation(fig, animate, range(len(images)), interval=1000 / fps)
-    animation.save(filename=f"{snapshot_name}.mp4", fps=fps, dpi=150)
-    print(f"Wrote {snapshot_name}.mp4 ({len(images)} frames)")
+if __name__ == "__main__":
+    if hasattr(os, "sched_getaffinity"):
+        available = len(os.sched_getaffinity(0))
+    else:
+        available = os.cpu_count()
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=available,
+        help="Number of snapshots to draw at once (default: all available cores)",
+    )
+    args = parser.parse_args()
+
+    # Check for ffmpeg now rather than after drawing every frame.
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError("ffmpeg not found; it is needed to encode the movie")
+
+    filenames = sorted(glob(f"{snapshot_name}_[0-9][0-9][0-9][0-9].hdf5"))
+    if len(filenames) == 0:
+        raise FileNotFoundError(f"No {snapshot_name}_XXXX.hdf5 snapshots found")
+
+    with tempfile.TemporaryDirectory(dir=".", prefix="frames_") as frame_dir:
+        jobs = [
+            (filename, os.path.join(frame_dir, f"frame_{n:04d}.png"))
+            for n, filename in enumerate(filenames)
+        ]
+        with Pool(args.threads) as pool:
+            for n, _ in enumerate(pool.imap_unordered(draw_frame, jobs), start=1):
+                print(f"\rDrew frame {n} of {len(jobs)}", end="", flush=True)
+        print()
+
+        # The pad filter rounds the frame size up to the even numbers of
+        # pixels that the widely supported yuv420p pixel format requires.
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-loglevel",
+                "error",
+                "-y",
+                "-framerate",
+                str(fps),
+                "-i",
+                os.path.join(frame_dir, "frame_%04d.png"),
+                "-vf",
+                "pad=ceil(iw/2)*2:ceil(ih/2)*2",
+                "-pix_fmt",
+                "yuv420p",
+                f"{snapshot_name}.mp4",
+            ],
+            check=True,
+        )
+    print(f"Wrote {snapshot_name}.mp4 ({len(filenames)} frames)")
