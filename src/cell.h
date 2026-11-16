@@ -1173,6 +1173,97 @@ __attribute__((always_inline)) INLINE static int cell_contains_progeny(
 
 /**
  * @brief Compute the square of the minimal distance between any two points in
+ * two cells of any size, accounting for periodic boundary conditions.
+ *
+ * Used by the FOF search and to split the FOF tasks.
+ *
+ * @param ci The first #cell.
+ * @param cj The second #cell.
+ * @param dim The size of the simulation domain.
+ */
+__attribute__((always_inline)) INLINE static double cell_min_dist(
+    const struct cell *restrict ci, const struct cell *restrict cj,
+    const double dim[3]) {
+
+  /* Get cell locations. */
+  const double cix_min = ci->loc[0];
+  const double ciy_min = ci->loc[1];
+  const double ciz_min = ci->loc[2];
+  const double cjx_min = cj->loc[0];
+  const double cjy_min = cj->loc[1];
+  const double cjz_min = cj->loc[2];
+
+  const double cix_max = ci->loc[0] + ci->width[0];
+  const double ciy_max = ci->loc[1] + ci->width[1];
+  const double ciz_max = ci->loc[2] + ci->width[2];
+  const double cjx_max = cj->loc[0] + cj->width[0];
+  const double cjy_max = cj->loc[1] + cj->width[1];
+  const double cjz_max = cj->loc[2] + cj->width[2];
+
+  double not_same_range[3];
+
+  /* If two cells are in the same range of coordinates along
+     any of the 3 axis, the distance along this axis is 0 */
+  if (ci->width[0] > cj->width[0]) {
+    if ((cix_min <= cjx_min) && (cjx_max <= cix_max))
+      not_same_range[0] = 0.;
+    else
+      not_same_range[0] = 1.;
+  } else {
+    if ((cjx_min <= cix_min) && (cix_max <= cjx_max))
+      not_same_range[0] = 0.;
+    else
+      not_same_range[0] = 1.;
+  }
+  if (ci->width[1] > cj->width[1]) {
+    if ((ciy_min <= cjy_min) && (cjy_max <= ciy_max))
+      not_same_range[1] = 0.;
+    else
+      not_same_range[1] = 1.;
+  } else {
+    if ((cjy_min <= ciy_min) && (ciy_max <= cjy_max))
+      not_same_range[1] = 0.;
+    else
+      not_same_range[1] = 1.;
+  }
+  if (ci->width[2] > cj->width[2]) {
+    if ((ciz_min <= cjz_min) && (cjz_max <= ciz_max))
+      not_same_range[2] = 0.;
+    else
+      not_same_range[2] = 1.;
+  } else {
+    if ((cjz_min <= ciz_min) && (ciz_max <= cjz_max))
+      not_same_range[2] = 0.;
+    else
+      not_same_range[2] = 1.;
+  }
+
+  /* Find the shortest distance between cells, remembering to account for
+   * periodic boundary conditions. */
+  double dx[3];
+  dx[0] = min4(fabs(nearest(cix_min - cjx_min, dim[0])),
+               fabs(nearest(cix_min - cjx_max, dim[0])),
+               fabs(nearest(cix_max - cjx_min, dim[0])),
+               fabs(nearest(cix_max - cjx_max, dim[0])));
+
+  dx[1] = min4(fabs(nearest(ciy_min - cjy_min, dim[1])),
+               fabs(nearest(ciy_min - cjy_max, dim[1])),
+               fabs(nearest(ciy_max - cjy_min, dim[1])),
+               fabs(nearest(ciy_max - cjy_max, dim[1])));
+
+  dx[2] = min4(fabs(nearest(ciz_min - cjz_min, dim[2])),
+               fabs(nearest(ciz_min - cjz_max, dim[2])),
+               fabs(nearest(ciz_max - cjz_min, dim[2])),
+               fabs(nearest(ciz_max - cjz_max, dim[2])));
+
+  double r2 = 0.;
+  for (int k = 0; k < 3; k++) r2 += dx[k] * dx[k] * not_same_range[k];
+
+  return r2;
+}
+
+/**
+ * @brief Compute the square of the minimal distance between any two points in
  * two cells of the same size
  *
  * @param ci The first #cell.
@@ -1468,6 +1559,57 @@ cell_can_recurse_in_subself_stars_task(const struct cell *c) {
 }
 
 /**
+ * @brief Can the re-run of the stars density loop for a subset of the stars
+ * (stars ghost) recurse to a lower level in a self interaction?
+ *
+ * Same test as cell_can_recurse_in_self_stars_task() but using the largest
+ * smoothing length of the stars of the subset rather than h_max_old, which
+ * covers all the stars of the cell.
+ *
+ * @param c The #cell.
+ * @param h_subset_max The largest smoothing length of the stars of the
+ * subset.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_self_stars_subset(const struct cell *c,
+                                      const float h_subset_max) {
+
+  /* Is the cell split and not smaller than the smoothing length? */
+  return c->split && (kernel_gamma * h_subset_max < 0.5f * c->dmin);
+}
+
+/**
+ * @brief Can the re-run of the stars density loop for a subset of the stars
+ * (stars ghost) recurse to a lower level in a pair interaction?
+ *
+ * The recursion only visits the pairs of progeny that touch each other
+ * (cell_split_pairs). The pairs it skips are at least half a cell width
+ * apart, so no star of the subset may reach the gas of a skipped progeny of
+ * cj: the search radius of the stars of the subset plus the distance the
+ * stars of ci and the gas of cj have moved since the last rebuild must be
+ * smaller than half the cell width. The stars of cj play no role here, as
+ * only the gas of cj is searched.
+ *
+ * @param ci The #cell holding the stars of the subset.
+ * @param cj The #cell holding the gas.
+ * @param h_subset_max The largest smoothing length of the stars of the
+ * subset.
+ */
+__attribute__((always_inline)) INLINE static int
+cell_can_recurse_in_pair_stars_subset(const struct cell *ci,
+                                      const struct cell *cj,
+                                      const float h_subset_max) {
+
+  /* Are both cells split ? */
+  /* If so, is the cut-off radius plus the max distance the stars of ci and */
+  /* the gas of cj have moved smaller than the sub-cell sizes ? */
+  /* Note: We use the _old values as these might have been updated by a drift */
+  return ci->split && cj->split &&
+         ((kernel_gamma * h_subset_max + ci->stars.dx_max_part +
+           cj->hydro.dx_max_part) < 0.5f * min(ci->dmin, cj->dmin));
+}
+
+/**
  * @brief Can a sub-pair sink task recurse to a lower level based
  * on the status of the particles in the cell.
  *
@@ -1656,6 +1798,19 @@ __attribute__((always_inline)) INLINE static int cell_can_split_self_fof_task(
 
   /* Is the cell split ? */
   return c->split && c->grav.count > 5000 && cell_is_above_diff_grav_depth(c);
+}
+
+/**
+ * @brief Can a pair FOF task associated with a cell be split into smaller
+ * sub-tasks, i.e. can we recurse into this side of the pair.
+ *
+ * @param c The #cell.
+ */
+__attribute__((always_inline)) INLINE static int cell_can_split_pair_fof_task(
+    const struct cell *c) {
+
+  /* Same criterion as for the self tasks */
+  return cell_can_split_self_fof_task(c);
 }
 
 /**

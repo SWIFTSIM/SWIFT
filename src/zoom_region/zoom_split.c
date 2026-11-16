@@ -268,7 +268,7 @@ void zoom_void_split_recursive(struct space *s, struct cell *c,
 
   /* Deal with the multipole */
   if (s->with_self_gravity && c->contains_zoom_cells) {
-    space_populate_multipole(c);
+    space_split_collect_progeny_multipole(c);
   }
 }
 

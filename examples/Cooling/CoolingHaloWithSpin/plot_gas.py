@@ -23,13 +23,14 @@ import gc
 import os
 import argparse
 
-import matplotlib as mpl
 import swiftsimio
 import swiftsimio.visualisation.rotation
 from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # -----------------------------------------------------------------------
 # Parameters users should/may tweak
@@ -47,9 +48,6 @@ projection_kwargs = {"resolution": 512, "parallel": True, "periodic": False}
 scatterkwargs = {"s": 1, "marker": ".", "color": "black"}
 
 # -----------------------------------------------------------------------
-
-
-mpl.rcParams["text.usetex"] = True
 
 
 def get_snapshot_list(snapshot_basename=snapshot_base):
@@ -118,13 +116,10 @@ def plot_gas(filename, fullbox=False, extent=0.1, scatter=False):
         imshow_extent = [0, meta.boxsize[0].v, 0, meta.boxsize[1].v]
 
     xlabel_units_str = meta.boxsize.units.latex_representation()
-    time_units_str = meta.time.units.latex_representation()
 
     # update shared parameters
-    global imshow_kwargs
     imshow_kwargs["extent"] = imshow_extent
 
-    global projection_kwargs
     projection_kwargs["region"] = region
 
     # Make the actual plot
@@ -176,13 +171,13 @@ def plot_gas(filename, fullbox=False, extent=0.1, scatter=False):
         set_colorbar(ax2, im2)
 
     # Cosmetics
-    ax1.set_xlabel("x [" + xlabel_units_str + "]")
-    ax1.set_ylabel("y [" + xlabel_units_str + "]")
-    ax2.set_xlabel("x [" + xlabel_units_str + "]")
-    ax2.set_ylabel("z [" + xlabel_units_str + "]")
+    ax1.set_xlabel("x [$" + xlabel_units_str + "$]")
+    ax1.set_ylabel("y [$" + xlabel_units_str + "$]")
+    ax2.set_xlabel("x [$" + xlabel_units_str + "$]")
+    ax2.set_ylabel("z [$" + xlabel_units_str + "$]")
 
     # Add title
-    title = filename.replace("_", r"\_")  # exception handle underscore for latex
+    title = filename
     #  if meta.cosmology is not None:
     #      title += ", $z$ = {0:.2e}".format(meta.z)
     title += ", $t$ = {0:.2e}".format(meta.time.to("Gyr"))
