@@ -30,13 +30,15 @@ scripts_location="../../GEAR_ICs_and_SCRIPTS"
 # Lengths tied to the particle spacing scale as (gas_mass / 50)^(1/3).
 # The values in the parameter files are the ones for 50 Msun.
 length_scale=$(python3 -c "print(($gas_mass / 50.0) ** (1.0 / 3.0))")
-h_max=$(python3 -c "print(0.08 * $length_scale)")
+h_max=$(python3 -c "print(0.1 * $length_scale)")
 softening=$(python3 -c "print(0.005 * $length_scale)")
 cut_off_radius=$(python3 -c "print(0.005 * $length_scale)")
 
+# Setup the parameters for makeIC.py
 ic_params="--level $level --padding $padding --mass $gas_mass --h-max $h_max"
 ic_params="$ic_params --softening $softening --dm-ratio $dm_ratio --delta $delta"
 ic_params="$ic_params --lJ $jeans_length --max-bkg-cdim $max_bkg_cdim"
+
 if [ -n "$levelmin" ]; then
 	ic_params="$ic_params --levelmin $levelmin"
 fi
@@ -47,6 +49,7 @@ fi
 cosmo_flag=""
 run_params="-P Gravity:max_physical_baryon_softening:$softening"
 run_params="$run_params -P Gravity:max_physical_DM_softening:$softening"
+
 if [ "$cosmological" -eq 1 ]; then
 	ic_params="$ic_params --cosmological --a-end-factor $a_end_factor"
 	ic_params="$ic_params --velocity-fraction $velocity_fraction"
@@ -59,10 +62,18 @@ else
 	run_params="$run_params -P Snapshots:delta_time:$snapshot_delta"
 fi
 
-echo "Generating initial conditions for SinkHomogeneousBox (level $level)..."
+echo "Generating initial conditions for zoom version of SinkHomogeneousBox (level $level)..."
 python3 makeIC.py $ic_params -o ICs_zoom_homogeneous_box.hdf5 \
 	--zoom-params-file zoom_runtime_params.txt
 
+if [ "$with_star_formation" -eq 0 ]; then
+	runtime_params="--sinks"
+	run_params="$run_params -P GEARSink:cut_off_radius:$cut_off_radius"
+else
+	runtime_params="--star-formation"
+fi
+
+# Fetch some data from the cluster
 if [ ! -e CloudyData_UVB=HM2012_high_density.h5 ]; then
 	echo "Fetching the Cloudy tables required by Grackle..."
 	$scripts_location/getGrackleCoolingTable.sh
@@ -73,16 +84,12 @@ if [ ! -e POPII.hdf5 ]; then
 	$scripts_location/getChemistryTable.sh --with-winds
 fi
 
-if [ "$with_star_formation" -eq 0 ]; then
-	runtime_params="--sinks"
-	run_params="$run_params -P GEARSink:cut_off_radius:$cut_off_radius"
-else
-	runtime_params="--star-formation"
-fi
-
+# Let's cleanup former simulations data!
 rm -rf snap statistics.txt timesteps.txt output.log
 mkdir snap
 
+echo "Simulation running..."
 $swift --hydro $runtime_params --stars --self-gravity --feedback \
 	--cooling --sync --limiter --zoom $cosmo_flag --threads=$n_threads \
 	$(cat zoom_runtime_params.txt) $run_params $extra_params params.yml 2>&1 | tee output.log
+echo "End of the simulation."
