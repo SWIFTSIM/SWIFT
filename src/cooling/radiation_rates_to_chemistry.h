@@ -408,6 +408,51 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
 }
 
 /**
+ * @brief Neutral hydrogen mass fraction of a #part, from the tracked species.
+ *
+ * Counts the hydrogen locked in H2 and H- as neutral (COOLING_NETWORK >= 2);
+ * H2II is already singly ionized and is excluded. A foreign copy has no
+ * #xpart: it reads the value cached by
+ * #cooling_cache_neutral_H_fraction_subgrid, which follows the same
+ * convention. A network that tracks no species reports all hydrogen as
+ * neutral, the placeholder that cache also stores.
+ *
+ * @param p Pointer to the particle data.
+ * @param xp Pointer to the extended particle data, or NULL for a foreign
+ * copy.
+ * @return Neutral hydrogen mass fraction.
+ */
+INLINE static double cooling_get_neutral_hydrogen_fraction_subgrid(
+    const struct part *p, const struct xpart *xp) {
+#if COOLING_NETWORK >= 1
+#ifdef WITH_MPI
+  if (xp == NULL) {
+#ifdef SWIFT_DEBUG_CHECKS
+    /* feedback_part_can_be_ionized is the only caller allowed to reach a
+       still-sentinel (-1.f, "not yet primed") cache; anything else reading
+       it here is a bypass of that gate. */
+    if (p->feedback_data.neutral_H_frac < 0.f)
+      error(
+          "Reading un-primed neutral_H_frac (foreign copy id=%lld): caller "
+          "must gate on feedback_part_can_be_ionized before pricing.",
+          p->id);
+#endif
+    return p->feedback_data.neutral_H_frac;
+  }
+#endif
+
+  const struct cooling_xpart_data *cool_data = &xp->cooling_data;
+  double X_HI = cool_data->HI_frac;
+#if COOLING_NETWORK >= 2
+  X_HI += cool_data->H2I_frac + cool_data->HM_frac;
+#endif
+  return X_HI;
+#else
+  return 1.;
+#endif
+}
+
+/**
  * @brief Cache this step's neutral hydrogen mass fraction on the particle's
  * feedback-model core (struct part's feedback_data.neutral_H_frac).
  *
@@ -433,7 +478,7 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
   float X_HI = xp->cooling_data.HI_frac;
 #if COOLING_NETWORK >= 2
   /* Hydrogen locked in H2/H- is also neutral (not yet stripped): must match
-     radiation_get_part_number_neutral_hydrogen_atoms's own convention, or
+     #cooling_get_neutral_hydrogen_fraction_subgrid, or
      a foreign copy reading this cache disagrees with a local particle's
      direct species read at the same mode. */
   X_HI += xp->cooling_data.H2I_frac + xp->cooling_data.HM_frac;

@@ -38,15 +38,11 @@
 
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
-#ifndef COOLING_NETWORK
-#error "COOLING_NETWORK is not defined by the cooling module"
-#endif
-
 /**
  * @brief Total hydrogen mass fraction of this #part, from its composition.
  *
- * Not cooling_get_hydrogen_mass_fraction(): at COOLING_NETWORK >= 2 that
- * omits the hydrogen bound in H2/H-.
+ * Not cooling_get_hydrogen_mass_fraction(): with H2 tracked that omits the
+ * hydrogen bound in H2/H-.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param p The particle.
@@ -98,7 +94,8 @@ radiation_get_part_number_hydrogen_atoms(
  *
  * Prices only the one-off cost of claiming a fresh candidate: an already
  * (partly) ionized particle need not pay again. The maintenance cost uses the
- * total. At COOLING_NETWORK == 0 it falls back to the total N_H.
+ * total. A cooling network that tracks no species counts every hydrogen atom
+ * neutral, so this equals the total N_H there.
  *
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
@@ -116,38 +113,7 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-#if COOLING_NETWORK >= 1
-  double X_HI;
-#ifdef WITH_MPI
-  if (xp == NULL) {
-    /* Foreign copy: struct part's feedback_data.neutral_H_frac already
-       folds in the H2/H- arms at mode >= 2 (see cooling_cache_neutral_H_
-       fraction_subgrid), so this is the same quantity the branch below
-       would read from a real xpart. */
-#ifdef SWIFT_DEBUG_CHECKS
-    /* feedback_part_can_be_ionized is the only caller allowed to reach a
-       still-sentinel (-1.f, "not yet primed") cache; anything else reading
-       it here is a bypass of that gate. */
-    if (p->feedback_data.neutral_H_frac < 0.f)
-      error(
-          "Reading un-primed neutral_H_frac (foreign copy id=%lld): caller "
-          "must gate on feedback_part_can_be_ionized before pricing.",
-          p->id);
-#endif
-    X_HI = p->feedback_data.neutral_H_frac;
-  } else
-#endif
-  {
-    const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-    X_HI = cool_data->HI_frac;
-#if COOLING_NETWORK >= 2
-    /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
-       already singly-ionized, so it is excluded: the same H2II
-       approximation radiation_get_part_total_hydrogen_mass_fraction's own
-       doxygen already notes for the total-hydrogen accounting. */
-    X_HI += cool_data->H2I_frac + cool_data->HM_frac;
-#endif
-  }
+  const double X_HI = cooling_get_neutral_hydrogen_fraction_subgrid(p, xp);
 
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
@@ -156,11 +122,8 @@ radiation_get_part_number_neutral_hydrogen_atoms(
   /* Capped at the composition total: species can transiently exceed it. */
   const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
   return min(N_HI, N_H);
-#else
-  return radiation_get_part_number_hydrogen_atoms(phys_const, hydro_props, us,
-                                                  cosmo, cooling, p, xp);
-#endif
 }
 
 /**
