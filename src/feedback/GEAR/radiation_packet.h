@@ -106,7 +106,9 @@ extern int radiation_packet_light_speed_limited;
 extern float radiation_packet_cone_power;
 
 /*! Row-major rotation matrix of the fixed frame of the reception slots, the
-    same for every particle. Set by #radiation_packet_set_frame. */
+    same for every particle. Set once at start-up by #radiation_packet_set_frame
+    and read only after. Global because the inline pair-loop functions below
+    have no #feedback_props. */
 extern float radiation_packet_octant_frame[9];
 
 /**
