@@ -1,7 +1,7 @@
 import numpy as np
 import h5py as h5
 from tqdm import tqdm
-from numba import jit, prange
+from numba import jit
 
 snapname = "eagle_0000/eagle_0000.hdf5"
 # fofname = "fof_output_0000/fof_output_0000.0.hdf5"

@@ -13,6 +13,8 @@
 # [technically, any other feedback scheme should work as well.]
 
 
+set -eo pipefail
+
 # Generate the initial conditions if they are not present.
 if [ ! -e EAGLE_ICs_12.hdf5 ]
 then
