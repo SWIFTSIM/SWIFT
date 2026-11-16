@@ -251,21 +251,21 @@ double radiation_get_T_collisional_K(const double Z);
 double radiation_get_photoionization_rate_coefficient_from_flux_HI(
     const struct unit_system *us, const double ionizing_flux_HI);
 
-void radiation_tag_part_as_ionized(struct part *p, struct xpart *xpj,
+void radiation_tag_part_as_ionized(struct part *p, struct xpart *xp,
                                    long long star_id, double end_time,
                                    float excess_photon_energy_HI,
                                    float photoionization_rate_HI);
-void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj);
+void radiation_reset_part_ionized_tag(struct part *p, struct xpart *xp);
 char radiation_is_part_tagged_as_ionized(const struct part *p,
-                                         const struct xpart *xpj);
+                                         const struct xpart *xp);
 double radiation_get_part_ionized_end_time(const struct part *p,
-                                           const struct xpart *xpj);
+                                           const struct xpart *xp);
 long long radiation_get_part_ionized_star_id(const struct part *p,
-                                             const struct xpart *xpj);
+                                             const struct xpart *xp);
 float radiation_get_part_excess_photon_energy_HI(const struct part *p,
-                                                 const struct xpart *xpj);
+                                                 const struct xpart *xp);
 float radiation_get_part_photoionization_rate_coefficient(
-    const struct part *p, const struct xpart *xpj);
+    const struct part *p, const struct xpart *xp);
 void radiation_set_ionizing_photon_rate(struct spart *sp,
                                         double dot_N_ion_total,
                                         int n_HII_pixels);
@@ -311,33 +311,33 @@ radiation_get_part_ionized_internal_energy(
   return 0.;
 }
 __attribute__((always_inline)) INLINE static void radiation_tag_part_as_ionized(
-    struct part *p, struct xpart *xpj, long long star_id, double end_time,
+    struct part *p, struct xpart *xp, long long star_id, double end_time,
     float excess_photon_energy_HI, float photoionization_rate_HI) {}
 __attribute__((always_inline)) INLINE static void
-radiation_reset_part_ionized_tag(struct part *p, struct xpart *xpj) {}
+radiation_reset_part_ionized_tag(struct part *p, struct xpart *xp) {}
 __attribute__((always_inline)) INLINE static char
 radiation_is_part_tagged_as_ionized(const struct part *p,
-                                    const struct xpart *xpj) {
+                                    const struct xpart *xp) {
   return 0;
 }
 __attribute__((always_inline)) INLINE static double
 radiation_get_part_ionized_end_time(const struct part *p,
-                                    const struct xpart *xpj) {
+                                    const struct xpart *xp) {
   return 0.;
 }
 __attribute__((always_inline)) INLINE static long long
 radiation_get_part_ionized_star_id(const struct part *p,
-                                   const struct xpart *xpj) {
+                                   const struct xpart *xp) {
   return 0;
 }
 __attribute__((always_inline)) INLINE static float
 radiation_get_part_excess_photon_energy_HI(const struct part *p,
-                                           const struct xpart *xpj) {
+                                           const struct xpart *xp) {
   return 0.f;
 }
 __attribute__((always_inline)) INLINE static float
 radiation_get_part_photoionization_rate_coefficient(const struct part *p,
-                                                    const struct xpart *xpj) {
+                                                    const struct xpart *xp) {
   return 0.f;
 }
 __attribute__((always_inline)) INLINE static void

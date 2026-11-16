@@ -284,7 +284,8 @@ radiation_packet_add_stochastic(const float a, const float b,
                                 const uint32_t salt) {
   const double sum = (double)a + (double)b;
   uint64_t bits;
-  uint32_t ua, ub;
+  uint32_t ua;
+  uint32_t ub;
   memcpy(&bits, &sum, sizeof(bits));
   memcpy(&ua, &a, sizeof(ua));
   memcpy(&ub, &b, sizeof(ub));
@@ -779,7 +780,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     float path = d_r - d_s;
     if (path < 0.f) path = 0.f;
 
-    double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
+    double energy[ISRF_OPERATOR_COUNT];
+    double photons[ISRF_OPERATOR_COUNT];
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       energy[b] = (double)sl->band[b].energy * (double)fraction;
       photons[b] = (double)sl->band[b].photons * (double)fraction;
@@ -790,7 +792,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
        the separation of the two particles: by the triangle inequality the
        light cannot reach the receiver sooner, whatever the mean origin of
        the packet. */
-    double arrival = 0., arrival_last = 0.;
+    double arrival = 0.;
+    double arrival_last = 0.;
     const integertime_t source_end_ti = sender_packet->step_end_ti;
     const double merge_time = (double)(source_end_ti - sender_packet->step_ti);
 
@@ -934,7 +937,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
 
-  double d[3], q, weight;
+  double d[3];
+  double q;
+  double weight;
   const int c =
       radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
 
@@ -981,7 +986,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
 
-  double d[3], q, weight;
+  double d[3];
+  double q;
+  double weight;
   const int c =
       radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
   if (!(weight > 0.0)) return;
@@ -1006,7 +1013,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
       weight, si->feedback_data.radiation.packet.cone_weight,
       radiation_packet_cone_floor(si), RADIATION_PACKET_EMISSION_CONES);
 
-  double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
+  double energy[ISRF_OPERATOR_COUNT];
+  double photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
     energy[b] =
@@ -1059,7 +1067,8 @@ radiation_packet_book_removed_gas(const struct part *p,
       const struct feedback_isrf_packet_slot_band_data *t =
           &pk->slot[k].band[b];
 
-      double waiting_energy = 0., waiting_photons = 0.;
+      double waiting_energy = 0.;
+      double waiting_photons = 0.;
       for (int i = 0; i < RADIATION_PACKET_BINS; i++) {
         waiting_energy += (double)t->bin_energy[i];
         waiting_photons += (double)t->bin_photons[i];

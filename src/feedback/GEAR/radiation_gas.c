@@ -358,7 +358,9 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   /* All pixels share one rate, so log once per star. */
   double issued_total = 0.;
-  double rate_prev_dbg = 0., rate_now_dbg = 0., rate_used_dbg = 0.;
+  double rate_prev_dbg = 0.;
+  double rate_now_dbg = 0.;
+  double rate_used_dbg = 0.;
 #endif
 
   for (int pixel = 0; pixel < sp->feedback_data.radiation.n_HII_pixels;

@@ -313,7 +313,8 @@ static double radiation_packet_diag_delay[2];
 static _Thread_local int radiation_packet_diag_again = 0;
 
 static void radiation_packet_diag_add_double(double *x, const double v) {
-  double old, sum;
+  double old;
+  double sum;
   __atomic_load(x, &old, __ATOMIC_RELAXED);
   do {
     sum = old + v;
@@ -568,8 +569,12 @@ static void radiation_packet_placed_collect(
     step[3] += t->unknown_all;
     step[4] += t->unknown_far;
     step[5] += t->unknown_count;
-    t->all = t->far = t->count = 0.;
-    t->unknown_all = t->unknown_far = t->unknown_count = 0.;
+    t->all = 0.;
+    t->far = 0.;
+    t->count = 0.;
+    t->unknown_all = 0.;
+    t->unknown_far = 0.;
+    t->unknown_count = 0.;
   }
 
 #ifdef WITH_MPI
@@ -756,8 +761,10 @@ void radiation_packet_far_stock_sum(struct threadpool *tp,
                                     const struct part *parts, size_t nr_parts,
                                     double stock[2], long long holders[2]) {
 
-  stock[0] = stock[1] = 0.;
-  holders[0] = holders[1] = 0;
+  stock[0] = 0.;
+  stock[1] = 0.;
+  holders[0] = 0;
+  holders[1] = 0;
   if (nr_parts == 0) return;
 
   const size_t n_chunks = (nr_parts + RADIATION_PACKET_FAR_STOCK_CHUNK - 1) /
@@ -819,7 +826,8 @@ void radiation_packet_far_diagnostics(const struct engine *e) {
 
 #ifdef WITH_MPI
   double stock_sum[2];
-  long long holders_sum[2], counts_sum[3];
+  long long holders_sum[2];
+  long long counts_sum[3];
   MPI_Reduce(stock, stock_sum, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
   MPI_Reduce(holders, holders_sum, 2, MPI_LONG_LONG, MPI_SUM, 0,
              MPI_COMM_WORLD);
@@ -1226,7 +1234,8 @@ __attribute__((noinline)) int radiation_packet_slot(const float frame[9],
 double radiation_packet_slot_border_distance(const float frame[9],
                                              const float direction[3]) {
 
-  double a[3], norm2 = 0.0;
+  double a[3];
+  double norm2 = 0.0;
   for (int k = 0; k < 3; k++) {
     const double q = (double)frame[3 * k + 0] * (double)direction[0] +
                      (double)frame[3 * k + 1] * (double)direction[1] +
@@ -1270,18 +1279,19 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
                                          float frame[9]) {
 
   const double to_rad = M_PI / 180.0;
-  const double cx = cos(angles_deg[0] * to_rad),
-               sx = sin(angles_deg[0] * to_rad);
-  const double cy = cos(angles_deg[1] * to_rad),
-               sy = sin(angles_deg[1] * to_rad);
-  const double cz = cos(angles_deg[2] * to_rad),
-               sz = sin(angles_deg[2] * to_rad);
+  const double cx = cos(angles_deg[0] * to_rad);
+  const double sx = sin(angles_deg[0] * to_rad);
+  const double cy = cos(angles_deg[1] * to_rad);
+  const double sy = sin(angles_deg[1] * to_rad);
+  const double cz = cos(angles_deg[2] * to_rad);
+  const double sz = sin(angles_deg[2] * to_rad);
 
   const double Rx[3][3] = {{1., 0., 0.}, {0., cx, -sx}, {0., sx, cx}};
   const double Ry[3][3] = {{cy, 0., sy}, {0., 1., 0.}, {-sy, 0., cy}};
   const double Rz[3][3] = {{cz, -sz, 0.}, {sz, cz, 0.}, {0., 0., 1.}};
 
-  double A[3][3], R[3][3];
+  double A[3][3];
+  double R[3][3];
   for (int i = 0; i < 3; i++)
     for (int j = 0; j < 3; j++) {
       A[i][j] = 0.;
@@ -1301,9 +1311,12 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
         random_unit_interval(seed_offset, 1, random_number_ISRF_octant_frame);
     const double u3 =
         random_unit_interval(seed_offset, 2, random_number_ISRF_octant_frame);
-    const double a = sqrt(1.0 - u1), b = sqrt(u1);
-    const double qx = a * sin(2.0 * M_PI * u2), qy = a * cos(2.0 * M_PI * u2);
-    const double qz = b * sin(2.0 * M_PI * u3), qw = b * cos(2.0 * M_PI * u3);
+    const double a = sqrt(1.0 - u1);
+    const double b = sqrt(u1);
+    const double qx = a * sin(2.0 * M_PI * u2);
+    const double qy = a * cos(2.0 * M_PI * u2);
+    const double qz = b * sin(2.0 * M_PI * u3);
+    const double qw = b * cos(2.0 * M_PI * u3);
 
     const double Q[3][3] = {
         {1.0 - 2.0 * (qy * qy + qz * qz), 2.0 * (qx * qy - qz * qw),
@@ -1483,7 +1496,9 @@ __attribute__((noinline)) int radiation_packet_emission_cone(
   const double qz = b * sin(2.0 * M_PI * u3);
   const double qw = b * cos(2.0 * M_PI * u3);
 
-  const double d0 = -dx[0], d1 = -dx[1], d2 = -dx[2];
+  const double d0 = -dx[0];
+  const double d1 = -dx[1];
+  const double d2 = -dx[2];
   double dir[3];
   dir[0] = (1.0 - 2.0 * (qy * qy + qz * qz)) * d0 +
            2.0 * (qx * qy - qz * qw) * d1 + 2.0 * (qx * qz + qy * qw) * d2;
@@ -1994,7 +2009,8 @@ static void radiation_packet_far_shape_get(
 
   for (int i = RADIATION_PACKET_FAR_SUBSTEPS - 2; i >= 0; i--) {
     /* Largest d with C(d, i + 1) <= r, d in [i, levels + i]. */
-    int lo = i, hi = RADIATION_PACKET_FAR_LEVELS + i;
+    int lo = i;
+    int hi = RADIATION_PACKET_FAR_LEVELS + i;
     while (lo < hi) {
       const int mid = (lo + hi + 1) / 2;
       if (radiation_packet_binomial[i + 1][mid] <= r)
@@ -2071,7 +2087,8 @@ static void radiation_packet_far_shape_add(
   else
     radiation_packet_far_shape_get(sl, c, C);
 
-  double held[2 * ISRF_OPERATOR_COUNT], piece[2 * ISRF_OPERATOR_COUNT];
+  double held[2 * ISRF_OPERATOR_COUNT];
+  double piece[2 * ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     held[2 * b] = empty ? 0. : (double)held_e[b];
     held[2 * b + 1] = empty ? 0. : (double)held_n[b];
@@ -2130,7 +2147,8 @@ static void radiation_packet_add_to_bin(
     const float energy[ISRF_OPERATOR_COUNT],
     const float photons[ISRF_OPERATOR_COUNT], const float below_end,
     const uint32_t salt, const int known_step) {
-  float held = 0.f, piece = 0.f;
+  float held = 0.f;
+  float piece = 0.f;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     held += sl->band[b].bin_energy[j];
     piece += energy[b];
@@ -2193,7 +2211,8 @@ static void radiation_packet_add_to_far(
     const double end, const double width, const uint32_t salt,
     const int known_step, const int is_faint) {
   float held = 0.f;
-  float held_e[ISRF_OPERATOR_COUNT], held_n[ISRF_OPERATOR_COUNT];
+  float held_e[ISRF_OPERATOR_COUNT];
+  float held_n[ISRF_OPERATOR_COUNT];
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     held_e[b] = sl->band[b].far_energy[c];
@@ -2456,8 +2475,10 @@ static int radiation_packet_far_shape_pulses(
 
   const double sub = width / RADIATION_PACKET_FAR_SUBSTEPS;
   const double start = end - width;
-  double given_e[ISRF_OPERATOR_COUNT], given_n[ISRF_OPERATOR_COUNT];
-  float carry_e[ISRF_OPERATOR_COUNT], carry_n[ISRF_OPERATOR_COUNT];
+  double given_e[ISRF_OPERATOR_COUNT];
+  double given_n[ISRF_OPERATOR_COUNT];
+  float carry_e[ISRF_OPERATOR_COUNT];
+  float carry_n[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     given_e[b] = 0.;
     given_n[b] = 0.;
@@ -2465,7 +2486,8 @@ static int radiation_packet_far_shape_pulses(
     carry_n[b] = 0.f;
   }
 
-  int k = 0, prev = 0;
+  int k = 0;
+  int prev = 0;
   for (int i = 0; i < RADIATION_PACKET_FAR_SUBSTEPS; i++) {
     const int is_last = i == RADIATION_PACKET_FAR_SUBSTEPS - 1;
     const int cum = is_last ? RADIATION_PACKET_FAR_LEVELS : C[i];
@@ -2477,7 +2499,8 @@ static int radiation_packet_far_shape_pulses(
 
     int any = 0;
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      float pe, pn;
+      float pe;
+      float pn;
       if (is_last) {
         pe = (float)((double)energy[b] - given_e[b]);
         pn = (float)((double)photons[b] - given_n[b]);
@@ -2570,7 +2593,8 @@ static int radiation_packet_take_far(struct feedback_isrf_packet_slot_data *sl,
     int C[RADIATION_PACKET_FAR_SUBSTEPS - 1];
     radiation_packet_far_shape_get(sl, c, C);
 
-    float e[ISRF_OPERATOR_COUNT], n[ISRF_OPERATOR_COUNT];
+    float e[ISRF_OPERATOR_COUNT];
+    float n[ISRF_OPERATOR_COUNT];
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       e[b] = rec->energy[b];
       n[b] = rec->photons[b];
@@ -2687,8 +2711,10 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
   /* A piece that is not the last is rounded down, so that no part of the
      share is placed in an earlier piece than its arrival allows. The last
      piece takes the rest. */
-  float carry_e[ISRF_OPERATOR_COUNT], carry_n[ISRF_OPERATOR_COUNT];
-  double given_e[ISRF_OPERATOR_COUNT], given_n[ISRF_OPERATOR_COUNT];
+  float carry_e[ISRF_OPERATOR_COUNT];
+  float carry_n[ISRF_OPERATOR_COUNT];
+  double given_e[ISRF_OPERATOR_COUNT];
+  double given_n[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     carry_e[b] = 0.f;
     carry_n[b] = 0.f;
@@ -2696,9 +2722,11 @@ static void radiation_packet_place(struct feedback_isrf_packet_slot_data *sl,
     given_n[b] = 0.;
   }
 
-  double placed = 0., placed_far = 0.;
+  double placed = 0.;
+  double placed_far = 0.;
   for (int j = 0; j <= last_piece; j++) {
-    float pe[ISRF_OPERATOR_COUNT], pn[ISRF_OPERATOR_COUNT];
+    float pe[ISRF_OPERATOR_COUNT];
+    float pn[ISRF_OPERATOR_COUNT];
     int any = 0;
 
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
@@ -2872,7 +2900,8 @@ static void radiation_packet_regrid(
     if (!radiation_packet_slot_is_pending(sl)) continue;
     pending = 1;
     for (int j = 0; j < n; j++) {
-      float e = 0.f, ee = 0.f;
+      float e = 0.f;
+      float ee = 0.f;
       for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
         e += fabsf(sl->band[b].bin_energy[j]) +
              fabsf(sl->band[b].bin_photons[j]);
@@ -2884,7 +2913,8 @@ static void radiation_packet_regrid(
     }
 
     for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++) {
-      float e = 0.f, ee = 0.f;
+      float e = 0.f;
+      float ee = 0.f;
       for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
         e += fabsf(sl->band[b].far_energy[c]) +
              fabsf(sl->band[b].far_photons[c]);
@@ -3139,7 +3169,8 @@ static void radiation_packet_merge_slot_unlimited(
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
     const integertime_t ti_begin = ti_current - ti_step;
-    double t_rem, dt;
+    double t_rem;
+    double dt;
     if (cosmo != NULL) {
       t_rem = cosmology_get_delta_time(cosmo, ti_begin, sl->reservoir_end_ti);
       dt = cosmology_get_delta_time(cosmo, ti_begin, ti_current);
@@ -3291,7 +3322,8 @@ static void radiation_packet_release_far_cell(
   double e = 0.0;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_slot_band_data *band = &sl->band[b];
-    float re = band->far_energy[c], rp = band->far_photons[c];
+    float re = band->far_energy[c];
+    float rp = band->far_photons[c];
     if (f_b[b] < 1.) {
       re = radiation_packet_round_down((double)re * f_b[b]);
       rp = radiation_packet_round_down((double)rp * f_b[b]);
@@ -3493,7 +3525,9 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
   {
-    double far = 0., near = 0., ovf = 0.;
+    double far = 0.;
+    double near = 0.;
+    double ovf = 0.;
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
       for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
         for (int j = 0; j < RADIATION_PACKET_BINS; j++)
@@ -3600,7 +3634,8 @@ void radiation_packet_end_gradient(struct part *p, const float a,
   radiation_packet_check_occupied(pk, p->id);
 #endif
 
-  double field_energy[ISRF_OPERATOR_COUNT], field_photons[ISRF_OPERATOR_COUNT];
+  double field_energy[ISRF_OPERATOR_COUNT];
+  double field_photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     field_energy[b] = 0.;
     field_photons[b] = 0.;
@@ -3765,9 +3800,13 @@ void radiation_packet_check_star_cones(const struct spart *sp,
   if (!sp->feedback_data.radiation.packet.cones_booked) return;
 
   const double floor = radiation_packet_cone_floor(sp);
-  int n_receivers = 0, n_empty = 0, n_edge_only = 0, n_diff = 0;
+  int n_receivers = 0;
+  int n_empty = 0;
+  int n_edge_only = 0;
+  int n_diff = 0;
   long long id_diff = 0;
-  double dS = 0.0, S_d_sum = 0.0;
+  double dS = 0.0;
+  double S_d_sum = 0.0;
 
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     const int n = sp->feedback_data.radiation.packet.cone_count[c];
