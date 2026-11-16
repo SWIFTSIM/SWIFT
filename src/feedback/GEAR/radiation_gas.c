@@ -305,9 +305,11 @@ radiation_get_part_rate_to_fully_ionize(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const double mu = radiation_get_part_mean_molecular_weight(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
   const double T_ionized_K =
       cooling_temperature_from_internal_energy(u_ionized, mu, k_B, m_p) *
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
   const double beta_cgs =
       radiation_get_case_b_recombination_coefficient_cgs(T_ionized_K);
   const float dimension_alphaB[5] = {0, 3, -1, 0, 0}; /* [cm^3 s^-1] */
@@ -424,11 +426,13 @@ __attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
     struct spart *sp, int pixel, double Delta_N_ion) {
   double *budget = &sp->feedback_data.radiation.N_ion_budget_pix[pixel];
   if (*budget <= 0.) return 0.;
+
   if (Delta_N_ion >= *budget) {
     const double taken = *budget;
     *budget = 0.;
     return taken;
   }
+
   *budget -= Delta_N_ion;
   return Delta_N_ion;
 }
@@ -455,9 +459,11 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
   p->feedback_data.is_ionized = 1;
   p->feedback_data.star_id = star_id;
   p->feedback_data.end_time = end_time;
+
   /* A foreign copy has no xpart. The payload is only read by rate coupling,
      which is refused on more than one rank. */
   if (xp == NULL) return;
+
   xp->feedback_data.HII_region.excess_photon_energy_HI =
       excess_photon_energy_HI;
   xp->feedback_data.HII_region.photoionization_rate_HI =
@@ -600,9 +606,11 @@ __attribute__((always_inline)) INLINE void radiation_zero_spart_output(
     struct spart *sp) {
   radiation_set_star_bolometric_luminosity(sp, 0.f);
   radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
+
   for (int moment = 0; moment < ISRF_MOMENT_COUNT; moment++)
     radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)moment,
                                        0.);
+
   radiation_set_star_teff(sp, 0.f);
   radiation_set_ionizing_photon_rate(sp, 0.0, 1);
 }

@@ -410,6 +410,7 @@ radiation_set_star_packet_photon_fraction(struct spart *sp,
                                             : RADIATION_LW_BAND_LOWER_EDGE_CGS;
   const double E_hi = o == ISRF_OPERATOR_PE ? RADIATION_LW_BAND_LOWER_EDGE_CGS
                                             : RADIATION_LW_BAND_UPPER_EDGE_CGS;
+
   double E = E_bar_cgs;
   if (!(E >= E_lo)) E = E_lo;
   if (E > E_hi) E = E_hi;
