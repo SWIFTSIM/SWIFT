@@ -16,3 +16,7 @@ configuring swift.
 In `run_csds.sh`, update `velociraptor_path` to the location
 of velociraptor on your system. Then, use `./run_csds.sh` and
 let's go!
+
+The script csds_analysis.py needs the python package velociraptor and the
+CSDS python module (libcsds), which is built when SWIFT is configured with
+--enable-csds --enable-python.

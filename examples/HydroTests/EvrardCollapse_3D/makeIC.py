@@ -17,9 +17,13 @@
 #
 ################################################################################
 
-import h5py
+import unyt
+import swiftsimio as sw
 import argparse as ap
-from numpy import *
+import numpy as np
+
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
 
 parser = ap.ArgumentParser(
     description="Generates a swift IC file for the Evrard collapse"
@@ -45,62 +49,50 @@ u0 = 0.05 / M  # initial thermal energy
 fileName = "evrard.hdf5"
 numPart = int(args["nparts"])
 
-r = R * sqrt(random.random(numPart))
-phi = 2.0 * pi * random.random(numPart)
-cos_theta = 2.0 * random.random(numPart) - 1.0
+r = R * np.sqrt(np.random.random(numPart))
+phi = 2.0 * np.pi * np.random.random(numPart)
+cos_theta = 2.0 * np.random.random(numPart) - 1.0
 
-sin_theta = sqrt(1.0 - cos_theta**2)
-cos_phi = cos(phi)
-sin_phi = sin(phi)
+sin_theta = np.sqrt(1.0 - cos_theta**2)
+cos_phi = np.cos(phi)
+sin_phi = np.sin(phi)
 
-pos = zeros((numPart, 3))
+pos = np.zeros((numPart, 3))
 pos[:, 0] = r * sin_theta * cos_phi
 pos[:, 1] = r * sin_theta * sin_phi
 pos[:, 2] = r * cos_theta
 
 # shift particles to put the sphere in the centre of the box
-pos += array([50.0 * R, 50.0 * R, 50.0 * R])
+pos += np.array([50.0 * R, 50.0 * R, 50.0 * R])
 
-h = ones(numPart) * 2.0 * R / numPart ** (1.0 / 3.0)
+h = np.ones(numPart) * 2.0 * R / numPart ** (1.0 / 3.0)
 
 # Generate extra arrays
-v = zeros((numPart, 3))
-ids = linspace(1, numPart, numPart)
-m = ones(numPart) * M / numPart
-u = ones(numPart) * u0
+v = np.zeros((numPart, 3))
+ids = np.linspace(1, numPart, numPart)
+m = np.ones(numPart) * M / numPart
+u = np.ones(numPart) * u0
 
 # --------------------------------------------------
 
 # File
-file = h5py.File(fileName, "w")
+w = sw.Writer(
+    unit_system=unyt.unit_systems.cgs_unit_system,
+    boxsize=sw.cosmo_array(
+        [100.0 * R, 100.0 * R, 100.0 * R],
+        unyt.cm,
+        comoving=True,
+        scale_factor=1.0,
+        scale_exponent=1,
+    ),
+    dimension=3,
+)
 
-# Header
-grp = file.create_group("/Header")
-grp.attrs["BoxSize"] = [100.0 * R, 100.0 * R, 100.0 * R]
-grp.attrs["NumPart_Total"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_Total_HighWord"] = [0, 0, 0, 0, 0, 0]
-grp.attrs["NumPart_ThisFile"] = [numPart, 0, 0, 0, 0, 0]
-grp.attrs["Time"] = 0.0
-grp.attrs["NumFilesPerSnapshot"] = 1
-grp.attrs["MassTable"] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-grp.attrs["Flag_Entropy_ICs"] = 0
-grp.attrs["Dimension"] = 3
+w.gas.coordinates = pos * unyt.cm * w.a.comoving
+w.gas.velocities = v * unyt.cm / unyt.s * w.a.comoving**0
+w.gas.masses = m * unyt.g * w.a.comoving**0
+w.gas.smoothing_lengths = h * unyt.cm * w.a.comoving
+w.gas.internal_energy = u * unyt.cm**2 / unyt.s**2 * w.a.comoving**0
+w.gas.particle_ids = ids.astype(np.uint64)
 
-# Units
-grp = file.create_group("/Units")
-grp.attrs["Unit length in cgs (U_L)"] = 1.0
-grp.attrs["Unit mass in cgs (U_M)"] = 1.0
-grp.attrs["Unit time in cgs (U_t)"] = 1.0
-grp.attrs["Unit current in cgs (U_I)"] = 1.0
-grp.attrs["Unit temperature in cgs (U_T)"] = 1.0
-
-# Particle group
-grp = file.create_group("/PartType0")
-grp.create_dataset("Coordinates", data=pos, dtype="d")
-grp.create_dataset("Velocities", data=v, dtype="f")
-grp.create_dataset("Masses", data=m, dtype="f")
-grp.create_dataset("SmoothingLength", data=h, dtype="f")
-grp.create_dataset("InternalEnergy", data=u, dtype="f")
-grp.create_dataset("ParticleIDs", data=ids, dtype="L")
-
-file.close()
+w.write(fileName)

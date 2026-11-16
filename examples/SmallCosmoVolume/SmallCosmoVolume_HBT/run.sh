@@ -2,6 +2,8 @@
 
 ### Options for SWIFT
 
+set -eo pipefail
+
 # Number of threads to use
 num_swift_threads=8
 

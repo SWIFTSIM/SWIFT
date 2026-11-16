@@ -39,6 +39,8 @@ IsothermalPotential:
   vrot:            200.     # rotation speed of isothermal potential in internal units
   timestep_mult:   0.03     # controls time step
   epsilon:         0.1    #softening for the isothermal potential
+  useabspos:       0      # Position is relative to the centre of the box
+  position:        [0., 0., 0.]  # The halo is at the centre of the box (see makeIC.py)
 
 # Cooling parameters
 LambdaCooling:

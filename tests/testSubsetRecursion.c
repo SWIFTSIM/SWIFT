@@ -27,6 +27,7 @@
 #include <string.h>
 
 /* Local headers. */
+#include "space_getsid.h"
 #include "swift.h"
 
 /*
@@ -48,6 +49,15 @@
  * loops too.
  * Case 3: the activation of a black hole density task must drift every gas
  * sub-cell that a rerun with a grown h can read.
+ * Case 4: the stars rerun goes deeper than the task activation. The cells
+ * are split twice, the stars h_max stops the activation at the top level and
+ * the gas was sorted on an earlier step, then drifted. Two controls corrupt
+ * the drift bounds of the cells and must give a wrong sum: one shows that the
+ * rerun reads the sorted gas two levels down, the other that the drift margin
+ * stops the descent.
+ * Case 5: the stars density loop of a self task split in two, which
+ * interacts the pairs of progeny directly, sorted and unsorted. A control
+ * corrupts the sort drift of a progeny and must give a wrong sum.
  */
 
 void runner_dosub_pair_subset_stars_density(struct runner *r, struct cell *ci,
@@ -77,6 +87,9 @@ void runner_dosub_subset_sinks_density(struct runner *r, struct cell *ci,
                                        struct sink *sinks, int *ind,
                                        const int scount, const float h_max_redo,
                                        struct cell *cj, int gettimer);
+void runner_dosub_self_stars_density(struct runner *r, struct cell *c,
+                                     const int offset, const int ntasks,
+                                     const float h_hi, const int gettimer);
 
 #if !defined(BLACK_HOLES_NONE)
 #define WITH_BH_LOOP 1
@@ -583,6 +596,448 @@ static int check_bh_drift_activation(struct cell *cells, struct scheduler *s,
 
 #endif /* WITH_BH_LOOP */
 
+/* Cells of case 4: index 0 is the top cell, 1 + k its octant k and
+ * 9 + 8 k + l the octant l of octant k. */
+#define N_DEEP 73
+
+/* Positions of case 4 for a gas cell on the right of the star cell. */
+static const double x_star_deep = 0.999;
+static const double yz_deep = 0.125;
+
+/* The first gas particle drifts towards the star after its sort. The second
+ * drifts out of a leaf that does not touch the leaf of the star. */
+#define N_EXTRA 2
+static const double x_extra_old[N_EXTRA] = {1.17, 1.26};
+static const double x_extra_new[N_EXTRA] = {1.12, 1.20};
+
+/* kernel_gamma * h of the stars h_max, larger than half the top cell. */
+#define H_STARS_MAX_DEEP 0.6f
+
+/**
+ * @brief Build a top-level cell of width 1 split twice, with a gas lattice in
+ * each of its 64 leaves.
+ *
+ * @param cells The #N_DEEP cells of the hierarchy.
+ * @param loc_x The x position of the cell's lower corner.
+ * @param x_star The position of the star, or NULL for a cell without stars.
+ * @param x_extra The positions of the extra gas, or NULL for none.
+ * @param ind_extra (return) The indices of the extra gas in the cell.
+ */
+static void make_deep_cell(struct cell *cells, const double loc_x,
+                           const double *x_star,
+                           const double x_extra[N_EXTRA][3], int *ind_extra) {
+
+  const int n_max = 64 * N_OCTANT + N_EXTRA;
+  struct part *parts = NULL;
+  struct xpart *xparts = NULL;
+  struct spart *sparts = NULL;
+  if (posix_memalign((void **)&parts, part_align,
+                     n_max * sizeof(struct part)) != 0 ||
+      posix_memalign((void **)&xparts, xpart_align,
+                     n_max * sizeof(struct xpart)) != 0 ||
+      posix_memalign((void **)&sparts, spart_align, sizeof(struct spart)) != 0)
+    error("Couldn't allocate the particles");
+  bzero(parts, n_max * sizeof(struct part));
+  bzero(xparts, n_max * sizeof(struct xpart));
+  bzero(sparts, sizeof(struct spart));
+  bzero(cells, N_DEEP * sizeof(struct cell));
+
+  if (x_star != NULL) {
+    for (int d = 0; d < 3; d++) sparts->x[d] = x_star[d];
+    sparts->id = 1;
+    sparts->time_bin = 1;
+#if defined(FEEDBACK_GEAR) || defined(FEEDBACK_AGORA)
+    sparts->feedback_data.will_do_feedback = 1;
+#endif
+#ifdef SWIFT_DEBUG_CHECKS
+    sparts->ti_drift = TI_CURRENT;
+    sparts->ti_kick = TI_CURRENT;
+#endif
+  }
+
+  for (int i = 0; i < N_DEEP; i++) {
+    struct cell *c = &cells[i];
+    const int depth = (i == 0) ? 0 : (i < 9) ? 1 : 2;
+    const int k = (depth == 1) ? i - 1 : (depth == 2) ? (i - 9) / 8 : 0;
+    const int l = (depth == 2) ? (i - 9) % 8 : 0;
+    const double width = 1. / (1 << depth);
+    c->loc[0] = loc_x;
+    for (int d = 0; d < 3; d++) {
+      if (depth >= 1) c->loc[d] += 0.5 * ((k >> (2 - d)) & 1);
+      if (depth == 2) c->loc[d] += 0.25 * ((l >> (2 - d)) & 1);
+      c->width[d] = width;
+    }
+    c->dmin = width;
+    c->depth = depth;
+    c->split = (depth < 2);
+    c->top = &cells[0];
+    c->hydro.super = &cells[0];
+    c->nodeID = 0;
+    c->hydro.h_max = H_LATTICE;
+    c->hydro.h_max_old = H_LATTICE;
+    c->hydro.ti_end_min = TI_CURRENT;
+    c->hydro.ti_old_part = TI_CURRENT;
+    c->stars.ti_end_min = (x_star != NULL) ? TI_CURRENT : 2 * TI_CURRENT;
+    c->stars.ti_old_part = TI_CURRENT;
+    c->stars.parts = sparts;
+    if (x_star != NULL && cell_distance_outside_box(c, x_star) == 0.f) {
+      c->stars.count = 1;
+      c->stars.h_max = H_STARS_MAX_DEEP / kernel_gamma;
+      c->stars.h_max_old = c->stars.h_max;
+    }
+    if (depth == 1) {
+      c->parent = &cells[0];
+      cells[0].progeny[k] = c;
+    } else if (depth == 2) {
+      c->parent = &cells[1 + k];
+      cells[1 + k].progeny[l] = c;
+    }
+  }
+
+  /* Fill the leaves in the order of the particle arrays. */
+  int offset = 0;
+  for (int k = 0; k < 8; k++) {
+    struct cell *c1 = &cells[1 + k];
+    c1->hydro.parts = &parts[offset];
+    c1->hydro.xparts = &xparts[offset];
+    for (int l = 0; l < 8; l++) {
+      struct cell *leaf = &cells[9 + 8 * k + l];
+      leaf->hydro.parts = &parts[offset];
+      leaf->hydro.xparts = &xparts[offset];
+      int n = 0;
+      for (int e = 0; x_extra != NULL && e < N_EXTRA; e++) {
+        if (cell_distance_outside_box(leaf, x_extra[e]) > 0.f) continue;
+        for (int d = 0; d < 3; d++) parts[offset + n].x[d] = x_extra[e][d];
+        parts[offset + n].id = ID_PLANT + e;
+        ind_extra[e] = offset + n;
+        n++;
+      }
+      for (int ix = 0; ix < N_SIDE; ix++) {
+        for (int iy = 0; iy < N_SIDE; iy++) {
+          for (int iz = 0; iz < N_SIDE; iz++) {
+            struct part *p = &parts[offset + n];
+            p->x[0] = leaf->loc[0] + (ix + 0.5) * 0.25 / N_SIDE;
+            p->x[1] = leaf->loc[1] + (iy + 0.5) * 0.25 / N_SIDE;
+            p->x[2] = leaf->loc[2] + (iz + 0.5) * 0.25 / N_SIDE;
+            p->id = 2 + offset + n;
+            n++;
+          }
+        }
+      }
+      for (int i = 0; i < n; i++) {
+        struct part *p = &parts[offset + i];
+        p->h = H_LATTICE;
+        p->mass = 1.f;
+        p->time_bin = 1;
+#ifdef SWIFT_DEBUG_CHECKS
+        p->ti_drift = TI_CURRENT;
+        p->ti_kick = TI_CURRENT;
+#endif
+      }
+      leaf->hydro.count = n;
+      c1->hydro.count += n;
+      offset += n;
+    }
+    cells[0].hydro.count += c1->hydro.count;
+  }
+  cells[0].hydro.parts = parts;
+  cells[0].hydro.xparts = xparts;
+}
+
+/**
+ * @brief Free the particle and sort arrays of a case 4 cell.
+ *
+ * @param cells The #N_DEEP cells of the hierarchy.
+ */
+static void free_deep_cell(struct cell *cells) {
+  for (int i = 0; i < N_DEEP; i++) cell_free_hydro_sorts(&cells[i]);
+  free(cells[0].hydro.parts);
+  free(cells[0].hydro.xparts);
+  free(cells[0].stars.parts);
+}
+
+/**
+ * @brief Drift one gas particle to a new position and raise the drift bounds
+ * of its leaf and of the cells above it, as cell_drift_part() does.
+ *
+ * @param cells The #N_DEEP cells of the hierarchy.
+ * @param ind The index of the particle in the cell.
+ * @param x_new The new position.
+ */
+static void drift_deep_part(struct cell *cells, const int ind,
+                            const double x_new[3]) {
+  struct part *p = &cells[0].hydro.parts[ind];
+  struct xpart *xp = &cells[0].hydro.xparts[ind];
+  float dx2 = 0.f;
+  for (int d = 0; d < 3; d++) {
+    xp->x_diff[d] -= (float)(x_new[d] - p->x[d]);
+    xp->x_diff_sort[d] -= (float)(x_new[d] - p->x[d]);
+    dx2 += xp->x_diff_sort[d] * xp->x_diff_sort[d];
+    p->x[d] = x_new[d];
+  }
+  const float dx = sqrtf(dx2);
+
+  struct cell *leaf = NULL;
+  for (int i = 9; i < N_DEEP; i++)
+    if (p >= cells[i].hydro.parts &&
+        p < cells[i].hydro.parts + cells[i].hydro.count)
+      leaf = &cells[i];
+  const float dx_out = cell_distance_outside_box(leaf, x_new);
+  for (struct cell *c = leaf; c != NULL; c = c->parent) {
+    c->hydro.dx_max_part = max(c->hydro.dx_max_part, dx);
+    c->hydro.dx_max_sort = max(c->hydro.dx_max_sort, dx);
+    c->hydro.dx_outside_max = max(c->hydro.dx_outside_max, dx_out);
+  }
+}
+
+/**
+ * @brief Run the stars density loop of the star of case 4 or 5 and compare
+ * it with a brute-force sum over the gas of the cells.
+ *
+ * @param r The #runner.
+ * @param star The star #cell hierarchy.
+ * @param gas The gas #cell hierarchy, or NULL for a self task only.
+ * @param kernel_radius kernel_gamma * h of the star.
+ * @param ntasks 0 for the subset rerun of the ghost, else the number of
+ * split self tasks of the density loop.
+ * @param label The name of the case for the output.
+ * @return 1 if the sums agree, 0 otherwise.
+ */
+static int run_deep_stars(struct runner *r, struct cell *star, struct cell *gas,
+                          const float kernel_radius, const int ntasks,
+                          const char *label) {
+
+  struct spart *sp = star[0].stars.parts;
+  const float h = kernel_radius / kernel_gamma;
+  const int ind_star = 0;
+  bzero(&sp->density, sizeof(sp->density));
+#if defined(FEEDBACK_GEAR)
+  bzero(&sp->feedback_data, sizeof(sp->feedback_data));
+  sp->feedback_data.will_do_feedback = 1;
+#endif
+  sp->h = h;
+  if (ntasks == 0) {
+    runner_dosub_self_subset_stars_density(r, &star[0], sp, &ind_star, 1,
+                                           /*h_max_redo=*/h, /*gettimer=*/0);
+    runner_dosub_pair_subset_stars_density(r, &star[0], sp, &ind_star, 1,
+                                           /*h_max_redo=*/h, &gas[0],
+                                           /*gettimer=*/0);
+  } else {
+    for (int i = 0; i < N_DEEP; i++)
+      if (star[i].stars.count > 0) star[i].stars.h_max_active = h;
+    for (int offset = 0; offset < ntasks; offset++)
+      runner_dosub_self_stars_density(r, &star[0], offset, ntasks,
+                                      /*h_hi=*/FLT_MAX, /*gettimer=*/0);
+  }
+
+  const float h_inv = 1.f / h;
+  double wcount_ref = 0.;
+  int n_ref = 0;
+  for (int c = 0; c < 2; c++) {
+    if (c == 1 && gas == NULL) continue;
+    const struct cell *top = (c == 0) ? &star[0] : &gas[0];
+    for (int i = 0; i < top->hydro.count; i++) {
+      const struct part *p = &top->hydro.parts[i];
+      const float dx[3] = {(float)(sp->x[0] - p->x[0]),
+                           (float)(sp->x[1] - p->x[1]),
+                           (float)(sp->x[2] - p->x[2])};
+      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+      if (fabsf(sqrtf(r2) / kernel_radius - 1.f) < 1e-3f)
+        error("Gas %lld is too close to the kernel edge", p->id);
+      if (r2 < h * h * kernel_gamma2) {
+        float w, w_dx;
+        kernel_deval(sqrtf(r2) * h_inv, &w, &w_dx);
+        wcount_ref += w;
+        n_ref++;
+      }
+    }
+  }
+  const double wcount_code = sp->density.wcount;
+  const double rel = fabs(wcount_code - wcount_ref) / wcount_ref;
+  /* Rounding bound of a float sum of n_ref positive terms. */
+  const double rel_tol = n_ref * FLT_EPSILON;
+  const int ok = (rel < rel_tol);
+
+  message(
+      "%s, kernel_gamma*h/leaf %.2f: neighbours %d, wcount code %.6e brute "
+      "force %.6e, relative difference %.3e (bar %.3e): %s",
+      label, kernel_radius / 0.25f, n_ref, wcount_code, wcount_ref, rel,
+      rel_tol, ok ? "agree" : "MISMATCH");
+  return ok;
+}
+
+/**
+ * @brief Case 4: the stars rerun descends below the level where the task
+ * activation stopped.
+ *
+ * @param r The #runner.
+ * @param s The #space.
+ * @param mirror Whether the gas cell is on the left of the star cell.
+ * @return The number of failed checks.
+ */
+static int check_deep_stars(struct runner *r, struct space *s,
+                            const int mirror) {
+
+  static struct cell star[N_DEEP], gas[N_DEEP];
+  const double x_star[3] = {mirror ? 2. - x_star_deep : x_star_deep, yz_deep,
+                            yz_deep};
+  double x_old[N_EXTRA][3], x_new[N_EXTRA][3];
+  for (int e = 0; e < N_EXTRA; e++) {
+    x_old[e][0] = mirror ? 2. - x_extra_old[e] : x_extra_old[e];
+    x_new[e][0] = mirror ? 2. - x_extra_new[e] : x_extra_new[e];
+    x_old[e][1] = x_old[e][2] = x_new[e][1] = x_new[e][2] = yz_deep;
+  }
+  int ind_extra[N_EXTRA];
+  make_deep_cell(star, mirror ? 1. : 0., x_star, NULL, NULL);
+  make_deep_cell(gas, mirror ? 0. : 1., NULL, x_old, ind_extra);
+
+  /* The gas was sorted on an earlier step along the axis of the pair only. */
+  struct cell *ci = &star[0], *cj = &gas[0];
+  double shift[3];
+  const int sid = space_getsid_and_swap_cells(s, &ci, &cj, shift);
+  runner_do_hydro_sort(r, &gas[0], 1 << sid, /*cleanup=*/0, /*lock=*/0,
+                       /*rt_requests_sort=*/0, /*clock=*/0);
+
+  /* Then drifted. */
+  for (int e = 0; e < N_EXTRA; e++)
+    drift_deep_part(gas, ind_extra[e], x_new[e]);
+
+  /* Activate the pair task as the unskip does. */
+  static struct task tasks[8];
+  static int tid_active[8];
+  bzero(tasks, sizeof(tasks));
+  for (int t = 0; t < 8; t++) tasks[t].skip = 1;
+  struct scheduler sched;
+  bzero(&sched, sizeof(sched));
+  sched.space = s;
+  sched.tasks = tasks;
+  sched.tid_active = tid_active;
+  for (int c = 0; c < 2; c++) {
+    struct cell *top = (c == 0) ? &star[0] : &gas[0];
+    top->hydro.drift = &tasks[4 * c];
+    top->stars.drift = &tasks[4 * c + 1];
+    top->hydro.sorts = &tasks[4 * c + 2];
+    top->stars.sorts = &tasks[4 * c + 3];
+  }
+  cell_activate_subcell_stars_tasks(&star[0], &gas[0], &sched,
+                                    /*with_star_formation=*/0,
+                                    /*with_star_formation_sink=*/0,
+                                    /*with_timestep_sync=*/0);
+
+  /* The activation stops at the top level, drifts all the gas and asks no
+   * new sort. */
+  int n_deep_flags = 0;
+  for (int i = 1; i < N_DEEP; i++)
+    if (cell_get_flag(&gas[i], cell_flag_do_hydro_drift) ||
+        gas[i].hydro.requires_sorts)
+      n_deep_flags++;
+  const int activation_ok = cell_get_flag(&gas[0], cell_flag_do_hydro_drift) &&
+                            gas[0].hydro.requires_sorts == (1 << sid) &&
+                            gas[0].hydro.do_sort == 0 && n_deep_flags == 0;
+  message(
+      "deep stars rerun%s, activation: drift of the top gas cell %d, sorts "
+      "required %d asked %d, sub-cells flagged %d: %s",
+      mirror ? " (mirrored)" : "",
+      cell_get_flag(&gas[0], cell_flag_do_hydro_drift) != 0,
+      gas[0].hydro.requires_sorts, gas[0].hydro.do_sort, n_deep_flags,
+      activation_ok ? "agree" : "MISMATCH");
+  int n_fail = activation_ok ? 0 : 1;
+
+  /* The rerun reaches the leaves and reads the sort of the gas there. */
+  const float r_deep = 0.15f, r_margin = 0.24f;
+  if (!run_deep_stars(r, star, gas, r_deep, /*ntasks=*/0,
+                      "deep stars rerun, leaves"))
+    n_fail++;
+
+  /* The gas planted on the sort axis drifted towards the star: a sorted
+   * sweep without the drift of its leaf misses it. */
+  struct cell *leaf_sorted = NULL;
+  for (int i = 9; i < N_DEEP; i++)
+    if (cell_distance_outside_box(&gas[i], x_new[0]) == 0.f)
+      leaf_sorted = &gas[i];
+  const float dx_sort_save = leaf_sorted->hydro.dx_max_sort;
+  leaf_sorted->hydro.dx_max_sort = 0.f;
+  if (run_deep_stars(r, star, gas, r_deep, /*ntasks=*/0,
+                     "control without the sort drift of the leaf (must "
+                     "mismatch)")) {
+    message("The control did not mismatch: the leaf sort was not read");
+    n_fail++;
+  }
+  leaf_sorted->hydro.dx_max_sort = dx_sort_save;
+
+  /* The drift margin keeps the rerun of a larger star above the leaves. */
+  if (!run_deep_stars(r, star, gas, r_margin, /*ntasks=*/0,
+                      "deep stars rerun, margin"))
+    n_fail++;
+
+  float dx_out_save[N_DEEP];
+  for (int i = 0; i < N_DEEP; i++) {
+    dx_out_save[i] = gas[i].hydro.dx_outside_max;
+    gas[i].hydro.dx_outside_max = 0.f;
+  }
+  if (run_deep_stars(r, star, gas, r_margin, /*ntasks=*/0,
+                     "control without the drift margin (must mismatch)")) {
+    message("The control did not mismatch: the margin is not tested");
+    n_fail++;
+  }
+  for (int i = 0; i < N_DEEP; i++) gas[i].hydro.dx_outside_max = dx_out_save[i];
+
+  free_deep_cell(star);
+  free_deep_cell(gas);
+  return n_fail;
+}
+
+/**
+ * @brief Case 5: the stars density loop of a self task split in two.
+ *
+ * The star sits next to the face between two octants. Its kernel reaches
+ * gas of the other octant that drifted towards it after the sort.
+ *
+ * @param r The #runner.
+ * @param sorted Whether the gas and the stars are sorted.
+ * @return The number of failed checks.
+ */
+static int check_split_self_stars(struct runner *r, const int sorted) {
+
+  static struct cell star[N_DEEP];
+  const double x_star[3] = {0.49, 0.26, 0.26};
+  const double x_old[N_EXTRA][3] = {{0.72, 0.26, 0.26}, {0.1, 0.9, 0.9}};
+  const double x_new[3] = {0.66, 0.26, 0.26};
+  int ind_extra[N_EXTRA];
+  make_deep_cell(star, 0., x_star, x_old, ind_extra);
+  if (sorted) {
+    runner_do_hydro_sort(r, &star[0], 0x1FFF, /*cleanup=*/0, /*lock=*/0,
+                         /*rt_requests_sort=*/0, /*clock=*/0);
+    runner_do_stars_sort(r, &star[0], 0x1FFF, /*cleanup=*/0, /*clock=*/0);
+  }
+  drift_deep_part(star, ind_extra[0], x_new);
+
+  const float kernel_radius = 0.2f;
+  int n_fail = 0;
+  if (!run_deep_stars(
+          r, star, NULL, kernel_radius, /*ntasks=*/2,
+          sorted ? "split stars self, sorted" : "split stars self, unsorted"))
+    n_fail++;
+
+  /* The octant of the drifted gas is a progeny of the top cell. */
+  if (sorted) {
+    struct cell *octant = &star[1 + 4];
+    const float dx_sort_save = octant->hydro.dx_max_sort;
+    octant->hydro.dx_max_sort = 0.f;
+    if (run_deep_stars(r, star, NULL, kernel_radius, /*ntasks=*/2,
+                       "control without the sort drift of the octant (must "
+                       "mismatch)")) {
+      message("The control did not mismatch: the sorted pair was not run");
+      n_fail++;
+    }
+    octant->hydro.dx_max_sort = dx_sort_save;
+  }
+
+  for (int i = 0; i < N_DEEP; i++) cell_free_stars_sorts(&star[i]);
+  free_deep_cell(star);
+  return n_fail;
+}
+
 int main(int argc, char *argv[]) {
 
   clocks_set_cpufreq(0);
@@ -699,6 +1154,15 @@ int main(int argc, char *argv[]) {
   }
   free_cells(cells);
 #endif
+
+  /* Case 4: the stars rerun goes deeper than the task activation. */
+  n_fail += check_deep_stars(&runner, &space, /*mirror=*/0);
+  n_fail += check_deep_stars(&runner, &space, /*mirror=*/1);
+
+  /* Case 5: a split stars self task, with a single star to recurse on. */
+  space_recurse_size_self_stars = 1;
+  n_fail += check_split_self_stars(&runner, /*sorted=*/0);
+  n_fail += check_split_self_stars(&runner, /*sorted=*/1);
 
   if (n_fail) error("%d subset density checks failed", n_fail);
   return 0;

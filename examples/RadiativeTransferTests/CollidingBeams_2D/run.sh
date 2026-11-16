@@ -7,12 +7,12 @@ set -o pipefail
  # Generate the initial conditions if they are not present.
 if [ ! -e glassPlane_128.hdf5 ]
 then
-    echo "Fetching initial glass file for the 2D RT advection example..."
+    echo "Fetching initial glass file for the 2D colliding beams example..."
     ./getGlass.sh
 fi
 if [ ! -e collision_2D.hdf5 ]
 then
-    echo "Generating initial conditions for the 2D RT advection example..."
+    echo "Generating initial conditions for the 2D colliding beams example..."
     python3 makeIC.py
 fi
 

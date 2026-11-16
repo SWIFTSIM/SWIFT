@@ -10,4 +10,6 @@
 
 #SBATCH -t 72:00:00
 
+set -eo pipefail
+
 ../../../swift --cosmology --hydro --self-gravity -v 1 --pin --threads=56  nifty.yml

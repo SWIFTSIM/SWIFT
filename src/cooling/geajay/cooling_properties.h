@@ -57,7 +57,9 @@ enum cooling_uv_self_shielding {
  * @brief Length of the H2 self-shielding column
  * (GeajayCooling:h2_shielding_length_method).
  *
- * The values are those of geajay_h2_shielding_length_method.
+ * The values 0 to 3 are those of geajay_h2_shielding_length_method. The value
+ * hybrid_chimes exists only in SWIFT: geajay receives the length per particle,
+ * as for given_length.
  */
 enum cooling_h2_shielding_length {
   /*! No H2 self-shielding */
@@ -67,7 +69,10 @@ enum cooling_h2_shielding_length {
   /*! Length supplied per particle */
   cooling_h2_shielding_length_given = 2,
   /*! Local Jeans length, computed by geajay */
-  cooling_h2_shielding_length_Jeans = 3
+  cooling_h2_shielding_length_Jeans = 3,
+  /*! Length supplied per particle from its temperature and density: the
+   * shielding length of HYBRID-CHIMES */
+  cooling_h2_shielding_length_hybrid_chimes = 4
 };
 
 /* The structure is dumped raw in the restart files */
@@ -395,6 +400,20 @@ struct cooling_function_data {
    * GeajayCooling:maximal_density_nucleon_per_cm3 (rho / m_p). Zero or
    * negative: no cap. */
   double maximal_density;
+
+  /*! Factor R_sh of the HYBRID-CHIMES length
+   * (GeajayCooling:h2_hybrid_chimes_factor). */
+  double hybrid_chimes_factor;
+
+  /*! 1D turbulent velocity of the HYBRID-CHIMES length [cm/s]
+   * (GeajayCooling:h2_hybrid_chimes_turbulent_velocity_km_per_s). */
+  double hybrid_chimes_turbulent_velocity_cgs;
+
+  /*! Cap of the HYBRID-CHIMES length at low and at high redshift [kpc], and
+   * the redshift of the change between the two. */
+  double hybrid_chimes_max_length_low_z_kpc;
+  double hybrid_chimes_max_length_high_z_kpc;
+  double hybrid_chimes_transition_redshift;
 };
 
 #endif /* SWIFT_COOLING_PROPERTIES_GEAJAY_H */

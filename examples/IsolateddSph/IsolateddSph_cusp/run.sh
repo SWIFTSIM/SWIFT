@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # make run.sh fail if a subcommand fails
-set -e
+set -eo pipefail
 
 if [ ! -e dSph_cusp.hdf5 ]; then
     echo "Fetching initial conditions to run the example..."
