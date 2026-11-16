@@ -34,3 +34,7 @@ simulation options.
 This example requires the code to be configured to use the planetary
 hydrodynamics scheme and planetary equations of state, and fixed entropy:
     --with-hydro=planetary --with-equation-of-state=planetary --enable-planetary-fixed-entropy
+
+Besides the packages of `examples/requirements.txt`, the python scripts of
+this example need woma, in a version older than 1.5:
+    python3 -m pip install "woma<1.5"

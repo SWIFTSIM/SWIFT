@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 # Generate the initial conditions if they are not present.
 if [ ! -e rayleigh_taylor.hdf5 ]

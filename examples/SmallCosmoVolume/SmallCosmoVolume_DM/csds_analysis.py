@@ -5,7 +5,6 @@ Plots the evolution of the DM particles with the CSDS.
 """
 
 import sys
-import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt

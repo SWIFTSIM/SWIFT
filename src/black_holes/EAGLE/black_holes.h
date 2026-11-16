@@ -23,7 +23,6 @@
 #include "black_holes_properties.h"
 #include "black_holes_struct.h"
 #include "cooling.h"
-#include "cooling/PS2020/cooling_tables.h"
 #include "cosmology.h"
 #include "dimension.h"
 #include "exp10.h"
@@ -33,6 +32,17 @@
 #include "physical_constants.h"
 #include "random.h"
 #include "rays.h"
+
+/* Length of the abundance-ratio array passed to the cooling module's
+ * compute_subgrid_property(). Only the PS2020 and QLA modules read it; the
+ * other modules ignore it. */
+#if defined(COOLING_PS2020)
+#define eagle_bh_cooling_N_elementtypes colibre_cooling_N_elementtypes
+#elif defined(COOLING_QLA)
+#define eagle_bh_cooling_N_elementtypes qla_cooling_N_elementtypes
+#else
+#define eagle_bh_cooling_N_elementtypes 1
+#endif
 
 /* Standard includes */
 #include <float.h>
@@ -731,8 +741,8 @@ __attribute__((always_inline)) INLINE static void black_holes_prepare_feedback(
        * (Yes, that is inconsitent but makes no difference) */
       const double logZZsol = 0.;
       const double XH = 0.75;
-      float abundance_ratio[colibre_cooling_N_elementtypes];
-      for (int i = 0; i < colibre_cooling_N_elementtypes; ++i)
+      float abundance_ratio[eagle_bh_cooling_N_elementtypes];
+      for (int i = 0; i < eagle_bh_cooling_N_elementtypes; ++i)
         abundance_ratio[i] = 1.f;
 
       /* Get the gas temperature */
