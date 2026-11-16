@@ -2231,6 +2231,34 @@ void space_check_cosmology(struct space *s, const struct cosmology *cosmo,
 }
 
 /**
+ * @brief Compute the total matter mass summed over all ranks.
+ *
+ * Matter is dark matter (high-resolution and background) and baryons, as in
+ * #space_check_cosmology. Neutrinos are not included. This is a collective
+ * call when running with MPI.
+ *
+ * @param s The #space.
+ */
+double space_get_total_matter_mass(const struct space *s) {
+
+  double mass = 0.;
+  for (size_t i = 0; i < s->nr_gparts; ++i) {
+    const struct gpart *gp = &s->gparts[i];
+    if (gp->time_bin == time_bin_inhibited ||
+        gp->time_bin == time_bin_not_created)
+      continue;
+    if (gp->type == swift_type_neutrino) continue;
+    mass += gp->mass;
+  }
+
+#ifdef WITH_MPI
+  MPI_Allreduce(MPI_IN_PLACE, &mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+
+  return mass;
+}
+
+/**
  * @brief Compute the max id of any #part in this space.
  *
  * This function is inefficient. Don't call often.
