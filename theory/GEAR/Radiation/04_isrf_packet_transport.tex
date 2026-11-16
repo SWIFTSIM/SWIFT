@@ -91,7 +91,8 @@ mass). Grackle receives two numbers from it:
   \label{eq:isrf-kdiss}
 \end{align}
 with $\rho$ the physical gas density and
-$\sigma_{\rm H_2}/\bar E_{\rm LW}=1.2847\times10^{-7}$\,cm$^2$\,erg$^{-1}$.
+$\sigma_{\rm H_2}/\bar E_{\rm LW}=1.4425\times10^{-7}$\,cm$^2$\,erg$^{-1}$,
+derived below for the Draine field (section~\ref{sec:isrf-lw-coefficient}).
 Grackle computes the photoelectric heating from $G_0$, with the efficiency law
 chosen in its parameters. SWIFT is built with one of four Grackle chemical
 networks, the Grackle build modes 0 to 3. Only build modes 2 and 3 track
@@ -101,6 +102,129 @@ dissociates nothing. The light that dust absorbs on the
 way is not added to the gas as heat; the gas is heated only through $G_0$.
 The scheme also carries the photon number of each band. The LW photon number
 is an output only; Grackle does not read it.
+
+\paragraph{The coefficient $\sigma_{\rm H_2}/\bar E_{\rm LW}$.}
+\label{sec:isrf-lw-coefficient}
+The gas particle carries the LW energy flux and nothing about the shape of the
+spectrum. The dissociation rate therefore needs one number, the coefficient
+$c\equiv\sigma_{\rm H_2}/\bar E_{\rm LW}$, in cm$^2$\,erg$^{-1}$. Its value
+depends on the spectrum of the light. The code uses the value for the Draine
+field \citep{Draine1978}, derived here.
+
+\emph{Definition.} Let $F_\nu$ be the energy flux per unit frequency
+(erg\,s$^{-1}$\,cm$^{-2}$\,Hz$^{-1}$), summed over all directions, $h$ the
+Planck constant, and $\sigma_{\rm diss}(\nu)$ (cm$^2$) the cross section of an
+H$_2$ molecule for photodissociation at frequency $\nu$. The rate of
+dissociation per molecule is
+\begin{equation}
+  k_{\rm diss}=\int \sigma_{\rm diss}(\nu)\,\frac{F_\nu}{h\nu}\,d\nu
+  \qquad[{\rm s^{-1}}],
+  \label{eq:isrf-kdiss-def}
+\end{equation}
+because $F_\nu/(h\nu)$ is the photon flux per unit frequency. The integral runs
+over the LW band, $11.2$ to $13.6$\,eV (wavelengths $911.65$ to $1107.0$\,\AA).
+The energy flux in the band is
+\begin{equation}
+  F_{\rm LW}=\int_{\rm LW} F_\nu\,d\nu\qquad[{\rm erg\,s^{-1}\,cm^{-2}}].
+  \label{eq:isrf-FLW-def}
+\end{equation}
+For a fixed spectrum shape the ratio of the two is a constant,
+\begin{equation}
+  c=\frac{k_{\rm diss}}{F_{\rm LW}}\qquad[{\rm cm^2\,erg^{-1}}],
+  \label{eq:isrf-c-def}
+\end{equation}
+and the code computes $k_{\rm diss}=c\,F_{\rm LW}$ with $F_{\rm LW}=c_{\rm
+light}\,\rho\,\tilde u_{\rm LW}$. Writing $c=\sigma_{\rm H_2}/\bar E_{\rm LW}$
+with $\bar E_{\rm LW}=12.2$\,eV gives the effective cross section
+$\sigma_{\rm H_2}=c\,\bar E_{\rm LW}$; the rate does not read $\bar E_{\rm LW}$
+separately.
+
+\emph{Three independent values for the Draine field.} In H$_2$, only the
+Lyman and Werner bands matter. Each value below gives $k_{\rm diss}$ and
+$F_{\rm LW}$ for the Draine field of unit strength, and so one $c$.
+\begin{enumerate}
+  \item \emph{A line list.} The Leiden photodissociation database
+    \citep{Heays2017} holds the H$_2$ band list of \citet{Abgrall2000}: $32$
+    Lyman and Werner vibronic bands, each with its integrated dissociation
+    cross section (in cm$^2$\,\AA), summed over the rotational levels of a gas
+    at $300$\,K. Eq.~\eqref{eq:isrf-kdiss-def} becomes a sum over the bands,
+    $k_{\rm diss}=\sum_\ell \sigma_{{\rm int},\ell}\,N_\lambda(\lambda_\ell)$,
+    with $N_\lambda$ the photon flux per unit wavelength of the field
+    (photons\,s$^{-1}$\,cm$^{-2}$\,\AA$^{-1}$) taken at the wavelength
+    $\lambda_\ell$ of band $\ell$. The Draine field is the fit of
+    \citet{Sternberg2014}, their Eq.~2. Result:
+    $c=1.4515\times10^{-7}$\,cm$^2$\,erg$^{-1}$. As a test, the same sum with
+    the field files of the database reproduces the rates tabulated by the
+    database for three of its fields to $1.7$ per cent at most.
+  \item \emph{\citet{Sternberg2014}.} Their free-space rate is
+    $5.8\times10^{-11}$\,s$^{-1}$ for a unit Draine field. The energy flux of
+    their field in the LW band is $3.9596\times10^{-4}$\,erg\,s$^{-1}$\,cm$^{-2}$.
+    The ratio is $c=1.4648\times10^{-7}$\,cm$^2$\,erg$^{-1}$.
+  \item \emph{\citet{DraineBertoldi1996}, Table~2.} The table gives, for each of the
+    two lowest H$_2$ levels, the rate at which the Draine-shaped field pumps
+    the molecule and the probability that a pumping ends in dissociation:
+    $2.77\times10^{-10}$\,s$^{-1}$ and $0.117$ (level $(0,0)$),
+    $2.79\times10^{-10}$\,s$^{-1}$ and $0.119$ (level $(0,1)$). The
+    dissociation rate is the product, $3.241\times10^{-11}$ and
+    $3.320\times10^{-11}$\,s$^{-1}$. The energy flux of the same field in the
+    LW band is $2.3245\times10^{-4}$\,erg\,s$^{-1}$\,cm$^{-2}$. The two
+    levels give $1.394\times10^{-7}$ and $1.428\times10^{-7}$; their mean is
+    $c=1.4113\times10^{-7}$\,cm$^2$\,erg$^{-1}$. The field strength cancels in
+    the ratio, so the convention of the field normalisation does not enter.
+\end{enumerate}
+The three values differ by at most $3.8$ per cent from one another.
+
+\emph{Result.} The code takes the mean of the three, and the half of their
+range as the uncertainty:
+\begin{equation}
+  c=\frac{\sigma_{\rm H_2}}{\bar E_{\rm LW}}
+  =(1.4425\pm0.0027)\times10^{-7}\;{\rm cm^2\,erg^{-1}}
+  \qquad(1.9\ {\rm per\ cent}).
+  \label{eq:isrf-c-result}
+\end{equation}
+At $\bar E_{\rm LW}=12.2$\,eV $=1.9546\times10^{-11}$\,erg this is
+$\sigma_{\rm H_2}=2.82\times10^{-18}$\,cm$^2$. Two more
+errors are not in the half range. The rate of \citet{Sternberg2014} has two
+significant figures ($\pm0.9$ per cent). The line list assumes a $300$\,K
+population of the rotational levels; the rows of Table~2 of
+\citet{DraineBertoldi1996} for $50$ to $200$\,K change the rate of the
+Draine-shaped field by less than $1$ per cent.
+
+\emph{From the Habing field to the Draine field.} A field strength is
+usually quoted in units of the Habing flux $F_{\rm H}=1.6\times10^{-3}$\,erg\,s$^{-1}$\,cm$^{-2}$
+over $6$ to $13.6$\,eV. Two dimensionless factors turn it into the LW energy flux of the
+Draine field: the Draine energy density is $1.7$ times
+the Habing one \citep{Sternberg2014}; the LW band holds a fraction $0.149$ of
+the energy of the $6$ to $13.6$\,eV band for the Draine shape (a direct
+integral gives $0.148$). So
+\begin{equation}
+  F_{\rm LW}(I_{\rm UV}=1)=1.6\times10^{-3}\times0.149\times1.7
+  =4.053\times10^{-4}\ {\rm erg\,s^{-1}\,cm^{-2}},
+\end{equation}
+$2.4$ per cent above the direct integral of the Draine field in the band
+($3.9596\times10^{-4}$). With the coefficient of Eq.~\eqref{eq:isrf-c-result},
+the rate in a unit Draine field is $k_{\rm diss}=5.85\times10^{-11}$\,s$^{-1}$,
+$0.8$ per cent above the value of \citet{Sternberg2014}.
+
+\emph{The spectral shape matters.} The coefficient $c$ is not a property of
+H$_2$ alone: the strong Lyman and Werner bands lie at $912$ to $1015$\,\AA,
+the short end of the band, and the Draine field falls by a factor of about $8$
+from $1108$ to $912$\,\AA. A spectrum with more energy at the short end puts
+more of the band energy where H$_2$ absorbs, and $c$ rises. The sum over the
+line list gives, relative to the Draine field: $+17$ per cent for a blackbody
+at $2\times10^4$\,K, $+36$ per cent at $5\times10^4$\,K, and $-18$ per cent
+at $10^4$\,K; the field of a B0 star, $u_\nu\propto\nu^{-2}$
+\citep{DraineBertoldi1996}, gives $+27$ per cent. Independently of this sum,
+Table~2 of \citet{DraineBertoldi1996} gives a ratio $1.26$ between that field
+and the Draine field. The mean photon energy in the band does not fix $c$: it
+moves by $2$ per cent between the blackbodies while $c$ moves by $42$ per
+cent. The blackbodies are only a proxy: the atmospheres of real stars absorb
+in the Lyman lines of hydrogen at the short end of the band, so the shifts are
+an upper envelope. The value of Eq.~\eqref{eq:isrf-c-result} applies to the
+Draine field. Gas lit by young stars has a rate $15$ to $40$ per cent above the
+one the code computes, larger than the $1.9$ per cent uncertainty of the
+coefficient. The result is for the free-space, optically thin rate; the
+shielding by H$_2$ itself is a separate factor applied by Grackle.
 
 \paragraph{The light of a star.} Each star particle has a luminosity $L_b$
 and a mean photon energy $\bar E_b$ in each band. Both come from a
