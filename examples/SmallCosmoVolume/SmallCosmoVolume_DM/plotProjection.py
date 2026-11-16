@@ -16,8 +16,9 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import LogNorm
 
 from swiftsimio import load
-from swiftsimio.visualisation.projection import project_pixel_grid
-from swiftsimio.visualisation.smoothing_length import generate_smoothing_lengths
+from swiftsimio.visualisation import project_pixel_grid, generate_smoothing_lengths
+
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Grab snapshot
 
@@ -64,7 +65,6 @@ dm_mass = project_pixel_grid(
     # Note here that we pass in the dark matter dataset not the whole
     # data object, to specify what particle type we wish to visualise
     data=data.dark_matter,
-    boxsize=data.metadata.boxsize,
     resolution=1024,
     project="masses",
     parallel=True,
@@ -80,16 +80,16 @@ plt.colorbar(im)
 
 # Add xlabels
 xunits = data.dark_matter.coordinates.units.latex_representation()
-ax.set_xlabel("x [" + xunits + "]", usetex=True)
-ax.set_ylabel("y [" + xunits + "]", usetex=True)
+ax.set_xlabel("x [$" + xunits + "$]")
+ax.set_ylabel("y [$" + xunits + "$]")
 
 
 # Add title
-title = file.replace("_", r"\_")  # exception handle underscore for latex
+title = file
 if meta.cosmology is not None:
     title += ", $z$ = {0:.3f}".format(meta.z)
 title += ", $t$ = {0:.2e}".format(meta.time.to("Gyr"))
-fig.suptitle(title, usetex=True)
+fig.suptitle(title)
 
 # Save figure
 plt.tight_layout()

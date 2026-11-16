@@ -24,6 +24,9 @@ import argparse
 import swiftsimio as sw
 import unyt
 
+# Fixed seed so that the initial conditions are reproducible
+np.random.seed(1)
+
 parser = argparse.ArgumentParser(
     description="Generate discrete realization of Anisotropic Plummer Model"
 )
@@ -199,8 +202,12 @@ def fmax(r, vmax):
     return -fm.fun
 
 
-# Sample vr,vt from DF at given Radius through rejection sampling
-def sample_vel(r):
+# Sample vr,vt from DF at given Radius through rejection sampling.
+# Each particle gets its own random generator, seeded from its index, so that
+# the result is reproducible and does not depend on how the particles are
+# distributed over the worker processes.
+def sample_vel(i, r):
+    rng = np.random.default_rng((1, i))
     # Compute max velocity (equiv. condition for E>=0)
     vmax = np.sqrt(2.0 * relative_potential(r))
     # Compute max of DF at this radius
@@ -208,12 +215,12 @@ def sample_vel(r):
     while True:
         # Select candidates for vr,vt based on max full velocity
         while True:
-            vr = np.random.uniform(0.0, vmax)
-            vt = np.random.uniform(0.0, vmax)
+            vr = rng.uniform(0.0, vmax)
+            vt = rng.uniform(0.0, vmax)
             if vr**2 + vt**2 <= vmax**2:
                 break
         # Rejection Sampling on Fq
-        f = np.random.uniform(0.0, fm)
+        f = rng.uniform(0.0, fm)
         if Fq(relative_energy(r, vr, vt), r * vt) * vt >= f:
             return vr, vt
 
@@ -221,16 +228,18 @@ def sample_vel(r):
 print("Sampling velocities...")
 ti = time.time()
 if use_parallel:
-    from multiprocessing import Pool
+    import multiprocessing
 
-    with Pool(nb_threads) as p:
-        vels = np.array(p.map(sample_vel, r_rand)).transpose()
+    # Use fork so that the workers do not re-run this script (Python >= 3.14
+    # defaults to forkserver on Linux)
+    with multiprocessing.get_context("fork").Pool(nb_threads) as p:
+        vels = np.array(p.starmap(sample_vel, enumerate(r_rand))).transpose()
 else:
     from tqdm import tqdm
 
     vels = np.empty((2, N))
     for j, r in enumerate(tqdm(r_rand)):
-        vels[:, j] = sample_vel(r)
+        vels[:, j] = sample_vel(j, r)
 tf = time.time()
 print("Sampling took " + "{:.2f}".format(tf - ti) + " seconds.")
 

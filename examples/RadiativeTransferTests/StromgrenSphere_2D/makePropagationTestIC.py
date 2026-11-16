@@ -24,16 +24,14 @@
 # Intended for the photon propagation test.
 # ---------------------------------------------------------------------
 
-import h5py
 import numpy as np
 import unyt
 import swiftsimio as sw
 
-glass = h5py.File("glassPlane_128.hdf5", "r")
-parts = glass["PartType0"]
-xp = parts["Coordinates"][:]
-h = parts["SmoothingLength"][:]
-glass.close()
+glass = sw.load("glassPlane_128.hdf5")
+parts = glass.gas
+xp = parts.coordinates.value
+h = parts.smoothing_lengths.value
 
 # find particles closest to the center
 # and select a couple of them to put the star in their middle

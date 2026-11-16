@@ -1,10 +1,12 @@
 Setup for a potential of a patch disk, see Creasey, Theuns &
 Bower, 2013, MNRAS, Volume 429, Issue 3, p.1922-1948
 
-The density is given by
-rho(z) = (Sigma/2b) / cosh^2(z/b)
-where Sigma is the surface density, and b the scale height.
+The disc mid-plane is perpendicular to the x-axis, at x = x_disc
+(DiscPatchPotential:x_disc in disc-patch.yml). The density is given by
+rho(x) = (Sigma/2b) / cosh^2(x/b)
+where x is measured from the mid-plane, Sigma is the surface density,
+and b the scale height.
 
 The corresponding force is
-dphi/dz = 2 pi G Sigma tanh(z/b),
-which satifies d^2phi/dz^2 = 4 pi G rho.
+dphi/dx = 2 pi G Sigma tanh(x/b),
+which satisfies d^2phi/dx^2 = 4 pi G rho.

@@ -26,14 +26,12 @@
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
-from scipy import stats
-import h5py
 import numpy as np
+import matplotlib.pyplot as plt
+import h5py
 import glob
-import os.path
 
-style.use("../../../tools/stylesheets/mnras.mplstyle")
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 # Number of snapshots and elements
 newest_snap_name = max(glob.glob("stellar_evolution_*.hdf5"))  # , key=os.path.getctime)
@@ -48,21 +46,22 @@ boxSize = sim["/Header"].attrs["BoxSize"][0]
 time = sim["/Header"].attrs["Time"][0]
 scheme = sim["/HydroScheme"].attrs["Scheme"]
 kernel = sim["/HydroScheme"].attrs["Kernel function"]
-neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"]
-eta = sim["/HydroScheme"].attrs["Kernel eta"]
+neighbours = sim["/HydroScheme"].attrs["Kernel target N_ngb"][0]
+eta = sim["/HydroScheme"].attrs["Kernel eta"][0]
 git = sim["Code"].attrs["Git Revision"]
 stellar_mass = sim["/PartType4/Masses"][0]
-E_SNII_cgs = double(sim["/Parameters"].attrs["EAGLEFeedback:SNII_energy_erg"])
-E_SNIa_cgs = double(sim["/Parameters"].attrs["EAGLEFeedback:SNIa_energy_erg"])
+E_SNII_cgs = np.double(sim["/Parameters"].attrs["EAGLEFeedback:SNII_energy_erg"])
+E_SNIa_cgs = np.double(sim["/Parameters"].attrs["EAGLEFeedback:SNIa_energy_erg"])
 ejecta_vel_cgs = (
-    double(sim["/Parameters"].attrs["EAGLEFeedback:AGB_ejecta_velocity_km_p_s"]) * 1e5
+    np.double(sim["/Parameters"].attrs["EAGLEFeedback:AGB_ejecta_velocity_km_p_s"])
+    * 1e5
 )
 
 # Units
-unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"]
-unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"]
-unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"]
-unit_temp_in_cgs = sim["/Units"].attrs["Unit temperature in cgs (U_T)"]
+unit_length_in_cgs = sim["/Units"].attrs["Unit length in cgs (U_L)"][0]
+unit_mass_in_cgs = sim["/Units"].attrs["Unit mass in cgs (U_M)"][0]
+unit_time_in_cgs = sim["/Units"].attrs["Unit time in cgs (U_t)"][0]
+unit_temp_in_cgs = sim["/Units"].attrs["Unit temperature in cgs (U_T)"][0]
 unit_vel_in_cgs = unit_length_in_cgs / unit_time_in_cgs
 unit_energy_in_cgs = unit_mass_in_cgs * unit_vel_in_cgs * unit_vel_in_cgs
 unit_density_in_cgs = unit_mass_in_cgs * unit_length_in_cgs**-3
@@ -73,21 +72,21 @@ Gyr_in_cgs = 1e9 * 365.0 * 24 * 3600.0
 Msun_in_cgs = 1.98848e33
 
 # Declare arrays to store SWIFT data
-swift_box_gas_mass = zeros(n_snapshots)
-swift_box_gas_mass_AGB = zeros(n_snapshots)
-swift_box_gas_mass_SNII = zeros(n_snapshots)
-swift_box_gas_mass_SNIa = zeros(n_snapshots)
-swift_box_star_mass = zeros(n_snapshots)
-swift_box_gas_metal_mass = zeros(n_snapshots)
-swift_box_gas_metal_mass_AGB = zeros(n_snapshots)
-swift_box_gas_metal_mass_SNII = zeros(n_snapshots)
-swift_box_gas_metal_mass_SNIa = zeros(n_snapshots)
-swift_element_mass = zeros((n_snapshots, n_elements))
-swift_internal_energy = zeros(n_snapshots)
-swift_kinetic_energy = zeros(n_snapshots)
-swift_total_energy = zeros(n_snapshots)
+swift_box_gas_mass = np.zeros(n_snapshots)
+swift_box_gas_mass_AGB = np.zeros(n_snapshots)
+swift_box_gas_mass_SNII = np.zeros(n_snapshots)
+swift_box_gas_mass_SNIa = np.zeros(n_snapshots)
+swift_box_star_mass = np.zeros(n_snapshots)
+swift_box_gas_metal_mass = np.zeros(n_snapshots)
+swift_box_gas_metal_mass_AGB = np.zeros(n_snapshots)
+swift_box_gas_metal_mass_SNII = np.zeros(n_snapshots)
+swift_box_gas_metal_mass_SNIa = np.zeros(n_snapshots)
+swift_element_mass = np.zeros((n_snapshots, n_elements))
+swift_internal_energy = np.zeros(n_snapshots)
+swift_kinetic_energy = np.zeros(n_snapshots)
+swift_total_energy = np.zeros(n_snapshots)
 swift_mean_u_start = 0.0
-t = zeros(n_snapshots)
+t = np.zeros(n_snapshots)
 
 # Read data from snapshots
 for i in range(n_snapshots):
@@ -142,7 +141,7 @@ for i in range(n_snapshots):
 filename = "./StellarEvolutionSolution/Z_%.4f/StellarEvolutionTotal.txt" % Z_star
 
 # Read EAGLE test output
-data = loadtxt(filename)
+data = np.loadtxt(filename)
 eagle_time_Gyr = data[:, 0]
 eagle_total_mass = data[:, 1] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 eagle_total_metal_mass = data[:, 2] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
@@ -157,75 +156,81 @@ eagle_energy_ejecta_cgs = 0.5 * (eagle_total_mass * Msun_in_cgs) * ejecta_vel_cg
 
 # Read the mass per channel
 filename = "./StellarEvolutionSolution/Z_%.4f/StellarEvolutionAGB.txt" % Z_star
-data = loadtxt(filename)
+data = np.loadtxt(filename)
 eagle_total_mass_AGB = data[:, 1] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 eagle_total_metal_mass_AGB = data[:, 2] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 
 filename = "./StellarEvolutionSolution/Z_%.4f/StellarEvolutionII.txt" % Z_star
-data = loadtxt(filename)
+data = np.loadtxt(filename)
 eagle_total_mass_SNII = data[:, 1] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 eagle_total_metal_mass_SNII = data[:, 2] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 
 filename = "./StellarEvolutionSolution/Z_%.4f/StellarEvolutionIa.txt" % Z_star
-data = loadtxt(filename)
+data = np.loadtxt(filename)
 eagle_total_mass_SNIa = data[:, 1] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 eagle_total_metal_mass_SNIa = data[:, 2] * stellar_mass / Msun_in_cgs * unit_mass_in_cgs
 
 
 # Plot the interesting quantities
-figure(figsize=(7, 7 / 1.6))
+plt.figure(figsize=(7, 7 / 1.6))
 
-suptitle("Star metallicity Z = %.4f" % Z_star)
+plt.suptitle("Star metallicity Z = %.4f" % Z_star)
 
 # Box gas mass --------------------------------
-subplot(221)
-plot(
+plt.subplot(221)
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (swift_box_gas_mass[1:] - swift_box_gas_mass[0]) * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="k",
     label="Total",
 )
-plot(
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     swift_box_gas_mass_AGB * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="C0",
     label="AGB",
 )
-plot(
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     swift_box_gas_mass_SNII * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="C1",
     label="SNII",
 )
-plot(
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     swift_box_gas_mass_SNIa * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="C2",
     label="SNIa",
 )
-plot(eagle_time_Gyr[1:], eagle_total_mass[:-1], linewidth=0.5, color="k", ls="--")
-plot(eagle_time_Gyr[1:], eagle_total_mass_AGB[:-1], linewidth=0.5, color="C0", ls="--")
-plot(eagle_time_Gyr[1:], eagle_total_mass_SNII[:-1], linewidth=0.5, color="C1", ls="--")
-plot(eagle_time_Gyr[1:], eagle_total_mass_SNIa[:-1], linewidth=0.5, color="C2", ls="--")
-legend(loc="lower right", ncol=2, fontsize=8)
-xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
-ylabel("Change in total gas particle mass ${[\\rm M_\\odot]}$", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.plot(eagle_time_Gyr[1:], eagle_total_mass[:-1], linewidth=0.5, color="k", ls="--")
+plt.plot(
+    eagle_time_Gyr[1:], eagle_total_mass_AGB[:-1], linewidth=0.5, color="C0", ls="--"
+)
+plt.plot(
+    eagle_time_Gyr[1:], eagle_total_mass_SNII[:-1], linewidth=0.5, color="C1", ls="--"
+)
+plt.plot(
+    eagle_time_Gyr[1:], eagle_total_mass_SNIa[:-1], linewidth=0.5, color="C2", ls="--"
+)
+plt.legend(loc="lower right", ncol=2, fontsize=8)
+plt.xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
+plt.ylabel("Change in total gas particle mass ${[\\rm M_\\odot]}$", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
 # Box star mass --------------------------------
-subplot(222)
-plot(
+plt.subplot(222)
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     (swift_box_star_mass) * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="k",
     label="SWIFT",
 )
-plot(
+plt.plot(
     eagle_time_Gyr[1:],
     swift_box_star_mass[0] * unit_mass_in_cgs / Msun_in_cgs - eagle_total_mass[:-1],
     linewidth=0.5,
@@ -233,17 +238,17 @@ plot(
     label="EAGLE test",
     ls="--",
 )
-xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
-ylabel("Change in total star particle mass ${[\\rm M_\\odot]}$", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
-legend()
+plt.xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
+plt.ylabel("Change in total star particle mass ${[\\rm M_\\odot]}$", labelpad=2)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.legend()
 
 # Box gas element  mass --------------------------------
 colours = ["k", "r", "g", "b", "c", "y", "m", "skyblue", "plum"]
 element_names = ["H", "He", "C", "N", "O", "Ne", "Mg", "Si", "Fe"]
-subplot(223)
+plt.subplot(223)
 for j in range(n_elements):
-    plot(
+    plt.plot(
         t[1:] * unit_time_in_cgs / Gyr_in_cgs,
         (swift_element_mass[1:, j] - swift_element_mass[0, j])
         * unit_mass_in_cgs
@@ -253,22 +258,22 @@ for j in range(n_elements):
         ms=0.5,
         label=element_names[j],
     )
-    plot(
+    plt.plot(
         eagle_time_Gyr[1:],
         eagle_total_element_mass[:-1, j],
         linewidth=1,
         color=colours[j],
         linestyle="--",
     )
-xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
-ylabel("Change in element mass of gas particles ${[\\rm M_\\odot]}$", labelpad=2)
-xscale("log")
-yscale("log")
-legend(bbox_to_anchor=(1.005, 1.0), ncol=1, fontsize=8, handlelength=1)
+plt.xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
+plt.ylabel("Change in element mass of gas particles ${[\\rm M_\\odot]}$", labelpad=2)
+plt.xscale("log")
+plt.yscale("log")
+plt.legend(bbox_to_anchor=(1.005, 1.0), ncol=1, fontsize=8, handlelength=1)
 
 # Box gas metal mass --------------------------------
-subplot(224)
-plot(
+plt.subplot(224)
+plt.plot(
     t[1:] * unit_time_in_cgs / Gyr_in_cgs,
     (swift_box_gas_metal_mass[1:] - swift_box_gas_metal_mass[0])
     * unit_mass_in_cgs
@@ -277,54 +282,58 @@ plot(
     color="k",
     label="Total",
 )
-plot(
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     swift_box_gas_metal_mass_AGB * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="C0",
     label="AGB",
 )
-plot(
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     swift_box_gas_metal_mass_SNII * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="C1",
     label="SNII",
 )
-plot(
+plt.plot(
     t * unit_time_in_cgs / Gyr_in_cgs,
     swift_box_gas_metal_mass_SNIa * unit_mass_in_cgs / Msun_in_cgs,
     linewidth=0.5,
     color="C2",
     label="SNIa",
 )
-plot(eagle_time_Gyr[1:], eagle_total_metal_mass[:-1], linewidth=0.5, color="k", ls="--")
-plot(
+plt.plot(
+    eagle_time_Gyr[1:], eagle_total_metal_mass[:-1], linewidth=0.5, color="k", ls="--"
+)
+plt.plot(
     eagle_time_Gyr[1:],
     eagle_total_metal_mass_AGB[:-1],
     linewidth=0.5,
     color="C0",
     ls="--",
 )
-plot(
+plt.plot(
     eagle_time_Gyr[1:],
     eagle_total_metal_mass_SNII[:-1],
     linewidth=0.5,
     color="C1",
     ls="--",
 )
-plot(
+plt.plot(
     eagle_time_Gyr[1:],
     eagle_total_metal_mass_SNIa[:-1],
     linewidth=0.5,
     color="C2",
     ls="--",
 )
-legend(loc="center right", ncol=2, fontsize=8)
-xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
-ylabel("Change in total metal mass of gas particles ${[\\rm M_\\odot]}$", labelpad=2)
-ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
+plt.legend(loc="center right", ncol=2, fontsize=8)
+plt.xlabel("${\\rm Time~[Gyr]}$", labelpad=0)
+plt.ylabel(
+    "Change in total metal mass of gas particles ${[\\rm M_\\odot]}$", labelpad=2
+)
+plt.ticklabel_format(style="sci", axis="y", scilimits=(0, 0))
 
-tight_layout()
+plt.tight_layout()
 
-savefig("box_evolution_Z_%.4f.png" % (Z_star), dpi=200)
+plt.savefig("box_evolution_Z_%.4f.png" % (Z_star), dpi=200)

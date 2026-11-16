@@ -47,7 +47,7 @@ def plot_square(A1_x, A1_y, A1_rho, A1_u, A1_P, A1_size, boxsize_l):
     cbar_gap_len = n_gs_cbar_gap * ax_len / n_gs_ax
     cbar_len = n_gs_cbar * ax_len / n_gs_ax
 
-    fig = plt.figure(
+    plt.figure(
         figsize=(3 * ax_len + 2 * ax_gap_len + 3 * cbar_gap_len + 3 * cbar_len, ax_len)
     )
     gs = mpl.gridspec.GridSpec(

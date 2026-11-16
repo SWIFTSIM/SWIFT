@@ -10,10 +10,13 @@ under a scheme with thermal diffusion, we expect that there will be
 some diffusion between the particles and that the distribution of
 internal energy will equalise.
 
+SWIFT must be configured with `--with-hydro-dimension=1` to run this
+example.
+
 Included are some scripts to create initial conditions (`makeIC.py`),
 plot a solution (`plotSolution.py`), and to run the code (`run.sh`).
 Also included is a script to run a convergence test by changing the
-`SPH:beta_diffusion` parameter (`run_set.sh`).
+`SPH:diffusion_beta` parameter (`run_set.sh`).
 
 To make the initial conditions and produce the plots, the `swiftsimio`
-library (http://gitlab.cosma.dur.ac.uk/jborrow/swiftsimio) is required.
+library (https://github.com/SWIFTSIM/swiftsimio) is required.
