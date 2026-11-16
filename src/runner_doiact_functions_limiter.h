@@ -584,6 +584,13 @@ void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
       cj->hydro.dx_max_sort_old > space_maxreldx * cj->dmin)
     error("Interacting unsorted cells (cj).");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  runner_check_sort_shift_hydro(ci, cj, sid, e);
+  runner_check_sort_shift_hydro(cj, ci, sid, e);
+#endif /* SWIFT_DEBUG_CHECKS */
+
 #if defined(SWIFT_USE_NAIVE_INTERACTIONS)
   DOPAIR1_NAIVE(r, ci, cj, limit_min_h, limit_max_h);
 #else

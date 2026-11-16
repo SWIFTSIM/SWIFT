@@ -1363,6 +1363,20 @@ void DOPAIR1_BRANCH_STARS(struct runner *r, struct cell *ci, struct cell *cj,
                 cj->stars.dx_max_sort_old > space_maxreldx * cj->dmin))
     error("Interacting unsorted cells. (cj stars)");
 
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that the dx_max_sort values in the cells are indeed an upper
+     bound on particle movement. */
+  if (do_ci) {
+    runner_check_sort_shift_hydro(cj, ci, sid, e);
+    runner_check_sort_shift_stars(ci, cj, sid, e);
+  }
+
+  if (do_cj) {
+    runner_check_sort_shift_hydro(ci, cj, sid, e);
+    runner_check_sort_shift_stars(cj, ci, sid, e);
+  }
+#endif /* SWIFT_DEBUG_CHECKS */
+
 #ifdef SWIFT_USE_NAIVE_INTERACTIONS_STARS
   DOPAIR1_STARS_NAIVE(r, ci, cj, offset, ntasks, limit_min_h, limit_max_h);
 #else

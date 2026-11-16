@@ -187,6 +187,60 @@ void runner_do_sort_ascending(struct sort_entry *sort, int N) {
 RUNNER_CHECK_SORTS(hydro)
 RUNNER_CHECK_SORTS(stars)
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Checks that dx_max_sort is an upper bound on the motion of the
+ * particles of a cell since they were sorted along a given direction.
+ *
+ * Debugging function. Exists in two flavours: hydro & stars.
+ *
+ * @param c The #cell to check.
+ * @param other The other #cell of the pair (only used in the error message).
+ * @param sid The sort direction.
+ * @param e The #engine.
+ */
+#define RUNNER_CHECK_SORT_SHIFT(TYPE, PART)                                    \
+  void runner_check_sort_shift_##TYPE(const struct cell *c,                    \
+                                      const struct cell *other, const int sid, \
+                                      const struct engine *e) {                \
+                                                                               \
+    const struct sort_entry *sort = cell_get_##TYPE##_sorts(c, sid);           \
+                                                                               \
+    for (int k = 0; k < c->TYPE.count; k++) {                                  \
+      const struct PART *p = &c->TYPE.parts[sort[k].i];                        \
+      if (PART##_is_inhibited(p, e)) continue;                                 \
+                                                                               \
+      const float d = p->x[0] * runner_shift[sid][0] +                         \
+                      p->x[1] * runner_shift[sid][1] +                         \
+                      p->x[2] * runner_shift[sid][2];                          \
+      const float excess = fabsf(d - sort[k].d) - c->TYPE.dx_max_sort;         \
+                                                                               \
+      if (excess > 1.0e-4 * max(fabsf(d), c->TYPE.dx_max_sort_old) &&          \
+          excess > c->width[0] * 1.0e-10)                                      \
+        error("particle shift diff exceeds dx_max_sort (" #TYPE                \
+              "). "                                                            \
+              "c->nodeID=%d other->nodeID=%d d=%e sort[k].d=%e "               \
+              "c->" #TYPE ".dx_max_sort=%e c->" #TYPE                          \
+              ".dx_max_sort_old=%e "                                           \
+              "c->cellID=%lld super->cellID=%lld c->depth=%d c->maxdepth=%d",  \
+              c->nodeID, other->nodeID, d, sort[k].d, c->TYPE.dx_max_sort,     \
+              c->TYPE.dx_max_sort_old, c->cellID,                              \
+              c->hydro.super != NULL ? c->hydro.super->cellID : -1LL,          \
+              c->depth, c->maxdepth);                                          \
+    }                                                                          \
+  }
+#else
+#define RUNNER_CHECK_SORT_SHIFT(TYPE, PART)                                    \
+  void runner_check_sort_shift_##TYPE(const struct cell *c,                    \
+                                      const struct cell *other, const int sid, \
+                                      const struct engine *e) {                \
+    error("Calling debugging code without debugging flag activated.");         \
+  }
+#endif
+
+RUNNER_CHECK_SORT_SHIFT(hydro, part)
+RUNNER_CHECK_SORT_SHIFT(stars, spart)
+
 /**
  * @brief Sort the particles in the given cell along all cardinal directions.
  *
@@ -399,6 +453,16 @@ void runner_do_hydro_sort(struct runner *r, struct cell *c, int flags,
       }
       c->hydro.dx_max_sort_old = 0.f;
       c->hydro.dx_max_sort = 0.f;
+      c->hydro.dx_max_sort_offset = 0.f;
+
+    } else if (flags) {
+
+      /* We are adding directions to a cell sorted at an earlier time without
+       * resetting the shifts. As |x(t) - x(t_sort)| <= |x_diff_sort(t)| +
+       * |x_diff_sort(t_sort)|, remember the current maximal shift such that
+       * dx_max_sort keeps bounding the motion since the sort for these new
+       * directions. dx_max_sort already includes any previous offset. */
+      c->hydro.dx_max_sort_offset = c->hydro.dx_max_sort;
     }
 
     /* Fill the sort array. */
@@ -634,6 +698,16 @@ void runner_do_stars_sort(struct runner *r, struct cell *c, int flags,
       }
       c->stars.dx_max_sort_old = 0.f;
       c->stars.dx_max_sort = 0.f;
+      c->stars.dx_max_sort_offset = 0.f;
+
+    } else if (flags) {
+
+      /* We are adding directions to a cell sorted at an earlier time without
+       * resetting the shifts. As |x(t) - x(t_sort)| <= |x_diff_sort(t)| +
+       * |x_diff_sort(t_sort)|, remember the current maximal shift such that
+       * dx_max_sort keeps bounding the motion since the sort for these new
+       * directions. dx_max_sort already includes any previous offset. */
+      c->stars.dx_max_sort_offset = c->stars.dx_max_sort;
     }
 
     /* Fill the sort array. */
