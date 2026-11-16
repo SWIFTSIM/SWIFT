@@ -778,10 +778,15 @@ GeajayCooling:
   uv_shielding_length_factor: 1                # (optional) Factor R_sh on the length, above 0 (default: 1)
   uv_shielding_path: kernel_radius             # (optional) Read only with uv_shielding_length_method: given_length. Path in kernel support radii: kernel_radius or kernel_diameter (default: kernel_radius)
   # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
-  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported.
+  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path), Jeans (local Jeans length) or hybrid_chimes (HYBRID-CHIMES length per particle), or 0, 2, 3, 4 (default: none). Sobolev (1) is not supported.
                                                # With GEARFeedback:with_interstellar_radiation_field on and primordial_chemistry_network H_He_H2 or above, none leaves the H2 unshielded
                                                # against the local LW rate and the run warns: set given_length or Jeans for an ISRF run.
   h2_shielding_path: kernel_radius             # (optional) Path for given_length, also the path of the dust column of the backgrounds: kernel_radius (kernel_gamma * h) or kernel_diameter (default: kernel_radius)
+  h2_hybrid_chimes_factor: 0.5                 # (optional) Read only with h2_shielding_length_method: hybrid_chimes. Factor R_sh on the HYBRID-CHIMES length, above 0 (default: 0.5)
+  h2_hybrid_chimes_turbulent_velocity_km_per_s: 6 # (optional) Read only with hybrid_chimes. 1D turbulent velocity of the column [km/s], 0 or above (default: 6)
+  h2_hybrid_chimes_max_length_low_z_kpc: 50    # (optional) Read only with hybrid_chimes. Cap of the length at low redshift [kpc], 0 for no cap (default: 50)
+  h2_hybrid_chimes_max_length_high_z_kpc: 10   # (optional) Read only with hybrid_chimes. Cap of the length at high redshift [kpc], 0 for no cap (default: 10)
+  h2_hybrid_chimes_transition_redshift: 7      # (optional) Read only with hybrid_chimes. Redshift where the cap changes from the low to the high value, above 0.4 (default: 7)
   metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate (the line of the end cell, as Grackle) or edge (the value at the edge) (default: extrapolate)

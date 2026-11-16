@@ -714,11 +714,14 @@ INLINE static void cooling_read_background_parameters(
   }
 
   /* The dust column is the one of the H2 self-shielding */
-  if (cooling->h2_shielding_length_method != cooling_h2_shielding_length_given)
+  if (cooling->h2_shielding_length_method !=
+          cooling_h2_shielding_length_given &&
+      cooling->h2_shielding_length_method !=
+          cooling_h2_shielding_length_hybrid_chimes)
     error(
         "GeajayCooling:dust_background_attenuation: per_band needs "
-        "h2_shielding_length_method: given_length, whose path is also the "
-        "path of the dust column.");
+        "h2_shielding_length_method: given_length or hybrid_chimes, whose "
+        "length is also the path of the dust column.");
 
   /* Kim et al. 2023, Table 3 (WD01 R_V = 3.1, per H nucleon, mu_H = 1.4):
      LW (11.2-13.6 eV) 1.5e-21 cm^2, PE (6-11.2 eV) 8.6e-22 cm^2. They are
@@ -1178,7 +1181,8 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
 
   const int h2_shielding = cooling_read_choice(
       parameter_file, "GeajayCooling:h2_shielding_length_method",
-      "h2_shielding_length_method", 0, NULL, 0);
+      "h2_shielding_length_method", 0, "hybrid_chimes",
+      cooling_h2_shielding_length_hybrid_chimes);
 
   /* Mode 1 differences the density against the six neighbouring grid
      cells, which do not exist when geajay is called on one particle. */
@@ -1193,10 +1197,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     case cooling_h2_shielding_length_none:
     case cooling_h2_shielding_length_given:
     case cooling_h2_shielding_length_Jeans:
+    case cooling_h2_shielding_length_hybrid_chimes:
       break;
     default:
       error(
-          "GeajayCooling:h2_shielding_length_method must be 0, 2 or 3, got "
+          "GeajayCooling:h2_shielding_length_method must be 0, 2, 3 or 4, got "
           "%d.",
           h2_shielding);
   }
@@ -1214,8 +1219,68 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GeajayCooling:h2_shielding_length_method is none: the local LW "
         "dissociation rate reaches geajay with no H2 self-shielding applied. "
         "Set h2_shielding_length_method to given_length (2, column set by "
-        "h2_shielding_path) or Jeans (3, local Jeans length) unless this is "
-        "deliberate.");
+        "h2_shielding_path), Jeans (3, local Jeans length) or hybrid_chimes "
+        "(4) unless this is deliberate.");
+
+  const char *hybrid_chimes_reason =
+      "GeajayCooling:h2_shielding_length_method is not hybrid_chimes";
+  if (cooling->h2_shielding_length_method ==
+      cooling_h2_shielding_length_hybrid_chimes) {
+    cooling->hybrid_chimes_factor = parser_get_opt_param_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_factor",
+        GEAJAY_HYBRID_CHIMES_SHIELDING_FACTOR);
+    cooling->hybrid_chimes_turbulent_velocity_cgs =
+        1.e5 * parser_get_opt_param_double(
+                   parameter_file,
+                   "GeajayCooling:h2_hybrid_chimes_turbulent_velocity_km_per_s",
+                   6.);
+    cooling->hybrid_chimes_max_length_low_z_kpc = parser_get_opt_param_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_max_length_low_z_kpc",
+        GEAJAY_HYBRID_CHIMES_LOW_Z_MAX_LENGTH_KPC);
+    cooling->hybrid_chimes_max_length_high_z_kpc = parser_get_opt_param_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_max_length_high_z_kpc",
+        GEAJAY_HYBRID_CHIMES_HIGH_Z_MAX_LENGTH_KPC);
+    cooling->hybrid_chimes_transition_redshift = parser_get_opt_param_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_transition_redshift",
+        GEAJAY_HYBRID_CHIMES_TRANSITION_REDSHIFT);
+
+    /* A refused value would give a NaN length for every particle. */
+    const double hybrid_chimes_probe = geajay_shielding_length_hybrid_chimes(
+        100., 1., cooling->hybrid_chimes_factor,
+        cooling->hybrid_chimes_turbulent_velocity_cgs,
+        geajay_shielding_max_length_hybrid_chimes_kpc(
+            0., cooling->hybrid_chimes_max_length_low_z_kpc,
+            cooling->hybrid_chimes_max_length_high_z_kpc,
+            cooling->hybrid_chimes_transition_redshift));
+    if (!cooling_double_is_finite(&hybrid_chimes_probe) ||
+        !(hybrid_chimes_probe > 0.))
+      error(
+          "GeajayCooling:h2_hybrid_chimes_*: geajay refuses the values (factor "
+          "%g above 0, turbulent velocity %g cm/s at least 0, caps %g and %g "
+          "kpc at least 0, transition redshift %g above 0.4).",
+          cooling->hybrid_chimes_factor,
+          cooling->hybrid_chimes_turbulent_velocity_cgs,
+          cooling->hybrid_chimes_max_length_low_z_kpc,
+          cooling->hybrid_chimes_max_length_high_z_kpc,
+          cooling->hybrid_chimes_transition_redshift);
+  } else {
+    cooling_refuse_unread_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_factor",
+        GEAJAY_HYBRID_CHIMES_SHIELDING_FACTOR, hybrid_chimes_reason);
+    cooling_refuse_unread_double(
+        parameter_file,
+        "GeajayCooling:h2_hybrid_chimes_turbulent_velocity_km_per_s", 6.,
+        hybrid_chimes_reason);
+    cooling_refuse_unread_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_max_length_low_z_kpc",
+        GEAJAY_HYBRID_CHIMES_LOW_Z_MAX_LENGTH_KPC, hybrid_chimes_reason);
+    cooling_refuse_unread_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_max_length_high_z_kpc",
+        GEAJAY_HYBRID_CHIMES_HIGH_Z_MAX_LENGTH_KPC, hybrid_chimes_reason);
+    cooling_refuse_unread_double(
+        parameter_file, "GeajayCooling:h2_hybrid_chimes_transition_redshift",
+        GEAJAY_HYBRID_CHIMES_TRANSITION_REDSHIFT, hybrid_chimes_reason);
+  }
 
   char H2_path[PARSER_MAX_LINE_SIZE] = "kernel_radius";
   if (cooling->h2_shielding_length_method == cooling_h2_shielding_length_given)
