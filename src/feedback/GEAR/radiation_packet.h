@@ -247,8 +247,9 @@ void radiation_packet_set_first_step(struct part *p,
                                      const integertime_t ti_current,
                                      const integertime_t ti_step,
                                      const integertime_t ti_end);
-void radiation_packet_end_gradient(struct part *p, const float a, const float c,
-                                   const float dt, const float tau);
+void radiation_packet_end_gradient(struct part *p, const float a,
+                                   const float speed_of_light, const float dt,
+                                   const float tau);
 void radiation_packet_end_force(struct part *p);
 int radiation_packet_octant(const float frame[9], const float direction[3]);
 int radiation_packet_slot(const float frame[9], const float direction[3]);
