@@ -780,6 +780,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("chemistry_data.HydrogenFractionByMass = %.3g",
           cooling->chemistry_data.HydrogenFractionByMass);
   message("chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
+  message("chemistry_data.DeuteriumToHydrogenRatio = %.6g",
+          cooling->chemistry_data.DeuteriumToHydrogenRatio);
   message("chemistry_data.h2_on_dust = %d", cooling->chemistry_data.h2_on_dust);
   message("chemistry_data.dust_to_gas_model = %d",
           cooling->chemistry_data.dust_to_gas_model);
@@ -1754,6 +1756,39 @@ static geajay_context *cooling_create_options_context(
 }
 
 /**
+ * @brief Stop if the initial deuterium species hold a total other than the
+ * deuterium_to_hydrogen_mass_ratio of geajay.
+ *
+ * geajay rescales D, D+ and HD to that total at every call. The initial ratios
+ * are number ratios to H and a D atom weighs 2 H atoms, so the total by mass is
+ * 2 (n_DI + n_DII + n_HDI) / n_H. An unset initial_di_to_h_ratio starts at the
+ * library total.
+ *
+ * @param cooling The cooling properties.
+ */
+static void cooling_check_initial_deuterium(
+    const struct cooling_function_data *cooling) {
+
+  const double wanted = cooling->chemistry_data.DeuteriumToHydrogenRatio;
+  const double initial_ratios[3] = {cooling->initial_di_to_h_ratio,
+                                    cooling->initial_dii_to_h_ratio,
+                                    cooling->initial_hdi_to_h_ratio};
+  double total = initial_ratios[0] >= 0. ? 2. * initial_ratios[0] : wanted;
+  for (int i = 1; i < 3; i++)
+    if (initial_ratios[i] >= 0.) total += 2. * initial_ratios[i];
+
+  if (fabs(total - wanted) > 1e-6 * wanted)
+    error(
+        "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio and "
+        "initial_hdi_to_h_ratio (number ratios to H) give a deuterium to "
+        "hydrogen mass ratio of %g, but the total of geajay is %g and it "
+        "rescales the deuterium to it at the first call. Set "
+        "GeajayCooling:deuterium_to_hydrogen_mass_ratio to %g, or change the "
+        "initial ratios so that 2 x their sum is %g.",
+        total, wanted, total, wanted);
+}
+
+/**
  * @brief Initialises geajay.
  *
  * @param cooling The cooling properties to initialize
@@ -1813,6 +1848,12 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   /* hydrogen fraction by mass */
   chemistry->HydrogenFractionByMass = cooling->HydrogenFractionByMass;
+
+  if (cooling->deuterium_to_hydrogen_mass_ratio >= 0.)
+    chemistry->DeuteriumToHydrogenRatio =
+        cooling->deuterium_to_hydrogen_mass_ratio;
+  if (cooling->primordial_chemistry >= 3)
+    cooling_check_initial_deuterium(cooling);
 
   /* use the Case B recombination rates */
   chemistry->CaseBRecombination = 1;

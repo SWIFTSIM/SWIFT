@@ -785,6 +785,9 @@ GeajayCooling:
   initial_h2i_to_h_ratio: -1                   # (optional) Initial nH2I to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_h2ii_to_h_ratio: -1                  # (optional) Initial nH2II to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_hdi_to_h_ratio: -1                   # (optional) Initial nHDI to nH ratio (number density ratio). Ignored if -1 (default: -1)
+  deuterium_to_hydrogen_mass_ratio: -1         # (optional) Total deuterium to hydrogen mass ratio, read with the network H_He_H2_D. -1 is the library value, 6.8e-5 (3.4e-5 by number). geajay rescales D, D+ and HD to it at every call,
+                                               # so the run stops if the initial D ratios give another total: 2 x (initial_di_to_h_ratio + initial_dii_to_h_ratio + initial_hdi_to_h_ratio),
+                                               # an unset initial_di_to_h_ratio counting as the library total (default: -1)
   cosmic_rays: off                             # (optional) Cosmic-ray network: off or reduced (needs primordial_chemistry_network H_He or above) (default: off)
   # With it the fields CosmicRayValues and CosmicRayEnergyLossRates join the snapshot, but swift -o does not list them.
   cosmic_ray_input: ionisation_rate            # (optional) Read only with cosmic_rays: reduced. Meaning of the per-particle value: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)

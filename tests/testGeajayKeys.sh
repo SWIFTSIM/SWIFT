@@ -19,7 +19,9 @@
 # The program reads a baseline file and a test file that differs by the test
 # lines. The test passes when every expected line is in the output of the test
 # file and not in the output of the baseline file. An expected "~MOD name" line
-# only needs a different value. The lines of a file are separated by ";", a
+# only needs a different value. An expected "!text" makes the test file a
+# refusal: the program must stop with text in its output. The lines of a file
+# are separated by ";", a
 # later line replaces an earlier key and "-key" drops one. Exit code 0: every
 # case passes.
 
@@ -79,7 +81,15 @@ while IFS='|' read -r id key base test expected hint; do
   if [ $sb -ne 0 ] || ! grep -q KEYPASS_DONE "$d/base.out"; then
     verdict="FAIL(baseline exit $sb)"
   fi
-  if [ $st -ne 0 ] || ! grep -q KEYPASS_DONE "$d/test.out"; then
+  if [[ "$expected" == "!"* ]]; then
+    text=${expected#!}
+    if [ $st -ne 0 ] && grep -qF -- "$text" "$d/test.out" &&
+      ! grep -qF -- "$text" "$d/base.out"; then
+      evid=" [refused: $text]"
+    else
+      verdict="FAIL(no refusal with: $text; exit $st)"
+    fi
+  elif [ $st -ne 0 ] || ! grep -q KEYPASS_DONE "$d/test.out"; then
     verdict="FAIL(test exit $st: $(tail -n 2 "$d/test.out" | tr '\n' ' ' | cut -c1-300))"
   else
     IFS=$'\n' read -r -d '' -a exp < <(

@@ -361,6 +361,16 @@ it is -1 (default: -1). The keys are ``initial_hii_to_h_ratio``, ``initial_hei_t
 ``initial_dii_to_h_ratio``, ``initial_hm_to_h_ratio``, ``initial_h2i_to_h_ratio``,
 ``initial_h2ii_to_h_ratio`` and ``initial_hdi_to_h_ratio``.
 
+With the network ``H_He_H2_D`` (``primordial_chemistry_network`` 3) geajay holds the total deuterium
+at a constant D to H mass ratio and rescales D, D\ :sub:`+` and HD to it at every call. The key
+``deuterium_to_hydrogen_mass_ratio`` (optional) sets that ratio. The value -1 is the library value,
+6.8e-5 by mass, which is 3.4e-5 by number. A D atom weighs 2 H atoms, so the initial ratios, which are
+number ratios to H, give the mass ratio 2 (``initial_di_to_h_ratio`` + ``initial_dii_to_h_ratio`` +
+``initial_hdi_to_h_ratio``). An unset ``initial_di_to_h_ratio`` counts as the library total. The run
+stops at start-up if that mass ratio differs from ``deuterium_to_hydrogen_mass_ratio`` by more than a
+relative 1e-6. For example, ``initial_di_to_h_ratio: 4e-5`` alone needs
+``deuterium_to_hydrogen_mass_ratio: 8e-5``. With a network below 3 a value other than -1 stops the run.
+
 Cosmic rays
 -----------
 

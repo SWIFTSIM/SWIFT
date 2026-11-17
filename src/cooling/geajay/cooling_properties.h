@@ -290,6 +290,11 @@ struct cooling_function_data {
   /*! initial nHDI to nH ratio (number density ratio) */
   float initial_hdi_to_h_ratio;
 
+  /*! Total deuterium to hydrogen mass ratio
+   * (GeajayCooling:deuterium_to_hydrogen_mass_ratio,
+   * chemistry_data.DeuteriumToHydrogenRatio): -1 keeps the library value. */
+  double deuterium_to_hydrogen_mass_ratio;
+
   /*! Self shielding method (1 -> 4 for the library's ones, 0 for none and -1
    * for a density threshold) */
   enum cooling_uv_self_shielding uv_self_shielding;

@@ -1159,6 +1159,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
           "has no such species");
   }
 
+  cooling->deuterium_to_hydrogen_mass_ratio = -1.;
+  if (cooling->primordial_chemistry >= 3) {
+    cooling->deuterium_to_hydrogen_mass_ratio = parser_get_opt_param_double(
+        parameter_file, "GeajayCooling:deuterium_to_hydrogen_mass_ratio", -1.);
+    if (!cooling_double_is_finite(&cooling->deuterium_to_hydrogen_mass_ratio) ||
+        (cooling->deuterium_to_hydrogen_mass_ratio != -1. &&
+         !(cooling->deuterium_to_hydrogen_mass_ratio >= 0.)))
+      error(
+          "GeajayCooling:deuterium_to_hydrogen_mass_ratio must be -1 (the "
+          "library value) or a finite number >= 0, got %g.",
+          cooling->deuterium_to_hydrogen_mass_ratio);
+  } else
+    cooling_refuse_unread_double(
+        parameter_file, "GeajayCooling:deuterium_to_hydrogen_mass_ratio", -1.,
+        "the species network GeajayCooling:primordial_chemistry_network has "
+        "no deuterium");
+
   /* Self shielding */
   const int uv_shielding = cooling_read_choice(
       parameter_file, "GeajayCooling:uv_self_shielding", "uv_self_shielding", 0,
