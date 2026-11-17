@@ -59,7 +59,7 @@ the `imetal=1` branch of the `ispecies=0` temperature block), not the
 naive `HydrogenFractionByMass * rho / m_H`; this script uses that
 expression. The library's heating at `ispecies=0` is nevertheless 0.9418 of
 the Eq. 1 value for any Z (0.001 to 0.04) and T (100 and 1000 K), in the
-official library and in the fork; the Fortran line that sets this factor was
+official library; the Fortran line that sets this factor was
 not found. Note `n_H / rho` is then a pure constant
 (`HydrogenFractionByMass * (1-Z) / m_H`, independent of `rho`), so
 `Gamma_PE / rho` depends only on `G0` and `Z'`, not on the gas density at

@@ -79,7 +79,6 @@ GrackleCooling:
   # otherwise the Lyman-Werner field reaches Grackle unshielded.
   H2_self_shielding: 0                                 # 0 off, 2 column set by H2_self_shielding_path, 3 local Jeans length (1 is rejected) (Default: 0)
   H2_self_shielding_path: kernel_radius                # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
-  H2_on_dust: 0                                        # H2 formation on dust grains (Default: 0)
   H2_photodissociation_heating: 0                      # Heating per H2 photodissociation, needs mode >= 2 and a Grackle that provides it (Default: 0)
   H2_three_body_rate: 0                                # H2 three-body formation rate model, 0 to 5 (Grackle documentation) (Default: 0)
   H2_cie_cooling: 0                                    # H2 collision-induced emission cooling (Ripamonti & Abel 2004) (Default: 0)

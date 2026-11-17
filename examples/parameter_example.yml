@@ -723,7 +723,7 @@ GrackleCooling:
   specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
   H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
   H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
-  H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+  H2_on_dust: -1                               # H2 formation on dust grains: 1 on, 0 off, -1 unset (off, except with the ISRF at primordial_chemistry 2 or above, where Grackle always forms it; an explicit 0 then warns). (Default: -1)
   H2_photodissociation_heating: 0              # (optional) Heating of 0.4 eV + 16 eV/(1 + n_crit/n) per H2 photodissociation (dissociation plus UV pumping,
                                                # Kim et al. 2023 Eqs. 37-38, Omukai 2000 n_crit), using Grackle's shielded rate. Needs COOLING_GRACKLE_MODE >=
                                                # 2

@@ -29,7 +29,7 @@ cooling library from the binary.
 
 | Build | Heating model |
 |-------|---------------|
-| `grackle_0` | Not supported: `run.sh` stops. The Grackle grain recombination term returns NaN for gas without free electrons, and this mode estimates none for cold gas. A Grackle library that guards a zero electron density can run it with `grackle_0_pe_ok=1`; its heating is then 0.9418 of the Wolfire et al. 1995 Eq. 1 value (5.8 per cent lower), for any metallicity and temperature. |
+| `grackle_0` | Not supported: `run.sh` stops. The Grackle grain recombination term returns NaN for gas without free electrons, and this mode estimates none for cold gas. Use `grackle_1` or higher, or geajay. |
 | `grackle_1` and above | `constant` (default, Wolfire et al. 1995 Eq. 1 with efficiency 0.05), `wolfire1995` (efficiency from the grain charge, needs free electrons), `density_dependent` (only on a Grackle build that provides it; SWIFT stops at start-up otherwise) |
 | `geajay_N` | `none`, `fixed_rate`, `constant_efficiency` (default), `grain_charge_epsilon`, `density_epsilon`; `run.sh` then reads `params_geajay.yml` and sets the network N from the build (tested with `geajay_3`) |
 
