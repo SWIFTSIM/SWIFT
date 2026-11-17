@@ -53,6 +53,11 @@ enum cooling_uv_self_shielding {
   cooling_uv_self_shielding_HI_HeI_HeII_column = 4
 };
 
+/*! Can SWIFT make the geajay library leave the transported LW rate out of its
+ * H2 self-shielding (option h2_transported_lw_rate_shielding =
+ * background_only)? The installed library has no such option. */
+#define COOLING_GEAJAY_TRANSPORTED_LW_RATE_UNSHIELDED 0
+
 /**
  * @brief Length of the H2 self-shielding column
  * (GeajayCooling:h2_shielding_length_method).

@@ -904,6 +904,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  radiation_selection_refuse_H2_line_absorption(
+      parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
+      COOLING_GEAJAY_TRANSPORTED_LW_RATE_UNSHIELDED
+          ? NULL
+          : "the geajay library shields the transported LW rate with its own "
+            "factor. The module term needs its option "
+            "h2_transported_lw_rate_shielding = background_only, which this "
+            "SWIFT cannot set yet.");
   cooling->with_photoionization = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_photoionization",
       RADIATION_COMPILED_HII);

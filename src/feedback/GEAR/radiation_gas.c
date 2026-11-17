@@ -810,8 +810,17 @@ double radiation_get_part_LW_dissociation_rate_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p) {
 
+  static volatile long long dissociating_clamp_count = 0;
+  static volatile double dissociating_clamp_worst = 0.;
+
   const double rho = hydro_get_physical_density(p, cosmo);
-  const double u_LW = radiation_get_band_u_nonnegative(p, ISRF_MOMENT_LW);
+  const double u_LW =
+      p->feedback_data.ISRF_H2_line_absorption
+          ? radiation_clamp_nonnegative_for_grackle(
+                "LW dissociating specific energy",
+                p->feedback_data.LW_dissociating_u, &dissociating_clamp_count,
+                &dissociating_clamp_worst)
+          : radiation_get_band_u_nonnegative(p, ISRF_MOMENT_LW);
   const double flux_LW = phys_const->const_speed_light_c * rho * u_LW;
   const double flux_LW_cgs =
       flux_LW *
