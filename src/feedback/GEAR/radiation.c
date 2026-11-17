@@ -216,7 +216,7 @@ void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
   if (engine_rank == 0)
     message(
         "H2 photodissociation sigma_H2/E_LW = %g cm^2 erg^-1, the "
-        "Sternberg-anchored constant the rate uses",
+        "Draine-field constant the rate uses",
         RADIATION_SIGMA_H2_OVER_E_LW_CGS);
 
   /* Mean over the IMF from mass_min up to mass_max. */

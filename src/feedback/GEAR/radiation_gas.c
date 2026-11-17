@@ -761,7 +761,7 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
  * @brief H2 Lyman-Werner photodissociation rate from this #part's LW-band
  * specific energy: k_diss = (sigma_H2 / E_LW) * energy flux.
  *
- * Only the quotient is constrained (Sternberg et al. 2014), so it is read from
+ * Only the quotient is constrained, so it is read from
  * #RADIATION_SIGMA_H2_OVER_E_LW_CGS. #radiation_lw_photon_energy_cgs is a
  * diagnostic and has no effect here. Feeds Grackle's RT_H2_dissociation_rate
  * (COOLING_NETWORK > 1 only). The band and the rate are both clamped to

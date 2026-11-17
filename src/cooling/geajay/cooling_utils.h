@@ -242,4 +242,50 @@ cooling_agora_cmb_floor_internal_energy(
   return cooling_get_internal_energy_from_temperature(
       phys_const, us, cosmo, hydro_props, cooling, p, xp, T_CMB_agora);
 }
+
+/**
+ * @brief Redshift of the HYBRID-CHIMES cap: GeajayCooling:redshift when it is
+ * set, else the redshift of the simulation.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param cosmo The #cosmology.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_hybrid_chimes_cap_redshift(const struct cooling_function_data *cooling,
+                                   const struct cosmology *cosmo) {
+  return (cooling->redshift == -1) ? cosmo->z : cooling->redshift;
+}
+
+/**
+ * @brief Proper HYBRID-CHIMES shielding length of a gas state, in internal
+ * length units.
+ *
+ * The geajay helper takes T [K], the proper hydrogen nuclei density [cm^-3]
+ * and the cap in kpc, and returns a proper length in cm. n_H is
+ * X_H rho / m_p with the density of the table edge test, so no scale factor
+ * enters the length.
+ *
+ * @param cooling The #cooling_function_data used in the run.
+ * @param temperature Temperature of the gas [K].
+ * @param density Physical density, internal units.
+ * @param redshift Redshift of the cap.
+ * @return The length in internal length units: NaN if geajay refuses an
+ * argument.
+ */
+__attribute__((always_inline)) INLINE static double
+cooling_hybrid_chimes_length(const struct cooling_function_data *cooling,
+                             const double temperature, const double density,
+                             const double redshift) {
+
+  const double n_H = cooling->HydrogenFractionByMass * density *
+                     cooling->units.density_units / cooling->proton_mass_cgs;
+  const double cap_kpc = geajay_shielding_max_length_hybrid_chimes_kpc(
+      redshift, cooling->hybrid_chimes_max_length_low_z_kpc,
+      cooling->hybrid_chimes_max_length_high_z_kpc,
+      cooling->hybrid_chimes_transition_redshift);
+  const double length_cgs = geajay_shielding_length_hybrid_chimes(
+      temperature, n_H, cooling->hybrid_chimes_factor,
+      cooling->hybrid_chimes_turbulent_velocity_cgs, cap_kpc);
+  return length_cgs / cooling->units.length_units;
+}
 #endif /* SWIFT_COOLING_GEAJAY_COOLING_UTILS_H */

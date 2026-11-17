@@ -86,7 +86,7 @@ but the correct version was used in the actual derivation.
 The ideal gas uses the same equations detailed in :ref:`equation_of_state`.
 
 The data files for the tabulated EoS can be downloaded using
-the ``examples/EoSTables/get_eos_tables.sh`` script.
+the ``examples/Planetary/EoSTables/get_eos_tables.sh`` script.
 
 The format of the data files for SESAME, ANEOS, and similar-EoS tables
 is similar to the SESAME 301 (etc) style. The file contents are:

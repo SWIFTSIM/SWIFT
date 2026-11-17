@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eo pipefail
+
 scripts_location="../../GEAR_ICs_and_SCRIPTS"
 
 # Generate the initial conditions if they are not present.
@@ -31,7 +33,7 @@ fi
 
 # Create output directory
 rm -rf snap
-mkdir snap
+mkdir -p snap
 
 # Run SWIFT
 ../../../swift --hydro --cooling --threads=14  coolingBox.yml

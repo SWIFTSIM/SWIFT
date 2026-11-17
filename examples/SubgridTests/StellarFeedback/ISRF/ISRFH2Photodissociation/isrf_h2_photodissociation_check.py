@@ -32,7 +32,7 @@ photon flux,
     k_diss,0 = (sigma_H2/E_LW) * c * rho * u_LW ,                        (1)
 
 with ``sigma_H2/E_LW = RADIATION_SIGMA_H2_OVER_E_LW_CGS`` (read from that
-header at run time), the one Sternberg-anchored quotient the rate depends on,
+header at run time), the one Draine-field quotient the rate depends on,
 and ``u_LW`` the snapshot's
 ``LWSpecificEnergies`` in CGS. This script takes ``u_LW`` from the snapshots
 rather than predicting it from a transport solution: the field the chemistry
@@ -176,13 +176,16 @@ what the run happens to produce.
 Rate normalisation (reported, never gated)
 ------------------------------------------
 
-Eq. (1) over ``3.3e-11 G_0`` is ``6.229 * u_LW / (u_PE + u_LW)``: the
+Eq. (1) over ``3.3e-11 G_0`` is ``6.994 * u_LW / (u_PE + u_LW)``: the
 constant is
 ``(sigma_H2/E_LW) * 1.6e-3 erg s^-1 cm^-2 / 3.3e-11 s^-1``. It is 1 only
-for an LW fraction of 0.161. The Draine (1978) field, which the
-``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 0.92). The
-script prints the measured ratio and ``6.229`` times the measured LW
-fraction; ``draine_spectrum`` uses a star with the Draine LW fraction.
+for an LW fraction of 0.143. The Draine (1978) field, which the
+``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 1.04). About
+half of that 4 per cent gap is the choice of unit: Draine and Bertoldi give
+their rate per ``chi``, the field at 1000 A relative to Habing, while this
+script divides by ``G_0``, the band-integrated strength. For the Draine shape
+``chi`` is 1.7105 and ``G_0`` is 1.675, a ratio of 1.021. The script prints the measured ratio and ``6.994``
+times the measured LW fraction.
 
 Mode-choice diagnostic (reported, never gated)
 ----------------------------------------------
@@ -226,10 +229,10 @@ RADIATION_H = (
 # catches a copy that has drifted from the header. Falling back is announced
 # on stdout, since a stale copy would otherwise print a confident number.
 RADIATION_H_FALLBACK = {
-    "RADIATION_SIGMA_H2_OVER_E_LW_CGS": 1.2847106348798106e-07,
+    "RADIATION_SIGMA_H2_OVER_E_LW_CGS": 1.4425206587e-07,
     "RADIATION_LW_PHOTON_ENERGY_EV": 12.2,
 }
-RADIATION_H_FALLBACK_SOURCE = "radiation.h at 18bcf76cb, copied 2026-09-24"
+RADIATION_H_FALLBACK_SOURCE = "radiation.h at ace8f5211, copied 2026-11-16"
 RADIATION_H_FALLBACK_USED: List[str] = []
 
 
@@ -290,8 +293,11 @@ LW_CALIBRATION_NOTE: "List[str]" = []
 # "sigma_H2/E_LW" would also match this script's own note below, so a log
 # holding an earlier run of this script would classify itself as clean.
 LW_QUOTIENT_LOG_RE = re.compile(
-    r"radiation_set_lw_photon_energy_cgs: H2 photodissociation sigma_H2/E_LW ="
+    r"radiation_set_lw_photon_energy_cgs: H2 photodissociation sigma_H2/E_LW = "
+    r"(\S+) cm\^2 erg\^-1"
 )
+# The log prints the quotient with %g, six significant digits.
+LW_QUOTIENT_LOG_RELATIVE_TOLERANCE: float = 5.0e-6
 LW_TABLE_ENERGY_LOG_RE = re.compile(
     r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
     r"from the table = (\S+) erg"
@@ -374,7 +380,7 @@ def check_run_lw_calibration(
     exist and the log tells them apart:
 
     * one printing ``sigma_H2/E_LW``: it multiplies the LW energy flux by the
-      Sternberg-anchored quotient, which is what `unshielded_rate` reproduces.
+      Draine-field quotient, which is what `unshielded_rate` reproduces.
       No bias is possible;
     * one printing only the table's mean LW photon energy: it divided the flux
       by that value while the cross section stayed pinned to 12.2 eV, so its
@@ -406,11 +412,23 @@ def check_run_lw_calibration(
         return
     for log in logs:
         text = log.read_text(errors="replace")
-        if LW_QUOTIENT_LOG_RE.search(text):
-            print(
-                f"H2 calibration: {log} reports sigma_H2/E_LW, so that run used "
-                "the same Sternberg-anchored quotient as this script."
-            )
+        quotient_match = LW_QUOTIENT_LOG_RE.search(text)
+        if quotient_match is not None:
+            logged = float(quotient_match.group(1))
+            expected = read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW_CGS")
+            if abs(logged - expected) <= LW_QUOTIENT_LOG_RELATIVE_TOLERANCE * expected:
+                print(
+                    f"H2 calibration: {log} reports sigma_H2/E_LW = {logged:.6g}, "
+                    "equal to the quotient of this script to the six printed digits."
+                )
+            else:
+                _note_lw_calibration(
+                    f"{log} reports sigma_H2/E_LW = {logged:.6g} cm^2 erg^-1, but "
+                    f"this script uses {expected:.6g}. That run's binary used a "
+                    f"different Draine-field quotient (rates {logged / expected - 1.0:+.1%} "
+                    "from the ones predicted here), and a residual of that size is the "
+                    "expected symptom, not a physics result."
+                )
             continue
         match = LW_TABLE_ENERGY_LOG_RE.search(text)
         if match is None:
@@ -435,7 +453,7 @@ def check_run_lw_calibration(
 
 
 # The H2 photodissociation rate is the LW energy flux times this one
-# Sternberg-anchored quotient; no cross section or photon energy enters it.
+# Draine-field quotient; no cross section or photon energy enters it.
 SIGMA_H2_OVER_E_LW_CGS: float = read_radiation_h_constant(
     "RADIATION_SIGMA_H2_OVER_E_LW_CGS"
 )
@@ -481,10 +499,10 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        choices=["thin", "thick", "draine_spectrum"],
+        choices=["thin", "thick", "faint_star"],
         required=True,
         help="Configuration the run was launched with; selects the pass bar "
-        "(draine_spectrum uses the thin bar)",
+        "(faint_star uses the thin bar)",
     )
     parser.add_argument(
         "--h2-self-shielding",
@@ -1096,7 +1114,7 @@ def main() -> int:
         options.kernel_gamma,
         path_in_kernel_radii,
     )
-    gated_config = "thin" if options.config == "draine_spectrum" else options.config
+    gated_config = "thin" if options.config == "faint_star" else options.config
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
     columns = np.arange(n_particles)
@@ -1161,7 +1179,7 @@ def main() -> int:
         f"{measured_rate_ratio:.4g}; LW fraction u_LW/(u_PE+u_LW) "
         f"{lw_fraction:.4g}, times {RATE_RATIO_PER_LW_FRACTION:.4g} = "
         f"{RATE_RATIO_PER_LW_FRACTION * lw_fraction:.4g} (Draine 1978 field: "
-        f"LW fraction 0.148, ratio 0.92)"
+        f"LW fraction 0.148, ratio 1.04, of which 1.021 is the chi to G_0 unit)"
     )
     print()
     print(f"Radial profiles at the last snapshot:")

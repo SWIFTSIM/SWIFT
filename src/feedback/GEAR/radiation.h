@@ -101,12 +101,14 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
 /*! Habing flux, erg/s/cm^2: G0=1 is this flux over the PE+LW bands. */
 #define RADIATION_HABING_FLUX_CGS 1.6e-3
 
-/*! H2 Lyman-Werner photodissociation coefficient sigma_H2/E_LW, cm^2 erg^-1
-    (Sternberg et al. 2014, ApJ 790:10). The particle carries only the LW
-    energy flux, so the rate depends on this quotient alone. Agreement with the
-    anchor is at the 10% level. See
-    theory/GEAR/Radiation/verify_sigma_h2_lw_sternberg2014.py. */
-#define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.2847106348798106e-07
+/*! H2 Lyman-Werner photodissociation coefficient sigma_H2/E_LW, cm^2 erg^-1,
+    for the Draine (1978) field. The particle carries only the LW energy flux,
+    so the rate depends on this quotient alone. Mean of three computations,
+    1.4425e-7 +- 1.9%: an H2 line-list integral (Abgrall et al. 2000),
+    Sternberg et al. 2014 (ApJ 790:10) and Draine & Bertoldi 1996 (Table 2).
+    A hotter spectrum raises the coefficient (+17% for a 2e4 K blackbody). See
+    theory/GEAR/Radiation/04_isrf_packet_transport.tex. */
+#define RADIATION_SIGMA_H2_OVER_E_LW_CGS 1.4425206587e-07
 
 /*! Representative Lyman-Werner photon energy, eV (Kim et al. 2023, Table 3).
     Not used by the dissociation rate. */
@@ -116,7 +118,7 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
     #RADIATION_LW_PHOTON_ENERGY_EV in erg. The rate does not read it. It is a
     literal so the check scripts can parse it; a unit test asserts it equals
     the product. */
-#define RADIATION_SIGMA_H2_LW_CGS 2.5111667e-18
+#define RADIATION_SIGMA_H2_LW_CGS 2.8196309e-18
 
 /*! Metallicity mass fraction at which the diagnostic mean LW photon energy is
     read from a 2D table (#radiation_lw_photon_energy_cgs). The gas particle

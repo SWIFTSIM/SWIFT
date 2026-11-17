@@ -794,6 +794,18 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->chemistry_data.self_shielding_method);
   message("chemistry_data.H2_self_shielding = %d",
           cooling->chemistry_data.H2_self_shielding);
+  message("h2_shielding_length_method = %d",
+          (int)cooling->h2_shielding_length_method);
+  if (cooling->h2_shielding_length_method ==
+      cooling_h2_shielding_length_hybrid_chimes)
+    message(
+        "HYBRID-CHIMES length: factor = %g, turbulent velocity = %g cm/s, cap "
+        "= %g kpc (z low) and %g kpc (z high), transition z = %g",
+        cooling->hybrid_chimes_factor,
+        cooling->hybrid_chimes_turbulent_velocity_cgs,
+        cooling->hybrid_chimes_max_length_low_z_kpc,
+        cooling->hybrid_chimes_max_length_high_z_kpc,
+        cooling->hybrid_chimes_transition_redshift);
   message("chemistry_data.HydrogenFractionByMass = %.3g",
           cooling->chemistry_data.HydrogenFractionByMass);
   message("chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
@@ -893,7 +905,10 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
      kernel_gamma h. geajay forms N_H2 = n_H2 l from it (src/h2.h of geajay).
      With comoving_coordinates = 0, a physical length in length_units is
      expected. */
-  if (cooling->h2_shielding_length_method == cooling_h2_shielding_length_given)
+  if (cooling->h2_shielding_length_method ==
+          cooling_h2_shielding_length_given ||
+      cooling->h2_shielding_length_method ==
+          cooling_h2_shielding_length_hybrid_chimes)
     inputs->H2_self_shielding_length =
         cooling->h2_shielding_path_in_kernel_radii * kernel_gamma * p->h *
         cosmo->a;
@@ -903,6 +918,29 @@ static void cooling_fill_inputs(const struct phys_const *phys_const,
   if (cooling->uv_shielding_length_method == GEAJAY_UV_SHIELDING_LENGTH_GIVEN)
     inputs->uv_shielding_length = cooling->uv_shielding_path_in_kernel_radii *
                                   kernel_gamma * p->h * cosmo->a;
+
+  /* HYBRID-CHIMES: the proper length in length_units from the temperature at
+     the entry of the call and the density. The kernel radius set above stays
+     for a caller without the species of the particle, since the temperature
+     needs them. */
+  if (cooling->h2_shielding_length_method ==
+          cooling_h2_shielding_length_hybrid_chimes &&
+      xp != NULL) {
+    double temperature;
+    if (geajay_particle_temperature(cooling->context, &cooling->layout, xp,
+                                    inputs, &temperature) != GEAJAY_SUCCESS)
+      error("Particle %lld: geajay refused the arguments of the temperature.",
+            p->id);
+    const double length = cooling_hybrid_chimes_length(
+        cooling, temperature, density,
+        cooling_hybrid_chimes_cap_redshift(cooling, cosmo));
+    if (!cooling_double_is_finite(&length) || !(length > 0.))
+      error(
+          "Particle %lld: the HYBRID-CHIMES shielding length is %e for T = %e "
+          "K and density = %e (internal units).",
+          p->id, length, temperature, density);
+    inputs->H2_self_shielding_length = length;
+  }
 
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
@@ -2007,7 +2045,11 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
             (int)cooling->uv_self_shielding);
   }
 
-  chemistry->H2_self_shielding = (int)cooling->h2_shielding_length_method;
+  chemistry->H2_self_shielding =
+      cooling->h2_shielding_length_method ==
+              cooling_h2_shielding_length_hybrid_chimes
+          ? (int)cooling_h2_shielding_length_given
+          : (int)cooling->h2_shielding_length_method;
 
   if (cooling->lw_background_j21 >= 0.)
     chemistry->LWbackground_intensity = cooling->lw_background_j21;
@@ -2173,6 +2215,38 @@ void cooling_init_backend(struct swift_params *parameter_file,
 
   /* Set up geajay */
   cooling_init_geajay(cooling);
+
+  if (engine_rank == 0 && cooling->h2_shielding_length_method ==
+                              cooling_h2_shielding_length_hybrid_chimes) {
+    /* The Jeans length of geajay, with the mean molecular weight and the
+       adiabatic index of the HYBRID-CHIMES column, for comparison. */
+    const double kB_cgs =
+        phys_const->const_boltzmann_k *
+        units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) /
+        units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    const double G_cgs =
+        phys_const->const_newton_G *
+        pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.) /
+        (units_cgs_conversion_factor(us, UNIT_CONV_MASS) *
+         pow(units_cgs_conversion_factor(us, UNIT_CONV_TIME), 2.));
+    const double pc_cgs = 3.0857e18;
+    const double X_H = cooling->HydrogenFractionByMass;
+    const double mu = GEAJAY_HYBRID_CHIMES_MEAN_MOLECULAR_WEIGHT;
+    const double n_H_cgs[2] = {10., 1000.};
+    for (int i = 0; i < 2; i++) {
+      const double rho_cgs = n_H_cgs[i] * cooling->proton_mass_cgs / X_H;
+      const double jeans_cgs =
+          sqrt(GEAJAY_HYBRID_CHIMES_GAMMA * M_PI * kB_cgs * 100. /
+               (G_cgs * mu * cooling->proton_mass_cgs * rho_cgs));
+      const double length_internal = cooling_hybrid_chimes_length(
+          cooling, 100., rho_cgs / cooling->units.density_units, 0.);
+      message(
+          "HYBRID-CHIMES length at T = 100 K, n_H = %g cm^-3, z = 0: %g pc; "
+          "Jeans length (mu = %g, gamma = 5/3): %g pc",
+          n_H_cgs[i], length_internal * cooling->units.length_units / pc_cgs,
+          mu, jeans_cgs / pc_cgs);
+    }
+  }
 }
 
 /**

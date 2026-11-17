@@ -5,7 +5,8 @@ perturbation. The perturbation grows as the sphere collapses, producing the
 characteristic bar/two-arm fragmentation pattern, which makes this a standard
 test for sink particle formation from gravitational fragmentation.
 
-The default resolution contains 500k particles. `python3 makeIC.py --help` lists
+run.sh generates 500k particles by default (`N=<value> ./run.sh` to change it;
+`makeIC.py` called on its own defaults to 50k). `python3 makeIC.py --help` lists
 every parameter (sphere radius, mass, rotation rate, perturbation amplitude, etc);
 raise `-N` for production/paper-quality runs, and reduce
 `Gravity:max_physical_baryon_softening` accordingly. `GEARSink:cut_off_radius`
@@ -13,8 +14,10 @@ and `GEARSink:density_threshold_Hpcm3` are coupled (the smoothing-length
 formation criterion needs kernel_gamma*h < cut_off_radius, and h shrinks with
 resolution). Rescale both together, not just one.
 
-Sink particles are expected to start forming around t_ff ~= 6900 internal units
-for the default sphere.
+The free-fall time of the default sphere is t_ff ~= 3690 internal units
+(~17.5 kyr; 1 internal time unit = 1 AU / (1 km/s) ~= 4.74 yr), and the run
+stops at 2 t_ff. Sink particles are expected to start forming around
+t ~= 6900 internal units (~1.9 t_ff).
 
 # Configure
 To run this example with the GEAR model,

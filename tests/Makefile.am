@@ -46,8 +46,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testCoolingSplit \
-	    testLog testDistance testTimeline testSubsetRecursion \
-	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
+        testLog testDistance testTimeline testSubsetRecursion # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -67,8 +66,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testRadiationHIIConeClaim testRadiationPacketSlotGeometry \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion testSymmetricMatrixDiagonalisation \
-		 testChemistryFluxAntisymmetry
+		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -116,8 +114,6 @@ testSymmetry_SOURCES = testSymmetry.c
 
 # Added because of issues using memcmp on clang 4.x
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
-
-testChemistryFluxAntisymmetry_SOURCES = testChemistryFluxAntisymmetry.c
 
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 
@@ -228,8 +224,6 @@ testCustomMPI_CFLAGS = $(AM_CFLAGS) -DWITH_MPI
 testCustomMPI_LDFLAGS = ../src/.libs/libswiftsim_mpi.a $(COMMON_LIBS) $(PARMETIS_LIBS) $(METIS_LIBS) $(FFTW_MPI_LIBS) $(VELOCIRAPTOR_MPI_LIBS) $(MPI_THREAD_LIBS)
 EXTRA_testCustomMPI_DEPENDENCIES = ../src/.libs/libswiftsim_mpi.a
 endif
-
-testSymmetricMatrixDiagonalisation_SOURCES = testSymmetricMatrixDiagonalisation.c
 
 # Files necessary for distribution
 EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \

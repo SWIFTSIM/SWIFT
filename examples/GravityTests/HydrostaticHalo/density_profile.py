@@ -22,7 +22,7 @@ import h5py as h5
 import matplotlib
 
 matplotlib.use("Agg")
-from pylab import *
+import matplotlib.pyplot as plt
 import sys
 
 # for the plotting
@@ -114,24 +114,24 @@ for i in range(n_snaps):
         rho_0 = density[0]
         rho_analytic_init = rho_0 * (radial_bin_mids / r_0) ** (-2)
 
-    figure()
-    plot(
+    plt.figure()
+    plt.plot(
         radial_bin_mids,
         density / rho_analytic_init,
         "ko",
         label="Average density of shell",
     )
     # plot(t,rho_analytic,label = "Initial analytic density profile")
-    xlabel(r"$r / r_{vir}$")
-    ylabel(r"$\rho / \rho_{init}$")
-    title(
+    plt.xlabel(r"$r / r_{vir}$")
+    plt.ylabel(r"$\rho / \rho_{init}$")
+    plt.title(
         r"$\mathrm{Time}= %.3g \, s \, , \, %d \, \, \mathrm{particles} \,,\, v_c = %.1f \, \mathrm{km / s}$"
         % (snap_time_cgs, N, v_c)
     )
-    xlim((radial_bin_mids[0], max_r))
-    ylim((0, 2))
-    plot((0, max_r), (1, 1))
-    legend(loc="upper right")
+    plt.xlim((radial_bin_mids[0], max_r))
+    plt.ylim((0, 2))
+    plt.plot((0, max_r), (1, 1))
+    plt.legend(loc="upper right")
     plot_filename = "./plots/density_profile/density_profile_%03d.png" % i
-    savefig(plot_filename, format="png")
-    close()
+    plt.savefig(plot_filename, format="png")
+    plt.close()

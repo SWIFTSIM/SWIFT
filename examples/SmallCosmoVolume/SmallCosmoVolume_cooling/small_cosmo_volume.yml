@@ -120,7 +120,7 @@ GrackleCooling:
   # Core Grackle settings. Each optional key states its parser default.
   cloudy_table: CloudyData_UVB=HM2012.h5        # Cloudy table file (required)
   with_UV_background: 1                         # Metagalactic UV background on or off (required)
-  redshift: 0                                   # Redshift of the UV background, -1 follows the simulation time (required)
+  redshift: -1                                  # Redshift of the UV background, -1 follows the simulation time (required)
   with_metal_cooling: 1                         # Metal cooling on or off (required)
   thermal_time_myr: 5                           # Adiabatic-cooling time in Myr after a feedback event (required)
   maximal_density_Hpcm3: -1                     # Cooling density ceiling in H atoms/cm^3, a value < 0 disables it (required)

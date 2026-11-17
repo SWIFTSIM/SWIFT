@@ -130,13 +130,12 @@ FOF:
   time_first:                      0.2         # Time of first FoF black hole seeding calls (needed for non-cosmological runs).	
   delta_time:                      1.005       # Time between consecutive FoF black hole seeding calls.
   min_group_size:                  256         # The minimum no. of particles required for a group.
-  linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation.
+  linking_length_ratio:            0.2         # Linking length in units of the main inter-particle separation (must be > 0).
   seed_black_holes_enabled:        1           # Enable (1) or disable (0) seeding of black holes in FoF groups
   dump_catalogue_when_seeding:     1           # Enable (1) or disable (0) dumping a group catalogue when runnning FOF for seeding purposes.
   black_hole_seed_halo_mass_Msun:  1.5e10      # Minimal halo mass in which to seed a black hole (in solar masses).
-  absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units). When not set to -1, this will overwrite the linking length computed from 'linking_length_ratio'.
-  group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Has to be positive.
-  group_id_offset:                 1           # (Optional) Sets the offset of group ID labeling. Defaults to 1 if unspecified.
+  absolute_linking_length:         -1.         # (Optional) Absolute linking length (in internal units, must be > 0). When not set to -1, this will overwrite the linking length computed from 'linking_length_ratio'.
+  group_id_default:                2147483647  # (Optional) Sets the group ID of particles in groups below the minimum size. Defaults to 2^31 - 1 if unspecified. Must be >= 0 and not the ID of a group.
   output_list_on:                  0           # (Optional) Enable the output list
   output_list:       ./output_list_fof.txt     # (Optional) File containing the output times (see documentation in "Parameter File" section)
   linking_types:   [0, 1, 0, 0, 0, 0, 0]       # Use DM as the primary FOF linking type
@@ -473,7 +472,6 @@ NFW_MNPotential:
   useabspos:         0         # 0 -> positions based on centre, 1 -> absolute positions
   position:         [0.,0.,0.] # Location of centre of isothermal potential with respect to centre of the box (if 0) otherwise absolute (if 1) (internal units)
   timestep_mult:    0.01       # Dimensionless pre-factor for the time-step condition, basically determines the fraction of the orbital time we use to do the time integration
-  epsilon:          0.01       # Softening size (internal units)
   concentration:    10.0       # concentration of the Halo
   M_200:            150.0      # M200 of the galaxy disk (internal units)
   critical_density: 1.37E-8    # Critical density of the Universe (internal units)
@@ -778,10 +776,15 @@ GeajayCooling:
   uv_shielding_length_factor: 1                # (optional) Factor R_sh on the length, above 0 (default: 1)
   uv_shielding_path: kernel_radius             # (optional) Read only with uv_shielding_length_method: given_length. Path in kernel support radii: kernel_radius or kernel_diameter (default: kernel_radius)
   # uv_shielding_threshold_nucleon_per_cm3: 0.007 # Required only with uv_self_shielding: density_threshold. Nucleon density rho / m_p [cm^-3] above which the UV background is switched off
-  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path) or Jeans (local Jeans length), or 0, 2, 3 (default: none). Sobolev (1) is not supported.
+  h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path), Jeans (local Jeans length) or hybrid_chimes (HYBRID-CHIMES length per particle), or 0, 2, 3, 4 (default: none). Sobolev (1) is not supported.
                                                # With GEARFeedback:with_interstellar_radiation_field on and primordial_chemistry_network H_He_H2 or above, none leaves the H2 unshielded
                                                # against the local LW rate and the run warns: set given_length or Jeans for an ISRF run.
   h2_shielding_path: kernel_radius             # (optional) Path for given_length, also the path of the dust column of the backgrounds: kernel_radius (kernel_gamma * h) or kernel_diameter (default: kernel_radius)
+  h2_hybrid_chimes_factor: 0.5                 # (optional) Read only with h2_shielding_length_method: hybrid_chimes. Factor R_sh on the HYBRID-CHIMES length, above 0 (default: 0.5)
+  h2_hybrid_chimes_turbulent_velocity_km_per_s: 6 # (optional) Read only with hybrid_chimes. 1D turbulent velocity of the column [km/s], 0 or above (default: 6)
+  h2_hybrid_chimes_max_length_low_z_kpc: 50    # (optional) Read only with hybrid_chimes. Cap of the length at low redshift [kpc], 0 for no cap (default: 50)
+  h2_hybrid_chimes_max_length_high_z_kpc: 10   # (optional) Read only with hybrid_chimes. Cap of the length at high redshift [kpc], 0 for no cap (default: 10)
+  h2_hybrid_chimes_transition_redshift: 7      # (optional) Read only with hybrid_chimes. Redshift where the cap changes from the low to the high value, above 0.4 (default: 7). The cap uses GeajayCooling:redshift if set, else the run redshift
   metal_cooling_cmb_floor: 1                   # (optional) Enable/disable the CMB temperature floor of the metal cooling (default: 1)
   agora_cmb_temperature_floor: 0               # (optional) Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z), applied by SWIFT) (default: 0)
   table_density_edge: extrapolate              # (optional) Cloudy table lookup beyond its n_H range: extrapolate (the line of the end cell, as Grackle) or edge (the value at the edge) (default: extrapolate)
@@ -801,9 +804,9 @@ GeajayCooling:
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   dust_model: none                             # (optional) Dust chemistry: none or basic (or 0, 1). basic turns on the gas-grain heat exchange, the dust temperature, H2 formation on grains, photoelectric heating and the recombination cooling on
                                                # grains. It reads the metal mass fraction of each particle to compute the dust-to-gas ratio (default: none)
-  dust_to_gas_model: linear                    # (optional) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014, linear above its
-                                               # transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one, remy_ruyer_2014 stops
-                                               # the run (default: linear)
+  dust_to_gas_model: linear                    # (required, no default) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014,
+                                               # linear above its transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one,
+                                               # remy_ruyer_2014 stops the run. The run stops if the key is absent
   photoelectric_heating_model: default         # (optional) Photoelectric heating of the dust: default (-1, constant_efficiency with dust_model: basic, else none), none (0), fixed_rate (1, the constant photoelectric_heating_rate),
                                                # constant_efficiency (2, 0.05 G_0 x 1e-24 erg/s per H atom, Wolfire et al. 1995 eq. 1), grain_charge_epsilon (3, an efficiency set by the grain charge, Bakes and Tielens 1994 eq. 43 with the
                                                # coefficients of Wolfire et al. 2003 eq. 24) or density_epsilon (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and A2). Every model scales with D / D_ref and n_H and gives no
@@ -893,18 +896,7 @@ EAGLEChemistry:
 GEARChemistry:
   initial_metallicity: 1         # Initial metallicity of the gas (mass fraction). If < 0, then read the metallicities from the initial conditions. This applies to all particles.
   scale_initial_metallicity: 1   # Should we scale the initial metallicity with the solar one?
-  diffusion_coefficient: 1e-3    # (Optional, GEAR (MF) diffusion only) Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2). In physical units and internal units. Default: 1
-
-  # GEAR MFVP diffusion only
-  diffusion_mode: Isotropic_constant  # Diffusion mode. Isotropic_constant = constant isotropic ; Smagorinsky = Smagorinsky (isotropic) ; Gradient = Gradient model (anisotropic). The diffusion_coefficient sets the normalisation of the diffusion.
-  hll_riemann_solver_psi:  0.1        # (Optional, parabolic solver only; still shapes the parabolic part blended into hyperbolic runs) Artificial-diffusion tolerance (> 0), eq (7) in Hopkins 2017. (Default: 0.1)
-  hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.0
-  C_CFL_chemistry: 0.9                # Courant-Friedrich-Levy parameter for the CFL time integration of the diffusion equations.
-
-  # MFVP hyperbolic diffusion only
-  relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
-  tau: 1e0                            # (Hyperbolic diffusion only) Relaxation time (physical and internal units) for the Constant relaxation time mode. In the Turbulent mode, this sets the normalisation of the final tau: pj.tau = tau/||Shear tensor||.
-  hyperbolic_limiter_scope: AllComponents # (Optional, hyperbolic diffusion only) Which F_diss components the causal bound (factor min(1, c dt/l), at least 0.01) rescales. AllComponents = mass + flux components (default) ; Density = mass component only.
+  diffusion_coefficient: 1e-3    # Coefficient for the diffusion (see Shen et al. 2010; differs by gamma^2 due to h^2).
 
 # AGORA chemistry model (Kim et al. 2014)
 AGORAChemistry:
@@ -1007,7 +999,6 @@ GEARFeedback:
   # Stellar evolution: yields tables, IMF transition, and timestep refinement
   yields_table: POPII.hdf5                                 # Table containing the yields.
   yields_table_first_stars: POPIII_PISNe.hdf5               # Table containing the yields of the first stars.
-  metallicity_max_first_stars: -1                          # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
   imf_transition_metallicity: -5                           # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   discrete_yields: 0                                       # Should we use discrete yields or the IMF integrated one?
   elements: [Fe, Mg, O, S, Zn, Sr, Y, Ba, Eu]              # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
@@ -1231,7 +1222,6 @@ SPINJETAGN:
   fix_radiative_efficiency:           0          # Global switch whether to fix the radiative efficiency to a particular value [1], or use a spin-dependant formula [0]. 
   radiative_efficiency:               0.1        # The constant jet efficiency used if 'fix_radiative_efficiency' is set to 1. Otherwise, this value is used to define the Eddington accretion rate.
   TD_region:                          B          # How to treat the subgrid accretion disk if it is thin, according to the Shakura & Sunyaev (1973) model. If set to B, region b will be used. If set to C, region c will be used.
-  include_GRMHD_spindown:             1          # Whether to include high jet spindown rates from GRMHD simulations [1], or use an analytical formula that assumes extraction of energy from the rotational mass/energy of the BH.
   delta_ADAF:                         0.2        # Electron heating parameter, which controls the strength of radiative feedback in thick disks. Should be between 0.1 and 0.5. This parameter is only used if turn_off_secondary_feedback is set to 0.
   include_slim_disk:                  1          # Global switch whether to include super-Eddington accretion, modeled as the slim disk. If set to 0, disks will be considered thin even at very large accretion rates.
   use_jets_in_thin_disc:              1          # Whether to use jets alongside radiation in the thin disc at moderate Eddington ratios.
@@ -1327,10 +1317,6 @@ Sinks:
   h_tolerance:                          1e-4         # (Optional) Relative accuracy of the Netwon-Raphson scheme for the smoothing lengths. Defaults to the SPH value.
   max_ghost_iterations:                 30           # (Optional) Maximal number of iterations allowed to converge towards the smoothing length. Defaults to the SPH value.
   max_volume_change:                     1.4         # (Optional) Maximal allowed change of kernel volume over one time-step. Defaults to the SPH value.
-
-# Default sink particles
-DefaultSink:
-  cut_off_radius:        1e-3       # Cut off radius of the sink particles (in internal units). This parameter should be adapted with the resolution.
 
 BasicSink:
   use_nibbling: 1                             # Use nibbling to accrete gas? If zero, do swallowing instead.
@@ -1477,6 +1463,10 @@ LightconeCommon:
   particles_lossy_compression: 0  # Apply lossy compression to lightcone particles
   particles_gzip_level:        6  # Apply lossless (deflate) compression to lightcone particles
   maps_gzip_level:             6  # Apply lossless (deflate) compression to healpix maps
+
+  xray_maps_recent_AGN_injection_exclusion_time_myr: 15    # (Optional) Exclude gas heated by AGN in the last this many Myr from the X-ray and SZ maps (default: -1, i.e. no exclusion)
+  xray_maps_recent_AGN_injection_delta_logT_min:    -1.0   # Recently AGN-heated gas is excluded if log10(T) > log10(AGN_delta_T) + this value (must be <= 0; required if the exclusion time is > 0)
+  xray_maps_recent_AGN_injection_delta_logT_max:     0.3   # Recently AGN-heated gas is excluded if log10(T) < log10(AGN_delta_T) + this value (must be >= 0; required if the exclusion time is > 0)
 
 # Parameters specific to lightcone 0 - any lightcone parameters not found here are taken from LightconeCommon, above,
 # except for 'enabled' and 'basename'.

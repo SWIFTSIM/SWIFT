@@ -31,14 +31,14 @@ import matplotlib.pyplot as plt
 import unyt
 import h5py
 
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
+
 params = {
-    "text.usetex": True,
     "axes.labelsize": 16,
     "xtick.labelsize": 13,
     "ytick.labelsize": 13,
     "lines.linewidth": 2,
     "axes.titlesize": 16,
-    "font.family": "serif",
 }
 plt.rcParams.update(params)
 
