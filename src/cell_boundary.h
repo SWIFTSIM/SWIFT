@@ -21,6 +21,7 @@
 
 struct cell;
 struct engine;
+struct space;
 
 /**
  * @brief Has the particle left the box through an open face?
@@ -70,7 +71,7 @@ static inline int cell_boundary_reflect(double x[3], const double dim[3],
 }
 
 void cell_boundary_part(struct cell *c, const struct engine *e);
-void cell_mirror_refresh(struct cell *c, const double dim[3], int moved);
+void cell_mirror_refresh(struct cell *c, const struct space *s, int moved);
 void cell_boundary_gpart(struct cell *c, const struct engine *e);
 void cell_boundary_spart(struct cell *c, const struct engine *e);
 void cell_boundary_bpart(struct cell *c, const struct engine *e);

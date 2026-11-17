@@ -988,9 +988,11 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
  *
  * @param p The particle.
  * @param k The axis normal to the wall.
+ * @param g_dx The external acceleration along the axis times the distance
+ * from the particle to its image, for the hydrostatic pressure of the image.
  */
 __attribute__((always_inline)) INLINE static void hydro_mirror_part(
-    struct part *p, const int k) {
+    struct part *p, const int k, const float g_dx) {
 
   p->du_norm_kernel[k] = -p->du_norm_kernel[k];
   p->drho_norm_kernel[k] = -p->drho_norm_kernel[k];
@@ -1007,6 +1009,12 @@ __attribute__((always_inline)) INLINE static void hydro_mirror_part(
     p->force.grad_B[i][k] = -p->force.grad_B[i][k];
     p->force.grad_B[k][i] = -p->force.grad_B[k][i];
   }
+
+  /* Continue the hydrostatic pressure profile through the wall. Above a
+   * ceiling this lowers the pressure: stop at zero so the image does not
+   * pull the fluid up. */
+  const float P = p->force.pressure + p->rho_evol * g_dx;
+  p->force.pressure = (P >= 0.f) ? P : min(p->force.pressure, 0.f);
 }
 
 #endif /* SWIFT_REMIX_HYDRO_H */

@@ -329,10 +329,10 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_sink_do_sink_swallow)
             runner_do_sinks_sink_swallow_pair(r, ci, cj, 1);
           else if (t->subtype == task_subtype_mirror_drift)
-            cell_mirror_refresh(ci, e->s->dim, /*moved=*/1);
+            cell_mirror_refresh(ci, e->s, /*moved=*/1);
           else if (t->subtype == task_subtype_mirror_density ||
                    t->subtype == task_subtype_mirror_gradient)
-            cell_mirror_refresh(ci, e->s->dim, /*moved=*/0);
+            cell_mirror_refresh(ci, e->s, /*moved=*/0);
           else
             error("Unknown/invalid task subtype (%s/%s).",
                   taskID_names[t->type], subtaskID_names[t->subtype]);

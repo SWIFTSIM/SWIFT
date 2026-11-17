@@ -30,6 +30,7 @@ static void test(const unsigned int wall, const double loc_mirror) {
   bzero(&s, sizeof(s));
   s.cells_sub = &cells_sub;
   s.dim[0] = s.dim[1] = s.dim[2] = 1.;
+  s.e = NULL;
 
   /* A unit cell filling the box, with two particles in its lower-x half and
    * one in its upper-x half. */
@@ -82,7 +83,7 @@ static void test(const unsigned int wall, const double loc_mirror) {
   cm.top = &cm;
 
   space_mirror_clone(&s, &cm, &c, mirrors);
-  cell_mirror_refresh(&cm, s.dim, /*moved=*/1);
+  cell_mirror_refresh(&cm, &s, /*moved=*/1);
 
   /* Same content, with the halves swapped along x only */
   assert(cm.split && cm.hydro.count == 3 && cm.hydro.parts == mirrors);
@@ -108,9 +109,9 @@ static void test(const unsigned int wall, const double loc_mirror) {
 
   /* Only a refresh that moved the particles invalidates the sorts */
   cm.hydro.sorted = cm.progeny[0]->hydro.sorted = 1;
-  cell_mirror_refresh(&cm, s.dim, /*moved=*/0);
+  cell_mirror_refresh(&cm, &s, /*moved=*/0);
   assert(cm.hydro.sorted == 1 && ml->hydro.sorted == 1);
-  cell_mirror_refresh(&cm, s.dim, /*moved=*/1);
+  cell_mirror_refresh(&cm, &s, /*moved=*/1);
   assert(cm.hydro.sorted == 0 && ml->hydro.sorted == 0);
 
   /* Each mirror particle is the reflection of its counterpart */
@@ -161,6 +162,7 @@ static void test_kernel_sum(void) {
   struct space s;
   bzero(&s, sizeof(s));
   s.dim[0] = s.dim[1] = s.dim[2] = 1.;
+  s.e = NULL;
 
   /* A lattice in a unit cell, half a spacing away from the walls */
   static struct part parts[2 * N * N * N];
@@ -180,7 +182,7 @@ static void test_kernel_sum(void) {
   cm.subtype = cell_subtype_mirror;
   cm.mirror_walls = boundary_wall_x_min;
   space_mirror_clone(&s, &cm, &c, mirrors);
-  cell_mirror_refresh(&cm, s.dim, /*moved=*/1);
+  cell_mirror_refresh(&cm, &s, /*moved=*/1);
 
   /* One particle in the middle and one against the wall, neither within
    * reach of another face */
@@ -194,6 +196,26 @@ static void test_kernel_sum(void) {
   assert(fabs(sum_wall - sum_in) < 1e-5 * sum_in);
 }
 
+/* The image pressure continues the hydrostatic profile, down to zero. */
+static void test_hydrostatic(void) {
+#ifdef REMIX_SPH
+  struct part p;
+  bzero(&p, sizeof(struct part));
+  p.rho_evol = 1000.f;
+  p.force.pressure = 100.f;
+
+  /* Floor: g = -10, image 0.02 below the particle */
+  hydro_mirror_part(&p, 2, -10.f * -0.02f);
+  assert(fabsf(p.force.pressure - 300.f) < 1e-3f);
+
+  /* Ceiling: image 0.02 above. First back to 100, then clipped at zero */
+  hydro_mirror_part(&p, 2, -10.f * 0.02f);
+  assert(fabsf(p.force.pressure - 100.f) < 1e-3f);
+  hydro_mirror_part(&p, 2, -10.f * 0.02f);
+  assert(p.force.pressure == 0.f);
+#endif
+}
+
 int main(void) {
 #ifndef REMIX_SPH
   /* Only REMIX implements hydro_mirror_part() */
@@ -203,5 +225,6 @@ int main(void) {
   test(boundary_wall_x_min, -1.);
   test(boundary_wall_x_max, 1.);
   test_kernel_sum();
+  test_hydrostatic();
   return 0;
 }

@@ -151,7 +151,7 @@ void space_mirror_populate(struct space *s, int verbose) {
     if (c->nodeID != engine_rank || c->hydro.count == 0) continue;
 
     space_mirror_clone(s, cm, c, parts);
-    cell_mirror_refresh(cm, s->dim, /*moved=*/1);
+    cell_mirror_refresh(cm, s, /*moved=*/1);
     parts += c->hydro.count;
   }
 

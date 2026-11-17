@@ -25,6 +25,7 @@
 #include "error.h"
 #include "hydro.h"
 #include "lock.h"
+#include "potential.h"
 
 #include <config.h>
 
@@ -257,11 +258,16 @@ void cell_boundary_sink(struct cell *c, const struct engine *e) {
  * smoothing lengths, displacements and drift time of the cells they reflect.
  *
  * @param c The mirror #cell.
- * @param dim The box dimensions.
+ * Under external gravity the pressure of an image continues the hydrostatic
+ * profile of the fluid through the wall, P_image = P + rho g . (x_image - x),
+ * or a fluid at rest would sink into the walls it lies on.
+ *
+ * @param s The #space.
  * @param moved Have the particles moved since the last refresh? If so the
  * sorts of the mirror cells are stale.
  */
-void cell_mirror_refresh(struct cell *c, const double dim[3], const int moved) {
+void cell_mirror_refresh(struct cell *c, const struct space *s,
+                         const int moved) {
 
   /* ponytail: mirror cells are re-sorted every step they are used; track
    * their displacement since the last sort if that ever shows in a profile. */
@@ -273,7 +279,7 @@ void cell_mirror_refresh(struct cell *c, const double dim[3], const int moved) {
     for (int k = 0; k < 8; k++) {
       struct cell *cp = c->progeny[k];
       if (cp == NULL) continue;
-      cell_mirror_refresh(cp, dim, moved);
+      cell_mirror_refresh(cp, s, moved);
       h_max = max(h_max, cp->hydro.h_max);
       h_max_active = max(h_max_active, cp->hydro.h_max_active);
       dx_max_part = max(dx_max_part, cp->hydro.dx_max_part);
@@ -296,8 +302,25 @@ void cell_mirror_refresh(struct cell *c, const double dim[3], const int moved) {
   struct part *restrict mirrors = c->hydro.parts;
   const int count = c->hydro.count;
   const unsigned int walls = c->mirror_walls;
+  const double *dim = s->dim;
+  const struct engine *e = s->e;
+  const int with_gravity =
+      (e != NULL) && (e->policy & engine_policy_external_gravity);
+  const float G_newton =
+      with_gravity ? e->physical_constants->const_newton_G : 0.f;
 
   for (int i = 0; i < count; i++) {
+
+    /* The external acceleration at the particle (stored without G) */
+    struct gpart gp;
+    gp.a_grav[0] = gp.a_grav[1] = gp.a_grav[2] = 0.f;
+    if (with_gravity) {
+      gp.x[0] = parts[i].x[0];
+      gp.x[1] = parts[i].x[1];
+      gp.x[2] = parts[i].x[2];
+      external_gravity_acceleration(e->time, e->external_potential,
+                                    e->physical_constants, &gp);
+    }
 
     /* Reflect a copy and store it in one go: the ghosts of neighbouring
      * cells may be reading this mirror particle's (unchanged) position. */
@@ -312,7 +335,8 @@ void cell_mirror_refresh(struct cell *c, const double dim[3], const int moved) {
         continue;
       }
       p.v[k] = -p.v[k];
-      hydro_mirror_part(&p, k);
+      hydro_mirror_part(
+          &p, k, G_newton * gp.a_grav[k] * (float)(p.x[k] - parts[i].x[k]));
     }
     mirrors[i] = p;
   }
