@@ -325,9 +325,11 @@ Molecules and dust
        ``linear`` (D = ``reference_dust_to_gas_ratio`` Z / Z\ :sub:`sun`) or ``remy_ruyer_2014``
        (broken power law of Remy-Ruyer et al. 2014, linear above its transition). A dust switch is
        ``dust_model`` ``basic``, ``h2_formation_on_dust`` ``enabled``, ``dust_recombination_cooling``
-       ``enabled`` or a ``photoelectric_heating_model`` above ``none``. The run stops if a dust switch
-       is on and the key is absent. With no dust switch the key may be absent, and ``remy_ruyer_2014``
-       stops the run. The library has a third value, ``from_field`` (2), that takes
+       ``enabled``, a ``photoelectric_heating_model`` above ``none`` or ``dust_background_attenuation``
+       ``per_band``. The run stops if a dust switch is on and the key is absent. With no dust switch
+       the key may be absent, and ``remy_ruyer_2014`` stops the run. The library does not count the
+       attenuation as a dust switch: with the attenuation as the only switch, only ``linear`` starts.
+       The library has a third value, ``from_field`` (2), that takes
        the dust density from a particle field. SWIFT has no such field and refuses it.
    * - ``reference_dust_to_gas_ratio``
      - (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run).

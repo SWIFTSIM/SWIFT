@@ -1001,19 +1001,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "disabled (0) or enabled (1), got %d.",
         cooling->dust_recombination_cooling);
 
-  /* As in the library (geajay_dust_is_used), the model is required only when a
-   * switch reads the dust density. A switch left at default follows
-   * dust_model. */
-  const int dust_is_used =
-      cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
-      cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
-      cooling->dust_recombination_cooling == GEAJAY_DUST_RECOMBINATION_ENABLED ||
-      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE;
-  if (dust_is_used &&
-      !parser_does_param_exist(parameter_file, "GeajayCooling:dust_to_gas_model"))
-    error(
-        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
-        "it to linear or remy_ruyer_2014.");
+  /* Reading a key with a default adds it to the parameter table. */
+  const int dust_to_gas_key_given = parser_does_param_exist(
+      parameter_file, "GeajayCooling:dust_to_gas_model");
   cooling->dust_to_gas_model = cooling_read_choice(
       parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
       GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);
@@ -1379,6 +1369,26 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling_read_background_parameters(parameter_file, cooling, us);
   cooling_read_column_shielding_parameters(parameter_file, cooling);
 
+  /* As in the library (geajay_dust_is_used), the model is required only when a
+   * switch reads the dust density. A switch left at default follows
+   * dust_model. The module also counts the per_band dust attenuation of the
+   * background, which reads the dust-to-gas ratio. */
+  const int dust_is_used =
+      cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
+      cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
+      cooling->dust_recombination_cooling ==
+          GEAJAY_DUST_RECOMBINATION_ENABLED ||
+      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE ||
+      cooling->dust_background_attenuation ==
+          GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND;
+  if (dust_is_used && !dust_to_gas_key_given)
+    error(
+        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
+        "it to linear or remy_ruyer_2014. A dust switch needs it: dust_model "
+        "basic, h2_formation_on_dust enabled, dust_recombination_cooling "
+        "enabled, a photoelectric_heating_model above none or "
+        "dust_background_attenuation per_band.");
+
   /* The redshifts are used by the UV table, which a model of per_band can load
    * with with_uv_background 0 */
   const int uv_table_loaded =
@@ -1389,8 +1399,10 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         cooling->lw_background_model == GEAJAY_LW_BACKGROUND_UV_TABLE ||
         cooling->isrf_background_model == GEAJAY_ISRF_BACKGROUND_UV_TABLE));
   const double uvb_redshift_values[4] = {
-      cooling->uv_background_redshift_on, cooling->uv_background_redshift_full_on,
-      cooling->uv_background_redshift_drop, cooling->uv_background_redshift_off};
+      cooling->uv_background_redshift_on,
+      cooling->uv_background_redshift_full_on,
+      cooling->uv_background_redshift_drop,
+      cooling->uv_background_redshift_off};
   for (int i = 0; i < 4; i++)
     if (!uv_table_loaded &&
         uvb_redshift_values[i] > COOLING_GEAJAY_REDSHIFT_UNSET)

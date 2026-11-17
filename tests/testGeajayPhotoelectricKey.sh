@@ -140,7 +140,12 @@ expect_refused dtg_missing "GeajayCooling:dust_to_gas_model is required" "$basic
 expect_refused dtg_missing_h2dust "GeajayCooling:dust_to_gas_model is required" "h2_formation_on_dust: enabled"
 expect_refused dtg_missing_recomb "GeajayCooling:dust_to_gas_model is required" "dust_recombination_cooling: enabled"
 expect_refused dtg_missing_pe "GeajayCooling:dust_to_gas_model is required" "photoelectric_heating_model: constant_efficiency"
+
+# The per_band dust attenuation counts as a dust switch of the module.
+attenuation_only="background_mode: per_band;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;h2_shielding_length_method: given_length;dust_background_attenuation: per_band"
+expect_refused dtg_missing_attenuation "GeajayCooling:dust_to_gas_model is required" "$attenuation_only"
 no_dtg_key=0
+expect_ok dtg_given_attenuation dust_to_gas_model=0 "$attenuation_only"
 expect_refused from_field_name "SWIFT has no per-particle dust field" "dust_to_gas_model: from_field"
 expect_refused from_field_values "linear (0) or remy_ruyer_2014 (1), got 2" "dust_to_gas_model: from_field"
 
