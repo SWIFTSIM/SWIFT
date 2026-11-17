@@ -115,6 +115,9 @@ minutes on 8 threads (`faint_star` about seven minutes). See `run.sh` for the ot
 python3 isrf_h2_photodissociation_check.py --config thin  -s "thin/snap/snapshot_*.hdf5"
 python3 isrf_h2_photodissociation_check.py --config thick -s "thick/snap/snapshot_*.hdf5"
 ```
+Set `H2_SHIELDING_LIBRARY=geajay` when the run used the geajay cooling library
+(default `grackle`). The two libraries differ in the column, `N_H2 = 2 n_H2 l` for
+Grackle and `n_H2 l` for geajay, and in the Doppler mass, `m_H` and `2 m_H`.
 Pass the run's `--h2-self-shielding` (0, 2 or 3) and, for mode 2,
 `--h2-self-shielding-path`, and check a mode-0 run
 with `--config thin`, since no shielding applies. `--config faint_star`
