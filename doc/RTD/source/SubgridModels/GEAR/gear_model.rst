@@ -196,7 +196,7 @@ Here is the complete section in the parameter file:
     specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]
     H2_three_body_rate : 1                       # Specific the H2 formation three body rate (0->5,see Grackle documentation)
     H2_cie_cooling : 0                           # Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel (2004)
-    H2_on_dust: 0                                # Flag to enable H2 formation on dust grains
+    H2_on_dust: -1                               # Flag to enable H2 formation on dust grains (-1: unset, off unless the ISRF is on)
     local_dust_to_gas_ratio : -1                 # The ratio of total dust mass to gas mass in the local Universe (-1 to use the Grackle default value).
     cmb_temperature_floor : 1                    # Enable/disable an effective CMB temperature floor
     agora_cmb_temperature_floor : 0              # Enable/disable the AGORA redshift-dependent CMB temperature floor (T_CMB,0 * (1+z))
