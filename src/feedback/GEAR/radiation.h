@@ -66,7 +66,9 @@
 #define RADIATION_MU_H 1.4
 
 /*! Dust cross-section per hydrogen nucleon, cm^2 (Kim et al. 2023, Weingartner
-    & Draine 2001 grains): PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV). */
+    & Draine 2001 grains): PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV).
+    The PE value differs by 4.65 per cent from the 8.6e-22 of the geajay dust
+    background (cooling_io.h). The origin of 9e-22 is not recorded. */
 #define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 
