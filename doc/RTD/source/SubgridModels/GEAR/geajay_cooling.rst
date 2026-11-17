@@ -284,9 +284,11 @@ Heating and rates from the parameter file
    * - ``rt_h2_dissociation_rate_per_s``
      - (optional) H\ :sub:`2` dissociation rate [1/s].
    * - ``volumetric_heating_rates_cgs``
-     - (optional) Volumetric heating rate in cgs [erg/s/cm\ :sup:`3`].
+     - (optional) Volumetric heating rate in cgs [erg/s/cm\ :sup:`3`]. A finite number of 0 or more;
+       a negative rate (extra cooling) stops the run. Not together with ``specific_heating_rates_cgs``.
    * - ``specific_heating_rates_cgs``
-     - (optional) Specific heating rate in cgs [erg/s/g].
+     - (optional) Specific heating rate in cgs [erg/s/g]. A finite number of 0 or more; a negative rate
+       stops the run.
 
 Molecules and dust
 ------------------
@@ -351,6 +353,12 @@ Molecules and dust
        k\ :sub:`X` (T\ :sub:`x` - T) per electron (Madau and Efstathiou 1999). Unlike Grackle's
        ``Compton_xray_heating``, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3
        (default: 0).
+   * - ``case_b_recombination``
+     - (optional) Recombination case of the H and He recombination rates: ``A`` (0) or ``B`` (1)
+       (default: ``B``, which is not the library default ``A``).
+
+The adiabatic index that SWIFT was built with (``--with-adiabatic-index``) goes to geajay as
+``adiabatic_index``. At 5/3 the library value stays, so a default build changes no bit.
 
 Initial species
 ---------------

@@ -139,6 +139,10 @@ struct cooling_function_data {
    * flag on. */
   int compton_xray_heating;
 
+  /*! Recombination case (GeajayCooling:case_b_recombination,
+   * chemistry_data.CaseBRecombination): 0 case A, 1 case B. */
+  int case_b_recombination;
+
   /*! The ratio of total dust mass to gas mass in the local Universe. */
   double reference_dust_to_gas_ratio;
 

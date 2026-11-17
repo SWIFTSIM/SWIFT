@@ -1064,6 +1064,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:compton_xray_heating must be 0 or 1, got %d.",
           cooling->compton_xray_heating);
 
+  cooling->case_b_recombination = cooling_read_choice(
+      parameter_file, "GeajayCooling:case_b_recombination",
+      "case_b_recombination", GEAJAY_RECOMBINATION_CASE_B, NULL, 0);
+  if (cooling->case_b_recombination != GEAJAY_RECOMBINATION_CASE_A &&
+      cooling->case_b_recombination != GEAJAY_RECOMBINATION_CASE_B)
+    error("GeajayCooling:case_b_recombination must be A (0) or B (1), got %d.",
+          cooling->case_b_recombination);
+
   cooling->reference_dust_to_gas_ratio = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:reference_dust_to_gas_ratio", -1);
   if (!cooling_double_is_finite(&cooling->reference_dust_to_gas_ratio) ||
@@ -1112,11 +1120,21 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->rt_heii_ionisation_rate = rt_rates[3];
   cooling->rt_h2_dissociation_rate = rt_rates[4];
 
-  cooling->volumetric_heating_rates = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:volumetric_heating_rates_cgs", 0);
-
-  cooling->specific_heating_rates = parser_get_opt_param_double(
-      parameter_file, "GeajayCooling:specific_heating_rates_cgs", 0);
+  static const char *heating_keys[] = {
+      "GeajayCooling:volumetric_heating_rates_cgs",
+      "GeajayCooling:specific_heating_rates_cgs"};
+  double heating_rates[2];
+  for (int i = 0; i < 2; i++) {
+    heating_rates[i] =
+        parser_get_opt_param_double(parameter_file, heating_keys[i], 0);
+    if (!cooling_double_is_finite(&heating_rates[i]) || heating_rates[i] < 0.)
+      error(
+          "%s must be a finite number >= 0, got %g. A negative rate would be "
+          "extra cooling, which this module does not apply.",
+          heating_keys[i], heating_rates[i]);
+  }
+  cooling->volumetric_heating_rates = heating_rates[0];
+  cooling->specific_heating_rates = heating_rates[1];
 
   cooling->HydrogenFractionByMass = parser_get_opt_param_double(
       parameter_file, "GeajayCooling:hydrogen_mass_fraction", -1.);

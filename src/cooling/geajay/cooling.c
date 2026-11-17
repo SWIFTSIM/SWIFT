@@ -1855,8 +1855,12 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (cooling->primordial_chemistry >= 3)
     cooling_check_initial_deuterium(cooling);
 
-  /* use the Case B recombination rates */
-  chemistry->CaseBRecombination = 1;
+  chemistry->CaseBRecombination = cooling->case_b_recombination;
+
+  /* hydro_gamma is a float: at 5/3 the library value keeps its double bits */
+  const double adiabatic_index = hydro_gamma;
+  if (fabs(adiabatic_index / chemistry->Gamma - 1.) > 1e-6)
+    chemistry->Gamma = adiabatic_index;
 
   if (cooling->specific_heating_rates > 0 &&
       cooling->volumetric_heating_rates > 0)

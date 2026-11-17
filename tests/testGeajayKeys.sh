@@ -20,10 +20,10 @@
 # lines. The test passes when every expected line is in the output of the test
 # file and not in the output of the baseline file. An expected "~MOD name" line
 # only needs a different value. An expected "!text" makes the test file a
-# refusal: the program must stop with text in its output. The lines of a file
-# are separated by ";", a
-# later line replaces an earlier key and "-key" drops one. Exit code 0: every
-# case passes.
+# refusal: the program must stop with text in its output. An expected "=line"
+# only needs the line in the output of the test file (a default that must not
+# move). The lines of a file are separated by ";", a later line replaces an
+# earlier key and "-key" drops one. Exit code 0: every case passes.
 
 here=$(dirname "$(realpath "$0")")
 bin=$(realpath "$1")
@@ -105,6 +105,12 @@ while IFS='|' read -r id key base test expected hint; do
           evid="$evid [$a -> $b]"
         else
           verdict="FAIL(no change in $name)"
+        fi
+      elif [[ "$e" == "="* ]]; then
+        if grep -qxF -- "${e#=}" "$d/test.out"; then
+          evid="$evid [${e#=}]"
+        else
+          verdict="FAIL(missing: ${e#=})"
         fi
       else
         if grep -qxF "$e" "$d/test.out" && ! grep -qxF "$e" "$d/base.out"; then
