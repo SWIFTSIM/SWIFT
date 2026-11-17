@@ -60,6 +60,8 @@ __attribute__((always_inline)) INLINE static void cooling_write_flavour(
   io_write_attribute_s(h_grp, "Cooling Model", "geajay2");
 #elif COOLING_GEAJAY_MODE == 3
   io_write_attribute_s(h_grp, "Cooling Model", "geajay3");
+#elif COOLING_GEAJAY_MODE == 4
+  io_write_attribute_s(h_grp, "Cooling Model", "geajay4");
 #else
   error("This function should be called only with one of the geajay cooling.");
 #endif
@@ -237,6 +239,21 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
   list[11] =
       io_make_output_field("HDI", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
                            cooling_data.HDI_frac, "HDI mass fraction");
+  num += 3;
+#endif
+
+#if COOLING_GEAJAY_MODE >= 4
+  list[12] =
+      io_make_output_field("DM", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.DM_frac, "DM mass fraction");
+
+  list[13] =
+      io_make_output_field("HDII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HDII_frac, "HDII mass fraction");
+
+  list[14] =
+      io_make_output_field("HeHII", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, xparts,
+                           cooling_data.HeHII_frac, "HeHII mass fraction");
   num += 3;
 #endif
 
@@ -1180,7 +1197,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
                         {"GeajayCooling:initial_dii_to_h_ratio", 3,
                          &cooling->initial_dii_to_h_ratio},
                         {"GeajayCooling:initial_hdi_to_h_ratio", 3,
-                         &cooling->initial_hdi_to_h_ratio}};
+                         &cooling->initial_hdi_to_h_ratio},
+                        {"GeajayCooling:initial_dm_to_h_ratio", 4,
+                         &cooling->initial_dm_to_h_ratio},
+                        {"GeajayCooling:initial_hdii_to_h_ratio", 4,
+                         &cooling->initial_hdii_to_h_ratio},
+                        {"GeajayCooling:initial_hehii_to_h_ratio", 4,
+                         &cooling->initial_hehii_to_h_ratio}};
   for (size_t i = 0; i < sizeof(initial_ratios) / sizeof(initial_ratios[0]);
        i++) {
     *initial_ratios[i].value = -1.f;

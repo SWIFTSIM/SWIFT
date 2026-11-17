@@ -282,6 +282,11 @@ void cooling_print_fractions(const struct xpart *restrict xp) {
 #if COOLING_GEAJAY_MODE > 2
   message("DI %g, DII %g, HDI %g", tmp.DI_frac, tmp.DII_frac, tmp.HDI_frac);
 #endif
+
+#if COOLING_GEAJAY_MODE > 3
+  message("DM %g, HDII %g, HeHII %g", tmp.DM_frac, tmp.HDII_frac,
+          tmp.HeHII_frac);
+#endif
   message("Metal: %g", tmp.metal_frac);
 }
 
@@ -330,6 +335,12 @@ int cooling_converged(const struct xpart *restrict xp,
   cooling_check_field(xp, old, DI_frac, limit);
   cooling_check_field(xp, old, DII_frac, limit);
   cooling_check_field(xp, old, HDI_frac, limit);
+#endif
+
+#if COOLING_GEAJAY_MODE > 3
+  cooling_check_field(xp, old, DM_frac, limit);
+  cooling_check_field(xp, old, HDII_frac, limit);
+  cooling_check_field(xp, old, HeHII_frac, limit);
 #endif
 
   return 1;
@@ -536,6 +547,45 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   xp->cooling_data.e_frac = ne;
 
 #endif  // MODE >= 3
+
+#if COOLING_GEAJAY_MODE >= 4
+  /* primordial chemistry >= 4 */
+
+  /* Deuterium- */
+  if (cooling->initial_dm_to_h_ratio >= 0.f) {
+    double nDM = nH * cooling->initial_dm_to_h_ratio;
+    xp->cooling_data.DM_frac = nDM * 2.f;
+    ne -= nDM;
+  } else
+    xp->cooling_data.DM_frac = zero;
+
+  Xtot += xp->cooling_data.DM_frac;
+
+  /* HD+ */
+  if (cooling->initial_hdii_to_h_ratio >= 0.f) {
+    double nHDII = nH * cooling->initial_hdii_to_h_ratio;
+    xp->cooling_data.HDII_frac = nHDII * 3.f;
+    ne += nHDII;
+  } else
+    xp->cooling_data.HDII_frac = zero;
+
+  Xtot += xp->cooling_data.HDII_frac;
+
+  /* HeH+ */
+  if (cooling->initial_hehii_to_h_ratio >= 0.f) {
+    double nHeHII = nH * cooling->initial_hehii_to_h_ratio;
+    xp->cooling_data.HeHII_frac = nHeHII * 5.f;
+    ne += nHeHII;
+  } else
+    xp->cooling_data.HeHII_frac = zero;
+
+  Xtot += xp->cooling_data.HeHII_frac;
+
+  /* electron mass fraction (multiplied by the proton mass (Grackle convention)
+   */
+  xp->cooling_data.e_frac = ne;
+
+#endif  // MODE >= 4
 
 #if COOLING_GEAJAY_MODE >= 1
   /* Consistency check: the species mass fractions accumulated above
@@ -1709,6 +1759,13 @@ static void cooling_init_species_layout(geajay_species_layout *layout) {
   layout->offset[GEAJAY_DII] = offsetof(struct xpart, cooling_data.DII_frac);
   layout->offset[GEAJAY_HDI] = offsetof(struct xpart, cooling_data.HDI_frac);
 #endif
+
+#if COOLING_GEAJAY_MODE >= 4
+  layout->offset[GEAJAY_DM] = offsetof(struct xpart, cooling_data.DM_frac);
+  layout->offset[GEAJAY_HDII] = offsetof(struct xpart, cooling_data.HDII_frac);
+  layout->offset[GEAJAY_HeHII] =
+      offsetof(struct xpart, cooling_data.HeHII_frac);
+#endif
 }
 
 /**
@@ -1767,10 +1824,11 @@ static geajay_context *cooling_create_options_context(
  * @brief Stop if the initial deuterium species hold a total other than the
  * deuterium_to_hydrogen_mass_ratio of geajay.
  *
- * geajay rescales D, D+ and HD to that total at every call. The initial ratios
- * are number ratios to H and a D atom weighs 2 H atoms, so the total by mass is
- * 2 (n_DI + n_DII + n_HDI) / n_H. An unset initial_di_to_h_ratio starts at the
- * library total.
+ * geajay rescales the species holding deuterium to that total at every call:
+ * D, D+ and HD, and with network 4 also D- and HD+ (one D atom each; HeH+
+ * holds none). The initial ratios are number ratios to H and a D atom weighs 2
+ * H atoms, so the total by mass is 2 (n_DI + n_DII + n_HDI + n_DM + n_HDII) /
+ * n_H. An unset initial_di_to_h_ratio starts at the library total.
  *
  * @param cooling The cooling properties.
  */
@@ -1778,21 +1836,24 @@ static void cooling_check_initial_deuterium(
     const struct cooling_function_data *cooling) {
 
   const double wanted = cooling->chemistry_data.DeuteriumToHydrogenRatio;
-  const double initial_ratios[3] = {cooling->initial_di_to_h_ratio,
-                                    cooling->initial_dii_to_h_ratio,
-                                    cooling->initial_hdi_to_h_ratio};
+  const double initial_ratios[5] = {
+      cooling->initial_di_to_h_ratio, cooling->initial_dii_to_h_ratio,
+      cooling->initial_hdi_to_h_ratio, cooling->initial_dm_to_h_ratio,
+      cooling->initial_hdii_to_h_ratio};
+  const int n_ratios = cooling->primordial_chemistry >= 4 ? 5 : 3;
   double total = initial_ratios[0] >= 0. ? 2. * initial_ratios[0] : wanted;
-  for (int i = 1; i < 3; i++)
+  for (int i = 1; i < n_ratios; i++)
     if (initial_ratios[i] >= 0.) total += 2. * initial_ratios[i];
 
   if (fabs(total - wanted) > 1e-6 * wanted)
     error(
-        "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio and "
-        "initial_hdi_to_h_ratio (number ratios to H) give a deuterium to "
-        "hydrogen mass ratio of %.9g, but the total of geajay is %.9g and it "
-        "rescales the deuterium to it at the first call. Set "
-        "GeajayCooling:deuterium_to_hydrogen_mass_ratio to %.9g, or change "
-        "the initial ratios so that 2 x their sum is %.9g.",
+        "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio, "
+        "initial_hdi_to_h_ratio and, with the network H_He_H2_D_ions, "
+        "initial_dm_to_h_ratio and initial_hdii_to_h_ratio (number ratios to "
+        "H) give a deuterium to hydrogen mass ratio of %.9g, but the total of "
+        "geajay is %.9g and it rescales the deuterium to it at the first "
+        "call. Set GeajayCooling:deuterium_to_hydrogen_mass_ratio to %.9g, or "
+        "change the initial ratios so that 2 x their sum is %.9g.",
         total, wanted, total, wanted);
 }
 
@@ -2077,16 +2138,65 @@ void cooling_clean(struct cooling_function_data *cooling) {
                              &cooling->chemistry_rates);
 }
 
+/*! Version of the restart layout record of the cooling. Restart files
+ * written before the record existed (before geajay item 22) are refused. */
+#define COOLING_GEAJAY_RESTART_FORMAT 1
+
+/*! Record written before the cooling struct in a restart file. */
+struct cooling_restart_layout {
+
+  /*! Tag, to recognise the record */
+  char magic[8];
+
+  /*! Version of this record */
+  int format;
+
+  /*! COOLING_GEAJAY_MODE of the writer */
+  int mode;
+
+  /*! Number of species stored per particle by the writer */
+  int n_species;
+
+  /*! sizeof(struct cooling_function_data) of the writer */
+  size_t cooling_size;
+
+  /*! sizeof(struct cooling_xpart_data) of the writer */
+  size_t xpart_size;
+};
+
+/**
+ * @brief The layout record of this build.
+ *
+ * @param layout (return) The record.
+ */
+static void cooling_get_restart_layout(struct cooling_restart_layout *layout) {
+
+  memset(layout, 0, sizeof(*layout));
+  memcpy(layout->magic, "GEAJAYC", 8);
+  layout->format = COOLING_GEAJAY_RESTART_FORMAT;
+  layout->mode = COOLING_GEAJAY_MODE;
+  layout->n_species =
+      COOLING_GEAJAY_MODE <= 0 ? 0 : 6 + 3 * (COOLING_GEAJAY_MODE - 1);
+  layout->cooling_size = sizeof(struct cooling_function_data);
+  layout->xpart_size = sizeof(struct cooling_xpart_data);
+}
+
 /**
  * @brief Write a cooling struct to the given FILE as a stream of bytes.
  *
- * Nothing to do beyond writing the structure from the stream.
+ * A record of the layout (network, number of species, struct sizes) comes
+ * first, so that a restart of another layout stops with a clear message.
  *
  * @param cooling the struct
  * @param stream the file stream
  */
 void cooling_struct_dump(const struct cooling_function_data *cooling,
                          FILE *stream) {
+  struct cooling_restart_layout layout;
+  cooling_get_restart_layout(&layout);
+  restart_write_blocks(&layout, sizeof(layout), 1, stream, "cooling layout",
+                       "cooling layout");
+
   restart_write_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                        stream, "cooling", "cooling function");
 }
@@ -2095,7 +2205,9 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  * @brief Restore a hydro_props struct from the given FILE as a stream of
  * bytes.
  *
- * Nothing to do beyond reading the structure from the stream.
+ * Stops if the layout record is missing or differs from this build. A file
+ * written before geajay item 22 has no record: the length check of the
+ * first block reports it.
  *
  * @param cooling the struct
  * @param stream the file stream
@@ -2103,6 +2215,32 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  */
 void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
                             const struct cosmology *cosmo) {
+  struct cooling_restart_layout stored, mine;
+  cooling_get_restart_layout(&mine);
+  restart_read_blocks(&stored, sizeof(stored), 1, stream, NULL,
+                      "cooling layout. The restart file has no geajay layout "
+                      "record: it was written before geajay item 22 (network "
+                      "4) and SWIFT refuses it. Start again from a snapshot "
+                      "or from the initial conditions");
+  if (memcmp(stored.magic, mine.magic, sizeof(mine.magic)) != 0)
+    error(
+        "The cooling layout record of the restart file is not a geajay "
+        "record: the restart file is corrupt or not from this cooling.");
+  if (stored.format != mine.format || stored.mode != mine.mode ||
+      stored.n_species != mine.n_species ||
+      stored.cooling_size != mine.cooling_size ||
+      stored.xpart_size != mine.xpart_size)
+    error(
+        "The restart file was written with another geajay cooling layout "
+        "(record format %d, network %d, %d species per particle, cooling "
+        "struct %zu bytes, particle cooling data %zu bytes). This SWIFT has "
+        "record format %d, network %d, %d species, %zu bytes, %zu bytes. "
+        "SWIFT refuses it. Start again from a snapshot or from the initial "
+        "conditions.",
+        stored.format, stored.mode, stored.n_species, stored.cooling_size,
+        stored.xpart_size, mine.format, mine.mode, mine.n_species,
+        mine.cooling_size, mine.xpart_size);
+
   restart_read_blocks((void *)cooling, sizeof(struct cooling_function_data), 1,
                       stream, NULL, "cooling function");
 

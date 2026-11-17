@@ -56,6 +56,14 @@ struct cooling_xpart_data {
   float DI_frac;
   float DII_frac;
   float HDI_frac;
+
+#if COOLING_GEAJAY_MODE >= 4
+  /* primordial chemistry >= 4 */
+  float DM_frac;
+  float HDII_frac;
+  float HeHII_frac;
+#endif  // MODE >= 4
+
 #endif  // MODE >= 3
 
 #endif  // MODE >= 2

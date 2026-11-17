@@ -315,6 +315,15 @@ struct cooling_function_data {
    * chemistry_data.DeuteriumToHydrogenRatio): -1 keeps the library value. */
   double deuterium_to_hydrogen_mass_ratio;
 
+  /*! initial nDM to nH ratio (number density ratio) */
+  float initial_dm_to_h_ratio;
+
+  /*! initial nHDII to nH ratio (number density ratio) */
+  float initial_hdii_to_h_ratio;
+
+  /*! initial nHeHII to nH ratio (number density ratio) */
+  float initial_hehii_to_h_ratio;
+
   /*! Self shielding method (1 -> 4 for the library's ones, 0 for none and -1
    * for a density threshold) */
   enum cooling_uv_self_shielding uv_self_shielding;
@@ -379,7 +388,7 @@ struct cooling_function_data {
    * chemistry_data.cheap_energy_update). */
   int cheap_energy_update;
 
-  /*! Solver of networks 1 to 3: 0 cheap, 1 accurate, -1 the geajay default
+  /*! Solver of networks 1 to 4: 0 cheap, 1 accurate, -1 the geajay default
    * (GeajayCooling:solver, chemistry_data.solver). */
   int solver;
 

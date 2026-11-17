@@ -49,8 +49,10 @@ Table, background and metals
    * - ``cloudy_table_file``
      - Name of the Cloudy table.
    * - ``primordial_chemistry_network``
-     - (optional) Primordial chemistry network: ``tabulated``, ``H_He``, ``H_He_H2`` or ``H_He_H2_D``
-       (or 0 to 3), not above the network selected at configure time (default: that network).
+     - (optional) Primordial chemistry network: ``tabulated``, ``H_He``, ``H_He_H2``, ``H_He_H2_D`` or
+       ``H_He_H2_D_ions`` (or 0 to 4), not above the network selected at configure time (default: that
+       network). ``H_He_H2_D_ions`` adds D-, HD+ and HeH+ (15 species per particle, snapshot fields
+       ``DM``, ``HDII`` and ``HeHII``) and needs ``--with-cooling=geajay_4``.
    * - ``with_uv_background``
      - Enable or not the UV background.
    * - ``redshift``
@@ -72,7 +74,7 @@ Table, background and metals
        the value of ``GrackleCooling:maximal_density_Hpcm3``. Zero or negative: no cap (default: -1).
    * - ``hydrogen_mass_fraction``
      - (optional) Hydrogen fraction by mass of the metal-free gas. A negative value takes the library's:
-       0.76 in networks 1 to 3. In network 0 it is X of ``/Composition`` of the table: the tables of the
+       0.76 in networks 1 to 4. In network 0 it is X of ``/Composition`` of the table: the tables of the
        geajay tools are built at X = 0.7614 (He/H 0.0789). Other tables, for example the SWIFT example
        table ``CloudyData_UVB=HM2012.h5``, carry their own composition, and network 0 takes the X of the
        table (0.715768 for a table without a ``/Composition`` group). Network 0 refuses any other value
@@ -88,7 +90,7 @@ Solver
    * - Key
      - Meaning
    * - ``solver``
-     - (optional) Solver of networks 1 to 3: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the
+     - (optional) Solver of networks 1 to 4: 0 cheap (sub-stepped), 1 accurate (BDF) (default: the
        geajay default).
    * - ``max_substeps``
      - (optional) Maximal number of sub-steps of one solve, or 0 for the geajay default: 10000 x 0.1 /
@@ -378,14 +380,28 @@ Each key is (optional): the initial number density ratio of one species to H. Th
 it is -1 (default: -1). The keys are ``initial_hii_to_h_ratio``, ``initial_hei_to_h_ratio``,
 ``initial_heii_to_h_ratio``, ``initial_heiii_to_h_ratio``, ``initial_di_to_h_ratio``,
 ``initial_dii_to_h_ratio``, ``initial_hm_to_h_ratio``, ``initial_h2i_to_h_ratio``,
-``initial_h2ii_to_h_ratio`` and ``initial_hdi_to_h_ratio``.
+``initial_h2ii_to_h_ratio``, ``initial_hdi_to_h_ratio``, ``initial_dm_to_h_ratio``,
+``initial_hdii_to_h_ratio`` and ``initial_hehii_to_h_ratio``. The last three need the network
+``H_He_H2_D_ions``. A species without a ratio starts at the mass fraction 1e-20.
+
+Restart files
+-------------
+
+A restart file starts with a record of the geajay layout: the network, the number of species per
+particle and the sizes of the cooling structures. SWIFT stops with a message if the record differs
+from the running build, or if the file has no record. Restart files written before the record
+existed (before the network ``H_He_H2_D_ions``) are refused in every network: start again from a
+snapshot or from the initial conditions.
 
 With the network ``H_He_H2_D`` (``primordial_chemistry_network`` 3) geajay holds the total deuterium
-at a constant D to H mass ratio and rescales D, D\ :sub:`+` and HD to it at every call. The key
+at a constant D to H mass ratio and rescales D, D\ :sub:`+` and HD to it at every call. With the
+network ``H_He_H2_D_ions`` (4) it rescales D\ :sup:`-` and HD\ :sub:`+` too, because each holds one
+D atom (HeH\ :sub:`+` holds none). The key
 ``deuterium_to_hydrogen_mass_ratio`` (optional) sets that ratio. The value -1 is the library value,
 6.8e-5 by mass, which is 3.4e-5 by number. A D atom weighs 2 H atoms, so the initial ratios, which are
 number ratios to H, give the mass ratio 2 (``initial_di_to_h_ratio`` + ``initial_dii_to_h_ratio`` +
-``initial_hdi_to_h_ratio``). An unset ``initial_di_to_h_ratio`` counts as the library total. The run
+``initial_hdi_to_h_ratio``), plus ``initial_dm_to_h_ratio`` + ``initial_hdii_to_h_ratio`` inside the
+bracket with the network 4. An unset ``initial_di_to_h_ratio`` counts as the library total. The run
 stops at start-up if that mass ratio differs from ``deuterium_to_hydrogen_mass_ratio`` by more than a
 relative 1e-6. For example, ``initial_di_to_h_ratio: 4e-5`` alone needs
 ``deuterium_to_hydrogen_mass_ratio: 8e-5``. With a network below 3 a value other than -1 stops the run.
