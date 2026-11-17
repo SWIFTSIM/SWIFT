@@ -496,10 +496,10 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        choices=["thin", "thick", "draine_spectrum"],
+        choices=["thin", "thick", "faint_star"],
         required=True,
         help="Configuration the run was launched with; selects the pass bar "
-        "(draine_spectrum uses the thin bar)",
+        "(faint_star uses the thin bar)",
     )
     parser.add_argument(
         "--h2-self-shielding",
@@ -1111,7 +1111,7 @@ def main() -> int:
         options.kernel_gamma,
         path_in_kernel_radii,
     )
-    gated_config = "thin" if options.config == "draine_spectrum" else options.config
+    gated_config = "thin" if options.config == "faint_star" else options.config
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
     columns = np.arange(n_particles)
