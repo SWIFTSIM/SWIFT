@@ -2748,6 +2748,10 @@ static inline void engine_make_hydro_loops_dependencies(
  * On the side of X these pairs have the dependencies of a pair of two real
  * cells. Without the gradient loop, mirror_density unlocks the force.
  *
+ * When R is foreign, the receives of R's positions, densities and gradients
+ * stand in for its boundary, ghost and extra_ghost. Mirror cells are never
+ * sent: each rank holding a real neighbour of M makes its own M.
+ *
  * At run time the mirror tasks are activated by cell_activate_drift_part(),
  * wherever a real cell would activate its drift.
  */
@@ -2769,6 +2773,33 @@ static inline void engine_make_hydro_loops_dependencies(
 static void engine_make_mirror_refresh_dependencies(struct scheduler *sched,
                                                     const struct cell *real,
                                                     struct task **refresh) {
+
+#ifdef WITH_MPI
+  /* A foreign cell: copy what has been received */
+  if (real->nodeID != engine_rank) {
+    if (real->mpi.recv != NULL) {
+      for (struct link *l = real->mpi.recv; l != NULL; l = l->next) {
+        if (l->t->subtype == task_subtype_xv) {
+          scheduler_addunlock(sched, l->t, refresh[0]);
+        } else if (l->t->subtype == task_subtype_rho) {
+          scheduler_addunlock(sched, l->t, refresh[1]);
+#ifdef EXTRA_HYDRO_LOOP
+        } else if (l->t->subtype == task_subtype_gradient) {
+          scheduler_addunlock(sched, l->t, refresh[2]);
+#endif
+        }
+      }
+    } else if (real->split) {
+      for (int k = 0; k < 8; k++) {
+        if (real->progeny[k] != NULL) {
+          engine_make_mirror_refresh_dependencies(sched, real->progeny[k],
+                                                  refresh);
+        }
+      }
+    }
+    return;
+  }
+#endif
 
   /* The tasks of the real cell can be below the depth of the mirror cell's:
    * their neighbours differ, and so does how far their pairs were split. */
@@ -2884,8 +2915,8 @@ static void engine_make_mirror_cell_tasks(struct engine *e, struct cell *c) {
 /**
  * @brief Construct all the tasks and dependencies of the mirror cells.
  *
- * Must be called once the hydro tasks of the real cells have been
- * constructed. See the diagram above.
+ * Must be called once the hydro and communication tasks of the real cells
+ * have been constructed. See the diagram above.
  *
  * @param e The #engine.
  */
@@ -3966,9 +3997,9 @@ void engine_make_hydroloop_tasks_mapper(void *map_data, int num_elements,
               (ci->nodeID != nodeID && cj->nodeID != nodeID))
             continue;
 
-          /* Mirror cells only pair with real cells.
-           * ponytail: local ones for now; the images seen by foreign cells
-           * come with the MPI rank rule. */
+          /* Mirror cells only pair with local real cells. Every rank holding
+           * a real cell next to a mirror cell holds the mirror cell too (see
+           * space_mirror_assign_nodes()). */
           const int cj_mirror = (cj->subtype == cell_subtype_mirror);
           if ((ci_mirror && (cj_mirror || cj->nodeID != nodeID)) ||
               (cj_mirror && ci->nodeID != nodeID))
@@ -4556,9 +4587,6 @@ void engine_maketasks(struct engine *e) {
     /* threadpool_map(&e->threadpool, engine_make_extra_hydroloop_tasks_mapper,
      *                sched->tasks, sched->nr_tasks, sizeof(struct task),
      *                threadpool_auto_chunk_size, e); */
-
-    /* With the network of the real cells complete, attach the mirror cells */
-    engine_make_mirror_tasks(e);
   }
 
   if (e->verbose)
@@ -4667,6 +4695,10 @@ void engine_maketasks(struct engine *e) {
   engine_allocate_foreign_particles(e, /*fof=*/0);
 
 #endif
+
+  /* With the network of the real cells complete, communications included,
+   * attach the mirror cells */
+  if (e->policy & engine_policy_hydro) engine_make_mirror_tasks(e);
 
   /* Report the number of tasks we actually used */
   if (e->verbose)

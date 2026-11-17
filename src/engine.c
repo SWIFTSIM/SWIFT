@@ -1486,6 +1486,10 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   engine_exchange_cells(e);
 #endif
 
+  /* Now that all the real cells have their trees, local and foreign, reflect
+   * the ones next to mirror walls into the mirror cells. */
+  space_mirror_populate(e->s, e->verbose);
+
 #ifdef SWIFT_DEBUG_CHECKS
 
   /* Let's check that what we received makes sense */

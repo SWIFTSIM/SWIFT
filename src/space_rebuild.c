@@ -64,6 +64,9 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* Re-grid if necessary, or just re-set the cell data. */
   space_regrid(s, verbose);
 
+  /* The mirror cells follow the real cells next to them */
+  space_mirror_assign_nodes(s);
+
   /* Allocate extra space for particles that will be created */
   if (s->with_star_formation || s->with_sink || s->with_hydro_splitting)
     space_allocate_extras(s, verbose);
@@ -992,10 +995,6 @@ void space_rebuild(struct space *s, int repartitioned, int verbose) {
   /* At this point, we have the upper-level cells. Now recursively split each
      cell to get the full AMR grid. */
   space_split(s, verbose);
-
-  /* Now that the real cells have their trees, reflect the ones next to
-   * mirror walls into the mirror cells. */
-  space_mirror_populate(s, verbose);
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that the multipole construction went OK */

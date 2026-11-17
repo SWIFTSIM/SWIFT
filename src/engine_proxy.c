@@ -311,6 +311,11 @@ void engine_makeproxies(struct engine *e) {
               /* Early abort  */
               if (cid >= cjd) continue;
 
+              /* Mirror cells are never exchanged: each rank makes its own */
+              if (cells[cid].subtype == cell_subtype_mirror ||
+                  cells[cjd].subtype == cell_subtype_mirror)
+                continue;
+
               /* Early abort (both same node) */
               if (cells[cid].nodeID == nodeID && cells[cjd].nodeID == nodeID)
                 continue;

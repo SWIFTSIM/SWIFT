@@ -106,11 +106,54 @@ void space_mirror_clone(struct space *s, struct cell *cm, struct cell *c,
 }
 
 /**
- * @brief Fill the mirror cells with reflections of the cells next to the
- * mirror walls.
+ * @brief Decide which ranks hold each mirror cell.
  *
- * Must be called once the real cells have been split. Does nothing in runs
- * without mirror walls.
+ * A mirror cell is held by every rank owning a real cell next to it, so that
+ * the pairs of real and mirror cells are all local. Such a rank owns or
+ * imports the cell the mirror cell reflects (a real cell next to a mirror
+ * cell is also next to the cell it reflects), so the mirror particles are
+ * copied locally and never communicated. Elsewhere the mirror cell takes the
+ * rank of the cell it reflects, which is then foreign.
+ *
+ * Must be called whenever the real cells change rank, before the local cells
+ * are listed.
+ *
+ * @param s The #space.
+ */
+void space_mirror_assign_nodes(struct space *s) {
+
+  if (s->boundary_conditions.wall_model != boundary_wall_model_mirror) return;
+
+  const int *cdim = s->cdim;
+  for (int i = 0; i < cdim[0]; i++) {
+    for (int j = 0; j < cdim[1]; j++) {
+      for (int k = 0; k < cdim[2]; k++) {
+        struct cell *cm = &s->cells_top[cell_getid(cdim, i, j, k)];
+        if (cm->subtype != cell_subtype_mirror) continue;
+
+        cm->nodeID = cm->mirror_of->nodeID;
+        for (int ii = max(i - 1, 0); ii <= min(i + 1, cdim[0] - 1); ii++) {
+          for (int jj = max(j - 1, 0); jj <= min(j + 1, cdim[1] - 1); jj++) {
+            for (int kk = max(k - 1, 0); kk <= min(k + 1, cdim[2] - 1); kk++) {
+              const struct cell *c = &s->cells_top[cell_getid(cdim, ii, jj, kk)];
+              if (c->subtype != cell_subtype_mirror &&
+                  c->nodeID == engine_rank) {
+                cm->nodeID = engine_rank;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ * @brief Fill the mirror cells held by this rank with reflections of the
+ * cells next to the mirror walls.
+ *
+ * Must be called once the local cells have been split and the trees of the
+ * foreign cells received. Does nothing in runs without mirror walls.
  *
  * @param s The #space.
  * @param verbose Are we talkative?
@@ -121,14 +164,12 @@ void space_mirror_populate(struct space *s, int verbose) {
 
   const ticks tic = getticks();
 
-  /* ponytail: only mirrors of local cells, and all of each wall cell; images
-   * of foreign cells come with the MPI rank rule, trimming to the wall-side
-   * progeny when the memory matters. */
+  /* ponytail: all of each wall cell is reflected; trim to the wall-side
+   * progeny if the memory matters. */
   size_t nr_mirrors = 0;
   for (int k = 0; k < s->nr_cells; k++) {
     const struct cell *c = &s->cells_top[k];
-    if (c->subtype == cell_subtype_mirror &&
-        c->mirror_of->nodeID == engine_rank)
+    if (c->subtype == cell_subtype_mirror && c->nodeID == engine_rank)
       nr_mirrors += c->mirror_of->hydro.count;
   }
 
@@ -148,7 +189,7 @@ void space_mirror_populate(struct space *s, int verbose) {
     struct cell *cm = &s->cells_top[k];
     if (cm->subtype != cell_subtype_mirror) continue;
     struct cell *c = cm->mirror_of;
-    if (c->nodeID != engine_rank || c->hydro.count == 0) continue;
+    if (cm->nodeID != engine_rank || c->hydro.count == 0) continue;
 
     space_mirror_clone(s, cm, c, parts);
     cell_mirror_refresh(cm, s, /*moved=*/1);

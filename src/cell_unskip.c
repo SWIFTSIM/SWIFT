@@ -528,8 +528,12 @@ static void cell_activate_drift_part_down(struct cell *c, struct scheduler *s) {
 void cell_activate_mirror_refresh(struct cell *c, struct scheduler *s) {
 
   /* The mirror cell need not have its tasks at the depth of the cell it
-   * reflects: their neighbours differ. */
-  cell_activate_drift_part_down(c->mirror_of, s);
+   * reflects: their neighbours differ. A foreign cell is not drifted here;
+   * its receives are active whenever a pair with this mirror cell is, as
+   * the local cell in that pair is closer to it than to the mirror cell. */
+  if (c->mirror_of->nodeID == engine_rank) {
+    cell_activate_drift_part_down(c->mirror_of, s);
+  }
 
   for (int k = 0; k < 3; k++) {
     struct task *t = c->hydro.super->mirror_refresh[k];

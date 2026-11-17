@@ -440,6 +440,7 @@ void space_map_parts_xparts(struct space *s,
 void space_map_cells_post(struct space *s, int full,
                           void (*fun)(struct cell *c, void *data), void *data);
 void space_rebuild(struct space *s, int repartitioned, int verbose);
+void space_mirror_assign_nodes(struct space *s);
 void space_mirror_populate(struct space *s, int verbose);
 void space_mirror_clone(struct space *s, struct cell *cm, struct cell *c,
                         struct part *parts);

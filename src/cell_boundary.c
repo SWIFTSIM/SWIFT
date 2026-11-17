@@ -298,7 +298,9 @@ void cell_mirror_refresh(struct cell *c, const struct space *s,
   c->hydro.dx_max_part = real->hydro.dx_max_part;
   c->hydro.ti_old_part = real->hydro.ti_old_part;
 
+  /* A foreign cell has no particles until its first receive */
   const struct part *restrict parts = real->hydro.parts;
+  if (parts == NULL) return;
   struct part *restrict mirrors = c->hydro.parts;
   const int count = c->hydro.count;
   const unsigned int walls = c->mirror_walls;
@@ -310,6 +312,14 @@ void cell_mirror_refresh(struct cell *c, const struct space *s,
       with_gravity ? e->physical_constants->const_newton_G : 0.f;
 
   for (int i = 0; i < count; i++) {
+
+#ifdef SWIFT_DEBUG_CHECKS
+    /* The refreshes must wait for the drift of the particles they copy */
+    if (e != NULL && !part_is_inhibited(&parts[i], e) &&
+        parts[i].ti_drift != e->ti_current)
+      error("Mirroring particle %lld not drifted to the current time.",
+            parts[i].id);
+#endif
 
     /* The external acceleration at the particle (stored without G) */
     struct gpart gp;
