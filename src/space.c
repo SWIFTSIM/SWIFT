@@ -2295,6 +2295,9 @@ void space_check_top_multipoles_drift_point(struct space *s,
 void space_check_timesteps(const struct space *s) {
 #ifdef SWIFT_DEBUG_CHECKS
   for (int i = 0; i < s->nr_cells; ++i) {
+    /* Mirror particles are copies and are not integrated */
+    if (s->cells_top[i].subtype == cell_subtype_mirror) continue;
+
     if (s->cells_top[i].nodeID == engine_rank) {
       cell_check_timesteps(&s->cells_top[i], s->e->ti_current,
                            s->e->max_active_bin);

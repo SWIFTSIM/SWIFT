@@ -445,6 +445,10 @@ void engine_drift_all(struct engine *e, const int drift_mpoles,
     }
   }
 
+  /* Synchronize particle positions, as on master: the links are verified
+   * below, before the boundary phase synchronizes them again. */
+  space_synchronize_particle_positions(e->s);
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Check that all cells have been drifted to the current time. */
   space_check_drift_point(
