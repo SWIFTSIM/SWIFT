@@ -97,6 +97,14 @@
     receives the star's light. */
 #define RADIATION_PACKET_EMISSION_EDGE STAR_GAS_WEIGHT_EDGE
 
+/*! Odd multipliers of the integer hashes of the stochastic rounding: the
+    golden-ratio constant that spreads an index, two constants that mix the
+    bits of the final hash and one that weights the salt. */
+#define RADIATION_PACKET_HASH_GOLDEN 0x9e3779b9u
+#define RADIATION_PACKET_HASH_MIX_1 0x85ebca6bu
+#define RADIATION_PACKET_HASH_MIX_2 0xc2b2ae35u
+#define RADIATION_PACKET_HASH_SALT 0x85ebca77u
+
 /*! Is the speed of the light of a share limited? Set by
     #radiation_packet_set_light_speed. */
 extern int radiation_packet_light_speed_limited;
@@ -291,11 +299,12 @@ radiation_packet_add_stochastic(const float a, const float b,
   memcpy(&ua, &a, sizeof(ua));
   memcpy(&ub, &b, sizeof(ub));
 
-  uint32_t h = (ua * 0x9e3779b9u) ^ ub ^ (salt * 0x85ebca77u);
+  uint32_t h = (ua * RADIATION_PACKET_HASH_GOLDEN) ^ ub ^
+               (salt * RADIATION_PACKET_HASH_SALT);
   h ^= h >> 16;
-  h *= 0x85ebca6bu;
+  h *= RADIATION_PACKET_HASH_MIX_1;
   h ^= h >> 13;
-  h *= 0xc2b2ae35u;
+  h *= RADIATION_PACKET_HASH_MIX_2;
   h ^= h >> 16;
 
   bits = (bits + (uint64_t)(h >> 3)) & ~((UINT64_C(1) << 29) - 1);
@@ -318,8 +327,20 @@ __attribute__((always_inline)) INLINE static uint32_t radiation_packet_salt(
   const unsigned long long u = (unsigned long long)id;
   const unsigned long long t = (unsigned long long)ti;
 
-  return ((uint32_t)u ^ (uint32_t)(u >> 32)) * 0x9e3779b9u ^ (uint32_t)t ^
-         (uint32_t)(t >> 32);
+  return ((uint32_t)u ^ (uint32_t)(u >> 32)) * RADIATION_PACKET_HASH_GOLDEN ^
+         (uint32_t)t ^ (uint32_t)(t >> 32);
+}
+
+/**
+ * @brief Salt of the i-th add of a sequence of adds into one sum, from the
+ * salt of the sequence.
+ *
+ * @param salt Salt of the sequence.
+ * @param i Index of the add.
+ */
+__attribute__((always_inline)) INLINE static uint32_t
+radiation_packet_salt_index(const uint32_t salt, const uint32_t i) {
+  return salt ^ (i * RADIATION_PACKET_HASH_GOLDEN);
 }
 
 /**
@@ -343,7 +364,8 @@ radiation_packet_share_salt(const double energy[ISRF_OPERATOR_COUNT],
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     uint64_t bits;
     memcpy(&bits, &energy[b], sizeof(bits));
-    salt = (salt * 0x9e3779b9u) ^ (uint32_t)(bits ^ (bits >> 32));
+    salt =
+        (salt * RADIATION_PACKET_HASH_GOLDEN) ^ (uint32_t)(bits ^ (bits >> 32));
   }
 
   return salt;
@@ -430,6 +452,10 @@ radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
         "give %#x.",
         id, (unsigned)pk->occupied_slots, (unsigned)scanned);
 }
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
+                                const long long id) {}
 #endif
 
 /**
@@ -469,9 +495,7 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_sender,
   float dxw[3];
   int have_dxw = 0;
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
   radiation_packet_check_occupied(pk, sender->id);
-#endif
 
   /* A set-bit walk here changes the rounding of the inlined hydro gradient
    * loop. */
@@ -744,9 +768,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
   float dxw[3];
   int have_dxw = 0;
 
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
   radiation_packet_check_occupied(sender_packet, sender->id);
-#endif
 
   for (uint32_t m = sender_packet->occupied_slots; m != 0; m &= m - 1) {
     const int k = __builtin_ctz(m);
@@ -959,8 +981,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 /**
  * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * Each of the 12 cones holds `L dt / 12`. A cone with a weight sum below the
- * cone floor lets the rest of its twelfth escape. Receivers share the rest
+ * Each cone holds an equal share of `L dt`. A cone with a weight sum below the
+ * cone floor lets the rest of its share escape. Receivers share the rest
  * by weight.
  *
  * @param si The star.
@@ -1043,7 +1065,9 @@ void radiation_packet_check_star_cones(const struct spart *sp,
                                        const integertime_t ti_current);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS_ISRF
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
 /**
  * @brief Book the packet of a gas particle that leaves the gas, converted
  * into or swallowed by another particle or removed at the edge of a
@@ -1163,7 +1187,7 @@ radiation_packet_first_init_sink(struct sink *sink) {
          sizeof(sink->feedback_data.isrf_packet));
 }
 
-#else /* SWIFT_DEBUG_CHECKS_ISRF */
+#else
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_removed_gas_to_star(const struct part *p,
@@ -1197,41 +1221,9 @@ radiation_packet_left_box_dump(FILE *stream) {}
 __attribute__((always_inline)) INLINE static void
 radiation_packet_left_box_restore(FILE *stream) {}
 
-#endif /* SWIFT_DEBUG_CHECKS_ISRF */
+#endif /* GEAR_SUBGRID_RADIATION_ISRF && SWIFT_DEBUG_CHECKS_ISRF */
 
-#else /* GEAR_SUBGRID_RADIATION_ISRF */
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_removed_gas_to_star(const struct part *p,
-                                          struct spart *sp) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_removed_gas_to_sink(const struct part *p,
-                                          struct sink *sink) {}
-
-__attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
-    struct sink *si, const struct sink *sj) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_first_init_sink(struct sink *sink) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_gas_left_box(const struct part *p) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_star_left_box(const struct spart *sp) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_sink_left_box(const struct sink *sink) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_left_box_dump(FILE *stream) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_left_box_restore(FILE *stream) {}
+#ifndef GEAR_SUBGRID_RADIATION_ISRF
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_star(struct spart *sp) {}
