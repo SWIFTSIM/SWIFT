@@ -759,9 +759,9 @@ GeajayCooling:
   h2_cie_cooling: none                         # (optional) H2 collision-induced emission cooling: none or Ripamonti+Abel2004 (or 0, 1) (default: none)
   dust_model: none                             # (optional) Dust chemistry: none or basic (or 0, 1). basic turns on the gas-grain heat exchange, the dust temperature, H2 formation on grains, photoelectric heating and the recombination cooling on
                                                # grains. It reads the metal mass fraction of each particle to compute the dust-to-gas ratio (default: none)
-  dust_to_gas_model: linear                    # (required, no default) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014, linear
-                                               # above its transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one, remy_ruyer_2014 stops
-                                               # the run. The run stops if the key is absent
+  dust_to_gas_model: linear                    # (required, no default) Dust-to-gas ratio as a function of the metallicity: linear (D = reference_dust_to_gas_ratio Z / Z_sun) or remy_ruyer_2014 (broken power law of Remy-Ruyer et al. 2014,
+                                               # linear above its transition). Needs a dust switch (dust_model: basic, h2_formation_on_dust: enabled, dust_recombination_cooling: enabled or a photoelectric_heating_model above none): without one,
+                                               # remy_ruyer_2014 stops the run. The run stops if the key is absent
   photoelectric_heating_model: default         # (optional) Photoelectric heating of the dust: default (-1, constant_efficiency with dust_model: basic, else none), none (0), fixed_rate (1, the constant photoelectric_heating_rate),
                                                # constant_efficiency (2, 0.05 G_0 x 1e-24 erg/s per H atom, Wolfire et al. 1995 eq. 1), grain_charge_epsilon (3, an efficiency set by the grain charge, Bakes and Tielens 1994 eq. 43 with the
                                                # coefficients of Wolfire et al. 2003 eq. 24) or density_epsilon (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and A2). Every model scales with D / D_ref and n_H and gives no
