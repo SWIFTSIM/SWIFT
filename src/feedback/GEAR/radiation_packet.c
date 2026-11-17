@@ -2934,6 +2934,126 @@ static void radiation_packet_set_origin(
 }
 
 /**
+ * @brief The H2 line state of a slot before a merge, from which
+ * #radiation_packet_line_end sets the held and the waiting state after it.
+ */
+struct radiation_packet_line_state {
+
+  /*! LW energy that waits in the slot. */
+  double waiting;
+
+  /*! LW energy that the slot holds. */
+  double held;
+
+  /*! Dissociating energy that the slot holds. */
+  double held_dissociating;
+
+  /*! Dissociating energy times velocity shift of the held light. */
+  double held_shift;
+
+  /*! Dissociating energy that waits in the slot. */
+  double waiting_dissociating;
+
+  /*! Dissociating energy times velocity shift of the waiting light. */
+  double waiting_shift;
+};
+
+/**
+ * @brief LW energy that waits in a slot: the near bins and the far cells or
+ * the reservoir.
+ *
+ * @param sl The slot.
+ */
+static double radiation_packet_waiting_LW_energy(
+    const struct feedback_isrf_packet_slot_data *sl) {
+  const struct feedback_isrf_packet_slot_band_data *band =
+      &sl->band[ISRF_OPERATOR_LW];
+  double waiting = 0.;
+  for (int j = 0; j < RADIATION_PACKET_BINS; j++)
+    waiting += (double)band->bin_energy[j];
+  if (radiation_packet_light_speed_limited) {
+    for (int c = 0; c < RADIATION_PACKET_FAR_CELLS; c++)
+      waiting += (double)band->far_energy[c];
+  } else {
+    waiting += (double)band->reservoir_energy;
+  }
+  return waiting;
+}
+
+/**
+ * @brief Record the H2 line state of a slot before its merge.
+ *
+ * @param sl The slot.
+ * @param st (return) The state.
+ */
+static void radiation_packet_line_begin(
+    const struct feedback_isrf_packet_slot_data *sl,
+    struct radiation_packet_line_state *st) {
+  st->waiting = radiation_packet_waiting_LW_energy(sl);
+  st->held = (double)sl->band[ISRF_OPERATOR_LW].energy;
+  st->held_dissociating = st->held * (double)sl->H2_transmission;
+  st->held_shift = st->held_dissociating * (double)sl->H2_velocity_shift;
+  st->waiting_dissociating = sl->H2_waiting_dissociating_energy;
+  st->waiting_shift = (double)sl->H2_waiting_velocity_sum;
+}
+
+/**
+ * @brief Set the held and the waiting H2 line state of a slot after its merge.
+ *
+ * The waiting light keeps its mean transmission and shift whether the merge
+ * releases it or drops it below the photon cutoff: the dissociating energy and
+ * the shift sum leave in the share of the LW energy that leaves. The held
+ * light takes the dissociating energy of what was released, so its
+ * transmission is the dissociating over the LW energy, at most 1. Its column
+ * is the one whose factor in the gas of the particle is that transmission.
+ *
+ * @param sl The slot.
+ * @param st The state before the merge.
+ * @param exponent Exponent of the shielding fit of the particle.
+ * @param b5 Thermal line width of H2 of the particle in km/s.
+ */
+static void radiation_packet_line_end(
+    struct feedback_isrf_packet_slot_data *sl,
+    const struct radiation_packet_line_state *st, const double exponent,
+    const double b5) {
+
+  const double left = radiation_packet_waiting_LW_energy(sl);
+  const double energy = (double)sl->band[ISRF_OPERATOR_LW].energy;
+
+  double released_share = 0., left_share = 0.;
+  if (st->waiting > 0.) {
+    double released = energy - st->held;
+    if (released < 0.) released = 0.;
+    released_share = fmin(1., released / st->waiting);
+    left_share = fmin(1., left / st->waiting);
+  }
+  const double released_dissociating =
+      st->held_dissociating + st->waiting_dissociating * released_share;
+  const double released_shift =
+      st->held_shift + st->waiting_shift * released_share;
+
+  if (left > 0.) {
+    sl->H2_waiting_dissociating_energy = st->waiting_dissociating * left_share;
+    sl->H2_waiting_velocity_sum = (float)(st->waiting_shift * left_share);
+  } else {
+    sl->H2_waiting_dissociating_energy = 0.;
+    sl->H2_waiting_velocity_sum = 0.f;
+  }
+
+  double t = 1., N = 0., dv = 0.;
+  if (energy > 0.) {
+    t = released_dissociating / energy;
+    if (!(t > 0.)) t = 0.;
+    if (t > 1.) t = 1.;
+    if (b5 > 0.) N = radiation_h2_shielding_inverse(t, exponent, b5);
+    if (released_dissociating > 0.) dv = released_shift / released_dissociating;
+  }
+  sl->H2_transmission = (float)t;
+  sl->H2_column = (float)N;
+  sl->H2_velocity_shift = (float)dv;
+}
+
+/**
  * @brief Start of an active step without a speed limit, for one slot: the
  * inbox and the due part of the reservoir become the held packet.
  *
@@ -3278,13 +3398,22 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 
   if (ti_step > 0) pk->has_merged_step = 1;
 
+  const int with_lines = p->feedback_data.ISRF_H2_line_absorption;
+
   if (!radiation_packet_light_speed_limited) {
     pk->step_end_ti = ti_current + ti_step;
     pk->step_ti = ti_step;
-    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+    for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+      struct radiation_packet_line_state line;
+      if (with_lines) radiation_packet_line_begin(&pk->slot[s], &line);
       radiation_packet_merge_slot_unlimited(
           &pk->slot[s], ti_current, ti_step, time_base, cosmo, s,
           radiation_packet_octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
+      if (with_lines)
+        radiation_packet_line_end(&pk->slot[s], &line,
+                                  p->feedback_data.H2_shielding_exponent,
+                                  p->feedback_data.H2_line_width_km_s);
+    }
     radiation_packet_refresh_occupied(pk);
     return;
   }
@@ -3316,10 +3445,17 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
       radiation_packet_diag(rpd_scale_at_limit, far);
   }
 #endif
-  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct radiation_packet_line_state line;
+    if (with_lines) radiation_packet_line_begin(&pk->slot[s], &line);
     radiation_packet_merge_slot_limited(
         &pk->slot[s], pk->band, old_first, old_width, old_far_end, ti_current,
         s, radiation_packet_octant_frame, salt ^ ((uint32_t)s * 0x9e3779b9u));
+    if (with_lines)
+      radiation_packet_line_end(&pk->slot[s], &line,
+                                p->feedback_data.H2_shielding_exponent,
+                                p->feedback_data.H2_line_width_km_s);
+  }
   pk->step_end_ti = ti_current + ti_step;
   pk->step_ti = ti_step;
   radiation_packet_regrid(pk, old_first, old_width, old_far_end, old_scale, -1.,
@@ -3399,6 +3535,8 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
   radiation_packet_check_occupied(pk, p->id);
 #endif
   double field_energy[ISRF_OPERATOR_COUNT], field_photons[ISRF_OPERATOR_COUNT];
+  double field_dissociating = 0.;
+  const int with_lines = p->feedback_data.ISRF_H2_line_absorption;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     field_energy[b] = 0.;
     field_photons[b] = 0.;
@@ -3414,6 +3552,9 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
         field_energy[b] += (double)(sl->band[b].energy * factor);
         field_photons[b] += (double)(sl->band[b].photons * factor);
       }
+      if (with_lines)
+        field_dissociating += (double)(sl->band[ISRF_OPERATOR_LW].energy *
+                                       sl->H2_transmission * factor);
       continue;
     }
 
@@ -3434,6 +3575,9 @@ void radiation_packet_end_gradient(struct part *p, const float a, const float c,
     pk->band[b].field_photons = radiation_packet_read_mean(
         pk->band[b].field_photons, (float)field_photons[b], dt, tau);
   }
+  if (with_lines)
+    pk->field_dissociating_energy = radiation_packet_read_mean(
+        pk->field_dissociating_energy, (float)field_dissociating, dt, tau);
 }
 
 /**
@@ -3458,6 +3602,10 @@ void radiation_packet_end_force(struct part *p) {
       pk->slot[s].band[b].energy = 0.f;
       pk->slot[s].band[b].photons = 0.f;
     }
+  pk->ngb_mean_field_dissociating_energy =
+      (pk->ngb_mean_field_dissociating_energy +
+       mw * pk->field_dissociating_energy) *
+      norm;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];
     band->ngb_mean_field_energy =
@@ -3485,6 +3633,8 @@ void radiation_packet_couple_field(struct part *p) {
         (double)pk->band[b].ngb_mean_field_energy;
   p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
       (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
+  p->feedback_data.LW_dissociating_u =
+      (double)pk->ngb_mean_field_dissociating_energy;
 }
 
 /**
