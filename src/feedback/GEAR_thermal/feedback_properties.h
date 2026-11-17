@@ -176,6 +176,11 @@ struct feedback_props {
    * radiation_policy_isrf is set. */
   char ISRF_propagation;
 
+  /*! Do the H2 lines absorb the Lyman-Werner light along its path? The packet
+   * carries the H2 column it crossed and the H2 dissociation rate is read
+   * from the dissociating part of the light. Needs ISRF_propagation. */
+  char ISRF_H2_line_absorption;
+
   /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or
    * 1. */
   double band_edge_weight_pe;
@@ -416,6 +421,8 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
             feedback_props->ISRF_packet_light_speed_time_step_margin);
       message("ISRF packet field read mean time (internal units, 0 = off) = %g",
               feedback_props->ISRF_packet_read_mean_time);
+      message("ISRF H2 line absorption along the packet path              = %s",
+              feedback_props->ISRF_H2_line_absorption ? "ON" : "OFF");
       message(
           "ISRF packet octant frame rotation (row-major)              = "
           "%g %g %g, %g %g %g, %g %g %g",
@@ -815,6 +822,22 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
+
+    fp->ISRF_H2_line_absorption = (char)parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_H2_line_absorption", 0);
+    if (fp->ISRF_H2_line_absorption != 0 && fp->ISRF_H2_line_absorption != 1)
+      error("GEARFeedback:ISRF_H2_line_absorption must be 0 or 1 (got %d).",
+            fp->ISRF_H2_line_absorption);
+    if (fp->ISRF_H2_line_absorption && !fp->ISRF_propagation)
+      error(
+          "GEARFeedback:ISRF_H2_line_absorption: 1 acts on the transported "
+          "light, which needs GEARFeedback:ISRF_propagation: 1.");
+#ifndef GEAR_COOLING
+    if (fp->ISRF_H2_line_absorption)
+      error(
+          "GEARFeedback:ISRF_H2_line_absorption: 1 needs the geajay cooling "
+          "with an H2 network.");
+#endif
 
     /* Parsed even with ISRF_propagation off. */
     fp->ISRF_packet_light_speed_time_step_margin = parser_get_opt_param_float(
