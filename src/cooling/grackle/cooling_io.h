@@ -315,19 +315,13 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "on dust anyway, because the ISRF sets dust_chemistry to 1. Remove "
         "the parameter to silence this warning.");
 
-  /* Only builds of the Grackle fork lineage define the photoelectric density
-     epsilon macro, and each also guards a zero electron density, so the macro
-     stands for that guard. */
-#if COOLING_GRACKLE_MODE == 0 && \
-    !defined(GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON)
+  /* At grackle_0 Grackle estimates no electron density for cold gas, so the
+     dust grain recombination term is NaN. */
+#if COOLING_GRACKLE_MODE == 0
   if (cooling->with_ISRF)
     error(
-        "GEARFeedback:with_interstellar_radiation_field needs a cooling mode "
-        "that tracks species. At grackle_0 the official Grackle estimates no "
-        "electron density for cold gas, its grain recombination term is NaN "
-        "and the gas falls to the temperature floor. Build with grackle_1 or "
-        "higher, with the Grackle fork (it guards a zero electron density), "
-        "or with geajay.");
+        "GEARFeedback:with_interstellar_radiation_field needs grackle_1 or "
+        "higher, or geajay.");
 #endif
 
   char pe_efficiency[PARSER_MAX_LINE_SIZE];
