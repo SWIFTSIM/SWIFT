@@ -967,11 +967,11 @@ static double cooling_new_energy_cosmic_rays(
         "Particle %lld: geajay refused the arguments of the cosmic-ray solve: "
         "a value is not finite or out of range (cosmic-ray value %e, "
         "density %e, energy %e, metal density %e, H2 shielding length %e, "
-        "LW attenuation %e, PE attenuation %e; species above).",
+        "LW attenuation %e, PE attenuation %e; species above). geajay: %s",
         p->id, cooling_cosmic_ray_value(cooling, xp), inputs->density,
         inputs->internal_energy, inputs->metal,
         inputs->H2_self_shielding_length, inputs->lw_background_attenuation,
-        inputs->pe_background_attenuation);
+        inputs->pe_background_attenuation, geajay_last_error_message());
   }
 
   if (!solved) {
@@ -1100,10 +1100,10 @@ static geajay_float cooling_new_energy_or_keep_previous(
         "Particle %lld: geajay refused the arguments of the solve: a value "
         "is not finite or out of range (density %e, energy %e, metal "
         "density %e, H2 shielding length %e, LW attenuation %e, PE "
-        "attenuation %e; species above).",
+        "attenuation %e; species above). geajay: %s",
         p->id, inputs.density, inputs.internal_energy, inputs.metal,
         inputs.H2_self_shielding_length, inputs.lw_background_attenuation,
-        inputs.pe_background_attenuation);
+        inputs.pe_background_attenuation, geajay_last_error_message());
   }
 
   if (!solved) {
