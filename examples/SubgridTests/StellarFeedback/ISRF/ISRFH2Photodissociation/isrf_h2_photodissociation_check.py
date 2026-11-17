@@ -290,8 +290,11 @@ LW_CALIBRATION_NOTE: "List[str]" = []
 # "sigma_H2/E_LW" would also match this script's own note below, so a log
 # holding an earlier run of this script would classify itself as clean.
 LW_QUOTIENT_LOG_RE = re.compile(
-    r"radiation_set_lw_photon_energy_cgs: H2 photodissociation sigma_H2/E_LW ="
+    r"radiation_set_lw_photon_energy_cgs: H2 photodissociation sigma_H2/E_LW = "
+    r"(\S+) cm\^2 erg\^-1"
 )
+# The log prints the quotient with %g, six significant digits.
+LW_QUOTIENT_LOG_RELATIVE_TOLERANCE: float = 5.0e-6
 LW_TABLE_ENERGY_LOG_RE = re.compile(
     r"radiation_set_lw_photon_energy_cgs: Mean Lyman-Werner photon energy "
     r"from the table = (\S+) erg"
@@ -406,11 +409,23 @@ def check_run_lw_calibration(
         return
     for log in logs:
         text = log.read_text(errors="replace")
-        if LW_QUOTIENT_LOG_RE.search(text):
-            print(
-                f"H2 calibration: {log} reports sigma_H2/E_LW, so that run used "
-                "the same Draine-field quotient as this script."
-            )
+        quotient_match = LW_QUOTIENT_LOG_RE.search(text)
+        if quotient_match is not None:
+            logged = float(quotient_match.group(1))
+            expected = read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW_CGS")
+            if abs(logged - expected) <= LW_QUOTIENT_LOG_RELATIVE_TOLERANCE * expected:
+                print(
+                    f"H2 calibration: {log} reports sigma_H2/E_LW = {logged:.6g}, "
+                    "equal to the quotient of this script to the six printed digits."
+                )
+            else:
+                _note_lw_calibration(
+                    f"{log} reports sigma_H2/E_LW = {logged:.6g} cm^2 erg^-1, but "
+                    f"this script uses {expected:.6g}. That run's binary used a "
+                    f"different Draine-field quotient (rates {logged / expected - 1.0:+.1%} "
+                    "from the ones predicted here), and a residual of that size is the "
+                    "expected symptom, not a physics result."
+                )
             continue
         match = LW_TABLE_ENERGY_LOG_RE.search(text)
         if match is None:
