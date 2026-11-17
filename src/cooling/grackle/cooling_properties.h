@@ -51,7 +51,7 @@ struct cooling_function_data {
    * (2004) */
   int H2_cie_cooling;
 
-  /*! Flag to enable H2 formation on dust grains */
+  /*! Flag to enable H2 formation on dust grains (-1: not set by the user) */
   int H2_on_dust;
 
   /*! Flag to enable heating from H2 photodissociation and UV pumping */

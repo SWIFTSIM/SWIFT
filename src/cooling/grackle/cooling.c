@@ -1797,7 +1797,7 @@ void cooling_init_grackle(struct cooling_function_data *cooling) {
   chemistry->three_body_rate = cooling->H2_three_body_rate;
   chemistry->cmb_temperature_floor = cooling->cmb_temperature_floor;
   chemistry->cie_cooling = cooling->H2_cie_cooling;
-  chemistry->h2_on_dust = cooling->H2_on_dust;
+  chemistry->h2_on_dust = max(cooling->H2_on_dust, 0);
 #ifdef GRACKLE_HAS_H2_PHOTODISSOCIATION_HEATING
   chemistry->H2_photodissociation_heating =
       cooling->H2_photodissociation_heating;
