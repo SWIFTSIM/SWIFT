@@ -381,7 +381,8 @@ def check_run_lw_calibration(
 
     * one printing ``sigma_H2/E_LW``: it multiplies the LW energy flux by the
       Draine-field quotient, which is what `unshielded_rate` reproduces.
-      No bias is possible;
+      The logged quotient is compared with the header value and a
+      difference is reported as a bias;
     * one printing only the table's mean LW photon energy: it divided the flux
       by that value while the cross section stayed pinned to 12.2 eV, so its
       rates sit below this script's by the ratio of the two energies. The
