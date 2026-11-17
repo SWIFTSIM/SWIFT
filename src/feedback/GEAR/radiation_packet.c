@@ -3005,7 +3005,9 @@ static void radiation_packet_line_begin(
  * the shift sum leave in the share of the LW energy that leaves. The held
  * light takes the dissociating energy of what was released, so its
  * transmission is the dissociating over the LW energy, at most 1. Its column
- * is the one whose factor in the gas of the particle is that transmission.
+ * is the one whose factor in the gas of the particle is that transmission times
+ * the factor at column 0, as a hop lowers the transmission by the ratio of the
+ * factors.
  *
  * @param sl The slot.
  * @param st The state before the merge.
@@ -3045,7 +3047,9 @@ static void radiation_packet_line_end(
     t = released_dissociating / energy;
     if (!(t > 0.)) t = 0.;
     if (t > 1.) t = 1.;
-    if (b5 > 0.) N = radiation_h2_shielding_inverse(t, exponent, b5);
+    if (b5 > 0.)
+      N = radiation_h2_shielding_inverse(
+          t * radiation_h2_shielding_factor(0., exponent, b5), exponent, b5);
     if (released_dissociating > 0.) dv = released_shift / released_dissociating;
   }
   sl->H2_transmission = (float)t;
