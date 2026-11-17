@@ -835,7 +835,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
               : arrival;
     }
     float line_transmission = 1.f, line_shift = 0.f;
-    if (r->feedback_data.ISRF_H2_line_absorption) {
+    if (r->feedback_data.ISRF_H2_line_absorption &&
+        sl->band[ISRF_OPERATOR_LW].energy > 0.f) {
       const double closing = ((double)r->v[0] - s->v[0]) * sl->direction[0] +
                              ((double)r->v[1] - s->v[1]) * sl->direction[1] +
                              ((double)r->v[2] - s->v[2]) * sl->direction[2];
@@ -1040,7 +1041,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   /* Without a limit the reservoir spreads the light over the star's next
      step; with one, the arrival times below are used. */
   float line_transmission = 1.f, line_shift = 0.f;
-  if (pj->feedback_data.ISRF_H2_line_absorption)
+  if (pj->feedback_data.ISRF_H2_line_absorption &&
+      energy[ISRF_OPERATOR_LW] > 0.)
     radiation_packet_line_hop(pj, 1.f, 0.f, 0.f, 0., a * r, &line_transmission,
                               &line_shift);
   radiation_packet_deliver_with_lines(
