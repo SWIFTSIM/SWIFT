@@ -3833,7 +3833,7 @@ void radiation_packet_end_gradient(struct part *p, const float a,
       band->photons = 0.f;
     }
 
-    pk->occupied_slots &= (uint16_t)~(1u << s);
+    pk->occupied_slots &= ~(UINT64_C(1) << s);
   }
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {

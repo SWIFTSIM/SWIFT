@@ -404,21 +404,17 @@ __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
   return 1;
 }
 
-_Static_assert(RADIATION_PACKET_SLOTS <= 16,
-               "The mask of occupied slots is a uint16_t.");
-
 /**
  * @brief The mask of the slots that hold energy, by scanning them.
  *
  * @param pk The packet.
  */
-__attribute__((always_inline)) INLINE static uint16_t
+__attribute__((always_inline)) INLINE static uint64_t
 radiation_packet_scan_occupied(const struct feedback_isrf_packet_data *pk) {
-  uint16_t mask = 0;
+  uint64_t mask = 0;
 
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-    if (!radiation_packet_slot_is_empty(&pk->slot[s]))
-      mask |= (uint16_t)(1u << s);
+    if (!radiation_packet_slot_is_empty(&pk->slot[s])) mask |= UINT64_C(1) << s;
 
   return mask;
 }
@@ -445,12 +441,13 @@ radiation_packet_refresh_occupied(struct feedback_isrf_packet_data *pk) {
 __attribute__((always_inline)) INLINE static void
 radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
                                 const long long id) {
-  const uint16_t scanned = radiation_packet_scan_occupied(pk);
+  const uint64_t scanned = radiation_packet_scan_occupied(pk);
   if (pk->occupied_slots != scanned)
     error(
-        "Particle %lld has the occupied-slot mask %#x but its held energies "
-        "give %#x.",
-        id, (unsigned)pk->occupied_slots, (unsigned)scanned);
+        "Particle %lld has the occupied-slot mask %#llx but its held energies "
+        "give %#llx.",
+        id, (unsigned long long)pk->occupied_slots,
+        (unsigned long long)scanned);
 }
 #else
 __attribute__((always_inline)) INLINE static void
@@ -770,8 +767,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 
   radiation_packet_check_occupied(sender_packet, sender->id);
 
-  for (uint32_t m = sender_packet->occupied_slots; m != 0; m &= m - 1) {
-    const int k = __builtin_ctz(m);
+  for (uint64_t m = sender_packet->occupied_slots; m != 0; m &= m - 1) {
+    const int k = __builtin_ctzll(m);
     const struct feedback_isrf_packet_slot_data *sl = &sender_packet->slot[k];
 
     if (!have_dxw) {

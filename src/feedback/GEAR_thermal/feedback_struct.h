@@ -435,8 +435,9 @@ struct feedback_isrf_packet_data {
 
   /*! Bit `s` is set when the held packet of slot `s` has energy in any band
       (#radiation_packet_slot_is_empty is false). Kept by every writer of the
-      held energy, see #radiation_packet_refresh_occupied. Fills padding. */
-  uint16_t occupied_slots;
+      held energy, see #radiation_packet_refresh_occupied. 64 bits hold up to
+      48 slots. */
+  uint64_t occupied_slots;
 
   /*! End of the current step of the particle, set at its merge, or at the
       drift of its first step if it is inactive then
