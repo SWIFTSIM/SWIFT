@@ -180,9 +180,12 @@ Eq. (1) over ``3.3e-11 G_0`` is ``6.994 * u_LW / (u_PE + u_LW)``: the
 constant is
 ``(sigma_H2/E_LW) * 1.6e-3 erg s^-1 cm^-2 / 3.3e-11 s^-1``. It is 1 only
 for an LW fraction of 0.143. The Draine (1978) field, which the
-``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 1.04). The
-script prints the measured ratio and ``6.994`` times the measured LW
-fraction.
+``3.3e-11 G_0`` rate assumes, has an LW fraction of 0.148 (ratio 1.04). About
+half of that 4 per cent gap is the choice of unit: Draine and Bertoldi give
+their rate per ``chi``, the field at 1000 A relative to Habing, while this
+script divides by ``G_0``, the band-integrated strength. For the Draine shape
+``chi`` is 1.7105 and ``G_0`` is 1.675, a ratio of 1.021. The script prints the measured ratio and ``6.994``
+times the measured LW fraction.
 
 Mode-choice diagnostic (reported, never gated)
 ----------------------------------------------
@@ -1176,7 +1179,7 @@ def main() -> int:
         f"{measured_rate_ratio:.4g}; LW fraction u_LW/(u_PE+u_LW) "
         f"{lw_fraction:.4g}, times {RATE_RATIO_PER_LW_FRACTION:.4g} = "
         f"{RATE_RATIO_PER_LW_FRACTION * lw_fraction:.4g} (Draine 1978 field: "
-        f"LW fraction 0.148, ratio 1.04)"
+        f"LW fraction 0.148, ratio 1.04, of which 1.021 is the chi to G_0 unit)"
     )
     print()
     print(f"Radial profiles at the last snapshot:")
