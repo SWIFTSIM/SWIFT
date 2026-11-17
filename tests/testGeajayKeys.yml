@@ -1,0 +1,19 @@
+InternalUnitSystem:
+  UnitMass_in_cgs:     2.0e33
+  UnitLength_in_cgs:   3.0857e21
+  UnitVelocity_in_cgs: 1.0e5
+  UnitCurrent_in_cgs:  1
+  UnitTemp_in_cgs:     1
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   100.
+GEARChemistry:
+  initial_metallicity: 0.01295
+GeajayCooling:
+  dust_to_gas_model: linear
+  cloudy_table_file: CloudyData_UVB=HM2012.h5
+  with_uv_background: 0
+  redshift: 0
+  with_metal_cooling: 1
+  thermal_time_myr: 5

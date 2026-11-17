@@ -164,6 +164,14 @@ testComovingCooling_SOURCES = testComovingCooling.c
 
 testFeedback_SOURCES = testFeedback.c
 
+# Key arrival test of the geajay cooling module, run by testGeajayKeys.sh. Built
+# on request, not by "make check": it needs the option lists of the geajay
+# sources and Cloudy tables. Use make testGeajayKeys GEAJAY_SRC=<geajay source>.
+EXTRA_PROGRAMS = testGeajayKeys
+testGeajayKeys_SOURCES = testGeajayKeys.c
+testGeajayKeys_CFLAGS = $(AM_CFLAGS) $(GEAJAY_INCS) -I$(GEAJAY_SRC)/src
+testGeajayKeys_LDADD = $(GEAJAY_LIBS)
+
 testHashmap_SOURCES = testHashmap.c
 
 testLog_SOURCES = testLog.c
@@ -198,4 +206,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              test27cellsStars.sh test27cellsStarsPerturbed.sh star_tolerance_27_normal.dat \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
-             testGeajayPhotoelectricKey.sh
+             testGeajayPhotoelectricKey.sh testGeajayKeys.sh testGeajayKeys.cases \
+             testGeajayKeys.yml

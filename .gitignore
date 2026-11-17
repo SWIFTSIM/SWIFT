@@ -199,6 +199,7 @@ tests/testCbrt
 tests/testFormat.sh
 tests/testCooling
 tests/testCoolingSplit
+tests/testGeajayKeys
 tests/testComovingCooling
 tests/testHashmap
 tests/testNeutrinoCosmology
