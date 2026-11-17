@@ -23,7 +23,6 @@ delta_time=${delta_time:=1e-5} #Snapshots:delta_time override (internal units)
 initial_metallicity=${initial_metallicity:=1} #GEARChemistry:initial_metallicity override (Z/Zsun)
 with_pe_heating=${with_pe_heating:=1} #GEARFeedback:with_interstellar_radiation_field override (1=on, 0=off)
 run_name=${run_name:=""}
-grackle_0_pe_ok=${grackle_0_pe_ok:=0} #1 allows photoelectric heating at grackle_0 (library with a zero electron density guard)
 pe_model=${pe_model:=""} #Photoelectric heating model of the cooling library (see README); empty keeps the params file value
 extra_args=${extra_args:=""} #Further swift arguments, e.g. "-P GEARFeedback:ISRF_propagation:0"
 
@@ -47,13 +46,11 @@ case "$cooling_library" in
         extra_args="-P GeajayCooling:primordial_chemistry_network:${cooling_library#geajay_} $extra_args"
         ;;
     grackle_0)
-        if [ "$with_pe_heating" != "0" ] && [ "$grackle_0_pe_ok" != "1" ]; then
+        if [ "$with_pe_heating" != "0" ]; then
             echo "Photoelectric heating at grackle_0 gives NaN: the Grackle grain" \
                  "recombination term divides by the electron density, which" \
                  "this mode estimates as zero for cold gas." \
-                 "Build with grackle_1 or higher, or with geajay." \
-                 "A Grackle library that guards a zero electron density" \
-                 "can set grackle_0_pe_ok=1." >&2
+                 "Build with grackle_1 or higher, or with geajay." >&2
             exit 1
         fi
         ;;
