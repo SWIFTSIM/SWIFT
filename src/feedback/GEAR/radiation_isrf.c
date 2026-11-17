@@ -43,6 +43,7 @@
 #include "minmax.h"
 #include "physical_constants.h"
 #include "radiation.h"
+#include "radiation_h2_shielding.h"
 #include "radiation_isrf.h"
 #include "radiation_packet.h"
 #include "radiation_propagation_iact.h"
@@ -86,6 +87,12 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->rho_prev = 1.0f;
   fd->dt_prev = 0.f;
   fd->ISRF_packet_transport = 0;
+  fd->ISRF_H2_line_absorption = 0;
+  fd->LW_dissociating_u = 0.;
+  fd->H2_column_per_length = 0.f;
+  fd->H2_shielding_exponent = 0.f;
+  fd->H2_line_width_km_s = 0.f;
+  fd->H2_velocity_limit = 0.f;
   memset(&fd->isrf_packet, 0, sizeof(struct feedback_isrf_packet_data));
 }
 
@@ -100,6 +107,51 @@ static void radiation_set_part_transport(struct part *p,
                                          const struct engine *e) {
   struct feedback_part_data *fd = &p->feedback_data;
   fd->ISRF_packet_transport = e->feedback_props->ISRF_propagation;
+  fd->ISRF_H2_line_absorption = e->feedback_props->ISRF_H2_line_absorption;
+}
+
+/**
+ * @brief Cache the H2 gas properties that the hop of a share and the merge of
+ * a slot read, at the drifted state of the particle.
+ *
+ * Needs a cooling network that tracks H2. Without one the column is 0.
+ *
+ * @param p The #part.
+ * @param xp The #xpart of the particle.
+ * @param e The #engine.
+ */
+static void radiation_cache_H2_line_absorption(struct part *p,
+                                               const struct xpart *xp,
+                                               const struct engine *e) {
+  struct feedback_part_data *fd = &p->feedback_data;
+  double X_H2 = 0., mu = 0., T = 0.;
+#if defined(GEAR_COOLING) && COOLING_NETWORK > 1
+  X_H2 = xp->cooling_data.H2I_frac;
+  mu = cooling_get_mean_molecular_weight(
+      e->physical_constants, e->internal_units, e->cosmology,
+      e->hydro_properties, e->cooling_func, p, xp);
+  T = cooling_get_temperature(e->physical_constants, e->hydro_properties,
+                              e->internal_units, e->cosmology, e->cooling_func,
+                              p, xp);
+#endif
+  const struct unit_system *us = e->internal_units;
+  const double rho_cgs = (double)hydro_get_physical_density(p, e->cosmology) *
+                         units_cgs_conversion_factor(us, UNIT_CONV_DENSITY);
+  const double m_H_cgs = e->physical_constants->const_proton_mass *
+                         units_cgs_conversion_factor(us, UNIT_CONV_MASS);
+  const double k_B_cgs = e->physical_constants->const_boltzmann_k *
+                         units_cgs_conversion_factor(us, UNIT_CONV_ENERGY) /
+                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+  double column_per_length, exponent, b5, velocity_limit;
+  radiation_h2_shielding_receiver_cache(
+      X_H2, rho_cgs, mu, T, m_H_cgs, k_B_cgs,
+      units_cgs_conversion_factor(us, UNIT_CONV_LENGTH),
+      units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY), &column_per_length,
+      &exponent, &b5, &velocity_limit);
+  fd->H2_column_per_length = (float)column_per_length;
+  fd->H2_shielding_exponent = (float)exponent;
+  fd->H2_line_width_km_s = (float)b5;
+  fd->H2_velocity_limit = (float)velocity_limit;
 }
 
 /**
@@ -110,9 +162,10 @@ static void radiation_set_part_transport(struct part *p,
  * still hold the previous step's converged values.
  *
  * @param p The #part to reset.
+ * @param xp The #xpart of the particle.
  * @param e The #engine.
  */
-void radiation_snapshot_part_propagation(struct part *p,
+void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
                                          const struct engine *e) {
   /* Cached even without ISRF_propagation: it must never be 0. */
   const float rho_comoving = hydro_get_comoving_density(p);
@@ -142,6 +195,9 @@ void radiation_snapshot_part_propagation(struct part *p,
       radiation_get_part_linear_absorption_rate(
           e->internal_units, e->physical_constants, D_relative, rho_phys,
           RADIATION_SIGMA_D_LW_CGS);
+
+  if (e->feedback_props->ISRF_H2_line_absorption)
+    radiation_cache_H2_line_absorption(p, xp, e);
 
   /* Physical timestep of this particle. Can be exactly 0 before its first
    * step: cached unfloored so readers can detect that case. */

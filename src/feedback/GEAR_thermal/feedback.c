@@ -419,7 +419,7 @@ float feedback_compute_part_timestep(const struct part *restrict p,
  */
 void feedback_reset_part(struct part *p, struct xpart *xp,
                          const struct engine *e) {
-  radiation_snapshot_part_propagation(p, e);
+  radiation_snapshot_part_propagation(p, xp, e);
   radiation_reset_part_ISRF_illumination_tag(p, e);
 }
 

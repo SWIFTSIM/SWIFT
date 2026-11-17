@@ -79,7 +79,7 @@ int radiation_packet_read_test_beams(
 #endif
 
 void radiation_first_init_part(struct part *restrict p);
-void radiation_snapshot_part_propagation(struct part *p,
+void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
                                          const struct engine *e);
 void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
 void radiation_end_force_propagation(struct part *p, const struct engine *e);
@@ -121,7 +121,8 @@ radiation_packet_read_test_beams(
 __attribute__((always_inline)) INLINE static void radiation_first_init_part(
     struct part *restrict p) {}
 __attribute__((always_inline)) INLINE static void
-radiation_snapshot_part_propagation(struct part *p, const struct engine *e) {}
+radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
+                                    const struct engine *e) {}
 __attribute__((always_inline)) INLINE static void
 radiation_end_gradient_propagation(struct part *p, const struct engine *e) {}
 __attribute__((always_inline)) INLINE static void
