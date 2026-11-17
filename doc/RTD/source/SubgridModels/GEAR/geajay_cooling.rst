@@ -183,6 +183,15 @@ local field only, to which the background G\ :sub:`0` is added.
      - (optional) Constant Lyman-Werner background J21 (Grackle ``LWbackground_intensity``); negative:
        the library default. Above 0 it replaces the table k31 and adds to
        ``rt_h2_dissociation_rate_per_s`` (default: -1).
+   * - ``lw_background_sawtooth_suppression``
+     - (optional) 0 or 1. Lowers the Lyman-Werner background of the table before reionisation, as in
+       Grackle. Needs ``with_uv_background`` 1 and the table k31 (``lw_background_model``
+       ``uv_table``); the library stops the run otherwise (default: 0).
+   * - ``uv_background_redshift_on``, ``uv_background_redshift_full_on``,
+       ``uv_background_redshift_drop``, ``uv_background_redshift_off``
+     - (optional) Redshifts where the UV background switches on, is fully on, starts to drop and
+       switches off. Read only with ``with_uv_background`` 1. Unset (-99999): the redshift range of the
+       Cloudy table, the last redshift for the first two and the first for the others (default: unset).
    * - ``isrf_background_model``
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0`: ``default``,
        ``none``, ``constant`` or ``uv_table`` (``G0_habing`` of a UV rates file, log-linear in 1 + z;

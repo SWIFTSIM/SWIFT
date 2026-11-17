@@ -1091,6 +1091,39 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_uv_background =
       parser_get_param_int(parameter_file, "GeajayCooling:with_uv_background");
 
+  static const char *uvb_redshift_keys[] = {
+      "GeajayCooling:uv_background_redshift_on",
+      "GeajayCooling:uv_background_redshift_full_on",
+      "GeajayCooling:uv_background_redshift_drop",
+      "GeajayCooling:uv_background_redshift_off"};
+  double uvb_redshifts[4];
+  for (int i = 0; i < 4; i++) {
+    uvb_redshifts[i] = COOLING_GEAJAY_REDSHIFT_UNSET;
+    if (cooling->with_uv_background) {
+      uvb_redshifts[i] = parser_get_opt_param_double(
+          parameter_file, uvb_redshift_keys[i], COOLING_GEAJAY_REDSHIFT_UNSET);
+      if (!cooling_double_is_finite(&uvb_redshifts[i]))
+        error("%s must be a finite redshift, got %g.", uvb_redshift_keys[i],
+              uvb_redshifts[i]);
+    } else
+      cooling_refuse_unread_double(parameter_file, uvb_redshift_keys[i],
+                                   COOLING_GEAJAY_REDSHIFT_UNSET,
+                                   "GeajayCooling:with_uv_background is 0");
+  }
+  cooling->uv_background_redshift_on = uvb_redshifts[0];
+  cooling->uv_background_redshift_full_on = uvb_redshifts[1];
+  cooling->uv_background_redshift_drop = uvb_redshifts[2];
+  cooling->uv_background_redshift_off = uvb_redshifts[3];
+
+  cooling->lw_background_sawtooth_suppression = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:lw_background_sawtooth_suppression", 0);
+  if (cooling->lw_background_sawtooth_suppression != 0 &&
+      cooling->lw_background_sawtooth_suppression != 1)
+    error(
+        "GeajayCooling:lw_background_sawtooth_suppression must be 0 or 1, got "
+        "%d.",
+        cooling->lw_background_sawtooth_suppression);
+
   cooling->redshift =
       parser_get_param_double(parameter_file, "GeajayCooling:redshift");
 

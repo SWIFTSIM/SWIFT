@@ -780,6 +780,14 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("chemistry_data.HydrogenFractionByMass = %.3g",
           cooling->chemistry_data.HydrogenFractionByMass);
   message("chemistry_data.Gamma = %.6g", cooling->chemistry_data.Gamma);
+  message("chemistry_data.UVbackground_redshift_on, _fullon, _drop, _off = %g, "
+          "%g, %g, %g",
+          cooling->chemistry_data.UVbackground_redshift_on,
+          cooling->chemistry_data.UVbackground_redshift_fullon,
+          cooling->chemistry_data.UVbackground_redshift_drop,
+          cooling->chemistry_data.UVbackground_redshift_off);
+  message("chemistry_data.LWbackground_sawtooth_suppression = %d",
+          cooling->chemistry_data.LWbackground_sawtooth_suppression);
   message("chemistry_data.DeuteriumToHydrogenRatio = %.6g",
           cooling->chemistry_data.DeuteriumToHydrogenRatio);
   message("chemistry_data.h2_on_dust = %d", cooling->chemistry_data.h2_on_dust);
@@ -1890,6 +1898,18 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   if (cooling->lw_background_j21 >= 0.)
     chemistry->LWbackground_intensity = cooling->lw_background_j21;
+  chemistry->LWbackground_sawtooth_suppression =
+      cooling->lw_background_sawtooth_suppression;
+  if (cooling->uv_background_redshift_on > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_on = cooling->uv_background_redshift_on;
+  if (cooling->uv_background_redshift_full_on > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_fullon =
+        cooling->uv_background_redshift_full_on;
+  if (cooling->uv_background_redshift_drop > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_drop =
+        cooling->uv_background_redshift_drop;
+  if (cooling->uv_background_redshift_off > COOLING_GEAJAY_REDSHIFT_UNSET)
+    chemistry->UVbackground_redshift_off = cooling->uv_background_redshift_off;
   if (cooling->isrf_from_field) chemistry->use_isrf_field = 1;
 
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of

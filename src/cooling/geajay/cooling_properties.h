@@ -35,6 +35,9 @@
  * @brief Properties of the cooling with the geajay library.
  */
 
+/*! The unset UV background redshift of the library (FLOAT_UNDEFINED) */
+#define COOLING_GEAJAY_REDSHIFT_UNSET -99999.
+
 /**
  * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
  *
@@ -218,6 +221,19 @@ struct cooling_function_data {
   /*! Constant LW background J21 (Grackle LWbackground_intensity); negative:
    * the library default. */
   double lw_background_j21;
+
+  /*! Redshifts where the UV background switches on, is fully on, starts to
+   * drop and switches off (GeajayCooling:uv_background_redshift_on, _full_on,
+   * _drop and _off, chemistry_data.UVbackground_redshift_on, _fullon, _drop
+   * and _off). COOLING_GEAJAY_REDSHIFT_UNSET: the redshift range of the table.
+   */
+  double uv_background_redshift_on, uv_background_redshift_full_on,
+      uv_background_redshift_drop, uv_background_redshift_off;
+
+  /*! Sawtooth suppression of the table Lyman-Werner background
+   * (GeajayCooling:lw_background_sawtooth_suppression,
+   * chemistry_data.LWbackground_sawtooth_suppression). */
+  int lw_background_sawtooth_suppression;
 
   /*! G_0 is read from the particle field (Grackle use_isrf_field). */
   int isrf_from_field;
