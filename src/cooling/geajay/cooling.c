@@ -1789,10 +1789,10 @@ static void cooling_check_initial_deuterium(
     error(
         "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio and "
         "initial_hdi_to_h_ratio (number ratios to H) give a deuterium to "
-        "hydrogen mass ratio of %g, but the total of geajay is %g and it "
+        "hydrogen mass ratio of %.9g, but the total of geajay is %.9g and it "
         "rescales the deuterium to it at the first call. Set "
-        "GeajayCooling:deuterium_to_hydrogen_mass_ratio to %g, or change the "
-        "initial ratios so that 2 x their sum is %g.",
+        "GeajayCooling:deuterium_to_hydrogen_mass_ratio to %.9g, or change "
+        "the initial ratios so that 2 x their sum is %.9g.",
         total, wanted, total, wanted);
 }
 

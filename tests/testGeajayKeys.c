@@ -122,7 +122,8 @@ geajay_cosmic_ray_reduced_context *geajay_cosmic_ray_reduced_context_create(
   printf("LIB cr.rate_per_energy_density=%.10g\n", s->rate_per_energy_density);
   printf("LIB cr.constant_rate=%.10g\n", s->constant_rate);
   printf("LIB cr.heat_per_ionisation=%.10g\n", s->heat_per_ionisation);
-  printf("LIB cr.coulomb_loss_coefficient=%.10g\n", s->coulomb_loss_coefficient);
+  printf("LIB cr.coulomb_loss_coefficient=%.10g\n",
+         s->coulomb_loss_coefficient);
   printf("LIB cr.hadronic_loss_coefficient=%.10g\n",
          s->hadronic_loss_coefficient);
   return real(context, s, error);

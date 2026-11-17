@@ -26,7 +26,9 @@
 # only needs a different value. An expected "!text" makes the test file a
 # refusal: the program must stop with text in its output. An expected "=line"
 # only needs the line in the output of the test file (a default that must not
-# move). The lines of a file are separated by ";", a later line replaces an
+# move). An expected "@key" is a refusal that suggests a value ("Set
+# GeajayCooling:key to <value>,"): the test file must stop, and a third file
+# with the suggested value must start. The lines of a file are separated by ";", a later line replaces an
 # earlier key and "-key" drops one. Exit code 0: every case passes.
 
 here=$(dirname "$(realpath "$0")")
@@ -93,6 +95,21 @@ while IFS='|' read -r id key base test expected hint; do
       evid=" [refused: $text]"
     else
       verdict="FAIL(no refusal with: $text; exit $st)"
+    fi
+  elif [[ "$expected" == "@"* ]]; then
+    name=${expected#@}
+    value=$(sed -n "s/.*GeajayCooling:$name to \([^,]*\),.*/\1/p" "$d/test.out" | head -n 1)
+    if [ $st -eq 0 ] || [ -z "$value" ]; then
+      verdict="FAIL(no suggested value for $name; exit $st)"
+    else
+      mk "$d/fed.yml" "$base;$test;$name: $value"
+      "$bin" "$d/fed.yml" > "$d/fed.out" 2>&1
+      sf=$?
+      if [ $sf -eq 0 ] && grep -q KEYPASS_DONE "$d/fed.out"; then
+        evid=" [suggested $name: $value starts]"
+      else
+        verdict="FAIL(suggested $name: $value stops; exit $sf: $(tail -n 2 "$d/fed.out" | tr '\n' ' ' | cut -c1-200))"
+      fi
     fi
   elif [ $st -ne 0 ] || ! grep -q KEYPASS_DONE "$d/test.out"; then
     verdict="FAIL(test exit $st: $(tail -n 2 "$d/test.out" | tr '\n' ' ' | cut -c1-300))"
