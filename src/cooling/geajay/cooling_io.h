@@ -122,25 +122,24 @@ INLINE static void convert_part_cooling_rates(const struct engine *e,
 
 #if COOLING_GEAJAY_MODE >= 1
 /**
- * @brief Cosmic-ray value of a particle in internal units, for the snapshot.
+ * @brief Stored cosmic-ray energy density of a particle in internal units, for
+ * the snapshot.
  *
- * The stored value is proper and in cgs: s^-1 for an ionisation rate, eV
- * cm^-3 for an energy density.
+ * The stored value is proper and in eV cm^-3.
  *
  * @param e The #engine.
  * @param p The #part.
  * @param xp The #xpart.
- * @param ret (return) The value, 1 / time or energy / volume.
+ * @param ret (return) The value, energy / volume.
  */
 INLINE static void convert_part_cosmic_ray_value(const struct engine *e,
                                                  const struct part *p,
                                                  const struct xpart *xp,
                                                  float *ret) {
   const struct unit_system *us = e->internal_units;
-  double factor = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
-  if (cooling_cosmic_ray_input_is_energy_density())
-    factor = e->physical_constants->const_electron_volt *
-             pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
+  const double factor =
+      e->physical_constants->const_electron_volt *
+      pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
   *ret = (float)(xp->cooling_data.cosmic_ray_value * factor);
 }
 
@@ -285,17 +284,15 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 #if COOLING_GEAJAY_MODE >= 1
   if (cooling_with_cosmic_rays()) {
-    list[num] = io_make_physical_output_field_convert_part(
-        "CosmicRayValues", FLOAT, 1,
-        cooling_cosmic_ray_input_is_energy_density() ? UNIT_CONV_ENERGY_DENSITY
-                                                     : UNIT_CONV_INV_TIME,
-        0.f, parts, xparts, /*can convert to comoving=*/0,
-        convert_part_cosmic_ray_value,
-        "Cosmic-ray value of the cooling, proper: the primary ionisation rate "
-        "per H or the cosmic-ray energy density, as "
-        "GeajayCooling:cosmic_ray_input says (not read with the input "
-        "constant).");
-    num++;
+    if (cooling_cosmic_ray_source_is_per_particle()) {
+      list[num] = io_make_physical_output_field_convert_part(
+          "CosmicRayValues", FLOAT, 1, UNIT_CONV_ENERGY_DENSITY, 0.f, parts,
+          xparts, /*can convert to comoving=*/0, convert_part_cosmic_ray_value,
+          "Cosmic-ray energy density stored in the particle, proper, written "
+          "by the module that injects it (GeajayCooling:cosmic_ray_source: "
+          "per_particle).");
+      num++;
+    }
 
     list[num] = io_make_physical_output_field_convert_part(
         "CosmicRayEnergyLossRates", FLOAT, 1, UNIT_CONV_POWER_DENSITY, 0.f,
@@ -524,10 +521,16 @@ INLINE static void cooling_read_cosmic_ray_parameters(
   geajay_cosmic_ray_settings *settings = &cooling->cosmic_ray_settings;
   geajay_cosmic_ray_settings_init(settings);
   cooling->cosmic_ray_initial_value = 0.f;
+  cooling->cosmic_ray_source = cooling_cosmic_ray_source_constant;
+  cooling->cosmic_ray_fire2_energy_density = 0.;
 
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_rays");
   if (settings->network == GEAJAY_COSMIC_RAYS_OFF) {
     const char *off = "GeajayCooling:cosmic_rays is off";
+    cooling_refuse_unread_string(
+        parameter_file, "GeajayCooling:cosmic_ray_source", "constant", off);
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_fire2_energy_density", off);
     cooling_refuse_unread_cosmic_ray_option(parameter_file, "cosmic_ray_input",
                                             off);
     cooling_refuse_unread_cosmic_ray_option(parameter_file,
@@ -550,7 +553,37 @@ INLINE static void cooling_read_cosmic_ray_parameters(
     return;
   }
 
+  char source[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file, "GeajayCooling:cosmic_ray_source",
+                              source, "constant");
+  if (strcmp(source, "constant") == 0)
+    cooling->cosmic_ray_source = cooling_cosmic_ray_source_constant;
+  else if (strcmp(source, "per_particle") == 0)
+    cooling->cosmic_ray_source = cooling_cosmic_ray_source_per_particle;
+  else if (strcmp(source, "fire2") == 0)
+    cooling->cosmic_ray_source = cooling_cosmic_ray_source_fire2;
+  else
+    error(
+        "GeajayCooling:cosmic_ray_source must be constant, per_particle or "
+        "fire2, got '%s'.",
+        source);
+  const int host_source =
+      cooling->cosmic_ray_source != cooling_cosmic_ray_source_constant;
+
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_input");
+  if (host_source) {
+    if (parser_does_param_exist(parameter_file,
+                                "GeajayCooling:cosmic_ray_input") &&
+        settings->input != GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY)
+      error(
+          "GeajayCooling:cosmic_ray_input must be energy_density with "
+          "GeajayCooling:cosmic_ray_source %s.",
+          source);
+    if (geajay_cosmic_ray_settings_set(settings, "cosmic_ray_input",
+                                       "energy_density") == GEAJAY_FAIL)
+      error("geajay refused the input energy_density: %s",
+            geajay_last_error_message());
+  }
   cooling_set_cosmic_ray_option(parameter_file, settings, "cosmic_ray_heating");
   if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
     cooling_set_cosmic_ray_option(parameter_file, settings,
@@ -583,8 +616,28 @@ INLINE static void cooling_read_cosmic_ray_parameters(
         parameter_file, "cosmic_ray_heat_per_ionisation",
         "GeajayCooling:cosmic_ray_heating is not fixed_energy");
 
-  /* The initial value is SWIFT's: read only by a per-particle input */
-  if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+  /* The fixed e_cr is SWIFT's: read by the source fire2 only */
+  const char *fire2_key = "GeajayCooling:cosmic_ray_fire2_energy_density";
+  if (cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2) {
+    if (!parser_does_param_exist(parameter_file, fire2_key))
+      error("%s is required with GeajayCooling:cosmic_ray_source: fire2.",
+            fire2_key);
+    cooling->cosmic_ray_fire2_energy_density =
+        parser_get_param_double(parameter_file, fire2_key);
+    if (!cooling_double_is_finite(&cooling->cosmic_ray_fire2_energy_density) ||
+        !(cooling->cosmic_ray_fire2_energy_density > 0.))
+      error("%s must be finite and > 0, got %e.", fire2_key,
+            cooling->cosmic_ray_fire2_energy_density);
+  } else
+    cooling_refuse_unread_key(parameter_file, fire2_key,
+                              "GeajayCooling:cosmic_ray_source is not fire2");
+
+  /* The constant value is SWIFT's: read by the source constant only */
+  if (host_source)
+    cooling_refuse_unread_key(
+        parameter_file, "GeajayCooling:cosmic_ray_initial_value",
+        "GeajayCooling:cosmic_ray_source is not constant");
+  else if (settings->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
     cooling_refuse_unread_key(parameter_file,
                               "GeajayCooling:cosmic_ray_initial_value",
                               "GeajayCooling:cosmic_ray_input is constant");

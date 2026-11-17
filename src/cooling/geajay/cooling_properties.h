@@ -39,6 +39,19 @@
 #define COOLING_GEAJAY_REDSHIFT_UNSET -99999.
 
 /**
+ * @brief Where the cosmic-ray value of a particle comes from
+ * (GeajayCooling:cosmic_ray_source).
+ */
+enum cooling_cosmic_ray_source {
+  /*! One value for the whole run, from the parameter file */
+  cooling_cosmic_ray_source_constant = 0,
+  /*! The energy density stored in each particle, written by another module */
+  cooling_cosmic_ray_source_per_particle = 1,
+  /*! FIRE-2 law of the local n_H, computed at each call, not stored */
+  cooling_cosmic_ray_source_fire2 = 2
+};
+
+/**
  * @brief Self-shielding of the UV background (GeajayCooling:uv_self_shielding).
  *
  * The values 0 to 4 are those of geajay_uv_self_shielding.
@@ -245,9 +258,17 @@ struct cooling_function_data {
   /*! Converts rho * path (internal units) to the H nucleon column [cm^-2]. */
   double column_factor;
 
-  /*! Initial cosmic-ray value of every particle, in the unit of the input
-   * (GeajayCooling:cosmic_ray_initial_value); 0 with the input "constant". */
+  /*! Source of the cosmic-ray value (GeajayCooling:cosmic_ray_source). */
+  enum cooling_cosmic_ray_source cosmic_ray_source;
+
+  /*! Value of every particle with the source "constant", in the unit of the
+   * input (GeajayCooling:cosmic_ray_initial_value); 0 with the input
+   * "constant". */
   float cosmic_ray_initial_value;
+
+  /*! e_cr of the source "fire2", eV cm^-3
+   * (GeajayCooling:cosmic_ray_fire2_energy_density). */
+  double cosmic_ray_fire2_energy_density;
 
   /*! Enable/Disable metal cooling */
   int with_metal_cooling;

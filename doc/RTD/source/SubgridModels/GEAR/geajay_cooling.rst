@@ -409,8 +409,8 @@ relative 1e-6. For example, ``initial_di_to_h_ratio: 4e-5`` alone needs
 Cosmic rays
 -----------
 
-With ``cosmic_rays`` ``reduced`` the fields ``CosmicRayValues`` and ``CosmicRayEnergyLossRates`` join
-the snapshot, but ``swift -o`` does not list them.
+With ``cosmic_rays`` ``reduced`` the field ``CosmicRayEnergyLossRates`` joins the snapshot, and with
+``cosmic_ray_source`` ``per_particle`` also ``CosmicRayValues``. ``swift -o`` does not list them.
 
 .. list-table::
    :header-rows: 1
@@ -421,13 +421,22 @@ the snapshot, but ``swift -o`` does not list them.
    * - ``cosmic_rays``
      - (optional) Cosmic-ray network: ``off`` or ``reduced`` (needs ``primordial_chemistry_network``
        ``H_He`` or above) (default: ``off``).
+   * - ``cosmic_ray_source``
+     - (optional) Read only with ``cosmic_rays`` ``reduced``. Where the cosmic-ray value of a particle
+       comes from: ``constant``, ``per_particle`` or ``fire2`` (default: ``constant``). The three modes
+       exclude each other; see below.
    * - ``cosmic_ray_input``
-     - (optional) Read only with ``cosmic_rays`` ``reduced``. Meaning of the per-particle value:
-       ``ionisation_rate`` (s\ :sup:`-1` per H), ``energy_density`` (eV cm\ :sup:`-3`) or ``constant``
-       (default: ``ionisation_rate``).
+     - (optional) Read only with ``cosmic_rays`` ``reduced``. Meaning of the value with the source
+       ``constant``: ``ionisation_rate`` (s\ :sup:`-1` per H), ``energy_density`` (eV cm\ :sup:`-3`) or
+       ``constant`` (default: ``ionisation_rate``). The sources ``per_particle`` and ``fire2`` use
+       ``energy_density``: the key may be absent or ``energy_density``, any other value stops the run.
    * - ``cosmic_ray_initial_value``
-     - Read only with ``cosmic_rays`` ``reduced`` and a per-particle input (``ionisation_rate`` or
-       ``energy_density``), then required. Start value of every particle.
+     - Read only with ``cosmic_rays`` ``reduced``, the source ``constant`` and a value input
+       (``ionisation_rate`` or ``energy_density``), then required. The value of every particle for the
+       whole run, in the unit of the input.
+   * - ``cosmic_ray_fire2_energy_density``
+     - Read only with the source ``fire2``, then required, no default. The fixed cosmic-ray energy
+       density e\ :sub:`cr` [eV cm\ :sup:`-3`], finite and above 0.
    * - ``cosmic_ray_constant_rate``
      - Read only with ``cosmic_ray_input`` ``constant``, then required. Primary ionisation rate per H
        [s\ :sup:`-1`].
@@ -447,6 +456,78 @@ the snapshot, but ``swift -o`` does not list them.
    * - ``cosmic_ray_heat_per_ionisation``
      - (optional) Read only with ``cosmic_ray_heating`` ``fixed_energy``. Heat per ionisation [eV]
        (default: 20).
+
+Source of the cosmic-ray value
+++++++++++++++++++++++++++++++
+
+``cosmic_ray_source`` chooses one of three modes.
+
+``constant``
+   One value for the whole run, ``cosmic_ray_initial_value`` (or ``cosmic_ray_constant_rate`` with the
+   input ``constant``). Nothing is stored in the particles.
+
+``per_particle``
+   Each particle stores a cosmic-ray energy density [eV cm\ :sup:`-3`, proper]. It is 0 at the start:
+   no parameter sets it. The cooling only reads it. It never changes the stored value and does not
+   subtract the energy that the cosmic rays lose in the cooling. The module that injects the cosmic
+   rays (for example supernova feedback) writes the value and depletes it. The module has no decay and
+   no transport of the stored value. The value is written to the snapshots as ``CosmicRayValues``.
+
+``fire2``
+   The value is computed at each call from the local hydrogen number density,
+   e\ :sub:`cr` n\ :sub:`H` / (0.01 + n\ :sub:`H`), with e\ :sub:`cr` from
+   ``cosmic_ray_fire2_energy_density`` and the factor of ``geajay_cosmic_ray_density_factor_fire2()``
+   (Hopkins et al. 2018, eq. B.25). It is the energy density passed to the library, so the input is
+   ``energy_density``. Here n\ :sub:`H` = X (:math:`\rho` - :math:`\rho_Z`) / m\ :sub:`p` [cm\ :sup:`-3`], with
+   X the hydrogen mass fraction of the metal-free gas, :math:`\rho` the physical density and :math:`\rho_Z` the
+   metal density. Nothing is stored. The value does not depend on the per-particle value and is not
+   multiplied by it.
+
+With ``per_particle`` and ``fire2`` the library needs ``cosmic_ray_rate_per_energy_density``,
+``cosmic_ray_coulomb_loss_coefficient`` and ``cosmic_ray_hadronic_loss_coefficient`` (input
+``energy_density``). ``cosmic_ray_initial_value`` stops the run with these two modes, and
+``cosmic_ray_fire2_energy_density`` stops it with the others. The mode ``constant`` is the default. With
+``constant`` and ``fire2`` nothing is stored, so ``CosmicRayValues`` is not written.
+
+Functions for the injecting module
+++++++++++++++++++++++++++++++++++
+
+These functions are declared in ``src/cooling/geajay/cooling.h``. Include ``cooling.h`` and call them
+with the ``struct xpart`` of the particle.
+
+.. code-block:: c
+
+   void cooling_set_cosmic_ray_energy_density(struct xpart *xp, double energy_density);
+   double cooling_get_cosmic_ray_energy_density(const struct xpart *xp);
+   double cooling_get_cosmic_ray_energy_loss_rate(const struct xpart *xp);
+
+``cooling_set_cosmic_ray_energy_density()`` writes the stored energy density [eV cm\ :sup:`-3`, proper].
+The value must be finite, at least 0 and fit in a float. The run stops if the source is not
+``per_particle``: the value would never be read. The cooling reads the value at its next call.
+
+``cooling_get_cosmic_ray_energy_density()`` returns the stored value.
+
+``cooling_get_cosmic_ray_energy_loss_rate()`` returns the energy that the cosmic rays lost per volume
+and time in the last solve of the particle, Coulomb and hadronic losses, [eV cm\ :sup:`-3` s\ :sup:`-1`,
+proper], averaged over the step. It is 0 before the first solve and with an input other than
+``energy_density``, and NaN after a failed solve. It is the same number as the snapshot field
+``CosmicRayEnergyLossRates``. The cooling does not subtract it from the stored density.
+
+A feedback module uses them in its own time-step loop. At an injection it adds the new energy density:
+
+.. code-block:: c
+
+   const double e_old = cooling_get_cosmic_ray_energy_density(xp);
+   cooling_set_cosmic_ray_energy_density(xp, e_old + e_injected);
+
+After a cooling step of length ``dt`` (physical time, seconds) it depletes the density by what was used.
+It can also apply its own decay or transport:
+
+.. code-block:: c
+
+   const double loss = cooling_get_cosmic_ray_energy_loss_rate(xp);
+   const double e = cooling_get_cosmic_ray_energy_density(xp);
+   if (isfinite(loss)) cooling_set_cosmic_ray_energy_density(xp, fmax(0., e - loss * dt));
 
 Output
 ++++++
