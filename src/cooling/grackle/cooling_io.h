@@ -304,6 +304,18 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
 
+#if COOLING_GRACKLE_MODE == 0 && \
+    !defined(GRACKLE_PHOTOELECTRIC_HEATING_DENSITY_EPSILON)
+  if (cooling->with_ISRF)
+    error(
+        "GEARFeedback:with_interstellar_radiation_field needs a cooling mode "
+        "that tracks species. At grackle_0 the official Grackle estimates no "
+        "electron density for cold gas, its grain recombination term is NaN "
+        "and the gas falls to the temperature floor. Build with grackle_1 or "
+        "higher, with a Grackle that guards a zero electron density, or with "
+        "geajay.");
+#endif
+
   char pe_efficiency[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
                               "GrackleCooling:photoelectric_heating_efficiency",
