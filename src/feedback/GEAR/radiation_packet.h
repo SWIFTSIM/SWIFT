@@ -409,12 +409,13 @@ __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
  *
  * @param pk The packet.
  */
-__attribute__((always_inline)) INLINE static uint64_t
+__attribute__((always_inline)) INLINE static radiation_packet_mask_t
 radiation_packet_scan_occupied(const struct feedback_isrf_packet_data *pk) {
-  uint64_t mask = 0;
+  radiation_packet_mask_t mask = 0;
 
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
-    if (!radiation_packet_slot_is_empty(&pk->slot[s])) mask |= UINT64_C(1) << s;
+    if (!radiation_packet_slot_is_empty(&pk->slot[s]))
+      mask |= (radiation_packet_mask_t)((radiation_packet_mask_t)1u << s);
 
   return mask;
 }
@@ -441,7 +442,7 @@ radiation_packet_refresh_occupied(struct feedback_isrf_packet_data *pk) {
 __attribute__((always_inline)) INLINE static void
 radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
                                 const long long id) {
-  const uint64_t scanned = radiation_packet_scan_occupied(pk);
+  const radiation_packet_mask_t scanned = radiation_packet_scan_occupied(pk);
   if (pk->occupied_slots != scanned)
     error(
         "Particle %lld has the occupied-slot mask %#llx but its held energies "
@@ -454,6 +455,16 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
                                 const long long id) {}
 #endif
+
+/**
+ * @brief The lowest set bit of a non-zero mask of occupied slots.
+ *
+ * @param m The mask.
+ */
+__attribute__((always_inline)) INLINE static int radiation_packet_lowest_slot(
+    const radiation_packet_work_mask_t m) {
+  return sizeof(m) > 4 ? __builtin_ctzll(m) : __builtin_ctz(m);
+}
 
 /**
  * @brief Does the particle hold no energy in any band of any slot?
@@ -767,8 +778,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 
   radiation_packet_check_occupied(sender_packet, sender->id);
 
-  for (uint64_t m = sender_packet->occupied_slots; m != 0; m &= m - 1) {
-    const int k = __builtin_ctzll(m);
+  for (radiation_packet_work_mask_t m = sender_packet->occupied_slots; m != 0;
+       m &= m - 1) {
+    const int k = radiation_packet_lowest_slot(m);
     const struct feedback_isrf_packet_slot_data *sl = &sender_packet->slot[k];
 
     if (!have_dxw) {
