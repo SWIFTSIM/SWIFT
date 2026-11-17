@@ -513,10 +513,9 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        choices=["thin", "thick", "faint_star"],
+        choices=["thin", "thick"],
         required=True,
-        help="Configuration the run was launched with; selects the pass bar "
-        "(faint_star uses the thin bar)",
+        help="Configuration the run was launched with; selects the pass bar",
     )
     parser.add_argument(
         "--h2-self-shielding",
@@ -768,12 +767,12 @@ def shielding_factor(
     temperature: np.ndarray,
     number_density: np.ndarray,
 ) -> np.ndarray:
-    """Compute Grackle's H2 self-shielding factor, Eqs. (2) and (3).
+    """Compute the H2 self-shielding factor, Eqs. (2) and (3).
 
     Parameters
     ----------
     column : numpy.ndarray
-        H2 column as Grackle forms it, Eq. (4), cm^-2.
+        H2 column as the cooling library forms it, Eq. (4), cm^-2.
     temperature : numpy.ndarray
         Gas temperature, K.
     number_density : numpy.ndarray
@@ -1046,7 +1045,7 @@ def report_shells(
     radius = history["radius"]
     edges = np.linspace(0.0, radius.max(), n_shells + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
-    # Eq. (4) divided by the shielding length gives back 2 n_H2.
+    # Eq. (4) gives 2 n_H2 l, so the column over (factor * l) is n_H2.
     n_H2 = history["column"][index] / (
         COLUMN_PER_N_H2_LENGTH * history["length"][index]
     )
@@ -1165,12 +1164,11 @@ def main() -> int:
     if non_finite:
         print(f"FAIL: non-finite values in {', '.join(non_finite)}")
         return 1
-    gated_config = "thin" if options.config == "faint_star" else options.config
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
     columns = np.arange(n_particles)
 
-    floor_margin = options.floor_margin if gated_config == "thin" else 0.0
+    floor_margin = options.floor_margin if options.config == "thin" else 0.0
     start, end, reached = particle_windows(
         history, options.field_arrival_fraction, floor_margin
     )
@@ -1248,7 +1246,7 @@ def main() -> int:
     print()
 
     failures: List[str] = []
-    if gated_config == "thin":
+    if options.config == "thin":
         # First snapshot, inside each window, at which the predicted
         # integral reaches the reference number of e-folds.
         snapshot_index = np.arange(len(times))[:, np.newaxis]
@@ -1336,7 +1334,7 @@ def main() -> int:
         predicted_plot = predicted_ratio
         measured_plot = np.maximum(measured_ratio, 1e-12)
 
-    make_figure(history, predicted_plot, measured_plot, gated_config, options.output)
+    make_figure(history, predicted_plot, measured_plot, options.config, options.output)
 
     print()
     if failures:
