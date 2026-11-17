@@ -97,6 +97,7 @@ uv_background_redshift_full_on|uv_background_redshift_full_on|with_uv_background
 uv_background_redshift_drop|uv_background_redshift_drop|with_uv_background: 1|uv_background_redshift_drop: 0.8|LIB uv_background_redshift_drop=0.8|lib
 uv_background_redshift_off|uv_background_redshift_off|with_uv_background: 1|uv_background_redshift_off: 0.3|LIB uv_background_redshift_off=0.3|lib
 lw_background_sawtooth_suppression|lw_background_sawtooth_suppression|with_uv_background: 1|lw_background_sawtooth_suppression: 1|LIB lw_background_sawtooth_suppression=1|lib
-uv_background_redshift_unread|uv_background_redshift_on without a UV background||uv_background_redshift_on: 8.5|!is set to a value other than its default -99999, but it is not read: GeajayCooling:with_uv_background is 0|refuse
+uv_background_redshift_unread|uv_background_redshift_on without a UV background||uv_background_redshift_on: 8.5|!is set, but it is not read: no UV background table is loaded|refuse
 uv_background_redshift_nan|uv_background_redshift_off not finite|with_uv_background: 1|uv_background_redshift_off: nan|!must be a finite redshift, got nan|refuse
 lw_background_sawtooth_bad|lw_background_sawtooth_suppression out of range|with_uv_background: 1|lw_background_sawtooth_suppression: 2|!lw_background_sawtooth_suppression must be 0 or 1, got 2|refuse
+uv_background_redshift_per_band|uv_background_redshift_on with a per_band UV table only|background_mode: per_band;ionising_background_model: uv_table|uv_background_redshift_on: 8.5|LIB uv_background_redshift_on=8.5|lib

@@ -8,6 +8,10 @@
 #
 #   tests/testGeajayKeys.sh <testGeajayKeys> <fixture dir> <work dir> [cases file]
 #
+# The variable BASE_EXTRA adds lines (separated by ";") to the baseline file of
+# every case, for example BASE_EXTRA="background_mode: per_band" to send the
+# options of the cases through the per_band entry point of the library.
+#
 # The fixture dir holds CloudyData_UVB=HM2012.h5 (the table of the example
 # CoolingBox), colA.h5 (a Cloudy table with the column shielding), g0file.h5 (a
 # Cloudy table with an interstellar radiation field) and hm12thin.h5 (an
@@ -70,6 +74,7 @@ while IFS='|' read -r id key base test expected hint; do
   n=$((n + 1))
   d="$out/$id"
   mkdir -p "$d"
+  base="$base${BASE_EXTRA:+;$BASE_EXTRA}"
   mk "$d/base.yml" "$base"
   mk "$d/test.yml" "$base;$test"
   "$bin" "$d/base.yml" > "$d/base.out" 2>&1

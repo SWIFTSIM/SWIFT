@@ -190,7 +190,7 @@ local field only, to which the background G\ :sub:`0` is added.
    * - ``uv_background_redshift_on``, ``uv_background_redshift_full_on``,
        ``uv_background_redshift_drop``, ``uv_background_redshift_off``
      - (optional) Redshifts where the UV background switches on, is fully on, starts to drop and
-       switches off. Read only with ``with_uv_background`` 1. Unset (-99999): the redshift range of the
+       switches off. Read only when a UV table is loaded: ``with_uv_background`` 1, or a ``uv_table`` model under ``background_mode`` ``per_band``. Unset (-99999): the redshift range of the
        Cloudy table, the last redshift for the first two and the first for the others (default: unset).
    * - ``isrf_background_model``
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0`: ``default``,

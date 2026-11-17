@@ -1098,17 +1098,11 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       "GeajayCooling:uv_background_redshift_off"};
   double uvb_redshifts[4];
   for (int i = 0; i < 4; i++) {
-    uvb_redshifts[i] = COOLING_GEAJAY_REDSHIFT_UNSET;
-    if (cooling->with_uv_background) {
-      uvb_redshifts[i] = parser_get_opt_param_double(
-          parameter_file, uvb_redshift_keys[i], COOLING_GEAJAY_REDSHIFT_UNSET);
-      if (!cooling_double_is_finite(&uvb_redshifts[i]))
-        error("%s must be a finite redshift, got %g.", uvb_redshift_keys[i],
-              uvb_redshifts[i]);
-    } else
-      cooling_refuse_unread_double(parameter_file, uvb_redshift_keys[i],
-                                   COOLING_GEAJAY_REDSHIFT_UNSET,
-                                   "GeajayCooling:with_uv_background is 0");
+    uvb_redshifts[i] = parser_get_opt_param_double(
+        parameter_file, uvb_redshift_keys[i], COOLING_GEAJAY_REDSHIFT_UNSET);
+    if (!cooling_double_is_finite(&uvb_redshifts[i]))
+      error("%s must be a finite redshift, got %g.", uvb_redshift_keys[i],
+            uvb_redshifts[i]);
   }
   cooling->uv_background_redshift_on = uvb_redshifts[0];
   cooling->uv_background_redshift_full_on = uvb_redshifts[1];
@@ -1384,6 +1378,27 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling_read_cosmic_ray_parameters(parameter_file, cooling);
   cooling_read_background_parameters(parameter_file, cooling, us);
   cooling_read_column_shielding_parameters(parameter_file, cooling);
+
+  /* The redshifts are used by the UV table, which a model of per_band can load
+   * with with_uv_background 0 */
+  const int uv_table_loaded =
+      cooling->with_uv_background ||
+      (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND &&
+       (cooling->ionising_background_model ==
+            GEAJAY_IONISING_BACKGROUND_UV_TABLE ||
+        cooling->lw_background_model == GEAJAY_LW_BACKGROUND_UV_TABLE ||
+        cooling->isrf_background_model == GEAJAY_ISRF_BACKGROUND_UV_TABLE));
+  const double uvb_redshift_values[4] = {
+      cooling->uv_background_redshift_on, cooling->uv_background_redshift_full_on,
+      cooling->uv_background_redshift_drop, cooling->uv_background_redshift_off};
+  for (int i = 0; i < 4; i++)
+    if (!uv_table_loaded &&
+        uvb_redshift_values[i] > COOLING_GEAJAY_REDSHIFT_UNSET)
+      error(
+          "%s is set, but it is not read: no UV background table is loaded "
+          "(GeajayCooling:with_uv_background is 0 and no model of per_band is "
+          "uv_table).",
+          uvb_redshift_keys[i]);
 }
 
 #endif /* SWIFT_COOLING_GEAJAY_IO_H */
