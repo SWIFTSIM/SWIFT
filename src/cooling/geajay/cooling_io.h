@@ -959,25 +959,6 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
     error("GeajayCooling:dust_model must be none (0) or basic (1), got %d.",
           cooling->dust_model);
 
-  if (!parser_does_param_exist(parameter_file,
-                               "GeajayCooling:dust_to_gas_model"))
-    error(
-        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
-        "it to linear or remy_ruyer_2014.");
-  cooling->dust_to_gas_model = cooling_read_choice(
-      parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
-      GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);
-  if (cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_LINEAR &&
-      cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
-    error(
-        "GeajayCooling:dust_to_gas_model must be linear (0) or "
-        "remy_ruyer_2014 (1), got %d.%s",
-        cooling->dust_to_gas_model,
-        cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_FROM_FIELD
-            ? " from_field is not available: SWIFT has no per-particle dust "
-              "field."
-            : "");
-
   cooling->H2_on_dust = cooling_read_choice(
       parameter_file, "GeajayCooling:h2_formation_on_dust",
       "h2_formation_on_dust", GEAJAY_H2_ON_DUST_DEFAULT, NULL, 0);
@@ -1019,6 +1000,33 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
         "GeajayCooling:dust_recombination_cooling must be default (-1), "
         "disabled (0) or enabled (1), got %d.",
         cooling->dust_recombination_cooling);
+
+  /* As in the library (geajay_dust_is_used), the model is required only when a
+   * switch reads the dust density. A switch left at default follows
+   * dust_model. */
+  const int dust_is_used =
+      cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
+      cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
+      cooling->dust_recombination_cooling == GEAJAY_DUST_RECOMBINATION_ENABLED ||
+      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE;
+  if (dust_is_used &&
+      !parser_does_param_exist(parameter_file, "GeajayCooling:dust_to_gas_model"))
+    error(
+        "GeajayCooling:dust_to_gas_model is required and has no default. Set "
+        "it to linear or remy_ruyer_2014.");
+  cooling->dust_to_gas_model = cooling_read_choice(
+      parameter_file, "GeajayCooling:dust_to_gas_model", "dust_to_gas_model",
+      GEAJAY_DUST_TO_GAS_LINEAR, NULL, 0);
+  if (cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_LINEAR &&
+      cooling->dust_to_gas_model != GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
+    error(
+        "GeajayCooling:dust_to_gas_model must be linear (0) or "
+        "remy_ruyer_2014 (1), got %d.%s",
+        cooling->dust_to_gas_model,
+        cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_FROM_FIELD
+            ? " from_field is not available: SWIFT has no per-particle dust "
+              "field."
+            : "");
 
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:h2_photodissociation_heating", 0);
