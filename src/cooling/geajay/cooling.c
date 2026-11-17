@@ -2139,7 +2139,7 @@ void cooling_clean(struct cooling_function_data *cooling) {
 }
 
 /*! Version of the restart layout record of the cooling. Restart files
- * written before the record existed (before geajay item 22) are refused. */
+ * written before the record existed (network H_He_H2_D_ions) are refused. */
 #define COOLING_GEAJAY_RESTART_FORMAT 1
 
 /*! Record written before the cooling struct in a restart file. */
@@ -2175,6 +2175,10 @@ static void cooling_get_restart_layout(struct cooling_restart_layout *layout) {
   memcpy(layout->magic, "GEAJAYC", 8);
   layout->format = COOLING_GEAJAY_RESTART_FORMAT;
   layout->mode = COOLING_GEAJAY_MODE;
+#if COOLING_GEAJAY_MODE > 4
+#error \
+    "The species count formula and the output list of the geajay cooling hold up to COOLING_GEAJAY_MODE 4."
+#endif
   layout->n_species =
       COOLING_GEAJAY_MODE <= 0 ? 0 : 6 + 3 * (COOLING_GEAJAY_MODE - 1);
   layout->cooling_size = sizeof(struct cooling_function_data);
@@ -2205,9 +2209,9 @@ void cooling_struct_dump(const struct cooling_function_data *cooling,
  * @brief Restore a hydro_props struct from the given FILE as a stream of
  * bytes.
  *
- * Stops if the layout record is missing or differs from this build. A file
- * written before geajay item 22 has no record: the length check of the
- * first block reports it.
+ * Stops if the layout record is missing, damaged or differs from this build.
+ * A file written before the record existed starts with the cooling struct:
+ * the length in the header of its first block differs from the record size.
  *
  * @param cooling the struct
  * @param stream the file stream
@@ -2217,11 +2221,22 @@ void cooling_struct_restore(struct cooling_function_data *cooling, FILE *stream,
                             const struct cosmology *cosmo) {
   struct cooling_restart_layout stored, mine;
   cooling_get_restart_layout(&mine);
+
+  /* The first member of a restart block header is the data length. */
+  const long start = ftell(stream);
+  size_t first_len = 0;
+  if (start >= 0 && fread(&first_len, sizeof(first_len), 1, stream) == 1 &&
+      first_len != sizeof(stored))
+    error(
+        "The restart file has no geajay layout record: it was written by a "
+        "SWIFT before the geajay layout record (network H_He_H2_D_ions) and "
+        "SWIFT refuses it. Start again from a snapshot or from the initial "
+        "conditions.");
+  if (start >= 0) fseek(stream, start, SEEK_SET);
+
   restart_read_blocks(&stored, sizeof(stored), 1, stream, NULL,
-                      "cooling layout. The restart file has no geajay layout "
-                      "record: it was written before geajay item 22 (network "
-                      "4) and SWIFT refuses it. Start again from a snapshot "
-                      "or from the initial conditions");
+                      "cooling layout record: the file has no record or a "
+                      "damaged one");
   if (memcmp(stored.magic, mine.magic, sizeof(mine.magic)) != 0)
     error(
         "The cooling layout record of the restart file is not a geajay "
