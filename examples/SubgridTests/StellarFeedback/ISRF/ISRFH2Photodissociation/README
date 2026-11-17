@@ -102,7 +102,7 @@ them together to keep the box size: `level=5 gas_mass=0.1` (the default)
 and `level=6 gas_mass=0.0125` give the same 5.1 pc box. Level 5 is the
 lowest level SWIFT accepts here: at level 4, the star's initial smoothing
 length is larger than a top-level cell. A level-5 run takes two to three
-minutes on 8 threads See `run.sh` for the other overrides.
+minutes on 8 threads. See `run.sh` for the other overrides.
 
 # Checking
 ```

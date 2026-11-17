@@ -14,7 +14,8 @@ config=${config:="thin"}  #thin or thick
 
 # thin and thick differ only in the initial H2 abundance, which sets the
 # column Grackle's local self-shielding estimate sees.
-# The snapshot spacing is one gas step: time_end / 2^8 for dt_max 1.6e-10. Set delta_time to the new step if you change time_end, dt_max or level.
+# The snapshot spacing is one gas step: time_end / 2^8 for dt_max 1.6e-10.
+# Set delta_time to the new step if you change time_end, dt_max or level.
 star_mass_default=29.7
 time_end_default=2.6e-8
 delta_time_default=1.015625e-10

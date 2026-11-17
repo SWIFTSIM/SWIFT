@@ -1045,7 +1045,7 @@ def report_shells(
     radius = history["radius"]
     edges = np.linspace(0.0, radius.max(), n_shells + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
-    # Eq. (4) divided by the shielding length gives back n_H2.
+    # Eq. (4) gives 2 n_H2 l, so the column over (factor * l) is n_H2.
     n_H2 = history["column"][index] / (
         COLUMN_PER_N_H2_LENGTH * history["length"][index]
     )
