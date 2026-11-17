@@ -962,6 +962,34 @@ def check_gate(name: str, value: float, bad: bool, message: str) -> Optional[str
     return None
 
 
+def non_finite_history_fields(history: Dict[str, np.ndarray]) -> List[str]:
+    """Name the gated series that hold a NaN or an infinity.
+
+    The window selection and every gate take maxima, minima and medians of
+    these series, which hide a non-finite entry: ``max`` and ``min`` of an
+    array with a NaN return NaN or skip it depending on the call, and a NaN
+    compares ``False`` against every bar. The series are tested before any
+    comparison.
+
+    Parameters
+    ----------
+    history : dict of str to numpy.ndarray
+        Output of :func:`build_history`.
+
+    Returns
+    -------
+    list of str
+        The names of the series with at least one non-finite entry, with the
+        count of such entries.
+    """
+    bad = []
+    for key in ("rate", "x_H2"):
+        n_bad = int(np.count_nonzero(~np.isfinite(history[key])))
+        if n_bad > 0:
+            bad.append(f"{key} ({n_bad} non-finite entries)")
+    return bad
+
+
 def cumulative_integral(times: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Trapezoid-integrate a per-particle time series from the first snapshot.
 
@@ -1115,6 +1143,10 @@ def main() -> int:
         options.kernel_gamma,
         path_in_kernel_radii,
     )
+    non_finite = non_finite_history_fields(history)
+    if non_finite:
+        print(f"FAIL: non-finite values in {', '.join(non_finite)}")
+        return 1
     gated_config = "thin" if options.config == "faint_star" else options.config
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
