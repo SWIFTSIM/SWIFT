@@ -29,9 +29,11 @@ radiation_get_part_isrf_habing() getter, which sums the PE+LW bands for an
 unrelated purpose (photoelectric heating) and would double-count non-LW
 flux here.
 
-Result is informational only (used to judge whether
+The rate comparison is informational only (used to judge whether
 RADIATION_SIGMA_H2_OVER_E_LW_CGS, and so the cross section it is quoted
-through, is plausible), not a pass/fail gate. With the LW-fraction-of-Habing
+through, is plausible). One check gates the exit status: the quotient in the
+header must lie between the smallest and the largest of the source values
+below, which do not come from the header. With the LW-fraction-of-Habing
 correction below applied, k_diss/D0 = 1.008. The constant is the mean of three
 computations (an H2 line-list integral, Sternberg et al. 2014 and Draine
 and Bertoldi 1996 Table 2), derived in 04_isrf_packet_transport.tex, so this
@@ -41,6 +43,7 @@ ratio is a cross-check of the field conversion, not the anchor of the constant.
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 RADIATION_H = (
@@ -53,6 +56,21 @@ STERNBERG_D0_PER_IUV_CGS = 5.8e-11  # s^-1
 
 # Verified from Sternberg et al. (2014), p.4 footnote 4.
 DRAINE_OVER_HABING = 1.7
+
+# Source values of sigma_H2/E_LW, cm^2 erg^-1, from 04_isrf_packet_transport.tex:
+# the line-list integral (integrate_h2_line_list_lw.py), the rate of Sternberg
+# et al. (2014) over the LW energy flux of their field, and the two levels of
+# Draine and Bertoldi (1996), Table 2 (rate x dissociation probability) over the
+# LW energy flux of the Draine field at chi = 1.
+SOURCE_QUOTIENTS_CGS = {
+    "H2 line list": 1.4515e-7,
+    "Sternberg et al. 2014": 5.8e-11 / 3.9596e-4,
+    "Draine and Bertoldi 1996, level (0,0)": 2.77e-10 * 0.117 / 2.3245e-4,
+    "Draine and Bertoldi 1996, level (0,1)": 2.79e-10 * 0.119 / 2.3245e-4,
+}
+
+# The header quotes the cross section to eight digits.
+QUOTED_PAIR_RELATIVE_LIMIT = 0.5e-7 / 2.8196309
 
 # CODATA value used throughout this codebase
 # (src/physical_constants_cgs.h:87), reproduced here rather than imported
@@ -131,7 +149,15 @@ def sternberg_D0_cgs(G0_LW: float) -> float:
     return STERNBERG_D0_PER_IUV_CGS * I_UV
 
 
-def main() -> None:
+def main() -> int:
+    """Run the comparison and the source-bracket check.
+
+    Returns
+    -------
+    int
+        1 if the header quotient lies outside the range of the source values,
+        0 otherwise.
+    """
     # The rate reads the quotient sigma_H2/E_LW and nothing else, so that is
     # what this verification anchors; the pair below is how it is quoted.
     sigma_over_E_LW_cgs = _read_radiation_h_constant("RADIATION_SIGMA_H2_OVER_E_LW_CGS")
@@ -155,7 +181,7 @@ def main() -> None:
     print(f"  RADIATION_LW_PHOTON_ENERGY_EV = {E_LW_photon_ev:.3f} eV")
     quoted_quotient = sigma_h2_lw_cgs / (E_LW_photon_ev * ELECTRON_VOLT_CGS)
     drift = quoted_quotient / sigma_over_E_LW_cgs - 1.0
-    if abs(drift) > 1e-9:
+    if abs(drift) > QUOTED_PAIR_RELATIVE_LIMIT:
         print(
             f"  WARNING: the quoted pair gives {quoted_quotient:.6e} cm^2 "
             f"erg^-1, {drift * 100.0:+.4f} per cent off the quotient the rate "
@@ -200,7 +226,18 @@ def main() -> None:
         "see module docstring; not a pass/fail gate). Expected near 1.01 "
         "for the three-source constant."
     )
+    lowest = min(SOURCE_QUOTIENTS_CGS.values())
+    highest = max(SOURCE_QUOTIENTS_CGS.values())
+    print()
+    for name, value in SOURCE_QUOTIENTS_CGS.items():
+        print(f"  source {name:<40s} {value:.4e} cm^2 erg^-1")
+    inside = lowest <= sigma_over_E_LW_cgs <= highest
+    print(
+        f"Source bracket: header {sigma_over_E_LW_cgs:.6e} vs "
+        f"[{lowest:.4e}, {highest:.4e}]: {'PASS' if inside else 'FAIL'}"
+    )
+    return 0 if inside else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
