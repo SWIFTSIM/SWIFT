@@ -36,6 +36,9 @@
 #include "radiation.h"
 #include "units.h"
 
+#include <stdint.h>
+#include <string.h>
+
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
 #ifndef COOLING_NETWORK
@@ -732,11 +735,28 @@ _Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
                "ISRF_MOMENT_COUNT entry.");
 
 /**
+ * @brief Check that a stored double is finite (not NaN or +/-Inf).
+ *
+ * Reads the bit pattern because -ffast-math lets the compiler assume isnan()
+ * is false. The test on the exponent bits is an integer test, so the compiler
+ * cannot fold it to true.
+ *
+ * @param x Pointer to the value.
+ * @return 1 if *x is finite, 0 otherwise.
+ */
+__attribute__((noinline)) static int radiation_double_is_finite(
+    const double *x) {
+  uint64_t bits;
+  memcpy(&bits, x, sizeof(bits));
+  return ((bits >> 52) & 0x7FFULL) != 0x7FFULL;
+}
+
+/**
  * @brief Fetch one ISRF band's specific energy, clamped to be non-negative.
  *
  * Each band is clamped before any sum, so a negative LW energy cannot cancel
  * a positive PE energy unnoticed. The count is per band read, not per
- * particle. The stored value is unchanged.
+ * particle. The stored value is unchanged. A non-finite value stops the run.
  *
  * @param p The particle.
  * @param m The moment to read (#radiation_isrf_moment).
@@ -747,6 +767,11 @@ static double radiation_get_band_u_nonnegative(const struct part *p,
 
   static volatile long long band_clamp_count[ISRF_MOMENT_COUNT] = {0};
   static volatile double band_clamp_worst[ISRF_MOMENT_COUNT] = {0.};
+
+  /* A NaN passes the clamp below under -ffast-math: test the bit pattern. */
+  if (!radiation_double_is_finite(&p->feedback_data.isrf_moment[m].u))
+    error("Non-finite %s for particle id=%lld.",
+          radiation_isrf_moment_clamp_name[m], p->id);
 
   return radiation_clamp_nonnegative_for_grackle(
       radiation_isrf_moment_clamp_name[m],

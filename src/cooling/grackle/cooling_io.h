@@ -209,7 +209,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       parameter_file, "GrackleCooling:H2_cie_cooling", 0);
 
   cooling->H2_on_dust =
-      parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", 0);
+      parser_get_opt_param_int(parameter_file, "GrackleCooling:H2_on_dust", -1);
 
   cooling->H2_photodissociation_heating = parser_get_opt_param_int(
       parameter_file, "GrackleCooling:H2_photodissociation_heating", 0);
@@ -303,6 +303,26 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+
+  /* Grackle forms H2 on dust at primordial_chemistry > 1 whenever
+     dust_chemistry is 1, whatever H2_on_dust says, so an explicit 0 has no
+     effect there with the ISRF on. */
+  if (cooling->with_ISRF && cooling->primordial_chemistry > 1 &&
+      cooling->H2_on_dust == 0)
+    warning(
+        "GrackleCooling:H2_on_dust is 0 with "
+        "GEARFeedback:with_interstellar_radiation_field on. Grackle forms H2 "
+        "on dust anyway, because the ISRF sets dust_chemistry to 1. Remove "
+        "the parameter to silence this warning.");
+
+  /* At grackle_0 Grackle estimates no electron density for cold gas, so the
+     dust grain recombination term is NaN. */
+#if COOLING_GRACKLE_MODE == 0
+  if (cooling->with_ISRF)
+    error(
+        "GEARFeedback:with_interstellar_radiation_field needs grackle_1 or "
+        "higher, or geajay.");
+#endif
 
   char pe_efficiency[PARSER_MAX_LINE_SIZE];
   parser_get_opt_param_string(parameter_file,
