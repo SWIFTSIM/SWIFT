@@ -738,8 +738,8 @@ _Static_assert(sizeof(radiation_isrf_moment_clamp_name) /
  * @brief Check that a stored double is finite (not NaN or +/-Inf).
  *
  * Reads the bit pattern because -ffast-math lets the compiler assume isnan()
- * is false. The value is read through a pointer in a function that is never
- * inlined, so the test cannot be folded to true.
+ * is false. The test on the exponent bits is an integer test, so the compiler
+ * cannot fold it to true.
  *
  * @param x Pointer to the value.
  * @return 1 if *x is finite, 0 otherwise.
