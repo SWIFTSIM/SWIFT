@@ -33,7 +33,7 @@ Result is informational only (used to judge whether
 RADIATION_SIGMA_H2_OVER_E_LW_CGS, and so the cross section it is quoted
 through, is plausible), not a pass/fail gate. With the LW-fraction-of-Habing
 correction below applied, k_diss/D0 = 1.008. The constant is the mean of three
-independent values (an H2 line-list integral, Sternberg et al. 2014 and Draine
+computations (an H2 line-list integral, Sternberg et al. 2014 and Draine
 and Bertoldi 1996 Table 2), derived in 04_isrf_packet_transport.tex, so this
 ratio is a cross-check of the field conversion, not the anchor of the constant.
 """

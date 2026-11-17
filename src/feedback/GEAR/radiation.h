@@ -103,8 +103,8 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
 
 /*! H2 Lyman-Werner photodissociation coefficient sigma_H2/E_LW, cm^2 erg^-1,
     for the Draine (1978) field. The particle carries only the LW energy flux,
-    so the rate depends on this quotient alone. Mean of three independent
-    values, 1.4425e-7 +- 1.9%: an H2 line-list integral (Abgrall et al. 2000),
+    so the rate depends on this quotient alone. Mean of three computations,
+    1.4425e-7 +- 1.9%: an H2 line-list integral (Abgrall et al. 2000),
     Sternberg et al. 2014 (ApJ 790:10) and Draine & Bertoldi 1996 (Table 2).
     A hotter spectrum raises the coefficient (+17% for a 2e4 K blackbody). See
     theory/GEAR/Radiation/04_isrf_packet_transport.tex. */

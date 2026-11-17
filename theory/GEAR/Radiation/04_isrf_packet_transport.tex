@@ -139,9 +139,14 @@ with $\bar E_{\rm LW}=12.2$\,eV gives the effective cross section
 $\sigma_{\rm H_2}=\kappa_{\rm LW}\,\bar E_{\rm LW}$; the rate does not read $\bar E_{\rm LW}$
 separately.
 
-\emph{Three independent values for the Draine field.} In H$_2$, only the
-Lyman and Werner bands matter. Each value below gives $k_{\rm diss}$ and
-$F_{\rm LW}$ for the Draine field of unit strength, and so one $\kappa_{\rm LW}$.
+\emph{Three computations for the Draine field.} In H$_2$, only the
+Lyman and Werner bands matter. Each computation below gives $k_{\rm diss}$ and
+$F_{\rm LW}$ for a field of the Draine shape, and so one $\kappa_{\rm LW}$. The
+first two use the field of unit strength. \citet{DraineBertoldi1996} give their
+rates per $\chi$, the strength at $1000$\,\AA\ relative to the Habing field, so
+their field is the Draine (1978) formula divided by $1.7105$. The three
+computations may share the H$_2$ line data. If so, their spread tests the
+integration and the field conversion, not the molecular data.
 \begin{enumerate}
   \item \emph{A line list.} The Leiden photodissociation database
     \citep{Heays2017} holds the H$_2$ band list of \citet{Abgrall2000}: $32$
@@ -169,12 +174,13 @@ $F_{\rm LW}$ for the Draine field of unit strength, and so one $\kappa_{\rm LW}$
     $3.320\times10^{-11}$\,s$^{-1}$. The energy flux of the same field in the
     LW band is $2.3245\times10^{-4}$\,erg\,s$^{-1}$\,cm$^{-2}$. The two
     levels give $1.394\times10^{-7}$ and $1.428\times10^{-7}$; their mean is
-    $\kappa_{\rm LW}=1.4113\times10^{-7}$\,cm$^2$\,erg$^{-1}$. The field strength cancels in
-    the ratio, so the convention of the field normalisation does not enter.
+    $\kappa_{\rm LW}=1.4113\times10^{-7}$\,cm$^2$\,erg$^{-1}$. The rate and the flux belong
+    to the same field, the Draine (1978) formula divided by $1.7105$
+    ($\chi=1$), so the field strength cancels in the ratio.
 \end{enumerate}
-The three values differ by at most $3.8$ per cent from one another.
+The three computations differ by at most $3.8$ per cent from one another.
 
-\emph{Result.} The code takes the mean of the three, and the half of their
+\emph{Result.} The code takes the mean of the three values, and the half of their
 range as the uncertainty:
 \begin{equation}
   \kappa_{\rm LW}=\frac{\sigma_{\rm H_2}}{\bar E_{\rm LW}}
@@ -208,8 +214,8 @@ $0.8$ per cent above the value of \citet{Sternberg2014}.
 
 \emph{The spectral shape matters.} The coefficient $\kappa_{\rm LW}$ is not a property of
 H$_2$ alone: the strong Lyman and Werner bands lie at $912$ to $1015$\,\AA,
-the short end of the band, and the Draine field falls by a factor of about $8$
-from $1108$ to $912$\,\AA. A spectrum with more energy at the short end puts
+the short end of the band. From $1108$ to $912$\,\AA\ the Draine photon flux per
+unit frequency falls by a factor of about $8.5$, and the energy per unit wavelength by $4.8$. A spectrum with more energy at the short end puts
 more of the band energy where H$_2$ absorbs, and $\kappa_{\rm LW}$ rises. The sum over the
 line list gives, relative to the Draine field: $+17$ per cent for a blackbody
 at $2\times10^4$\,K, $+36$ per cent at $5\times10^4$\,K, and $-18$ per cent
@@ -217,8 +223,9 @@ at $10^4$\,K; the field of a B0 star, $u_\nu\propto\nu^{-2}$
 \citep{DraineBertoldi1996}, gives $+27$ per cent. Independently of this sum,
 Table~2 of \citet{DraineBertoldi1996} gives a ratio $1.26$ between that field
 and the Draine field. The mean photon energy in the band does not fix $\kappa_{\rm LW}$: it
-moves by $2$ per cent between the blackbodies while $\kappa_{\rm LW}$ moves by $42$ per
-cent. The blackbodies are only a proxy: the atmospheres of real stars absorb
+moves by $2$ per cent between the $10^4$\,K and $2\times10^4$\,K blackbodies while
+$\kappa_{\rm LW}$ moves by $42$ per cent. From $10^4$\,K to $5\times10^4$\,K the numbers
+are $3.3$ and $66$ per cent. The blackbodies are only a proxy: the atmospheres of real stars absorb
 in the Lyman lines of hydrogen at the short end of the band, so the shifts are
 an upper envelope. The value of Eq.~\eqref{eq:isrf-c-result} applies to the
 Draine field. Gas lit by young stars can have a rate up to $15$ to $40$ per cent above the
@@ -2150,7 +2157,7 @@ band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
 (:741-751). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
 \code{RADIATION\_HABING\_FLUX\_CGS} and
 \code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}
-(\code{src/feedback/GEAR/radiation.h:81}, :88). Grackle reads the two rates
+(\code{src/feedback/GEAR/radiation.h:102}, :111). Grackle reads the two rates
 through \code{cooling\_get\_isrf\_habing\_subgrid} and
 \code{cooling\_get\_LW\_dissociation\_rate\_subgrid}
 (\code{src/cooling/grackle/cooling\_gear\_subgrid.h:267-299}). The second
@@ -2200,7 +2207,7 @@ Eq.~\eqref{eq:isrf-kappa} is \code{radiation\_get\_part\_linear\_absorption\_rat
 (\code{radiation\_isrf.c:415-424}), through
 \code{radiation\_get\_dust\_mass\_opacity} (:365-376) and
 \code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW} (:344-351). The
-constants are at \code{radiation.h:65-78}.
+constants are at \code{radiation.h:67-79}.
 
 \paragraph{Band-edge weights (Sec.~\ref{sec:isrf-rte-comoving}).}
 $\lambda_E({\rm PE})$, $\lambda_E({\rm LW})$ and $\lambda_N({\rm LW})$ are
@@ -2209,7 +2216,7 @@ computed from the integrated table by
 (\code{src/feedback/GEAR/radiation.c:57-195}). They fall back to \code{RADIATION\_BAND\_EDGE\_WEIGHT\_PE\_DEFAULT} (2.154),
 \code{RADIATION\_BAND\_EDGE\_WEIGHT\_LW\_DEFAULT} (6.508) and
 \code{RADIATION\_BAND\_EDGE\_PHOTON\_WEIGHT\_LW\_DEFAULT} (6.0)
-(\code{radiation.h:136-138}) when radiation is inactive or a luminosity
+(\code{radiation.h:159-161}) when radiation is inactive or a luminosity
 vanishes. They are stored as \code{band\_edge\_weight\_pe},
 \code{band\_edge\_weight\_lw} and \code{band\_edge\_photon\_weight\_lw}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:181-183}).
@@ -2226,7 +2233,7 @@ Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
 \code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:251-258}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
-(\code{src/feedback/GEAR/radiation.h:385-396}, the ratio at :395). The
+(\code{src/feedback/GEAR/radiation.h:398-419}, the ratio at :418). The
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:913-921}).
