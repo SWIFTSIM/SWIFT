@@ -122,25 +122,30 @@ INLINE static void convert_part_cooling_rates(const struct engine *e,
 
 #if COOLING_GEAJAY_MODE >= 1
 /**
- * @brief Stored cosmic-ray energy density of a particle in internal units, for
- * the snapshot.
+ * @brief Cosmic-ray value of a particle in internal units, for the snapshot.
  *
- * The stored value is proper and in eV cm^-3.
+ * With the source per_particle it is the stored energy density, else the
+ * value of the run. It is proper and in cgs: s^-1 for an ionisation rate, eV
+ * cm^-3 for an energy density.
  *
  * @param e The #engine.
  * @param p The #part.
  * @param xp The #xpart.
- * @param ret (return) The value, energy / volume.
+ * @param ret (return) The value, 1 / time or energy / volume.
  */
 INLINE static void convert_part_cosmic_ray_value(const struct engine *e,
                                                  const struct part *p,
                                                  const struct xpart *xp,
                                                  float *ret) {
   const struct unit_system *us = e->internal_units;
-  const double factor =
-      e->physical_constants->const_electron_volt *
-      pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
-  *ret = (float)(xp->cooling_data.cosmic_ray_value * factor);
+  double factor = units_cgs_conversion_factor(us, UNIT_CONV_TIME);
+  if (cooling_cosmic_ray_input_is_energy_density())
+    factor = e->physical_constants->const_electron_volt *
+             pow(units_cgs_conversion_factor(us, UNIT_CONV_LENGTH), 3.);
+  const double value = cooling_cosmic_ray_source_is_per_particle()
+                           ? xp->cooling_data.cosmic_ray_value
+                           : e->cooling_func->cosmic_ray_initial_value;
+  *ret = (float)(value * factor);
 }
 
 /**
@@ -284,13 +289,19 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
 
 #if COOLING_GEAJAY_MODE >= 1
   if (cooling_with_cosmic_rays()) {
-    if (cooling_cosmic_ray_source_is_per_particle()) {
+    if (!cooling_cosmic_ray_source_is_fire2()) {
       list[num] = io_make_physical_output_field_convert_part(
-          "CosmicRayValues", FLOAT, 1, UNIT_CONV_ENERGY_DENSITY, 0.f, parts,
-          xparts, /*can convert to comoving=*/0, convert_part_cosmic_ray_value,
-          "Cosmic-ray energy density stored in the particle, proper, written "
-          "by the module that injects it (GeajayCooling:cosmic_ray_source: "
-          "per_particle).");
+          "CosmicRayValues", FLOAT, 1,
+          cooling_cosmic_ray_input_is_energy_density()
+              ? UNIT_CONV_ENERGY_DENSITY
+              : UNIT_CONV_INV_TIME,
+          0.f, parts, xparts, /*can convert to comoving=*/0,
+          convert_part_cosmic_ray_value,
+          "Cosmic-ray value of the cooling, proper: the primary ionisation "
+          "rate per H or the cosmic-ray energy density, as "
+          "GeajayCooling:cosmic_ray_input says. The energy density stored in "
+          "the particle with GeajayCooling:cosmic_ray_source per_particle, "
+          "else the value of the run (not read with the input constant).");
       num++;
     }
 

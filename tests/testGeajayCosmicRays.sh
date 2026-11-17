@@ -83,6 +83,18 @@ verdict constant_stores_nothing \
 verdict constant_source_is_default \
   $(grep -qx "MOD cosmic_ray_source=0" constant.out && echo 1 || echo 0) "source 0"
 
+# snapshot fields: the value of the run in constant, the stored value in per_particle
+run snap_const "$CR;cosmic_ray_initial_value: 0.25" 1e-3 1e3
+run snap_pp "$CR;cosmic_ray_source: per_particle" 1e-3 1e3 0.25
+fc=$(sed -n 's/^FIELD after_first_init CosmicRayValues \(.*\)$/\1/p' snap_const.out)
+fp=$(sed -n 's/^FIELD after_set CosmicRayValues \(.*\)$/\1/p' snap_pp.out)
+verdict snapshot_value_is_the_run_value_in_constant \
+  $([ -n "$fc" ] && [ "$fc" = "$fp" ] && ! grep -q "value=0$" <<<"$fc" && echo 1 || echo 0) \
+  "CosmicRayValues: constant 0.25 and stored 0.25 give '$fc'"
+verdict snapshot_fields_per_source \
+  $(grep -q "^FIELD after_first_init CosmicRayEnergyLossRates" snap_pp.out && echo 1 || echo 0) \
+  "the loss rate field is written"
+
 # per_particle: starts at 0, then the value written through the function
 run pp_start "$CR;cosmic_ray_source: per_particle" 1e-3 1e3
 verdict per_particle_starts_at_zero \
@@ -131,6 +143,9 @@ for rho in 3.3e5 3.3e7; do
   nh=$(awk -v d="$d" -v m="$m" -v x="$xh" -v mp="$mp" -v du="$du" 'BEGIN { printf "%.6g", x * (d - m) * du / mp }')
   verdict "fire2_value_at_n_H_$nh" $ok "e_cr $ecr eV cm^-3, value $v"
 done
+verdict fire2_snapshot_has_no_value_field \
+  $(! grep -q "CosmicRayValues" fire2_3.3e7.out && grep -q "^FIELD after_first_init CosmicRayEnergyLossRates" fire2_3.3e7.out && echo 1 || echo 0) \
+  "no CosmicRayValues, the loss rate is written"
 verdict fire2_stores_nothing \
   $(grep -qx "PART stored_value_after_first_init=0" fire2_3.3e7.out && grep -qx "PART stored_value_after_solve=0" fire2_3.3e7.out && echo 1 || echo 0) \
   "stored value 0"

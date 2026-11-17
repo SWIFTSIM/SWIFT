@@ -409,8 +409,9 @@ relative 1e-6. For example, ``initial_di_to_h_ratio: 4e-5`` alone needs
 Cosmic rays
 -----------
 
-With ``cosmic_rays`` ``reduced`` the field ``CosmicRayEnergyLossRates`` joins the snapshot, and with
-``cosmic_ray_source`` ``per_particle`` also ``CosmicRayValues``. ``swift -o`` does not list them.
+With ``cosmic_rays`` ``reduced`` the fields ``CosmicRayValues`` and ``CosmicRayEnergyLossRates`` join
+the snapshot, but ``swift -o`` does not list them. ``CosmicRayValues`` is not written with
+``cosmic_ray_source`` ``fire2``.
 
 .. list-table::
    :header-rows: 1
@@ -464,7 +465,7 @@ Source of the cosmic-ray value
 
 ``constant``
    One value for the whole run, ``cosmic_ray_initial_value`` (or ``cosmic_ray_constant_rate`` with the
-   input ``constant``). Nothing is stored in the particles.
+   input ``constant``). Nothing is stored in the particles; ``CosmicRayValues`` holds the value of the run.
 
 ``per_particle``
    Each particle stores a cosmic-ray energy density [eV cm\ :sup:`-3`, proper]. It is 0 at the start:
@@ -486,14 +487,14 @@ Source of the cosmic-ray value
 With ``per_particle`` and ``fire2`` the library needs ``cosmic_ray_rate_per_energy_density``,
 ``cosmic_ray_coulomb_loss_coefficient`` and ``cosmic_ray_hadronic_loss_coefficient`` (input
 ``energy_density``). ``cosmic_ray_initial_value`` stops the run with these two modes, and
-``cosmic_ray_fire2_energy_density`` stops it with the others. The mode ``constant`` is the default. With
-``constant`` and ``fire2`` nothing is stored, so ``CosmicRayValues`` is not written.
+``cosmic_ray_fire2_energy_density`` stops it with the others. The mode ``constant`` is the default.
 
 Functions for the injecting module
 ++++++++++++++++++++++++++++++++++
 
-These functions are declared in ``src/cooling/geajay/cooling.h``. Include ``cooling.h`` and call them
-with the ``struct xpart`` of the particle.
+These functions exist only with ``--with-cooling=geajay_N``: a module that calls them needs
+``#ifdef COOLING_GEAJAY``. They are declared in ``src/cooling/geajay/cooling.h`` and take the
+``struct xpart`` of the particle.
 
 .. code-block:: c
 
@@ -503,7 +504,8 @@ with the ``struct xpart`` of the particle.
 
 ``cooling_set_cosmic_ray_energy_density()`` writes the stored energy density [eV cm\ :sup:`-3`, proper].
 The value must be finite, at least 0 and fit in a float. The run stops if the source is not
-``per_particle``: the value would never be read. The cooling reads the value at its next call.
+``per_particle``: the value would never be read. ``cooling_cosmic_ray_source_is_per_particle()`` tells
+which source the run has. The cooling reads the value at its next call.
 
 ``cooling_get_cosmic_ray_energy_density()`` returns the stored value.
 
@@ -520,14 +522,18 @@ A feedback module uses them in its own time-step loop. At an injection it adds t
    const double e_old = cooling_get_cosmic_ray_energy_density(xp);
    cooling_set_cosmic_ray_energy_density(xp, e_old + e_injected);
 
-After a cooling step of length ``dt`` (physical time, seconds) it depletes the density by what was used.
-It can also apply its own decay or transport:
+After a cooling step of physical length ``dt_s`` in seconds (the step in internal units times
+``units_cgs_conversion_factor(us, UNIT_CONV_TIME)``) it depletes the density by what was used. It can also
+apply its own decay or transport:
 
 .. code-block:: c
 
-   const double loss = cooling_get_cosmic_ray_energy_loss_rate(xp);
-   const double e = cooling_get_cosmic_ray_energy_density(xp);
-   if (isfinite(loss)) cooling_set_cosmic_ray_energy_density(xp, fmax(0., e - loss * dt));
+   if (cooling_cosmic_ray_source_is_per_particle()) {
+     const double loss = cooling_get_cosmic_ray_energy_loss_rate(xp);
+     const double e = cooling_get_cosmic_ray_energy_density(xp);
+     if (isfinite(loss))
+       cooling_set_cosmic_ray_energy_density(xp, fmax(0., e - loss * dt_s));
+   }
 
 Output
 ++++++

@@ -115,6 +115,18 @@ int cooling_cosmic_ray_input_is_energy_density(void) {
 /*! 1 when the cosmic-ray source is per_particle. */
 static int cooling_geajay_cosmic_ray_per_particle = 0;
 
+/*! 1 when the cosmic-ray source is fire2. */
+static int cooling_geajay_cosmic_ray_fire2 = 0;
+
+/**
+ * @brief Does the run compute the cosmic-ray value from the local n_H?
+ *
+ * @return 1 with GeajayCooling:cosmic_ray_source fire2, 0 otherwise.
+ */
+int cooling_cosmic_ray_source_is_fire2(void) {
+  return cooling_geajay_cosmic_ray_fire2;
+}
+
 /**
  * @brief Does the run store a cosmic-ray energy density in each particle?
  *
@@ -2184,6 +2196,9 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   cooling_geajay_cosmic_ray_per_particle =
       cooling_geajay_cosmic_rays_on &&
       cooling->cosmic_ray_source == cooling_cosmic_ray_source_per_particle;
+  cooling_geajay_cosmic_ray_fire2 =
+      cooling_geajay_cosmic_rays_on &&
+      cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2;
   cooling_geajay_cosmic_ray_energy_density =
       cooling_geajay_cosmic_rays_on &&
       cooling->cosmic_ray_settings.input ==

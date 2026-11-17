@@ -41,6 +41,9 @@
 
 #include "swift.h"
 
+#include "cooling_io.h"
+#include "io_properties.h"
+
 #include "geajay_cosmic_ray.h"
 #include "geajay_options.h"
 
@@ -187,6 +190,29 @@ int geajay_particle_energy_rates_cosmic_ray_reduced(
   return real(context, layout, state, inputs, cosmic_ray_value, rates);
 }
 
+/* The cosmic-ray snapshot fields of the module: name, units and the value that
+ * the snapshot would hold for the particle. */
+static void print_fields(const char *when, struct unit_system *us,
+                         struct phys_const *phys_const,
+                         struct cooling_function_data *c, struct part *p,
+                         struct xpart *xp) {
+  struct engine e;
+  struct io_props list[64];
+  memset(&e, 0, sizeof(e));
+  e.internal_units = us;
+  e.physical_constants = phys_const;
+  e.cooling_func = c;
+  const int n = cooling_write_particles(p, xp, list);
+  for (int i = 0; i < n; i++) {
+    if (strncmp(list[i].name, "CosmicRay", 9) != 0) continue;
+    float value = -1.f;
+    if (list[i].convert_part_f) list[i].convert_part_f(&e, p, xp, &value);
+    printf("FIELD %s %s dimension=%d units=%d value=%.9g\n", when, list[i].name,
+           list[i].dimension, (int)list[i].units, value);
+  }
+  printf("FIELD %s count=%d\n", when, n);
+}
+
 /* A gas particle at the given density and energy, solved through the module:
  * what the module passes to the library is printed by the entry points above.
  * With CR_SET the energy density is first written through the documented
@@ -219,12 +245,14 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
   cooling_first_init_part(phys_const, us, hydro_properties, NULL, c, &p, &xp);
   printf("PART stored_value_after_first_init=%.17g\n",
          (double)xp.cooling_data.cosmic_ray_value);
+  print_fields("after_first_init", us, phys_const, c, &p, &xp);
 
 #ifndef NO_CR_MODES
   if (set_value) {
     cooling_set_cosmic_ray_energy_density(&xp, value);
     printf("PART stored_value_after_set=%.17g\n",
            cooling_get_cosmic_ray_energy_density(&xp));
+    print_fields("after_set", us, phys_const, c, &p, &xp);
   }
 #endif
 
