@@ -505,7 +505,8 @@ These functions exist only with ``--with-cooling=geajay_N``: a module that calls
 ``cooling_set_cosmic_ray_energy_density()`` writes the stored energy density [eV cm\ :sup:`-3`, proper].
 The value must be finite, at least 0 and fit in a float. The run stops if the source is not
 ``per_particle``: the value would never be read. ``cooling_cosmic_ray_source_is_per_particle()`` tells
-which source the run has. The cooling reads the value at its next call.
+which source the run has. The cooling reads the value at its next call. The stored value is part of the
+restart files but not of the initial conditions: a run started from a snapshot begins at 0.
 
 ``cooling_get_cosmic_ray_energy_density()`` returns the stored value.
 
@@ -523,9 +524,11 @@ A feedback module uses them in its own time-step loop. At an injection it adds t
    const double e_old = cooling_get_cosmic_ray_energy_density(xp);
    cooling_set_cosmic_ray_energy_density(xp, e_old + e_injected);
 
-After a cooling step of physical length ``dt_s`` in seconds (the step in internal units times
-``units_cgs_conversion_factor(us, UNIT_CONV_TIME)``) it depletes the density by what was used. It can also
-apply its own decay or transport:
+After a cooling step it depletes the density by what was used. The step ``dt_s`` is the one that the
+cooling averaged the loss over, in seconds: the argument ``dt`` of ``cooling_cool_part()``, which is the
+physical step in a cosmological run (not ``dt_therm``), times
+``units_cgs_conversion_factor(us, UNIT_CONV_TIME)``. The setter MUST NOT run while the cooling task of the
+same particle runs: the stored value has no lock. The injector can also apply its own decay or transport:
 
 .. code-block:: c
 
