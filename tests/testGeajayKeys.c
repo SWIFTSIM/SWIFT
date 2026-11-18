@@ -250,6 +250,12 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
     cosmo.a2_inv = 1. / (a * a);
     cosmo.a3_inv = 1. / (a * a * a);
     cosmo.a_factor_internal_energy = 1. / (a * a);
+    /* GEAJAY_KEYS_MEAN_BARYON_DENSITY: mean baryonic density today [g cm^-3].
+     * Without it the run has none, as without cosmology. */
+    const char *rho_b = getenv("GEAJAY_KEYS_MEAN_BARYON_DENSITY");
+    if (rho_b != NULL)
+      cosmo.mean_density_Omega_b =
+          atof(rho_b) * cosmo.a3_inv / c->units.density_units;
   }
   pressure_floor_init(&pressure_floor, phys_const, us, hydro_properties,
                       params);

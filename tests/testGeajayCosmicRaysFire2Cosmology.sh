@@ -16,6 +16,9 @@
 # fixture metal fraction Z = (double)0.01f set by run_particle, and X, m_p and
 # the density unit printed by the program (MOD lines):
 #   n_H = X (1 - Z) rho_comoving a^-3 / m_p,  value = e_cr n_H / (0.01 + n_H).
+# With GEAJAY_KEYS_MEAN_BARYON_DENSITY set (mean baryonic density today, g cm^-3),
+# the FIRE-2 cut applies: the value is 0 unless n_H > 1000 rho_b(a) / m_p, with
+# rho_b(a) = rho_b0 a^-3.
 # Exit code 0: every check passes.
 
 here=$(dirname "$(realpath "$0")")
@@ -116,6 +119,53 @@ done
 dense=$(value a05_dense solve)
 verdict fire2_cosmo_value_tends_to_e_cr_in_ev_per_cm3 \
   "$(close_to "$dense" "$ECR" 1e-3)" "dense value $dense for e_cr $ECR eV cm^-3"
+
+# The FIRE-2 cut: value 0 unless n_H > 1000 x the mean baryonic density (cm^-3 of m_p)
+RHOB0=4.2e-31
+
+# run_cut <name> <scale factor> <comoving density>: as run, with a mean baryonic density
+run_cut() {
+  mk "$1.yml" "$CR"
+  GEAJAY_KEYS_SCALE_FACTOR=$2 GEAJAY_KEYS_MEAN_BARYON_DENSITY=$RHOB0 "$bin" "$1.yml" --particle "$3" 1e3 > "$1.out" 2>&1
+  echo $? > "$1.status"
+}
+
+# expect_cut <a> <rho_comoving> <name>: the value with the cut
+expect_cut() {
+  local xh mp du
+  xh=$(sed -n 's/^MOD HydrogenFractionByMass=//p' "$3.out")
+  mp=$(sed -n 's/^MOD proton_mass_cgs=//p' "$3.out")
+  du=$(sed -n 's/^MOD density_units=//p' "$3.out")
+  awk -v a="$1" -v r="$2" -v e=$ECR -v x="$xh" -v mp="$mp" -v du="$du" -v zf="$ZFIX" -v rb="$RHOB0" '
+    BEGIN { n = x * (1 - zf) * r / (a * a * a) * du / mp
+            cut = 1000 * rb / (a * a * a) / mp
+            printf "%.17g", (n > cut) ? e * n / (0.01 + n) : 0 }'
+}
+
+# cut_case <name> <a> <rho_comoving> <zero|nonzero>
+cut_case() {
+  local name=$1 a=$2 rho=$3 want=$4 ok=1 c v w
+  run_cut "$name" "$a" "$rho"
+  w=$(expect_cut "$a" "$rho" "$name")
+  for c in cooling_time energy_rates solve; do
+    v=$(value "$name" $c)
+    if [ "$want" = zero ]; then
+      [ -n "$v" ] && [ "$(awk -v v="$v" 'BEGIN { print (v == 0) ? 1 : 0 }')" -eq 1 ] || ok=0
+    else
+      [ -n "$v" ] && [ "$(close_to "$v" "$w" 1e-12)" -eq 1 ] && [ "$(awk -v v="$v" 'BEGIN { print (v > 0) ? 1 : 0 }')" -eq 1 ] || ok=0
+    fi
+  done
+  verdict "fire2_cut_${name}" $ok "a=$a comoving rho=$rho: value $(value "$name" solve), expected $w ($want)"
+}
+
+# n_H = 9.8e-3 at the knee, cut at a=0.5 is 2.0e-3 and at a=1 is 2.5e-4 (cm^-3)
+cut_case a05_above_cut 0.5 4e4 nonzero
+# 1e4 gives n_H = 2.4e-3, between the cut 2.0e-3 and the cut 2.6e-3 of a mean density divided by X
+cut_case a05_just_above_cut 0.5 1e4 nonzero
+cut_case a05_below_cut 0.5 6e3 zero
+# the same physical gas (6e3 / a^3 = 4.8e4) is above the cut at a=1, where the mean density is 8 times lower
+cut_case a1_same_physical_gas_above_cut 1.0 4.8e4 nonzero
+cut_case a05_dense_above_cut 0.5 4e8 nonzero
 
 echo "checks: $checks failures: $fails"
 [ $fails -eq 0 ]

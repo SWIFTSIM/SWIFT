@@ -483,7 +483,12 @@ Source of the cosmic-ray value
    ``energy_density``. Here n\ :sub:`H` = X (:math:`\rho` - :math:`\rho_Z`) / m\ :sub:`p` [cm\ :sup:`-3`], with
    X the hydrogen mass fraction of the metal-free gas, :math:`\rho` the physical density and :math:`\rho_Z` the
    metal density. In a cosmological run the density is the physical one, not the comoving one, and
-   e\ :sub:`cr` is a proper energy density in eV cm\ :sup:`-3`. Nothing is stored. The value does not depend on the per-particle value and is not
+   e\ :sub:`cr` is a proper energy density in eV cm\ :sup:`-3`. In a cosmological run the value is 0
+   unless n\ :sub:`H` is above 1000 times the mean baryonic density of the Universe at the current
+   redshift, :math:`\rho_b` / m\ :sub:`p` (Hopkins et al. 2018, appendix B). The cut is always applied
+   and has no key: it moves with (1+z)\ :sup:`3`, about 2.5e-4 cm\ :sup:`-3` at z = 0. Without cosmology
+   there is no mean density and no cut. Nothing is stored. The value does not depend on the
+   per-particle value and is not
    multiplied by it.
 
 With ``per_particle`` and ``fire2`` the library needs ``cosmic_ray_rate_per_energy_density``,

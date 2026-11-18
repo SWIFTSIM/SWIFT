@@ -1065,23 +1065,29 @@ static double cooling_stored_nan(void) {
  * @brief Cosmic-ray value passed to geajay for a particle.
  *
  * @param cooling The #cooling_function_data used in the run.
+ * @param cosmo The #cosmology.
  * @param xp Pointer to the particle extra data.
  * @param inputs The inputs of the solve (density in internal units).
  * @return The value of the source: the constant of the run, the stored energy
  * density, or e_cr n_H / (0.01 + n_H) with n_H the local hydrogen number
- * density in cm^-3. 0 with the input "constant".
+ * density in cm^-3, and 0 in a cosmological run when n_H is not above 1000
+ * times the mean baryonic density (Hopkins et al. 2018, eq. B25). 0 with the
+ * input "constant".
  */
 static double cooling_cosmic_ray_value(
-    const struct cooling_function_data *cooling, const struct xpart *xp,
-    const geajay_particle_inputs *inputs) {
+    const struct cooling_function_data *cooling, const struct cosmology *cosmo,
+    const struct xpart *xp, const geajay_particle_inputs *inputs) {
 #if COOLING_GEAJAY_MODE >= 1
   switch (cooling->cosmic_ray_source) {
     case cooling_cosmic_ray_source_per_particle:
       return xp->cooling_data.cosmic_ray_value;
     case cooling_cosmic_ray_source_fire2: {
+      const double rho_H =
+          cooling->HydrogenFractionByMass * (inputs->density - inputs->metal);
+      /* mean_density_Omega_b is 0 without cosmology: no cut */
+      if (!(rho_H > 1000. * cosmo->mean_density_Omega_b)) return 0.;
       const double n_H =
-          cooling->HydrogenFractionByMass * (inputs->density - inputs->metal) *
-          cooling->units.density_units / cooling->proton_mass_cgs;
+          rho_H * cooling->units.density_units / cooling->proton_mass_cgs;
       return cooling->cosmic_ray_fire2_energy_density *
              geajay_cosmic_ray_density_factor_fire2(n_H);
     }
@@ -1116,6 +1122,7 @@ static void cooling_set_cosmic_ray_loss(struct xpart *xp, const double loss) {
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
+ * @param cosmo The #cosmology.
  * @param xp Pointer to the particle extra data.
  * @param inputs The inputs of the solve.
  * @param dt The time-step of this particle.
@@ -1126,16 +1133,16 @@ static void cooling_set_cosmic_ray_loss(struct xpart *xp, const double loss) {
  */
 static double cooling_new_energy_cosmic_rays(
     const struct cooling_function_data *cooling, const struct part *p,
-    struct xpart *xp, const geajay_particle_inputs *inputs, const double dt,
-    const double energy, geajay_particle_status *status,
-    int *kept_previous_state) {
+    const struct cosmology *cosmo, struct xpart *xp,
+    const geajay_particle_inputs *inputs, const double dt, const double energy,
+    geajay_particle_status *status, int *kept_previous_state) {
 
   geajay_cosmic_ray_output output = {.size = sizeof(output)};
 
   const int solved =
       geajay_particle_solve_cosmic_ray_reduced(
           cooling->cosmic_ray_context, &cooling->layout, xp, inputs,
-          cooling_cosmic_ray_value(cooling, xp, inputs), dt,
+          cooling_cosmic_ray_value(cooling, cosmo, xp, inputs), dt,
           /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
 
   if (status->reason == GEAJAY_PARTICLE_BAD_ARGUMENT) {
@@ -1145,8 +1152,8 @@ static double cooling_new_energy_cosmic_rays(
         "a value is not finite or out of range (cosmic-ray value %e, "
         "density %e, energy %e, metal density %e, H2 shielding length %e, "
         "LW attenuation %e, PE attenuation %e; species above). geajay: %s",
-        p->id, cooling_cosmic_ray_value(cooling, xp, inputs), inputs->density,
-        inputs->internal_energy, inputs->metal,
+        p->id, cooling_cosmic_ray_value(cooling, cosmo, xp, inputs),
+        inputs->density, inputs->internal_energy, inputs->metal,
         inputs->H2_self_shielding_length, inputs->lw_background_attenuation,
         inputs->pe_background_attenuation, geajay_last_error_message());
   }
@@ -1262,8 +1269,8 @@ static geajay_float cooling_new_energy_or_keep_previous(
   geajay_particle_status status = {.size = sizeof(status)};
 
   if (cooling->cosmic_ray_context != NULL)
-    return cooling_new_energy_cosmic_rays(cooling, p, xp, &inputs, dt, energy,
-                                          &status, kept_previous_state);
+    return cooling_new_energy_cosmic_rays(cooling, p, cosmo, xp, &inputs, dt,
+                                          energy, &status, kept_previous_state);
 
   geajay_particle_output output = {.size = sizeof(output)};
 
@@ -1379,7 +1386,8 @@ double cooling_time(const struct phys_const *phys_const,
       cooling->cosmic_ray_context != NULL
           ? geajay_particle_cooling_time_cosmic_ray_reduced(
                 cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
-                cooling_cosmic_ray_value(cooling, xp, &inputs), &cooling_time)
+                cooling_cosmic_ray_value(cooling, cosmo, xp, &inputs),
+                &cooling_time)
           : geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
                                          &inputs, &cooling_time);
   if (ok != GEAJAY_SUCCESS) return cooling_stored_nan();
@@ -1425,7 +1433,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
       (cooling->cosmic_ray_context != NULL
            ? geajay_particle_energy_rates_cosmic_ray_reduced(
                  cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
-                 cooling_cosmic_ray_value(cooling, xp, &inputs), &result)
+                 cooling_cosmic_ray_value(cooling, cosmo, xp, &inputs), &result)
            : geajay_particle_energy_rates(cooling->context, &cooling->layout,
                                           xp, &inputs, &result)) ==
       GEAJAY_SUCCESS;
