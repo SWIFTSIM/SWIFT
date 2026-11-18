@@ -98,6 +98,14 @@
     receives the star's light. */
 #define RADIATION_PACKET_EMISSION_EDGE STAR_GAS_WEIGHT_EDGE
 
+/*! Odd multipliers of the integer hashes of the stochastic rounding: the
+    golden-ratio constant that spreads an index, two constants that mix the
+    bits of the final hash and one that weights the salt. */
+#define RADIATION_PACKET_HASH_GOLDEN 0x9e3779b9u
+#define RADIATION_PACKET_HASH_MIX_1 0x85ebca6bu
+#define RADIATION_PACKET_HASH_MIX_2 0xc2b2ae35u
+#define RADIATION_PACKET_HASH_SALT 0x85ebca77u
+
 /*! Is the speed of the light of a share limited? Set by
     #radiation_packet_set_light_speed. */
 extern int radiation_packet_light_speed_limited;
@@ -107,7 +115,9 @@ extern int radiation_packet_light_speed_limited;
 extern float radiation_packet_cone_power;
 
 /*! Row-major rotation matrix of the fixed frame of the reception slots, the
-    same for every particle. Set by #radiation_packet_set_frame. */
+    same for every particle. Set once at start-up by #radiation_packet_set_frame
+    and read only after. Global because the inline pair-loop functions below
+    have no #feedback_props. */
 extern float radiation_packet_octant_frame[9];
 
 /**
@@ -174,13 +184,13 @@ __attribute__((always_inline)) INLINE static double radiation_packet_time_later(
   return t >= 0x1p53 ? nextafter(t, DBL_MAX) : t;
 }
 
-void radiation_packet_weight_vector(const struct part *s, const struct part *r,
+void radiation_packet_weight_vector(const struct part *sender,
+                                    const struct part *receiver,
                                     const float dx[3], float out[3]);
-float radiation_packet_transmission_weight(const float dx[3], const float h_s,
-                                           const float h_r, const int r_active,
-                                           const int want, const float n[3],
-                                           const float power, const float mass,
-                                           const float rho);
+float radiation_packet_transmission_weight(
+    const float dx[3], const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want, const float n[3],
+    const float power, const float mass, const float rho);
 int radiation_packet_emission_cone(const long long star_id,
                                    const integertime_t ti_begin,
                                    const double dx[3]);
@@ -208,7 +218,7 @@ integertime_t radiation_packet_bin_end(
 integertime_t radiation_packet_far_end(
     const struct feedback_isrf_packet_data *pk, const int c);
 int radiation_packet_bin_demand(const double reach, const double q,
-                                const int s);
+                                const int step_ratio);
 struct threadpool;
 void radiation_packet_far_stock_sum(struct threadpool *tp,
                                     const struct part *parts, size_t nr_parts,
@@ -219,7 +229,7 @@ void radiation_packet_bin_counters(long long *widened, long long *beyond,
                                    long long *clamped);
 void radiation_packet_book_gas_left_box(const struct part *p);
 void radiation_packet_book_star_left_box(const struct spart *sp);
-void radiation_packet_book_sink_left_box(const struct sink *s);
+void radiation_packet_book_sink_left_box(const struct sink *sink);
 void radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p);
 void radiation_packet_reduce_left_box(const struct engine *e);
 void radiation_packet_left_box_total(
@@ -246,8 +256,9 @@ void radiation_packet_set_first_step(struct part *p,
                                      const integertime_t ti_current,
                                      const integertime_t ti_step,
                                      const integertime_t ti_end);
-void radiation_packet_end_gradient(struct part *p, const float a, const float c,
-                                   const float dt, const float tau);
+void radiation_packet_end_gradient(struct part *p, const float a,
+                                   const float speed_of_light, const float dt,
+                                   const float tau);
 void radiation_packet_end_force(struct part *p);
 int radiation_packet_octant(const float frame[9], const float direction[3]);
 int radiation_packet_slot(const float frame[9], const float direction[3]);
@@ -283,19 +294,24 @@ radiation_packet_add_stochastic(const float a, const float b,
                                 const uint32_t salt) {
   const double sum = (double)a + (double)b;
   uint64_t bits;
-  uint32_t ua, ub;
+  uint32_t ua;
+  uint32_t ub;
   memcpy(&bits, &sum, sizeof(bits));
   memcpy(&ua, &a, sizeof(ua));
   memcpy(&ub, &b, sizeof(ub));
-  uint32_t h = (ua * 0x9e3779b9u) ^ ub ^ (salt * 0x85ebca77u);
+
+  uint32_t h = (ua * RADIATION_PACKET_HASH_GOLDEN) ^ ub ^
+               (salt * RADIATION_PACKET_HASH_SALT);
   h ^= h >> 16;
-  h *= 0x85ebca6bu;
+  h *= RADIATION_PACKET_HASH_MIX_1;
   h ^= h >> 13;
-  h *= 0xc2b2ae35u;
+  h *= RADIATION_PACKET_HASH_MIX_2;
   h ^= h >> 16;
+
   bits = (bits + (uint64_t)(h >> 3)) & ~((UINT64_C(1) << 29) - 1);
   double rounded;
   memcpy(&rounded, &bits, sizeof(rounded));
+
   return (float)rounded;
 }
 
@@ -311,8 +327,21 @@ __attribute__((always_inline)) INLINE static uint32_t radiation_packet_salt(
     const long long id, const integertime_t ti) {
   const unsigned long long u = (unsigned long long)id;
   const unsigned long long t = (unsigned long long)ti;
-  return ((uint32_t)u ^ (uint32_t)(u >> 32)) * 0x9e3779b9u ^ (uint32_t)t ^
-         (uint32_t)(t >> 32);
+
+  return ((uint32_t)u ^ (uint32_t)(u >> 32)) * RADIATION_PACKET_HASH_GOLDEN ^
+         (uint32_t)t ^ (uint32_t)(t >> 32);
+}
+
+/**
+ * @brief Salt of the i-th add of a sequence of adds into one sum, from the
+ * salt of the sequence.
+ *
+ * @param salt Salt of the sequence.
+ * @param i Index of the add.
+ */
+__attribute__((always_inline)) INLINE static uint32_t
+radiation_packet_salt_index(const uint32_t salt, const uint32_t i) {
+  return salt ^ (i * RADIATION_PACKET_HASH_GOLDEN);
 }
 
 /**
@@ -332,11 +361,14 @@ __attribute__((always_inline)) INLINE static uint32_t
 radiation_packet_share_salt(const double energy[ISRF_OPERATOR_COUNT],
                             const long long id, const integertime_t ti) {
   uint32_t salt = radiation_packet_salt(id, ti);
+
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     uint64_t bits;
     memcpy(&bits, &energy[b], sizeof(bits));
-    salt = (salt * 0x9e3779b9u) ^ (uint32_t)(bits ^ (bits >> 32));
+    salt =
+        (salt * RADIATION_PACKET_HASH_GOLDEN) ^ (uint32_t)(bits ^ (bits >> 32));
   }
+
   return salt;
 }
 
@@ -373,20 +405,19 @@ __attribute__((always_inline)) INLINE static int radiation_packet_slot_is_empty(
   return 1;
 }
 
-_Static_assert(RADIATION_PACKET_SLOTS <= 16,
-               "The mask of occupied slots is a uint16_t.");
-
 /**
  * @brief The mask of the slots that hold energy, by scanning them.
  *
  * @param pk The packet.
  */
-__attribute__((always_inline)) INLINE static uint16_t
+__attribute__((always_inline)) INLINE static radiation_packet_mask_t
 radiation_packet_scan_occupied(const struct feedback_isrf_packet_data *pk) {
-  uint16_t mask = 0;
+  radiation_packet_mask_t mask = 0;
+
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++)
     if (!radiation_packet_slot_is_empty(&pk->slot[s]))
-      mask |= (uint16_t)(1u << s);
+      mask |= (radiation_packet_mask_t)((radiation_packet_mask_t)1u << s);
+
   return mask;
 }
 
@@ -412,14 +443,29 @@ radiation_packet_refresh_occupied(struct feedback_isrf_packet_data *pk) {
 __attribute__((always_inline)) INLINE static void
 radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
                                 const long long id) {
-  const uint16_t scanned = radiation_packet_scan_occupied(pk);
+  const radiation_packet_mask_t scanned = radiation_packet_scan_occupied(pk);
   if (pk->occupied_slots != scanned)
     error(
-        "Particle %lld has the occupied-slot mask %#x but its held energies "
-        "give %#x.",
-        id, (unsigned)pk->occupied_slots, (unsigned)scanned);
+        "Particle %lld has the occupied-slot mask %#llx but its held energies "
+        "give %#llx.",
+        id, (unsigned long long)pk->occupied_slots,
+        (unsigned long long)scanned);
 }
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_occupied(const struct feedback_isrf_packet_data *pk,
+                                const long long id) {}
 #endif
+
+/**
+ * @brief The lowest set bit of a non-zero mask of occupied slots.
+ *
+ * @param m The mask.
+ */
+__attribute__((always_inline)) INLINE static int radiation_packet_lowest_slot(
+    const radiation_packet_work_mask_t m) {
+  return sizeof(m) > 4 ? __builtin_ctzll(m) : __builtin_ctz(m);
+}
 
 /**
  * @brief Does the particle hold no energy in any band of any slot?
@@ -438,44 +484,48 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
  * @param dx Comoving vector from the sender to the neighbour. It gives the
  * forward advance and selects the periodic image of the transmission weight,
  * which is computed from the positions (#radiation_packet_weight_vector).
- * @param h_s Comoving smoothing length of the sender.
- * @param h_r Comoving smoothing length of the neighbour.
- * @param r_active Is the neighbour active in this step?
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the neighbour.
+ * @param is_receiver_active Is the neighbour active in this step?
  * @param want The part of the reach to add (#RADIATION_PACKET_REACH_INNER and
  * so on).
- * @param s The sender.
- * @param r The neighbour.
+ * @param sender The sender.
+ * @param receiver The neighbour.
  */
 __attribute__((always_inline)) INLINE static void
-radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
-                                     const float h_r, const int r_active,
-                                     const int want, struct part *restrict s,
-                                     const struct part *restrict r) {
+radiation_packet_gradient_accumulate(const float dx[3], const float h_sender,
+                                     const float h_receiver,
+                                     const int is_receiver_active,
+                                     const int want,
+                                     struct part *restrict sender,
+                                     const struct part *restrict receiver) {
 
-  struct feedback_isrf_packet_data *pk = &s->feedback_data.isrf_packet;
+  struct feedback_isrf_packet_data *pk = &sender->feedback_data.isrf_packet;
   float dxw[3];
   int have_dxw = 0;
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
-  radiation_packet_check_occupied(pk, s->id);
-#endif
+
+  radiation_packet_check_occupied(pk, sender->id);
+
   /* A set-bit walk here changes the rounding of the inlined hydro gradient
    * loop. */
   for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
     if (!((pk->occupied_slots >> k) & 1u)) continue;
+
     if (!have_dxw) {
-      radiation_packet_weight_vector(s, r, dx, dxw);
+      radiation_packet_weight_vector(sender, receiver, dx, dxw);
       have_dxw = 1;
     }
 
     const float w = radiation_packet_transmission_weight(
-        dxw, h_s, h_r, r_active, want, sl->direction,
-        radiation_packet_cone_power, hydro_get_mass(r),
-        r->feedback_data.rho_prev);
+        dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
+        radiation_packet_cone_power, hydro_get_mass(receiver),
+        receiver->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
     sl->weight_sum = radiation_packet_add_stochastic(
-        sl->weight_sum, w, radiation_packet_salt(r->id, pk->step_end_ti));
+        sl->weight_sum, w,
+        radiation_packet_salt(receiver->id, pk->step_end_ti));
     sl->forward_advance +=
         w * (dx[0] * sl->direction[0] + dx[1] * sl->direction[1] +
              dx[2] * sl->direction[2]);
@@ -487,16 +537,19 @@ radiation_packet_gradient_accumulate(const float dx[3], const float h_s,
  * @brief Stop if a share is booked into a removed particle or with an unset
  * octant frame.
  *
- * @param r The receiver.
+ * @param receiver The receiver.
  * @param frame Octant frame of the share.
  */
 __attribute__((always_inline)) INLINE static void
-radiation_packet_check_deliver(const struct part *restrict r,
+radiation_packet_check_deliver(const struct part *restrict receiver,
                                const float frame[9]) {
-  if (r->time_bin == time_bin_inhibited)
-    error("Packet share booked into the removed gas particle %lld.", r->id);
+  if (receiver->time_bin == time_bin_inhibited)
+    error("Packet share booked into the removed gas particle %lld.",
+          receiver->id);
+
   float frame_norm = 0.f;
   for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
+
   if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
     error("Packet share booked with an unset octant frame (norm %e).",
           frame_norm);
@@ -510,9 +563,9 @@ radiation_packet_check_deliver(const struct part *restrict r,
  * A transmitted photon number below #RADIATION_PACKET_MIN_PHOTONS is
  * absorbed with its energy.
  *
- * @param r The receiver.
- * @param en Energy of the share per band, before absorption.
- * @param ph Photon number of the share per band, before absorption.
+ * @param receiver The receiver.
+ * @param energy Energy of the share per band, before absorption.
+ * @param photons Photon number of the share per band, before absorption.
  * @param path_phys Physical path length over which the share is absorbed.
  * @param transmitted_energy_b (return) Energy that is left, per band.
  * @param transmitted_photons_b (return) Photon number that is left, per band.
@@ -520,36 +573,42 @@ radiation_packet_check_deliver(const struct part *restrict r,
  */
 __attribute__((always_inline)) INLINE static float
 radiation_packet_absorb_in_dust(
-    struct part *restrict r, const double en[ISRF_OPERATOR_COUNT],
-    const double ph[ISRF_OPERATOR_COUNT], const float path_phys,
+    struct part *restrict receiver, const double energy[ISRF_OPERATOR_COUNT],
+    const double photons[ISRF_OPERATOR_COUNT], const float path_phys,
     float transmitted_energy_b[ISRF_OPERATOR_COUNT],
     float transmitted_photons_b[ISRF_OPERATOR_COUNT]) {
 
-  struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
+  struct feedback_isrf_packet_data *receiver_packet =
+      &receiver->feedback_data.isrf_packet;
   float delivered_energy = 0.f;
-  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-    struct feedback_isrf_packet_band_data *ledger = &pk_r->band[b];
 
-    const float tau = r->feedback_data.isrf_operator[b].kappa * path_phys;
+  for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
+    struct feedback_isrf_packet_band_data *ledger = &receiver_packet->band[b];
+
+    const float tau =
+        receiver->feedback_data.isrf_operator[b].kappa * path_phys;
     double absorbed_fraction = 1.0;
     if (tau < RADIATION_PACKET_MAX_OPTICAL_DEPTH)
       absorbed_fraction = -expm1((double)-tau);
 
-    double absorbed_energy = en[b] * absorbed_fraction;
-    double absorbed_photons = ph[b] * absorbed_fraction;
-    float transmitted_energy = (float)(en[b] - absorbed_energy);
-    float transmitted_photons = (float)(ph[b] - absorbed_photons);
+    double absorbed_energy = energy[b] * absorbed_fraction;
+    double absorbed_photons = photons[b] * absorbed_fraction;
+    float transmitted_energy = (float)(energy[b] - absorbed_energy);
+    float transmitted_photons = (float)(photons[b] - absorbed_photons);
     if (transmitted_photons < RADIATION_PACKET_MIN_PHOTONS) {
-      absorbed_energy = en[b];
-      absorbed_photons = ph[b];
+      absorbed_energy = energy[b];
+      absorbed_photons = photons[b];
       transmitted_energy = 0.f;
       transmitted_photons = 0.f;
     }
+
     transmitted_energy_b[b] = transmitted_energy;
     transmitted_photons_b[b] = transmitted_photons;
+
     radiation_packet_ledger_absorbed(ledger, absorbed_energy, absorbed_photons);
     delivered_energy += transmitted_energy;
   }
+
   return delivered_energy;
 }
 
@@ -573,7 +632,7 @@ radiation_packet_absorb_in_dust(
  * make the front move at up to `v + u` in the frame of the box. That is
  * harmless for `v` near `c`; for a limit of a few km/s in moving gas it is not.
  *
- * @param r The receiver.
+ * @param receiver The receiver.
  * @param frame Octant frame, #feedback_props.ISRF_packet_octant_frame.
  * @param energy Energy of the share per band, before absorption.
  * @param photons Photon number of the share per band, as `N E_lo`.
@@ -600,7 +659,7 @@ radiation_packet_absorb_in_dust(
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_deliver_with_lines(
-    struct part *restrict r, const float frame[9],
+    struct part *restrict receiver, const float frame[9],
     const double energy[ISRF_OPERATOR_COUNT],
     const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
     const float path_phys, const float H, const int to_reservoir,
@@ -609,41 +668,50 @@ radiation_packet_deliver_with_lines(
     const float line_transmission, const float line_shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
-  radiation_packet_check_deliver(r, frame);
+  radiation_packet_check_deliver(receiver, frame);
 #endif
 
   const float from_origin[3] = {-offset[0], -offset[1], -offset[2]};
-  struct feedback_isrf_packet_data *pk_r = &r->feedback_data.isrf_packet;
+  struct feedback_isrf_packet_data *receiver_packet =
+      &receiver->feedback_data.isrf_packet;
   struct feedback_isrf_packet_slot_data *sl =
-      &pk_r->slot[radiation_packet_slot(frame, from_origin)];
+      &receiver_packet->slot[radiation_packet_slot(frame, from_origin)];
 
   /* In a static box the arrays are used as given. */
-  const double *en = energy;
-  const double *ph = photons;
+  const double *share_energy = energy;
+  const double *share_photons = photons;
   double expanded_energy[ISRF_OPERATOR_COUNT];
   double expanded_photons[ISRF_OPERATOR_COUNT];
   double lost_energy[ISRF_OPERATOR_COUNT];
   double lost_photons[ISRF_OPERATOR_COUNT];
+
   if (H > 0.f) {
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       expanded_energy[b] = energy[b];
       expanded_photons[b] = photons[b];
     }
+
     radiation_packet_redshift_share(H, path_phys, expanded_energy,
                                     expanded_photons, lost_energy,
                                     lost_photons);
-    en = expanded_energy;
-    ph = expanded_photons;
+
+    share_energy = expanded_energy;
+    share_photons = expanded_photons;
+
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
-      radiation_packet_ledger_redshifted(&pk_r->band[b], lost_energy[b],
-                                         lost_photons[b]);
+      radiation_packet_ledger_redshifted(&receiver_packet->band[b],
+                                         lost_energy[b], lost_photons[b]);
     }
   }
 
   float transmitted_energy_b[ISRF_OPERATOR_COUNT];
   float transmitted_photons_b[ISRF_OPERATOR_COUNT];
   const float delivered_energy = radiation_packet_absorb_in_dust(
-      r, en, ph, path_phys, transmitted_energy_b, transmitted_photons_b);
+      receiver, share_energy, share_photons, path_phys, transmitted_energy_b,
+      transmitted_photons_b);
+
+  const uint32_t salt = radiation_packet_share_salt(share_energy, receiver->id,
+                                                    source_step_end_ti);
 
   if (with_lines && delivered_energy > 0.f) {
     const double dissociating =
@@ -652,15 +720,14 @@ radiation_packet_deliver_with_lines(
     sl->H2_waiting_velocity_sum += (float)(dissociating * line_shift);
   }
 
-  const uint32_t salt =
-      radiation_packet_share_salt(en, r->id, source_step_end_ti);
   if (radiation_packet_light_speed_limited) {
     /* The light waits in its arrival bin until the receiver's merge at or
        after the end of the bin. */
     if (delivered_energy > 0.f)
-      radiation_packet_deposit(pk_r, sl, transmitted_energy_b,
+      radiation_packet_deposit(receiver_packet, sl, transmitted_energy_b,
                                transmitted_photons_b, arrival, arrival_last,
                                salt);
+
     for (int k = 0; k < 3; k++)
       sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
   } else if (to_reservoir) {
@@ -670,8 +737,10 @@ radiation_packet_deliver_with_lines(
       sl->band[b].reservoir_photons = radiation_packet_add_stochastic(
           sl->band[b].reservoir_photons, transmitted_photons_b[b], salt);
     }
+
     for (int k = 0; k < 3; k++)
       sl->reservoir_origin_offset[k] += (double)delivered_energy * offset[k];
+
     if (source_step_end_ti > sl->reservoir_end_ti)
       sl->reservoir_end_ti = source_step_end_ti;
   } else {
@@ -681,12 +750,13 @@ radiation_packet_deliver_with_lines(
       sl->band[b].bin_photons[0] = radiation_packet_add_stochastic(
           sl->band[b].bin_photons[0], transmitted_photons_b[b], salt);
     }
+
     for (int k = 0; k < 3; k++)
       sl->inbox_origin_offset[k] += (double)delivered_energy * offset[k];
   }
 
 #ifdef SWIFT_DEBUG_CHECKS
-  pk_r->shares_received++;
+  receiver_packet->shares_received++;
 #endif
 }
 
@@ -695,7 +765,7 @@ radiation_packet_deliver_with_lines(
  * #radiation_packet_deliver_with_lines). Without H2 line absorption it is the
  * delivery of every share.
  *
- * @param r The receiver.
+ * @param receiver The receiver.
  * @param frame Octant frame, #feedback_props.ISRF_packet_octant_frame.
  * @param energy Energy of the share per band, before absorption.
  * @param photons Photon number of the share per band, as `N E_lo`.
@@ -710,16 +780,16 @@ radiation_packet_deliver_with_lines(
  * reaches the receiver.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
-    struct part *restrict r, const float frame[9],
+    struct part *restrict receiver, const float frame[9],
     const double energy[ISRF_OPERATOR_COUNT],
     const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
     const float path_phys, const float H, const int to_reservoir,
     const integertime_t source_step_end_ti, const double arrival,
     const double arrival_last) {
   radiation_packet_deliver_with_lines(
-      r, frame, energy, photons, offset, path_phys, H, to_reservoir,
+      receiver, frame, energy, photons, offset, path_phys, H, to_reservoir,
       source_step_end_ti, arrival, arrival_last,
-      r->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f);
+      receiver->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f);
 }
 
 /**
@@ -733,7 +803,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * A receiver without H2 or without a temperature leaves the transmission as it
  * is.
  *
- * @param r The receiver.
+ * @param receiver The receiver.
  * @param transmission Line transmission of the share before the hop.
  * @param column Column in cm^-2 of the share before the hop.
  * @param shift Velocity shift of the share before the hop.
@@ -743,11 +813,13 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * @param shift_out (return) Velocity shift after the hop.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_line_hop(
-    const struct part *restrict r, const float transmission, const float column,
-    const float shift, const double shift_hop, const float path_phys,
-    float *t_out, float *shift_out) {
-  const struct feedback_part_data *fd = &r->feedback_data;
-  double t = transmission, N = column, dv = shift;
+    const struct part *restrict receiver, const float transmission,
+    const float column, const float shift, const double shift_hop,
+    const float path_phys, float *t_out, float *shift_out) {
+  const struct feedback_part_data *fd = &receiver->feedback_data;
+  double t = transmission;
+  double N = column;
+  double dv = shift;
   radiation_h2_shielding_shift(&t, &N, &dv, shift_hop, fd->H2_velocity_limit);
   radiation_h2_shielding_hop(&t, &N,
                              (double)fd->H2_column_per_length * path_phys,
@@ -768,47 +840,53 @@ __attribute__((always_inline)) INLINE static void radiation_packet_line_hop(
  * path and the arrival delay and selects the periodic image of the
  * transmission weight, which is computed from the positions
  * (#radiation_packet_weight_vector).
- * @param h_s Comoving smoothing length of the sender.
- * @param h_r Comoving smoothing length of the receiver.
- * @param r_active Is the receiver active in this step?
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the receiver.
+ * @param is_receiver_active Is the receiver active in this step?
  * @param want The part of the reach to book (#RADIATION_PACKET_REACH_INNER and
  * so on).
- * @param s The sender.
- * @param r The receiver.
+ * @param sender The sender.
+ * @param receiver The receiver.
  * @param a Current scale factor.
  * @param H Current Hubble rate. 0 in a static box.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
-    const float dx[3], const float h_s, const float h_r, const int r_active,
-    const int want, const struct part *restrict s, struct part *restrict r,
+    const float dx[3], const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want,
+    const struct part *restrict sender, struct part *restrict receiver,
     const float a, const float H) {
 
-  const struct feedback_isrf_packet_data *pk_s = &s->feedback_data.isrf_packet;
+  const struct feedback_isrf_packet_data *sender_packet =
+      &sender->feedback_data.isrf_packet;
   float dxw[3];
   int have_dxw = 0;
-#if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
-  radiation_packet_check_occupied(pk_s, s->id);
-#endif
-  const int with_lines = r->feedback_data.ISRF_H2_line_absorption;
-  for (uint32_t m = pk_s->occupied_slots; m != 0; m &= m - 1) {
-    const int k = __builtin_ctz(m);
-    const struct feedback_isrf_packet_slot_data *sl = &pk_s->slot[k];
+
+  radiation_packet_check_occupied(sender_packet, sender->id);
+
+  const int with_lines = receiver->feedback_data.ISRF_H2_line_absorption;
+
+  for (radiation_packet_work_mask_t m = sender_packet->occupied_slots; m != 0;
+       m &= m - 1) {
+    const int k = radiation_packet_lowest_slot(m);
+    const struct feedback_isrf_packet_slot_data *sl = &sender_packet->slot[k];
+
     if (!have_dxw) {
-      radiation_packet_weight_vector(s, r, dx, dxw);
+      radiation_packet_weight_vector(sender, receiver, dx, dxw);
       have_dxw = 1;
     }
 
     const float w = radiation_packet_transmission_weight(
-        dxw, h_s, h_r, r_active, want, sl->direction,
-        radiation_packet_cone_power, hydro_get_mass(r),
-        r->feedback_data.rho_prev);
+        dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
+        radiation_packet_cone_power, hydro_get_mass(receiver),
+        receiver->feedback_data.rho_prev);
     if (w == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
     if (!(sl->weight_sum > 0.f))
-      error("Particle %lld books a share with weight sum %e in slot %d.", s->id,
-            sl->weight_sum, k);
+      error("Particle %lld books a share with weight sum %e in slot %d.",
+            sender->id, sl->weight_sum, k);
 #endif
+
     const float fraction = w / sl->weight_sum;
 
     const float d_s = sl->origin_distance;
@@ -817,10 +895,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
                              -dx[2] - d_s * sl->direction[2]};
     const float d_r = sqrtf(offset[0] * offset[0] + offset[1] * offset[1] +
                             offset[2] * offset[2]);
+
     float path = d_r - d_s;
     if (path < 0.f) path = 0.f;
 
-    double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
+    double energy[ISRF_OPERATOR_COUNT];
+    double photons[ISRF_OPERATOR_COUNT];
     for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
       energy[b] = (double)sl->band[b].energy * (double)fraction;
       photons[b] = (double)sl->band[b].photons * (double)fraction;
@@ -831,41 +911,51 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
        the separation of the two particles: by the triangle inequality the
        light cannot reach the receiver sooner, whatever the mean origin of
        the packet. */
-    double arrival = 0., arrival_last = 0.;
-    const integertime_t source_end_ti = pk_s->step_end_ti;
-    const double merge_time = (double)(source_end_ti - pk_s->step_ti);
+    double arrival = 0.;
+    double arrival_last = 0.;
+    const integertime_t source_end_ti = sender_packet->step_end_ti;
+    const double merge_time = (double)(source_end_ti - sender_packet->step_ti);
+
     if (radiation_packet_light_speed_limited) {
       const double separation =
           sqrt((double)dx[0] * dx[0] + (double)dx[1] * dx[1] +
                (double)dx[2] * dx[2]);
+
       double closing = 0.;
       if (separation > 0.)
-        closing = ((double)r->v[0] * dx[0] + (double)r->v[1] * dx[1] +
-                   (double)r->v[2] * dx[2]) /
-                  (separation * (double)a);
+        closing =
+            ((double)receiver->v[0] * dx[0] + (double)receiver->v[1] * dx[1] +
+             (double)receiver->v[2] * dx[2]) /
+            (separation * (double)a);
+
       arrival = radiation_packet_time_later(
           merge_time +
           radiation_packet_arrival_delay_receding(a * separation, H, closing));
       arrival_last =
-          s->time_bin > r->time_bin
+          sender->time_bin > receiver->time_bin
               ? radiation_packet_time_later(
-                    arrival + (double)get_integer_timestep(s->time_bin))
+                    arrival + (double)get_integer_timestep(sender->time_bin))
               : arrival;
     }
-    float line_transmission = 1.f, line_shift = 0.f;
+
+    float line_transmission = 1.f;
+    float line_shift = 0.f;
     if (with_lines && sl->band[ISRF_OPERATOR_LW].energy > 0.f) {
-      const double closing = ((double)r->v[0] - s->v[0]) * sl->direction[0] +
-                             ((double)r->v[1] - s->v[1]) * sl->direction[1] +
-                             ((double)r->v[2] - s->v[2]) * sl->direction[2];
-      const double shift_hop = closing / a + (double)H * (double)(a * path);
-      radiation_packet_line_hop(r, sl->H2_transmission, sl->H2_column,
+      const double closing_speed =
+          ((double)receiver->v[0] - sender->v[0]) * sl->direction[0] +
+          ((double)receiver->v[1] - sender->v[1]) * sl->direction[1] +
+          ((double)receiver->v[2] - sender->v[2]) * sl->direction[2];
+      const double shift_hop =
+          closing_speed / a + (double)H * (double)(a * path);
+      radiation_packet_line_hop(receiver, sl->H2_transmission, sl->H2_column,
                                 sl->H2_velocity_shift, shift_hop, a * path,
                                 &line_transmission, &line_shift);
     }
+
     radiation_packet_deliver_with_lines(
-        r, radiation_packet_octant_frame, energy, photons, offset, a * path, H,
-        s->time_bin > r->time_bin, source_end_ti, arrival, arrival_last,
-        with_lines, line_transmission, line_shift);
+        receiver, radiation_packet_octant_frame, energy, photons, offset,
+        a * path, H, sender->time_bin > receiver->time_bin, source_end_ti,
+        arrival, arrival_last, with_lines, line_transmission, line_shift);
   }
 }
 
@@ -900,14 +990,18 @@ __attribute__((always_inline)) INLINE static void radiation_packet_gather_field(
 
   const float u = sqrtf(r2) / h;
   if (!(u < kernel_gamma)) return;
+
   float w;
   kernel_eval(u, &w);
   w *= hydro_get_mass(pj);
+
   struct feedback_isrf_packet_data *pk = &pi->feedback_data.isrf_packet;
   pk->ngb_field_weight_sum += w;
+
   if (pi->feedback_data.ISRF_H2_line_absorption)
     pk->ngb_mean_field_dissociating_energy +=
         w * pj->feedback_data.isrf_packet.field_dissociating_energy;
+
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     pk->band[b].ngb_mean_field_energy +=
         w * pj->feedback_data.isrf_packet.band[b].field_energy;
@@ -937,6 +1031,7 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_init_star_cones(struct spart *sp) {
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++)
     sp->feedback_data.radiation.packet.cone_weight[c] = 0.0;
+
 #ifdef SWIFT_DEBUG_CHECKS
   for (int c = 0; c < RADIATION_PACKET_EMISSION_CONES; c++) {
     sp->feedback_data.radiation.packet.cone_count[c] = 0;
@@ -946,6 +1041,7 @@ radiation_packet_init_star_cones(struct spart *sp) {
     sp->feedback_data.radiation.packet.cone_id_sum_delivered[c] = 0;
     sp->feedback_data.radiation.packet.cone_weight_delivered[c] = 0.0;
   }
+
   sp->feedback_data.radiation.packet.h_density = sp->h;
   sp->feedback_data.radiation.packet.h_feedback = 0.f;
   sp->feedback_data.radiation.packet.cones_booked = 0;
@@ -978,10 +1074,15 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     const integertime_t ti_current) {
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
-  double d[3], q, weight;
+
+  double d[3];
+  double q;
+  double weight;
   const int c =
       radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+
   if (weight > 0.0) si->feedback_data.radiation.packet.cone_weight[c] += weight;
+
 #ifdef SWIFT_DEBUG_CHECKS
   if (weight > 0.0) {
     si->feedback_data.radiation.packet.cone_count[c]++;
@@ -995,8 +1096,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 /**
  * @brief Feedback loop: give a gas neighbour its share of the star's light.
  *
- * Each of the 12 cones holds `L dt / 12`. A cone with a weight sum below the
- * cone floor lets the rest of its twelfth escape. Receivers share the rest
+ * Each cone holds an equal share of `L dt`. A cone with a weight sum below the
+ * cone floor lets the rest of its share escape. Receivers share the rest
  * by weight.
  *
  * @param si The star.
@@ -1022,11 +1123,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
   const integertime_t ti_begin =
       get_integer_time_begin(ti_current, si->time_bin);
-  double d[3], q, weight;
+
+  double d[3];
+  double q;
+  double weight;
   const int c =
       radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
   if (!(weight > 0.0)) return;
+
   const double S = si->feedback_data.radiation.packet.cone_weight[c];
+
 #ifdef SWIFT_DEBUG_CHECKS
   /* Several feedback tasks of one star may run at once. */
   struct spart *s_dbg = (struct spart *)si;
@@ -1037,13 +1143,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
                weight);
   atomic_max_f(&s_dbg->feedback_data.radiation.packet.h_feedback, si->h);
 #endif
+
   /* Possible only if this gas was not a receiver in the density loop. */
   if (!(S > 0.0)) return;
+
   const double fraction = star_gas_global_share(
       weight, si->feedback_data.radiation.packet.cone_weight,
       radiation_packet_cone_floor(si), RADIATION_PACKET_EMISSION_CONES);
 
-  double energy[ISRF_OPERATOR_COUNT], photons[ISRF_OPERATOR_COUNT];
+  double energy[ISRF_OPERATOR_COUNT];
+  double photons[ISRF_OPERATOR_COUNT];
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const enum radiation_isrf_moment m = radiation_isrf_operator_owner[b];
     energy[b] =
@@ -1055,13 +1164,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const float offset[3] = {(float)d[0], (float)d[1], (float)d[2]};
   const float r = (float)sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
   const double delay = radiation_packet_arrival_delay(a * r, H);
-  /* Without a limit the reservoir spreads the light over the star's next
-     step; with one, the arrival times below are used. */
+
   const int with_lines = pj->feedback_data.ISRF_H2_line_absorption;
-  float line_transmission = 1.f, line_shift = 0.f;
+  float line_transmission = 1.f;
+  float line_shift = 0.f;
   if (with_lines && energy[ISRF_OPERATOR_LW] > 0.)
     radiation_packet_line_hop(pj, 1.f, 0.f, 0.f, 0., a * r, &line_transmission,
                               &line_shift);
+
+  /* Without a limit the reservoir spreads the light over the star's next
+     step; with one, the arrival times below are used. */
   radiation_packet_deliver_with_lines(
       pj, frame, energy, photons, offset, a * r, H, si->time_bin > pj->time_bin,
       ti_current + ti_step,
@@ -1076,7 +1188,9 @@ void radiation_packet_check_star_cones(const struct spart *sp,
                                        const integertime_t ti_current);
 #endif
 
-#ifdef SWIFT_DEBUG_CHECKS_ISRF
+#endif /* GEAR_SUBGRID_RADIATION_ISRF */
+
+#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
 /**
  * @brief Book the packet of a gas particle that leaves the gas, converted
  * into or swallowed by another particle or removed at the edge of a
@@ -1093,16 +1207,21 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_book_removed_gas(const struct part *p,
                                   struct feedback_isrf_packet_removed_data *l) {
   const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
+
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     const struct feedback_isrf_packet_band_data *d = &pk->band[b];
+
     for (int k = 0; k < RADIATION_PACKET_SLOTS; k++) {
       const struct feedback_isrf_packet_slot_band_data *t =
           &pk->slot[k].band[b];
-      double waiting_energy = 0., waiting_photons = 0.;
+
+      double waiting_energy = 0.;
+      double waiting_photons = 0.;
       for (int i = 0; i < RADIATION_PACKET_BINS; i++) {
         waiting_energy += (double)t->bin_energy[i];
         waiting_photons += (double)t->bin_photons[i];
       }
+
       if (radiation_packet_light_speed_limited) {
         for (int i = 0; i < RADIATION_PACKET_FAR_CELLS; i++) {
           waiting_energy += (double)t->far_energy[i];
@@ -1112,9 +1231,11 @@ radiation_packet_book_removed_gas(const struct part *p,
         waiting_energy += (double)t->reservoir_energy;
         waiting_photons += (double)t->reservoir_photons;
       }
+
       l->removed_energy[b] += (double)t->energy + waiting_energy;
       l->removed_photons[b] += (double)t->photons + waiting_photons;
     }
+
     l->inherited_energy[b] +=
         d->absorbed_energy + d->escaped_energy + d->redshifted_energy;
     l->inherited_photons[b] +=
@@ -1158,12 +1279,12 @@ radiation_packet_book_removed_gas_to_star(const struct part *p,
  * sink.
  *
  * @param p The gas particle.
- * @param s The sink.
+ * @param sink The sink.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_removed_gas_to_sink(const struct part *p,
-                                          struct sink *s) {
-  radiation_packet_book_removed_gas(p, &s->feedback_data.isrf_packet);
+                                          struct sink *sink) {
+  radiation_packet_book_removed_gas(p, &sink->feedback_data.isrf_packet);
 }
 
 /**
@@ -1181,15 +1302,15 @@ __attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
 /**
  * @brief Zero a sink's ledger, at its creation or first initialisation.
  *
- * @param s The sink.
+ * @param sink The sink.
  */
 __attribute__((always_inline)) INLINE static void
-radiation_packet_first_init_sink(struct sink *s) {
-  memset(&s->feedback_data.isrf_packet, 0,
-         sizeof(s->feedback_data.isrf_packet));
+radiation_packet_first_init_sink(struct sink *sink) {
+  memset(&sink->feedback_data.isrf_packet, 0,
+         sizeof(sink->feedback_data.isrf_packet));
 }
 
-#else /* SWIFT_DEBUG_CHECKS_ISRF */
+#else
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_removed_gas_to_star(const struct part *p,
@@ -1197,13 +1318,13 @@ radiation_packet_book_removed_gas_to_star(const struct part *p,
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_removed_gas_to_sink(const struct part *p,
-                                          struct sink *s) {}
+                                          struct sink *sink) {}
 
 __attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
     struct sink *si, const struct sink *sj) {}
 
 __attribute__((always_inline)) INLINE static void
-radiation_packet_first_init_sink(struct sink *s) {}
+radiation_packet_first_init_sink(struct sink *sink) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_gas_left_box(const struct part *p) {}
@@ -1212,7 +1333,7 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_book_star_left_box(const struct spart *sp) {}
 
 __attribute__((always_inline)) INLINE static void
-radiation_packet_book_sink_left_box(const struct sink *s) {}
+radiation_packet_book_sink_left_box(const struct sink *sink) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {}
@@ -1223,41 +1344,9 @@ radiation_packet_left_box_dump(FILE *stream) {}
 __attribute__((always_inline)) INLINE static void
 radiation_packet_left_box_restore(FILE *stream) {}
 
-#endif /* SWIFT_DEBUG_CHECKS_ISRF */
+#endif /* GEAR_SUBGRID_RADIATION_ISRF && SWIFT_DEBUG_CHECKS_ISRF */
 
-#else /* GEAR_SUBGRID_RADIATION_ISRF */
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_removed_gas_to_star(const struct part *p,
-                                          struct spart *sp) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_removed_gas_to_sink(const struct part *p,
-                                          struct sink *s) {}
-
-__attribute__((always_inline)) INLINE static void radiation_packet_sink_merger(
-    struct sink *si, const struct sink *sj) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_first_init_sink(struct sink *s) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_gas_left_box(const struct part *p) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_star_left_box(const struct spart *sp) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_sink_left_box(const struct sink *s) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_book_gas_swallowed_by_black_hole(const struct part *p) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_left_box_dump(FILE *stream) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_left_box_restore(FILE *stream) {}
+#ifndef GEAR_SUBGRID_RADIATION_ISRF
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_star(struct spart *sp) {}

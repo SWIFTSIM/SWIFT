@@ -39,17 +39,18 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifdef GEAR_SUBGRID_RADIATION_HII
+/* Warning throttle of the negative-value clamps: the first N events are
+   reported, then one summary per interval. */
+#define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
+#define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
 
-#ifndef COOLING_NETWORK
-#error "COOLING_NETWORK is not defined by the cooling module"
-#endif
+#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Total hydrogen mass fraction of this #part, from its composition.
  *
- * Not cooling_get_hydrogen_mass_fraction(): at COOLING_NETWORK >= 2 that
- * omits the hydrogen bound in H2/H-.
+ * Not cooling_get_hydrogen_mass_fraction(): with H2 tracked that omits the
+ * hydrogen bound in H2/H-.
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param p The particle.
@@ -101,7 +102,8 @@ radiation_get_part_number_hydrogen_atoms(
  *
  * Prices only the one-off cost of claiming a fresh candidate: an already
  * (partly) ionized particle need not pay again. The maintenance cost uses the
- * total. At COOLING_NETWORK == 0 it falls back to the total N_H.
+ * total. A cooling network that tracks no species counts every hydrogen atom
+ * neutral, so this equals the total N_H there.
  *
  * @param phys_const Physical constants.
  * @param hydro_props The #hydro_props.
@@ -119,38 +121,9 @@ radiation_get_part_number_neutral_hydrogen_atoms(
     const struct cooling_function_data *cooling, const struct part *p,
     const struct xpart *xp) {
 
-#if COOLING_NETWORK >= 1
-  double X_HI;
-#ifdef WITH_MPI
-  if (xp == NULL) {
-    /* Foreign copy: struct part's feedback_data.neutral_H_frac already
-       folds in the H2/H- arms at mode >= 2 (see cooling_cache_neutral_H_
-       fraction_subgrid), so this is the same quantity the branch below
-       would read from a real xpart. */
-#ifdef SWIFT_DEBUG_CHECKS
-    /* feedback_part_can_be_ionized is the only caller allowed to reach a
-       still-sentinel (-1.f, "not yet primed") cache; anything else reading
-       it here is a bypass of that gate. */
-    if (p->feedback_data.neutral_H_frac < 0.f)
-      error(
-          "Reading un-primed neutral_H_frac (foreign copy id=%lld): caller "
-          "must gate on feedback_part_can_be_ionized before pricing.",
-          p->id);
-#endif
-    X_HI = p->feedback_data.neutral_H_frac;
-  } else
-#endif
-  {
-    const struct cooling_xpart_data *cool_data = &xp->cooling_data;
-    X_HI = cool_data->HI_frac;
-#if COOLING_NETWORK >= 2
-    /* Hydrogen locked in H2/H- is also neutral (not yet stripped); H2II is
-       already singly-ionized, so it is excluded: the same H2II
-       approximation radiation_get_part_total_hydrogen_mass_fraction's own
-       doxygen already notes for the total-hydrogen accounting. */
-    X_HI += cool_data->H2I_frac + cool_data->HM_frac;
-#endif
-  }
+  const double X_H =
+      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
+  const double X_HI = cooling_get_neutral_hydrogen_fraction_subgrid(p, xp, X_H);
 
   const float m = hydro_get_mass(p);
   const double m_p = phys_const->const_proton_mass;
@@ -159,11 +132,8 @@ radiation_get_part_number_neutral_hydrogen_atoms(
   /* Capped at the composition total: species can transiently exceed it. */
   const double N_H = radiation_get_part_number_hydrogen_atoms(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
   return min(N_HI, N_H);
-#else
-  return radiation_get_part_number_hydrogen_atoms(phys_const, hydro_props, us,
-                                                  cosmo, cooling, p, xp);
-#endif
 }
 
 /**
@@ -340,9 +310,11 @@ radiation_get_part_rate_to_fully_ionize(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
   const double mu = radiation_get_part_mean_molecular_weight(
       phys_const, hydro_props, us, cosmo, cooling, p, xp);
+
   const double T_ionized_K =
       cooling_temperature_from_internal_energy(u_ionized, mu, k_B, m_p) *
       units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+
   const double beta_cgs =
       radiation_get_case_b_recombination_coefficient_cgs(T_ionized_K);
   const float dimension_alphaB[5] = {0, 3, -1, 0, 0}; /* [cm^3 s^-1] */
@@ -370,33 +342,10 @@ __attribute__((always_inline)) INLINE void radiation_set_ionizing_photon_rate(
   sp->feedback_data.radiation.n_HII_pixels = n_HII_pixels;
 
   const double dot_N_ion_per_pixel = dot_N_ion_total / n_HII_pixels;
-  for (int p = 0; p < n_HII_pixels; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix[p] = dot_N_ion_per_pixel;
+  for (int pixel = 0; pixel < n_HII_pixels; pixel++) {
+    sp->feedback_data.radiation.dot_N_ion_pix[pixel] = dot_N_ion_per_pixel;
   }
 }
-
-#endif /* GEAR_SUBGRID_RADIATION_HII */
-
-/**
- * @brief Zero a #spart's radiation output, for when no radiation table is
- * loaded (#radiation.is_active = 0).
- *
- * The zero-pointered tables must not be read, and n_HII_pixels=0 would divide
- * by zero in radiation_set_ionizing_photon_rate().
- *
- * @param sp The star to zero.
- */
-__attribute__((always_inline)) INLINE void radiation_zero_spart_output(
-    struct spart *sp) {
-  radiation_set_star_bolometric_luminosity(sp, 0.f);
-  radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
-  for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)m, 0.);
-  radiation_set_star_teff(sp, 0.f);
-  radiation_set_ionizing_photon_rate(sp, 0.0, 1);
-}
-
-#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Open this #spart's ionizing photon budget for one HII rebuild pass:
@@ -414,22 +363,26 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
   /* All pixels share one rate, so log once per star. */
   double issued_total = 0.;
-  double rate_prev_dbg = 0., rate_now_dbg = 0., rate_used_dbg = 0.;
+  double rate_prev_dbg = 0.;
+  double rate_now_dbg = 0.;
+  double rate_used_dbg = 0.;
 #endif
 
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
+  for (int pixel = 0; pixel < sp->feedback_data.radiation.n_HII_pixels;
+       pixel++) {
     /* Unspent photons escaped. A pixel never ends a pass below zero: a won
        roll on a candidate costing more than the budget takes what is left,
        and the roll's p = budget / cost keeps the spend unbiased. */
-    const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[p];
-    const double rate_prev = sp->feedback_data.radiation.dot_N_ion_pix_prev[p];
+    const double rate_now = sp->feedback_data.radiation.dot_N_ion_pix[pixel];
+    const double rate_prev =
+        sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel];
     /* rate_prev < 0: first pass, no previous sample, so use rate_now. */
     const double rate_used =
         rate_prev < 0. ? rate_now : 0.5 * (rate_prev + rate_now);
     const double issued = rate_used * dt_back;
 
-    sp->feedback_data.radiation.N_ion_budget_pix[p] = issued;
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] = rate_now;
+    sp->feedback_data.radiation.N_ion_budget_pix[pixel] = issued;
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel] = rate_now;
 
 #ifdef SWIFT_DEBUG_CHECKS_VERBOSE
     issued_total += issued;
@@ -461,9 +414,10 @@ radiation_open_ionizing_photon_budget(struct spart *sp, double dt_back) {
 __attribute__((always_inline)) INLINE void
 radiation_resync_ionizing_photon_rate_cache(struct spart *sp) {
 
-  for (int p = 0; p < sp->feedback_data.radiation.n_HII_pixels; p++) {
-    sp->feedback_data.radiation.dot_N_ion_pix_prev[p] =
-        sp->feedback_data.radiation.dot_N_ion_pix[p];
+  for (int pixel = 0; pixel < sp->feedback_data.radiation.n_HII_pixels;
+       pixel++) {
+    sp->feedback_data.radiation.dot_N_ion_pix_prev[pixel] =
+        sp->feedback_data.radiation.dot_N_ion_pix[pixel];
   }
 }
 
@@ -479,11 +433,13 @@ __attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
     struct spart *sp, int pixel, double Delta_N_ion) {
   double *budget = &sp->feedback_data.radiation.N_ion_budget_pix[pixel];
   if (*budget <= 0.) return 0.;
+
   if (Delta_N_ion >= *budget) {
     const double taken = *budget;
     *budget = 0.;
     return taken;
   }
+
   *budget -= Delta_N_ion;
   return Delta_N_ion;
 }
@@ -510,9 +466,11 @@ __attribute__((always_inline)) INLINE void radiation_tag_part_as_ionized(
   p->feedback_data.is_ionized = 1;
   p->feedback_data.star_id = star_id;
   p->feedback_data.end_time = end_time;
+
   /* A foreign copy has no xpart. The payload is only read by rate coupling,
      which is refused on more than one rank. */
   if (xp == NULL) return;
+
   xp->feedback_data.HII_region.excess_photon_energy_HI =
       excess_photon_energy_HI;
   xp->feedback_data.HII_region.photoionization_rate_HI =
@@ -557,39 +515,6 @@ radiation_get_part_ionized_end_time(const struct part *p,
                                     const struct xpart *xp) {
   return p->feedback_data.end_time;
 }
-
-#endif /* GEAR_SUBGRID_RADIATION_HII */
-
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-
-/**
- * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
- * window has lapsed. Called once per step per particle (feedback_reset_part).
- *
- * With LW/PE propagation off, the band u values are also zeroed: nothing else
- * decays them. With propagation on, the packet transport rewrites them every
- * step.
- *
- * @param p The particle.
- * @param e The #engine.
- */
-__attribute__((always_inline)) INLINE void
-radiation_reset_part_ISRF_illumination_tag(struct part *p,
-                                           const struct engine *e) {
-  if (!p->feedback_data.is_illuminated_ISRF) return;
-  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
-
-  p->feedback_data.is_illuminated_ISRF = 0;
-
-  if (!e->feedback_props->ISRF_propagation) {
-    for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
-      p->feedback_data.isrf_moment[m].u = 0.f;
-  }
-}
-
-#endif /* GEAR_SUBGRID_RADIATION_ISRF */
-
-#ifdef GEAR_SUBGRID_RADIATION_HII
 
 /**
  * @brief Id of the star that ionized this #part. Valid only while tagged
@@ -675,12 +600,54 @@ radiation_get_photoionization_rate_coefficient_from_flux_HI(
 
 #endif /* GEAR_SUBGRID_RADIATION_HII */
 
+/**
+ * @brief Zero a #spart's radiation output, for when no radiation table is
+ * loaded (#radiation.is_active = 0).
+ *
+ * The zero-pointered tables must not be read, and n_HII_pixels=0 would divide
+ * by zero in radiation_set_ionizing_photon_rate().
+ *
+ * @param sp The star to zero.
+ */
+__attribute__((always_inline)) INLINE void radiation_zero_spart_output(
+    struct spart *sp) {
+  radiation_set_star_bolometric_luminosity(sp, 0.f);
+  radiation_set_star_mean_excess_photon_energy_HI(sp, 0.f);
+
+  for (int moment = 0; moment < ISRF_MOMENT_COUNT; moment++)
+    radiation_set_star_band_luminosity(sp, (enum radiation_isrf_moment)moment,
+                                       0.);
+
+  radiation_set_star_teff(sp, 0.f);
+  radiation_set_ionizing_photon_rate(sp, 0.0, 1);
+}
+
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
-/* Warning throttle: the first N clamp events are reported, then one summary
-   per interval. */
-#define RADIATION_NEGATIVE_CLAMP_WARN_LIMIT 10
-#define RADIATION_NEGATIVE_CLAMP_SUMMARY_INTERVAL 10000
+/**
+ * @brief Clear #part::feedback_data.is_illuminated_ISRF once its illumination
+ * window has lapsed. Called once per step per particle (feedback_reset_part).
+ *
+ * With LW/PE propagation off, the band u values are also zeroed: nothing else
+ * decays them. With propagation on, the packet transport rewrites them every
+ * step.
+ *
+ * @param p The particle.
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE void
+radiation_reset_part_ISRF_illumination_tag(struct part *p,
+                                           const struct engine *e) {
+  if (!p->feedback_data.is_illuminated_ISRF) return;
+  if (e->ti_current < p->feedback_data.ISRF_illumination_end_ti) return;
+
+  p->feedback_data.is_illuminated_ISRF = 0;
+
+  if (!e->feedback_props->ISRF_propagation) {
+    for (int moment = 0; moment < ISRF_MOMENT_COUNT; moment++)
+      p->feedback_data.isrf_moment[moment].u = 0.f;
+  }
+}
 
 /**
  * @brief Clamp a quantity about to reach Grackle to be non-negative, with a
@@ -759,24 +726,24 @@ __attribute__((noinline)) static int radiation_double_is_finite(
  * particle. The stored value is unchanged. A non-finite value stops the run.
  *
  * @param p The particle.
- * @param m The moment to read (#radiation_isrf_moment).
+ * @param moment The moment to read (#radiation_isrf_moment).
  * @return The band's specific energy, or 0 if it was negative.
  */
 static double radiation_get_band_u_nonnegative(const struct part *p,
-                                               const int m) {
+                                               const int moment) {
 
   static volatile long long band_clamp_count[ISRF_MOMENT_COUNT] = {0};
   static volatile double band_clamp_worst[ISRF_MOMENT_COUNT] = {0.};
 
   /* A NaN passes the clamp below under -ffast-math: test the bit pattern. */
-  if (!radiation_double_is_finite(&p->feedback_data.isrf_moment[m].u))
+  if (!radiation_double_is_finite(&p->feedback_data.isrf_moment[moment].u))
     error("Non-finite %s for particle id=%lld.",
-          radiation_isrf_moment_clamp_name[m], p->id);
+          radiation_isrf_moment_clamp_name[moment], p->id);
 
   return radiation_clamp_nonnegative_for_grackle(
-      radiation_isrf_moment_clamp_name[m],
-      (double)p->feedback_data.isrf_moment[m].u, &band_clamp_count[m],
-      &band_clamp_worst[m]);
+      radiation_isrf_moment_clamp_name[moment],
+      (double)p->feedback_data.isrf_moment[moment].u, &band_clamp_count[moment],
+      &band_clamp_worst[moment]);
 }
 
 /**
