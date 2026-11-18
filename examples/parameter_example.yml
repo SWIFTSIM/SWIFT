@@ -1043,6 +1043,7 @@ GEARFeedback:
   # ISRF (local interstellar radiation field: photoelectric heating and H2 photodissociation; --with-subgrid-radiation part isrf)
   with_interstellar_radiation_field: 0                    # Master switch of the ISRF module (photoelectric heating, H2 photodissociation). H2 photodissociation needs COOLING_GRACKLE_MODE > 1. (Default: 0)
   ISRF_propagation:            0                           # 1: transport the ISRF from the stars (needs --with-chealpix), 0: a star adds its dose to the receivers at once. (Default: 0)
+  ISRF_H2_line_absorption:     0                           # 1: the H2 lines absorb the LW band along the packet path and the H2 dissociation rate follows the line transmission. Needs ISRF_propagation 1, an H2 network and geajay. (Default: 0)
   ISRF_extinction_path: pair_separation                   # Dust path: pair_separation, constant_kernel_path or temperature_capped_jeans. (Default: pair_separation)
   ISRF_extinction_path_in_kernel_radii: 1.0                # Path in kernel support radii, constant_kernel_path only. (Default: 1.0)
   ISRF_extinction_jeans_temperature_cap_K: 40              # Temperature cap in K of the Jeans length, temperature_capped_jeans only. (Default: 40)

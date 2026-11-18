@@ -904,6 +904,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  /* With the H2 line absorption the packet carries the H2 column, so the
+     library must leave the transported LW rate out of its H2 shielding. */
+  const int H2_line_absorption = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:ISRF_H2_line_absorption",
+      RADIATION_COMPILED_ISRF);
+  cooling->h2_transported_lw_rate_shielding =
+      H2_line_absorption ? cooling_transported_lw_shielding_background_only
+                         : cooling_transported_lw_shielding_shielded_sum;
+  radiation_selection_refuse_H2_line_absorption(
+      parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
+#ifdef HAVE_GEAJAY_H2_TRANSPORTED_LW_RATE_SHIELDING
+      NULL
+#else
+      "the geajay library shields the transported LW rate with its own "
+      "factor and has no option to leave it out."
+#endif
+  );
   cooling->with_photoionization = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_photoionization",
       RADIATION_COMPILED_HII);
@@ -1212,6 +1229,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
   cooling->h2_shielding_length_method =
       (enum cooling_h2_shielding_length)h2_shielding;
+
+  if (cooling->with_ISRF &&
+      radiation_selection_get_switch(parameter_file,
+                                     "GEARFeedback:ISRF_H2_line_absorption",
+                                     RADIATION_COMPILED_ISRF) &&
+      cooling->h2_shielding_length_method == cooling_h2_shielding_length_none)
+    warning(
+        "GEARFeedback:ISRF_H2_line_absorption is on and "
+        "GeajayCooling:h2_shielding_length_method is none: the library does "
+        "not shield the background rate with H2 self-shielding, so the run "
+        "has no library H2 shielding of the background.");
 
   /* Without a column length, the local LW dissociation rate reaches the
      solver unshielded and H2 cannot survive in an illuminated cloud. */

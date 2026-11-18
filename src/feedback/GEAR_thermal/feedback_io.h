@@ -350,6 +350,28 @@ INLINE static void convert_part_u_LW_PHOTON(const struct engine *e,
   ret[0] = feedback_get_part_u_LW_PHOTON(p);
 }
 
+/**
+ * @brief Snapshot converter for #LWDissociatingSpecificEnergies, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_u_LW_dissociating(const struct engine *e,
+                                                  const struct part *p,
+                                                  const struct xpart *xp,
+                                                  double *ret) {
+  ret[0] = feedback_get_part_u_LW_dissociating(p);
+}
+
+/**
+ * @brief Snapshot converter for #LWLineTransmissions, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_LW_line_transmission(const struct engine *e,
+                                                     const struct part *p,
+                                                     const struct xpart *xp,
+                                                     double *ret) {
+  ret[0] = feedback_get_part_LW_line_transmission(p);
+}
+
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**
@@ -393,12 +415,16 @@ INLINE static int feedback_read_particles(struct part *parts,
  * @param xparts The extended data particle array.
  * @param list The list of i/o properties to write.
  * @param with_cosmology Are we running with cosmology switched on?
+ * @param feedback_props The #feedback_props. The H2 line absorption fields are
+ * written only if it is on. NULL lists every field, as the field-list
+ * tools need; the stand-alone FoF tool passes none, so a gas snapshot of it
+ * would carry the two fields with their default values.
  *
  * @return Returns the number of fields to write.
  */
 __attribute__((always_inline)) INLINE static int feedback_write_particles(
     const struct part *parts, const struct xpart *xparts, struct io_props *list,
-    const int with_cosmology) {
+    const int with_cosmology, const struct feedback_props *feedback_props) {
 
   int num = 0;
 
@@ -436,6 +462,23 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "reference photon energy: see LWSpecificEnergies. Distinct from the "
       "RT schemes' PhotonEnergies, which are raw per-group energies, not "
       "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
+
+  if (feedback_props == NULL || feedback_props->ISRF_H2_line_absorption) {
+    list[num++] = io_make_output_field_convert_part(
+        "LWDissociatingSpecificEnergies", DOUBLE, 1,
+        UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+        convert_part_u_LW_dissociating,
+        "Local specific Lyman-Werner-band energy of the light that the H2 "
+        "lines have not removed. It sets the H2 dissociation rate. DOUBLE: "
+        "see PESpecificEnergies.");
+
+    list[num++] = io_make_output_field_convert_part(
+        "LWLineTransmissions", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+        xparts, convert_part_LW_line_transmission,
+        "Fraction of the Lyman-Werner light that the H2 lines let through: "
+        "LWDissociatingSpecificEnergies over LWSpecificEnergies, 1 where "
+        "LWSpecificEnergies is not positive. DOUBLE.");
+  }
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
   list[num++] = io_make_output_field_convert_part(

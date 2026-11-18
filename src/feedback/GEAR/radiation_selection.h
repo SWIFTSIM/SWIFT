@@ -90,6 +90,43 @@ __attribute__((always_inline)) INLINE static int radiation_selection_get_switch(
 }
 
 /**
+ * @brief Stop the run if H2 line absorption is on and the cooling cannot
+ * support it.
+ *
+ * The packet carries the H2 column and the cooling library must not shield the
+ * transported rate a second time. Called by the cooling module when it reads
+ * its switches.
+ *
+ * @param params The parsed parameters.
+ * @param with_ISRF Is the ISRF on?
+ * @param network Level of the chemistry network of the cooling (0 to 3).
+ * @param library_refusal Why the library cannot leave the transported rate
+ * unshielded, or NULL if it can.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_selection_refuse_H2_line_absorption(struct swift_params *params,
+                                              const int with_ISRF,
+                                              const int network,
+                                              const char *library_refusal) {
+  if (!radiation_selection_get_switch(params,
+                                      "GEARFeedback:ISRF_H2_line_absorption",
+                                      RADIATION_COMPILED_ISRF))
+    return;
+  if (!with_ISRF)
+    error(
+        "GEARFeedback:ISRF_H2_line_absorption: 1 needs "
+        "GEARFeedback:with_interstellar_radiation_field: 1.");
+  if (network < 2)
+    error(
+        "GEARFeedback:ISRF_H2_line_absorption: 1 needs a cooling network that "
+        "tracks H2 (level 2 or above), this cooling has level %d.",
+        network);
+  if (library_refusal != NULL)
+    error("GEARFeedback:ISRF_H2_line_absorption: 1 is not supported: %s",
+          library_refusal);
+}
+
+/**
  * @brief Warn once if the parameter file sets keys of an absent part.
  *
  * A key belongs to the part if its name starts with one of @p prefixes. The

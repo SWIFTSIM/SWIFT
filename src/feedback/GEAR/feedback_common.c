@@ -1313,6 +1313,31 @@ double feedback_get_part_u_LW_PHOTON(const struct part *p) {
   return p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u;
 }
 
+/**
+ * @brief Local Lyman-Werner-band specific energy of the light that the H2
+ * lines have not removed, see #feedback_get_part_u_PE. It is the field that
+ * sets the dissociation rate with H2 line absorption.
+ *
+ * @param p The #part to query.
+ * @return The specific energy, 0 without H2 line absorption.
+ */
+double feedback_get_part_u_LW_dissociating(const struct part *p) {
+  return p->feedback_data.LW_dissociating_u;
+}
+
+/**
+ * @brief Local transmission of the H2 lines: the dissociating Lyman-Werner
+ * specific energy over the Lyman-Werner specific energy.
+ *
+ * @param p The #part to query.
+ * @return The ratio, 1 if the Lyman-Werner specific energy is not positive.
+ */
+double feedback_get_part_LW_line_transmission(const struct part *p) {
+  const double u_LW = p->feedback_data.isrf_moment[ISRF_MOMENT_LW].u;
+  if (!(u_LW > 0.)) return 1.;
+  return p->feedback_data.LW_dissociating_u / u_LW;
+}
+
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**

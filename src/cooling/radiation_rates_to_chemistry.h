@@ -70,6 +70,9 @@ INLINE static double rates_to_chemistry_get_isrf_habing(
 INLINE static double rates_to_chemistry_get_LW_dissociation_rate(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p) {
+  if (radiation_get_part_H2_line_absorption(p))
+    return radiation_get_part_LW_dissociation_rate_with_lines_internal(
+        phys_const, us, cosmo, p);
   return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
                                                           p);
 }
@@ -492,6 +495,21 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
 }
 
 /**
+ * @brief H2 mass fraction of a particle, for the radiation model.
+ *
+ * @param xp Pointer to the extended particle data.
+ * @return The H2 mass fraction, 0 if the network does not track H2.
+ */
+INLINE static double cooling_get_H2_mass_fraction_subgrid(
+    const struct xpart *xp) {
+#if COOLING_NETWORK > 1
+  return xp->cooling_data.H2I_frac;
+#else
+  return 0.;
+#endif
+}
+
+/**
  * @brief Cache this step's HII eligibility temperature and mean molecular
  * weight on the particle (struct part's feedback_data.T_eligibility and
  * mu_eligibility).
@@ -714,6 +732,18 @@ INLINE static double cooling_get_neutral_hydrogen_fraction_subgrid(
 INLINE static void cooling_cache_neutral_H_fraction_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp) {}
+
+/**
+ * @brief H2 mass fraction of a particle. No-op here: this subgrid model has
+ * no radiation model to read it.
+ *
+ * @param xp Pointer to the extended particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_H2_mass_fraction_subgrid(
+    const struct xpart *xp) {
+  return 0.;
+}
 
 /**
  * @brief Cache the HII eligibility temperature and mean molecular weight.

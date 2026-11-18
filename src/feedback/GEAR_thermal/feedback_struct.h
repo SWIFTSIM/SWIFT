@@ -377,6 +377,24 @@ struct feedback_isrf_packet_slot_data {
       gradient loop. */
   float forward_advance;
 
+  /*! Fraction of the held LW light that the H2 lines let through, 1 without
+      absorption. Set at the merge. The column that the held light has crossed
+      is not stored: #radiation_packet_slot_H2_column gives it. */
+  float H2_transmission;
+
+  /*! Velocity shift of the held light relative to the gas that holds its
+      column, signed, in internal units. Set at the merge. */
+  float H2_velocity_shift;
+
+  /*! Sum over the waiting LW light of its dissociating energy times its
+      velocity shift. */
+  float H2_waiting_velocity_sum;
+
+  /*! Dissociating energy of the waiting LW light: the sum of its energy times
+      the transmission of the H2 lines. It is released and dropped with the
+      waiting LW energy. */
+  float H2_waiting_dissociating_energy;
+
   /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
       or not, for the whole run, so the two sets of fields below share their
       bytes. */
@@ -433,6 +451,13 @@ struct feedback_isrf_packet_data {
 
   /*! Sum of the kernel weights of the field mean. Scratch. */
   float ngb_field_weight_sum;
+
+  /*! Own field of the LW dissociating energy, as the LW #field_energy with
+      the transmission of the H2 lines. Zero without H2 line absorption. */
+  float field_dissociating_energy;
+
+  /*! Kernel mean of #field_dissociating_energy. */
+  float ngb_mean_field_dissociating_energy;
 
   /*! The width of the far arrival cells is the length of the step times two
       to this power (#radiation_packet_far_end): at least
@@ -604,6 +629,28 @@ struct feedback_part_data {
       #radiation_isrf_moment_to_operator. */
   struct feedback_isrf_operator_data isrf_operator[ISRF_OPERATOR_COUNT];
 
+  /*! LW specific energy of the light that the H2 lines have not removed from
+      the dissociation rate, the kernel mean of the packet field. Written with
+      #isrf_moment, read for the H2 dissociation rate with H2 line absorption
+      on. */
+  double LW_dissociating_u;
+
+  /*! H2 column per unit internal length of path, in cm^-2, of the gas of this
+      particle, cached once per step at the drift. */
+  float H2_column_per_length;
+
+  /*! Exponent of the H2 self-shielding fit at the gas density and temperature
+      of this particle, cached with #H2_column_per_length. */
+  float H2_shielding_exponent;
+
+  /*! Thermal line width of H2 in km/s, cached with #H2_column_per_length. 0
+      if the temperature was not positive. */
+  float H2_line_width_km_s;
+
+  /*! Relative velocity in internal units beyond which light no longer sees
+      the H2 column it carries, cached with #H2_column_per_length. */
+  float H2_velocity_limit;
+
   /*! Comoving density snapshot of the previous step, read by the packet
       transport. Seeded to 1 at first init, never 0. */
   float rho_prev;
@@ -636,6 +683,9 @@ struct feedback_part_data {
   /*! Copy of #feedback_props.ISRF_propagation, set at drift and in the extra
       ghost, so the neighbour loops read it without the engine. */
   char ISRF_packet_transport;
+
+  /*! Copy of #feedback_props.ISRF_H2_line_absorption, set at the drift. */
+  char ISRF_H2_line_absorption;
 #endif
 };
 
