@@ -16,10 +16,12 @@ background_only`. Official Grackle refuses `ISRF_H2_line_absorption: 1`.
 The check reads the end of a short run in which H2 and the temperature stay frozen. The
 parameters therefore switch off photoionization, stellar winds and supernovae (they would
 change the H2 fraction and the temperature near the star), and set the light speed to
-`unlimited`, so that one step delivers all the light. The run stops after 5 steps of
-`dt_max`. The check refuses a run in which any of these is not set, or in which the H2
+`unlimited`. The light crosses one hop per step, so it needs several steps to reach the whole
+box. The steps are short (`dt_max` 1.6e-12 in internal units) so that the H2 stays frozen while the
+light arrives; the run stops after 8 steps and the check reads the last snapshot. The check refuses a run in which any of these is not set, or in which the H2
 fraction of a read particle changes by more than 1e-3 or the temperature of a thin one
-(column below 1e17 cm^-2) by more than 5 per cent. Only particles at `r < L/2 - 2h` are
+(column below 1e17 cm^-2) by more than 5 per cent. The check also refuses a snapshot with a coordinate within 1e-6 L of a box face, and `makeIC.py`
+refuses to write one. Only particles at `r < L/2 - 2h` are
 read, so that the nearest periodic image of the star is the right one.
 
 # Configure
@@ -50,7 +52,7 @@ about 2e18 cm^-2 over the box.
 bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a void run (a
 premise or a positive control is not met). A void run never passes.
 
-`python3 checkH2Attenuation.py starlit --first snap/snapshot_0000.hdf5 --last snap/snapshot_0005.hdf5`
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0000.hdf5 --last snap/snapshot_0008.hdf5`
 
 - Bar: `|ln(ratio / f)| <= s l_hop / r`, with `s = |d ln f / d ln N|` at each particle's
   own column and temperature, and `l_hop` the mean path of the booked shares if the
@@ -62,7 +64,7 @@ premise or a positive control is not met). A void run never passes.
   run is void.
 
 Two runs are compared particle by particle with `parity`:
-`python3 checkH2Attenuation.py parity --a run1/snap/snapshot_0005.hdf5 --b run2/snap/snapshot_0005.hdf5 --mode ranks|restart --counters counters.json`.
+`python3 checkH2Attenuation.py parity --a run1/snap/snapshot_0008.hdf5 --b run2/snap/snapshot_0008.hdf5 --mode ranks|restart --counters counters.json`.
 It compares `LWSpecificEnergies` and `LWDissociatingSpecificEnergies` (not only their
 ratio), bit for bit for a restart and within `k 2^-24` for a different rank count. The
 counters file holds `probes_on_other_rank`, `foreign_bookings`, `max_terms_per_particle`

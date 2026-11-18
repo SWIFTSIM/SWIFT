@@ -30,10 +30,25 @@ def box_positions(level, mass_msun, rho_hpcm3, glass_dir="."):
             pos = f["/PartType0/Coordinates"][:, :]
         eps = 1e-6
         pos = (pos - pos.min()) / (pos.max() - pos.min() + eps) * box
+        pos = (pos + 0.5 * box / 2**level) % box
     else:
         print(f"No {glass}: random placement, for script tests only.")
         pos = np.random.default_rng(1).random([n_part, 3]) * box
     return box, pos, n_part
+
+
+def check_away_from_faces(pos, box, label, margin=1e-6):
+    """Raise if a coordinate lies within margin * box of a box face.
+
+    A particle on a face can drift out of the box by less than one ulp of the box size
+    and be assigned to a cell that does not exist.
+    """
+    d = np.minimum(pos, box - pos)
+    bad = int(np.sum(d < margin * box))
+    if bad:
+        raise RuntimeError(
+            f"{label}: {bad} coordinates lie within {margin:g} box sizes of a box face"
+        )
 
 
 def write_ic(
@@ -50,6 +65,8 @@ def write_ic(
     """Write gas and star particles in the SWIFT IC layout (internal units)."""
     n_gas = len(pos)
     n_star = len(star_pos)
+    check_away_from_faces(pos, box, "gas")
+    check_away_from_faces(star_pos, box, "star")
     m_star = np.full(n_star, star_mass_msun * MSUN_CGS / UNIT_MASS_CGS)
     h_gas = 1.2348 * (box**3 / n_gas) ** (1.0 / 3.0) * np.ones(n_gas)
     with h5py.File(filename, "w") as f:

@@ -47,6 +47,27 @@ TEMPERATURE_REL = 0.05
 THIN_COLUMN_CM2 = 1e17
 WIDTH_RESET = 3.0
 
+SPECIES_MASS_NUMBER = {
+    "HI": 1.0,
+    "HII": 1.0,
+    "HM": 1.0,
+    "HeI": 4.0,
+    "HeII": 4.0,
+    "HeIII": 4.0,
+    "H2I": 2.0,
+    "H2II": 2.0,
+    "DI": 2.0,
+    "DII": 2.0,
+    "HDI": 3.0,
+}
+ELECTRONS_PER_MASS = {
+    "HII": 1.0,
+    "HeII": 0.25,
+    "HeIII": 0.5,
+    "H2II": 0.5,
+    "DII": 0.5,
+    "HM": -1.0,
+}
 REQUIRED_LW = (
     "LWSpecificEnergies",
     "LWDissociatingSpecificEnergies",
@@ -57,9 +78,10 @@ REQUIRED_GAS = (
     "Coordinates",
     "SmoothingLengths",
     "Densities",
-    "Temperatures",
+    "InternalEnergies",
     "H2I",
-)
+) + tuple(SPECIES_MASS_NUMBER)
+FACE_MARGIN = 1e-6
 
 
 class GateExit(Exception):
@@ -181,7 +203,72 @@ def load_snapshot(path: str, fields: Tuple[str, ...]) -> Dict[str, np.ndarray]:
         out["unit_mass"] = float(
             np.asarray(f["Units"].attrs["Unit mass in cgs (U_M)"]).ravel()[0]
         )
+        out["unit_time"] = float(
+            np.asarray(f["Units"].attrs["Unit time in cgs (U_t)"]).ravel()[0]
+        )
+    if "InternalEnergies" in out:
+        out["Temperatures"] = temperature_from_energy(out)
     return out
+
+
+def temperature_from_energy(snap: dict) -> np.ndarray:
+    """Return T = (2/3) u mu m_H / k_B in K, with mu from the species mass fractions.
+
+    The species fractions of the snapshot sum to slightly more than 1 (H2 is added on top
+    of HI), so mu is a first estimate; calibrate_temperatures() scales it to the IC.
+    """
+    n_per_mass = sum(snap[k] / a for k, a in SPECIES_MASS_NUMBER.items())
+    n_per_mass = n_per_mass + sum(c * snap[k] for k, c in ELECTRONS_PER_MASS.items())
+    mu = 1.0 / n_per_mass
+    u_cgs = snap["InternalEnergies"] * (snap["unit_length"] / snap["unit_time"]) ** 2
+    return (2.0 / 3.0) * u_cgs * mu * M_H / K_B
+
+
+def calibrate_temperatures(first: dict, last: dict, params: dict, rep: Report) -> None:
+    """Scale both temperature arrays so that the first snapshot has SPH:initial_temperature.
+
+    The code sets the initial energy with its own mean molecular weight; the estimate of
+    temperature_from_energy() differs from it by a constant factor. The factor cancels in
+    the temperature premise, and it is applied to the fit.
+    """
+    key = "SPH:initial_temperature"
+    if key not in params:
+        rep.info("temperature scale", f"{key} not in the parameters: factor 1")
+        return
+    t_init = float(params[key])
+    scale = t_init / float(np.median(first["Temperatures"]))
+    first["Temperatures"] = first["Temperatures"] * scale
+    last["Temperatures"] = last["Temperatures"] * scale
+    rep.info(
+        "temperature scale",
+        f"first snapshot median T estimate scaled by {scale:.5f} to the initial temperature {t_init:g} K",
+    )
+
+
+def check_box_faces(snap: dict, extra: Optional[np.ndarray] = None) -> None:
+    """Refuse a snapshot with a coordinate within 1e-6 L of a box face.
+
+    A gas particle on a face can leave the box by less than one ulp of L and be placed in
+    a non-existing cell by SWIFT.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID with 'coordinate on a box face'.
+    """
+    box = snap["box"]
+    pos = (
+        snap["Coordinates"]
+        if extra is None
+        else np.vstack([snap["Coordinates"], extra])
+    )
+    d = np.minimum(pos, box - pos)
+    bad = int(np.sum(d < FACE_MARGIN * box))
+    if bad:
+        raise GateExit(
+            EXIT_VOID,
+            f"coordinate on a box face: {bad} coordinates within {FACE_MARGIN:g} L of a face (fixture IC defect)",
+        )
 
 
 def require_finite(label: str, **arrays: np.ndarray) -> None:
@@ -360,7 +447,9 @@ def gate_starlit(args: argparse.Namespace) -> int:
     first = load_snapshot(args.first, REQUIRED_GAS)
     last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW)
     require_finite("last snapshot", **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW})
+    check_box_faces(first)
     params = read_params(args.params)
+    calibrate_temperatures(first, last, params, rep)
     check_premise_parameters(params, rep, args.mode, args.startup_log)
     counters = load_json(args.counters, "counters file") if args.counters else {}
 
@@ -511,7 +600,9 @@ def gate_twosource(args: argparse.Namespace) -> int:
     first = load_snapshot(args.first, REQUIRED_GAS)
     last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW)
     require_finite("last snapshot", **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW})
+    check_box_faces(first)
     params = read_params(args.params)
+    calibrate_temperatures(first, last, params, rep)
     check_premise_parameters(params, rep, args.mode, args.startup_log)
     counters = load_json(args.counters, "counters file")
     if float(counters.get("held_lw_slots_at_merge", 0)) <= 0:
@@ -602,7 +693,9 @@ def gate_velocity(args: argparse.Namespace) -> int:
     first = load_snapshot(args.first, REQUIRED_GAS)
     last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW)
     require_finite("last snapshot", **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW})
+    check_box_faces(first)
     params = read_params(args.params)
+    calibrate_temperatures(first, last, params, rep)
     check_premise_parameters(params, rep, args.mode, args.startup_log)
     counters = load_json(args.counters, "counters file") if args.counters else {}
     star = np.array(fix["star_kpc"])

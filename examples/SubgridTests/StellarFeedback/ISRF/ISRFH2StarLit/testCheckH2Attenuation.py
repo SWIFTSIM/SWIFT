@@ -23,6 +23,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import checkH2Attenuation as gate  # noqa: E402
+import h2_fixture_common as gate_common  # noqa: E402
 
 ROOT = os.path.dirname(HERE)
 GOOD_PARAMS = """GEARFeedback:
@@ -77,12 +78,28 @@ def write_snap(path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=())
     """Write a synthetic snapshot; fields in drop are left out."""
     n = len(pos)
     ids = np.arange(n) if ids is None else ids
+    species = {k: np.full(n, 1e-20) for k in gate.SPECIES_MASS_NUMBER}
+    species.update(HI=np.full(n, 0.76), HeI=np.full(n, 0.24), HII=np.full(n, 7.6e-9))
+    species["H2I"] = x_h2
+    n_per_mass = sum(species[k] / a for k, a in gate.SPECIES_MASS_NUMBER.items())
+    n_per_mass = n_per_mass + sum(
+        c * species[k] for k, c in gate.ELECTRONS_PER_MASS.items()
+    )
+    energy = (
+        1.5
+        * gate.K_B
+        * temp
+        * n_per_mass
+        / gate.M_H
+        / (3.0856775814913673e21 / 3.0856775814913673e16) ** 2
+    )
     fields = {
+        **species,
         "ParticleIDs": ids,
         "Coordinates": pos,
         "SmoothingLengths": h,
         "Densities": rho,
-        "Temperatures": temp,
+        "InternalEnergies": energy,
         "H2I": x_h2,
         "LWSpecificEnergies": lw,
         "LWDissociatingSpecificEnergies": lw * ratio,
@@ -93,6 +110,7 @@ def write_snap(path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=())
         u = f.create_group("Units")
         u.attrs["Unit length in cgs (U_L)"] = 3.0856775814913673e21
         u.attrs["Unit mass in cgs (U_M)"] = 1.988409870698051e43
+        u.attrs["Unit time in cgs (U_t)"] = 3.0856775814913673e16
         g = f.create_group("PartType0")
         for k, v in fields.items():
             if k not in drop:
@@ -233,6 +251,49 @@ def starlit_cases(work):
     )
     moved = snap_with("moved.hdf5", good, x_h2=x_h2 * 1.01)
     record("H2 not frozen (1 per cent change)", 4, args(moved), "H2 changed")
+    p_t = os.path.join(d, "t50.yml")
+    open(p_t, "w").write(GOOD_PARAMS + "SPH:\n  initial_temperature: 50\n")
+    record(
+        "S3 temperature scale from SPH:initial_temperature",
+        0,
+        args(snap_with("good.hdf5", good), p_t),
+        "PASS  transmission",
+    )
+    edge = pos.copy()
+    edge[1948 % len(pos), 0] = 0.0
+    face = os.path.join(d, "face0.hdf5")
+    write_snap(face, edge, rho, h, box, temp, x_h2, lw, good)
+    record(
+        "E1 a gas particle exactly on a box face",
+        4,
+        [
+            "starlit",
+            "--first",
+            face,
+            "--last",
+            os.path.join(d, "good.hdf5"),
+            "--fixture",
+            os.path.join(d, "fixture.json"),
+            "--params",
+            params,
+            "--counters",
+            counters,
+        ],
+        "box face",
+    )
+    try:
+        gate_common.check_away_from_faces(edge, box, "gas")
+        raised = 0
+    except RuntimeError:
+        raised = 1
+    ROWS.append(
+        (
+            "E2 makeIC refuses a coordinate on a face",
+            1,
+            raised,
+            "RuntimeError from check_away_from_faces",
+        )
+    )
     startup = _write(
         d, "startup.log", "h2_transported_lw_rate_shielding = 0\n", text=True
     )

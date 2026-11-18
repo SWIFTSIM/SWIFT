@@ -20,15 +20,15 @@ Gravity:
 
 TimeIntegration:
   time_begin:        0.
-  time_end:          8e-10                    # 5 steps of dt_max
+  time_end:          1.28e-11                   # 8 steps of dt_max
   dt_min:            1e-14
-  dt_max:            1.6e-10
+  dt_max:            1.6e-12
 
 Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1.6e-10                        # One snapshot per step of dt_max
+  delta_time: 1.6e-12                        # One snapshot per step of dt_max
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -40,7 +40,7 @@ Scheduler:
   tasks_per_cell: 150
 
 Statistics:
-  delta_time:           1.6e-10
+  delta_time:           1.6e-12
   time_first:             0.
 
 InitialConditions:
@@ -87,14 +87,14 @@ GEARFeedback:
   with_interstellar_radiation_field: 1                      # ISRF feedback master switch
   ISRF_propagation: 1                                       # Transport the ISRF from the stars
   ISRF_H2_line_absorption: 1                         # 1: the H2 lines absorb the LW band along the packet path
-  ISRF_packet_light_speed: unlimited                          # Unlimited: one step delivers all light, so the run ends after a few steps
+  ISRF_packet_light_speed: unlimited                          # Unlimited: the light still needs a few steps to cross the box, one hop per step
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
-  max_timestep_young_Myr:               1e-7
+  max_timestep_young_Myr:               1.6e-9
   max_timestep_old_Myr:                 1
-  min_star_timestep_Myr:                1e-9
+  min_star_timestep_Myr:                1e-11
   HII_max_search_radius: 0.0002             # Inert with photoionization off, must stay under the box half-width
   HII_max_retry_full_buffer: 30
   HII_max_radius_expansion_tries: 5
