@@ -682,32 +682,18 @@ static int check_complete(struct space *s, int verbose, int nregions) {
 int partition_space_to_space(double *oldh, double *oldcdim, int *oldnodeIDs,
                              struct space *s) {
 
-  /* Both grids can be padded with mirror cells, by the same number of cells
-   * (none without mirror walls). */
-  int pad[3];
-  for (int d = 0; d < 3; d++) {
-    pad[d] = boundary_conditions_mirror_pad(&s->boundary_conditions, d,
-                                            /*upper=*/0);
-  }
-
   /* Loop over all the new cells. */
   for (int i = 0; i < s->cdim[0]; i++) {
     for (int j = 0; j < s->cdim[1]; j++) {
       for (int k = 0; k < s->cdim[2]; k++) {
 
+        /* Scale indices to old cell space. */
+        const int ii = rint(i * s->iwidth[0] * oldh[0]);
+        const int jj = rint(j * s->iwidth[1] * oldh[1]);
+        const int kk = rint(k * s->iwidth[2] * oldh[2]);
+
         const int cid = cell_getid(s->cdim, i, j, k);
-        const struct cell *c = &s->cells_top[cid];
-
-        /* The old cell holding the centre of the new one */
-        int ind[3];
-        for (int d = 0; d < 3; d++) {
-          ind[d] = (int)floor((c->loc[d] + 0.5 * s->width[d]) / oldh[d]) +
-                   pad[d];
-          ind[d] = max(ind[d], 0);
-          ind[d] = min(ind[d], (int)oldcdim[d] - 1);
-        }
-
-        const int oldcid = cell_getid(oldcdim, ind[0], ind[1], ind[2]);
+        const int oldcid = cell_getid(oldcdim, ii, jj, kk);
         s->cells_top[cid].nodeID = oldnodeIDs[oldcid];
       }
     }

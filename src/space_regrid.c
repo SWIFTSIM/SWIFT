@@ -169,6 +169,11 @@ void space_regrid(struct space *s, int verbose) {
   int *oldnodeIDs = NULL;
   if (cdim[0] < s->cdim[0] || cdim[1] < s->cdim[1] || cdim[2] < s->cdim[2]) {
 
+    /* ponytail: the resampling of the old partition below ignores the
+     * padding; teach it the cell origin when mirror walls go over MPI. */
+    if (bc->wall_model == boundary_wall_model_mirror)
+      error("Regridding with mirror walls is not supported over MPI yet.");
+
     /* Capture state of current space. */
     oldcdim[0] = s->cdim[0];
     oldcdim[1] = s->cdim[1];
