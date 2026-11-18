@@ -120,6 +120,42 @@ INLINE static void convert_part_cooling_rates(const struct engine *e,
                        xp, ret);
 }
 
+/**
+ * @brief Does a dust switch read the dust-to-gas ratio?
+ *
+ * As in the library (geajay_dust_is_used), a switch left at default follows
+ * dust_model. The module also counts the per_band dust attenuation of the
+ * background, which reads the ratio.
+ *
+ * @param cooling The #cooling_function_data.
+ * @return 1 if the ratio enters the cooling, 0 otherwise.
+ */
+INLINE static int cooling_dust_is_used(
+    const struct cooling_function_data *cooling) {
+  return cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
+         cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
+         cooling->dust_recombination_cooling ==
+             GEAJAY_DUST_RECOMBINATION_ENABLED ||
+         cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE ||
+         cooling->dust_background_attenuation ==
+             GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND;
+}
+
+/**
+ * @brief Dust-to-gas ratio of a particle for the snapshot.
+ *
+ * @param e The #engine.
+ * @param p The #part.
+ * @param xp The #xpart.
+ * @param ret (return) The ratio of dust mass to gas mass.
+ */
+INLINE static void convert_part_dust_to_gas_ratio(const struct engine *e,
+                                                  const struct part *p,
+                                                  const struct xpart *xp,
+                                                  float *ret) {
+  *ret = (float)cooling_get_dust_to_gas_ratio(e->cooling_func, p);
+}
+
 #if COOLING_GEAJAY_MODE >= 1
 /**
  * @brief Cosmic-ray value of a particle in internal units, for the snapshot.
@@ -286,6 +322,16 @@ __attribute__((always_inline)) INLINE static int cooling_write_particles(
       "refused the particle. Cosmological runs: the redshift is the one of the "
       "end of the step that contains the snapshot.");
   num++;
+
+  if (cooling_with_dust_to_gas_ratio()) {
+    list[num] = io_make_physical_output_field_convert_part(
+        "DustToGasRatios", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, xparts,
+        /*can convert to comoving=*/0, convert_part_dust_to_gas_ratio,
+        "Dust-to-gas mass ratio of the dust law of GeajayCooling:"
+        "dust_to_gas_model, from the metal mass fraction of the particle, as "
+        "the cooling reads it. Written only when a dust switch is on.");
+    num++;
+  }
 
 #if COOLING_GEAJAY_MODE >= 1
   if (cooling_with_cosmic_rays()) {
@@ -1460,14 +1506,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
    * switch reads the dust density. A switch left at default follows
    * dust_model. The module also counts the per_band dust attenuation of the
    * background, which reads the dust-to-gas ratio. */
-  const int dust_is_used =
-      cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
-      cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
-      cooling->dust_recombination_cooling ==
-          GEAJAY_DUST_RECOMBINATION_ENABLED ||
-      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE ||
-      cooling->dust_background_attenuation ==
-          GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND;
+  const int dust_is_used = cooling_dust_is_used(cooling);
   if (dust_is_used && !dust_to_gas_key_given)
     error(
         "GeajayCooling:dust_to_gas_model is required and has no default. Set "

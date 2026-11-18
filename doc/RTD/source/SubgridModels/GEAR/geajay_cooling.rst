@@ -553,6 +553,15 @@ The snapshots hold ``CoolingTimes`` and ``CoolingRates``. To switch them off, se
 ``Snapshots:select_output_on: 1`` and ``CoolingTimes_Gas: off``, ``CoolingRates_Gas: off`` under
 ``Default:`` in the output selection file.
 
+With a dust switch on (see ``dust_to_gas_model``) the snapshots also hold ``DustToGasRatios``, the
+ratio of dust mass to gas mass of each gas particle for the dust law of ``dust_to_gas_model``. The
+module computes it at the write from the metal mass fraction of the particle, with the library
+function that the cooling uses, so it follows ``reference_dust_to_gas_ratio``. It is 0 for a particle
+without metals. Nothing is stored in the particle and the cooling does not read the field. Without a
+dust switch the field is not written. To switch it off, set ``DustToGasRatios_Gas: off`` under
+``Default:`` in the output selection file. The test ``tests/testGeajayDustToGasRatios.sh`` checks
+both laws against the fit of Remy-Ruyer et al. 2014.
+
 Example with network 4
 ++++++++++++++++++++++
 

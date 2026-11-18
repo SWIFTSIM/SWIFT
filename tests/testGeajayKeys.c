@@ -213,7 +213,9 @@ static void print_fields(const char *when, struct unit_system *us,
   e.cooling_func = c;
   const int n = cooling_write_particles(p, xp, list);
   for (int i = 0; i < n; i++) {
-    if (strncmp(list[i].name, "CosmicRay", 9) != 0) continue;
+    if (strncmp(list[i].name, "CosmicRay", 9) != 0 &&
+        strcmp(list[i].name, "DustToGasRatios") != 0)
+      continue;
     float value = -1.f;
     if (list[i].convert_part_f) list[i].convert_part_f(&e, p, xp, &value);
     printf("FIELD %s %s dimension=%d units=%d value=%.9g\n", when, list[i].name,
@@ -267,9 +269,15 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
   p.h = 0.1f;
   p.rho = (float)rho;
   p.u = (float)u;
+  /* GEAJAY_KEYS_METAL_FRACTION: the total metal mass fraction of the
+   * particle, 0.01 without it. */
+  const char *metal_fraction = getenv("GEAJAY_KEYS_METAL_FRACTION");
   p.chemistry_data
-      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = 0.01f;
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] =
+      metal_fraction != NULL ? (float)atof(metal_fraction) : 0.01f;
   cooling_first_init_part(phys_const, us, hydro_properties, NULL, c, &p, &xp);
+  printf("PART metal_mass_fraction=%.17g\n",
+         (double)chemistry_get_total_metal_mass_fraction_for_cooling(&p));
   printf("PART stored_value_after_first_init=%.17g\n",
          (double)xp.cooling_data.cosmic_ray_value);
   print_fields("after_first_init", us, phys_const, c, &p, &xp);
@@ -373,6 +381,10 @@ int main(int argc, char **argv) {
   M_DBL(thermal_time) M_INT(table_density_edge) M_DBL(maximal_density)
   printf("MOD cosmic_ray_context=%d\n", c.cosmic_ray_context != NULL);
   printf("MOD proton_mass_cgs=%.17g\n", c.proton_mass_cgs);
+  printf("MOD local_dust_to_gas_ratio=%.17g\n",
+         c.chemistry_data.local_dust_to_gas_ratio);
+  printf("MOD SolarMetalFractionByMass=%.17g\n",
+         c.chemistry_data.SolarMetalFractionByMass);
 #ifndef NO_CR_MODES
   M_INT(cosmic_ray_source)
   M_DBL(cosmic_ray_fire2_energy_density)

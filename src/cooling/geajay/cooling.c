@@ -89,6 +89,37 @@ static int cooling_geajay_table_edge_warned = 0;
  * Grackle default local_dust_to_gas_ratio). */
 #define COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO 0.009387
 
+/*! 1 when a dust switch reads the dust-to-gas ratio, for the snapshot field. */
+static int cooling_geajay_dust_to_gas_ratio_on = 0;
+
+/**
+ * @brief Does the snapshot hold the dust-to-gas ratio?
+ *
+ * @return 1 when a dust switch or the per_band dust attenuation is on, 0
+ * otherwise.
+ */
+int cooling_with_dust_to_gas_ratio(void) {
+  return cooling_geajay_dust_to_gas_ratio_on;
+}
+
+/**
+ * @brief Dust-to-gas mass ratio of a particle for the dust law of the run.
+ *
+ * It is computed from the metal mass fraction of the particle, as the dust
+ * attenuation of the backgrounds does. Nothing is stored.
+ *
+ * @param cooling The #cooling_function_data.
+ * @param p The #part.
+ * @return The ratio of dust mass to gas mass, 0 without a dust switch.
+ */
+double cooling_get_dust_to_gas_ratio(
+    const struct cooling_function_data *cooling, const struct part *p) {
+  if (!cooling_geajay_dust_to_gas_ratio_on) return 0.;
+  return geajay_dust_to_gas_ratio(
+      &cooling->chemistry_data,
+      max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f), 1.);
+}
+
 /*! 1 when the run has cosmic rays, for the snapshot fields. */
 static int cooling_geajay_cosmic_rays_on = 0;
 
@@ -2217,6 +2248,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (geajay_context_check_layout(cooling->context, &cooling->layout,
                                   sizeof(struct xpart)) == GEAJAY_FAIL)
     error("The species layout of the xpart does not fit the geajay context.");
+
+  cooling_geajay_dust_to_gas_ratio_on = cooling_dust_is_used(cooling);
 
   cooling->cosmic_ray_context = NULL;
   cooling_geajay_cosmic_rays_on =
