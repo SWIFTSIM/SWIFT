@@ -375,6 +375,18 @@ double radiation_get_part_LW_dissociation_rate_with_lines_internal(
     const struct cosmology *cosmo, const struct part *p);
 
 /**
+ * @brief Is the H2 line absorption of the transported LW light on for a
+ * particle?
+ *
+ * @param p The #part.
+ * @return Non-zero if GEARFeedback:ISRF_H2_line_absorption is on.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_H2_line_absorption(const struct part *p) {
+  return p->feedback_data.ISRF_H2_line_absorption;
+}
+
+/**
  * @brief Set the luminosity of a star in one ISRF moment.
  *
  * @param sp The #spart.
@@ -448,6 +460,10 @@ radiation_get_part_LW_dissociation_rate_with_lines_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p) {
   return 0.;
+}
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_H2_line_absorption(const struct part *p) {
+  return 0;
 }
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_band_luminosity(struct spart *sp,
