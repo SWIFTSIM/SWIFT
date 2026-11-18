@@ -9,9 +9,9 @@ Both use the accurate solver and start from the same state: x(HII) = 2e-4,
 x(H2) = 5e-7, D/H = 3.4e-5 by number, neutral helium.
 
 The particles sit on a lattice, so every particle has the same state and the
-box behaves as one zone. SWIFT applies the cooling once per step, so the
-parameter files take 1024 steps per run: with fewer steps the temperature
-carries the error of the first-order coupling (a few tenths of a percent with 64).
+box behaves as one zone. The parameter files take 1024 steps per run: with
+fewer steps the temperature in the snapshot lags (about 0.3 percent at 64
+steps), while the abundances do not change.
 
 compareNetworks.py reads the last snapshot of each run and prints the H2
 fraction, the HD to H ratio and the temperature, with the relative difference
