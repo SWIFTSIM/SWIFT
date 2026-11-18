@@ -352,6 +352,32 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
 }
 
 /**
+ * @brief Read GeajayCooling:h2_transported_lw_rate_shielding.
+ *
+ * The key is forwarded to the library (see #cooling_init_geajay). A library
+ * without the option cannot take background_only, so the run stops.
+ *
+ * @param parameter_file The parser parameter file.
+ * @return The value of the key, shielded_sum if it is not set.
+ */
+INLINE static enum cooling_transported_lw_shielding
+cooling_read_transported_lw_shielding(struct swift_params *parameter_file) {
+  const char *key = "GeajayCooling:h2_transported_lw_rate_shielding";
+  char text[PARSER_MAX_LINE_SIZE];
+  parser_get_opt_param_string(parameter_file, key, text, "shielded_sum");
+  if (strcmp(text, "shielded_sum") == 0)
+    return cooling_transported_lw_shielding_shielded_sum;
+  if (strcmp(text, "background_only") != 0)
+    error("%s must be shielded_sum or background_only, got '%s'.", key, text);
+#ifndef HAVE_GEAJAY_H2_TRANSPORTED_LW_RATE_SHIELDING
+  error(
+      "%s: background_only needs a geajay with the option, this one has none.",
+      key);
+#endif
+  return cooling_transported_lw_shielding_background_only;
+}
+
+/**
  * @brief Stop if a key that the chosen options do not read is in the file.
  *
  * For a key without a default value: any value is refused.
@@ -904,14 +930,16 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  cooling->h2_transported_lw_rate_shielding =
+      cooling_read_transported_lw_shielding(parameter_file);
   radiation_selection_refuse_H2_line_absorption(
       parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
-      COOLING_GEAJAY_TRANSPORTED_LW_RATE_UNSHIELDED
+      cooling->h2_transported_lw_rate_shielding ==
+              cooling_transported_lw_shielding_background_only
           ? NULL
           : "the geajay library shields the transported LW rate with its own "
-            "factor. The module term needs its option "
-            "h2_transported_lw_rate_shielding = background_only, which this "
-            "SWIFT cannot set yet.");
+            "factor. Set GeajayCooling:h2_transported_lw_rate_shielding: "
+            "background_only, which needs a geajay with that option.");
   cooling->with_photoionization = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_photoionization",
       RADIATION_COMPILED_HII);
@@ -1220,6 +1248,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   }
   cooling->h2_shielding_length_method =
       (enum cooling_h2_shielding_length)h2_shielding;
+
+  if (cooling->with_ISRF &&
+      radiation_selection_get_switch(parameter_file,
+                                     "GEARFeedback:ISRF_H2_line_absorption",
+                                     RADIATION_COMPILED_ISRF) &&
+      cooling->h2_shielding_length_method == cooling_h2_shielding_length_none)
+    warning(
+        "GEARFeedback:ISRF_H2_line_absorption is on and "
+        "GeajayCooling:h2_shielding_length_method is none: the library does "
+        "not shield the background rate with H2 self-shielding, so the run "
+        "has no library H2 shielding of the background.");
 
   /* Without a column length, the local LW dissociation rate reaches the
      solver unshielded and H2 cannot survive in an illuminated cloud. */

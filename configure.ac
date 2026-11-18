@@ -1564,6 +1564,13 @@ if test "x$with_geajay" != "xno"; then
       [geajay.h],
       [ : ],
       [AC_MSG_ERROR(Cannot find geajay.h! This geajay is too old: it has only the Grackle names.)])
+   # A geajay with the option h2_transported_lw_rate_shielding lets SWIFT leave
+   # the transported LW rate out of the H2 self-shielding.
+   AC_CHECK_MEMBER(
+      [geajay_chemistry_data.h2_transported_lw_rate_shielding],
+      [AC_DEFINE([HAVE_GEAJAY_H2_TRANSPORTED_LW_RATE_SHIELDING],1,[The geajay library has the option h2_transported_lw_rate_shielding.])],
+      [ : ],
+      [[#include <geajay_chemistry_data.h>]])
    CPPFLAGS="$geajay_save_CPPFLAGS"
 
    AC_CHECK_LIB(

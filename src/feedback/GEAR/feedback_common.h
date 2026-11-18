@@ -142,6 +142,8 @@ float feedback_get_star_teff(const struct spart *sp);
 double feedback_get_part_u_PE(const struct part *p);
 double feedback_get_part_u_LW(const struct part *p);
 double feedback_get_part_u_LW_PHOTON(const struct part *p);
+double feedback_get_part_u_LW_dissociating(const struct part *p);
+double feedback_get_part_LW_line_transmission(const struct part *p);
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 void feedback_init_after_star_formation(

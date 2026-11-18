@@ -796,6 +796,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->chemistry_data.H2_self_shielding);
   message("h2_shielding_length_method = %d",
           (int)cooling->h2_shielding_length_method);
+  message("h2_transported_lw_rate_shielding = %d",
+          (int)cooling->h2_transported_lw_rate_shielding);
   if (cooling->h2_shielding_length_method ==
       cooling_h2_shielding_length_hybrid_chimes)
     message(
@@ -2044,6 +2046,11 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
       error("Unknown self-shielding method %d.",
             (int)cooling->uv_self_shielding);
   }
+
+#ifdef HAVE_GEAJAY_H2_TRANSPORTED_LW_RATE_SHIELDING
+  chemistry->h2_transported_lw_rate_shielding =
+      (int)cooling->h2_transported_lw_rate_shielding;
+#endif
 
   chemistry->H2_self_shielding =
       cooling->h2_shielding_length_method ==

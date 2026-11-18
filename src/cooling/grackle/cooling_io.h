@@ -305,7 +305,7 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       RADIATION_COMPILED_ISRF);
   radiation_selection_refuse_H2_line_absorption(
       parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
-      "official Grackle shields the transported LW rate with its own factor "
+      "Grackle shields the transported LW rate with its own factor "
       "and SWIFT does not patch it. Use the geajay cooling.");
 
   /* Grackle forms H2 on dust at primordial_chemistry > 1 whenever

@@ -53,10 +53,18 @@ enum cooling_uv_self_shielding {
   cooling_uv_self_shielding_HI_HeI_HeII_column = 4
 };
 
-/*! Can SWIFT make the geajay library leave the transported LW rate out of its
- * H2 self-shielding (option h2_transported_lw_rate_shielding =
- * background_only)? The installed library has no such option. */
-#define COOLING_GEAJAY_TRANSPORTED_LW_RATE_UNSHIELDED 0
+/**
+ * @brief What the geajay H2 self-shielding factor multiplies
+ * (GeajayCooling:h2_transported_lw_rate_shielding).
+ *
+ * The values are those of geajay_h2_transported_lw_shielding.
+ */
+enum cooling_transported_lw_shielding {
+  /*! The factor multiplies the background rate and the transported rate */
+  cooling_transported_lw_shielding_shielded_sum = 0,
+  /*! The factor multiplies the background rate alone */
+  cooling_transported_lw_shielding_background_only = 1
+};
 
 /**
  * @brief Length of the H2 self-shielding column
@@ -82,7 +90,8 @@ enum cooling_h2_shielding_length {
 
 /* The structure is dumped raw in the restart files */
 _Static_assert(sizeof(enum cooling_uv_self_shielding) == sizeof(int) &&
-                   sizeof(enum cooling_h2_shielding_length) == sizeof(int),
+                   sizeof(enum cooling_h2_shielding_length) == sizeof(int) &&
+                   sizeof(enum cooling_transported_lw_shielding) == sizeof(int),
                "The shielding enums must keep the size of an int.");
 
 /**
@@ -326,6 +335,11 @@ struct cooling_function_data {
    * to uv_self_shielding above, which is a separate field
    * gating UV-background self-shielding. */
   enum cooling_h2_shielding_length h2_shielding_length_method;
+
+  /*! What the geajay H2 self-shielding factor multiplies
+   * (GeajayCooling:h2_transported_lw_rate_shielding). Forwarded to geajay when
+   * the library has the option. */
+  enum cooling_transported_lw_shielding h2_transported_lw_rate_shielding;
 
   /*! Mode-2 H2 shielding path in kernel support radii kernel_gamma * h: 1
    * for "kernel_radius" (default), 2 for "kernel_diameter"
