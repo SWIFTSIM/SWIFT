@@ -716,7 +716,8 @@ radiation_packet_deliver_with_lines(
   if (with_lines && delivered_energy > 0.f) {
     const double dissociating =
         (double)transmitted_energy_b[ISRF_OPERATOR_LW] * line_transmission;
-    sl->H2_waiting_dissociating_energy += dissociating;
+    sl->H2_waiting_dissociating_energy =
+        (float)((double)sl->H2_waiting_dissociating_energy + dissociating);
     sl->H2_waiting_velocity_sum += (float)(dissociating * line_shift);
   }
 
@@ -790,6 +791,28 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
       receiver, frame, energy, photons, offset, path_phys, H, to_reservoir,
       source_step_end_ti, arrival, arrival_last,
       receiver->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f);
+}
+
+/**
+ * @brief H2 column in cm^-2 that the held light of a slot has crossed.
+ *
+ * It is the column whose factor in the gas of the holder is the transmission of
+ * the held light times the factor at column 0, as the merge sets it. The
+ * holder is the particle whose merge set the transmission, in the same step.
+ *
+ * @param holder The particle that holds the slot.
+ * @param transmission Line transmission of the held light.
+ * @return The H2 column in cm^-2, 0 if the holder has no line width.
+ */
+__attribute__((noinline)) static float radiation_packet_slot_H2_column(
+    const struct part *restrict holder, const float transmission) {
+  const struct feedback_part_data *fd = &holder->feedback_data;
+  const double b5 = fd->H2_line_width_km_s;
+  if (!(b5 > 0.)) return 0.f;
+  const double exponent = fd->H2_shielding_exponent;
+  return (float)radiation_h2_shielding_inverse(
+      (double)transmission * radiation_h2_shielding_factor(0., exponent, b5),
+      exponent, b5);
 }
 
 /**
@@ -947,9 +970,11 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
           ((double)receiver->v[2] - sender->v[2]) * sl->direction[2];
       const double shift_hop =
           closing_speed / a + (double)H * (double)(a * path);
-      radiation_packet_line_hop(receiver, sl->H2_transmission, sl->H2_column,
-                                sl->H2_velocity_shift, shift_hop, a * path,
-                                &line_transmission, &line_shift);
+      radiation_packet_line_hop(
+          receiver, sl->H2_transmission,
+          radiation_packet_slot_H2_column(sender, sl->H2_transmission),
+          sl->H2_velocity_shift, shift_hop, a * path, &line_transmission,
+          &line_shift);
     }
 
     radiation_packet_deliver_with_lines(

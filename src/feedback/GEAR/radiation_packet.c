@@ -3371,19 +3371,15 @@ static void radiation_packet_line_begin(
  * the shift sum leave in the share of the LW energy that leaves. The held
  * light takes the dissociating energy of what was released, so its
  * transmission is the dissociating over the LW energy, at most 1. Its column
- * is the one whose factor in the gas of the particle is that transmission times
- * the factor at column 0, as a hop lowers the transmission by the ratio of the
- * factors.
+ * is the one that #radiation_packet_slot_H2_column derives from that
+ * transmission.
  *
  * @param sl The slot.
  * @param st The state before the merge.
- * @param exponent Exponent of the shielding fit of the particle.
- * @param b5 Thermal line width of H2 of the particle in km/s.
  */
 static void radiation_packet_line_end(
     struct feedback_isrf_packet_slot_data *sl,
-    const struct radiation_packet_line_state *st, const double exponent,
-    const double b5) {
+    const struct radiation_packet_line_state *st) {
 
   const double left = radiation_packet_waiting_LW_energy(sl);
   const double energy = (double)sl->band[ISRF_OPERATOR_LW].energy;
@@ -3402,27 +3398,23 @@ static void radiation_packet_line_end(
       st->held_shift + st->waiting_shift * released_share;
 
   if (left > 0.) {
-    sl->H2_waiting_dissociating_energy = st->waiting_dissociating * left_share;
+    sl->H2_waiting_dissociating_energy =
+        (float)(st->waiting_dissociating * left_share);
     sl->H2_waiting_velocity_sum = (float)(st->waiting_shift * left_share);
   } else {
-    sl->H2_waiting_dissociating_energy = 0.;
+    sl->H2_waiting_dissociating_energy = 0.f;
     sl->H2_waiting_velocity_sum = 0.f;
   }
 
   double t = 1.;
-  double N = 0.;
   double dv = 0.;
   if (energy > 0.) {
     t = released_dissociating / energy;
     if (!(t > 0.)) t = 0.;
     if (t > 1.) t = 1.;
-    if (b5 > 0.)
-      N = radiation_h2_shielding_inverse(
-          t * radiation_h2_shielding_factor(0., exponent, b5), exponent, b5);
     if (released_dissociating > 0.) dv = released_shift / released_dissociating;
   }
   sl->H2_transmission = (float)t;
-  sl->H2_column = (float)N;
   sl->H2_velocity_shift = (float)dv;
 }
 
@@ -3832,10 +3824,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
           radiation_packet_octant_frame,
           radiation_packet_salt_index(salt, (uint32_t)s));
 
-      if (with_lines)
-        radiation_packet_line_end(&pk->slot[s], &line,
-                                  p->feedback_data.H2_shielding_exponent,
-                                  p->feedback_data.H2_line_width_km_s);
+      if (with_lines) radiation_packet_line_end(&pk->slot[s], &line);
     }
 
     radiation_packet_refresh_occupied(pk);
@@ -3861,10 +3850,7 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
         s, radiation_packet_octant_frame,
         radiation_packet_salt_index(salt, (uint32_t)s));
 
-    if (with_lines)
-      radiation_packet_line_end(&pk->slot[s], &line,
-                                p->feedback_data.H2_shielding_exponent,
-                                p->feedback_data.H2_line_width_km_s);
+    if (with_lines) radiation_packet_line_end(&pk->slot[s], &line);
   }
 
   pk->step_end_ti = ti_current + ti_step;

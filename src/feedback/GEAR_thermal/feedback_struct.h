@@ -377,12 +377,9 @@ struct feedback_isrf_packet_slot_data {
       gradient loop. */
   float forward_advance;
 
-  /*! H2 column in cm^-2 that the held light has crossed, with H2 line
-      absorption on. Set at the merge. */
-  float H2_column;
-
   /*! Fraction of the held LW light that the H2 lines let through, 1 without
-      absorption. Set at the merge. */
+      absorption. Set at the merge. The column that the held light has crossed
+      is not stored: #radiation_packet_slot_H2_column gives it. */
   float H2_transmission;
 
   /*! Velocity shift of the held light relative to the gas that holds its
@@ -396,7 +393,7 @@ struct feedback_isrf_packet_slot_data {
   /*! Dissociating energy of the waiting LW light: the sum of its energy times
       the transmission of the H2 lines. It is released and dropped with the
       waiting LW energy. */
-  double H2_waiting_dissociating_energy;
+  float H2_waiting_dissociating_energy;
 
   /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
       or not, for the whole run, so the two sets of fields below share their
