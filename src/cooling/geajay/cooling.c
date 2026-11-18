@@ -1962,16 +1962,31 @@ static void cooling_check_initial_deuterium(
   for (int i = 1; i < n_ratios; i++)
     if (initial_ratios[i] >= 0.) total += 2. * initial_ratios[i];
 
-  if (fabs(total - wanted) > 1e-6 * wanted)
+  if (fabs(total - wanted) <= 1e-6 * wanted) return;
+
+  /* An unset DI counts as the whole total, so no key value can match. */
+  int other_ratio_set = 0;
+  for (int i = 1; i < n_ratios; i++)
+    if (initial_ratios[i] >= 0.) other_ratio_set = 1;
+  if (initial_ratios[0] < 0. && other_ratio_set)
     error(
-        "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio, "
-        "initial_hdi_to_h_ratio and, with the network H_He_H2_D_ions, "
-        "initial_dm_to_h_ratio and initial_hdii_to_h_ratio (number ratios to "
-        "H) give a deuterium to hydrogen mass ratio of %.9g, but the total of "
-        "geajay is %.9g and it rescales the deuterium to it at the first "
-        "call. Set GeajayCooling:deuterium_to_hydrogen_mass_ratio to %.9g, or "
-        "change the initial ratios so that 2 x their sum is %.9g.",
-        total, wanted, total, wanted);
+        "GeajayCooling:initial_di_to_h_ratio is not set, but another initial "
+        "D ratio is. An unset initial_di_to_h_ratio counts as the whole "
+        "deuterium total of geajay (%.9g), so the D ratios give %.9g, and "
+        "geajay rescales the deuterium to its total at the first call. Please "
+        "set initial_di_to_h_ratio too, so that 2 x (sum of all D ratios) "
+        "equals the key GeajayCooling:deuterium_to_hydrogen_mass_ratio.",
+        wanted, total);
+
+  error(
+      "GeajayCooling:initial_di_to_h_ratio, initial_dii_to_h_ratio, "
+      "initial_hdi_to_h_ratio and, with the network H_He_H2_D_ions, "
+      "initial_dm_to_h_ratio and initial_hdii_to_h_ratio (number ratios to "
+      "H) give a deuterium to hydrogen mass ratio of %.9g, but the total of "
+      "geajay is %.9g and it rescales the deuterium to it at the first "
+      "call. Set GeajayCooling:deuterium_to_hydrogen_mass_ratio to %.9g, or "
+      "change the initial ratios so that 2 x their sum is %.9g.",
+      total, wanted, total, wanted);
 }
 
 /**

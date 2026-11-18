@@ -401,7 +401,8 @@ D atom (HeH\ :sub:`+` holds none). The key
 6.8e-5 by mass, which is 3.4e-5 by number. A D atom weighs 2 H atoms, so the initial ratios, which are
 number ratios to H, give the mass ratio 2 (``initial_di_to_h_ratio`` + ``initial_dii_to_h_ratio`` +
 ``initial_hdi_to_h_ratio``), plus ``initial_dm_to_h_ratio`` + ``initial_hdii_to_h_ratio`` inside the
-bracket with the network 4. An unset ``initial_di_to_h_ratio`` counts as the library total. The run
+bracket with the network 4. An unset ``initial_di_to_h_ratio`` counts as the library total, so when only
+another initial D ratio is set the run stops and asks for ``initial_di_to_h_ratio`` too. The run
 stops at start-up if that mass ratio differs from ``deuterium_to_hydrogen_mass_ratio`` by more than a
 relative 1e-6. For example, ``initial_di_to_h_ratio: 4e-5`` alone needs
 ``deuterium_to_hydrogen_mass_ratio: 8e-5``. With a network below 3 a value other than -1 stops the run.
