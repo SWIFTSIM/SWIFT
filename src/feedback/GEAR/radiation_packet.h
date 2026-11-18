@@ -802,6 +802,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  *
  * @param holder The particle that holds the slot.
  * @param transmission Line transmission of the held light.
+ * @return The H2 column in cm^-2, 0 if the holder has no line width.
  */
 __attribute__((noinline)) static float radiation_packet_slot_H2_column(
     const struct part *restrict holder, const float transmission) {
