@@ -1386,7 +1386,7 @@ f_{\Delta t}$, and the code prints this demand at start-up
 counts the new light placed in the near bins and the far cells, and the number
 of placements (\code{radiation\_packet\_placed}, \code{:299}; the light of a
 receiver without a known step is placed again when its step is set and does not
-count, \code{:3233}). It adds the counts of every step over the threads and the
+count, \code{:3234}). It adds the counts of every step over the threads and the
 ranks (\code{radiation\_packet\_far\_share\_report}, \code{:720}) and warns
 once, when the share since the start exceeds $0.03$ after at least 300
 placements (\code{RADIATION\_PACKET\_FAR\_SHARE\_LIMIT}, \code{:54}, and
@@ -2228,10 +2228,10 @@ count is \code{RADIATION\_PACKET\_SLOTS}, set by
 \code{N} other than 8, 12, 16, 24 or 48 is an error; the default and the check are
 repeated at \code{src/feedback/GEAR\_thermal/feedback\_struct.h:140-190}). The
 slot struct is \code{feedback\_isrf\_packet\_slot\_data}
-(\code{feedback\_struct.h:344-404}); the packet is
-\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:410-452}).
+(\code{feedback\_struct.h:357-417}); the packet is
+\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:423-466}).
 Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
-\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:251-258}).
+\code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:264-271}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
 (\code{src/feedback/GEAR/radiation.h:398-419}, the ratio at :418). The
@@ -2346,7 +2346,7 @@ $\boldsymbol{n}_k$ at :3278, and the fallback direction at :3295-3297. The
 merge returns before any change of origin when the slot received no energy
 (:3403). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
-\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:344-404}).
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:357-417}).
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
@@ -2385,7 +2385,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:1036-1085}).
 \code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
-(\code{radiation\_packet.h:684-686}; fields at \code{feedback\_struct.h:288-295}).
+(\code{radiation\_packet.h:684-686}; fields at \code{feedback\_struct.h:301-308}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:855}
 for a hop, :1060 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:141-145}, :179-192) and from
@@ -2496,14 +2496,14 @@ only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
 \code{--enable-isrf-debugging-checks} (\code{configure.ac:3058-3070}), the
 diagnostic build. The per-band ledger of a gas
 particle is \code{feedback\_isrf\_packet\_band\_data}
-(\code{feedback\_struct.h:258-297}: \code{absorbed\_energy},
+(\code{feedback\_struct.h:271-310}: \code{absorbed\_energy},
 \code{absorbed\_photons}, \code{escaped\_energy}, \code{escaped\_photons},
 \code{redshifted\_energy}, \code{redshifted\_photons}). The ledger of a star or
 a sink is \code{feedback\_isrf\_packet\_removed\_data}
-(\code{feedback\_struct.h:462-476}). The emission and escape of a star are
+(\code{feedback\_struct.h:476-490}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:902-948}). The emission is booked by
+(\code{feedback\_struct.h:916-962}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
 (\code{radiation\_packet.c:3913-3944}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:612}. The removal is
