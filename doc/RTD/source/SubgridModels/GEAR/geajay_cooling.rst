@@ -545,3 +545,13 @@ Output
 The snapshots hold ``CoolingTimes`` and ``CoolingRates``. To switch them off, set
 ``Snapshots:select_output_on: 1`` and ``CoolingTimes_Gas: off``, ``CoolingRates_Gas: off`` under
 ``Default:`` in the output selection file.
+
+Example with network 4
+++++++++++++++++++++++
+
+``examples/Cooling/Network4Box`` runs a uniform box of primordial gas at n\ :sub:`H` = 464 cm\ :sup:`-3` and
+30 K for one free-fall time, with cosmic rays at 10\ :sup:`-17` s\ :sup:`-1` per H, once with the network
+``H_He_H2_D`` and once with ``H_He_H2_D_ions``. It needs ``--with-cooling=geajay_4``. The script
+``compareNetworks.py`` prints the relative difference of the H2 fraction, the HD to H ratio and the
+temperature. With cosmic rays the ions change the first two by more than 20 percent. Without them
+(``run.sh --no-cosmic-rays``) the change stays below 2 percent.
