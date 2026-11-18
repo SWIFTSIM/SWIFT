@@ -368,6 +368,9 @@ double radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 double radiation_get_part_LW_dissociation_rate_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p);
+double radiation_get_part_LW_dissociation_rate_with_lines_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p);
 
 /**
  * @brief Set the luminosity of a star in one ISRF moment.
@@ -434,6 +437,12 @@ radiation_get_part_isrf_habing(const struct phys_const *phys_const,
 }
 __attribute__((always_inline)) INLINE static double
 radiation_get_part_LW_dissociation_rate_internal(
+    const struct phys_const *phys_const, const struct unit_system *us,
+    const struct cosmology *cosmo, const struct part *p) {
+  return 0.;
+}
+__attribute__((always_inline)) INLINE static double
+radiation_get_part_LW_dissociation_rate_with_lines_internal(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p) {
   return 0.;
