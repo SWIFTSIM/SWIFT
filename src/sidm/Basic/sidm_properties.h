@@ -161,6 +161,9 @@ INLINE static void sidm_props_init(struct sidm_props *sip,
 
   sip->kappa_timestep = parser_get_opt_param_float(
       params, "BasicSIDM:kappa_timestep", sidm_props_default_kappa_timestep);
+
+  /* Tabulate the overlap kernel */
+  sidm_kernel_overlap_init();
 }
 
 /**
@@ -200,6 +203,9 @@ INLINE static void sidm_struct_restore(const struct sidm_props *props,
                                        FILE *stream) {
   restart_read_blocks((void *)props, sizeof(struct sidm_props), 1, stream, NULL,
                       "SIDM props");
+
+  /* Rebuild overlap tableß */
+  sidm_kernel_overlap_init();
 }
 
 #endif /* SWIFT_BASIC_SIDM_PROPERTIES_H */

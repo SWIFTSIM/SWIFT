@@ -35,7 +35,20 @@
  * kernel defined in kernel_hydro.h.
  *
  * All density-kernel constants and coefficients are taken from table 1 of
- * Dehnen & Aly, MNRAS, 425, pp. 1062-1082 (2012).
+ * Dehnen & Aly, MNRAS, 425, pp. 1068-1082 (2012).
+ *
+ * The overlap kernel gives the pair scattering rate per unit (sigma/m) m v,ß
+ *
+ *   Lambda_ij = int W(|x - x_i|, h_i) W(|x - x_j|, h_j) d^3x,
+ *
+ * Because each W integrates to 1, so does
+ * Lambda_ij over all separations r = |x_i - x_j|. The force loop only sees
+ * pairs with r < sidm_kernel_gamma * h_max, so both overlap kernels below are
+ * truncated there and divided by
+ *
+ *   N(s) = int_0^{sidm_kernel_gamma} 4 pi r^2 Lambda(r, s) dr   (h_max = 1),
+ *
+ * with s = h_min / h_max, which makes the truncated Lambda integrate to 1.
  */
 
 /* Config parameters. */
@@ -352,45 +365,185 @@ __attribute__((always_inline)) INLINE static void sidm_kernel_eval(
 /* ------------------------------------------------------------------------- */
 #if defined(SIDM_OVERLAP_TOPHAT)
 
+#if !defined(HYDRO_DIMENSION_3D)
+#error "The top-hat SIDM overlap kernel is only defined in 3D."
+#endif
+
 #define sidm_overlap_kernel_name "Top-hat"
 
 /**
- * @brief Kernel overlap assuming top-hat kernel.
+ * @brief Normalisation N(s) of the truncated top-hat overlap (h_max = 1).
  *
- * Note: the top-hat of each particle has radius h, so the overlap is
- * non-zero for r < hi + hj.
+ * The untruncated overlap integrates to 1, so N = 1 - M, where M is the part
+ * at r > sidm_kernel_gamma. M is non-zero only when the lens reaches past the
+ * search radius, i.e. 1 + s > sidm_kernel_gamma.
  *
- * @param r Comoving distance between the two particles.
- * @param hi Comoving smoothing-length of part*icle i.
- * @param hj Comoving smoothing-length of part*icle j.
+ * With Lambda = V_lens / (V_i V_j), V_i = 4 pi / 3, V_j = 4 pi s^3 / 3 and
+ * the substitution t = 1 + s - r, the integrand 4 pi r^2 Lambda becomes
+ * 3 / (16 s^3) t^2 (1 + s - t) (t^2 - 4 (1 + s) t + 12 s), so that
+ *
+ *   M = 3 / (16 s^3) int_0^T t^2 (1 + s - t) (t^2 - 4 (1 + s) t + 12 s) dt
+ *     = 3 / (16 s^3) T^3 [4 a s - (a^2 + 3 s) T + a T^2 - T^3 / 6],
+ *
+ * with a = 1 + s and T = a - sidm_kernel_gamma.
+ *
+ * @param s The ratio h_min / h_max (in [0, 1]).
+ */
+INLINE static float sidm_kernel_overlap_tophat_norm(const float s) {
+
+  const float a = 1.f + s;
+  const float T = a - sidm_kernel_gamma;
+  if (T <= 0.f) return 1.f;
+
+  const float T3 = T * T * T;
+  const float integral =
+      T3 * (4.f * a * s - (a * a + 3.f * s) * T + a * T * T - T3 / 6.f);
+
+  return 1.f - 3.f * integral / (16.f * s * s * s);
+}
+
+/**
+ * @brief Kernel overlap of two top-hat kernels of radius h_i and h_j.
+ *
+ * For W = 1 / V inside a sphere of radius h (and 0 outside), the overlap
+ * integral is Lambda_ij = V_lens / (V_i V_j), with V_lens the volume of the
+ * intersection of the two spheres:
+ *
+ *   V_lens = pi (h_i + h_j - r)^2 [r^2 + 2 r (h_i + h_j) - 3 (h_i - h_j)^2]
+ *            / (12 r)                                 for |h_i - h_j| < r,
+ *   V_lens = 4 pi h_min^3 / 3                         for r <= |h_i - h_j|,
+ *
+ * and 0 for r >= h_i + h_j. The result is truncated at the search radius and divided by
+ * N(s) (see sidm_kernel_overlap_tophat_norm()).
+ *
+ *
+ * @param r Comoving distance between the two particles.ß
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
  */
 INLINE static float sidm_kernel_overlap(const float r, const float hi,
                                         const float hj) {
 
-  const float Vconst = (4.f / 3.f) * M_PI;
-  const float Vi = Vconst * hi * hi * hi;
-  const float Vj = Vconst * hj * hj * hj;
+  const float h_max = max(hi, hj);
+  const float h_min = min(hi, hj);
 
-  float V_overlap;
+  /* Outside the search radius or the two spheres do not intersect */
+  if (r >= sidm_kernel_gamma * h_max) return 0.f;
+  if (r >= hi + hj) return 0.f;
 
-  if (r >= hi + hj) {
-    return 0.f;
-  }
+  const float sphere_volume = (4.f / 3.f) * M_PI;
+  const float V_i = sphere_volume * hi * hi * hi;
+  const float V_j = sphere_volume * hj * hj * hj;
 
-  // sphere within sphere case
-  if (r <= fabsf(hi - hj)) {
-    const float hmin = hi < hj ? hi : hj;
-    V_overlap = Vconst * hmin * hmin * hmin;
+  float V_lens;
+  if (r <= h_max - h_min) {
+    /* The smaller sphere lies entirely inside the larger one */
+    V_lens = sphere_volume * h_min * h_min * h_min;
   } else {
-    // usual case
-    const float term = hi + hj - r;
-    V_overlap = M_PI * term * term *
-                (r * r + 2 * r * (hi + hj) - 3 * (hi - hj) * (hi - hj)) /
-                (12.f * r);
+    /* Lens-shaped intersection */
+    const float depth = hi + hj - r;
+    const float dh = hi - hj;
+    V_lens = M_PI * depth * depth * (r * r + 2.f * r * (hi + hj) - 3.f * dh * dh) /
+             (12.f * r);
   }
 
-  return V_overlap / (Vi * Vj);
+  const float N = sidm_kernel_overlap_tophat_norm(h_min / h_max);
+
+  return V_lens / (V_i * V_j * N);
 }
+
+/* ------------------------------------------------------------------------- */
+#elif defined(SIDM_OVERLAP_CUBIC_SPLINE)
+
+#if !defined(HYDRO_DIMENSION_3D)
+#error "The cubic spline SIDM overlap kernel is only defined in 3D."
+#endif
+
+#define sidm_overlap_kernel_name "Cubic spline (M4)"
+
+/*! Support of the cubic spline in units of h (H = gamma h), from table 1 of
+ * Dehnen & Aly (2012). */
+#define sidm_overlap_gamma_double 1.825742
+#define sidm_overlap_gamma ((float)(sidm_overlap_gamma_double))
+
+/*! Normalisation of the 3D cubic spline, W = C / gamma^3 P(u / gamma) */
+#define sidm_overlap_constant_double (16. * M_1_PI)
+
+/*! Number of table entries in s = h_min / h_max (over [0, 1]) */
+#define sidm_overlap_table_n_s 128
+
+/*! Number of table entries in x = r / (gamma (hi + hj)) (over [0, 1]) */
+#define sidm_overlap_table_n_x 256
+
+/*! Tabulated overlap F(x, s) for h_max = 1. Filled by
+ * sidm_kernel_overlap_init(). Row-major in s. */
+extern float
+    sidm_overlap_table[sidm_overlap_table_n_s * sidm_overlap_table_n_x];
+
+/*! Inverse of the normalisation 1 / N(s) of the overlap truncated at the
+ * neighbour search radius. Filled by sidm_kernel_overlap_init(). */
+extern float sidm_overlap_norm_inv[sidm_overlap_table_n_s];
+
+/**
+ * @brief Kernel overlap assuming cubic spline kernels.
+ *
+ * Returns \f$\Lambda_{ij} = \int W(|x - x_i|, h_i) W(|x - x_j|, h_j) d^3x\f$
+ * with W the (normalised) cubic spline. The full overlap is non-zero for
+ * r < gamma (hi + hj), beyond the search radius sidm_kernel_gamma h_max of
+ * the force loop. It is therefore truncated at that radius and divided by
+ * N(s), its integral over the search sphere, so that it integrates to 1.
+ *
+ * Lambda only depends on r / h_max and s = h_min / h_max, up to a factor
+ * h_max^{-3}: \f$\Lambda_{ij} = F(x, s) / (N(s) h_{max}^3)\f$ with
+ * x = r / (gamma (hi + hj)) in [0, 1]. F and 1 / N are tabulated by
+ * sidm_kernel_overlap_init() (see kernel_sidm.c for the integrals) and read
+ * here by bilinear interpolation.
+ *
+ * @param r Comoving distance between the two particles.
+ * @param hi Comoving smoothing-length of particle i.
+ * @param hj Comoving smoothing-length of particle j.
+ */
+INLINE static float sidm_kernel_overlap(const float r, const float hi,
+                                        const float hj) {
+
+  const float h_max = max(hi, hj);
+
+  /* Truncate at the neighbour search radius */
+  if (r >= sidm_kernel_gamma * h_max) return 0.f;
+
+  const float x = r / (sidm_overlap_gamma * (hi + hj));
+  if (x >= 1.f) return 0.f;
+
+  const float h_min = min(hi, hj);
+  const float s = h_min / h_max;
+
+  /* Locate the cell of the table */
+  const float fs = s * (float)(sidm_overlap_table_n_s - 1);
+  const float fx = x * (float)(sidm_overlap_table_n_x - 1);
+  int is = (int)fs;
+  int ix = (int)fx;
+  if (is > sidm_overlap_table_n_s - 2) is = sidm_overlap_table_n_s - 2;
+  if (ix > sidm_overlap_table_n_x - 2) ix = sidm_overlap_table_n_x - 2;
+  const float ds = fs - (float)is;
+  const float dx = fx - (float)ix;
+
+  /* Bilinear interpolation */
+  const float *row0 = &sidm_overlap_table[is * sidm_overlap_table_n_x];
+  const float *row1 = row0 + sidm_overlap_table_n_x;
+  const float F0 = (1.f - dx) * row0[ix] + dx * row0[ix + 1];
+  const float F1 = (1.f - dx) * row1[ix] + dx * row1[ix + 1];
+  const float F = (1.f - ds) * F0 + ds * F1;
+
+  /* Normalisation of the truncated overlap */
+  const float N_inv = (1.f - ds) * sidm_overlap_norm_inv[is] +
+                      ds * sidm_overlap_norm_inv[is + 1];
+
+  const float h_max_inv = 1.f / h_max;
+  return F * N_inv * h_max_inv * h_max_inv * h_max_inv;
+}
+
+double sidm_kernel_overlap_exact(const double r, const double hi,
+                                 const double hj);
 
 /* ------------------------------------------------------------------------- */
 #else
@@ -399,5 +552,7 @@ INLINE static float sidm_kernel_overlap(const float r, const float hi,
 
 /* ------------------------------------------------------------------------- */
 #endif
+
+void sidm_kernel_overlap_init(void);
 
 #endif /* SWIFT_KERNEL_SIDM_H */

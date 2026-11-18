@@ -3117,14 +3117,17 @@ esac
 # SIDM overlap (interaction) kernel.
 AC_ARG_WITH([sidm-overlap-kernel],
    [AS_HELP_STRING([--with-sidm-overlap-kernel=<kernel>],
-      [Kernel used for the SIDM pair overlap in the scattering loop @<:@tophat default: tophat@:>@]
+      [Kernel used for the SIDM pair overlap in the scattering loop @<:@tophat, cubic-spline default: cubic-spline@:>@]
    )],
    [with_sidm_overlap_kernel="$withval"],
-   [with_sidm_overlap_kernel="tophat"]
+   [with_sidm_overlap_kernel="cubic-spline"]
 )
 case "$with_sidm_overlap_kernel" in
    tophat)
       AC_DEFINE([SIDM_OVERLAP_TOPHAT], [1], [Top-hat SIDM overlap kernel])
+   ;;
+   cubic-spline)
+      AC_DEFINE([SIDM_OVERLAP_CUBIC_SPLINE], [1], [Cubic spline SIDM overlap kernel])
    ;;
    *)
       AC_MSG_ERROR([Unknown SIDM overlap kernel: $with_sidm_overlap_kernel])
