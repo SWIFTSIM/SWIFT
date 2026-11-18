@@ -31,6 +31,7 @@
 #include "units.h"
 
 #include <float.h>
+#include <geajay.h>
 #include <geajay_message.h>
 #include <geajay_options.h>
 #include <limits.h>
@@ -334,6 +335,45 @@ __attribute__((noinline)) static int cooling_double_is_finite(const double *x) {
   uint64_t bits;
   memcpy(&bits, x, sizeof(bits));
   return ((bits >> 52) & 0x7ffULL) != 0x7ffULL;
+}
+
+/**
+ * @brief Whether a library dust switch is on, i.e. a switch that makes the
+ * library read the dust density. The dust attenuation of the background is
+ * not one: the module computes it.
+ *
+ * @param cooling The cooling properties.
+ * @return 1 if a switch is on.
+ */
+INLINE static int cooling_dust_switch_is_on(
+    const struct cooling_function_data *cooling) {
+  return cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
+         cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
+         cooling->dust_recombination_cooling ==
+             GEAJAY_DUST_RECOMBINATION_ENABLED ||
+         cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE;
+}
+
+/**
+ * @brief The dust-to-gas ratio of the attenuation of the background, with the
+ * law of the user. The library may hold linear instead, see
+ * cooling_init_geajay().
+ *
+ * @param cooling The cooling properties.
+ * @param metal_mass_fraction The metal mass fraction.
+ * @return The dust-to-gas ratio (mass per mass).
+ */
+INLINE static double cooling_attenuation_dust_to_gas_ratio(
+    const struct cooling_function_data *cooling,
+    const double metal_mass_fraction) {
+  const geajay_chemistry_data *chemistry = &cooling->chemistry_data;
+  geajay_chemistry_data user_law;
+  if (chemistry->dust_to_gas_model != cooling->dust_to_gas_model) {
+    user_law = cooling->chemistry_data;
+    user_law.dust_to_gas_model = cooling->dust_to_gas_model;
+    chemistry = &user_law;
+  }
+  return geajay_dust_to_gas_ratio(chemistry, metal_mass_fraction, 1.);
 }
 
 /**
@@ -1460,14 +1500,9 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
    * switch reads the dust density. A switch left at default follows
    * dust_model. The module also counts the per_band dust attenuation of the
    * background, which reads the dust-to-gas ratio. */
-  const int dust_is_used =
-      cooling->dust_model != GEAJAY_DUST_MODEL_NONE ||
-      cooling->H2_on_dust == GEAJAY_H2_ON_DUST_ENABLED ||
-      cooling->dust_recombination_cooling ==
-          GEAJAY_DUST_RECOMBINATION_ENABLED ||
-      cooling->photoelectric_heating_model > GEAJAY_PHOTOELECTRIC_NONE ||
-      cooling->dust_background_attenuation ==
-          GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND;
+  const int dust_is_used = cooling_dust_switch_is_on(cooling) ||
+                           cooling->dust_background_attenuation ==
+                               GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND;
   if (dust_is_used && !dust_to_gas_key_given)
     error(
         "GeajayCooling:dust_to_gas_model is required and has no default. Set "

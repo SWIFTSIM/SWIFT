@@ -1026,10 +1026,9 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
     /* The column uses the capped density. */
     const double column = cooling->column_factor * density * path;
     const double dust_ratio =
-        geajay_dust_to_gas_ratio(
-            &cooling->chemistry_data,
-            max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f),
-            1.) /
+        cooling_attenuation_dust_to_gas_ratio(
+            cooling,
+            max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f)) /
         COOLING_GEAJAY_REFERENCE_DUST_TO_GAS_RATIO;
     inputs->lw_background_attenuation =
         exp(-cooling->dust_cross_section_lw_cgs * dust_ratio * column);
@@ -2017,6 +2016,14 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   chemistry->cie_cooling = cooling->H2_cie_cooling;
   chemistry->dust_chemistry = cooling->dust_model;
   chemistry->dust_to_gas_model = cooling->dust_to_gas_model;
+  /* The library refuses remy_ruyer_2014 when no dust switch is on. The
+   * attenuation of the background then needs the user's law only for its own
+   * column, which the module computes, so the library gets linear. */
+  if (!cooling_dust_switch_is_on(cooling) &&
+      cooling->dust_background_attenuation ==
+          GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND &&
+      cooling->dust_to_gas_model == GEAJAY_DUST_TO_GAS_REMY_RUYER_2014)
+    chemistry->dust_to_gas_model = GEAJAY_DUST_TO_GAS_LINEAR;
   chemistry->photoelectric_heating = cooling->photoelectric_heating_model;
   if (cooling->photoelectric_heating_rate >= 0.)
     chemistry->photoelectric_heating_rate = cooling->photoelectric_heating_rate;

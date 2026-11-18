@@ -330,7 +330,9 @@ Molecules and dust
        ``enabled``, a ``photoelectric_heating_model`` above ``none`` or ``dust_background_attenuation``
        ``per_band``. The run stops if a dust switch is on and the key is absent. With no dust switch
        the key may be absent, and ``remy_ruyer_2014`` stops the run. The library does not count the
-       attenuation as a dust switch: with the attenuation as the only switch, only ``linear`` starts.
+       attenuation as a dust switch. With the attenuation as the only switch, the module computes the
+       attenuation column with the law of the key, ``linear`` or ``remy_ruyer_2014``, and gives
+       ``linear`` to the library, which reads no dust density in that case.
        The library has a third value, ``from_field`` (2), that takes
        the dust density from a particle field. SWIFT has no such field and refuses it.
    * - ``reference_dust_to_gas_ratio``

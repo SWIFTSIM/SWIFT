@@ -371,6 +371,8 @@ int main(int argc, char **argv) {
   M_INT(cosmic_ray_source)
   M_DBL(cosmic_ray_fire2_energy_density)
 #endif
+  printf("MOD attenuation_dust_ratio_at_z0.001=%.10g\n",
+         cooling_attenuation_dust_to_gas_ratio(&c, 0.001));
   printf("MOD density_units=%.17g\n", c.units.density_units);
   if (argc >= 5 && strcmp(argv[2], "--particle") == 0)
     run_particle(params, &us, &phys_const, &hydro_properties, &c, atof(argv[3]),
