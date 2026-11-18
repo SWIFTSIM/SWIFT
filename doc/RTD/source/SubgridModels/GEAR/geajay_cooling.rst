@@ -479,17 +479,17 @@ Source of the cosmic-ray value
    The value is computed at each call from the local hydrogen number density,
    e\ :sub:`cr` n\ :sub:`H` / (0.01 + n\ :sub:`H`), with e\ :sub:`cr` from
    ``cosmic_ray_fire2_energy_density`` and the factor of ``geajay_cosmic_ray_density_factor_fire2()``
-   (Hopkins et al. 2018, eq. B.25). It is the energy density passed to the library, so the input is
+   (Hopkins et al. 2018, eq. B25). It is the energy density passed to the library, so the input is
    ``energy_density``. Here n\ :sub:`H` = X (:math:`\rho` - :math:`\rho_Z`) / m\ :sub:`p` [cm\ :sup:`-3`], with
    X the hydrogen mass fraction of the metal-free gas, :math:`\rho` the physical density and :math:`\rho_Z` the
    metal density. In a cosmological run the density is the physical one, not the comoving one, and
    e\ :sub:`cr` is a proper energy density in eV cm\ :sup:`-3`. In a cosmological run the value is 0
-   unless n\ :sub:`H` is above 1000 times the mean baryonic density of the Universe at the current
-   redshift, :math:`\rho_b` / m\ :sub:`p` (Hopkins et al. 2018, appendix B). The cut is always applied
-   and has no key: it moves with (1+z)\ :sup:`3`, about 2.5e-4 cm\ :sup:`-3` at z = 0. Without cosmology
+   unless the gas density :math:`\rho` is above 1000 times the mean baryonic density of the Universe at the
+   current redshift (Hopkins et al. 2018, appendix B, eq. B25; the same comparison of mass densities as the
+   FIRE-2 code). The cut is always applied and has no key: it moves with (1+z)\ :sup:`3`, and in n\ :sub:`H`
+   it is about 1.9e-4 cm\ :sup:`-3` at z = 0 for :math:`\rho_b` = 4.2e-31 g cm\ :sup:`-3`. Without cosmology
    there is no mean density and no cut. Nothing is stored. The value does not depend on the
-   per-particle value and is not
-   multiplied by it.
+   per-particle value and is not multiplied by it.
 
 With ``per_particle`` and ``fire2`` the library needs ``cosmic_ray_rate_per_energy_density``,
 ``cosmic_ray_coulomb_loss_coefficient`` and ``cosmic_ray_hadronic_loss_coefficient`` (input

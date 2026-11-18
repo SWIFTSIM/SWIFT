@@ -17,8 +17,8 @@
 # the density unit printed by the program (MOD lines):
 #   n_H = X (1 - Z) rho_comoving a^-3 / m_p,  value = e_cr n_H / (0.01 + n_H).
 # With GEAJAY_KEYS_MEAN_BARYON_DENSITY set (mean baryonic density today, g cm^-3),
-# the FIRE-2 cut applies: the value is 0 unless n_H > 1000 rho_b(a) / m_p, with
-# rho_b(a) = rho_b0 a^-3.
+# the FIRE-2 cut applies: the value is 0 unless the gas density rho is above
+# 1000 rho_b(a), with rho_b(a) = rho_b0 a^-3.
 # Exit code 0: every check passes.
 
 here=$(dirname "$(realpath "$0")")
@@ -120,7 +120,7 @@ dense=$(value a05_dense solve)
 verdict fire2_cosmo_value_tends_to_e_cr_in_ev_per_cm3 \
   "$(close_to "$dense" "$ECR" 1e-3)" "dense value $dense for e_cr $ECR eV cm^-3"
 
-# The FIRE-2 cut: value 0 unless n_H > 1000 x the mean baryonic density (cm^-3 of m_p)
+# The FIRE-2 cut: value 0 unless the gas density is above 1000 x the mean baryonic density
 RHOB0=4.2e-31
 
 # run_cut <name> <scale factor> <comoving density>: as run, with a mean baryonic density
@@ -138,8 +138,9 @@ expect_cut() {
   du=$(sed -n 's/^MOD density_units=//p' "$3.out")
   awk -v a="$1" -v r="$2" -v e=$ECR -v x="$xh" -v mp="$mp" -v du="$du" -v zf="$ZFIX" -v rb="$RHOB0" '
     BEGIN { n = x * (1 - zf) * r / (a * a * a) * du / mp
-            cut = 1000 * rb / (a * a * a) / mp
-            printf "%.17g", (n > cut) ? e * n / (0.01 + n) : 0 }'
+            rho = r / (a * a * a) * du
+            cut = 1000 * rb / (a * a * a)
+            printf "%.17g", (rho > cut) ? e * n / (0.01 + n) : 0 }'
 }
 
 # cut_case <name> <a> <rho_comoving> <zero|nonzero>
@@ -158,10 +159,12 @@ cut_case() {
   verdict "fire2_cut_${name}" $ok "a=$a comoving rho=$rho: value $(value "$name" solve), expected $w ($want)"
 }
 
-# n_H = 9.8e-3 at the knee, cut at a=0.5 is 2.0e-3 and at a=1 is 2.5e-4 (cm^-3)
+# At a = 0.5 the cut on the gas density is at comoving density 6.2e3 (n_H 1.5e-3 cm^-3);
+# a cut on n_H > 1000 rho_b / m_p would sit at 8.1e3.
 cut_case a05_above_cut 0.5 4e4 nonzero
-# 1e4 gives n_H = 2.4e-3, between the cut 2.0e-3 and the cut 2.6e-3 of a mean density divided by X
 cut_case a05_just_above_cut 0.5 1e4 nonzero
+# 7e3 lies between the two readings: nonzero for the gas density, 0 for the hydrogen density
+cut_case a05_between_readings_above_cut 0.5 7e3 nonzero
 cut_case a05_below_cut 0.5 6e3 zero
 # the same physical gas (6e3 / a^3 = 4.8e4) is above the cut at a=1, where the mean density is 8 times lower
 cut_case a1_same_physical_gas_above_cut 1.0 4.8e4 nonzero

@@ -1070,9 +1070,9 @@ static double cooling_stored_nan(void) {
  * @param inputs The inputs of the solve (density in internal units).
  * @return The value of the source: the constant of the run, the stored energy
  * density, or e_cr n_H / (0.01 + n_H) with n_H the local hydrogen number
- * density in cm^-3, and 0 in a cosmological run when n_H is not above 1000
- * times the mean baryonic density (Hopkins et al. 2018, eq. B25). 0 with the
- * input "constant".
+ * density in cm^-3, and 0 in a cosmological run when the gas density is not
+ * above 1000 times the mean baryonic density (Hopkins et al. 2018, eq. B25).
+ * 0 with the input "constant".
  */
 static double cooling_cosmic_ray_value(
     const struct cooling_function_data *cooling, const struct cosmology *cosmo,
@@ -1082,12 +1082,11 @@ static double cooling_cosmic_ray_value(
     case cooling_cosmic_ray_source_per_particle:
       return xp->cooling_data.cosmic_ray_value;
     case cooling_cosmic_ray_source_fire2: {
-      const double rho_H =
-          cooling->HydrogenFractionByMass * (inputs->density - inputs->metal);
       /* mean_density_Omega_b is 0 without cosmology: no cut */
-      if (!(rho_H > 1000. * cosmo->mean_density_Omega_b)) return 0.;
+      if (!(inputs->density > 1000. * cosmo->mean_density_Omega_b)) return 0.;
       const double n_H =
-          rho_H * cooling->units.density_units / cooling->proton_mass_cgs;
+          cooling->HydrogenFractionByMass * (inputs->density - inputs->metal) *
+          cooling->units.density_units / cooling->proton_mass_cgs;
       return cooling->cosmic_ray_fire2_energy_density *
              geajay_cosmic_ray_density_factor_fire2(n_H);
     }

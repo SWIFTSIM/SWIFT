@@ -794,7 +794,7 @@ GeajayCooling:
   initial_hehii_to_h_ratio: -1                 # (optional) Initial nHeHII to nH ratio (number density ratio), network H_He_H2_D_ions. Ignored if -1 (default: -1)
   cosmic_rays: off                             # (optional) Cosmic-ray network: off or reduced (needs primordial_chemistry_network H_He or above) (default: off)
   # With it the fields CosmicRayValues and CosmicRayEnergyLossRates join the snapshot, but swift -o does not list them.
-  cosmic_ray_source: constant                  # (optional) Read only with cosmic_rays: reduced. constant (one value), per_particle (stored energy density, starts at 0, set by the injecting module) or fire2 (e_cr n_H / (0.01 + n_H), 0 in a cosmological run below 1000 times the mean baryonic density) (default: constant)
+  cosmic_ray_source: constant                  # (optional) Read only with cosmic_rays: reduced. constant (one value), per_particle (stored energy density, starts at 0, set by the injecting module) or fire2 (e_cr n_H / (0.01 + n_H), 0 in a cosmological run when the gas density is not above 1000 times the mean baryonic density) (default: constant)
   cosmic_ray_input: ionisation_rate            # (optional) Read only with cosmic_rays: reduced. Meaning of the value with the source constant: ionisation_rate (s^-1 per H), energy_density (eV cm^-3) or constant (default: ionisation_rate)
   # cosmic_ray_initial_value: 2e-16              # Read only with cosmic_rays: reduced, cosmic_ray_source: constant and a value input (ionisation_rate or energy_density), then required. Value of every particle for the whole run, proper
   # cosmic_ray_fire2_energy_density: 1.0         # Read only with cosmic_ray_source: fire2, then required, no default. Fixed cosmic-ray energy density e_cr [eV cm^-3]
