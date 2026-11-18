@@ -10,8 +10,11 @@
 # The fixture dir holds CloudyData_UVB=HM2012.h5. The program passes one gas
 # particle through the module with GEAJAY_KEYS_SCALE_FACTOR set, so that the
 # particle density is comoving as in a cosmological run, and prints the
-# cosmic-ray value that reaches the library (PARTCALL lines). The expected
-# value is computed here from the command-line inputs only:
+# cosmic-ray value that reaches the library (PARTCALL lines). The run uses
+# "redshift: -1", so the library scale factor follows a as in a cosmological
+# run. The expected value is computed here from the command-line inputs, the
+# fixture metal fraction Z = (double)0.01f set by run_particle, and X, m_p and
+# the density unit printed by the program (MOD lines):
 #   n_H = X (1 - Z) rho_comoving a^-3 / m_p,  value = e_cr n_H / (0.01 + n_H).
 # Exit code 0: every check passes.
 
@@ -29,7 +32,7 @@ checks=0
 
 mk() {
   local IFS=';' l
-  cp "$here/testGeajayKeys.yml" "$1"
+  sed 's/^\( *redshift:\).*/\1 -1/' "$here/testGeajayKeys.yml" > "$1"
   for l in $2; do [ -n "$l" ] && echo "  $l" >> "$1"; done
 }
 
@@ -44,6 +47,8 @@ verdict() {
 }
 
 ECR=2.5
+# the metal mass fraction run_particle sets: (double)0.01f
+ZFIX=0.009999999776482582
 CR="cosmic_rays: reduced;cosmic_ray_rate_per_energy_density: 1e-16;cosmic_ray_coulomb_loss_coefficient: 1e-16;cosmic_ray_hadronic_loss_coefficient: 1e-16;cosmic_ray_input: energy_density;cosmic_ray_source: fire2;cosmic_ray_fire2_energy_density: $ECR"
 
 # run <name> <scale factor> <comoving density> : the particle at that a
@@ -59,13 +64,12 @@ value() { sed -n "s/^PARTCALL $2 cosmic_ray_value=\([^ ]*\) .*/\1/p" "$1.out" | 
 # expect <a> <rho_comoving> <name> <definition>: the value of a definition
 # definition: phys (X(1-Z) rho a^-3), comoving (X(1-Z) rho), mass (rho a^-3 / m_p)
 expect() {
-  local xh mp du z
+  local xh mp du
   xh=$(sed -n 's/^MOD HydrogenFractionByMass=//p' "$3.out")
   mp=$(sed -n 's/^MOD proton_mass_cgs=//p' "$3.out")
   du=$(sed -n 's/^MOD density_units=//p' "$3.out")
-  z=$(sed -n 's/^PARTCALL solve .* density=\([^ ]*\) metal=\(.*\)$/\1 \2/p' "$3.out" | head -1)
-  awk -v a="$1" -v r="$2" -v e=$ECR -v x="$xh" -v mp="$mp" -v du="$du" -v def="$4" -v zz="$z" '
-    BEGIN { split(zz, q, " "); zf = q[2] / q[1]
+  awk -v a="$1" -v r="$2" -v e=$ECR -v x="$xh" -v mp="$mp" -v du="$du" -v def="$4" -v zf="$ZFIX" '
+    BEGIN { if (a + 0 <= 0) { print "scale factor must be positive" > "/dev/stderr"; exit 2 }
             if (def == "phys") n = x * (1 - zf) * r / (a * a * a) * du / mp
             else if (def == "comoving") n = x * (1 - zf) * r * du / mp
             else n = r / (a * a * a) * du / mp

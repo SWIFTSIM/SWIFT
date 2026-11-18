@@ -207,4 +207,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
              testGeajayPhotoelectricKey.sh testGeajayKeys.sh testGeajayCosmicRays.sh testGeajayKeys.cases \
+             testGeajayCosmicRaysFire2Cosmology.sh \
              testGeajayKeys.yml
