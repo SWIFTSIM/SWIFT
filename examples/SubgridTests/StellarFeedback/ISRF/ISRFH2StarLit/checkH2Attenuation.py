@@ -145,7 +145,9 @@ def column_for_transmission(target: float, temp: float, dens_cm3: float) -> floa
     return math.exp(0.5 * (lo + hi))
 
 
-def load_json(path: str, what: str) -> dict:
+def load_json(path: Optional[str], what: str) -> dict:
+    if path is None:
+        raise GateExit(EXIT_MISSING, f"{what} is required and was not given")
     try:
         with open(path) as f:
             return json.load(f)
@@ -450,8 +452,8 @@ def fit_parameters(
 def check_fit_uniform(snap: dict, eps: float, x_max: float, rep: Report) -> None:
     """Refuse a run whose fit (alpha, b_5) differs from cell to cell.
 
-    The sign and 1/w0 bars of the merge hold only where the fit is the same on every
-    path. To first order a spread d_alpha moves ln F by at most d_alpha ln(1 + x_max / b_5)
+    First-order tolerance, needs physics review. The sign and 1/w0 bars of the merge
+    hold only where the fit is the same on every path. To first order a spread d_alpha moves ln F by at most d_alpha ln(1 + x_max / b_5)
     and a relative spread d_b of b_5 moves it by at most alpha d_b. Each must stay
     below the bar eps of the probes, or the fit is not uniform.
 

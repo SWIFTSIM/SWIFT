@@ -12,7 +12,7 @@ build, the table, the parameters that the run holds fixed and the exit classes.
 ## The gas must be isothermal at 163.4 K
 The shielding fit depends on the temperature and the density of the gas. The merge bounds
 hold only where that fit is the same in every cell. At 163.4 K the fit exponent does not
-depend on the density, so the slab can be denser than the clear gas. `params.yml` sets
+depend on the density, so the slab can be denser than the clear gas: the fixture uses a density contrast of 300 at this temperature. A density contrast at another temperature changes the fit from cell to cell and is not used. `params.yml` sets
 `SPH:initial_temperature: 163.4`. The check computes the fit exponent and the line width
 for every gas particle and stops with `fit not uniform` (exit class 4) if the spread
 moves the shielding by more than the bar of the probes. A run at another temperature with
