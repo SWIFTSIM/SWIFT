@@ -1457,6 +1457,9 @@ void cell_clean(struct cell *c) {
   /* Stars */
   cell_free_stars_sorts(c);
 
+  /* SIDM */
+  cell_free_sidm_sorts(c);
+
   /* Grid */
   cell_free_grid(c);
 
