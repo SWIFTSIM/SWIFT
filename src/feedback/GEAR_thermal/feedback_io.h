@@ -372,6 +372,27 @@ INLINE static void convert_part_LW_line_transmission(const struct engine *e,
   ret[0] = feedback_get_part_LW_line_transmission(p);
 }
 
+/**
+ * @brief Snapshot converter for #LWOwnSpecificEnergies, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_u_LW_own(const struct engine *e,
+                                         const struct part *p,
+                                         const struct xpart *xp, float *ret) {
+  ret[0] = p->feedback_data.isrf_packet.band[ISRF_OPERATOR_LW].field_energy;
+}
+
+/**
+ * @brief Snapshot converter for #LWOwnDissociatingSpecificEnergies, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_u_LW_dissociating_own(const struct engine *e,
+                                                      const struct part *p,
+                                                      const struct xpart *xp,
+                                                      float *ret) {
+  ret[0] = p->feedback_data.isrf_packet.field_dissociating_energy;
+}
+
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**
@@ -478,6 +499,21 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
         "Fraction of the Lyman-Werner light that the H2 lines let through: "
         "LWDissociatingSpecificEnergies over LWSpecificEnergies, 1 where "
         "LWSpecificEnergies is not positive. DOUBLE.");
+
+    list[num++] = io_make_output_field_convert_part(
+        "LWOwnSpecificEnergies", FLOAT, 1, UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f,
+        parts, xparts, convert_part_u_LW_own,
+        "Lyman-Werner-band specific energy of the light that crosses the "
+        "particle itself, before the kernel mean that gives "
+        "LWSpecificEnergies. Physical.");
+
+    list[num++] = io_make_output_field_convert_part(
+        "LWOwnDissociatingSpecificEnergies", FLOAT, 1,
+        UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
+        convert_part_u_LW_dissociating_own,
+        "Part of LWOwnSpecificEnergies that the H2 lines have not removed, "
+        "before the kernel mean that gives LWDissociatingSpecificEnergies. "
+        "Physical.");
   }
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
