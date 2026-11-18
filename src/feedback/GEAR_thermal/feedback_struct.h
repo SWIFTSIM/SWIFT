@@ -189,6 +189,19 @@ struct feedback_isrf_operator_data {
 #error "RADIATION_PACKET_SLOTS must be 8, 12, 16, 24 or 48."
 #endif
 
+/*! The type of the mask of occupied slots: 16 bits up to 16 slots, 64 bits
+   above. The work type is the one its set-bit walk uses. */
+#if RADIATION_PACKET_SLOTS <= 16
+typedef uint16_t radiation_packet_mask_t;
+typedef uint32_t radiation_packet_work_mask_t;
+#else
+typedef uint64_t radiation_packet_mask_t;
+typedef uint64_t radiation_packet_work_mask_t;
+#endif
+
+_Static_assert(RADIATION_PACKET_SLOTS <= 8 * sizeof(radiation_packet_mask_t),
+               "The mask of occupied slots must hold one bit per slot.");
+
 #if RADIATION_PACKET_BINS < 1 || RADIATION_PACKET_BINS > 31
 #error "RADIATION_PACKET_BINS must be from 1 to 31."
 #endif
@@ -435,8 +448,9 @@ struct feedback_isrf_packet_data {
 
   /*! Bit `s` is set when the held packet of slot `s` has energy in any band
       (#radiation_packet_slot_is_empty is false). Kept by every writer of the
-      held energy, see #radiation_packet_refresh_occupied. Fills padding. */
-  uint16_t occupied_slots;
+      held energy, see #radiation_packet_refresh_occupied. Fills padding up to
+      16 slots, 64 bits above (#radiation_packet_mask_t). */
+  radiation_packet_mask_t occupied_slots;
 
   /*! End of the current step of the particle, set at its merge, or at the
       drift of its first step if it is inactive then
