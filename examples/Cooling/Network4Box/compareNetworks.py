@@ -20,7 +20,7 @@
 
 Usage: compareNetworks.py [prefix_of_network_3 [prefix_of_network_4]]
 
-The prefixes default to network3 and network4. The script takes the last
+A missing prefix defaults to network3 or network4. The script takes the last
 snapshot of each run and prints, for the median particle, the H2 fraction
 (the share of the hydrogen mass in H2), the HD to H number ratio and the
 temperature, with (network 4 / network 3 - 1). The temperature comes from
@@ -80,7 +80,8 @@ def compare(prefixes):
 
 
 if __name__ == "__main__":
-    rows = compare(sys.argv[1:3] if len(sys.argv) > 2 else ["network3", "network4"])
+    prefixes = sys.argv[1:3]
+    rows = compare(prefixes + ["network3", "network4"][len(prefixes):])
     names = ["H2 fraction", "HD / H number ratio", "temperature [K]"]
     print("%-22s %14s %14s %12s" % ("", "network 3", "network 4", "difference"))
     for i, name in enumerate(names):

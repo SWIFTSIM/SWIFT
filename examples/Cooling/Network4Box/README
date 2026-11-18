@@ -11,7 +11,11 @@ x(H2) = 5e-7, D/H = 3.4e-5 by number, neutral helium.
 The particles sit on a lattice, so every particle has the same state and the
 box behaves as one zone. The parameter files take 1024 steps per run: with
 fewer steps the temperature in the snapshot lags (about 0.3 percent at 64
-steps), while the abundances do not change.
+steps), while the abundances do not change. SWIFT applies the cooling rate of
+a step half in that step and half in the next, so the snapshot misses half of
+the energy change of the last step. For a constant rate the snapshot holds the
+fraction (N - 1/2) / N of the total gain after N steps; 1024 steps make the
+lag negligible.
 
 compareNetworks.py reads the last snapshot of each run and prints the H2
 fraction, the HD to H ratio and the temperature, with the relative difference

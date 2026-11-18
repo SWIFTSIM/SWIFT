@@ -40,7 +40,9 @@ d_to_h = 6.8e-5
 particles = x_h + (1.0 - x_h) / 4.0 + x_h * x_hii + x_h * d_to_h / 2.0
 mu = 1.0 / particles
 
-sph_density_excess = 1.00402  # SPH density of this lattice over its mass density
+# SPH density of this lattice over its mass density. Valid for the cubic spline
+# kernel (the SWIFT default) with resolution_eta 1.2348, as in the parameter files.
+sph_density_excess = 1.00402
 rho = n_h * m_h / x_h / (unit_mass / unit_length**3) / sph_density_excess
 n = n_side**3
 q = (np.arange(n_side) + 0.5) / n_side * box_size
