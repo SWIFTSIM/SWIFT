@@ -180,6 +180,8 @@ double cooling_get_cosmic_ray_energy_density(const struct xpart *xp) {
 #endif
 }
 
+static int cooling_stored_value_is_valid(const float *x, const int positive);
+
 /**
  * @brief Get the energy loss rate of the cosmic rays in the last solve of a
  * particle.
@@ -189,11 +191,15 @@ double cooling_get_cosmic_ray_energy_density(const struct xpart *xp) {
  *
  * @param xp Pointer to the particle extra data.
  * @return The rate, proper, eV cm^-3 s^-1, averaged over the step; 0 before
- * the first solve and with an input other than energy_density, NaN after a
- * failed solve.
+ * the first solve, with an input other than energy_density and after a failed
+ * solve, which skips the step. The snapshot field keeps the NaN of a failed
+ * solve.
  */
 double cooling_get_cosmic_ray_energy_loss_rate(const struct xpart *xp) {
 #if COOLING_GEAJAY_MODE >= 1
+  if (!cooling_stored_value_is_valid(
+          &xp->cooling_data.cosmic_ray_energy_loss_rate, /*positive=*/0))
+    return 0.;
   return xp->cooling_data.cosmic_ray_energy_loss_rate;
 #else
   return 0.;

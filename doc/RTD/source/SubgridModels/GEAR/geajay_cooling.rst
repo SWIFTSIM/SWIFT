@@ -511,9 +511,10 @@ which source the run has. The cooling reads the value at its next call.
 
 ``cooling_get_cosmic_ray_energy_loss_rate()`` returns the energy that the cosmic rays lost per volume
 and time in the last solve of the particle, Coulomb and hadronic losses, [eV cm\ :sup:`-3` s\ :sup:`-1`,
-proper], averaged over the step. It is 0 before the first solve and with an input other than
-``energy_density``, and NaN after a failed solve. It is the same number as the snapshot field
-``CosmicRayEnergyLossRates``. The cooling does not subtract it from the stored density.
+proper], averaged over the step. It is 0 before the first solve, with an input other than
+``energy_density`` and after a failed solve, which skips the step. The snapshot field
+``CosmicRayEnergyLossRates`` holds the same number, except NaN after a failed solve. The cooling does not
+subtract it from the stored density.
 
 A feedback module uses them in its own time-step loop. At an injection it adds the new energy density:
 
@@ -531,8 +532,7 @@ apply its own decay or transport:
    if (cooling_cosmic_ray_source_is_per_particle()) {
      const double loss = cooling_get_cosmic_ray_energy_loss_rate(xp);
      const double e = cooling_get_cosmic_ray_energy_density(xp);
-     if (isfinite(loss))
-       cooling_set_cosmic_ray_energy_density(xp, fmax(0., e - loss * dt_s));
+     cooling_set_cosmic_ray_energy_density(xp, fmax(0., e - loss * dt_s));
    }
 
 Output
