@@ -65,10 +65,10 @@
     hydrogen fraction: the dust-to-gas mass ratio cancels the composition. */
 #define RADIATION_MU_H 1.4
 
-/*! Dust cross-section per hydrogen nucleon, cm^2 (Kim et al. 2023, Weingartner
-    & Draine 2001 grains): PE (6-11.2 eV) and Lyman-Werner (11.2-13.6 eV).
-    The PE value differs by 4.65 per cent from the 8.6e-22 of the geajay dust
-    background (cooling_io.h). The origin of 9e-22 is not recorded. */
+/*! Dust cross-section per hydrogen nucleon, cm^2: PE (6-11.2 eV) and
+    Lyman-Werner (11.2-13.6 eV). The LW value is from Kim et al. 2023, Table 3.
+    The origin of the PE value is not recorded: Table 3 gives 8.6e-22 (used in
+    src/cooling/geajay/cooling_io.h), 4.65 per cent below 9e-22. */
 #define RADIATION_SIGMA_D_PE_CGS 9e-22
 #define RADIATION_SIGMA_D_LW_CGS 1.5e-21
 

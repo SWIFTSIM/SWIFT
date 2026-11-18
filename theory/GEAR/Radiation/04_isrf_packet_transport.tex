@@ -2158,7 +2158,7 @@ band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
 (:741-751). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
 \code{RADIATION\_HABING\_FLUX\_CGS} and
 \code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}
-(\code{src/feedback/GEAR/radiation.h:102}, :111). Grackle reads the two rates
+(\code{src/feedback/GEAR/radiation.h:104}, :113). Grackle reads the two rates
 through \code{cooling\_get\_isrf\_habing\_subgrid} and
 \code{cooling\_get\_LW\_dissociation\_rate\_subgrid}
 (\code{src/cooling/grackle/cooling\_gear\_subgrid.h:267-299}). The second
@@ -2208,7 +2208,7 @@ Eq.~\eqref{eq:isrf-kappa} is \code{radiation\_get\_part\_linear\_absorption\_rat
 (\code{radiation\_isrf.c:415-424}), through
 \code{radiation\_get\_dust\_mass\_opacity} (:365-376) and
 \code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW} (:344-351). The
-constants are at \code{radiation.h:66-79}.
+constants are at \code{radiation.h:68-81}.
 
 \paragraph{Band-edge weights (Sec.~\ref{sec:isrf-rte-comoving}).}
 $\lambda_E({\rm PE})$, $\lambda_E({\rm LW})$ and $\lambda_N({\rm LW})$ are
@@ -2217,7 +2217,7 @@ computed from the integrated table by
 (\code{src/feedback/GEAR/radiation.c:57-195}). They fall back to \code{RADIATION\_BAND\_EDGE\_WEIGHT\_PE\_DEFAULT} (2.154),
 \code{RADIATION\_BAND\_EDGE\_WEIGHT\_LW\_DEFAULT} (6.508) and
 \code{RADIATION\_BAND\_EDGE\_PHOTON\_WEIGHT\_LW\_DEFAULT} (6.0)
-(\code{radiation.h:159-161}) when radiation is inactive or a luminosity
+(\code{radiation.h:161-163}) when radiation is inactive or a luminosity
 vanishes. They are stored as \code{band\_edge\_weight\_pe},
 \code{band\_edge\_weight\_lw} and \code{band\_edge\_photon\_weight\_lw}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:181-183}).
@@ -2234,7 +2234,7 @@ Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
 \code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:251-258}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
-(\code{src/feedback/GEAR/radiation.h:398-419}, the ratio at :418). The
+(\code{src/feedback/GEAR/radiation.h:400-421}, the ratio at :420). The
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:913-921}).
