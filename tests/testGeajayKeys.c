@@ -239,6 +239,18 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
   memset(&p, 0, sizeof(p));
   memset(&xp, 0, sizeof(xp));
   cosmology_init_no_cosmo(&cosmo);
+  /* GEAJAY_KEYS_SCALE_FACTOR: the particle density is then comoving and the
+   * energy comoving, as in a cosmological run. */
+  const char *scale_factor = getenv("GEAJAY_KEYS_SCALE_FACTOR");
+  if (scale_factor != NULL) {
+    const double a = atof(scale_factor);
+    cosmo.a = a;
+    cosmo.z = 1. / a - 1.;
+    cosmo.a_inv = 1. / a;
+    cosmo.a2_inv = 1. / (a * a);
+    cosmo.a3_inv = 1. / (a * a * a);
+    cosmo.a_factor_internal_energy = 1. / (a * a);
+  }
   pressure_floor_init(&pressure_floor, phys_const, us, hydro_properties,
                       params);
   entropy_floor_init(&floor_props, phys_const, us, hydro_properties, params);
