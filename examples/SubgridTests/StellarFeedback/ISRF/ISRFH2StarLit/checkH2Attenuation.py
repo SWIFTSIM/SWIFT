@@ -664,8 +664,11 @@ def gate_twosource(args: argparse.Namespace) -> int:
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
-    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW)
-    require_finite("last snapshot", **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW})
+    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN)
+    require_finite(
+        "last snapshot",
+        **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN},
+    )
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
@@ -683,9 +686,8 @@ def gate_twosource(args: argparse.Namespace) -> int:
     mask[idx] = True
     read = probe_premises(first, last, mask, np.full(len(mask), np.inf), rep)
     dens, temp = gas_number_density(last), last["Temperatures"]
-    lw = last["LWSpecificEnergies"]
-    meas = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
-    require_finite("measured ratio", ratio=meas[idx])
+    lw, meas = own_transmission(last)
+    require_finite("measured own ratio", ratio=meas[idx])
     cm = last["unit_length"]
     l_hop_all = hop_length(counters, last["SmoothingLengths"] * cm, rep)
 
@@ -757,8 +759,11 @@ def gate_velocity(args: argparse.Namespace) -> int:
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
-    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW)
-    require_finite("last snapshot", **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW})
+    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN)
+    require_finite(
+        "last snapshot",
+        **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN},
+    )
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
@@ -774,12 +779,11 @@ def gate_velocity(args: argparse.Namespace) -> int:
     cloud = [(v - star[0]) * cm for v in fix["cloud_x_kpc"]]
     in_cloud = mask & (x_rel > cloud[0]) & (x_rel < cloud[1])
     read = probe_premises(first, last, in_cloud, np.full(len(mask), np.inf), rep)
-    lw = last["LWSpecificEnergies"]
+    lw, meas = own_transmission(last)
     lit = read & (lw > 0.0)
     if not lit.any():
         raise GateExit(EXIT_VOID, "void run, no lit probe inside the cloud")
-    meas = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
-    require_finite("measured ratio", ratio=meas[lit])
+    require_finite("measured own ratio", ratio=meas[lit])
     dens, temp = gas_number_density(last), last["Temperatures"]
     n_h2 = float(fix["n_h2_cm3"])
     l_hop = hop_length(counters, h, rep)
