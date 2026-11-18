@@ -481,7 +481,8 @@ Source of the cosmic-ray value
    (Hopkins et al. 2018, eq. B.25). It is the energy density passed to the library, so the input is
    ``energy_density``. Here n\ :sub:`H` = X (:math:`\rho` - :math:`\rho_Z`) / m\ :sub:`p` [cm\ :sup:`-3`], with
    X the hydrogen mass fraction of the metal-free gas, :math:`\rho` the physical density and :math:`\rho_Z` the
-   metal density. Nothing is stored. The value does not depend on the per-particle value and is not
+   metal density. In a cosmological run the density is the physical one, not the comoving one, and
+   e\ :sub:`cr` is a proper energy density in eV cm\ :sup:`-3`. Nothing is stored. The value does not depend on the per-particle value and is not
    multiplied by it.
 
 With ``per_particle`` and ``fire2`` the library needs ``cosmic_ray_rate_per_energy_density``,
@@ -506,7 +507,8 @@ These functions exist only with ``--with-cooling=geajay_N``: a module that calls
 The value must be finite, at least 0 and fit in a float. The run stops if the source is not
 ``per_particle``: the value would never be read. ``cooling_cosmic_ray_source_is_per_particle()`` tells
 which source the run has. The cooling reads the value at its next call. The stored value is part of the
-restart files but not of the initial conditions: a run started from a snapshot begins at 0.
+restart files, so a restart keeps it. It is not read from the initial conditions: ``CosmicRayValues`` is
+only written to the snapshots, so a run started from a snapshot, even one that holds the field, begins at 0.
 
 ``cooling_get_cosmic_ray_energy_density()`` returns the stored value.
 
