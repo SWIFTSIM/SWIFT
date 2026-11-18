@@ -45,6 +45,8 @@ If the ISRF module is on (``GEARFeedback:with_interstellar_radiation_field: 1``)
 
 * ``MeanPhotonEnergyPE``/``Integrated_MeanPhotonEnergyPE`` (erg): photon-number-weighted mean photon energy of the PE band, :math:`L_\mathrm{PE}/Q_\mathrm{PE}`. Needed only with ``GEARFeedback:ISRF_propagation: 1``. The pychem table generator writes them (see its ``GenerateChemistryTable`` documentation section on the radiation datasets); check a table with ``h5ls -r <table.h5> | grep MeanPhotonEnergyPE``.
 
+The pychem spectral tables compute ``L_LW`` only at the native PARSEC masses (about 90 per metallicity) and fill the 500 table nodes by linear interpolation in log mass. Between 2 and 3.5 Msun this interpolation is not exact: ``L_LW`` of a single star there can be wrong by up to 15 per cent (largest gap 14.5 per cent at 2.2 Msun, Z = 3e-2), and that of a population whose heaviest star is 3 Msun by up to 3 per cent. Such stars emit about 1e-7 of the Lyman-Werner light of a 30 Msun star at Z = 1.4e-2. Populations with stars above 5 Msun differ from the direct spectrum integral by at most 0.34 per cent.
+
 ``Teff`` (photospheric effective temperature, K) is optional and has no ``Integrated_`` counterpart; it is read if present and otherwise simply unavailable.
 
 Getting a table

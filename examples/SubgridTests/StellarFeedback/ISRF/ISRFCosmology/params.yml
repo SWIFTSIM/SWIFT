@@ -76,12 +76,11 @@ GrackleCooling:
   agora_cmb_temperature_floor: 0                # AGORA redshift-dependent CMB floor T_CMB,0 (1+z) applied by SWIFT (Default: 0)
   HydrogenFractionByMass: 0.76                  # Hydrogen mass fraction (Default: 0.76)
 
-  # H2 and self-shielding. These settings have no effect without primordial chemistry, as in the
-  # grackle_0 build of this example: there is no H2 for Grackle to shield. A run with H2 needs
+  # H2 and self-shielding. These settings have no effect without primordial chemistry 2 or higher, as in the
+  # grackle_1 build of this example: there is no H2 for Grackle to shield. A run with H2 needs
   # H2_self_shielding 2 or 3, otherwise the Lyman-Werner field reaches Grackle unshielded.
   H2_self_shielding: 3                          # Local Jeans length (Default: 0)
   H2_self_shielding_path: kernel_radius         # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
-  H2_on_dust: 0                                 # H2 formation on dust grains (Default: 0)
   H2_photodissociation_heating: 0               # Heating per H2 photodissociation, needs mode >= 2 and a Grackle that provides it (Default: 0)
   H2_three_body_rate: 0                         # H2 three-body formation rate model, 0 to 5 (Grackle documentation) (Default: 0)
   H2_cie_cooling: 0                             # H2 collision-induced emission cooling (Ripamonti & Abel 2004) (Default: 0)
