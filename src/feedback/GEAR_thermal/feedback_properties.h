@@ -839,6 +839,19 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:ISRF_H2_line_absorption: 1 needs the geajay cooling "
           "with an H2 network.");
 #endif
+#ifdef GEAR_CHEMISTRY_ELEMENT_COUNT
+    const int n_elements = GEAR_CHEMISTRY_ELEMENT_COUNT;
+#else
+    const int n_elements = 0;
+#endif
+    if (fp->ISRF_H2_line_absorption && sizeof(struct part) == 4096)
+      error(
+          "sizeof(struct part) is 4096 B in this build (%d chemistry "
+          "elements). This particle stride costs about 7 per cent of the run "
+          "time with GEARFeedback:ISRF_H2_line_absorption: 1. Change the size "
+          "of feedback_part_data.ISRF_packet_stride_padding or the number of "
+          "chemistry elements.",
+          n_elements);
 
     /* Parsed even with ISRF_propagation off. */
     fp->ISRF_packet_light_speed_time_step_margin = parser_get_opt_param_float(

@@ -119,6 +119,17 @@ radiation_h2_shielding_factor(const double N, const double alpha,
 }
 
 /**
+ * @brief Self-shielding factor at column 0, the same for every fit
+ * (#radiation_h2_shielding_factor).
+ *
+ * @return The factor at column 0.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_h2_shielding_factor_at_zero(void) {
+  return 0.965 + 0.035 * exp(-8.5e-4);
+}
+
+/**
  * @brief Column whose shielding factor is a given transmission.
  *
  * The factor falls with the column, so the root is bracketed in the
@@ -152,12 +163,42 @@ radiation_h2_shielding_inverse(const double t, const double alpha,
 }
 
 /**
- * @brief Add a column to a share and lower its transmission by the ratio of
- * the factor of the new column to the factor of the old one.
+ * @brief Add a column to a share, lower its transmission by the ratio of the
+ * factor of the new column to the factor of the old one, and give the factor
+ * of the new column in the fit of the receiver.
  *
  * The ratio never exceeds 1. A column step that is not positive leaves the
- * share as it is. If the factor of the old column is not positive, the
- * transmission is 0.
+ * share as it is. Without a line width the share is left as it is and counts
+ * as clear light: the factor is the one at column 0. The factor is never below
+ * about 1e-58, so its inverse is finite.
+ *
+ * @param t (in, out) Transmission of the share.
+ * @param N (in, out) Column of the share in cm^-2.
+ * @param dN Column of the gas on the path of the hop in cm^-2.
+ * @param alpha Exponent of the fit of the receiver.
+ * @param b5 Thermal line width of H2 of the receiver in km/s.
+ * @return The factor of the column after the hop.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_h2_shielding_hop_factor(double *t, double *N, const double dN,
+                                  const double alpha, const double b5) {
+  if (!(b5 > 0.) || !(*N > 0. || dN > 0.))
+    return radiation_h2_shielding_factor_at_zero();
+  if (!(dN > 0.)) return radiation_h2_shielding_factor(*N, alpha, b5);
+  const double f_old = radiation_h2_shielding_factor(*N, alpha, b5);
+  const double f_new = radiation_h2_shielding_factor(*N + dN, alpha, b5);
+  double N_new = *N + dN;
+  if (N_new > RADIATION_H2_SHIELDING_COLUMN_CAP_CM2)
+    N_new = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+  *N = N_new;
+  double ratio = f_new / f_old;
+  if (ratio > 1.) ratio = 1.;
+  *t *= ratio;
+  return f_new;
+}
+
+/**
+ * @brief The hop of #radiation_h2_shielding_hop_factor without the factor.
  *
  * @param t (in, out) Transmission of the share.
  * @param N (in, out) Column of the share in cm^-2.
@@ -169,19 +210,7 @@ __attribute__((always_inline)) INLINE static void radiation_h2_shielding_hop(
     double *t, double *N, const double dN, const double alpha,
     const double b5) {
   if (!(dN > 0.) || !(b5 > 0.)) return;
-  const double f_old = radiation_h2_shielding_factor(*N, alpha, b5);
-  const double f_new = radiation_h2_shielding_factor(*N + dN, alpha, b5);
-  double N_new = *N + dN;
-  if (N_new > RADIATION_H2_SHIELDING_COLUMN_CAP_CM2)
-    N_new = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
-  *N = N_new;
-  if (!(f_old > 0.)) {
-    *t = 0.;
-    return;
-  }
-  double ratio = f_new / f_old;
-  if (ratio > 1.) ratio = 1.;
-  *t *= ratio;
+  radiation_h2_shielding_hop_factor(t, N, dN, alpha, b5);
 }
 
 /**
