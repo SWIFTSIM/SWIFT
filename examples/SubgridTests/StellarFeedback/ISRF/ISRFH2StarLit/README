@@ -1,0 +1,72 @@
+# Intro
+One 29.7 Msun star in a uniform, periodic box of cold (50 K), zero-metallicity
+molecular gas, with the ISRF transport on (`ISRF_propagation: 1`) and the H2 line
+absorption of the transport on (`ISRF_H2_line_absorption: 1`). The star's
+Lyman-Werner (LW) light is absorbed by the H2 lines along its path. The check compares,
+for every gas particle, the fraction of the LW energy that the lines let through
+(`LWLineTransmissions`) with the shielding function at the column `N_H2 = n_H2 r`,
+where `n_H2` is the particle's own H2 density and `r` its distance to the star. The
+shielding function is the Wolcott-Green and Haiman (2019) fit that geajay uses.
+
+The run is cooling with geajay only: the library must not shield the transported LW rate
+a second time, so the run sets `GeajayCooling:h2_transported_lw_rate_shielding:
+background_only`. Official Grackle refuses `ISRF_H2_line_absorption: 1`.
+
+## What the run holds fixed
+The check reads the end of a short run in which H2 and the temperature stay frozen. The
+parameters therefore switch off photoionization, stellar winds and supernovae (they would
+change the H2 fraction and the temperature near the star), and set the light speed to
+`unlimited`, so that one step delivers all the light. The run stops after 5 steps of
+`dt_max`. The check refuses a run in which any of these is not set, or in which the H2
+fraction of a read particle changes by more than 1e-3 or the temperature of a thin one
+(column below 1e17 cm^-2) by more than 5 per cent. Only particles at `r < L/2 - 2h` are
+read, so that the nearest periodic image of the star is the right one.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The geajay build must provide the key `h2_transported_lw_rate_shielding`. The packet
+transport needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`; see the README of
+`ISRFH2Photodissociation` for how to obtain it.
+
+# Run
+```
+./run.sh                      # main leg, then the check
+leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
+leg=refused ./run.sh          # shielded_sum with the switch on: start-up must refuse
+ranks=2 run_name=two_ranks ./run.sh
+leg=restart ./run.sh          # light speed 0.01 c (params_restart.yml), stops at step 3
+```
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
+override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
+about 2e18 cm^-2 over the box.
+
+# Checking
+`checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
+`makeIC.py`) and the first and last snapshot. Its exit class is 0 for a pass, 1 for a failed
+bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a void run (a
+premise or a positive control is not met). A void run never passes.
+
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0000.hdf5 --last snap/snapshot_0005.hdf5`
+
+- Bar: `|ln(ratio / f)| <= s l_hop / r`, with `s = |d ln f / d ln N|` at each particle's
+  own column and temperature, and `l_hop` the mean path of the booked shares if the
+  counters file (`--counters`, key `mean_hop_path_cm`) gives it, the smoothing length
+  otherwise.
+- The number of particles with a transmission below 0.99 must be above 0 and must lie
+  between the numbers of particles beyond `r_0.99 + l_hop` and beyond `r_0.99 - l_hop`.
+- The check prints how many particles can detect a doubled H2 column. If that is 0, the
+  run is void.
+
+Two runs are compared particle by particle with `parity`:
+`python3 checkH2Attenuation.py parity --a run1/snap/snapshot_0005.hdf5 --b run2/snap/snapshot_0005.hdf5 --mode ranks|restart --counters counters.json`.
+It compares `LWSpecificEnergies` and `LWDissociatingSpecificEnergies` (not only their
+ratio), bit for bit for a restart and within `k 2^-24` for a different rank count. The
+counters file holds `probes_on_other_rank`, `foreign_bookings`, `max_terms_per_particle`
+(`k`) and `held_lw_slots_at_restart`; a count of 0 makes the run void.
+
+`testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
+error in each case, and prints the exit class of each.

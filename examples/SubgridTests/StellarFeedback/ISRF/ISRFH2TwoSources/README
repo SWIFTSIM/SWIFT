@@ -1,0 +1,41 @@
+# Intro
+Two stars light the same gas through different H2 columns, so that the light of the two
+merges in one reception slot. A molecular slab shadows star A. Star B sits in clear gas
+downstream of the slab. The check reads gas near star B, where the two lights meet and
+then travel a further column `D` together, and compares the measured line transmission
+with the transmission that the merge rule predicts.
+
+`ISRF_H2_line_absorption: 1` stores, for each reception slot, one column for the merged
+light. This fixture tests that merged column. Read the README of `ISRFH2StarLit` for the
+build, the table, the parameters that the run holds fixed and the exit classes.
+
+## The gas must be isothermal at 163.4 K
+The shielding fit depends on the temperature and the density of the gas. The merge bounds
+hold only where that fit is the same in every cell. At 163.4 K the fit exponent does not
+depend on the density, so the slab can be denser than the clear gas. `params.yml` sets
+`SPH:initial_temperature: 163.4`. The check computes the fit exponent and the line width
+for every gas particle and stops with `fit not uniform` (exit class 4) if the spread
+moves the shielding by more than the bar of the probes. A run at another temperature with
+a density contrast is therefore refused.
+
+# Run
+```
+counters=counters.json ./run.sh
+```
+`counters.json` holds `held_lw_slots_at_merge`, the number of slots that hold LW energy
+when the lights merge (0 makes the run void), and optionally `mean_hop_path_cm`.
+`contrast` (default 300) sets the slab density over the clear density. `fixture.json`
+lists the probes, with the energy share and the column of each light that reaches them.
+The shares are estimated from the geometry (equal luminosities, `1/r^2` dilution).
+
+# Checking
+Per probe, `R = t_measured / t_true`, where `t_true` keeps every share's own column. With
+`w_l` the energy share of the least-shielded light, `eps` the hop bar plus
+`n_m (2 + 2 s) 2^-24` (`n_m` merges, `s` the slope of the fit at the probe's column), the
+check requires
+- `|R / R_pred - 1| <= eps`, with `R_pred` from the merge rule,
+- `R >= 1 - eps` (the merge never shields more than the exact transport),
+- `R <= (1 / w_l)(1 + eps)`.
+
+It also counts the probes at which a merge by the transmission-weighted column would fail
+the last bound; if none can, the downstream column is too small and the run is void.

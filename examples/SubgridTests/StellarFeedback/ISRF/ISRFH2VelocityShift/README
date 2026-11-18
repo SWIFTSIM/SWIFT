@@ -1,0 +1,21 @@
+# Intro
+A star lights an upstream molecular slab at rest, then a molecular cloud that moves along
+x relative to the slab. Light that crosses gas moving by more than three line widths
+(`3 b`, `b = sqrt(2 k T / m_H2)`, 0.64 km/s at 50 K) relative to the column it carries sees
+fresh absorption: the transport resets the carried column. The check reads particles
+inside the cloud and compares their line transmission with the column of the cloud alone
+(reset) or with slab plus cloud (no reset). Read the README of `ISRFH2StarLit` for the build,
+the table, the parameters that the run holds fixed and the exit classes.
+
+# Run
+```
+./run.sh                       # cloud at 10 widths: expect the reset
+widths=1 run_name=control ./run.sh   # cloud at 1 width: expect no reset
+```
+`makeIC.py --widths` sets the relative speed in units of `b`. The check picks the expected
+case from the speed written in `fixture.json`: more than 3 widths gives the reset.
+
+# Checking
+Per particle in the cloud at `r < L/2 - 2h`, `|ln(ratio / f)| <= s l_hop / d`, with `f` the
+shielding function at the expected column and `d` the path inside the cloud. The speed of
+1 width is the control: a run that shows a reset there fails.
