@@ -90,17 +90,19 @@ INLINE static void convert_sipart_vel(const struct engine *e,
       kick_get_grav_kick_dt(ti_beg, (ti_beg + ti_end) / 2, time_base,
                             with_cosmology, cosmo);
 
-  ret[0] = 0.f;
-  ret[1] = 0.f;
-  ret[2] = 0.f;
+  /* The sipart carries its own velocity (the gpart copy is only synchronised
+   * at the kicks, and there is no gpart when running without gravity) */
+  ret[0] = sip->v[0];
+  ret[1] = sip->v[1];
+  ret[2] = sip->v[2];
 
   const struct gpart *gp = sip->gpart;
 
   if (gp != NULL) {
     /* Extrapolate the velocites to the current time */
-    ret[0] += gp->v_full[0] + gp->a_grav[0] * dt_kick_grav;
-    ret[1] += gp->v_full[1] + gp->a_grav[1] * dt_kick_grav;
-    ret[2] += gp->v_full[2] + gp->a_grav[2] * dt_kick_grav;
+    ret[0] += gp->a_grav[0] * dt_kick_grav;
+    ret[1] += gp->a_grav[1] * dt_kick_grav;
+    ret[2] += gp->a_grav[2] * dt_kick_grav;
 
     /* Extrapolate the velocites to the current time (mesh forces) */
     ret[0] += gp->a_grav_mesh[0] * dt_kick_grav_mesh;
@@ -170,8 +172,8 @@ INLINE static void sidm_write_particles(const struct sipart *siparts,
                                  "Co-moving mass densities of the particles");
 
   list[7] = io_make_output_field(
-      "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, -1.f, siparts, SIDM_rate,
-      "SIDM scattering rate of the particles");  // TODO:check cosmo factor
+      "Rates", FLOAT, 1, UNIT_CONV_FREQUENCY, 0.f, siparts, SIDM_rate,
+      "Physical SIDM scattering rates of the particles");
 
   list[8] = io_make_output_field(
       "InertiaTensors", FLOAT, 6, UNIT_CONV_MOMENT_OF_INERTIA, 2.f, siparts,
