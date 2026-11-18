@@ -67,7 +67,8 @@
  * @brief Exponent of the fit, a function of the gas temperature and density.
  *
  * Both arguments are clamped to the range of the fit, so any real value,
- * zero or negative included, gives a finite exponent of at least 0.139.
+ * zero or negative included, gives a finite exponent, about 0.139 at the
+ * lowest.
  *
  * @param T Gas temperature in K.
  * @param n Gas particle density in cm^-3.
@@ -187,7 +188,9 @@ __attribute__((always_inline)) INLINE static void radiation_h2_shielding_hop(
  * @brief Add the velocity shift of a hop to the shift of a share, and give the
  * share a fresh start if the sum exceeds the limit.
  *
- * With a fresh start the column is 0, the transmission 1 and the shift 0.
+ * With a fresh start the column is 0, the transmission 1 and the shift 0. A
+ * limit that is not positive, as for a receiver with no H2 or no temperature,
+ * leaves the share as it is.
  *
  * @param t (in, out) Transmission of the share.
  * @param N (in, out) Column of the share in cm^-2.
@@ -197,6 +200,7 @@ __attribute__((always_inline)) INLINE static void radiation_h2_shielding_hop(
  */
 __attribute__((always_inline)) INLINE static void radiation_h2_shielding_shift(
     double *t, double *N, double *dv, const double dv_hop, const double limit) {
+  if (!(limit > 0.)) return;
   const double shifted = *dv + dv_hop;
   if (fabs(shifted) <= limit) {
     *dv = shifted;

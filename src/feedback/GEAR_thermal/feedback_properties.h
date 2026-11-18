@@ -823,11 +823,12 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     fp->ISRF_propagation = (char)parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_propagation", 0);
 
-    fp->ISRF_H2_line_absorption = (char)parser_get_opt_param_int(
+    const int H2_line_absorption = parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_H2_line_absorption", 0);
-    if (fp->ISRF_H2_line_absorption != 0 && fp->ISRF_H2_line_absorption != 1)
+    if (H2_line_absorption != 0 && H2_line_absorption != 1)
       error("GEARFeedback:ISRF_H2_line_absorption must be 0 or 1 (got %d).",
-            fp->ISRF_H2_line_absorption);
+            H2_line_absorption);
+    fp->ISRF_H2_line_absorption = (char)H2_line_absorption;
     if (fp->ISRF_H2_line_absorption && !fp->ISRF_propagation)
       error(
           "GEARFeedback:ISRF_H2_line_absorption: 1 acts on the transported "

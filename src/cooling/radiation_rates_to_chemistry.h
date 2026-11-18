@@ -446,6 +446,21 @@ INLINE static void cooling_cache_neutral_H_fraction_subgrid(
 }
 
 /**
+ * @brief H2 mass fraction of a particle, for the radiation model.
+ *
+ * @param xp Pointer to the extended particle data.
+ * @return The H2 mass fraction, 0 if the network does not track H2.
+ */
+INLINE static double cooling_get_H2_mass_fraction_subgrid(
+    const struct xpart *xp) {
+#if COOLING_NETWORK > 1
+  return xp->cooling_data.H2I_frac;
+#else
+  return 0.;
+#endif
+}
+
+/**
  * @brief Cache this step's HII eligibility temperature and mean molecular
  * weight on the particle (struct part's feedback_data.T_eligibility and
  * mu_eligibility).
@@ -653,6 +668,18 @@ INLINE static void cooling_expire_rate_coupled_tag_subgrid(
 INLINE static void cooling_cache_neutral_H_fraction_subgrid(
     const struct cooling_function_data *cooling, struct part *p,
     const struct xpart *xp) {}
+
+/**
+ * @brief H2 mass fraction of a particle. No-op here: this subgrid model has
+ * no radiation model to read it.
+ *
+ * @param xp Pointer to the extended particle data.
+ * @return Always 0.
+ */
+INLINE static double cooling_get_H2_mass_fraction_subgrid(
+    const struct xpart *xp) {
+  return 0.;
+}
 
 /**
  * @brief Cache the HII eligibility temperature and mean molecular weight.

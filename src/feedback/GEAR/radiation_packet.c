@@ -2963,6 +2963,7 @@ struct radiation_packet_line_state {
  * the reservoir.
  *
  * @param sl The slot.
+ * @return The LW energy that waits in the slot.
  */
 static double radiation_packet_waiting_LW_energy(
     const struct feedback_isrf_packet_slot_data *sl) {

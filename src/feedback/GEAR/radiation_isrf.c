@@ -126,7 +126,7 @@ static void radiation_cache_H2_line_absorption(struct part *p,
   struct feedback_part_data *fd = &p->feedback_data;
   double X_H2 = 0., mu = 0., T = 0.;
 #if defined(GEAR_COOLING) && COOLING_NETWORK > 1
-  X_H2 = xp->cooling_data.H2I_frac;
+  X_H2 = cooling_get_H2_mass_fraction_subgrid(xp);
   mu = cooling_get_mean_molecular_weight(
       e->physical_constants, e->internal_units, e->cosmology,
       e->hydro_properties, e->cooling_func, p, xp);

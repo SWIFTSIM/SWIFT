@@ -590,6 +590,8 @@ radiation_packet_absorb_in_dust(
  * @param arrival_last Integer time at which the last light of the share
  * reaches the receiver. The light arrives evenly in between. The same as
  * @p arrival for a pulse.
+ * @param with_lines Is H2 line absorption on? It is the switch of the
+ * receiver, read once by the caller.
  * @param line_transmission Fraction of the LW light that the H2 lines let
  * through, after the hop through the gas of the receiver. Read only with H2
  * line absorption.
@@ -603,8 +605,8 @@ radiation_packet_deliver_with_lines(
     const double photons[ISRF_OPERATOR_COUNT], const float offset[3],
     const float path_phys, const float H, const int to_reservoir,
     const integertime_t source_step_end_ti, const double arrival,
-    const double arrival_last, const float line_transmission,
-    const float line_shift) {
+    const double arrival_last, const int with_lines,
+    const float line_transmission, const float line_shift) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   radiation_packet_check_deliver(r, frame);
@@ -643,7 +645,7 @@ radiation_packet_deliver_with_lines(
   const float delivered_energy = radiation_packet_absorb_in_dust(
       r, en, ph, path_phys, transmitted_energy_b, transmitted_photons_b);
 
-  if (r->feedback_data.ISRF_H2_line_absorption && delivered_energy > 0.f) {
+  if (with_lines && delivered_energy > 0.f) {
     const double dissociating =
         (double)transmitted_energy_b[ISRF_OPERATOR_LW] * line_transmission;
     sl->H2_waiting_dissociating_energy += dissociating;
@@ -692,6 +694,20 @@ radiation_packet_deliver_with_lines(
  * @brief Deliver one share that has crossed no H2 (see
  * #radiation_packet_deliver_with_lines). Without H2 line absorption it is the
  * delivery of every share.
+ *
+ * @param r The receiver.
+ * @param frame Octant frame, #feedback_props.ISRF_packet_octant_frame.
+ * @param energy Energy of the share per band, before absorption.
+ * @param photons Photon number of the share per band, as `N E_lo`.
+ * @param offset Comoving offset from the receiver to the share's origin.
+ * @param path_phys Physical path length over which the share is absorbed.
+ * @param H Current Hubble rate. 0 or less for a static box.
+ * @param to_reservoir Is the source's step coarser than the receiver's?
+ * @param source_step_end_ti End of the source's step.
+ * @param arrival Integer time at which the first light of the share reaches
+ * the receiver.
+ * @param arrival_last Integer time at which the last light of the share
+ * reaches the receiver.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     struct part *restrict r, const float frame[9],
@@ -702,7 +718,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
     const double arrival_last) {
   radiation_packet_deliver_with_lines(
       r, frame, energy, photons, offset, path_phys, H, to_reservoir,
-      source_step_end_ti, arrival, arrival_last, 1.f, 0.f);
+      source_step_end_ti, arrival, arrival_last,
+      r->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f);
 }
 
 /**
@@ -772,6 +789,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_DEBUG_CHECKS_ISRF)
   radiation_packet_check_occupied(pk_s, s->id);
 #endif
+  const int with_lines = r->feedback_data.ISRF_H2_line_absorption;
   for (uint32_t m = pk_s->occupied_slots; m != 0; m &= m - 1) {
     const int k = __builtin_ctz(m);
     const struct feedback_isrf_packet_slot_data *sl = &pk_s->slot[k];
@@ -835,8 +853,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
               : arrival;
     }
     float line_transmission = 1.f, line_shift = 0.f;
-    if (r->feedback_data.ISRF_H2_line_absorption &&
-        sl->band[ISRF_OPERATOR_LW].energy > 0.f) {
+    if (with_lines && sl->band[ISRF_OPERATOR_LW].energy > 0.f) {
       const double closing = ((double)r->v[0] - s->v[0]) * sl->direction[0] +
                              ((double)r->v[1] - s->v[1]) * sl->direction[1] +
                              ((double)r->v[2] - s->v[2]) * sl->direction[2];
@@ -848,7 +865,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     radiation_packet_deliver_with_lines(
         r, radiation_packet_octant_frame, energy, photons, offset, a * path, H,
         s->time_bin > r->time_bin, source_end_ti, arrival, arrival_last,
-        line_transmission, line_shift);
+        with_lines, line_transmission, line_shift);
   }
 }
 
@@ -1040,16 +1057,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const double delay = radiation_packet_arrival_delay(a * r, H);
   /* Without a limit the reservoir spreads the light over the star's next
      step; with one, the arrival times below are used. */
+  const int with_lines = pj->feedback_data.ISRF_H2_line_absorption;
   float line_transmission = 1.f, line_shift = 0.f;
-  if (pj->feedback_data.ISRF_H2_line_absorption &&
-      energy[ISRF_OPERATOR_LW] > 0.)
+  if (with_lines && energy[ISRF_OPERATOR_LW] > 0.)
     radiation_packet_line_hop(pj, 1.f, 0.f, 0.f, 0., a * r, &line_transmission,
                               &line_shift);
   radiation_packet_deliver_with_lines(
       pj, frame, energy, photons, offset, a * r, H, si->time_bin > pj->time_bin,
       ti_current + ti_step,
       radiation_packet_time_later((double)(ti_current - ti_step) + delay),
-      radiation_packet_time_later((double)ti_current + delay),
+      radiation_packet_time_later((double)ti_current + delay), with_lines,
       line_transmission, line_shift);
 }
 
