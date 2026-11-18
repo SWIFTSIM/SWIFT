@@ -416,7 +416,9 @@ INLINE static int feedback_read_particles(struct part *parts,
  * @param list The list of i/o properties to write.
  * @param with_cosmology Are we running with cosmology switched on?
  * @param feedback_props The #feedback_props. The H2 line absorption fields are
- * written only if it is on. NULL lists every field.
+ * written only if it is on. NULL lists every field, as the field-list
+ * tools need; the stand-alone FoF tool passes none, so a gas snapshot of it
+ * would carry the two fields with their default values.
  *
  * @return Returns the number of fields to write.
  */
