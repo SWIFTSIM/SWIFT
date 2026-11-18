@@ -890,8 +890,8 @@ double radiation_get_part_LW_dissociation_rate_with_lines_internal(
   static volatile double lw_dissociation_clamp_worst = 0.;
 
   return radiation_clamp_nonnegative_for_grackle(
-      "LW photodissociation rate", k_diss, &lw_dissociation_clamp_count,
-      &lw_dissociation_clamp_worst);
+      "LW photodissociation rate with H2 lines", k_diss,
+      &lw_dissociation_clamp_count, &lw_dissociation_clamp_worst);
 }
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
