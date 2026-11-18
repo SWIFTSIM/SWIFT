@@ -1237,7 +1237,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          radiation_out : 1 self + 13 pairs       | 14
          hii_ionization: 1                       | 1
       */
-      n1 += 27;
+      n1 += 29;
 
       /* The radiation splitter (scheduler_splittasks.c) pushes real
          per-cell tasks down to stars.radiation_level, which follows h_hii

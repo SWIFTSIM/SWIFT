@@ -131,12 +131,6 @@ struct statistics {
   /*! Total Magnetic helicity */
   double H_mag;
 
-  /* TODO: Do this better. Hide implementation details in a new stat module */
-#ifdef CHEMISTRY_GEAR
-  /* Total gas metal masses */
-  double gas_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
-#endif
-
   /*! Lock for threaded access */
   swift_lock_type lock;
 };

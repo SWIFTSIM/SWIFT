@@ -10,14 +10,12 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # complete but only contains a startup-error log.
 set -eo pipefail
 
-config=${config:="thin"}  #thin, thick or faint_star
+config=${config:="thin"}  #thin or thick
 
 # thin and thick differ only in the initial H2 abundance, which sets the
-# column Grackle's local self-shielding estimate sees. faint_star is thin
-# with a 7.61 Msun star, which is fainter in the LW band, hence the longer run.
-# Its field changes slowly, so it keeps a coarser snapshot spacing.
-# For thin and thick the spacing is one gas step: time_end / 2^8 for dt_max
-# 1.6e-10. Set delta_time to the new step if you change time_end, dt_max or level.
+# column Grackle's local self-shielding estimate sees.
+# The snapshot spacing is one gas step: time_end / 2^8 for dt_max 1.6e-10.
+# Set delta_time to the new step if you change time_end, dt_max or level.
 star_mass_default=29.7
 time_end_default=2.6e-8
 delta_time_default=1.015625e-10
@@ -29,14 +27,8 @@ case "$config" in
     thick)
 	nH2_ratio_default=3.1e-5
 	;;
-    faint_star)
-	nH2_ratio_default=5e-10
-	star_mass_default=7.61
-	time_end_default=3.24e-7
-	delta_time_default=4.05e-9
-	;;
     *)
-	echo "Unknown config '$config'. Use thin, thick or faint_star."
+	echo "Unknown config '$config'. Use thin or thick."
 	exit 1
 	;;
 esac

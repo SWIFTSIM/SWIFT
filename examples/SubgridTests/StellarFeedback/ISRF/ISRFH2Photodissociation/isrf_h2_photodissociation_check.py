@@ -206,6 +206,7 @@ self-shielded configuration, and is not printed for mode 0.
 import argparse
 import atexit
 import glob
+import os
 import re
 import sys
 from pathlib import Path
@@ -381,7 +382,8 @@ def check_run_lw_calibration(
 
     * one printing ``sigma_H2/E_LW``: it multiplies the LW energy flux by the
       Draine-field quotient, which is what `unshielded_rate` reproduces.
-      No bias is possible;
+      The logged quotient is compared with the header value and a
+      difference is reported as a bias;
     * one printing only the table's mean LW photon energy: it divided the flux
       by that value while the cross section stayed pinned to 12.2 eV, so its
       rates sit below this script's by the ratio of the two energies. The
@@ -478,6 +480,18 @@ RATE_RATIO_PER_LW_FRACTION: float = (
 # Mean atomic weight Grackle assigns to the metal field, cool1d_multi_g.F
 MU_METAL: float = 16.0
 GAMMA: float = 5.0 / 3.0
+# Library whose H2 shielding the run used: "grackle" (default) or "geajay"
+# (environment variable H2_SHIELDING_LIBRARY). Grackle forms N_H2 = 2 n_H2 l and
+# a Doppler width of the mass m_H; geajay forms N_H2 = n_H2 l and the mass 2 m_H.
+H2_SHIELDING_LIBRARY: str = os.environ.get("H2_SHIELDING_LIBRARY", "grackle")
+if H2_SHIELDING_LIBRARY not in ("grackle", "geajay"):
+    raise SystemExit(
+        f"H2_SHIELDING_LIBRARY={H2_SHIELDING_LIBRARY}: use grackle or geajay"
+    )
+COLUMN_PER_N_H2_LENGTH: float = 2.0 if H2_SHIELDING_LIBRARY == "grackle" else 1.0
+DOPPLER_MASS_CGS: float = M_H_CGS * (1.0 if H2_SHIELDING_LIBRARY == "grackle" else 2.0)
+# SWIFT hands Grackle half the mode-2 path and geajay the whole path
+MODE2_LENGTH_PER_PATH: float = 0.5 if H2_SHIELDING_LIBRARY == "grackle" else 1.0
 
 
 def parse_options() -> argparse.Namespace:
@@ -499,10 +513,9 @@ def parse_options() -> argparse.Namespace:
     )
     parser.add_argument(
         "--config",
-        choices=["thin", "thick", "faint_star"],
+        choices=["thin", "thick"],
         required=True,
-        help="Configuration the run was launched with; selects the pass bar "
-        "(faint_star uses the thin bar)",
+        help="Configuration the run was launched with; selects the pass bar",
     )
     parser.add_argument(
         "--h2-self-shielding",
@@ -754,12 +767,12 @@ def shielding_factor(
     temperature: np.ndarray,
     number_density: np.ndarray,
 ) -> np.ndarray:
-    """Compute Grackle's H2 self-shielding factor, Eqs. (2) and (3).
+    """Compute the H2 self-shielding factor, Eqs. (2) and (3).
 
     Parameters
     ----------
     column : numpy.ndarray
-        H2 column as Grackle forms it, Eq. (4), cm^-2.
+        H2 column as the cooling library forms it, Eq. (4), cm^-2.
     temperature : numpy.ndarray
         Gas temperature, K.
     number_density : numpy.ndarray
@@ -776,7 +789,7 @@ def shielding_factor(
         -0.2856 * np.log10(clamped_density)
     ) + (-0.9639 * np.log10(clamped_temperature) + 3.892)
     x = column / N_H2_NORM_CGS
-    b5 = np.sqrt(2.0 * K_BOLTZMANN_CGS * temperature / M_H_CGS) / 1e5
+    b5 = np.sqrt(2.0 * K_BOLTZMANN_CGS * temperature / DOPPLER_MASS_CGS) / 1e5
     factor = 0.965 / (1.0 + x / b5) ** exponent + 0.035 * np.exp(
         -8.5e-4 * np.sqrt(1.0 + x)
     ) / np.sqrt(1.0 + x)
@@ -847,7 +860,10 @@ def build_history(
         n_H2 = take("n_H2")
         if self_shielding_mode == 2:
             length = (
-                0.5 * path_in_kernel_radii * kernel_gamma * take("smoothing_length")
+                MODE2_LENGTH_PER_PATH
+                * path_in_kernel_radii
+                * kernel_gamma
+                * take("smoothing_length")
             )
         elif self_shielding_mode in (0, 3):
             length = jeans_shielding_length(temperature, density, mu)
@@ -856,7 +872,7 @@ def build_history(
                 f"H2_self_shielding={self_shielding_mode} is not a mode SWIFT "
                 "runs. Use 0, 2 or 3."
             )
-        column = 2.0 * n_H2 * length
+        column = COLUMN_PER_N_H2_LENGTH * n_H2 * length
         number_density = density / (mu * M_H_CGS)
         if self_shielding_mode == 0:
             factor = np.ones_like(column)
@@ -961,6 +977,34 @@ def check_gate(name: str, value: float, bad: bool, message: str) -> Optional[str
     return None
 
 
+def non_finite_history_fields(history: Dict[str, np.ndarray]) -> List[str]:
+    """Name the gated series that hold a NaN or an infinity.
+
+    The window selection and every gate take maxima, minima and medians of
+    these series, which hide a non-finite entry: ``max`` and ``min`` of an
+    array with a NaN return NaN or skip it depending on the call, and a NaN
+    compares ``False`` against every bar. The series are tested before any
+    comparison.
+
+    Parameters
+    ----------
+    history : dict of str to numpy.ndarray
+        Output of :func:`build_history`.
+
+    Returns
+    -------
+    list of str
+        The names of the series with at least one non-finite entry, with the
+        count of such entries.
+    """
+    bad = []
+    for key in ("rate", "x_H2"):
+        n_bad = int(np.count_nonzero(~np.isfinite(history[key])))
+        if n_bad > 0:
+            bad.append(f"{key} ({n_bad} non-finite entries)")
+    return bad
+
+
 def cumulative_integral(times: np.ndarray, values: np.ndarray) -> np.ndarray:
     """Trapezoid-integrate a per-particle time series from the first snapshot.
 
@@ -1001,8 +1045,10 @@ def report_shells(
     radius = history["radius"]
     edges = np.linspace(0.0, radius.max(), n_shells + 1)
     centres = 0.5 * (edges[:-1] + edges[1:])
-    # Eq. (4) divided by the shielding length gives back 2 n_H2.
-    n_H2 = 0.5 * history["column"][index] / history["length"][index]
+    # Eq. (4) gives 2 n_H2 l, so the column over (factor * l) is n_H2.
+    n_H2 = history["column"][index] / (
+        COLUMN_PER_N_H2_LENGTH * history["length"][index]
+    )
 
     shell_n_H2 = np.full(n_shells, np.nan)
     for i in range(n_shells):
@@ -1114,12 +1160,15 @@ def main() -> int:
         options.kernel_gamma,
         path_in_kernel_radii,
     )
-    gated_config = "thin" if options.config == "faint_star" else options.config
+    non_finite = non_finite_history_fields(history)
+    if non_finite:
+        print(f"FAIL: non-finite values in {', '.join(non_finite)}")
+        return 1
     times = history["time"]
     n_particles = history["x_H2"].shape[1]
     columns = np.arange(n_particles)
 
-    floor_margin = options.floor_margin if gated_config == "thin" else 0.0
+    floor_margin = options.floor_margin if options.config == "thin" else 0.0
     start, end, reached = particle_windows(
         history, options.field_arrival_fraction, floor_margin
     )
@@ -1150,6 +1199,11 @@ def main() -> int:
         print("FAIL: fewer than 10 percent of the particles have a usable window")
         return 1
 
+    print(
+        f"H2 shielding reference: {H2_SHIELDING_LIBRARY} "
+        f"(column {COLUMN_PER_N_H2_LENGTH:g} n_H2 l, Doppler mass "
+        f"{DOPPLER_MASS_CGS / M_H_CGS:g} m_H)"
+    )
     median_f_shield = float(np.median(window_f_shield))
     median_window = float(np.median(end[qualifies] - start[qualifies]))
     print(f"Median window length: {median_window:.0f} snapshots")
@@ -1192,7 +1246,7 @@ def main() -> int:
     print()
 
     failures: List[str] = []
-    if gated_config == "thin":
+    if options.config == "thin":
         # First snapshot, inside each window, at which the predicted
         # integral reaches the reference number of e-folds.
         snapshot_index = np.arange(len(times))[:, np.newaxis]
@@ -1280,7 +1334,7 @@ def main() -> int:
         predicted_plot = predicted_ratio
         measured_plot = np.maximum(measured_ratio, 1e-12)
 
-    make_figure(history, predicted_plot, measured_plot, gated_config, options.output)
+    make_figure(history, predicted_plot, measured_plot, options.config, options.output)
 
     print()
     if failures:
