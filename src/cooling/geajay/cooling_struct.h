@@ -76,7 +76,8 @@ struct cooling_xpart_data {
 
   /*! Cosmic-ray energy loss rate of the last solve, eV cm^-3 s^-1, proper:
    * NaN after a failed solve; not subtracted from cosmic_ray_value. Read it
-   * with cooling_get_cosmic_ray_energy_loss_rate(). */
+   * with cooling_get_cosmic_ray_energy_loss_rate(), which returns 0 after a
+   * failed solve. */
   float cosmic_ray_energy_loss_rate;
 
 #endif  // MODE >= 1
