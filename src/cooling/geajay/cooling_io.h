@@ -932,6 +932,15 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
       RADIATION_COMPILED_ISRF);
   cooling->h2_transported_lw_rate_shielding =
       cooling_read_transported_lw_shielding(parameter_file);
+  if (cooling->h2_transported_lw_rate_shielding ==
+          cooling_transported_lw_shielding_background_only &&
+      !radiation_selection_get_switch(parameter_file,
+                                      "GEARFeedback:ISRF_H2_line_absorption",
+                                      RADIATION_COMPILED_ISRF))
+    error(
+        "GeajayCooling:h2_transported_lw_rate_shielding: background_only needs "
+        "GEARFeedback:ISRF_H2_line_absorption: 1. Without it nothing shields "
+        "the transported LW rate with H2.");
   radiation_selection_refuse_H2_line_absorption(
       parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
       cooling->h2_transported_lw_rate_shielding ==
