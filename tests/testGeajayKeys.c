@@ -157,8 +157,17 @@ int geajay_particle_solve_cosmic_ray_reduced(
   if (!real)
     real = dlsym(RTLD_NEXT, "geajay_particle_solve_cosmic_ray_reduced");
   print_particle_call("solve", cosmic_ray_value, inputs);
-  return real(context, layout, state, inputs, cosmic_ray_value, dt, n_substeps,
-              output, status);
+  /* GEAJAY_KEYS_FAIL_SOLVE=1: report a solve that failed after all retries. */
+  if (getenv("GEAJAY_KEYS_FAIL_SOLVE") != NULL) {
+    status->reason = GEAJAY_PARTICLE_ITERATIONS_EXCEEDED;
+    printf("LIBOUT solve failed\n");
+    return GEAJAY_FAIL;
+  }
+  const int ret = real(context, layout, state, inputs, cosmic_ray_value, dt,
+                       n_substeps, output, status);
+  printf("LIBOUT cosmic_ray_energy_loss_rate=%.9g\n",
+         output->cosmic_ray_energy_loss_rate);
+  return ret;
 }
 
 int geajay_particle_cooling_time_cosmic_ray_reduced(
@@ -268,6 +277,14 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
          cooling_get_cosmic_ray_energy_loss_rate(&xp));
   printf("PART stored_value_after_solve=%.17g\n",
          cooling_get_cosmic_ray_energy_density(&xp));
+  /* The depletion of the documented recipe over 1e10 s. */
+  if (cooling_cosmic_ray_source_is_per_particle()) {
+    const double loss = cooling_get_cosmic_ray_energy_loss_rate(&xp);
+    const double e = cooling_get_cosmic_ray_energy_density(&xp);
+    cooling_set_cosmic_ray_energy_density(&xp, fmax(0., e - loss * 1.e10));
+    printf("PART stored_value_after_recipe=%.17g\n",
+           cooling_get_cosmic_ray_energy_density(&xp));
+  }
 #endif
   printf("PART loss_rate_field=%.9g\n",
          (double)xp.cooling_data.cosmic_ray_energy_loss_rate);

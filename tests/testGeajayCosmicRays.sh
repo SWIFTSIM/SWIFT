@@ -108,9 +108,22 @@ verdict per_particle_not_depleted_by_cooling \
   "3.5 after the solve"
 lg=$(sed -n 's/^PART loss_rate_getter=//p' pp_set.out)
 lf=$(sed -n 's/^PART loss_rate_field=//p' pp_set.out)
-verdict per_particle_loss_rate_readable \
-  $(awk -v a="$lg" -v b="$lf" 'BEGIN { exit !(a > 0 && a == b) }' && echo 1 || echo 0) \
-  "getter $lg, field $lf"
+lo=$(sed -n 's/^LIBOUT cosmic_ray_energy_loss_rate=//p' pp_set.out)
+# The module stores a float: the getter agrees with the library output to 1e-6.
+verdict per_particle_loss_rate_is_library_output \
+  $(awk -v a="$lg" -v b="$lf" -v l="$lo" 'BEGIN { d = (a - l) / l; exit !(l > 0 && a > 0 && a == b && d < 1e-6 && d > -1e-6) }' && echo 1 || echo 0) \
+  "getter $lg, field $lf, library output $lo"
+GEAJAY_KEYS_FAIL_SOLVE=1 run pp_fail "$CR;cosmic_ray_source: per_particle" 1e-3 1e3 3.5
+lg=$(sed -n 's/^PART loss_rate_getter=//p' pp_fail.out)
+lf=$(sed -n 's/^PART loss_rate_field=//p' pp_fail.out)
+verdict per_particle_failed_solve_getter_is_zero \
+  $(grep -qx "LIBOUT solve failed" pp_fail.out && [ "$lg" = 0 ] && echo 1 || echo 0) \
+  "getter $lg after a failed solve"
+verdict per_particle_failed_solve_field_is_nan \
+  $(grep -qiE "^-?nan$" <<<"$lf" && echo 1 || echo 0) "snapshot field $lf"
+verdict per_particle_failed_solve_keeps_energy \
+  $(grep -qx "PART stored_value_after_recipe=3.5" pp_fail.out && echo 1 || echo 0) \
+  "3.5 after the documented depletion"
 mk pp_ref.yml "$CR;cosmic_ray_initial_value: 1e-3"
 "$bin" pp_ref.yml | grep "^LIB cr\." > pp_ref.lib
 grep "^LIB cr\." pp_start.out > pp_start.lib
