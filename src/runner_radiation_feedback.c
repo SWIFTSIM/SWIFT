@@ -1477,9 +1477,15 @@ __attribute__((always_inline)) INLINE int runner_hii_check_cell_can_be_reached(
     const float search_radius) {
 
   /* A gas particle can lie outside the box of cj by dx_outside_max, counted
-   * from the last rebuild, which dx_max_sort (reset at each sort) can miss. */
-  const float dx_max = max(cj->hydro.dx_max_sort, cj->hydro.dx_outside_max) +
-                       ci->stars.dx_max_sort;
+   * from the last rebuild, which dx_max_sort (reset at each sort) can miss.
+   * dx_outside_max is a maximum over the three axes: projected on the sorting
+   * axis it grows by the sum of the absolute axis components. */
+  const float axis_sum =
+      (float)(fabs(runner_shift[sid][0]) + fabs(runner_shift[sid][1]) +
+              fabs(runner_shift[sid][2]));
+  const float dx_max =
+      max(cj->hydro.dx_max_sort, cj->hydro.dx_outside_max * axis_sum) +
+      ci->stars.dx_max_sort;
 
   /* Project the star onto the sorting axis. The cell extent below (dj_min/
    * dj_max) is built from cj's ABSOLUTE geometry (cj->loc), so the star must
