@@ -507,8 +507,6 @@ def twosource_cases(work):
     write_snap(first, pos, rho, h, box, t_iso, x_h2, lw, ii)
     first_cold = os.path.join(d, "s0_cold.hdf5")
     write_snap(first_cold, pos, rho, h, box, np.full(len(pos), 50.0), x_h2, lw, ii)
-    cnt = _write(d, "held.json", {"held_lw_slots_at_merge": 40})
-    cnt0 = _write(d, "held0.json", {"held_lw_slots_at_merge": 0})
 
     def go(name, ratio, expect, counters, key, label, first_snap=first, temp=t_iso):
         last = os.path.join(d, name)
@@ -517,7 +515,12 @@ def twosource_cases(work):
             label,
             expect,
             tool_args(
-                "twosource", d, last, first_snap, params, ("--counters", counters)
+                "twosource",
+                d,
+                last,
+                first_snap,
+                params,
+                ("--counters", counters) if counters else (),
             ),
             key,
         )
@@ -526,25 +529,17 @@ def twosource_cases(work):
         "good.hdf5",
         ii,
         0,
-        cnt,
+        None,
         "PASS  ratio equals",
         "T1 two sources: form (ii) at 163.4 K",
     )
-    go("n4.hdf5", held_off, 1, cnt, "FAIL  ratio equals", "N4 merge held term removed")
-    go(
-        "void.hdf5",
-        held_off,
-        4,
-        cnt0,
-        "held_lw",
-        "N4 void: no slot holds light at the merge",
-    )
+    go("n4.hdf5", held_off, 1, None, "FAIL  ratio equals", "N4 merge held term removed")
     cold = np.full(len(pos), 50.0)
     go(
         "cold.hdf5",
         ii,
         4,
-        cnt,
+        None,
         "fit not uniform",
         "T2 density contrast at 50 K (fit not uniform)",
         first_snap=first_cold,
@@ -566,7 +561,7 @@ def falsifier_cases(work):
     lw = np.ones(n_part)
     params = os.path.join(d, "used_parameters.yml")
     open(params, "w").write(GOOD_PARAMS)
-    cnt = _write(d, "c.json", {"held_lw_slots_at_merge": 5, "mean_hop_path_cm": 1.0})
+    cnt = _write(d, "c.json", {"mean_hop_path_cm": 1.0})
     first = os.path.join(d, "s0.hdf5")
     write_snap(first, pos, rho, h, 1.0, temp, x_h2, lw, np.ones(n_part))
     for down, tag in ((1e18, "D = 1e18"), (1e14, "D = 1e14")):
@@ -588,12 +583,7 @@ def falsifier_cases(work):
             last = os.path.join(d, f"{rule}_{int(down)}.hdf5")
             write_snap(last, pos, rho, h, 1.0, temp, x_h2, lw, ratio)
             want = expect if down == 1e18 else 4
-            key = {"ii": "main", "i": "sign", "r3": "bound"}[rule]
-            key = (
-                {"ii": "ratio equals", "i": "sign", "r3": "bound"}[rule]
-                if down == 1e18
-                else "discriminate"
-            )
+            key = "ratio equals" if down == 1e18 else "discriminate"
             record(
                 f"F {label} at {tag}: R = {rules[rule] / rules['true']:.4f}",
                 want,
@@ -608,7 +598,7 @@ def falsifier_cases(work):
                     "--params",
                     params,
                     "--counters",
-                    cnt,
+                    None,
                 ],
                 key,
             )

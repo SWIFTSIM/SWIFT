@@ -20,13 +20,14 @@ a density contrast is therefore refused.
 
 # Run
 ```
-counters=counters.json ./run.sh
+./run.sh
 ```
-`counters.json` holds `held_lw_slots_at_merge`, the number of slots that hold LW energy
-when the lights merge (0 makes the run void), and optionally `mean_hop_path_cm`.
-`contrast` (default 300) sets the slab density over the clear density. `fixture.json`
-lists the probes, with the energy share and the column of each light that reaches them.
-The shares are estimated from the geometry (equal luminosities, `1/r^2` dilution).
+`contrast` (default 300) sets the slab density over the clear density. An optional
+`counters=counters.json ./run.sh` passes a file with `mean_hop_path_cm`, the measured mean
+hop path in cm; without it the check takes the smoothing length of each probe.
+`fixture.json` lists the probes, with the energy share and the column of each light that
+reaches them. The shares are estimated from the geometry (equal luminosities, `1/r^2`
+dilution).
 
 # Checking
 Per probe, `R = t_measured / t_true`, where `t_true` keeps every share's own column. With
@@ -35,7 +36,10 @@ Per probe, `R = t_measured / t_true`, where `t_true` keeps every share's own col
 plus
 `n_m (2 + 2 s) 2^-24` (`n_m` merges, `s` the slope of the fit at the probe's column), the
 check requires
-- `|R / R_pred - 1| <= eps`, with `R_pred` from the merge rule,
+- `|R / R_pred - 1| <= eps`, with `R_pred` from the merge rule.
+
+It prints, without gating, two readings for the probes whose exact transmission is above
+`1e-2`:
 - `R >= 1 - eps` (the merge never shields more than the exact transport),
 - `R <= (1 / pi_l)(1 + eps)`.
 

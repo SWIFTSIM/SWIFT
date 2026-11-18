@@ -67,4 +67,4 @@ mv snap "$run_name"/
 python3 ../ISRFH2StarLit/checkH2Attenuation.py twosource \
     --first "$run_name"/snap/snapshot_0000.hdf5 \
     --last "$(ls "$run_name"/snap/snapshot_*.hdf5 | tail -n 1)" \
-    --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --mode ${gate_mode:=a} --counters ${counters:?set counters to the packet counters file}
+    --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --mode ${gate_mode:=a} ${counters:+--counters "$counters"}
