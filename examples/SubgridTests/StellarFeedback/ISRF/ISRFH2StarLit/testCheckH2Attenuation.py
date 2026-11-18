@@ -104,6 +104,8 @@ def write_snap(path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=())
         "LWSpecificEnergies": lw,
         "LWDissociatingSpecificEnergies": lw * ratio,
         "LWLineTransmissions": ratio,
+        "LWOwnSpecificEnergies": lw,
+        "LWOwnDissociatingSpecificEnergies": lw * ratio,
     }
     with h5py.File(path, "w") as f:
         f.create_group("Header").attrs["BoxSize"] = [box, box, box]
@@ -147,7 +149,10 @@ def starlit_cases(work):
     r = np.linalg.norm(dd, axis=1) * 3.0856775814913673e21
     rho_cgs = rho * 1.988409870698051e43 / 3.0856775814913673e21**3
     temp = np.full(len(pos), 50.0)
-    x_h2 = np.full(len(pos), 2.0 * fix["h2_ratio"] * 0.76)
+    rng = np.random.default_rng(7)
+    x_h2 = np.full(len(pos), 2.0 * fix["h2_ratio"] * 0.76) * (
+        1.0 + 0.03 * rng.uniform(-1.0, 1.0, len(pos))
+    )
     n_h2 = rho_cgs * x_h2 / (2.0 * gate.M_H)
     dens = rho_cgs / gate.M_H
     lw = 1.0 / np.maximum(r, 1e18) ** 2 * 1e36
@@ -181,17 +186,14 @@ def starlit_cases(work):
     def args(last, p=params, extra=("--counters", counters)):
         return tool_args("starlit", d, last, first, p, extra)
 
-    record("S1 good run", 0, args(snap_with("good.hdf5", good)), "PASS  transmission")
-    pos_fix = np.abs(np.log(good))
-    nudged = good * np.exp(
-        0.4
-        * gate.log_slope(np.maximum(n_h2 * r, 1.0), temp, dens)
-        * np.mean(h)
-        * 3.0856775814913673e21
-        / np.maximum(r, 1.0)
-    )
     record(
-        "S2 inside the hop bar (0.4 of it)",
+        "S1 good run", 0, args(snap_with("good.hdf5", good)), "PASS  own transmission"
+    )
+    h_cm = h * 3.0856775814913673e21
+    mask = (r > 0.0) & (r < 0.5 * box * 3.0856775814913673e21 - 2.0 * h_cm)
+    nudged = good * np.exp(0.4 * gate.column_spread_bar(r, n_h2, mask, temp, dens))
+    record(
+        "S2 inside the n_H2 spread bar (0.4 of it)",
         0,
         args(snap_with("nudge.hdf5", np.minimum(nudged, 1.0))),
         "transmission",
@@ -203,7 +205,12 @@ def starlit_cases(work):
             snap_with(
                 "n1.hdf5",
                 good,
-                drop=("LWLineTransmissions", "LWDissociatingSpecificEnergies"),
+                drop=(
+                    "LWLineTransmissions",
+                    "LWDissociatingSpecificEnergies",
+                    "LWOwnSpecificEnergies",
+                    "LWOwnDissociatingSpecificEnergies",
+                ),
             )
         ),
         "lacks",
@@ -213,7 +220,7 @@ def starlit_cases(work):
         "N2 doubled n_H2 in the hop",
         1,
         args(snap_with("n2.hdf5", n2)),
-        "FAIL  transmission",
+        "FAIL  own transmission",
     )
     bad = good.copy()
     bad[5] = np.nan
@@ -240,12 +247,21 @@ def starlit_cases(work):
         args(snap_with("good.hdf5", good), p_hii),
         "premise",
     )
+    x_wide = x_h2 * 10.0 ** rng.uniform(-1.0, 1.0, len(pos))
+    n_wide = rho_cgs * x_wide / (2.0 * gate.M_H)
+    good_wide = gate.transmission(n_wide * r, temp, dens)
+    first_wide = os.path.join(d, "s0_wide.hdf5")
+    write_snap(first_wide, pos, rho, h, box, temp, x_wide, lw, good_wide)
     record(
-        "N2 not detectable (bar far larger)",
+        "N2 not detectable (n_H2 spread of 100, bar far larger)",
         4,
-        args(
-            snap_with("good.hdf5", good),
-            extra=("--counters", _write(d, "wide.json", {"mean_hop_path_cm": 1e30})),
+        tool_args(
+            "starlit",
+            d,
+            snap_with("wide.hdf5", good_wide, x_h2=x_wide),
+            first_wide,
+            params,
+            ("--counters", counters),
         ),
         "doubled",
     )
@@ -257,7 +273,7 @@ def starlit_cases(work):
         "S3 temperature scale from SPH:initial_temperature",
         0,
         args(snap_with("good.hdf5", good), p_t),
-        "PASS  transmission",
+        "PASS  own transmission",
     )
     edge = pos.copy()
     edge[1948 % len(pos), 0] = 0.0
@@ -660,6 +676,24 @@ def velocity_cases(work):
     )
 
 
+def pi_l_case():
+    """The bound is 1 / pi_l: a share whose history ran in other gas makes pi_l
+    smaller than its energy share w_l, and correct code then exceeds 1 / w_l."""
+    shares = [{"w": 0.5, "N_cm2": 0.0}, {"w": 0.5, "N_cm2": 1e18, "t": 0.01}]
+    rules = gate.merge_rules(shares, 100.0, 100.0, 1e16)
+    R = rules["ii"] / rules["true"]
+    ok = 1.0 / rules["w_l"] < R <= 1.0 / rules["pi_l"]
+    ROWS.append(
+        (
+            f"F carried column, other gas before: R = {R:.3f} above 1/w_l = "
+            f"{1.0 / rules['w_l']:.1f}, below 1/pi_l = {1.0 / rules['pi_l']:.1f}",
+            0,
+            0 if ok else 1,
+            f"pi_l {rules['pi_l']:.4g}, w_l {rules['w_l']:.4g}",
+        )
+    )
+
+
 def main(work):
     os.makedirs(work, exist_ok=True)
     anchor_ok = (
@@ -684,6 +718,7 @@ def main(work):
     parity_cases(work, d, data)
     twosource_cases(work)
     falsifier_cases(work)
+    pi_l_case()
     velocity_cases(work)
     width = max(len(r[0]) for r in ROWS)
     print(f"{'case':<{width}}  want  got  verdict  line the check printed")

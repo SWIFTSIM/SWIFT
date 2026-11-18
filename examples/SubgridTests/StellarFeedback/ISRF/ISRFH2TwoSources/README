@@ -30,12 +30,14 @@ The shares are estimated from the geometry (equal luminosities, `1/r^2` dilution
 
 # Checking
 Per probe, `R = t_measured / t_true`, where `t_true` keeps every share's own column. With
-`w_l` the energy share of the least-shielded light, `eps` the hop bar plus
+`pi_l` the weight of the least-shielded light in the sum of `e t / f(N)` over the shares
+(its energy share if all gas before the merge has the fit of the merge), `eps` the hop bar
+plus
 `n_m (2 + 2 s) 2^-24` (`n_m` merges, `s` the slope of the fit at the probe's column), the
 check requires
 - `|R / R_pred - 1| <= eps`, with `R_pred` from the merge rule,
 - `R >= 1 - eps` (the merge never shields more than the exact transport),
-- `R <= (1 / w_l)(1 + eps)`.
+- `R <= (1 / pi_l)(1 + eps)`.
 
 It also counts the probes at which a merge by the transmission-weighted column would fail
 the last bound; if none can, the downstream column is too small and the run is void.

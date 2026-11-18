@@ -3,8 +3,9 @@ One 29.7 Msun star in a uniform, periodic box of cold (50 K), zero-metallicity
 molecular gas, with the ISRF transport on (`ISRF_propagation: 1`) and the H2 line
 absorption of the transport on (`ISRF_H2_line_absorption: 1`). The star's
 Lyman-Werner (LW) light is absorbed by the H2 lines along its path. The check compares,
-for every gas particle, the fraction of the LW energy that the lines let through
-(`LWLineTransmissions`) with the shielding function at the column `N_H2 = n_H2 r`,
+for every gas particle, the fraction of its own LW energy that the lines let through
+(`LWOwnDissociatingSpecificEnergies` over `LWOwnSpecificEnergies`) with the shielding
+function at the column `N_H2 = n_H2 r`,
 where `n_H2` is the particle's own H2 density and `r` its distance to the star. The
 shielding function is the Wolcott-Green and Haiman (2019) fit that geajay uses.
 
@@ -54,12 +55,15 @@ premise or a positive control is not met). A void run never passes.
 
 `python3 checkH2Attenuation.py starlit --first snap/snapshot_0000.hdf5 --last snap/snapshot_0008.hdf5`
 
-- Bar: `|ln(ratio / f)| <= s l_hop / r`, with `s = |d ln f / d ln N|` at each particle's
-  own column and temperature, and `l_hop` the mean path of the booked shares if the
-  counters file (`--counters`, key `mean_hop_path_cm`) gives it, the smoothing length
-  otherwise.
+- Bar: `|ln(ratio / f)|` at most the larger of `|ln f(n_max r) / f(n r)|` and
+  `|ln f(n_min r) / f(n r)|`, with `n_min` and `n_max` the extreme H2 densities of the
+  read particles: the carried column is a sum of the receivers' `n_H2` times paths that
+  add up to `r`. The kernel mean `LWLineTransmissions` is printed, not gated: near the
+  light front it is biased up.
 - The number of particles with a transmission below 0.99 must be above 0 and must lie
-  between the numbers of particles beyond `r_0.99 + l_hop` and beyond `r_0.99 - l_hop`.
+  between the numbers of particles beyond `r_0.99 + l_hop` and beyond `r_0.99 - l_hop`,
+  with `l_hop` the mean path of the booked shares if the counters file (`--counters`, key
+  `mean_hop_path_cm`) gives it, the smoothing length otherwise.
 - The check prints how many particles can detect a doubled H2 column. If that is 0, the
   run is void.
 

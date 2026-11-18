@@ -73,6 +73,10 @@ REQUIRED_LW = (
     "LWDissociatingSpecificEnergies",
     "LWLineTransmissions",
 )
+REQUIRED_OWN = (
+    "LWOwnSpecificEnergies",
+    "LWOwnDissociatingSpecificEnergies",
+)
 REQUIRED_GAS = (
     "ParticleIDs",
     "Coordinates",
@@ -441,12 +445,46 @@ def hop_length(counters: dict, h_cm: np.ndarray, rep: Report) -> np.ndarray:
     return h_cm
 
 
+def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the own LW field of each particle and its line transmission.
+
+    The own field is the light that crosses the particle itself, before the kernel
+    mean. The kernel mean of LWLineTransmissions is a u-weighted mean over the
+    neighbours and is biased up near the light front, so the bars read the own ratio.
+    """
+    own = last["LWOwnSpecificEnergies"]
+    ratio = last["LWOwnDissociatingSpecificEnergies"] / np.where(own > 0, own, 1.0)
+    return own, ratio
+
+
+def column_spread_bar(
+    r: np.ndarray, n_h2: np.ndarray, mask: np.ndarray, temp, dens
+) -> np.ndarray:
+    """Return the bar on |ln(t / f(n_H2 r))| set by the spread of n_H2 alone.
+
+    The carried column is a sum over the hops of the receiver's n_H2 times the path,
+    and the paths telescope to r, so it lies between n_min r and n_max r (n over the
+    probe domain). The held transmission is a mean of factors of such columns, and
+    the factor falls with the column, so the bar is the larger of
+    |ln f(n_max r) / f(n_i r)| and |ln f(n_min r) / f(n_i r)|, in the fit of the probe.
+    """
+    pos = mask & (n_h2 > 0.0)
+    n_min, n_max = float(n_h2[pos].min()), float(n_h2[pos].max())
+    base = np.log(transmission(n_h2 * r, temp, dens))
+    lo = np.abs(np.log(transmission(n_max * r, temp, dens)) - base)
+    hi = np.abs(np.log(transmission(n_min * r, temp, dens)) - base)
+    return np.maximum(lo, hi)
+
+
 def gate_starlit(args: argparse.Namespace) -> int:
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
-    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW)
-    require_finite("last snapshot", **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW})
+    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN)
+    require_finite(
+        "last snapshot",
+        **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN},
+    )
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
@@ -457,8 +495,8 @@ def gate_starlit(args: argparse.Namespace) -> int:
     n_h2 = h2_column_density(last)
     column = n_h2 * r
     read = probe_premises(first, last, mask, column, rep)
-    lw = last["LWSpecificEnergies"]
-    lit = read & (lw > 0.0)
+    own, meas = own_transmission(last)
+    lit = read & (own > 0.0)
     rep.info(
         "probes",
         f"{int(mask.sum())} in r < L/2 - 2h, {int(read.sum())} read, {int(lit.sum())} lit",
@@ -466,25 +504,43 @@ def gate_starlit(args: argparse.Namespace) -> int:
     if not lit.any():
         raise GateExit(EXIT_VOID, "void run, no lit probe")
 
-    meas = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
-    require_finite("measured ratio", ratio=meas[lit])
+    require_finite("measured own ratio", ratio=meas[lit])
     dens = gas_number_density(last)
     temp = last["Temperatures"]
     exp = transmission(column, temp, dens)
     slope = log_slope(np.maximum(column, 1.0), temp, dens)
     l_hop = hop_length(counters, h, rep)
-    bar = slope * l_hop / r
+    n_float = r / np.maximum(h, 1e-300) + 2.0
+    bar = (
+        column_spread_bar(r, n_h2, mask, temp, dens)
+        + n_float * (2.0 + 2.0 * slope) * FLOAT32_EPS
+    )
     dev = np.abs(np.log(np.maximum(meas, 1e-300) / exp))
     over = lit & (dev > bar)
-    rep.check(
-        "transmission against f_sh(n_H2 r)",
-        not over.any(),
-        f"{int(over.sum())} of {int(lit.sum())} probes outside |ln(ratio/f)| <= slope l_hop / r; "
-        f"worst margin {np.max((dev / bar)[lit]):.3g} of the bar",
+    rep.info(
+        "column spread",
+        f"n_H2 over the probe domain from {float(n_h2[mask].min()):.4g} to "
+        f"{float(n_h2[mask].max()):.4g} cm^-3; median bar {float(np.median(bar[lit])):.3g}",
     )
+    rep.check(
+        "own transmission against f_sh(n_H2 r)",
+        not over.any(),
+        f"{int(over.sum())} of {int(lit.sum())} probes outside |ln(own ratio/f)| <= the n_H2 spread bar; "
+        f"worst margin {np.max((dev / bar)[lit]):.3g} of the bar; "
+        f"median ln(own ratio/f) {float(np.median(np.log(np.maximum(meas[lit], 1e-300) / exp[lit]))):.4g}",
+    )
+    lw = last["LWSpecificEnergies"]
+    mean_ratio = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
+    lit_mean = read & (lw > 0.0)
+    if lit_mean.any():
+        rep.reading(
+            "kernel-mean ratio LWLineTransmissions",
+            f"median ln(ratio/f) {float(np.median(np.log(np.maximum(mean_ratio[lit_mean], 1e-300) / exp[lit_mean]))):.4g} "
+            f"over {int(lit_mean.sum())} probes (biased up near the light front)",
+        )
 
-    # Count gate.
-    t_line = last["LWLineTransmissions"]
+    # Count gate, on the own transmission.
+    t_line = np.where(own > 0.0, meas, 1.0)
     in_dom = mask
     c = int(np.sum(in_dom & (t_line < 0.99)))
     med_t, med_n = float(np.median(temp[mask])), float(np.median(dens[mask]))
@@ -509,7 +565,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
         "minimum transmission at or below the deepest probe",
         float(t_line[in_dom].min())
         <= f_deepest * math.exp(min(float(bar[deepest]), 50.0)),
-        f"min {float(t_line[in_dom].min()):.4g}, f_sh of the deepest probe {f_deepest:.4g} times exp(its hop bar)",
+        f"min {float(t_line[in_dom].min()):.4g}, f_sh of the deepest probe {f_deepest:.4g} times exp(its bar)",
     )
 
     # N2 detection range, with the slope of the bar.
@@ -541,7 +597,7 @@ def fit_parameters(
 def check_fit_uniform(snap: dict, eps: float, x_max: float, rep: Report) -> None:
     """Refuse a run whose fit (alpha, b_5) differs from cell to cell.
 
-    First-order tolerance, needs physics review. The sign and 1/w0 bars of the merge
+    First-order tolerance, needs physics review. The sign and 1/pi_l bars of the merge
     hold only where the fit is the same on every path. To first order a spread d_alpha moves ln F by at most d_alpha ln(1 + x_max / b_5)
     and a relative spread d_b of b_5 moves it by at most alpha d_b. Each must stay
     below the bar eps of the probes, or the fit is not uniform.
@@ -573,24 +629,34 @@ def merge_rules(
 ) -> Dict[str, float]:
     """Return the transmission after a downstream column for each merge rule.
 
-    ``true`` keeps every share's own column, ``ii`` stores the exact mean transmission,
-    ``i`` the energy-weighted column and ``r3`` the transmission-weighted column.
+    ``true`` keeps every share's own column and transmission, ``ii`` is the carried
+    column of the code (its factor is the harmonic mean of the factors of the merged
+    columns, weighted by the dissociating energy; in gas with one fit it is form (ii)),
+    ``i`` the energy-weighted column and ``r3`` the transmission-weighted column. A
+    share's ``t`` is its transmission at the merge; without it the share crossed gas
+    of the merge fit only, t = f(N) / f(0). ``pi_l`` is the weight in the sum over the
+    factor of the share with the smallest column: the bound is 1 / pi_l, which is
+    1 / w_l only in gas with one fit.
     """
     w = np.array([s["w"] for s in shares], float)
     w = w / w.sum()
     n = np.array([s["N_cm2"] for s in shares], float)
     f = lambda col: float(transmission(col, temp, dens))
-    t = np.array([f(c) for c in n])
+    t = np.array([float(s["t"]) if "t" in s else f(c) for s, c in zip(shares, n)])
     t_k = float(np.sum(w * t))
-    n_eff = column_for_transmission(t_k, temp, dens) if t_k < 1.0 else 0.0
+    over = w * t / np.array([f(c) for c in n])
+    t_harm = t_k / float(np.sum(over))
+    n_eff = column_for_transmission(t_harm, temp, dens) if t_harm < 1.0 else 0.0
     n_r3 = float(np.sum(w * t * n) / np.sum(w * t))
+    lo = int(np.argmin(n))
     return {
-        "true": float(sum(wi * f(c + down) for wi, c in zip(w, n))),
-        "ii": f(n_eff + down),
+        "true": float(sum(wi * ti * f(c + down) / f(c) for wi, ti, c in zip(w, t, n))),
+        "ii": t_k * f(n_eff + down) / f(n_eff),
         "i": f(float(np.sum(w * n)) + down),
         "r3": t_k * f(n_r3 + down) / f(n_r3),
         "n_eff": n_eff,
-        "w_l": float(w[np.argmin(n)]),
+        "w_l": float(w[lo]),
+        "pi_l": float(over[lo] / np.sum(over)),
     }
 
 
@@ -636,17 +702,17 @@ def gate_twosource(args: argparse.Namespace) -> int:
         eps = eps_hop + eps_float
         r_meas = meas[k] / rules["true"]
         r_pred = rules["ii"] / rules["true"]
-        r3_fails = rules["r3"] / rules["true"] > (1.0 / rules["w_l"]) * (1.0 + eps)
+        r3_fails = rules["r3"] / rules["true"] > (1.0 / rules["pi_l"]) * (1.0 + eps)
         i_fails = rules["i"] / rules["true"] < 1.0 - eps
-        rows.append((p["id"], r_meas, r_pred, rules["w_l"], eps, r3_fails, i_fails))
+        rows.append((p["id"], r_meas, r_pred, rules["pi_l"], eps, r3_fails, i_fails))
     if not rows:
         raise GateExit(EXIT_VOID, "void run, no lit merge probe")
     a = np.array([[r[1], r[2], r[3], r[4]] for r in rows])
-    r_meas, r_pred, w_l, eps = a.T
+    r_meas, r_pred, pi_l, eps = a.T
     check_fit_uniform(first, float(np.min(eps)), 1e24 / 5e14, rep)
     main_bad = np.abs(r_meas / r_pred - 1.0) > eps
     sign_bad = r_meas < 1.0 - eps
-    bound_bad = r_meas > (1.0 / w_l) * (1.0 + eps)
+    bound_bad = r_meas > (1.0 / pi_l) * (1.0 + eps)
     rep.check(
         "ratio equals the form (ii) prediction",
         not main_bad.any(),
@@ -659,7 +725,7 @@ def gate_twosource(args: argparse.Namespace) -> int:
         f"{int(sign_bad.sum())} of {len(rows)} probes below; smallest R {r_meas.min():.6g}",
     )
     rep.check(
-        "bound: R <= (1 / w_l)(1 + eps)",
+        "bound: R <= (1 / pi_l)(1 + eps)",
         not bound_bad.any(),
         f"{int(bound_bad.sum())} of {len(rows)} probes above; largest R {r_meas.max():.6g}",
     )
