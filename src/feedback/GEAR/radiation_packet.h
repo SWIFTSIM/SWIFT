@@ -736,9 +736,8 @@ radiation_packet_deliver_with_lines(
   if (with_lines && delivered_energy > 0.f) {
     const double lw_energy = (double)transmitted_energy_b[ISRF_OPERATOR_LW];
     const double dissociating = lw_energy * line_transmission;
-    sl->H2_waiting_dissociating_energy =
-        (float)((double)sl->H2_waiting_dissociating_energy + dissociating);
-    sl->H2_waiting_velocity_sum += (float)(dissociating * line_shift);
+    sl->H2_waiting_dissociating_energy += dissociating;
+    sl->H2_waiting_velocity_sum += dissociating * line_shift;
     sl->H2_waiting_energy_over_factor = radiation_packet_add_saturated(
         sl->H2_waiting_energy_over_factor, lw_energy * line_energy_over_factor);
   }
@@ -1000,7 +999,7 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_reset_field_mean(struct part *p) {
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   pk->ngb_field_weight_sum = 0.f;
-  pk->ngb_mean_field_dissociating_energy = 0.f;
+  pk->ngb_mean_field_dissociating_energy = 0.;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     pk->band[b].ngb_mean_field_energy = 0.f;
     pk->band[b].ngb_mean_field_photons = 0.f;
@@ -1032,7 +1031,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_gather_field(
 
   if (pi->feedback_data.ISRF_H2_line_absorption)
     pk->ngb_mean_field_dissociating_energy +=
-        w * pj->feedback_data.isrf_packet.field_dissociating_energy;
+        (double)w *
+        (double)pj->feedback_data.isrf_packet.field_dissociating_energy;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     pk->band[b].ngb_mean_field_energy +=

@@ -389,20 +389,21 @@ struct feedback_isrf_packet_slot_data {
       column, signed, in internal units. Set at the merge. */
   float H2_velocity_shift;
 
-  /*! Sum over the waiting LW light of its dissociating energy times its
-      velocity shift. */
-  float H2_waiting_velocity_sum;
-
-  /*! Dissociating energy of the waiting LW light: the sum of its energy times
-      the transmission of the H2 lines. It is released and dropped with the
-      waiting LW energy. */
-  float H2_waiting_dissociating_energy;
-
   /*! Sum over the waiting LW light of its dissociating energy over the
       shielding factor of its column, in the fit of this particle. The merge
       inverts the ratio of #H2_waiting_dissociating_energy to it for the
       column. The largest float marks a saturated sum. */
   float H2_waiting_energy_over_factor;
+
+  /*! Dissociating energy of the waiting LW light: the sum of its energy times
+      the transmission of the H2 lines. It is released and dropped with the
+      waiting LW energy. A double: a faint share is below the smallest normal
+      float, which flush-to-zero turns into 0. */
+  double H2_waiting_dissociating_energy;
+
+  /*! Sum over the waiting LW light of its dissociating energy times its
+      velocity shift. A double for the same reason. */
+  double H2_waiting_velocity_sum;
 
   /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
       or not, for the whole run, so the two sets of fields below share their
@@ -465,8 +466,10 @@ struct feedback_isrf_packet_data {
       the transmission of the H2 lines. Zero without H2 line absorption. */
   float field_dissociating_energy;
 
-  /*! Kernel mean of #field_dissociating_energy. */
-  float ngb_mean_field_dissociating_energy;
+  /*! Kernel mean of #field_dissociating_energy. A double: the sum of
+      weights times faint fields falls below the smallest normal float, which
+      flush-to-zero turns into 0. */
+  double ngb_mean_field_dissociating_energy;
 
   /*! The width of the far arrival cells is the length of the step times two
       to this power (#radiation_packet_far_end): at least

@@ -3420,7 +3420,7 @@ static void radiation_packet_line_begin(
   st->held_shift = st->held_dissociating * (double)sl->H2_velocity_shift;
   st->waiting_dissociating = sl->H2_waiting_dissociating_energy;
   st->waiting_over_factor = sl->H2_waiting_energy_over_factor;
-  st->waiting_shift = (double)sl->H2_waiting_velocity_sum;
+  st->waiting_shift = sl->H2_waiting_velocity_sum;
   st->saturated = !(sl->H2_waiting_energy_over_factor < FLT_MAX) ||
                   !(st->held_over_factor < (double)FLT_MAX);
 }
@@ -3466,17 +3466,16 @@ static void radiation_packet_line_end(
       st->held_shift + st->waiting_shift * released_share;
 
   if (left > 0.) {
-    sl->H2_waiting_dissociating_energy =
-        (float)(st->waiting_dissociating * left_share);
+    sl->H2_waiting_dissociating_energy = st->waiting_dissociating * left_share;
     sl->H2_waiting_energy_over_factor =
         st->saturated ? FLT_MAX
                       : radiation_packet_add_saturated(
                             0.f, st->waiting_over_factor * left_share);
-    sl->H2_waiting_velocity_sum = (float)(st->waiting_shift * left_share);
+    sl->H2_waiting_velocity_sum = st->waiting_shift * left_share;
   } else {
-    sl->H2_waiting_dissociating_energy = 0.f;
+    sl->H2_waiting_dissociating_energy = 0.;
     sl->H2_waiting_energy_over_factor = 0.f;
-    sl->H2_waiting_velocity_sum = 0.f;
+    sl->H2_waiting_velocity_sum = 0.;
   }
 
   double t = 1.;
@@ -4083,8 +4082,8 @@ void radiation_packet_end_gradient(struct part *p, const float a,
         field_photons[b] += (double)(sl->band[b].photons * factor);
       }
       if (with_lines)
-        field_dissociating += (double)(sl->band[ISRF_OPERATOR_LW].energy *
-                                       sl->H2_transmission * factor);
+        field_dissociating += (double)sl->band[ISRF_OPERATOR_LW].energy *
+                              (double)sl->H2_transmission * (double)factor;
       continue;
     }
 
@@ -4137,8 +4136,8 @@ void radiation_packet_end_force(struct part *p) {
 
   pk->ngb_mean_field_dissociating_energy =
       (pk->ngb_mean_field_dissociating_energy +
-       mw * pk->field_dissociating_energy) *
-      norm;
+       (double)mw * (double)pk->field_dissociating_energy) *
+      (double)norm;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];
@@ -4169,8 +4168,7 @@ void radiation_packet_couple_field(struct part *p) {
 
   p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
       (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
-  p->feedback_data.LW_dissociating_u =
-      (double)pk->ngb_mean_field_dissociating_energy;
+  p->feedback_data.LW_dissociating_u = pk->ngb_mean_field_dissociating_energy;
 }
 
 /**
