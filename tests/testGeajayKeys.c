@@ -22,7 +22,12 @@
  *
  * The library entry points that take options are interposed: the executable
  * defines them, records the arguments and calls the real function.
- * Usage: testGeajayKeys <parameter file> or testGeajayKeys --defaults. */
+ * Usage: testGeajayKeys <parameter file>, testGeajayKeys --defaults, or
+ * testGeajayKeys <parameter file> --particle <density> <energy> [<cosmic-ray
+ * energy density to set>]: also pass one gas particle (internal units) through
+ * the module and print the cosmic-ray value that reaches the library
+ * (testGeajayCosmicRays.sh). With -DNO_CR_MODES the program builds against a
+ * module without the cosmic-ray source modes. */
 #define _GNU_SOURCE
 
 /* Config parameters. */
@@ -35,6 +40,9 @@
 #include <string.h>
 
 #include "swift.h"
+
+#include "cooling_io.h"
+#include "io_properties.h"
 
 #include "geajay_cosmic_ray.h"
 #include "geajay_options.h"
@@ -129,6 +137,159 @@ geajay_cosmic_ray_reduced_context *geajay_cosmic_ray_reduced_context_create(
   return real(context, s, error);
 }
 
+/* The per-particle entry points: the value that the module passes. */
+static void print_particle_call(const char *name, double value,
+                                const geajay_particle_inputs *in) {
+  printf("PARTCALL %s cosmic_ray_value=%.17g density=%.17g metal=%.17g\n", name,
+         value, in->density, in->metal);
+}
+
+int geajay_particle_solve_cosmic_ray_reduced(
+    const geajay_cosmic_ray_reduced_context *context,
+    const geajay_species_layout *layout, void *state,
+    const geajay_particle_inputs *inputs, double cosmic_ray_value, double dt,
+    int n_substeps, geajay_cosmic_ray_output *output,
+    geajay_particle_status *status) {
+  static int (*real)(const geajay_cosmic_ray_reduced_context *,
+                     const geajay_species_layout *, void *,
+                     const geajay_particle_inputs *, double, double, int,
+                     geajay_cosmic_ray_output *, geajay_particle_status *);
+  if (!real)
+    real = dlsym(RTLD_NEXT, "geajay_particle_solve_cosmic_ray_reduced");
+  print_particle_call("solve", cosmic_ray_value, inputs);
+  /* GEAJAY_KEYS_FAIL_SOLVE=1: report a solve that failed after all retries. */
+  if (getenv("GEAJAY_KEYS_FAIL_SOLVE") != NULL) {
+    status->reason = GEAJAY_PARTICLE_ITERATIONS_EXCEEDED;
+    printf("LIBOUT solve failed\n");
+    return GEAJAY_FAIL;
+  }
+  const int ret = real(context, layout, state, inputs, cosmic_ray_value, dt,
+                       n_substeps, output, status);
+  printf("LIBOUT cosmic_ray_energy_loss_rate=%.9g\n",
+         output->cosmic_ray_energy_loss_rate);
+  return ret;
+}
+
+int geajay_particle_cooling_time_cosmic_ray_reduced(
+    const geajay_cosmic_ray_reduced_context *context,
+    const geajay_species_layout *layout, const void *state,
+    const geajay_particle_inputs *inputs, double cosmic_ray_value,
+    double *cooling_time) {
+  static int (*real)(const geajay_cosmic_ray_reduced_context *,
+                     const geajay_species_layout *, const void *,
+                     const geajay_particle_inputs *, double, double *);
+  if (!real)
+    real = dlsym(RTLD_NEXT, "geajay_particle_cooling_time_cosmic_ray_reduced");
+  print_particle_call("cooling_time", cosmic_ray_value, inputs);
+  return real(context, layout, state, inputs, cosmic_ray_value, cooling_time);
+}
+
+int geajay_particle_energy_rates_cosmic_ray_reduced(
+    const geajay_cosmic_ray_reduced_context *context,
+    const geajay_species_layout *layout, const void *state,
+    const geajay_particle_inputs *inputs, double cosmic_ray_value,
+    geajay_particle_rates *rates) {
+  static int (*real)(const geajay_cosmic_ray_reduced_context *,
+                     const geajay_species_layout *, const void *,
+                     const geajay_particle_inputs *, double,
+                     geajay_particle_rates *);
+  if (!real)
+    real = dlsym(RTLD_NEXT, "geajay_particle_energy_rates_cosmic_ray_reduced");
+  print_particle_call("energy_rates", cosmic_ray_value, inputs);
+  return real(context, layout, state, inputs, cosmic_ray_value, rates);
+}
+
+/* The cosmic-ray snapshot fields of the module: name, units and the value that
+ * the snapshot would hold for the particle. */
+static void print_fields(const char *when, struct unit_system *us,
+                         struct phys_const *phys_const,
+                         struct cooling_function_data *c, struct part *p,
+                         struct xpart *xp) {
+  struct engine e;
+  struct io_props list[64];
+  memset(&e, 0, sizeof(e));
+  e.internal_units = us;
+  e.physical_constants = phys_const;
+  e.cooling_func = c;
+  const int n = cooling_write_particles(p, xp, list);
+  for (int i = 0; i < n; i++) {
+    if (strncmp(list[i].name, "CosmicRay", 9) != 0) continue;
+    float value = -1.f;
+    if (list[i].convert_part_f) list[i].convert_part_f(&e, p, xp, &value);
+    printf("FIELD %s %s dimension=%d units=%d value=%.9g\n", when, list[i].name,
+           list[i].dimension, (int)list[i].units, value);
+  }
+  printf("FIELD %s count=%d\n", when, n);
+}
+
+/* A gas particle at the given density and energy, solved through the module:
+ * what the module passes to the library is printed by the entry points above.
+ * With CR_SET the energy density is first written through the documented
+ * function of the module. */
+static void run_particle(struct swift_params *params, struct unit_system *us,
+                         struct phys_const *phys_const,
+                         struct hydro_props *hydro_properties,
+                         struct cooling_function_data *c, double rho, double u,
+                         int set_value, double value) {
+  struct part p;
+  struct xpart xp;
+  struct cosmology cosmo;
+  struct pressure_floor_props pressure_floor;
+  struct entropy_floor_properties floor_props;
+  memset(&p, 0, sizeof(p));
+  memset(&xp, 0, sizeof(xp));
+  cosmology_init_no_cosmo(&cosmo);
+  pressure_floor_init(&pressure_floor, phys_const, us, hydro_properties,
+                      params);
+  entropy_floor_init(&floor_props, phys_const, us, hydro_properties, params);
+  cooling_update(phys_const, &cosmo, &pressure_floor, c, NULL, 0.);
+
+  p.id = 1;
+  p.mass = 1.;
+  p.h = 0.1f;
+  p.rho = (float)rho;
+  p.u = (float)u;
+  p.chemistry_data
+      .smoothed_metal_mass_fraction[GEAR_CHEMISTRY_ELEMENT_COUNT - 1] = 0.01f;
+  cooling_first_init_part(phys_const, us, hydro_properties, NULL, c, &p, &xp);
+  printf("PART stored_value_after_first_init=%.17g\n",
+         (double)xp.cooling_data.cosmic_ray_value);
+  print_fields("after_first_init", us, phys_const, c, &p, &xp);
+
+#ifndef NO_CR_MODES
+  if (set_value) {
+    cooling_set_cosmic_ray_energy_density(&xp, value);
+    printf("PART stored_value_after_set=%.17g\n",
+           cooling_get_cosmic_ray_energy_density(&xp));
+    print_fields("after_set", us, phys_const, c, &p, &xp);
+  }
+#endif
+
+  const double time_step = 1.e-6;
+  double rates[GEAJAY_RATE_NCHANNELS_COSMIC_RAY];
+  cooling_time(phys_const, us, hydro_properties, &cosmo, c, &p, &xp);
+  cooling_energy_rates(phys_const, us, hydro_properties, &cosmo, c, &p, &xp,
+                       rates);
+  cooling_cool_part(phys_const, us, &cosmo, hydro_properties, &floor_props,
+                    &pressure_floor, c, &p, &xp, time_step, time_step, 0.);
+#ifndef NO_CR_MODES
+  printf("PART loss_rate_getter=%.9g\n",
+         cooling_get_cosmic_ray_energy_loss_rate(&xp));
+  printf("PART stored_value_after_solve=%.17g\n",
+         cooling_get_cosmic_ray_energy_density(&xp));
+  /* The depletion of the documented recipe over 1e10 s. */
+  if (cooling_cosmic_ray_source_is_per_particle()) {
+    const double loss = cooling_get_cosmic_ray_energy_loss_rate(&xp);
+    const double e = cooling_get_cosmic_ray_energy_density(&xp);
+    cooling_set_cosmic_ray_energy_density(&xp, fmax(0., e - loss * 1.e10));
+    printf("PART stored_value_after_recipe=%.17g\n",
+           cooling_get_cosmic_ray_energy_density(&xp));
+  }
+#endif
+  printf("PART loss_rate_field=%.9g\n",
+         (double)xp.cooling_data.cosmic_ray_energy_loss_rate);
+}
+
 /* ---- module state ------------------------------------------------------ */
 #define M_INT(n) printf("MOD %s=%d\n", #n, (int)c.n);
 #define M_DBL(n) printf("MOD %s=%.10g\n", #n, (double)c.n);
@@ -193,6 +354,15 @@ int main(int argc, char **argv) {
   M_DBL(accurate_relative_tolerance) M_DBL(accurate_absolute_tolerance)
   M_DBL(thermal_time) M_INT(table_density_edge) M_DBL(maximal_density)
   printf("MOD cosmic_ray_context=%d\n", c.cosmic_ray_context != NULL);
+  printf("MOD proton_mass_cgs=%.17g\n", c.proton_mass_cgs);
+#ifndef NO_CR_MODES
+  M_INT(cosmic_ray_source)
+  M_DBL(cosmic_ray_fire2_energy_density)
+#endif
+  printf("MOD density_units=%.17g\n", c.units.density_units);
+  if (argc >= 5 && strcmp(argv[2], "--particle") == 0)
+    run_particle(params, &us, &phys_const, &hydro_properties, &c, atof(argv[3]),
+                 atof(argv[4]), argc >= 6, argc >= 6 ? atof(argv[5]) : 0.);
   printf("KEYPASS_DONE\n");
   return 0;
 }

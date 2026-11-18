@@ -112,6 +112,100 @@ int cooling_cosmic_ray_input_is_energy_density(void) {
   return cooling_geajay_cosmic_ray_energy_density;
 }
 
+/*! 1 when the cosmic-ray source is per_particle. */
+static int cooling_geajay_cosmic_ray_per_particle = 0;
+
+/*! 1 when the cosmic-ray source is fire2. */
+static int cooling_geajay_cosmic_ray_fire2 = 0;
+
+/**
+ * @brief Does the run compute the cosmic-ray value from the local n_H?
+ *
+ * @return 1 with GeajayCooling:cosmic_ray_source fire2, 0 otherwise.
+ */
+int cooling_cosmic_ray_source_is_fire2(void) {
+  return cooling_geajay_cosmic_ray_fire2;
+}
+
+/**
+ * @brief Does the run store a cosmic-ray energy density in each particle?
+ *
+ * @return 1 with GeajayCooling:cosmic_ray_source per_particle, 0 otherwise.
+ */
+int cooling_cosmic_ray_source_is_per_particle(void) {
+  return cooling_geajay_cosmic_ray_per_particle;
+}
+
+/**
+ * @brief Set the cosmic-ray energy density stored in a particle.
+ *
+ * For the module that injects cosmic rays, e.g. supernova feedback: it sets
+ * the new density, and takes out of it the energy that the cooling used (see
+ * cooling_get_cosmic_ray_energy_loss_rate()). The cooling reads the value at
+ * its next solve and never changes it. Stops the run when the source is not
+ * per_particle: the value would be ignored.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @param energy_density The energy density, proper, eV cm^-3, finite and >= 0.
+ */
+void cooling_set_cosmic_ray_energy_density(struct xpart *xp,
+                                           const double energy_density) {
+#if COOLING_GEAJAY_MODE >= 1
+  if (!cooling_geajay_cosmic_ray_per_particle)
+    error(
+        "A cosmic-ray energy density is set, but "
+        "GeajayCooling:cosmic_ray_source is not per_particle.");
+  if (!(energy_density >= 0.) || energy_density > FLT_MAX)
+    error(
+        "The cosmic-ray energy density must be >= 0 and fit in a float, got "
+        "%e.",
+        energy_density);
+  xp->cooling_data.cosmic_ray_value = (float)energy_density;
+#else
+  error("GeajayCooling has no cosmic rays without a species network.");
+#endif
+}
+
+/**
+ * @brief Get the cosmic-ray energy density stored in a particle.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @return The energy density, proper, eV cm^-3; 0 until it is set.
+ */
+double cooling_get_cosmic_ray_energy_density(const struct xpart *xp) {
+#if COOLING_GEAJAY_MODE >= 1
+  return xp->cooling_data.cosmic_ray_value;
+#else
+  return 0.;
+#endif
+}
+
+static int cooling_stored_value_is_valid(const float *x, const int positive);
+
+/**
+ * @brief Get the energy loss rate of the cosmic rays in the last solve of a
+ * particle.
+ *
+ * The cooling does not take this energy out of the stored density. The
+ * injector multiplies the rate by its time-step and depletes the density.
+ *
+ * @param xp Pointer to the particle extra data.
+ * @return The rate, proper, eV cm^-3 s^-1, averaged over the step; 0 before
+ * the first solve, with an input other than energy_density and after a failed
+ * solve, which skips the step. The snapshot field keeps the NaN of a failed
+ * solve.
+ */
+double cooling_get_cosmic_ray_energy_loss_rate(const struct xpart *xp) {
+#if COOLING_GEAJAY_MODE >= 1
+  if (!cooling_stored_value_is_valid(
+          &xp->cooling_data.cosmic_ray_energy_loss_rate, /*positive=*/0))
+    return 0.;
+  return xp->cooling_data.cosmic_ray_energy_loss_rate;
+#else
+  return 0.;
+#endif
+}
+
 /**
  * @brief Number of energy rate channels of the run.
  *
@@ -594,7 +688,7 @@ void cooling_first_init_part(const struct phys_const *phys_const,
   if (fabs(Xtot - 1.0) > 1e-3)
     error("Got total mass fraction of gas = %.6g", Xtot);
 
-  xp->cooling_data.cosmic_ray_value = cooling->cosmic_ray_initial_value;
+  xp->cooling_data.cosmic_ray_value = 0.f;
   xp->cooling_data.cosmic_ray_energy_loss_rate = 0.f;
 #endif  // MODE >= 1
 }
@@ -744,6 +838,11 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
             geajay_cosmic_ray_choice_name("cosmic_ray_input", cr->input),
             cooling->cosmic_ray_initial_value,
             geajay_cosmic_ray_choice_name("cosmic_ray_heating", cr->heating));
+    message("Cosmic-ray source = %d (0 constant, 1 per_particle, 2 fire2)",
+            (int)cooling->cosmic_ray_source);
+    if (cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2)
+      message("Cosmic-ray FIRE-2 energy density e_cr = %g eV cm^-3",
+              cooling->cosmic_ray_fire2_energy_density);
     if (cr->input == GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
       message("Cosmic-ray constant rate = %g s^-1", cr->constant_rate);
     if (cr->input == GEAJAY_COSMIC_RAY_INPUT_ENERGY_DENSITY)
@@ -967,13 +1066,30 @@ static double cooling_stored_nan(void) {
  *
  * @param cooling The #cooling_function_data used in the run.
  * @param xp Pointer to the particle extra data.
- * @return The stored value, or 0 with the input "constant".
+ * @param inputs The inputs of the solve (density in internal units).
+ * @return The value of the source: the constant of the run, the stored energy
+ * density, or e_cr n_H / (0.01 + n_H) with n_H the local hydrogen number
+ * density in cm^-3. 0 with the input "constant".
  */
 static double cooling_cosmic_ray_value(
-    const struct cooling_function_data *cooling, const struct xpart *xp) {
+    const struct cooling_function_data *cooling, const struct xpart *xp,
+    const geajay_particle_inputs *inputs) {
 #if COOLING_GEAJAY_MODE >= 1
-  if (cooling->cosmic_ray_settings.input != GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
-    return xp->cooling_data.cosmic_ray_value;
+  switch (cooling->cosmic_ray_source) {
+    case cooling_cosmic_ray_source_per_particle:
+      return xp->cooling_data.cosmic_ray_value;
+    case cooling_cosmic_ray_source_fire2: {
+      const double n_H =
+          cooling->HydrogenFractionByMass * (inputs->density - inputs->metal) *
+          cooling->units.density_units / cooling->proton_mass_cgs;
+      return cooling->cosmic_ray_fire2_energy_density *
+             geajay_cosmic_ray_density_factor_fire2(n_H);
+    }
+    case cooling_cosmic_ray_source_constant:
+      if (cooling->cosmic_ray_settings.input !=
+          GEAJAY_COSMIC_RAY_INPUT_CONSTANT)
+        return cooling->cosmic_ray_initial_value;
+  }
 #endif
   return 0.;
 }
@@ -1016,10 +1132,11 @@ static double cooling_new_energy_cosmic_rays(
 
   geajay_cosmic_ray_output output = {.size = sizeof(output)};
 
-  const int solved = geajay_particle_solve_cosmic_ray_reduced(
-                         cooling->cosmic_ray_context, &cooling->layout, xp,
-                         inputs, cooling_cosmic_ray_value(cooling, xp), dt,
-                         /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
+  const int solved =
+      geajay_particle_solve_cosmic_ray_reduced(
+          cooling->cosmic_ray_context, &cooling->layout, xp, inputs,
+          cooling_cosmic_ray_value(cooling, xp, inputs), dt,
+          /*n_substeps=*/1, &output, status) != GEAJAY_FAIL;
 
   if (status->reason == GEAJAY_PARTICLE_BAD_ARGUMENT) {
     cooling_print_fractions(xp);
@@ -1028,7 +1145,7 @@ static double cooling_new_energy_cosmic_rays(
         "a value is not finite or out of range (cosmic-ray value %e, "
         "density %e, energy %e, metal density %e, H2 shielding length %e, "
         "LW attenuation %e, PE attenuation %e; species above). geajay: %s",
-        p->id, cooling_cosmic_ray_value(cooling, xp), inputs->density,
+        p->id, cooling_cosmic_ray_value(cooling, xp, inputs), inputs->density,
         inputs->internal_energy, inputs->metal,
         inputs->H2_self_shielding_length, inputs->lw_background_attenuation,
         inputs->pe_background_attenuation, geajay_last_error_message());
@@ -1262,7 +1379,7 @@ double cooling_time(const struct phys_const *phys_const,
       cooling->cosmic_ray_context != NULL
           ? geajay_particle_cooling_time_cosmic_ray_reduced(
                 cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
-                cooling_cosmic_ray_value(cooling, xp), &cooling_time)
+                cooling_cosmic_ray_value(cooling, xp, &inputs), &cooling_time)
           : geajay_particle_cooling_time(cooling->context, &cooling->layout, xp,
                                          &inputs, &cooling_time);
   if (ok != GEAJAY_SUCCESS) return cooling_stored_nan();
@@ -1308,7 +1425,7 @@ void cooling_energy_rates(const struct phys_const *phys_const,
       (cooling->cosmic_ray_context != NULL
            ? geajay_particle_energy_rates_cosmic_ray_reduced(
                  cooling->cosmic_ray_context, &cooling->layout, xp, &inputs,
-                 cooling_cosmic_ray_value(cooling, xp), &result)
+                 cooling_cosmic_ray_value(cooling, xp, &inputs), &result)
            : geajay_particle_energy_rates(cooling->context, &cooling->layout,
                                           xp, &inputs, &result)) ==
       GEAJAY_SUCCESS;
@@ -2082,6 +2199,12 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   cooling->cosmic_ray_context = NULL;
   cooling_geajay_cosmic_rays_on =
       cooling->cosmic_ray_settings.network != GEAJAY_COSMIC_RAYS_OFF;
+  cooling_geajay_cosmic_ray_per_particle =
+      cooling_geajay_cosmic_rays_on &&
+      cooling->cosmic_ray_source == cooling_cosmic_ray_source_per_particle;
+  cooling_geajay_cosmic_ray_fire2 =
+      cooling_geajay_cosmic_rays_on &&
+      cooling->cosmic_ray_source == cooling_cosmic_ray_source_fire2;
   cooling_geajay_cosmic_ray_energy_density =
       cooling_geajay_cosmic_rays_on &&
       cooling->cosmic_ray_settings.input ==
@@ -2139,8 +2262,9 @@ void cooling_clean(struct cooling_function_data *cooling) {
 }
 
 /*! Version of the restart layout record of the cooling. Restart files
- * written before the record existed (network H_He_H2_D_ions) are refused. */
-#define COOLING_GEAJAY_RESTART_FORMAT 1
+ * written before the record existed (network H_He_H2_D_ions) are refused. 2:
+ * the cosmic-ray source mode and its fixed energy density are in the struct. */
+#define COOLING_GEAJAY_RESTART_FORMAT 2
 
 /*! Record written before the cooling struct in a restart file. */
 struct cooling_restart_layout {
