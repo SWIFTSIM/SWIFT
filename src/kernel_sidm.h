@@ -413,8 +413,8 @@ INLINE static float sidm_kernel_overlap_tophat_norm(const float s) {
  *            / (12 r)                                 for |h_i - h_j| < r,
  *   V_lens = 4 pi h_min^3 / 3                         for r <= |h_i - h_j|,
  *
- * and 0 for r >= h_i + h_j. The result is truncated at the search radius and divided by
- * N(s) (see sidm_kernel_overlap_tophat_norm()).
+ * and 0 for r >= h_i + h_j. The result is truncated at the search radius and
+ * divided by N(s) (see sidm_kernel_overlap_tophat_norm()).
  *
  *
  * @param r Comoving distance between the two particles.ß
@@ -443,8 +443,8 @@ INLINE static float sidm_kernel_overlap(const float r, const float hi,
     /* Lens-shaped intersection */
     const float depth = hi + hj - r;
     const float dh = hi - hj;
-    V_lens = M_PI * depth * depth * (r * r + 2.f * r * (hi + hj) - 3.f * dh * dh) /
-             (12.f * r);
+    V_lens = M_PI * depth * depth *
+             (r * r + 2.f * r * (hi + hj) - 3.f * dh * dh) / (12.f * r);
   }
 
   const float N = sidm_kernel_overlap_tophat_norm(h_min / h_max);
