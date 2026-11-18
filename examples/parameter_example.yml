@@ -779,7 +779,6 @@ GeajayCooling:
   h2_shielding_length_method: none             # (optional) H2 self-shielding length: none, given_length (the full path below, N_H2 = n_H2 * path), Jeans (local Jeans length) or hybrid_chimes (HYBRID-CHIMES length per particle), or 0, 2, 3, 4 (default: none). Sobolev (1) is not supported.
                                                # With GEARFeedback:with_interstellar_radiation_field on and primordial_chemistry_network H_He_H2 or above, none leaves the H2 unshielded
                                                # against the local LW rate and the run warns: set given_length or Jeans for an ISRF run.
-  h2_transported_lw_rate_shielding: shielded_sum # (optional) What the H2 shielding multiplies: shielded_sum (background plus transported LW rate) or background_only (needs a geajay with the option, and needs ISRF_H2_line_absorption: 1; that switch needs it as well) (default: shielded_sum)
   h2_shielding_path: kernel_radius             # (optional) Path for given_length, also the path of the dust column of the backgrounds: kernel_radius (kernel_gamma * h) or kernel_diameter (default: kernel_radius)
   h2_hybrid_chimes_factor: 0.5                 # (optional) Read only with h2_shielding_length_method: hybrid_chimes. Factor R_sh on the HYBRID-CHIMES length, above 0 (default: 0.5)
   h2_hybrid_chimes_turbulent_velocity_km_per_s: 6 # (optional) Read only with hybrid_chimes. 1D turbulent velocity of the column [km/s], 0 or above (default: 6)

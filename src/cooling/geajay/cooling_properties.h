@@ -55,7 +55,7 @@ enum cooling_uv_self_shielding {
 
 /**
  * @brief What the geajay H2 self-shielding factor multiplies
- * (GeajayCooling:h2_transported_lw_rate_shielding).
+ * (set from GEARFeedback:ISRF_H2_line_absorption).
  *
  * The values are those of geajay_h2_transported_lw_shielding.
  */
@@ -337,7 +337,7 @@ struct cooling_function_data {
   enum cooling_h2_shielding_length h2_shielding_length_method;
 
   /*! What the geajay H2 self-shielding factor multiplies
-   * (GeajayCooling:h2_transported_lw_rate_shielding). Forwarded to geajay when
+   * (set from GEARFeedback:ISRF_H2_line_absorption). Forwarded to geajay when
    * the library has the option. */
   enum cooling_transported_lw_shielding h2_transported_lw_rate_shielding;
 

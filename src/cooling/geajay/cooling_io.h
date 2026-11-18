@@ -352,32 +352,6 @@ INLINE static int cooling_read_choice(struct swift_params *parameter_file,
 }
 
 /**
- * @brief Read GeajayCooling:h2_transported_lw_rate_shielding.
- *
- * The key is forwarded to the library (see #cooling_init_geajay). A library
- * without the option cannot take background_only, so the run stops.
- *
- * @param parameter_file The parser parameter file.
- * @return The value of the key, shielded_sum if it is not set.
- */
-INLINE static enum cooling_transported_lw_shielding
-cooling_read_transported_lw_shielding(struct swift_params *parameter_file) {
-  const char *key = "GeajayCooling:h2_transported_lw_rate_shielding";
-  char text[PARSER_MAX_LINE_SIZE];
-  parser_get_opt_param_string(parameter_file, key, text, "shielded_sum");
-  if (strcmp(text, "shielded_sum") == 0)
-    return cooling_transported_lw_shielding_shielded_sum;
-  if (strcmp(text, "background_only") != 0)
-    error("%s must be shielded_sum or background_only, got '%s'.", key, text);
-#ifndef HAVE_GEAJAY_H2_TRANSPORTED_LW_RATE_SHIELDING
-  error(
-      "%s: background_only needs a geajay with the option, this one has none.",
-      key);
-#endif
-  return cooling_transported_lw_shielding_background_only;
-}
-
-/**
  * @brief Stop if a key that the chosen options do not read is in the file.
  *
  * For a key without a default value: any value is refused.
@@ -930,25 +904,23 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->with_ISRF = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  /* With the H2 line absorption the packet carries the H2 column, so the
+     library must leave the transported LW rate out of its H2 shielding. */
+  const int H2_line_absorption = radiation_selection_get_switch(
+      parameter_file, "GEARFeedback:ISRF_H2_line_absorption",
+      RADIATION_COMPILED_ISRF);
   cooling->h2_transported_lw_rate_shielding =
-      cooling_read_transported_lw_shielding(parameter_file);
-  if (cooling->h2_transported_lw_rate_shielding ==
-          cooling_transported_lw_shielding_background_only &&
-      !radiation_selection_get_switch(parameter_file,
-                                      "GEARFeedback:ISRF_H2_line_absorption",
-                                      RADIATION_COMPILED_ISRF))
-    error(
-        "GeajayCooling:h2_transported_lw_rate_shielding: background_only needs "
-        "GEARFeedback:ISRF_H2_line_absorption: 1. Without it nothing shields "
-        "the transported LW rate with H2.");
+      H2_line_absorption ? cooling_transported_lw_shielding_background_only
+                         : cooling_transported_lw_shielding_shielded_sum;
   radiation_selection_refuse_H2_line_absorption(
       parameter_file, cooling->with_ISRF, cooling->primordial_chemistry,
-      cooling->h2_transported_lw_rate_shielding ==
-              cooling_transported_lw_shielding_background_only
-          ? NULL
-          : "the geajay library shields the transported LW rate with its own "
-            "factor. Set GeajayCooling:h2_transported_lw_rate_shielding: "
-            "background_only, which needs a geajay with that option.");
+#ifdef HAVE_GEAJAY_H2_TRANSPORTED_LW_RATE_SHIELDING
+      NULL
+#else
+      "the geajay library shields the transported LW rate with its own "
+      "factor and has no option to leave it out."
+#endif
+  );
   cooling->with_photoionization = radiation_selection_get_switch(
       parameter_file, "GEARFeedback:with_photoionization",
       RADIATION_COMPILED_HII);
