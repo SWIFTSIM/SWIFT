@@ -851,14 +851,18 @@ def twosource_cases(work):
 
     sum_key = "own dissociating LW energy: two stars equal the sum of the one-star runs, lit before"
 
-    def sum_and_column(label, argv):
-        """Record the exit class and, for the sum check and the two column checks, whether each passed."""
+    def verdicts(argv):
+        """Return the exit class and the passed and failed line counts of the sum check and of each column check."""
         code, text = run_gate(argv)
-        passes = {
-            what: any(ln.startswith("PASS") and what in ln for ln in text.splitlines())
+        lines = text.splitlines()
+        counts = {
+            what: (
+                sum(ln.startswith("PASS") and what in ln for ln in lines),
+                sum(ln.startswith("FAIL") and what in ln for ln in lines),
+            )
             for what in ("equal the sum", "column of star A", "column of star B")
         }
-        return code, passes
+        return code, counts
 
     # An independent quadrature of the nominal gas checks gate.ray_column. A midpoint rule with
     # n steps errs by at most one step times the jump at each of two faces, relative to n_clear.
@@ -904,19 +908,21 @@ def twosource_cases(work):
             argv,
             f"FAIL  column of star {what}",
         )
-        code, passes = sum_and_column("", argv)
+        code, counts = verdicts(argv)
+        sum_pass, sum_fail = counts["equal the sum"]
+        col_pass, col_fail = counts[f"column of star {what}"]
         ROWS.append(
             (
-                f"T5 the same: the sum check alone passes, the ray check fails",
+                "T5 the same: all four sum lines pass, the ray check fails",
                 0,
                 (
                     0
                     if code == 1
-                    and passes["equal the sum"]
-                    and not passes[f"column of star {what}"]
+                    and (sum_pass, sum_fail) == (4, 0)
+                    and (col_pass, col_fail) == (0, 1)
                     else 1
                 ),
-                f"exit {code}; sum check passes {passes['equal the sum']}; column of star {what} passes {passes[f'column of star {what}']}",
+                f"exit {code}; sum lines passed {sum_pass} failed {sum_fail}; column of star {what} passed {col_pass} failed {col_fail}",
             )
         )
     for size, expect, label in (
