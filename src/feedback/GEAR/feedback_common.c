@@ -1665,14 +1665,14 @@ void feedback_struct_restore(struct feedback_props *feedback, FILE *stream,
                             feedback->with_stellar_wind_feedback,
                             with_radiation, us, phys_const);
 
-  /* radiation_lw_photon_energy_cgs is a run-level diagnostic derived from
-     the table, not part of the dumped struct, so it is re-derived here
-     exactly as feedback_props_init() sets it. */
+  /* The mean LW photon energy is a run-level diagnostic derived from the
+     table, not part of the dumped struct, so it is reported again here
+     exactly as feedback_props_init() does. */
   radiation_set_lw_photon_energy_cgs(&feedback->stellar_model.rad,
                                      &feedback->stellar_model);
 
   /* feedback->band_edge_weight_pe/lw/photon_weight_lw need NO re-derivation
-     here, unlike radiation_lw_photon_energy_cgs above: they are plain
+     here, unlike the LW photon energy report above: they are plain
      fields of *feedback, already restored verbatim by the flat
      restart_read_blocks() call at the top of this function. Announcing the
      restored value (not re-deriving it) still lets a restarted run's log be
