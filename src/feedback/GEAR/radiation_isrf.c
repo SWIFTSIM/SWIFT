@@ -93,6 +93,7 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->H2_shielding_exponent = 0.f;
   fd->H2_line_width_km_s = 0.f;
   fd->H2_velocity_limit = 0.f;
+  fd->LW_line_H2_column = 0.f;
   memset(&fd->isrf_packet, 0, sizeof(struct feedback_isrf_packet_data));
 }
 
@@ -112,27 +113,33 @@ static void radiation_set_part_transport(struct part *p,
 
 /**
  * @brief Cache the H2 gas properties that the hop of a share and the merge of
- * a slot read, at the drifted state of the particle.
+ * a slot read, at the drifted state of the particle: the column per length of
+ * path, and the fit if asked.
  *
+ * The temperature and the mean molecular weight are read only for the fit.
  * Needs a cooling network that tracks H2. Without one the column is 0.
  *
  * @param p The #part.
  * @param xp The #xpart of the particle.
  * @param e The #engine.
+ * @param set_fit Also set the fit (exponent, line width, velocity limit)?
  */
 static void radiation_cache_H2_line_absorption(struct part *p,
                                                const struct xpart *xp,
-                                               const struct engine *e) {
+                                               const struct engine *e,
+                                               const int set_fit) {
   struct feedback_part_data *fd = &p->feedback_data;
   double X_H2 = 0., mu = 0., T = 0.;
 #if defined(GEAR_COOLING) && COOLING_NETWORK > 1
   X_H2 = cooling_get_H2_mass_fraction_subgrid(xp);
-  mu = cooling_get_mean_molecular_weight(
-      e->physical_constants, e->internal_units, e->cosmology,
-      e->hydro_properties, e->cooling_func, p, xp);
-  T = cooling_get_temperature(e->physical_constants, e->hydro_properties,
-                              e->internal_units, e->cosmology, e->cooling_func,
-                              p, xp);
+  if (set_fit) {
+    mu = cooling_get_mean_molecular_weight(
+        e->physical_constants, e->internal_units, e->cosmology,
+        e->hydro_properties, e->cooling_func, p, xp);
+    T = cooling_get_temperature(e->physical_constants, e->hydro_properties,
+                                e->internal_units, e->cosmology,
+                                e->cooling_func, p, xp);
+  }
 #endif
   const struct unit_system *us = e->internal_units;
   const double rho_cgs = (double)hydro_get_physical_density(p, e->cosmology) *
@@ -149,6 +156,7 @@ static void radiation_cache_H2_line_absorption(struct part *p,
       units_cgs_conversion_factor(us, UNIT_CONV_VELOCITY), &column_per_length,
       &exponent, &b5, &velocity_limit);
   fd->H2_column_per_length = (float)column_per_length;
+  if (!set_fit) return;
   fd->H2_shielding_exponent = (float)exponent;
   fd->H2_line_width_km_s = (float)b5;
   fd->H2_velocity_limit = (float)velocity_limit;
@@ -196,8 +204,12 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
           e->internal_units, e->physical_constants, D_relative, rho_phys,
           RADIATION_SIGMA_D_LW_CGS);
 
-  if (e->feedback_props->ISRF_H2_line_absorption)
-    radiation_cache_H2_line_absorption(p, xp, e);
+  /* The fit is frozen over the particle's step (#H2_shielding_exponent). A
+     particle with no fit yet takes it before its test beams and its merge. */
+  const int with_lines = e->feedback_props->ISRF_H2_line_absorption;
+  const int first_fit =
+      with_lines && !(p->feedback_data.H2_line_width_km_s > 0.f);
+  if (with_lines) radiation_cache_H2_line_absorption(p, xp, e, first_fit);
 
   /* Physical timestep of this particle. Can be exactly 0 before its first
    * step: cached unfloored so readers can detect that case. */
@@ -233,6 +245,15 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
     radiation_packet_merge(p, e->ti_current, ti_step, e->time_base,
                            with_cosmology ? e->cosmology : NULL);
     radiation_packet_reset_field_mean(p);
+
+    if (with_lines && !first_fit) {
+      const float old_alpha = p->feedback_data.H2_shielding_exponent;
+      const float old_b5 = p->feedback_data.H2_line_width_km_s;
+      radiation_cache_H2_line_absorption(p, xp, e, /*set_fit=*/1);
+      if (p->feedback_data.H2_shielding_exponent != old_alpha ||
+          p->feedback_data.H2_line_width_km_s != old_b5)
+        radiation_packet_line_refit(p, old_alpha, old_b5);
+    }
   }
 }
 

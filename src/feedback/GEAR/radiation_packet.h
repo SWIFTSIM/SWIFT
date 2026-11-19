@@ -260,6 +260,8 @@ void radiation_packet_end_gradient(struct part *p, const float a,
                                    const float speed_of_light, const float dt,
                                    const float tau);
 void radiation_packet_end_force(struct part *p);
+void radiation_packet_line_refit(struct part *p, const float old_alpha,
+                                 const float old_b5);
 int radiation_packet_octant(const float frame[9], const float direction[3]);
 int radiation_packet_slot(const float frame[9], const float direction[3]);
 double radiation_packet_slot_border_distance(const float frame[9],
@@ -613,6 +615,20 @@ radiation_packet_absorb_in_dust(
 }
 
 /**
+ * @brief Add a positive term to a float sum in double, and give the largest
+ * float if the sum reaches it, so that the cast stays in range.
+ *
+ * @param sum The sum, at most the largest float.
+ * @param x The term.
+ * @return The new sum.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_packet_add_saturated(const float sum, const double x) {
+  const double s = (double)sum + x;
+  return s < (double)FLT_MAX ? (float)s : FLT_MAX;
+}
+
+/**
  * @brief Deliver one share to a receiver: absorb it in dust over the path, then
  * add it to the inbox (the reservoir, if the source has the coarser step) of
  * the slot that holds the direction from the share's origin.
@@ -656,6 +672,9 @@ radiation_packet_absorb_in_dust(
  * line absorption.
  * @param line_shift Velocity shift of the share after the hop. Read only with
  * H2 line absorption.
+ * @param line_energy_over_factor @p line_transmission over the shielding
+ * factor of the column of the share after the hop, in the fit of the
+ * receiver. Read only with H2 line absorption.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_deliver_with_lines(
@@ -665,7 +684,8 @@ radiation_packet_deliver_with_lines(
     const float path_phys, const float H, const int to_reservoir,
     const integertime_t source_step_end_ti, const double arrival,
     const double arrival_last, const int with_lines,
-    const float line_transmission, const float line_shift) {
+    const float line_transmission, const float line_shift,
+    const double line_energy_over_factor) {
 
 #ifdef SWIFT_DEBUG_CHECKS
   radiation_packet_check_deliver(receiver, frame);
@@ -714,11 +734,12 @@ radiation_packet_deliver_with_lines(
                                                     source_step_end_ti);
 
   if (with_lines && delivered_energy > 0.f) {
-    const double dissociating =
-        (double)transmitted_energy_b[ISRF_OPERATOR_LW] * line_transmission;
-    sl->H2_waiting_dissociating_energy =
-        (float)((double)sl->H2_waiting_dissociating_energy + dissociating);
-    sl->H2_waiting_velocity_sum += (float)(dissociating * line_shift);
+    const double lw_energy = (double)transmitted_energy_b[ISRF_OPERATOR_LW];
+    const double dissociating = lw_energy * line_transmission;
+    sl->H2_waiting_dissociating_energy += dissociating;
+    sl->H2_waiting_velocity_sum += dissociating * line_shift;
+    sl->H2_waiting_energy_over_factor = radiation_packet_add_saturated(
+        sl->H2_waiting_energy_over_factor, lw_energy * line_energy_over_factor);
   }
 
   if (radiation_packet_light_speed_limited) {
@@ -790,41 +811,21 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
   radiation_packet_deliver_with_lines(
       receiver, frame, energy, photons, offset, path_phys, H, to_reservoir,
       source_step_end_ti, arrival, arrival_last,
-      receiver->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f);
+      receiver->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f,
+      1. / radiation_h2_shielding_factor_at_zero());
 }
 
 /**
- * @brief H2 column in cm^-2 that the held light of a slot has crossed.
- *
- * It is the column whose factor in the gas of the holder is the transmission of
- * the held light times the factor at column 0, as the merge sets it. The
- * holder is the particle whose merge set the transmission, in the same step.
- *
- * @param holder The particle that holds the slot.
- * @param transmission Line transmission of the held light.
- * @return The H2 column in cm^-2, 0 if the holder has no line width.
- */
-__attribute__((noinline)) static float radiation_packet_slot_H2_column(
-    const struct part *restrict holder, const float transmission) {
-  const struct feedback_part_data *fd = &holder->feedback_data;
-  const double b5 = fd->H2_line_width_km_s;
-  if (!(b5 > 0.)) return 0.f;
-  const double exponent = fd->H2_shielding_exponent;
-  return (float)radiation_h2_shielding_inverse(
-      (double)transmission * radiation_h2_shielding_factor(0., exponent, b5),
-      exponent, b5);
-}
-
-/**
- * @brief Hop of the H2 lines: the line transmission and the velocity shift of
- * a share after it crosses the gas of the receiver on its path.
+ * @brief Hop of the H2 lines: the line transmission and the velocity shift
+ * of a share after it crosses the gas of the receiver on its path.
  *
  * The share first gains the velocity shift of the hop. If the sum exceeds the
  * limit of the receiver, the share starts again from no column and a
- * transmission of 1. The transmission then falls by the ratio of the
- * shielding factors of the column after and before the gas of the receiver.
- * A receiver without H2 or without a temperature leaves the transmission as it
- * is.
+ * transmission of 1. The column then grows by the H2 of the receiver on the
+ * path, and the transmission falls by the ratio of the shielding factors of
+ * the column after and before it. A receiver without H2 leaves the share as it
+ * is; one without a line width also counts it as clear light in
+ * @p q_out.
  *
  * @param receiver The receiver.
  * @param transmission Line transmission of the share before the hop.
@@ -834,21 +835,24 @@ __attribute__((noinline)) static float radiation_packet_slot_H2_column(
  * @param path_phys Physical path length of the hop.
  * @param t_out (return) Line transmission after the hop.
  * @param shift_out (return) Velocity shift after the hop.
+ * @param q_out (return) Line transmission after the hop over the shielding
+ * factor of the column after it, in the fit of the receiver.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_line_hop(
     const struct part *restrict receiver, const float transmission,
     const float column, const float shift, const double shift_hop,
-    const float path_phys, float *t_out, float *shift_out) {
+    const float path_phys, float *t_out, float *shift_out, double *q_out) {
   const struct feedback_part_data *fd = &receiver->feedback_data;
   double t = transmission;
   double N = column;
   double dv = shift;
   radiation_h2_shielding_shift(&t, &N, &dv, shift_hop, fd->H2_velocity_limit);
-  radiation_h2_shielding_hop(&t, &N,
-                             (double)fd->H2_column_per_length * path_phys,
-                             fd->H2_shielding_exponent, fd->H2_line_width_km_s);
+  const double f = radiation_h2_shielding_hop_factor(
+      &t, &N, (double)fd->H2_column_per_length * path_phys,
+      fd->H2_shielding_exponent, fd->H2_line_width_km_s);
   *t_out = (float)t;
   *shift_out = (float)dv;
+  *q_out = (double)*t_out / f;
 }
 
 /**
@@ -963,6 +967,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 
     float line_transmission = 1.f;
     float line_shift = 0.f;
+    double line_energy_over_factor =
+        1. / radiation_h2_shielding_factor_at_zero();
     if (with_lines && sl->band[ISRF_OPERATOR_LW].energy > 0.f) {
       const double closing_speed =
           ((double)receiver->v[0] - sender->v[0]) * sl->direction[0] +
@@ -970,17 +976,17 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
           ((double)receiver->v[2] - sender->v[2]) * sl->direction[2];
       const double shift_hop =
           closing_speed / a + (double)H * (double)(a * path);
-      radiation_packet_line_hop(
-          receiver, sl->H2_transmission,
-          radiation_packet_slot_H2_column(sender, sl->H2_transmission),
-          sl->H2_velocity_shift, shift_hop, a * path, &line_transmission,
-          &line_shift);
+      radiation_packet_line_hop(receiver, sl->H2_transmission, sl->H2_column,
+                                sl->H2_velocity_shift, shift_hop, a * path,
+                                &line_transmission, &line_shift,
+                                &line_energy_over_factor);
     }
 
     radiation_packet_deliver_with_lines(
         receiver, radiation_packet_octant_frame, energy, photons, offset,
         a * path, H, sender->time_bin > receiver->time_bin, source_end_ti,
-        arrival, arrival_last, with_lines, line_transmission, line_shift);
+        arrival, arrival_last, with_lines, line_transmission, line_shift,
+        line_energy_over_factor);
   }
 }
 
@@ -993,7 +999,7 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_reset_field_mean(struct part *p) {
   struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
   pk->ngb_field_weight_sum = 0.f;
-  pk->ngb_mean_field_dissociating_energy = 0.f;
+  pk->ngb_mean_field_dissociating_energy = 0.;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     pk->band[b].ngb_mean_field_energy = 0.f;
     pk->band[b].ngb_mean_field_photons = 0.f;
@@ -1025,7 +1031,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_gather_field(
 
   if (pi->feedback_data.ISRF_H2_line_absorption)
     pk->ngb_mean_field_dissociating_energy +=
-        w * pj->feedback_data.isrf_packet.field_dissociating_energy;
+        (double)w *
+        (double)pj->feedback_data.isrf_packet.field_dissociating_energy;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     pk->band[b].ngb_mean_field_energy +=
@@ -1193,9 +1200,10 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const int with_lines = pj->feedback_data.ISRF_H2_line_absorption;
   float line_transmission = 1.f;
   float line_shift = 0.f;
+  double line_energy_over_factor = 1. / radiation_h2_shielding_factor_at_zero();
   if (with_lines && energy[ISRF_OPERATOR_LW] > 0.)
     radiation_packet_line_hop(pj, 1.f, 0.f, 0.f, 0., a * r, &line_transmission,
-                              &line_shift);
+                              &line_shift, &line_energy_over_factor);
 
   /* Without a limit the reservoir spreads the light over the star's next
      step; with one, the arrival times below are used. */
@@ -1204,7 +1212,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
       ti_current + ti_step,
       radiation_packet_time_later((double)(ti_current - ti_step) + delay),
       radiation_packet_time_later((double)ti_current + delay), with_lines,
-      line_transmission, line_shift);
+      line_transmission, line_shift, line_energy_over_factor);
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);

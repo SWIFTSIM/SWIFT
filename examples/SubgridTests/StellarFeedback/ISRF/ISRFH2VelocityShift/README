@@ -1,0 +1,29 @@
+# Intro
+A star lights the gas at rest inside a sphere around it, then a molecular cloud that
+starts at a spherical face centred on the star (`0.25 L` from it) and moves radially away
+from it. Light that crosses gas moving by more than three line widths
+(`3 b`, `b = sqrt(2 k T / m_H2)`, 0.64 km/s at 50 K) relative to the column it carries sees
+fresh absorption: the transport resets the carried column. The check reads particles
+inside the cloud and compares their line transmission with the bar of the reset (the
+column of the cloud alone) or of no reset (the column of all the gas from the star). Read
+the README of `ISRFH2StarLit` for the build, the table, the parameters that the run holds
+fixed and the exit classes.
+
+# Run
+```
+./run.sh                       # cloud at 10 widths: expect the reset
+widths=1 run_name=control ./run.sh   # cloud at 1 width: expect no reset
+```
+`makeIC.py --widths` sets the radial speed of the cloud in units of `b`. The check picks
+the expected case from the speed written in `fixture.json`: more than 3 widths gives the
+reset.
+
+# Checking
+Per particle in the cloud at `r < L/2 - 2h`, with `d` the path from the cloud face to the
+particle and `R = gamma h_max` the largest hop of the transport (`gamma = 1.936` for the
+Wendland C2 kernel), the own ratio lies between `f(n_max (d + R))` and `f(n_min d)` for the
+reset, and between `f(n_max r)` and `f(n_min r)` for no reset, with `f` the shielding
+function and `n_min`, `n_max` the extreme H2 densities of the gas in the snapshot. The
+bar is one-sided in the reset case because the hop that resets also books the part of its
+path in front of the cloud, between zero and one `R`. The speed of 1 width is the
+control: a run that shows a reset there fails.

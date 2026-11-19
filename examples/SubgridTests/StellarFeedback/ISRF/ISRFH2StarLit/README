@@ -1,0 +1,127 @@
+# Intro
+One 29.7 Msun star in a uniform, periodic box of cold (50 K), zero-metallicity
+molecular gas, with the ISRF transport on (`ISRF_propagation: 1`) and the H2 line
+absorption of the transport on (`ISRF_H2_line_absorption: 1`). The star's
+Lyman-Werner (LW) light is absorbed by the H2 lines along its path. The check compares,
+for every gas particle, the fraction of its own LW energy that the lines let through
+(`LWOwnDissociatingSpecificEnergies` over `LWOwnSpecificEnergies`) with the shielding
+function at the column `N_H2 = n_H2 r`,
+where `n_H2` is the particle's own H2 density and `r` its distance to the star. The
+shielding function is the Wolcott-Green and Haiman (2019) fit that geajay uses.
+
+The run is cooling with geajay only: with `ISRF_H2_line_absorption: 1` SWIFT tells the
+library not to shield the transported LW rate a second time, so no cooling parameter is
+needed for it. Official Grackle refuses `ISRF_H2_line_absorption: 1`.
+
+## What the run holds fixed
+The check reads the end of a short run in which H2 and the temperature stay frozen. The
+parameters therefore switch off photoionization, stellar winds and supernovae (they would
+change the H2 fraction and the temperature near the star), and set the light speed to
+`unlimited`. The light crosses one hop per step, so it needs several steps to reach the whole
+box. The steps are short (`dt_max` 1.6e-12 in internal units) so that the H2 stays frozen while the
+light arrives; the run stops after 8 steps and the check reads the last snapshot. The check refuses a run in which any of these is not set, or in which the H2
+density of a domain particle leaves the range of the reference snapshot (see Checking) or the
+temperature of a thin one (column below 1e17 cm^-2) changes by more than 5 per cent. The check also refuses a snapshot with a coordinate within 1e-6 L of a box face, and `makeIC.py`
+refuses to write one. Only particles at `r < L/2 - 2h` are
+read, so that the nearest periodic image of the star is the right one.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The geajay build must provide the option that leaves the transported LW rate out of its H2
+shielding; without it SWIFT stops at start-up. The packet
+transport needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`; see the README of
+`ISRFH2Photodissociation` for how to obtain it.
+
+# Run
+```
+./run.sh                      # main leg, then the check
+leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
+leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
+ranks=2 run_name=two_ranks ./run.sh
+leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
+```
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
+override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
+about 2e18 cm^-2 over the box.
+
+# Checking
+`checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
+`makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`).
+SWIFT does not write the LW shielding option to `used_parameters.yml`; the check reads it
+from the start-up line `h2_transported_lw_rate_shielding = 1` that SWIFT prints, and calls
+the run void if the line is absent or reads 0. `run.sh` passes the log.
+
+The exit class of the check is 0 for a pass, 1 for a failed
+bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a void run (a
+premise or a positive control is not met). A void run never passes. `parity` alone also
+returns 5 for a pass without a counters file (see below).
+
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log`
+
+The reference is `snapshot_0001`, the first snapshot written after the first step and
+before any probe is lit; `snapshot_0000` holds the initial species fractions, which the
+first step changes in every particle.
+
+- Bar: `|ln(ratio / f)|` at most the larger of `|ln f(n_max r) / f(n r)|` and
+  `|ln f(n_min r) / f(n r)|`, with `n_min` and `n_max` the extreme H2 densities of the
+  domain particles at the reference and the last snapshot: the carried column is a sum of
+  the receivers' `n_H2` times paths that add up to `r`. Dissociation only lowers H2, so the
+  two ends bound every state between them. The run is void if the `n_H2` of a domain
+  particle at the last snapshot lies outside the reference range by more than 1e-3. Taking
+  the range over both snapshots makes the bar wider than the range of the last snapshot
+  alone (about 0.2 per cent in the median on the default run); the check prints the
+  widening. The kernel mean `LWLineTransmissions` is printed, not gated: on the default
+  run it reads 2 to 8 per cent above `f` at every radius (median `ln(ratio / f)` from
+  0.019 to 0.077 over the bins of `r / h`). The cooling reads this kernel mean, not the
+  own ratio, and no check here covers it.
+- The light moves one hop per step, so the lit probes fill a ball. With n the number of
+  steps (the ratio of the snapshot times, which must be an integer of at least 2, and which
+  counts one hop per step only if all gas sits on one time bin, as in the default run;
+  the check does not test it), every
+  probe at `r < (n - 1) h_min` must be lit, and no probe may be lit beyond `n gamma h_max`
+  (`gamma` the kernel support in units of h). The check fails on a lit count outside these
+  bounds and on any unlit probe inside the first radius.
+- The count and the minimum of the transmission read the lit probes only; an unlit probe
+  carries no transmission. The number of lit particles with a transmission below 0.99 must
+  be above 0 and must lie between the numbers of lit particles beyond `r_0.99 + l_hop` and
+  beyond `r_0.99 - l_hop`, with `l_hop` the smoothing length of the probe. A counters file from an
+  instrumented build (`--counters`, key `mean_hop_path_cm`, which the code does not write)
+  replaces it by the mean path of the booked shares.
+- The carried column `LWLineH2ColumnDensities` of every lit probe must lie between
+  `n_min r (1 - e)` and `n_max r (1 + e)`, with `n_min` and `n_max` as in the first bar
+  and `e` the float rounding term of the transmission bar. The band is about 2 per cent
+  wide on the default run, so it catches a column that is off by a few per cent.
+- The check prints how many particles can detect a doubled H2 column. If that is 0, the
+  run is void.
+
+Two runs are compared particle by particle with `parity`, on `LWSpecificEnergies`,
+`LWDissociatingSpecificEnergies` and `LWLineH2ColumnDensities` (not only their ratio):
+```
+python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5
+python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --first one/snap/snapshot_0001.hdf5 --params one/used_parameters.yml
+```
+- `restart`: every `LW` and `Packet` field must be equal bit for bit (same binary, same
+  rank count, one thread, so that the run repeats exactly). Other fields are printed only.
+  Some particle dark at `--stop` must be lit at the compared snapshot, else the run is void.
+- `ranks`: the float sums run in another order. A particle that held light at
+  `--previous` must agree within `n (k 2^-24 + p delta_h)` of its own value, with `n` the
+  number of steps (the ratio of the times of `--first` and `--a`), `k` the largest number
+  of neighbours in a kernel, `p` the cone power plus 4 and `delta_h` the largest relative
+  gap of the smoothing lengths. A particle first lit after `--previous` sits at the light
+  front, where its light came through weights near the kernel edge; it is held to the same
+  bar times the largest value in its kernel.
+- The code does not count the booked shares of other ranks, the probes on another rank or
+  the slots that wait at a restart. Without a counters file the check therefore prints
+  `REDUCED` and exits with class 5 when the comparison passes: the values agree, but the
+  run is not shown to have exercised the transport between ranks or the restore of the
+  held light. A counters file (`--counters`, JSON) from an instrumented build restores the
+  full check: it must give `probes_on_other_rank` and `foreign_bookings` for `ranks`,
+  `held_lw_slots_at_restart` and `refits_after_restart` for `restart`, each above 0, and
+  may give `steps` in place of `--first`.
+
+`testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
+error in each case, and prints the exit class of each.

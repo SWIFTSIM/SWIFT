@@ -377,23 +377,33 @@ struct feedback_isrf_packet_slot_data {
       gradient loop. */
   float forward_advance;
 
-  /*! Fraction of the held LW light that the H2 lines let through, 1 without
-      absorption. Set at the merge. The column that the held light has crossed
-      is not stored: #radiation_packet_slot_H2_column gives it. */
+  /*! Fraction of the held LW light that the H2 lines let through. Set at the
+      merge: 1 if the merge leaves no LW light, 0 before the first merge. */
   float H2_transmission;
+
+  /*! H2 column in cm^-2 that the held light has crossed since its source or
+      its last velocity reset. Set at the merge, 0 if it leaves no LW light. */
+  float H2_column;
 
   /*! Velocity shift of the held light relative to the gas that holds its
       column, signed, in internal units. Set at the merge. */
   float H2_velocity_shift;
 
-  /*! Sum over the waiting LW light of its dissociating energy times its
-      velocity shift. */
-  float H2_waiting_velocity_sum;
+  /*! Sum over the waiting LW light of its dissociating energy over the
+      shielding factor of its column, in the fit of this particle. The merge
+      inverts the ratio of #H2_waiting_dissociating_energy to it for the
+      column. The largest float marks a saturated sum. */
+  float H2_waiting_energy_over_factor;
 
   /*! Dissociating energy of the waiting LW light: the sum of its energy times
       the transmission of the H2 lines. It is released and dropped with the
-      waiting LW energy. */
-  float H2_waiting_dissociating_energy;
+      waiting LW energy. A double: a faint share is below the smallest normal
+      float, which flush-to-zero turns into 0. */
+  double H2_waiting_dissociating_energy;
+
+  /*! Sum over the waiting LW light of its dissociating energy times its
+      velocity shift. A double for the same reason. */
+  double H2_waiting_velocity_sum;
 
   /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
       or not, for the whole run, so the two sets of fields below share their
@@ -456,8 +466,10 @@ struct feedback_isrf_packet_data {
       the transmission of the H2 lines. Zero without H2 line absorption. */
   float field_dissociating_energy;
 
-  /*! Kernel mean of #field_dissociating_energy. */
-  float ngb_mean_field_dissociating_energy;
+  /*! Kernel mean of #field_dissociating_energy. A double: the sum of
+      weights times faint fields falls below the smallest normal float, which
+      flush-to-zero turns into 0. */
+  double ngb_mean_field_dissociating_energy;
 
   /*! The width of the far arrival cells is the length of the step times two
       to this power (#radiation_packet_far_end): at least
@@ -636,19 +648,22 @@ struct feedback_part_data {
   double LW_dissociating_u;
 
   /*! H2 column per unit internal length of path, in cm^-2, of the gas of this
-      particle, cached once per step at the drift. */
+      particle, cached at every drift. */
   float H2_column_per_length;
 
   /*! Exponent of the H2 self-shielding fit at the gas density and temperature
-      of this particle, cached with #H2_column_per_length. */
+      of this particle. The fit (this, #H2_line_width_km_s and
+      #H2_velocity_limit) is frozen over the particle's step: it is set after
+      the merge of an active drift, so every share summed into a slot between
+      two merges uses the fit that the next merge inverts with. */
   float H2_shielding_exponent;
 
-  /*! Thermal line width of H2 in km/s, cached with #H2_column_per_length. 0
-      if the temperature was not positive. */
+  /*! Thermal line width of H2 in km/s, part of the fit. 0 until the first fit
+      and if the temperature was not positive. */
   float H2_line_width_km_s;
 
   /*! Relative velocity in internal units beyond which light no longer sees
-      the H2 column it carries, cached with #H2_column_per_length. */
+      the H2 column it carries, part of the fit. */
   float H2_velocity_limit;
 
   /*! Comoving density snapshot of the previous step, read by the packet
@@ -686,6 +701,18 @@ struct feedback_part_data {
 
   /*! Copy of #feedback_props.ISRF_H2_line_absorption, set at the drift. */
   char ISRF_H2_line_absorption;
+
+  /*! H2 column in cm^-2 of the own LW light, weighted by its dissociating
+      energy, from the end of the gradient loop. 0 without dissociating light
+      or without H2 line absorption. */
+  float LW_line_H2_column;
+
+  /*! Unused. With 10 chemistry elements #LW_line_H2_column and this array
+      together keep sizeof(struct part) at 4256 B. Other builds can still
+      reach 4096 B, where a stride was measured to cost 7 per cent; the
+      start-up refuses that with H2 line absorption on
+      (#feedback_props_init). */
+  char ISRF_packet_stride_padding[28];
 #endif
 };
 

@@ -3298,6 +3298,11 @@ static void radiation_packet_set_origin(
   }
 }
 
+/*! Relative distance below the shielding factor at column 0 within which the
+    harmonic factor of merged light counts as clear light. A column of that
+    factor is below about 1e10 cm^-2. */
+#define RADIATION_PACKET_LINE_CLEAR_TOLERANCE 1e-6
+
 /**
  * @brief The H2 line state of a slot before a merge, from which
  * #radiation_packet_line_end sets the held and the waiting state after it.
@@ -3313,14 +3318,29 @@ struct radiation_packet_line_state {
   /*! Dissociating energy that the slot holds. */
   double held_dissociating;
 
+  /*! Dissociating energy over the shielding factor of its column, of the held
+      light, in the fit of the merging particle. */
+  double held_over_factor;
+
   /*! Dissociating energy times velocity shift of the held light. */
   double held_shift;
 
   /*! Dissociating energy that waits in the slot. */
   double waiting_dissociating;
 
+  /*! Dissociating energy over the shielding factor of its column, of the
+      waiting light. */
+  double waiting_over_factor;
+
   /*! Dissociating energy times velocity shift of the waiting light. */
   double waiting_shift;
+
+  /*! Column of the held light before the merge, in cm^-2. */
+  double held_column;
+
+  /*! Is the sum over the factor of the held or the waiting light saturated
+      at the largest float? */
+  int saturated;
 };
 
 /**
@@ -3347,38 +3367,88 @@ static double radiation_packet_waiting_LW_energy(
 }
 
 /**
+ * @brief H2 column whose shielding factor is the ratio of a dissociating
+ * energy to its sum over the factor, in the fit of a particle: the column of
+ * merged light whose factor is the harmonic mean of the factors of its parts.
+ *
+ * A ratio within float rounding of the factor at column 0 gives column 0, so
+ * clear light keeps no column and needs no inverse. Without a line width the
+ * light counts as clear light and the column is 0.
+ *
+ * @param dissociating The dissociating energy, positive.
+ * @param over_factor Its sum over the factor, not saturated. A sum of exactly 0
+ * is a float sum that flushed and is read as the smallest normal float: one
+ * flushed share gets a column at least its own, several in one slot get less.
+ * @param alpha Exponent of the fit.
+ * @param b5 Thermal line width of H2 of the fit in km/s.
+ * @return The column in cm^-2.
+ */
+static double radiation_packet_line_harmonic_column(const double dissociating,
+                                                    double over_factor,
+                                                    const double alpha,
+                                                    const double b5) {
+  if (!(b5 > 0.)) return 0.;
+  /* A sum of 0 means a flushed float sum: the column cannot be recovered. */
+  if (!(over_factor > 0.)) over_factor = FLT_MIN;
+  const double f = dissociating / over_factor;
+  if (f >= radiation_h2_shielding_factor_at_zero() *
+               (1. - RADIATION_PACKET_LINE_CLEAR_TOLERANCE))
+    return 0.;
+  return radiation_h2_shielding_inverse(f, alpha, b5);
+}
+
+/**
  * @brief Record the H2 line state of a slot before its merge.
  *
  * @param sl The slot.
+ * @param fd The feedback data of the merging particle, whose fit is used.
  * @param st (return) The state.
  */
 static void radiation_packet_line_begin(
     const struct feedback_isrf_packet_slot_data *sl,
+    const struct feedback_part_data *fd,
     struct radiation_packet_line_state *st) {
   st->waiting = radiation_packet_waiting_LW_energy(sl);
   st->held = (double)sl->band[ISRF_OPERATOR_LW].energy;
   st->held_dissociating = st->held * (double)sl->H2_transmission;
+  st->held_column = sl->H2_column;
+  st->held_over_factor = 0.;
+  if (st->held_dissociating > 0.) {
+    const double b5 = fd->H2_line_width_km_s;
+    const double f = b5 > 0. && st->held_column > 0.
+                         ? radiation_h2_shielding_factor(
+                               st->held_column, fd->H2_shielding_exponent, b5)
+                         : radiation_h2_shielding_factor_at_zero();
+    st->held_over_factor = st->held_dissociating / f;
+  }
   st->held_shift = st->held_dissociating * (double)sl->H2_velocity_shift;
   st->waiting_dissociating = sl->H2_waiting_dissociating_energy;
-  st->waiting_shift = (double)sl->H2_waiting_velocity_sum;
+  st->waiting_over_factor = sl->H2_waiting_energy_over_factor;
+  st->waiting_shift = sl->H2_waiting_velocity_sum;
+  st->saturated = !(sl->H2_waiting_energy_over_factor < FLT_MAX) ||
+                  !(st->held_over_factor < (double)FLT_MAX);
 }
 
 /**
  * @brief Set the held and the waiting H2 line state of a slot after its merge.
  *
- * The waiting light keeps its mean transmission and shift whether the merge
- * releases it or drops it below the photon cutoff: the dissociating energy and
- * the shift sum leave in the share of the LW energy that leaves. The held
+ * The waiting light keeps its mean transmission, its mean inverse factor and
+ * its shift whether the merge releases it or drops it below the photon cutoff:
+ * its three sums leave in the share of the LW energy that leaves. The held
  * light takes the dissociating energy of what was released, so its
  * transmission is the dissociating over the LW energy, at most 1. Its column
- * is the one that #radiation_packet_slot_H2_column derives from that
- * transmission.
+ * is the one whose factor is the harmonic mean of the factors of the merged
+ * light, weighted by the dissociating energy
+ * (#radiation_packet_line_harmonic_column). A saturated sum gives the column
+ * cap, and held light with nothing released keeps its column.
  *
  * @param sl The slot.
+ * @param fd The feedback data of the merging particle, whose fit is used.
  * @param st The state before the merge.
  */
 static void radiation_packet_line_end(
     struct feedback_isrf_packet_slot_data *sl,
+    const struct feedback_part_data *fd,
     const struct radiation_packet_line_state *st) {
 
   const double left = radiation_packet_waiting_LW_energy(sl);
@@ -3392,30 +3462,84 @@ static void radiation_packet_line_end(
     released_share = fmin(1., released / st->waiting);
     left_share = fmin(1., left / st->waiting);
   }
-  const double released_dissociating =
-      st->held_dissociating + st->waiting_dissociating * released_share;
+  const double released_waiting = st->waiting_dissociating * released_share;
+  const double released_dissociating = st->held_dissociating + released_waiting;
+  const double released_over_factor =
+      st->held_over_factor + st->waiting_over_factor * released_share;
   const double released_shift =
       st->held_shift + st->waiting_shift * released_share;
 
   if (left > 0.) {
-    sl->H2_waiting_dissociating_energy =
-        (float)(st->waiting_dissociating * left_share);
-    sl->H2_waiting_velocity_sum = (float)(st->waiting_shift * left_share);
+    sl->H2_waiting_dissociating_energy = st->waiting_dissociating * left_share;
+    sl->H2_waiting_energy_over_factor =
+        st->saturated ? FLT_MAX
+                      : radiation_packet_add_saturated(
+                            0.f, st->waiting_over_factor * left_share);
+    sl->H2_waiting_velocity_sum = st->waiting_shift * left_share;
   } else {
-    sl->H2_waiting_dissociating_energy = 0.f;
-    sl->H2_waiting_velocity_sum = 0.f;
+    sl->H2_waiting_dissociating_energy = 0.;
+    sl->H2_waiting_energy_over_factor = 0.f;
+    sl->H2_waiting_velocity_sum = 0.;
   }
 
   double t = 1.;
+  double N = 0.;
   double dv = 0.;
   if (energy > 0.) {
     t = released_dissociating / energy;
     if (!(t > 0.)) t = 0.;
     if (t > 1.) t = 1.;
-    if (released_dissociating > 0.) dv = released_shift / released_dissociating;
+    if (!(released_dissociating > 0.)) {
+      N = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+    } else {
+      dv = released_shift / released_dissociating;
+      if (!(released_waiting > 0.))
+        N = st->held_column;
+      else if (st->saturated || !(released_over_factor < (double)FLT_MAX))
+        N = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
+      else
+        N = radiation_packet_line_harmonic_column(
+            released_dissociating, released_over_factor,
+            fd->H2_shielding_exponent, fd->H2_line_width_km_s);
+    }
   }
   sl->H2_transmission = (float)t;
+  sl->H2_column = (float)N;
   sl->H2_velocity_shift = (float)dv;
+}
+
+/**
+ * @brief Move the sum over the factor of the light that waits in each slot of
+ * a particle from its old fit to its new one: the column of the waiting light
+ * in the old fit (#radiation_packet_line_harmonic_column) gives the sum in the
+ * new.
+ *
+ * Exact for waiting light of one column. A saturated sum stays saturated, and
+ * clear waiting light keeps its sum.
+ *
+ * @param p The particle, with its new fit.
+ * @param old_alpha Exponent of the old fit.
+ * @param old_b5 Thermal line width of H2 of the old fit in km/s.
+ */
+void radiation_packet_line_refit(struct part *p, const float old_alpha,
+                                 const float old_b5) {
+  const struct feedback_part_data *fd = &p->feedback_data;
+  const double alpha = fd->H2_shielding_exponent;
+  const double b5 = fd->H2_line_width_km_s;
+  for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
+    struct feedback_isrf_packet_slot_data *sl =
+        &p->feedback_data.isrf_packet.slot[s];
+    const double A = sl->H2_waiting_dissociating_energy;
+    const double B = sl->H2_waiting_energy_over_factor;
+    if (!(A > 0.) || !(B > 0.) || !(B < (double)FLT_MAX)) continue;
+    const double N =
+        radiation_packet_line_harmonic_column(A, B, old_alpha, old_b5);
+    if (!(N > 0.)) continue;
+    const double f = b5 > 0. ? radiation_h2_shielding_factor(N, alpha, b5)
+                             : radiation_h2_shielding_factor_at_zero();
+    sl->H2_waiting_energy_over_factor =
+        radiation_packet_add_saturated(0.f, A / f);
+  }
 }
 
 /**
@@ -3817,14 +3941,16 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
       struct radiation_packet_line_state line;
-      if (with_lines) radiation_packet_line_begin(&pk->slot[s], &line);
+      if (with_lines)
+        radiation_packet_line_begin(&pk->slot[s], &p->feedback_data, &line);
 
       radiation_packet_merge_slot_unlimited(
           &pk->slot[s], ti_current, ti_step, time_base, cosmo, s,
           radiation_packet_octant_frame,
           radiation_packet_salt_index(salt, (uint32_t)s));
 
-      if (with_lines) radiation_packet_line_end(&pk->slot[s], &line);
+      if (with_lines)
+        radiation_packet_line_end(&pk->slot[s], &p->feedback_data, &line);
     }
 
     radiation_packet_refresh_occupied(pk);
@@ -3843,14 +3969,16 @@ void radiation_packet_merge(struct part *p, const integertime_t ti_current,
 
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
     struct radiation_packet_line_state line;
-    if (with_lines) radiation_packet_line_begin(&pk->slot[s], &line);
+    if (with_lines)
+      radiation_packet_line_begin(&pk->slot[s], &p->feedback_data, &line);
 
     radiation_packet_merge_slot_limited(
         &pk->slot[s], pk->band, old_first, old_width, old_far_end, ti_current,
         s, radiation_packet_octant_frame,
         radiation_packet_salt_index(salt, (uint32_t)s));
 
-    if (with_lines) radiation_packet_line_end(&pk->slot[s], &line);
+    if (with_lines)
+      radiation_packet_line_end(&pk->slot[s], &p->feedback_data, &line);
   }
 
   pk->step_end_ti = ti_current + ti_step;
@@ -3907,7 +4035,9 @@ void radiation_packet_set_first_step(struct part *p,
  * The held packet of a slot is the light that crosses the particle in one
  * step, over the forward advance of the slot, so its specific energy density is
  * `(E / m) l_par / (c dt)`. The own field is the sum over the slots, then its
- * running mean over `tau` (#radiation_packet_read_mean).
+ * running mean over `tau` (#radiation_packet_read_mean). With H2 line
+ * absorption, the column of the particle is the mean of the slot columns
+ * weighted by the dissociating energy of the slot, not averaged over time.
  *
  * @param p The particle.
  * @param a Current scale factor.
@@ -3938,6 +4068,7 @@ void radiation_packet_end_gradient(struct part *p, const float a,
   double field_energy[ISRF_OPERATOR_COUNT];
   double field_photons[ISRF_OPERATOR_COUNT];
   double field_dissociating = 0.;
+  double field_column_sum = 0.;
   const int with_lines = p->feedback_data.ISRF_H2_line_absorption;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     field_energy[b] = 0.;
@@ -3957,9 +4088,13 @@ void radiation_packet_end_gradient(struct part *p, const float a,
         field_energy[b] += (double)(sl->band[b].energy * factor);
         field_photons[b] += (double)(sl->band[b].photons * factor);
       }
-      if (with_lines)
-        field_dissociating += (double)(sl->band[ISRF_OPERATOR_LW].energy *
-                                       sl->H2_transmission * factor);
+      if (with_lines) {
+        const double dissociating = (double)sl->band[ISRF_OPERATOR_LW].energy *
+                                    (double)sl->H2_transmission *
+                                    (double)factor;
+        field_dissociating += dissociating;
+        field_column_sum += dissociating * (double)sl->H2_column;
+      }
       continue;
     }
 
@@ -3982,9 +4117,13 @@ void radiation_packet_end_gradient(struct part *p, const float a,
     pk->band[b].field_photons = radiation_packet_read_mean(
         pk->band[b].field_photons, (float)field_photons[b], dt, tau);
   }
-  if (with_lines)
+  if (with_lines) {
     pk->field_dissociating_energy = radiation_packet_read_mean(
         pk->field_dissociating_energy, (float)field_dissociating, dt, tau);
+    p->feedback_data.LW_line_H2_column =
+        field_dissociating > 0. ? (float)(field_column_sum / field_dissociating)
+                                : 0.f;
+  }
 }
 
 /**
@@ -4012,8 +4151,8 @@ void radiation_packet_end_force(struct part *p) {
 
   pk->ngb_mean_field_dissociating_energy =
       (pk->ngb_mean_field_dissociating_energy +
-       mw * pk->field_dissociating_energy) *
-      norm;
+       (double)mw * (double)pk->field_dissociating_energy) *
+      (double)norm;
 
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     struct feedback_isrf_packet_band_data *band = &pk->band[b];
@@ -4044,8 +4183,13 @@ void radiation_packet_couple_field(struct part *p) {
 
   p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
       (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
-  p->feedback_data.LW_dissociating_u =
-      (double)pk->ngb_mean_field_dissociating_energy;
+
+  /* The LW sum is in float and can flush to 0 where the double sum does not:
+     the lines remove light, they never add it. */
+  const double lw = (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
+  double dissociating = pk->ngb_mean_field_dissociating_energy;
+  if (dissociating > lw) dissociating = lw;
+  p->feedback_data.LW_dissociating_u = dissociating;
 }
 
 /**
