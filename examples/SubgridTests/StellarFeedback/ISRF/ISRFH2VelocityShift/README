@@ -27,3 +27,8 @@ reset, with `f` the shielding function and `n_min`, `n_max` the extreme H2 densi
 gas in the snapshot. A hop books the mean H2 density of its two ends, and the hop that
 resets books only the receiver's half of its path, so the face is placed within half a hop.
 The speed of 1 width is the control: a run that shows a reset there fails.
+
+Resolution of the check: deeper than about one hop (`R`) behind the face, the reset bar
+accepts a column up to `R/2` (about 0.97 h) too small. A reset that comes late by a
+quarter of `R` is caught only by probes shallower than `h`. A reset that comes late by one
+`h` is caught with a margin of about 0.03 h.
