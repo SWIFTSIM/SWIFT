@@ -50,7 +50,8 @@ about 2e18 cm^-2 over the box.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
-`makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`) and `timesteps.txt` (`--timesteps`).
+`makeIC.py`), the first and last snapshot, the SWIFT log (`--startup-log output.log`) and
+`timesteps.txt` (`--timesteps`).
 SWIFT does not write the LW shielding option to `used_parameters.yml`; the check reads it
 from the start-up line `h2_transported_lw_rate_shielding = 1` that SWIFT prints, and calls
 the run void if the line is absent or reads 0. `run.sh` passes the log.
@@ -89,14 +90,20 @@ first step changes in every particle.
     mean). A particle whose own-field terms `m_j W E_j` below the smallest normal float
     make up more than that bar of its sum is exempt, because the float accumulator can
     flush them; the check prints how many, how many lie in the probes and their `r / h`.
-    A particle with no lit neighbour must hold no LW energy. This tier catches a missing
-    self term, a kernel in `h_j` in place of `h_i`, and any change of 0.5 per cent or more.
+    On an exempt particle the LW mean must be zero if and only if no term is at or above
+    the smallest normal float, and `T` must not fall below `T_offline (1 - bar)`, because a
+    flush removes terms only from the float LW sum. An upward error on an exempt particle
+    is not caught. A particle with no lit neighbour must hold no LW energy. This tier
+    catches a missing self term, a kernel in `h_j` in place of `h_i`, and any change of
+    `T` of 0.5 per cent or more. The weight sum of the mean (its normalisation) cancels in
+    `T`, so a change of it is not tested.
   - Tier 2, physics: `|ln(T / K)|` at most the largest own bar over the lit
     neighbours plus the float term of tier 1, with `K` the same weighted mean of
     `f(n_H2 r)` of each neighbour. `T / K` is a convex combination of the ratios
     `t_j / f_j`, so the bound holds for a correct mean. This tier catches the prediction
     or the own ratio used in place of the mean. A change of 0.5 per cent and the `h_j`
     kernel are below its resolution: tier 1 catches them.
+    Tier 2 skips the exempt particles.
   - Premises, read from the run: the step that ends at the snapshot must have updated
     every gas particle (`--timesteps timesteps.txt`), and the positions must have moved by
     less than one float rounding of `h` in it. Otherwise the run is void.

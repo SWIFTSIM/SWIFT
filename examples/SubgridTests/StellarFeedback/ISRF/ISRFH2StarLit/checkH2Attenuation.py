@@ -36,7 +36,7 @@ import math
 import os
 import re
 import sys
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import h5py
 import numpy as np
@@ -618,7 +618,9 @@ def kernel_weight(u: np.ndarray) -> np.ndarray:
     return np.where(u < KERNEL_GAMMA, KERNEL_WEIGHT_AT_ZERO * shape, 0.0)
 
 
-def kernel_neighbour_weights(snap: dict):
+def kernel_neighbour_weights(
+    snap: dict,
+) -> Iterator[Tuple[int, np.ndarray, np.ndarray]]:
     """Yield (i, j, w) for every particle i: its neighbours j and w = m_j W(r_ij / h_i).
 
     These are the weights of the force loop. The list includes i itself, which carries
@@ -644,6 +646,13 @@ def step_premises(path: Optional[str], snap: dict, rep: Report) -> float:
     The kernel mean is closed in the last step, so it equals the mean of the own fields
     in the snapshot only if all particles were active in that step and the positions
     moved by less than a float rounding of the kernel since then.
+
+    Raises
+    ------
+    GateExit
+        With EXIT_VOID if the file is not given, no step ends at the snapshot time, a
+        step did not update every particle or the positions moved; with EXIT_MISSING if
+        the file is unreadable.
     """
     if not path:
         raise GateExit(
@@ -706,7 +715,11 @@ def check_kernel_mean(
     snapshot (D_j clamped to E_j). It must agree with the snapshot to (n_ngb + 2) eps32.
     A particle whose own-field terms w E_j below the smallest normal float make up more
     than that bar of its sum is exempt, because the float accumulator can flush them;
-    the number is printed. A particle with no lit neighbour must have no LW energy.
+    the number is printed. On an exempt particle the LW mean must be zero if and only if
+    no term is at or above FLT_MIN, and T must not fall below T_offline (1 - bar), since a
+    flush removes terms only from the float LW sum; an upward error there is not caught,
+    and tier 2 skips these particles. A particle with no lit neighbour must have no LW
+    energy. The weight sum of the mean cancels in T and is not tested.
 
     Tier 2 (physics): T_snapshot against K[f], the same weighted mean of the prediction
     f(n_H2 r) of each neighbour. T / K is a convex combination of the ratios t_j / f_j,
@@ -721,6 +734,7 @@ def check_kernel_mean(
     bar2 = np.full(n, np.nan)
     n_ngb = np.zeros(n)
     flushed = np.zeros(n)
+    normal = np.zeros(n, dtype=bool)
     unlit = np.zeros(n, dtype=bool)
     for i, j, w in kernel_neighbour_weights(last):
         n_ngb[i] = len(j)
@@ -730,6 +744,7 @@ def check_kernel_mean(
             unlit[i] = True
             continue
         flushed[i] = terms[terms < FLOAT32_TINY].sum() / total
+        normal[i] = bool(np.any(terms >= FLOAT32_TINY))
         t_off[i] = min(float(w @ dissoc[j]), total) / total
         if probes[i]:
             kmean[i] = float(terms @ exp[j]) / total
@@ -748,17 +763,23 @@ def check_kernel_mean(
     dev1 = np.where(np.isfinite(dev1), dev1, np.inf)
     over1 = int(np.sum(dev1 > float_term[compared]))
     in_probe = int(np.sum(exempt & probes))
+    zero_wrong = exempt & ((last["LWSpecificEnergies"] == 0.0) == normal)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        low = exempt & ~(t_snap >= t_off * (1.0 - float_term))
+    exempt_bad = int(np.sum(zero_wrong | low))
     if exempt.any():
         span = f"r/h from {r_over_h[exempt].min():.3g} to {r_over_h[exempt].max():.3g}"
     else:
         span = "none"
     rep.check(
         "kernel mean against the kernel mean of the own fields (tier 1)",
-        over1 == 0 and not stray.any(),
-        f"{over1} of {int(compared.sum())} particles outside |ln(T/T_offline)| <= (n_ngb + 2) eps32; "
+        over1 == 0 and not stray.any() and exempt_bad == 0,
+        f"{over1} of {int(compared.sum())} particles outside |ln(T/T_offline)| <= (n_ngb + 2) eps32 (any change of T; "
+        f"the weight sum of the mean is not tested); "
         f"worst {float(dev1.max()):.3g} against bar from {float(float_term[compared].min()):.3g}; "
         f"{int(stray.sum())} of {int(unlit.sum())} particles without a lit neighbour hold LW energy; "
-        f"{int(exempt.sum())} exempt (flushable own-field terms below FLT_MIN, {in_probe} in the probes, {span})",
+        f"{int(exempt.sum())} exempt (flushable own-field terms below FLT_MIN, {in_probe} in the probes, {span}; "
+        f"{exempt_bad} of them break the zero rule or T >= T_full (1 - bar); an upward error there is not caught)",
     )
 
     use = probes & ~exempt & np.isfinite(kmean)

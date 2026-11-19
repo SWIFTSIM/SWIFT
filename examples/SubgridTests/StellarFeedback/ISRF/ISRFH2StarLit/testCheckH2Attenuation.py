@@ -39,6 +39,7 @@ START_UP_LOG = ""
 TIMESTEPS = ""
 GAS_MASS = 1.0e-11
 GAMMA = 1.9364916731
+W_ZERO = 21.0 / (2.0 * np.pi * GAMMA**3)
 KERNELS = {}
 GATES = ("starlit", "twosource", "velocity")
 ROWS = []
@@ -70,7 +71,8 @@ def kernel_matrix(pos, h, box, variant):
 
     code: m_j W(r_ij / h_i) with the self term. noself: the diagonal dropped. hj: the
     kernel of the neighbour's h_j in place of h_i. W is the Wendland C2 form with its
-    support at gamma h; the normalisation cancels in a mean.
+    support at gamma h and the code's W(0); the normalisation cancels in a mean but sets which
+    terms fall below FLT_MIN.
     """
     key = (variant, id(pos), id(h))
     if key in KERNELS:
@@ -83,7 +85,7 @@ def kernel_matrix(pos, h, box, variant):
         r = np.sqrt((d * d).sum(axis=2))
         scale = h[None, :] if variant == "hj" else h[lo : lo + 256, None]
         x = np.minimum(r / scale / GAMMA, 1.0)
-        w = GAS_MASS * (1.0 - x) ** 4 * (1.0 + 4.0 * x)
+        w = GAS_MASS * W_ZERO * (1.0 - x) ** 4 * (1.0 + 4.0 * x)
         w[x >= 1.0] = 0.0
         if variant == "noself":
             w[np.arange(w.shape[0]), lo + np.arange(w.shape[0])] = 0.0
@@ -623,28 +625,57 @@ def starlit_cases(work):
         "FAIL",
     )
     r_cut = 4.5e18
-    faint = np.where(r < r_cut, steep, 1e-33)
+    tiny = float(np.finfo(np.float32).tiny)
+    faint = np.where(r < r_cut, steep, 1e-24 * 10.0 ** (-3.0 * (r - r_cut) / 1.5e18))
 
-    def flush(m, o, w):
-        top = np.asarray(w.multiply(o[None, :]).max(axis=1).todense()).ravel()
-        gone = top < np.finfo(np.float32).tiny
-        return (
-            np.where(gone, 0.0, m[0]),
-            np.where(gone, 0.0, m[1]),
-            np.where(gone, 1.0, m[2]),
+    def flush(plant=None):
+        """Mean as the float accumulator leaves it: terms below FLT_MIN dropped from the E sum."""
+
+        def fn(m, o, w):
+            terms = w.multiply(o[None, :]).tocsr()
+            full = np.asarray(terms.sum(axis=1)).ravel()
+            terms.data[terms.data < tiny] = 0.0
+            kept = np.asarray(terms.sum(axis=1)).ravel()
+            norm = np.asarray(w.sum(axis=1)).ravel()
+            e = kept / norm
+            d = np.minimum(m[1], e)
+            t = np.where(e > 0.0, d / np.where(e > 0.0, e, 1.0), 1.0)
+            share = 1.0 - kept / np.where(full > 0.0, full, 1.0)
+            out = (e, d, t, share > 1e-5, kept == 0.0)
+            return plant(*out) if plant else out[:3]
+
+        return fn
+
+    def halve_partial(e, d, t, exempt, gone):
+        hit = exempt & ~gone
+        ROWS.append(
+            (
+                "(planted particles)",
+                0,
+                0 if hit.any() else 1,
+                f"{int(hit.sum())} partial",
+            )
         )
+        return e, d, np.where(hit, 0.5 * t, t)
+
+    def light_in_gone(e, d, t, exempt, gone):
+        return np.where(gone, 1.0, e), d, t
 
     tier(
         "K9 own-field terms below FLT_MIN flushed to zero (exempt)",
-        snap_with("k9.hdf5", own_ratio, lw=faint, mean_fn=flush),
+        snap_with("k9.hdf5", own_ratio, lw=faint, mean_fn=flush()),
         "PASS",
         "PASS",
     )
     tier(
-        "K9b the same snapshot with the mean not flushed",
-        snap_with("k9b.hdf5", own_ratio, lw=faint),
-        "PASS",
-        "PASS",
+        "K9c exempt particles with T x0.5 (not flushed to zero)",
+        snap_with("k9c.hdf5", own_ratio, lw=faint, mean_fn=flush(halve_partial)),
+        "FAIL",
+    )
+    tier(
+        "K9d LW energy where every term is below FLT_MIN",
+        snap_with("k9d.hdf5", own_ratio, lw=faint, mean_fn=flush(light_in_gone)),
+        "FAIL",
     )
     far = np.where(r > r_full3 + 2.0 * gate.KERNEL_GAMMA * h_cm.max())[0][0]
 
