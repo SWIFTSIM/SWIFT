@@ -40,12 +40,6 @@ struct phys_const;
 struct radiation;
 struct stellar_model;
 
-/*! Photon-number-weighted mean Lyman-Werner photon energy of the radiation
- * table in erg, or 0 while radiation is inactive. Diagnostic only: the H2
- * photodissociation rate uses #RADIATION_SIGMA_H2_OVER_E_LW_CGS. Set once at
- * start-up and on restart by #radiation_set_lw_photon_energy_cgs. */
-extern double radiation_lw_photon_energy_cgs;
-
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                                         const struct stellar_model *sm);
 

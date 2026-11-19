@@ -43,21 +43,6 @@
 #include "minmax.h"
 
 /**
- * @brief Habing field of a particle, from the radiation model.
- *
- * @param phys_const The physical constants in internal units.
- * @param us The internal system of units.
- * @param cosmo The #cosmology.
- * @param p Pointer to the particle data.
- * @return G0 in Habing units.
- */
-INLINE static double rates_to_chemistry_get_isrf_habing(
-    const struct phys_const *phys_const, const struct unit_system *us,
-    const struct cosmology *cosmo, const struct part *p) {
-  return radiation_get_part_isrf_habing(phys_const, us, cosmo, p);
-}
-
-/**
  * @brief Lyman-Werner H2 dissociation rate of a particle, from the radiation
  * model.
  *
@@ -75,32 +60,6 @@ INLINE static double rates_to_chemistry_get_LW_dissociation_rate(
         phys_const, us, cosmo, p);
   return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
                                                           p);
-}
-
-/**
- * @brief HI photoionization rate coefficient of a tagged particle, from the
- * radiation model.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @return Photoionization rate coefficient, internal 1/time.
- */
-INLINE static double rates_to_chemistry_get_photoionization_rate(
-    const struct part *p, const struct xpart *xp) {
-  return radiation_get_part_photoionization_rate_coefficient(p, xp);
-}
-
-/**
- * @brief Mean excess photon energy per HI photoionization of a tagged
- * particle, from the radiation model.
- *
- * @param p Pointer to the particle data.
- * @param xp Pointer to the extended particle data.
- * @return Excess energy, in cgs (erg).
- */
-INLINE static double rates_to_chemistry_get_photoheating_excess_energy(
-    const struct part *p, const struct xpart *xp) {
-  return (double)radiation_get_part_excess_photon_energy_HI(p, xp);
 }
 
 /**
@@ -308,7 +267,8 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
     return 0;
   }
 
-  const double Gamma_HI = rates_to_chemistry_get_photoionization_rate(p, xp);
+  const double Gamma_HI =
+      radiation_get_part_photoionization_rate_coefficient(p, xp);
   *HI_ionization_rate = Gamma_HI;
 
   /* excess_photon_energy_HI is cached in cgs already (see
@@ -316,7 +276,7 @@ INLINE static int cooling_get_rate_coupled_RT_fields_subgrid(
      radiation_get_mean_excess_photon_energy_HI_from_integral). */
   const double Gamma_HI_cgs = Gamma_HI / time_units;
   const double E_excess_cgs =
-      rates_to_chemistry_get_photoheating_excess_energy(p, xp);
+      (double)radiation_get_part_excess_photon_energy_HI(p, xp);
   *heating_rate_cgs = Gamma_HI_cgs * E_excess_cgs;
   return 1;
 #else
@@ -340,7 +300,7 @@ INLINE static double cooling_get_isrf_habing_subgrid(
     const struct cosmology *cosmo, const struct cooling_function_data *cooling,
     const struct part *p) {
   if (!cooling->with_ISRF) return 0.;
-  return rates_to_chemistry_get_isrf_habing(phys_const, us, cosmo, p);
+  return radiation_get_part_isrf_habing(phys_const, us, cosmo, p);
 }
 
 /**

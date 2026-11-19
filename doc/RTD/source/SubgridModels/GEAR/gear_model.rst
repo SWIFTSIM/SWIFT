@@ -190,7 +190,7 @@ Here is the complete section in the parameter file:
 
     H2_self_shielding: 0                         # H2 self-shielding from the Lyman-Werner field: 0 none, 2 kernel-based, 3 local Jeans length. The default is wrong for an ISRF run tracking H2, see below
     H2_self_shielding_path: kernel_radius        # Mode 2 only: kernel_radius or kernel_diameter
-    photoelectric_heating_efficiency: constant   # constant, wolfire1995 or density_dependent, see below
+    photoelectric_heating_efficiency: constant   # constant or wolfire1995, see below
 
     volumetric_heating_rates_cgs: 0              # Volumetric heating rate in cgs  [erg/s/cm3]
     specific_heating_rates_cgs: 0                # Specific heating rate in cgs    [erg/s/g]

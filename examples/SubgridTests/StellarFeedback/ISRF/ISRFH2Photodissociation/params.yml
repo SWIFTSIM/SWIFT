@@ -78,14 +78,13 @@ GrackleCooling:
   # otherwise the Lyman-Werner field reaches Grackle unshielded.
   H2_self_shielding: 3                          # Local Jeans length, run.sh override (Default: 0)
   H2_self_shielding_path: kernel_radius         # Mode 2 only: column path kernel_radius or kernel_diameter (Default: kernel_radius)
-  H2_photodissociation_heating: 0               # Heating per H2 photodissociation, needs mode >= 2 and a Grackle that provides it (Default: 0)
   H2_three_body_rate: 0                         # H2 three-body formation rate model, 0 to 5 (Grackle documentation) (Default: 0)
   H2_cie_cooling: 0                             # H2 collision-induced emission cooling (Ripamonti & Abel 2004) (Default: 0)
   self_shielding_method: 0                      # Off: continuum shielding not tested (Default: 0)
   self_shielding_threshold_atom_per_cm3: 0.007  # Density threshold in H atoms/cm^3, required with self_shielding_method -1
 
   # Photoelectric heating and dust, used only with GEARFeedback:with_interstellar_radiation_field.
-  photoelectric_heating_efficiency: constant    # constant, wolfire1995 or density_dependent (Default: constant)
+  photoelectric_heating_efficiency: constant    # constant or wolfire1995 (Default: constant)
   local_dust_to_gas_ratio: -1                   # Dust-to-gas mass ratio, -1 keeps Grackle's own default (Default: -1)
 
   # Chemistry network: initial abundances as number ratios to nH, -1 keeps the default.

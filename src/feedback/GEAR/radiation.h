@@ -123,7 +123,7 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
 #define RADIATION_SIGMA_H2_LW_CGS 2.8196309e-18
 
 /*! Metallicity mass fraction at which the diagnostic mean LW photon energy is
-    read from a 2D table (#radiation_lw_photon_energy_cgs). The gas particle
+    read from a 2D table (#radiation_set_lw_photon_energy_cgs). The gas particle
     is source-anonymous, so one representative rung is used. */
 #define RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY 0.014
 

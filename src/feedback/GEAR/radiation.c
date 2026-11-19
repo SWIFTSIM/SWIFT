@@ -31,8 +31,6 @@
 #include <math.h>
 #include <string.h>
 
-double radiation_lw_photon_energy_cgs = 0.;
-
 /*! Sanity tripwires on lambda(b) - 1 (and on lambda_N(LW)). Below the floor is
     fatal: a units bug (e.g. E_lo^2 folded in twice) gives a tiny positive
     value. Above the ceiling is a warning only: it is the largest value seen on
@@ -195,21 +193,19 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
 }
 
 /**
- * @brief Report the H2 photodissociation coefficient and set
- * #radiation_lw_photon_energy_cgs from the radiation table.
+ * @brief Report the H2 photodissociation coefficient and the mean
+ * Lyman-Werner photon energy of the radiation table.
  *
- * The mean LW photon energy is a diagnostic only: the IMF-integrated
+ * The mean LW photon energy is reported only: the IMF-integrated
  * Integrated_MeanPhotonEnergyLW up to mass_max, at the reference metallicity
- * for 2D tables. Left at 0 while radiation is inactive. Call for the main
- * stellar model only.
+ * for 2D tables. Nothing is reported while radiation is inactive. Call for the
+ * main stellar model only.
  *
  * @param rad The main stellar model's #radiation.
  * @param sm The main #stellar_model, for its IMF mass range.
  */
 void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
                                         const struct stellar_model *sm) {
-
-  radiation_lw_photon_energy_cgs = 0.;
 
   if (!rad->is_active) return;
 
@@ -232,13 +228,11 @@ void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
 
   if (E_LW_cgs <= 0.) return;
 
-  radiation_lw_photon_energy_cgs = E_LW_cgs;
-
   if (engine_rank == 0)
     message(
         "Mean Lyman-Werner photon energy from the table = %g erg, reported "
         "only: no rate reads it",
-        radiation_lw_photon_energy_cgs);
+        E_LW_cgs);
 }
 
 /**
