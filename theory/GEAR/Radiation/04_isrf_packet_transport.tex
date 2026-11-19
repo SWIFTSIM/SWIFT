@@ -508,7 +508,7 @@ band-edge gain $\hat G_{\rm PE}$ & kept \\
 inflow into LW above $13.6$\,eV & dropped: no ionising photons in this channel \\
 scattering by dust & dropped: absorption only \\
 emission by dust or gas in the bands & dropped \\
-H$_2$ line absorption & kept when \code{ISRF\_H2\_line\_absorption} is on;
+H$_2$ line absorption & kept when the H$_2$ line absorption switch is on;
   otherwise dropped from the transport, and Grackle applies H$_2$
   self-shielding locally \\
 redistribution inside a band & dropped: one $\kappa_b$ per band, constant
@@ -781,7 +781,7 @@ $\Delta v$, $\Delta v_{\max}$ & velocity & velocity shift of the light relative 
 $n_{{\rm H}_2}$, $X_{{\rm H}_2}$ & cm$^{-3}$, -- & H$_2$ number density and mass fraction of the receiver \\
 $\mathcal A_k$, $\mathcal B_k$, $\mathcal V_k$ & energy, energy, energy$\times$velocity & sums of Eq.~\eqref{eq:h2-sums} over the light of slot $k$ \\
 $\hat e_s$, $\xi_s$ & energy, -- & dissociating energy $e_s\mathcal T_s$ of share $s$ and its fraction of the total \\
-$\eta_s$, $\varpi_l$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
+$\eta_s$, $\varpi_p$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
 $\mathcal R$ & -- & transmission of the slot over that of the share-by-share reference (Eq.~\eqref{eq:h2-ref}) \\
 $\varsigma$ & -- & local slope $|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ of the fit \\
 $u_{\rm LW}^{\rm own}$, $u_{\rm diss}^{\rm own}$, $\Sigma^{\rm own}$ & energy/mass, energy/mass, cm$^{-2}$ & own LW field, its dissociating part and the weighted column (Eq.~\eqref{eq:h2-own}) \\
@@ -1406,14 +1406,18 @@ levels, each line sees a smaller column of its own level, and the shielding
 is weaker: $\alpha$ is smaller. A fixed $\alpha=2$ fits cold gas of low
 density, and an earlier fixed value $1.1$ fits gas of a few thousand K at
 about $10^3$\,cm$^{-3}$ \citep{WolcottGreenHaiman2019}.
+The source writes the density factor of $\alpha$ as
+${\rm dexp}(-0.2856\log n)$ and does not define ${\rm dexp}$. The scheme uses
+the natural exponential, which gives $\alpha=1.01$ at $3000$\,K and
+$10^3$\,cm$^{-3}$; base 10 would give $0.69$.
 
 \paragraph{The accuracy of the fit.} The abstract and Section~3.2 of
 \citet{WolcottGreenHaiman2019} give typical errors of a few per cent up to
 $n=10^7$\,cm$^{-3}$, $T=8000$\,K and $\Sigma=10^{17}$\,cm$^{-2}$. Their
 introduction gives a few per cent up to $10^{16}$\,cm$^{-2}$ and errors of
-order ten per cent up to $10^{17}$\,cm$^{-2}$. The two statements differ.
-Neither enters the scheme; this document takes the more cautious one, errors of
-order ten per cent between $10^{16}$ and $10^{17}$\,cm$^{-2}$.
+order ten per cent up to $10^{17}$\,cm$^{-2}$. The two statements differ, and
+neither enters the scheme. Both are consistent with errors of order ten per
+cent between $10^{16}$ and $10^{17}$\,cm$^{-2}$.
 The source states no accuracy above $10^{17}$\,cm$^{-2}$, below $500$\,K or
 below $1$\,cm$^{-3}$, where it has no models, or above $8000$\,K, although its
 models extend to $10^5$\,K. The clamp of $T$ at $8000$\,K in
@@ -1556,12 +1560,8 @@ uses the fit of \citet{WolcottGreenHaiman2019}, their Eqs.~7 and 8,
 with $\lg=\log_{10}$, $T$ the gas temperature in K, $n=\rho/(\mu m_{\rm H})$
 the particle density in cm$^{-3}$, $\mu$ the mean molecular weight,
 $k_{\rm B}$ the Boltzmann constant and $m_{\rm H}$ the proton mass. The
-source writes the density factor as ${\rm dexp}(-0.2856\log n)$. The scheme
-reads ${\rm dexp}$ as the natural exponential, $e^{-0.2856\lg n}=n^{-0.124}$.%
-\footnote{With the natural exponential, $\alpha(3000\,{\rm K},10^3\,{\rm cm^{-3}})=1.01$;
-with base 10 it is $0.69$. The source says that the earlier fixed value $1.1$
-fits that gas, which weakly favours the natural exponential.}
-$b_5$ is
+density factor is $e^{-0.2856\lg n}=n^{-0.124}$
+(Section~\ref{sec:packet-h2-physics}, ``The fit''). $b_5$ is
 the Doppler parameter $b_{\rm D}$ of Eq.~\eqref{eq:h2-tau0} in units of
 $1\,{\rm km\,s^{-1}}$. It contains $m_{\rm H}$ because
 $2k_{\rm B}T/m_{{\rm H}_2}=k_{\rm B}T/m_{\rm H}$.
@@ -1731,8 +1731,9 @@ $\Sigma_{\rm cap}$ therefore err towards too little further absorption.
 
 \paragraph{Numerics of the merge.} The inverse is found by bisection of
 $\ln\Sigma$ between $\Sigma_{\rm floor}=10^{2}$\,cm$^{-2}$ and
-$\Sigma_{\rm cap}$, until the interval is $10^{-7}$ wide, which fixes the
-column to $5\times10^{-8}$ of itself. A ratio at or above the factor at
+$\Sigma_{\rm cap}$. The tolerance of the inverse is $10^{-7}$, the width in
+$\ln\Sigma$ at which the bisection stops. The inverse returns the middle of that
+interval, so its column error is at most $5\times10^{-8}$ of the column. A ratio at or above the factor at
 $\Sigma_{\rm floor}$ gives $\Sigma_k=0$, and one at or below the factor at
 $\Sigma_{\rm cap}$ gives $\Sigma_{\rm cap}$. A ratio within $10^{-6}$ of
 $\mathcal S_0$ also gives $\Sigma_k=0$ without the inverse: clear light keeps
@@ -2210,14 +2211,14 @@ same without them.
 
 The absorbed light does not heat the gas. The gas sees only the light that
 crosses it, through $G_0$ and $k_{\rm diss}$ (Section~\ref{sec:packet-field}),
-and Grackle applies no second dust attenuation to $G_0$. The option
-\code{ISRF\_H2\_line\_absorption} needs the packet transport, an H$_2$ network
-and geajay. With it on, the LW light of each share carries the H$_2$ column it
+and Grackle applies no second dust attenuation to $G_0$. The H$_2$ line
+absorption switch (named in Section~\ref{sec:isrf-code}) needs the packet
+transport, an H$_2$ network and geajay. With it on, the LW light of each share carries the H$_2$ column it
 has crossed and the transmission of the H$_2$ lines at that column
 (Section~\ref{sec:packet-h2}; its limits are in
 Section~\ref{sec:packet-h2-limits}). The dissociation rate $k_{\rm diss}$ follows
 the LW energy weighted by this transmission, and the cooling library leaves the
-transported LW rate out of its own H$_2$ shielding. With the option off, the
+transported LW rate out of its own H$_2$ shielding. With the switch off, the
 transport has no H$_2$ line absorption. When the H$_2$ self-shielding option of Grackle is on
 (Section~\ref{sec:isrf-problem}), Grackle multiplies $k_{\rm diss}$ by a
 factor \citep{WolcottGreenHaiman2019} from a local H$_2$ column: $n_{\rm H_2}$
@@ -2618,6 +2619,23 @@ numerical accuracy against the reference on the tested coverage of random
 inputs, in the paragraphs whose titles begin with ``Numerical accuracy''. The
 third is the float rounding.
 
+\paragraph{The merge in brief.} The statements below use the merge of
+Section~\ref{sec:packet-h2}, restated here without its guards. Share $s$
+reaches slot $k$ with the LW energy $e_s$, the transmission $\mathcal T_s$ and
+the column $\Sigma_s$. Its dissociating energy is $\hat e_s=e_s\mathcal T_s$.
+Let $\mathcal S_r$ be the factor of Eq.~\eqref{eq:h2-factor} in the fit $r$ of
+the merging particle. The slot sums $E_k=\sum_se_s$,
+$\mathcal A_k=\sum_s\hat e_s$ and
+$\mathcal B_k=\sum_s\hat e_s/\mathcal S_r(\Sigma_s)$
+(Eq.~\eqref{eq:h2-sums}). The merge sets $\mathcal T_k=\mathcal A_k/E_k$,
+clamped to $[0,1]$, and the column $\Sigma_k$ by
+$\mathcal S_r(\Sigma_k)=\mathcal A_k/\mathcal B_k$ (Eq.~\eqref{eq:h2-merge}).
+So $1/\mathcal S_r(\Sigma_k)$ is the mean of the $1/\mathcal S_r(\Sigma_s)$,
+weighted by $\hat e_s$ (Eq.~\eqref{eq:h2-harmonic}). A later hop through gas
+of the fit $r$ adds a column $\Delta\Sigma$ and multiplies the transmission by
+$\mathcal S_r(\Sigma+\Delta\Sigma)/\mathcal S_r(\Sigma)$
+(Eq.~\eqref{eq:h2-hop}).
+
 \paragraph{The reference.} The reference is the transport in which every share
 keeps its own $(\mathcal T_s,\Sigma_s)$ through all later hops. Let $\eta_s=e_s/\sum_j e_j$
 be the energy fraction of share $s$. After the light has crossed a further
@@ -2646,9 +2664,9 @@ mixed columns, then a change of the fit''.
     of the shares (Eq.~\eqref{eq:h2-merge}).
   \item A share merged alone keeps its column: if all merged light has one
     column and was summed with the fit of the merge, then
-    $\mathcal A_k/\mathcal B_k=\mathcal S_r(\Sigma_s)$ and $\Sigma_k=\Sigma_s$ to the
-    tolerance of the inverse, $5\times10^{-8}$ of the column. Family (1) of
-    ``Numerical accuracy: the tested coverage'' checks it.
+    $\mathcal A_k/\mathcal B_k=\mathcal S_r(\Sigma_s)$ and $\Sigma_k=\Sigma_s$. The
+    second equality holds to the column error of the inverse, $5\times10^{-8}$
+    of the column (``Numerics of the merge'').
   \item The merged column lies between the smallest and the largest merged
     column, because $\mathcal A_k/\mathcal B_k$ is a weighted harmonic mean of
     factors and $\mathcal S_r$ falls with $\Sigma$.
@@ -2675,17 +2693,17 @@ mixed columns, then a change of the fit''.
 \end{enumerate}
 Then, after any number of later hops and merges, all in gas with the fit $r$,
 the slot never shields more than the reference, and it lets through at most
-$1/\varpi_l$ times as much,
+$1/\varpi_p$ times as much,
 \begin{equation}
-  1\le\mathcal R(\Delta\Sigma)\le\frac{1}{\varpi_l}, \qquad
-  \varpi_l=\frac{\hat e_l/\mathcal S_r(\Sigma_l)}{\sum_j \hat e_j/\mathcal S_r(\Sigma_j)},
+  1\le\mathcal R(\Delta\Sigma)\le\frac{1}{\varpi_p}, \qquad
+  \varpi_p=\frac{\hat e_p/\mathcal S_r(\Sigma_p)}{\sum_j \hat e_j/\mathcal S_r(\Sigma_j)},
   \label{eq:h2-bound}
 \end{equation}
-where $l$ is the share with the smallest column $\Sigma_l$, and
-$\hat e_j=e_j\mathcal T_j$. $\varpi_l$ is the weight of that share in $\mathcal B_k$. In
+where $p$ is the share with the smallest column $\Sigma_p$, and
+$\hat e_j=e_j\mathcal T_j$. $\varpi_p$ is the weight of that share in $\mathcal B_k$. In
 gas with the fit $r$ on the whole path, $\mathcal T_j\propto\mathcal S_r(\Sigma_j)$,
-so $\varpi_l=\eta_l$ is the energy fraction of the least-shielded light. If the
-slot holds light that crossed no H$_2$, $\eta_l$ is the energy fraction of
+so $\varpi_p=\eta_p$ is the energy fraction of the least-shielded light. If the
+slot holds light that crossed no H$_2$, $\eta_p$ is the energy fraction of
 that light.
 
 The proof has four steps. Write $y=\mathcal S_r(\Sigma)$ and
@@ -2725,12 +2743,12 @@ column, as a function of the factor before it.
     equality at the merge, and a merge in the fit $r$ preserves it because it
     adds the sums. So the sign holds after any number of later hops and merges
     in gas with the fit $r$.
-  \item The merged column is at least $\Sigma_l$, by induction over the
+  \item The merged column is at least $\Sigma_p$, by induction over the
     merges. Take every quantity at the last merge. Then
     $\mathcal T_{\rm slot}=\mathcal T_kz_k\,\mathcal S_r(\Sigma_k+\Delta\Sigma)
-    \le\big(\sum_sc_sz_s\big)\,\mathcal S_r(\Sigma_l+\Delta\Sigma)$,
-    while $\mathcal T_{\rm ref}\ge c_lz_l\,\mathcal S_r(\Sigma_l+\Delta\Sigma)$. The ratio is at most
-    $\sum_sc_sz_s/(c_lz_l)=1/\varpi_l$.
+    \le\big(\sum_sc_sz_s\big)\,\mathcal S_r(\Sigma_p+\Delta\Sigma)$,
+    while $\mathcal T_{\rm ref}\ge c_pz_p\,\mathcal S_r(\Sigma_p+\Delta\Sigma)$. The ratio is at most
+    $\sum_sc_sz_s/(c_pz_p)=1/\varpi_p$.
 \end{enumerate}
 
 The bound is sharp. Let a share with the energy fraction $\eta_0$ have no
@@ -2762,16 +2780,17 @@ $\mathcal R$ & 1.12 & 1.96 & 1.87 & 1.25 \\
 \end{tabular}
 \end{table}
 
-\paragraph{Numerical accuracy: the tested coverage.} The scheme was evaluated
-against its reference of Eq.~\eqref{eq:h2-ref} on six families of random inputs.
-This is the tested coverage of the scheme; the numerical-accuracy paragraphs
+\paragraph{Numerical accuracy: the tested coverage.} The tested coverage of the
+scheme is six families of random inputs, each compared with the reference of
+Eq.~\eqref{eq:h2-ref}. The numerical-accuracy paragraphs
 below give its results. Each family has its own sets, so each range of
 $\mathcal R$ belongs to its family alone. The held transmission and column are
 rounded to 4-byte floats after every merge, and $\mathcal R$ is read after every
 hop. A violation of the sign is $\mathcal R<1-10^{-5}$.
 \begin{enumerate}[(1)]
   \item Single shares, with a new random gas at every hop: $\mathcal R$ lies
-    between $0.9999995$ and $1.0000000$.
+    between $0.9999995$ and $1.0000000$. This family covers the single share of
+    ``What holds without condition''.
   \item Sets of 2 to 5 shares for the sign and the bound. A share has no column
     with probability 0.3, and otherwise a column between $10^{10}$ and
     $10^{24}$\,cm$^{-2}$. Each stage has 1 to 5 hops of $10^{10}$ to
@@ -2801,10 +2820,10 @@ result.
 \begin{table}[htbp]
 \centering
 \caption{Smallest and largest $\mathcal R$ over 10000 random share sets per row,
-and the number of sets that break the sign. The bound $1/\varpi_l$ of
+and the number of sets that break the sign. The bound $1/\varpi_p$ of
 Eq.~\eqref{eq:h2-bound} differs from set to set, so it is not a column of the
 table. No set exceeds its own bound in the rows with one merge, where the bound
-was tested.}
+is tested.}
 \label{tab:h2-scan}
 \begin{tabular}{p{7.6cm}rrr}
 \toprule
@@ -2819,7 +2838,7 @@ any gas before the merge, one fit after, three merge stages & 0.9999998 & $4.0\t
 \end{table}
 
 The smallest values lie below 1 only by float rounding. The largest values
-are large because $1/\varpi_l$ is large when the least-shielded light carries a
+are large because $1/\varpi_p$ is large when the least-shielded light carries a
 small fraction of the energy.
 
 \paragraph{Float rounding in a merge.} The float rounding in one merge is
@@ -2827,7 +2846,7 @@ $\epsilon_{\rm m}=(2+2\varsigma)\,2^{-24}$, with
 $\varsigma=|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ the local slope of the
 fit. Two terms of $2^{-24}$ come from the 4-byte floats of $\mathcal T_k$ and
 of the energy sums. The float of $\Sigma_k$ adds $\varsigma\,2^{-24}$. The
-tolerance $5\times10^{-8}$ of the inverse adds its product with the slope,
+column error $5\times10^{-8}$ of the inverse adds its product with the slope,
 which is below $\varsigma\,2^{-24}$. The slope is not bounded by
 $\alpha$: it is about $0.5$ at $10^{18}$\,cm$^{-2}$ and about $20$ near
 $10^{24}$\,cm$^{-2}$. At $\varsigma=1.759$, the exponent of the fit at
@@ -2840,9 +2859,9 @@ new $\mathcal T$ is then rounded to a 4-byte float (relative error at most
 $2^{-24}$). No part of the column of a hop is lost at the hop. The column is
 stored only at a merge, as a 4-byte
 float (relative rounding at most $2^{-24}\approx6\times10^{-8}$) of the
-inverse of Eq.~\eqref{eq:h2-harmonic} (tolerance $5\times10^{-8}$). A merge
-can therefore leave the column off, in either direction, by up to about
-$1.1\times10^{-7}$ of itself, and an increment of the column below that
+inverse of Eq.~\eqref{eq:h2-harmonic} (column error at most $5\times10^{-8}$).
+A merge can therefore leave the column off, in either direction, by up to
+$2^{-24}+5\times10^{-8}\approx1.1\times10^{-7}$ of itself, and an increment of the column below that
 fraction can be lost there. Its effect on the transmission of later hops is
 the term $2\varsigma\,2^{-24}$ of $\epsilon_{\rm m}$. With the slope $0.5$ and
 $1000$ merges this term changes $\mathcal T$ by up to $6\times10^{-5}$ of
@@ -2881,9 +2900,9 @@ coverage.
     by band of the share-by-share transmission $\mathcal T_{\rm ref}$, on the
     sets of family (4). One waiting share stays exact. For mixed waiting light
     the sign holds where
-    $\mathcal T_{\rm ref}$ is above about $10^{-2}$, and the bound is exceeded
-    there by a factor up to $2.2$, the largest value of $\mathcal R\,\varpi_l$
-    found; no bound on this excess is derived. All the sets that break the
+    $\mathcal T_{\rm ref}$ is above about $10^{-2}$. The bound is exceeded
+    there by a factor up to $2.2$, the largest value of $\mathcal R\,\varpi_p$
+    on the tested coverage; no bound on this excess is derived. All the sets that break the
     sign with $\mathcal T_{\rm ref}$ above $10^{-6}$ therefore lie between
     $10^{-6}$ and $10^{-2}$. The sign is not guaranteed for mixed waiting
     light.
@@ -3396,13 +3415,15 @@ that supplies $X_{{\rm H}_2}$, $T$ and $\mu$ is then geajay. A Grackle build
 compiles the line absorption but refuses the switch at start-up
 (\code{src/cooling/grackle/cooling\_io.h:306-309}), because Grackle shields the
 transported LW rate with its own factor. The switch also stops a build whose
-\code{struct part} is 4096 bytes (:847-854): that particle stride costs about
-7 per cent of the run time with the switch on.
+\code{struct part} is 4096 bytes (:847-854). In a one-thread timing of a short
+packet run, a particle of exactly 4096 bytes took about 7 per cent more CPU
+time than the particle without the H$_2$ fields. That timing had no line
+absorption, so the cost with the switch on is not measured.
 
 The fit and the hop are in \code{src/feedback/GEAR/radiation\_h2\_shielding.h}.
 The constants of the fit are at :38-64: the clamps of $T$ and $n$, $\Sigma_0$,
 $\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the factor 3 of $\Delta v_{\max}$, in
-Doppler parameters, and the tolerance $10^{-7}$ of the inverse.
+Doppler parameters, and the tolerance $10^{-7}$ of the inverse in $\ln\Sigma$.
 Eq.~\eqref{eq:h2-exponent} is \code{radiation\_h2\_shielding\_exponent}
 (:78-92). Its density factor is the natural exponential (:90), and $T$ is
 clamped to $100$ to $8000$\,K and $n$ to at most $10^7$\,cm$^{-3}$, as in
