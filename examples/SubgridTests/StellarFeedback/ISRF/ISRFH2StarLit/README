@@ -50,7 +50,8 @@ about 2e18 cm^-2 over the box.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
-`makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`).
+`makeIC.py`), the first and last snapshot, the SWIFT log (`--startup-log output.log`) and
+`timesteps.txt` (`--timesteps`).
 SWIFT does not write the LW shielding option to `used_parameters.yml`; the check reads it
 from the start-up line `h2_transported_lw_rate_shielding = 1` that SWIFT prints, and calls
 the run void if the line is absent or reads 0. `run.sh` passes the log.
@@ -60,7 +61,7 @@ bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a vo
 premise or a positive control is not met). A void run never passes. `parity` alone also
 returns 5 for a pass without a counters file (see below).
 
-`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log`
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log --timesteps timesteps.txt`
 
 The reference is `snapshot_0001`, the first snapshot written after the first step and
 before any probe is lit; `snapshot_0000` holds the initial species fractions, which the
@@ -75,10 +76,64 @@ first step changes in every particle.
   particle at the last snapshot lies outside the reference range by more than 1e-3. Taking
   the range over both snapshots makes the bar wider than the range of the last snapshot
   alone (about 0.2 per cent in the median on the default run); the check prints the
-  widening. The kernel mean `LWLineTransmissions` is printed, not gated: on the default
-  run it reads 2 to 8 per cent above `f` at every radius (median `ln(ratio / f)` from
-  0.019 to 0.077 over the bins of `r / h`). The cooling reads this kernel mean, not the
-  own ratio, and no check here covers it.
+  widening.
+- Kernel mean. The cooling reads the kernel mean of the own fields, not the own ratio.
+  The snapshot field `LWLineTransmissions` is the mean of the neighbours' own ratios
+  weighted by `m_j W(r_ij / h_i) E_j`, with `E_j` the own LW energy of neighbour `j` and
+  the self term included. Neighbours nearer the star are brighter and more transparent,
+  so the mean exceeds `f` at the particle by a few per cent. That is a property of the
+  averaging, so the check compares the field with the kernel mean of the prediction, not
+  with `f`. All tiers take `E_j` and the own dissociating energy from the snapshot, so
+  `E_j` itself is not tested here.
+  - Tier 1, identity: `|ln(T / T_offline)|` at most `(n_ngb + 2) 2^-24` plus the
+    kernel-edge term (see tier 3) for every particle
+    (`n_ngb` the neighbours in its kernel), with `T_offline` the weighted mean above
+    computed from the own fields of the snapshot (dissociating mean clamped to the LW
+    mean). The float LW sum of the code flushes a product `m_j W E_j` below the smallest
+    normal float to zero, depending on the order of the sum; the dissociating sum, in
+    double, does not. So the offline `T` is a window: its lower end keeps every product,
+    its upper end drops the products below the smallest normal float, and the bar is
+    measured from the window. The check prints how many particles can lose more than the
+    float term to this. A particle whose products are all below the smallest normal float
+    must hold no LW and no dissociating energy. A particle with no lit neighbour must hold
+    no LW energy. This tier catches a missing self term, a kernel in `h_j` in place of
+    `h_i`, and any change of `T` of 0.5 per cent or more. The weight sum of the mean (its
+    normalisation) cancels in `T`: tier 3 tests it.
+  - Tier 2, physics: `|ln(T / K)|` at most the largest own bar over the lit
+    neighbours plus the float term of tier 1, with `K` the same weighted mean of
+    `f(n_H2 r)` of each neighbour. `T / K` is a convex combination of the ratios
+    `t_j / f_j`, so the bound holds for a correct mean. This tier catches the prediction
+    or the own ratio used in place of the mean. A change of 0.5 per cent and the `h_j`
+    kernel are below its resolution: tier 1 catches them.
+    Tier 2 skips the particles that can lose more than the float term to the flush.
+  - Tier 3, means: `E_mean` (`LWSpecificEnergies`) and `D_mean`
+    (`LWDissociatingSpecificEnergies`), which the cooling reads, against the offline
+    `sum w E / sum w` and `min(sum w D, sum w E) / sum w`, with the self term, so the weight
+    sum is tested. The bar is the float sums, `(2 n_ngb + 4) 2^-24` for `E_mean` and that
+    plus `(n_ngb + 3) 2^-24` for `D_mean`, plus the kernel-edge term
+    `sum_j |b_j - a_j| rel_j`. Here `b_j` is the share of neighbour `j` in the numerator,
+    `a_j` its share of the weight sum and `rel_j` the relative float error of its weight:
+    the Horner rounding of the kernel polynomial, the rounding of `t = u - origin` and the
+    rounding of `u = r / h`: the force loops cast `x - loc` to float for each particle, with
+    `loc` the corner of the cell, so the position error scales with the cell width `C`, not
+    with `r`. Per component of `dx` it is at most `3 C 2^-24` (a pair of adjacent cells),
+    `3 sqrt(3) C 2^-24` for the vector, and the rest of the arithmetic adds 6 times
+    `2^-24` in `u`. The width `C` is the top-level cell size of the snapshot
+    (`Cells/Meta-data/size`), an upper bound for every cell of the tree. Near the edge of the support `W` falls
+    as `(gamma - u)^4`, so `rel_j` is large there and one lit neighbour can set the mean.
+    A change of 0.5 per cent or more of `E_mean` or `D_mean`, of the weight sum, of the
+    weights or of the fields, fails wherever the bar is below that; the check prints how
+    many particles have such a bar, and the run is void if there are none. A neighbour that
+    the code counts or drops within a few 2^-24 of the support edge has a weight below
+    1e-26 of `W(0)` and is not accounted for. The LW and dissociating sums are held to the
+    same flush window as `T`.
+  - Premises, read from the run: the snapshot kernel must be `Wendland C2`, the kernel whose
+    polynomial the check holds. The step that ends at the snapshot must have updated every
+    gas particle (`--timesteps timesteps.txt`), and the positions must have moved by less
+    than one float rounding of `h` in it. Otherwise the run is void.
+  - Not covered: the own LW energy `E_j`, and a gather that weights a neighbour by the mass
+    of the updated particle in place of its own. All gas particles of this fixture have the
+    same mass, so that defect gives the same means.
 - The light moves one hop per step, so the lit probes fill a ball. With n the number of
   steps (the ratio of the snapshot times, which must be an integer of at least 2, and which
   counts one hop per step only if all gas sits on one time bin, as in the default run;
