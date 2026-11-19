@@ -235,8 +235,6 @@ def main():
                 label=r"$\langle\Gamma_{\rm SPH}\rangle$")
     ax_a.set_xlabel("Scale factor $a$")
     ax_a.set_ylabel("Scattering rate [internal units]")
-    ax_a.set_title(rf"(1) $\langle\Gamma_{{\rm SPH}}\rangle \propto a^{{{slope:.4f}}}$",
-                   fontsize=10, color=INK)
 
     ax_r.axhspan(bias - bias_err, bias + bias_err, color=MUTED, alpha=0.2, lw=0)
     ax_r.axhline(bias, color=MUTED, ls=":", lw=1.2, label="Expected density bias")
@@ -247,7 +245,6 @@ def main():
     ax_r.set_ylim(0.95, 1.12)
     ax_r.set_xlabel("Scale factor $a$")
     ax_r.set_ylabel(r"$\Gamma_{\rm SPH} / \Gamma$")
-    ax_r.set_title("(1) Rate relative to analytic, at each $a$", fontsize=10, color=INK)
 
     bins = np.linspace(0.2, 3.0, 141)
     for x, c, name in ((s["ratio_rho"], C_SPH, r"$\rho_{\rm SPH}$ (code output)"),
@@ -256,14 +253,12 @@ def main():
                     label=f"{name}, mean {x.mean():.3f}")
         ax_rho.axvline(x.mean(), color=c, ls="--", lw=1.2)
     ax_rho.set_xlabel(r"$\rho / \bar\rho$")
-    ax_rho.set_title(f"(2) Kernel density, a = {s['a']:g}", fontsize=10, color=INK)
 
     ax_hist.hist(s["ratio_rate"], bins=bins, density=True, histtype="step",
                  color=C_RATE, lw=1.6,
                  label=rf"$\Gamma_{{\rm SPH}}$, mean {rate_m:.3f}")
     ax_hist.axvline(rate_m, color=C_RATE, ls="--", lw=1.2)
     ax_hist.set_xlabel(r"$\Gamma_{\rm SPH} / \Gamma$")
-    ax_hist.set_title(f"(2) Scattering rate, a = {s['a']:g}", fontsize=10, color=INK)
 
     for ax in (ax_rho, ax_hist):
         ax.axvline(1.0, color=INK, lw=0.8)
@@ -282,8 +277,6 @@ def main():
         ax.xaxis.label.set_color(INK)
         ax.yaxis.label.set_color(INK)
 
-    fig.suptitle(rf"Uniform box, $N = {n_part}$, $\eta = {eta:g}$ "
-                 rf"($N_{{\rm ngb}} \approx {n_neighbours(eta):.0f}$)", color=INK)
     fig.tight_layout()
     fig.savefig(args.output, dpi=200)
     print(f"Saved {args.output}")
