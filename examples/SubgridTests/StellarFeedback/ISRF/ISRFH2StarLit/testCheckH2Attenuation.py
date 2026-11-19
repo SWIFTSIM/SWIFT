@@ -169,8 +169,13 @@ def write_snap(
     column=None,
     mean=None,
     velocities=None,
+    kernel="Wendland C2",
+    cell_width=None,
 ):
-    """Write a synthetic snapshot; fields in drop are left out."""
+    """Write a synthetic snapshot; fields in drop are left out.
+
+    kernel None leaves out the kernel name; the cell width defaults to a third of the box.
+    """
     n = len(pos)
     ids = np.arange(n) if ids is None else ids
     species = {k: np.full(n, 1e-20) for k in gate.SPECIES_MASS_NUMBER}
@@ -215,6 +220,11 @@ def write_snap(
         hdr = f.create_group("Header")
         hdr.attrs["BoxSize"] = [box, box, box]
         hdr.attrs["Time"] = [time]
+        if kernel is not None:
+            f.create_group("HydroScheme").attrs["Kernel function"] = np.bytes_(kernel)
+        cells = f.create_group("Cells/Meta-data")
+        width = box / 3.0 if cell_width is None else cell_width
+        cells.attrs["size"] = [width, width, width]
         u = f.create_group("Units")
         u.attrs["Unit length in cgs (U_L)"] = 3.0856775814913673e21
         u.attrs["Unit mass in cgs (U_M)"] = 1.988409870698051e43
@@ -719,6 +729,18 @@ def starlit_cases(work):
     def light_in_gone(e, d, t, exempt, gone):
         return np.where(gone, 1.0, e), d, t
 
+    def raise_partial(e, d, t, exempt, gone):
+        hit = exempt & ~gone
+        ROWS.append(
+            (
+                "(planted particles)",
+                0,
+                0 if hit.any() else 1,
+                f"{int(hit.sum())} partial",
+            )
+        )
+        return e, d, np.where(hit, 1.2 * t, t)
+
     tier(
         "K9 own-field terms below FLT_MIN flushed to zero (exempt)",
         snap_with("k9.hdf5", own_ratio, lw=faint, mean_fn=flush()),
@@ -732,9 +754,32 @@ def starlit_cases(work):
         "FAIL",
     )
     tier(
+        "K9e exempt particles with T x1.2 (upward error under a flush)",
+        snap_with("k9e.hdf5", own_ratio, lw=faint, mean_fn=flush(raise_partial)),
+        "FAIL",
+    )
+    tier(
         "K9d LW energy where every term is below FLT_MIN",
         snap_with("k9d.hdf5", own_ratio, lw=faint, mean_fn=flush(light_in_gone)),
         "FAIL",
+    )
+    record(
+        "K17 snapshot kernel is a cubic spline (void)",
+        4,
+        args(snap_with("k17.hdf5", own_ratio, lw=steep, kernel="Cubic spline")),
+        "kernel",
+    )
+    record(
+        "K18 snapshot lacks the kernel name",
+        2,
+        args(snap_with("k18.hdf5", own_ratio, lw=steep, kernel=None)),
+        "kernel",
+    )
+    record(
+        "K19 cell width 1e9 times the box: no tier-3 bar below 0.5 per cent (void)",
+        4,
+        args(snap_with("k19.hdf5", own_ratio, lw=steep, cell_width=1e9 * box)),
+        "tier-3 bar",
     )
     far = np.where(r > r_full3 + 2.0 * gate.KERNEL_GAMMA * h_cm.max())[0][0]
 

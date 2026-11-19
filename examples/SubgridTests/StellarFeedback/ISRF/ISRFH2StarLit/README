@@ -88,23 +88,23 @@ first step changes in every particle.
     kernel-edge term (see tier 3) for every particle
     (`n_ngb` the neighbours in its kernel), with `T_offline` the weighted mean above
     computed from the own fields of the snapshot (dissociating mean clamped to the LW
-    mean). A particle whose own-field terms `m_j W E_j` below the smallest normal float
-    make up more than that bar of its sum is exempt, because the float accumulator can
-    flush them; the check prints how many, how many lie in the probes and their `r / h`.
-    On an exempt particle the LW mean must be zero if and only if no term is at or above
-    the smallest normal float, and `T` must not fall below `T_offline (1 - bar)`, because a
-    flush removes terms only from the float LW sum. An upward error on an exempt particle
-    is not caught. A particle with no lit neighbour must hold no LW energy. This tier
-    catches a missing self term, a kernel in `h_j` in place of `h_i`, and any change of
-    `T` of 0.5 per cent or more. The weight sum of the mean (its normalisation) cancels in
-    `T`: tier 3 tests it.
+    mean). The float LW sum of the code flushes a product `m_j W E_j` below the smallest
+    normal float to zero, depending on the order of the sum; the dissociating sum, in
+    double, does not. So the offline `T` is a window: its lower end keeps every product,
+    its upper end drops the products below the smallest normal float, and the bar is
+    measured from the window. The check prints how many particles can lose more than the
+    float term to this. A particle whose products are all below the smallest normal float
+    must hold no LW and no dissociating energy. A particle with no lit neighbour must hold
+    no LW energy. This tier catches a missing self term, a kernel in `h_j` in place of
+    `h_i`, and any change of `T` of 0.5 per cent or more. The weight sum of the mean (its
+    normalisation) cancels in `T`: tier 3 tests it.
   - Tier 2, physics: `|ln(T / K)|` at most the largest own bar over the lit
     neighbours plus the float term of tier 1, with `K` the same weighted mean of
     `f(n_H2 r)` of each neighbour. `T / K` is a convex combination of the ratios
     `t_j / f_j`, so the bound holds for a correct mean. This tier catches the prediction
     or the own ratio used in place of the mean. A change of 0.5 per cent and the `h_j`
     kernel are below its resolution: tier 1 catches them.
-    Tier 2 skips the exempt particles.
+    Tier 2 skips the particles that can lose more than the float term to the flush.
   - Tier 3, means: `E_mean` (`LWSpecificEnergies`) and `D_mean`
     (`LWDissociatingSpecificEnergies`), which the cooling reads, against the offline
     `sum w E / sum w` and `min(sum w D, sum w E) / sum w`, with the self term, so the weight
@@ -113,16 +113,26 @@ first step changes in every particle.
     `sum_j |b_j - a_j| rel_j`. Here `b_j` is the share of neighbour `j` in the numerator,
     `a_j` its share of the weight sum and `rel_j` the relative float error of its weight:
     the Horner rounding of the kernel polynomial, the rounding of `t = u - origin` and the
-    rounding of `u = r / h` (6 times 2^-24 in `u`). Near the edge of the support `W` falls
+    rounding of `u = r / h`: the force loops cast `x - loc` to float for each particle, with
+    `loc` the corner of the cell, so the position error scales with the cell width `C`, not
+    with `r`. Per component of `dx` it is at most `3 C 2^-24` (a pair of adjacent cells),
+    `3 sqrt(3) C 2^-24` for the vector, and the rest of the arithmetic adds 6 times
+    `2^-24` in `u`. The width `C` is the top-level cell size of the snapshot
+    (`Cells/Meta-data/size`), an upper bound for every cell of the tree. Near the edge of the support `W` falls
     as `(gamma - u)^4`, so `rel_j` is large there and one lit neighbour can set the mean.
     A change of 0.5 per cent or more of `E_mean` or `D_mean`, of the weight sum, of the
     weights or of the fields, fails wherever the bar is below that; the check prints how
-    many particles have such a bar. A neighbour that the code counts or drops within a few
-    2^-24 of the support edge has a weight below 1e-26 of `W(0)` and is not accounted for.
-    Tier 3 skips the exempt particles.
-  - Premises, read from the run: the step that ends at the snapshot must have updated
-    every gas particle (`--timesteps timesteps.txt`), and the positions must have moved by
-    less than one float rounding of `h` in it. Otherwise the run is void.
+    many particles have such a bar, and the run is void if there are none. A neighbour that
+    the code counts or drops within a few 2^-24 of the support edge has a weight below
+    1e-26 of `W(0)` and is not accounted for. The LW and dissociating sums are held to the
+    same flush window as `T`.
+  - Premises, read from the run: the snapshot kernel must be `Wendland C2`, the kernel whose
+    polynomial the check holds. The step that ends at the snapshot must have updated every
+    gas particle (`--timesteps timesteps.txt`), and the positions must have moved by less
+    than one float rounding of `h` in it. Otherwise the run is void.
+  - Not covered: the own LW energy `E_j`, and a gather that weights a neighbour by the mass
+    of the updated particle in place of its own. All gas particles of this fixture have the
+    same mass, so that defect gives the same means.
 - The light moves one hop per step, so the lit probes fill a ball. With n the number of
   steps (the ratio of the snapshot times, which must be an integer of at least 2, and which
   counts one hop per step only if all gas sits on one time bin, as in the default run;
