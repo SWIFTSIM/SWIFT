@@ -14,6 +14,9 @@ fixed and the exit classes.
 ./run.sh                       # cloud at 10 widths: expect the reset
 widths=1 run_name=control ./run.sh   # cloud at 1 width: expect no reset
 ```
+The run lasts 16 steps of `dt_max` (`TimeIntegration:time_end`, keep it a power of two times
+`dt_max`). The light then crosses the cloud face by several hops and the check reads the
+last snapshot.
 `makeIC.py --widths` sets the radial speed of the cloud in units of `b`. The check picks
 the expected case from the speed written in `fixture.json`: more than 3 widths gives the
 reset.
