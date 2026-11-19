@@ -202,6 +202,11 @@ def load_snapshot(path: str, fields: Tuple[str, ...]) -> Dict[str, np.ndarray]:
             raise GateExit(EXIT_MISSING, f"{path} lacks the fields {missing}")
         out = {k: np.asarray(f["PartType0"][k][:], dtype=np.float64) for k in fields}
         out["box"] = np.asarray(f["Header"].attrs["BoxSize"], float)[0]
+        out["time"] = (
+            float(np.asarray(f["Header"].attrs["Time"]).ravel()[0])
+            if "Time" in f["Header"].attrs
+            else float("nan")
+        )
         out["unit_length"] = float(
             np.asarray(f["Units"].attrs["Unit length in cgs (U_L)"]).ravel()[0]
         )
@@ -459,6 +464,28 @@ def hop_length(counters: dict, h_cm: np.ndarray, rep: Report) -> np.ndarray:
     return h_cm
 
 
+def light_hops(first: dict, last: dict) -> int:
+    """Return the number of light hops between the two snapshots, Time_last / Time_first.
+
+    The first snapshot is written after step 1, so the time ratio is the step count of the
+    last snapshot when the step is constant (dt_max below the step the particles ask for).
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID when the ratio is not within 1e-3 of an integer of at least 2.
+    """
+    ratio = last["time"] / first["time"]
+    require_finite("snapshot times", time_ratio=np.array([ratio]))
+    n = round(ratio)
+    if n < 2 or abs(ratio - n) > 1e-3 * n:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, time ratio of the snapshots {ratio:.6g} is not a step count of at least 2",
+        )
+    return int(n)
+
+
 def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
     """Return the own LW field of each particle and its line transmission.
 
@@ -605,33 +632,57 @@ def gate_starlit(args: argparse.Namespace) -> int:
             f"over {int(lit_mean.sum())} probes (biased up near the light front)",
         )
 
-    # Count gate, on the own transmission.
-    t_line = np.where(own > 0.0, meas, 1.0)
-    in_dom = mask
-    c = int(np.sum(in_dom & (t_line < 0.99)))
-    med_t, med_n = float(np.median(temp[mask])), float(np.median(dens[mask]))
-    n_h2_med = float(np.median(n_h2[mask]))
+    # Lit set: the light moves one hop per step, so the lit probes fill a ball.
+    n_hops = light_hops(first, last)
+    h_dom = h[mask]
+    r_full = (n_hops - 1) * float(h_dom.min())
+    r_reach = n_hops * KERNEL_GAMMA * float(h_dom.max())
+    inside = mask & (r < r_full)
+    n_full = int(inside.sum())
+    n_reach = int(np.sum(mask & (r <= r_reach)))
+    lit_dom = mask & (own > 0.0)
+    n_lit = int(lit_dom.sum())
+    rep.info(
+        "light front",
+        f"{n_hops} hops: every probe at r < (hops - 1) h_min = {r_full:.4g} cm ({n_full} probes) "
+        f"is lit; none beyond hops gamma h_max = {r_reach:.4g} cm ({n_reach} probes)",
+    )
+    rep.check(
+        "lit count within the light front",
+        n_full <= n_lit <= n_reach,
+        f"{n_lit} lit probes; bounds [{n_full}, {n_reach}]",
+    )
+    unlit_in = inside & ~lit_dom
+    rep.check(
+        "lit set complete inside the light front",
+        not unlit_in.any(),
+        f"{int(unlit_in.sum())} of {n_full} probes at r < {r_full:.4g} cm are unlit",
+    )
+
+    # Count gate and minimum, on the lit probes only: an unlit probe carries no transmission.
+    c = int(np.sum(lit & (meas < 0.99)))
+    med_t, med_n = float(np.median(temp[lit])), float(np.median(dens[lit]))
+    n_h2_med = float(np.median(n_h2[lit]))
     r099 = column_for_transmission(0.99, med_t, med_n) / n_h2_med
-    lh = float(np.median(l_hop[mask]))
-    lo_count = int(np.sum(in_dom & (r >= r099 + lh)))
-    hi_count = int(np.sum(in_dom & (r >= r099 - lh)))
-    if c == 0:
+    lh = float(np.median(l_hop[lit]))
+    lo_count = int(np.sum(lit & (r >= r099 + lh)))
+    hi_count = int(np.sum(lit & (r >= r099 - lh)))
+    if lo_count == 0:
         raise GateExit(
             EXIT_VOID,
-            "void run, no particle has a transmission below 0.99 (positive-control count 0)",
+            "void run, no lit particle is expected to have a transmission below 0.99 (positive-control count 0)",
         )
     rep.check(
-        "count of transmission below 0.99",
+        "count of lit transmission below 0.99",
         lo_count <= c <= hi_count,
-        f"{c} particles; shell bounds [{lo_count}, {hi_count}] around r_0.99 = {r099:.3g} cm",
+        f"{c} lit particles; shell bounds [{lo_count}, {hi_count}] around r_0.99 = {r099:.3g} cm",
     )
-    deepest = np.argmax(np.where(mask, r, -1.0))
+    deepest = np.argmax(np.where(lit, r, -1.0))
     f_deepest = float(exp[deepest])
     rep.check(
-        "minimum transmission at or below the deepest probe",
-        float(t_line[in_dom].min())
-        <= f_deepest * math.exp(min(float(bar[deepest]), 50.0)),
-        f"min {float(t_line[in_dom].min()):.4g}, f_sh of the deepest probe {f_deepest:.4g} times exp(its bar)",
+        "minimum lit transmission at or below the deepest lit probe",
+        float(meas[lit].min()) <= f_deepest * math.exp(min(float(bar[deepest]), 50.0)),
+        f"min {float(meas[lit].min()):.4g}, f_sh of the deepest lit probe {f_deepest:.4g} times exp(its bar)",
     )
 
     # N2 detection range, with the slope of the bar.

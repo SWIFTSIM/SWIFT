@@ -69,10 +69,16 @@ first step changes in every particle.
   alone (about 0.2 per cent in the median on the default run); the check prints the
   widening. The kernel mean `LWLineTransmissions` is printed, not gated: near the
   light front it is biased up.
-- The number of particles with a transmission below 0.99 must be above 0 and must lie
-  between the numbers of particles beyond `r_0.99 + l_hop` and beyond `r_0.99 - l_hop`,
-  with `l_hop` the mean path of the booked shares if the counters file (`--counters`, key
-  `mean_hop_path_cm`) gives it, the smoothing length otherwise.
+- The light moves one hop per step, so the lit probes fill a ball. With n the number of
+  steps (the ratio of the snapshot times, which must be an integer of at least 2), every
+  probe at `r < (n - 1) h_min` must be lit, and no probe may be lit beyond `n gamma h_max`
+  (`gamma` the kernel support in units of h). The check fails on a lit count outside these
+  bounds and on any unlit probe inside the first radius.
+- The count and the minimum of the transmission read the lit probes only; an unlit probe
+  carries no transmission. The number of lit particles with a transmission below 0.99 must
+  be above 0 and must lie between the numbers of lit particles beyond `r_0.99 + l_hop` and
+  beyond `r_0.99 - l_hop`, with `l_hop` the mean path of the booked shares if the counters
+  file (`--counters`, key `mean_hop_path_cm`) gives it, the smoothing length otherwise.
 - The check prints how many particles can detect a doubled H2 column. If that is 0, the
   run is void.
 

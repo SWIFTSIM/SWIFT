@@ -74,7 +74,9 @@ def make_ic(work, name, level=4):
     return d, pos, rho, h, box
 
 
-def write_snap(path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=()):
+def write_snap(
+    path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=(), time=8.0
+):
     """Write a synthetic snapshot; fields in drop are left out."""
     n = len(pos)
     ids = np.arange(n) if ids is None else ids
@@ -108,7 +110,9 @@ def write_snap(path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=())
         "LWOwnDissociatingSpecificEnergies": lw * ratio,
     }
     with h5py.File(path, "w") as f:
-        f.create_group("Header").attrs["BoxSize"] = [box, box, box]
+        hdr = f.create_group("Header")
+        hdr.attrs["BoxSize"] = [box, box, box]
+        hdr.attrs["Time"] = [time]
         u = f.create_group("Units")
         u.attrs["Unit length in cgs (U_L)"] = 3.0856775814913673e21
         u.attrs["Unit mass in cgs (U_M)"] = 1.988409870698051e43
@@ -165,7 +169,7 @@ def starlit_cases(work):
         open(counters, "w"),
     )
     first = os.path.join(d, "s0.hdf5")
-    write_snap(first, pos, rho, h, box, temp, x_h2, lw, good)
+    write_snap(first, pos, rho, h, box, temp, x_h2, lw, good, time=1.0)
 
     def snap_with(name, ratio, **kw):
         p = os.path.join(d, name)
@@ -226,10 +230,53 @@ def starlit_cases(work):
     bad[5] = np.nan
     record("NaN in the ratio", 3, args(snap_with("nan.hdf5", bad)), "non-finite")
     record(
-        "void run: no line absorption (count 0)",
-        4,
+        "L3 t = 1 everywhere on lit probes (no line absorption)",
+        1,
         args(snap_with("void.hdf5", np.ones(len(pos)))),
-        "void",
+        "FAIL  count of lit",
+    )
+    # Light front: every probe at r < (hops - 1) h_min is lit; the snapshots are 8 hops apart.
+    in_dom = np.where(mask)[0]
+    r_full = 7.0 * float(h_cm[mask].min())
+    inside = in_dom[r[in_dom] < r_full]
+    r_full3 = 2.0 * float(h_cm[mask].min())
+    reach2 = 2.0 * gate.KERNEL_GAMMA * float(h_cm[mask].max())
+    ROWS.append(
+        (
+            "L0 the domain holds probes beyond r_full (3 hops) and beyond the reach (2 hops)",
+            0,
+            0 if (r[in_dom] >= r_full3).any() and (r[in_dom] > reach2).any() else 1,
+            f"r_full {r_full3:.3g}, reach {reach2:.3g}, max r {r[in_dom].max():.3g} cm",
+        )
+    )
+    few = np.where(r < 0.5 * r_full, lw, 0.0)
+    record(
+        "L1 lit count too small (only r < r_full / 2 lit)",
+        1,
+        args(snap_with("few.hdf5", good, lw=few)),
+        "FAIL  lit count",
+    )
+    hole = lw.copy()
+    hole[inside[len(inside) // 2]] = 0.0
+    record(
+        "L2 one probe inside the front unlit",
+        1,
+        args(snap_with("hole.hdf5", good, lw=hole)),
+        "FAIL  lit set complete",
+    )
+    record(
+        "L4 3 hops, probes beyond the front unlit: not read as t = 1",
+        0,
+        args(
+            snap_with("beyond.hdf5", good, lw=np.where(r < r_full3, lw, 0.0), time=3.0)
+        ),
+        "PASS  lit set complete",
+    )
+    record(
+        "L5 2 hops, a probe lit beyond the reach",
+        1,
+        args(snap_with("reach.hdf5", good, time=2.0)),
+        "FAIL  lit count",
     )
     record(
         "void run: no LW light",
@@ -251,7 +298,7 @@ def starlit_cases(work):
     n_wide = rho_cgs * x_wide / (2.0 * gate.M_H)
     good_wide = gate.transmission(n_wide * r, temp, dens)
     first_wide = os.path.join(d, "s0_wide.hdf5")
-    write_snap(first_wide, pos, rho, h, box, temp, x_wide, lw, good_wide)
+    write_snap(first_wide, pos, rho, h, box, temp, x_wide, lw, good_wide, time=1.0)
     record(
         "N2 not detectable (n_H2 spread of 100, bar far larger)",
         4,
@@ -278,7 +325,7 @@ def starlit_cases(work):
     edge = pos.copy()
     edge[1948 % len(pos), 0] = 0.0
     face = os.path.join(d, "face0.hdf5")
-    write_snap(face, edge, rho, h, box, temp, x_h2, lw, good)
+    write_snap(face, edge, rho, h, box, temp, x_h2, lw, good, time=1.0)
     record(
         "E1 a gas particle exactly on a box face",
         4,
