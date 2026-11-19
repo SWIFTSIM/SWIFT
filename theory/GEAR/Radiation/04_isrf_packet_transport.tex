@@ -1349,13 +1349,17 @@ probability that an excitation dissociates.
 \paragraph{The energy that the lines remove.} For a spectrum flat in
 $\lambda u_\lambda$, the lines of a column remove the fraction
 $W_{\rm tot}/\ln(1110/912)$ of the band energy, with $W_{\rm tot}$ the summed
-equivalent width of all lines; $\ln(1110/912)\approx0.2$ is the largest value
+equivalent width of the lines; $\ln(1110/912)\approx0.2$ is the largest value
 that $W_{\rm tot}$ can reach. While the lines are narrow this fraction is small,
-although $\mathcal S$ is already far below 1. At
-$\Sigma=3\times10^{20}$\,cm$^{-2}$, $W_{\rm tot}=0.14$
-\citep{DraineBertoldi1996}, so the lines then remove most of the band. The
-scheme does not remove this energy from the light: it carries the effect of the
-lines on the dissociation rate only (Section~\ref{sec:packet-h2}).
+although $\mathcal S$ is already far below 1. In the models of
+\citet{DraineBertoldi1996}, the H$_2$ Lyman and Werner lines together with the
+H\,\textsc{i} Lyman series give $W_{\rm tot}=0.14$ at
+$\Sigma=3\times10^{20}$\,cm$^{-2}$, so these lines then remove most of the
+band. The excitations that do not dissociate, about 85 per cent, decay back to
+bound levels of X and re-emit their energy as line photons. The
+scheme does not remove the absorbed energy from the light and does not follow
+the re-emitted light: it carries the effect of the lines on the dissociation
+rate only (Section~\ref{sec:packet-h2}).
 
 \paragraph{The fit.} \citet{DraineBertoldi1996} give the form of
 Eq.~\eqref{eq:h2-factor} below with $\alpha=2$. They built it to follow the
@@ -1413,8 +1417,8 @@ order ten per cent between $10^{16}$ and $10^{17}$\,cm$^{-2}$.
 The source states no accuracy above $10^{17}$\,cm$^{-2}$, below $500$\,K or
 below $1$\,cm$^{-3}$, where it has no models, or above $8000$\,K, although its
 models extend to $10^5$\,K. The clamp of $T$ at $8000$\,K in
-Eq.~\eqref{eq:h2-exponent} is this edge of the stated accuracy, and the clamp
-of $n$ at $10^7$\,cm$^{-3}$ is the top of the grid. The clamp of $T$ at $100$\,K
+Eq.~\eqref{eq:h2-exponent} coincides with this edge of the stated accuracy,
+and the clamp of $n$ at $10^7$\,cm$^{-3}$ with the top of the grid. The clamp of $T$ at $100$\,K
 is a choice of the scheme; the source has no models below $500$\,K.
 
 \paragraph{What the fit leaves out.} The fit leaves out two effects that the
@@ -1464,7 +1468,7 @@ overestimates the transmission of the shifted light.
 one face at normal incidence, and such a slab is one ray: its column is the
 column along the ray. The source computes it at a weak field and finds no
 significant change with the field strength, except where pumping matters
-(the accuracy paragraph above). In that regime the dissociation rate that some
+(``What the fit leaves out'' above). In that regime the dissociation rate that some
 light gives is its rate without H$_2$ times $\mathcal S$ of its column. The
 rates of several pieces of light, from several directions and stars, add,
 because each rate is linear in its own light. Dust is a separate factor on the
@@ -1586,7 +1590,8 @@ the fraction of the dissociation rate that survives the column.
 Since $\mathcal S\le\mathcal S_0<1$, the outer
 $\min\{1,\cdot\}$ of Eq.~\eqref{eq:h2-factor} acts only on rounding. The
 factor is evaluated for $\Sigma$ up to a cap $\Sigma_{\rm cap}=10^{25}$\,cm$^{-2}$
-and is constant beyond: a further column then removes no more light. The pair
+and is constant beyond: a further column then lowers the dissociation rate no
+further. The pair
 $(\alpha,b_5)$ is the \emph{fit} of a gas particle.
 
 \paragraph{What a share carries.} A share of LW light carries three numbers.
@@ -1720,8 +1725,8 @@ In the first two cases the column acts on no rate. With $E_k=0$ the slot holds
 no light that could carry it. With $\mathcal A_k\le0$ the held light
 dissociates nothing, and the cap only records that it is dark. The fourth
 guard sets the cap for light whose factors are very small. At $\Sigma_{\rm cap}$
-the factor is constant, so a further hop removes no more light, while any
-true column below the cap would remove some. The two guards that set
+the factor is constant, so a further hop lowers the dissociation rate no
+further, while any true column below the cap would lower it. The two guards that set
 $\Sigma_{\rm cap}$ therefore err towards too little further absorption.
 
 \paragraph{Numerics of the merge.} The inverse is found by bisection of
@@ -2990,9 +2995,11 @@ run is not known: no statement of this section is a measurement in a cloud.
     changing gas, after a velocity shift or for a processed spectrum is not
     known.
   \item The lines remove LW energy, but the scheme does not: the LW field and
-    $G_0$ keep the energy that the lines absorb. From about
-    $3\times10^{20}$\,cm$^{-2}$, where the lines remove most of the band, the LW
-    energy that heats the gas through $G_0$ is therefore too large.
+    the LW part of $G_0$ keep the energy that the lines absorb, and the light
+    that they re-emit is not followed. From about
+    $3\times10^{20}$\,cm$^{-2}$, where the H$_2$ and H\,\textsc{i} lines
+    together remove most of the band in the models of
+    \citet{DraineBertoldi1996}, the LW part of $G_0$ is therefore too large.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
@@ -3397,8 +3404,9 @@ The constants of the fit are at :38-64: the clamps of $T$ and $n$, $\Sigma_0$,
 $\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the factor 3 of $\Delta v_{\max}$, in
 Doppler parameters, and the tolerance $10^{-7}$ of the inverse.
 Eq.~\eqref{eq:h2-exponent} is \code{radiation\_h2\_shielding\_exponent}
-(:78-92). Its density factor is the natural exponential (:90), as in Grackle
-(\code{solve\_rate\_cool\_g.F}) and geajay (\code{src/h2.h}). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
+(:78-92). Its density factor is the natural exponential (:90), and $T$ is
+clamped to $100$ to $8000$\,K and $n$ to at most $10^7$\,cm$^{-3}$, as in
+Grackle (\code{solve\_rate\_cool\_g.F}) and geajay (\code{src/h2.h}). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
 (:108-119, the cap on the column at :112-113). $\mathcal S_0$ is
 \code{radiation\_h2\_shielding\_factor\_at\_zero} (:128-130). The inverse is
 \code{radiation\_h2\_shielding\_inverse} (:147-163), with the two limits at
@@ -3408,7 +3416,9 @@ line width, or when both $\Sigma$ and $\Delta\Sigma$ are 0, it leaves the share
 as it is and returns $\mathcal S_0$ (:185-186). For $\Delta\Sigma\le0$ it
 returns $\mathcal S(\Sigma)$ (:187). Otherwise it clamps the ratio at 1
 (:194-195) and returns the factor of the new column, which $\mathcal B_k$
-divides by. The velocity step and the reset of Eq.~\eqref{eq:h2-shift} are
+divides by.
+
+The velocity step and the reset of Eq.~\eqref{eq:h2-shift} are
 \code{radiation\_h2\_shielding\_shift} (:230-241). The gas of a receiver gives
 $\Delta\Sigma$ per unit of path, $\alpha$, $b_5$ and $\Delta v_{\max}$ through
 \code{radiation\_h2\_shielding\_receiver\_cache} (:267-288). There $n_{{\rm H}_2}$
