@@ -209,16 +209,13 @@ struct feedback_props {
    * Read only when #ISRF_packet_light_speed is not unlimited. */
   float ISRF_packet_light_speed_fraction_of_c;
 
-  /*! Power `p` of the transmission cone `W max(0, mu)^p`. */
-  float ISRF_packet_cone_power;
-
   /*! Time constant of the running mean of the packet field, internal units. 0
    * is off. */
   float ISRF_packet_read_mean_time;
 
-  /*! Rotation matrix (row-major) from the box to the frame of the packet
-   * reception slots. */
-  float ISRF_packet_octant_frame[9];
+  /*! Octant frame, cone power and light speed switch of the packet
+   * transport. */
+  struct radiation_packet_constants ISRF_packet_constants;
 
   /*! Test beams, see #radiation_packet_inject_test_beams. */
   float ISRF_packet_test_beam[RADIATION_PACKET_TEST_BEAMS]
@@ -400,7 +397,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
           "ISRF transport                                             = packet "
           "hop (the only scheme)");
       message("ISRF packet transmission cone power                        = %g",
-              feedback_props->ISRF_packet_cone_power);
+              feedback_props->ISRF_packet_constants.cone_power);
       message("ISRF packet light speed limit                              = %s",
               feedback_props->ISRF_packet_light_speed ==
                       isrf_packet_light_speed_fixed
@@ -426,15 +423,15 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
       message(
           "ISRF packet octant frame rotation (row-major)              = "
           "%g %g %g, %g %g %g, %g %g %g",
-          feedback_props->ISRF_packet_octant_frame[0],
-          feedback_props->ISRF_packet_octant_frame[1],
-          feedback_props->ISRF_packet_octant_frame[2],
-          feedback_props->ISRF_packet_octant_frame[3],
-          feedback_props->ISRF_packet_octant_frame[4],
-          feedback_props->ISRF_packet_octant_frame[5],
-          feedback_props->ISRF_packet_octant_frame[6],
-          feedback_props->ISRF_packet_octant_frame[7],
-          feedback_props->ISRF_packet_octant_frame[8]);
+          feedback_props->ISRF_packet_constants.octant_frame[0],
+          feedback_props->ISRF_packet_constants.octant_frame[1],
+          feedback_props->ISRF_packet_constants.octant_frame[2],
+          feedback_props->ISRF_packet_constants.octant_frame[3],
+          feedback_props->ISRF_packet_constants.octant_frame[4],
+          feedback_props->ISRF_packet_constants.octant_frame[5],
+          feedback_props->ISRF_packet_constants.octant_frame[6],
+          feedback_props->ISRF_packet_constants.octant_frame[7],
+          feedback_props->ISRF_packet_constants.octant_frame[8]);
     }
   }
 }
@@ -544,6 +541,8 @@ INLINE static void feedback_props_read_packet_light_speed(
         "GEARFeedback:ISRF_packet_light_speed_fraction_of_c must be in "
         "(0, 1] (got %g).",
         fp->ISRF_packet_light_speed_fraction_of_c);
+  fp->ISRF_packet_constants.light_speed_limited =
+      fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited;
   if (fp->ISRF_packet_light_speed != isrf_packet_light_speed_unlimited &&
       !fp->ISRF_propagation)
     error(
@@ -872,7 +871,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
 
     feedback_props_read_packet_light_speed(params, fp);
 
-    fp->ISRF_packet_cone_power = parser_get_opt_param_float(
+    fp->ISRF_packet_constants.cone_power = parser_get_opt_param_float(
         params, "GEARFeedback:ISRF_packet_cone_power",
         default_ISRF_packet_cone_power);
     fp->ISRF_packet_read_mean_time = parser_get_opt_param_float(
@@ -905,7 +904,7 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
             "angles in degrees (got %g).",
             frame_angles_deg[k]);
     radiation_packet_build_octant_frame(frame_angles_deg, frame_seed_offset,
-                                        fp->ISRF_packet_octant_frame);
+                                        fp->ISRF_packet_constants.octant_frame);
 
     const int n_test_beams =
         radiation_packet_read_test_beams(params, fp->ISRF_packet_test_beam);
@@ -934,9 +933,9 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
           "GEARFeedback:ISRF_propagation: 1 needs the HEALPix C library for "
           "the emission cones of the stars. Configure with --with-chealpix.");
 #endif
-      if (!(fp->ISRF_packet_cone_power >= 1.f))
+      if (!(fp->ISRF_packet_constants.cone_power >= 1.f))
         error("GEARFeedback:ISRF_packet_cone_power must be >= 1 (got %g).",
-              fp->ISRF_packet_cone_power);
+              fp->ISRF_packet_constants.cone_power);
       /* Stars emit energy and photon number from one spectrum per band. */
       if (!fp->stellar_model.rad.has_mean_photon_energy_pe ||
           (fp->metallicity_max_first_stars != -1 &&
