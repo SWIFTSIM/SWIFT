@@ -13,7 +13,10 @@
 # spectral photon-rate datasets (SpectralPhotonRateAtPEEdge/LWEdge and
 # their Integrated_ counterparts), and each raw edge dataset must carry the
 # provenance attributes SWIFT checks (radiation_check_band_edge_provenance()
-# in src/feedback/GEAR/radiation_table_io.c).
+# in src/feedback/GEAR/radiation_table_io.c). It must also carry
+# MeanPhotonEnergyPE and Integrated_MeanPhotonEnergyPE, which SWIFT refuses
+# to start without when GEARFeedback:ISRF_propagation is 1
+# (src/feedback/GEAR_thermal/feedback_properties.h).
 # The tables served by the public hosts (see getChemistryTable.sh) predate
 # the radiation tables and carry neither, so this check stops the example
 # before it spends time on the glass file, the Cloudy tables and the
@@ -76,6 +79,7 @@ python3 - "$table" "$with_isrf" "$require_1d" <<'EOF'
 import sys
 
 import h5py
+import numpy as np
 
 table = sys.argv[1]
 with_isrf = sys.argv[2] == "1"
@@ -90,6 +94,8 @@ edge_fields = {
     "SpectralPhotonRateAtLWEdge": 11.2,
 }
 integrated_edge_fields = tuple("Integrated_" + d for d in edge_fields)
+# Read only if both are present; the ISRF packet transport needs them.
+mean_energy_pe_fields = ("MeanPhotonEnergyPE", "Integrated_MeanPhotonEnergyPE")
 
 # Attributes that identify the table itself. GEARFeedback:yields_table only
 # names a file, and the name says nothing about which Q_H the run used, so
@@ -119,6 +125,7 @@ def as_text(value):
 identity = None
 dimensionality = None
 edge_problems = []
+nonfinite = []
 
 # A file that is not HDF5 at all reaches here: getRadiationTable.sh copies
 # whatever GEAR_RADIATION_TABLE names, and takes an existing file in the
@@ -154,6 +161,7 @@ with handle as f:
             absent += [d for d in isrf_fields if d not in group]
             absent += [d for d in edge_fields if d not in group]
             absent += [d for d in integrated_edge_fields if d not in group]
+            absent += [d for d in mean_energy_pe_fields if d not in group]
             for name, expected_ev in edge_fields.items():
                 if name not in group:
                     continue
@@ -174,6 +182,18 @@ with handle as f:
                         "'%s' has lower_edge_energy %s eV, SWIFT expects %s eV"
                         % (name, edge_ev, expected_ev)
                     )
+        # A NaN or inf compares false against every bar downstream.
+        checked = list(required_fields)
+        if with_isrf:
+            checked += (
+                list(isrf_fields)
+                + list(edge_fields)
+                + list(integrated_edge_fields)
+                + list(mean_energy_pe_fields)
+            )
+        for name in checked:
+            if name in group and not np.all(np.isfinite(group[name][()])):
+                nonfinite.append(name)
         missing = None
         if absent:
             missing = "the dataset(s) " + ", ".join(
@@ -230,6 +250,16 @@ if edge_problems:
         "\n"
         "Regenerate the table with pychem's pychem_generate_hdf5_parameters.\n"
         "\n"
+    )
+
+if nonfinite:
+    failed = True
+    sys.stderr.write(
+        "\n"
+        "ERROR: '%s' has NaN or infinite values in the dataset(s) %s.\n"
+        "\n"
+        "Regenerate the table with pychem's pychem_generate_hdf5_parameters.\n"
+        "\n" % (table, ", ".join("'Data/Radiation/%s'" % d for d in nonfinite))
     )
 
 if dimensionality_fails:
