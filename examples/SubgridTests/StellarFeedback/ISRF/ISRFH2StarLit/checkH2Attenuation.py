@@ -46,6 +46,7 @@ FROZEN_H2_REL = 1e-3
 TEMPERATURE_REL = 0.05
 THIN_COLUMN_CM2 = 1e17
 WIDTH_RESET = 3.0
+KERNEL_GAMMA = 1.9364916731  # Wendland C2 support radius in units of h
 
 SPECIES_MASS_NUMBER = {
     "HI": 1.0,
@@ -387,9 +388,17 @@ def h2_column_density(snap: dict) -> np.ndarray:
 
 
 def probe_premises(
-    first: dict, last: dict, mask: np.ndarray, column: np.ndarray, rep: Report
+    first: dict,
+    last: dict,
+    mask: np.ndarray,
+    column: np.ndarray,
+    rep: Report,
+    frozen_h2: bool = True,
 ) -> np.ndarray:
     """Check frozen H2, the LW source and the temperature; return the read mask.
+
+    With frozen_h2 False the per-probe H2 change is only printed: the caller states its
+    own premise on the n_H2 range.
 
     Raises
     ------
@@ -410,13 +419,18 @@ def probe_premises(
             raise GateExit(
                 EXIT_VOID, "void run, the two snapshots hold different particles"
             )
-        for k in ("H2I", "Temperatures"):
+        for k in ("H2I", "Temperatures", "Densities"):
             tmp = np.empty_like(first[k])
             tmp[order1] = first[k][order0]
             first[k] = tmp
     dx = np.abs(last["H2I"] - first["H2I"]) / np.maximum(first["H2I"], 1e-300)
     bad_h2 = int(np.sum(mask & (dx > FROZEN_H2_REL)))
-    if bad_h2:
+    if not frozen_h2:
+        rep.info(
+            "H2 change per probe",
+            f"{bad_h2} probes changed by more than {FROZEN_H2_REL} against the reference snapshot",
+        )
+    elif bad_h2:
         raise GateExit(
             EXIT_VOID,
             f"void run, H2 changed by more than {FROZEN_H2_REL} on {bad_h2} probes",
@@ -457,8 +471,52 @@ def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
     return own, ratio
 
 
+def h2_range_premise(
+    first: dict, last: dict, mask: np.ndarray, rep: Report
+) -> Tuple[float, float]:
+    """Return the n_H2 range of the probe domain over the reference and the last snapshot.
+
+    The carried column is a sum of n_H2 of the receivers at the hop times, so the bar
+    needs the range of n_H2 of every particle on the paths at every time. H2 only falls
+    here (dissociation), so the range of the two ends bounds every state between them.
+    The premise: at the last snapshot every particle of the domain lies inside the range
+    of the reference snapshot, up to FROZEN_H2_REL.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if the n_H2 of a domain particle left the reference range.
+    """
+    n_first, n_last = h2_column_density(first)[mask], h2_column_density(last)[mask]
+    lo_ref, hi_ref = float(n_first.min()), float(n_first.max())
+    out = int(
+        np.sum(
+            (n_last < lo_ref * (1.0 - FROZEN_H2_REL))
+            | (n_last > hi_ref * (1.0 + FROZEN_H2_REL))
+        )
+    )
+    if out:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, H2 changed: n_H2 of {out} probe-domain particles left the reference "
+            f"range {lo_ref:.5g} to {hi_ref:.5g} cm^-3 by more than {FROZEN_H2_REL} "
+            f"(last range {float(n_last.min()):.5g} to {float(n_last.max()):.5g})",
+        )
+    n_min, n_max = min(lo_ref, float(n_last.min())), max(hi_ref, float(n_last.max()))
+    rep.info(
+        "n_H2 range premise",
+        f"all domain particles inside the reference range; bar range {n_min:.5g} to {n_max:.5g} cm^-3",
+    )
+    return n_min, n_max
+
+
 def column_spread_bar(
-    r: np.ndarray, n_h2: np.ndarray, mask: np.ndarray, temp, dens
+    r: np.ndarray,
+    n_h2: np.ndarray,
+    mask: np.ndarray,
+    temp,
+    dens,
+    n_range: Optional[Tuple[float, float]] = None,
 ) -> np.ndarray:
     """Return the bar on |ln(t / f(n_H2 r))| set by the spread of n_H2 alone.
 
@@ -469,7 +527,9 @@ def column_spread_bar(
     |ln f(n_max r) / f(n_i r)| and |ln f(n_min r) / f(n_i r)|, in the fit of the probe.
     """
     pos = mask & (n_h2 > 0.0)
-    n_min, n_max = float(n_h2[pos].min()), float(n_h2[pos].max())
+    n_min, n_max = (
+        n_range if n_range else (float(n_h2[pos].min()), float(n_h2[pos].max()))
+    )
     base = np.log(transmission(n_h2 * r, temp, dens))
     lo = np.abs(np.log(transmission(n_max * r, temp, dens)) - base)
     hi = np.abs(np.log(transmission(n_min * r, temp, dens)) - base)
@@ -494,7 +554,8 @@ def gate_starlit(args: argparse.Namespace) -> int:
     r, h, mask = probe_geometry(last, np.array(fix["star_kpc"]))
     n_h2 = h2_column_density(last)
     column = n_h2 * r
-    read = probe_premises(first, last, mask, column, rep)
+    read = probe_premises(first, last, mask, column, rep, frozen_h2=False)
+    n_range = h2_range_premise(first, last, mask, rep)
     own, meas = own_transmission(last)
     lit = read & (own > 0.0)
     rep.info(
@@ -511,9 +572,14 @@ def gate_starlit(args: argparse.Namespace) -> int:
     slope = log_slope(np.maximum(column, 1.0), temp, dens)
     l_hop = hop_length(counters, h, rep)
     n_float = r / np.maximum(h, 1e-300) + 2.0
-    bar = (
-        column_spread_bar(r, n_h2, mask, temp, dens)
-        + n_float * (2.0 + 2.0 * slope) * FLOAT32_EPS
+    float_term = n_float * (2.0 + 2.0 * slope) * FLOAT32_EPS
+    bar_last = column_spread_bar(r, n_h2, mask, temp, dens) + float_term
+    bar = column_spread_bar(r, n_h2, mask, temp, dens, n_range) + float_term
+    widening = float(np.median(bar[lit]) / np.median(bar_last[lit]) - 1.0)
+    rep.info(
+        "bar widening",
+        f"the bar uses the n_H2 range of the reference and the last snapshot; its median is "
+        f"{100.0 * widening:.3g} per cent above the bar of the last snapshot alone",
     )
     dev = np.abs(np.log(np.maximum(meas, 1e-300) / exp))
     over = lit & (dev > bar)
@@ -771,13 +837,32 @@ def gate_twosource(args: argparse.Namespace) -> int:
     return rep.exit_code()
 
 
-def path_through(a: float, b: float, x_star: float, x_p: float, r: float) -> float:
-    """Return the length of the ray star to probe inside the slab a < x < b (along x)."""
-    dx = x_p - x_star
-    if dx <= 0:
-        return 0.0
-    lo, hi = max(a, x_star), min(b, x_p)
-    return r * max(0.0, hi - lo) / dx
+def velocity_bar(
+    r: np.ndarray,
+    h: np.ndarray,
+    depth: np.ndarray,
+    n_range: Tuple[float, float],
+    reach: float,
+    temp: np.ndarray,
+    dens: np.ndarray,
+    reset: bool,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the lower and upper bound of ln(own ratio) of the cloud probes.
+
+    With a reset the carried column is n times the path from the sender of the resetting
+    hop, which lies up to one reach in front of the face: n_min d <= N <= n_max (d + R),
+    with d the path inside the cloud and R = gamma h_max the largest hop. Without a reset
+    the column telescopes to n r over all the gas: n_min r <= N <= n_max r. The factor
+    falls with the column, so the bound on ln t is that of the opposite column. The float
+    term is that of the star-lit gate for a slope of at most 1.
+    """
+    n_min, n_max = n_range
+    eps = (r / np.maximum(h, 1e-300) + 2.0) * 4.0 * FLOAT32_EPS
+    col_hi = n_max * (depth + reach) if reset else n_max * r
+    col_lo = n_min * depth if reset else n_min * r
+    lo = np.log(transmission(col_hi, temp, dens)) - eps
+    hi = np.log(transmission(col_lo, temp, dens)) + eps
+    return lo, hi
 
 
 def gate_velocity(args: argparse.Namespace) -> int:
@@ -793,16 +878,11 @@ def gate_velocity(args: argparse.Namespace) -> int:
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
     check_premise_parameters(params, rep, args.mode, args.startup_log)
-    counters = load_json(args.counters, "counters file") if args.counters else {}
     star = np.array(fix["star_kpc"])
     r, h, mask = probe_geometry(last, star)
     cm = last["unit_length"]
-    d_min = last["Coordinates"] - star[None, :]
-    d_min -= last["box"] * np.round(d_min / last["box"])
-    x_rel = d_min[:, 0] * cm
-    slab = [(v - star[0]) * cm for v in fix["slab_x_kpc"]]
-    cloud = [(v - star[0]) * cm for v in fix["cloud_x_kpc"]]
-    in_cloud = mask & (x_rel > cloud[0]) & (x_rel < cloud[1])
+    face, outer = (v * cm for v in fix["cloud_radius_kpc"])
+    in_cloud = mask & (r > face) & (r < outer)
     read = probe_premises(first, last, in_cloud, np.full(len(mask), np.inf), rep)
     lw, meas = own_transmission(last)
     lit = read & (lw > 0.0)
@@ -810,28 +890,31 @@ def gate_velocity(args: argparse.Namespace) -> int:
         raise GateExit(EXIT_VOID, "void run, no lit probe inside the cloud")
     require_finite("measured own ratio", ratio=meas[lit])
     dens, temp = gas_number_density(last), last["Temperatures"]
-    n_h2 = float(fix["n_h2_cm3"])
-    l_hop = hop_length(counters, h, rep)
+    n_h2 = h2_column_density(last)
+    require_finite("n_H2", n_h2=n_h2[mask])
     dv = float(fix["cloud_speed_widths"])
     reset = dv > WIDTH_RESET if args.case == "auto" else args.case == "reset"
-    col = np.zeros(len(r))
-    bar = np.zeros(len(r))
-    for k in np.where(lit)[0]:
-        in_cloud_path = path_through(cloud[0], cloud[1], 0.0, x_rel[k], r[k])
-        in_slab_path = path_through(slab[0], slab[1], 0.0, x_rel[k], r[k])
-        col[k] = n_h2 * (in_cloud_path if reset else in_cloud_path + in_slab_path)
-        bar[k] = (
-            float(log_slope(max(col[k], 1.0), temp[k], dens[k]))
-            * l_hop[k]
-            / max(in_cloud_path, l_hop[k])
-        )
-    exp = transmission(col, temp, dens)
-    dev = np.abs(np.log(np.maximum(meas, 1e-300) / exp))
-    over = lit & (dev > bar)
+    gas = in_cloud if reset else mask
+    n_range = (float(n_h2[gas].min()), float(n_h2[gas].max()))
+    near = mask & (r > face - 2.0 * KERNEL_GAMMA * float(h[mask].max()))
+    reach = KERNEL_GAMMA * float(h[near].max())
+    depth = np.maximum(r - face, 0.0)
+    lo, hi = velocity_bar(r, h, depth, n_range, reach, temp, dens, reset)
+    ln_t = np.log(np.maximum(meas, 1e-300))
+    require_finite("velocity bar", lo=lo[lit], hi=hi[lit], ln_ratio=ln_t[lit])
+    dark = lit & (ln_t < lo)
+    bright = lit & (ln_t > hi)
+    shallow = lit & (depth < h)
+    rep.info(
+        "velocity bar",
+        f"n_H2 {n_range[0]:.5g} to {n_range[1]:.5g} cm^-3, reach gamma h_max = {reach:.4g} cm, "
+        f"{int(lit.sum())} lit probes, {int(shallow.sum())} less than one h deep",
+    )
     rep.check(
         f"cloud probes follow the {'own' if reset else 'full'} column",
-        not over.any(),
-        f"{int(over.sum())} of {int(lit.sum())} probes outside the bar; "
+        not (dark | bright).any(),
+        f"{int(dark.sum())} too dark and {int(bright.sum())} too bright of {int(lit.sum())} probes "
+        f"({int((dark | bright)[shallow].sum())} of {int(shallow.sum())} less than one h deep); "
         f"cloud speed {dv:g} widths, expected {'reset' if reset else 'no reset'}",
     )
     return rep.exit_code()

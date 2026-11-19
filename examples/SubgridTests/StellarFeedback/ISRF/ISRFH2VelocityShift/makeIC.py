@@ -1,7 +1,8 @@
 """Initial conditions of the velocity-shift fixture.
 
-A star lights an upstream slab at rest, then a molecular cloud that moves along x relative
-to the slab. The cloud speed is set in units of the thermal line width b of the H2 gas.
+A star lights the gas at rest inside a sphere around it, then a molecular cloud that starts
+at a spherical face centred on the star and moves radially away from it. The cloud speed
+relative to the inner gas is set in units of the thermal line width b of the H2 gas.
 """
 
 import argparse
@@ -41,12 +42,14 @@ def main():
 
     box, pos, n = common.box_positions(o.level, o.mass, o.rho)
     star = np.array([0.15 * box, 0.5 * box, 0.5 * box])
-    slab = (0.25 * box, 0.40 * box)
-    cloud = (0.40 * box, 0.70 * box)
-    in_cloud = (pos[:, 0] >= cloud[0]) & (pos[:, 0] < cloud[1])
+    cloud = (0.25 * box, 0.90 * box)
+    d = pos - star[None, :]
+    d -= box * np.round(d / box)
+    r = np.linalg.norm(d, axis=1)
+    in_cloud = (r >= cloud[0]) & (r < cloud[1])
     b_kms = np.sqrt(2 * K_B * o.temperature / (2 * M_H)) / 1e5
     vel = np.zeros([n, 3])
-    vel[in_cloud, 0] = o.widths * b_kms
+    vel[in_cloud] = o.widths * b_kms * d[in_cloud] / r[in_cloud, None]
     m0 = o.mass * common.MSUN_CGS / common.UNIT_MASS_CGS
     rho0 = o.rho * common.M_PROTON_CGS * common.KPC_CGS**3 / common.UNIT_MASS_CGS
     common.write_ic(
@@ -65,8 +68,7 @@ def main():
         kind="velocity_shift",
         box_kpc=box,
         star_kpc=star.tolist(),
-        slab_x_kpc=list(slab),
-        cloud_x_kpc=list(cloud),
+        cloud_radius_kpc=list(cloud),
         n_h2_cm3=n_h2,
         line_width_kms=b_kms,
         cloud_speed_widths=o.widths,

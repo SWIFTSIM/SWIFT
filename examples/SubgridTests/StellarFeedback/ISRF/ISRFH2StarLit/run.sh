@@ -71,6 +71,6 @@ mkdir -p "$run_name"
 cp used_parameters.yml output.log timesteps.txt fixture.json "$run_name"/
 mv snap "$run_name"/
 python3 ../ISRFH2StarLit/checkH2Attenuation.py starlit \
-    --first "$run_name"/snap/snapshot_0000.hdf5 \
+    --first "$run_name"/snap/snapshot_0001.hdf5 \
     --last "$(ls "$run_name"/snap/snapshot_*.hdf5 | tail -n 1)" \
     --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --mode ${gate_mode:=a}

@@ -605,29 +605,36 @@ def falsifier_cases(work):
 
 
 def velocity_cases(work):
-    d, pos, rho, h, box = make_ic(work, "VelocityShift")
+    d, pos, rho, h, box = make_ic(work, "VelocityShift", level=5)
     fix = json.load(open(os.path.join(d, "fixture.json")))
     cm = 3.0856775814913673e21
     rho_cgs = rho * 1.988409870698051e43 / cm**3
     temp = np.full(len(pos), 50.0)
     x_h2 = np.full(len(pos), 2.0 * 3e-4 * 0.76)
     dens = rho_cgs / gate.M_H
+    n_h2 = rho_cgs * x_h2 / (2.0 * gate.M_H)
     star = np.array(fix["star_kpc"])
     dd = pos - star
     dd -= box * np.round(dd / box)
     r = np.linalg.norm(dd, axis=1) * cm
-    x_rel = dd[:, 0] * cm
-    slab = [(v - star[0]) * cm for v in fix["slab_x_kpc"]]
-    cloud = [(v - star[0]) * cm for v in fix["cloud_x_kpc"]]
-    n_h2 = fix["n_h2_cm3"]
+    h_cm = h * cm
+    face = fix["cloud_radius_kpc"][0] * cm
+    depth = np.maximum(r - face, 0.0)
     lw = np.ones(len(pos))
-    own = np.ones(len(pos))
-    full = np.ones(len(pos))
-    for k in range(len(pos)):
-        pc_ = gate.path_through(cloud[0], cloud[1], 0.0, x_rel[k], r[k])
-        ps_ = gate.path_through(slab[0], slab[1], 0.0, x_rel[k], r[k])
-        own[k] = float(gate.transmission(n_h2 * pc_, temp[k], dens[k]))
-        full[k] = float(gate.transmission(n_h2 * (pc_ + ps_), temp[k], dens[k]))
+
+    def ratio_of(column):
+        return np.array(
+            [
+                float(gate.transmission(column[k], temp[k], dens[k]))
+                for k in range(len(pos))
+            ]
+        )
+
+    # A correct code carries the in-cloud path plus part of the resetting hop: 0.74 h is
+    # the median excess measured on the real run.
+    base = n_h2 * (depth + 0.74 * h_cm)
+    own = ratio_of(base)
+    full = ratio_of(n_h2 * r)
     params = os.path.join(d, "used_parameters.yml")
     open(params, "w").write(GOOD_PARAMS)
     first = os.path.join(d, "s0.hdf5")
@@ -651,18 +658,42 @@ def velocity_cases(work):
         "V2 ten widths: column carried (no reset)",
     )
     go(
+        "v_double.hdf5",
+        ratio_of(2.0 * base),
+        1,
+        "fixture.json",
+        "V3 ten widths: doubled column",
+    )
+    go(
+        "v_late.hdf5",
+        ratio_of(np.maximum(base - n_h2 * h_cm, 0.0)),
+        1,
+        "fixture.json",
+        "V4 ten widths: reset one hop late",
+    )
+    go(
+        "v_x15.hdf5",
+        ratio_of(1.5 * base),
+        1,
+        "fixture.json",
+        "V5 ten widths: column 1.5 times too large",
+    )
+    nan = own.copy()
+    nan[int(np.argmax(r * (r > face) * (r < 0.3 * box * cm)))] = np.nan
+    go("v_nan.hdf5", nan, 3, "fixture.json", "V6 ten widths: NaN in the ratio")
+    go(
         "v_slow.hdf5",
         full,
         0,
         "fixture_slow.json",
-        "V3 one width: full column (control)",
+        "V7 one width: full column (control)",
     )
     go(
         "v_slow_bad.hdf5",
         own,
         1,
         "fixture_slow.json",
-        "V4 one width: reset seen (control broken)",
+        "V8 one width: reset seen (control broken)",
     )
 
 
