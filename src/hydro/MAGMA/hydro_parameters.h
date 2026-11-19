@@ -116,13 +116,17 @@
  * floor, not by alpha_max. The 2026-11 study of the scheme-comparison suite
  * (doc/RTD/source/HydroSchemes/magma_sph.rst): the constant alpha = 1 damps
  * a linear sound wave by 4.5 per cent per period at 32 particles per
- * wavelength, the floor of 0.3 by 2 per cent, halves the numerical
- * viscosity of the Taylor-Green vortex and doubles the inertial range of
- * driven subsonic turbulence at 64^3, while shocks, collapse and pancakes
- * are unchanged; the price is more particle noise at contact
- * discontinuities (square test, high-contrast Kelvin-Helmholtz, shock-tube
- * contacts) at any floor below 1, at about the SPHENIX level. A floor of
- * 0.1 adds visible noise in shear layers; 0.3 is the compromise. The
+ * wavelength, a floor of 0.3 by 2 per cent and the floor of 0.5 by 3 per
+ * cent, the floor cuts the numerical viscosity of the Taylor-Green vortex
+ * (by 2.7 at 0.3, by 1.7 at 0.5) and doubles the inertial range of driven
+ * subsonic turbulence at 64^3, while shocks, collapse and pancakes are
+ * unchanged; the price is more particle noise at contact discontinuities
+ * (square test, high-contrast Kelvin-Helmholtz, shock-tube contacts) at
+ * any floor below 1. The floor is the lever on that noise: the square
+ * test's density error is 0.12 at 0.3, 0.09 at 0.5 (SPHENIX 0.08, constant
+ * alpha 0.06). A floor of 0.1 adds visible noise in shear layers. 0.5 was
+ * chosen in 2026-11 after the conduction scan: the contacts and the
+ * Evrard collapse over the last 40 per cent of the smooth-flow gain. The
  * limiter xi acts twice, in the trigger of the coefficient and on Q; the
  * study results include that. */
 
@@ -191,7 +195,7 @@
  * smooth flow; see the note above const_viscosity_limiter_mach). A floor of
  * alpha_max gives the paper's constant viscosity (and switches the
  * conduction cap off). */
-#define hydro_props_default_viscosity_alpha_min 0.3f
+#define hydro_props_default_viscosity_alpha_min 0.5f
 
 /*! Decay rate of the per-particle viscosity coefficient, Cullen & Dehnen's
  * l: the decay time is H / (2 l c_s), i.e. 10 sound-crossing times of the

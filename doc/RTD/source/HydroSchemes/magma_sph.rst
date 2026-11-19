@@ -33,7 +33,7 @@ combines:
 + Artificial viscosity (:math:`\beta = 2`) acting on the difference of
   velocities reconstructed to the pair mid-point with a van Leer slope
   limiter and a short-distance cut-off (eqs. 14-23), with the time-dependent
-  per-particle :math:`\alpha_a` (maximum 1, floor 0.3) and the shear limiter of
+  per-particle :math:`\alpha_a` (maximum 1, floor 0.5) and the shear limiter of
   `Cullen & Dehnen (2010) <https://ui.adsabs.harvard.edu/abs/2010MNRAS.408..669C>`_;
 + Artificial conduction (eq. 24) with the paper's velocity-based signal
   speed plus a term driven by the pressure jump left after reconstruction,
@@ -215,7 +215,7 @@ Dehnen (2010) in the form used by SPHENIX: the source :math:`A_a = \xi_a H^2
 :math:`\alpha_a` jumps up to :math:`\alpha_{\rm loc}` and decays back
 towards it exponentially over :math:`H / (2\, \ell\, c_s)` with
 :math:`\ell =` ``SPH:viscosity_length`` (default 0.05, ten sound crossings of
-the support), and is floored at ``SPH:viscosity_alpha_min`` (default 0.3).
+the support), and is floored at ``SPH:viscosity_alpha_min`` (default 0.5).
 :math:`\alpha_{\max} = 1` is a compile-time constant. Particles start at
 the floor. The same coefficient is the shock measure of the conduction cap
 below. Note that the limiter :math:`\xi_a` acts twice, in the trigger and on
@@ -226,25 +226,29 @@ per cent of the velocity jump of a pair to :math:`Q` (gradient noise and the
 first-order mid-point reconstruction), so the scheme is not inviscid in
 smooth flow and the residual is damped at the floor's strength. The floor
 was set in 2026-11 on the scheme-comparison suite: against the paper's
-constant :math:`\alpha = 1`, the floor of 0.3 halves the damping of a
+constant :math:`\alpha = 1`, a floor of 0.3 halves the damping of a
 linear sound wave (4.5 to 2 per cent per period at 32 particles per
-wavelength; the damping is linear in the floor), cuts the numerical
-viscosity of the Taylor-Green vortex by 2.7, improves the Gresho vortex and
-the growth rate of the Kelvin-Helmholtz instability, and doubles the extent
-of the inertial range of driven subsonic turbulence at :math:`64^3` (the
-:math:`k = 50` to 100 band triples and reaches 80 per cent of Arepo's at the
-same particle number). Shocks, the Evrard collapse, the Zeldovich pancakes,
-the Keplerian rings, the blob test and Galilean invariance are unchanged.
-The price is particle noise at contact discontinuities, which the constant
-:math:`\alpha` was damping: the dense mass leaking out of the square of the
-square test rises from 2 to 6 per cent (the SPHENIX value), the transverse
-velocity noise of the contrast-8 Kelvin-Helmholtz test by half, the
-velocity error at shock-tube contacts doubles. This noise appears at any
-floor below 1 and is not reduced by raising the floor to 0.5, while a floor
-of 0.1 adds visible noise in shear layers, so 0.3 is the compromise.
-``SPH:viscosity_alpha_min: 1`` restores the paper's constant viscosity (and
-switches the conduction cap off, since the coefficient then carries no
-shock information).
+wavelength; the damping is linear in the floor) and the floor of 0.5 cuts
+it to 3 per cent, the floor cuts the numerical viscosity of the
+Taylor-Green vortex (by 2.7 at 0.3, by 1.7 at 0.5), improves the Gresho
+vortex and the growth rate of the Kelvin-Helmholtz instability, and doubles
+the extent of the inertial range of driven subsonic turbulence at
+:math:`64^3` (the :math:`k = 50` to 100 band triples and reaches 80 per cent
+of Arepo's at the same particle number). Shocks, the Zeldovich pancakes,
+the Keplerian rings and Galilean invariance are unchanged. The price is
+particle noise at contact discontinuities, which the constant
+:math:`\alpha` was damping, and the floor is the lever on it: the density
+error of the square test is 0.06 at constant :math:`\alpha`, 0.09 at a
+floor of 0.5 and 0.12 at 0.3 (SPHENIX 0.08), the dense mass leaking out of
+the square 1, 6 and 7 per cent, and the Evrard collapse and the blob test
+follow the same order. A floor of 0.1 adds visible noise in shear layers.
+The default of 0.5 was chosen after the 2026-11 conduction scan, which
+found the conduction constants at their optimum and the floor the only
+remaining lever on the contacts: it trades the last 40 per cent of the
+smooth-flow gain for half of the contact noise and a third of the Evrard
+loss. ``SPH:viscosity_alpha_min: 1`` restores the paper's constant
+viscosity (and switches the conduction cap off, since the coefficient then
+carries no shock information).
 
 Artificial conduction
 ---------------------
@@ -410,7 +414,7 @@ run-time parameters and their defaults are:
       limiter_eta_crit:              -1.     # Cut-off distance of the reconstruction in units of h; < 0: 1 / resolution_eta (the paper's value)
       gradient_max_condition_number: 60.     # Clipping of the inverse C-matrix in degenerate directions
       viscosity_limiter_floor:        0.     # xi = max(xi, floor): fraction of the viscosity kept in pure shear
-      viscosity_alpha_min:            0.3    # Floor of the per-particle viscosity alpha (its maximum is 1); 1 = the paper's constant viscosity
+      viscosity_alpha_min:            0.5    # Floor of the per-particle viscosity alpha (its maximum is 1); 1 = the paper's constant viscosity
       viscosity_length:               0.05   # Cullen & Dehnen's l: its decay time is H / (2 l c_s)
       diffusion_beta:                 1.0    # Growth rate of the per-particle conduction coefficient (SPHENIX's beta_D)
       diffusion_alpha_min:            1.0    # Floor (and initial value) of the per-particle conduction coefficient; 0 = SPHENIX's behaviour
