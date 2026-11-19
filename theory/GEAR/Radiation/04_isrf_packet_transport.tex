@@ -1684,22 +1684,30 @@ fit below provides, whatever gas the share crossed before. When a merge
 releases a fraction of the waiting LW energy (Sections~\ref{sec:packet-merge}
 and~\ref{sec:packet-lightspeed}), each sum releases the same fraction of
 itself. The sums of the light that keeps waiting shrink in proportion to the
-LW energy that keeps waiting.
+LW energy that keeps waiting. All the light that waits in a slot therefore
+shares one mean transmission, column and velocity shift, whatever share it
+came from (``Limit: light that waits in a slot'' in
+Section~\ref{sec:packet-h2-limits}).
 
 \paragraph{The merge.} At the merge the receiver turns the light that stayed in
 the slot and the released part of the waiting light into one held packet of LW
 energy $E_k=\sum_se_s$, the LW energy of all the merged light. Let
 $\mathcal A_k$, $\mathcal B_k$ and $\mathcal V_k$ now be the sums of
 Eq.~\eqref{eq:h2-sums} over this merged light, the light that stayed being
-counted with its own column in the fit of the receiver. Then
+counted with its own column in the fit of the receiver. For the released part
+of the waiting light these are the released fractions of the waiting sums,
+not the sums over the shares that leave. Then
 \begin{equation}
   \mathcal T_k=\min\!\Big\{1,\max\!\Big(0,\frac{\mathcal A_k}{E_k}\Big)\Big\}, \qquad
   \mathcal S_r(\Sigma_k)=\frac{\mathcal A_k}{\mathcal B_k}, \qquad
   \Delta v_k=\frac{\mathcal V_k}{\mathcal A_k}.
   \label{eq:h2-merge}
 \end{equation}
-The first relation is the energy-weighted mean of the transmissions, so the
-dissociating energy is conserved by the merge. The second says that the
+The first relation is the energy-weighted mean of the transmissions of the
+summed light, so the dissociating energy is conserved by the merge. When the
+merge releases all the waiting light, it is the mean over the merged shares;
+when it releases a part, the released light gets the mean of all the light
+that waited. The second says that the
 factor of the merged column is the harmonic mean of the factors of the merged
 columns, weighted by their dissociating energy $\hat e_s=e_s\mathcal T_s$,
 \begin{equation}
@@ -2608,7 +2616,8 @@ far cells released whole at their end & 2.727 & 4.904 & 6.709 & 8.978 \\
 This subsection is the numerics layer of the H$_2$ line absorption: the limits
 and the accuracy of the scheme of Section~\ref{sec:packet-h2}. How wrong the
 carried column is in a simulated cloud is not measured, and no estimate of it
-is given: the worst cases below are for random gas, not for a cloud. The
+is given: the worst cases below are for random gas or for a test box, not for
+a cloud. The
 statements of this section compare the scheme with its own share-by-share
 reference, and do not cover the accuracy of the fit itself
 (Section~\ref{sec:packet-h2-physics}). The merge of Eq.~\eqref{eq:h2-merge}
@@ -2660,8 +2669,14 @@ mixed columns, then a change of the fit''.
 
 \paragraph{What holds without condition.}
 \begin{itemize}
-  \item The merged transmission $\mathcal T_k$ is the exact energy-weighted mean
-    of the shares (Eq.~\eqref{eq:h2-merge}).
+  \item The dissociating energy is conserved: the released and the remaining
+    sums add up to the sums before the release. When the merge releases all
+    the waiting light, the merged transmission $\mathcal T_k$ is the exact
+    energy-weighted mean of the merged shares (Eq.~\eqref{eq:h2-merge}). A
+    partial release releases each sum pro rata, so the released light gets
+    the mean transmission of all the waiting light, and waiting light of
+    different shielding shares one mean transmission (``Limit: light that
+    waits in a slot'').
   \item A share merged alone keeps its column: if all merged light has one
     column and was summed with the fit of the merge, then
     $\mathcal A_k/\mathcal B_k=\mathcal S_r(\Sigma_s)$ and $\Sigma_k=\Sigma_s$. The
@@ -2684,8 +2699,10 @@ mixed columns, then a change of the fit''.
     mixed ones (``Where the sign is lost'').
   \item No velocity reset follows the merge. A reset raises $\mathcal T$ on
     purpose.
-  \item At a partial release, the released light has the mean
-    $\mathcal A/E$ and the mean $\mathcal B/\mathcal A$ of all the waiting light.
+  \item At a partial release, the shares that actually leave have, on their
+    own, the mean $\mathcal A/E$ and the mean $\mathcal B/\mathcal A$ of all
+    the waiting light. The release gives the released light these means in
+    every case; (d) asks that the shares that leave have them too.
   \item No share and no slot has a column of $5\times10^{24}$\,cm$^{-2}$ or
     more. Above $\Sigma_{\rm cap}$ the factor is constant, so the concavity of
     step 1 of the proof fails once a column lies within one doubling of the
@@ -2908,9 +2925,12 @@ coverage.
     light.
   \item \emph{A velocity reset} after the merge raises $\mathcal T$ on purpose,
     so condition (c) fails by design.
-  \item \emph{A partial release at a limited light speed.} If the released
-    light is a biased part of the waiting light, condition (d) fails and the
-    sign is not covered.
+  \item \emph{A partial release of waiting light} (condition (d)). At a
+    limited light speed, and in the reservoir of the no-delay test mode, the
+    shares that leave differ in general from those that keep waiting. Then
+    condition (d) fails, and the sign and the bound do not cover waiting
+    light. The size of the error is in ``Limit: light that waits in a
+    slot''.
   \item \emph{A gas that changes along the path} (condition (a)). On the sets
     of family (5), every merge is followed by gas of another fit, the
     mechanism of Eq.~\eqref{eq:h2-fitchange} repeated at each hop. The smallest
@@ -2991,6 +3011,57 @@ merge $\le1000$\,K, gas $\ge3000$\,K & 1.00 & 3.8 & 0 & 1.1\,\% & 0 \\
 \end{tabular}
 \end{table}
 
+\paragraph{Limit: light that waits in a slot.} At a limited light speed a
+share can wait in the near bins and far cells of a slot over several merges of
+its holder. In the no-delay test mode light from a coarser source waits in the
+reservoir. The slot keeps one set of sums, Eq.~\eqref{eq:h2-sums}, for all its
+waiting light, and a merge that releases a part of it releases each sum pro
+rata (``The sums of a slot'' in Section~\ref{sec:packet-h2}). The released
+light therefore carries the mean transmission, column and velocity shift of all
+the waiting light, not those of the shares that leave. At a limited light speed
+the origin offset is pooled the same way
+(Eq.~\eqref{eq:packet-merge-origin}). Take two shares that wait together at a
+limited light speed, with the LW energies $e_1$ and $e_2$ and the
+transmissions $\mathcal T_1$ and $\mathcal T_2$, and a first release that
+takes all of share 1 and none of share 2. With $\rho=e_2/e_1$ and
+$\tau=\mathcal T_2/\mathcal T_1$, the released light has the transmission
+\begin{equation}
+  \frac{\mathcal T_{\rm released}}{\mathcal T_1}=\frac{1+\rho\tau}{1+\rho},
+  \label{eq:h2-wait-pool}
+\end{equation}
+whatever the delay of share 2. The later release of share 2 gets the rest of
+the sums, so the dissociating energy of the waiting light is conserved in
+total and only its timing is wrong. Light released early gets too little
+dissociating energy when the light still waiting is more shielded
+($\tau<1$), and too much when it is less shielded. The error has no small
+bound when the waiting light of one slot has very different transmissions.
+The reservoir of the no-delay test mode, released in equal parts over several
+merges, pools in the same way.
+
+\paragraph{Numerical accuracy: light that waits.} The test of the release
+with the merge of the scheme gives Eq.~\eqref{eq:h2-wait-pool} at every
+delay of share 2. Its worst case, $\rho=10$ and $\tau=0.01$, gives $0.10$ at
+the first release. The test also covers the no-delay test mode with two
+shares of equal energy, $\mathcal T_1=1$ and $\tau=0.1$. Share 1 leaves
+whole, and share 2 waits in the reservoir, which releases it over two
+merges. The first release then has the transmission $0.55$, where the light
+that leaves, each share with its own transmission, gives $0.70$.
+
+A box of gas lit by one star, with the H$_2$
+line absorption on, was run for $32$ steps at $0.99\,c$ in the capped and in
+the step-bounding modes. There $97$ to $98$ per cent of the released LW
+energy leaves while other light still waits in its slot. The error is small in
+that box, because the waiting light of one slot has similar shielding. Over
+the merges that release light with a transmission above $10^{-3}$, the
+energy-weighted mean of $|\mathcal T_{\rm released}/\mathcal T_{\rm exact}-1|$
+is about $10^{-3}$ and its largest value about $7\times10^{-3}$. Here
+$\mathcal T_{\rm exact}$ is the transmission of the shares that leave, and
+the error is the one that each merge adds; the error carried over many hops
+is not measured. The box is strongly shielded: the mean released transmission
+is $1.5\times10^{-3}$. The pooling of the column and of the velocity shift is
+not measured. The size of this error in a real cloud, where light of very
+different shielding can wait in one slot, is not measured.
+
 \paragraph{What is not covered.} How wrong the carried column is in a real
 run is not known: no statement of this section is a measurement in a cloud.
 \begin{itemize}
@@ -3019,6 +3090,9 @@ run is not known: no statement of this section is a measurement in a cloud.
     $3\times10^{20}$\,cm$^{-2}$, where the H$_2$ and H\,\textsc{i} lines
     together remove most of the band in the models of
     \citet{DraineBertoldi1996}, the LW part of $G_0$ is therefore too large.
+  \item The error of the pooled release of waiting light in a cloud
+    (``Limit: light that waits in a slot'') is not measured: it is measured
+    only in a strongly shielded test box and in the worst case of a test.
 \end{itemize}
 
 % ---------------------------------------------------------------------------
