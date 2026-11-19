@@ -1705,7 +1705,7 @@ not the sums over the shares that leave. Then
 \end{equation}
 The first relation is the energy-weighted mean of the transmissions of the
 summed light, so the dissociating energy is conserved by the merge. When the
-merge releases all the waiting light, it is the mean over the merged shares;
+merge releases all the waiting light and no earlier merge released a part of it, it is the mean over the merged shares;
 when it releases a part, the released light gets the mean of all the light
 that waited. The second says that the
 factor of the merged column is the harmonic mean of the factors of the merged
@@ -2629,7 +2629,7 @@ random inputs, in the paragraphs whose titles begin with ``Numerical accuracy''.
 third is the float rounding.
 
 \paragraph{The merge in brief.} The statements below use the merge of
-Section~\ref{sec:packet-h2}, restated here without its guards. Share $s$
+Section~\ref{sec:packet-h2}, restated here without its guards and for a full release of the waiting light. Share $s$
 reaches slot $k$ with the LW energy $e_s$, the transmission $\mathcal T_s$ and
 the column $\Sigma_s$. Its dissociating energy is $\hat e_s=e_s\mathcal T_s$.
 Let $\mathcal S_r$ be the factor of Eq.~\eqref{eq:h2-factor} in the fit $r$ of
@@ -2672,7 +2672,7 @@ mixed columns, then a change of the fit''.
   \item The dissociating energy is conserved: the released and the remaining
     sums add up to the sums before the release, apart from the fraction of
     light booked as absorbed below the photon cutoff. When the merge releases all
-    the waiting light, the merged transmission $\mathcal T_k$ is the exact
+    the waiting light and no earlier merge released a part of it, the merged transmission $\mathcal T_k$ is the exact
     energy-weighted mean of the merged shares (Eq.~\eqref{eq:h2-merge}). A
     partial release releases each sum pro rata, so the released light gets
     the mean transmission of all the waiting light, and waiting light of
@@ -2765,8 +2765,8 @@ column, as a function of the factor before it.
     merges. Take every quantity at the last merge. Then
     $\mathcal T_{\rm slot}=\mathcal T_kz_k\,\mathcal S_r(\Sigma_k+\Delta\Sigma)
     \le\big(\sum_sc_sz_s\big)\,\mathcal S_r(\Sigma_q+\Delta\Sigma)$,
-    while $\mathcal T_{\rm ref}\ge c_pz_q\,\mathcal S_r(\Sigma_q+\Delta\Sigma)$. The ratio is at most
-    $\sum_sc_sz_s/(c_pz_q)=1/\varpi_q$.
+    while $\mathcal T_{\rm ref}\ge c_qz_q\,\mathcal S_r(\Sigma_q+\Delta\Sigma)$. The ratio is at most
+    $\sum_sc_sz_s/(c_qz_q)=1/\varpi_q$.
 \end{enumerate}
 
 The bound is sharp. Let a share with the energy fraction $\eta_0$ have no
@@ -3060,7 +3060,7 @@ line absorption on, was run for $32$ steps at $0.99\,c$ in the capped and in
 the step-bounding modes. There $97$ to $98$ per cent of the released LW
 energy leaves while other light still waits in its slot. The error is small in
 that box, because the waiting light of one slot has similar shielding. Over
-the merges that release light with a transmission above $10^{-3}$, the
+the partial releases whose exact transmission $\mathcal T_{\rm exact}$ is above $10^{-3}$, the
 energy-weighted mean of $|\mathcal T_{\rm released}/\mathcal T_{\rm exact}-1|$
 is about $10^{-3}$ and its largest value about $7\times10^{-3}$. Here
 $\mathcal T_{\rm exact}$ is the transmission of the shares that leave, and
@@ -3497,7 +3497,7 @@ that supplies $X_{{\rm H}_2}$, $T$ and $\mu$ is then geajay. A Grackle build
 compiles the line absorption but refuses the switch at start-up
 (\code{src/cooling/grackle/cooling\_io.h:306-309}), because Grackle shields the
 transported LW rate with its own factor. The switch also stops a build whose
-\code{struct part} is 4096 bytes (:847-854). In a one-thread timing of a short
+\code{struct part} is 4096 bytes (\code{feedback\_properties.h:847-854}). In a one-thread timing of a short
 packet run, the same code with its particle padded to a stride of exactly 4096
 bytes took about 7 per cent more CPU time than without the padding. That timing
 had no line absorption, so the cost with the switch on is not measured.
