@@ -2424,8 +2424,8 @@ $\epsilon_{\rm m}=(2+2\varsigma)\,2^{-24}$, with
 $\varsigma=|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ the local slope of the fit.
 The slope is not bounded by $\alpha$: it is about $0.5$ at
 $10^{18}$\,cm$^{-2}$ and about $20$ near $10^{24}$\,cm$^{-2}$. At
-$\varsigma=1.759$, $\epsilon_{\rm m}=3.3\times10^{-7}$. A bar on $\mathcal R$ after
-$n_{\rm m}$ merges needs the margin $n_{\rm m}\epsilon_{\rm m}$.
+$\varsigma=1.759$, $\epsilon_{\rm m}=3.3\times10^{-7}$. After $n_{\rm m}$ merges
+the rounding can reach $n_{\rm m}\epsilon_{\rm m}$.
 
 \paragraph{Column precision.} Columns are stored as 4-byte floats with a
 relative step of $6\times10^{-8}$. A hop that adds less than that fraction
@@ -2460,8 +2460,10 @@ over later hops.
     $10^{-6}$, 55 of 2000 sets break the sign for one change of 5 per cent in
     $T$ and $n$ of the holder (smallest $\mathcal R=0.959$). For three changes
     of 30 per cent, 62 of 1000 to 98 of 2000 sets break it (smallest
-    $\mathcal R=0.71$ to $0.80$). No bar may require $\mathcal R\ge1-\epsilon$
-    for mixed waiting light.
+    $\mathcal R=0.71$ to $0.80$). Below about $10^{-2}$, 2 to 6 per cent of the
+    mixed sets shield too much. The excess is up to 4 per cent for changes of
+    5 per cent per step, and up to a factor 2 for changes of 30 per cent. The
+    sign is not guaranteed for mixed waiting light.
   \item \emph{A velocity reset} after the merge raises $\mathcal T$ on purpose,
     so condition (c) fails by design.
   \item \emph{A partial release at a limited light speed.} If the released
@@ -2713,9 +2715,9 @@ deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
 (\code{src/feedback/GEAR/radiation\_isrf.c:349-393}, :462-482). The switch
 \code{GEARFeedback:ISRF\_propagation} (0 off, 1 the transport) is parsed at
-\code{src/feedback/GEAR\_thermal/feedback\_properties.h:827-828}, and the
+\code{src/feedback/GEAR\_thermal/feedback\_properties.h:823-824}, and the
 choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
-:784.
+:780-781.
 
 \paragraph{Dust absorption rate (Sec.~\ref{sec:isrf-rte-static}).}
 Eq.~\eqref{eq:isrf-kappa} is \code{radiation\_get\_part\_linear\_absorption\_rate}
@@ -2734,7 +2736,7 @@ computed from the integrated table by
 (\code{radiation.h:161-163}) when radiation is inactive or a luminosity
 vanishes. They are stored as \code{band\_edge\_weight\_pe},
 \code{band\_edge\_weight\_lw} and \code{band\_edge\_photon\_weight\_lw}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:181-183}).
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:186-188}).
 
 \paragraph{The packet and its slots (Sec.~\ref{sec:packet-state}).} The slot
 count is \code{RADIATION\_PACKET\_SLOTS}, set by
@@ -2751,7 +2753,7 @@ Eq.~\eqref{eq:packet-photonfrac} is
 (\code{src/feedback/GEAR/radiation.h:415-436}, the ratio at :435). The
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:926-934}).
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:939-947}).
 Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
 (\code{src/feedback/GEAR/radiation\_packet.c:1251-1264}), and
 Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot48} are
@@ -2760,7 +2762,7 @@ Eq.~\eqref{eq:packet-frame} is \code{radiation\_packet\_build\_octant\_frame}
 (\code{radiation\_packet.c:1391-1455}). Its angles are
 \code{GEARFeedback:ISRF\_packet\_octant\_frame\_angles\_deg} and its seed offset
 \code{GEARFeedback:ISRF\_packet\_octant\_frame\_seed\_offset}
-(\code{feedback\_properties.h:877-881}). The frame and the cone power are run
+(\code{feedback\_properties.h:890-894}). The frame and the cone power are run
 constants: \code{radiation\_packet\_set\_frame} (\code{radiation\_packet.c:460-464})
 copies them into the globals \code{radiation\_packet\_octant\_frame} and
 \code{radiation\_packet\_cone\_power}, at start-up and after a restart
@@ -2831,8 +2833,8 @@ set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 \code{radiation\_packet.c:4131-4160}). The escape of a slot with $S_{i,k}=0$ is
 at \code{radiation\_packet.c:4097-4104}. The parameter $p$ is the global
 \code{radiation\_packet\_cone\_power} (\code{radiation\_packet.c:182}), and \code{ISRF\_packet\_cone\_power}
-is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:861-863}
-and checked at :923-925.
+is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:874-876}
+and checked at :936-938.
 
 \paragraph{The reach (Sec.~\ref{sec:isrf-reach}).} The membership test is
 \code{radiation\_packet\_in\_reach} (\code{radiation\_packet.c:1132-1146}) and the
@@ -2925,7 +2927,7 @@ path is :1196-1197 (call at :1210-1212).
 
 \paragraph{H$_2$ line absorption (Secs.~\ref{sec:packet-h2}, \ref{sec:packet-h2-limits}).}
 The switch is \code{GEARFeedback:ISRF\_H2\_line\_absorption}. Its start-up
-checks are at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:825-854}.
+checks are at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:826-854}.
 It needs \code{GEARFeedback:ISRF\_propagation} and geajay. It stops a build
 whose \code{struct part} is 4096 bytes (:847-854).
 
@@ -3072,7 +3074,7 @@ speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:391-396}),
 applied at \code{radiation\_packet.c:4110-4114}; $\tau_{\rm m}$ is
 \code{GEARFeedback:ISRF\_packet\_read\_mean\_time\_Myr}
-(\code{feedback\_properties.h:864-871}). The sums of
+(\code{feedback\_properties.h:877-884}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1018-1043}, called at
 \code{radiation\_propagation\_iact.h:146-147}, :180). The self term and the
