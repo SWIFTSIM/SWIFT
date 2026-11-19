@@ -282,10 +282,10 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
 /**
  * @brief Top-level steering function for HII ionization feedback.
  *
- * This function recurses down the cell hierarchy until it reaches a level
- * where the cell size is comparable to the maximum HII radius of the stars
- * within it (the operational working level). If the cell is small enough,
- * it stops recursing and hands off control to the sub-task coordinator.
+ * This function recurses into every split cell down to a leaf, whatever the
+ * HII radius of the stars it holds. The leaf is the working level: it hands
+ * off control to the sub-task coordinator, which searches out to the radius
+ * computed here.
  *
  * @param r The #runner thread.
  * @param c The #cell to process.
@@ -297,12 +297,6 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   struct engine *e = r->e;
   struct stars_props *star_props = e->stars_properties;
 
-  /* Determine the search radius. Contrary to many implementations out there,
-     we do not iterate if the search radius is too small. At the next step,
-     the star will have a larger search radius since it's hii radius has
-     increased.
-
-     TODO: Implement retry if search radius is too small */
   /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
      a gas-free working-level cell must still reach
      runner_dosub_stars_hii_ionization_feedback() to have its
@@ -332,7 +326,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
    * touches must have its stars.feedback_ghost already RUN this step
    * (ti_run == e->ti_current, not merely unskipped, since skip resets to 1
    * on completion). A trip means the wait edge wired at
-   * engine_maketasks.c:3586 failed to hold. */
+   * engine_radiation_wire_super_deps() failed to hold. */
   for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
     struct cell *sides[2] = {l->t->ci, l->t->cj};
     for (int side = 0; side < 2; side++) {

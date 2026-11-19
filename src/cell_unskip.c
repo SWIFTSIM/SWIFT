@@ -2271,7 +2271,7 @@ int cell_unskip_gravity_tasks(struct cell *c, struct scheduler *s) {
  * is available at all (e.g. the request hasn't propagated down yet).
  *
  * Also activates the super's stars.feedback_ghost. radiation_in's barrier
- * waits on it (engine_radiation_wire_super_deps, engine_maketasks.c:3586) so
+ * waits on it (engine_radiation_wire_super_deps) so
  * SN feedback writes happen-before the HII gather reads. On a star-inactive
  * super, engine_do_unskip_stars() never visits the cell, so without this
  * call feedback_ghost stays skipped and that wait silently has no effect.

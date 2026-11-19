@@ -1244,8 +1244,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          and so can sit below the top level: those tasks are created at
          every level in between and belong in n2. The depth is data
          dependent, so this is a deliberate over-estimate -- an
-         under-estimate costs a run-time pool reallocation, an
-         over-estimate only a little memory.
+         under-estimate overflows the task list (a fatal error in
+         scheduler_addtask), an over-estimate only a little memory.
 
          Radiation splitting now actually reaches this level (previously a
          dead gate kept every radiation task pinned to the top level, so

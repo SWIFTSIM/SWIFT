@@ -143,8 +143,9 @@ INLINE static int cooling_ionize_part_subgrid(
 #endif
 
   /* Keep the particle flagged (and re-floored above, every step) until
-     the ionizing star's next HII rebuild. Reset only once that window
-     has elapsed. */
+     the tag end time, RADIATION_TAG_LIFETIME_INTERVALS rebuild intervals
+     after the last claim or renewal. Reset only once that window has
+     elapsed. */
   if (time >= radiation_get_part_ionized_end_time(p, xp)) {
     radiation_reset_part_ionized_tag(p, xp);
   }
