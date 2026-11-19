@@ -1642,29 +1642,46 @@ $\Sigma=0$, $\mathcal T=1$ and $\Delta v=0$. A receiver with no positive
 temperature has $\Delta v_{\max}=0$: it leaves $\Delta v$ as it is, without
 adding $\delta v_{\rm hop}$, and never resets.
 
-The column then grows by the H$_2$ of the receiver on the path, and the
-transmission falls by the ratio of the factors,
+The column then grows by the H$_2$ on the path, and the transmission falls by
+the ratio of the factors,
 \begin{equation}
-  \Delta\Sigma = n_{{\rm H}_2}\,\ell_{\rm phys}, \quad
+  \Delta\Sigma = \tfrac12\big(n_{{\rm H}_2,s}+n_{{\rm H}_2,r}\big)\,\ell_{\rm phys}, \quad
   \Sigma' = \min(\Sigma+\Delta\Sigma,\Sigma_{\rm cap}), \quad
   \mathcal T' = \mathcal T\,\min\!\Big\{1,\frac{\mathcal S(\Sigma')}{\mathcal S(\Sigma)}\Big\},
   \label{eq:h2-hop}
 \end{equation}
 with $n_{{\rm H}_2}=X_{{\rm H}_2}\rho/(2m_{\rm H})$ the number density of H$_2$
-of the receiver in cm$^{-3}$, $\rho$ its physical density and $X_{{\rm H}_2}$
-its H$_2$ mass fraction, which the chemical network of the gas evolves.
-$\ell_{\rm phys}$ is in cm here, so $\Delta\Sigma$ is in cm$^{-2}$.
-Both factors use the fit of the receiver, so a hop costs two evaluations of
-$\mathcal S$ and no inverse. Since $\mathcal S$ falls with $\Sigma$, the ratio
-is at most 1, and the $\min\{1,\cdot\}$ removes only a rounding excess. The
-ratio is the one of ``The factor along a ray''
+of a particle in cm$^{-3}$, $\rho$ its physical density and $X_{{\rm H}_2}$
+its H$_2$ mass fraction, which the chemical network of the gas evolves;
+$s$ is the sender and $r$ the receiver. $\ell_{\rm phys}$ is in cm here, so
+$\Delta\Sigma$ is in cm$^{-2}$. The first half of the path holds the gas of
+the sender and the second half that of the receiver: this is the trapezoid
+rule for $\int n_{{\rm H}_2}\,{\rm d}\ell$ along the chain. Three cases set
+$n_{{\rm H}_2,s}$ otherwise:
+\begin{itemize}
+  \item a share that starts again on this hop keeps only the receiver's half,
+    $n_{{\rm H}_2,s}=0$. The sender's gas moves with the sender, so it belongs
+    to the line frame that the reset leaves, and the jump in velocity lies
+    between the two halves;
+  \item a star share has no sender gas, so $n_{{\rm H}_2,s}=n_{{\rm H}_2,r}$:
+    the gas of the receiver stands for the gas between the star and the
+    receiver, which keeps the column exact in uniform gas;
+  \item a test beam enters the slot of a gas particle with $\Sigma=0$ and no
+    hop, and its first hop has that particle as the sender.
+\end{itemize}
+The value $n_{{\rm H}_2,s}$ is read from the sender, which the pair task only
+reads; under MPI it is the copy of the home rank's value of the same drift,
+as for the slot. Both factors use the fit of the receiver, so a hop costs two
+evaluations of $\mathcal S$ and no inverse. Since $\mathcal S$ falls with
+$\Sigma$, the ratio is at most 1, and the $\min\{1,\cdot\}$ removes only a
+rounding excess. The ratio is the one of ``The factor along a ray''
 (Section~\ref{sec:packet-h2-physics}), with the receiver standing in for the
-gas of the whole path. The gas
-of the receiver sets the whole column of the hop, as it does for the dust; the
-error at a density step is in ``Gas of the hop''
-(Section~\ref{sec:packet-h2-limits}). A
-receiver with no H$_2$ on the path ($\Delta\Sigma\le0$) leaves $\Sigma$ and
-$\mathcal T$ as they are.
+gas of the whole path. The dust keeps the density of the receiver over the
+whole hop, because the absorbed energy is booked in the particle that absorbs
+it. The error at a density step is in ``Gas of the hop''
+(Section~\ref{sec:packet-h2-limits}). A path with no H$_2$
+($\Delta\Sigma\le0$) leaves $\Sigma$ and $\mathcal T$ as they are; a receiver
+with no H$_2$ and a sender with H$_2$ still gain the sender's half.
 
 \paragraph{The sums of a slot.} Let share $s$ land in slot $k$ of the receiver
 with the values $(\mathcal T_s,\Sigma_s,\Delta v_s)$ of Eq.~\eqref{eq:h2-hop}.
@@ -2848,15 +2865,27 @@ the term $2\varsigma\,2^{-24}$ of $\epsilon_{\rm m}$. With the slope $0.5$ and
 $1000$ merges this term changes $\mathcal T$ by up to $6\times10^{-5}$ of
 itself.
 
-\paragraph{Gas of the hop.} The column of a hop is the density of the
-receiver times the path. The chain of columns then adds up to the column from
-the source to the receiver, its own gas included, as the dust does. At a
-density step between two particles, the error is at most the column of one
-hop, $|n_{{\rm H}_2,a}-n_{{\rm H}_2,b}|\ell_{\rm hop}$ for the two H$_2$
-densities and the physical length $\ell_{\rm hop}$ (cm) of the hop that
-crosses the step. It does not grow over later hops: past the step each hop
-lies in gas of one density and adds the right column, so the column
-misassigned at the step is counted once.
+\paragraph{Gas of the hop.} The column of a hop is the mean density of its
+two ends times the path (Eq.~\eqref{eq:h2-hop}). On a smooth profile of the
+H$_2$ density this is second order in the length of the hop. At a step
+between H$_2$ densities $n_{{\rm H}_2,a}$ and $n_{{\rm H}_2,b}$ crossed by one
+hop of physical length $\ell_{\rm hop}$ (cm), the error is
+$(n_{{\rm H}_2,b}-n_{{\rm H}_2,a})(\ell_{\rm hop}/2-\ell_b)$, with $\ell_b$ the
+part of the hop behind the step. Its size is at most
+$\tfrac12|n_{{\rm H}_2,a}-n_{{\rm H}_2,b}|\ell_{\rm hop}$, and its sign depends
+on where the step lies in the hop. It does not grow over later hops: past the
+step each hop lies in gas of one density and adds the right column. The
+density of the receiver alone would err by up to
+$|n_{{\rm H}_2,a}-n_{{\rm H}_2,b}|\ell_{\rm hop}$, always towards too much
+column on entry. In a slab of contrast 10 to 300 lit from one side, the offset
+of the column behind the near face falls from 0.69 to 0.75 of
+$(C-1)\,n_{{\rm H}_2,c}\,h$ with the density of the receiver to 0.03 to 0.06
+with the mean of the two ends, with $C$ the contrast, $n_{{\rm H}_2,c}$ the
+H$_2$ density of the clear gas and $h$ the smoothing length. The SPH density
+also smooths a face over about one kernel, which no rule of the hop removes.
+A velocity reset places the face of a moving cloud at the middle of its
+resetting hop, so the column inside the cloud is within
+$\tfrac12 n_{{\rm H}_2}\ell_{\rm hop}$ of $n_{{\rm H}_2}$ times the depth.
 
 \paragraph{Numerical accuracy: where the sign is lost.} Each case below breaks
 one condition of the proof. The size of the effect comes from the tested

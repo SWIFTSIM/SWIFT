@@ -1315,17 +1315,18 @@ def velocity_bar(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Return the lower and upper bound of ln(own ratio) of the cloud probes.
 
-    With a reset the carried column is n times the path from the sender of the resetting
-    hop, which lies up to one reach in front of the face: n_min d <= N <= n_max (d + R),
-    with d the path inside the cloud and R = gamma h_max the largest hop. Without a reset
-    the column telescopes to n r over all the gas: n_min r <= N <= n_max r. The factor
-    falls with the column, so the bound on ln t is that of the opposite column. The float
-    term is that of the star-lit gate for a slope of at most 1.
+    A hop books the mean n of its two ends, and a resetting hop only the receiver's half,
+    so with a reset the column is n (d + x - l/2), with l <= R = gamma h_max the resetting
+    hop, x in [0, l] the part of it in front of the face and d the path inside the cloud:
+    n_min (d - min(d, R)/2) <= N <= n_max (d + R/2). Without a reset the column telescopes
+    to n r over all the gas: n_min r <= N <= n_max r. The factor falls with the column, so
+    the bound on ln t is that of the opposite column. The float term is that of the
+    star-lit gate for a slope of at most 1.
     """
     n_min, n_max = n_range
     eps = (r / np.maximum(h, 1e-300) + 2.0) * 4.0 * FLOAT32_EPS
-    col_hi = n_max * (depth + reach) if reset else n_max * r
-    col_lo = n_min * depth if reset else n_min * r
+    col_hi = n_max * (depth + 0.5 * reach) if reset else n_max * r
+    col_lo = n_min * (depth - 0.5 * np.minimum(depth, reach)) if reset else n_min * r
     lo = np.log(transmission(col_hi, temp, dens)) - eps
     hi = np.log(transmission(col_lo, temp, dens)) + eps
     return lo, hi

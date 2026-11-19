@@ -1083,9 +1083,9 @@ def velocity_cases(work):
             ]
         )
 
-    # A correct code carries the in-cloud path plus part of the resetting hop: 0.74 h is
-    # the median excess measured on the real run.
-    base = n_h2 * (depth + 0.74 * h_cm)
+    # A correct code carries the in-cloud path within half the resetting hop; the median
+    # excess measured on the real run is -0.04 h.
+    base = n_h2 * depth
     own = ratio_of(base)
     full = ratio_of(n_h2 * r)
     params = os.path.join(d, "used_parameters.yml")
