@@ -1675,8 +1675,8 @@ as for the slot. Both factors use the fit of the receiver, so a hop costs two
 evaluations of $\mathcal S$ and no inverse. Since $\mathcal S$ falls with
 $\Sigma$, the ratio is at most 1, and the $\min\{1,\cdot\}$ removes only a
 rounding excess. The ratio is the one of ``The factor along a ray''
-(Section~\ref{sec:packet-h2-physics}), with the receiver standing in for the
-gas of the whole path. The dust keeps the density of the receiver over the
+(Section~\ref{sec:packet-h2-physics}), with the fit of the receiver standing in
+for the gas of the whole path. The dust keeps the density of the receiver over the
 whole hop, because the absorbed energy is booked in the particle that absorbs
 it. The error at a density step is in ``Gas of the hop''
 (Section~\ref{sec:packet-h2-limits}). A path with no H$_2$
@@ -1827,7 +1827,7 @@ $\Sigma^{\rm own}$ in cm$^{-2}$, is the H$_2$ column that this light has crossed
 since its sources or its last velocity reset, averaged over the slots with the
 weight that each slot has in the dissociating field. It is $0$ where the
 particle receives no dissociating light. It is the column along the path of
-the light, summed over the gas of the receivers it passed, and not the column
+the light, summed over the gas of the particles it passed, and not the column
 of the gas around the particle. It is a diagnostic. It is not averaged in
 time, it takes no kernel mean, and the dissociation rate does not read it.
 The ratio
@@ -2877,11 +2877,11 @@ on where the step lies in the hop. It does not grow over later hops: past the
 step each hop lies in gas of one density and adds the right column. The
 density of the receiver alone would err by up to
 $|n_{{\rm H}_2,a}-n_{{\rm H}_2,b}|\ell_{\rm hop}$, always towards too much
-column on entry. In a slab of contrast 10 to 300 lit from one side, the offset
-of the column behind the near face falls from 0.69 to 0.75 of
-$(C-1)\,n_{{\rm H}_2,c}\,h$ with the density of the receiver to 0.03 to 0.06
-with the mean of the two ends, with $C$ the contrast, $n_{{\rm H}_2,c}$ the
-H$_2$ density of the clear gas and $h$ the smoothing length. The SPH density
+column on entry. In a slab of contrast $C$ from 10 to 300 lit from one side,
+the median column 1 to 3 smoothing lengths behind the near face exceeds the
+straight-ray integral of the SPH density by 0.03 to 0.06 of
+$(C-1)\,n_{{\rm H}_2,c}\,h$, with $n_{{\rm H}_2,c}$ the H$_2$ density of the
+clear gas and $h$ the smoothing length. The SPH density
 also smooths a face over about one kernel, which no rule of the hop removes.
 A velocity reset places the face of a moving cloud at the middle of its
 resetting hop, so the column inside the cloud is within
