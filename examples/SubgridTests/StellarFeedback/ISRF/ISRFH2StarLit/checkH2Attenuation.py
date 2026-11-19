@@ -339,9 +339,9 @@ def check_premise_parameters(
 ) -> None:
     """Fail the run as void if the switch-on fixture parameters are not set.
 
-    The geajay library does not write its transported LW shielding option to
-    used_parameters.yml: it is set from ISRF_H2_line_absorption and reported in the
-    start-up log, which this check reads.
+    SWIFT does not write the transported LW shielding option to used_parameters.yml: it
+    sets it from ISRF_H2_line_absorption, passes it to the library, and prints the line
+    h2_transported_lw_rate_shielding in its start-up log, which this check reads.
     """
     wanted = [
         ("GEARFeedback:ISRF_H2_line_absorption", "1", None),
@@ -364,11 +364,12 @@ def check_premise_parameters(
         raise GateExit(EXIT_MISSING, f"start-up log {startup_log} is missing: {err}")
     if not re.search(r"h2_transported_lw_rate_shielding = 1\b", text):
         raise GateExit(
-            EXIT_VOID, "void run, start-up log does not report background_only"
+            EXIT_VOID,
+            "void run, the SWIFT start-up line h2_transported_lw_rate_shielding = 1 is absent",
         )
     rep.info(
         "premise parameters",
-        "HII, winds, SN off, unlimited speed, library told background_only",
+        "HII, winds, SN off, unlimited speed, SWIFT start-up line reports background_only",
     )
 
 
@@ -881,7 +882,9 @@ def ray_column(
     in the length unit of the box. The column is in n times that unit. The variation is
     the jump |n_slab - n_clear| times the number of slab faces within reach of the ray in
     x: the SPH density spreads a face over the kernel support, so a face closer than
-    reach to the ray is crossed by the smoothed field as well.
+    reach to the ray is crossed by the smoothed field as well. The size of one jump per
+    face follows from the smoothing reach; it is not a proven bound for a slanted ray.
+    The reference does not call the shielding function.
     """
     d = pos - star[None, :]
     d -= box * np.round(d / box)
@@ -947,7 +950,7 @@ def gate_twosource(args: argparse.Namespace) -> int:
 
     Four runs share one binary: star A alone, star B alone, star A alone again, and both.
     Where the light of the two stars never sits in one slot of a receiver, the field of
-    the two-star run is the sum of the one-star fields. Three checks follow.
+    the two-star run is the sum of the one-star fields. Four checks follow.
 
     1. Premises, read from the runs: same build, parameters and slot frame; the stars
        where the fixture says; the light of the two stars shares no slot at any particle
@@ -964,6 +967,11 @@ def gate_twosource(args: argparse.Namespace) -> int:
        l_hop (n_H2 + TV), of the straight-ray column through the slab and the clear gas
        (nearest periodic image). This sees an error common to the one-star and the
        two-star runs, which check 2 cancels.
+    4. Where both stars are lit, the column of the two-star run is the mean of the one-star
+       columns weighted by their dissociating energies, N_AB = (D_A N_A + D_B N_B) / (D_A + D_B),
+       because the code stores sum(D_s N_s) / sum(D_s) over the slots. Numerator and
+       denominator are sums of positive shares, each within the bar of check 2, so the ratio
+       lies within twice that bar.
 
     Raises
     ------
@@ -1200,6 +1208,25 @@ def gate_twosource(args: argparse.Namespace) -> int:
             f"{g['over_rest']} of {g['n_rest']} particles over the bar times the kernel maximum, "
             f"largest {g['rest_local']:.3g}; largest gap over the own value {g['rest_own']:.3g} (read only)",
         )
+    d_a, d_b = dis["star A"][both], dis["star B"][both]
+    n_a, n_b = runs["star A"][PARITY_COLUMN][both], runs["star B"][PARITY_COLUMN][both]
+    n_ab = ab[PARITY_COLUMN][both]
+    require_finite("columns of the particles lit by both", a=n_a, b=n_b, two_star=n_ab)
+    if not np.all(d_a + d_b > 0.0) or not np.all(n_ab > 0.0):
+        raise GateExit(
+            EXIT_VOID,
+            "void run, a particle lit by both has no dissociating energy or column",
+        )
+    mix = (d_a * n_a + d_b * n_b) / (d_a + d_b)
+    gap_col = np.abs(n_ab / mix - 1.0)
+    bar_col = 2.0 * bar_sum
+    rep.check(
+        "column of the two-star run: dissociating-energy-weighted mean of the one-star columns",
+        bool(np.all(gap_col <= bar_col)),
+        f"{int(np.sum(gap_col > bar_col))} of {int(both.sum())} particles lit by both outside "
+        f"|N_AB / ((D_A N_A + D_B N_B) / (D_A + D_B)) - 1| <= 2 x {bar_sum:.3g}; "
+        f"largest {float(gap_col.max()):.3g} ({float(gap_col.max()) / bar_col:.3g} of the bar)",
+    )
     ratio_ab = dis["two-star"][both] / own["two-star"][both]
     ratio_sum = (dis["star A"][both] + dis["star B"][both]) / (
         own["star A"][both] + own["star B"][both]
@@ -1522,7 +1549,7 @@ def gate_stale_key(args: argparse.Namespace) -> int:
     """Check that a given GeajayCooling:h2_transported_lw_rate_shielding has no effect.
 
     The run gave the removed key a value that contradicts ISRF_H2_line_absorption: 1.
-    It must start, and the library must report background_only, which only the switch sets.
+    It must start, and the SWIFT start-up line must report background_only, which only the switch sets.
     """
     rep = Report()
     try:
@@ -1536,7 +1563,7 @@ def gate_stale_key(args: argparse.Namespace) -> int:
     )
     values = re.findall(r"h2_transported_lw_rate_shielding = (\d+)", text)
     rep.check(
-        "library reports background_only (1) for the switch on",
+        "SWIFT start-up line reports background_only (1) for the switch on",
         values == ["1"],
         f"start-up values {values}",
     )

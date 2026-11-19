@@ -2,11 +2,13 @@
 Two 29.7 Msun stars in a periodic box of molecular gas, with the ISRF transport on
 (`ISRF_propagation: 1`) and the H2 line absorption of the transport on
 (`ISRF_H2_line_absorption: 1`). A dense slab (density contrast 300 at a uniform H2 ratio)
-shadows star A. Star B sits in clear gas on the other side of the slab. Where the light of
-the two stars reaches a gas particle from different directions, it sits in different
-reception slots and the two lights do not interact: the field of the two-star run must
-equal the sum of the fields of two runs with one star each. The check tests that, and tests
-the carried H2 column of each star against the straight ray through the slab.
+shadows star A. Star B sits in clear gas on the other side of the slab. A reception slot
+spans about 90 degrees, and two lights share a slot only where their directions fall in
+the same slot. Where the two lights fall in different slots (the check verifies this and
+voids the run otherwise), they do not interact: the field of the two-star run must equal
+the sum of the fields of two runs with one star each. The check tests that, tests the
+carried H2 column of each star against the straight ray through the slab, and tests the
+column of the two-star run against the one-star columns.
 
 Read the README of `ISRFH2StarLit` for the build, the radiation table, the parameters that
 the run holds fixed and the exit classes.
@@ -59,7 +61,15 @@ Checks:
   within `l_hop` of the ray in `x` (the SPH density spreads a face over the kernel support).
   The sum check cancels an error that is common to all runs; this one does not. A column
   that is 1.5 times too large must fall outside the bar at some particle, else the run is
-  void.
+  void. The face term is set from the smoothing reach `gamma h_max`; it is not a proven
+  bound for a ray that crosses a face at a slant. The reference sums the nominal H2 densities
+  along the ray. It does not call the shielding function, so it detects no error in the
+  shielding function that all four runs share; the star-lit check covers that.
+- At every particle lit by both stars, the column of the two-star run equals the mean of
+  the one-star columns weighted by their dissociating energies, `N_AB = (D_A N_A + D_B N_B)
+  / (D_A + D_B)`, because the code stores `sum(D_s N_s) / sum(D_s)` over the slots. Both
+  sums are made of positive shares, each within the round-off bar above, so the ratio lies
+  within twice that bar.
 
 The check also prints, without gating, the largest change of the ratio `D / E` at the
 particles lit by both stars and the largest change of `H2I` between the runs; the

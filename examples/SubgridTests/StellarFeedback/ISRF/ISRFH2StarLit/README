@@ -51,9 +51,9 @@ about 2e18 cm^-2 over the box.
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
 `makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`).
-The geajay library does not write its LW shielding option to `used_parameters.yml`; the
-check reads it from the library's start-up line `h2_transported_lw_rate_shielding = 1` in
-the log and calls the run void if the line is absent or reads 0. `run.sh` passes the log.
+SWIFT does not write the LW shielding option to `used_parameters.yml`; the check reads it
+from the start-up line `h2_transported_lw_rate_shielding = 1` that SWIFT prints, and calls
+the run void if the line is absent or reads 0. `run.sh` passes the log.
 
 The exit class of the check is 0 for a pass, 1 for a failed
 bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a void run (a
@@ -94,8 +94,7 @@ first step changes in every particle.
 - The carried column `LWLineH2ColumnDensities` of every lit probe must lie between
   `n_min r (1 - e)` and `n_max r (1 + e)`, with `n_min` and `n_max` as in the first bar
   and `e` the float rounding term of the transmission bar. The band is about 2 per cent
-  wide on the default run, so it catches a column that is off by a few per cent (a 1 per
-  cent error fails 2320 of the 8263 lit probes, a 5 per cent error fails all of them).
+  wide on the default run, so it catches a column that is off by a few per cent.
 - The check prints how many particles can detect a doubled H2 column. If that is 0, the
   run is void.
 

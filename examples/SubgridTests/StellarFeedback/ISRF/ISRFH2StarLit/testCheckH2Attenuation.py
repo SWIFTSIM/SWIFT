@@ -464,16 +464,16 @@ def stale_key_cases(work):
     honoured = _write(d, "honoured.log", line.format(0), text=True)
     silent = _write(d, "silent.log", "main: done. Bye.\n", text=True)
     record(
-        "N3 stale key ignored: starts, library reports 1",
+        "N3 stale key ignored: starts, start-up line reports 1",
         0,
         ["stale_key", "--log", ignored, "--exit-status", "0"],
-        "library reports",
+        "SWIFT start-up line reports",
     )
     record(
-        "N3 stale key honoured: library reports 0",
+        "N3 stale key honoured: start-up line reports 0",
         1,
         ["stale_key", "--log", honoured, "--exit-status", "0"],
-        "library reports",
+        "SWIFT start-up line reports",
     )
     record(
         "N3 run stopped at start-up",
@@ -482,10 +482,10 @@ def stale_key_cases(work):
         "cleanly",
     )
     record(
-        "N3 no library line in the log",
+        "N3 no start-up line in the log",
         1,
         ["stale_key", "--log", silent, "--exit-status", "0"],
-        "library reports",
+        "SWIFT start-up line reports",
     )
     record(
         "N3 log missing",
@@ -724,6 +724,7 @@ def twosource_cases(work):
         star_b=star_b0,
         col_a=1.0,
         col_b=1.0,
+        col_ab=1.0,
         interfere=0.0,
         ab_noise=5e-7,
         repeat_noise=5e-7,
@@ -736,7 +737,7 @@ def twosource_cases(work):
         The one-star fields are a model (1 / r^2 energy within a front radius, 1.014
         times the quadrature column, transmission from the fit); the two-star run is
         their sum plus noise. col_a and col_b scale the carried column of that star in
-        every run that holds it. interfere scales the dissociating energy of the two-star
+        every run that holds it. col_ab scales the column of the two-star run only. interfere scales the dissociating energy of the two-star
         run at the particles lit by both.
         """
         rng = np.random.default_rng(3)
@@ -789,7 +790,13 @@ def twosource_cases(work):
                 if len(kinds) == 2 and interfere:
                     dis = np.where(lit_both, dis * (1.0 + interfere), dis)
                 jit = 1.0 + noise * rng.standard_normal(n_gas)
-                col = fields[snap, kinds[0]][2]
+                w = sum(fields[snap, s][1] for s in kinds)
+                col = sum(fields[snap, s][1] * fields[snap, s][2] for s in kinds)
+                col = np.where(
+                    w > 0, col / np.where(w > 0, w, 1.0), fields[snap, kinds[0]][2]
+                )
+                if len(kinds) == 2:
+                    col = col * col_ab
                 xs = x_h2
                 if snap == "last" and name == "main" and x_h2_last is not None:
                     xs = x_h2_last
@@ -860,7 +867,12 @@ def twosource_cases(work):
                 sum(ln.startswith("PASS") and what in ln for ln in lines),
                 sum(ln.startswith("FAIL") and what in ln for ln in lines),
             )
-            for what in ("equal the sum", "column of star A", "column of star B")
+            for what in (
+                "equal the sum",
+                "column of star A",
+                "column of star B",
+                "column of the two-star run",
+            )
         }
         return code, counts
 
@@ -923,6 +935,31 @@ def twosource_cases(work):
                     else 1
                 ),
                 f"exit {code}; sum lines passed {sum_pass} failed {sum_fail}; column of star {what} passed {col_pass} failed {col_fail}",
+            )
+        )
+    for size in (1.5, 1.1):
+        argv = build(f"col_ab_{size:g}", col_ab=size)
+        record(
+            f"T5b column of the two-star run {size:g} times too large (the ray check passes it)",
+            1,
+            argv,
+            "FAIL  column of the two-star run",
+        )
+        code, counts = verdicts(argv)
+        ROWS.append(
+            (
+                f"T5b the same, {size:g}: all four sum lines pass, both ray checks pass, the weighted-mean line fails",
+                0,
+                (
+                    0
+                    if code == 1
+                    and counts["equal the sum"] == (4, 0)
+                    and counts["column of star A"] == (1, 0)
+                    and counts["column of star B"] == (1, 0)
+                    and counts["column of the two-star run"] == (0, 1)
+                    else 1
+                ),
+                f"exit {code}; {counts}",
             )
         )
     for size, expect, label in (
