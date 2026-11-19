@@ -124,20 +124,53 @@ docstring gives it. The check fails if the heating is too small to resolve.
 Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
 given.
 
-Pass `--steps-per-window 1` and `--cooling-response <Lambda' dt>` (from a
-one-zone call of the cooling library at the reference state) to judge with
-the bar derived from the mechanism: the response of the cooling to the
-heating, plus a bound on the float32 rounding of the internal energy. The
-check prints this bar and the older assumed bar. The derived bar is wider
-than the older one for the Wolfire model because the older bar's premises
-fail. It allows a cooling response of 0.5 P, with P the heating over the
-window divided by u. That assumes the window opens with no lead and that the
-cooling response over the window is at most P. With 16 steps of 6.25e-11 per
-window the response is 1.12 P for Wolfire. With one step per window the
-window opens with a lead of 1.5 steps, so the response is about 2 Lambda' dt
-(Wolfire: 8.5e-4 against 0.5 P = 3.8e-4).
+The check judges with a bar derived from the mechanism: the response of the
+cooling to the heating, plus a bound on the float32 rounding of the internal
+energy (see the docstring). Give it the number of steps in the window,
+`--steps-per-window N` (1 for the shipped output lists), and
+`--cooling-response <Lambda' dt>`, the derivative of the net cooling rate with
+respect to the internal energy times the window (dimensionless). The
+script refuses a value outside [0, 0.5) and a missing or zero `N`. With `N`
+given, the allowed lead of the heating run at the window start is 2/N unless
+`--lead-tol` says otherwise. The script prints the bar from the earlier
+definition (`0.5 P + 4 2^-24 / P`) and the derived bar, and judges with the
+derived one.
 
-The other legs resolve an error of 0.3 per cent. The `fixed_rate` leg
-resolves only errors above about 1e-2: its heating per step is so small
-that the float32 rounding term dominates its bar (about 4 per cent). A
-reference scaled by 1.1 fails it; one scaled by 1.003 passes.
+For the Wolfire model on the shipped fixture (`pe_model=wolfire1995` with free
+electrons, heating-off run as reference):
+```
+python3 isrf_photoelectric_heating_check.py \
+    --on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
+    --off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --rate-on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
+    --rate-off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --pe-model grackle-wolfire1995 \
+    --steps-per-window 1 --cooling-response 4.2436e-4
+```
+Values of `--cooling-response` for this fixture (`dt_max=6e-10`, the shipped
+output lists, Grackle `official` build):
+
+| Model | `--cooling-response` |
+|-------|----------------------|
+| `grackle-wolfire1995` | 4.2436e-4 |
+| `grackle-constant` (reference run with ISRF on, `--reference-field on`) | 4.2762e-4 |
+| `geajay-fixed-rate` | 4.2718e-4 |
+
+They come from a one-zone call of the Grackle library, with the same switches
+as the run, on the reference run's state at the window start: take the net
+cooling rate at `u (1 +- h)` for each particle (`h = 1e-3`), form
+`Lambda' = -(edot(1+h) - edot(1-h)) / (2 h u)`, multiply by the window length
+and take the median over the illuminated particles. Another fixture, cadence
+or library build needs its own values.
+
+What the check can and cannot see. Scaling the whole reference is resolved at
+0.3 per cent for `grackle-wolfire1995`, `grackle-constant` and the other geajay
+models; for `geajay-fixed-rate`, only an error above about 4 per cent (its bar
+is 4.3e-2, set by the rounding of the small heating per step). The response
+lowers the measured rate, so an error of the reference that raises the heating
+is partly hidden: on the Wolfire leg the check cannot see an error of about
+-0.06 to +0.21 per cent of the heating, nor about 1 per cent in `G0`. The
+margins of `grackle-constant` (6 per cent) and `geajay-density-epsilon`
+(3 per cent) are thin: a 5 per cent error in `--cooling-response` would fail
+them. The reference takes `n_H` as `HI + HII + H2I + H2II` and assumes
+Grackle's default `local_dust_to_gas_ratio` (0.009387).

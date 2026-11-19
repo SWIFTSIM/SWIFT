@@ -75,8 +75,8 @@ while the on/off gas states still coincide (checked below, not assumed):
 subtracting the two runs' `du/dt` cancels every process identical between
 them (cooling, any work term), isolating the ON/OFF difference, which is
 Gamma_PE/rho to leading order. `G0`, `n_H` and `Z'` are read from the
-heating-ON run's own snapshot at the start of that interval (the
-heating-off run's ISRF fields are zero: `with_interstellar_radiation_field`
+heating-ON run's own snapshots (the reference is the mean of the formula
+at the start and the end states, see below; the heating-off run's ISRF fields are zero: `with_interstellar_radiation_field`
 gates the whole ISRF injection, not just its consumption by Grackle,
 `radiation_iact.h`) -- an input to this test, not one of its claims,
 matching `isrf_h2_photodissociation_check.py`'s own convention of taking
@@ -103,12 +103,12 @@ script; both are consequences of `ISRF_propagation: 0`'s reset-on-touch
 design measured at a cadence too coarse for it, and are reported here as
 a real characteristic of that mode rather than worked around silently.
 
-The fix is cadence, not a different formula: at `delta_time=1e-9`,
-`dt_max=1e-10` internal units (`time_end=2e-9`, two snapshots), the same
-measurement gives `T` still within a few K of the 1000 K initial
-condition, `Gamma_PE*dt/u` of order 4e-3 (median, 39 illuminated
-sub-cutoff particles) and `G0` unchanged between the two snapshots to
-float32 precision -- a genuinely linear, cadence-converged regime.
+The fix is cadence, not a different formula: at the cadence given below
+(`dt_max=6e-10`, steps of 5e-10 internal units) the near-star gas stays
+within a few K of the 1000 K initial condition, `Gamma_PE*dt/u` is of
+order 1e-3 (median, 39 illuminated sub-cutoff particles) and `G0` is
+unchanged between the two snapshots of the window to float32 precision: a
+linear, cadence-converged regime.
 
 The window must also open when the field arrives. The field is first stored
 at the end of step 3, and the cooling uses it from step 4. A window that
@@ -191,13 +191,27 @@ and at the two stored snapshots, each by half the float spacing ``s`` of
 the rounding of four float32 energies, each 2^-24 of ``u``. SPHENIX holds
 ``u`` in float32 and updates it at every step, so the real rounding is larger
 and grows with the number of steps in the window; a run with ten steps per
-window gave an error 2.4 times this term. The measured errors of the
-geajay models stay at about 0.1 per cent while ``P`` changes by a factor 8,
-which neither term describes. ``--rate-extra-tol`` (default 0) is for terms
-the reference does not model. The bar was written before the runs it judges
+window gave an error 2.4 times this term. The assumed bar does not model
+the lead and the half step of the response above. ``--rate-extra-tol``
+(default 0) is for terms the reference does not model. The bar was written before the runs it judges
 and is not changed after them. The check also needs a finite measurement, a
 bar below 0.5, ``P`` above 0 and below ``--perturbation-tol``, identical
 on/off starts and a lead ``|L|`` below ``--lead-tol``.
+
+Limits of the derived bar. The response lowers the measured rate by about
+``2 Lambda' dt``, but the bar is centred on zero: an error of the reference
+that raises the heating by up to the response hides inside it. On the
+Wolfire leg the check cannot see an error of about -0.06 to +0.21 per cent of
+the heating, and an error of about 1 per cent in ``G0``. The margins are
+thin on two legs: 6 per cent on ``grackle-constant`` and 3 per cent on
+``geajay-density-epsilon``, so a 5 per cent error in ``Lambda' dt`` would
+fail them. The ``fixed_rate`` bar is 4 per cent: the check resolves an error
+of that size only. Scaling the whole reference is resolved at 0.3 per cent on
+the other legs. The hydrogen density is ``HI + HII + H2I + H2II`` as in
+Grackle's ``rhoH`` (H- is not counted), and the gas-grain term assumes
+Grackle's default ``local_dust_to_gas_ratio`` (0.009387): with another value
+of ``GrackleCooling:local_dust_to_gas_ratio`` the Hollenbach & McKee term
+scales by that ratio over the default, while the heating does not.
 
 ``--reference-scale`` and ``--inject-nan`` are positive controls: a scaled
 reference, a reference of another model and a NaN in a measured value must
@@ -363,10 +377,10 @@ def parse_options():
     parser.add_argument(
         "--lead-tol",
         type=float,
-        default=2.0,
+        default=None,
         help="Max median lead of the heating run at the window start, in units "
-        "of the window's heating; 2 / N for N steps per window (see docstring) "
-        "(default: %(default)s, for N = 1).",
+        "of the window's heating (default: 2 / N with --steps-per-window N, "
+        "else 2, see docstring).",
     )
     parser.add_argument(
         "--cooling-response",
@@ -374,15 +388,17 @@ def parse_options():
         default=None,
         help="Lambda' dt, the derivative of the net cooling rate with respect "
         "to u times the window, from a one-zone call of the cooling library "
-        "at the reference state. With --steps-per-window, the check judges "
-        "with the derived bar (see docstring) (default: not given).",
+        "at the reference state, in [0, 0.5). Needs --steps-per-window; the "
+        "check then judges with the derived bar (see docstring) "
+        "(default: not given).",
     )
     parser.add_argument(
         "--steps-per-window",
         type=int,
         default=None,
-        help="Number of time steps in the window, for the rounding term of the "
-        "derived bar (default: not given).",
+        help="Number of time steps in the window (at least 1), for the rounding "
+        "term of the derived bar and the default --lead-tol "
+        "(default: not given).",
     )
     parser.add_argument(
         "--hydrogen-fraction",
@@ -402,7 +418,20 @@ def parse_options():
         "run-to-run at the few-1e-6 level even from a bit-identical IC, "
         "so this is set well above that floor).",
     )
-    return parser.parse_args()
+    opt = parser.parse_args()
+    if opt.steps_per_window is not None and opt.steps_per_window < 1:
+        parser.error("--steps-per-window must be at least 1")
+    if opt.cooling_response is not None:
+        if opt.steps_per_window is None:
+            parser.error("--cooling-response needs --steps-per-window")
+        if not 0.0 <= opt.cooling_response < RESOLVABLE_BAR_MAX:
+            parser.error(
+                "--cooling-response must be finite and in [0, "
+                f"{RESOLVABLE_BAR_MAX}), got {opt.cooling_response}"
+            )
+    if opt.lead_tol is None:
+        opt.lead_tol = 2.0 / (opt.steps_per_window or 1)
+    return opt
 
 
 def load_snapshot(path):
@@ -466,7 +495,7 @@ def load_snapshot(path):
             electron_density_cgs = None
         if "HI" in gas:
             hydrogen_mass_fraction = gas["HI"][:] + gas["HII"][:]
-            for name in ("HM", "H2I", "H2II"):
+            for name in ("H2I", "H2II"):
                 if name in gas:
                     hydrogen_mass_fraction = hydrogen_mass_fraction + gas[name][:]
             hydrogen_density_cgs = hydrogen_mass_fraction * density_cgs_raw / M_P_CGS
@@ -1113,7 +1142,7 @@ def main():
                     )
                     bar = assumed_bar
                     bar_form = "0.5 x perturbation + 4 x 2^-24 / perturbation"
-                    if opt.cooling_response is not None and opt.steps_per_window:
+                    if opt.cooling_response is not None:
                         # Each run rounds u at two half kicks per step and at
                         # the two stored snapshots, half a float spacing each.
                         spacing = float(np.median(on0["u_spacing"][selected]))
