@@ -723,6 +723,38 @@ def twosource_cases(work):
         "T1 two sources: form (ii) at 163.4 K",
     )
     go("n4.hdf5", held_off, 1, None, "FAIL  ratio equals", "N4 merge held term removed")
+    near_b = np.argsort(
+        np.linalg.norm(pos - np.array(fix["star_b_kpc"])[None, :], axis=1)
+    )[:23]
+    x_low = x_h2.copy()
+    x_low[near_b] *= 0.9
+
+    def go_h2(name, x_last, expect, label, key):
+        last = os.path.join(d, name)
+        write_snap(last, pos, rho, h, box, t_iso, x_last, lw, ii)
+        record(
+            label,
+            expect,
+            tool_args("twosource", d, last, first, params),
+            key,
+        )
+
+    go_h2(
+        "h2_low10.hdf5",
+        x_low,
+        4,
+        "T3 two sources: H2 of the 23 gas particles nearest B lowered by 10 per cent (void)",
+        "void run, H2 changed",
+    )
+    x_small = x_h2.copy()
+    x_small[near_b] *= 1.0 - 5e-4
+    go_h2(
+        "h2_low5e-4.hdf5",
+        x_small,
+        0,
+        "T4 two sources: H2 of the same 23 particles lowered by 5e-4 (inside the slack, widens the bar)",
+        "PASS  ratio equals",
+    )
     cold = np.full(len(pos), 50.0)
     go(
         "cold.hdf5",

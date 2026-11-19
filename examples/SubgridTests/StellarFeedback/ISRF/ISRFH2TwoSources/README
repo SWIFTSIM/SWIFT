@@ -30,6 +30,15 @@ reaches them. The shares are estimated from the geometry (equal luminosities, `1
 dilution).
 
 # Checking
+The check takes snapshot 1 as the reference, because the first step changes H2 uniformly
+by about 6e-4. It requires that the n_H2 of every gas particle at the last snapshot lies
+inside the range of the reference snapshot (slab gas and clear gas each, up to 1e-3), and
+stops as void otherwise. It adds to the bar of every probe the shift of the form (ii)
+prediction for a column scaled by the amount that the last snapshot extends that range.
+This widens the bar; the check prints the widening. The fit uniformity test uses the bar
+without this term. The number of probes whose H2 changed by more than 1e-3 against the
+reference is printed only.
+
 Per probe, `R = t_measured / t_true`, where `t_true` keeps every share's own column. With
 `pi_l` the weight of the least-shielded light in the sum of `e t / f(N)` over the shares
 (its energy share if all gas before the merge has the fit of the merge), `eps` the hop bar

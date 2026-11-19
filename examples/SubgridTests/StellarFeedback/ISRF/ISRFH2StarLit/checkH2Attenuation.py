@@ -508,7 +508,10 @@ def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def h2_range_premise(
-    first: dict, last: dict, mask: np.ndarray, rep: Report
+    first: dict,
+    last: dict,
+    mask: np.ndarray,
+    rep: Report,
 ) -> Tuple[float, float]:
     """Return the n_H2 range of the probe domain over the reference and the last snapshot.
 
@@ -523,27 +526,54 @@ def h2_range_premise(
     GateExit
         EXIT_VOID if the n_H2 of a domain particle left the reference range.
     """
-    n_first, n_last = h2_column_density(first)[mask], h2_column_density(last)[mask]
-    lo_ref, hi_ref = float(n_first.min()), float(n_first.max())
-    out = int(
-        np.sum(
-            (n_last < lo_ref * (1.0 - FROZEN_H2_REL))
-            | (n_last > hi_ref * (1.0 + FROZEN_H2_REL))
+    ranges = h2_region_ranges(first, last, [("", mask)], rep)
+    return ranges[0][1], ranges[0][2]
+
+
+def h2_region_ranges(
+    first: dict, last: dict, regions: List[Tuple[str, np.ndarray]], rep: Report
+) -> List[Tuple[str, float, float, float, float]]:
+    """Apply the n_H2 range premise per region.
+
+    Regions are for domains whose gas differs by design (a slab and clear gas), where
+    one range would carry no meaning.
+
+    Returns (label, n_min, n_max, lo_ref, hi_ref) per region, n_min and n_max over the
+    reference and the last snapshot, lo_ref and hi_ref over the reference alone.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if a particle of a region left the reference range of that region.
+    """
+    n_first, n_last = h2_column_density(first), h2_column_density(last)
+    out = []
+    for label, mask in regions:
+        tag = f" ({label})" if label else ""
+        if not mask.any():
+            raise GateExit(EXIT_VOID, f"void run, the n_H2 domain{tag} holds no gas")
+        nf, nl = n_first[mask], n_last[mask]
+        lo_ref, hi_ref = float(nf.min()), float(nf.max())
+        n_out = int(
+            np.sum(
+                (nl < lo_ref * (1.0 - FROZEN_H2_REL))
+                | (nl > hi_ref * (1.0 + FROZEN_H2_REL))
+            )
         )
-    )
-    if out:
-        raise GateExit(
-            EXIT_VOID,
-            f"void run, H2 changed: n_H2 of {out} probe-domain particles left the reference "
-            f"range {lo_ref:.5g} to {hi_ref:.5g} cm^-3 by more than {FROZEN_H2_REL} "
-            f"(last range {float(n_last.min()):.5g} to {float(n_last.max()):.5g})",
+        if n_out:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, H2 changed: n_H2 of {n_out} probe-domain particles{tag} left the "
+                f"reference range {lo_ref:.5g} to {hi_ref:.5g} cm^-3 by more than "
+                f"{FROZEN_H2_REL} (last range {float(nl.min()):.5g} to {float(nl.max()):.5g})",
+            )
+        n_min, n_max = min(lo_ref, float(nl.min())), max(hi_ref, float(nl.max()))
+        rep.info(
+            f"n_H2 range premise{tag}",
+            f"all domain particles inside the reference range; bar range {n_min:.5g} to {n_max:.5g} cm^-3",
         )
-    n_min, n_max = min(lo_ref, float(n_last.min())), max(hi_ref, float(n_last.max()))
-    rep.info(
-        "n_H2 range premise",
-        f"all domain particles inside the reference range; bar range {n_min:.5g} to {n_max:.5g} cm^-3",
-    )
-    return n_min, n_max
+        out.append((label, n_min, n_max, lo_ref, hi_ref))
+    return out
 
 
 def column_spread_bar(
@@ -824,7 +854,22 @@ def gate_twosource(args: argparse.Namespace) -> int:
     idx = np.array([ids[int(p["id"])] for p in probes], dtype=int)
     mask = np.zeros(len(last["ParticleIDs"]), bool)
     mask[idx] = True
-    read = probe_premises(first, last, mask, np.full(len(mask), np.inf), rep)
+    read = probe_premises(
+        first, last, mask, np.full(len(mask), np.inf), rep, frozen_h2=False
+    )
+    slab = fix.get("slab_x_kpc")
+    if slab:
+        in_slab = (last["Coordinates"][:, 0] >= slab[0]) & (
+            last["Coordinates"][:, 0] <= slab[1]
+        )
+        regions = [("slab gas", in_slab), ("clear gas", ~in_slab)]
+    else:
+        regions = [("all gas", np.ones(len(mask), bool))]
+    h2_ranges = h2_region_ranges(first, last, regions, rep)
+    h2_spread = max(
+        max((lo - n_min) / lo, (n_max - hi) / hi)
+        for _, n_min, n_max, lo, hi in h2_ranges
+    )
     dens, temp = gas_number_density(last), last["Temperatures"]
     lw, meas = own_transmission(last)
     require_finite("measured own ratio", ratio=meas[idx])
@@ -841,7 +886,26 @@ def gate_twosource(args: argparse.Namespace) -> int:
         s = float(log_slope(max(n_probe, 1.0), temp[k], dens[k]))
         eps_hop = s * l_hop_all[k] / max(float(p["r_b_kpc"]) * cm, l_hop_all[k])
         eps_float = float(p.get("n_merges", 1)) * (2.0 + 2.0 * s) * FLOAT32_EPS
-        eps = eps_hop + eps_float
+        eps0 = eps_hop + eps_float
+        eps_h2 = (
+            0.0
+            if h2_spread == 0.0
+            else max(
+                abs(
+                    np.log(
+                        merge_rules(
+                            [{**sh, "N_cm2": sh["N_cm2"] * g} for sh in p["shares"]],
+                            temp[k],
+                            dens[k],
+                            down * g,
+                        )["ii"]
+                        / rules["ii"]
+                    )
+                )
+                for g in (1.0 - h2_spread, 1.0 + h2_spread)
+            )
+        )
+        eps = eps0 + eps_h2
         r_meas = meas[k] / rules["true"]
         r_pred = rules["ii"] / rules["true"]
         r3_fails = rules["r3"] / rules["true"] > (1.0 / rules["pi_l"]) * (1.0 + eps)
@@ -856,6 +920,7 @@ def gate_twosource(args: argparse.Namespace) -> int:
                 r3_fails,
                 i_fails,
                 rules["true"],
+                eps0,
             )
         )
     if not rows:
@@ -863,7 +928,15 @@ def gate_twosource(args: argparse.Namespace) -> int:
     a = np.array([[r[1], r[2], r[3], r[4]] for r in rows])
     r_meas, r_pred, pi_l, eps = a.T
     t_true = np.array([r[7] for r in rows])
-    check_fit_uniform(first, float(np.min(eps)), 1e24 / 5e14, rep)
+    eps_hop_float = np.array([r[8] for r in rows])
+    check_fit_uniform(first, float(np.min(eps_hop_float)), 1e24 / 5e14, rep)
+    rep.info(
+        "bar widening",
+        f"the bar adds the form (ii) shift for the n_H2 range of the reference and the last "
+        f"snapshot (columns scaled by 1 +- {h2_spread:.3g}); its median is "
+        f"{100.0 * (float(np.median(eps)) / float(np.median(eps_hop_float)) - 1.0):.3g} per cent "
+        f"above the bar of the hop and float terms alone",
+    )
     main_bad = np.abs(r_meas / r_pred - 1.0) > eps
     sign_bad = r_meas < 1.0 - eps
     bound_bad = r_meas > (1.0 / pi_l) * (1.0 + eps)
