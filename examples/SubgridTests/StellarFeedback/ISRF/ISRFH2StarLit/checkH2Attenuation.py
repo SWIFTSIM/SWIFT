@@ -95,6 +95,52 @@ REQUIRED_COLUMN = (PARITY_COLUMN,)
 REQUIRED_KERNEL = ("Masses", "Velocities")
 FLOAT32_TINY = float(np.finfo(np.float32).tiny)
 KERNEL_WEIGHT_AT_ZERO = 21.0 / (2.0 * math.pi * KERNEL_GAMMA**3)
+# Piecewise polynomial of src/kernel_hydro.h for Wendland C2 in 3D: W = Horner(c, t) with t = u - origin
+# on the interval index = int(u * 4 / gamma_code); the last interval ends at the support gamma_code.
+KERNEL_CODE_GAMMA = 1.9364917278289795
+KERNEL_POLY_ORIGIN = np.array(
+    [
+        0.0,
+        0.9682458639144897,
+        1.4523687362670898,
+        1.9364917278289795,
+        1.9364917278289795,
+    ]
+)
+KERNEL_POLY_COEFFS = np.array(
+    [
+        [
+            0.0676042888394359,
+            -0.4909317978874823,
+            1.2675804873830907,
+            -1.2273295640873905,
+            0.0,
+            0.4602486125460297,
+        ],
+        [
+            0.0676042888394359,
+            -0.16364393262916077,
+            0.0,
+            0.3068323910218476,
+            -0.2970891935218974,
+            0.08629661485238058,
+        ],
+        [
+            0.0676042888394359,
+            -2.014764810783741e-08,
+            -0.15844756092288392,
+            0.15341622384355558,
+            -0.055704242073993125,
+            0.007191387891262731,
+        ],
+        [0.0676042888394359, 0.16364393262916077, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    ]
+)
+# Relative error of u = r / h in float, in units of eps32: the difference of the double positions is cast
+# to float (2 eps in r^2), squared and summed (3 eps), sqrt (0.5 eps in r, 1 eps), the product with the
+# reciprocal of h under -freciprocal-math (2 eps): 2.5 + 1 + 2, rounded up.
+ARGUMENT_ROUNDING_EPS = 6.0
 TIME_RTOL = 1e-5
 REQUIRED_GAS = (
     "ParticleIDs",
@@ -611,20 +657,54 @@ def column_spread_bar(
     return np.maximum(lo, hi)
 
 
-def kernel_weight(u: np.ndarray) -> np.ndarray:
-    """Return the Wendland C2 kernel W(u) of the code for h = 1, zero beyond gamma."""
-    x = np.clip(u / KERNEL_GAMMA, 0.0, 1.0)
-    shape = (1.0 - x) ** 4 * (1.0 + 4.0 * x)
-    return np.where(u < KERNEL_GAMMA, KERNEL_WEIGHT_AT_ZERO * shape, 0.0)
+def kernel_weight_with_error(u: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the code's kernel W(u) for h = 1 and a bound on its float error.
+
+    W is the piecewise polynomial of the code evaluated in double. The error bound is
+    the sum of three float effects: the Horner rounding, 10 eps32 sum_k |c_k| |t|^(5-k)
+    (the standard bound 2 n eps for degree n = 5); the rounding of t = u - origin, which
+    is exact near the edge, so only |dW/dt| eps32 |t|; and the rounding of u itself,
+    |dW/du| ARGUMENT_ROUNDING_EPS eps32 u. Their sum is large relative to W only at the edge of
+    the support, where W vanishes as (gamma - u)^4.
+
+    Returns
+    -------
+    (np.ndarray, np.ndarray)
+        W and the absolute error bound, both zero at and beyond the code's support.
+    """
+    u = np.asarray(u, float)
+    index = np.minimum(
+        (np.minimum(u, KERNEL_CODE_GAMMA) * (4.0 / KERNEL_GAMMA)).astype(int), 4
+    )
+    index = np.where(u >= KERNEL_CODE_GAMMA, 4, index)
+    c = KERNEL_POLY_COEFFS[index]
+    t = u - KERNEL_POLY_ORIGIN[index]
+    w = c[:, 0].copy()
+    dw = np.zeros_like(u)
+    mag = np.abs(c[:, 0])
+    for k in range(1, 6):
+        dw = dw * t + w
+        w = w * t + c[:, k]
+        mag = mag * np.abs(t) + np.abs(c[:, k])
+    w = np.maximum(w, 0.0)
+    err = FLOAT32_EPS * (
+        10.0 * mag + np.abs(dw) * np.abs(t) + ARGUMENT_ROUNDING_EPS * np.abs(dw) * u + w
+    )
+    inside = u < KERNEL_CODE_GAMMA
+    return np.where(inside, w, 0.0), np.where(inside, err, 0.0)
 
 
 def kernel_neighbour_weights(
     snap: dict,
-) -> Iterator[Tuple[int, np.ndarray, np.ndarray]]:
-    """Yield (i, j, w) for every particle i: its neighbours j and w = m_j W(r_ij / h_i).
+) -> Iterator[Tuple[int, np.ndarray, np.ndarray, np.ndarray]]:
+    """Yield (i, j, w, rel) for every particle i.
 
-    These are the weights of the force loop. The list includes i itself, which carries
-    the self term m_i W(0) that the code adds when it closes the mean.
+    j are the neighbours, w = m_j W(r_ij / h_i) the weights of the force loop and rel the
+    relative error bound of each weight (see kernel_weight_with_error). The list includes
+    i itself, which carries the self term m_i W(0) that the code adds when it closes the
+    mean. A weight of zero (the edge of the support) carries a relative error of zero; a
+    neighbour within a few eps32 of the edge that the code counts and this list does not, or the
+    other way round, has a weight below 1e-26 of W(0) and is not accounted for.
     """
     from scipy.spatial import cKDTree
 
@@ -637,7 +717,9 @@ def kernel_neighbour_weights(
         j = np.asarray(found)
         d = pos[j] - pos[i]
         d -= box * np.round(d / box)
-        yield i, j, m[j] * kernel_weight(np.sqrt((d * d).sum(axis=1)) / h[i])
+        w, err = kernel_weight_with_error(np.sqrt((d * d).sum(axis=1)) / h[i])
+        rel = np.where(w > 0.0, err / np.where(w > 0.0, w, 1.0), 0.0)
+        yield i, j, m[j] * w, rel
 
 
 def step_premises(path: Optional[str], snap: dict, rep: Report) -> float:
@@ -705,7 +787,7 @@ def check_kernel_mean(
     exp: np.ndarray,
     bar_own: np.ndarray,
 ) -> None:
-    """Check the snapshot kernel mean LWLineTransmissions in two tiers.
+    """Check the snapshot kernel means of the LW fields in three tiers.
 
     Both tiers read the own fields of the snapshot, so the own LW energy E_j itself is
     not tested here.
@@ -718,8 +800,19 @@ def check_kernel_mean(
     the number is printed. On an exempt particle the LW mean must be zero if and only if
     no term is at or above FLT_MIN, and T must not fall below T_offline (1 - bar), since a
     flush removes terms only from the float LW sum; an upward error there is not caught,
-    and tier 2 skips these particles. A particle with no lit neighbour must have no LW
-    energy. The weight sum of the mean cancels in T and is not tested.
+    and tiers 2 and 3 skip these particles. A particle with no lit neighbour must have no LW
+    energy. Each bar adds the kernel-edge term sum_j |b_j - a_j| rel_j, with b_j the share of
+    neighbour j in the numerator, a_j its share of the weight sum and rel_j the relative
+    float error of its weight (kernel_weight_with_error): the weights of the neighbours near
+    the edge of the support carry a large relative error, and one lit neighbour there can set
+    the mean. The weight sum of the mean cancels in T and is tested by tier 3.
+
+    Tier 3 (means): E_mean and D_mean, which the cooling reads, against the offline sum
+    w E / sum w and min(sum w D, sum w E) / sum w with the self term. The bar is the float
+    sums, (2 n_ngb + 4) eps32 for E_mean (numerator, weight sum, division) and the same
+    plus (n_ngb + 3) eps32 for D_mean, plus the kernel-edge term. A change of the weight
+    sum, the weights or the fields of 0.5 per cent or more of E_mean or D_mean fails
+    wherever the bar is below that.
 
     Tier 2 (physics): T_snapshot against K[f], the same weighted mean of the prediction
     f(n_H2 r) of each neighbour. T / K is a convex combination of the ratios t_j / f_j,
@@ -730,13 +823,18 @@ def check_kernel_mean(
     t_snap = last["LWLineTransmissions"]
     n = len(energy)
     t_off = np.full(n, np.nan)
+    e_off = np.full(n, np.nan)
+    d_off = np.full(n, np.nan)
     kmean = np.full(n, np.nan)
     bar2 = np.full(n, np.nan)
     n_ngb = np.zeros(n)
     flushed = np.zeros(n)
     normal = np.zeros(n, dtype=bool)
     unlit = np.zeros(n, dtype=bool)
-    for i, j, w in kernel_neighbour_weights(last):
+    edge_t = np.zeros(n)
+    edge_e = np.zeros(n)
+    edge_d = np.zeros(n)
+    for i, j, w, rel in kernel_neighbour_weights(last):
         n_ngb[i] = len(j)
         terms = w * energy[j]
         total = terms.sum()
@@ -745,11 +843,23 @@ def check_kernel_mean(
             continue
         flushed[i] = terms[terms < FLOAT32_TINY].sum() / total
         normal[i] = bool(np.any(terms >= FLOAT32_TINY))
-        t_off[i] = min(float(w @ dissoc[j]), total) / total
+        weight_sum = w.sum()
+        d_terms = w * dissoc[j]
+        d_total = d_terms.sum()
+        t_off[i] = min(float(d_terms.sum()), total) / total
+        e_off[i] = total / weight_sum
+        d_off[i] = min(d_total, total) / weight_sum
+        share_w = w / weight_sum
+        share_e = terms / total
+        share_d = d_terms / d_total if d_total > 0.0 else np.zeros_like(w)
+        edge_t[i] = float(np.sum(np.abs(share_d - share_e) * rel))
+        edge_e[i] = float(np.sum(np.abs(share_e - share_w) * rel))
+        edge_d[i] = float(np.sum(np.abs(share_d - share_w) * rel))
         if probes[i]:
             kmean[i] = float(terms @ exp[j]) / total
             bar2[i] = bar_own[j][energy[j] > 0.0].max()
     float_term = (n_ngb + 2.0) * FLOAT32_EPS
+    bar_t = float_term + edge_t
 
     stray = unlit & (last["LWSpecificEnergies"] != 0.0)
     exempt = ~unlit & (flushed > float_term)
@@ -761,11 +871,11 @@ def check_kernel_mean(
             np.abs(np.log(t_snap[compared] / t_off[compared])),
         )
     dev1 = np.where(np.isfinite(dev1), dev1, np.inf)
-    over1 = int(np.sum(dev1 > float_term[compared]))
+    over1 = int(np.sum(dev1 > bar_t[compared]))
     in_probe = int(np.sum(exempt & probes))
     zero_wrong = exempt & ((last["LWSpecificEnergies"] == 0.0) == normal)
     with np.errstate(divide="ignore", invalid="ignore"):
-        low = exempt & ~(t_snap >= t_off * (1.0 - float_term))
+        low = exempt & ~(t_snap >= t_off * (1.0 - bar_t))
     exempt_bad = int(np.sum(zero_wrong | low))
     if exempt.any():
         span = f"r/h from {r_over_h[exempt].min():.3g} to {r_over_h[exempt].max():.3g}"
@@ -774,12 +884,37 @@ def check_kernel_mean(
     rep.check(
         "kernel mean against the kernel mean of the own fields (tier 1)",
         over1 == 0 and not stray.any() and exempt_bad == 0,
-        f"{over1} of {int(compared.sum())} particles outside |ln(T/T_offline)| <= (n_ngb + 2) eps32 (any change of T; "
-        f"the weight sum of the mean is not tested); "
-        f"worst {float(dev1.max()):.3g} against bar from {float(float_term[compared].min()):.3g}; "
+        f"{over1} of {int(compared.sum())} particles outside |ln(T/T_offline)| <= (n_ngb + 2) eps32 plus the kernel-edge term (any change of T; "
+        f"the weight sum of the mean is tested by tier 3); "
+        f"worst {float(dev1.max()):.3g} against bar from {float(bar_t[compared].min()):.3g}, median {float(np.median(bar_t[compared])):.3g}; "
         f"{int(stray.sum())} of {int(unlit.sum())} particles without a lit neighbour hold LW energy; "
         f"{int(exempt.sum())} exempt (flushable own-field terms below FLT_MIN, {in_probe} in the probes, {span}; "
         f"{exempt_bad} of them break the zero rule or T >= T_full (1 - bar); an upward error there is not caught)",
+    )
+
+    e_snap = last["LWSpecificEnergies"]
+    d_snap = last["LWDissociatingSpecificEnergies"]
+    bar_e = float_term + (n_ngb + 2.0) * FLOAT32_EPS + edge_e
+    bar_d = bar_e + (n_ngb + 3.0) * FLOAT32_EPS + edge_d
+    d_ref = np.minimum(d_off, e_snap)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dev_e = np.where(e_snap == e_off, 0.0, np.abs(np.log(e_snap / e_off)))
+        dev_d = np.where(d_snap == d_ref, 0.0, np.abs(np.log(d_snap / d_ref)))
+    dev_e = np.where(np.isfinite(dev_e), dev_e, np.inf)
+    dev_d = np.where(np.isfinite(dev_d), dev_d, np.inf)
+    over_e = compared & (dev_e > bar_e)
+    over_d = compared & (dev_d > bar_d)
+    resolve = int(np.sum(compared & (bar_e < 5e-3)))
+    rep.check(
+        "kernel means of the LW and dissociating energies against their offline means (tier 3)",
+        not over_e.any() and not over_d.any(),
+        f"{int(over_e.sum())} of {int(compared.sum())} particles outside |ln(E_mean/E_offline)| and "
+        f"{int(over_d.sum())} outside |ln(D_mean/D_offline)|; offline mean = sum w E / sum w with the self term, "
+        f"bar = float sums + sum_j |b_j - a_j| (error of w_j) with the kernel-edge error of each weight; "
+        f"worst E {float(np.max(dev_e[compared])):.3g} (bar {float(bar_e[compared][np.argmax(dev_e[compared])]):.3g}), "
+        f"worst D {float(np.max(dev_d[compared])):.3g} (bar {float(bar_d[compared][np.argmax(dev_d[compared])]):.3g}); "
+        f"{resolve} of {int(compared.sum())} particles have a bar below 0.5 per cent (a change of 0.5 per cent or more of "
+        f"E_mean or D_mean fails there, whatever its cause: the weight sum, the weights or the fields)",
     )
 
     use = probes & ~exempt & np.isfinite(kmean)

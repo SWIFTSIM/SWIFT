@@ -111,16 +111,17 @@ def kernel_fields(pos, h, box, own_e, own_d, variant="code"):
     return e_mean, d_mean, t
 
 
-def tier_row(name, argv, want1, want2=None):
+def tier_row(name, argv, want1, want2=None, want3=None):
     """Record a row that names the verdict of each kernel-mean tier; None leaves a tier unasserted."""
     code, text = run_gate(argv)
     lines = text.splitlines()
     verdict = []
-    for tag in ("(tier 1)", "(tier 2)"):
+    for tag in ("(tier 1)", "(tier 2)", "(tier 3)"):
         line = next((ln for ln in lines if tag in ln), "")
         verdict.append((line.split() or ["-"])[0])
-    ok = verdict[0] == want1 and (want2 is None or verdict[1] == want2)
-    want = 0 if (want1, want2) == ("PASS", "PASS") else 1
+    wants = (want1, want2, want3)
+    ok = all(w is None or v == w for v, w in zip(verdict, wants))
+    want = 0 if all(w in ("PASS", None) for w in wants) else 1
     margin = next((ln for ln in lines if "(tier 2)" in ln), "")
     margin = margin.split("worst margin ")[-1].split(" of the bar")[0]
     ROWS.append(
@@ -128,7 +129,7 @@ def tier_row(name, argv, want1, want2=None):
             name,
             want,
             code if ok else 99,
-            f"tier 1 {verdict[0]}, tier 2 {verdict[1]} (margin {margin})",
+            f"tier 1 {verdict[0]}, tier 2 {verdict[1]}, tier 3 {verdict[2]} (margin {margin})",
         )
     )
 
@@ -555,12 +556,69 @@ def starlit_cases(work):
     sign = np.where(rng.uniform(size=len(pos)) < 0.5, -1.0, 1.0)
     own_bar = gate.column_spread_bar(r, n_h2, mask, temp, dens)
     own_ratio = np.minimum(good * np.exp(0.4 * own_bar * sign), 1.0)
-    tier = lambda name, snap, w1, w2=None: tier_row(name, args(snap), w1, w2)
+    tier = lambda name, snap, w1, w2=None, w3=None: tier_row(
+        name, args(snap), w1, w2, w3
+    )
     tier(
         "K1 kernel mean of the own fields, steep light",
         snap_with("k1.hdf5", own_ratio, lw=steep),
         "PASS",
         "PASS",
+        "PASS",
+    )
+
+    def scale_means(fe, fd=None):
+        fd = fe if fd is None else fd
+        return lambda m, o, w: (m[0] * fe, m[1] * fd, m[2])
+
+    def without_self(m, o, w):
+        """E_mean and D_mean closed with a weight sum that lacks the self term; T is unchanged."""
+        norm = np.asarray(w.sum(axis=1)).ravel()
+        scale = norm / (norm - GAS_MASS * W_ZERO)
+        return m[0] * scale, m[1] * scale, m[2]
+
+    lit_mean = np.where(mask)[0][11]
+
+    def one_mean(m, o, w):
+        e, dd_ = m[0].copy(), m[1].copy()
+        e[lit_mean] *= 1.02
+        dd_[lit_mean] *= 1.02
+        return e, dd_, m[2]
+
+    tier(
+        "K12 E_mean and D_mean x1.3 (a weight-sum defect; T unchanged)",
+        snap_with("k12.hdf5", own_ratio, lw=steep, mean_fn=scale_means(1.3)),
+        "PASS",
+        "PASS",
+        "FAIL",
+    )
+    tier(
+        "K13 E_mean and D_mean x1.005",
+        snap_with("k13.hdf5", own_ratio, lw=steep, mean_fn=scale_means(1.005)),
+        "PASS",
+        "PASS",
+        "FAIL",
+    )
+    tier(
+        "K14 E_mean only x1.005",
+        snap_with("k14.hdf5", own_ratio, lw=steep, mean_fn=scale_means(1.005, 1.0)),
+        None,
+        None,
+        "FAIL",
+    )
+    tier(
+        "K15 weight sum without the self term (E_mean, D_mean; T unchanged)",
+        snap_with("k15.hdf5", own_ratio, lw=steep, mean_fn=without_self),
+        "PASS",
+        "PASS",
+        "FAIL",
+    )
+    tier(
+        "K16 one lit probe x1.02 on E_mean and D_mean",
+        snap_with("k16.hdf5", own_ratio, lw=steep, mean_fn=one_mean),
+        "PASS",
+        "PASS",
+        "FAIL",
     )
     tier(
         "K2 planted x1.02 on the kernel mean",
@@ -664,6 +722,7 @@ def starlit_cases(work):
     tier(
         "K9 own-field terms below FLT_MIN flushed to zero (exempt)",
         snap_with("k9.hdf5", own_ratio, lw=faint, mean_fn=flush()),
+        "PASS",
         "PASS",
         "PASS",
     )

@@ -82,9 +82,10 @@ first step changes in every particle.
   the self term included. Neighbours nearer the star are brighter and more transparent,
   so the mean exceeds `f` at the particle by a few per cent. That is a property of the
   averaging, so the check compares the field with the kernel mean of the prediction, not
-  with `f`. Both tiers take `E_j` and the own dissociating energy from the snapshot, so
+  with `f`. All tiers take `E_j` and the own dissociating energy from the snapshot, so
   `E_j` itself is not tested here.
-  - Tier 1, identity: `|ln(T / T_offline)| <= (n_ngb + 2) 2^-24` for every particle
+  - Tier 1, identity: `|ln(T / T_offline)|` at most `(n_ngb + 2) 2^-24` plus the
+    kernel-edge term (see tier 3) for every particle
     (`n_ngb` the neighbours in its kernel), with `T_offline` the weighted mean above
     computed from the own fields of the snapshot (dissociating mean clamped to the LW
     mean). A particle whose own-field terms `m_j W E_j` below the smallest normal float
@@ -96,7 +97,7 @@ first step changes in every particle.
     is not caught. A particle with no lit neighbour must hold no LW energy. This tier
     catches a missing self term, a kernel in `h_j` in place of `h_i`, and any change of
     `T` of 0.5 per cent or more. The weight sum of the mean (its normalisation) cancels in
-    `T`, so a change of it is not tested.
+    `T`: tier 3 tests it.
   - Tier 2, physics: `|ln(T / K)|` at most the largest own bar over the lit
     neighbours plus the float term of tier 1, with `K` the same weighted mean of
     `f(n_H2 r)` of each neighbour. `T / K` is a convex combination of the ratios
@@ -104,6 +105,21 @@ first step changes in every particle.
     or the own ratio used in place of the mean. A change of 0.5 per cent and the `h_j`
     kernel are below its resolution: tier 1 catches them.
     Tier 2 skips the exempt particles.
+  - Tier 3, means: `E_mean` (`LWSpecificEnergies`) and `D_mean`
+    (`LWDissociatingSpecificEnergies`), which the cooling reads, against the offline
+    `sum w E / sum w` and `min(sum w D, sum w E) / sum w`, with the self term, so the weight
+    sum is tested. The bar is the float sums, `(2 n_ngb + 4) 2^-24` for `E_mean` and that
+    plus `(n_ngb + 3) 2^-24` for `D_mean`, plus the kernel-edge term
+    `sum_j |b_j - a_j| rel_j`. Here `b_j` is the share of neighbour `j` in the numerator,
+    `a_j` its share of the weight sum and `rel_j` the relative float error of its weight:
+    the Horner rounding of the kernel polynomial, the rounding of `t = u - origin` and the
+    rounding of `u = r / h` (6 times 2^-24 in `u`). Near the edge of the support `W` falls
+    as `(gamma - u)^4`, so `rel_j` is large there and one lit neighbour can set the mean.
+    A change of 0.5 per cent or more of `E_mean` or `D_mean`, of the weight sum, of the
+    weights or of the fields, fails wherever the bar is below that; the check prints how
+    many particles have such a bar. A neighbour that the code counts or drops within a few
+    2^-24 of the support edge has a weight below 1e-26 of `W(0)` and is not accounted for.
+    Tier 3 skips the exempt particles.
   - Premises, read from the run: the step that ends at the snapshot must have updated
     every gas particle (`--timesteps timesteps.txt`), and the positions must have moved by
     less than one float rounding of `h` in it. Otherwise the run is void.
