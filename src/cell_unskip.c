@@ -2604,16 +2604,11 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
         if (cj_nodeID == nodeID) cell_radiation_activate_supers_out(cj, s);
       }
 
-      /* We only want to activate the task if the cell is active and is
-         going to update some gas on the *local* node */
-      if ((ci_nodeID == nodeID && cj_nodeID == nodeID) &&
-          (ci_active || cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID == nodeID && cj_nodeID != nodeID) && (cj_active)) {
-        scheduler_activate(s, t);
-
-      } else if ((ci_nodeID != nodeID && cj_nodeID == nodeID) && (ci_active)) {
+      /* The rank that owns the star computes, so the HII task of a local side
+         runs whenever either side is active (the radiation_in rule) and
+         must unlock stars_out through this task. */
+      if ((ci_active || cj_active) &&
+          (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
         scheduler_activate(s, t);
       }
     }
