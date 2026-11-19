@@ -699,7 +699,11 @@ struct feedback_part_data {
       ghost, so the neighbour loops read it without the engine. */
   char ISRF_packet_transport;
 
-  /*! Copy of #feedback_props.ISRF_H2_line_absorption, set at the drift. */
+  /*! Bits of the LW dissociation transport, set at the drift:
+      #RADIATION_ISRF_H2_LINES (#feedback_props.ISRF_H2_line_absorption) and
+      #RADIATION_ISRF_LW_POPULATION (#feedback_props.ISRF_LW_population_track).
+      Any bit set turns on the dissociating energy bookkeeping. Read through
+      #feedback_part_has_H2_lines and #feedback_part_tracks_LW_dissociating. */
   char ISRF_H2_line_absorption;
 
   /*! H2 column in cm^-2 of the own LW light, weighted by its dissociating
@@ -715,6 +719,36 @@ struct feedback_part_data {
   char ISRF_packet_stride_padding[28];
 #endif
 };
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+/*! Bit of #feedback_part_data.ISRF_H2_line_absorption: the H2 lines absorb
+    the transported LW light on its path. */
+#define RADIATION_ISRF_H2_LINES 1
+
+/*! Bit of #feedback_part_data.ISRF_H2_line_absorption: the stars give their
+    LW light their own H2 dissociation factor. */
+#define RADIATION_ISRF_LW_POPULATION 2
+
+/**
+ * @brief Do the H2 lines absorb the LW light received by this particle?
+ *
+ * @param fd The feedback data of the particle.
+ */
+__attribute__((always_inline)) static inline int feedback_part_has_H2_lines(
+    const struct feedback_part_data *fd) {
+  return (fd->ISRF_H2_line_absorption & RADIATION_ISRF_H2_LINES) != 0;
+}
+
+/**
+ * @brief Does this particle carry the H2-dissociating part of its LW light?
+ *
+ * @param fd The feedback data of the particle.
+ */
+__attribute__((always_inline)) static inline int
+feedback_part_tracks_LW_dissociating(const struct feedback_part_data *fd) {
+  return fd->ISRF_H2_line_absorption != 0;
+}
+#endif
 
 #if defined(WITH_MPI) && defined(GEAR_SUBGRID_RADIATION_HII)
 
@@ -985,6 +1019,11 @@ struct feedback_spart_data {
 #endif
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
+    /*! H2 dissociation rate per unit LW energy of this star over the constant
+        RADIATION_SIGMA_H2_OVER_E_LW_CGS, from the radiation table. Exactly 1
+        without GEARFeedback:ISRF_LW_population_dissociation. */
+    float LW_dissociating_factor;
+
     /*! Moment luminosity (physical units) by #radiation_isrf_moment, from the
         radiation table. 0 unless the interstellar radiation field is on. */
     double L_band[ISRF_MOMENT_COUNT];

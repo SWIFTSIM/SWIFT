@@ -70,7 +70,7 @@ INLINE static double rates_to_chemistry_get_isrf_habing(
 INLINE static double rates_to_chemistry_get_LW_dissociation_rate(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct part *p) {
-  if (radiation_get_part_H2_line_absorption(p))
+  if (radiation_get_part_LW_dissociating_track(p))
     return radiation_get_part_LW_dissociation_rate_with_lines_internal(
         phys_const, us, cosmo, p);
   return radiation_get_part_LW_dissociation_rate_internal(phys_const, us, cosmo,
