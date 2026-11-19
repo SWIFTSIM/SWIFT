@@ -781,7 +781,7 @@ $\Delta v$, $\Delta v_{\max}$ & velocity & velocity shift of the light relative 
 $n_{{\rm H}_2}$, $X_{{\rm H}_2}$ & cm$^{-3}$, -- & H$_2$ number density and mass fraction of the receiver \\
 $\mathcal A_k$, $\mathcal B_k$, $\mathcal V_k$ & energy, energy, energy$\times$velocity & sums of Eq.~\eqref{eq:h2-sums} over the light of slot $k$ \\
 $\hat e_s$, $\xi_s$ & energy, -- & dissociating energy $e_s\mathcal T_s$ of share $s$ and its fraction of the total \\
-$\eta_s$, $\varpi_p$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
+$\eta_s$, $\varpi_q$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
 $\mathcal R$ & -- & transmission of the slot over that of the share-by-share reference (Eq.~\eqref{eq:h2-ref}) \\
 $\varsigma$ & -- & local slope $|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ of the fit \\
 $u_{\rm LW}^{\rm own}$, $u_{\rm diss}^{\rm own}$, $\Sigma^{\rm own}$ & energy/mass, energy/mass, cm$^{-2}$ & own LW field, its dissociating part and the weighted column (Eq.~\eqref{eq:h2-own}) \\
@@ -2693,17 +2693,17 @@ mixed columns, then a change of the fit''.
 \end{enumerate}
 Then, after any number of later hops and merges, all in gas with the fit $r$,
 the slot never shields more than the reference, and it lets through at most
-$1/\varpi_p$ times as much,
+$1/\varpi_q$ times as much,
 \begin{equation}
-  1\le\mathcal R(\Delta\Sigma)\le\frac{1}{\varpi_p}, \qquad
-  \varpi_p=\frac{\hat e_p/\mathcal S_r(\Sigma_p)}{\sum_j \hat e_j/\mathcal S_r(\Sigma_j)},
+  1\le\mathcal R(\Delta\Sigma)\le\frac{1}{\varpi_q}, \qquad
+  \varpi_q=\frac{\hat e_q/\mathcal S_r(\Sigma_q)}{\sum_j \hat e_j/\mathcal S_r(\Sigma_j)},
   \label{eq:h2-bound}
 \end{equation}
-where $p$ is the share with the smallest column $\Sigma_p$, and
-$\hat e_j=e_j\mathcal T_j$. $\varpi_p$ is the weight of that share in $\mathcal B_k$. In
+where $q$ is the share with the smallest column $\Sigma_q$, and
+$\hat e_j=e_j\mathcal T_j$. $\varpi_q$ is the weight of that share in $\mathcal B_k$. In
 gas with the fit $r$ on the whole path, $\mathcal T_j\propto\mathcal S_r(\Sigma_j)$,
-so $\varpi_p=\eta_p$ is the energy fraction of the least-shielded light. If the
-slot holds light that crossed no H$_2$, $\eta_p$ is the energy fraction of
+so $\varpi_q=\eta_q$ is the energy fraction of the least-shielded light. If the
+slot holds light that crossed no H$_2$, $\eta_q$ is the energy fraction of
 that light.
 
 The proof has four steps. Write $y=\mathcal S_r(\Sigma)$ and
@@ -2743,12 +2743,12 @@ column, as a function of the factor before it.
     equality at the merge, and a merge in the fit $r$ preserves it because it
     adds the sums. So the sign holds after any number of later hops and merges
     in gas with the fit $r$.
-  \item The merged column is at least $\Sigma_p$, by induction over the
+  \item The merged column is at least $\Sigma_q$, by induction over the
     merges. Take every quantity at the last merge. Then
     $\mathcal T_{\rm slot}=\mathcal T_kz_k\,\mathcal S_r(\Sigma_k+\Delta\Sigma)
-    \le\big(\sum_sc_sz_s\big)\,\mathcal S_r(\Sigma_p+\Delta\Sigma)$,
-    while $\mathcal T_{\rm ref}\ge c_pz_p\,\mathcal S_r(\Sigma_p+\Delta\Sigma)$. The ratio is at most
-    $\sum_sc_sz_s/(c_pz_p)=1/\varpi_p$.
+    \le\big(\sum_sc_sz_s\big)\,\mathcal S_r(\Sigma_q+\Delta\Sigma)$,
+    while $\mathcal T_{\rm ref}\ge c_pz_q\,\mathcal S_r(\Sigma_q+\Delta\Sigma)$. The ratio is at most
+    $\sum_sc_sz_s/(c_pz_q)=1/\varpi_q$.
 \end{enumerate}
 
 The bound is sharp. Let a share with the energy fraction $\eta_0$ have no
@@ -2820,7 +2820,7 @@ result.
 \begin{table}[htbp]
 \centering
 \caption{Smallest and largest $\mathcal R$ over 10000 random share sets per row,
-and the number of sets that break the sign. The bound $1/\varpi_p$ of
+and the number of sets that break the sign. The bound $1/\varpi_q$ of
 Eq.~\eqref{eq:h2-bound} differs from set to set, so it is not a column of the
 table. No set exceeds its own bound in the rows with one merge, where the bound
 is tested.}
@@ -2838,7 +2838,7 @@ any gas before the merge, one fit after, three merge stages & 0.9999998 & $4.0\t
 \end{table}
 
 The smallest values lie below 1 only by float rounding. The largest values
-are large because $1/\varpi_p$ is large when the least-shielded light carries a
+are large because $1/\varpi_q$ is large when the least-shielded light carries a
 small fraction of the energy.
 
 \paragraph{Float rounding in a merge.} The float rounding in one merge is
@@ -2901,7 +2901,7 @@ coverage.
     sets of family (4). One waiting share stays exact. For mixed waiting light
     the sign holds where
     $\mathcal T_{\rm ref}$ is above about $10^{-2}$. The bound is exceeded
-    there by a factor up to $2.2$, the largest value of $\mathcal R\,\varpi_p$
+    there by a factor up to $2.2$, the largest value of $\mathcal R\,\varpi_q$
     on the tested coverage; no bound on this excess is derived. All the sets that break the
     sign with $\mathcal T_{\rm ref}$ above $10^{-6}$ therefore lie between
     $10^{-6}$ and $10^{-2}$. The sign is not guaranteed for mixed waiting
@@ -3416,9 +3416,9 @@ compiles the line absorption but refuses the switch at start-up
 (\code{src/cooling/grackle/cooling\_io.h:306-309}), because Grackle shields the
 transported LW rate with its own factor. The switch also stops a build whose
 \code{struct part} is 4096 bytes (:847-854). In a one-thread timing of a short
-packet run, a particle of exactly 4096 bytes took about 7 per cent more CPU
-time than the particle without the H$_2$ fields. That timing had no line
-absorption, so the cost with the switch on is not measured.
+packet run, the same code with its particle padded to a stride of exactly 4096
+bytes took about 7 per cent more CPU time than without the padding. That timing
+had no line absorption, so the cost with the switch on is not measured.
 
 The fit and the hop are in \code{src/feedback/GEAR/radiation\_h2\_shielding.h}.
 The constants of the fit are at :38-64: the clamps of $T$ and $n$, $\Sigma_0$,
