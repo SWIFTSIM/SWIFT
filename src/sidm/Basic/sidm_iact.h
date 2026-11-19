@@ -304,6 +304,11 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
    * made while only the particle on the shorter step was active. */
   const float p = pair_rate * min(dt_sipi, dt_sipj);
 
+  /* The kicks are computed from the velocities at the start of the step, so
+   * a second kick on a particle before the first is applied would not
+   * conserve energy. Particles that already scattered are skipped. */
+  if (sipi->scattered || sipj->scattered) return;
+
   /* Pair interaction? */
   const float x = sidm_random_unit_interval(sipi->id, sipj->id, ti_current,
                                             random_number_sidm_scattering);
@@ -317,6 +322,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_sidm_force(
       sipi->dv_sidm[k] += dv_i[k];
       sipj->dv_sidm[k] += dv_j[k];
     }
+    sipi->scattered = 1;
+    sipj->scattered = 1;
 
     sidm_debug_interaction(sipi, sipj);
   }
@@ -396,6 +403,15 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
    * excluded here because it is foreign or outside this task's h range. */
   const float p = pair_rate * min(dt_sipi, dt_sipj);
 
+  /* An active sipj is updated by its own task, which applies its half of
+   * this kick. Both tasks must then take the same decision, which they could
+   * not if it depended on the scattered flags (set by other pairs in between).
+   * This (rare) case therefore only uses the random number. Otherwise skip
+   * particles that already scattered since their last kick (see the
+   * symmetric case). */
+  const int sipj_active = sidm_sipart_is_active(sipj, ti_current);
+  if (!sipj_active && (sipi->scattered || sipj->scattered)) return;
+
   /* Pair interaction? */
   const float x = sidm_random_unit_interval(sipi->id, sipj->id, ti_current,
                                             random_number_sidm_scattering);
@@ -406,11 +422,13 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_sidm_force(
     float dv_i[3], dv_j[3];
     sidm_compute_kick(sipi, sipj, a, vij, ti_current, dv_i, dv_j);
     for (int k = 0; k < 3; k++) sipi->dv_sidm[k] += dv_i[k];
+    sipi->scattered = 1;
 
-    /* An active sipj is updated by its own task and applies its half of this
-     * kick. Only an inactive sipj needs its half applied here. */
-    if (!sidm_sipart_is_active(sipj, ti_current))
+    /* Only an inactive sipj needs its half applied here. */
+    if (!sipj_active) {
       for (int k = 0; k < 3; k++) sipj->dv_sidm[k] += dv_j[k];
+      sipj->scattered = 1;
+    }
 
     sidm_debug_interaction(sipi, sipj);
   }

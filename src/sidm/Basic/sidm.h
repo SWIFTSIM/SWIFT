@@ -75,6 +75,7 @@ __attribute__((always_inline)) INLINE static void sidm_first_init_sipart(
     struct sipart *sip, const struct sidm_props *sidm_properties) {
   sip->time_bin = 0;
   for (int k = 0; k < 3; k++) sip->dv_sidm[k] = 0.f;
+  sip->scattered = 0;
   sidm_init_sipart(sip);
 }
 
@@ -128,6 +129,9 @@ __attribute__((always_inline)) INLINE static void sidm_end_force(
     /* Re-set velocity kick */
     sip->dv_sidm[k] = 0.f;
   }
+
+  /* The particle can scatter again */
+  sip->scattered = 0;
 }
 
 /**
