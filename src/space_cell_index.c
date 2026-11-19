@@ -119,9 +119,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
     /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
      * than around dim), such that its cell index would be cdim */
-    if (pos_x >= dim_x || pos_x * ih_x >= cdim[0]) pos_x = 0.0;
-    if (pos_y >= dim_y || pos_y * ih_y >= cdim[1]) pos_y = 0.0;
-    if (pos_z >= dim_z || pos_z * ih_z >= cdim[2]) pos_z = 0.0;
+    pos_x = box_wrap_cell_edge(pos_x, dim_x, ih_x, cdim[0], s->periodic);
+    pos_y = box_wrap_cell_edge(pos_y, dim_y, ih_y, cdim[1], s->periodic);
+    pos_z = box_wrap_cell_edge(pos_z, dim_z, ih_z, cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index =
@@ -245,9 +245,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
      * than around dim), such that its cell index would be cdim */
-    if (pos_x >= dim_x || pos_x * ih_x >= cdim[0]) pos_x = 0.0;
-    if (pos_y >= dim_y || pos_y * ih_y >= cdim[1]) pos_y = 0.0;
-    if (pos_z >= dim_z || pos_z * ih_z >= cdim[2]) pos_z = 0.0;
+    pos_x = box_wrap_cell_edge(pos_x, dim_x, ih_x, cdim[0], s->periodic);
+    pos_y = box_wrap_cell_edge(pos_y, dim_y, ih_y, cdim[1], s->periodic);
+    pos_z = box_wrap_cell_edge(pos_z, dim_z, ih_z, cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index =
@@ -377,9 +377,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
      * than around dim), such that its cell index would be cdim */
-    if (pos_x >= dim_x || pos_x * ih_x >= cdim[0]) pos_x = 0.0;
-    if (pos_y >= dim_y || pos_y * ih_y >= cdim[1]) pos_y = 0.0;
-    if (pos_z >= dim_z || pos_z * ih_z >= cdim[2]) pos_z = 0.0;
+    pos_x = box_wrap_cell_edge(pos_x, dim_x, ih_x, cdim[0], s->periodic);
+    pos_y = box_wrap_cell_edge(pos_y, dim_y, ih_y, cdim[1], s->periodic);
+    pos_z = box_wrap_cell_edge(pos_z, dim_z, ih_z, cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index =
@@ -505,9 +505,9 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
      * than around dim), such that its cell index would be cdim */
-    if (pos_x >= dim_x || pos_x * ih_x >= cdim[0]) pos_x = 0.0;
-    if (pos_y >= dim_y || pos_y * ih_y >= cdim[1]) pos_y = 0.0;
-    if (pos_z >= dim_z || pos_z * ih_z >= cdim[2]) pos_z = 0.0;
+    pos_x = box_wrap_cell_edge(pos_x, dim_x, ih_x, cdim[0], s->periodic);
+    pos_y = box_wrap_cell_edge(pos_y, dim_y, ih_y, cdim[1], s->periodic);
+    pos_z = box_wrap_cell_edge(pos_z, dim_z, ih_z, cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index =
@@ -633,9 +633,9 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     /* Treat the case where a particle was wrapped back onto or next to
      * the edge because of rounding issues (more accuracy around 0
      * than around dim), such that its cell index would be cdim */
-    if (pos_x >= dim_x || pos_x * ih_x >= cdim[0]) pos_x = 0.0;
-    if (pos_y >= dim_y || pos_y * ih_y >= cdim[1]) pos_y = 0.0;
-    if (pos_z >= dim_z || pos_z * ih_z >= cdim[2]) pos_z = 0.0;
+    pos_x = box_wrap_cell_edge(pos_x, dim_x, ih_x, cdim[0], s->periodic);
+    pos_y = box_wrap_cell_edge(pos_y, dim_y, ih_y, cdim[1], s->periodic);
+    pos_z = box_wrap_cell_edge(pos_z, dim_z, ih_z, cdim[2], s->periodic);
 
     /* Get its cell index */
     const int index =
