@@ -3376,9 +3376,9 @@ static double radiation_packet_waiting_LW_energy(
  * light counts as clear light and the column is 0.
  *
  * @param dissociating The dissociating energy, positive.
- * @param over_factor Its sum over the factor, not saturated. A sum below the
- * smallest normal float is read as that float: one flushed share gets a column
- * at least its own, several in one slot get less.
+ * @param over_factor Its sum over the factor, not saturated. A sum of exactly 0
+ * is a float sum that flushed and is read as the smallest normal float: one
+ * flushed share gets a column at least its own, several in one slot get less.
  * @param alpha Exponent of the fit.
  * @param b5 Thermal line width of H2 of the fit in km/s.
  * @return The column in cm^-2.
@@ -3388,8 +3388,8 @@ static double radiation_packet_line_harmonic_column(const double dissociating,
                                                     const double alpha,
                                                     const double b5) {
   if (!(b5 > 0.)) return 0.;
-  /* A sum that flushed to 0 in float is below the smallest normal float. */
-  if (!(over_factor >= FLT_MIN)) over_factor = FLT_MIN;
+  /* A sum of 0 means a flushed float sum: the column cannot be recovered. */
+  if (!(over_factor > 0.)) over_factor = FLT_MIN;
   const double f = dissociating / over_factor;
   if (f >= radiation_h2_shielding_factor_at_zero() *
                (1. - RADIATION_PACKET_LINE_CLEAR_TOLERANCE))

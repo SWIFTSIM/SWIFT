@@ -2998,11 +2998,13 @@ slot, at :3945 and :3953 without a speed limit and at :3973 and :3981 with one.
 The column of Eq.~\eqref{eq:h2-harmonic} is
 \code{radiation\_packet\_line\_harmonic\_column} (:3386-3398). The clear
 tolerance $10^{-6}$ is at :3304, and the rule for a merging particle with no
-line width is at :3390. A sum over the factor below the smallest normal
-float, which the float sum flushes to 0, is read as that float (:3391-3392): the
-column is then not 0. One flushed share gets a column at least its own; several
+line width is at :3390. A sum over the factor of exactly 0, which the
+float sum gives when it flushes, cannot be inverted and is read as the smallest normal
+float (:3391-3392): the column is then not 0. One flushed share gets a column at least its own; several
 flushed shares in one slot get less, because the sum stays 0 while the dissociating
-energy adds up. The move of Eq.~\eqref{eq:h2-refit} is
+energy adds up. The substitute is not a bound on the true column: a column of 0
+would put the next hop on the steep part of the shielding curve and shield more downstream, and
+a column too large shields less. The move of Eq.~\eqref{eq:h2-refit} is
 \code{radiation\_packet\_line\_refit} (:3524-3543).
 
 The own fields of Eq.~\eqref{eq:h2-own} are formed at the end of the gradient
@@ -3083,9 +3085,9 @@ Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1018-1043}, called at
 \code{radiation\_propagation\_iact.h:146-147}, :180). The self term and the
 division are \code{radiation\_packet\_end\_force}
-(\code{radiation\_packet.c:4135-4164}), called at \code{radiation\_isrf.c:305}.
+(\code{radiation\_packet.c:4135-4164}), called at \code{radiation\_isrf.c:304}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
-(\code{radiation\_packet.c:4176-4193}, called at \code{radiation\_isrf.c:306}).
+(\code{radiation\_packet.c:4176-4193}, called at \code{radiation\_isrf.c:305}).
 The kernel mean of the dissociating energy is capped at the kernel mean of the LW
 energy (:4187-4192), so that a float LW sum flushed to 0 never lies below the
 double dissociating sum.
