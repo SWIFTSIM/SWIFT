@@ -50,7 +50,7 @@ about 2e18 cm^-2 over the box.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
-`makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`).
+`makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`) and `timesteps.txt` (`--timesteps`).
 SWIFT does not write the LW shielding option to `used_parameters.yml`; the check reads it
 from the start-up line `h2_transported_lw_rate_shielding = 1` that SWIFT prints, and calls
 the run void if the line is absent or reads 0. `run.sh` passes the log.
@@ -60,7 +60,7 @@ bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a vo
 premise or a positive control is not met). A void run never passes. `parity` alone also
 returns 5 for a pass without a counters file (see below).
 
-`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log`
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log --timesteps timesteps.txt`
 
 The reference is `snapshot_0001`, the first snapshot written after the first step and
 before any probe is lit; `snapshot_0000` holds the initial species fractions, which the
@@ -74,10 +74,32 @@ first step changes in every particle.
   particle at the last snapshot lies outside the reference range by more than 1e-3. Taking
   the range over both snapshots makes the bar wider than the range of the last snapshot
   alone (about 0.2 per cent in the median on the default run); the check prints the
-  widening. The kernel mean `LWLineTransmissions` is printed, not gated: on the default
-  run it reads 2 to 8 per cent above `f` at every radius (median `ln(ratio / f)` from
-  0.019 to 0.077 over the bins of `r / h`). The cooling reads this kernel mean, not the
-  own ratio, and no check here covers it.
+  widening.
+- Kernel mean. The cooling reads the kernel mean of the own fields, not the own ratio.
+  The snapshot field `LWLineTransmissions` is the mean of the neighbours' own ratios
+  weighted by `m_j W(r_ij / h_i) E_j`, with `E_j` the own LW energy of neighbour `j` and
+  the self term included. Neighbours nearer the star are brighter and more transparent,
+  so the mean exceeds `f` at the particle by a few per cent. That is a property of the
+  averaging, so the check compares the field with the kernel mean of the prediction, not
+  with `f`. Both tiers take `E_j` and the own dissociating energy from the snapshot, so
+  `E_j` itself is not tested here.
+  - Tier 1, identity: `|ln(T / T_offline)| <= (n_ngb + 2) 2^-24` for every particle
+    (`n_ngb` the neighbours in its kernel), with `T_offline` the weighted mean above
+    computed from the own fields of the snapshot (dissociating mean clamped to the LW
+    mean). A particle whose own-field terms `m_j W E_j` below the smallest normal float
+    make up more than that bar of its sum is exempt, because the float accumulator can
+    flush them; the check prints how many, how many lie in the probes and their `r / h`.
+    A particle with no lit neighbour must hold no LW energy. This tier catches a missing
+    self term, a kernel in `h_j` in place of `h_i`, and any change of 0.5 per cent or more.
+  - Tier 2, physics: `|ln(T / K)|` at most the largest own bar over the lit
+    neighbours plus the float term of tier 1, with `K` the same weighted mean of
+    `f(n_H2 r)` of each neighbour. `T / K` is a convex combination of the ratios
+    `t_j / f_j`, so the bound holds for a correct mean. This tier catches the prediction
+    or the own ratio used in place of the mean. A change of 0.5 per cent and the `h_j`
+    kernel are below its resolution: tier 1 catches them.
+  - Premises, read from the run: the step that ends at the snapshot must have updated
+    every gas particle (`--timesteps timesteps.txt`), and the positions must have moved by
+    less than one float rounding of `h` in it. Otherwise the run is void.
 - The light moves one hop per step, so the lit probes fill a ball. With n the number of
   steps (the ratio of the snapshot times, which must be an integer of at least 2, and which
   counts one hop per step only if all gas sits on one time bin, as in the default run;

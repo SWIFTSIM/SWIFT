@@ -92,6 +92,10 @@ REQUIRED_OWN = (
     "LWOwnDissociatingSpecificEnergies",
 )
 REQUIRED_COLUMN = (PARITY_COLUMN,)
+REQUIRED_KERNEL = ("Masses", "Velocities")
+FLOAT32_TINY = float(np.finfo(np.float32).tiny)
+KERNEL_WEIGHT_AT_ZERO = 21.0 / (2.0 * math.pi * KERNEL_GAMMA**3)
+TIME_RTOL = 1e-5
 REQUIRED_GAS = (
     "ParticleIDs",
     "Coordinates",
@@ -503,8 +507,9 @@ def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
     """Return the own LW field of each particle and its line transmission.
 
     The own field is the light that crosses the particle itself, before the kernel
-    mean. The kernel mean of LWLineTransmissions is a u-weighted mean over the
-    neighbours and is biased up by 2 to 8 per cent at every radius, so the bars read the own ratio.
+    mean. The kernel mean of LWLineTransmissions is a mean of the neighbours' own
+    ratios weighted by their LW energy, so it differs from f(n_H2 r) by the averaging;
+    the bars on the own ratio do not carry that offset.
     """
     own = last["LWOwnSpecificEnergies"]
     ratio = last["LWOwnDissociatingSpecificEnergies"] / np.where(own > 0, own, 1.0)
@@ -606,11 +611,176 @@ def column_spread_bar(
     return np.maximum(lo, hi)
 
 
+def kernel_weight(u: np.ndarray) -> np.ndarray:
+    """Return the Wendland C2 kernel W(u) of the code for h = 1, zero beyond gamma."""
+    x = np.clip(u / KERNEL_GAMMA, 0.0, 1.0)
+    shape = (1.0 - x) ** 4 * (1.0 + 4.0 * x)
+    return np.where(u < KERNEL_GAMMA, KERNEL_WEIGHT_AT_ZERO * shape, 0.0)
+
+
+def kernel_neighbour_weights(snap: dict):
+    """Yield (i, j, w) for every particle i: its neighbours j and w = m_j W(r_ij / h_i).
+
+    These are the weights of the force loop. The list includes i itself, which carries
+    the self term m_i W(0) that the code adds when it closes the mean.
+    """
+    from scipy.spatial import cKDTree
+
+    box = snap["box"]
+    pos = np.mod(snap["Coordinates"], box)
+    h, m = snap["SmoothingLengths"], snap["Masses"]
+    tree = cKDTree(pos, boxsize=box)
+    ngb = tree.query_ball_point(pos, KERNEL_GAMMA * h * (1.0 + 1e-6))
+    for i, found in enumerate(ngb):
+        j = np.asarray(found)
+        d = pos[j] - pos[i]
+        d -= box * np.round(d / box)
+        yield i, j, m[j] * kernel_weight(np.sqrt((d * d).sum(axis=1)) / h[i])
+
+
+def step_premises(path: Optional[str], snap: dict, rep: Report) -> float:
+    """Return the length of the last step; void unless every particle was updated in it.
+
+    The kernel mean is closed in the last step, so it equals the mean of the own fields
+    in the snapshot only if all particles were active in that step and the positions
+    moved by less than a float rounding of the kernel since then.
+    """
+    if not path:
+        raise GateExit(
+            EXIT_VOID,
+            "the kernel-mean check needs --timesteps (timesteps.txt of the run)",
+        )
+    rows = []
+    try:
+        with open(path) as f:
+            for line in f:
+                tok = line.split()
+                if tok and not tok[0].startswith("#") and len(tok) >= 8:
+                    rows.append((float(tok[1]), float(tok[4]), int(tok[7])))
+    except (OSError, ValueError) as err:
+        raise GateExit(EXIT_MISSING, f"timesteps file {path} is unreadable: {err}")
+    t_snap = snap["time"]
+    hit = [
+        r for r in rows if abs(r[0] - t_snap) <= TIME_RTOL * max(abs(t_snap), 1e-300)
+    ]
+    if not hit:
+        raise GateExit(
+            EXIT_VOID, f"no step of {path} ends at the snapshot time {t_snap:.7g}"
+        )
+    _, dt, updates = hit[-1]
+    n_gas = len(snap["ParticleIDs"])
+    if updates != n_gas:
+        raise GateExit(
+            EXIT_VOID,
+            f"the step that ends at the snapshot updated {updates} of {n_gas} gas particles",
+        )
+    drift = float(np.max(np.linalg.norm(snap["Velocities"], axis=1))) * dt
+    h_min = float(np.min(snap["SmoothingLengths"]))
+    if drift > FLOAT32_EPS * h_min:
+        raise GateExit(
+            EXIT_VOID,
+            f"positions moved up to {drift / h_min:.3g} h in the last step, above one float rounding",
+        )
+    rep.info(
+        "kernel-mean premises",
+        f"all {n_gas} particles updated in the last step; largest displacement {drift / h_min:.3g} h",
+    )
+    return dt
+
+
+def check_kernel_mean(
+    last: dict,
+    rep: Report,
+    probes: np.ndarray,
+    r_over_h: np.ndarray,
+    exp: np.ndarray,
+    bar_own: np.ndarray,
+) -> None:
+    """Check the snapshot kernel mean LWLineTransmissions in two tiers.
+
+    Both tiers read the own fields of the snapshot, so the own LW energy E_j itself is
+    not tested here.
+
+    Tier 1 (identity): T_offline is the code's kernel mean, sum_j m_j W(r_ij / h_i) D_j
+    over sum_j m_j W(r_ij / h_i) E_j with the self term, of the own fields in the
+    snapshot (D_j clamped to E_j). It must agree with the snapshot to (n_ngb + 2) eps32.
+    A particle whose own-field terms w E_j below the smallest normal float make up more
+    than that bar of its sum is exempt, because the float accumulator can flush them;
+    the number is printed. A particle with no lit neighbour must have no LW energy.
+
+    Tier 2 (physics): T_snapshot against K[f], the same weighted mean of the prediction
+    f(n_H2 r) of each neighbour. T / K is a convex combination of the ratios t_j / f_j,
+    so the bar is the largest own bar over the lit neighbours plus (n_ngb + 2) eps32.
+    """
+    energy = last["LWOwnSpecificEnergies"]
+    dissoc = last["LWOwnDissociatingSpecificEnergies"]
+    t_snap = last["LWLineTransmissions"]
+    n = len(energy)
+    t_off = np.full(n, np.nan)
+    kmean = np.full(n, np.nan)
+    bar2 = np.full(n, np.nan)
+    n_ngb = np.zeros(n)
+    flushed = np.zeros(n)
+    unlit = np.zeros(n, dtype=bool)
+    for i, j, w in kernel_neighbour_weights(last):
+        n_ngb[i] = len(j)
+        terms = w * energy[j]
+        total = terms.sum()
+        if total <= 0.0:
+            unlit[i] = True
+            continue
+        flushed[i] = terms[terms < FLOAT32_TINY].sum() / total
+        t_off[i] = min(float(w @ dissoc[j]), total) / total
+        if probes[i]:
+            kmean[i] = float(terms @ exp[j]) / total
+            bar2[i] = bar_own[j][energy[j] > 0.0].max()
+    float_term = (n_ngb + 2.0) * FLOAT32_EPS
+
+    stray = unlit & (last["LWSpecificEnergies"] != 0.0)
+    exempt = ~unlit & (flushed > float_term)
+    compared = ~unlit & ~exempt
+    with np.errstate(divide="ignore", invalid="ignore"):
+        dev1 = np.where(
+            t_off[compared] == t_snap[compared],
+            0.0,
+            np.abs(np.log(t_snap[compared] / t_off[compared])),
+        )
+    dev1 = np.where(np.isfinite(dev1), dev1, np.inf)
+    over1 = int(np.sum(dev1 > float_term[compared]))
+    in_probe = int(np.sum(exempt & probes))
+    if exempt.any():
+        span = f"r/h from {r_over_h[exempt].min():.3g} to {r_over_h[exempt].max():.3g}"
+    else:
+        span = "none"
+    rep.check(
+        "kernel mean against the kernel mean of the own fields (tier 1)",
+        over1 == 0 and not stray.any(),
+        f"{over1} of {int(compared.sum())} particles outside |ln(T/T_offline)| <= (n_ngb + 2) eps32; "
+        f"worst {float(dev1.max()):.3g} against bar from {float(float_term[compared].min()):.3g}; "
+        f"{int(stray.sum())} of {int(unlit.sum())} particles without a lit neighbour hold LW energy; "
+        f"{int(exempt.sum())} exempt (flushable own-field terms below FLT_MIN, {in_probe} in the probes, {span})",
+    )
+
+    use = probes & ~exempt & np.isfinite(kmean)
+    bar = bar2 + float_term
+    dev2 = np.abs(np.log(np.maximum(t_snap, 1e-300) / kmean))
+    over2 = use & (dev2 > bar)
+    rep.check(
+        "kernel mean against the kernel mean of f(n_H2 r) (tier 2)",
+        not over2.any(),
+        f"{int(over2.sum())} of {int(use.sum())} probes outside |ln(T/K[f])| <= largest own bar of the lit "
+        f"neighbours + (n_ngb + 2) eps32; worst margin {float(np.max((dev2 / bar)[use])):.3g} of the bar; "
+        f"median bar {float(np.median(bar[use])):.3g}",
+    )
+
+
 def gate_starlit(args: argparse.Namespace) -> int:
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
-    fields = REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN + REQUIRED_COLUMN
+    fields = (
+        REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN + REQUIRED_COLUMN + REQUIRED_KERNEL
+    )
     last = load_snapshot(args.last, fields)
     require_finite("last snapshot", **{k: last[k] for k in fields})
     check_box_faces(first)
@@ -683,7 +853,8 @@ def gate_starlit(args: argparse.Namespace) -> int:
         rep.reading(
             "kernel-mean ratio LWLineTransmissions",
             f"median ln(ratio/f) {float(np.median(np.log(np.maximum(mean_ratio[lit_mean], 1e-300) / exp[lit_mean]))):.4g} "
-            f"over {int(lit_mean.sum())} probes (biased up at every radius)",
+            f"over {int(lit_mean.sum())} probes; it exceeds f where brighter neighbours are "
+            f"nearer the star, a property of the averaging (checked against the kernel mean of f below)",
         )
 
     # Lit set: the light moves one hop per step, so the lit probes fill a ball.
@@ -751,6 +922,10 @@ def gate_starlit(args: argparse.Namespace) -> int:
             EXIT_VOID, "no probe can detect the doubled-column error (N2 is not a test)"
         )
     rep.info("N2 detectable probes", f"{detect} of {int(lit.sum())}")
+
+    step_premises(args.timesteps, last, rep)
+    probes = read & (last["LWSpecificEnergies"] > 0.0)
+    check_kernel_mean(last, rep, probes, r / h, exp, bar)
     return rep.exit_code()
 
 
@@ -1612,6 +1787,12 @@ def build_parser() -> argparse.ArgumentParser:
     ):
         sp = sub.add_parser(name)
         common(sp, counters=name != "twosource")
+        if name == "starlit":
+            sp.add_argument(
+                "--timesteps",
+                default=None,
+                help="timesteps.txt of the run, for the premises of the kernel-mean check",
+            )
         if name == "velocity":
             sp.add_argument(
                 "--case", choices=["auto", "reset", "noreset"], default="auto"

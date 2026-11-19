@@ -19,6 +19,7 @@ import sys
 
 import h5py
 import numpy as np
+import scipy.sparse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -35,6 +36,10 @@ GOOD_PARAMS = """GEARFeedback:
   ISRF_packet_light_speed: unlimited
 """
 START_UP_LOG = ""
+TIMESTEPS = ""
+GAS_MASS = 1.0e-11
+GAMMA = 1.9364916731
+KERNELS = {}
 GATES = ("starlit", "twosource", "velocity")
 ROWS = []
 U_L = 3.0856775814913673e21
@@ -43,6 +48,8 @@ U_L = 3.0856775814913673e21
 def run_gate(argv):
     if argv[0] in GATES and "--startup-log" not in argv:
         argv = [*argv, "--startup-log", START_UP_LOG]
+    if argv[0] == "starlit" and "--timesteps" not in argv:
+        argv = [*argv, "--timesteps", TIMESTEPS]
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         code = gate.main(argv)
@@ -56,6 +63,72 @@ def record(name, expect, argv, key):
     ]
     detail = next((ln for ln in lines if key in ln), lines[0] if lines else "")
     ROWS.append((name, expect, code, detail[:110]))
+
+
+def kernel_matrix(pos, h, box, variant):
+    """Return the sparse weight matrix W[i, j] of a kernel mean, for the code or a planted error.
+
+    code: m_j W(r_ij / h_i) with the self term. noself: the diagonal dropped. hj: the
+    kernel of the neighbour's h_j in place of h_i. W is the Wendland C2 form with its
+    support at gamma h; the normalisation cancels in a mean.
+    """
+    key = (variant, id(pos), id(h))
+    if key in KERNELS:
+        return KERNELS[key]
+    n = len(pos)
+    rows, cols, vals = [], [], []
+    for lo in range(0, n, 256):
+        d = pos[None, :, :] - pos[lo : lo + 256, None, :]
+        d -= box * np.round(d / box)
+        r = np.sqrt((d * d).sum(axis=2))
+        scale = h[None, :] if variant == "hj" else h[lo : lo + 256, None]
+        x = np.minimum(r / scale / GAMMA, 1.0)
+        w = GAS_MASS * (1.0 - x) ** 4 * (1.0 + 4.0 * x)
+        w[x >= 1.0] = 0.0
+        if variant == "noself":
+            w[np.arange(w.shape[0]), lo + np.arange(w.shape[0])] = 0.0
+        i, j = np.nonzero(w)
+        rows.append(i + lo)
+        cols.append(j)
+        vals.append(w[i, j])
+    mat = scipy.sparse.csr_matrix(
+        (np.concatenate(vals), (np.concatenate(rows), np.concatenate(cols))),
+        shape=(n, n),
+    )
+    KERNELS[key] = mat
+    return mat
+
+
+def kernel_fields(pos, h, box, own_e, own_d, variant="code"):
+    """Return (E_mean, D_mean, T) as the force loop closes them from the own fields."""
+    mat = kernel_matrix(pos, h, box, variant)
+    norm = np.asarray(mat.sum(axis=1)).ravel()
+    e_mean = (mat @ own_e) / norm
+    d_mean = np.minimum((mat @ own_d) / norm, e_mean)
+    t = np.where(e_mean > 0.0, d_mean / np.where(e_mean > 0.0, e_mean, 1.0), 1.0)
+    return e_mean, d_mean, t
+
+
+def tier_row(name, argv, want1, want2=None):
+    """Record a row that names the verdict of each kernel-mean tier; None leaves a tier unasserted."""
+    code, text = run_gate(argv)
+    lines = text.splitlines()
+    verdict = []
+    for tag in ("(tier 1)", "(tier 2)"):
+        line = next((ln for ln in lines if tag in ln), "")
+        verdict.append((line.split() or ["-"])[0])
+    ok = verdict[0] == want1 and (want2 is None or verdict[1] == want2)
+    want = 0 if (want1, want2) == ("PASS", "PASS") else 1
+    margin = next((ln for ln in lines if "(tier 2)" in ln), "")
+    margin = margin.split("worst margin ")[-1].split(" of the bar")[0]
+    ROWS.append(
+        (
+            name,
+            want,
+            code if ok else 99,
+            f"tier 1 {verdict[0]}, tier 2 {verdict[1]} (margin {margin})",
+        )
+    )
 
 
 def make_ic(work, name, level=4):
@@ -91,6 +164,8 @@ def write_snap(
     drop=(),
     time=8.0,
     column=None,
+    mean=None,
+    velocities=None,
 ):
     """Write a synthetic snapshot; fields in drop are left out."""
     n = len(pos)
@@ -124,7 +199,15 @@ def write_snap(
         "LWOwnSpecificEnergies": lw,
         "LWOwnDissociatingSpecificEnergies": lw * ratio,
         "LWLineH2ColumnDensities": np.full(n, 1e17) if column is None else column,
+        "Masses": np.full(n, GAS_MASS),
+        "Velocities": np.zeros((n, 3)) if velocities is None else velocities,
     }
+    if mean is not None:
+        (
+            fields["LWSpecificEnergies"],
+            fields["LWDissociatingSpecificEnergies"],
+            fields["LWLineTransmissions"],
+        ) = mean
     with h5py.File(path, "w") as f:
         hdr = f.create_group("Header")
         hdr.attrs["BoxSize"] = [box, box, box]
@@ -154,8 +237,24 @@ def tool_args(cmd, d, last, first, params, extra=()):
     ]
 
 
+def write_timesteps(d, n_gas, updates=None, name="timesteps.txt"):
+    """Write a timesteps.txt with one step per unit of time, 8 steps, each updating all gas."""
+    path = os.path.join(d, name)
+    with open(path, "w") as f:
+        f.write("#   Step  Time Scale-factor Redshift Time-step Time-bins Updates\n")
+        for k in range(9):
+            f.write(
+                f"{k:7d} {float(k):.6e} 1.0 0.0 1.0e+00 1 1 "
+                f"{n_gas if updates is None else updates} 0 0\n"
+            )
+    return path
+
+
 def starlit_cases(work):
+    global TIMESTEPS
     d, pos, rho, h, box = make_ic(work, "StarLit")
+    h = h * (1.0 + 0.15 * np.random.default_rng(3).uniform(-1.0, 1.0, len(h)))
+    TIMESTEPS = write_timesteps(d, len(pos))
     fix = json.load(open(os.path.join(d, "fixture.json")))
     snap = {
         "Units": {
@@ -187,9 +286,13 @@ def starlit_cases(work):
     first = os.path.join(d, "s0.hdf5")
     write_snap(first, pos, rho, h, box, temp, x_h2, lw, good, time=1.0)
 
-    def snap_with(name, ratio, **kw):
+    def snap_with(name, ratio, variant="code", mean_fn=None, **kw):
         p = os.path.join(d, name)
         kw["column"] = kw.get("column", n_h2 * r) * U_L**2  # stored in U_L^-2
+        own = kw.pop("lw", lw)
+        mean = kernel_fields(pos, h, box, own, own * ratio, variant)
+        if mean_fn is not None:
+            mean = mean_fn(mean, own, kernel_matrix(pos, h, box, variant))
         write_snap(
             p,
             pos,
@@ -198,8 +301,9 @@ def starlit_cases(work):
             box,
             kw.pop("temp", temp),
             kw.pop("x_h2", x_h2),
-            kw.pop("lw", lw),
+            own,
             ratio,
+            mean=mean,
             **kw,
         )
         return p
@@ -443,6 +547,172 @@ def starlit_cases(work):
             counters,
         ],
         "start-up log",
+    )
+    # Kernel-mean check. A steep light profile gives an averaging offset above the n_H2 bar.
+    steep = lw * (1e18 / np.maximum(r, 1e18)) ** 2
+    sign = np.where(rng.uniform(size=len(pos)) < 0.5, -1.0, 1.0)
+    own_bar = gate.column_spread_bar(r, n_h2, mask, temp, dens)
+    own_ratio = np.minimum(good * np.exp(0.4 * own_bar * sign), 1.0)
+    tier = lambda name, snap, w1, w2=None: tier_row(name, args(snap), w1, w2)
+    tier(
+        "K1 kernel mean of the own fields, steep light",
+        snap_with("k1.hdf5", own_ratio, lw=steep),
+        "PASS",
+        "PASS",
+    )
+    tier(
+        "K2 planted x1.02 on the kernel mean",
+        snap_with(
+            "k2.hdf5",
+            own_ratio,
+            lw=steep,
+            mean_fn=lambda m, o, w: (m[0], m[1], m[2] * 1.02),
+        ),
+        "FAIL",
+    )
+    tier(
+        "K3 planted x1.005 (below tier 2)",
+        snap_with(
+            "k3.hdf5",
+            own_ratio,
+            lw=steep,
+            mean_fn=lambda m, o, w: (m[0], m[1], m[2] * 1.005),
+        ),
+        "FAIL",
+        "PASS",
+    )
+    tier(
+        "K4 no self term",
+        snap_with("k4.hdf5", own_ratio, lw=steep, variant="noself"),
+        "FAIL",
+    )
+    tier(
+        "K5 kernel of h_j in place of h_i",
+        snap_with("k5.hdf5", own_ratio, lw=steep, variant="hj"),
+        "FAIL",
+    )
+    tier(
+        "K6 f(n_H2 r) in place of the mean",
+        snap_with(
+            "k6.hdf5", own_ratio, lw=steep, mean_fn=lambda m, o, w: (m[0], m[1], good)
+        ),
+        "FAIL",
+        "FAIL",
+    )
+    tier(
+        "K7 own ratio in place of the mean",
+        snap_with(
+            "k7.hdf5",
+            own_ratio,
+            lw=steep,
+            mean_fn=lambda m, o, w: (m[0], m[1], own_ratio),
+        ),
+        "FAIL",
+        "FAIL",
+    )
+    lit_probe = np.where(mask)[0][7]
+
+    def drop_light(m, o, w):
+        e, dd_, t = m[0].copy(), m[1].copy(), m[2].copy()
+        e[lit_probe], dd_[lit_probe], t[lit_probe] = 0.0, 0.0, 1.0
+        return e, dd_, t
+
+    tier(
+        "K8 LW mean of a lit probe is zero",
+        snap_with("k8.hdf5", own_ratio, lw=steep, mean_fn=drop_light),
+        "FAIL",
+    )
+    r_cut = 4.5e18
+    faint = np.where(r < r_cut, steep, 1e-33)
+
+    def flush(m, o, w):
+        top = np.asarray(w.multiply(o[None, :]).max(axis=1).todense()).ravel()
+        gone = top < np.finfo(np.float32).tiny
+        return (
+            np.where(gone, 0.0, m[0]),
+            np.where(gone, 0.0, m[1]),
+            np.where(gone, 1.0, m[2]),
+        )
+
+    tier(
+        "K9 own-field terms below FLT_MIN flushed to zero (exempt)",
+        snap_with("k9.hdf5", own_ratio, lw=faint, mean_fn=flush),
+        "PASS",
+        "PASS",
+    )
+    tier(
+        "K9b the same snapshot with the mean not flushed",
+        snap_with("k9b.hdf5", own_ratio, lw=faint),
+        "PASS",
+        "PASS",
+    )
+    far = np.where(r > r_full3 + 2.0 * gate.KERNEL_GAMMA * h_cm.max())[0][0]
+
+    def stray(m, o, w):
+        e = m[0].copy()
+        e[far] = 1.0
+        return e, m[1], m[2]
+
+    tier(
+        "K10 LW energy where no neighbour is lit",
+        snap_with(
+            "k10.hdf5",
+            own_ratio,
+            lw=np.where(r < r_full3, steep, 0.0),
+            time=3.0,
+            mean_fn=stray,
+        ),
+        "FAIL",
+    )
+    record(
+        "K11 NaN in the kernel mean",
+        3,
+        args(
+            snap_with(
+                "k11.hdf5",
+                own_ratio,
+                lw=steep,
+                mean_fn=lambda m, o, w: (
+                    m[0],
+                    m[1],
+                    np.where(np.arange(len(pos)) == 5, np.nan, m[2]),
+                ),
+            )
+        ),
+        "non-finite",
+    )
+    ts_short = write_timesteps(d, len(pos) - 1, name="timesteps_short.txt")
+    record(
+        "V1 not every particle updated in the last step",
+        4,
+        [*args(snap_with("v1.hdf5", own_ratio, lw=steep)), "--timesteps", ts_short],
+        "updated",
+    )
+    record(
+        "V2 positions moved in the last step",
+        4,
+        args(
+            snap_with(
+                "v2.hdf5", own_ratio, lw=steep, velocities=np.full((len(pos), 3), 1e-3)
+            )
+        ),
+        "moved",
+    )
+    record(
+        "V3 timesteps file missing",
+        2,
+        [
+            *args(snap_with("v3.hdf5", own_ratio, lw=steep)),
+            "--timesteps",
+            os.path.join(d, "none.txt"),
+        ],
+        "timesteps",
+    )
+    record(
+        "V4 Masses absent",
+        2,
+        args(snap_with("v4.hdf5", own_ratio, lw=steep, drop=("Masses",))),
+        "lacks",
     )
     return d, (pos, rho, h, box, lw, good, temp, x_h2)
 
