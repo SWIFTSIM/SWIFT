@@ -3000,7 +3000,9 @@ The column of Eq.~\eqref{eq:h2-harmonic} is
 tolerance $10^{-6}$ is at :3304, and the rule for a merging particle with no
 line width is at :3390. A sum over the factor below the smallest normal
 float, which the float sum flushes to 0, is read as that float (:3391-3392): the
-column is then the largest one that the two sums allow, not 0. The move of Eq.~\eqref{eq:h2-refit} is
+column is then not 0. One flushed share gets a column at least its own; several
+flushed shares in one slot get less, because the sum stays 0 while the dissociating
+energy adds up. The move of Eq.~\eqref{eq:h2-refit} is
 \code{radiation\_packet\_line\_refit} (:3524-3543).
 
 The own fields of Eq.~\eqref{eq:h2-own} are formed at the end of the gradient

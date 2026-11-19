@@ -3377,8 +3377,8 @@ static double radiation_packet_waiting_LW_energy(
  *
  * @param dissociating The dissociating energy, positive.
  * @param over_factor Its sum over the factor, not saturated. A sum below the
- * smallest normal float is read as that float, which gives the largest column
- * that the two sums allow.
+ * smallest normal float is read as that float: one flushed share gets a column
+ * at least its own, several in one slot get less.
  * @param alpha Exponent of the fit.
  * @param b5 Thermal line width of H2 of the fit in km/s.
  * @return The column in cm^-2.
