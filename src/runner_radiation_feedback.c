@@ -904,8 +904,8 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
       if (feedback_get_star_ionization_budget_max(si) <= 0.0) break;
 
       if (buffer_was_full) {
-        /* Case 1: more candidates may exist within the SAME radius --
-         * PROVIDED this attempt claimed at least one of them. If it
+        /* Case 1: more candidates may exist within the SAME radius,
+         * provided this attempt claimed at least one of them. If it
          * claimed none, no pixel's budget or tag state changed anywhere,
          * so a retry re-runs the identical search (same eligible set),
          * meets the identical per-pixel budgets, and every pixel's fixed
