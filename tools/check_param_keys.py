@@ -82,6 +82,7 @@ RETIRED_KEYS: Dict[str, str] = {
     "GrackleCooling:provide_volumetric_heating_rates": "GrackleCooling:volumetric_heating_rates_cgs",
     "GrackleCooling:provide_specific_heating_rates": "GrackleCooling:specific_heating_rates_cgs",
     "GrackleCooling:convergence_limit": "nothing (the key is no longer read)",
+    "GrackleCooling:H2_photodissociation_heating": "nothing (the key is no longer read; GeajayCooling:h2_photodissociation_heating is the geajay option)",
     "GEARFeedback:ISRF_c_hyp_fixed_fraction_timestep_off_for_debugging": "nothing (the M1 transport of the ISRF was removed, the key is ignored)",
     "GEARFeedback:ISRF_c_hyp_pin_for_debugging": "nothing (the M1 transport of the ISRF was removed, the key is ignored)",
     "GEARFeedback:LW_FUV_c_hyp_pin_for_debugging": "nothing (the M1 transport of the ISRF was removed, the key is ignored)",
