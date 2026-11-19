@@ -709,7 +709,8 @@ struct feedback_part_data {
 
   /*! Unused. With 10 chemistry elements #LW_line_H2_column and this array
       together keep sizeof(struct part) at 4256 B. Other builds can still
-      reach 4096 B, where a stride was measured to cost 7 per cent; the
+      reach 4096 B, where a stride was measured to cost 7 per cent more CPU time
+      without H2 line absorption; the
       start-up refuses that with H2 line absorption on
       (#feedback_props_init). */
   char ISRF_packet_stride_padding[28];
