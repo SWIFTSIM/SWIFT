@@ -121,6 +121,8 @@ non-negligible field, subtracts the reference run from the heating run to
 isolate the photoelectric contribution, and compares the median with the
 model formula. The bar is a bound set by the window; the script's
 docstring gives it. The check fails if the heating is too small to resolve.
+Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
+given.
 
 Pass `--steps-per-window 1` and `--cooling-response <Lambda' dt>` (from a
 one-zone call of the cooling library at the reference state) to judge with
@@ -133,8 +135,9 @@ window divided by u. That assumes the window opens with no lead and that the
 cooling response over the window is at most P. With 16 steps of 6.25e-11 per
 window the response is 1.12 P for Wolfire. With one step per window the
 window opens with a lead of 1.5 steps, so the response is about 2 Lambda' dt
-(Wolfire: 8.5e-4 against 0.5 P = 3.8e-4). For `fixed_rate` the heating per step is so small
-that the rounding bound is about 4 per cent, so that leg cannot detect an
-error of a few tenths of a per cent.
-Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
-given.
+(Wolfire: 8.5e-4 against 0.5 P = 3.8e-4).
+
+The other legs resolve an error of 0.3 per cent. The `fixed_rate` leg
+resolves only errors above about 1e-2: its heating per step is so small
+that the float32 rounding term dominates its bar (about 4 per cent). A
+reference scaled by 1.1 fails it; one scaled by 1.003 passes.
