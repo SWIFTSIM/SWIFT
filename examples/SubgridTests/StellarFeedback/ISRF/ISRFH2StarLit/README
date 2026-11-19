@@ -82,8 +82,9 @@ first step changes in every particle.
 - The count and the minimum of the transmission read the lit probes only; an unlit probe
   carries no transmission. The number of lit particles with a transmission below 0.99 must
   be above 0 and must lie between the numbers of lit particles beyond `r_0.99 + l_hop` and
-  beyond `r_0.99 - l_hop`, with `l_hop` the mean path of the booked shares if the counters
-  file (`--counters`, key `mean_hop_path_cm`) gives it, the smoothing length otherwise.
+  beyond `r_0.99 - l_hop`, with `l_hop` the smoothing length of the probe. A counters file from an
+  instrumented build (`--counters`, key `mean_hop_path_cm`, which the code does not write)
+  replaces it by the mean path of the booked shares.
 - The carried column `LWLineH2ColumnDensities` of every lit probe must lie between
   `n_min r (1 - e)` and `n_max r (1 + e)`, with `n_min` and `n_max` as in the first bar
   and `e` the float rounding term of the transmission bar. The band is about 2 per cent
