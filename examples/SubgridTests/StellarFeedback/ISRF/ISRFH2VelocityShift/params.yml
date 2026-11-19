@@ -20,7 +20,7 @@ Gravity:
 
 TimeIntegration:
   time_begin:        0.
-  time_end:          1.28e-11                   # 8 steps of dt_max
+  time_end:          2.56e-11                   # 16 steps of dt_max; keep a power of two times dt_max
   dt_min:            1e-14
   dt_max:            1.6e-12
 
