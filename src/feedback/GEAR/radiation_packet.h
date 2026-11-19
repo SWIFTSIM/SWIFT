@@ -836,9 +836,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * transmission of 1, or of its dissociation factor with the population factor
  * on (#radiation_h2_shielding_shift_keep_factor). The column then grows by the
  * H2 of the receiver on the path, and the transmission falls by the ratio of
- * the shielding factors of the column after and before it. A receiver without H2 leaves the share as it
- * is; one without a line width also counts it as clear light in
- * @p q_out.
+ * the shielding factors of the column after and before it. A receiver without
+ * H2 leaves the share as it is; one without a line width also counts it as
+ * clear light in @p q_out.
  *
  * @param receiver The receiver.
  * @param transmission Line transmission of the share before the hop, times its
