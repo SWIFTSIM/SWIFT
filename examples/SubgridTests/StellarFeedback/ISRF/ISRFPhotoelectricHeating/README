@@ -76,9 +76,16 @@ The quantitative rate check needs a SEPARATE, much finer-cadence pair (see
 0` requires this): `delta_time`/`dt_max` orders of magnitude below the
 sign/magnitude pair's, and a correspondingly short `time_end`.
 ```
-with_pe_heating=1 run_name=rate_on  time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
-with_pe_heating=0 run_name=rate_off time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
+list="-P Snapshots:output_list_on:1 -P Snapshots:output_list:rate_output_list.txt"
+with_pe_heating=1 run_name=rate_on  time_end=4e-9 dt_max=6e-10 extra_args="$list" ./run.sh
+with_pe_heating=0 run_name=rate_off time_end=4e-9 dt_max=6e-10 extra_args="$list" ./run.sh
 ```
+`rate_output_list.txt` opens the measuring window one step after the field
+first reaches the gas, so that the two runs start the window with the same
+energy. Its times hold for these `time_end` and `dt_max` values only.
+`fixed_rate` heats without the field, from the second step, so it uses
+`rate_output_list_fixed_rate.txt`, which opens the window one step after
+that heating starts.
 The ISRF also adds a small dust cooling, so the reference run should carry
 the ISRF too. With geajay, run the reference as `with_pe_heating=1
 pe_model=none`, so that both runs carry the same ISRF, and the difference is
@@ -116,3 +123,54 @@ model formula. The bar is a bound set by the window; the script's
 docstring gives it. The check fails if the heating is too small to resolve.
 Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
 given.
+
+The check judges with a bar derived from the mechanism: the response of the
+cooling to the heating, plus a bound on the float32 rounding of the internal
+energy (see the docstring). Give it the number of steps in the window,
+`--steps-per-window N` (1 for the shipped output lists), and
+`--cooling-response <Lambda' dt>`, the derivative of the net cooling rate with
+respect to the internal energy times the window (dimensionless). The
+script refuses a value outside [0, 0.5) and a missing or zero `N`. With `N`
+given, the allowed lead of the heating run at the window start is 2/N unless
+`--lead-tol` says otherwise. The script prints the bar from the earlier
+definition (`0.5 P + 4 2^-24 / P`) and the derived bar, and judges with the
+derived one.
+
+For the Wolfire model on the shipped fixture (`pe_model=wolfire1995` with free
+electrons, heating-off run as reference):
+```
+python3 isrf_photoelectric_heating_check.py \
+    --on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
+    --off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --rate-on-snapshot  "rate_on/snap/snapshot_*.hdf5" \
+    --rate-off-snapshot "rate_off/snap/snapshot_*.hdf5" \
+    --pe-model grackle-wolfire1995 \
+    --steps-per-window 1 --cooling-response 4.2436e-4
+```
+Values of `--cooling-response` for this fixture (`dt_max=6e-10`, the shipped
+output lists, Grackle `official` build):
+
+| Model | `--cooling-response` |
+|-------|----------------------|
+| `grackle-wolfire1995` | 4.2436e-4 |
+| `grackle-constant` (reference run with ISRF on, `--reference-field on`) | 4.2762e-4 |
+| `geajay-fixed-rate` | 4.2718e-4 |
+
+They come from a one-zone call of the Grackle library, with the same switches
+as the run, on the reference run's state at the window start: take the net
+cooling rate at `u (1 +- h)` for each particle (`h = 1e-3`), form
+`Lambda' = -(edot(1+h) - edot(1-h)) / (2 h u)`, multiply by the window length
+and take the median over the illuminated particles. Another fixture, cadence
+or library build needs its own values.
+
+What the check can and cannot see. Scaling the whole reference is resolved at
+0.3 per cent for `grackle-wolfire1995`, `grackle-constant` and the other geajay
+models; for `geajay-fixed-rate`, only an error above about 4 per cent (its bar
+is 4.3e-2, set by the rounding of the small heating per step). The response
+lowers the measured rate, so an error of the reference that raises the heating
+is partly hidden: on the Wolfire leg the check cannot see an error of about
+-0.06 to +0.21 per cent of the heating, nor about 1 per cent in `G0`. The
+margins of `grackle-constant` (6 per cent) and `geajay-density-epsilon`
+(3 per cent) are thin: a 5 per cent error in `--cooling-response` would fail
+them. The reference takes `n_H` as `HI + HII + H2I + H2II` and assumes
+Grackle's default `local_dust_to_gas_ratio` (0.009387).
