@@ -204,7 +204,7 @@ Three ``GrackleCooling`` parameters control how the field is turned into heating
   Used by mode ``2`` only. ``kernel_radius`` sets the shielding column path to one kernel support radius, ``kernel_diameter`` to twice the kernel support radius. Any other value stops SWIFT at start-up.
 
 ``GrackleCooling:photoelectric_heating_efficiency`` (default ``constant``)
-  Which photoelectric efficiency Grackle applies to the Habing field (the PE+Lyman-Werner sum described above): ``constant`` (a fixed efficiency of 0.05 with prefactor :math:`10^{-24}`, Wolfire et al. 1995 Eq. 1), ``wolfire1995`` (the electron-density-dependent efficiency of the same paper, Eq. 2), or ``density_dependent`` (:math:`\min(0.07, 0.0149\,n_\mathrm{H}^{0.235})` with prefactor :math:`1.3 \times 10^{-24}`, Smith 2026 Eqs. A1-A2; requires a Grackle build that provides it; SWIFT stops at start-up if the module is on and the Grackle it was built against does not). None of the shipped ISRF examples override this: they run at the default, ``constant``.
+  Which photoelectric efficiency Grackle applies to the Habing field (the PE+Lyman-Werner sum described above): ``constant`` (a fixed efficiency of 0.05 with prefactor :math:`10^{-24}`, Wolfire et al. 1995 Eq. 1) or ``wolfire1995`` (the electron-density-dependent efficiency of the same paper, Eq. 2). None of the shipped ISRF examples override this: they run at the default, ``constant``.
 
 Two further parameters are worth checking:
 
@@ -255,7 +255,7 @@ and the recommended ``GrackleCooling`` entries for an ISRF run tracking :math:`\
    GrackleCooling:
      H2_self_shielding: 3                         # Use 3 (local Jeans length) or 2 in an ISRF run tracking H2
      H2_self_shielding_path: kernel_radius        # Mode 2 only: kernel_radius or kernel_diameter
-     photoelectric_heating_efficiency: constant   # constant, wolfire1995 or density_dependent
+     photoelectric_heating_efficiency: constant   # constant or wolfire1995
      local_dust_to_gas_ratio: -1                  # -1 uses Grackle's own default
      RT_H2_dissociation_rate_cgs: 0               # Keep at 0 in an ISRF run
 
