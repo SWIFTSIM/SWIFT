@@ -3376,16 +3376,20 @@ static double radiation_packet_waiting_LW_energy(
  * light counts as clear light and the column is 0.
  *
  * @param dissociating The dissociating energy, positive.
- * @param over_factor Its sum over the factor, positive and not saturated.
+ * @param over_factor Its sum over the factor, not saturated. A sum below the
+ * smallest normal float is read as that float, which gives the largest column
+ * that the two sums allow.
  * @param alpha Exponent of the fit.
  * @param b5 Thermal line width of H2 of the fit in km/s.
  * @return The column in cm^-2.
  */
 static double radiation_packet_line_harmonic_column(const double dissociating,
-                                                    const double over_factor,
+                                                    double over_factor,
                                                     const double alpha,
                                                     const double b5) {
   if (!(b5 > 0.)) return 0.;
+  /* A sum that flushed to 0 in float is below the smallest normal float. */
+  if (!(over_factor >= FLT_MIN)) over_factor = FLT_MIN;
   const double f = dissociating / over_factor;
   if (f >= radiation_h2_shielding_factor_at_zero() *
                (1. - RADIATION_PACKET_LINE_CLEAR_TOLERANCE))
@@ -4179,7 +4183,13 @@ void radiation_packet_couple_field(struct part *p) {
 
   p->feedback_data.isrf_moment[ISRF_MOMENT_LW_PHOTON].u =
       (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
-  p->feedback_data.LW_dissociating_u = pk->ngb_mean_field_dissociating_energy;
+
+  /* The LW sum is in float and can flush to 0 where the double sum does not:
+     the lines remove light, they never add it. */
+  const double lw = (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
+  double dissociating = pk->ngb_mean_field_dissociating_energy;
+  if (dissociating > lw) dissociating = lw;
+  p->feedback_data.LW_dissociating_u = dissociating;
 }
 
 /**
