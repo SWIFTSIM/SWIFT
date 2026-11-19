@@ -282,10 +282,10 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
 /**
  * @brief Top-level steering function for HII ionization feedback.
  *
- * This function recurses into every split cell down to a leaf, whatever the
- * HII radius of the stars it holds. The leaf is the working level: it hands
- * off control to the sub-task coordinator, which searches out to the radius
- * computed here.
+ * This function recurses into every split cell that holds an active star down
+ * to a leaf, whatever the HII radius of the stars it holds. The leaf is the
+ * working level: it hands off control to the sub-task coordinator, which
+ * searches out to the radius computed here.
  *
  * @param r The #runner thread.
  * @param c The #cell to process.

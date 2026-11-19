@@ -2606,7 +2606,7 @@ int cell_unskip_radiation_tasks(struct cell *c, struct scheduler *s,
 
       /* The rank that owns the star computes, so the HII task of a local side
          runs whenever either side is active (the radiation_in rule) and
-         must unlock stars_out through this task. */
+         also unlocks stars_out through this task. */
       if ((ci_active || cj_active) &&
           (ci_nodeID == nodeID || cj_nodeID == nodeID)) {
         scheduler_activate(s, t);

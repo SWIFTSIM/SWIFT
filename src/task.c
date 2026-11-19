@@ -858,7 +858,7 @@ int task_lock(struct task *t) {
           error(
               "Skipping the lock for a starless stars_hii_ionization_feedback "
               "task on a foreign cell (ci->nodeID=%d, engine_rank=%d): the "
-              "single-node MPI boundary this early-out leans on no longer "
+              "local-cell activation this early-out leans on no longer "
               "holds.",
               ci->nodeID, engine_rank);
 #endif
