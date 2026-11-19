@@ -37,6 +37,7 @@ GeajayCooling:
   h2_transported_lw_rate_shielding: background_only
 """
 ROWS = []
+U_L = 3.0856775814913673e21
 
 
 def run_gate(argv):
@@ -186,6 +187,7 @@ def starlit_cases(work):
 
     def snap_with(name, ratio, **kw):
         p = os.path.join(d, name)
+        kw["column"] = kw.get("column", n_h2 * r) * U_L**2  # stored in U_L^-2
         write_snap(
             p,
             pos,
@@ -214,6 +216,33 @@ def starlit_cases(work):
         0,
         args(snap_with("nudge.hdf5", np.minimum(nudged, 1.0))),
         "transmission",
+    )
+    record(
+        "C1 carried column field doubled",
+        1,
+        args(snap_with("c1.hdf5", good, column=2.0 * n_h2 * r)),
+        "FAIL  carried column",
+    )
+    record(
+        "C2 carried column field halved",
+        1,
+        args(snap_with("c2.hdf5", good, column=0.5 * n_h2 * r)),
+        "FAIL  carried column",
+    )
+    n_lo, n_hi = float(n_h2[mask].min()), float(n_h2[mask].max())
+    record(
+        "C3 carried column field 0.5 per cent off, clipped to the n_H2 range",
+        0,
+        args(snap_with("c3.hdf5", good, column=np.clip(1.005 * n_h2, n_lo, n_hi) * r)),
+        "PASS  carried column",
+    )
+    bad_col = n_h2 * r
+    bad_col[5] = np.nan
+    record(
+        "C4 carried column field non-finite",
+        3,
+        args(snap_with("c4.hdf5", good, column=bad_col)),
+        "non-finite",
     )
     record(
         "N1 switch off: line fields absent",
@@ -548,6 +577,34 @@ def parity_cases(work, d, data):
             pp,
         ]
 
+    p0 = os.path.join(d, "p_first.hdf5")
+    write_snap(p0, pos, rho, h, box, temp, x_h2, lw, good, time=1.0)
+
+    def reduced_ranks(b, first=p0, a=pa):
+        return [
+            "parity",
+            "--a",
+            a,
+            "--b",
+            b,
+            "--mode",
+            "ranks",
+            "--previous",
+            pp,
+            *(("--first", first) if first else ()),
+        ]
+
+    record(
+        "R1 restart, no counters: reduced",
+        5,
+        ["parity", "--a", pa, "--b", pa, "--mode", "restart", "--stop", pp],
+        "bitwise",
+    )
+    record("R2 2 ranks, no counters: reduced", 5, reduced_ranks(pb), "round-off")
+    record("R3 2 ranks, no counters, dropped booking", 1, reduced_ranks(pd), "FAIL")
+    record(
+        "R4 2 ranks, no counters, no --first", 2, reduced_ranks(pb, first=None), "needs"
+    )
     record("P1 restart: identical", 0, restart(pa), "bitwise")
     record("P2 restart: reordered rows, same values", 0, restart(pc), "bitwise")
     record("P3 restart: one ulp-level change", 1, restart(pb), "bitwise")

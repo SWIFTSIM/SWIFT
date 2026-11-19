@@ -51,7 +51,8 @@ about 2e18 cm^-2 over the box.
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
 `makeIC.py`) and the first and last snapshot. Its exit class is 0 for a pass, 1 for a failed
 bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a void run (a
-premise or a positive control is not met). A void run never passes.
+premise or a positive control is not met). A void run never passes. `parity` alone also
+returns 5 for a pass without a counters file (see below).
 
 `python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5`
 
@@ -67,10 +68,14 @@ first step changes in every particle.
   particle at the last snapshot lies outside the reference range by more than 1e-3. Taking
   the range over both snapshots makes the bar wider than the range of the last snapshot
   alone (about 0.2 per cent in the median on the default run); the check prints the
-  widening. The kernel mean `LWLineTransmissions` is printed, not gated: near the
-  light front it is biased up.
+  widening. The kernel mean `LWLineTransmissions` is printed, not gated: on the default
+  run it reads 2 to 8 per cent above `f` at every radius (median `ln(ratio / f)` from
+  0.019 to 0.077 over the bins of `r / h`). The cooling reads this kernel mean, not the
+  own ratio, and no check here covers it.
 - The light moves one hop per step, so the lit probes fill a ball. With n the number of
-  steps (the ratio of the snapshot times, which must be an integer of at least 2), every
+  steps (the ratio of the snapshot times, which must be an integer of at least 2, and which
+  counts one hop per step only if all gas sits on one time bin, as in the default run;
+  the check does not test it), every
   probe at `r < (n - 1) h_min` must be lit, and no probe may be lit beyond `n gamma h_max`
   (`gamma` the kernel support in units of h). The check fails on a lit count outside these
   bounds and on any unlit probe inside the first radius.
@@ -79,29 +84,38 @@ first step changes in every particle.
   be above 0 and must lie between the numbers of lit particles beyond `r_0.99 + l_hop` and
   beyond `r_0.99 - l_hop`, with `l_hop` the mean path of the booked shares if the counters
   file (`--counters`, key `mean_hop_path_cm`) gives it, the smoothing length otherwise.
+- The carried column `LWLineH2ColumnDensities` of every lit probe must lie between
+  `n_min r (1 - e)` and `n_max r (1 + e)`, with `n_min` and `n_max` as in the first bar
+  and `e` the float rounding term of the transmission bar. The band is about 2 per cent
+  wide on the default run, so it catches a column that is off by a factor of 2, not one
+  that is off by a per cent.
 - The check prints how many particles can detect a doubled H2 column. If that is 0, the
   run is void.
 
 Two runs are compared particle by particle with `parity`, on `LWSpecificEnergies`,
 `LWDissociatingSpecificEnergies` and `LWLineH2ColumnDensities` (not only their ratio):
 ```
-python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5 --counters counters.json
-python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --params one/used_parameters.yml --counters counters.json
+python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5
+python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --first one/snap/snapshot_0001.hdf5 --params one/used_parameters.yml
 ```
 - `restart`: every `LW` and `Packet` field must be equal bit for bit (same binary, same
   rank count, one thread, so that the run repeats exactly). Other fields are printed only.
-  The run is void unless the counters give `held_lw_slots_at_restart` (slots holding
-  waiting LW light when the run stopped) and `refits_after_restart` (shielding fits that
-  changed after the restart) above 0, and some particle dark at `--stop` is lit at the
-  compared snapshot.
+  Some particle dark at `--stop` must be lit at the compared snapshot, else the run is void.
 - `ranks`: the float sums run in another order. A particle that held light at
   `--previous` must agree within `n (k 2^-24 + p delta_h)` of its own value, with `n` the
-  steps (`steps` in the counters), `k` the largest number of neighbours in a kernel,
-  `p` the cone power plus 4 and `delta_h` the largest relative gap of the smoothing
-  lengths. A particle first lit after `--previous` sits at the light front, where its
-  light came through weights near the kernel edge; it is held to the same bar times the
-  largest value in its kernel. The run is void unless `probes_on_other_rank` and
-  `foreign_bookings` are above 0.
+  number of steps (the ratio of the times of `--first` and `--a`), `k` the largest number
+  of neighbours in a kernel, `p` the cone power plus 4 and `delta_h` the largest relative
+  gap of the smoothing lengths. A particle first lit after `--previous` sits at the light
+  front, where its light came through weights near the kernel edge; it is held to the same
+  bar times the largest value in its kernel.
+- The code does not count the booked shares of other ranks, the probes on another rank or
+  the slots that wait at a restart. Without a counters file the check therefore prints
+  `REDUCED` and exits with class 5 when the comparison passes: the values agree, but the
+  run is not shown to have exercised the transport between ranks or the restore of the
+  held light. A counters file (`--counters`, JSON) from an instrumented build restores the
+  full check: it must give `probes_on_other_rank` and `foreign_bookings` for `ranks`,
+  `held_lw_slots_at_restart` and `refits_after_restart` for `restart`, each above 0, and
+  may give `steps` in place of `--first`.
 
 `testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
 error in each case, and prints the exit class of each.

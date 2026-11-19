@@ -16,6 +16,8 @@ Exit codes
 2 a required file, field or key is missing
 3 a value is not finite
 4 the run is void: a premise or a positive control is not met
+5 parity only: the comparison passed without a counters file, so the premises of the
+  run (foreign bookings, refits) were not checked
 
 A missing field, a void run and a non-finite value never pass and never crash.
 
@@ -36,7 +38,14 @@ from typing import Dict, List, Optional, Tuple
 import h5py
 import numpy as np
 
-EXIT_OK, EXIT_BAR, EXIT_MISSING, EXIT_NONFINITE, EXIT_VOID = 0, 1, 2, 3, 4
+EXIT_OK, EXIT_BAR, EXIT_MISSING, EXIT_NONFINITE, EXIT_VOID, EXIT_REDUCED = (
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+)
 
 K_B = 1.380649e-16
 M_H = 1.6735575e-24
@@ -79,6 +88,7 @@ REQUIRED_OWN = (
     "LWOwnSpecificEnergies",
     "LWOwnDissociatingSpecificEnergies",
 )
+REQUIRED_COLUMN = (PARITY_COLUMN,)
 REQUIRED_GAS = (
     "ParticleIDs",
     "Coordinates",
@@ -470,6 +480,8 @@ def light_hops(first: dict, last: dict) -> int:
 
     The first snapshot is written after step 1, so the time ratio is the step count of the
     last snapshot when the step is constant (dt_max below the step the particles ask for).
+    This assumes that every gas particle sits on one time bin: a particle on a shorter bin
+    forwards the light more than once per base step, and the gate does not check it.
 
     Raises
     ------
@@ -492,7 +504,7 @@ def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
 
     The own field is the light that crosses the particle itself, before the kernel
     mean. The kernel mean of LWLineTransmissions is a u-weighted mean over the
-    neighbours and is biased up near the light front, so the bars read the own ratio.
+    neighbours and is biased up by 2 to 8 per cent at every radius, so the bars read the own ratio.
     """
     own = last["LWOwnSpecificEnergies"]
     ratio = last["LWOwnDissociatingSpecificEnergies"] / np.where(own > 0, own, 1.0)
@@ -568,11 +580,9 @@ def gate_starlit(args: argparse.Namespace) -> int:
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
-    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN)
-    require_finite(
-        "last snapshot",
-        **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN},
-    )
+    fields = REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN + REQUIRED_COLUMN
+    last = load_snapshot(args.last, fields)
+    require_finite("last snapshot", **{k: last[k] for k in fields})
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
@@ -623,6 +633,19 @@ def gate_starlit(args: argparse.Namespace) -> int:
         f"worst margin {np.max((dev / bar)[lit]):.3g} of the bar; "
         f"median ln(own ratio/f) {float(np.median(np.log(np.maximum(meas[lit], 1e-300) / exp[lit]))):.4g}",
     )
+    # The carried column is a sum of the receivers' n_H2 times paths that add up to r.
+    col_field = last[PARITY_COLUMN] / last["unit_length"] ** 2  # stored in U_L^-2
+    col_lo, col_hi = n_range[0] * r * (1.0 - float_term), n_range[1] * r * (
+        1.0 + float_term
+    )
+    col_out = lit & ((col_field < col_lo) | (col_field > col_hi))
+    rep.check(
+        "carried column field between n_min r and n_max r",
+        not col_out.any(),
+        f"{int(col_out.sum())} of {int(lit.sum())} lit probes outside "
+        f"[n_min r (1 - e), n_max r (1 + e)], e the float term; "
+        f"ln(N_field / (n_H2 r)) median {float(np.median(np.log(np.maximum(col_field[lit], 1e-300) / column[lit]))):.4g}",
+    )
     lw = last["LWSpecificEnergies"]
     mean_ratio = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
     lit_mean = read & (lw > 0.0)
@@ -630,7 +653,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
         rep.reading(
             "kernel-mean ratio LWLineTransmissions",
             f"median ln(ratio/f) {float(np.median(np.log(np.maximum(mean_ratio[lit_mean], 1e-300) / exp[lit_mean]))):.4g} "
-            f"over {int(lit_mean.sum())} probes (biased up near the light front)",
+            f"over {int(lit_mean.sum())} probes (biased up at every radius)",
         )
 
     # Lit set: the light moves one hop per step, so the lit probes fill a ball.
@@ -1026,18 +1049,20 @@ def gate_parity(args: argparse.Namespace) -> int:
     geom = ("ParticleIDs", "Coordinates", "SmoothingLengths")
     a = load_snapshot(args.a, geom + gated)
     b = load_snapshot(args.b, geom + gated)
-    counters = load_json(args.counters, "counters file")
+    counters = load_json(args.counters, "counters file") if args.counters else {}
     need = (
-        ["probes_on_other_rank", "foreign_bookings", "steps"]
+        ["probes_on_other_rank", "foreign_bookings"]
         if args.mode == "ranks"
         else ["held_lw_slots_at_restart", "refits_after_restart"]
     )
-    for key in need:
-        if not float(counters.get(key, 0)) > 0:
-            raise GateExit(
-                EXIT_VOID,
-                f"void run, {key} is {counters.get(key, 'absent')} (must be above 0)",
-            )
+    reduced = args.counters is None
+    if not reduced:
+        for key in need:
+            if not float(counters.get(key, 0)) > 0:
+                raise GateExit(
+                    EXIT_VOID,
+                    f"void run, {key} is {counters.get(key, 'absent')} (must be above 0)",
+                )
     if not a["time"] == b["time"]:
         raise GateExit(
             EXIT_VOID,
@@ -1050,7 +1075,13 @@ def gate_parity(args: argparse.Namespace) -> int:
         )
     for key in gated:
         require_finite(key, a=a[key], b=b[key])
-    rep.info("premises", ", ".join(f"{k} {counters[k]}" for k in need))
+    if reduced:
+        print(
+            "REDUCED  no counters file: the run is not shown to exercise the "
+            f"comparison ({', '.join(need)} not checked); a pass proves agreement only"
+        )
+    else:
+        rep.info("premises", ", ".join(f"{k} {counters[k]}" for k in need))
 
     if args.mode == "restart":
         if args.stop is None:
@@ -1078,9 +1109,16 @@ def gate_parity(args: argparse.Namespace) -> int:
                 rep.check(f"{key} bitwise", not neq.any(), detail)
             else:
                 rep.reading(f"{key} bitwise", detail)
-        return rep.exit_code()
+        return EXIT_REDUCED if reduced and not rep.failed else rep.exit_code()
 
-    steps = float(counters["steps"])
+    if "steps" in counters:
+        steps = float(counters["steps"])
+    else:
+        if args.first is None:
+            raise GateExit(
+                EXIT_MISSING, "ranks mode needs --first or a counters file with steps"
+            )
+        steps = float(light_hops(load_snapshot(args.first, geom), a))
     ngb = kernel_neighbours(a)
     k_terms = max(len(n) for n in ngb)
     params = read_params(args.params) if args.params else {}
@@ -1136,7 +1174,7 @@ def gate_parity(args: argparse.Namespace) -> int:
             f"the kernel maximum, largest {worst[rest].max():.3g}; largest gap over the "
             f"own value {own[rest].max():.3g} (read only)",
         )
-    return rep.exit_code()
+    return EXIT_REDUCED if reduced and not rep.failed else rep.exit_code()
 
 
 def gate_refusal(args: argparse.Namespace) -> int:
@@ -1196,7 +1234,16 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--a", required=True)
     sp.add_argument("--b", required=True)
     sp.add_argument("--mode", choices=["ranks", "restart"], required=True)
-    sp.add_argument("--counters", required=True)
+    sp.add_argument(
+        "--counters",
+        default=None,
+        help="counters file of the premises; without it the check is reduced",
+    )
+    sp.add_argument(
+        "--first",
+        default=None,
+        help="ranks: first snapshot of run a, whose time gives the step count",
+    )
     sp.add_argument(
         "--stop", default=None, help="restart: snapshot of run a at the stop time"
     )
