@@ -760,6 +760,22 @@ $S_{\rm floor}$ & length$^3$ & cell floor of a star's emission \\
 $E_{\rm fl}$ & energy & light in flight \\
 $A$, $X$, $Y$ & energy & cumulative absorbed, escaped and redshift ledgers of a gas particle \\
 $E_{\rm rm}$, $E_{\rm inh}$ & energy & removed and inherited ledgers of a star or a sink \\
+\midrule
+\multicolumn{3}{l}{H$_2$ line absorption (Sections~\ref{sec:packet-h2}, \ref{sec:packet-h2-limits})} \\
+$\Sigma_s$, $\Sigma_k$ & cm$^{-2}$ & H$_2$ column that the light of share $s$, or of slot $k$, has crossed since its source or its last velocity reset \\
+$\Delta\Sigma$ & cm$^{-2}$ & H$_2$ column of the gas on a path \\
+$\Sigma_0$, $\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$ & cm$^{-2}$ & unit of the fit ($5\times10^{14}$), cap ($10^{25}$) and floor of the inverse ($10^{2}$) \\
+$\mathcal S(\Sigma;\alpha,b_5)$, $\mathcal S_0$ & -- & H$_2$ shielding factor, and its value at zero column ($0.99997$) \\
+$\alpha$, $b_5$ & --, -- & exponent of the fit, and thermal line width of H$_2$ in km\,s$^{-1}$; together the fit of a gas particle \\
+$\mathcal T_s$, $\mathcal T_k$ & -- & line transmission: fraction of the LW energy that the H$_2$ lines let through \\
+$\Delta v$, $\Delta v_{\max}$ & velocity & velocity shift of the light relative to the gas that holds its column, and the limit beyond which the column is dropped \\
+$n_{{\rm H}_2}$, $X_{{\rm H}_2}$ & cm$^{-3}$, -- & H$_2$ number density and mass fraction of the receiver \\
+$\mathcal A_k$, $\mathcal B_k$, $\mathcal V_k$ & energy, energy, energy$\times$velocity & sums of Eq.~\eqref{eq:h2-sums} over the light of slot $k$ \\
+$d_s$, $\xi_s$ & energy, -- & dissociating energy $e_s\mathcal T_s$ of share $s$ and its fraction of the total \\
+$\eta_s$, $\varpi_l$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
+$\mathcal R$ & -- & transmission of the slot over that of the share-by-share reference (Eq.~\eqref{eq:h2-ref}) \\
+$\varsigma$ & -- & local slope $|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ of the fit \\
+$u_{\rm LW}^{\rm own}$, $u_{\rm diss}^{\rm own}$, $\Sigma^{\rm own}$ & energy/mass, energy/mass, cm$^{-2}$ & own LW field, its dissociating part and the weighted column (Eq.~\eqref{eq:h2-own}) \\
 \bottomrule
 \end{longtable}
 
@@ -1245,6 +1261,208 @@ absorbed ledger of the receiver (Section~\ref{sec:packet-ledger}). The absorbed
 energy is a diagnostic: it is not added to the gas, which sees the light only
 through the field of Section~\ref{sec:packet-field}.
 
+\subsubsection{\texorpdfstring{H$_2$}{H2} line absorption: the carried column}
+\label{sec:packet-h2}
+
+This step exists only with \code{ISRF\_H2\_line\_absorption} on. Dust removes a
+fixed fraction of the light per unit of path, whatever the light has crossed
+before. The H$_2$ lines saturate: the next molecule removes less of the LW
+light the more H$_2$ the light has already crossed. A share therefore carries
+the H$_2$ column that it has crossed, and the fraction of its LW energy that
+the lines let through. The LW energy that is not removed by the lines is the
+dissociating energy, and it alone sets $k_{\rm diss}$
+(Section~\ref{sec:packet-field}).
+
+\paragraph{The shielding factor.} Let $\Sigma$ be an H$_2$ column in
+cm$^{-2}$ and $x=\Sigma/\Sigma_0$ with $\Sigma_0=5\times10^{14}$\,cm$^{-2}$. The
+factor $\mathcal S$ is the dissociation rate behind the column over the rate
+with no column, in gas of a given temperature and density
+\citep{WolcottGreenHaiman2019},
+\begin{equation}
+  \mathcal S(\Sigma;\alpha,b_5) = \min\!\Big\{1,\;
+  0.965\Big(1+\frac{x}{b_5}\Big)^{-\alpha}
+  + \frac{0.035}{\sqrt{1+x}}\,\exp\!\big[-8.5\times10^{-4}\sqrt{1+x}\,\big]\Big\},
+  \label{eq:h2-factor}
+\end{equation}
+\begin{equation}
+  \alpha(T,n) = (0.8711\lg T-1.928)\,e^{-0.2856\lg n}
+  + (-0.9639\lg T+3.892), \qquad
+  b_5=\frac{1}{1\,{\rm km\,s^{-1}}}\sqrt{\frac{k_{\rm B}T}{m_{\rm H}}},
+  \label{eq:h2-exponent}
+\end{equation}
+with $\lg=\log_{10}$, $T$ the gas temperature in K, $n=\rho/(\mu m_{\rm H})$
+the particle density in cm$^{-3}$, $k_{\rm B}$ the Boltzmann constant and
+$m_{\rm H}$ the proton mass. $T$ is clamped to $100$ to $8000$\,K and $n$ to
+$10^{-8}$ to $10^{7}$\,cm$^{-3}$. Then $\alpha$ lies between $0.139$ and
+$14.6$, and $b_5$ is the thermal line width of H$_2$ in units of
+$1\,{\rm km\,s^{-1}}$. The factor at zero column is the same for every gas,
+$\mathcal S_0=0.965+0.035\,e^{-8.5\times10^{-4}}=0.99997$. The factor falls
+with $\Sigma$. It is evaluated for $\Sigma$ up to a cap
+$\Sigma_{\rm cap}=10^{25}$\,cm$^{-2}$ and constant beyond. The pair
+$(\alpha,b_5)$ is the \emph{fit} of a gas particle.
+
+\paragraph{What a share carries.} A share of LW light carries three numbers.
+They are its column $\Sigma$ (cm$^{-2}$), its line transmission $\mathcal T$
+(dimensionless, 1 for light that no line has touched) and its velocity shift
+$\Delta v$. The shift is the velocity of the light relative to the gas that holds
+its column, summed hop by hop. A share also carries its LW energy $e$ after
+redshift and dust (Section~\ref{sec:packet-absorb-summary}). A star share
+starts with $\Sigma=0$, $\mathcal T=1$ and $\Delta v=0$ and hops through the
+receiver over the physical distance from the star, with no velocity step.
+
+The transmission is stored and not derived from $\Sigma$. It is a product of
+ratios $\mathcal S(\Sigma')/\mathcal S(\Sigma)$ taken in the fit of the gas of
+each hop. When the fit changes along the path, $\mathcal T$ is not a function
+of $\Sigma$ and of the local fit. Light that leaves cold molecular gas
+for warm gas would otherwise gain transmission without any absorber.
+
+\paragraph{The hop.} The share goes from a sender to a receiver $r$ with the
+fit $(\alpha_r,b_{5,r})$. The velocity shift comes first,
+\begin{equation}
+  \Delta v \leftarrow \Delta v + \delta v_{\rm hop}, \qquad
+  \delta v_{\rm hop} = \frac{(\boldsymbol{v}_r-\boldsymbol{v}_s)\!\cdot\!\boldsymbol{n}_k}{a}
+  + H\,\ell_{\rm phys},
+  \label{eq:h2-shift}
+\end{equation}
+with $\boldsymbol{v}_r$ and $\boldsymbol{v}_s$ the velocities of receiver and
+sender, $\boldsymbol{n}_k$ the direction of the slot, $H$ the Hubble rate and
+$\ell_{\rm phys}$ the physical path (Eq.~\eqref{eq:packet-path} and
+Section~\ref{sec:packet-absorb-summary}). If $|\Delta v|>\Delta v_{\max}=3\sqrt{k_{\rm B}T_r/m_{\rm H}}$,
+the light is more than three thermal widths away from the gas that holds its
+column and no longer sees the lines of that gas. The share starts again with
+$\Sigma=0$, $\mathcal T=1$ and $\Delta v=0$. A receiver with no temperature has
+$\Delta v_{\max}=0$ and never resets.
+
+The column then grows by the H$_2$ of the receiver on the path, and the
+transmission falls by the ratio of the factors,
+\begin{equation}
+  \Delta\Sigma = n_{{\rm H}_2}\,\ell_{\rm phys}, \quad
+  \Sigma' = \min(\Sigma+\Delta\Sigma,\Sigma_{\rm cap}), \quad
+  \mathcal T' = \mathcal T\,\min\!\Big\{1,\frac{\mathcal S(\Sigma')}{\mathcal S(\Sigma)}\Big\},
+  \label{eq:h2-hop}
+\end{equation}
+with $n_{{\rm H}_2}=X_{{\rm H}_2}\rho/(2m_{\rm H})$ the number density of H$_2$
+of the receiver in cm$^{-3}$ and $X_{{\rm H}_2}$ its H$_2$ mass fraction. Both
+factors use the fit of the receiver, so a hop costs two evaluations of
+$\mathcal S$ and no inverse. The gas of the receiver sets the whole column of
+the hop, as it does for the dust. A receiver with no H$_2$ on the path
+($\Delta\Sigma\le0$) leaves $\Sigma$ and $\mathcal T$ as they are.
+
+\paragraph{The sums of a slot.} Let share $s$ land in slot $k$ of the receiver
+with the values $(\mathcal T_s,\Sigma_s,\Delta v_s)$ of Eq.~\eqref{eq:h2-hop}.
+The slot keeps three sums over the LW light that waits in it,
+\begin{equation}
+  \mathcal A_k=\sum_s e_s\mathcal T_s, \qquad
+  \mathcal B_k=\sum_s \frac{e_s\mathcal T_s}{\mathcal S_r(\Sigma_s)}, \qquad
+  \mathcal V_k=\sum_s e_s\mathcal T_s\,\Delta v_s,
+  \label{eq:h2-sums}
+\end{equation}
+with units of energy, energy and energy times velocity. $\mathcal A_k$ is the
+dissociating energy that waits. $\mathcal B_k$ is the same energy divided by
+the factor of its column, in the fit of the receiver. The sums leave the slot
+with the LW energy that is released at a merge, in the same fraction.
+
+\paragraph{The merge.} At the merge the receiver turns the light that stayed in
+the slot and the due part of the waiting light into one held packet of LW
+energy $E_k$. Let $\mathcal A_k$, $\mathcal B_k$ and $\mathcal V_k$ now be the
+sums of Eq.~\eqref{eq:h2-sums} over this merged light, the light that stayed
+being counted with its own column in the fit of the receiver. Then
+\begin{equation}
+  \mathcal T_k=\min\!\Big\{1,\max\!\Big(0,\frac{\mathcal A_k}{E_k}\Big)\Big\}, \qquad
+  \mathcal S_r(\Sigma_k)=\frac{\mathcal A_k}{\mathcal B_k}, \qquad
+  \Delta v_k=\frac{\mathcal V_k}{\mathcal A_k}.
+  \label{eq:h2-merge}
+\end{equation}
+The first relation is the energy-weighted mean of the transmissions, so the
+dissociating energy is conserved by the merge. The second says that the
+factor of the merged column is the harmonic mean of the factors of the merged
+columns, weighted by their dissociating energy $d_s=e_s\mathcal T_s$,
+\begin{equation}
+  \frac{1}{\mathcal S_r(\Sigma_k)} = \sum_s \frac{\xi_s}{\mathcal S_r(\Sigma_s)},
+  \qquad \xi_s=\frac{d_s}{\sum_j d_j}.
+  \label{eq:h2-harmonic}
+\end{equation}
+The column $\Sigma_k=\mathcal S_r^{-1}(\mathcal A_k/\mathcal B_k)$ comes from the
+inverse of the factor. The inverse is found by bisection of $\ln\Sigma$
+between $\Sigma_{\rm floor}=10^{2}$\,cm$^{-2}$ and $\Sigma_{\rm cap}$, until
+the interval is $10^{-7}$ wide, which fixes the column to $5\times10^{-8}$ of
+itself. A ratio at or above the factor at $\Sigma_{\rm floor}$ gives
+$\Sigma_k=0$, and one at or below the factor at $\Sigma_{\rm cap}$ gives
+$\Sigma_{\rm cap}$. A ratio within $10^{-6}$ of $\mathcal S_0$ also gives
+$\Sigma_k=0$ without the inverse: clear light keeps no column, and its
+columns are below about $10^{10}$\,cm$^{-2}$. Four guards cover the rest:
+\begin{itemize}
+  \item the merged light has no dissociating energy ($\mathcal A_k\le0$):
+    $\mathcal T_k=0$ and $\Sigma_k=\Sigma_{\rm cap}$;
+  \item $\mathcal B_k$ reached the largest float, $3.4\times10^{38}$: the
+    sum is saturated and $\Sigma_k=\Sigma_{\rm cap}$;
+  \item the merge releases no waiting light: the held light keeps its column;
+  \item the merging particle has no line width: $\Sigma_k=0$ (see below);
+  \item the merge leaves no LW light in the slot: $\mathcal T_k=1$, $\Sigma_k=0$ and
+    $\Delta v_k=0$.
+\end{itemize}
+At the cap, a further column removes little more light. The guards therefore
+err towards too little further absorption.
+
+\paragraph{The fit is frozen over a step.} The fit $(\alpha,b_5)$ and the
+velocity limit $\Delta v_{\max}$ of a gas particle are set at the particle's own
+active drift, after its merge, and stay fixed until its next active drift. The
+column per unit length of path, which needs only the density and the H$_2$
+fraction, is set at every drift. The freeze makes every share that a particle
+receives between two merges be hopped, and summed into $\mathcal B_k$, with
+the one fit that the next merge inverts with. Without it $\mathcal A_k/\mathcal B_k$
+would mix several fits and would not be a harmonic mean in one fit. A particle
+with no line width yet takes its first fit at its next drift, active or not,
+before its test beams and its merge.
+
+Light can wait in a slot over several merges of its holder, in the far cells
+of a limited light speed or in the reservoir. When the holder takes a new fit,
+the waiting sums move to it. The waiting column in the old fit is
+$\Sigma_{\rm w}=\mathcal S_{\rm old}^{-1}(\mathcal A_{\rm w}/\mathcal B_{\rm w})$, and
+\begin{equation}
+  \mathcal B_{\rm w} \leftarrow \frac{\mathcal A_{\rm w}}{\mathcal S_{\rm new}(\Sigma_{\rm w})}.
+  \label{eq:h2-refit}
+\end{equation}
+This is exact for waiting light of one column. It is exact in the old fit and
+approximate in the new one for mixed columns. The move is skipped when
+$(\alpha,b_5)$ did not change. A saturated sum stays saturated.
+
+\paragraph{Gas with no line width.} The factor divides by $b_5$, so $b_5=0$,
+which the cache gives for a gas with no positive temperature, never reaches
+it. Light that hops into such a receiver keeps $\mathcal T$ and $\Sigma$, and
+counts as clear light in $\mathcal B_k$: its term is
+$e_s\mathcal T_s/\mathcal S_0$. A merge by such a particle sets $\Sigma_k=0$,
+which is the column with $\mathcal A_k/\mathcal B_k=\mathcal S_0$ and so agrees with
+the hop. It is not the cap, which would leave the light unshielded for the rest
+of its path. The move of Eq.~\eqref{eq:h2-refit} is the identity when the old
+line width is 0, and sets $\mathcal B_{\rm w}=\mathcal A_{\rm w}/\mathcal S_0$ when
+the new one is 0.
+
+\paragraph{The own fields and the weighted column.} The held packets of the
+slots of a particle give three fields before any running mean or kernel mean
+(Section~\ref{sec:packet-field}). With $\mathcal F_k=a\,l_k/(m\,c\,\Delta t)$ the
+field factor of Eq.~\eqref{eq:packet-field},
+\begin{equation}
+  u_{\rm LW}^{\rm own}=\sum_k E_{k,{\rm LW}}\,\mathcal F_k, \qquad
+  u_{\rm diss}^{\rm own}=\sum_k E_{k,{\rm LW}}\,\mathcal T_k\,\mathcal F_k, \qquad
+  \Sigma^{\rm own}=\frac{\sum_k E_{k,{\rm LW}}\,\mathcal T_k\,\mathcal F_k\,\Sigma_k}
+  {\sum_k E_{k,{\rm LW}}\,\mathcal T_k\,\mathcal F_k}.
+  \label{eq:h2-own}
+\end{equation}
+The first is the specific LW energy of the light that crosses the particle.
+The second is the part of it that the lines have not removed. The third,
+$\Sigma^{\rm own}$ in cm$^{-2}$, is the H$_2$ column that this light has crossed
+since its sources or its last velocity reset, averaged over the slots with the
+weight that each slot has in the dissociating field. It is $0$ where the
+particle receives no dissociating light. It is the column along the path of
+the light, summed over the gas of the receivers it passed, and not the column
+of the gas around the particle. It is a diagnostic. It is not averaged in
+time, it takes no kernel mean, and the dissociation rate does not read it.
+The snapshot stores it as \code{LWLineH2ColumnDensities}, with the unit
+attribute of an inverse area, which gives cm$^{-2}$ in cgs units. The ratio
+$u_{\rm diss}^{\rm own}/u_{\rm LW}^{\rm own}$ is the transmission of the lines
+for the light that crosses the particle.
+
 \subsubsection{A finite speed of light}
 \label{sec:packet-lightspeed}
 
@@ -1643,11 +1861,12 @@ same without them.
 
 The absorbed light does not heat the gas. The gas sees only the light that
 crosses it, through $G_0$ and $k_{\rm diss}$ (Section~\ref{sec:packet-field}),
-and Grackle applies no second dust attenuation to $G_0$. With
-\code{ISRF\_H2\_line\_absorption} on (it needs the packet transport, an H$_2$
-network and geajay), the LW light of each share carries the H$_2$ column it has
-crossed and the transmission of the H$_2$ lines at that column, from the fit of
-\citet{WolcottGreenHaiman2019}. The dissociation rate $k_{\rm diss}$ follows
+and Grackle applies no second dust attenuation to $G_0$. The option
+\code{ISRF\_H2\_line\_absorption} needs the packet transport, an H$_2$ network
+and geajay. With it on, the LW light of each share carries the H$_2$ column it
+has crossed and the transmission of the H$_2$ lines at that column
+(Section~\ref{sec:packet-h2}; its limits are in
+Section~\ref{sec:packet-h2-limits}). The dissociation rate $k_{\rm diss}$ follows
 the LW energy weighted by this transmission, and the cooling library leaves the
 transported LW rate out of its own H$_2$ shielding. With the option off, the
 transport has no H$_2$ line absorption. When the H$_2$ self-shielding option of Grackle is on
@@ -2033,6 +2252,294 @@ far cells released whole at their end & 2.727 & 4.904 & 6.709 & 8.978 \\
 \end{tabular}
 \end{table}
 
+\subsubsection{Limit: the carried column, its sign, its bound and its accuracy}
+\label{sec:packet-h2-limits}
+
+The merge of Eq.~\eqref{eq:h2-merge} replaces the columns of several shares by
+one column and one transmission. This section states what that replacement
+keeps and what it loses.
+
+\paragraph{The reference.} The reference is the transport in which every share
+keeps its own $(\mathcal T_s,\Sigma_s)$ through all later hops. Let $\eta_s=e_s/\sum_j e_j$
+be the energy fraction of share $s$. After the light has crossed a further
+column $\Delta\Sigma$ of gas with the fit $r$, the reference and the slot have
+the transmissions
+\begin{equation}
+  \mathcal T_{\rm ref}(\Delta\Sigma)=\sum_s \eta_s\mathcal T_s\,
+  \frac{\mathcal S_r(\Sigma_s+\Delta\Sigma)}{\mathcal S_r(\Sigma_s)}, \qquad
+  \mathcal T_{\rm slot}(\Delta\Sigma)=\mathcal T_k\,
+  \frac{\mathcal S_r(\Sigma_k+\Delta\Sigma)}{\mathcal S_r(\Sigma_k)},
+  \label{eq:h2-ref}
+\end{equation}
+and their ratio is $\mathcal R(\Delta\Sigma)=\mathcal T_{\rm slot}/\mathcal T_{\rm ref}$.
+$\mathcal R<1$ means that the slot shields more than the reference, so the
+dissociation rate is too low. $\mathcal R>1$ means that it shields less.
+The reference is the transport of this scheme without the merge. It is not
+the exact radiative transfer, and the accuracy of the fit of
+Eq.~\eqref{eq:h2-factor} is not part of it.
+
+\paragraph{What holds without condition.}
+\begin{itemize}
+  \item The merged transmission $\mathcal T_k$ is the exact energy-weighted mean
+    of the shares (Eq.~\eqref{eq:h2-merge}).
+  \item A share merged alone keeps its column: if all merged light has one
+    column and was summed with the fit of the merge, then
+    $\mathcal A_k/\mathcal B_k=\mathcal S_r(\Sigma_s)$ and $\Sigma_k=\Sigma_s$ to the
+    tolerance of the inverse, $5\times10^{-8}$ of the column. In a scan of random
+    single shares, with a new random gas at every hop, $\mathcal R$ lies between
+    $0.9999995$ and $1.0000000$.
+  \item The merged column lies between the smallest and the largest merged
+    column, because $\mathcal A_k/\mathcal B_k$ is a weighted harmonic mean of
+    factors and $\mathcal S_r$ falls with $\Sigma$.
+\end{itemize}
+
+\paragraph{Sign and bound.} Take the following conditions.
+\begin{enumerate}[(a)]
+  \item Every hop after the merge, up to the point where $\mathcal R$ is read,
+    is in gas with the fit $r$ of the merging particle. The gas before the merge
+    can be anything.
+  \item $\mathcal B_k$ was summed with the fit that the merge inverts with.
+    The frozen fit of Section~\ref{sec:packet-h2} gives this for light that is
+    merged in the step in which it arrived.
+  \item No velocity reset follows the merge. A reset raises $\mathcal T$ on
+    purpose.
+  \item At a partial release, the released light has the mean
+    $\mathcal A/E$ and the mean $\mathcal B/\mathcal A$ of all the waiting light.
+  \item No share and no slot has a column of $5\times10^{24}$\,cm$^{-2}$ or
+    more.
+\end{enumerate}
+Then, after any number of hops and merges, the slot never shields more than the
+reference, and it lets through at most $1/\varpi_l$ times as much,
+\begin{equation}
+  1\le\mathcal R(\Delta\Sigma)\le\frac{1}{\varpi_l}, \qquad
+  \varpi_l=\frac{d_l/\mathcal S_r(\Sigma_l)}{\sum_j d_j/\mathcal S_r(\Sigma_j)},
+  \label{eq:h2-bound}
+\end{equation}
+where $l$ is the share with the smallest column $\Sigma_l$, and
+$d_j=e_j\mathcal T_j$. $\varpi_l$ is the weight of that share in $\mathcal B_k$. In
+gas with the fit $r$ on the whole path, $\mathcal T_j\propto\mathcal S_r(\Sigma_j)$,
+so $\varpi_l=\eta_l$ is the energy fraction of the least-shielded light. If the
+slot holds light that crossed no H$_2$, $\eta_l$ is the energy fraction of
+that light.
+
+The proof has four steps. Write $y=\mathcal S_r(\Sigma)$ and
+$g(y)=\mathcal S_r(\mathcal S_r^{-1}(y)+\Delta\Sigma)$: the factor after a further
+column, as a function of the factor before it.
+\begin{enumerate}
+  \item $g$ is concave and rises with $y$. Its slope is
+    $|\mathcal S_r'(\Sigma+\Delta\Sigma)|/|\mathcal S_r'(\Sigma)|$, so $g$ is concave if
+    and only if $\ln|\mathcal S_r'|$ is convex in $\Sigma$. Both terms of
+    Eq.~\eqref{eq:h2-factor} have a log-convex derivative. For the first,
+    $\ln|\mathcal S'|=-(\alpha+1)\ln(b_5+x)+{\rm const}$ is convex for
+    $\alpha>-1$, and $\alpha\ge0.139$. For the second, with $u=1+x$ and
+    $s=\sqrt u$, $|\mathrm d/\mathrm du|=0.0175\,e^{-cs}(1+cs)\,u^{-3/2}$ with
+    $c=8.5\times10^{-4}$, and the second derivative of its logarithm in $u$ is
+    at least $1.5/u^2>0$. A sum of log-convex functions is log-convex.
+  \item Let $z=1/y$ and $G(z)=z\,g(1/z)=\mathcal S_r(\Sigma+\Delta\Sigma)/\mathcal S_r(\Sigma)$:
+    the factor by which a hop multiplies $\mathcal T$. $G$ is the perspective of a
+    concave function, so it is concave. It rises with $z$, and $G(z)/z=g(1/z)$
+    falls with $z$.
+  \item Let $c_s=\eta_s\mathcal T_s$ be the transmitted fractions of the true
+    shares at the time considered, $C=\sum_s c_s$ and $\bar z=\sum_s c_s z_s/C$, with
+    $z_s=1/\mathcal S_r(\Sigma_s)$. The slot has $\mathcal T_k z_k=C\bar z$ at a
+    merge, because $\mathcal T_kE_k=\mathcal A_k$ and $\mathcal T_kz_kE_k=\mathcal B_k$ are the
+    sums of the shares, and $\mathcal T_k=C$. A hop multiplies $\mathcal T$ and
+    $\mathcal S_r$ by the same ratio, in the slot and in every share, so
+    $\mathcal T z$ does not change and $\mathcal T_kz_k=C\bar z$ stays true. After a hop,
+    $\mathcal T_k G(z_k)\ge C\bar z\,G(\bar z)/\bar z\ge\sum_s c_sG(z_s)$ when
+    $z_k\le\bar z$. The first step uses that $G(z)/z$ falls with $z$, and the
+    second is Jensen's inequality for the concave $G$. The condition
+    $z_k\le\bar z$ is the statement $\mathcal T_k\ge C$, which a merge preserves
+    because it adds the sums. So the sign holds after any number of hops and
+    merges.
+  \item The merged column is at least $\Sigma_l$, by induction over the
+    merges. Take every quantity at the last merge. Then
+    $\mathcal T_{\rm slot}=\mathcal T_kz_k\,\mathcal S_r(\Sigma_k+\Delta\Sigma)
+    \le\big(\sum_sc_sz_s\big)\,\mathcal S_r(\Sigma_l+\Delta\Sigma)$,
+    while $\mathcal T_{\rm ref}\ge c_lz_l\,\mathcal S_r(\Sigma_l+\Delta\Sigma)$. The ratio is at most
+    $\sum_sc_sz_s/(c_lz_l)=1/\varpi_l$.
+\end{enumerate}
+
+The bound is sharp. Let a share with the energy fraction $\eta_0$ have no
+column and let the rest of the light have a very large column. Then
+$\mathcal T_k\to\eta_0$ and $\mathcal R$ tends to $1/\eta_0$ for a large
+$\Delta\Sigma$, because the tail of the fit,
+$x^{-1/2}e^{-c\sqrt x}$, makes
+$\mathcal S_r(\Sigma_k+\Delta\Sigma)/\mathcal S_r(\Delta\Sigma)\to1$. A scan used gas
+at $100$\,K and $100$\,cm$^{-3}$, the rest of the light at
+$10^{20}$ to $10^{24}$\,cm$^{-2}$ and $\Delta\Sigma$ up to
+$8\times10^{24}$\,cm$^{-2}$. The largest ratios found are
+$2.0000$, $10.0000$ and $99.9999$ for $\eta_0=0.5$, $0.1$ and $0.01$.
+Table~\ref{tab:h2-two-share} gives the standard two-share case, where the
+bound is $2$.
+
+\begin{table}[htbp]
+\centering
+\caption{The ratio $\mathcal R$ after a further column $\Delta\Sigma$ for two
+shares of equal energy, one with no column and one with
+$10^{20}$\,cm$^{-2}$, in gas at $100$\,K and $100$\,cm$^{-3}$. The bound of
+Eq.~\eqref{eq:h2-bound} is $2$.}
+\label{tab:h2-two-share}
+\begin{tabular}{rrrrr}
+\toprule
+$\Delta\Sigma$ (cm$^{-2}$) & $10^{14}$ & $10^{16}$ & $10^{18}$ & $10^{20}$ \\
+\midrule
+$\mathcal R$ & 1.12 & 1.96 & 1.87 & 1.25 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Measured check of the sign and the bound.} The sign and the bound
+were tested on random sets of 2 to 5 shares. A share has no column with
+probability 0.3, and otherwise a column between $10^{10}$ and
+$10^{24}$\,cm$^{-2}$. Each stage has 1 to 5 hops of $10^{10}$ to
+$10^{23}$\,cm$^{-2}$. The held transmission and column are rounded to 4-byte
+floats after every merge, and $\mathcal R$ is read after every hop. A violation
+of the sign is $\mathcal R<1-10^{-5}$. Gas runs over $T=100$ to $8000$\,K and
+$n=10^{-8}$ to $10^{7}$\,cm$^{-3}$. Table~\ref{tab:h2-scan} gives the result
+for 10000 sets per row.
+
+\begin{table}[htbp]
+\centering
+\caption{Smallest and largest $\mathcal R$ over 10000 random share sets per row,
+and the number of sets that break the sign. No set exceeds the bound of
+Eq.~\eqref{eq:h2-bound} in the rows with one merge, where it was tested.}
+\label{tab:h2-scan}
+\begin{tabular}{p{7.6cm}rrr}
+\toprule
+case & smallest $\mathcal R$ & largest $\mathcal R$ & sign violations \\
+\midrule
+one fit on the whole path, one merge & 0.9999998 & 63.4 & 0 \\
+one fit on the whole path, three merge stages & 0.9999997 & 342 & 0 \\
+any gas before the merge, one fit after, one merge & 0.9999998 & $7.4\times10^{3}$ & 0 \\
+any gas before the merge, one fit after, three merge stages & 0.9999998 & $4.0\times10^{4}$ & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The smallest values lie below 1 only by float rounding. The largest values
+are large because $1/\varpi_l$ is large when the least-shielded light carries a
+small fraction of the energy. The float rounding in one merge is
+$\epsilon_{\rm m}=(2+2\varsigma)\,2^{-24}$, with
+$\varsigma=|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ the local slope of the fit.
+The slope is not bounded by $\alpha$: it is about $0.5$ at
+$10^{18}$\,cm$^{-2}$ and about $20$ near $10^{24}$\,cm$^{-2}$. At
+$\varsigma=1.759$, $\epsilon_{\rm m}=3.3\times10^{-7}$. A bar on $\mathcal R$ after
+$n_{\rm m}$ merges needs the margin $n_{\rm m}\epsilon_{\rm m}$.
+
+\paragraph{Column precision.} Columns are stored as 4-byte floats with a
+relative step of $6\times10^{-8}$. A hop that adds less than that fraction
+of the column is lost, so after $n$ hops the column is low by at most
+$n\times6\times10^{-8}$ of itself. With the slope $0.5$ and $1000$ hops this
+changes $\mathcal T$ by $3\times10^{-5}$ of itself.
+
+\paragraph{Gas of the hop.} The column of a hop is the density of the
+receiver times the path. The chain of columns then adds up to the column from
+the source to the receiver, its own gas included, as the dust does. At a
+density step between two particles, the error is at most the column of one
+hop, $|n_{{\rm H}_2,a}-n_{{\rm H}_2,b}|\ell_{\rm hop}$ for the two H$_2$ densities, and it does not grow
+over later hops.
+
+\paragraph{Where the sign is lost.}
+\begin{itemize}
+  \item \emph{A column of $5\times10^{24}$\,cm$^{-2}$ or more.} The factor is
+    clamped at $\Sigma_{\rm cap}$, so it no longer falls and the concavity of
+    step 1 fails. In 4000 sets, 45 break the sign, with the smallest
+    $\mathcal R=0.906$. The transmissions there are $10^{-19}$ or less, so no rate
+    depends on them. The sign and the bound are claimed only below this
+    column.
+  \item \emph{Waiting light of mixed columns whose holder changed its fit.}
+    The move of Eq.~\eqref{eq:h2-refit} is exact for one column and not for
+    mixed ones. One waiting share stays exact: 0 of 2487 sets break the sign,
+    with the smallest $\mathcal R=0.9999993$. Mixed waiting light was tested
+    on random sets with 0 to 7 hops in gas of $30$ to $3\times10^{4}$\,K and
+    later shares that join the waiting light. The sign holds only where the
+    exact transmission $\mathcal T_{\rm ref}$ is above about $10^{-2}$. Above
+    it, no set breaks the sign (smallest $\mathcal R=0.9999999$). There, 2 of
+    1000 to 8 of 2000 sets exceed the bound, by a factor up to $2.2$. Above
+    $10^{-6}$, 55 of 2000 sets break the sign for one change of 5 per cent in
+    $T$ and $n$ of the holder (smallest $\mathcal R=0.959$). For three changes
+    of 30 per cent, 62 of 1000 to 98 of 2000 sets break it (smallest
+    $\mathcal R=0.71$ to $0.80$). No bar may require $\mathcal R\ge1-\epsilon$
+    for mixed waiting light.
+  \item \emph{A velocity reset} after the merge raises $\mathcal T$ on purpose,
+    so condition (c) fails by design.
+  \item \emph{A partial release at a limited light speed.} If the released
+    light is a biased part of the waiting light, condition (d) fails and the
+    sign is not covered.
+  \item \emph{A gas that changes along the path.} Condition (a) fails. Each
+    hop of the test draws a new random gas, and merges occur. The smallest
+    $\mathcal R$ is then $0.0137$ over the full range of the fit. It is
+    $0.143$ for $T=100$ to $2000$\,K and $n=1$ to $10^{4}$\,cm$^{-3}$, and
+    $0.944$ in a slab at $100$\,K with $n=10$ to $1000$\,cm$^{-3}$. These are
+    worst cases.
+\end{itemize}
+
+\paragraph{Limit: mixed columns, then a change of the fit.} If the gas after
+the merge has a fit $g$ that differs from the fit $r$ of the merge, the slot
+column should have been the harmonic column in $g$, called $\Sigma_k^{g}$. For
+a large $\Delta\Sigma$ the ratio tends to
+\begin{equation}
+  \mathcal R(\Delta\Sigma\to\infty)=\frac{\mathcal S_g(\Sigma_k^{g})}{\mathcal S_g(\Sigma_k)}.
+  \label{eq:h2-fitchange}
+\end{equation}
+Gas with no H$_2$ does not count: a hop with $\Delta\Sigma=0$ leaves the share
+as it is, whatever the fit. The two directions of the error differ. With
+$\mathcal R<1$ the slot shields too much and the dissociation rate is too low.
+More H$_2$ then survives and shields the gas behind it, the gas cools, and the
+error feeds itself. This can remove the LW feedback on small haloes. With
+$\mathcal R>1$ the rate is raised towards the value without any line
+absorption and cannot pass it, and the error does not feed itself.
+
+Table~\ref{tab:h2-fitchange} gives the ratio on a grid of two shares. One has
+no column and the other has $10^{18}$ to $10^{21}$\,cm$^{-2}$. They merge in
+gas of $T=100$ to $8000$\,K and $n=1$ to $10^{4}$\,cm$^{-3}$. Then they cross
+$\Delta\Sigma=10^{13}$ to $10^{23}$\,cm$^{-2}$ of gas with another fit. Only
+the 54538 cells with $\mathcal T_{\rm ref}>10^{-2}$ count. The rule that takes
+the largest merged column never shields too much. On the same grid it lets
+through up to 89 times too much light, and more than 10 times too much in
+15 per cent of the cells. The harmonic rule errs mostly in the acceptable
+direction. It shields too much, down to $\mathcal R=0.21$, in rare cells, all
+with a merge in gas at $3000$\,K or more. The largest excess, $26$, comes from
+a merge in hot gas followed by a cold shell. For a clear share of energy
+fraction $0.5$ the bound in gas with one fit is $2$. The change of the fit
+therefore costs a factor of up to $13$ there.
+
+\begin{table}[htbp]
+\centering
+\caption{The ratio $\mathcal R$ at a change of the fit after a merge of a clear
+share and a shielded one, as the range over the grid described in the text and
+the fraction of cells above a given ratio.}
+\label{tab:h2-fitchange}
+\begin{tabular}{lrrrrr}
+\toprule
+merge, then later gas & smallest & largest & $\mathcal R<0.9$ & $\mathcal R>2$ & $\mathcal R>10$ \\
+\midrule
+all 54538 cells & 0.21 & 26 & 0.07\,\% & 10\,\% & 0.4\,\% \\
+merge at $\ge3000$\,K, gas $\le1000$\,K & 0.43 & 26 & 0.1\,\% & 25\,\% & 1.7\,\% \\
+merge and gas both $\le1000$\,K & 1.00 & 7.3 & 0 & 9\,\% & 0 \\
+merge $\le1000$\,K, gas $\ge3000$\,K & 1.00 & 3.8 & 0 & 1.1\,\% & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What is not covered.}
+\begin{itemize}
+  \item The scans are of this scheme against its own reference on random
+    share sets. They are not a measurement in a simulated cloud. How often a
+    slot receives light of clearly different columns with comparable
+    dissociating energy, thin enough ($\Sigma_k\lesssim10^{17}$\,cm$^{-2}$ for
+    $\alpha>1$) that the fits differ, and then meets another fit, is not
+    counted.
+  \item No bar is claimed for a slot that holds two components, a clear and a
+    shielded one, each with its own $(\mathcal T,\Sigma)$. A slot with one
+    $(\mathcal T,\Sigma)$ cannot be both safe and tight when the fit changes
+    after a merge of mixed columns.
+  \item The accuracy of the fit of Eq.~\eqref{eq:h2-factor} itself, the
+    exact radiative transfer, and any Doppler effect beyond the single velocity
+    shift of a share are not part of these statements.
+\end{itemize}
+
 % ---------------------------------------------------------------------------
 \subsection{Comparison with TRAPHIC}
 \label{sec:isrf-traphic}
@@ -2204,7 +2711,7 @@ deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}
 (\code{src/feedback/GEAR/radiation\_iact.h:279-323}), with the path
 \code{radiation\_get\_comoving\_extinction\_path} and the factors
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{src/feedback/GEAR/radiation\_isrf.c:348-392}, :461-481). The switch
+(\code{src/feedback/GEAR/radiation\_isrf.c:349-393}, :462-482). The switch
 \code{GEARFeedback:ISRF\_propagation} (0 off, 1 the transport) is parsed at
 \code{src/feedback/GEAR\_thermal/feedback\_properties.h:827-828}, and the
 choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
@@ -2212,9 +2719,9 @@ choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
 
 \paragraph{Dust absorption rate (Sec.~\ref{sec:isrf-rte-static}).}
 Eq.~\eqref{eq:isrf-kappa} is \code{radiation\_get\_part\_linear\_absorption\_rate}
-(\code{radiation\_isrf.c:491-500}), through
-\code{radiation\_get\_dust\_mass\_opacity} (:441-452) and
-\code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW} (:420-427). The
+(\code{radiation\_isrf.c:492-501}), through
+\code{radiation\_get\_dust\_mass\_opacity} (:442-453) and
+\code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW} (:421-428). The
 constants are at \code{radiation.h:68-81}.
 
 \paragraph{Band-edge weights (Sec.~\ref{sec:isrf-rte-comoving}).}
@@ -2235,8 +2742,8 @@ count is \code{RADIATION\_PACKET\_SLOTS}, set by
 \code{N} other than 8, 12, 16, 24 or 48 is an error; the default and the check are
 repeated at \code{src/feedback/GEAR\_thermal/feedback\_struct.h:140-190}). The
 slot struct is \code{feedback\_isrf\_packet\_slot\_data}
-(\code{feedback\_struct.h:357-423}); the packet is
-\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:429-472}).
+(\code{feedback\_struct.h:357-448}); the packet is
+\code{feedback\_isrf\_packet\_data} (\code{feedback\_struct.h:454-506}).
 Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
 \code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:264-271}).
 Eq.~\eqref{eq:packet-photonfrac} is
@@ -2276,9 +2783,9 @@ border distance of the debug check is
 \code{radiation\_packet\_slot\_border\_distance} (\code{radiation\_packet.c:1348-1378}).
 \code{tests/testRadiationPacketSlotGeometry.c} checks these properties for the
 slot count of the build against the nearest of $K$ generator directions.
-Every gas particle holds the $K$ slots (\code{feedback\_struct.h:422}), so
-its size grows by 272 bytes per slot (paragraph on memory below). The gradient and the force loops visit
-every non-empty slot of the sender (\code{radiation\_packet.h:515}, :896), so
+Every gas particle holds the $K$ slots (\code{feedback\_struct.h:460}), so
+its size grows by 304 bytes per slot (paragraph on memory below). The gradient and the force loops visit
+every non-empty slot of the sender (\code{radiation\_packet.h:515}, :895), so
 the work of a hop grows with the number of lit slots, at most $K$. More slots
 narrow the limit of Sec.~\ref{sec:packet-superposition}: two directions share a
 slot only if they are at most the largest angle inside a cell apart, $90^\circ$
@@ -2306,14 +2813,14 @@ numerator of Eq.~\eqref{eq:packet-advance} in
 (\code{src/feedback/GEAR/radiation\_propagation\_iact.h:74-76}, :105-112); the
 twin also adds the part of the reach of an active receiver. The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
-\code{radiation\_packet.c:4075}.
+\code{radiation\_packet.c:4077}.
 
 The share $\phi_{ij,k}$ is \code{fraction} in
-\code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:881-992},
-\code{fraction} at :918), and Eq.~\eqref{eq:packet-offset} is its
-\code{offset} (:921-923). The receiving slot is chosen in
+\code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:880-991},
+\code{fraction} at :917), and Eq.~\eqref{eq:packet-offset} is its
+\code{offset} (:920-922). The receiving slot is chosen in
 \code{radiation\_packet\_deliver} from the vector \code{from\_origin}
-(\code{radiation\_packet.h:679-784}, \code{from\_origin} at :694). The force
+(\code{radiation\_packet.h:679-783}, \code{from\_origin} at :694). The force
 loop calls \code{radiation\_packet\_book\_share} from
 \code{runner\_iact\_isrf\_packet\_hop} and its non-symmetric twin
 (\code{radiation\_propagation\_iact.h:141-144}, :179-192); the twin also books,
@@ -2321,8 +2828,8 @@ in the visit of the receiver, the outer part of the reach of each active
 sender, local or foreign. The vector \code{dx\_ij}
 passed to it points from sender to receiver. The held energy of the sender is
 set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
-\code{radiation\_packet.c:4121-4150}). The escape of a slot with $S_{i,k}=0$ is
-at \code{radiation\_packet.c:4091-4098}. The parameter $p$ is the global
+\code{radiation\_packet.c:4131-4160}). The escape of a slot with $S_{i,k}=0$ is
+at \code{radiation\_packet.c:4097-4104}. The parameter $p$ is the global
 \code{radiation\_packet\_cone\_power} (\code{radiation\_packet.c:182}), and \code{ISRF\_packet\_cone\_power}
 is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:861-863}
 and checked at :923-925.
@@ -2337,23 +2844,23 @@ width $W$ is set by \code{radiation\_packet\_set\_frame\_width}
 
 \paragraph{The merge (Secs.~\ref{sec:packet-merge}, \ref{sec:packet-merge-summary}).} The merge of one slot
 without a speed limit is \code{radiation\_packet\_merge\_slot\_unlimited}
-(\code{radiation\_packet.c:3565-3646}). It is called for every slot by
-\code{radiation\_packet\_merge} (:3918-4025), which
+(\code{radiation\_packet.c:3564-3645}). It is called for every slot by
+\code{radiation\_packet\_merge} (:3917-3986), which
 \code{radiation\_snapshot\_part\_propagation} calls for active particles
-(\code{radiation\_isrf.c:175-257}, the call at :245).
-Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3613-3621}. The
+(\code{radiation\_isrf.c:176-258}, the call at :245).
+Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3612-3620}. The
 sums of Eq.~\eqref{eq:packet-merge-origin} are formed in
 \code{radiation\_packet\_deliver} as \code{inbox\_origin\_offset}
-(\code{radiation\_packet.h:755} and :778). Their weight is
+(\code{radiation\_packet.h:754} and :777). Their weight is
 \code{delivered\_energy}, summed over the bands inside
 \code{radiation\_packet\_absorb\_in\_dust} (:577-615). The division by
 $\sum_s e_s$ is at \code{radiation\_packet.c:3270} in
 \code{radiation\_packet\_set\_origin} (:3267-3299), $d_k$ at :3272-3275,
 $\boldsymbol{n}_k$ at :3278, and the fallback direction at :3295-3297. The
 merge returns before any change of origin when the slot received no energy
-(:3644). The fields of Eq.~\eqref{eq:packet-merge-origin} are
+(:3643). The fields of Eq.~\eqref{eq:packet-merge-origin} are
 \code{origin\_distance}, \code{direction} and \code{inbox\_origin\_offset} in
-\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:357-423}).
+\code{feedback\_isrf\_packet\_slot\_data} (\code{feedback\_struct.h:357-448}).
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
@@ -2393,13 +2900,13 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
 (\code{radiation\_packet.h:714-716}; fields at \code{feedback\_struct.h:301-308}).
-The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:988}
+The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:987}
 for a hop, :1198 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:141-145}, :179-192) and from
 \code{radiation\_iact.h:277}.
 
 \paragraph{Dust absorption (Secs.~\ref{sec:packet-absorption}, \ref{sec:packet-absorb-summary}).} All of it is
-in \code{radiation\_packet\_deliver} (\code{radiation\_packet.h:679-784}), with
+in \code{radiation\_packet\_deliver} (\code{radiation\_packet.h:679-783}), with
 the redshift at :714-716, before the dust. The dust is
 \code{radiation\_packet\_absorb\_in\_dust} (:577-615, called at :729).
 Eq.~\eqref{eq:packet-tau} is at :590 and Eq.~\eqref{eq:packet-alpha} at
@@ -2408,28 +2915,114 @@ exponential is \code{expm1}, in double. The photon cutoff is at :600
 (\code{RADIATION\_PACKET\_MIN\_PHOTONS}, :70), and the ledger at :610. The rate
 $\kappa_b$ is \code{isrf\_operator[b].kappa} of the receiver
 (\code{feedback\_struct.h:113-116}), set by
-\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:198-212}).
+\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:199-213}).
 That function runs at each drift of the particle, through
 \code{feedback\_reset\_part} (\code{src/feedback/GEAR\_thermal/feedback.c:426-430},
 called at \code{src/cell\_drift.c:377}).
 The hop path, Eq.~\eqref{eq:packet-path} first line, is at
-\code{radiation\_packet.h:927}, with $a$ applied at the call, :988; the star
+\code{radiation\_packet.h:926}, with $a$ applied at the call, :987; the star
 path is :1196-1197 (call at :1210-1212).
+
+\paragraph{H$_2$ line absorption (Secs.~\ref{sec:packet-h2}, \ref{sec:packet-h2-limits}).}
+The switch is \code{GEARFeedback:ISRF\_H2\_line\_absorption}. Its start-up
+checks are at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:825-854}.
+It needs \code{GEARFeedback:ISRF\_propagation} and geajay. It stops a build
+whose \code{struct part} is 4096 bytes (:847-854).
+
+The fit and the hop are in \code{src/feedback/GEAR/radiation\_h2\_shielding.h}.
+The constants of the fit are at :38-64: the clamps of $T$ and $n$, $\Sigma_0$,
+$\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the three thermal widths of
+$\Delta v_{\max}$ and the tolerance $10^{-7}$ of the inverse.
+Eq.~\eqref{eq:h2-exponent} is \code{radiation\_h2\_shielding\_exponent}
+(:78-92). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
+(:108-119, the cap on the column at :112-113). $\mathcal S_0$ is
+\code{radiation\_h2\_shielding\_factor\_at\_zero} (:128-130). The inverse is
+\code{radiation\_h2\_shielding\_inverse} (:147-163), with the two limits at
+:149-154 and the bisection at :155-162. The hop of Eq.~\eqref{eq:h2-hop} is
+\code{radiation\_h2\_shielding\_hop\_factor} (:183-198). For a receiver with no
+line width, or when both $\Sigma$ and $\Delta\Sigma$ are 0, it leaves the share
+as it is and returns $\mathcal S_0$ (:185-186). For $\Delta\Sigma\le0$ it
+returns $\mathcal S(\Sigma)$ (:187). Otherwise it clamps the ratio at 1
+(:194-195) and returns the factor of the new column, which $\mathcal B_k$
+divides by. The velocity step and the reset of Eq.~\eqref{eq:h2-shift} are
+\code{radiation\_h2\_shielding\_shift} (:230-241). The gas of a receiver gives
+$\Delta\Sigma$ per unit of path, $\alpha$, $b_5$ and $\Delta v_{\max}$ through
+\code{radiation\_h2\_shielding\_receiver\_cache} (:267-288). There $n_{{\rm H}_2}$
+is at :275, the exponent at :279, $b_5$ at :284 and the velocity limit at
+:285-286.
+
+The fit of a particle is cached by \code{radiation\_cache\_H2\_line\_absorption}
+(\code{radiation\_isrf.c:127-163}). The column per length is written at every
+drift (:158). The fit is written only if \code{set\_fit} is true (:159-162).
+Only then is the cooling library asked for the temperature and the mean
+molecular weight (:135-142). The function
+\code{radiation\_snapshot\_part\_propagation} (:176-258) sets the fit before the merge only for a particle with no line width yet
+(\code{first\_fit}, :210-212). It then merges (:245). For an active particle
+that is not in its first fit, it sets the new fit (:252). If $\alpha$ or $b_5$
+changed, it moves the waiting sums with \code{radiation\_packet\_line\_refit}
+(:253-255).
+
+The hop of a share is \code{radiation\_packet\_line\_hop}
+(\code{radiation\_packet.h:841-856}). The value returned in \code{q\_out} is
+$\mathcal T'/\mathcal S_r(\Sigma')$ (:855). A gas sender calls it in
+\code{radiation\_packet\_book\_share} (:979, with the shift of
+Eq.~\eqref{eq:h2-shift} at :973-978). A star share calls it in
+\code{radiation\_packet\_star\_emit} (:1205), from $\mathcal T=1$, $\Sigma=0$ and
+$\Delta v=0$, with no velocity step. The sums of Eq.~\eqref{eq:h2-sums} are
+formed in \code{radiation\_packet\_deliver\_with\_lines} (:736-743).
+$\mathcal B_k$ is a float that saturates at the largest float
+(\code{radiation\_packet\_add\_saturated}, :626-629). $\mathcal A_k$ and
+$\mathcal V_k$ are doubles. The slot fields are \code{H2\_transmission},
+\code{H2\_column} and \code{H2\_velocity\_shift}. The three sums are
+\code{H2\_waiting\_energy\_over\_factor} ($\mathcal B_k$),
+\code{H2\_waiting\_dissociating\_energy} ($\mathcal A_k$) and
+\code{H2\_waiting\_velocity\_sum} ($\mathcal V_k$). All six are declared at
+\code{feedback\_struct.h:382-406}. The fit and the cached column of a particle
+are \code{H2\_column\_per\_length}, \code{H2\_shielding\_exponent},
+\code{H2\_line\_width\_km\_s} and \code{H2\_velocity\_limit}
+(\code{feedback\_struct.h:652-667}).
+
+The merge of Eq.~\eqref{eq:h2-merge} is split around the merge of the slot.
+Before it, \code{radiation\_packet\_line\_begin}
+(\code{radiation\_packet.c:3403-3426}) records the sums of the light that
+stayed. It takes the column of that light in the fit of the merging particle.
+It stores the sums in \code{struct radiation\_packet\_line\_state}
+(:3310-3344). After it, \code{radiation\_packet\_line\_end} (:3445-3505) forms
+$\mathcal T_k$ (:3485-3487). It applies the guards (:3488-3495) and forms
+$\Delta v_k$ (:3491) and the column (:3497-3499). The waiting sums that stay in
+the slot are set at :3468-3479.
+\code{radiation\_packet\_merge} (:3917-3986) calls both around the merge of each
+slot, at :3941 and :3949 without a speed limit and at :3969 and :3977 with one.
+The column of Eq.~\eqref{eq:h2-harmonic} is
+\code{radiation\_packet\_line\_harmonic\_column} (:3384-3394). The clear
+tolerance $10^{-6}$ is at :3304, and the rule for a merging particle with no
+line width is at :3388. The move of Eq.~\eqref{eq:h2-refit} is
+\code{radiation\_packet\_line\_refit} (:3520-3539).
+
+The own fields of Eq.~\eqref{eq:h2-own} are formed at the end of the gradient
+loop by \code{radiation\_packet\_end\_gradient} (:4044-4123). The field factor
+is at :4081, and the weights and sums are at :4087-4093. The running mean of
+the dissociating field is at :4117-4118. $\Sigma^{\rm own}$ is at :4119-4121,
+stored in \code{LW\_line\_H2\_column} (\code{feedback\_struct.h:708}). The
+snapshot field \code{LWLineH2ColumnDensities} is declared at
+\code{feedback\_io.h:531-535}. Its converter (:400-407) multiplies by the square
+of the length unit, so that the inverse-area unit attribute gives cm$^{-2}$.
+Only the snapshot reads it.
 
 \paragraph{Time bins without a speed limit (Sec.~\ref{sec:packet-reservoir}).}
 The choice between the inbox and the reservoir is the argument
 \code{to\_reservoir} of \code{radiation\_packet\_deliver}
-(\code{radiation\_packet.h:679-784}). For a hop it is
-\code{s->time\_bin > r->time\_bin} at :988. For a star it is
+(\code{radiation\_packet.h:679-783}). For a hop it is
+\code{s->time\_bin > r->time\_bin} at :987. For a star it is
 \code{si->time\_bin > pj->time\_bin} at :1211. \code{source\_step\_end\_ti}
 (:685) is the end of the step of the sender. For a particle it is
 \code{step\_end\_ti}, set as \code{ti\_current + ti\_step} at
-\code{radiation\_packet.c:3936} and :3981. For a star it is
+\code{radiation\_packet.c:3935} and :3980. For a star it is
 \code{ti\_current + ti\_step} at \code{radiation\_packet.h:1212}.
 Eq.~\eqref{eq:packet-release} is \code{radiation\_packet\_merge\_slot\_unlimited}
-(\code{radiation\_packet.c:3565-3646}). The release fraction is at :3571-3585,
-the cutoff rule at :3587-3595, and the release of the energy, the photon number
-and the origin sum at :3597-3642.
+(\code{radiation\_packet.c:3564-3645}). The release fraction is at :3570-3584,
+the cutoff rule at :3586-3594, and the release of the energy, the photon number
+and the origin sum at :3596-3641.
 
 \paragraph{Finite speed of light (Sec.~\ref{sec:packet-lightspeed}).} The mode
 is \code{GEARFeedback:ISRF\_packet\_light\_speed}: \code{cap} is the capped
@@ -2453,50 +3046,50 @@ The delay is
 (\code{radiation\_packet.c:507-546}), set up by
 \code{radiation\_packet\_set\_light\_speed} (:481-489). The arrival time of a
 hop is formed in \code{radiation\_packet\_book\_share}
-(\code{radiation\_packet.h:943-965}). The near bins and far cells are
+(\code{radiation\_packet.h:942-964}). The near bins and far cells are
 \code{radiation\_packet\_deposit} (\code{radiation\_packet.c:3194}),
 \code{radiation\_packet\_place} (:2848), \code{radiation\_packet\_regrid}
-(:3038), \code{radiation\_packet\_release\_far\_cell} (:3666) and
-\code{radiation\_packet\_merge\_slot\_limited} (:3783). The time at which the
+(:3038), \code{radiation\_packet\_release\_far\_cell} (:3665) and
+\code{radiation\_packet\_merge\_slot\_limited} (:3782). The time at which the
 light of a bin or a cell leaves, and the faint-light rule, are
 \code{radiation\_packet\_add\_to\_bin}, \code{radiation\_packet\_add\_to\_far}
 and \code{radiation\_packet\_join\_below\_end}. In that merge the origin
 sum of the waiting light is released in proportion to the energy at
-:3828-3845. Bins and far cells below the photon cutoff are booked as absorbed
-at :3796-3808 (\code{radiation\_packet\_absorb\_below\_cutoff}, :3245-3256).
+:3827-3844. Bins and far cells below the photon cutoff are booked as absorbed
+at :3795-3807 (\code{radiation\_packet\_absorb\_below\_cutoff}, :3245-3256).
 The departure time is not stored: it is the end of the step of the sender minus its step. The rest of a far cell below the cutoff is
-booked at :3706-3713. A stored stamp is capped at the end of its bin or cell
+booked at :3705-3712. A stored stamp is capped at the end of its bin or cell
 by \code{radiation\_packet\_time\_below\_end} (:2535-2539). The time-step bound of
 Eq.~\eqref{eq:isrf-dt} is \code{radiation\_isrf\_part\_timestep}
-(\code{radiation\_isrf.c:276-289}).
+(\code{radiation\_isrf.c:277-290}).
 
 \paragraph{The field (Sec.~\ref{sec:packet-field}).}
 Eq.~\eqref{eq:packet-field} is \code{radiation\_packet\_end\_gradient}
-(\code{radiation\_packet.c:4043-4113}, the sum over slots at :4072-4102, the
-factor at :4079). It is called from \code{radiation\_end\_gradient\_propagation}
-(\code{radiation\_isrf.c:315-327}, the call at :323), which passes the true
+(\code{radiation\_packet.c:4044-4123}, the sum over slots at :4074-4108, the
+factor at :4081). It is called from \code{radiation\_end\_gradient\_propagation}
+(\code{radiation\_isrf.c:316-328}, the call at :324), which passes the true
 speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:391-396}),
-applied at \code{radiation\_packet.c:4104-4108}; $\tau_{\rm m}$ is
+applied at \code{radiation\_packet.c:4110-4114}; $\tau_{\rm m}$ is
 \code{GEARFeedback:ISRF\_packet\_read\_mean\_time\_Myr}
 (\code{feedback\_properties.h:864-871}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
-(\code{radiation\_packet.h:1019-1043}, called at
+(\code{radiation\_packet.h:1018-1043}, called at
 \code{radiation\_propagation\_iact.h:146-147}, :180). The self term and the
 division are \code{radiation\_packet\_end\_force}
-(\code{radiation\_packet.c:4121-4150}), called at \code{radiation\_isrf.c:304}.
+(\code{radiation\_packet.c:4131-4160}), called at \code{radiation\_isrf.c:305}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
-(\code{radiation\_packet.c:4162-4174}, called at \code{radiation\_isrf.c:305}).
+(\code{radiation\_packet.c:4172-4183}, called at \code{radiation\_isrf.c:306}).
 
 \paragraph{The frame of the light (Sec.~\ref{sec:packet-frame}).} The merged
 origin is set in \code{radiation\_packet\_set\_origin}
 (\code{radiation\_packet.c:3267-3299}), called by the merge at the drift,
-\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:175-257}).
+\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:176-258}).
 The hop reads it in \code{radiation\_packet\_book\_share}
-(\code{radiation\_packet.h:925-934}). An empty slot keeps its old origin
-(\code{radiation\_packet.c:3644}), but the gradient and the hop skip empty
-slots (\code{radiation\_packet.h:515, :896}). The inbox and reservoir sums are
-booked at \code{radiation\_packet.h:758-778}.
+(\code{radiation\_packet.h:924-933}). An empty slot keeps its old origin
+(\code{radiation\_packet.c:3643}), but the gradient and the hop skip empty
+slots (\code{radiation\_packet.h:515, :895}). The inbox and reservoir sums are
+booked at \code{radiation\_packet.h:757-777}.
 
 \paragraph{Ledgers (Sec.~\ref{sec:packet-ledger}).} The ledgers are compiled
 only with \code{SWIFT\_DEBUG\_CHECKS\_ISRF}, set by
@@ -2507,12 +3100,12 @@ particle is \code{feedback\_isrf\_packet\_band\_data}
 \code{absorbed\_photons}, \code{escaped\_energy}, \code{escaped\_photons},
 \code{redshifted\_energy}, \code{redshifted\_photons}). The ledger of a star or
 a sink is \code{feedback\_isrf\_packet\_removed\_data}
-(\code{feedback\_struct.h:482-496}). The emission and escape of a star are
+(\code{feedback\_struct.h:516-530}). The emission and escape of a star are
 \code{emitted\_energy}, \code{emitted\_photons}, \code{escaped\_energy} and
 \code{escaped\_photons} in the \code{packet} struct of the star
-(\code{feedback\_struct.h:931-977}). The emission is booked by
+(\code{feedback\_struct.h:993-1038}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
-(\code{radiation\_packet.c:4187-4218}), called at
+(\code{radiation\_packet.c:4196-4227}), called at
 \code{src/feedback/GEAR\_thermal/feedback.c:612}. The removal is
 \code{radiation\_packet\_book\_removed\_gas} (\code{radiation\_packet.h:1240-1277},
 the inherited sum with the redshift ledger at :1272-1275). It is reached from
@@ -2538,7 +3131,7 @@ ledger \code{feedback\_isrf\_packet\_box\_data}. The same reduction sums it over
 the ranks, and \code{feedback\_write\_flavour} writes it as the snapshot
 attributes \code{PacketStarsLeftBox*}, \code{PacketSinksLeftBox*} and
 \code{PacketSwallowedByBlackHoles*}. The escape of a slot
-with no downstream neighbour is at \code{radiation\_packet.c:4091-4098}.
+with no downstream neighbour is at \code{radiation\_packet.c:4097-4104}.
 
 \paragraph{Test beams (Sec.~\ref{sec:packet-ledger}).} The keys are
 \code{GEARFeedback:ISRF\_packet\_test\_beam\_1} and \code{\_2}. They are read
@@ -2553,13 +3146,16 @@ fan beam, opening $63^\circ$).
 \code{radiation\_packet\_add\_stochastic} (\code{radiation\_packet.h:295-318}),
 with the salt of a share from \code{radiation\_packet\_share\_salt} (:369). It
 is used for the weight sum (:528) and for the inbox and the reservoir
-(:758-773).
+(:757-772).
 
 \paragraph{Memory and restart.} At the default of 8 near bins a slot takes
-296 bytes. Without
-\code{--enable-isrf-debugging-checks} the gas particle is 4128 bytes with 12
-slots (the default) and 10 chemistry elements, 32 of them padding
-(\code{ISRF\_packet\_stride\_padding}): a particle of 4096 bytes was measured to
+304 bytes. The H$_2$ line fields take $3\times4$ bytes for $\mathcal T$,
+$\Sigma$ and $\Delta v$, 4 bytes for $\mathcal B$ and $2\times8$ bytes for
+$\mathcal A$ and $\mathcal V$. Without
+\code{--enable-isrf-debugging-checks} the gas particle is 4256 bytes with 12
+slots (the default) and 10 chemistry elements. The particle holds the 4 bytes
+of the weighted column $\Sigma^{\rm own}$ and 28 bytes of padding
+(\code{ISRF\_packet\_stride\_padding}). A particle of 4096 bytes was measured to
 run 7 per cent slower. With H$_2$ line absorption on, the start-up stops a build
 whose particle is 4096 bytes. With the option the ledger makes the particle 96
 bytes larger. The fields of the two light speed modes
