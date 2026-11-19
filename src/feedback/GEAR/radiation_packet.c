@@ -4164,9 +4164,10 @@ void radiation_packet_end_force(struct part *p) {
 }
 
 /**
- * @brief Write the kernel mean of the own field into the band moments that
- * Grackle reads: PE to PE, LW to LW and the LW photon number (`N E_lo`) to
- * LW_PHOTON.
+ * @brief Write the kernel mean of the own field into the band moments: PE to
+ * PE and LW to LW, which the cooling reads, and the LW photon number
+ * (`N E_lo`) to LW_PHOTON, which only the snapshot output reads. Also set the
+ * LW energy that dissociates H2.
  *
  * Overwrites the moments, including any value from the initial conditions. Call
  * after #radiation_packet_end_force.
