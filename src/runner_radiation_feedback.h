@@ -233,7 +233,7 @@ __attribute__((always_inline)) INLINE static float runner_hii_requested_radius(
 }
 
 /* Per-pass capacity of the HII neighbour search buffer (stack-allocated,
- * compile-time constant by design -- see runner_dosub_stars_hii_ionization_
+ * compile-time constant by design; see runner_dosub_stars_hii_ionization_
  * feedback()). Sized to comfortably cover a single rebuild's typical new
  * shell of gas at gas_mass=0.01-resolution test problems without needing
  * many retries (empirically ~a few thousand particles per shell in
@@ -620,16 +620,16 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
   if (n_HII_pixels != 12 * nside * nside)
     error(
         "n_HII_pixels=%d does not correspond to any nside supported by "
-        "radiation_init() -- got non-integer or unrecognised nside=%d.",
+        "radiation_init(): got non-integer or unrecognised nside=%d.",
         n_HII_pixels, nside);
 #endif
   /* A particle exactly on the star gives a zero-length direction, which is
-     undefined for vec2pix_ring64 -- fall back to pixel 0 (measure-zero in
+     undefined for vec2pix_ring64; fall back to pixel 0 (measure-zero in
      continuous positions, but must not read/write out of bounds). */
   if (dx[0] == 0.0f && dx[1] == 0.0f && dx[2] == 0.0f) return 0;
 
   /* Pixels are defined around the star, so the direction of interest is
-     from the star to the particle -- the negation of dx. vec2pix_ring64
+     from the star to the particle; the negation of dx. vec2pix_ring64
      does not require a normalized vector. */
   double dir[3] = {-(double)dx[0], -(double)dx[1], -(double)dx[2]};
   if (frame != NULL) {
@@ -643,7 +643,7 @@ __attribute__((always_inline)) INLINE static int runner_hii_get_pixel(
   return (int)ipix;
 #else
   error(
-      "n_HII_pixels > 1 but HAVE_CHEALPIX is not defined -- this should be "
+      "n_HII_pixels > 1 but HAVE_CHEALPIX is not defined: this should be "
       "unreachable (radiation_init() validates this at startup).");
   return 0;
 #endif

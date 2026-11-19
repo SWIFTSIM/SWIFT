@@ -245,7 +245,7 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
     return;
 
   /* Stars:HII_max_search_radius exceeding the periodic box's half-width is
-     not itself fatal -- the search radius just never gets to expand that
+     not itself fatal; the search radius just never gets to expand that
      far, which is indistinguishable from a genuinely converged result
      without an external comparison. Surface it at startup instead. */
   if (e->s->periodic && e->nodeID == 0) {
@@ -254,7 +254,7 @@ void feedback_radiation_startup_diagnostics(const struct engine *e) {
     if (e->stars_properties->HII_max_search_radius > half_width)
       warning(
           "Stars:HII_max_search_radius (%g) exceeds the periodic box's "
-          "half-width (%g) -- the HII search radius will silently never "
+          "half-width (%g): the HII search radius will silently never "
           "reach the configured value, capping out at the box's own "
           "periodic wrap distance instead.",
           e->stars_properties->HII_max_search_radius, half_width);
@@ -306,7 +306,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
   /* Anything to do here? c->hydro.count == 0 is NOT included: a due star in
      a gas-free working-level cell must still reach
      runner_dosub_stars_hii_ionization_feedback() to have its
-     HII_region_last_attempt stamped (see there) -- only the recursion
+     HII_region_last_attempt stamped (see there); only the recursion
      into progeny and the search itself may be skipped for lack of gas. */
   if (c->stars.count == 0 || !cell_is_active_stars(c, e)) return;
 
@@ -368,7 +368,7 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
     struct cell *cj = l->t->cj;
     struct cell *ci = l->t->ci;
     /* ci/cj may sit above their own hydro.super (radiation_level can
-     * coarsen past it), in which case hydro.super is NULL -- print -1
+     * coarsen past it), in which case hydro.super is NULL; print -1
      * rather than dereferencing it. */
     const long long ci_super_id =
         ci->hydro.super != NULL ? ci->hydro.super->cellID : -1;
@@ -580,7 +580,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #endif
 
     /* Needed by the attempt/rebuild stamps below and the retry loop's
-       expansion cap -- computed once. */
+       expansion cap; computed once. */
     double star_age_beg_step = 0;
     double dt_enrichment = 0;
     integertime_t ti_begin_star = 0;
@@ -598,7 +598,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        dt_elapsed measures the time since this star was last given a
        chance to rebuild, whether or not that chance found gas. This is
        what lets the gas-free skip below stay cheap without inflating the
-       next REAL pass's budget by the skipped gap -- that gap now reads as
+       next REAL pass's budget by the skipped gap; that gap now reads as
        "photons escaped an empty cell" (correctly excluded), since
        last_attempt already advanced across it. */
     const double dt_elapsed =
@@ -608,12 +608,12 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
     /* Nothing to search for in a gas-free working-level cell. The star was
        still "attempted" just above, which is what keeps dt_elapsed correct
-       for whenever a real pass next lands -- see runner_do_stars_hii_
+       for whenever a real pass next lands; see runner_do_stars_hii_
        ionization_feedback's early-return comment for why this cell was
        reached at all despite holding no gas. Resync the trapezoid
        quadrature's cached rate here too, since this skip advances
-       last_attempt without calling feedback_open_star_ionizing_photon_budget
-       -- otherwise the next real pass would average against a stale rate
+       last_attempt without calling feedback_open_star_ionizing_photon_budget;
+       otherwise the next real pass would average against a stale rate
        from before this skip. */
     if (c->hydro.count == 0) {
       feedback_resync_star_ionizing_photon_rate_cache(si);
@@ -635,9 +635,9 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        originally motivated it is instead handled by anchoring dt_elapsed on
        HII_region_last_attempt above, so this should essentially never bind
        while gas is present. If the VERBOSE message below still fires
-       repeatedly on such a run, that is a real red flag -- e.g. a star
+       repeatedly on such a run, that is a real red flag; e.g. a star
        pinned below its own desired cadence by min_star_timestep in very
-       dense gas -- a distinct failure mode from the benign gas-free skip. */
+       dense gas; a distinct failure mode from the benign gas-free skip. */
     const double dt_nominal =
         feedback_get_star_HII_nominal_interval(feedback_props, dt_enrichment);
     const double dt_floor = (double)feedback_props->HII_rebuild_floor_Myr;
@@ -658,7 +658,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
     if (dt_floored > dt_ceiling)
       message(
           "Star %lld: HII budget interval clamped, %e -> %e (dt_elapsed "
-          "exceeds twice the nominal cadence despite gas being present -- "
+          "exceeds twice the nominal cadence despite gas being present; "
           "this star may be pinned below its own desired cadence)",
           si->id, dt_floored, dt_back);
 #endif
@@ -669,13 +669,13 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
      * 1. The buffer filled up (count_found == max_ngbs): there may be MORE
      *    candidates within the SAME radius that got bumped out by the
      *    nearest-max_ngbs cut. Retry at the same radius (cheap: the
-     *    volume searched doesn't grow) -- existing max_retry_full_buffer
+     *    volume searched doesn't grow); existing max_retry_full_buffer
      *    mechanism.
      * 2. The buffer did NOT fill up (every not-yet-ionized particle within
      *    the current radius was found and processed) but photons remain:
      *    the RADIUS itself is the bottleneck, not the buffer. Retrying at
      *    the same radius would just re-find nothing new. Only expanding
-     *    the radius can make progress -- HII_max_radius_expansion_tries.
+     *    the radius can make progress; HII_max_radius_expansion_tries.
      *
      * Conflating these (retrying the same radius regardless of which
      * happened) leaves a star stalled whenever case 2 occurs: with no
@@ -765,7 +765,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        stop holding h_hii (and with it the search radius and task depth) open.
        Phase 2 grows it back below for anything newly claimed.
 
-       Holding nothing must collapse the extent -- leaving a stale large
+       Holding nothing must collapse the extent; leaving a stale large
        h_hii keeps radiation_level coarse, so task_lock goes on taking a wide
        lock set for a star doing no work. But holding gas at exactly r2 == 0
        (a co-located particle) must NOT write 0, since cell_sanitize would
@@ -800,7 +800,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
        defined, not UB. */
     unsigned long long claimed_id_hash = 0;
     /* Per-pixel claim accounting for the compact debug line printed at pass
-       end (roll_state: -1 never rolled, 0 lost, 1 won -- last outcome only,
+       end (roll_state: -1 never rolled, 0 lost, 1 won; last outcome only,
        since the fixed per-pixel random draw makes every loss this pass
        identical). Diagnostic only, mirrors what the retry-skip logic below
        already derives from budget/tag state without needing these arrays. */
@@ -823,7 +823,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          same-radius retry (case 1 below) re-runs the identical search: if
          this stays 0, no pixel's budget or tag state moved, so the fixed
          (star, pixel, ti_begin) random draw guarantees the retry would
-         reproduce this exact attempt -- see the case-1 branch below. */
+         reproduce this exact attempt; see the case-1 branch below. */
       int attempt_claimed_count = 0;
       /* Fronts met during this attempt: each one empties its cone, so a
          retry gathers past it. */
@@ -851,7 +851,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
           const int pixel = ngb_buffer[k].pixel;
 
           /* This particle's pixel has no photons left; skip it (not
-             break -- other entries in the buffer may belong to a pixel
+             break; other entries in the buffer may belong to a pixel
              that still has budget). */
           if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) {
             continue;
@@ -910,7 +910,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          * so a retry re-runs the identical search (same eligible set),
          * meets the identical per-pixel budgets, and every pixel's fixed
          * (star, pixel, ti_begin) random draw replays the identical
-         * win/lose outcome -- a provable no-op, not a heuristic. A front
+         * win/lose outcome; a provable no-op, not a heuristic. A front
          * also changes the state: it empties its cone, so a retry gathers
          * past it. */
         if (attempt_claimed_count == 0 && attempt_front_count == 0) break;
@@ -1095,7 +1095,7 @@ void runner_do_stars_hii_ionization_feedback_branch(
      * [di_min, di_max] slab; the exact r2 < search_radius^2 test inside the
      * dopair then decides ionization. Since the projection difference never
      * exceeds the 3D distance, the slab is conservative for ANY of the 13
-     * sids, so the ionized set is invariant to which sid we use -- only speed
+     * sids, so the ionized set is invariant to which sid we use; only speed
      * changes. We therefore prefer the carried coarse sid, but if cj is not
      * sorted along it (the common case for a progeny leaf, whose own pair
      * tasks use different sub-sids) we fall back to ANY sid cj is sorted
