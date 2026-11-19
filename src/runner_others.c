@@ -301,9 +301,9 @@ void runner_do_star_formation_sink(struct runner *r, struct cell *c,
                                        cooling, cosmo, with_cosmology,
                                        phys_const, us, displacement);
 
-          sp->x_diff[0] += displacement[0];
-          sp->x_diff[1] += displacement[1];
-          sp->x_diff[2] += displacement[2];
+          sp->x_diff[0] -= displacement[0];
+          sp->x_diff[1] -= displacement[1];
+          sp->x_diff[2] -= displacement[2];
 
           /* Update the Star formation history */
           star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -570,9 +570,9 @@ void runner_do_star_formation(struct runner *r, struct cell *c,
                     hydro_props, us, cooling, e->chemistry, part_converted,
                     displacement);
 
-                sp->x_diff[0] += displacement[0];
-                sp->x_diff[1] += displacement[1];
-                sp->x_diff[2] += displacement[2];
+                sp->x_diff[0] -= displacement[0];
+                sp->x_diff[1] -= displacement[1];
+                sp->x_diff[2] -= displacement[2];
 
                 /* Update the Star formation history */
                 star_formation_logger_log_new_spart(sp, &c->stars.sfh);
@@ -934,10 +934,13 @@ void runner_do_end_grav_force(struct runner *r, struct cell *c, int timer) {
 
       if (gpart_is_active(gp, e)) {
 
+        /* Correction to the potential of this particle */
+        const float potential_correction =
+            potential_normalisation + potential_self * gp->mass;
+
         /* Finish the force calculation */
-        gravity_end_force(gp, G_newton,
-                          potential_normalisation + potential_self * gp->mass,
-                          periodic, with_self_gravity);
+        gravity_end_force(gp, G_newton, potential_correction, periodic,
+                          with_self_gravity);
 
         /* Get the ID of the gpart */
         long long id = 0;

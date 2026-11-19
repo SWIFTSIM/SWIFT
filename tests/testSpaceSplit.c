@@ -242,7 +242,8 @@ int main(int argc, char *argv[]) {
   /* Allocate the gpart buffer and set the others to NULL. */
   struct cell_buff *buff = NULL, *sbuff = NULL, *bbuff = NULL, *gbuff = NULL,
                    *sink_buff = NULL;
-  space_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff, &sink_buff);
+  space_split_allocate_and_fill_buffers(c, &buff, &sbuff, &bbuff, &gbuff,
+                                        &sink_buff);
 
   /* Recursively split the cell. */
   space_split_recursive(&s, c, buff, sbuff, bbuff, gbuff, sink_buff,

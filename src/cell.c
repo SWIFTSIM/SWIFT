@@ -456,6 +456,13 @@ int cell_link_foreign_gparts(struct cell *c,
 #endif
     return counts;
   } else {
+    /* No data is received at this level. The pointer is only a placeholder
+     * (the start of the progeny's data, which does not hold c->grav.count
+     * particles). The gravity tasks never read the particles of a foreign
+     * cell above the level of its recv task (interactions there use the
+     * multipoles) so this is safe. Unlike the FOF version,  the pointers can't
+     * be NULL: cell_unpack_grav_counts() re-derives parts_foreign from
+     * parts_foreign_rebuild at every level between rebuilds. */
     c->grav.parts_foreign = gparts_foreign;
     c->grav.parts_foreign_rebuild = gparts_foreign;
   }
@@ -509,8 +516,11 @@ int cell_link_foreign_fof_gparts(struct cell *c,
 #endif
     return counts;
   } else {
-    c->grav.parts_fof_foreign = gparts_fof_foreign;
-    c->grav.parts_fof_foreign_rebuild = gparts_fof_foreign;
+    /* No data is received at this level. Only cells at or below a level with
+     * a recv task get their particles, so leave a NULL pointer here. Reading
+     * the particles of a cell that is not covered will then be caught. */
+    c->grav.parts_fof_foreign = NULL;
+    c->grav.parts_fof_foreign_rebuild = NULL;
   }
 
   /* Go deeper to find the level where the tasks are */
@@ -550,6 +560,8 @@ void cell_unlink_foreign_particles(struct cell *c) {
 #endif
 
   c->grav.parts = NULL;
+  c->grav.parts_fof_foreign = NULL;
+  c->grav.parts_fof_foreign_rebuild = NULL;
   c->hydro.parts = NULL;
   c->stars.parts = NULL;
   c->black_holes.parts = NULL;

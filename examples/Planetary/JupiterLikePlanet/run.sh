@@ -1,11 +1,16 @@
 #!/bin/bash
+set -eo pipefail
+
 set -o xtrace
 
 # Resolution
 N_label=n70
 
-# Create the initial particle planets
-python3 make_init_cond.py
+# Create the initial particle planet if it is not present
+if [ ! -e demo_target_"$N_label".hdf5 ]
+then
+    python3 make_init_cond.py
+fi
 
 # Download the equation of state tables if not already present
 if [ ! -e ../EoSTables/CD21_HHe.txt ]

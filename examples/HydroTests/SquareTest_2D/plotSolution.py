@@ -28,10 +28,9 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import stats
 
 from swiftsimio import load
-from swiftsimio.visualisation import project_gas_pixel_grid
+from swiftsimio.visualisation import project_gas
 
 snap = int(sys.argv[1])
 
@@ -39,19 +38,10 @@ sim = load(f"square_{snap:04d}.hdf5")
 resolution = 512
 
 # First create a grid that gets the particle density so we can divide it out later
-unweighted_grid = project_gas_pixel_grid(sim, 512, None)
+unweighted_grid = project_gas(sim, 512, None)
 
 # Set up plotting stuff
-try:
-    plt.style.use("mnras_durham")
-except:
-    rcParams = {
-        "font.serif": ["STIX", "Times New Roman", "Times"],
-        "font.family": ["serif"],
-        "mathtext.fontset": "stix",
-        "font.size": 8,
-    }
-    plt.rcParams.update(rcParams)
+plt.style.use("../../../tools/stylesheets/mnras.mplstyle")
 
 
 def get_data_dump(metadata):
@@ -61,12 +51,12 @@ def get_data_dump(metadata):
 
     try:
         viscosity = metadata.viscosity_info
-    except:
+    except KeyError:
         viscosity = "No info"
 
     try:
         diffusion = metadata.diffusion_info
-    except:
+    except KeyError:
         diffusion = "No info"
 
     output = (
@@ -99,7 +89,7 @@ plot = dict(
     densities=r"Density ($\rho$)",
     pressures="Pressure ($P$)",
     entropies="Entropy ($A$)",
-    conduction_parameters=r"Diffusion ($\alpha$)",
+    diffusion_parameters=r"Diffusion ($\alpha$)",
 )
 
 current_axis = 0
@@ -110,50 +100,45 @@ for key, label in plot.items():
     else:
         axis = ax[current_axis]
 
+    # Raw data; skip the fields that are not in the snapshot
     try:
-        # Raw data
-        try:
-            grid = (
-                project_gas_pixel_grid(sim, resolution=resolution, project=key)
-                / unweighted_grid
-            )
-            axis.imshow(grid, origin="lower", extent=[0, 1, 0, 1], cmap="cividis")
-        except:
-            continue
-
-        # Exact solution, a square!
-        axis.plot(
-            [0.25, 0.75, 0.75, 0.25, 0.25],
-            [0.25, 0.25, 0.75, 0.75, 0.25],
-            linestyle="dashed",
-            color="white",
-        )
-
-        circle = plt.Circle(
-            (0.8, 0.8),
-            radius=np.sqrt(1.0 / sim.metadata.n_gas) * 1.25,
-            linestyle="solid",
-            color="white",
-            fill=False,
-        )
-
-        axis.add_artist(circle)
-
-        axis.tick_params(
-            axis="both",
-            which="both",
-            labelbottom=False,
-            labelleft=False,
-            bottom=False,
-            left=False,
-        )
-
-        axis.set_title(label)
-
-        current_axis += 1
-    except KeyError:
-        # Mustn't have that data!
+        grid = project_gas(sim, resolution=resolution, project=key) / unweighted_grid
+        grid = grid.to_value(getattr(sim.gas, key).units)
+    except AttributeError:
         continue
+
+    axis.imshow(grid, origin="lower", extent=[0, 1, 0, 1], cmap="cividis")
+
+    # Exact solution, a square!
+    axis.plot(
+        [0.25, 0.75, 0.75, 0.25, 0.25],
+        [0.25, 0.25, 0.75, 0.75, 0.25],
+        linestyle="dashed",
+        color="white",
+    )
+
+    circle = plt.Circle(
+        (0.8, 0.8),
+        radius=np.sqrt(1.0 / sim.metadata.n_gas) * 1.25,
+        linestyle="solid",
+        color="white",
+        fill=False,
+    )
+
+    axis.add_artist(circle)
+
+    axis.tick_params(
+        axis="both",
+        which="both",
+        labelbottom=False,
+        labelleft=False,
+        bottom=False,
+        left=False,
+    )
+
+    axis.set_title(label)
+
+    current_axis += 1
 
 
 info_axis = ax[-1]

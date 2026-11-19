@@ -161,12 +161,11 @@ def initial_condition(x, unitsystem):
 
 
 if __name__ == "__main__":
-    glass = h5py.File("glassPlane_128.hdf5", "r")
+    glass = sw.load("glassPlane_128.hdf5")
 
     # Read particle positions and h from the glass
-    pos = glass["/PartType0/Coordinates"][:, :]
-    h = glass["/PartType0/SmoothingLength"][:]
-    glass.close()
+    pos = glass.gas.coordinates.value
+    h = glass.gas.smoothing_lengths.value
 
     pos *= boxsize
     h *= boxsize

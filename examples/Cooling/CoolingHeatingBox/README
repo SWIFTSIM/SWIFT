@@ -3,5 +3,5 @@ This tests is the Iliev+2006 (ui.adsabs.harvard.edu/abs/2006MNRAS.369.1625I/)
 Test 0 part 3, however without stopping the heating and ionization rates
 after 0.5 Myr. While the cooling is present, gas heats up and ionize.
 
-To run with GEAR-RT, configure swift with:
+To run with Grackle (mode 1), configure swift with:
   ./configure --with-cooling=grackle_1 --with-grackle=$GRACKLE_ROOT

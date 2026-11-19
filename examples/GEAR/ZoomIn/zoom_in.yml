@@ -88,8 +88,6 @@ GrackleCooling:
   with_UV_background: 1                         # Enable or not the UV background
   redshift: -1                                  # Redshift to use (-1 means time based redshift)
   with_metal_cooling: 1                         # Enable or not the metal cooling
-  provide_volumetric_heating_rates: 0           # User provide volumetric heating rates
-  provide_specific_heating_rates: 0             # User provide specific heating rates
   self_shielding_method: -1                     # Grackle (<= 3) or Gear self shielding method
   self_shielding_threshold_atom_per_cm3: 0.007  # Required only with GEAR's self shielding. Density threshold of the self shielding
   max_steps: 1000
@@ -113,7 +111,7 @@ GEARFeedback:
   with_stellar_wind_feedback: 0                            # Deactivate the stellar wind feedback
   yields_table: POPIIsw.h5                                 # Table containing the yields.
   discrete_yields: 1                                       # Should we use discrete yields or the IMF integrated one?
-  imf_transition_metallicity: 0                            # Maximal metallicity (in mass fraction) for a first star (-1 to deactivate).
+  imf_transition_metallicity: 0                            # Maximal metallicity ([Fe/H]) for a first star (0 to deactivate).
   elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]             # Elements to read in the yields table. The number of element should be one less than the number of elements (N) requested during the configuration (--with-chemistry=GEAR_N).
 
 GEARChemistry:

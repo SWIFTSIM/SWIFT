@@ -22,7 +22,6 @@ Generate plot Mode growth of the 3D Kelvin--Helmholtz instability.
 This is based on the quantity calculated in Eqns. 10--13 of McNally et al. 2012
 """
 
-import sys
 import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
