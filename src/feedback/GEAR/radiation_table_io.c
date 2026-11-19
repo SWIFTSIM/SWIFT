@@ -1110,6 +1110,13 @@ void radiation_read_luminosity_lw_dissociating_array(
 
   rad->lw_dissociating_factor_max =
       radiation_compute_lw_dissociating_factor_max(rad);
+
+  /* A larger bound weakens the clamps on the line transmission. */
+  if (rad->lw_dissociating_factor_max > 3.f && engine_rank == 0)
+    warning(
+        "'%s': L_LW_dissociating / L_LW reaches %.6g. Check the table: a "
+        "stellar LW spectrum gives at most about 1.4.",
+        sm->yields_table, (double)rad->lw_dissociating_factor_max);
 }
 
 /**
@@ -1521,6 +1528,10 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const char with_ISRF_before = rad->with_ISRF;
   const char with_LW_population_dissociation_before =
       rad->with_LW_population_dissociation;
+  /* On restart, the values of the dumped run, which #feedback_props keeps. */
+  const char has_l_lw_dissociating_before = rad->has_l_lw_dissociating;
+  const float lw_dissociating_factor_max_before =
+      rad->lw_dissociating_factor_max;
 
   /* Zero every table so that radiation_clean() is safe whichever of the 1D
      and 2D variants is built. */
@@ -1682,6 +1693,18 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
           "energy.",
           sm->yields_table);
   }
+
+  if (restart &&
+      (rad->has_l_lw_dissociating != has_l_lw_dissociating_before ||
+       rad->lw_dissociating_factor_max != lw_dissociating_factor_max_before))
+    error(
+        "'%s' changed since the restart files were written: "
+        "L_LW_dissociating present %d -> %d, dissociation factor bound %.9g "
+        "-> %.9g. Restart with the same table, or rerun from the ICs.",
+        sm->yields_table, (int)has_l_lw_dissociating_before,
+        (int)rad->has_l_lw_dissociating,
+        (double)lw_dissociating_factor_max_before,
+        (double)rad->lw_dissociating_factor_max);
 
   /* Validated above to exist. */
   radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
