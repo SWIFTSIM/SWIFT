@@ -502,8 +502,8 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
         "LWDissociatingSpecificEnergies", DOUBLE, 1,
         UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
         convert_part_u_LW_dissociating,
-        "Local specific Lyman-Werner-band energy of the light that the H2 "
-        "lines have not removed. It sets the H2 dissociation rate. DOUBLE: "
+        "Local specific Lyman-Werner-band energy weighted by the H2 line "
+        "transmission. It sets the H2 dissociation rate. DOUBLE: "
         "see PESpecificEnergies.");
 
     list[num++] = io_make_output_field_convert_part(
@@ -524,7 +524,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
         "LWOwnDissociatingSpecificEnergies", FLOAT, 1,
         UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
         convert_part_u_LW_dissociating_own,
-        "Part of LWOwnSpecificEnergies that the H2 lines have not removed, "
+        "LWOwnSpecificEnergies weighted by the H2 line transmission, "
         "before the kernel mean that gives LWDissociatingSpecificEnergies. "
         "Physical.");
 
