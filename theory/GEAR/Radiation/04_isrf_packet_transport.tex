@@ -2624,8 +2624,8 @@ reference, and do not cover the accuracy of the fit itself
 replaces the columns of several shares by one column and one transmission.
 This section states what that replacement keeps and what it loses, in three
 parts. The first is exact statements with their proof. The second is the
-numerical accuracy against the reference on the tested coverage of random
-inputs, in the paragraphs whose titles begin with ``Numerical accuracy''. The
+numerical accuracy against the reference on the tested coverage, mostly
+random inputs, in the paragraphs whose titles begin with ``Numerical accuracy''. The
 third is the float rounding.
 
 \paragraph{The merge in brief.} The statements below use the merge of
@@ -2670,7 +2670,8 @@ mixed columns, then a change of the fit''.
 \paragraph{What holds without condition.}
 \begin{itemize}
   \item The dissociating energy is conserved: the released and the remaining
-    sums add up to the sums before the release. When the merge releases all
+    sums add up to the sums before the release, apart from the fraction of
+    light booked as absorbed below the photon cutoff. When the merge releases all
     the waiting light, the merged transmission $\mathcal T_k$ is the exact
     energy-weighted mean of the merged shares (Eq.~\eqref{eq:h2-merge}). A
     partial release releases each sum pro rata, so the released light gets
@@ -2798,8 +2799,10 @@ $\mathcal R$ & 1.12 & 1.96 & 1.87 & 1.25 \\
 \end{table}
 
 \paragraph{Numerical accuracy: the tested coverage.} The tested coverage of the
-scheme is six families of random inputs, each compared with the reference of
-Eq.~\eqref{eq:h2-ref}. The numerical-accuracy paragraphs
+scheme is seven families of inputs. Families (1) to (6) are random inputs,
+each compared with the reference of Eq.~\eqref{eq:h2-ref}. Family (7)
+compares the light that a release gives out with the shares that leave, each
+with its own transmission. The numerical-accuracy paragraphs
 below give its results. Each family has its own sets, so each range of
 $\mathcal R$ belongs to its family alone. The held transmission and column are
 rounded to 4-byte floats after every merge, and $\mathcal R$ is read after every
@@ -2828,6 +2831,11 @@ hop. A violation of the sign is $\mathcal R<1-10^{-5}$.
     $10^{4}$\,cm$^{-3}$, then cross $\Delta\Sigma=10^{13}$ to
     $10^{23}$\,cm$^{-2}$ of gas with another fit. Only the 54538 cells with
     $\mathcal T_{\rm ref}>10^{-2}$ count (Table~\ref{tab:h2-fitchange}).
+  \item Light that waits in one slot and leaves in part. Fixed pairs of
+    shares, down to $\tau=\mathcal T_2/\mathcal T_1=0.01$ and up to
+    $\rho=e_2/e_1=10$, wait at a limited light speed or in the reservoir of
+    the no-delay test mode. A box of gas lit by one star runs at $0.99\,c$
+    (``Numerical accuracy: light that waits'').
 \end{enumerate}
 
 \paragraph{Numerical accuracy: the sign and the bound.} On the sets of
@@ -3038,8 +3046,8 @@ bound when the waiting light of one slot has very different transmissions.
 The reservoir of the no-delay test mode, released in equal parts over several
 merges, pools in the same way.
 
-\paragraph{Numerical accuracy: light that waits.} The test of the release
-with the merge of the scheme gives Eq.~\eqref{eq:h2-wait-pool} at every
+\paragraph{Numerical accuracy: light that waits.} On the pairs of family (7)
+the merge of the scheme gives Eq.~\eqref{eq:h2-wait-pool} at every
 delay of share 2. Its worst case, $\rho=10$ and $\tau=0.01$, gives $0.10$ at
 the first release. The test also covers the no-delay test mode with two
 shares of equal energy, $\mathcal T_1=1$ and $\tau=0.1$. Share 1 leaves
@@ -3066,7 +3074,7 @@ different shielding can wait in one slot, is not measured.
 run is not known: no statement of this section is a measurement in a cloud.
 \begin{itemize}
   \item The tested coverage is of this scheme against its own reference on
-    random share sets. It is not a measurement in a simulated cloud. How often a
+    random share sets, fixed share sets and one test box. It is not a measurement in a simulated cloud. How often a
     slot receives light of clearly different columns with comparable
     dissociating energy, thin enough ($\Sigma_k\lesssim10^{17}$\,cm$^{-2}$ for
     $\alpha>1$) that the fits differ, and then meets another fit, is not
