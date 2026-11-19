@@ -835,7 +835,7 @@ $\Delta v$, $\Delta v_{\max}$ & velocity & velocity shift of the light relative 
 $n_{{\rm H}_2}$, $X_{{\rm H}_2}$ & cm$^{-3}$, -- & H$_2$ number density and mass fraction of the receiver \\
 $\mathcal A_k$, $\mathcal B_k$, $\mathcal V_k$ & energy, energy, energy$\times$velocity & sums of Eq.~\eqref{eq:h2-sums} over the light of slot $k$ \\
 $\hat e_s$, $\xi_s$ & energy, -- & dissociating energy $e_s\mathcal T_s$ of share $s$ and its fraction of the total \\
-$\eta_s$, $\varpi_l$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
+$\eta_s$, $\varpi_l$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$, its fraction of the dissociating energy \\
 $\mathcal R$ & -- & transmission of the slot over that of the share-by-share reference (Eq.~\eqref{eq:h2-ref}) \\
 $\varsigma$ & -- & local slope $|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ of the fit \\
 $u_{\rm LW}^{\rm own}$, $u_{\rm diss}^{\rm own}$, $\Sigma^{\rm own}$ & energy/mass, energy/mass, cm$^{-2}$ & own LW field, its dissociating part and the weighted column (Eq.~\eqref{eq:h2-own}) \\
@@ -2737,10 +2737,18 @@ $1/\varpi_l$ times as much,
 \end{equation}
 where $l$ is the share with the smallest column $\Sigma_l$, and
 $\hat e_j=e_j\mathcal T_j$. $\varpi_l$ is the weight of that share in $\mathcal B_k$. In
-gas with the fit $r$ on the whole path, $\mathcal T_j\propto\mathcal S_r(\Sigma_j)$,
-so $\varpi_l=\eta_l$ is the energy fraction of the least-shielded light. If the
-slot holds light that crossed no H$_2$, $\eta_l$ is the energy fraction of
-that light.
+gas with the fit $r$ on the whole path,
+$\mathcal T_j\propto f_j\,\mathcal S_r(\Sigma_j)$, where $f_j$ is the
+dissociation factor $f_\star$ of the light of share $j$
+(Eq.~\eqref{eq:isrf-lw-population}), so
+\begin{equation}
+  \varpi_l=\frac{f_l\,\eta_l}{\sum_j f_j\,\eta_j}
+\end{equation}
+is the fraction of the dissociating energy in the least-shielded light. For
+the light of one star, or with the population factor off, every $f_j$ is the
+same and $\varpi_l=\eta_l$, the energy fraction of that light. If the slot
+holds light that crossed no H$_2$, $\varpi_l$ is the fraction of the
+dissociating energy in that light.
 
 The proof has four steps. Write $y=\mathcal S_r(\Sigma)$ and
 $g(y)=\mathcal S_r(\mathcal S_r^{-1}(y)+\Delta\Sigma)$: the factor after a further
@@ -2787,8 +2795,8 @@ column, as a function of the factor before it.
     $\sum_sc_sz_s/(c_lz_l)=1/\varpi_l$.
 \end{enumerate}
 
-The bound is sharp. Let a share with the energy fraction $\eta_0$ have no
-column and let the rest of the light have a very large column. Then
+The bound is sharp. Take the light of one star, so that $\varpi_0=\eta_0$.
+Let a share with the energy fraction $\eta_0$ have no column and let the rest of the light have a very large column. Then
 $\mathcal T_k\to\eta_0$ and $\mathcal R$ tends to $1/\eta_0$ for a large
 $\Delta\Sigma$, because the tail of the fit,
 $x^{-1/2}e^{-c\sqrt x}$, makes
@@ -2874,7 +2882,7 @@ any gas before the merge, one fit after, three merge stages & 0.9999998 & $4.0\t
 
 The smallest values lie below 1 only by float rounding. The largest values
 are large because $1/\varpi_l$ is large when the least-shielded light carries a
-small fraction of the energy.
+small fraction of the dissociating energy.
 
 \paragraph{Float rounding in a merge.} The float rounding in one merge is
 $\epsilon_{\rm m}=(2+2\varsigma)\,2^{-24}$, with
