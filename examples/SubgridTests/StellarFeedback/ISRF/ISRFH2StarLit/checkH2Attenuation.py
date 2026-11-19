@@ -970,8 +970,12 @@ def gate_twosource(args: argparse.Namespace) -> int:
     4. Where both stars are lit, the column of the two-star run is the mean of the one-star
        columns weighted by their dissociating energies, N_AB = (D_A N_A + D_B N_B) / (D_A + D_B),
        because the code stores sum(D_s N_s) / sum(D_s) over the slots. Numerator and
-       denominator are sums of positive shares, each within the bar of check 2, so the ratio
-       lies within twice that bar.
+       denominator are sums of positive shares. The bar covers the round-off of the energy
+       weights, and the ratio lies within twice that bar. The gap of the slot column
+       between the runs is not bounded by check 2; it stayed below 0.02 of the bar on the
+       default run. The identity needs ISRF_packet_read_mean_time_Myr = 0, because the
+       dissociating energy is a running mean and the column is weighted by the
+       instantaneous energies.
 
     Raises
     ------
@@ -1026,6 +1030,13 @@ def gate_twosource(args: argparse.Namespace) -> int:
 
     params = read_params(args.params)
     check_premise_parameters(params, rep, args.startup_log)
+    if not param_equals(
+        params, "GEARFeedback:ISRF_packet_read_mean_time_Myr", "0", "0"
+    ):
+        raise GateExit(
+            EXIT_VOID,
+            "void run, ISRF_packet_read_mean_time_Myr is not 0: the column weights are instantaneous",
+        )
     logs = {"two-star": read_startup_log(args.startup_log)}
     for label, run_dir in run_dirs.items():
         other = read_params(os.path.join(run_dir, "used_parameters.yml"))
@@ -1212,10 +1223,15 @@ def gate_twosource(args: argparse.Namespace) -> int:
     n_a, n_b = runs["star A"][PARITY_COLUMN][both], runs["star B"][PARITY_COLUMN][both]
     n_ab = ab[PARITY_COLUMN][both]
     require_finite("columns of the particles lit by both", a=n_a, b=n_b, two_star=n_ab)
-    if not np.all(d_a + d_b > 0.0) or not np.all(n_ab > 0.0):
+    if not np.all(d_a + d_b > 0.0):
         raise GateExit(
             EXIT_VOID,
-            "void run, a particle lit by both has no dissociating energy or column",
+            "void run, a particle lit by both has no dissociating energy",
+        )
+    if not np.all(n_ab > 0.0):
+        raise GateExit(
+            EXIT_BAR,
+            "FAIL: the two-star column is zero at a particle lit by both that has dissociating energy",
         )
     mix = (d_a * n_a + d_b * n_b) / (d_a + d_b)
     gap_col = np.abs(n_ab / mix - 1.0)

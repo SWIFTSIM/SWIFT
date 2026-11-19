@@ -731,6 +731,8 @@ def twosource_cases(work):
         b_alone_id=None,
         b_log=None,
         x_h2_last=None,
+        read_mean="0",
+        zero_dis=False,
     ):
         """Write the four runs of a synthetic world and return the check arguments.
 
@@ -753,7 +755,7 @@ def twosource_cases(work):
                 t = np.where(
                     e > 0, gate.transmission(np.maximum(n_col, 1.0), temp, dens), 1.0
                 )
-                fields[snap, s] = (e, e * t, n_col)
+                fields[snap, s] = (e, e * t * (not zero_dis), n_col)
 
         def write(path, e, dis, col, time, star_pos, star_ids, x=x_h2):
             ratio = np.where(e > 0, dis / np.where(e > 0, e, 1.0), 1.0)
@@ -778,7 +780,9 @@ def twosource_cases(work):
         def run(name, kinds, star_ids, noise, log=RUN_LOG):
             run_dir = os.path.join(root, name)
             os.makedirs(os.path.join(run_dir, "snap"), exist_ok=True)
-            open(os.path.join(run_dir, "used_parameters.yml"), "w").write(GOOD_PARAMS)
+            open(os.path.join(run_dir, "used_parameters.yml"), "w").write(
+                GOOD_PARAMS + f"  ISRF_packet_read_mean_time_Myr: {read_mean}\n"
+            )
             open(os.path.join(run_dir, "output.log"), "w").write(log)
             col_sum = None
             for snap, time, num in (("prev", 7.0, 8), ("last", 8.0, 9)):
@@ -1007,6 +1011,29 @@ def twosource_cases(work):
         "void check, two identical runs",
     )
     near_b = np.argsort(np.linalg.norm(pos - star_b0[None, :], axis=1))[:23]
+    argv = build("read_mean", read_mean="5")
+    record(
+        "T4b read mean time 5 Myr: column weights not instantaneous (void)",
+        4,
+        argv,
+        "void run, ISRF_packet_read_mean_time_Myr",
+    )
+    argv = build("read_mean_zero", read_mean="0.0")
+    record("T4b read mean time written as 0.0 (pass)", 0, argv, "PASS")
+    argv = build("zero_dis", zero_dis=True)
+    record(
+        "T5c no dissociating energy at a particle lit by both (void)",
+        4,
+        argv,
+        "no dissociating energy",
+    )
+    argv = build("zero_col", col_ab=0.0)
+    record(
+        "T5c zero two-star column with dissociating energy (fail)",
+        1,
+        argv,
+        "FAIL: the two-star column is zero",
+    )
     for factor, expect, label in (
         (
             0.9,

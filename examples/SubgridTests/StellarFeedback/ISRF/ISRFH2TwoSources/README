@@ -68,8 +68,11 @@ Checks:
 - At every particle lit by both stars, the column of the two-star run equals the mean of
   the one-star columns weighted by their dissociating energies, `N_AB = (D_A N_A + D_B N_B)
   / (D_A + D_B)`, because the code stores `sum(D_s N_s) / sum(D_s)` over the slots. Both
-  sums are made of positive shares, each within the round-off bar above, so the ratio lies
-  within twice that bar.
+  sums are made of positive shares. The round-off bar above covers the weights, and the
+  ratio lies within twice that bar. The gap of the slot column between the runs is not
+  bounded by that bar; it stayed below 0.02 of the bar on the default run. The identity
+  needs `ISRF_packet_read_mean_time_Myr = 0` (the default); the gate reads it from
+  `used_parameters.yml` and voids the run otherwise.
 
 The check also prints, without gating, the largest change of the ratio `D / E` at the
 particles lit by both stars and the largest change of `H2I` between the runs; the
