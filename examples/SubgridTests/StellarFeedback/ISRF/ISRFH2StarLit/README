@@ -9,9 +9,9 @@ function at the column `N_H2 = n_H2 r`,
 where `n_H2` is the particle's own H2 density and `r` its distance to the star. The
 shielding function is the Wolcott-Green and Haiman (2019) fit that geajay uses.
 
-The run is cooling with geajay only: the library must not shield the transported LW rate
-a second time, so the run sets `GeajayCooling:h2_transported_lw_rate_shielding:
-background_only`. Official Grackle refuses `ISRF_H2_line_absorption: 1`.
+The run is cooling with geajay only: with `ISRF_H2_line_absorption: 1` SWIFT tells the
+library not to shield the transported LW rate a second time, so no cooling parameter is
+needed for it. Official Grackle refuses `ISRF_H2_line_absorption: 1`.
 
 ## What the run holds fixed
 The check reads the end of a short run in which H2 and the temperature stay frozen. The
@@ -30,7 +30,8 @@ read, so that the nearest periodic image of the star is the right one.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
 make -j
 ```
-The geajay build must provide the key `h2_transported_lw_rate_shielding`. The packet
+The geajay build must provide the option that leaves the transported LW rate out of its H2
+shielding; without it SWIFT stops at start-up. The packet
 transport needs a radiation table whose `Data/Radiation` group carries
 `MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`; see the README of
 `ISRFH2Photodissociation` for how to obtain it.
@@ -39,7 +40,7 @@ transport needs a radiation table whose `Data/Radiation` group carries
 ```
 ./run.sh                      # main leg, then the check
 leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
-leg=refused ./run.sh          # shielded_sum with the switch on: start-up must refuse
+leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
 ranks=2 run_name=two_ranks ./run.sh
 leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
 ```
@@ -49,12 +50,17 @@ about 2e18 cm^-2 over the box.
 
 # Checking
 `checkH2Attenuation.py` reads `used_parameters.yml`, `fixture.json` (written by
-`makeIC.py`) and the first and last snapshot. Its exit class is 0 for a pass, 1 for a failed
+`makeIC.py`), the first and last snapshot and the SWIFT log (`--startup-log output.log`).
+The geajay library does not write its LW shielding option to `used_parameters.yml`; the
+check reads it from the library's start-up line `h2_transported_lw_rate_shielding = 1` in
+the log and calls the run void if the line is absent or reads 0. `run.sh` passes the log.
+
+The exit class of the check is 0 for a pass, 1 for a failed
 bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a void run (a
 premise or a positive control is not met). A void run never passes. `parity` alone also
 returns 5 for a pass without a counters file (see below).
 
-`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5`
+`python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log`
 
 The reference is `snapshot_0001`, the first snapshot written after the first step and
 before any probe is lit; `snapshot_0000` holds the initial species fractions, which the

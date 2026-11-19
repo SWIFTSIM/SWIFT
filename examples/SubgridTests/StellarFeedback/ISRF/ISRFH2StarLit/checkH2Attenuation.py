@@ -7,7 +7,7 @@ starlit     Transmission at depth against the shielding function (star-lit box).
 twosource   Merge of two lights of different columns (two sources).
 velocity    Reset of the carried column by a velocity shift.
 parity      Per-particle comparison of two runs (two ranks, or restart).
-refusal     A run that must be refused at start-up was refused.
+stale_key   The removed key GeajayCooling:h2_transported_lw_rate_shielding is ignored.
 
 Exit codes
 ----------
@@ -332,9 +332,14 @@ def param_equals(params: dict, key: str, expected: str, default: Optional[str]) 
 
 
 def check_premise_parameters(
-    params: dict, rep: Report, mode: str, startup_log: Optional[str]
+    params: dict, rep: Report, startup_log: Optional[str]
 ) -> None:
-    """Fail the run as void if the switch-on fixture parameters are not set."""
+    """Fail the run as void if the switch-on fixture parameters are not set.
+
+    The geajay library does not write its transported LW shielding option to
+    used_parameters.yml: it is set from ISRF_H2_line_absorption and reported in the
+    start-up log, which this check reads.
+    """
     wanted = [
         ("GEARFeedback:ISRF_H2_line_absorption", "1", None),
         ("GEARFeedback:with_photoionization", "0", "0"),
@@ -348,25 +353,16 @@ def check_premise_parameters(
         raise GateExit(
             EXIT_VOID, f"void run, premise parameters not as required: {bad}"
         )
-    if mode == "a":
-        if not param_equals(
-            params,
-            "GeajayCooling:h2_transported_lw_rate_shielding",
-            "background_only",
-            None,
-        ):
-            raise GateExit(
-                EXIT_VOID,
-                "void run, option a needs h2_transported_lw_rate_shielding: background_only",
-            )
-    else:
-        if startup_log is None:
-            raise GateExit(EXIT_MISSING, "option c needs --startup-log")
-        text = open(startup_log).read() if startup_log else ""
-        if not re.search(r"h2_transported_lw_rate_shielding = 1\b", text):
-            raise GateExit(
-                EXIT_VOID, "void run, start-up log does not report background_only"
-            )
+    if startup_log is None:
+        raise GateExit(EXIT_MISSING, "the check needs --startup-log")
+    try:
+        text = open(startup_log).read()
+    except OSError as err:
+        raise GateExit(EXIT_MISSING, f"start-up log {startup_log} is missing: {err}")
+    if not re.search(r"h2_transported_lw_rate_shielding = 1\b", text):
+        raise GateExit(
+            EXIT_VOID, "void run, start-up log does not report background_only"
+        )
     rep.info(
         "premise parameters",
         "HII, winds, SN off, unlimited speed, library told background_only",
@@ -586,7 +582,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
-    check_premise_parameters(params, rep, args.mode, args.startup_log)
+    check_premise_parameters(params, rep, args.startup_log)
     counters = load_json(args.counters, "counters file") if args.counters else {}
 
     r, h, mask = probe_geometry(last, np.array(fix["star_kpc"]))
@@ -816,7 +812,7 @@ def gate_twosource(args: argparse.Namespace) -> int:
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
-    check_premise_parameters(params, rep, args.mode, args.startup_log)
+    check_premise_parameters(params, rep, args.startup_log)
     counters = load_json(args.counters, "counters file") if args.counters else {}
     rep.info(
         "held light at the merge",
@@ -952,7 +948,7 @@ def gate_velocity(args: argparse.Namespace) -> int:
     check_box_faces(first)
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
-    check_premise_parameters(params, rep, args.mode, args.startup_log)
+    check_premise_parameters(params, rep, args.startup_log)
     star = np.array(fix["star_kpc"])
     r, h, mask = probe_geometry(last, star)
     cm = last["unit_length"]
@@ -1177,24 +1173,28 @@ def gate_parity(args: argparse.Namespace) -> int:
     return EXIT_REDUCED if reduced and not rep.failed else rep.exit_code()
 
 
-def gate_refusal(args: argparse.Namespace) -> int:
+def gate_stale_key(args: argparse.Namespace) -> int:
+    """Check that a given GeajayCooling:h2_transported_lw_rate_shielding has no effect.
+
+    The run gave the removed key a value that contradicts ISRF_H2_line_absorption: 1.
+    It must start, and the library must report background_only, which only the switch sets.
+    """
     rep = Report()
     try:
         text = open(args.log).read()
     except OSError as err:
         raise GateExit(EXIT_MISSING, f"log {args.log} is missing: {err}")
-    pattern = (
-        r"^\[\d+\.\d+\] \S+:\S+\(\):\d+: GEARFeedback:ISRF_H2_line_absorption: 1 is not supported"
-        if args.expect == "shielded_sum_refused"
-        else args.pattern
-    )
-    found = re.search(pattern, text, re.M) is not None
     rep.check(
-        "run stopped at start-up",
-        args.exit_status != 0,
+        "run started and stopped cleanly",
+        args.exit_status == 0,
         f"exit status {args.exit_status}",
     )
-    rep.check("refusal text in the log", found, "anchored on SWIFT's error() format")
+    values = re.findall(r"h2_transported_lw_rate_shielding = (\d+)", text)
+    rep.check(
+        "library reports background_only (1) for the switch on",
+        values == ["1"],
+        f"start-up values {values}",
+    )
     return rep.exit_code()
 
 
@@ -1210,12 +1210,10 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument("--fixture", default="fixture.json")
         sp.add_argument("--params", default="used_parameters.yml")
         sp.add_argument(
-            "--mode",
-            choices=["a", "c"],
-            default="a",
-            help="a: key in used_parameters.yml; c: start-up log",
+            "--startup-log",
+            default=None,
+            help="swift log with the library start-up lines (output.log)",
         )
-        sp.add_argument("--startup-log", default=None)
         sp.add_argument("--counters", default=None)
 
     for name, fn in (
@@ -1256,12 +1254,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="ranks: snapshot of run a before the compared one, to find the light front",
     )
     sp.set_defaults(fn=gate_parity)
-    sp = sub.add_parser("refusal")
+    sp = sub.add_parser("stale_key")
     sp.add_argument("--log", required=True)
     sp.add_argument("--exit-status", type=int, required=True)
-    sp.add_argument("--expect", default="shielded_sum_refused")
-    sp.add_argument("--pattern", default="")
-    sp.set_defaults(fn=gate_refusal)
+    sp.set_defaults(fn=gate_stale_key)
     return p
 
 

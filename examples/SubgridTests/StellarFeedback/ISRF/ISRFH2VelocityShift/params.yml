@@ -68,7 +68,6 @@ GeajayCooling:
   with_metal_cooling: 1                        # Required by the dust chemistry of the ISRF
   thermal_time_myr: 0                          # No adiabatic-cooling time after a feedback event
   h2_shielding_length_method: none             # The library does not shield the background: no background here
-  h2_transported_lw_rate_shielding: background_only  # The H2 lines of the transport shield the transported rate, the library must not
   initial_h2i_to_h_ratio: 3e-4           # Initial nH2 / nH, sets the H2 column
   initial_hii_to_h_ratio: 1e-8                 # Residual ionization keeps H2 formation through H- negligible
 

@@ -33,14 +33,16 @@ GOOD_PARAMS = """GEARFeedback:
   with_stellar_wind_feedback: 0
   supernovae_efficiency: 0
   ISRF_packet_light_speed: unlimited
-GeajayCooling:
-  h2_transported_lw_rate_shielding: background_only
 """
+START_UP_LOG = ""
+GATES = ("starlit", "twosource", "velocity")
 ROWS = []
 U_L = 3.0856775814913673e21
 
 
 def run_gate(argv):
+    if argv[0] in GATES and "--startup-log" not in argv:
+        argv = [*argv, "--startup-log", START_UP_LOG]
     out = io.StringIO()
     with contextlib.redirect_stdout(out):
         code = gate.main(argv)
@@ -403,7 +405,7 @@ def starlit_cases(work):
         d, "startup.log", "h2_transported_lw_rate_shielding = 0\n", text=True
     )
     record(
-        "option c: log says shielded_sum",
+        "start-up log says shielded_sum",
         4,
         [
             "starlit",
@@ -415,10 +417,28 @@ def starlit_cases(work):
             os.path.join(d, "fixture.json"),
             "--params",
             params,
-            "--mode",
-            "c",
             "--startup-log",
             startup,
+            "--counters",
+            counters,
+        ],
+        "start-up log",
+    )
+    record(
+        "start-up log missing",
+        2,
+        [
+            "starlit",
+            "--first",
+            first,
+            "--last",
+            os.path.join(d, "good.hdf5"),
+            "--fixture",
+            os.path.join(d, "fixture.json"),
+            "--params",
+            params,
+            "--startup-log",
+            os.path.join(d, "none.log"),
             "--counters",
             counters,
         ],
@@ -434,35 +454,44 @@ def _write(d, name, content, text=False):
     return p
 
 
-def refusal_cases(work):
-    d = os.path.join(work, "refusal")
+def stale_key_cases(work):
+    d = os.path.join(work, "stale_key")
     os.makedirs(d, exist_ok=True)
-    msg = (
-        "[0000.1] cooling_io.h:cooling_read():95: GEARFeedback:ISRF_H2_line_absorption: 1 is not "
-        "supported: the geajay library shields the transported LW rate\n"
+    line = (
+        "[0000.1] cooling.c:cooling_init():799: h2_transported_lw_rate_shielding = {}\n"
     )
-    ok = _write(d, "refused.log", msg, text=True)
-    plain = _write(d, "ran.log", "main: done. Bye.\n", text=True)
-    word = _write(
-        d, "word.log", "note: ISRF_H2_line_absorption: 1 is not supported\n", text=True
-    )
+    ignored = _write(d, "ignored.log", line.format(1), text=True)
+    honoured = _write(d, "honoured.log", line.format(0), text=True)
+    silent = _write(d, "silent.log", "main: done. Bye.\n", text=True)
     record(
-        "N3 refused: exit 1 and the text",
+        "N3 stale key ignored: starts, library reports 1",
         0,
-        ["refusal", "--log", ok, "--exit-status", "1"],
-        "refusal text",
+        ["stale_key", "--log", ignored, "--exit-status", "0"],
+        "library reports",
     )
     record(
-        "N3 not refused: exit 0, no text",
+        "N3 stale key honoured: library reports 0",
         1,
-        ["refusal", "--log", plain, "--exit-status", "0"],
-        "FAIL",
+        ["stale_key", "--log", honoured, "--exit-status", "0"],
+        "library reports",
     )
     record(
-        "N3 text only in a comment line (not error())",
+        "N3 run stopped at start-up",
         1,
-        ["refusal", "--log", word, "--exit-status", "1"],
-        "refusal text",
+        ["stale_key", "--log", ignored, "--exit-status", "1"],
+        "cleanly",
+    )
+    record(
+        "N3 no library line in the log",
+        1,
+        ["stale_key", "--log", silent, "--exit-status", "0"],
+        "library reports",
+    )
+    record(
+        "N3 log missing",
+        2,
+        ["stale_key", "--log", os.path.join(d, "none.log"), "--exit-status", "0"],
+        "missing",
     )
 
 
@@ -876,7 +905,11 @@ def pi_l_case():
 
 
 def main(work):
+    global START_UP_LOG
     os.makedirs(work, exist_ok=True)
+    START_UP_LOG = _write(
+        work, "start_up.log", "h2_transported_lw_rate_shielding = 1\n", text=True
+    )
     anchor_ok = (
         abs(float(gate.shielding(0, 100, 100)) - 0.99997) < 2e-5
         and abs(float(gate.log_slope(1e18, 100, 100)) - 0.52) < 0.005
@@ -895,7 +928,7 @@ def main(work):
         )
     )
     d, data = starlit_cases(work)
-    refusal_cases(work)
+    stale_key_cases(work)
     parity_cases(work, d, data)
     twosource_cases(work)
     falsifier_cases(work)

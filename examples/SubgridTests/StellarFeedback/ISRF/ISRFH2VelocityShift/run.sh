@@ -6,7 +6,7 @@ scripts_location="../../../../GEAR_ICs_and_SCRIPTS"
 # swift's exit status is piped into tee: without pipefail a refused or crashed run looks complete.
 set -eo pipefail
 
-leg=${leg:="main"}   # main, switch_off, refused
+leg=${leg:="main"}   # main, switch_off, stale_key
 n_threads=${n_threads:=8}   # Number of threads
 ranks=${ranks:=1}   # MPI ranks, 2 needs an MPI build named swift_mpi
 level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
@@ -17,11 +17,13 @@ run_name=${run_name:=$leg}
 ic_file=ICs_isrf_h2_velocity_shift.hdf5
 params=params.yml
 extra_ic_args="${widths:+--widths $widths}"
+extra_swift_args=""
+stale_key_arg=""
 
 case "$leg" in
-    main) switch=1 ; key=background_only ;;
-    switch_off) switch=0 ; key=shielded_sum ;;   # the line fields are not written: the check must refuse the run
-    refused) switch=1 ; key=shielded_sum ;;      # start-up must refuse this combination
+    main) switch=1 ;;
+    switch_off) switch=0 ;;   # the line fields are not written: the check must refuse the run
+    stale_key) switch=1 ; stale_key_arg="-P GeajayCooling:h2_transported_lw_rate_shielding:shielded_sum" ; extra_swift_args="-n 1" ;;   # the removed key must be ignored
     *) echo "Unknown leg '$leg'." ; exit 1 ;;
 esac
 
@@ -45,18 +47,18 @@ mkdir snap
 swift_exe=../../../../../swift
 [ "$ranks" -gt 1 ] && launcher="mpirun -np $ranks" && swift_exe=../../../../../swift_mpi || launcher=""
 
-# Parameter overrides: the switch and the library key of the leg.
+# Parameter overrides: the switch of the leg, and for stale_key the removed library key.
 set +e
 $launcher $swift_exe --hydro --stars --external-gravity --feedback --cooling \
     --sync --limiter --verbose=0 --threads=$n_threads \
     -P GEARFeedback:ISRF_H2_line_absorption:$switch \
-    -P GeajayCooling:h2_transported_lw_rate_shielding:$key \
-    $params 2>&1 | tee output.log
+    $stale_key_arg \
+    $extra_swift_args $params 2>&1 | tee output.log
 swift_status=${PIPESTATUS[0]}
 set -e
 
-if [ "$leg" = "refused" ]; then
-    python3 ../ISRFH2StarLit/checkH2Attenuation.py refusal --log output.log --exit-status $swift_status
+if [ "$leg" = "stale_key" ]; then
+    python3 ../ISRFH2StarLit/checkH2Attenuation.py stale_key --log output.log --exit-status $swift_status
     exit $?
 fi
 [ $swift_status -eq 0 ] || { echo "swift stopped with status $swift_status"; exit $swift_status; }
@@ -67,4 +69,4 @@ mv snap "$run_name"/
 python3 ../ISRFH2StarLit/checkH2Attenuation.py velocity \
     --first "$run_name"/snap/snapshot_0000.hdf5 \
     --last "$(ls "$run_name"/snap/snapshot_*.hdf5 | tail -n 1)" \
-    --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --mode ${gate_mode:=a}
+    --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --startup-log "$run_name"/output.log
