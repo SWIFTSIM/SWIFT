@@ -196,23 +196,42 @@ static void test_kernel_sum(void) {
   assert(fabs(sum_wall - sum_in) < 1e-5 * sum_in);
 }
 
-/* The image pressure continues the hydrostatic profile, down to zero. */
+/* The image pressure and density continue the hydrostatic profile, down to
+ * zero pressure. */
 static void test_hydrostatic(void) {
 #ifdef REMIX_SPH
   struct part p;
+
+  /* Floor: g = -10, image 0.02 below the particle, c = 10. In hydrostatic
+   * balance the density gradient is rho g / c^2 = -100 on both sides. */
+  bzero(&p, sizeof(struct part));
+  p.rho = p.rho_evol = 1000.f;
+  p.force.pressure = 100.f;
+  p.force.soundspeed = 10.f;
+  p.drho_norm_kernel[2] = -100.f;
+  hydro_mirror_part(&p, 2, -10.f, -0.02f);
+  assert(fabsf(p.force.pressure - 300.f) < 1e-3f);
+  assert(fabsf(p.rho_evol - 1002.f) < 1e-3f);
+  assert(fabsf(p.rho - 1002.f) < 1e-3f);
+  assert(fabsf(p.drho_norm_kernel[2] + 100.f) < 1e-3f);
+
+  /* Ceiling: image 0.02 above. Pressure 100 would go negative: clipped at
+   * zero, density lowered to match, gradient plainly reflected. */
+  bzero(&p, sizeof(struct part));
+  p.rho = p.rho_evol = 1000.f;
+  p.force.pressure = 100.f;
+  p.force.soundspeed = 10.f;
+  p.drho_norm_kernel[2] = -100.f;
+  hydro_mirror_part(&p, 2, -10.f, 0.02f);
+  assert(p.force.pressure == 0.f);
+  assert(fabsf(p.rho_evol - 999.f) < 1e-3f);
+  assert(fabsf(p.drho_norm_kernel[2] - 100.f) < 1e-3f);
+
+  /* Before the first density ghost (no sound speed) the density is left */
   bzero(&p, sizeof(struct part));
   p.rho_evol = 1000.f;
-  p.force.pressure = 100.f;
-
-  /* Floor: g = -10, image 0.02 below the particle */
-  hydro_mirror_part(&p, 2, -10.f * -0.02f);
-  assert(fabsf(p.force.pressure - 300.f) < 1e-3f);
-
-  /* Ceiling: image 0.02 above. First back to 100, then clipped at zero */
-  hydro_mirror_part(&p, 2, -10.f * 0.02f);
-  assert(fabsf(p.force.pressure - 100.f) < 1e-3f);
-  hydro_mirror_part(&p, 2, -10.f * 0.02f);
-  assert(p.force.pressure == 0.f);
+  hydro_mirror_part(&p, 2, -10.f, -0.02f);
+  assert(p.rho_evol == 1000.f);
 #endif
 }
 

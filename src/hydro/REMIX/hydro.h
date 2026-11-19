@@ -988,11 +988,11 @@ __attribute__((always_inline)) INLINE static void hydro_remove_part(
  *
  * @param p The particle.
  * @param k The axis normal to the wall.
- * @param g_dx The external acceleration along the axis times the distance
- * from the particle to its image, for the hydrostatic pressure of the image.
+ * @param a The external acceleration along the axis.
+ * @param dx The distance from the particle to its image along the axis.
  */
 __attribute__((always_inline)) INLINE static void hydro_mirror_part(
-    struct part *p, const int k, const float g_dx) {
+    struct part *p, const int k, const float a, const float dx) {
 
   p->du_norm_kernel[k] = -p->du_norm_kernel[k];
   p->drho_norm_kernel[k] = -p->drho_norm_kernel[k];
@@ -1010,11 +1010,30 @@ __attribute__((always_inline)) INLINE static void hydro_mirror_part(
     p->force.grad_B[k][i] = -p->force.grad_B[k][i];
   }
 
-  /* Continue the hydrostatic pressure profile through the wall. Above a
-   * ceiling this lowers the pressure: stop at zero so the image does not
-   * pull the fluid up. */
-  const float P = p->force.pressure + p->rho_evol * g_dx;
-  p->force.pressure = (P >= 0.f) ? P : min(p->force.pressure, 0.f);
+  /* Continue the hydrostatic profile through the wall: the image takes the
+   * pressure, and the matching density, the fluid would have at its depth.
+   * Above a ceiling this lowers the pressure: stop at zero so the image does
+   * not pull the fluid up. */
+  const float P_old = p->force.pressure;
+  const float P = P_old + p->rho_evol * a * dx;
+  const float c2 = p->force.soundspeed * p->force.soundspeed;
+  if (P >= 0.f) {
+    p->force.pressure = P;
+
+    /* The hydrostatic part of the density gradient, rho a / c^2, runs on
+     * through the wall: undo its reflection above, so that the density
+     * diffusion sees one continuous profile. */
+    if (c2 > 0.f) p->drho_norm_kernel[k] += 2.f * p->rho_evol * a / c2;
+  } else {
+    p->force.pressure = min(P_old, 0.f);
+  }
+
+  /* No sound speed before the first density ghost: leave the density. */
+  if (c2 > 0.f) {
+    const float drho = (p->force.pressure - P_old) / c2;
+    p->rho += drho;
+    p->rho_evol += drho;
+  }
 }
 
 #endif /* SWIFT_REMIX_HYDRO_H */
