@@ -39,7 +39,7 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-        testLog testDistance testTimeline  # testMatrixInversion
+        testLog testDistance testTimeline testBoxWrapCellIndex  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -53,7 +53,7 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testUtilities testSelectOutput testCbrt testCosmologyAccuracy testOutputList \
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
-		 testNeutrinoCosmology \
+		 testNeutrinoCosmology testBoxWrapCellIndex \
 		 testNeutrinoFermiDirac testLog testTimeline
 
 # Rebuild tests when SWIFT is updated.
@@ -79,6 +79,8 @@ testRandomCone_SOURCES = testRandomCone.c
 testReading_SOURCES = testReading.c
 
 testSelectOutput_SOURCES = testSelectOutput.c
+
+testBoxWrapCellIndex_SOURCES = testBoxWrapCellIndex.c
 
 testCosmologyAccuracy_SOURCES = testCosmologyAccuracy.c
 

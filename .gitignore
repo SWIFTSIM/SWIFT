@@ -199,6 +199,7 @@ tests/testUtilities
 tests/testCosmologyAccuracy
 tests/testOutputList
 tests/testCbrt
+tests/testBoxWrapCellIndex
 tests/testFormat.sh
 tests/testCooling
 tests/testComovingCooling
