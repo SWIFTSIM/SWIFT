@@ -76,9 +76,16 @@ The quantitative rate check needs a SEPARATE, much finer-cadence pair (see
 0` requires this): `delta_time`/`dt_max` orders of magnitude below the
 sign/magnitude pair's, and a correspondingly short `time_end`.
 ```
-with_pe_heating=1 run_name=rate_on  time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
-with_pe_heating=0 run_name=rate_off time_end=2e-9 dt_max=1e-10 delta_time=1e-9 ./run.sh
+list="-P Snapshots:output_list_on:1 -P Snapshots:output_list:rate_output_list.txt"
+with_pe_heating=1 run_name=rate_on  time_end=4e-9 dt_max=6e-10 extra_args="$list" ./run.sh
+with_pe_heating=0 run_name=rate_off time_end=4e-9 dt_max=6e-10 extra_args="$list" ./run.sh
 ```
+`rate_output_list.txt` opens the measuring window one step after the field
+first reaches the gas, so that the two runs start the window with the same
+energy. Its times hold for these `time_end` and `dt_max` values only.
+`fixed_rate` heats without the field, from the second step, so it uses
+`rate_output_list_fixed_rate.txt`, which opens the window one step after
+that heating starts.
 The ISRF also adds a small dust cooling, so the reference run should carry
 the ISRF too. With geajay, run the reference as `with_pe_heating=1
 pe_model=none`, so that both runs carry the same ISRF, and the difference is
@@ -114,5 +121,20 @@ non-negligible field, subtracts the reference run from the heating run to
 isolate the photoelectric contribution, and compares the median with the
 model formula. The bar is a bound set by the window; the script's
 docstring gives it. The check fails if the heating is too small to resolve.
+
+Pass `--steps-per-window 1` and `--cooling-response <Lambda' dt>` (from a
+one-zone call of the cooling library at the reference state) to judge with
+the bar derived from the mechanism: the response of the cooling to the
+heating, plus a bound on the float32 rounding of the internal energy. The
+check prints this bar and the older assumed bar. The derived bar is wider
+than the older one for the Wolfire model because the older bar's premises
+fail. It allows a cooling response of 0.5 P, with P the heating over the
+window divided by u. That assumes the window opens with no lead and that the
+cooling response over the window is at most P. With 16 steps of 6.25e-11 per
+window the response is 1.12 P for Wolfire. With one step per window the
+window opens with a lead of 1.5 steps, so the response is about 2 Lambda' dt
+(Wolfire: 8.5e-4 against 0.5 P = 3.8e-4). For `fixed_rate` the heating per step is so small
+that the rounding bound is about 4 per cent, so that leg cannot detect an
+error of a few tenths of a per cent.
 Skipped, not failed, if `--rate-on-snapshot`/`--rate-off-snapshot` are not
 given.

@@ -108,7 +108,28 @@ The fix is cadence, not a different formula: at `delta_time=1e-9`,
 measurement gives `T` still within a few K of the 1000 K initial
 condition, `Gamma_PE*dt/u` of order 4e-3 (median, 39 illuminated
 sub-cutoff particles) and `G0` unchanged between the two snapshots to
-float32 precision -- a genuinely linear, cadence-converged regime. This
+float32 precision -- a genuinely linear, cadence-converged regime.
+
+The window must also open when the field arrives. The field is first stored
+at the end of step 3, and the cooling uses it from step 4. A window that
+opens later starts with the heating run ahead of the reference by the
+heating of the steps before it, and the cooling of the heating run responds
+to that lead. A snapshot's ``u`` also carries half a step of the rate in
+force, which the snapshot at the arrival step does not yet carry, so the
+window opens one step after the field first appears. The pair for the rate
+check uses ``time_end=4e-9`` and ``dt_max=6e-10`` (steps of 5e-10) and
+``rate_output_list.txt``: a snapshot before the field arrives (for the
+precondition), one a step after its arrival and one a step later (``N = 1``
+step per window). Fewer, longer steps make the rounding of ``u`` small
+against the heating of a step. The check measures the lead ``L``, the energy
+difference of the two runs at the window start in units of the window's
+heating, and fails if ``|L|`` is above ``--lead-tol``. A correct window reads
+``1.5 / N``, a window one step late ``2.5 / N``; the harness sets
+``--lead-tol`` to ``2 / N`` (default 2, for ``N = 1``). The heating of
+``geajay-fixed-rate`` does not wait for the field: it starts in step 2.
+``rate_output_list_fixed_rate.txt`` opens its window at the second snapshot,
+one step after that start, and the check selects its particles with the
+field at the window end. This
 is a SEPARATE run pair from Tier 1's equilibrium `heating_on`/
 `heating_off` (`--rate-on-snapshot`/`--rate-off-snapshot`; Tier 2 is
 skipped, not failed, when these are not given -- see README), since
@@ -130,23 +151,43 @@ says which reference run is used:
   Grackle it can be a ``wolfire1995`` run on neutral gas, whose heating is
   negligible. Both runs carry the same terms and none is subtracted.
 * ``off`` (default for the Grackle models): the ISRF-off run. It lacks those
-  terms, so the reference subtracts the Wolfire et al. (1995) Eq. 9 grain
-  recombination cooling. The small dust cooling is not modelled: it is
-  1.08e-3 of the heating at G0 = 520 in a one-zone call of the Grackle
-  library, so this choice cannot pass a bar of that size.
+  terms, so the reference subtracts them: the Wolfire et al. (1995) Eq. 9
+  grain recombination cooling and the gas-grain energy transfer of
+  Hollenbach & McKee (1989) Eq. 2.15, with the snapshot's
+  ``DustTemperature``. Both scale with ``Z'`` as the heating does.
 
-The electron density of the models that read it is the snapshot's ``e``
-field.
+The reference is the mean of the formula at the start and the end states of
+the heating run, because the measurement is a mean over the window. The
+electron density of the models that read it is the snapshot's ``e`` field.
+The temperature is the library's: the mean molecular weight counts the
+electrons, H-, H2 and the metals (atomic weight 16).
 
 Pass bar
 --------
-The bar is a judgment bound, not a derived error. It has the form
+Without the options below, the bar is a judgment bound, not a derived
+error. It has the form
 
     bar = 0.5 * P + 4 * 2^-24 / P + ``--rate-extra-tol``
 
 with ``P`` the median ``Gamma_PE * dt / u`` of the window. The first term
 allows for the response of the cooling to the higher energy of the heating
-run; the coefficient 0.5 is assumed, not derived. The second term assumes
+run. The energy difference of the two runs grows from ``L R dt`` to
+``(L + 1) R dt`` over the window, with ``R`` the reference rate, so the
+measurement is ``R - Lambda' <delta u>`` and its relative error is
+``Lambda' dt (L + 1/2)``, with ``Lambda'`` the derivative of the net cooling
+rate with respect to ``u``. The term ``0.5 * P`` assumes ``L = 0`` and
+``Lambda' dt <= P``. With ``--cooling-response`` (``Lambda' dt``, from a
+one-zone call of the cooling library at the reference state) and
+``--steps-per-window`` (``N``), the check judges with the derived bar
+
+    bar = Lambda' dt (|L| + 1/2) + (2 N + 2) s / P + ``--rate-extra-tol``
+
+and prints both bars. The measured ``L`` exceeds the true lead by
+``1 / (2N)``, and the half step that each snapshot carries adds the same
+amount to the response, so the first term is the response itself. The second
+term bounds the rounding: each run rounds ``u`` at two half kicks per step
+and at the two stored snapshots, each by half the float spacing ``s`` of
+``u`` (relative). The second term of the assumed bar assumes
 the rounding of four float32 energies, each 2^-24 of ``u``. SPHENIX holds
 ``u`` in float32 and updates it at every step, so the real rounding is larger
 and grows with the number of steps in the window; a run with ten steps per
@@ -155,8 +196,8 @@ geajay models stay at about 0.1 per cent while ``P`` changes by a factor 8,
 which neither term describes. ``--rate-extra-tol`` (default 0) is for terms
 the reference does not model. The bar was written before the runs it judges
 and is not changed after them. The check also needs a finite measurement, a
-bar below 0.5, ``P`` above 0 and below ``--perturbation-tol``, and identical
-on/off starts.
+bar below 0.5, ``P`` above 0 and below ``--perturbation-tol``, identical
+on/off starts and a lead ``|L|`` below ``--lead-tol``.
 
 ``--reference-scale`` and ``--inject-nan`` are positive controls: a scaled
 reference, a reference of another model and a NaN in a measured value must
@@ -192,6 +233,17 @@ RADIATION_GRACKLE_SOLAR_METAL_FRACTION = 0.01295
 GRACKLE_GAMMA_HA_CGS = 1.0e-24  # erg/s
 GRACKLE_EPSILON = 0.05
 
+# Wolfire et al. (1995) Eq. 2, the grain charge parameter scale of its first term
+WOLFIRE_PSI_SCALE = 1925.0
+
+# Hollenbach & McKee (1989, ApJ 342, 306) Eq. 2.15: gas-grain energy transfer
+# 1.2e-31 n_H^2 (T/1000 K)^(1/2) (100 A/a_min)^(1/2) [1 - 0.8 exp(-75 K/T)]
+# (T - T_dust) erg cm^-3 s^-1, with a_min = 100 A, for the solar dust-to-gas ratio
+HM89_GAS_GRAIN_CGS = 1.2e-31
+
+# Atomic weight of the metals in the library's mean molecular weight
+METAL_ATOMIC_WEIGHT = 16.0
+
 # Neither run is expected to sustain a temperature above this: known
 # photoelectric-/collisional-ionization-equilibrium temperatures for
 # irradiated atomic gas top out around 1e4-1e5 K (Lyman-alpha and
@@ -215,6 +267,8 @@ PE_MODELS = (
     "geajay-density-epsilon",
 )
 GEAJAY_FIXED_RATE_CGS = 8.5e-26  # erg/s per H atom at the reference dust-to-gas ratio
+# Heating models that do not read the field, so their heating starts before it arrives
+FIELD_INDEPENDENT_MODELS = ("geajay-fixed-rate",)
 FLOAT32_EPS = 2.0**-24  # relative spacing of the snapshot floats, half ulp
 RESOLVABLE_BAR_MAX = 0.5  # a bar this large cannot tell a model from its absence
 
@@ -307,6 +361,30 @@ def parse_options():
         "(default: %(default)s).",
     )
     parser.add_argument(
+        "--lead-tol",
+        type=float,
+        default=2.0,
+        help="Max median lead of the heating run at the window start, in units "
+        "of the window's heating; 2 / N for N steps per window (see docstring) "
+        "(default: %(default)s, for N = 1).",
+    )
+    parser.add_argument(
+        "--cooling-response",
+        type=float,
+        default=None,
+        help="Lambda' dt, the derivative of the net cooling rate with respect "
+        "to u times the window, from a one-zone call of the cooling library "
+        "at the reference state. With --steps-per-window, the check judges "
+        "with the derived bar (see docstring) (default: not given).",
+    )
+    parser.add_argument(
+        "--steps-per-window",
+        type=int,
+        default=None,
+        help="Number of time steps in the window, for the rounding term of the "
+        "derived bar (default: not given).",
+    )
+    parser.add_argument(
         "--hydrogen-fraction",
         type=float,
         default=0.76,
@@ -344,7 +422,9 @@ def load_snapshot(path):
         gas = f["/PartType0"]
         ids = gas["ParticleIDs"][:]
         pos = gas["Coordinates"][:, :]
-        u = gas["InternalEnergies"][:] * u_to_cgs
+        u_stored = gas["InternalEnergies"][:]
+        u = u_stored * u_to_cgs
+        u_spacing = np.spacing(u_stored).astype(np.float64) / u_stored
         # Raw (internal-unit) values, used only for the Tier 1 radial-bin
         # threshold; the Tier 2 rate check uses the cgs versions below.
         u_pe = gas["PESpecificEnergies"][:]
@@ -361,19 +441,19 @@ def load_snapshot(path):
         else:
             metallicity = metals
 
-        # Species-based mean molecular weight when available
+        # The library's mean molecular weight when the species are available
         # (COOLING_GRACKLE_MODE >= 1); otherwise fall back to the
         # primordial-neutral value (X=0.76, Y=0.24, 1/mu = X + Y/4).
         if "HI" in gas:
             inv_mu = (
-                gas["HI"][:]
-                + 2.0 * gas["HII"][:]
-                + 0.25 * gas["HeI"][:]
-                + 0.5 * gas["HeII"][:]
-                + 0.75 * gas["HeIII"][:]
+                gas["HI"][:].astype(np.float64)
+                + gas["HII"][:]
+                + 0.25 * (gas["HeI"][:] + gas["HeII"][:] + gas["HeIII"][:])
+                + metallicity / METAL_ATOMIC_WEIGHT
             )
-            if "H2I" in gas:
-                inv_mu = inv_mu + 0.5 * gas["H2I"][:]
+            for name, weight in (("e", 1.0), ("HM", 1.0), ("H2I", 0.5), ("H2II", 0.5)):
+                if name in gas:
+                    inv_mu = inv_mu + weight * gas[name][:]
             mu = 1.0 / np.clip(inv_mu, 1e-10, None)
         else:
             mu = np.full(pos.shape[0], 1.0 / 0.82)
@@ -394,6 +474,11 @@ def load_snapshot(path):
             hydrogen_density_cgs = None
 
         temperature = u * GAMMA_M1 * mu * M_P_CGS / K_B_CGS
+        dust_temperature = (
+            gas["DustTemperature"][:].astype(np.float64)
+            if "DustTemperature" in gas
+            else None
+        )
 
         star = f["/PartType4"]
         star_pos = star["Coordinates"][0, :]
@@ -405,6 +490,7 @@ def load_snapshot(path):
         ids=ids,
         pos=pos,
         u=u,
+        u_spacing=u_spacing,
         u_pe=u_pe,
         u_lw=u_lw,
         u_pe_cgs=u_pe_cgs,
@@ -412,6 +498,7 @@ def load_snapshot(path):
         density_cgs=density_cgs,
         metallicity=metallicity,
         temperature=temperature,
+        dust_temperature=dust_temperature,
         electron_density_cgs=electron_density_cgs,
         hydrogen_density_cgs=hydrogen_density_cgs,
         star_pos=star_pos,
@@ -444,13 +531,70 @@ def align_by_id(a: Dict[str, np.ndarray], b: Dict[str, np.ndarray]) -> None:
         raise RuntimeError("Snapshots do not contain the same particle set")
 
 
+def grain_recombination_cooling(
+    temperature: np.ndarray,
+    g0: np.ndarray,
+    n_e: np.ndarray,
+    n_h: np.ndarray,
+    z_prime: np.ndarray,
+) -> np.ndarray:
+    """Compute the Wolfire et al. (1995) Eq. 9 grain recombination cooling.
+
+    Parameters
+    ----------
+    temperature, g0, n_e, n_h, z_prime : numpy.ndarray
+        Gas temperature (K), field (Habing), electron and hydrogen number
+        densities (cm^-3) and metallicity over the solar value.
+
+    Returns
+    -------
+    numpy.ndarray
+        Cooling rate per volume in erg cm^-3 s^-1, zero where ``n_e`` is zero.
+    """
+    with np.errstate(divide="ignore", invalid="ignore"):
+        x = g0 * np.sqrt(temperature) / n_e
+        beta = 0.74 / temperature**0.068
+        cooling = 4.65e-30 * temperature**0.94 * x**beta * n_e * n_h * z_prime
+    return np.where(n_e > 0.0, cooling, 0.0)
+
+
+def gas_grain_cooling(
+    temperature: np.ndarray,
+    dust_temperature: np.ndarray,
+    n_h: np.ndarray,
+    z_prime: np.ndarray,
+) -> np.ndarray:
+    """Compute the Hollenbach & McKee (1989) Eq. 2.15 gas-grain energy transfer.
+
+    Parameters
+    ----------
+    temperature, dust_temperature : numpy.ndarray
+        Gas and dust temperatures (K).
+    n_h, z_prime : numpy.ndarray
+        Hydrogen number density (cm^-3) and metallicity over the solar value.
+
+    Returns
+    -------
+    numpy.ndarray
+        Cooling rate of the gas per volume in erg cm^-3 s^-1.
+    """
+    return (
+        HM89_GAS_GRAIN_CGS
+        * n_h**2
+        * np.sqrt(temperature / 1.0e3)
+        * (1.0 - 0.8 * np.exp(-75.0 / temperature))
+        * (temperature - dust_temperature)
+        * z_prime
+    )
+
+
 def pe_rate_over_rho_predicted(
     model: str,
     snapshot: Dict[str, np.ndarray],
     selected: np.ndarray,
     hydrogen_fraction: float,
-    subtract_recombination: bool,
-) -> Tuple[np.ndarray, np.ndarray]:
+    subtract_dust_cooling: bool,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute the reference photoelectric heating per unit mass of one model.
 
     Each model uses only its own published formula, with the gas state and
@@ -466,17 +610,24 @@ def pe_rate_over_rho_predicted(
         Boolean mask of the particles to evaluate.
     hydrogen_fraction : float
         GrackleCooling:HydrogenFractionByMass (Grackle models only).
-    subtract_recombination : bool
-        Whether to return the Wolfire et al. (1995) Eq. 9 recombination
-        cooling (a reference run with the ISRF off).
+    subtract_dust_cooling : bool
+        Whether to return the dust cooling terms that the ISRF switches on
+        (a reference run with the ISRF off).
 
     Returns
     -------
     tuple of numpy.ndarray
-        ``(Gamma_PE / rho, Lambda_rec / rho)`` in erg g^-1 s^-1. The second
-        entry is the Wolfire et al. (1995) Eq. 9 grain recombination cooling
-        when ``subtract_recombination`` is set and the snapshot has
-        electrons; otherwise it is zero.
+        ``(Gamma_PE / rho, Lambda_rec / rho, Lambda_gg / rho)`` in
+        erg g^-1 s^-1: the heating, the Wolfire et al. (1995) Eq. 9 grain
+        recombination cooling and the Hollenbach & McKee (1989) Eq. 2.15
+        gas-grain cooling. The two cooling terms are zero unless
+        ``subtract_dust_cooling`` is set; the recombination is also zero
+        without electrons in the snapshot.
+
+    Raises
+    ------
+    RuntimeError
+        If a needed field is missing from the snapshot.
     """
     rho = snapshot["density_cgs"][selected]
     z = snapshot["metallicity"][selected]
@@ -501,7 +652,6 @@ def pe_rate_over_rho_predicted(
             )
         n_e = snapshot["electron_density_cgs"][selected]
 
-    recombination = np.zeros_like(rho)
     if model in ("grackle-constant", "geajay-constant-efficiency"):
         heating = GRACKLE_GAMMA_HA_CGS * GRACKLE_EPSILON * g0 * n_h * z_prime
     elif model == "geajay-fixed-rate":
@@ -512,31 +662,36 @@ def pe_rate_over_rho_predicted(
     elif model in ("grackle-wolfire1995", "geajay-grain-charge"):
         with np.errstate(divide="ignore", invalid="ignore"):
             x = g0 * np.sqrt(temperature) / n_e
-            epsilon = 4.9e-2 / (1.0 + (x / 1925.0) ** 0.73) + (
+            epsilon = 4.9e-2 / (1.0 + (x / WOLFIRE_PSI_SCALE) ** 0.73) + (
                 3.7e-2 * (temperature / 1.0e4) ** 0.7 / (1.0 + x / 5000.0)
             )
         epsilon = np.where(n_e > 0.0, epsilon, 0.0)
         heating = GRACKLE_GAMMA_HA_CGS * epsilon * g0 * n_h * z_prime
     else:
         raise ValueError(f"unknown PE model {model!r}")
-    # Without a species network (grackle_0) the electron density is internal
-    # to the library, so the recombination cooling is not modelled.
-    has_electrons = snapshot["electron_density_cgs"] is not None
-    if subtract_recombination and has_electrons:
-        with np.errstate(divide="ignore", invalid="ignore"):
-            x = g0 * np.sqrt(temperature) / snapshot["electron_density_cgs"][selected]
-            beta = 0.74 / temperature**0.068
-            recombination = (
-                4.65e-30
-                * temperature**0.94
-                * x**beta
-                * snapshot["electron_density_cgs"][selected]
-                * n_h
-                * z_prime
+
+    recombination = np.zeros_like(rho)
+    gas_grain = np.zeros_like(rho)
+    if subtract_dust_cooling:
+        # Without a species network (grackle_0) the electron density is
+        # internal to the library, so the recombination cooling is not modelled.
+        if snapshot["electron_density_cgs"] is not None:
+            recombination = grain_recombination_cooling(
+                temperature,
+                g0,
+                snapshot["electron_density_cgs"][selected],
+                n_h,
+                z_prime,
             )
-        n_e_all = snapshot["electron_density_cgs"][selected]
-        recombination = np.where(n_e_all > 0.0, recombination, 0.0)
-    return heating / rho, recombination / rho
+        if snapshot["dust_temperature"] is None:
+            raise RuntimeError(
+                "a reference run with the ISRF off needs the gas-grain cooling: "
+                "the snapshot has no 'DustTemperature' field"
+            )
+        gas_grain = gas_grain_cooling(
+            temperature, snapshot["dust_temperature"][selected], n_h, z_prime
+        )
+    return heating / rho, recombination / rho, gas_grain / rho
 
 
 def check_gate(name: str, value: float, bad: bool, message: str) -> Optional[str]:
@@ -764,6 +919,10 @@ def main():
                 if np.nanmax(g0) > 0.0:
                     start_index = index
                     break
+            # Heating that does not depend on the field starts before it;
+            # snapshot 0 precedes that heating and opens the precondition.
+            if opt.pe_model in FIELD_INDEPENDENT_MODELS and len(on_snaps) > 2:
+                start_index = 1
             on1 = off1 = None
             if start_index is None:
                 rate_failures.append(
@@ -812,11 +971,23 @@ def main():
                 * (on0["u_pe_cgs"] + on0["u_lw_cgs"])
                 / RADIATION_HABING_FLUX_CGS
             )
+            # A field-independent model's window can open before the field
+            # arrives; its particles are those the field reaches by the end.
+            g0_select = g0_0
+            if opt.pe_model in FIELD_INDEPENDENT_MODELS and on1 is not None:
+                g0_select = (
+                    C_LIGHT_CGS
+                    * on1["density_cgs"]
+                    * (on1["u_pe_cgs"] + on1["u_lw_cgs"])
+                    / RADIATION_HABING_FLUX_CGS
+                )
 
             # Illuminated, sub-cutoff particles only: same field-threshold
             # convention as the Tier 1 bins, applied per particle, plus
             # the igammah=2 temperature cutoff.
-            illuminated_particles = g0_0 > opt.field_threshold * np.nanmax(g0_0)
+            illuminated_particles = g0_select > opt.field_threshold * np.nanmax(
+                g0_select
+            )
             below_cutoff = on0["temperature"] < GAMMAH_TEMPERATURE_CEILING_K
             selected = illuminated_particles & below_cutoff
             n_selected = int(selected.sum())
@@ -840,28 +1011,35 @@ def main():
                     * (on1["u_pe_cgs"] + on1["u_lw_cgs"])
                     / RADIATION_HABING_FLUX_CGS
                 )
-                g0_drift = np.abs(g0_1[selected] - g0_0[selected]) / g0_0[selected]
-                median_g0_drift = float(np.median(g0_drift))
-                print(
-                    f"G0 drift over the window (truncation-error "
-                    f"diagnostic), median {median_g0_drift:.4g}, 16th to "
-                    f"84th percentile {np.percentile(g0_drift, 16):.4g} to "
-                    f"{np.percentile(g0_drift, 84):.4g}"
-                )
+                if np.all(g0_0[selected] > 0.0):
+                    g0_drift = np.abs(g0_1[selected] - g0_0[selected]) / g0_0[selected]
+                    print(
+                        f"G0 drift over the window (truncation-error "
+                        f"diagnostic), median {np.median(g0_drift):.4g}, 16th "
+                        f"to 84th percentile {np.percentile(g0_drift, 16):.4g} "
+                        f"to {np.percentile(g0_drift, 84):.4g}"
+                    )
 
-                heating, recombination = pe_rate_over_rho_predicted(
-                    opt.pe_model,
-                    on0,
-                    selected,
-                    opt.hydrogen_fraction,
-                    reference_field == "off",
+                terms = [
+                    pe_rate_over_rho_predicted(
+                        opt.pe_model,
+                        snapshot,
+                        selected,
+                        opt.hydrogen_fraction,
+                        reference_field == "off",
+                    )
+                    for snapshot in (on0, on1)
+                ]
+                heating, recombination, gas_grain = (
+                    0.5 * (start + end) for start, end in zip(*terms)
                 )
-                predicted_unscaled = heating - recombination
+                predicted_unscaled = heating - recombination - gas_grain
                 predicted = predicted_unscaled * opt.reference_scale
                 print(
-                    f"Model {opt.pe_model}: heating median "
-                    f"{np.median(heating):.4e}, recombination cooling median "
-                    f"{np.median(recombination):.4e} erg/g/s"
+                    f"Model {opt.pe_model}, mean of the window's start and end "
+                    f"states: heating median {np.median(heating):.4e}, "
+                    f"recombination cooling median {np.median(recombination):.4e}, "
+                    f"gas-grain cooling median {np.median(gas_grain):.4e} erg/g/s"
                 )
 
                 # Hard precondition, not a precision knob: the on/off
@@ -903,16 +1081,60 @@ def main():
                         measured[0] = np.nan
                     relative_error = np.abs(measured - predicted) / np.abs(predicted)
                     median_relative_error = float(np.median(relative_error))
-                    # Bar from the mechanism: the forward difference of a
-                    # rate that is constant over the window has a truncation
-                    # error of at most half the perturbation; the snapshot
-                    # floats limit each of the four stored energies to
-                    # FLOAT32_EPS of u, against a signal of perturbation * u.
-                    bar = (
-                        0.5 * median_perturbation
-                        + 4.0 * FLOAT32_EPS / median_perturbation
-                        + opt.rate_extra_tol
+
+                    lead = float(
+                        np.median(
+                            (on0["u"][selected] - off0["u"][selected])
+                            / (predicted_unscaled * dt)
+                        )
                     )
+                    print(
+                        f"Lead of the heating run at the window start, in "
+                        f"windows of heating: median {lead:.4g} (bar "
+                        f"{opt.lead_tol:.4g})"
+                    )
+                    message = check_gate(
+                        "lead",
+                        lead,
+                        abs(lead) > opt.lead_tol,
+                        f"lead {lead:.4g} above {opt.lead_tol:.4g}: the window "
+                        "opens after the field arrived, so the cooling responds "
+                        "to the heating of the earlier steps",
+                    )
+                    if message is not None:
+                        rate_failures.append(message)
+
+                    # The snapshot floats limit each of the four stored
+                    # energies to FLOAT32_EPS of u, against a signal of
+                    # perturbation * u.
+                    float_term = 4.0 * FLOAT32_EPS / median_perturbation
+                    assumed_bar = (
+                        0.5 * median_perturbation + float_term + opt.rate_extra_tol
+                    )
+                    bar = assumed_bar
+                    bar_form = "0.5 x perturbation + 4 x 2^-24 / perturbation"
+                    if opt.cooling_response is not None and opt.steps_per_window:
+                        # Each run rounds u at two half kicks per step and at
+                        # the two stored snapshots, half a float spacing each.
+                        spacing = float(np.median(on0["u_spacing"][selected]))
+                        rounding_term = (
+                            (2 * opt.steps_per_window + 2)
+                            * spacing
+                            / median_perturbation
+                        )
+                        response_term = opt.cooling_response * (abs(lead) + 0.5)
+                        bar = response_term + rounding_term + opt.rate_extra_tol
+                        bar_form = (
+                            "Lambda' dt (|L| + 1/2) + (2 N + 2) x spacing / "
+                            "perturbation"
+                        )
+                        print(
+                            f"Bar assumed (0.5 x perturbation + 4 x 2^-24 / "
+                            f"perturbation): {assumed_bar:.4g}; derived: response "
+                            f"{response_term:.4g} + rounding {rounding_term:.4g} "
+                            f"(N {opt.steps_per_window}, spacing {spacing:.4g}) = "
+                            f"{bar:.4g} (judged)"
+                        )
                     message = check_gate(
                         "resolvability",
                         bar,
@@ -934,8 +1156,7 @@ def main():
                         "16th to 84th percentile "
                         f"{np.percentile(relative_error, 16):.4g} to "
                         f"{np.percentile(relative_error, 84):.4g} "
-                        f"(bar {bar:.4g} = 0.5 x perturbation + "
-                        "4 x 2^-24 / perturbation + "
+                        f"(bar {bar:.4g} = {bar_form} + "
                         f"{opt.rate_extra_tol:.4g})"
                     )
 
