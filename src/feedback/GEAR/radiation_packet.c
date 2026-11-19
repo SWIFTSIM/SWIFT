@@ -4031,7 +4031,9 @@ void radiation_packet_set_first_step(struct part *p,
  * The held packet of a slot is the light that crosses the particle in one
  * step, over the forward advance of the slot, so its specific energy density is
  * `(E / m) l_par / (c dt)`. The own field is the sum over the slots, then its
- * running mean over `tau` (#radiation_packet_read_mean).
+ * running mean over `tau` (#radiation_packet_read_mean). With H2 line
+ * absorption, the column of the particle is the mean of the slot columns
+ * weighted by the dissociating energy of the slot, not averaged over time.
  *
  * @param p The particle.
  * @param a Current scale factor.
@@ -4062,6 +4064,7 @@ void radiation_packet_end_gradient(struct part *p, const float a,
   double field_energy[ISRF_OPERATOR_COUNT];
   double field_photons[ISRF_OPERATOR_COUNT];
   double field_dissociating = 0.;
+  double field_column_sum = 0.;
   const int with_lines = p->feedback_data.ISRF_H2_line_absorption;
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     field_energy[b] = 0.;
@@ -4081,9 +4084,13 @@ void radiation_packet_end_gradient(struct part *p, const float a,
         field_energy[b] += (double)(sl->band[b].energy * factor);
         field_photons[b] += (double)(sl->band[b].photons * factor);
       }
-      if (with_lines)
-        field_dissociating += (double)sl->band[ISRF_OPERATOR_LW].energy *
-                              (double)sl->H2_transmission * (double)factor;
+      if (with_lines) {
+        const double dissociating = (double)sl->band[ISRF_OPERATOR_LW].energy *
+                                    (double)sl->H2_transmission *
+                                    (double)factor;
+        field_dissociating += dissociating;
+        field_column_sum += dissociating * (double)sl->H2_column;
+      }
       continue;
     }
 
@@ -4106,9 +4113,13 @@ void radiation_packet_end_gradient(struct part *p, const float a,
     pk->band[b].field_photons = radiation_packet_read_mean(
         pk->band[b].field_photons, (float)field_photons[b], dt, tau);
   }
-  if (with_lines)
+  if (with_lines) {
     pk->field_dissociating_energy = radiation_packet_read_mean(
         pk->field_dissociating_energy, (float)field_dissociating, dt, tau);
+    p->feedback_data.LW_line_H2_column =
+        field_dissociating > 0. ? (float)(field_column_sum / field_dissociating)
+                                : 0.f;
+  }
 }
 
 /**

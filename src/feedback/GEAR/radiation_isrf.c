@@ -93,6 +93,7 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->H2_shielding_exponent = 0.f;
   fd->H2_line_width_km_s = 0.f;
   fd->H2_velocity_limit = 0.f;
+  fd->LW_line_H2_column = 0.f;
   memset(&fd->isrf_packet, 0, sizeof(struct feedback_isrf_packet_data));
 }
 

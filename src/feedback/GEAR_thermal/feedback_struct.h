@@ -702,11 +702,17 @@ struct feedback_part_data {
   /*! Copy of #feedback_props.ISRF_H2_line_absorption, set at the drift. */
   char ISRF_H2_line_absorption;
 
-  /*! Unused. With 10 chemistry elements it moves sizeof(struct part) from
-      4096 B to 4128 B: a stride of 4096 B was measured to cost 7 per cent.
-      Other builds can still reach 4096 B; the start-up refuses that with H2
-      line absorption on (#feedback_props_init). */
-  char ISRF_packet_stride_padding[32];
+  /*! H2 column in cm^-2 of the own LW light, weighted by its dissociating
+      energy, from the end of the gradient loop. 0 without dissociating light
+      or without H2 line absorption. */
+  float LW_line_H2_column;
+
+  /*! Unused. With 10 chemistry elements #LW_line_H2_column and this array
+      together keep sizeof(struct part) at 4256 B. Other builds can still
+      reach 4096 B, where a stride was measured to cost 7 per cent; the
+      start-up refuses that with H2 line absorption on
+      (#feedback_props_init). */
+  char ISRF_packet_stride_padding[28];
 #endif
 };
 

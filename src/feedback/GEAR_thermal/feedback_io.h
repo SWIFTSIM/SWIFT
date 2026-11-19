@@ -393,6 +393,19 @@ INLINE static void convert_part_u_LW_dissociating_own(const struct engine *e,
   ret[0] = p->feedback_data.isrf_packet.field_dissociating_energy;
 }
 
+/**
+ * @brief Snapshot converter for #LWLineH2ColumnDensities, see
+ * #feedback_write_particles.
+ */
+INLINE static void convert_part_LW_line_H2_column(const struct engine *e,
+                                                  const struct part *p,
+                                                  const struct xpart *xp,
+                                                  double *ret) {
+  const double length_cgs =
+      units_cgs_conversion_factor(e->internal_units, UNIT_CONV_LENGTH);
+  ret[0] = (double)p->feedback_data.LW_line_H2_column * length_cgs * length_cgs;
+}
+
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 
 /**
@@ -439,7 +452,7 @@ INLINE static int feedback_read_particles(struct part *parts,
  * @param feedback_props The #feedback_props. The H2 line absorption fields are
  * written only if it is on. NULL lists every field, as the field-list
  * tools need; the stand-alone FoF tool passes none, so a gas snapshot of it
- * would carry the two fields with their default values.
+ * would carry these fields with their default values.
  *
  * @return Returns the number of fields to write.
  */
@@ -514,6 +527,13 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
         "Part of LWOwnSpecificEnergies that the H2 lines have not removed, "
         "before the kernel mean that gives LWDissociatingSpecificEnergies. "
         "Physical.");
+
+    list[num++] = io_make_output_field_convert_part(
+        "LWLineH2ColumnDensities", DOUBLE, 1, UNIT_CONV_INV_AREA, 0.f, parts,
+        xparts, convert_part_LW_line_H2_column,
+        "H2 column that the own Lyman-Werner light has crossed, weighted by "
+        "the dissociating energy of each slot, 0 where there is none. "
+        "Physical. DOUBLE.");
   }
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
