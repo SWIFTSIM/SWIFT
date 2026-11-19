@@ -75,7 +75,19 @@ def make_ic(work, name, level=4):
 
 
 def write_snap(
-    path, pos, rho, h, box, temp, x_h2, lw, ratio, ids=None, drop=(), time=8.0
+    path,
+    pos,
+    rho,
+    h,
+    box,
+    temp,
+    x_h2,
+    lw,
+    ratio,
+    ids=None,
+    drop=(),
+    time=8.0,
+    column=None,
 ):
     """Write a synthetic snapshot; fields in drop are left out."""
     n = len(pos)
@@ -108,6 +120,7 @@ def write_snap(
         "LWLineTransmissions": ratio,
         "LWOwnSpecificEnergies": lw,
         "LWOwnDissociatingSpecificEnergies": lw * ratio,
+        "LWLineH2ColumnDensities": np.full(n, 1e17) if column is None else column,
     }
     with h5py.File(path, "w") as f:
         hdr = f.create_group("Header")
@@ -448,73 +461,116 @@ def parity_cases(work, d, data):
         good[perm],
         ids=perm,
     )
-    drop = lw.copy()
-    drop_ratio = good.copy()
     i = 7
+    drop = lw.copy()
     drop[i] *= 1.0 - 1.0 / k
     pd = os.path.join(d, "p_drop.hdf5")
     write_snap(pd, pos, rho, h, box, temp, x_h2, drop, good)
+    # Previous snapshot: the faintest tenth is dark (light front), particle i is lit.
+    front = lw <= np.quantile(lw, 0.1)
+    front[i] = False
+    pp = os.path.join(d, "p_prev.hdf5")
+    write_snap(
+        pp, pos, rho, h, box, temp, x_h2, np.where(front, 0.0, lw), good, time=7.0
+    )
+    # A front particle 1e-6 of its neighbours, off by 1e-3 of its own value.
+    j = int(np.flatnonzero(front)[0])
+    fa = lw.copy()
+    fa[j] *= 1e-6
+    pfa = os.path.join(d, "p_front_a.hdf5")
+    write_snap(pfa, pos, rho, h, box, temp, x_h2, fa, good)
+    fb = fa.copy()
+    fb[j] *= 1.0 + 1e-3
+    pf = os.path.join(d, "p_front.hdf5")
+    write_snap(pf, pos, rho, h, box, temp, x_h2, fb, good)
+    # The same 1e-3 on a front particle as bright as its neighbours.
+    fl = lw.copy()
+    fl[j] *= 1.0 + 1e-3
+    pfl = os.path.join(d, "p_front_lit.hdf5")
+    write_snap(pfl, pos, rho, h, box, temp, x_h2, fl, good)
+    pn = os.path.join(d, "p_nan.hdf5")
+    bad = lw.copy()
+    bad[3] = np.nan
+    write_snap(pn, pos, rho, h, box, temp, x_h2, bad, good)
+    pm = os.path.join(d, "p_nocol.hdf5")
+    write_snap(
+        pm, pos, rho, h, box, temp, x_h2, lw, good, drop=("LWLineH2ColumnDensities",)
+    )
+    pt = os.path.join(d, "p_time.hdf5")
+    write_snap(pt, pos, rho, h, box, temp, x_h2, lw, good, time=9.0)
     cnt = _write(
         d,
         "pc.json",
         {
             "probes_on_other_rank": 100,
             "foreign_bookings": 500,
-            "max_terms_per_particle": k,
+            "steps": 9,
             "held_lw_slots_at_restart": 30,
+            "refits_after_restart": 20,
         },
     )
     zero = _write(
         d,
         "pz.json",
-        {
-            "probes_on_other_rank": 100,
-            "foreign_bookings": 0,
-            "max_terms_per_particle": k,
-        },
+        {"probes_on_other_rank": 100, "foreign_bookings": 0, "steps": 9},
     )
+    nofit = _write(
+        d, "pf.json", {"held_lw_slots_at_restart": 30, "refits_after_restart": 0}
+    )
+
+    def restart(b, c=cnt, stop=pp):
+        return [
+            "parity",
+            "--a",
+            pa,
+            "--b",
+            b,
+            "--mode",
+            "restart",
+            "--counters",
+            c,
+            "--stop",
+            stop,
+        ]
+
+    def ranks(b, c=cnt, a=pa):
+        return [
+            "parity",
+            "--a",
+            a,
+            "--b",
+            b,
+            "--mode",
+            "ranks",
+            "--counters",
+            c,
+            "--previous",
+            pp,
+        ]
+
+    record("P1 restart: identical", 0, restart(pa), "bitwise")
+    record("P2 restart: reordered rows, same values", 0, restart(pc), "bitwise")
+    record("P3 restart: one ulp-level change", 1, restart(pb), "bitwise")
+    record("P4 2 ranks: round-off within the bar", 0, ranks(pb), "round-off")
+    record("D1 drop one booking: restart", 1, restart(pd), "FAIL")
+    record("D2 drop one booking: 2 ranks, lit before", 1, ranks(pd), "FAIL")
     record(
-        "P1 restart: identical",
+        "F1 2 ranks: front particle off by 1e-3 of its own value",
         0,
-        ["parity", "--a", pa, "--b", pa, "--mode", "restart", "--counters", cnt],
-        "bitwise",
+        ranks(pf, a=pfa),
+        "front",
+    )
+    record("F2 2 ranks: bright front particle off by 1e-3", 1, ranks(pfl), "front")
+    record("P5 2 ranks: no foreign booking (void)", 4, ranks(pa, zero), "foreign")
+    record(
+        "P6 restart: nothing lit after the stop (void)", 4, restart(pa, stop=pa), "lit"
     )
     record(
-        "P2 restart: reordered rows, same values",
-        0,
-        ["parity", "--a", pa, "--b", pc, "--mode", "restart", "--counters", cnt],
-        "bitwise",
+        "P7 restart: no refit after the stop (void)", 4, restart(pa, nofit), "refits"
     )
-    record(
-        "P3 restart: one ulp-level change",
-        1,
-        ["parity", "--a", pa, "--b", pb, "--mode", "restart", "--counters", cnt],
-        "bitwise",
-    )
-    record(
-        "P4 2 ranks: round-off within k u",
-        0,
-        ["parity", "--a", pa, "--b", pb, "--mode", "ranks", "--counters", cnt],
-        "round-off",
-    )
-    record(
-        "D1 drop one booking: restart",
-        1,
-        ["parity", "--a", pa, "--b", pd, "--mode", "restart", "--counters", cnt],
-        "FAIL",
-    )
-    record(
-        "D2 drop one booking: 2 ranks",
-        1,
-        ["parity", "--a", pa, "--b", pd, "--mode", "ranks", "--counters", cnt],
-        "FAIL",
-    )
-    record(
-        "P5 2 ranks: no foreign booking (void)",
-        4,
-        ["parity", "--a", pa, "--b", pa, "--mode", "ranks", "--counters", zero],
-        "foreign",
-    )
+    record("P8 2 ranks: column field missing", 2, ranks(pm), "lacks")
+    record("P9 2 ranks: non-finite value", 3, ranks(pn), "non-finite")
+    record("P10 restart: snapshots at different times (void)", 4, restart(pt), "times")
     # The ratio alone cannot see the dropped booking: both energies drop together.
     ratio_a = good
     ratio_d = (lw * (1 - 1 / k) * good)[i] / drop[i]

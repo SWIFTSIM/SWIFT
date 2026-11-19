@@ -47,6 +47,7 @@ TEMPERATURE_REL = 0.05
 THIN_COLUMN_CM2 = 1e17
 WIDTH_RESET = 3.0
 KERNEL_GAMMA = 1.9364916731  # Wendland C2 support radius in units of h
+PARITY_COLUMN = "LWLineH2ColumnDensities"
 
 SPECIES_MASS_NUMBER = {
     "HI": 1.0,
@@ -971,59 +972,170 @@ def gate_velocity(args: argparse.Namespace) -> int:
     return rep.exit_code()
 
 
+def raw_gas_datasets(path: str) -> Dict[str, np.ndarray]:
+    """Return every PartType0 dataset of a snapshot as stored, sorted by particle ID."""
+    try:
+        f = h5py.File(path, "r")
+    except OSError as err:
+        raise GateExit(EXIT_MISSING, f"snapshot {path} cannot be opened: {err}")
+    with f:
+        if "PartType0" not in f or "ParticleIDs" not in f["PartType0"]:
+            raise GateExit(EXIT_MISSING, f"{path} has no PartType0 particle IDs")
+        g = f["PartType0"]
+        order = np.argsort(g["ParticleIDs"][:])
+        return {k: g[k][:][order] for k in g}
+
+
+def differing_rows(x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Return a mask of the particles whose stored bytes differ."""
+    bx = np.ascontiguousarray(x).view(np.uint8).reshape(len(x), -1)
+    by = np.ascontiguousarray(y).view(np.uint8).reshape(len(y), -1)
+    return np.any(bx != by, axis=1)
+
+
+def kernel_neighbours(snap: dict) -> List[List[int]]:
+    """Return, for each particle, the particles within gamma h of it (periodic)."""
+    from scipy.spatial import cKDTree
+
+    box = snap["box"]
+    pos = np.mod(snap["Coordinates"], box)
+    tree = cKDTree(pos, boxsize=box)
+    return tree.query_ball_point(pos, KERNEL_GAMMA * snap["SmoothingLengths"])
+
+
 def gate_parity(args: argparse.Namespace) -> int:
+    """Compare two runs particle by particle: two rank counts, or a restart.
+
+    restart: the same binary and rank count, resumed from a restart file. Every
+    LW and packet field must be equal bit for bit.
+
+    ranks: the reordered float sums of the transport give a round-off gap. A
+    particle's field is a sum of positive shares, each a weight times the
+    sender's energy. A sum of k float32 terms errs by at most k 2^-24 of its
+    value, and a smoothing length that differs by delta_h changes a weight of
+    power p by p delta_h of its value away from the edge of the kernel. Over n
+    steps the light crosses n such sums, so a particle that held light at the
+    previous snapshot has a gap of at most n (k 2^-24 + p delta_h) of its own
+    value. A particle first lit after the previous snapshot is at the light
+    front: its light came through weights near the kernel edge, where the
+    relative change of a weight is not bounded, so it is held to the same bar
+    times the largest value in its kernel, which is weaker.
+    """
     rep = Report()
-    a = load_snapshot(
-        args.a, ("ParticleIDs", "LWSpecificEnergies", "LWDissociatingSpecificEnergies")
-    )
-    b = load_snapshot(
-        args.b, ("ParticleIDs", "LWSpecificEnergies", "LWDissociatingSpecificEnergies")
-    )
+    gated = ("LWSpecificEnergies", "LWDissociatingSpecificEnergies", PARITY_COLUMN)
+    geom = ("ParticleIDs", "Coordinates", "SmoothingLengths")
+    a = load_snapshot(args.a, geom + gated)
+    b = load_snapshot(args.b, geom + gated)
     counters = load_json(args.counters, "counters file")
     need = (
-        ["probes_on_other_rank", "foreign_bookings"]
+        ["probes_on_other_rank", "foreign_bookings", "steps"]
         if args.mode == "ranks"
-        else ["held_lw_slots_at_restart"]
+        else ["held_lw_slots_at_restart", "refits_after_restart"]
     )
     for key in need:
-        if float(counters.get(key, 0)) <= 0:
+        if not float(counters.get(key, 0)) > 0:
             raise GateExit(
                 EXIT_VOID,
                 f"void run, {key} is {counters.get(key, 'absent')} (must be above 0)",
             )
+    if not a["time"] == b["time"]:
+        raise GateExit(
+            EXIT_VOID,
+            f"void run, the snapshots are at times {a['time']} and {b['time']}",
+        )
     oa, ob = np.argsort(a["ParticleIDs"]), np.argsort(b["ParticleIDs"])
     if not np.array_equal(a["ParticleIDs"][oa], b["ParticleIDs"][ob]):
         raise GateExit(
             EXIT_VOID, "void run, the two snapshots hold different particles"
         )
-    for key in ("LWSpecificEnergies", "LWDissociatingSpecificEnergies"):
+    for key in gated:
         require_finite(key, a=a[key], b=b[key])
-        x, y = a[key][oa], b[key][ob]
-        if args.mode == "restart":
-            neq = x.view(np.uint64) != y.view(np.uint64)
-            rep.check(
-                f"{key} bitwise",
-                not neq.any(),
-                f"{int(neq.sum())} of {len(x)} particles differ",
+    rep.info("premises", ", ".join(f"{k} {counters[k]}" for k in need))
+
+    if args.mode == "restart":
+        if args.stop is None:
+            raise GateExit(EXIT_MISSING, "restart mode needs --stop")
+        stop = load_snapshot(args.stop, ("ParticleIDs", "LWSpecificEnergies"))
+        os_ = np.argsort(stop["ParticleIDs"])
+        if not np.array_equal(stop["ParticleIDs"][os_], a["ParticleIDs"][oa]):
+            raise GateExit(
+                EXIT_VOID, "void run, the stop snapshot holds other particles"
             )
-        else:
-            k_terms = float(counters.get("max_terms_per_particle", 0))
-            if k_terms <= 0:
-                raise GateExit(
-                    EXIT_VOID, "void run, max_terms_per_particle is absent or 0"
-                )
-            scale = np.maximum(np.abs(x), np.abs(y))
-            rel = np.abs(x - y) / np.where(scale > 0, scale, 1.0)
-            bar = k_terms * FLOAT32_EPS
-            rep.info(
-                f"{key} bitwise",
-                f"{int(np.sum(x.view(np.uint64) != y.view(np.uint64)))} of {len(x)} particles differ",
+        dark = stop["LWSpecificEnergies"][os_] == 0.0
+        new_lit = int(np.sum(dark & (a["LWSpecificEnergies"][oa] > 0.0)))
+        if new_lit == 0:
+            raise GateExit(
+                EXIT_VOID, "void run, no particle dark at the stop is lit after it"
             )
-            rep.check(
-                f"{key} round-off",
-                bool(np.all(rel <= bar)),
-                f"worst relative difference {rel.max():.3g}, bar {bar:.3g} = {k_terms:g} terms x 2^-24",
-            )
+        rep.info("lit after the restart", f"{new_lit} particles dark at the stop")
+        ra, rb = raw_gas_datasets(args.a), raw_gas_datasets(args.b)
+        for key in sorted(set(ra) | set(rb)):
+            if key not in ra or key not in rb:
+                raise GateExit(EXIT_MISSING, f"{key} is in one snapshot only")
+            neq = differing_rows(ra[key], rb[key])
+            detail = f"{int(neq.sum())} of {len(neq)} particles differ"
+            if key in gated or key.startswith(("LW", "Packet")):
+                rep.check(f"{key} bitwise", not neq.any(), detail)
+            else:
+                rep.reading(f"{key} bitwise", detail)
+        return rep.exit_code()
+
+    steps = float(counters["steps"])
+    ngb = kernel_neighbours(a)
+    k_terms = max(len(n) for n in ngb)
+    params = read_params(args.params) if args.params else {}
+    p_power = float(params.get("GEARFeedback:ISRF_packet_cone_power", 4.0)) + 4.0
+    ha, hb = a["SmoothingLengths"][oa], b["SmoothingLengths"][ob]
+    delta_h = float(np.max(np.abs(ha - hb) / np.maximum(ha, hb)))
+    bar = steps * (k_terms * FLOAT32_EPS + p_power * delta_h)
+    rep.info(
+        "round-off bar",
+        f"n (k 2^-24 + p delta_h) = {steps:g} ({k_terms} x 2^-24 + {p_power:g} x "
+        f"{delta_h:.3g}) = {bar:.3g} of the largest value in the kernel",
+    )
+    if args.previous is None:
+        raise GateExit(EXIT_MISSING, "ranks mode needs --previous")
+    prev = load_snapshot(args.previous, ("ParticleIDs", "LWSpecificEnergies"))
+    op = np.argsort(prev["ParticleIDs"])
+    if not np.array_equal(prev["ParticleIDs"][op], a["ParticleIDs"][oa]):
+        raise GateExit(
+            EXIT_VOID, "void run, the previous snapshot holds other particles"
+        )
+    held = np.empty(len(oa), bool)
+    held[oa] = prev["LWSpecificEnergies"][op] > 0.0
+    front = ~held & (a["LWSpecificEnergies"] > 0.0)
+    if not held.any():
+        raise GateExit(EXIT_VOID, "void run, no particle held light at --previous")
+    rep.info(
+        "particles",
+        f"{int(held.sum())} held light at the previous snapshot, {int(front.sum())} "
+        "first lit after it (light front)",
+    )
+    for key in gated:
+        x = a[key]
+        y = np.empty_like(x)
+        y[oa] = b[key][ob]
+        scale = np.maximum(np.abs(x), np.abs(y))
+        gap = np.abs(x - y)
+        own = np.where(scale > 0, gap / np.where(scale > 0, scale, 1), 0.0)
+        over_held = held & (gap > bar * scale)
+        rep.check(
+            f"{key} round-off, lit before",
+            not over_held.any(),
+            f"{int(over_held.sum())} of {int(held.sum())} particles over the bar, "
+            f"largest gap over the own value {own[held].max():.3g}, bar {bar:.3g}",
+        )
+        local = np.array([scale[n].max() for n in ngb])
+        rest = ~held
+        over_rest = rest & (gap > bar * local)
+        worst = np.where(local > 0, gap / np.where(local > 0, local, 1), 0.0)
+        rep.check(
+            f"{key} round-off, light front and dark",
+            not over_rest.any(),
+            f"{int(over_rest.sum())} of {int(rest.sum())} particles over the bar times "
+            f"the kernel maximum, largest {worst[rest].max():.3g}; largest gap over the "
+            f"own value {own[rest].max():.3g} (read only)",
+        )
     return rep.exit_code()
 
 
@@ -1085,6 +1197,17 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--b", required=True)
     sp.add_argument("--mode", choices=["ranks", "restart"], required=True)
     sp.add_argument("--counters", required=True)
+    sp.add_argument(
+        "--stop", default=None, help="restart: snapshot of run a at the stop time"
+    )
+    sp.add_argument(
+        "--params", default=None, help="ranks: used_parameters.yml, for the cone power"
+    )
+    sp.add_argument(
+        "--previous",
+        default=None,
+        help="ranks: snapshot of run a before the compared one, to find the light front",
+    )
     sp.set_defaults(fn=gate_parity)
     sp = sub.add_parser("refusal")
     sp.add_argument("--log", required=True)

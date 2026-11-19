@@ -41,7 +41,7 @@ transport needs a radiation table whose `Data/Radiation` group carries
 leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
 leg=refused ./run.sh          # shielded_sum with the switch on: start-up must refuse
 ranks=2 run_name=two_ranks ./run.sh
-leg=restart ./run.sh          # light speed 0.01 c (params_restart.yml), stops at step 3
+leg=restart ./run.sh          # light speed 0.99 c (params_restart.yml), stops after step 17
 ```
 `level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`) and `n_threads`
 override the defaults. The default `h2_ratio` of 3e-4 gives columns from 1e17 to
@@ -82,12 +82,26 @@ first step changes in every particle.
 - The check prints how many particles can detect a doubled H2 column. If that is 0, the
   run is void.
 
-Two runs are compared particle by particle with `parity`:
-`python3 checkH2Attenuation.py parity --a run1/snap/snapshot_0008.hdf5 --b run2/snap/snapshot_0008.hdf5 --mode ranks|restart --counters counters.json`.
-It compares `LWSpecificEnergies` and `LWDissociatingSpecificEnergies` (not only their
-ratio), bit for bit for a restart and within `k 2^-24` for a different rank count. The
-counters file holds `probes_on_other_rank`, `foreign_bookings`, `max_terms_per_particle`
-(`k`) and `held_lw_slots_at_restart`; a count of 0 makes the run void.
+Two runs are compared particle by particle with `parity`, on `LWSpecificEnergies`,
+`LWDissociatingSpecificEnergies` and `LWLineH2ColumnDensities` (not only their ratio):
+```
+python3 checkH2Attenuation.py parity --mode restart --a ref/snap/snapshot_0032.hdf5 --b resumed/snap/snapshot_0032.hdf5 --stop ref/snap/snapshot_0017.hdf5 --counters counters.json
+python3 checkH2Attenuation.py parity --mode ranks --a one/snap/snapshot_0009.hdf5 --b two/snap/snapshot_0009.hdf5 --previous one/snap/snapshot_0008.hdf5 --params one/used_parameters.yml --counters counters.json
+```
+- `restart`: every `LW` and `Packet` field must be equal bit for bit (same binary, same
+  rank count, one thread, so that the run repeats exactly). Other fields are printed only.
+  The run is void unless the counters give `held_lw_slots_at_restart` (slots holding
+  waiting LW light when the run stopped) and `refits_after_restart` (shielding fits that
+  changed after the restart) above 0, and some particle dark at `--stop` is lit at the
+  compared snapshot.
+- `ranks`: the float sums run in another order. A particle that held light at
+  `--previous` must agree within `n (k 2^-24 + p delta_h)` of its own value, with `n` the
+  steps (`steps` in the counters), `k` the largest number of neighbours in a kernel,
+  `p` the cone power plus 4 and `delta_h` the largest relative gap of the smoothing
+  lengths. A particle first lit after `--previous` sits at the light front, where its
+  light came through weights near the kernel edge; it is held to the same bar times the
+  largest value in its kernel. The run is void unless `probes_on_other_rank` and
+  `foreign_bookings` are above 0.
 
 `testCheckH2Attenuation.py WORK_DIR` runs the check on synthetic snapshots, with a planted
 error in each case, and prints the exit class of each.

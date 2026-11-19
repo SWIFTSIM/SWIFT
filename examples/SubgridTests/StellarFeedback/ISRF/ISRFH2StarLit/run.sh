@@ -17,12 +17,13 @@ run_name=${run_name:=$leg}
 ic_file=ICs_isrf_h2_star_lit.hdf5
 params=params.yml
 extra_ic_args=""
+extra_swift_args=""
 
 case "$leg" in
     main) switch=1 ; key=background_only ;;
     switch_off) switch=0 ; key=shielded_sum ;;   # the line fields are not written: the check must refuse the run
     refused) switch=1 ; key=shielded_sum ;;      # start-up must refuse this combination
-    restart) switch=1 ; key=background_only ; params=params_restart.yml ;;   # limited light speed, stops at step 3
+    restart) switch=1 ; key=background_only ; params=params_restart.yml ; extra_swift_args="-n 16" ;;   # limited light speed, stops after step 17
     *) echo "Unknown leg '$leg'." ; exit 1 ;;
 esac
 
@@ -42,7 +43,6 @@ python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass --h2_ratio 
 
 rm -rf snap restart
 mkdir snap
-if [ "$leg" = "restart" ]; then touch restart/stop; fi
 swift_exe=../../../../../swift
 [ "$ranks" -gt 1 ] && launcher="mpirun -np $ranks" && swift_exe=../../../../../swift_mpi || launcher=""
 
@@ -52,7 +52,7 @@ $launcher $swift_exe --hydro --stars --external-gravity --feedback --cooling \
     --sync --limiter --verbose=0 --threads=$n_threads \
     -P GEARFeedback:ISRF_H2_line_absorption:$switch \
     -P GeajayCooling:h2_transported_lw_rate_shielding:$key \
-    $params 2>&1 | tee output.log
+    $extra_swift_args $params 2>&1 | tee output.log
 swift_status=${PIPESTATUS[0]}
 set -e
 
@@ -63,7 +63,7 @@ fi
 [ $swift_status -eq 0 ] || { echo "swift stopped with status $swift_status"; exit $swift_status; }
 
 if [ "$leg" = "restart" ]; then
-    echo "Stopped at the restart point. Resume with the same binary: $swift_exe ... -r restart/swift_000000.rst params_restart.yml"
+    echo "Stopped at the restart point. Resume with the same binary and the same options, with -r in place of -n 16."
     exit 0
 fi
 

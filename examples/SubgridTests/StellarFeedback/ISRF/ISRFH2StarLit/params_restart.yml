@@ -13,7 +13,7 @@ Restarts:
   subdir: restart
   basename: swift
   delta_hours: 100.0
-  stop_steps: 3      # Check for restart/stop after 3 steps, run.sh creates the file
+  stop_steps: 1000   # The stop is set by -n on the command line
 
 # No Potential: block, so --external-gravity (run.sh) applies no force.
 Gravity:
@@ -26,15 +26,15 @@ Gravity:
 
 TimeIntegration:
   time_begin:        0.
-  time_end:          1.28e-11                   # 8 steps of dt_max
+  time_end:          7.5e-9                     # 32 steps of the light-speed bound
   dt_min:            1e-14
-  dt_max:            1.6e-12
+  dt_max:            3e-9                       # Above the light-speed bound, which sets the step
 
 Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 1.6e-12                        # One snapshot per step of dt_max
+  delta_time: 2.34375e-10                    # One snapshot per step
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 
@@ -46,7 +46,7 @@ Scheduler:
   tasks_per_cell: 150
 
 Statistics:
-  delta_time:           1.6e-12
+  delta_time:           2.34375e-10
   time_first:             0.
 
 InitialConditions:
@@ -94,12 +94,12 @@ GEARFeedback:
   ISRF_propagation: 1                                       # Transport the ISRF from the stars
   ISRF_H2_line_absorption: 1                         # 1: the H2 lines absorb the LW band along the packet path
   ISRF_packet_light_speed: fixed                          # Limited speed: light waits in the reception slots when the run stops
-  ISRF_packet_light_speed_fraction_of_c: 0.01                # Limit speed as a fraction of c
+  ISRF_packet_light_speed_fraction_of_c: 0.99                # Limit speed as a fraction of c
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
   timestep_age_threshold_Myr:           7.
-  max_timestep_young_Myr:               1.6e-9
+  max_timestep_young_Myr:               2.3e-7 # Just above the gas step (2.34375e-10 internal = 2.29e-7 Myr): the star emits every gas step
   max_timestep_old_Myr:                 1
   min_star_timestep_Myr:                1e-11
   HII_max_search_radius: 0.0002             # Inert with photoionization off, must stay under the box half-width
