@@ -309,9 +309,9 @@ Heating and rates from the parameter file
    * - ``rt_hi_ionisation_rate_per_s``
      - (optional) HI ionisation rate [1/s].
    * - ``rt_hei_ionisation_rate_per_s``
-     - (optional) HeI ionisation rate [1/s].
+     - (optional) HeI ionisation rate [1/s]. The run stops at start-up if it is nonzero with ``GEARFeedback:HII_couple_ionization_rate: 1``.
    * - ``rt_heii_ionisation_rate_per_s``
-     - (optional) HeII ionisation rate [1/s].
+     - (optional) HeII ionisation rate [1/s]. The run stops at start-up if it is nonzero with ``GEARFeedback:HII_couple_ionization_rate: 1``.
    * - ``rt_h2_dissociation_rate_per_s``
      - (optional) H\ :sub:`2` dissociation rate [1/s].
    * - ``volumetric_heating_rates_cgs``
