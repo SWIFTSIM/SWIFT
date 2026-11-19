@@ -69,8 +69,9 @@ property of the line profile at each place. By default the transport does not
 treat it. The option \code{ISRF\_H2\_line\_absorption} makes the transport
 carry the H$_2$ column of the light (Sections~\ref{sec:packet-h2-physics}
 and~\ref{sec:packet-h2}). Without that option, Grackle can apply the
-shielding locally, from a local estimate of the H$_2$ column, but this option
-is off by default: by default the LW dissociation is not shielded.
+shielding locally, from a local estimate of the H$_2$ column. Grackle's local
+shielding is also off by default: by default the LW dissociation is not
+shielded.
 
 \paragraph{Why a local transport.} Near a young star the field is many times
 the mean field of the galaxy, and it falls off with distance and behind dense
@@ -1337,10 +1338,15 @@ probability that an excitation dissociates.
 Eq.~\eqref{eq:h2-factor} below with $\alpha=2$. They built it to follow the
 whole path from optically thin lines through saturation to line overlap, and
 to keep the total equivalent width finite, about $0.2$, for an infinite
-column. The first term carries the steep fall for $10^{14}<\Sigma<10^{17}$\,cm$^{-2}$
-(saturated cores). The second carries the square-root behaviour for
-$10^{17}<\Sigma<10^{20}$\,cm$^{-2}$ and, through its exponential, the faster
-fall from line overlap above $10^{20}$\,cm$^{-2}$. The exponential reaches
+column. For their gas, with $\alpha=2$, the function falls steeply for
+$10^{14}<\Sigma<10^{17}$\,cm$^{-2}$ as the line cores saturate. It then
+follows a square-root law for $10^{17}<\Sigma<10^{20}$\,cm$^{-2}$, and falls
+faster from line overlap above $10^{20}$\,cm$^{-2}$. The first term carries the saturation of
+the cores. The second, the wing term, takes over once the first has fallen
+below it, and its exponential gives the fall from overlap. With the exponent of
+the code these ranges move: in hot dense gas, where $\alpha$ is small, the
+first term stays the larger one to much higher columns
+(Fig.~\ref{fig:isrf-h2-factor}). The exponential reaches
 $e^{-1}$ at $\Sigma\approx7\times10^{20}$\,cm$^{-2}$. The unit
 $\Sigma_0=5\times10^{14}$\,cm$^{-2}$ and the coefficients $0.965$, $0.035$
 and $8.5\times10^{-4}$ are constants of that fit; the source does not derive
@@ -1356,8 +1362,9 @@ mean intensity in units of
 $10^{-21}$\,erg\,s$^{-1}$\,cm$^{-2}$\,sr$^{-1}$\,Hz$^{-1}$), on a grid of
 $n=1$ to $10^7$\,cm$^{-3}$ and $T=500$ to $10^5$\,K. They remove the
 shielding by H\,\textsc{i} and fit $\alpha$ to the self-shielding alone. The
-exponent is the slope of the power law of the first term: for $x\gg b_5$,
-$\mathcal S\approx0.965\,(x/b_5)^{-\alpha}$. It depends on $n$ and $T$
+exponent is the slope of the power law of the first term alone, which is
+$0.965\,(x/b_5)^{-\alpha}$ for $x\gg b_5$; it sets $\mathcal S$ only where that
+term is larger than the wing term. It depends on $n$ and $T$
 because collisions bring more $(v,J)$ levels towards their thermal
 populations at high density and temperature. The column then spreads over more
 levels, each line sees a smaller column of its own level, and the shielding
@@ -1372,9 +1379,10 @@ introduction gives a few per cent up to $10^{16}$\,cm$^{-2}$ and errors of
 order ten per cent up to $10^{17}$\,cm$^{-2}$. The two statements differ.
 The source states no accuracy above $10^{17}$\,cm$^{-2}$, below $500$\,K or
 below $1$\,cm$^{-3}$, where it has no models. The fit also leaves out two
-effects that the same source measures. A strong field pumps the excited
-levels: for $J_{21}\gtrsim10^3$ and $n<10^2$\,cm$^{-3}$ the shielding is
-weaker, by up to an order of magnitude. A field already processed in the LW
+effects that the same source reports. It measures the first: a strong field
+pumps the excited levels, and for $J_{21}\gtrsim10^3$ and
+$n<10^2$\,cm$^{-3}$ the shielding is weaker, by up to an order of magnitude.
+The second it cites from earlier work: a field already processed in the LW
 lines, such as that of an older stellar population, can change the rate by a
 factor of two or more. Fig.~\ref{fig:isrf-h2-factor} shows the factor that
 the code evaluates and the range where its source states an accuracy.
@@ -1439,7 +1447,7 @@ $k_{\rm B}$ the Boltzmann constant and $m_{\rm H}$ the proton mass. The
 source writes the density factor as ${\rm dexp}(-0.2856\log n)$. The code, like
 Grackle and geajay, evaluates it as $e^{-0.2856\lg n}=n^{-0.124}$. $b_5$ is
 the Doppler parameter $b_{\rm D}$ of Eq.~\eqref{eq:h2-tau0} in units of
-$1\,{\rm km\,s^{-1}}$. The mass $m_{\rm H}$ in it is correct:
+$1\,{\rm km\,s^{-1}}$. It contains $m_{\rm H}$ because
 $2k_{\rm B}T/m_{{\rm H}_2}=k_{\rm B}T/m_{\rm H}$.
 
 In $\alpha$ only, $T$ is clamped to $100$ to $8000$\,K and $n$ to
@@ -2613,9 +2621,11 @@ $\mathcal R$ & 1.12 & 1.96 & 1.87 & 1.25 \\
 \end{tabular}
 \end{table}
 
-\paragraph{Numerical test of the sign and the bound.} This paragraph and the
-next three are the numerical layer: the scheme evaluated against its
-reference on random inputs. The sign and the bound hold on random sets of 2 to
+\paragraph{Numerical test of the sign and the bound.} This paragraph begins
+the numerical layer. It and ``Where the sign is lost'' evaluate the scheme
+against its reference on random inputs; the three paragraphs between them
+treat the float rounding and the column of a hop. The sign and the bound hold
+on random sets of 2 to
 5 shares. A share has no column with probability 0.3, and otherwise a column
 between $10^{10}$ and $10^{24}$\,cm$^{-2}$. Each stage has 1 to 5 hops of
 $10^{10}$ to $10^{23}$\,cm$^{-2}$. The held transmission and column are rounded
@@ -2661,8 +2671,10 @@ $163.4$\,K, $\epsilon_{\rm m}=3.3\times10^{-7}$. After $n_{\rm m}$ merges the
 rounding can reach $n_{\rm m}\epsilon_{\rm m}$.
 
 \paragraph{Column precision.} A hop adds $\Delta\Sigma$ to the column in double
-precision and lowers $\mathcal T$ by the exact ratio of factors, so no part of
-a hop is lost at the hop. The column is stored only at a merge, as a 4-byte
+precision and lowers $\mathcal T$ by the ratio of factors formed in double; the
+new $\mathcal T$ is then rounded to a 4-byte float (relative error at most
+$2^{-24}$). No part of the column of a hop is lost at the hop. The column is
+stored only at a merge, as a 4-byte
 float (relative rounding at most $2^{-24}\approx6\times10^{-8}$) of the
 inverse of Eq.~\eqref{eq:h2-harmonic} (tolerance $5\times10^{-8}$). A merge
 can therefore leave the column off, in either direction, by up to about
@@ -3216,7 +3228,7 @@ transported LW rate with its own factor. The switch also stops a build whose
 
 The fit and the hop are in \code{src/feedback/GEAR/radiation\_h2\_shielding.h}.
 The constants of the fit are at :38-64: the clamps of $T$ and $n$, $\Sigma_0$,
-$\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the three thermal widths of
+$\Sigma_{\rm cap}$, $\Sigma_{\rm floor}$, the three Doppler parameters of
 $\Delta v_{\max}$ and the tolerance $10^{-7}$ of the inverse.
 Eq.~\eqref{eq:h2-exponent} is \code{radiation\_h2\_shielding\_exponent}
 (:78-92). Eq.~\eqref{eq:h2-factor} is \code{radiation\_h2\_shielding\_factor}
