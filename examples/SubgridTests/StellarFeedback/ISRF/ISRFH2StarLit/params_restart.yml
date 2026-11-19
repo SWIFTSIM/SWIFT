@@ -92,6 +92,7 @@ GEARFeedback:
   with_interstellar_radiation_field: 1                      # ISRF feedback master switch
   ISRF_propagation: 1                                       # Transport the ISRF from the stars
   ISRF_H2_line_absorption: 1                         # 1: the H2 lines absorb the LW band along the packet path
+  ISRF_LW_population_dissociation: 0                 # 0: the Draine-field rate per unit LW energy, so the check tests the lines alone
   ISRF_packet_light_speed: fixed                          # Limited speed: light waits in the reception slots when the run stops
   ISRF_packet_light_speed_fraction_of_c: 0.99                # Limit speed as a fraction of c
 

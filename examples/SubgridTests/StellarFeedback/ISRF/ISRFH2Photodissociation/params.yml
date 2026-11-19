@@ -132,6 +132,7 @@ GEARFeedback:
 
   # ISRF
   with_interstellar_radiation_field: 1                             # ISRF feedback master switch
+  ISRF_LW_population_dissociation: 0                               # 0: the Draine-field rate per unit LW energy, which the check predicts
   ISRF_extinction_path: pair_separation                     # Receiver-side LW/PE dust extinction column path: the star-to-particle separation of each injected pair (default)
   ISRF_propagation: 1                                       # 1: transport the ISRF from the stars (needs --with-chealpix), 0: dose added at once
 
