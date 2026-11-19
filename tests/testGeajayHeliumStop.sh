@@ -11,7 +11,8 @@
 #
 # The fixture dir holds coolingBox.yml, coolingBox.hdf5, the Cloudy table of
 # examples/Cooling/CoolingBox and the yields table radiation_fits_popII.hdf5.
-# The yml needs a GeajayCooling block. Each case runs two steps with one thread. Exit code 0: every case behaves as listed.
+# The yml needs a GeajayCooling block. Each case runs two steps with one
+# thread. Exit code 0: every case behaves as listed.
 
 swift=$(realpath "$1")
 fixture=$(realpath "$2")
@@ -32,9 +33,14 @@ run() {
   rm -rf "$dir"
   mkdir -p "$dir"
   cp "$fixture"/*.hdf5 "$fixture"/*.h5 "$dir"/
-  awk -v extra="$*" '{print} /^GeajayCooling:/ {n = split(extra, a, ";"); for (i = 1; i <= n; i++) if (a[i] != "") print "  " a[i]}' \
-    "$fixture"/coolingBox.yml > "$dir"/coolingBox.yml
-  printf 'GEARFeedback:\n  HII_couple_ionization_rate: %s\n' "$hii" >> "$dir"/coolingBox.yml
+  awk -v extra="$*" '
+    {print}
+    /^GeajayCooling:/ {
+      n = split(extra, a, ";")
+      for (i = 1; i <= n; i++) if (a[i] != "") print "  " a[i]
+    }' "$fixture"/coolingBox.yml > "$dir"/coolingBox.yml
+  printf 'GEARFeedback:\n  HII_couple_ionization_rate: %s\n' "$hii" \
+    >> "$dir"/coolingBox.yml
   cat >> "$dir"/coolingBox.yml << 'EOF'
   yields_table: radiation_fits_popII.hdf5
   yields_table_first_stars: radiation_fits_popII.hdf5
@@ -44,7 +50,8 @@ run() {
   supernovae_efficiency: 0
   with_stellar_wind_feedback: 0
 EOF
-  (cd "$dir" && "$swift" --hydro --cooling --threads=1 -n 2 coolingBox.yml > out.log 2>&1)
+  (cd "$dir" &&
+    "$swift" --hydro --cooling --threads=1 -n 2 coolingBox.yml > out.log 2>&1)
   status=$?
 }
 
@@ -53,7 +60,8 @@ EOF
 expect_ok() {
   run "$@"
   if [ $status -ne 0 ] || grep -q -- "$message" "$work/$1/out.log" ||
-    ! grep -q "HII rate coupling $([ "$2" = 1 ] && echo on || echo off)," "$work/$1/out.log"; then
+    ! grep -q "HII rate coupling $([ "$2" = 1 ] && echo on || echo off)," \
+      "$work/$1/out.log"; then
     echo "FAIL $1: exit $status, wanted a run with the HII coupling switch $2"
     failures=$((failures + 1))
   else
@@ -67,7 +75,8 @@ expect_refused() {
   run "$@"
   if [ $status -eq 0 ] || ! grep -q -- "$message" "$work/$1/out.log" ||
     grep -q "Starting the main loop\|\[00000\]" "$work/$1/out.log"; then
-    echo "FAIL $1: exit $status, wanted a start-up refusal with \"$message\""
+    echo "FAIL $1: exit $status, wanted a start-up refusal with" \
+      "\"$message\""
     failures=$((failures + 1))
   else
     echo "ok   $1 (refused, exit $status)"
@@ -79,7 +88,8 @@ hei="rt_hei_ionisation_rate_per_s: 1e-17"
 heii="rt_heii_ionisation_rate_per_s: 1e-17"
 
 expect_ok hii_no_helium 1 "$fields;rt_hi_ionisation_rate_per_s: 1e-17"
-expect_ok hii_zero_helium 1 "$fields;rt_hei_ionisation_rate_per_s: 0;rt_heii_ionisation_rate_per_s: 0"
+expect_ok hii_zero_helium 1 \
+  "$fields;rt_hei_ionisation_rate_per_s: 0;rt_heii_ionisation_rate_per_s: 0"
 expect_ok helium_no_hii 0 "$fields;$hei;$heii"
 expect_refused hii_hei 1 "$fields;$hei"
 expect_refused hii_heii 1 "$fields;$heii"

@@ -240,4 +240,4 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              test27cellsHydroSinks.sh hydro_sinks_tolerance_27_normal.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
-             testGeajayPhotoelectricKey.sh
+             testGeajayPhotoelectricKey.sh testGeajayHeliumStop.sh
