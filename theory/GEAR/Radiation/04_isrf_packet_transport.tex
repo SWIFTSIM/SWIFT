@@ -3425,7 +3425,7 @@ that tracks H$_2$ (level 2 or above), checked by
 (\code{src/feedback/GEAR/radiation\_selection.h:106-127}). The cooling library
 that supplies $X_{{\rm H}_2}$, $T$ and $\mu$ is then geajay. A Grackle build
 compiles the line absorption but refuses the switch at start-up
-(\code{src/cooling/grackle/cooling\_io.h:306-309}), because Grackle shields the
+(\code{src/cooling/grackle/cooling\_io.h:289-292}), because Grackle shields the
 transported LW rate with its own factor. The switch also stops a build whose
 \code{struct part} is 4096 bytes (:847-854): that particle stride costs about
 7 per cent of the run time with the switch on.
