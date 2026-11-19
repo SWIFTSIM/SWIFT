@@ -21,9 +21,14 @@ reset.
 # Checking
 Per particle in the cloud at `r < L/2 - 2h`, with `d` the path from the cloud face to the
 particle and `R = gamma h_max` the largest hop of the transport (`gamma = 1.936` for the
-Wendland C2 kernel), the own ratio lies between `f(n_max (d + R))` and `f(n_min d)` for the
-reset, and between `f(n_max r)` and `f(n_min r)` for no reset, with `f` the shielding
-function and `n_min`, `n_max` the extreme H2 densities of the gas in the snapshot. The
-bar is one-sided in the reset case because the hop that resets also books the part of its
-path in front of the cloud, between zero and one `R`. The speed of 1 width is the
-control: a run that shows a reset there fails.
+Wendland C2 kernel), the own ratio lies between `f(n_max (d + R/2))` and
+`f(n_min (d - min(d, R)/2))` for the reset, and between `f(n_max r)` and `f(n_min r)` for no
+reset, with `f` the shielding function and `n_min`, `n_max` the extreme H2 densities of the
+gas in the snapshot. A hop books the mean H2 density of its two ends, and the hop that
+resets books only the receiver's half of its path, so the face is placed within half a hop.
+The speed of 1 width is the control: a run that shows a reset there fails.
+
+Resolution of the check: deeper than about one hop (`R`) behind the face, the reset bar
+accepts a column up to `R/2` (about 0.97 h) too small. A reset that comes late by a
+quarter of `R` is caught only by probes shallower than `h`. A reset that comes late by one
+`h` is caught with a margin of about 0.03 h.

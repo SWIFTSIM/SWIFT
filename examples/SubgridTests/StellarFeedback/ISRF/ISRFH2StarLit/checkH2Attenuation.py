@@ -519,7 +519,7 @@ def h2_range_premise(
 ) -> Tuple[float, float]:
     """Return the n_H2 range of the probe domain over the reference and the last snapshot.
 
-    The carried column is a sum of n_H2 of the receivers at the hop times, so the bar
+    The carried column is a sum of n_H2 of the hop ends at the hop times, so the bar
     needs the range of n_H2 of every particle on the paths at every time. H2 only falls
     here (dissociation), so the range of the two ends bounds every state between them.
     The premise: at the last snapshot every particle of the domain lies inside the range
@@ -590,9 +590,9 @@ def column_spread_bar(
 ) -> np.ndarray:
     """Return the bar on |ln(t / f(n_H2 r))| set by the spread of n_H2 alone.
 
-    The carried column is a sum over the hops of the receiver's n_H2 times the path,
-    and the paths telescope to r, so it lies between n_min r and n_max r (n over the
-    probe domain). The held transmission is a mean of factors of such columns, and
+    The carried column is a sum over the hops of the mean n_H2 of the two ends times
+    the path, and the paths telescope to r, so it lies between n_min r and n_max r (n
+    over the probe domain). The held transmission is a mean of factors of such columns, and
     the factor falls with the column, so the bar is the larger of
     |ln f(n_max r) / f(n_i r)| and |ln f(n_min r) / f(n_i r)|, in the fit of the probe.
     """
@@ -663,7 +663,8 @@ def gate_starlit(args: argparse.Namespace) -> int:
         f"worst margin {np.max((dev / bar)[lit]):.3g} of the bar; "
         f"median ln(own ratio/f) {float(np.median(np.log(np.maximum(meas[lit], 1e-300) / exp[lit]))):.4g}",
     )
-    # The carried column is a sum of the receivers' n_H2 times paths that add up to r.
+    # The carried column is a sum of the mean n_H2 of the hop ends times paths that add
+    # up to r.
     col_field = last[PARITY_COLUMN] / last["unit_length"] ** 2  # stored in U_L^-2
     col_lo, col_hi = n_range[0] * r * (1.0 - float_term), n_range[1] * r * (
         1.0 + float_term
@@ -1315,17 +1316,18 @@ def velocity_bar(
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Return the lower and upper bound of ln(own ratio) of the cloud probes.
 
-    With a reset the carried column is n times the path from the sender of the resetting
-    hop, which lies up to one reach in front of the face: n_min d <= N <= n_max (d + R),
-    with d the path inside the cloud and R = gamma h_max the largest hop. Without a reset
-    the column telescopes to n r over all the gas: n_min r <= N <= n_max r. The factor
-    falls with the column, so the bound on ln t is that of the opposite column. The float
-    term is that of the star-lit gate for a slope of at most 1.
+    A hop books the mean n of its two ends, and a resetting hop only the receiver's half,
+    so with a reset the column is n (d + x - l/2), with l <= R = gamma h_max the resetting
+    hop, x in [0, l] the part of it in front of the face and d the path inside the cloud:
+    n_min (d - min(d, R)/2) <= N <= n_max (d + R/2). Without a reset the column telescopes
+    to n r over all the gas: n_min r <= N <= n_max r. The factor falls with the column, so
+    the bound on ln t is that of the opposite column. The float term is that of the
+    star-lit gate for a slope of at most 1.
     """
     n_min, n_max = n_range
     eps = (r / np.maximum(h, 1e-300) + 2.0) * 4.0 * FLOAT32_EPS
-    col_hi = n_max * (depth + reach) if reset else n_max * r
-    col_lo = n_min * depth if reset else n_min * r
+    col_hi = n_max * (depth + 0.5 * reach) if reset else n_max * r
+    col_lo = n_min * (depth - 0.5 * np.minimum(depth, reach)) if reset else n_min * r
     lo = np.log(transmission(col_hi, temp, dens)) - eps
     hi = np.log(transmission(col_lo, temp, dens)) + eps
     return lo, hi

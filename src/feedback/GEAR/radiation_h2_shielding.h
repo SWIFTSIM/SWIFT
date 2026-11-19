@@ -226,18 +226,20 @@ __attribute__((always_inline)) INLINE static void radiation_h2_shielding_hop(
  * @param dv (in, out) Velocity shift of the share.
  * @param dv_hop Shift added by the hop, signed, in the unit of @p limit.
  * @param limit Largest absolute shift that keeps the column.
+ * @return 1 if the share started again, 0 otherwise.
  */
-__attribute__((always_inline)) INLINE static void radiation_h2_shielding_shift(
+__attribute__((always_inline)) INLINE static int radiation_h2_shielding_shift(
     double *t, double *N, double *dv, const double dv_hop, const double limit) {
-  if (!(limit > 0.)) return;
+  if (!(limit > 0.)) return 0;
   const double shifted = *dv + dv_hop;
   if (fabs(shifted) <= limit) {
     *dv = shifted;
-    return;
+    return 0;
   }
   *t = 1.;
   *N = 0.;
   *dv = 0.;
+  return 1;
 }
 
 /**

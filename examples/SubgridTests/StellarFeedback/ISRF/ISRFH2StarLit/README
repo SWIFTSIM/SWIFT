@@ -69,7 +69,8 @@ first step changes in every particle.
 - Bar: `|ln(ratio / f)|` at most the larger of `|ln f(n_max r) / f(n r)|` and
   `|ln f(n_min r) / f(n r)|`, with `n_min` and `n_max` the extreme H2 densities of the
   domain particles at the reference and the last snapshot: the carried column is a sum of
-  the receivers' `n_H2` times paths that add up to `r`. Dissociation only lowers H2, so the
+  the mean `n_H2` of the two ends of each hop times the path of the hop, with paths that
+  add up to `r`. Dissociation only lowers H2, so the
   two ends bound every state between them. The run is void if the `n_H2` of a domain
   particle at the last snapshot lies outside the reference range by more than 1e-3. Taking
   the range over both snapshots makes the bar wider than the range of the last snapshot
