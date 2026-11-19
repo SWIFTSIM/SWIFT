@@ -847,9 +847,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
     if (fp->ISRF_H2_line_absorption && sizeof(struct part) == 4096)
       error(
           "sizeof(struct part) is 4096 B in this build (%d chemistry "
-          "elements). This particle stride costs about 7 per cent of the run "
-          "time with GEARFeedback:ISRF_H2_line_absorption: 1. Change the size "
-          "of feedback_part_data.ISRF_packet_stride_padding or the number of "
+          "elements). A particle of exactly 4096 bytes costs about 7 per cent "
+          "more CPU time in a test without H2 line absorption; the cost with "
+          "it on was not measured. Change the size of "
+          "feedback_part_data.ISRF_packet_stride_padding or the number of "
           "chemistry elements.",
           n_elements);
 

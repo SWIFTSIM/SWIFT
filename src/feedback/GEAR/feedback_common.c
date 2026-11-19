@@ -1314,9 +1314,10 @@ double feedback_get_part_u_LW_PHOTON(const struct part *p) {
 }
 
 /**
- * @brief Local Lyman-Werner-band specific energy of the light that the H2
- * lines have not removed, see #feedback_get_part_u_PE. It is the field that
- * sets the dissociation rate with H2 line absorption.
+ * @brief Local Lyman-Werner-band specific energy weighted by the H2 line
+ * transmission, the fraction of the dissociation rate that the lines let
+ * through, see #feedback_get_part_u_PE. It is the field that sets the
+ * dissociation rate with H2 line absorption.
  *
  * @param p The #part to query.
  * @return The specific energy, 0 without H2 line absorption.

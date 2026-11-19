@@ -218,7 +218,7 @@ __attribute__((always_inline)) INLINE static void radiation_h2_shielding_hop(
  * share a fresh start if the sum exceeds the limit.
  *
  * With a fresh start the column is 0, the transmission 1 and the shift 0. A
- * limit that is not positive, as for a receiver with no H2 or no temperature,
+ * limit that is not positive, for example T <= 0, or k_B or m_H not positive,
  * leaves the share as it is.
  *
  * @param t (in, out) Transmission of the share.

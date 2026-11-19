@@ -641,10 +641,10 @@ struct feedback_part_data {
       #radiation_isrf_moment_to_operator. */
   struct feedback_isrf_operator_data isrf_operator[ISRF_OPERATOR_COUNT];
 
-  /*! LW specific energy of the light that the H2 lines have not removed from
-      the dissociation rate, the kernel mean of the packet field. Written with
-      #isrf_moment, read for the H2 dissociation rate with H2 line absorption
-      on. */
+  /*! LW specific energy weighted by the H2 line transmission, the fraction of
+      the dissociation rate that the lines let through; the kernel mean of the
+      packet field. Written with #isrf_moment, read for the H2 dissociation
+      rate with H2 line absorption on. */
   double LW_dissociating_u;
 
   /*! H2 column per unit internal length of path, in cm^-2, of the gas of this
@@ -709,7 +709,8 @@ struct feedback_part_data {
 
   /*! Unused. With 10 chemistry elements #LW_line_H2_column and this array
       together keep sizeof(struct part) at 4256 B. Other builds can still
-      reach 4096 B, where a stride was measured to cost 7 per cent; the
+      reach 4096 B, where a stride was measured to cost 7 per cent more CPU time
+      without H2 line absorption; the
       start-up refuses that with H2 line absorption on
       (#feedback_props_init). */
   char ISRF_packet_stride_padding[28];
