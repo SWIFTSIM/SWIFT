@@ -3260,7 +3260,7 @@ light speed switch are run constants in \code{struct radiation\_packet\_constant
 parameters are read and come back with \code{feedback\_props} after a restart.
 The pair loops pass a pointer to them to the hop
 (\code{feedback\_get\_radiation\_packet\_constants},
-\code{radiation\_propagation\_iact.h:35-39}).
+\code{radiation\_propagation\_iact.h:36-40}).
 
 \paragraph{24 and 48 slots and their cost (Sec.~\ref{sec:packet-state}).}
 \code{--with-isrf-packet-slots=24} and \code{=48} select two more partitions
@@ -3300,8 +3300,8 @@ the weight of every pair they both visit; the loop's own vector only selects the
 (\code{src/feedback/GEAR/radiation\_packet.h:54}). The coefficients of
 Eq.~\eqref{eq:packet-kernel} are \code{kernel\_coeffs}, \code{kernel\_constant}
 and \code{kernel\_gamma} in \code{src/kernel\_hydro.h} (one block per kernel;
-the Wendland C2 block is at :123-150), evaluated by \code{kernel\_eval}
-(\code{kernel\_hydro.h:297-318}). The gradient loop sums $S_{i,k}$ and the
+the Wendland C2 block is at :341-430), evaluated by \code{kernel\_eval}
+(\code{kernel\_hydro.h:662-673}). The gradient loop sums $S_{i,k}$ and the
 numerator of Eq.~\eqref{eq:packet-advance} in
 \code{radiation\_packet\_gradient\_accumulate}
 (\code{radiation\_packet.h:488-524}). It is called from

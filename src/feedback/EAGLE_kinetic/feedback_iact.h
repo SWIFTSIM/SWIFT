@@ -534,6 +534,7 @@ struct radiation_packet_constants;
  * model.
  *
  * @param fp The #feedback_props.
+ * @return NULL, since this model has no packet transport.
  */
 __attribute__((
     always_inline)) INLINE static const struct radiation_packet_constants *

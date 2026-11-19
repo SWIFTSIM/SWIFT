@@ -32,6 +32,7 @@
  * @brief The constants of the packet transport, for the pair loops.
  *
  * @param fp The #feedback_props, or NULL.
+ * @return The constants of the packet transport, or NULL.
  */
 __attribute__((
     always_inline)) INLINE static const struct radiation_packet_constants *

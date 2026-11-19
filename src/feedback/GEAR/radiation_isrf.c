@@ -228,11 +228,12 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
   }
   p->feedback_data.dt_prev = dt_phys;
 
+  const struct radiation_packet_constants *packet_constants =
+      &e->feedback_props->ISRF_packet_constants;
+
   /* The drift runs for inactive particles too. Give them the step lattice
    * now, so that light arriving before their first merge is placed once, on
    * the final lattice. */
-  const struct radiation_packet_constants *packet_constants =
-      &e->feedback_props->ISRF_packet_constants;
   if (!part_is_active(p, e) && p->time_bin > 0)
     radiation_packet_set_first_step(
         p, e->ti_current, ti_step,

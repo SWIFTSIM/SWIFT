@@ -693,6 +693,7 @@ static void radiation_packet_placed_collect(
  * @brief Is the speed of the light of a share limited in this run?
  *
  * @param e The #engine.
+ * @return 1 if the light speed is limited, 0 otherwise.
  */
 __attribute__((always_inline)) INLINE static int
 radiation_packet_engine_light_speed_limited(const struct engine *e) {
