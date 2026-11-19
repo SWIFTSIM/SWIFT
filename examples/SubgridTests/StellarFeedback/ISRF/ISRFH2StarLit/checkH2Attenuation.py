@@ -824,17 +824,21 @@ def check_kernel_mean(
     positions in the force loops.
 
     The float LW sum of the code flushes a product w E_j below the smallest normal float
-    (FLT_MIN) to zero, and the dissociating sum, in double, does not. The offline sums drop
-    the same terms from the LW sum. A product within its own relative error of FLT_MIN may
-    or may not be flushed: its share of the sum is added to every bar. A particle whose
-    terms are all below FLT_MIN must hold no LW and no dissociating energy.
+    (FLT_MIN) to zero, or keeps it, depending on the order of the sum and on fused
+    multiply-add; the dissociating sum, in double, loses nothing. A product within its own
+    relative error of FLT_MIN is undecided. The LW sum lies between the sum of the products
+    certainly kept and the sum of all products, and the offline value is measured from the
+    window that this range opens. The edge terms are bounded over every set of dropped
+    products. A particle whose terms are all below FLT_MIN must hold no LW and no
+    dissociating energy.
 
     Tier 1 (identity): T_offline is the code's kernel mean, sum_j m_j W(r_ij / h_i) D_j
     over sum_j m_j W(r_ij / h_i) E_j with the self term, of the own fields in the
     snapshot (D_j clamped to E_j). It must agree with the snapshot to (n_ngb + 2) eps32.
     A particle with no lit neighbour must have no LW energy. Each bar adds the kernel-edge
-    term sum_j |b_j - a_j| rel_j, with b_j the share of
-    neighbour j in the numerator, a_j its share of the weight sum and rel_j the relative
+    term sum_j max |b_j - a_j| rel_j, with b_j the share of
+    neighbour j in the numerator, a_j its share of the weight sum (the largest value over the
+    possible sums of the terms kept) and rel_j the relative
     float error of its weight (kernel_weight_with_error): the weights of the neighbours near
     the edge of the support carry a large relative error, and one lit neighbour there can set
     the mean. The weight sum of the mean cancels in T and is tested by tier 3.
@@ -911,10 +915,20 @@ def check_kernel_mean(
             1.0, d_total / np.array([total, kept if kept > 0.0 else np.inf])
         )
         share_w = w / weight_sum
-        share_e = terms / total
         share_d = d_terms / d_total if d_total > 0.0 else np.zeros_like(w)
-        edge_t[i] = float(np.sum(np.abs(share_d - share_e) * rel))
-        edge_e[i] = float(np.sum(np.abs(share_e - share_w) * rel))
+        # The share of term j in the LW sum is terms_j s with s between 1 / total and 1 / kept, or
+        # zero if the term is dropped. |b - share| is convex in s, so its maximum over the
+        # possible sums is at an end of the range, or at the dropped value |b|.
+        sure = terms * (1.0 - slack) >= FLOAT32_TINY
+        share_lo = terms / total
+        share_hi = terms / kept if kept > 0.0 else np.ones_like(w)
+
+        def worst_gap(b):
+            gap = np.maximum(np.abs(b - share_lo), np.abs(b - share_hi))
+            return np.where(sure, gap, np.maximum(gap, np.abs(b)))
+
+        edge_t[i] = float(np.sum(worst_gap(share_d) * rel))
+        edge_e[i] = float(np.sum(worst_gap(share_w) * rel))
         edge_d[i] = float(np.sum(np.abs(share_d - share_w) * rel))
         if probes[i]:
             kmean[i] = float(terms @ exp[j]) / total

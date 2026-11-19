@@ -714,8 +714,8 @@ def starlit_cases(work):
 
         return fn
 
-    def halve_partial(e, d, t, exempt, gone):
-        hit = exempt & ~gone
+    def halve_partial(e, d, t, can_lose_light, gone):
+        hit = can_lose_light & ~gone
         ROWS.append(
             (
                 "(planted particles)",
@@ -726,11 +726,11 @@ def starlit_cases(work):
         )
         return e, d, np.where(hit, 0.5 * t, t)
 
-    def light_in_gone(e, d, t, exempt, gone):
+    def light_in_gone(e, d, t, can_lose_light, gone):
         return np.where(gone, 1.0, e), d, t
 
-    def raise_partial(e, d, t, exempt, gone):
-        hit = exempt & ~gone
+    def raise_partial(e, d, t, can_lose_light, gone):
+        hit = can_lose_light & ~gone
         ROWS.append(
             (
                 "(planted particles)",
@@ -742,19 +742,19 @@ def starlit_cases(work):
         return e, d, np.where(hit, 1.2 * t, t)
 
     tier(
-        "K9 own-field terms below FLT_MIN flushed to zero (exempt)",
+        "K9 own-field terms below FLT_MIN flushed to zero (can lose light)",
         snap_with("k9.hdf5", own_ratio, lw=faint, mean_fn=flush()),
         "PASS",
         "PASS",
         "PASS",
     )
     tier(
-        "K9c exempt particles with T x0.5 (not flushed to zero)",
+        "K9c particles that can lose light with T x0.5 (not flushed to zero)",
         snap_with("k9c.hdf5", own_ratio, lw=faint, mean_fn=flush(halve_partial)),
         "FAIL",
     )
     tier(
-        "K9e exempt particles with T x1.2 (upward error under a flush)",
+        "K9e particles that can lose light with T x1.2 (upward error under a flush)",
         snap_with("k9e.hdf5", own_ratio, lw=faint, mean_fn=flush(raise_partial)),
         "FAIL",
     )
@@ -1555,6 +1555,77 @@ def velocity_cases(work):
     )
 
 
+def dropped_neighbour_case():
+    """Add rows for a lit neighbour whose term lies below FLT_MIN and carries 8 per cent of D.
+
+    Particle 0 has two lit neighbours near the same share of E and D: one normal, one at
+    the edge of the support with a term of 0.66 FLT_MIN, which the code dropped. T of the
+    snapshot sits at the dropped end of the window and is 2.75e-6 above it.
+    """
+    box, c_over_h = 100.0, 17.4
+    tiny = gate.FLOAT32_TINY
+    centre = np.array([50.0, 50.0, 50.0])
+    # the neighbours sit at u = 0.5 and u = 1.9 from particle 0; their own support is too
+    # small to reach each other or particle 0
+    pos = np.array([centre, centre + [0.5, 0.0, 0.0], centre + [-1.9, 0.0, 0.0]])
+    h = np.array([1.0, 0.01, 0.01])
+    u, _ = gate.kernel_weight_with_error(np.array([0.5, 1.9]), c_over_h)
+    e = np.zeros(3)
+    e[1] = 1.0e-37 / u[0]
+    e[2] = 0.66 * tiny / u[1]
+    d = 0.5 * e
+    base = {
+        "Coordinates": pos,
+        "box": box,
+        "SmoothingLengths": h,
+        "Masses": np.ones(3),
+        "cell_width": c_over_h,
+        "LWOwnSpecificEnergies": e,
+        "LWOwnDissociatingSpecificEnergies": d,
+    }
+    weights = {i: (j, w, rel) for i, j, w, rel in gate.kernel_neighbour_weights(base)}
+    j, w, rel = weights[0]
+    terms = w * e[j]
+    kept = terms[terms >= tiny].sum()
+    total = terms.sum()
+    d_total = (w * d[j]).sum()
+    t_drop = d_total / kept
+    e_mean = np.zeros(3)
+    d_mean = np.zeros(3)
+    t_snap = np.full(3, 0.5)
+    e_mean[0], d_mean[0] = kept / w.sum(), min(d_total, kept) / w.sum()
+    t_snap[0] = t_drop * (1.0 + 2.75e-6)
+    for i in (1, 2):
+        jj, ww, _ = weights[i]
+        e_mean[i] = (ww * e[jj]).sum() / ww.sum()
+        d_mean[i] = 0.5 * e_mean[i]
+    base.update(
+        kernel_name=gate.KERNEL_NAME,
+        LWSpecificEnergies=e_mean.astype(np.float32),
+        LWDissociatingSpecificEnergies=d_mean.astype(np.float32),
+        LWLineTransmissions=t_snap,
+    )
+    probes = np.array([False, True, True])
+    buf = io.StringIO()
+    rep = gate.Report()
+    with contextlib.redirect_stdout(buf):
+        gate.check_kernel_mean(base, rep, probes, np.full(3, 0.5), np.ones(3))
+    line = next(ln for ln in buf.getvalue().splitlines() if "(tier 1)" in ln)
+    margin = float(line.split("worst margin ")[1].split()[0])
+    old_bar = (len(j) + 2.0) * gate.FLOAT32_EPS + float(
+        np.sum(np.abs((w * d[j]) / d_total - terms / total) * rel)
+    )
+    old_margin = float(np.log(t_snap[0] / t_drop)) / old_bar
+    ROWS.append(
+        (
+            "K20 term below FLT_MIN with 8 per cent of D, dropped by the code: margin well below 1",
+            0,
+            0 if margin < 0.1 and old_margin > 1.0 and not rep.failed else 1,
+            f"margin {margin:.3g}; a bar from the full-sum shares alone gives margin {old_margin:.3g}",
+        )
+    )
+
+
 def main(work):
     global START_UP_LOG
     os.makedirs(work, exist_ok=True)
@@ -1583,6 +1654,7 @@ def main(work):
     parity_cases(work, d, data)
     twosource_cases(work)
     velocity_cases(work)
+    dropped_neighbour_case()
     width = max(len(r[0]) for r in ROWS)
     print(f"{'case':<{width}}  want  got  verdict  line the check printed")
     bad = 0
