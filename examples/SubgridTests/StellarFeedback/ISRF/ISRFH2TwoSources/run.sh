@@ -38,35 +38,51 @@ fi
 "$scripts_location"/getRadiationTable.sh PopII_parsec_spectral.hdf5 || exit 1
 "$scripts_location"/checkRadiationTable.sh PopII_parsec_spectral.hdf5 --with-isrf || exit 1
 
-rm -f "$ic_file"
-python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass --h2_ratio $h2_ratio $extra_ic_args -o "$ic_file"
-
-rm -rf snap restart
-mkdir snap
-
 swift_exe=../../../../../swift
 [ "$ranks" -gt 1 ] && launcher="mpirun -np $ranks" && swift_exe=../../../../../swift_mpi || launcher=""
 
+# Run swift on the star set $1 ("a", "b" or "ab") and keep the run in the directory $2.
 # Parameter overrides: the switch of the leg, and for stale_key the removed library key.
-set +e
-$launcher $swift_exe --hydro --stars --external-gravity --feedback --cooling \
-    --sync --limiter --verbose=0 --threads=$n_threads \
-    -P GEARFeedback:ISRF_H2_line_absorption:$switch \
-    $stale_key_arg \
-    $extra_swift_args $params 2>&1 | tee output.log
-swift_status=${PIPESTATUS[0]}
-set -e
+run_stars() {
+    rm -f "$ic_file"
+    python3 makeIC.py --level $level --rho $gas_density --mass $gas_mass --h2_ratio $h2_ratio --stars $1 $extra_ic_args -o "$ic_file"
+    rm -rf snap restart
+    mkdir snap
+    set +e
+    $launcher $swift_exe --hydro --stars --external-gravity --feedback --cooling \
+        --sync --limiter --verbose=0 --threads=$n_threads \
+        -P GEARFeedback:ISRF_H2_line_absorption:$switch \
+        $stale_key_arg \
+        $extra_swift_args $params 2>&1 | tee output.log
+    swift_status=${PIPESTATUS[0]}
+    set -e
+    [ "$leg" = "stale_key" ] && return
+    [ $swift_status -eq 0 ] || { echo "swift stopped with status $swift_status"; exit $swift_status; }
+    rm -rf "$2"
+    mkdir -p "$2"
+    cp used_parameters.yml output.log timesteps.txt fixture.json "$2"/
+    mv snap "$2"/
+}
 
 if [ "$leg" = "stale_key" ]; then
+    run_stars ab
     python3 ../ISRFH2StarLit/checkH2Attenuation.py stale_key --log output.log --exit-status $swift_status
     exit $?
 fi
-[ $swift_status -eq 0 ] || { echo "swift stopped with status $swift_status"; exit $swift_status; }
 
-mkdir -p "$run_name"
-cp used_parameters.yml output.log timesteps.txt fixture.json "$run_name"/
-mv snap "$run_name"/
+# The check compares the two-star run with the sum of one-star runs of the same binary,
+# and star A runs twice to measure the reproducibility of a run.
+if [ "$leg" = "main" ]; then
+    run_stars a only_a
+    run_stars b only_b
+    run_stars a only_a2
+fi
+run_stars ab "$run_name"
+
+slots=$(sed -n 's/^#define RADIATION_PACKET_SLOTS //p' "$(dirname "$swift_exe")/config.h")
+[ -n "$slots" ] || { echo "RADIATION_PACKET_SLOTS not found in $(dirname "$swift_exe")/config.h"; exit 1; }
 python3 ../ISRFH2StarLit/checkH2Attenuation.py twosource \
     --first "$run_name"/snap/snapshot_0001.hdf5 \
     --last "$(ls "$run_name"/snap/snapshot_*.hdf5 | tail -n 1)" \
-    --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --startup-log "$run_name"/output.log ${counters:+--counters "$counters"}
+    --fixture "$run_name"/fixture.json --params "$run_name"/used_parameters.yml --startup-log "$run_name"/output.log \
+    --only-a only_a --only-b only_b --repeat-a only_a2 --slots "$slots"

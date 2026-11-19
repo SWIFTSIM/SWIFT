@@ -52,7 +52,7 @@ SPH:
   resolution_eta:        1.2348
   CFL_condition:         0.1
   minimal_temperature:   1
-  initial_temperature:   163.4          # Isothermal at 163.4 K, where the shielding fit does not depend on the density
+  initial_temperature:   163.4          # Isothermal gas
 
 GEARChemistry:
   initial_metallicity: 0                       # Zero: no dust, the dust factor cancels in the check

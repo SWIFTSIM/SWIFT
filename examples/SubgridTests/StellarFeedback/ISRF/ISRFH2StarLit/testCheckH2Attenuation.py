@@ -670,159 +670,321 @@ def parity_cases(work, d, data):
     )
 
 
+RUN_LOG = """ Version : 2026.04
+ Revision: unknown, Branch: unknown, Date: unknown
+ Compiler: LLVM/Clang, Version: 23.1.1
+[00000.1] cooling_print_backend: geajay version = 1.1.0, branch unknown, revision fefbdc86e0a7f28bc2985e7bdd03f289e2ae56d0
+[00000.0] feedback_props_print: ISRF packet octant frame rotation (row-major)              = 0.329057 -0.737325 0.589977, 0.739074 0.589977 0.32511, -0.587785 0.329057 0.739074
+[00000.0] feedback_props_print: h2_transported_lw_rate_shielding = 1
+"""
+STEPS = 8
+
+
+def quadrature_column(star, pos, fix, n_steps=4000, chunk=2000):
+    """Return the column in cm^-2 of the nominal gas along the nearest-image ray, by quadrature."""
+    box = fix["box_kpc"]
+    x0, x1 = fix["slab_x_kpc"]
+    out = np.empty(len(pos))
+    t = (np.arange(n_steps) + 0.5) / n_steps
+    for lo in range(0, len(pos), chunk):
+        dv = pos[lo : lo + chunk] - star[None, :]
+        dv -= box * np.round(dv / box)
+        x = np.mod(star[0] + t[None, :] * dv[:, :1], box)
+        n = np.where((x >= x0) & (x <= x1), fix["n_h2_slab_cm3"], fix["n_h2_clear_cm3"])
+        out[lo : lo + chunk] = n.mean(axis=1) * np.linalg.norm(dv, axis=1) * U_L
+    return out
+
+
 def twosource_cases(work):
     d, pos, rho, h, box = make_ic(work, "TwoSources", level=5)
     fix = json.load(open(os.path.join(d, "fixture.json")))
-    cm = 3.0856775814913673e21
-    rho_cgs = rho * 1.988409870698051e43 / cm**3
-    x_h2 = np.full(len(pos), 2.0 * 3e-4 * 0.76)
-    dens = rho_cgs / gate.M_H
-    lw = np.full(len(pos), 1.0)
-    t_iso = np.full(len(pos), fix["temperature_K"])
-    ii = np.ones(len(pos))
-    held_off = np.ones(len(pos))
-    for p in fix["probes"]:
-        k = p["id"]
-        rules = gate.merge_rules(p["shares"], t_iso[k], dens[k], p["downstream_N_cm2"])
-        ii[k] = rules["ii"]
-        held_off[k] = float(
-            gate.transmission(
-                p["shares"][1]["N_cm2"] + p["downstream_N_cm2"], t_iso[k], dens[k]
+    n_gas = len(pos)
+    cm = U_L
+    dens = rho * 1.988409870698051e43 / cm**3 / gate.M_H
+    x_h2 = np.full(n_gas, 2.0 * 3e-4 * 0.76)
+    temp = np.full(n_gas, 163.4)
+    star_a = np.array(fix["star_a_kpc"])
+    star_b0 = np.array(fix["star_b_kpc"])
+    h0 = float(h[0])
+    cache = {}
+
+    def lit_fields(star, radius):
+        """Return the own energy, dissociating energy and column of one star."""
+        dv = pos - star[None, :]
+        dv -= box * np.round(dv / box)
+        r = np.linalg.norm(dv, axis=1)
+        energy = np.where(r < radius, 1.0 / np.maximum(r, 1e-12) ** 2, 0.0)
+        key = (tuple(np.round(star, 12)), "col")
+        if key not in cache:
+            cache[key] = 1.014 * quadrature_column(star, pos, fix)
+        return energy, cache[key]
+
+    def build(
+        case,
+        star_b=star_b0,
+        col_a=1.0,
+        col_b=1.0,
+        interfere=0.0,
+        ab_noise=5e-7,
+        repeat_noise=5e-7,
+        b_alone_id=None,
+        b_log=None,
+        x_h2_last=None,
+    ):
+        """Write the four runs of a synthetic world and return the check arguments.
+
+        The one-star fields are a model (1 / r^2 energy within a front radius, 1.014
+        times the quadrature column, transmission from the fit); the two-star run is
+        their sum plus noise. col_a and col_b scale the carried column of that star in
+        every run that holds it. interfere scales the dissociating energy of the two-star
+        run at the particles lit by both.
+        """
+        rng = np.random.default_rng(3)
+        root = os.path.join(d, case)
+        stars = {"A": star_a, "B": np.asarray(star_b)}
+        scale = {"A": col_a, "B": col_b}
+        ids_star = {"A": n_gas, "B": n_gas + 1}
+        fields = {}
+        for snap, radius in (("last", 10.5 * h0), ("prev", 9.5 * h0)):
+            for s in "AB":
+                e, n_col = lit_fields(stars[s], radius)
+                n_col = n_col * scale[s]
+                t = np.where(
+                    e > 0, gate.transmission(np.maximum(n_col, 1.0), temp, dens), 1.0
+                )
+                fields[snap, s] = (e, e * t, n_col)
+
+        def write(path, e, dis, col, time, star_pos, star_ids, x=x_h2):
+            ratio = np.where(e > 0, dis / np.where(e > 0, e, 1.0), 1.0)
+            write_snap(
+                path,
+                pos,
+                rho,
+                h,
+                box,
+                temp,
+                x,
+                e,
+                ratio,
+                time=time,
+                column=col * U_L**2,
             )
+            with h5py.File(path, "a") as f:
+                g = f.create_group("PartType4")
+                g.create_dataset("Coordinates", data=np.array(star_pos))
+                g.create_dataset("ParticleIDs", data=np.array(star_ids, dtype=np.int64))
+
+        def run(name, kinds, star_ids, noise, log=RUN_LOG):
+            run_dir = os.path.join(root, name)
+            os.makedirs(os.path.join(run_dir, "snap"), exist_ok=True)
+            open(os.path.join(run_dir, "used_parameters.yml"), "w").write(GOOD_PARAMS)
+            open(os.path.join(run_dir, "output.log"), "w").write(log)
+            col_sum = None
+            for snap, time, num in (("prev", 7.0, 8), ("last", 8.0, 9)):
+                e = sum(fields[snap, s][0] for s in kinds)
+                dis = sum(fields[snap, s][1] for s in kinds)
+                lit_both = np.ones(n_gas, bool)
+                for s in kinds:
+                    lit_both &= fields[snap, s][0] > 0
+                if len(kinds) == 2 and interfere:
+                    dis = np.where(lit_both, dis * (1.0 + interfere), dis)
+                jit = 1.0 + noise * rng.standard_normal(n_gas)
+                col = fields[snap, kinds[0]][2]
+                xs = x_h2
+                if snap == "last" and name == "main" and x_h2_last is not None:
+                    xs = x_h2_last
+                write(
+                    os.path.join(run_dir, "snap", f"snapshot_{num:04d}.hdf5"),
+                    e * jit,
+                    dis * jit,
+                    col,
+                    time,
+                    [stars[s] for s in kinds],
+                    star_ids,
+                    xs,
+                )
+            if name == "main":
+                zero = np.zeros(n_gas)
+                write(
+                    os.path.join(run_dir, "snap", "snapshot_0001.hdf5"),
+                    zero,
+                    zero,
+                    zero,
+                    1.0,
+                    [stars[s] for s in kinds],
+                    star_ids,
+                )
+
+        run("main", "AB", [ids_star["A"], ids_star["B"]], ab_noise)
+        run("only_a", "A", [ids_star["A"]], 0.0)
+        run(
+            "only_b",
+            "B",
+            [b_alone_id or ids_star["B"]],
+            0.0,
+            RUN_LOG if b_log is None else b_log,
         )
-    params = os.path.join(d, "used_parameters.yml")
-    open(params, "w").write(GOOD_PARAMS)
-    first = os.path.join(d, "s0.hdf5")
-    write_snap(first, pos, rho, h, box, t_iso, x_h2, lw, ii)
-    first_cold = os.path.join(d, "s0_cold.hdf5")
-    write_snap(first_cold, pos, rho, h, box, np.full(len(pos), 50.0), x_h2, lw, ii)
+        run("only_a2", "A", [ids_star["A"]], repeat_noise)
+        fixture = os.path.join(root, "fixture.json")
+        json.dump({**fix, "star_b_kpc": list(map(float, star_b))}, open(fixture, "w"))
+        return [
+            "twosource",
+            "--first",
+            os.path.join(root, "main/snap/snapshot_0001.hdf5"),
+            "--last",
+            os.path.join(root, "main/snap/snapshot_0009.hdf5"),
+            "--fixture",
+            fixture,
+            "--params",
+            os.path.join(root, "main/used_parameters.yml"),
+            "--startup-log",
+            os.path.join(root, "main/output.log"),
+            "--only-a",
+            os.path.join(root, "only_a"),
+            "--only-b",
+            os.path.join(root, "only_b"),
+            "--repeat-a",
+            os.path.join(root, "only_a2"),
+            "--slots",
+            "12",
+        ]
 
-    def go(name, ratio, expect, counters, key, label, first_snap=first, temp=t_iso):
-        last = os.path.join(d, name)
-        write_snap(last, pos, rho, h, box, temp, x_h2, lw, ratio)
-        record(
-            label,
-            expect,
-            tool_args(
-                "twosource",
-                d,
-                last,
-                first_snap,
-                params,
-                ("--counters", counters) if counters else (),
-            ),
-            key,
-        )
+    sum_key = "own dissociating LW energy: two stars equal the sum of the one-star runs, lit before"
 
-    go(
-        "good.hdf5",
-        ii,
-        0,
-        None,
-        "PASS  ratio equals",
-        "T1 two sources: form (ii) at 163.4 K",
-    )
-    go("n4.hdf5", held_off, 1, None, "FAIL  ratio equals", "N4 merge held term removed")
-    near_b = np.argsort(
-        np.linalg.norm(pos - np.array(fix["star_b_kpc"])[None, :], axis=1)
-    )[:23]
-    x_low = x_h2.copy()
-    x_low[near_b] *= 0.9
-
-    def go_h2(name, x_last, expect, label, key):
-        last = os.path.join(d, name)
-        write_snap(last, pos, rho, h, box, t_iso, x_last, lw, ii)
-        record(
-            label,
-            expect,
-            tool_args("twosource", d, last, first, params),
-            key,
-        )
-
-    go_h2(
-        "h2_low10.hdf5",
-        x_low,
-        4,
-        "T3 two sources: H2 of the 23 gas particles nearest B lowered by 10 per cent (void)",
-        "void run, H2 changed",
-    )
-    x_small = x_h2.copy()
-    x_small[near_b] *= 1.0 - 5e-4
-    go_h2(
-        "h2_low5e-4.hdf5",
-        x_small,
-        0,
-        "T4 two sources: H2 of the same 23 particles lowered by 5e-4 (inside the slack, widens the bar)",
-        "PASS  ratio equals",
-    )
-    cold = np.full(len(pos), 50.0)
-    go(
-        "cold.hdf5",
-        ii,
-        4,
-        None,
-        "fit not uniform",
-        "T2 density contrast at 50 K (fit not uniform)",
-        first_snap=first_cold,
-        temp=cold,
-    )
-
-
-def falsifier_cases(work):
-    d = os.path.join(work, "falsifier")
-    os.makedirs(d, exist_ok=True)
-    cm = 3.0856775814913673e21
-    n_part = 4
-    pos = np.full([n_part, 3], 0.1) + np.arange(n_part)[:, None] * 0.01
-    rho_int = 100.0 * gate.M_H * cm**3 / 1.988409870698051e43
-    rho = np.full(n_part, rho_int)
-    h = np.full(n_part, 1e-6)
-    temp = np.full(n_part, 100.0)
-    x_h2 = np.full(n_part, 1e-3)
-    lw = np.ones(n_part)
-    params = os.path.join(d, "used_parameters.yml")
-    open(params, "w").write(GOOD_PARAMS)
-    cnt = _write(d, "c.json", {"mean_hop_path_cm": 1.0})
-    first = os.path.join(d, "s0.hdf5")
-    write_snap(first, pos, rho, h, 1.0, temp, x_h2, lw, np.ones(n_part))
-    for down, tag in ((1e18, "D = 1e18"), (1e14, "D = 1e14")):
-        shares = [{"w": 0.5, "N_cm2": 0.0}, {"w": 0.5, "N_cm2": 1e20}]
-        fixture = {
-            "probes": [
-                {"id": 0, "r_b_kpc": 1.0, "downstream_N_cm2": down, "shares": shares}
-            ]
+    def sum_and_column(label, argv):
+        """Record the exit class and, for the sum check and the two column checks, whether each passed."""
+        code, text = run_gate(argv)
+        passes = {
+            what: any(ln.startswith("PASS") and what in ln for ln in text.splitlines())
+            for what in ("equal the sum", "column of star A", "column of star B")
         }
-        fx = _write(d, "fix.json", fixture)
-        rules = gate.merge_rules(shares, 100.0, 100.0, down)
-        for rule, expect, label in (
-            ("ii", 0, "form (ii)"),
-            ("i", 1, "form (i)"),
-            ("r3", 1, "r3 rule"),
-        ):
-            ratio = np.ones(n_part)
-            ratio[0] = rules[rule]
-            last = os.path.join(d, f"{rule}_{int(down)}.hdf5")
-            write_snap(last, pos, rho, h, 1.0, temp, x_h2, lw, ratio)
-            want = expect if down == 1e18 else 4
-            key = "ratio equals" if down == 1e18 else "discriminate"
-            record(
-                f"F {label} at {tag}: R = {rules[rule] / rules['true']:.4f}",
-                want,
-                [
-                    "twosource",
-                    "--first",
-                    first,
-                    "--last",
-                    last,
-                    "--fixture",
-                    fx,
-                    "--params",
-                    params,
-                    "--counters",
-                    None,
-                ],
-                key,
+        return code, passes
+
+    # An independent quadrature of the nominal gas checks gate.ray_column. A midpoint rule with
+    # n steps errs by at most one step times the jump at each of two faces, relative to n_clear.
+    n_quad = 200000
+    e_a, _ = lit_fields(star_a, 10.5 * h0)
+    sub = np.flatnonzero(e_a > 0)[::40]
+    n_ray, _ = gate.ray_column(
+        star_a,
+        pos[sub],
+        box,
+        fix["slab_x_kpc"],
+        fix["n_h2_clear_cm3"],
+        fix["n_h2_slab_cm3"],
+        0.0,
+    )
+    n_quad_col = quadrature_column(star_a, pos[sub], fix, n_steps=n_quad, chunk=20)
+    worst = float(np.max(np.abs(n_ray * U_L / n_quad_col - 1.0)))
+    bar_quad = 2.0 * fix["n_h2_slab_cm3"] / fix["n_h2_clear_cm3"] / n_quad
+    ROWS.append(
+        (
+            f"T0 ray column of the check against a quadrature of the nominal gas (bar {bar_quad:.2g})",
+            0,
+            0 if worst < bar_quad else 1,
+            f"largest relative difference {worst:.3g} over {len(sub)} particles",
+        )
+    )
+
+    argv = build("good")
+    record(
+        "T1 two sources: correct world, sum and ray column",
+        0,
+        argv,
+        "PASS  column of star B",
+    )
+    bar_line = next(
+        ln for ln in run_gate(argv)[1].splitlines() if "round-off bar" in ln
+    )
+    for what, plant in (("A", {"col_a": 1.5}), ("B", {"col_b": 1.5})):
+        argv = build(f"col_{what}", **plant)
+        record(
+            f"T5 column of star {what} 1.5 times too large",
+            1,
+            argv,
+            f"FAIL  column of star {what}",
+        )
+        code, passes = sum_and_column("", argv)
+        ROWS.append(
+            (
+                f"T5 the same: the sum check alone passes, the ray check fails",
+                0,
+                (
+                    0
+                    if code == 1
+                    and passes["equal the sum"]
+                    and not passes[f"column of star {what}"]
+                    else 1
+                ),
+                f"exit {code}; sum check passes {passes['equal the sum']}; column of star {what} passes {passes[f'column of star {what}']}",
             )
+        )
+    for size, expect, label in (
+        (
+            1e-4,
+            1,
+            "T6 interference 1e-4 on the dissociating energy at the particles lit by both",
+        ),
+        (2e-5, 0, "T6 round-off sized change 2e-5 (below the bar)"),
+    ):
+        argv = build(f"interfere_{size:g}", interfere=size)
+        record(
+            f"{label}; bar {bar_line.split('= ')[1].split(';')[0]}",
+            expect,
+            argv,
+            sum_key,
+        )
+    far_b = np.array([0.17 * box, 0.5 * box, 0.5 * box])
+    argv = build("co_slot", star_b=far_b)
+    record(
+        "T7 star B next to star A: the two lights share slots (void)",
+        4,
+        argv,
+        "void run, ",
+    )
+    argv = build("star_id", b_alone_id=n_gas)
+    record(
+        "T8 star B alone with another particle ID (void)",
+        4,
+        argv,
+        "void run, the star of the star B",
+    )
+    argv = build("build_line", b_log=RUN_LOG.replace("2026.04", "2026.05"))
+    record(
+        "T9 star B alone from another code version (void)",
+        4,
+        argv,
+        "void run, the four runs differ",
+    )
+    argv = build("repeat", repeat_noise=1e-3)
+    record(
+        "T10 two identical runs of star A differ by 1e-3 (bar unfit, void)",
+        4,
+        argv,
+        "void check, two identical runs",
+    )
+    near_b = np.argsort(np.linalg.norm(pos - star_b0[None, :], axis=1))[:23]
+    for factor, expect, label in (
+        (
+            0.9,
+            4,
+            "T3 two sources: H2 of the 23 gas particles nearest B lowered by 10 per cent (void)",
+        ),
+        (
+            1.0 - 5e-4,
+            0,
+            "T4 two sources: H2 of the same 23 particles lowered by 5e-4 (inside the 1e-3 slack)",
+        ),
+    ):
+        x_last = x_h2.copy()
+        x_last[near_b] *= factor
+        argv = build(f"h2_{factor:g}", x_h2_last=x_last)
+        record(
+            label,
+            expect,
+            argv,
+            "void run, H2 changed" if expect else "PASS  column of star B",
+        )
 
 
 def velocity_cases(work):
@@ -918,24 +1080,6 @@ def velocity_cases(work):
     )
 
 
-def pi_l_case():
-    """The bound is 1 / pi_l: a share whose history ran in other gas makes pi_l
-    smaller than its energy share w_l, and correct code then exceeds 1 / w_l."""
-    shares = [{"w": 0.5, "N_cm2": 0.0}, {"w": 0.5, "N_cm2": 1e18, "t": 0.01}]
-    rules = gate.merge_rules(shares, 100.0, 100.0, 1e16)
-    R = rules["ii"] / rules["true"]
-    ok = 1.0 / rules["w_l"] < R <= 1.0 / rules["pi_l"]
-    ROWS.append(
-        (
-            f"F carried column, other gas before: R = {R:.3f} above 1/w_l = "
-            f"{1.0 / rules['w_l']:.1f}, below 1/pi_l = {1.0 / rules['pi_l']:.1f}",
-            0,
-            0 if ok else 1,
-            f"pi_l {rules['pi_l']:.4g}, w_l {rules['w_l']:.4g}",
-        )
-    )
-
-
 def main(work):
     global START_UP_LOG
     os.makedirs(work, exist_ok=True)
@@ -963,8 +1107,6 @@ def main(work):
     stale_key_cases(work)
     parity_cases(work, d, data)
     twosource_cases(work)
-    falsifier_cases(work)
-    pi_l_case()
     velocity_cases(work)
     width = max(len(r[0]) for r in ROWS)
     print(f"{'case':<{width}}  want  got  verdict  line the check printed")

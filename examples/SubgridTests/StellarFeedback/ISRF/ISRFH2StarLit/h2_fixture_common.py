@@ -61,10 +61,16 @@ def write_ic(
     star_pos,
     star_mass_msun,
     star_type=0,
+    star_ids=None,
 ):
-    """Write gas and star particles in the SWIFT IC layout (internal units)."""
+    """Write gas and star particles in the SWIFT IC layout (internal units).
+
+    The star IDs default to n_gas + 0, 1, ... . The ID seeds the random frame of the
+    emission pixels, so a star keeps its ID when it is written alone.
+    """
     n_gas = len(pos)
     n_star = len(star_pos)
+    star_ids = n_gas + np.arange(n_star) if star_ids is None else star_ids
     check_away_from_faces(pos, box, "gas")
     check_away_from_faces(star_pos, box, "star")
     m_star = np.full(n_star, star_mass_msun * MSUN_CGS / UNIT_MASS_CGS)
@@ -98,7 +104,7 @@ def write_ic(
         s.create_dataset("Coordinates", data=star_pos, dtype="d")
         s.create_dataset("Velocities", data=np.zeros([n_star, 3]), dtype="f")
         s.create_dataset("Masses", data=m_star, dtype="f")
-        s.create_dataset("ParticleIDs", data=n_gas + np.arange(n_star), dtype="L")
+        s.create_dataset("ParticleIDs", data=star_ids, dtype="L")
         s.create_dataset(
             "SmoothingLength", data=np.full(n_star, 3 * h_gas[0]), dtype="f"
         )

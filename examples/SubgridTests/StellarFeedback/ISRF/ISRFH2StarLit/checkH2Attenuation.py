@@ -4,7 +4,8 @@
 Subcommands
 -----------
 starlit     Transmission at depth against the shielding function (star-lit box).
-twosource   Merge of two lights of different columns (two sources).
+twosource   Two stars whose lights never share a slot: the two-star run is the sum of the
+            one-star runs, and each star's column follows the straight ray.
 velocity    Reset of the carried column by a velocity shift.
 parity      Per-particle comparison of two runs (two ranks, or restart).
 stale_key   The removed key GeajayCooling:h2_transported_lw_rate_shielding is ignored.
@@ -29,8 +30,10 @@ at 1e-8 cm^-3 as in the module. The expected transmission is f(N) / f(0).
 """
 
 import argparse
+import itertools
 import json
 import math
+import os
 import re
 import sys
 from typing import Dict, List, Optional, Tuple
@@ -750,234 +753,510 @@ def gate_starlit(args: argparse.Namespace) -> int:
     return rep.exit_code()
 
 
-def fit_parameters(
-    temp: np.ndarray, dens_cm3: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Return the fit exponent alpha and the line width b_5 of each particle."""
-    b5 = np.sqrt(2.0 * K_B * temp / (2.0 * M_H)) / 1e5
-    tp = np.log10(np.clip(temp, 100.0, 8000.0))
-    npr = np.log10(np.clip(dens_cm3, 1e-8, 1e7))
-    alpha = (0.8711 * tp - 1.928) * np.exp(-0.2856 * npr) + (-0.9639 * tp + 3.892)
-    return alpha, b5
+LOG_IDENTITY = (
+    ("code version", r"^\s*Version\s*:.*$"),
+    ("code revision", r"^\s*Revision:.*$"),
+    ("compiler", r"^\s*Compiler:.*$"),
+    ("geajay library", r"geajay version = .*$"),
+    ("slot frame", r"octant frame rotation \(row-major\)\s*=.*$"),
+)
+SLOTS_HANDLED = 12
 
 
-def check_fit_uniform(snap: dict, eps: float, x_max: float, rep: Report) -> None:
-    """Refuse a run whose fit (alpha, b_5) differs from cell to cell.
-
-    First-order tolerance, needs physics review. The sign and 1/pi_l bars of the merge
-    hold only where the fit is the same on every path. To first order a spread d_alpha moves ln F by at most d_alpha ln(1 + x_max / b_5)
-    and a relative spread d_b of b_5 moves it by at most alpha d_b. Each must stay
-    below the bar eps of the probes, or the fit is not uniform.
+def read_startup_log(path: str) -> Dict[str, str]:
+    """Return the lines of a swift log that identify the build and the slot frame.
 
     Raises
     ------
     GateExit
-        EXIT_VOID with 'fit not uniform'.
+        EXIT_MISSING if the log or one of the lines is absent.
     """
-    alpha, b5 = fit_parameters(snap["Temperatures"], gas_number_density(snap))
-    d_alpha = float(alpha.max() - alpha.min())
-    d_b = float((b5.max() - b5.min()) / b5.min())
-    shift_a = d_alpha * math.log1p(x_max / float(b5.min()))
-    shift_b = float(alpha.max()) * d_b
-    rep.info(
-        "fit uniformity",
-        f"alpha spread {d_alpha:.3g} (ln F shift {shift_a:.3g}), "
-        f"b_5 spread {d_b:.3g} (ln F shift {shift_b:.3g}), bar {eps:.3g}",
-    )
-    if max(shift_a, shift_b) > eps:
+    try:
+        text = open(path).read()
+    except OSError as err:
+        raise GateExit(EXIT_MISSING, f"start-up log {path} is missing: {err}")
+    out = {}
+    for name, pattern in LOG_IDENTITY:
+        found = re.search(pattern, text, re.M)
+        if found is None:
+            raise GateExit(EXIT_MISSING, f"start-up log {path} has no {name} line")
+        out[name] = found.group(0).strip()
+    return out
+
+
+def slot_frame(line: str) -> np.ndarray:
+    """Return the 3x3 slot frame (row-major) from its start-up log line."""
+    vals = [float(v) for v in line.split("=", 1)[1].replace(",", " ").split()]
+    if len(vals) != 9:
+        raise GateExit(
+            EXIT_MISSING, f"slot frame line holds {len(vals)} numbers, not 9"
+        )
+    return np.array(vals).reshape(3, 3)
+
+
+def packet_slot(frame: np.ndarray, direction: np.ndarray, n_slots: int) -> np.ndarray:
+    """Return the reception slot of each direction, as radiation_packet_slot for 12 slots."""
+    if n_slots != SLOTS_HANDLED:
+        raise GateExit(
+            EXIT_MISSING,
+            f"the check handles {SLOTS_HANDLED} reception slots, the build has {n_slots}",
+        )
+    q = np.atleast_2d(direction) @ frame.T
+    m = np.argmin(np.abs(q), axis=1)
+    i = np.where(m == 0, 1, 0)
+    j = np.where(m == 2, 1, 2)
+    r = np.arange(len(q))
+    return 4 * m + 2 * (q[r, i] >= 0.0) + (q[r, j] >= 0.0)
+
+
+def image_displacements(pos: np.ndarray, star: np.ndarray, box: float):
+    """Return the vectors and lengths from the 27 nearest periodic images of a star to pos."""
+    shifts = box * np.array(list(itertools.product((-1.0, 0.0, 1.0), repeat=3)))
+    d = pos[:, None, :] - (star[None, None, :] + shifts[None, :, :])
+    return d, np.linalg.norm(d, axis=2)
+
+
+def star_particles(path: str) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the coordinates and the IDs of the star particles of a snapshot."""
+    try:
+        with h5py.File(path, "r") as f:
+            if "PartType4" not in f:
+                raise GateExit(EXIT_MISSING, f"{path} has no PartType4")
+            return (
+                np.asarray(f["PartType4/Coordinates"][:], float).reshape(-1, 3),
+                np.asarray(f["PartType4/ParticleIDs"][:], dtype=np.int64),
+            )
+    except OSError as err:
+        raise GateExit(EXIT_MISSING, f"snapshot {path} cannot be opened: {err}")
+
+
+def previous_snapshot(path: str) -> str:
+    """Return the path of the snapshot written before the given one."""
+    found = re.search(r"snapshot_(\d+)\.hdf5$", path)
+    if found is None or int(found.group(1)) < 1:
+        raise GateExit(
+            EXIT_MISSING, f"{path} is not a numbered snapshot after the first"
+        )
+    num = found.group(1)
+    return path[: found.start(1)] + f"{int(num) - 1:0{len(num)}d}.hdf5"
+
+
+def run_last_snapshot(run_dir: str, like: str) -> str:
+    """Return the snapshot of a run directory with the same file name as the reference."""
+    path = os.path.join(run_dir, "snap", os.path.basename(like))
+    if not os.path.exists(path):
         raise GateExit(
             EXIT_VOID,
-            "fit not uniform: the merge bars do not apply (use T = 163.4 K or a uniform gas)",
+            f"void run, {run_dir} has no {os.path.basename(like)} like the two-star run",
         )
+    return path
 
 
-def merge_rules(
-    shares: List[dict], temp: float, dens: float, down: float
-) -> Dict[str, float]:
-    """Return the transmission after a downstream column for each merge rule.
+def align_to_ids(snap: dict, ids: np.ndarray, label: str) -> None:
+    """Reorder the per-particle arrays of a snapshot to the order of ids."""
+    order = np.argsort(snap["ParticleIDs"])
+    where = np.minimum(np.searchsorted(snap["ParticleIDs"][order], ids), len(order) - 1)
+    if len(snap["ParticleIDs"]) != len(ids) or not np.array_equal(
+        snap["ParticleIDs"][order][where], ids
+    ):
+        raise GateExit(EXIT_VOID, f"void run, {label} holds other particles")
+    idx = order[where]
+    for key, val in snap.items():
+        if isinstance(val, np.ndarray) and val.ndim >= 1 and len(val) == len(ids):
+            snap[key] = val[idx]
 
-    ``true`` keeps every share's own column and transmission, ``ii`` is the carried
-    column of the code (its factor is the harmonic mean of the factors of the merged
-    columns, weighted by the dissociating energy; in gas with one fit it is form (ii)),
-    ``i`` the energy-weighted column and ``r3`` the transmission-weighted column. A
-    share's ``t`` is its transmission at the merge; without it the share crossed gas
-    of the merge fit only, t = f(N) / f(0). ``pi_l`` is the weight in the sum over the
-    factor of the share with the smallest column: the bound is 1 / pi_l, which is
-    1 / w_l only in gas with one fit.
+
+def ray_column(
+    star: np.ndarray,
+    pos: np.ndarray,
+    box: float,
+    slab: Tuple[float, float],
+    n_clear: float,
+    n_slab: float,
+    reach: float,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the straight-ray column from a star (nearest image) and the face variation.
+
+    The gas is n_clear outside the slab (periodic in x) and n_slab inside it. Positions are
+    in the length unit of the box. The column is in n times that unit. The variation is
+    the jump |n_slab - n_clear| times the number of slab faces within reach of the ray in
+    x: the SPH density spreads a face over the kernel support, so a face closer than
+    reach to the ray is crossed by the smoothed field as well.
     """
-    w = np.array([s["w"] for s in shares], float)
-    w = w / w.sum()
-    n = np.array([s["N_cm2"] for s in shares], float)
-    f = lambda col: float(transmission(col, temp, dens))
-    t = np.array([float(s["t"]) if "t" in s else f(c) for s, c in zip(shares, n)])
-    t_k = float(np.sum(w * t))
-    over = w * t / np.array([f(c) for c in n])
-    t_harm = t_k / float(np.sum(over))
-    n_eff = column_for_transmission(t_harm, temp, dens) if t_harm < 1.0 else 0.0
-    n_r3 = float(np.sum(w * t * n) / np.sum(w * t))
-    lo = int(np.argmin(n))
+    d = pos - star[None, :]
+    d -= box * np.round(d / box)
+    length = np.linalg.norm(d, axis=1)
+    x_end = star[0] + d[:, 0]
+    lo, hi = np.minimum(star[0], x_end), np.maximum(star[0], x_end)
+    overlap, faces = np.zeros(len(pos)), np.zeros(len(pos))
+    star_in_slab = False
+    for m in range(-2, 3):
+        a, b = slab[0] + m * box, slab[1] + m * box
+        overlap += np.clip(np.minimum(hi, b) - np.maximum(lo, a), 0.0, None)
+        faces += ((a > lo - reach) & (a < hi + reach)).astype(float)
+        faces += ((b > lo - reach) & (b < hi + reach)).astype(float)
+        star_in_slab |= a <= star[0] <= b
+    dx = np.abs(d[:, 0])
+    fraction = np.where(
+        dx > 0.0, overlap / np.where(dx > 0.0, dx, 1.0), float(star_in_slab)
+    )
+    in_slab = length * fraction
+    return (
+        n_clear * length + (n_slab - n_clear) * in_slab,
+        abs(n_slab - n_clear) * faces,
+    )
+
+
+def round_off_bar(steps: float, k_terms: int, p_power: float, delta_h: float) -> float:
+    """Return n (k 2^-24 + p delta_h), the round-off bar of a field that is a sum of shares."""
+    return steps * (k_terms * FLOAT32_EPS + p_power * delta_h)
+
+
+def smoothing_gap(h_x: np.ndarray, h_y: np.ndarray) -> float:
+    """Return the largest relative smoothing-length gap between two runs."""
+    return float(np.max(np.abs(h_x - h_y) / np.maximum(h_x, h_y)))
+
+
+def round_off_gaps(
+    x: np.ndarray, y: np.ndarray, held: np.ndarray, ngb: List[List[int]], bar: float
+) -> Dict[str, float]:
+    """Return how far two fields differ in the round-off sense of the parity check.
+
+    Particles in held are held to bar times their own value. The others (light front and
+    dark) are held to bar times the largest value in their kernel.
+    """
+    scale = np.maximum(np.abs(x), np.abs(y))
+    gap = np.abs(x - y)
+    own = np.where(scale > 0, gap / np.where(scale > 0, scale, 1), 0.0)
+    local = np.array([scale[n].max() for n in ngb])
+    rest = ~held
+    worst = np.where(local > 0, gap / np.where(local > 0, local, 1), 0.0)
     return {
-        "true": float(sum(wi * ti * f(c + down) / f(c) for wi, ti, c in zip(w, t, n))),
-        "ii": t_k * f(n_eff + down) / f(n_eff),
-        "i": f(float(np.sum(w * n)) + down),
-        "r3": t_k * f(n_r3 + down) / f(n_r3),
-        "n_eff": n_eff,
-        "w_l": float(w[lo]),
-        "pi_l": float(over[lo] / np.sum(over)),
+        "n_held": int(held.sum()),
+        "over_held": int(np.sum(held & (gap > bar * scale))),
+        "held_own": float(own[held].max(initial=0.0)),
+        "n_rest": int(rest.sum()),
+        "over_rest": int(np.sum(rest & (gap > bar * local))),
+        "rest_local": float(worst[rest].max(initial=0.0)),
+        "rest_own": float(own[rest].max(initial=0.0)),
     }
 
 
-TRUE_TRANSMISSION_READ_MIN = 1e-2
-
-
 def gate_twosource(args: argparse.Namespace) -> int:
+    """Check two stars that never share a reception slot, with one-star runs as references.
+
+    Four runs share one binary: star A alone, star B alone, star A alone again, and both.
+    Where the light of the two stars never sits in one slot of a receiver, the field of
+    the two-star run is the sum of the one-star fields. Three checks follow.
+
+    1. Premises, read from the runs: same build, parameters and slot frame; the stars
+       where the fixture says; the light of the two stars shares no slot at any particle
+       that holds both (all periodic images within the reach of the light, which is the
+       largest lit distance of the one-star run plus one hop); two identical runs agree
+       within the bar of check 2, which controls the bar.
+    2. The own LW energy and its dissociating part of the two-star run equal the sums of
+       the one-star fields within the round-off bar of the two-rank check,
+       n (k 2^-24 + p delta_h), for gas that held light at the previous snapshot, and
+       within the same bar times the largest value in the kernel for the light front
+       and dark gas. A field is a sum of positive shares, so reordering the sum moves it
+       by at most that. A coupling of the two lights moves it more.
+    3. The column of each one-star run lies within the interface bar of the design,
+       l_hop (n_H2 + TV), of the straight-ray column through the slab and the clear gas
+       (nearest periodic image). This sees an error common to the one-star and the
+       two-star runs, which check 2 cancels.
+
+    Raises
+    ------
+    GateExit
+        EXIT_VOID if a premise is not met.
+    """
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
+    for key in (
+        "box_kpc",
+        "star_a_kpc",
+        "star_b_kpc",
+        "slab_x_kpc",
+        "n_h2_clear_cm3",
+        "n_h2_slab_cm3",
+    ):
+        if key not in fix:
+            raise GateExit(EXIT_MISSING, f"geometry file lacks {key}")
+    fields = REQUIRED_GAS + REQUIRED_OWN + REQUIRED_COLUMN
     first = load_snapshot(args.first, REQUIRED_GAS)
-    last = load_snapshot(args.last, REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN)
-    require_finite(
-        "last snapshot",
-        **{k: last[k] for k in REQUIRED_GAS + REQUIRED_LW + REQUIRED_OWN},
-    )
+    ab = load_snapshot(args.last, fields)
+    require_finite("two-star snapshot", **{k: ab[k] for k in fields})
     check_box_faces(first)
-    params = read_params(args.params)
-    calibrate_temperatures(first, last, params, rep)
-    check_premise_parameters(params, rep, args.startup_log)
-    counters = load_json(args.counters, "counters file") if args.counters else {}
-    rep.info(
-        "held light at the merge",
-        "0 in every run (the end of the force loop zeroes the held energy), "
-        "so the held term of the merge is not exercised here",
-    )
-    ids = {int(i): k for k, i in enumerate(last["ParticleIDs"])}
-    probes = [p for p in fix["probes"] if int(p["id"]) in ids]
-    idx = np.array([ids[int(p["id"])] for p in probes], dtype=int)
-    mask = np.zeros(len(last["ParticleIDs"]), bool)
-    mask[idx] = True
-    read = probe_premises(
-        first, last, mask, np.full(len(mask), np.inf), rep, frozen_h2=False
-    )
-    slab = fix.get("slab_x_kpc")
-    if slab:
-        in_slab = (last["Coordinates"][:, 0] >= slab[0]) & (
-            last["Coordinates"][:, 0] <= slab[1]
+    ids = ab["ParticleIDs"]
+    align_to_ids(first, ids, "snapshot 1")
+    runs = {"two-star": ab}
+    paths = {"two-star": args.last}
+    run_dirs = {
+        "star A": args.only_a,
+        "star B": args.only_b,
+        "star A again": args.repeat_a,
+    }
+    for label, run_dir in run_dirs.items():
+        paths[label] = run_last_snapshot(run_dir, args.last)
+        runs[label] = load_snapshot(paths[label], fields)
+        align_to_ids(runs[label], ids, label)
+        require_finite(
+            label, **{k: runs[label][k] for k in REQUIRED_OWN + REQUIRED_COLUMN}
         )
-        regions = [("slab gas", in_slab), ("clear gas", ~in_slab)]
-    else:
-        regions = [("all gas", np.ones(len(mask), bool))]
-    h2_ranges = h2_region_ranges(first, last, regions, rep)
-    h2_spread = max(
-        max((lo - n_min) / lo, (n_max - hi) / hi)
-        for _, n_min, n_max, lo, hi in h2_ranges
-    )
-    dens, temp = gas_number_density(last), last["Temperatures"]
-    lw, meas = own_transmission(last)
-    require_finite("measured own ratio", ratio=meas[idx])
-    cm = last["unit_length"]
-    l_hop_all = hop_length(counters, last["SmoothingLengths"] * cm, rep)
+        if runs[label]["time"] != ab["time"]:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, {label} is at time {runs[label]['time']}, the two-star run at {ab['time']}",
+            )
+    previous = {}
+    for label in ("two-star", "star A"):
+        snap = load_snapshot(
+            previous_snapshot(paths[label]), ("ParticleIDs", "LWOwnSpecificEnergies")
+        )
+        align_to_ids(snap, ids, f"{label} previous snapshot")
+        previous[label] = snap["LWOwnSpecificEnergies"] > 0.0
 
-    rows = []
-    for p, k in zip(probes, idx):
-        if not read[k] or lw[k] <= 0.0:
-            continue
-        down = float(p.get("downstream_N_cm2", 0.0))
-        rules = merge_rules(p["shares"], temp[k], dens[k], down)
-        n_probe = rules["n_eff"] + down
-        s = float(log_slope(max(n_probe, 1.0), temp[k], dens[k]))
-        eps_hop = s * l_hop_all[k] / max(float(p["r_b_kpc"]) * cm, l_hop_all[k])
-        eps_float = float(p.get("n_merges", 1)) * (2.0 + 2.0 * s) * FLOAT32_EPS
-        eps0 = eps_hop + eps_float
-        eps_h2 = (
-            0.0
-            if h2_spread == 0.0
-            else max(
-                abs(
-                    np.log(
-                        merge_rules(
-                            [{**sh, "N_cm2": sh["N_cm2"] * g} for sh in p["shares"]],
-                            temp[k],
-                            dens[k],
-                            down * g,
-                        )["ii"]
-                        / rules["ii"]
-                    )
-                )
-                for g in (1.0 - h2_spread, 1.0 + h2_spread)
+    params = read_params(args.params)
+    check_premise_parameters(params, rep, args.startup_log)
+    logs = {"two-star": read_startup_log(args.startup_log)}
+    for label, run_dir in run_dirs.items():
+        other = read_params(os.path.join(run_dir, "used_parameters.yml"))
+        if other != params:
+            diff = sorted(
+                k for k in set(other) | set(params) if other.get(k) != params.get(k)
             )
-        )
-        eps = eps0 + eps_h2
-        r_meas = meas[k] / rules["true"]
-        r_pred = rules["ii"] / rules["true"]
-        r3_fails = rules["r3"] / rules["true"] > (1.0 / rules["pi_l"]) * (1.0 + eps)
-        i_fails = rules["i"] / rules["true"] < 1.0 - eps
-        rows.append(
-            (
-                p["id"],
-                r_meas,
-                r_pred,
-                rules["pi_l"],
-                eps,
-                r3_fails,
-                i_fails,
-                rules["true"],
-                eps0,
+            raise GateExit(
+                EXIT_VOID, f"void run, {label} used other parameters: {diff[:5]}"
             )
-        )
-    if not rows:
-        raise GateExit(EXIT_VOID, "void run, no lit merge probe")
-    a = np.array([[r[1], r[2], r[3], r[4]] for r in rows])
-    r_meas, r_pred, pi_l, eps = a.T
-    t_true = np.array([r[7] for r in rows])
-    eps_hop_float = np.array([r[8] for r in rows])
-    check_fit_uniform(first, float(np.min(eps_hop_float)), 1e24 / 5e14, rep)
+        logs[label] = read_startup_log(os.path.join(run_dir, "output.log"))
+    for name, _ in LOG_IDENTITY:
+        if len({log[name] for log in logs.values()}) != 1:
+            raise GateExit(
+                EXIT_VOID, f"void run, the four runs differ in the {name} line"
+            )
     rep.info(
-        "bar widening",
-        f"the bar adds the form (ii) shift for the n_H2 range of the reference and the last "
-        f"snapshot (columns scaled by 1 +- {h2_spread:.3g}); its median is "
-        f"{100.0 * (float(np.median(eps)) / float(np.median(eps_hop_float)) - 1.0):.3g} per cent "
-        f"above the bar of the hop and float terms alone",
+        "same build and parameters",
+        "four runs; "
+        + "; ".join(f"{v}" for k, v in logs["two-star"].items() if k != "slot frame"),
     )
-    main_bad = np.abs(r_meas / r_pred - 1.0) > eps
-    sign_bad = r_meas < 1.0 - eps
-    bound_bad = r_meas > (1.0 / pi_l) * (1.0 + eps)
-    rep.check(
-        "ratio equals the form (ii) prediction",
-        not main_bad.any(),
-        f"{int(main_bad.sum())} of {len(rows)} probes outside |R/R_pred - 1| <= eps_hop + n_m eps_m; "
-        f"worst margin {np.max(np.abs(r_meas / r_pred - 1.0) / eps):.3g} of the bar",
-    )
-    # Readings only: the sign and the bound hold where the exact transmission is
-    # above TRUE_TRANSMISSION_READ_MIN; they never change the exit code.
-    seen = t_true > TRUE_TRANSMISSION_READ_MIN
-    n_seen = int(seen.sum())
-    if n_seen:
-        rep.info(
-            "sign reading: R >= 1 - eps",
-            f"{int((sign_bad & seen).sum())} of {n_seen} probes with exact transmission "
-            f"above {TRUE_TRANSMISSION_READ_MIN:g} below; smallest R {r_meas[seen].min():.6g}",
-        )
-        rep.info(
-            "bound reading: R <= (1 / pi_l)(1 + eps)",
-            f"{int((bound_bad & seen).sum())} of {n_seen} probes above; "
-            f"largest R {r_meas[seen].max():.6g}",
-        )
-    else:
-        rep.info(
-            "sign and bound readings",
-            f"no probe has an exact transmission above {TRUE_TRANSMISSION_READ_MIN:g}",
-        )
-    n_bound = sum(1 for r in rows if r[5])
-    n_sign = sum(1 for r in rows if r[6])
+    frame = slot_frame(logs["two-star"]["slot frame"])
+    box = ab["box"]
+    star_a = np.asarray(fix["star_a_kpc"], float)
+    star_b = np.asarray(fix["star_b_kpc"], float)
+    expect = {
+        "two-star": [star_a, star_b],
+        "star A": [star_a],
+        "star A again": [star_a],
+        "star B": [star_b],
+    }
+    star_id = {}
+    for label, want in expect.items():
+        coords, sids = star_particles(paths[label])
+        dist = [np.linalg.norm(coords - w[None, :], axis=1) for w in want]
+        if len(coords) != len(want) or any(d.min() >= 1e-5 * box for d in dist):
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, the stars of the {label} run are not at the fixture positions",
+            )
+        star_id[label] = [int(sids[int(np.argmin(d))]) for d in dist]
+    for label, want_ids in (
+        ("star A", star_id["two-star"][:1]),
+        ("star A again", star_id["two-star"][:1]),
+        ("star B", star_id["two-star"][1:]),
+    ):
+        if star_id[label] != want_ids:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, the star of the {label} run has ID {star_id[label]}, in the two-star run {want_ids}: "
+                "the ID seeds the random frame of the emission pixels",
+            )
     rep.info(
-        "discrimination",
-        f"{n_bound} of {len(rows)} probes would fail the bound for the r3 rule, "
-        f"{n_sign} would fail the sign bar for form (i); the others are too shallow to discriminate",
+        "stars",
+        f"the two-star run holds both stars, the one-star runs star A, star B and star A, at the "
+        f"fixture positions and with the IDs of the two-star run ({star_id['two-star']})",
     )
-    if n_bound == 0:
+
+    slab = tuple(fix["slab_x_kpc"])
+    in_slab = (ab["Coordinates"][:, 0] >= slab[0]) & (
+        ab["Coordinates"][:, 0] <= slab[1]
+    )
+    h2_region_ranges(first, ab, [("slab gas", in_slab), ("clear gas", ~in_slab)], rep)
+
+    own = {k: runs[k]["LWOwnSpecificEnergies"] for k in runs}
+    dis = {k: runs[k]["LWOwnDissociatingSpecificEnergies"] for k in runs}
+    lit = {k: own[k] > 0.0 for k in runs}
+    both = lit["star A"] & lit["star B"] & lit["two-star"]
+    if not both.any():
+        raise GateExit(EXIT_VOID, "void run, no particle is lit by both stars")
+
+    control = packet_slot(
+        frame,
+        np.array([[1.0, 0, 0], [2.0, 0, 0], [1.0, 0.01, 0], [-1.0, 0, 0]]),
+        args.slots,
+    )
+    if not (control[0] == control[1] == control[2] != control[3]):
+        raise GateExit(
+            EXIT_VOID, f"void check, the slot rule fails its control {control.tolist()}"
+        )
+    pos = ab["Coordinates"]
+    h_max = float(ab["SmoothingLengths"].max())
+    images, reach = {}, {}
+    for label, star in (("star A", star_a), ("star B", star_b)):
+        images[label] = image_displacements(pos, star, box)
+        dist = images[label][1]
+        reach[label] = float(dist.min(axis=1)[lit[label]].max()) + KERNEL_GAMMA * h_max
+        if reach[label] >= box:
+            raise GateExit(
+                EXIT_VOID,
+                f"void check, the light of {label} reaches {reach[label]:.4g}, a box is {box:.4g}",
+            )
+        many = int(np.sum(np.sum(dist <= reach[label], axis=1)[lit[label]] > 1))
+        if many:
+            raise GateExit(
+                EXIT_VOID,
+                f"void run, {many} lit particles are in reach of two images of {label}",
+            )
+    slots = {
+        k: np.stack(
+            [packet_slot(frame, images[k][0][:, i, :], args.slots) for i in range(27)],
+            axis=1,
+        )
+        for k in images
+    }
+    near = {k: images[k][1] <= reach[k] for k in images}
+    shared = np.zeros(len(pos), bool)
+    for i in range(27):
+        for j in range(27):
+            shared |= (
+                near["star A"][:, i]
+                & near["star B"][:, j]
+                & (slots["star A"][:, i] == slots["star B"][:, j])
+            )
+    n_shared = int(np.sum(shared & both))
+    h_min = float(ab["SmoothingLengths"].min())
+    rep.info(
+        "slot premise",
+        f"reach of the light {reach['star A'] / h_min:.4g} and {reach['star B'] / h_min:.4g} h_min "
+        f"(largest lit distance plus gamma h_max); {int(both.sum())} particles lit by both stars; "
+        f"{n_shared} hold both lights in one slot",
+    )
+    if n_shared:
         raise GateExit(
             EXIT_VOID,
-            "no probe is deep enough to discriminate the bound (downstream column too small)",
+            f"void run, {n_shared} particles hold the light of both stars in one slot: "
+            "the sum of the one-star runs is not the reference there",
         )
+
+    steps = float(light_hops(first, ab))
+    ngb = kernel_neighbours(ab)
+    k_terms = max(len(n) for n in ngb)
+    p_power = float(params.get("GEARFeedback:ISRF_packet_cone_power", 4.0)) + 4.0
+    h = {k: runs[k]["SmoothingLengths"] for k in runs}
+    delta_sum = max(
+        smoothing_gap(h["two-star"], h["star A"]),
+        smoothing_gap(h["two-star"], h["star B"]),
+    )
+    delta_rep = smoothing_gap(h["star A"], h["star A again"])
+    bar_sum = round_off_bar(steps, k_terms, p_power, delta_sum)
+    bar_rep = round_off_bar(steps, k_terms, p_power, delta_rep)
+    rep.info(
+        "round-off bar",
+        f"n (k 2^-24 + p delta_h): sum {steps:g} ({k_terms} x 2^-24 + {p_power:g} x {delta_sum:.3g}) "
+        f"= {bar_sum:.3g}; repeat {bar_rep:.3g}",
+    )
+    held_sum, held_rep = previous["two-star"], previous["star A"]
+    if not held_sum.any() or not held_rep.any():
+        raise GateExit(
+            EXIT_VOID, "void run, no particle held light at the previous snapshot"
+        )
+    for name, key in (("LW energy", own), ("dissociating energy", dis)):
+        g = round_off_gaps(key["star A"], key["star A again"], held_rep, ngb, bar_rep)
+        rep.info(
+            "control of the bar",
+            f"two identical star A runs, {name}: largest gap {g['held_own']:.3g} of the own value "
+            f"({g['held_own'] / bar_rep:.3g} of the bar), front and dark {g['rest_local']:.3g} of the "
+            f"kernel maximum ({g['rest_local'] / bar_rep:.3g} of the bar)",
+        )
+        if g["over_held"] or g["over_rest"]:
+            raise GateExit(
+                EXIT_VOID,
+                f"void check, two identical runs differ by more than the round-off bar in the {name}: "
+                "the bar is unfit",
+            )
+
+    for name, key in (("own LW energy", own), ("own dissociating LW energy", dis)):
+        g = round_off_gaps(
+            key["two-star"], key["star A"] + key["star B"], held_sum, ngb, bar_sum
+        )
+        rep.check(
+            f"{name}: two stars equal the sum of the one-star runs, lit before",
+            g["over_held"] == 0,
+            f"{g['over_held']} of {g['n_held']} particles over the bar, largest gap over the own value "
+            f"{g['held_own']:.3g}, bar {bar_sum:.3g}",
+        )
+        rep.check(
+            f"{name}: two stars equal the sum of the one-star runs, light front and dark",
+            g["over_rest"] == 0,
+            f"{g['over_rest']} of {g['n_rest']} particles over the bar times the kernel maximum, "
+            f"largest {g['rest_local']:.3g}; largest gap over the own value {g['rest_own']:.3g} (read only)",
+        )
+    ratio_ab = dis["two-star"][both] / own["two-star"][both]
+    ratio_sum = (dis["star A"][both] + dis["star B"][both]) / (
+        own["star A"][both] + own["star B"][both]
+    )
+    require_finite(
+        "own ratios of the particles lit by both",
+        two_star=ratio_ab,
+        one_star_sum=ratio_sum,
+    )
+    rep.reading(
+        "ln of the two-star ratio over the ratio of the sums",
+        f"largest |ln| {float(np.max(np.abs(np.log(ratio_ab / ratio_sum)))):.3g} "
+        f"over {int(both.sum())} particles lit by both stars",
+    )
+    rep.reading(
+        "H2 of the two-star run against the one-star runs",
+        f"largest |ln| {float(np.max(np.abs(np.log(ab['H2I'] / runs['star A']['H2I'])))):.3g} (star A), "
+        f"{float(np.max(np.abs(np.log(ab['H2I'] / runs['star B']['H2I'])))):.3g} (star B); "
+        "the dissociation of H2 by the other star is not in the round-off bar",
+    )
+
+    cm = ab["unit_length"]
+    for label, star in (("star A", star_a), ("star B", star_b)):
+        snap = runs[label]
+        l_hop = KERNEL_GAMMA * float(snap["SmoothingLengths"].max())
+        n_ray, tv = ray_column(
+            star,
+            snap["Coordinates"],
+            box,
+            slab,
+            fix["n_h2_clear_cm3"],
+            fix["n_h2_slab_cm3"],
+            l_hop,
+        )
+        n_ray *= cm
+        bar = l_hop * cm * (h2_column_density(snap) + tv)
+        n_code = snap[PARITY_COLUMN] / cm**2
+        lit_s = lit[label]
+        dev = np.abs(n_code - n_ray)
+        out = lit_s & (dev > bar)
+        seen = int(np.sum(lit_s & (np.abs(1.5 * n_code - n_ray) > bar)))
+        rep.check(
+            f"column of {label} against the straight ray",
+            not out.any(),
+            f"{int(out.sum())} of {int(lit_s.sum())} lit particles outside |N - N_ray| <= l_hop (n_H2 + TV); "
+            f"worst {float(np.max((dev / bar)[lit_s])):.3g} of the bar; "
+            f"ln(N / N_ray) median {float(np.median(np.log(n_code[lit_s] / n_ray[lit_s]))):.3g}",
+        )
+        rep.info(
+            f"column error of 1.5 times, {label}",
+            f"outside the bar at {seen} of {int(lit_s.sum())} lit particles",
+        )
+        if seen == 0:
+            raise GateExit(
+                EXIT_VOID,
+                f"void check, a column of {label} 1.5 times too large is outside the bar nowhere",
+            )
     return rep.exit_code()
 
 
@@ -1193,8 +1472,8 @@ def gate_parity(args: argparse.Namespace) -> int:
     params = read_params(args.params) if args.params else {}
     p_power = float(params.get("GEARFeedback:ISRF_packet_cone_power", 4.0)) + 4.0
     ha, hb = a["SmoothingLengths"][oa], b["SmoothingLengths"][ob]
-    delta_h = float(np.max(np.abs(ha - hb) / np.maximum(ha, hb)))
-    bar = steps * (k_terms * FLOAT32_EPS + p_power * delta_h)
+    delta_h = smoothing_gap(ha, hb)
+    bar = round_off_bar(steps, k_terms, p_power, delta_h)
     rep.info(
         "round-off bar",
         f"n (k 2^-24 + p delta_h) = {steps:g} ({k_terms} x 2^-24 + {p_power:g} x "
@@ -1222,26 +1501,19 @@ def gate_parity(args: argparse.Namespace) -> int:
         x = a[key]
         y = np.empty_like(x)
         y[oa] = b[key][ob]
-        scale = np.maximum(np.abs(x), np.abs(y))
-        gap = np.abs(x - y)
-        own = np.where(scale > 0, gap / np.where(scale > 0, scale, 1), 0.0)
-        over_held = held & (gap > bar * scale)
+        g = round_off_gaps(x, y, held, ngb, bar)
         rep.check(
             f"{key} round-off, lit before",
-            not over_held.any(),
-            f"{int(over_held.sum())} of {int(held.sum())} particles over the bar, "
-            f"largest gap over the own value {own[held].max():.3g}, bar {bar:.3g}",
+            g["over_held"] == 0,
+            f"{g['over_held']} of {g['n_held']} particles over the bar, "
+            f"largest gap over the own value {g['held_own']:.3g}, bar {bar:.3g}",
         )
-        local = np.array([scale[n].max() for n in ngb])
-        rest = ~held
-        over_rest = rest & (gap > bar * local)
-        worst = np.where(local > 0, gap / np.where(local > 0, local, 1), 0.0)
         rep.check(
             f"{key} round-off, light front and dark",
-            not over_rest.any(),
-            f"{int(over_rest.sum())} of {int(rest.sum())} particles over the bar times "
-            f"the kernel maximum, largest {worst[rest].max():.3g}; largest gap over the "
-            f"own value {own[rest].max():.3g} (read only)",
+            g["over_rest"] == 0,
+            f"{g['over_rest']} of {g['n_rest']} particles over the bar times "
+            f"the kernel maximum, largest {g['rest_local']:.3g}; largest gap over the "
+            f"own value {g['rest_own']:.3g} (read only)",
         )
     return EXIT_REDUCED if reduced and not rep.failed else rep.exit_code()
 
@@ -1277,7 +1549,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    def common(sp: argparse.ArgumentParser) -> None:
+    def common(sp: argparse.ArgumentParser, counters: bool = True) -> None:
         sp.add_argument("--first", required=True, help="First snapshot")
         sp.add_argument("--last", required=True, help="Last snapshot")
         sp.add_argument("--fixture", default="fixture.json")
@@ -1287,7 +1559,8 @@ def build_parser() -> argparse.ArgumentParser:
             default=None,
             help="swift log with the library start-up lines (output.log)",
         )
-        sp.add_argument("--counters", default=None)
+        if counters:
+            sp.add_argument("--counters", default=None)
 
     for name, fn in (
         ("starlit", gate_starlit),
@@ -1295,10 +1568,23 @@ def build_parser() -> argparse.ArgumentParser:
         ("velocity", gate_velocity),
     ):
         sp = sub.add_parser(name)
-        common(sp)
+        common(sp, counters=name != "twosource")
         if name == "velocity":
             sp.add_argument(
                 "--case", choices=["auto", "reset", "noreset"], default="auto"
+            )
+        if name == "twosource":
+            for flag, what in (
+                ("--only-a", "run directory of star A alone"),
+                ("--only-b", "run directory of star B alone"),
+                ("--repeat-a", "run directory of star A alone, run again"),
+            ):
+                sp.add_argument(flag, required=True, help=what)
+            sp.add_argument(
+                "--slots",
+                type=int,
+                required=True,
+                help="RADIATION_PACKET_SLOTS of the build (config.h)",
             )
         sp.set_defaults(fn=fn)
     sp = sub.add_parser("parity")

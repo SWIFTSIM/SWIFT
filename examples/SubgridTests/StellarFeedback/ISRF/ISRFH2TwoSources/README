@@ -1,56 +1,66 @@
 # Intro
-Two stars light the same gas through different H2 columns, so that the light of the two
-merges in one reception slot. A molecular slab shadows star A. Star B sits in clear gas
-downstream of the slab. The check reads gas near star B, where the two lights meet and
-then travel a further column `D` together, and compares the measured line transmission
-with the transmission that the merge rule predicts.
+Two 29.7 Msun stars in a periodic box of molecular gas, with the ISRF transport on
+(`ISRF_propagation: 1`) and the H2 line absorption of the transport on
+(`ISRF_H2_line_absorption: 1`). A dense slab (density contrast 300 at a uniform H2 ratio)
+shadows star A. Star B sits in clear gas on the other side of the slab. Where the light of
+the two stars reaches a gas particle from different directions, it sits in different
+reception slots and the two lights do not interact: the field of the two-star run must
+equal the sum of the fields of two runs with one star each. The check tests that, and tests
+the carried H2 column of each star against the straight ray through the slab.
 
-`ISRF_H2_line_absorption: 1` stores, for each reception slot, one column for the merged
-light. This fixture tests that merged column. Read the README of `ISRFH2StarLit` for the
-build, the table, the parameters that the run holds fixed and the exit classes.
-
-## The gas must be isothermal at 163.4 K
-The shielding fit depends on the temperature and the density of the gas. The merge bounds
-hold only where that fit is the same in every cell. At 163.4 K the fit exponent does not
-depend on the density, so the slab can be denser than the clear gas: the fixture uses a density contrast of 300 at this temperature. A density contrast at another temperature changes the fit from cell to cell and is not used. `params.yml` sets
-`SPH:initial_temperature: 163.4`. The check computes the fit exponent and the line width
-for every gas particle and stops with `fit not uniform` (exit class 4) if the spread
-moves the shielding by more than the bar of the probes. A run at another temperature with
-a density contrast is therefore refused.
+Read the README of `ISRFH2StarLit` for the build, the radiation table, the parameters that
+the run holds fixed and the exit classes.
 
 # Run
 ```
 ./run.sh
+leg=switch_off ./run.sh       # line absorption off: the check must stop on the missing line fields
+leg=stale_key ./run.sh        # an old GeajayCooling:h2_transported_lw_rate_shielding on the command line has no effect
 ```
-`contrast` (default 300) sets the slab density over the clear density. An optional
-`counters=counters.json ./run.sh` passes a file with `mean_hop_path_cm`, the measured mean
-hop path in cm; without it the check takes the smoothing length of each probe.
-`fixture.json` lists the probes, with the energy share and the column of each light that
-reaches them. The shares are estimated from the geometry (equal luminosities, `1/r^2`
-dilution).
+The main leg runs swift four times with one binary: star A alone, star B alone, star A
+alone again, and both stars. Each run is kept in its own directory (`only_a`, `only_b`,
+`only_a2`, `main`). A star keeps its particle ID in the one-star runs, because the ID seeds the
+random frame of the emission pixels. `run.sh` reads the number of reception slots from
+`config.h` next to the `swift` executable. `contrast` (default 300), `level`, `gas_density`,
+`gas_mass`, `h2_ratio` and `n_threads` override the defaults.
 
 # Checking
-The check takes snapshot 1 as the reference, because the first step changes H2 uniformly
-by about 6e-4. It requires that the n_H2 of every gas particle at the last snapshot lies
-inside the range of the reference snapshot (slab gas and clear gas each, up to 1e-3), and
-stops as void otherwise. It adds to the bar of every probe the shift of the form (ii)
-prediction for a column scaled by the amount that the last snapshot extends that range.
-This widens the bar; the check prints the widening. The fit uniformity test uses the bar
-without this term. The number of probes whose H2 changed by more than 1e-3 against the
-reference is printed only.
+`checkH2Attenuation.py twosource` reads the first and last snapshot of the two-star run,
+the last snapshots of the three one-star runs (`--only-a`, `--only-b`, `--repeat-a`, run
+directories), `fixture.json`, the parameters, the logs and `--slots`. The reference is
+snapshot 1, the first written after the first step.
 
-Per probe, `R = t_measured / t_true`, where `t_true` keeps every share's own column. With
-`pi_l` the weight of the least-shielded light in the sum of `e t / f(N)` over the shares
-(its energy share if all gas before the merge has the fit of the merge), `eps` the hop bar
-plus
-`n_m (2 + 2 s) 2^-24` (`n_m` merges, `s` the slope of the fit at the probe's column), the
-check requires
-- `|R / R_pred - 1| <= eps`, with `R_pred` from the merge rule.
+Premises. The check is void (exit class 4) unless all of these hold:
+- The four runs have the same parameters, the same build lines and the same slot frame in
+  their logs, and the stars sit at the fixture positions with the IDs of the two-star run.
+- The `n_H2` of every gas particle at the last snapshot lies inside the range of snapshot 1,
+  slab gas and clear gas separately, up to 1e-3.
+- At every particle lit by both stars, the light of the two stars sits in different slots.
+  The check takes every periodic image of each star that lies within the reach of its light
+  (the largest lit distance in the one-star run plus one hop `gamma h_max`) and compares the
+  slot of the direction from each image. No lit particle may be within reach of two images
+  of the same star, and some particle must be lit by both stars. The slot rule has a control:
+  directions along `+x` share a slot, `-x` does not.
+- Two identical runs of star A agree within the round-off bar below.
 
-It prints, without gating, two readings for the probes whose exact transmission is above
-`1e-2`:
-- `R >= 1 - eps` (the merge never shields more than the exact transport),
-- `R <= (1 / pi_l)(1 + eps)`.
+Checks:
+- `LWOwnSpecificEnergies` and `LWOwnDissociatingSpecificEnergies` of the two-star run equal
+  the sums of the one-star fields. A field is a sum of positive shares, so reordering the
+  sum changes it by at most `n (k 2^-24 + p delta_h)` of its value (the bar of the
+  two-rank check): `n` is the number of steps, `k` the largest number of neighbours in a
+  kernel, `p` the cone power plus 4 and `delta_h` the largest relative gap of the smoothing
+  lengths between the runs. The bar applies to the particles that held light at the
+  previous snapshot. The others, the light front and dark gas, are held to the bar times
+  the largest value in their kernel.
+- The carried column `LWLineH2ColumnDensities` of each one-star run, at every lit particle,
+  lies within `l_hop (n_H2 + TV)` of the straight-ray column from the star (nearest periodic
+  image) through the slab and the clear gas. `l_hop` is `gamma h_max`, `n_H2` the particle's
+  own H2 density, and `TV` the jump of `n_H2` at the slab faces times the number of faces
+  within `l_hop` of the ray in `x` (the SPH density spreads a face over the kernel support).
+  The sum check cancels an error that is common to all runs; this one does not. A column
+  that is 1.5 times too large must fall outside the bar at some particle, else the run is
+  void.
 
-It also counts the probes at which a merge by the transmission-weighted column would fail
-the last bound; if none can, the downstream column is too small and the run is void.
+The check also prints, without gating, the largest change of the ratio `D / E` at the
+particles lit by both stars and the largest change of `H2I` between the runs; the
+dissociation of H2 by the other star is not part of the round-off bar.
