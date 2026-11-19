@@ -1117,6 +1117,17 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->rt_heii_ionisation_rate = rt_rates[3];
   cooling->rt_h2_dissociation_rate = rt_rates[4];
 
+  if (cooling->HII_couple_ionization_rate &&
+      (cooling->rt_hei_ionisation_rate != 0. ||
+       cooling->rt_heii_ionisation_rate != 0.))
+    error(
+        "GEARFeedback:HII_couple_ionization_rate: 1 is combined with a "
+        "nonzero GeajayCooling:rt_hei_ionisation_rate_per_s or "
+        "GeajayCooling:rt_heii_ionisation_rate_per_s. The HII coupling gives "
+        "hydrogen rates only and the helium rates would be ignored. Set both "
+        "helium rates to 0, or set GEARFeedback:HII_couple_ionization_rate "
+        "to 0.");
+
   if (cooling->with_ISRF && cooling->primordial_chemistry >= 2 &&
       cooling->rt_h2_dissociation_rate != 0.)
     warning(

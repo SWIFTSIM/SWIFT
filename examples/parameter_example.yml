@@ -795,8 +795,8 @@ GeajayCooling:
   rt_use_fields: 0                             # (optional) Arrays of ionization and heating rates are provided (default: 0)
   rt_heating_rate_cgs:     0                   # (optional) Heating rate in units of / nHI_cgs
   rt_hi_ionisation_rate_per_s:   0             # (optional) HI ionisation rate [1/s]
-  rt_hei_ionisation_rate_per_s:  0             # (optional) HeI ionisation rate [1/s]
-  rt_heii_ionisation_rate_per_s: 0             # (optional) HeII ionisation rate [1/s]
+  rt_hei_ionisation_rate_per_s:  0             # (optional) HeI ionisation rate [1/s]. Must be 0 with GEARFeedback:HII_couple_ionization_rate: 1
+  rt_heii_ionisation_rate_per_s: 0             # (optional) HeII ionisation rate [1/s]. Must be 0 with GEARFeedback:HII_couple_ionization_rate: 1
   rt_h2_dissociation_rate_per_s: 0             # (optional) H2 dissociation rate [1/s]
   volumetric_heating_rates_cgs: 0              # (optional) Volumetric heating rate in cgs [erg/s/cm3]
   specific_heating_rates_cgs: 0                # (optional) Specific heating rate in cgs [erg/s/g]
