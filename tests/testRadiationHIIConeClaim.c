@@ -25,9 +25,11 @@
 #include <string.h>
 
 /* Local headers. */
-#include "feedback/GEAR/radiation_hii.h"
 #include "runner_radiation_feedback.h"
 #include "swift.h"
+
+/* Not reached through swift.h when the GEAR feedback model is not built. */
+#include "feedback/GEAR/radiation_hii.h"
 
 /* The checks of the photon budget need the GEAR feedback module with its HII
    radiation. */
