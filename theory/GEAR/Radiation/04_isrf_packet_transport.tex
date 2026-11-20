@@ -3204,7 +3204,7 @@ deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}
 (\code{src/feedback/GEAR/radiation\_iact.h:279-323}), with the path
 \code{radiation\_get\_comoving\_extinction\_path} and the factors
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{src/feedback/GEAR/radiation\_isrf.c:353-397}, :466-486). The switch
+(\code{src/feedback/GEAR/radiation\_isrf.c:354-398}, :467-487). The switch
 \code{GEARFeedback:ISRF\_propagation} (0 off, 1 the transport) is parsed at
 \code{src/feedback/GEAR\_thermal/feedback\_properties.h:822-823}, and the
 choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
@@ -3246,7 +3246,7 @@ transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:938-946}).
 Eq.~\eqref{eq:packet-slot8} is \code{radiation\_packet\_octant}
-(\code{src/feedback/GEAR/radiation\_packet.c:1244-1257}), and
+(\code{src/feedback/GEAR/radiation\_packet.c:1245-1258}), and
 Eqs.~\eqref{eq:packet-slot8}--\eqref{eq:packet-slot48} are
 \code{radiation\_packet\_slot} (\code{radiation\_packet.c:1286-1327}).
 Eq.~\eqref{eq:packet-frame} is \code{radiation\_packet\_build\_octant\_frame}
@@ -3306,7 +3306,7 @@ numerator of Eq.~\eqref{eq:packet-advance} in
 \code{radiation\_packet\_gradient\_accumulate}
 (\code{radiation\_packet.h:488-524}). It is called from
 \code{runner\_iact\_isrf\_gradient} and its non-symmetric twin
-(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:86-88}, :118-125); the
+(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:87-89}, :119-126); the
 twin also adds the part of the reach of an active receiver. The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
 \code{radiation\_packet.c:4166}.
