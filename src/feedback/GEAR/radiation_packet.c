@@ -201,6 +201,72 @@ void radiation_packet_set_box(const double dim[3], const int periodic) {
 }
 
 /**
+ * @brief The periodic image of a separation that the pair loop selected.
+ *
+ * @param d The separation along an axis, from the absolute positions.
+ * @param dx The loop's separation along that axis, which picks the image.
+ * @param k The axis.
+ * @return The separation of the image nearest to the loop's.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_packet_periodic_image(const double d, const float dx, const int k) {
+  if (radiation_packet_box_periodic) {
+    const double wrap = d - (double)dx;
+    if (wrap > 0.5 * radiation_packet_box_dim[k])
+      return d - radiation_packet_box_dim[k];
+    else if (wrap < -0.5 * radiation_packet_box_dim[k])
+      return d + radiation_packet_box_dim[k];
+  }
+  return d;
+}
+
+/**
+ * @brief Coordinate of a direction on one axis of the octant frame.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @param direction Direction in the box frame.
+ * @param k The axis of the frame.
+ * @return The coordinate, in double.
+ */
+__attribute__((always_inline)) INLINE static double
+radiation_packet_frame_coordinate(const float frame[9],
+                                  const float direction[3], const int k) {
+  return (double)frame[3 * k + 0] * (double)direction[0] +
+         (double)frame[3 * k + 1] * (double)direction[1] +
+         (double)frame[3 * k + 2] * (double)direction[2];
+}
+
+/**
+ * @brief Rotation matrix of a unit quaternion drawn from three uniform random
+ * numbers (Shoemake 1992), a uniform random rotation.
+ *
+ * @param u1 Uniform random number in [0, 1).
+ * @param u2 Uniform random number in [0, 1).
+ * @param u3 Uniform random number in [0, 1).
+ * @param Q (return) The matrix.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_packet_random_rotation(const double u1, const double u2,
+                                 const double u3, double Q[3][3]) {
+  const double a = sqrt(1.0 - u1);
+  const double b = sqrt(u1);
+  const double qx = a * sin(2.0 * M_PI * u2);
+  const double qy = a * cos(2.0 * M_PI * u2);
+  const double qz = b * sin(2.0 * M_PI * u3);
+  const double qw = b * cos(2.0 * M_PI * u3);
+
+  Q[0][0] = 1.0 - 2.0 * (qy * qy + qz * qz);
+  Q[0][1] = 2.0 * (qx * qy - qz * qw);
+  Q[0][2] = 2.0 * (qx * qz + qy * qw);
+  Q[1][0] = 2.0 * (qx * qy + qz * qw);
+  Q[1][1] = 1.0 - 2.0 * (qx * qx + qz * qz);
+  Q[1][2] = 2.0 * (qy * qz - qx * qw);
+  Q[2][0] = 2.0 * (qx * qz - qy * qw);
+  Q[2][1] = 2.0 * (qy * qz + qx * qw);
+  Q[2][2] = 1.0 - 2.0 * (qx * qx + qy * qy);
+}
+
+/**
  * @brief Give the reach margin the widest cell frame of the pair loops.
  *
  * The loops form `dx` from positions measured from the corner of a cell, up to
@@ -1212,17 +1278,8 @@ __attribute__((noinline)) void radiation_packet_weight_vector(
     const struct part *sender, const struct part *receiver, const float dx[3],
     float out[3]) {
   for (int k = 0; k < 3; k++) {
-    double d = receiver->x[k] - sender->x[k];
-
-    if (radiation_packet_box_periodic) {
-      const double wrap = d - (double)dx[k];
-      if (wrap > 0.5 * radiation_packet_box_dim[k])
-        d -= radiation_packet_box_dim[k];
-      else if (wrap < -0.5 * radiation_packet_box_dim[k])
-        d += radiation_packet_box_dim[k];
-    }
-
-    out[k] = (float)d;
+    out[k] = (float)radiation_packet_periodic_image(
+        receiver->x[k] - sender->x[k], dx[k], k);
   }
 }
 
@@ -1248,9 +1305,7 @@ __attribute__((noinline)) int radiation_packet_octant(
   int octant = 0;
 
   for (int k = 0; k < 3; k++) {
-    const double q = (double)frame[3 * k + 0] * (double)direction[0] +
-                     (double)frame[3 * k + 1] * (double)direction[1] +
-                     (double)frame[3 * k + 2] * (double)direction[2];
+    const double q = radiation_packet_frame_coordinate(frame, direction, k);
     if (q >= 0.0) octant |= 1 << k;
   }
 
@@ -1291,9 +1346,7 @@ __attribute__((noinline)) int radiation_packet_slot(const float frame[9],
 #else
   double q[3];
   for (int k = 0; k < 3; k++)
-    q[k] = (double)frame[3 * k + 0] * (double)direction[0] +
-           (double)frame[3 * k + 1] * (double)direction[1] +
-           (double)frame[3 * k + 2] * (double)direction[2];
+    q[k] = radiation_packet_frame_coordinate(frame, direction, k);
 #if RADIATION_PACKET_SLOTS == 16
   int slot = 0;
   for (int k = 0; k < 3; k++)
@@ -1330,9 +1383,9 @@ __attribute__((noinline)) int radiation_packet_slot(const float frame[9],
  * @brief Distance of a direction from the nearest border of its slot, as the
  * sine of the angle to the nearest border plane.
  *
- * Used by the debug check of #radiation_packet_set_origin to skip directions
- * that rounding to float can move across a border. For 12, 24 and 48 slots it
- * is conservative: it takes the border between every pair of absolute
+ * Used by the debug check of #radiation_packet_check_slot_direction to skip
+ * directions that rounding to float can move across a border. For 12, 24 and 48
+ * slots it is conservative: it takes the border between every pair of absolute
  * coordinates.
  *
  * @param frame Rotation matrix (row-major) from the box to the frame.
@@ -1345,9 +1398,7 @@ double radiation_packet_slot_border_distance(const float frame[9],
   double a[3];
   double norm2 = 0.0;
   for (int k = 0; k < 3; k++) {
-    const double q = (double)frame[3 * k + 0] * (double)direction[0] +
-                     (double)frame[3 * k + 1] * (double)direction[1] +
-                     (double)frame[3 * k + 2] * (double)direction[2];
+    const double q = radiation_packet_frame_coordinate(frame, direction, k);
     a[k] = fabs(q);
     norm2 += q * q;
   }
@@ -1419,20 +1470,8 @@ void radiation_packet_build_octant_frame(const float angles_deg[3],
         random_unit_interval(seed_offset, 1, random_number_ISRF_octant_frame);
     const double u3 =
         random_unit_interval(seed_offset, 2, random_number_ISRF_octant_frame);
-    const double a = sqrt(1.0 - u1);
-    const double b = sqrt(u1);
-    const double qx = a * sin(2.0 * M_PI * u2);
-    const double qy = a * cos(2.0 * M_PI * u2);
-    const double qz = b * sin(2.0 * M_PI * u3);
-    const double qw = b * cos(2.0 * M_PI * u3);
-
-    const double Q[3][3] = {
-        {1.0 - 2.0 * (qy * qy + qz * qz), 2.0 * (qx * qy - qz * qw),
-         2.0 * (qx * qz + qy * qw)},
-        {2.0 * (qx * qy + qz * qw), 1.0 - 2.0 * (qx * qx + qz * qz),
-         2.0 * (qy * qz - qx * qw)},
-        {2.0 * (qx * qz - qy * qw), 2.0 * (qy * qz + qx * qw),
-         1.0 - 2.0 * (qx * qx + qy * qy)}};
+    double Q[3][3];
+    radiation_packet_random_rotation(u1, u2, u3, Q);
 
     double C[3][3];
     for (int i = 0; i < 3; i++)
@@ -1598,25 +1637,15 @@ __attribute__((noinline)) int radiation_packet_emission_cone(
   const double u3 =
       random_unit_interval(star_id, ti + 2, random_number_ISRF_emission_frame);
 
-  /* Uniform random rotation from a unit quaternion (Shoemake 1992). */
-  const double a = sqrt(1.0 - u1);
-  const double b = sqrt(u1);
-  const double qx = a * sin(2.0 * M_PI * u2);
-  const double qy = a * cos(2.0 * M_PI * u2);
-  const double qz = b * sin(2.0 * M_PI * u3);
-  const double qw = b * cos(2.0 * M_PI * u3);
+  double Q[3][3];
+  radiation_packet_random_rotation(u1, u2, u3, Q);
 
   const double d0 = -dx[0];
   const double d1 = -dx[1];
   const double d2 = -dx[2];
   double dir[3];
-  dir[0] = (1.0 - 2.0 * (qy * qy + qz * qz)) * d0 +
-           2.0 * (qx * qy - qz * qw) * d1 + 2.0 * (qx * qz + qy * qw) * d2;
-  dir[1] = 2.0 * (qx * qy + qz * qw) * d0 +
-           (1.0 - 2.0 * (qx * qx + qz * qz)) * d1 +
-           2.0 * (qy * qz - qx * qw) * d2;
-  dir[2] = 2.0 * (qx * qz - qy * qw) * d0 + 2.0 * (qy * qz + qx * qw) * d1 +
-           (1.0 - 2.0 * (qx * qx + qy * qy)) * d2;
+  for (int i = 0; i < 3; i++)
+    dir[i] = Q[i][0] * d0 + Q[i][1] * d1 + Q[i][2] * d2;
 
   int64_t ipix = 0;
   vec2pix_ring64(1, dir, &ipix);
@@ -1653,14 +1682,7 @@ __attribute__((noinline)) int radiation_packet_star_gas_weight(
     error("The packet emission was not given the box size.");
 
   for (int k = 0; k < 3; k++) {
-    d[k] = si->x[k] - pj->x[k];
-    if (radiation_packet_box_periodic) {
-      const double wrap = d[k] - (double)dx[k];
-      if (wrap > 0.5 * radiation_packet_box_dim[k])
-        d[k] -= radiation_packet_box_dim[k];
-      else if (wrap < -0.5 * radiation_packet_box_dim[k])
-        d[k] += radiation_packet_box_dim[k];
-    }
+    d[k] = radiation_packet_periodic_image(si->x[k] - pj->x[k], dx[k], k);
   }
 
   const double r = sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
@@ -3357,6 +3379,35 @@ static void radiation_packet_absorb_below_cutoff(
   }
 }
 
+#ifdef SWIFT_DEBUG_CHECKS
+/**
+ * @brief Stop if the direction of a slot is outside its cell.
+ *
+ * A cell is convex, so the mean origin of its shares lies in it too. A
+ * direction near a border may flip by rounding to float.
+ *
+ * @param sl The slot, after its merge.
+ * @param slot_index Index of the slot.
+ * @param frame Octant frame.
+ */
+static void radiation_packet_check_slot_direction(
+    const struct feedback_isrf_packet_slot_data *sl, const int slot_index,
+    const float frame[9]) {
+  if (!(sl->origin_distance > 0.f)) return;
+
+  if (radiation_packet_slot_border_distance(frame, sl->direction) >
+          RADIATION_PACKET_BORDER_TOLERANCE &&
+      radiation_packet_slot(frame, sl->direction) != slot_index)
+    error("The direction of slot %d is in slot %d.", slot_index,
+          radiation_packet_slot(frame, sl->direction));
+}
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_slot_direction(
+    const struct feedback_isrf_packet_slot_data *sl, const int slot_index,
+    const float frame[9]) {}
+#endif
+
 /**
  * @brief Set the origin and the direction of the held packet of a slot from
  * the energy-weighted sum of the origin offsets.
@@ -3364,12 +3415,10 @@ static void radiation_packet_absorb_below_cutoff(
  * @param sl The slot.
  * @param offset Sum of energy times offset of what was released.
  * @param total_energy Energy released.
- * @param slot_index Index of the slot, for the debugging check.
- * @param frame Octant frame, for the debugging check.
  */
 static void radiation_packet_set_origin(
     struct feedback_isrf_packet_slot_data *sl, double offset[3],
-    const double total_energy, const int slot_index, const float frame[9]) {
+    const double total_energy) {
   for (int k = 0; k < 3; k++) offset[k] /= total_energy;
 
   const double d = sqrt(offset[0] * offset[0] + offset[1] * offset[1] +
@@ -3379,18 +3428,6 @@ static void radiation_packet_set_origin(
 
   if (d > 0.0) {
     for (int k = 0; k < 3; k++) sl->direction[k] = (float)(-offset[k] / d);
-#ifdef SWIFT_DEBUG_CHECKS
-    /* A cell is convex, so the mean origin of its shares lies in it too. A
-       direction near a border may flip by rounding to float. */
-    if (radiation_packet_slot_border_distance(frame, sl->direction) >
-            RADIATION_PACKET_BORDER_TOLERANCE &&
-        radiation_packet_slot(frame, sl->direction) != slot_index)
-      error("The direction of slot %d is in slot %d.", slot_index,
-            radiation_packet_slot(frame, sl->direction));
-#else
-    (void)slot_index;
-    (void)frame;
-#endif
   } else {
     /* Mean origin on the particle: any direction is as good. It can lie
        outside the cell of the slot, which is harmless: shares are binned by
@@ -3670,15 +3707,12 @@ void radiation_packet_line_refit(struct part *p, const float old_alpha,
  * @param time_base Physical length of one integer time step. Under cosmology
  * it is a step in `ln a`, so @p cosmo is used instead.
  * @param cosmo The cosmological model, or NULL in a static box.
- * @param slot_index Index of the slot, for the debugging check.
- * @param frame Octant frame, for the debugging check.
  * @param salt Salt of the roundings of the slot (#radiation_packet_salt).
  */
 static void radiation_packet_merge_slot_unlimited(
     struct feedback_isrf_packet_slot_data *sl, const integertime_t ti_current,
     const integertime_t ti_step, const double time_base,
-    const struct cosmology *cosmo, const int slot_index, const float frame[9],
-    const uint32_t salt) {
+    const struct cosmology *cosmo, const uint32_t salt) {
 
   float release = 1.f;
   if (sl->reservoir_end_ti > ti_current) {
@@ -3754,7 +3788,7 @@ static void radiation_packet_merge_slot_unlimited(
   }
 
   if (!(total_energy > 0.0)) return;
-  radiation_packet_set_origin(sl, offset, total_energy, slot_index, frame);
+  radiation_packet_set_origin(sl, offset, total_energy);
 }
 
 /**
@@ -3886,15 +3920,13 @@ static void radiation_packet_release_far_cell(
  * @param ledger The ledger of the particle, per band.
  * @param old The lattices of the previous step.
  * @param ti_current Time of the merge, the end of the particle's last step.
- * @param slot_index Index of the slot, for the debugging check.
- * @param frame Octant frame, for the debugging check.
  * @param salt Salt of the roundings of the slot (#radiation_packet_salt).
  */
 static void radiation_packet_merge_slot_limited(
     struct feedback_isrf_packet_slot_data *sl,
     struct feedback_isrf_packet_band_data ledger[ISRF_OPERATOR_COUNT],
     const struct radiation_packet_lattice *old, const integertime_t ti_current,
-    const int slot_index, const float frame[9], const uint32_t salt) {
+    const uint32_t salt) {
 
   const int n = RADIATION_PACKET_BINS;
   const double now = (double)ti_current;
@@ -3966,7 +3998,7 @@ static void radiation_packet_merge_slot_limited(
     for (int k = 0; k < 3; k++) sl->inbox_origin_offset[k] = 0.0;
 
   if (!(total_energy > 0.0)) return;
-  radiation_packet_set_origin(sl, offset, total_energy, slot_index, frame);
+  radiation_packet_set_origin(sl, offset, total_energy);
 }
 
 #ifdef SWIFT_DEBUG_CHECKS_ISRF
@@ -4053,9 +4085,10 @@ void radiation_packet_merge(
                                     &line);
 
       radiation_packet_merge_slot_unlimited(
-          &pk->slot[s], ti_current, ti_step, time_base, cosmo, s,
-          constants->octant_frame,
+          &pk->slot[s], ti_current, ti_step, time_base, cosmo,
           radiation_packet_salt_index(salt, (uint32_t)s));
+      radiation_packet_check_slot_direction(&pk->slot[s], s,
+                                            constants->octant_frame);
 
       if (with_lines)
         radiation_packet_line_end(&pk->slot[s], &p->feedback_data, constants,
@@ -4077,8 +4110,10 @@ void radiation_packet_merge(
                                   &line);
 
     radiation_packet_merge_slot_limited(
-        &pk->slot[s], pk->band, &old, ti_current, s, constants->octant_frame,
+        &pk->slot[s], pk->band, &old, ti_current,
         radiation_packet_salt_index(salt, (uint32_t)s));
+    radiation_packet_check_slot_direction(&pk->slot[s], s,
+                                          constants->octant_frame);
 
     if (with_lines)
       radiation_packet_line_end(&pk->slot[s], &p->feedback_data, constants,
@@ -4153,9 +4188,8 @@ void radiation_packet_end_gradient(
 
   /* An unset frame would send every share to one slot. Checked once per
    * particle and step. */
-  float frame_norm = 0.f;
-  for (int k = 0; k < 9; k++)
-    frame_norm += constants->octant_frame[k] * constants->octant_frame[k];
+  const float frame_norm =
+      radiation_packet_frame_norm2(constants->octant_frame);
 
   if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
     error("The octant frame is unset (norm %e) at the step of particle %lld.",

@@ -473,6 +473,41 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
 }
 
 /**
+ * @brief Transmission weight of a slot of the sender towards a neighbour, with
+ * the weight vector formed on first use and kept in @p dxw for the next slot
+ * (#radiation_packet_weight_vector, #radiation_packet_transmission_weight).
+ *
+ * @param sender The sender.
+ * @param receiver The neighbour.
+ * @param dx Comoving vector from the sender to the neighbour.
+ * @param dxw (in/out) The weight vector, valid once @p have_dxw is set.
+ * @param have_dxw (in/out) Is @p dxw set?
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the neighbour.
+ * @param is_receiver_active Is the neighbour active in this step?
+ * @param want The part of the reach (#RADIATION_PACKET_REACH_INNER and so on).
+ * @param sl The slot of the sender.
+ * @param constants The #radiation_packet_constants.
+ * @return The weight.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_slot_weight(
+    const struct part *sender, const struct part *receiver, const float dx[3],
+    float dxw[3], int *have_dxw, const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want,
+    const struct feedback_isrf_packet_slot_data *sl,
+    const struct radiation_packet_constants *constants) {
+  if (!*have_dxw) {
+    radiation_packet_weight_vector(sender, receiver, dx, dxw);
+    *have_dxw = 1;
+  }
+
+  return radiation_packet_transmission_weight(
+      dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
+      constants->cone_power, hydro_get_mass(receiver),
+      receiver->feedback_data.rho_prev);
+}
+
+/**
  * @brief Gradient loop: add one downstream neighbour to the weight sum and the
  * forward advance of each non-empty slot of the sender.
  *
@@ -507,15 +542,9 @@ radiation_packet_gradient_accumulate(
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
     if (!((pk->occupied_slots >> k) & 1u)) continue;
 
-    if (!have_dxw) {
-      radiation_packet_weight_vector(sender, receiver, dx, dxw);
-      have_dxw = 1;
-    }
-
-    const float w = radiation_packet_transmission_weight(
-        dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
-        constants->cone_power, hydro_get_mass(receiver),
-        receiver->feedback_data.rho_prev);
+    const float w = radiation_packet_slot_weight(
+        sender, receiver, dx, dxw, &have_dxw, h_sender, h_receiver,
+        is_receiver_active, want, sl, constants);
     if (w == 0.f) continue;
 
     sl->weight_sum = radiation_packet_add_stochastic(
@@ -525,6 +554,21 @@ radiation_packet_gradient_accumulate(
         w * (dx[0] * sl->direction[0] + dx[1] * sl->direction[1] +
              dx[2] * sl->direction[2]);
   }
+}
+
+/**
+ * @brief Squared norm of the octant frame, which is 3 for a rotation matrix.
+ * An unset frame (norm 0) is far outside
+ * #RADIATION_PACKET_FRAME_NORM_TOLERANCE.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @return The squared norm.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_frame_norm2(
+    const float frame[9]) {
+  float frame_norm = 0.f;
+  for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
+  return frame_norm;
 }
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -542,8 +586,7 @@ radiation_packet_check_deliver(const struct part *restrict receiver,
     error("Packet share booked into the removed gas particle %lld.",
           receiver->id);
 
-  float frame_norm = 0.f;
-  for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
+  const float frame_norm = radiation_packet_frame_norm2(frame);
 
   if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
     error("Packet share booked with an unset octant frame (norm %e).",
@@ -898,15 +941,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     const int k = radiation_packet_lowest_slot(m);
     const struct feedback_isrf_packet_slot_data *sl = &sender_packet->slot[k];
 
-    if (!have_dxw) {
-      radiation_packet_weight_vector(sender, receiver, dx, dxw);
-      have_dxw = 1;
-    }
-
-    const float w = radiation_packet_transmission_weight(
-        dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
-        constants->cone_power, hydro_get_mass(receiver),
-        receiver->feedback_data.rho_prev);
+    const float w = radiation_packet_slot_weight(
+        sender, receiver, dx, dxw, &have_dxw, h_sender, h_receiver,
+        is_receiver_active, want, sl, constants);
     if (w == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
@@ -1094,6 +1131,28 @@ __attribute__((always_inline)) INLINE static double radiation_packet_cone_floor(
 }
 
 /**
+ * @brief Emission cone and weight of a gas neighbour of a star, at the start
+ * of the star's step. The density loop and the feedback loop of the star both
+ * call it.
+ *
+ * @param si The star.
+ * @param pj The gas neighbour.
+ * @param dx Comoving vector from the gas to the star (si - pj).
+ * @param ti_current Current integer time.
+ * @param d (return) Comoving vector from the gas to the star, in double.
+ * @param q (return) Distance over the star's kernel support.
+ * @param weight (return) Tent weight, 0 when the gas is not a receiver.
+ * @return The emission cone.
+ */
+__attribute__((always_inline)) INLINE static int radiation_packet_star_gas_cone(
+    const struct spart *si, const struct part *pj, const float dx[3],
+    const integertime_t ti_current, double d[3], double *q, double *weight) {
+  const integertime_t ti_begin =
+      get_integer_time_begin(ti_current, si->time_bin);
+  return radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, q, weight);
+}
+
+/**
  * @brief Star density loop: add a gas neighbour's weight to the weight sum of
  * its emission cone, if it is a receiver.
  *
@@ -1105,14 +1164,11 @@ __attribute__((always_inline)) INLINE static double radiation_packet_cone_floor(
 __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     struct spart *si, const struct part *pj, const float dx[3],
     const integertime_t ti_current) {
-  const integertime_t ti_begin =
-      get_integer_time_begin(ti_current, si->time_bin);
-
   double d[3];
   double q;
   double weight;
   const int c =
-      radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+      radiation_packet_star_gas_cone(si, pj, dx, ti_current, d, &q, &weight);
 
   if (weight > 0.0) si->feedback_data.radiation.packet.cone_weight[c] += weight;
 
@@ -1155,14 +1211,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
     const struct radiation_packet_constants *constants) {
 
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
-  const integertime_t ti_begin =
-      get_integer_time_begin(ti_current, si->time_bin);
 
   double d[3];
   double q;
   double weight;
   const int c =
-      radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+      radiation_packet_star_gas_cone(si, pj, dx, ti_current, d, &q, &weight);
   if (!(weight > 0.0)) return;
 
   const double S = si->feedback_data.radiation.packet.cone_weight[c];
