@@ -822,8 +822,8 @@ static int runner_hii_open_star_pass(const struct engine *e,
 }
 
 /**
- * @brief Phase 1 of a pass: charge the recombination losses of the gas the
- * star already holds ionized, before any photons are spent on new candidates.
+ * @brief Charge the recombination losses of the gas the star already holds
+ * ionized, before any photons are spent on new candidates.
  *
  * Collapses the star's extent to what it still holds. Does nothing when
  * cooling is disabled for tagged gas, since tags are then permanent.
@@ -975,8 +975,8 @@ struct hii_claim_summary {
 };
 
 /**
- * @brief Phase 2 of a pass: claim new candidates with the photons the star
- * has left, retrying while they last.
+ * @brief Claim new candidates with the photons the star has left, retrying
+ * while they last.
  *
  * @param r The #runner thread.
  * @param c The working-level #cell holding the star.
