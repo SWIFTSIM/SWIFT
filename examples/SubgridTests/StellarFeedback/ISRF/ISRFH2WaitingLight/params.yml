@@ -20,15 +20,15 @@ Gravity:
 
 TimeIntegration:
   time_begin:        0.
-  time_end:          7.5e-9                     # 32 steps of the light-speed bound
+  time_end:          9.4e-9                     # 64 steps of 1.47e-10, snapshots 0 to 41
   dt_min:            1e-14
-  dt_max:            3e-9                       # Above the light-speed bound, which sets the step
+  dt_max:            3e-9                       # Above the light-speed bound, which sets the step (run.sh sets 2.34375e-10 for the unlimited arm)
 
 Snapshots:
   subdir: snap
   basename:   snapshot
   time_first: 0.0
-  delta_time: 2.34375e-10                    # One snapshot per step
+  delta_time: 2.34375e-10                    # One snapshot per 1.6 steps
   recording_triggers_sink:   [-1, -1, -1]
   compression: 9
 

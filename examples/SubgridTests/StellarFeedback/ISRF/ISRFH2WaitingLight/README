@@ -1,0 +1,57 @@
+# Intro
+One 29.7 Msun star at the centre of a periodic box of cold (50 K), zero-metallicity molecular
+gas with 8 dense Gaussian clumps (peak density 100 times the clear gas, clumps 0.12 to 0.32 box
+sizes from the star). The ISRF transport is on (`ISRF_propagation: 1`) with the H2 line absorption
+of the transport on (`ISRF_H2_line_absorption: 1`), so the Lyman-Werner (LW) light of the star is
+absorbed by the H2 lines along its path.
+
+At a limited light speed (`ISRF_packet_light_speed: fixed` or `cap`) the light that has not yet
+reached a gas particle waits in a reception slot of that particle. When part of the waiting light
+is released, the released light receives the mean H2 shielding of the whole pool. This example
+runs the cloud twice from the same initial conditions, with a limited and with an unlimited light
+speed (no light waits), and checks the first against the second.
+
+Read the README of `ISRFH2StarLit` for the radiation table and the exit classes. This run needs
+geajay, as that example does.
+
+# Configure
+Use the build of `ISRFH2StarLit`.
+
+# Run
+```
+./run.sh
+light_speed=cap ./run.sh      # limited arm with the cap mode instead of 0.99 c
+```
+`run.sh` fetches the glass file and the tables, writes the initial conditions, runs the
+unlimited arm (directory `control`), then the limited arm (directory `limited`), then the check.
+Both arms write snapshots at the same times. `level`, `gas_density`, `gas_mass`, `h2_ratio`
+(initial `nH2/nH`, default 3e-5) and `n_threads` override the defaults. The run keeps the gas
+cold and the H2 nearly frozen: photoionization, winds and supernovae are off, the metallicity is
+zero, and the time step is set by the light speed (64 steps of 1.47e-10 internal units).
+
+# Checking
+`python3 checkH2WaitingLight.py --limited limited --control control`
+
+The check reads every snapshot that both runs hold, in time order, from the first one at which
+at least 200 particles are lit in both runs. Particles are read between 2 smoothing lengths and
+half a box minus 2 smoothing lengths from the star, and only if their H2 density has changed by
+at most 5 per cent since the first snapshot.
+
+A particle receives light as shares from the neighbours that are closer to the star. A share has
+the H2 column carried by its sender plus the column of the hop. The released light is a weighted
+mean of the shares of the pool, so the transmission and the column of a particle lie between the
+smallest and the largest share value. The shares are built from the carried columns of the
+senders of the same run in all snapshots up to the compared one, because a share may
+have been sent, and left waiting, a few steps earlier.
+
+- `hull_t`: `|ln(t_limited / t_control)|` is at most `ln(largest / smallest)` of the share
+  transmissions of both runs.
+- `hull_N`: the carried column of both runs lies between the smallest and the largest share column.
+- `own range`: the limited run alone lies inside the range of its own shares (transmission and column).
+- The control run must obey the range of its own shares. The comparison ends at the first
+  snapshot where it does not, and the check prints that snapshot.
+- The two snapshots compared must have the same time. The limited run must have lit fewer
+  particles than the control run at the first compared snapshot, else no light waits and the run is void.
+
+The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field, 3 for a
+non-finite value and 4 for a void run (a premise or the positive control is not met).
