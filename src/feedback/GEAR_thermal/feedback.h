@@ -20,6 +20,8 @@
 #define SWIFT_FEEDBACK_GEAR_H
 
 #include "../GEAR/feedback_common.h"
+#include "../GEAR/radiation_hii.h"
+#include "../GEAR/radiation_packet.h"
 #include "../GEAR/stellar_evolution.h"
 #include "cosmology.h"
 #include "error.h"
@@ -28,10 +30,6 @@
 #include "part.h"
 #include "timestep_sync_part.h"
 #include "units.h"
-
-#if defined(GEAR_SUBGRID_RADIATION_ISRF) && defined(SWIFT_DEBUG_CHECKS_ISRF)
-#include "../GEAR/radiation_packet.h"
-#endif
 
 #include <string.h>
 #include <strings.h>
@@ -303,6 +301,81 @@ feedback_unpack_hii_state_update(struct part *restrict p,
   p->feedback_data.mu_eligibility = data->mu_eligibility;
   p->feedback_data.neutral_H_frac = data->neutral_H_frac;
 #endif
+}
+
+/**
+ * @brief Start-up of the ISRF packet transport: sets the speed limit of the
+ * packet light, with or without stars.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_startup(const struct engine *e) {
+  radiation_packet_startup(e);
+}
+
+/**
+ * @brief Follows the cell width after a regrid: the packet reach margin
+ * depends on it.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_regrid(const struct engine *e) {
+  radiation_packet_refresh_frame_width(e);
+}
+
+/**
+ * @brief Prints the far light of the packet transport at the statistics
+ * cadence. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_statistics(const struct engine *e) {
+  radiation_packet_far_diagnostics(e);
+}
+
+/**
+ * @brief Reports and resets the arrival bin counters of the step. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_diagnostics(const struct engine *e) {
+  radiation_packet_step_diagnostics(e);
+}
+
+/**
+ * @brief Checks the share of the packet light in the far arrival cells once
+ * per step. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_report(const struct engine *e) {
+  radiation_packet_far_share_report(e);
+}
+
+/**
+ * @brief Prints the far share of the whole run. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_end_of_run(const struct engine *e) {
+  radiation_packet_far_share_final(e);
+}
+
+/**
+ * @brief Sums the ledger of the gas that left the box over the ranks before a
+ * snapshot. Collective.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_snapshot_reduce(const struct engine *e) {
+  radiation_packet_reduce_left_box(e);
 }
 
 #endif /* SWIFT_FEEDBACK_GEAR_H */

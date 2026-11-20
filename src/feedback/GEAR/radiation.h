@@ -145,6 +145,12 @@ radiation_get_dust_to_gas_ratio_relative_to_MW(float Z,
 /*! #RADIATION_LW_BAND_UPPER_EDGE_EV in erg. */
 #define RADIATION_LW_BAND_UPPER_EDGE_CGS 2.1789602e-11
 
+/*! HI ionisation energy in erg (13.598 eV), the energy per atom the ionized
+    floor temperature is built from. It differs from
+    #RADIATION_LW_BAND_UPPER_EDGE_CGS (13.6 eV); the two are not merged so
+    that no result changes. */
+#define RADIATION_HI_IONIZATION_ENERGY_CGS 2.17872e-11
+
 /*! The band lower edges in erg (1 eV = 1.602176634e-12 erg), hardcoded because
     eV is not an internal unit. They enter only a dimensionless ratio. */
 #define RADIATION_PE_BAND_LOWER_EDGE_CGS 9.6130598e-12
@@ -212,6 +218,27 @@ struct radiation_grid_metadata {
   enum interpolate_boundary_condition edge_policy_l_lw;
 };
 
+/**
+ * @brief The run-wide inputs of the gas getters of the HII scheme.
+ */
+struct radiation_gas_context {
+
+  /*! Physical constants. */
+  const struct phys_const *phys_const;
+
+  /*! Hydro scheme properties. */
+  const struct hydro_props *hydro_props;
+
+  /*! Unit system. */
+  const struct unit_system *us;
+
+  /*! Cosmological model. */
+  const struct cosmology *cosmo;
+
+  /*! Cooling function properties. */
+  const struct cooling_function_data *cooling;
+};
+
 /*----------------------------------------------------------------------------*/
 /* HII regions (--with-subgrid-radiation part hii)                            */
 /*----------------------------------------------------------------------------*/
@@ -219,33 +246,23 @@ struct radiation_grid_metadata {
 #ifdef GEAR_SUBGRID_RADIATION_HII
 
 double radiation_get_part_number_hydrogen_atoms(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_number_neutral_hydrogen_atoms(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_rate_to_fully_ionize(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_ionized_internal_energy(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_part_mean_molecular_weight(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp);
 
 double radiation_get_case_b_recombination_coefficient_cgs(const double T);
@@ -308,9 +325,7 @@ radiation_set_star_will_do_HII_ionization(struct spart *sp, const char flag) {
 
 __attribute__((always_inline)) INLINE static double
 radiation_get_part_ionized_internal_energy(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
   return 0.;
 }
@@ -668,6 +683,20 @@ double radiation_get_star_mean_photon_energy_pe(const struct radiation *rad,
                                                 float log_m, float log_z);
 double radiation_get_population_mean_photon_energy_pe(
     const struct radiation *rad, float log_z, float log_m);
+double radiation_get_population_mean_photon_energy_lw(
+    const struct radiation *rad, float log_z, float log_m);
+float radiation_get_population_luminosity_pe(const struct radiation *rad,
+                                             float log_z, float log_m1,
+                                             float log_m2);
+float radiation_get_population_luminosity_lw(const struct radiation *rad,
+                                             float log_z, float log_m1,
+                                             float log_m2);
+float radiation_get_population_luminosity_edge_pe(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2);
+float radiation_get_population_luminosity_edge_lw(const struct radiation *rad,
+                                                  float log_z, float log_m1,
+                                                  float log_m2);
 double radiation_get_mean_photon_energy_lw_from_integral(
     const struct radiation *rad, float log_m);
 double radiation_get_mean_photon_energy_lw_from_integral_2d(
@@ -700,44 +729,6 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct unit_system *us,
                          const struct phys_const *phys_const,
                          const int restart);
-void radiation_read_luminosities_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_ionization_rate_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_mean_excess_photon_energy_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us);
-void radiation_read_luminosity_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_mean_photon_energy_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
-void radiation_read_mean_photon_energy_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
-void radiation_read_luminosity_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_luminosity_edge_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_luminosity_edge_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

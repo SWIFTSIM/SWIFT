@@ -345,7 +345,7 @@ void engine_dump_snapshot(struct engine *e, const int fof) {
   engine_finalize_trigger_recordings(e);
 
   /* Collective: the header holds the sum over the ranks. */
-  radiation_packet_reduce_left_box(e);
+  feedback_radiation_transport_snapshot_reduce(e);
 
   /* Get time-step since the last mesh kick */
   if ((e->policy & engine_policy_self_gravity) && e->s->periodic) {

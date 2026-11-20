@@ -227,7 +227,7 @@ struct stars_props {
   /*! Maximal number of full-buffer retries (at a fixed search radius)
    * before giving up on finding every gas particle within that radius for
    * a single HII search pass. The buffer capacity itself
-   * (max_HII_ngbs, runner_radiation_feedback.h) is a compile-time
+   * (max_ngbs, runner_radiation_feedback.h) is a compile-time
    * constant; this retry count is the runtime knob for adapting to local
    * gas mass resolution without recompiling (e.g. across regions of a
    * cosmological zoom-in). */

@@ -1024,7 +1024,7 @@ GEARFeedback:
 
   # HII regions (subgrid photoionization, Strömgren-sphere model; --with-subgrid-radiation part hii)
   with_photoionization:          0                        # 1: run the subgrid photoionization (Stromgren sphere) model, 0: do not. A grackle_1 or higher build needs GrackleCooling:primordial_chemistry >= 1: network 0 stops at start-up. (Default: 0)
-  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in hydrogen atoms/cm^3). The default suits cosmological runs; an idealised low-density box needs a lower value. (Default: 1)
+  HII_min_density_Hpcm3: 1                          # Minimal density to consider a particle eligible for HII ionization (in nucleons/cm^3: the density divided by the proton mass). The default suits cosmological runs; an idealised low-density box needs a lower value. (Default: 1)
   HII_max_age_Myr:        50                        # Age (in Myr) at which stars stop doing HII ionization. This is particularly relevant for the SSP star particles. (Default: 50)
   HII_rebuild_time_Myr:   0.5                             # Time between HII region rebuilds (Myr); also a star timestep constraint. Negative: every step. (Default: 0.5)
   HII_angular_nside:             0                        # HEALPix nside of the angular budget split: 0 = spherical, N>=1 = 12*N^2 pixels. Needs --with-chealpix and --with-number-of-hii-angular-pixels. (Default: 0)

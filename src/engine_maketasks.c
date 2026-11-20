@@ -1248,7 +1248,7 @@ void engine_addtasks_recv_hydro(
      * activated for cells with no active hydro. t_gradient carries the
      * same whole-struct part_mpi_type payload and lands last of the three,
      * so it must also be wired or a claim written mid-pass can be wiped by
-     * an in-flight recv_gradient (the original Bug A class). */
+     * an in-flight recv_gradient. */
     for (struct link *l = c->stars.radiation_in; l != NULL; l = l->next) {
       scheduler_addunlock(s, t_xv, l->t);
       scheduler_addunlock(s, t_rho, l->t);
@@ -4240,8 +4240,7 @@ static void engine_radiation_wire_super_deps(struct scheduler *sched,
 
 /**
  * @brief Sorts-only mirror of #engine_radiation_wire_super_deps, for the
- * foreign side of a radiation_in pair (ci or cj not local to this rank; MPI
- * not yet supported, exercised only once cross-rank radiation is enabled).
+ * foreign side of a radiation_in pair (ci or cj not local to this rank).
  *
  * The foreign owner is responsible for its own drift/cooling/feedback_ghost
  * ordering; this rank only needs @p c's sorted gas current before @p t
@@ -4394,7 +4393,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
                               ci->super->timestep_sync);
         }
 
-      } else /* ci->nodeID != nodeID (MPI, not yet supported) */ {
+      } else /* ci->nodeID != nodeID (foreign side under MPI) */ {
 
         engine_radiation_wire_super_sorts_only(sched, ci, t);
       }
@@ -4417,7 +4416,7 @@ void engine_make_extra_radiationloop_tasks_mapper(void *map_data,
                                 cj->super->timestep_sync);
           }
         }
-      } else /* cj->nodeID != nodeID (MPI, not yet supported) */ {
+      } else /* cj->nodeID != nodeID (foreign side under MPI) */ {
         if (with_feedback) {
           engine_radiation_wire_super_sorts_only(sched, cj, t);
         }
@@ -5786,7 +5785,7 @@ void engine_maketasks(struct engine *e) {
                    cells, nr_cells, sizeof(struct cell),
                    threadpool_auto_chunk_size, e);
 
-    /* Missing-link tripwire (Phase 2.3b): every pair of geometrically
+    /* Missing-link tripwire: every pair of geometrically
      * adjacent radiation_level cells must share a radiation_in link. Catches
      * the failure mode neither of the two checks above can see -- a link
      * that should exist but does not. */
