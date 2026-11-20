@@ -134,35 +134,42 @@ def share_bounds(
 ) -> Tuple[np.ndarray, ...]:
     """Return the smallest and largest share transmission and column of each particle.
 
-    A share from q has the column carried by q plus the mean H2 density of both ends times
-    the hop length d_p - d_q, taken from every snapshot up to the compared one at which q
-    is lit (light may have waited since then). Its transmission is the shielding function at the receiver temperature and
-    gas density. Particles without a lit upstream neighbour get NaN.
+    A share from q is built as the code builds it. The column is the column carried by q
+    plus the mean H2 density of both ends times the hop length d_p - d_q. The transmission
+    is the transmission carried by q times f_p(N_q + dN) / f_p(N_q), with f_p the shielding
+    function at the receiver temperature and gas density. The values of q are taken from
+    every snapshot up to the compared one at which q is lit (light may have waited since
+    then). Particles without a lit upstream neighbour get NaN.
     """
     snap = run.get(number)
-    window = [run.get(j) for j in range(1, number + 1)]
+    window = [(j, run.get(j)) for j in range(1, number + 1)]
     size = len(snap["ParticleIDs"])
     lo_t, hi_t, lo_n, hi_n = (np.full(size, np.nan) for _ in range(4))
     for p, q in neighbours:
         if len(q) == 0:
             continue
         hop = (dist[p] - dist[q]) * snap["unit_length"]
-        cols = []
-        for past in window:
+        cols, trans = [], []
+        for j, past in window:
             sent = past["lit"][q]
-            if sent.any():
-                cols.append(
-                    past["N"][q[sent]]
-                    + 0.5 * (snap["n_h2"][p] + snap["n_h2"][q[sent]]) * hop[sent]
-                )
+            if not sent.any():
+                continue
+            # The hop H2 is read at the snapshot before the one that holds the sender value.
+            before = run.get(max(j - 1, 1))
+            qs = q[sent]
+            col_hop = 0.5 * (before["n_h2"][p] + before["n_h2"][qs]) * hop[sent]
+            col_q = past["N"][qs]
+            temp = np.full(len(qs), snap["Temperatures"][p])
+            dens = np.full(len(qs), snap["n_gas"][p])
+            cols.append(col_q + col_hop)
+            trans.append(
+                past["t"][qs]
+                * G.transmission(col_q + col_hop, temp, dens)
+                / G.transmission(col_q, temp, dens)
+            )
         if not cols:
             continue
-        col = np.concatenate(cols)
-        t = G.transmission(
-            col,
-            np.full(len(col), snap["Temperatures"][p]),
-            np.full(len(col), snap["n_gas"][p]),
-        )
+        col, t = np.concatenate(cols), np.concatenate(trans)
         lo_t[p], hi_t[p], lo_n[p], hi_n[p] = t.min(), t.max(), col.min(), col.max()
     return lo_t, hi_t, lo_n, hi_n
 
@@ -401,6 +408,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         code = gate(args)
     except G.GateExit as stop:
         print(f"FAIL  {stop.message}")
+        if stop.code == G.EXIT_MISSING:
+            print(
+                "INFO  run ./run.sh first: it writes the control and limited run directories"
+            )
         code = stop.code
     print(f"exit class {code}")
     return code
