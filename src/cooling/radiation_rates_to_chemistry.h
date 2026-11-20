@@ -117,8 +117,9 @@ INLINE static int cooling_ionize_part_subgrid(
      (shared with radiation_get_part_rate_to_fully_ionize, which uses the
      same value to evaluate the temperature-dependent case-B
      recombination coefficient, keeping the two consistent). */
-  const float u_new = radiation_get_part_ionized_internal_energy(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const struct radiation_gas_context gas = {phys_const, hydro_props, us, cosmo,
+                                            cooling};
+  const float u_new = radiation_get_part_ionized_internal_energy(&gas, p, xp);
   *u_out = u_new;
 
 #if COOLING_NETWORK > 0
