@@ -79,21 +79,6 @@ void radiation_end_gradient_propagation(struct part *p, const struct engine *e);
 void radiation_end_force_propagation(struct part *p, const struct engine *e);
 float radiation_isrf_part_timestep(const struct part *restrict p,
                                    const struct engine *e);
-float radiation_get_comoving_extinction_path(
-    const struct feedback_props *fb_props, const struct part *p,
-    const struct xpart *xp, const float r, const struct cosmology *cosmo,
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cooling_function_data *cooling);
-float radiation_get_comoving_gas_column_density_at_part(
-    const struct part *p, const float extinction_path);
-void radiation_get_part_ISRF_extinction_factors(
-    const struct unit_system *us, const struct phys_const *phys_const,
-    const struct cosmology *cosmo, const struct part *p, float Z,
-    const struct cooling_function_data *cooling, const float extinction_path,
-    float extinction[ISRF_OPERATOR_COUNT]);
-float radiation_get_part_linear_absorption_rate(
-    const struct unit_system *us, const struct phys_const *phys_const,
-    float D_relative, float rho_p, float sigma_d_band_cgs);
 
 #else /* GEAR_SUBGRID_RADIATION_ISRF */
 

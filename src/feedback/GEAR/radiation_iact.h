@@ -32,6 +32,7 @@
 #include "feedback_properties.h"
 #include "minmax.h"
 #include "radiation.h"
+#include "radiation_isrf_extinction.h"
 #include "radiation_packet.h"
 #include "timestep_sync_part.h"
 #include "tracers.h"
