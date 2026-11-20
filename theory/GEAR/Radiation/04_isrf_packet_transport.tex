@@ -3489,12 +3489,12 @@ called in \code{radiation\_packet\_star\_emit}
 number follow from the fraction (:1246-1249), then the delivery (:1267-1269). The
 star zeroes its cone sums before the density loop
 (\code{radiation\_packet\_init\_star\_cones}, \code{radiation\_packet.h:1101-1119},
-called at \code{src/feedback/GEAR\_thermal/feedback.c:544}).
+called at \code{src/feedback/GEAR\_thermal/feedback.c:538}).
 
 \paragraph{Redshift and band-edge transfer (Sec.~\ref{sec:packet-transfer}).}
 The constants are set at start-up by \code{radiation\_packet\_startup}
-(\code{radiation\_packet.c:1054-1075}, called at
-\code{src/runner\_radiation\_feedback.c:313}) through
+(\code{radiation\_packet.c:1054-1075}, called through \code{feedback\_radiation\_transport\_startup}
+at \code{src/runner\_radiation\_feedback.c:313}) through
 \code{radiation\_packet\_set\_redshift} (\code{radiation\_packet.c:304-313}).
 Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:1096-1145}).
@@ -3518,8 +3518,8 @@ $\kappa_b$ is \code{isrf\_operator[b].kappa} of the receiver
 (\code{feedback\_struct.h:113-116}), set by
 \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:200-214}).
 That function runs at each drift of the particle, through
-\code{feedback\_reset\_part} (\code{src/feedback/GEAR\_thermal/feedback.c:426-430},
-called at \code{src/cell\_drift.c:377}).
+\code{feedback\_reset\_part} (\code{src/feedback/GEAR\_thermal/feedback.c:420-424},
+called at \code{src/cell\_drift.c:381}).
 The hop path, Eq.~\eqref{eq:packet-path} first line, is at
 \code{radiation\_packet.h:964}, with $a$ applied at the call, :1024; the star
 path is :1252-1253 (call at :1267-1269).
@@ -3691,7 +3691,7 @@ The departure time is not stored: it is the end of the step of the sender minus 
 booked at :3852-3859. A stored stamp is capped at the end of its bin or cell
 by \code{radiation\_packet\_time\_below\_end} (:2644-2648). The time-step bound of
 Eq.~\eqref{eq:isrf-dt} is \code{radiation\_isrf\_part\_timestep}
-(\code{radiation\_isrf.c:281-294}).
+(\code{radiation\_isrf.c:282-295}).
 
 \paragraph{The demand of near bins and the far share (Sec.~\ref{sec:packet-lightspeed}).}
 The start-up demand is \code{radiation\_packet\_bin\_demand}
@@ -3723,7 +3723,7 @@ division are \code{radiation\_packet\_end\_force}
 The write into the band values is \code{radiation\_packet\_couple\_field}
 (\code{radiation\_packet.c:4308-4325}, called at \code{radiation\_isrf.c:310}).
 The kernel mean of the dissociating energy is capped at the kernel mean of the LW
-energy (:4187-4192), so that a float LW sum flushed to 0 never lies below the
+energy (\code{radiation\_packet.c:4319-4324}), so that a float LW sum flushed to 0 never lies below the
 double dissociating sum.
 
 \paragraph{The frame of the light (Sec.~\ref{sec:packet-frame}).} The merged
@@ -3751,7 +3751,7 @@ a sink is \code{feedback\_isrf\_packet\_removed\_data}
 (\code{feedback\_struct.h:1013-1058}). The emission is booked by
 \code{radiation\_packet\_star\_book\_emission}
 (\code{radiation\_packet.c:4338-4369}), called at
-\code{src/feedback/GEAR\_thermal/feedback.c:612}. The removal is
+\code{src/feedback/GEAR\_thermal/feedback.c:606}. The removal is
 \code{radiation\_packet\_book\_removed\_gas} (\code{radiation\_packet.c:1762-1800},
 the inherited sum with the redshift ledger at :1795-1798). It is reached from
 \code{feedback\_book\_removed\_gas\_to\_spart},
@@ -3761,10 +3761,10 @@ the inherited sum with the redshift ledger at :1795-1798). It is reached from
 non-periodic box is booked by \code{radiation\_packet\_book\_gas\_left\_box}
 (\code{radiation\_packet.c:1833-1835}) through
 \code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1506-1514},
-called at \code{src/cell\_drift.c:337}). The sum over the ranks is
+called at \code{src/cell\_drift.c:340}). The sum over the ranks is
 \code{radiation\_packet\_reduce\_left\_box} (\code{radiation\_packet.c:1891-1915}),
 and \code{feedback\_write\_flavour}
-(\code{src/feedback/GEAR\_thermal/feedback.h:94-155}) writes it as the snapshot
+(\code{src/feedback/GEAR\_thermal/feedback.h:92-153}) writes it as the snapshot
 attributes \code{PacketLeftBox*}. A star that leaves the box, a sink that
 leaves the box and a gas particle swallowed by a black hole are booked by
 \code{radiation\_packet\_book\_star\_left\_box},
