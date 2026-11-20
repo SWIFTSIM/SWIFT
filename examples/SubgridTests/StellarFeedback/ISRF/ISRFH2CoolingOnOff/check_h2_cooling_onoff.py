@@ -9,9 +9,17 @@ the on-leg state and compares the median of ln(n_H2,on / n_H2,off) per
 density bin with the measured one. The solve is independent of the SWIFT
 code: it uses the Wolcott-Green and Haiman (2019) fit written out below.
 
-Exit status: 0 agreement within the bar and the bar above a supplied noise,
-1 failure (non-finite value, no particle left in any snapshot, or bar exceeded
-with a supplied noise), 2 inconclusive (noise floor unknown, or bar below the noise).
+The noise floor is measured with --repeat, a second run of the on leg: per
+density bin it is |median ln(n_H2,on / n_H2,repeat)| plus twice the bootstrap
+standard error of that median, on the particles kept for the comparison. A bin
+is decided (PASS or FAIL) only where its bar exceeds that noise; otherwise it
+is INCONCLUSIVE. The bar is never widened.
+
+Exit status per snapshot: 0 every decided bin agrees and at least one bin is
+decided, 1 failure (non-finite value, or a decided bin beyond its bar),
+2 inconclusive (noise floor unknown, or no bin with a bar above the noise),
+3 nothing left after the masks. The run exits 1 on any 1, else 0 if any
+snapshot is 0, else 2.
 """
 
 from __future__ import annotations
@@ -170,6 +178,7 @@ def boot_se(v: Arr, rng: np.random.Generator, n: int = 400) -> float:
 def evaluate(
     on: dict[str, Arr],
     off: dict[str, Arr],
+    rep: dict[str, Arr] | None,
     synthetic: bool,
     x_on_scale: float,
     nan_plant: bool,
@@ -234,6 +243,13 @@ def evaluate(
         else float("nan")
     )
     meas = np.log(x_on_scale * y_on / y_meas_off)
+    if rep is not None:
+        y_rep = state(rep)["n_h2"]
+        res["finite"] = res["finite"] and bool(np.isfinite(y_rep).all())
+        if not res["finite"]:
+            return res
+        with np.errstate(divide="ignore", invalid="ignore"):
+            rep_ln = np.log(y_on / y_rep)
     pred = np.log(y_on / y_pred)
     # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu).
     sens = {}
@@ -257,7 +273,17 @@ def evaluate(
             - np.nanmedian(sens[1 / 1.1][idx_in_keep])
         )
         se = np.hypot(boot_se(meas[m], rng), boot_se(pred[m], rng))
+        noise = float("nan")
+        if rep is not None:
+            r = rep_ln[m]
+            r = r[np.isfinite(r)]
+            noise = (
+                float(abs(np.median(r)) + 2.0 * boot_se(r, rng))
+                if r.size > 1
+                else float("nan")
+            )
         bins[b] = {
+            "noise": noise,
             "n": int(m.sum()),
             "meas": float(np.median(meas[m])),
             "pred": float(np.median(pred[m])),
@@ -269,8 +295,12 @@ def evaluate(
     return res
 
 
-def verdict(res: dict, noise: float | None) -> tuple[int, str]:
-    """Return the exit code and the reason."""
+def verdict(res: dict, noise: float | None, repeat: bool) -> tuple[int, str]:
+    """Return the exit code and the reason.
+
+    noise is a global harness-only floor in ln units; with a repeat run each
+    bin carries its own measured noise.
+    """
     if not res["finite"]:
         return 1, "FAIL: a non-finite value in the inputs"
     good = {b: v for b, v in res["bins"].items() if "meas" in v}
@@ -279,19 +309,21 @@ def verdict(res: dict, noise: float | None) -> tuple[int, str]:
     for b, v in good.items():
         if not np.isfinite([v["meas"], v["pred"], v["bar"]]).all():
             return 1, f"FAIL: non-finite result in {b}"
-    if noise is None:
+    if noise is None and not repeat:
         return 2, "INCONCLUSIVE: noise floor between two runs is UNKNOWN"
-    worst = max(abs(v["meas"] - v["pred"]) / v["bar"] for v in good.values())
+    floor = {b: (v["noise"] if repeat else noise) for b, v in good.items()}
+    if not all(np.isfinite(list(floor.values()))):
+        return 1, "FAIL: non-finite noise floor"
+    decided = {b: v for b, v in good.items() if v["bar"] > floor[b]}
+    if not decided:
+        return 2, "INCONCLUSIVE: no bin has a bar above the noise floor"
+    worst = max(abs(v["meas"] - v["pred"]) / v["bar"] for v in decided.values())
+    skipped = len(good) - len(decided)
     if worst > 1.0:
-        return (
-            1,
-            f"FAIL: discrepancy {worst:.2f} times the bar (noise {noise:g} supplied)",
-        )
-    if any(v["bar"] < noise for v in good.values()):
-        return 2, "INCONCLUSIVE: a bar is below the supplied noise"
+        return 1, f"FAIL: discrepancy {worst:.2f} times the bar in a decided bin"
     return (
         0,
-        f"PASS: largest discrepancy {worst:.2f} of the bar, bars above noise {noise:g}",
+        f"PASS: largest discrepancy {worst:.2f} of the bar in {len(decided)} decided bins ({skipped} inconclusive)",
     )
 
 
@@ -311,6 +343,16 @@ def plot(rows: list[tuple[int, dict]], path: Path) -> None:
             if "meas" not in v:
                 continue
             x = j + (i - len(rows) / 2) * 0.08
+            if np.isfinite(v["noise"]):
+                ax.errorbar(
+                    x + 0.03,
+                    v["pred"],
+                    yerr=v["noise"],
+                    fmt="none",
+                    ecolor="0.6",
+                    elinewidth=3,
+                    label="noise floor (repeat run), half-width" if not seen else None,
+                )
             ax.errorbar(
                 x,
                 v["meas"],
@@ -354,13 +396,19 @@ def main() -> int:
     ap.add_argument(
         "--off", type=Path, required=True, help="snapshot directory of the off leg"
     )
+    ap.add_argument(
+        "--repeat",
+        type=Path,
+        default=None,
+        help="snapshot directory of a second run of the on leg, for the noise floor",
+    )
     ap.add_argument("--first", type=int, default=43)
     ap.add_argument("--last", type=int, default=50)
     ap.add_argument(
         "--noise",
         type=float,
         default=None,
-        help="noise floor in ln units; unknown if absent",
+        help="harness only: global noise floor in ln units, instead of --repeat",
     )
     ap.add_argument(
         "--synthetic",
@@ -383,10 +431,18 @@ def main() -> int:
     for s in range(a.first, a.last + 1):
         on = read_leg(a.on / f"snapshot_{s:04d}.hdf5", True)
         off = read_leg(a.off / f"snapshot_{s:04d}.hdf5", False)
+        rep = (
+            read_leg(a.repeat / f"snapshot_{s:04d}.hdf5", False)
+            if a.repeat is not None
+            else None
+        )
         common = np.intersect1d(on["id"], off["id"])
+        if rep is not None:
+            common = np.intersect1d(common, rep["id"])
         on, off = (pair(d, common) for d in (on, off))
-        r = evaluate(on, off, a.synthetic, a.x_on_scale, a.plant_nan, 0.0)
-        code, why = verdict(r, a.noise)
+        rep = pair(rep, common) if rep is not None else None
+        r = evaluate(on, off, rep, a.synthetic, a.x_on_scale, a.plant_nan, 0.0)
+        code, why = verdict(r, a.noise, rep is not None)
         codes.append(code)
         rows.append((s, r))
         print(f"snapshot {s}: exit {code} {why}")
@@ -400,7 +456,7 @@ def main() -> int:
                 if "meas" in v:
                     print(
                         f"  {b}: n {v['n']}, measured {v['meas']:+.3f}, derived {v['pred']:+.3f}, "
-                        f"discrepancy/bar {abs(v['meas'] - v['pred']) / v['bar']:.2f}, bar {v['bar']:.3f} (se {v['se']:.3f}, T-model {v['sys_T']:.3f})"
+                        f"discrepancy/bar {abs(v['meas'] - v['pred']) / v['bar']:.2f}, bar {v['bar']:.2g} (se {v['se']:.3f}, T-model {v['sys_T']:.3f}), noise {v['noise']:.2g}"
                     )
                 else:
                     print(f"  {b}: n {v['n']} (fewer than 10, not evaluated)")
@@ -408,7 +464,7 @@ def main() -> int:
         plot([(s, r) for s, r in rows if r["finite"] and r.get("bins")], a.plot)
     if 1 in codes or all(c == 3 for c in codes):
         return 1
-    return 2 if 2 in codes else 0
+    return 0 if 0 in codes else 2
 
 
 if __name__ == "__main__":
