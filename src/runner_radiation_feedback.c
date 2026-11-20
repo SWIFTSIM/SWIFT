@@ -128,47 +128,39 @@ runner_hii_star_cone_frame(const struct spart *si,
  * forward/backward), which otherwise each repeat this exact pixel +
  * range + budget + insert sequence.
  *
- * @param si The #spart (star) performing the feedback.
+ * @param gather The #hii_gather_state of the traversal.
  * @param pj The candidate gas particle.
  * @param xpj The candidate's extended data.
  * @param c The #cell the candidate belongs to (for SWIFT_DEBUG_CHECKS).
  * @param dx Star-minus-particle position offset.
  * @param r2 Squared distance between star and candidate.
  * @param r2_max Squared search radius.
- * @param buffer The #hii_neighbor array to store found candidates.
- * @param max_size The maximum capacity of the neighbor buffer.
- * @param count_found (return) The number of neighbors gathered so far.
- * @param mode Which set of gas particles this traversal is after.
- * @param ctx Maintenance context, non-NULL only for
- * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
  */
 __attribute__((always_inline)) INLINE static void
-runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
-                                struct xpart *xpj, struct cell *c,
-                                const float dx[3], const float r2,
-                                const float r2_max, struct hii_neighbor *buffer,
-                                int max_size, int *count_found,
-                                enum hii_gather_mode mode,
-                                struct hii_maintenance_context *ctx,
-                                const double *frame) {
+runner_hii_try_insert_candidate(struct hii_gather_state *gather,
+                                struct part *pj, struct xpart *xpj,
+                                struct cell *c, const float dx[3],
+                                const float r2, const float r2_max) {
 
   if (r2 >= r2_max) return;
+
+  struct spart *si = gather->si;
+  struct hii_maintenance_context *ctx = gather->ctx;
 
 #ifdef SWIFT_DEBUG_CHECKS
   /* Already-ionized gas is processed in place and passes no buffer; new
      candidates are buffered and pass no context. */
-  if (mode == hii_gather_already_ionized && ctx == NULL)
+  if (gather->mode == hii_gather_already_ionized && ctx == NULL)
     error("Gathering already-ionized gas without a maintenance context.");
-  if (mode == hii_gather_new_candidates && (buffer == NULL || max_size <= 0))
+  if (gather->mode == hii_gather_new_candidates &&
+      (gather->buffer == NULL || gather->max_size <= 0))
     error("Gathering new candidates without a usable neighbour buffer.");
 #endif
 
-  const int pixel =
-      runner_hii_get_pixel(dx, feedback_get_star_HII_pixel_count(si), frame);
+  const int pixel = runner_hii_get_pixel(
+      dx, feedback_get_star_HII_pixel_count(si), gather->frame);
 
-  if (mode == hii_gather_already_ionized) {
+  if (gather->mode == hii_gather_already_ionized) {
     /* Extent and count track what this star still HOLDS, not what it could
        afford this pass, and are updated live regardless of traversal order:
        gating them on the charge would shrink h_hii and drop the region's
@@ -176,7 +168,7 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
        (which shell lapses under a shortfall) is deferred to the caller's
        (r2, id)-ordered pass below. */
     ctx->r2_max_maintained = max(ctx->r2_max_maintained, r2);
-    (*count_found)++;
+    gather->count_found++;
 
     /* Buffer this candidate for (r2, id)-ordered charging once the whole
        traversal returns. The region has no reason to fit in max_ngbs, so
@@ -197,8 +189,8 @@ runner_hii_try_insert_candidate(struct spart *si, struct part *pj,
   /* Skipping the insert once a pixel is exhausted stops a dead pixel's
      candidates from crowding out other pixels' on retry. */
   if (feedback_get_star_ionization_budget(si, pixel) > 0.0)
-    runner_hii_buffer_insert(buffer, max_size, count_found, r2, pj, xpj, c,
-                             pixel);
+    runner_hii_buffer_insert(gather->buffer, gather->max_size,
+                             &gather->count_found, r2, pj, xpj, c, pixel);
 }
 
 /**
@@ -258,6 +250,54 @@ __attribute__((always_inline)) INLINE static void runner_hii_axis_window(
 
   *di_min = di_star - search_radius - dx_max;
   *di_max = di_star + search_radius + dx_max;
+}
+
+/**
+ * @brief Offer one gas particle of a cell to the gather.
+ *
+ * The particle is skipped if it is inhibited or outside the set the traversal
+ * is after. Otherwise its distance to the star is measured and it goes to
+ * #runner_hii_try_insert_candidate.
+ *
+ * @param gather The #hii_gather_state of the traversal.
+ * @param pj The candidate gas particle.
+ * @param xpj The candidate's extended data, or NULL for a foreign cell, which
+ * has no local xparts.
+ * @param c The #cell holding the candidate.
+ * @param six The star position, in the frame of the candidate position
+ * minus @p origin.
+ * @param origin Position subtracted from the candidate's, or NULL for none.
+ * @param r2_max Squared search radius.
+ */
+__attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
+    struct hii_gather_state *gather, struct part *pj, struct xpart *xpj,
+    struct cell *c, const float six[3], const double origin[3],
+    const float r2_max) {
+
+  const struct engine *e = gather->r->e;
+
+  /* Early abort? */
+  if (part_is_inhibited(pj, e)) return;
+  if (!runner_hii_part_passes_gather_filter(pj, xpj, e, gather->si->id,
+                                            gather->mode))
+    return;
+
+#ifdef SWIFT_DEBUG_CHECKS
+  /* Check that particles have been drifted to the current time */
+  if (pj->ti_drift != e->ti_current)
+    error("Particle pj (%lld) not drifted to current time. c = %lld.", pj->id,
+          c->cellID);
+#endif
+
+  /* Compute the pairwise distance. */
+  const float pjx[3] = {
+      (float)(origin == NULL ? pj->x[0] : pj->x[0] - origin[0]),
+      (float)(origin == NULL ? pj->x[1] : pj->x[1] - origin[1]),
+      (float)(origin == NULL ? pj->x[2] : pj->x[2] - origin[2])};
+  const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
+  const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+
+  runner_hii_try_insert_candidate(gather, pj, xpj, c, dx, r2, r2_max);
 }
 
 /**
@@ -447,29 +487,16 @@ void runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
  * in @p mode, so the traversal (including the periodic shift and sort-index
  * bookkeeping) lives here once instead of being duplicated per phase.
  *
- * @param r The #runner thread.
  * @param c The working-level #cell holding the star.
- * @param si The #spart (star) performing the feedback.
- * @param search_radius The distance out to which gas is considered.
- * @param buffer The #hii_neighbor array (unused for already-ionized gas).
- * @param max_size The maximum capacity of the neighbor buffer.
- * @param count_found (return) Number of particles gathered/processed.
- * @param mode Which set of gas particles to look for.
- * @param ctx Maintenance context, NULL for new candidates.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param gather The #hii_gather_state of the traversal.
  */
-static void runner_hii_visit_neighbors(
-    struct runner *r, struct cell *c, struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+static void runner_hii_visit_neighbors(struct cell *c,
+                                       struct hii_gather_state *gather) {
 
-  struct engine *e = r->e;
+  struct engine *e = gather->r->e;
 
   /* First loop over particles in the current cell */
-  runner_doself_stars_hii_ionization_feedback(
-      r, c, si, search_radius, buffer, max_size, count_found, mode, ctx, frame);
+  runner_doself_stars_hii_ionization_feedback(c, gather);
 
   /* Now loop over particles in the neighboring cells via task links */
   for (struct link *l = c->stars.radiation_level->stars.radiation_in; l != NULL;
@@ -515,9 +542,8 @@ static void runner_hii_visit_neighbors(
     const int flipped = runner_flip[sid];
     sid = sortlistID[sid];
 
-    runner_do_stars_hii_ionization_feedback_branch(
-        r, c, cj, sid, flipped, shift, si, search_radius, buffer, max_size,
-        count_found, mode, ctx, frame);
+    runner_do_stars_hii_ionization_feedback_branch(c, cj, sid, flipped, shift,
+                                                   gather);
   } /* Neighbour search */
 }
 
@@ -747,9 +773,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
         .r = r,
         .buffer_count = 0,
     };
-    runner_hii_visit_neighbors(r, c, si, interaction_limit, NULL, 0,
-                               &count_held, hii_gather_already_ionized,
-                               &maintenance_ctx, frame);
+    struct hii_gather_state held_gather = {.r = r,
+                                           .si = si,
+                                           .search_radius = interaction_limit,
+                                           .buffer = NULL,
+                                           .max_size = 0,
+                                           .count_found = 0,
+                                           .mode = hii_gather_already_ionized,
+                                           .ctx = &maintenance_ctx,
+                                           .frame = frame};
+    runner_hii_visit_neighbors(c, &held_gather);
+    count_held = held_gather.count_found;
 
 #ifdef SWIFT_DEBUG_CHECKS
     /* hii_gather_already_ionized increments both counters together, one
@@ -851,7 +885,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #endif
 
     while (1) {
-      int count_found = 0;
       /* Any candidate actually claimed during THIS attempt (any pixel). A
          same-radius retry (case 1 below) re-runs the identical search: if
          this stays 0, no pixel's budget or tag state moved, so the fixed
@@ -862,9 +895,17 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
          retry gathers past it. */
       int attempt_front_count = 0;
 
-      runner_hii_visit_neighbors(r, c, si, dynamic_search_radius, ngb_buffer,
-                                 max_ngbs, &count_found,
-                                 hii_gather_new_candidates, NULL, frame);
+      struct hii_gather_state gather = {.r = r,
+                                        .si = si,
+                                        .search_radius = dynamic_search_radius,
+                                        .buffer = ngb_buffer,
+                                        .max_size = max_ngbs,
+                                        .count_found = 0,
+                                        .mode = hii_gather_new_candidates,
+                                        .ctx = NULL,
+                                        .frame = frame};
+      runner_hii_visit_neighbors(c, &gather);
+      const int count_found = gather.count_found;
 
       const int buffer_was_full = (count_found == max_ngbs);
 
@@ -1072,36 +1113,22 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
  * the sub-tree hierarchy; otherwise, it resolves the leaf interaction using
  * either a sorted array approach or a naive fallback mechanism.
  *
- * @param r The #runner thread.
  * @param ci The local cell context containing the active source star particle.
  * @param cj The target neighbor cell containing gas particle candidates.
  * @param sid The sorting axis index between the pair.
  * @param flipped Flag indicating if the cell order is flipped relative to the
  * axis direction.
  * @param shift The periodic wrapping shift vector applied to the coordinates.
- * @param si The #spart (star) performing the feedback.
- * @param search_radius The maximum search distance around the star.
- * @param ngb_buffer The tracking array where valid gas neighbors are collected.
- * @param max_size The maximum capacity of the neighbor tracking array.
- * @param count_found (return) Total tracking count of validated gas neighbors
- * gathered.
- * @param mode Which set of gas particles this traversal is after.
- * @param ctx Maintenance context, non-NULL only for
- * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param gather The #hii_gather_state of the traversal.
  */
 void runner_do_stars_hii_ionization_feedback_branch(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const int flipped, const double shift[3], struct spart *si,
-    const float search_radius, struct hii_neighbor *ngb_buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct cell *ci, struct cell *cj, const int sid, const int flipped,
+    const double shift[3], struct hii_gather_state *gather) {
 
   /* OPTIMIZATION: Check if cj is completely out of reach before doing anything
    * else */
-  if (!runner_hii_check_cell_can_be_reached(ci, cj, sid, flipped, shift, si,
-                                            search_radius)) {
+  if (!runner_hii_check_cell_can_be_reached(
+          ci, cj, sid, flipped, shift, gather->si, gather->search_radius)) {
     return;
   }
 
@@ -1113,9 +1140,8 @@ void runner_do_stars_hii_ionization_feedback_branch(
 
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_do_stars_hii_ionization_feedback_branch(
-            r, ci, cj->progeny[k], sid, flipped, shift, si, search_radius,
-            ngb_buffer, max_size, count_found, mode, ctx, frame);
+        runner_do_stars_hii_ionization_feedback_branch(ci, cj->progeny[k], sid,
+                                                       flipped, shift, gather);
       }
     }
   } else {
@@ -1158,13 +1184,10 @@ void runner_do_stars_hii_ionization_feedback_branch(
     use_sid = -1; /* force the naive path */
 #endif
     if (use_sid < 0) {
-      runner_dopair_naive_stars_hii_ionization_feedback(
-          r, ci, cj, shift, si, search_radius, ngb_buffer, max_size,
-          count_found, mode, ctx, frame);
+      runner_dopair_naive_stars_hii_ionization_feedback(ci, cj, shift, gather);
     } else {
-      runner_dopair_stars_hii_ionization_feedback(
-          r, ci, cj, use_sid, use_flipped, shift, si, search_radius, ngb_buffer,
-          max_size, count_found, mode, ctx, frame);
+      runner_dopair_stars_hii_ionization_feedback(ci, cj, use_sid, use_flipped,
+                                                  shift, gather);
     }
   }
 }
@@ -1173,29 +1196,17 @@ void runner_do_stars_hii_ionization_feedback_branch(
  * @brief Gather gas particles within the HII radius from the star's own cell.
  *
  * Performs a brute-force search over all hydro particles in cell @p c that
- * fall within the HII smoothing length of the star @p si. Candidates are
- * added to the @p buffer if they are not already inhibited or ionized.
+ * fall within the HII smoothing length of the star. Candidates are
+ * added to the buffer if they are not already inhibited or ionized.
  *
- * @param r The #runner thread.
  * @param c The #cell containing the gas particles.
- * @param si The #spart (star) performing the feedback.
- * @param search_radius The distance of potential gas candidates.
- * @param buffer The #hii_neighbor array to store found candidates.
- * @param max_size The maximum capacity of the neighbor buffer.
- * @param count_found (return) The number of neighbors successfully gathered.
- * @param mode Which set of gas particles this traversal is after.
- * @param ctx Maintenance context, non-NULL only for
- * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param gather The #hii_gather_state of the traversal.
  */
 void runner_doself_stars_hii_ionization_feedback(
-    struct runner *r, struct cell *c, struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct cell *c, struct hii_gather_state *gather) {
 
-  struct engine *e = r->e;
+  struct engine *e = gather->r->e;
+  struct spart *si = gather->si;
   const int count = c->hydro.count;
 
   /* Anything to do here?*/
@@ -1209,7 +1220,7 @@ void runner_doself_stars_hii_ionization_feedback(
 
   struct part *restrict parts = c->hydro.parts;
   struct xpart *restrict xparts = c->hydro.xparts;
-  const float r2_max = search_radius * search_radius;
+  const float r2_max = gather->search_radius * gather->search_radius;
   const float six[3] = {si->x[0], si->x[1], si->x[2]};
 
   /* TODO: Use sorted cells to check that the particles/the cell are/is
@@ -1225,28 +1236,7 @@ void runner_doself_stars_hii_ionization_feedback(
     struct part *restrict pj = &parts[pjd];
     struct xpart *restrict xpj = (xparts != NULL) ? &xparts[pjd] : NULL;
 
-    /* Early abort? */
-    if (part_is_inhibited(pj, e)) continue;
-    if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))
-      continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-    /* Check that particles have been drifted to the current time */
-    if (pj->ti_drift != e->ti_current)
-      error(
-          "Particle pj (%lld) not drifted to current time. c = %lld, "
-          "c->super = %lld",
-          pj->id, c->cellID, c->super->cellID);
-#endif
-
-    /* Compute the pairwise distance. */
-    const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
-                          (float)(pj->x[2])};
-    const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-    runner_hii_try_insert_candidate(si, pj, xpj, c, dx, r2, r2_max, buffer,
-                                    max_size, count_found, mode, ctx, frame);
+    runner_hii_offer_candidate(gather, pj, xpj, c, six, NULL, r2_max);
   } /* Loop in current cell */
 }
 
@@ -1258,27 +1248,17 @@ void runner_doself_stars_hii_ionization_feedback(
  * two different cells (@p ci and @p cj), including periodic boundary
  * conditions/wrapping.
  *
- * @param r The #runner thread.
  * @param ci The #cell containing the star.
  * @param cj The #cell containing the gas particles.
- * @param si The #spart (star) performing the feedback.
- * @param search_radius The distance of potential gas candidates.
- * @param buffer The #hii_neighbor array to store found candidates.
- * @param max_size The maximum capacity of the neighbor buffer.
- * @param count_found (return) The number of neighbors successfully gathered.
- * @param mode Which set of gas particles this traversal is after.
- * @param ctx Maintenance context, non-NULL only for
- * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param shift The periodic wrapping shift vector applied to @p cj.
+ * @param gather The #hii_gather_state of the traversal.
  */
 void runner_dopair_naive_stars_hii_ionization_feedback(
-    struct runner *r, struct cell *ci, struct cell *cj, const double shift[3],
-    struct spart *si, const float search_radius, struct hii_neighbor *buffer,
-    int max_size, int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct cell *ci, struct cell *cj, const double shift[3],
+    struct hii_gather_state *gather) {
 
-  struct engine *e = r->e;
+  struct engine *e = gather->r->e;
+  struct spart *si = gather->si;
   const int count_j = cj->hydro.count;
 
   /* Anything to do here?*/
@@ -1287,9 +1267,8 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
   if (cj != ci && cj->split) {
     for (int k = 0; k < 8; k++) {
       if (cj->progeny[k] != NULL) {
-        runner_dopair_naive_stars_hii_ionization_feedback(
-            r, ci, cj->progeny[k], shift, si, search_radius, buffer, max_size,
-            count_found, mode, ctx, frame);
+        runner_dopair_naive_stars_hii_ionization_feedback(ci, cj->progeny[k],
+                                                          shift, gather);
       }
     }
   } else {
@@ -1302,7 +1281,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
 
     struct part *restrict parts_j = cj->hydro.parts;
     struct xpart *restrict xparts_j = cj->hydro.xparts;
-    const float r2_max = search_radius * search_radius;
+    const float r2_max = gather->search_radius * gather->search_radius;
     const float six[3] = {(float)(si->x[0] - (cj->loc[0] + shift[0])),
                           (float)(si->x[1] - (cj->loc[1] + shift[1])),
                           (float)(si->x[2] - (cj->loc[2] + shift[2]))};
@@ -1314,31 +1293,7 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
       struct part *restrict pj = &parts_j[pjd];
       struct xpart *restrict xpj = (xparts_j != NULL) ? &xparts_j[pjd] : NULL;
 
-      /* Early abort? */
-      if (part_is_inhibited(pj, e)) continue;
-      if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))
-        continue;
-
-      /* message("[pair] Found %lld!", pj->id); */
-
-#ifdef SWIFT_DEBUG_CHECKS
-      /* Check that particles have been drifted to the current time */
-      if (pj->ti_drift != e->ti_current)
-        error(
-            "Particle pj (%lld) not drifted to current time. c = %lld, "
-            "c->super = %lld",
-            pj->id, cj->cellID, cj->super->cellID);
-#endif
-
-      /* Compute the pairwise distance. */
-      const float pjx[3] = {(float)(pj->x[0] - cj->loc[0]),
-                            (float)(pj->x[1] - cj->loc[1]),
-                            (float)(pj->x[2] - cj->loc[2])};
-      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-      runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
-                                      max_size, count_found, mode, ctx, frame);
+      runner_hii_offer_candidate(gather, pj, xpj, cj, six, cj->loc, r2_max);
     } /* Loop in current cell */
   }
 }
@@ -1352,29 +1307,21 @@ void runner_dopair_naive_stars_hii_ionization_feedback(
  * implements directional parsing boundaries to read only the specific window
  * of gas particles capable of interacting, skipping distant arrays.
  *
- *
- * @param r The #runner thread.
  * @param ci The #cell containing the star.
  * @param cj The #cell containing the gas particles.
- * @param si The #spart (star) performing the feedback.
- * @param search_radius The distance of potential gas candidates.
- * @param buffer The #hii_neighbor array to store found candidates.
- * @param max_size The maximum capacity of the neighbor buffer.
- * @param count_found (return) The number of neighbors successfully gathered.
- * @param mode Which set of gas particles this traversal is after.
- * @param ctx Maintenance context, non-NULL only for
- * #hii_gather_already_ionized.
- * @param frame Rotation of the cone frame (row-major 3x3), or NULL for the
- * box axes.
+ * @param sid The sorting axis index between the pair.
+ * @param flipped Flag indicating if the cell order is flipped relative to the
+ * axis direction.
+ * @param shift The periodic wrapping shift vector applied to @p cj.
+ * @param gather The #hii_gather_state of the traversal.
  */
 void runner_dopair_stars_hii_ionization_feedback(
-    struct runner *r, struct cell *ci, struct cell *cj, const int sid,
-    const int flipped, const double shift[3], struct spart *si,
-    const float search_radius, struct hii_neighbor *buffer, int max_size,
-    int *count_found, enum hii_gather_mode mode,
-    struct hii_maintenance_context *ctx, const double *frame) {
+    struct cell *ci, struct cell *cj, const int sid, const int flipped,
+    const double shift[3], struct hii_gather_state *gather) {
 
-  struct engine *e = r->e;
+  struct engine *e = gather->r->e;
+  struct spart *si = gather->si;
+  const float search_radius = gather->search_radius;
   const int count_j = cj->hydro.count;
 
   /* Anything to do here?*/
@@ -1426,22 +1373,7 @@ void runner_dopair_stars_hii_ionization_feedback(
       struct xpart *restrict xpj =
           (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
 
-      if (part_is_inhibited(pj, e)) continue;
-      if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))
-        continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (pj->ti_drift != e->ti_current)
-        error("Particle pj (%lld) not drifted to current time.", pj->id);
-#endif
-
-      const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
-                            (float)(pj->x[2])};
-      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-      runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
-                                      max_size, count_found, mode, ctx, frame);
+      runner_hii_offer_candidate(gather, pj, xpj, cj, six, NULL, r2_max);
     }
   } else {
     /* Star is on the 'right' relative to the axis direction.
@@ -1456,22 +1388,7 @@ void runner_dopair_stars_hii_ionization_feedback(
       struct xpart *restrict xpj =
           (xparts_j != NULL) ? &xparts_j[sort_j[pjd].i] : NULL;
 
-      if (part_is_inhibited(pj, e)) continue;
-      if (!runner_hii_part_passes_gather_filter(pj, xpj, e, si->id, mode))
-        continue;
-
-#ifdef SWIFT_DEBUG_CHECKS
-      if (pj->ti_drift != e->ti_current)
-        error("Particle pj (%lld) not drifted to current time.", pj->id);
-#endif
-
-      const float pjx[3] = {(float)(pj->x[0]), (float)(pj->x[1]),
-                            (float)(pj->x[2])};
-      const float dx[3] = {six[0] - pjx[0], six[1] - pjx[1], six[2] - pjx[2]};
-      const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-      runner_hii_try_insert_candidate(si, pj, xpj, cj, dx, r2, r2_max, buffer,
-                                      max_size, count_found, mode, ctx, frame);
+      runner_hii_offer_candidate(gather, pj, xpj, cj, six, NULL, r2_max);
     }
   }
 }
