@@ -57,19 +57,21 @@ first one checked, and the `timesteps.txt` next to each snapshot directory (`run
   error (particles resampled together, the legs share them), plus the noise, plus the lag.
 - The noise of a bin is the absolute median of `ln(x_on / x_repeat)` plus twice its bootstrap
   standard error.
-- The lag is the median shift of the derived value when both legs use the temperature of the
-  start of the last step (the cooling step starts from the state before the step), from the
-  change of temperature between the two snapshots divided by the number of steps.
+- The lag is the median shift of the derived value when both legs use the snapshot temperature
+  plus the change of one step. The cooling solve starts from the energy at the end of the step,
+  so the library temperature leads the snapshot temperature; the size of one full step is an
+  assumed upper bound. The change per step is that between the two snapshots divided by the
+  number of steps.
 - A bin is decided only with at least 30 particles and a bar of at most ln 2. A decided bin
   passes if the discrepancy is below the bar. Any other bin is printed as INDETERMINATE.
-- A non-finite input of any particle, or a negative or non-finite formation rate, is counted
-  and fails the snapshot.
+- A non-finite input of any particle (also in the previous snapshot), or a negative or
+  non-finite formation rate, is counted and fails the snapshot.
 
 A PASS means that the change of the H2 abundance between the two runs equals the change
 that the written line transmission predicts, with the library formation rates, within the
 bar. It does not test the transmission itself, the formation rates or the shielding fit of the
 library. It cannot see an error in the line transmission or in the column smaller than the
-bar, a switch fault that lowers the LW energy together with the dissociation rate, or an
+bar (on the uniform box the lag is 90 to 99 per cent of the bar, on the collapsing box the run-to-run noise is 67 to 99 per cent), a switch fault that lowers the LW energy together with the dissociation rate, or an
 error in the absolute size or sign of a formation channel.
 
 Exit status: 0 every snapshot passes, 1 a failure (or every snapshot is not evaluated),

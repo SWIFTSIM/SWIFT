@@ -26,8 +26,10 @@ does not prove: that T_line, the library formation rates, the shielding fit or
 the LW energy are right. It cannot see a fault that lowers u_LW together with
 the dissociation rate (the two cancel in the ratio), an error in the absolute
 size or sign of a formation channel (only F_off / F_on enters), or an error in
-T_line or in the column smaller than the bar, which is set by the run-to-run
-noise and by the local slope s of the shielding fit.
+T_line or in the column smaller than the bar. On the uniform box the lag is 90 to
+99 per cent of the bar; on the collapsing box the run-to-run noise is 67 to 99 per
+cent of it. The local slope s of the shielding fit sets how much a column error
+moves x.
 
 Statistic and bar of a density bin. The discrepancy is the median over the bin
 of the per-particle residual, the measured minus the derived ln(x_on / x_off).
@@ -35,15 +37,16 @@ The legs share their particles, so the error of this median is the bootstrap
 standard error of the residual itself (se, particles resampled together). The
 bar is 2 se + noise + lag. The noise is |median ln(x_on / x_repeat)| plus twice
 its bootstrap standard error, from --repeat, a second run of the on leg. The lag
-is the one-step lead of the library temperature: the cooling step integrates
-from the state at the start of the step, so the temperature that sets x can
-differ from the snapshot temperature by up to the change of one step (library
-cooling.c: the energy starts at u + dt du/dt). The gate takes the change of
-temperature per step of each particle in each leg from the previous snapshot
-(change divided by the number of steps in timesteps.txt, an average) and uses
-the median shift of the derived value when both legs use T minus that change.
-Without the previous snapshots or timesteps.txt the lag is unknown and the bin
-is INDETERMINATE.
+is the lead of the library temperature: the cooling solve starts from u + dt du/dt
+(library cooling.c:1202-1205), the energy at the end of the step, so the
+temperature that sets x is ahead of the snapshot temperature. The size, one full
+step of change, is an assumed upper bound; it is not derived from the kick and drift
+timing. The gate takes the change of temperature per step of each particle in each
+leg from the previous snapshot (change divided by the number of steps in
+timesteps.txt, an average over the interval) and uses the median shift of the
+derived value when both legs use T plus that change. Without the previous snapshot or
+timesteps.txt the lag is unknown and the bin is INDETERMINATE. A non-finite value in
+the previous snapshot fails the snapshot like one in the current snapshot.
 
 The reference legs MUST use the accurate (BDF) solver, GeajayCooling:solver 1.
 The cheap solver holds the library self-shielding factor f_loc of the
@@ -456,6 +459,7 @@ def evaluate(
     lead_on: Arr | None = None,
     lead_off: Arr | None = None,
     noise_floor: float | None = None,
+    prev_bad: dict[str, int] | None = None,
 ) -> dict:
     """Return the per-bin discrepancy, bar terms and the mask counts.
 
@@ -475,6 +479,8 @@ def evaluate(
         Change of temperature per step [K] of every particle in each leg, or None.
     noise_floor
         Harness only: global noise in ln units used instead of the repeat run.
+    prev_bad
+        Non-finite counts of the fields of the previous snapshots, which fail the snapshot.
     """
     son, soff = state(on), state(off)
     y_on = son["n_h2"]
@@ -482,6 +488,7 @@ def evaluate(
     t_line = on["t_line"] ** t_line_power
     res: dict = {"n_all": y_on.size}
     bad = finite_counts({"on": on, "off": off, "repeat": rep}, y_on.size)
+    bad.update({f"previous {k}": v for k, v in (prev_bad or {}).items()})
     res["nonfinite_fields"] = bad
     res["n_nonfinite"] = int(sum(bad.values()))
     res["finite"] = res["n_nonfinite"] == 0
@@ -574,13 +581,13 @@ def evaluate(
     rep_ln = np.log(x_on / x_rep)
     pred = np.log(x_on / x_pred)
     resid = meas - pred
-    # One-step lead of the library temperature: both legs at T minus the change of one step.
+    # One-step lead of the library temperature: both legs at T plus the change of one step.
     res["lag_known"] = lead_on is not None and lead_off is not None
     lag_shift = np.full(y_on.shape, np.nan)
     res["n_lag_dropped"] = 0
     if res["lag_known"]:
-        t_on_lib = np.maximum(son["temp"] - lead_on, 0.5 * son["temp"])
-        t_off_lib = np.maximum(soff["temp"] - lead_off, 0.5 * soff["temp"])
+        t_on_lib = np.maximum(son["temp"] + lead_on, 0.5 * son["temp"])
+        t_off_lib = np.maximum(soff["temp"] + lead_off, 0.5 * soff["temp"])
         ok_t = keep & np.isfinite(t_on_lib) & np.isfinite(t_off_lib)
         yp = np.full(y_on.shape, np.nan)
         yp[ok_t], _ = derive(ok_t, t_on_lib[ok_t], t_off_lib[ok_t])
@@ -736,8 +743,11 @@ def plot(rows: list[tuple[int, dict]], path: Path) -> None:
     fig.savefig(path, dpi=110, pil_kwargs={"quality": 70})
 
 
-def temperature_lead(snap_dir: Path, s: int, cur: dict[str, Arr]) -> Arr | None:
-    """Return the change of T per step [K] of each particle of cur, or None.
+def temperature_lead(
+    snap_dir: Path, s: int, cur: dict[str, Arr]
+) -> tuple[Arr | None, dict[str, int]]:
+    """Return the change of T per step [K] of each particle of cur, or None, and
+    the non-finite counts of the previous snapshot.
 
     The change is that between snapshot s - 1 and s of the same leg divided by the
     number of steps of timesteps.txt (next to the snapshot directory) in between:
@@ -746,18 +756,19 @@ def temperature_lead(snap_dir: Path, s: int, cur: dict[str, Arr]) -> Arr | None:
     prev_path = snap_dir / f"snapshot_{s - 1:04d}.hdf5"
     steps = snap_dir.parent / "timesteps.txt"
     if not prev_path.exists() or not steps.exists():
-        return None
+        return None, {}
     prev = read_leg(prev_path, False)
+    bad = finite_counts({"previous": prev}, prev["id"].size)
     t_now, t_prev = cur["time_raw"][0], prev["time_raw"][0]
     times = np.loadtxt(steps, comments="#", usecols=(1,), ndmin=1)
     n_steps = int(((times > t_prev * (1 + 1e-9)) & (times <= t_now * (1 + 1e-9))).sum())
     if n_steps < 1:
-        return None
+        return None, bad
     pos = np.searchsorted(prev["id"], cur["id"])
     pos = np.clip(pos, 0, prev["id"].size - 1)
     found = prev["id"][pos] == cur["id"]
     temp_prev = np.where(found, state(prev)["temp"][pos], np.nan)
-    return (state(cur)["temp"] - temp_prev) / n_steps
+    return (state(cur)["temp"] - temp_prev) / n_steps, bad
 
 
 def main() -> int:
@@ -859,8 +870,10 @@ def main() -> int:
             common = np.intersect1d(common, rep["id"])
         on, off = (pair(d, common) for d in (on, off))
         rep = pair(rep, common) if rep is not None else None
-        lead_on = temperature_lead(a.on, s, on)
-        lead_off = temperature_lead(a.off, s, off)
+        lead_on, prev_bad_on = temperature_lead(a.on, s, on)
+        lead_off, prev_bad_off = temperature_lead(a.off, s, off)
+        prev_bad = {f"on.{k}": v for k, v in prev_bad_on.items()}
+        prev_bad.update({f"off.{k}": v for k, v in prev_bad_off.items()})
         if a.plant_nan_field is not None:
             leg_name, field = a.plant_nan_field.split(":")
             target = {"on": on, "off": off, "repeat": rep}[leg_name]
@@ -877,6 +890,7 @@ def main() -> int:
             lead_on,
             lead_off,
             a.noise,
+            prev_bad,
         )
         code, why = verdict(r, a.noise, rep is not None, accurate)
         codes.append(code)
