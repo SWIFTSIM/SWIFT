@@ -184,6 +184,10 @@ int radiation_packet_star_gas_weight(const struct spart *si,
                                      const struct part *pj, const float dx[3],
                                      const integertime_t ti_begin, double d[3],
                                      double *q, double *weight);
+void radiation_packet_startup(const struct engine *e);
+void radiation_packet_far_share_report(const struct engine *e);
+void radiation_packet_far_share_final(const struct engine *e);
+void radiation_packet_far_diagnostics(const struct engine *e);
 void radiation_packet_set_box(const double dim[3], const int periodic);
 void radiation_packet_set_frame_width(const double width);
 void radiation_packet_refresh_frame_width(const struct engine *e);
@@ -1288,6 +1292,12 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_sink(struct sink *sink) {}
 
 __attribute__((always_inline)) INLINE static void
+radiation_packet_step_diagnostics(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_reduce_left_box(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
 radiation_packet_book_gas_left_box(const struct part *p) {}
 
 __attribute__((always_inline)) INLINE static void
@@ -1308,6 +1318,21 @@ radiation_packet_left_box_restore(FILE *stream) {}
 #endif /* GEAR_SUBGRID_RADIATION_ISRF && SWIFT_DEBUG_CHECKS_ISRF */
 
 #ifndef GEAR_SUBGRID_RADIATION_ISRF
+
+__attribute__((always_inline)) INLINE static void radiation_packet_startup(
+    const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_refresh_frame_width(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_share_report(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_share_final(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_diagnostics(const struct engine *e) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_star(struct spart *sp) {}
