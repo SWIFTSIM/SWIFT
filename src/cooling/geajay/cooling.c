@@ -115,9 +115,9 @@ int cooling_with_dust_to_gas_ratio(void) {
 double cooling_get_dust_to_gas_ratio(
     const struct cooling_function_data *cooling, const struct part *p) {
   if (!cooling_geajay_dust_to_gas_ratio_on) return 0.;
-  return geajay_dust_to_gas_ratio(
-      &cooling->chemistry_data,
-      max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f), 1.);
+  return cooling_attenuation_dust_to_gas_ratio(
+      cooling,
+      max(chemistry_get_total_metal_mass_fraction_for_cooling(p), 0.f));
 }
 
 /*! 1 when the run has cosmic rays, for the snapshot fields. */
@@ -973,6 +973,7 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   message("chemistry_data.h2_on_dust = %d", cooling->chemistry_data.h2_on_dust);
   message("chemistry_data.dust_to_gas_model = %d",
           cooling->chemistry_data.dust_to_gas_model);
+  message("dust_to_gas_model of the user = %d", cooling->dust_to_gas_model);
   message("chemistry_data.photoelectric_heating = %d",
           cooling->chemistry_data.photoelectric_heating);
   message("chemistry_data.dust_recombination_cooling = %d",
@@ -1050,7 +1051,7 @@ static void cooling_fill_inputs(const struct cooling_function_data *cooling,
 
   /* Dust attenuation of the backgrounds, through the column of the H2
      self-shielding: N_H = rho * path / (1.4 m_p), with the dust-to-gas
-     ratio of the library, as the heating uses. */
+     ratio of the dust_to_gas_model key. */
   if (cooling->dust_background_attenuation ==
       GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND) {
     const double path = inputs->H2_self_shielding_length;

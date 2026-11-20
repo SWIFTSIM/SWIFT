@@ -123,5 +123,14 @@ run per_band "background_mode: per_band;h2_shielding_length_method: given_length
 verdict per_band_attenuation_writes_field \
   $([ -n "$(field per_band.out)" ] && echo 1 || echo 0) "field $(field per_band.out)"
 
+# per_band alone: the library holds linear, the field follows the user's law
+run per_band_rr "background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;isrf_from_field: 1;dust_background_attenuation: per_band;dust_to_gas_model: remy_ruyer_2014" 0.001
+zu=$(zused per_band_rr.out)
+want=$(expected rr "$zu" "$fgr" "$zs")
+got=$(field per_band_rr.out)
+verdict per_band_alone_follows_remy_ruyer_2014 \
+  $([ -n "$got" ] && agree "$got" "$want" && echo 1 || echo 0) \
+  "field $got, expected $want from Z $zu"
+
 echo "checks: $checks failures: $fails"
 [ $fails -eq 0 ]
