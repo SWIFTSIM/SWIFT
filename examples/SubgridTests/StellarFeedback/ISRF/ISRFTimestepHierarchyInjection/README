@@ -9,11 +9,8 @@ particle in internal units; the layout of the 11 numbers is in
 runs. `makeIC.py` writes the value to `beam_args.txt` and `run.sh` passes it to
 swift. There is no star.
 
-The transport of the light is linear in its energy: a pulse a thousand times
-weaker must evolve into the same light field, a thousand times weaker, whatever
-the time-step hierarchy. Particles on different time bins hand their light on
-at different steps, and the bookkeeping of that hand-over must not depend on
-the energy. The example runs the pulse at energy x1 (`energy_scale=1`) and at
+The transport of the light is linear in its energy: a weaker pulse evolves into
+the same light field, scaled down. The example runs the pulse at energy x1 (`energy_scale=1`) and at
 x1e-3 (`energy_scale=1e-3`) and compares the light in flight snapshot by
 snapshot with `scaleTest.py`.
 
@@ -71,5 +68,4 @@ python3 scaleTest.py run_two_scale1 run_two_scale1e-3 1e-3
 ```
 It prints L for each snapshot after the first, with L the summed absolute
 difference between the scaled light divided by the scale and the x1 light,
-over the summed x1 light. The default bar is 1e-5; `--bar` changes it. The
-script exits with status 1 if L exceeds the bar.
+over the summed x1 light. The script exits with status 1 if L exceeds `--bar` (default 1e-5).

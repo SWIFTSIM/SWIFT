@@ -186,6 +186,11 @@ their rate per ``chi``, the field at 1000 A relative to Habing, while this
 script divides by ``G_0``, the band-integrated strength. For the Draine shape
 ``chi`` is 1.7105 and ``G_0`` is 1.675, a ratio of 1.021. The script prints the measured ratio and ``6.994``
 times the measured LW fraction.
+For the 29.7 Msun star the table named in run.sh gives an LW fraction of 0.384, hence a ratio of 2.68.
+
+Scope and limits: the light a gas particle receives pulses with a period of 8 gas steps and the check integrates
+the rate over the snapshots, so a spacing coarser than one snapshot per gas step aliases the pulses and the thin
+error depends on where the snapshots fall.
 
 Mode-choice diagnostic (reported, never gated)
 ----------------------------------------------

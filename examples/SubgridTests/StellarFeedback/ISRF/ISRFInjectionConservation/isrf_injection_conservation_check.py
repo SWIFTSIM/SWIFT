@@ -96,6 +96,15 @@ separate source-side from receiver-side wiring. Read a G1 pass on a
 
 Delta_t (the star's own feedback-timestep at the checked snapshot) is read
 from swift's own step-table log, not assumed to equal TimeIntegration:dt_max.
+
+Scope and limits: metallicity=0.01295 (Grackle's solar metal mass fraction) gives a dust-to-gas ratio of exactly 1
+relative to the Milky Way and leaves both bands strongly and differently attenuated (tau_LW about 2.5, tau_PE about
+1.5 at the default density and particle mass). The check prints tau_LW, so a run configured into a regime where the
+two bands are barely distinguishable is visible. The default --tol of 1e-5 sits two decades above the measured
+float32 snapshot-storage rounding (about 1e-7). The reconstruction reuses the code's own column model,
+cross-sections and dust-to-gas convention, so it checks the wiring only. G1 is only as tight as the spread of
+exp(-tau) over the illuminated set: under pair_separation the separation covers the whole kernel support, so the
+bracket is wide by construction and a G1 pass there says little on its own. G2 is what constrains the column.
 """
 
 import argparse

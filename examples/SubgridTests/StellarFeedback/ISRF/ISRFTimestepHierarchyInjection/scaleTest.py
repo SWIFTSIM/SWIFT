@@ -6,6 +6,9 @@ the light in flight of the x1 run, up to float32 rounding:
 
     L = sum_i |E_scaled,i / SCALE - E_x1,i| / sum_i |E_x1,i|
 
+Particles on different time bins hand their light on at different steps. The bookkeeping of that hand-over must not
+depend on the energy, whatever the time-step hierarchy.
+
 E_i is the light in flight of particle i in the PE band (inbox + reservoir + held energy). The test fails when L
 exceeds the bar in any snapshot, or on a non-finite energy, a different snapshot set, time or particle set, or no
 light. The bar 1e-5 exceeds the float32 rounding of 6e-8 per hop over the 96 fine steps of the two-bin run

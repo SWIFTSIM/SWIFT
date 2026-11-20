@@ -6,6 +6,9 @@ PE band) along the beam direction. The speed is the advance of the centroid betw
 time difference, divided by the set speed (the fraction of c of the run). With two runs the script also prints
 the ratio of the second to the first and exits with status 1 if it differs from 1 by more than --bar (default 0.05,
 a tolerance on the speed ratio, not a bar derived from the mechanism).
+
+Scope and limits: a hop of one smoothing length per step makes the pulse slower than the set speed, so the speeds
+are fractions of it. Only the ratio of the two runs tells whether the time bins change the speed.
 """
 
 import argparse

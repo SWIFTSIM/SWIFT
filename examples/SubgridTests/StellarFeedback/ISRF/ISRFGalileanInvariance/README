@@ -6,18 +6,14 @@ bulk velocity along x, so a boosted run is the rest run seen from a moving
 frame. `velocity` sets the boost in km/s. `ic` selects the gas layout:
 
 - `lattice`: the particles sit on a perfect cubic lattice with a uniform smoothing
-  length. The gas moves as a rigid block. This is the clean test.
-- `glass`: the particles sit on a glass. The tiny residual forces of the glass
-  move the particles differently in the two frames at float32 rounding level.
-  The light field then differs by more than the lattice shows.
+  length. The gas moves as a rigid block.
+- `glass`: the particles sit on a glass.
 
 `compareBoost.py` computes
 `D = max |u_boost - u_rest| / max u_rest` over the gas particles, with `u` the
 packet specific energy (`PacketSpecificEnergies`, both bands) matched by particle
 id. It also prints the largest displacement between the two runs after
-the bulk motion is removed. Two identical rest runs give the repeat floor of `D`:
-the multithreaded transport changes the last bits from run to run, and `D`
-moves in steps of about 6e-8.
+the bulk motion is removed. Two identical rest runs give the repeat floor of `D`.
 
 `params.yml` runs 32 steps of 1.5625e-6 (internal units) to t = 5e-5, with
 cooling off (`GrackleCooling:disable_cooling_for_debugging: 1`) so that the light is
@@ -68,9 +64,5 @@ python3 compareBoost.py run_glass_v0 run_glass_v300
 ```
 The first argument is the rest run. The script prints `D` and the displacement
 for each snapshot after the first. It exits with status 1 when `D` of the last
-snapshot exceeds `--bar` or is not finite. The default bar is 1.9e-6, that is
-32 x 2^-24: one float32 rounding step of `D` for each of the 32 time steps. It
-applies to the lattice pairs (`run_lattice_v0` against `run_lattice_v300`,
-`run_lattice_v1000` and `run_lattice_v0_repeat`). The glass pair gives `D` of about
-7.4e-5 by design and fails the bar: it shows
-that the check can fail.
+snapshot exceeds `--bar` (default 1.9e-6, see the script docstring) or is not
+finite. The bar applies to the lattice pairs.

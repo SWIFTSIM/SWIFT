@@ -6,6 +6,11 @@ The second column is the largest displacement of a particle between the two runs
 removed, in median smoothing lengths. Compare two identical rest runs to get the repeat floor of D.
 The default bar is 1.9e-6 = 32 x 2^-24: one float32 rounding step of D for each of the 32 time steps. It applies
 to the lattice pairs. The glass pair gives D of about 7.4e-5 by design and fails it.
+
+Scope and limits: on the lattice the gas moves as a rigid block. On the glass the tiny residual forces move the
+particles differently in the two frames at float32 rounding level, so the light field differs by more than the lattice
+shows. The multithreaded transport changes the last bits from run to run: D of two identical rest runs moves in
+steps of about 6e-8.
 """
 
 import argparse
