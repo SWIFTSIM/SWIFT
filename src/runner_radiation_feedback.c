@@ -310,7 +310,7 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
 void feedback_radiation_startup_diagnostics(const struct engine *e) {
 
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
-  radiation_packet_startup(e);
+  feedback_radiation_transport_startup(e);
 #endif
 
   /* Both warnings concern the HII search only */

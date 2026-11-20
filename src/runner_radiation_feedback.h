@@ -30,7 +30,6 @@
 /* Local headers. */
 #include "error.h"
 #include "feedback.h"
-#include "feedback/GEAR/radiation_packet.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "random.h"
@@ -40,9 +39,6 @@
 struct runner;
 struct cell;
 struct engine;
-
-/* Physics of the HII regions, also used by the feedback scheme. */
-#include "feedback/GEAR/radiation_hii.h"
 
 /* radiation_search_radius_factor lives in cell_stars.h: cell.h's rebuild
  * and split predicates need the same value and cannot depend on this
@@ -345,7 +341,7 @@ void feedback_radiation_startup_diagnostics(const struct engine *e);
 #elif defined(GEAR_SUBGRID_RADIATION_ISRF)
 __attribute__((always_inline)) INLINE static void
 feedback_radiation_startup_diagnostics(const struct engine *e) {
-  radiation_packet_startup(e);
+  feedback_radiation_transport_startup(e);
 }
 #else
 __attribute__((always_inline)) INLINE static void

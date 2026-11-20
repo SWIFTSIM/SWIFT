@@ -29,6 +29,7 @@
 #endif
 
 /* Local headers. */
+#include "feedback/GEAR/radiation_hii.h"
 #include "runner_radiation_feedback.h"
 #include "swift.h"
 
