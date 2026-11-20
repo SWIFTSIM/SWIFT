@@ -132,9 +132,7 @@ energy (see the docstring). Give it the number of steps in the window,
 respect to the internal energy times the window (dimensionless). The
 script refuses a value outside [0, 0.5) and a missing or zero `N`. With `N`
 given, the allowed lead of the heating run at the window start is 2/N unless
-`--lead-tol` says otherwise. The script prints the bar from the earlier
-definition (`0.5 P + 4 2^-24 / P`) and the derived bar, and judges with the
-derived one.
+`--lead-tol` says otherwise.
 
 For the Wolfire model on the shipped fixture (`pe_model=wolfire1995` with free
 electrons, heating-off run as reference):
@@ -162,15 +160,3 @@ cooling rate at `u (1 +- h)` for each particle (`h = 1e-3`), form
 `Lambda' = -(edot(1+h) - edot(1-h)) / (2 h u)`, multiply by the window length
 and take the median over the illuminated particles. Another fixture, cadence
 or library build needs its own values.
-
-What the check can and cannot see. Scaling the whole reference is resolved at
-0.3 per cent for `grackle-wolfire1995`, `grackle-constant` and the other geajay
-models; for `geajay-fixed-rate`, only an error above about 4 per cent (its bar
-is 4.3e-2, set by the rounding of the small heating per step). The response
-lowers the measured rate, so an error of the reference that raises the heating
-is partly hidden: on the Wolfire leg the check cannot see an error of about
--0.06 to +0.21 per cent of the heating, nor about 1 per cent in `G0`. The
-margins of `grackle-constant` (6 per cent) and `geajay-density-epsilon`
-(3 per cent) are thin: a 5 per cent error in `--cooling-response` would fail
-them. The reference takes `n_H` as `HI + HII + H2I + H2II` and assumes
-Grackle's default `local_dust_to_gas_ratio` (0.009387).
