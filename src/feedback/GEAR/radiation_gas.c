@@ -646,6 +646,7 @@ radiation_reset_part_ISRF_illumination_tag(struct part *p,
   if (!e->feedback_props->ISRF_propagation) {
     for (int moment = 0; moment < ISRF_MOMENT_COUNT; moment++)
       p->feedback_data.isrf_moment[moment].u = 0.f;
+    p->feedback_data.LW_dissociating_u = 0.;
   }
 }
 
@@ -823,7 +824,8 @@ double radiation_get_part_LW_dissociation_rate_internal(
 
 /**
  * @brief H2 Lyman-Werner photodissociation rate of a particle with H2 line
- * absorption: the rate of #radiation_get_part_LW_dissociation_rate_internal
+ * absorption or the population factor: the rate of
+ * #radiation_get_part_LW_dissociation_rate_internal
  * with the dissociating specific energy in place of the LW-band specific
  * energy.
  *

@@ -497,19 +497,21 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "RT schemes' PhotonEnergies, which are raw per-group energies, not "
       "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
 
-  if (feedback_props == NULL || feedback_props->ISRF_H2_line_absorption) {
+  if (feedback_props == NULL || feedback_props->ISRF_H2_line_absorption ||
+      feedback_props->ISRF_LW_population_track) {
     list[num++] = io_make_output_field_convert_part(
         "LWDissociatingSpecificEnergies", DOUBLE, 1,
         UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,
         convert_part_u_LW_dissociating,
         "Local specific Lyman-Werner-band energy weighted by the H2 line "
-        "transmission. It sets the H2 dissociation rate. DOUBLE: "
-        "see PESpecificEnergies.");
+        "transmission, times the H2 dissociation factor of its stars. It "
+        "sets the H2 dissociation rate. DOUBLE: see PESpecificEnergies.");
 
     list[num++] = io_make_output_field_convert_part(
         "LWLineTransmissions", DOUBLE, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
         xparts, convert_part_LW_line_transmission,
-        "Fraction of the Lyman-Werner light that the H2 lines let through: "
+        "Fraction of the Lyman-Werner light that the H2 lines let through, "
+        "times the H2 dissociation factor of its stars: "
         "LWDissociatingSpecificEnergies over LWSpecificEnergies, 1 where "
         "LWSpecificEnergies is not positive. DOUBLE.");
 

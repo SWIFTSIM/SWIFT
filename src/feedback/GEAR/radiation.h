@@ -383,7 +383,40 @@ double radiation_get_part_LW_dissociation_rate_with_lines_internal(
  */
 __attribute__((always_inline)) INLINE static int
 radiation_get_part_H2_line_absorption(const struct part *p) {
-  return p->feedback_data.ISRF_H2_line_absorption;
+  return feedback_part_has_H2_lines(&p->feedback_data);
+}
+
+/**
+ * @brief Is the H2 dissociation rate of a particle read from its dissociating
+ * LW energy rather than from its LW energy?
+ *
+ * @param p The #part.
+ * @return Non-zero with H2 line absorption or the population factor on.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_LW_dissociating_track(const struct part *p) {
+  return feedback_part_tracks_LW_dissociating(&p->feedback_data);
+}
+
+/**
+ * @brief Set the H2 dissociation factor of a star's LW light.
+ *
+ * @param sp The #spart.
+ * @param f The factor, see #radiation_get_LW_dissociating_factor.
+ */
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_LW_dissociating_factor(struct spart *sp, const float f) {
+  sp->feedback_data.radiation.LW_dissociating_factor = f;
+}
+
+/**
+ * @brief H2 dissociation factor of a star's LW light.
+ *
+ * @param sp The #spart.
+ */
+__attribute__((always_inline)) INLINE static float
+radiation_get_star_LW_dissociating_factor(const struct spart *sp) {
+  return sp->feedback_data.radiation.LW_dissociating_factor;
 }
 
 /**
@@ -465,6 +498,16 @@ radiation_get_part_LW_dissociation_rate_with_lines_internal(
 __attribute__((always_inline)) INLINE static int
 radiation_get_part_H2_line_absorption(const struct part *p) {
   return 0;
+}
+__attribute__((always_inline)) INLINE static int
+radiation_get_part_LW_dissociating_track(const struct part *p) {
+  return 0;
+}
+__attribute__((always_inline)) INLINE static void
+radiation_set_star_LW_dissociating_factor(struct spart *sp, const float f) {}
+__attribute__((always_inline)) INLINE static float
+radiation_get_star_LW_dissociating_factor(const struct spart *sp) {
+  return 1.f;
 }
 __attribute__((always_inline)) INLINE static void
 radiation_set_star_band_luminosity(struct spart *sp,
@@ -685,6 +728,13 @@ float radiation_get_luminosity_lw_from_integral(const struct radiation *rad,
 float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
                                                    float log_z, float log_m1,
                                                    float log_m2);
+float radiation_get_LW_dissociating_factor(const double l_dissociating,
+                                           const double l_lw,
+                                           const float f_max);
+float radiation_get_single_star_LW_dissociating_factor(
+    const struct radiation *rad, float log_m, float log_z);
+float radiation_get_population_LW_dissociating_factor(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2);
 
 float radiation_get_luminosity_edge_pe_from_integral(
     const struct radiation *rad, float log_m1, float log_m2);
@@ -727,6 +777,10 @@ void radiation_read_mean_photon_energy_pe_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
 void radiation_read_luminosity_lw_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us);
+void radiation_read_luminosity_lw_dissociating_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
     const struct unit_system *us);

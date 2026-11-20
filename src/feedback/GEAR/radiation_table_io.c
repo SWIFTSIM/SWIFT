@@ -1022,6 +1022,104 @@ void radiation_read_luminosity_lw_array(
 }
 
 /**
+ * @brief Upper bound of L_LW_dissociating / L_LW over the built tables.
+ *
+ * A single star reads the exp of a (bi)linear mix of the node log ratios, so
+ * the node maximum bounds it. A population window is a positive mix of mass
+ * cell increments of the cumulative tables, so the largest cell ratio bounds
+ * it.
+ *
+ * @param rad The #radiation model, with both LW tables built.
+ * @return The bound, at least 1.
+ */
+static float radiation_compute_lw_dissociating_factor_max(
+    const struct radiation *rad) {
+
+  double f_max = 1.;
+  const float *raw_lw, *raw_diss, *int_lw, *int_diss;
+  int n_rows, n_mass;
+  if (rad->is_2d) {
+    raw_lw = rad->raw.l_lw_2d.data;
+    raw_diss = rad->raw.l_lw_dissociating_2d.data;
+    int_lw = rad->integrated.l_lw_2d.data;
+    int_diss = rad->integrated.l_lw_dissociating_2d.data;
+    n_rows = rad->integrated.l_lw_2d.Nx;
+    n_mass = rad->integrated.l_lw_2d.Ny;
+  } else {
+    raw_lw = rad->raw.l_lw.data;
+    raw_diss = rad->raw.l_lw_dissociating.data;
+    int_lw = rad->integrated.l_lw.data;
+    int_diss = rad->integrated.l_lw_dissociating.data;
+    n_rows = 1;
+    n_mass = rad->integrated.l_lw.N;
+  }
+
+  for (int k = 0; k < n_rows * n_mass; k++)
+    f_max = fmax(f_max, exp10((double)raw_diss[k] - (double)raw_lw[k]));
+
+  for (int i = 0; i < n_rows; i++) {
+    for (int j = 0; j + 1 < n_mass; j++) {
+      const int k = i * n_mass + j;
+      const double d_lw = (double)int_lw[k + 1] - (double)int_lw[k];
+      const double d_diss = (double)int_diss[k + 1] - (double)int_diss[k];
+      if (d_lw > 0. && d_diss > 0.) f_max = fmax(f_max, d_diss / d_lw);
+    }
+  }
+  return (float)f_max;
+}
+
+/**
+ * @brief Read L_LW_dissociating and its integrated twin, the LW energy rate
+ * that gives the H2 dissociation rate of the star's own spectrum when
+ * multiplied by RADIATION_SIGMA_H2_OVER_E_LW_CGS. Same storage, unit
+ * conversion and edge policy as L_LW. Sets
+ * #radiation.lw_dissociating_factor_max.
+ *
+ * @param rad The #radiation model, with L_LW already read.
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param grid The group's own grid metadata.
+ * @param sm The #stellar_model.
+ * @param us The unit system.
+ */
+void radiation_read_luminosity_lw_dissociating_array(
+    struct radiation *rad, hid_t group_id,
+    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
+    const struct unit_system *us) {
+
+  if (H5Aexists(group_id, "h2_dissociation_reference") <= 0)
+    error(
+        "'%s': Data/Radiation carries L_LW_dissociating but no "
+        "'h2_dissociation_reference' attribute.",
+        sm->yields_table);
+  double reference = 0.;
+  io_read_attribute(group_id, "h2_dissociation_reference", DOUBLE, &reference);
+  if (!(fabs(reference - RADIATION_SIGMA_H2_OVER_E_LW_CGS) <=
+        1e-6 * RADIATION_SIGMA_H2_OVER_E_LW_CGS))
+    error(
+        "'%s': L_LW_dissociating is defined against "
+        "h2_dissociation_reference = %.10g cm^2/erg, but the code multiplies "
+        "it by %.10g cm^2/erg.",
+        sm->yields_table, reference, RADIATION_SIGMA_H2_OVER_E_LW_CGS);
+
+  radiation_build_tables(
+      group_id, "L_LW_dissociating", grid, sm, rad->interpolation_size,
+      units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
+      &rad->raw.l_lw_dissociating, &rad->integrated.l_lw_dissociating,
+      &rad->raw.l_lw_dissociating_2d, &rad->integrated.l_lw_dissociating_2d,
+      grid->edge_policy_l_lw);
+
+  rad->lw_dissociating_factor_max =
+      radiation_compute_lw_dissociating_factor_max(rad);
+
+  /* A larger bound weakens the clamps on the line transmission. */
+  if (rad->lw_dissociating_factor_max > 3.f && engine_rank == 0)
+    warning(
+        "'%s': L_LW_dissociating / L_LW reaches %.6g. Check the table: a "
+        "stellar LW spectrum gives at most about 1.4.",
+        sm->yields_table, (double)rad->lw_dissociating_factor_max);
+}
+
+/**
  * @brief Read the SpectralPhotonRateAtPEEdge (PE band lower-edge spectral
  * photon rate dQ/dE) array from the table.
  *
@@ -1428,6 +1526,12 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const int n_HII_pixels_before = rad->n_HII_pixels;
   /* with_ISRF is saved for the same reason. */
   const char with_ISRF_before = rad->with_ISRF;
+  const char with_LW_population_dissociation_before =
+      rad->with_LW_population_dissociation;
+  /* On restart, the values of the dumped run, which #feedback_props keeps. */
+  const char has_l_lw_dissociating_before = rad->has_l_lw_dissociating;
+  const float lw_dissociating_factor_max_before =
+      rad->lw_dissociating_factor_max;
 
   /* Zero every table so that radiation_clean() is safe whichever of the 1D
      and 2D variants is built. */
@@ -1436,6 +1540,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   rad->interpolation_size = interpolation_size_before;
   rad->n_HII_pixels = n_HII_pixels_before;
   rad->with_ISRF = with_ISRF_before;
+  rad->with_LW_population_dissociation = with_LW_population_dissociation_before;
 
   hid_t file_id, group_id;
   radiation_open_data_group(sm->yields_table, &file_id, &group_id);
@@ -1570,6 +1675,36 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
     radiation_read_luminosity_edge_pe_array(rad, group_id, &grid, sm, us);
     radiation_read_luminosity_edge_lw_array(rad, group_id, &grid, sm, us);
   }
+
+  /* Optional: without it every star keeps the factor 1. */
+  if (rad->with_ISRF && rad->with_LW_population_dissociation) {
+    rad->has_l_lw_dissociating =
+        (char)(H5Lexists(group_id, "L_LW_dissociating", H5P_DEFAULT) > 0 &&
+               H5Lexists(group_id, "Integrated_L_LW_dissociating",
+                         H5P_DEFAULT) > 0);
+    if (rad->has_l_lw_dissociating)
+      radiation_read_luminosity_lw_dissociating_array(rad, group_id, &grid, sm,
+                                                      us);
+    else if (engine_rank == 0)
+      warning(
+          "'%s' has no L_LW_dissociating and Integrated_L_LW_dissociating: "
+          "GEARFeedback:ISRF_LW_population_dissociation is on, but the stars "
+          "of this table dissociate H2 at the constant rate per unit LW "
+          "energy.",
+          sm->yields_table);
+  }
+
+  if (restart &&
+      (rad->has_l_lw_dissociating != has_l_lw_dissociating_before ||
+       rad->lw_dissociating_factor_max != lw_dissociating_factor_max_before))
+    error(
+        "'%s' changed since the restart files were written: "
+        "L_LW_dissociating present %d -> %d, dissociation factor bound %.9g "
+        "-> %.9g. Restart with the same table, or rerun from the ICs.",
+        sm->yields_table, (int)has_l_lw_dissociating_before,
+        (int)rad->has_l_lw_dissociating,
+        (double)lw_dissociating_factor_max_before,
+        (double)rad->lw_dissociating_factor_max);
 
   /* Validated above to exist. */
   radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);

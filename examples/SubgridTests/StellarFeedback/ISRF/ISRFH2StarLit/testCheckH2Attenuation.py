@@ -327,6 +327,20 @@ def starlit_cases(work):
     record(
         "S1 good run", 0, args(snap_with("good.hdf5", good)), "PASS  own transmission"
     )
+    f_pop = 1.2876
+    pop = snap_with("pop.hdf5", f_pop * good)
+    record(
+        "F1 population factor f, given to the check",
+        0,
+        args(pop, extra=("--counters", counters, "--population-factor", str(f_pop))),
+        "PASS  own transmission",
+    )
+    record(
+        "F2 population factor f, not given to the check",
+        1,
+        args(pop),
+        "FAIL  own transmission",
+    )
     h_cm = h * 3.0856775814913673e21
     mask = (r > 0.0) & (r < 0.5 * box * 3.0856775814913673e21 - 2.0 * h_cm)
     nudged = good * np.exp(0.4 * gate.column_spread_bar(r, n_h2, mask, temp, dens))

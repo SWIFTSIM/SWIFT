@@ -296,6 +296,17 @@ void radiation_init(struct radiation *rad, struct swift_params *params,
   rad->with_ISRF = (char)radiation_selection_get_switch(
       params, "GEARFeedback:with_interstellar_radiation_field",
       RADIATION_COMPILED_ISRF);
+  rad->with_LW_population_dissociation = 0;
+  if (rad->with_ISRF) {
+    const int population = parser_get_opt_param_int(
+        params, "GEARFeedback:ISRF_LW_population_dissociation", 1);
+    if (population != 0 && population != 1)
+      error(
+          "GEARFeedback:ISRF_LW_population_dissociation must be 0 or 1 (got "
+          "%d).",
+          population);
+    rad->with_LW_population_dissociation = (char)population;
+  }
 
   /* Read the data */
   radiation_read_data(rad, params, sm, us, phys_const, /* restart */ 0);
@@ -398,6 +409,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_2d_free(&rad->raw.teff_2d);
     interpolate_2d_free(&rad->raw.l_pe_2d);
     interpolate_2d_free(&rad->raw.l_lw_2d);
+    interpolate_2d_free(&rad->raw.l_lw_dissociating_2d);
     interpolate_2d_free(&rad->raw.l_edge_pe_2d);
     interpolate_2d_free(&rad->raw.l_edge_lw_2d);
     interpolate_2d_free(&rad->raw.mean_photon_energy_lw_2d);
@@ -407,6 +419,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
     interpolate_2d_free(&rad->integrated.l_pe_2d);
     interpolate_2d_free(&rad->integrated.l_lw_2d);
+    interpolate_2d_free(&rad->integrated.l_lw_dissociating_2d);
     interpolate_2d_free(&rad->integrated.l_edge_pe_2d);
     interpolate_2d_free(&rad->integrated.l_edge_lw_2d);
     interpolate_2d_free(&rad->integrated.mean_photon_energy_lw_2d);
@@ -418,6 +431,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->raw.teff);
     interpolate_1d_free(&rad->raw.l_pe);
     interpolate_1d_free(&rad->raw.l_lw);
+    interpolate_1d_free(&rad->raw.l_lw_dissociating);
     interpolate_1d_free(&rad->raw.l_edge_pe);
     interpolate_1d_free(&rad->raw.l_edge_lw);
     interpolate_1d_free(&rad->raw.mean_photon_energy_lw);
@@ -427,6 +441,7 @@ void radiation_clean(struct radiation *rad) {
     interpolate_1d_free(&rad->integrated.dot_E_excess);
     interpolate_1d_free(&rad->integrated.l_pe);
     interpolate_1d_free(&rad->integrated.l_lw);
+    interpolate_1d_free(&rad->integrated.l_lw_dissociating);
     interpolate_1d_free(&rad->integrated.l_edge_pe);
     interpolate_1d_free(&rad->integrated.l_edge_lw);
     interpolate_1d_free(&rad->integrated.mean_photon_energy_lw);
@@ -454,6 +469,9 @@ void radiation_zero_pointers(struct radiation *rad) {
   rad->with_ISRF = 0;
   rad->has_teff = 0;
   rad->has_mean_photon_energy_pe = 0;
+  rad->with_LW_population_dissociation = 0;
+  rad->has_l_lw_dissociating = 0;
+  rad->lw_dissociating_factor_max = 1.f;
   for (int i = 0; i < RADIATION_TABLE_SOURCE_COUNT; i++)
     rad->table_source[i][0] = '\0';
   rad->table_mass_min = 0.f;

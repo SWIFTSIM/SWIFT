@@ -267,6 +267,60 @@ Both quantities are set at each feedback step of the
 star and are constant over it. The mean photon energy fixes the photon number
 that the star emits (Section~\ref{sec:packet-state}).
 
+\paragraph{The population value of the dissociation rate.}
+\label{sec:isrf-lw-population}
+The coefficient $\kappa_{\rm LW}$ of Eq.~\eqref{eq:isrf-c-result} is the value
+for the Draine field. The light of a star has its own spectrum, so its own
+coefficient $\kappa_\star$, the dissociation rate per unit LW energy flux of
+that spectrum. The table gives it as a second LW luminosity,
+$L_{\rm LW}^{\rm diss}=L_{\rm LW}\,\kappa_\star/\kappa_{\rm LW}$: the LW
+luminosity that, with the constant $\kappa_{\rm LW}$, gives the dissociation
+rate of the star. Each star particle has the factor
+\begin{equation}
+  f_\star=\frac{L_{\rm LW}^{\rm diss}}{L_{\rm LW}} ,
+  \label{eq:isrf-lw-population}
+\end{equation}
+read like $L_{\rm LW}$: at the mass and metallicity of a single star, and as
+the ratio of the two IMF integrals over the same mass window for a population.
+The mass of the particle cancels. For a single star at $Z=0.014$ the factor
+is $0.35$ at $3$\,M$_\odot$, $1.29$ at $20$\,M$_\odot$ and $1.33$ at
+$50$\,M$_\odot$. A young population has $1.288$, the same population at
+$10$\,Myr $1.172$. A population of the continuous part of the IMF has $0.96$
+with a split at $8$\,M$_\odot$: its light comes from cool stars. Where the
+table has no LW light, below about $2$\,M$_\odot$, $f_\star=1$.
+
+The factor changes only the dissociation rate. $G_0$, the dust absorption
+and the photon number keep the LW energy. The gas therefore carries a second
+LW energy, the dissociating energy $\tilde u_{\rm LW}^{\rm diss}$: the sum over
+the sources of $f_\star$ times their LW energy, times the line transmission
+when the H$_2$ lines are on (Section~\ref{sec:packet-h2}). The rate is
+Eq.~\eqref{eq:isrf-kdiss} with $\tilde u_{\rm LW}^{\rm diss}$ in place of
+$\tilde u_{\rm LW}$. Without transport, a star adds $f_\star$ times its LW
+energy to it. With transport, a share leaves the star with the transmission
+$\mathcal T=f_\star$ instead of 1, and keeps it over its hops and merges; the
+lines then lower it as for any other light. A merge of shares of several
+stars gives the mean factor weighted by their LW energy. The H$_2$ column of
+merged light is the column whose factor is the harmonic mean of the factors
+of its parts, weighted by the dissociating energy; $f_\star$ multiplies both
+sums and cancels for the light of one star. A velocity shift beyond the line
+width drops the shielding of the column and keeps the factor:
+$\mathcal T\to\mathcal T\,\mathcal S(0)/\mathcal S(\Sigma)$ in the fit of the
+receiver, exact for a column built in one fit.
+
+So $\mathcal T\le f_{\rm max}$ replaces $\mathcal T\le1$, with $f_{\rm max}$
+the largest factor of the table. For a single star the factor is the
+exponential of a linear mix of the log ratios at the table nodes, and for a
+population a ratio of sums of positive mass-cell increments, so the largest
+node and cell ratios bound it. The Pop~II table of this work gives
+$f_{\rm max}=1.403$ (a single star of $50$\,M$_\odot$ at the lowest
+metallicity). The run-time switch
+\texttt{GEARFeedback:ISRF\_LW\_population\_dissociation} (default 1) turns
+the factor on. With 0, or with a table that has no
+$L_{\rm LW}^{\rm diss}$, every factor is exactly 1 and the rate is the one of
+the Draine-field constant. The factor is a property of the emitted spectrum.
+It does not follow the hardening or softening of the spectrum by the dust or
+the lines on the way: the line transmission is that of a Draine-shaped field.
+
 \paragraph{Without transport.} The transport can be switched off. A star then
 gives the light of its step to the gas particles in its kernel, each
 attenuated by $e^{-\kappa_b\ell}$. Here $\kappa_b$ is the absorption rate of
@@ -781,7 +835,7 @@ $\Delta v$, $\Delta v_{\max}$ & velocity & velocity shift of the light relative 
 $n_{{\rm H}_2}$, $X_{{\rm H}_2}$ & cm$^{-3}$, -- & H$_2$ number density and mass fraction of the receiver \\
 $\mathcal A_k$, $\mathcal B_k$, $\mathcal V_k$ & energy, energy, energy$\times$velocity & sums of Eq.~\eqref{eq:h2-sums} over the light of slot $k$ \\
 $\hat e_s$, $\xi_s$ & energy, -- & dissociating energy $e_s\mathcal T_s$ of share $s$ and its fraction of the total \\
-$\eta_s$, $\varpi_q$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$ \\
+$\eta_s$, $\varpi_q$ & --, -- & energy fraction of share $s$, and the weight of the least-shielded share in $\mathcal B_k$, its fraction of the dissociating energy \\
 $\mathcal R$ & -- & transmission of the slot over that of the share-by-share reference (Eq.~\eqref{eq:h2-ref}) \\
 $\varsigma$ & -- & local slope $|\mathrm d\ln\mathcal S/\mathrm d\ln\Sigma|$ of the fit \\
 $u_{\rm LW}^{\rm own}$, $u_{\rm diss}^{\rm own}$, $\Sigma^{\rm own}$ & energy/mass, energy/mass, cm$^{-2}$ & own LW field, its dissociating part and the weighted column (Eq.~\eqref{eq:h2-own}) \\
@@ -2738,10 +2792,18 @@ $1/\varpi_q$ times as much,
 \end{equation}
 where $q$ is the share with the smallest column $\Sigma_q$, and
 $\hat e_j=e_j\mathcal T_j$. $\varpi_q$ is the weight of that share in $\mathcal B_k$. In
-gas with the fit $r$ on the whole path, $\mathcal T_j\propto\mathcal S_r(\Sigma_j)$,
-so $\varpi_q=\eta_q$ is the energy fraction of the least-shielded light. If the
-slot holds light that crossed no H$_2$, $\eta_q$ is the energy fraction of
-that light.
+gas with the fit $r$ on the whole path,
+$\mathcal T_j\propto f_j\,\mathcal S_r(\Sigma_j)$, where $f_j$ is the
+dissociation factor $f_\star$ of the light of share $j$
+(Eq.~\eqref{eq:isrf-lw-population}), so
+\begin{equation}
+  \varpi_q=\frac{f_q\,\eta_q}{\sum_j f_j\,\eta_j}
+\end{equation}
+is the fraction of the dissociating energy in the least-shielded light. For
+the light of one star, or with the population factor off, every $f_j$ is the
+same and $\varpi_q=\eta_q$, the energy fraction of that light. If the slot
+holds light that crossed no H$_2$, $\varpi_q$ is the fraction of the
+dissociating energy in that light.
 
 The proof has four steps. Write $y=\mathcal S_r(\Sigma)$ and
 $g(y)=\mathcal S_r(\mathcal S_r^{-1}(y)+\Delta\Sigma)$: the factor after a further
@@ -2788,8 +2850,8 @@ column, as a function of the factor before it.
     $\sum_sc_sz_s/(c_qz_q)=1/\varpi_q$.
 \end{enumerate}
 
-The bound is sharp. Let a share with the energy fraction $\eta_0$ have no
-column and let the rest of the light have a very large column. Then
+The bound is sharp. Take the light of one star, so that $\varpi_0=\eta_0$.
+Let a share with the energy fraction $\eta_0$ have no column and let the rest of the light have a very large column. Then
 $\mathcal T_k\to\eta_0$ and $\mathcal R$ tends to $1/\eta_0$ for a large
 $\Delta\Sigma$, because the tail of the fit,
 $x^{-1/2}e^{-c\sqrt x}$, makes
@@ -2883,7 +2945,7 @@ any gas before the merge, one fit after, three merge stages & 0.9999998 & $4.0\t
 
 The smallest values lie below 1 only by float rounding. The largest values
 are large because $1/\varpi_q$ is large when the least-shielded light carries a
-small fraction of the energy.
+small fraction of the dissociating energy.
 
 \paragraph{Float rounding in a merge.} The float rounding in one merge is
 $\epsilon_{\rm m}=(2+2\varsigma)\,2^{-24}$, with
@@ -3015,7 +3077,10 @@ More H$_2$ can then survive and shield the gas behind it, so the error can
 feed itself; this is not measured here. With $\mathcal R>1$ the rate is too
 high, but it is raised only towards the rate without any line absorption: since
 $\mathcal T\le1$, it cannot pass that rate, which is the rate of the transport
-without the H$_2$ line absorption. More dissociation leaves less H$_2$ to
+without the H$_2$ line absorption. With the population factor the bound is
+$\mathcal T\le f_{\rm max}$ (Section~\ref{sec:isrf-lw-population}), so the
+light of a star with $f_\star<f_{\rm max}$ can pass its own rate without lines
+by up to $f_{\rm max}/f_\star$; this is not measured. More dissociation leaves less H$_2$ to
 shield, so this error does not feed itself. For these two reasons
 $\mathcal R>1$ is the safer direction, even at a factor of $26$.
 
@@ -3519,6 +3584,25 @@ called at \code{src/cell\_drift.c:377}).
 The hop path, Eq.~\eqref{eq:packet-path} first line, is at
 \code{radiation\_packet.h:926}, with $a$ applied at the call, :986; the star
 path is :1197-1198 (call at :1212-1214).
+
+\paragraph{Population dissociation factor (Sec.~\ref{sec:isrf-lw-population}).}
+The switch is \code{GEARFeedback:ISRF\_LW\_population\_dissociation}, read in
+\code{radiation\_init} (\code{src/feedback/GEAR/radiation.c}). The table read
+and $f_{\rm max}$ are \code{radiation\_read\_luminosity\_lw\_dissociating\_array}
+and \code{radiation\_compute\_lw\_dissociating\_factor\_max}
+(\code{radiation\_table\_io.c}). $f_\star$ is
+\code{radiation\_get\_single\_star\_LW\_dissociating\_factor} and
+\code{radiation\_get\_population\_LW\_dissociating\_factor}
+(\code{radiation\_getters.c}), called next to the LW luminosity in
+\code{stellar\_evolution.c}, and stored in the star as
+\code{LW\_dissociating\_factor}. The gas flag has two bits, lines and
+population (\code{feedback\_part\_has\_H2\_lines},
+\code{feedback\_part\_tracks\_LW\_dissociating} in
+\code{src/feedback/GEAR\_thermal/feedback\_struct.h}); any bit turns on the
+dissociating bookkeeping and the rate of
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_with\_lines\_internal}.
+The reset that keeps $f_\star$ is
+\code{radiation\_h2\_shielding\_shift\_keep\_factor}.
 
 \paragraph{H$_2$ line absorption (Secs.~\ref{sec:packet-h2}, \ref{sec:packet-h2-limits}).}
 The switch is \code{GEARFeedback:ISRF\_H2\_line\_absorption}. Its start-up

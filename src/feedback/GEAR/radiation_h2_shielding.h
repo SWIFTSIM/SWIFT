@@ -243,6 +243,47 @@ __attribute__((always_inline)) INLINE static int radiation_h2_shielding_shift(
 }
 
 /**
+ * @brief #radiation_h2_shielding_shift for light whose transmission also
+ * carries the dissociation factor of its stars: a fresh start drops only the
+ * shielding of the column, `t S(0) / S(N)` in the fit of the receiver.
+ *
+ * The factor is exact for a column built in one fit. A factor that is not
+ * positive, as for light whose transmission flushed to 0, is replaced by 1.
+ *
+ * @param t (in, out) Transmission of the share.
+ * @param N (in, out) Column of the share in cm^-2.
+ * @param dv (in, out) Velocity shift of the share.
+ * @param dv_hop Shift added by the hop, signed, in the unit of @p limit.
+ * @param limit Largest absolute shift that keeps the column.
+ * @param alpha Exponent of the fit of the receiver.
+ * @param b5 Thermal line width of H2 of the receiver in km/s.
+ * @param t_max Bound of the dissociation factor.
+ * @return 1 if the share started again, 0 otherwise.
+ */
+__attribute__((always_inline)) INLINE static int
+radiation_h2_shielding_shift_keep_factor(double *t, double *N, double *dv,
+                                         const double dv_hop,
+                                         const double limit, const double alpha,
+                                         const double b5, const double t_max) {
+  if (!(limit > 0.)) return 0;
+  const double shifted = *dv + dv_hop;
+  if (fabs(shifted) <= limit) {
+    *dv = shifted;
+    return 0;
+  }
+  double factor = *t;
+  if (*N > 0. && b5 > 0.)
+    factor *= radiation_h2_shielding_factor_at_zero() /
+              radiation_h2_shielding_factor(*N, alpha, b5);
+  if (!(factor > 0.)) factor = 1.;
+  if (factor > t_max) factor = t_max;
+  *t = factor;
+  *N = 0.;
+  *dv = 0.;
+  return 1;
+}
+
+/**
  * @brief Quantities of the gas of a receiver that the hop of a share needs.
  *
  * A mass fraction below 0, a density, a temperature or a mean molecular

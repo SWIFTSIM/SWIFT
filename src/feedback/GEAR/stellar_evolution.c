@@ -1397,6 +1397,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
       radiation_set_star_band_luminosity(
           sp, ISRF_MOMENT_LW,
           radiation_get_star_luminosity_lw(&sm->rad, log_m, log_z));
+      radiation_set_star_LW_dissociating_factor(
+          sp, radiation_get_single_star_LW_dissociating_factor(&sm->rad, log_m,
+                                                               log_z));
       /* Direct assignment, no multiply: the mean photon energy is forced to
          the reference energy at this stage, so a computed ratio of 1 is not
          trusted to compile to exactly 1.0f under -ffast-math. */
@@ -1682,6 +1685,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
                                          L_PE_per_msun * m_init);
       radiation_set_star_band_luminosity(sp, ISRF_MOMENT_LW,
                                          L_LW_per_msun * m_init);
+      radiation_set_star_LW_dissociating_factor(
+          sp, radiation_get_population_LW_dissociating_factor(
+                  &sm->rad, radiation_get_log_metallicity(metallicity),
+                  log10f(m_min), log10f(m_sup_capped)));
       /* Direct assignment from the just-set LW entry, not a recomputed
          L_LW_per_msun * m_init: same reasoning as the discrete path above. */
       radiation_set_star_band_luminosity(

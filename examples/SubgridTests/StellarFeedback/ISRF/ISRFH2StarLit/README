@@ -61,6 +61,12 @@ bar, 2 for a missing file, field or key, 3 for a non-finite value and 4 for a vo
 premise or a positive control is not met). A void run never passes. `parity` alone also
 returns 5 for a pass without a counters file (see below).
 
+The parameter files set `GEARFeedback:ISRF_LW_population_dissociation: 0`, so the
+dissociating light of the star is its LW light times the line transmission. With 1 and a
+table that carries `L_LW_dissociating`, it is also multiplied by the dissociation factor
+`f` of the star (`L_LW_dissociating / L_LW` from the table); pass that value to the
+`starlit` and `velocity` checks with `--population-factor f`.
+
 `python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log --timesteps timesteps.txt`
 
 The reference is `snapshot_0001`, the first snapshot written after the first step and

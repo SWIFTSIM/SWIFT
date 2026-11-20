@@ -106,6 +106,15 @@
 #define RADIATION_PACKET_HASH_MIX_2 0xc2b2ae35u
 #define RADIATION_PACKET_HASH_SALT 0x85ebca77u
 
+/*! #feedback_props.ISRF_LW_dissociating_factor_max, the bound of the
+    dissociating over the LW energy of any light. Set by
+    #radiation_packet_set_LW_population. */
+extern float radiation_packet_lw_dissociating_factor_max;
+
+/*! #feedback_props.ISRF_LW_population_track. Set by
+    #radiation_packet_set_LW_population. */
+extern int radiation_packet_lw_population_track;
+
 /**
  * @brief Add to the cumulative absorbed ledger of a band. Does nothing without
  * SWIFT_DEBUG_CHECKS_ISRF.
@@ -191,6 +200,8 @@ void radiation_packet_set_redshift(const double speed_of_light,
                                    const double weight_pe,
                                    const double weight_lw,
                                    const double photon_weight_lw);
+void radiation_packet_set_LW_population(const int track,
+                                        const float factor_max);
 void radiation_packet_set_light_speed(const double limit_speed,
                                       const double time_base,
                                       const int cosmological);
@@ -654,10 +665,12 @@ radiation_packet_add_saturated(const float sum, const double x) {
  * @param arrival_last Integer time at which the last light of the share
  * reaches the receiver. The light arrives evenly in between. The same as
  * @p arrival for a pulse.
- * @param with_lines Is H2 line absorption on? It is the switch of the
- * receiver, read once by the caller.
+ * @param with_lines Is the dissociating energy tracked, with H2 line absorption
+ * or the population factor (#feedback_part_tracks_LW_dissociating)? It is the
+ * switch of the receiver, read once by the caller.
  * @param line_transmission Fraction of the LW light that the H2 lines let
- * through, after the hop. Read only with H2 line absorption.
+ * through, after the hop, times the dissociation factor of its stars. Read
+ * only when @p with_lines is set.
  * @param line_shift Velocity shift of the share after the hop. Read only with
  * H2 line absorption.
  * @param line_energy_over_factor @p line_transmission over the shielding
@@ -802,7 +815,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
   radiation_packet_deliver_with_lines(
       receiver, constants, energy, photons, offset, path_phys, H, to_reservoir,
       source_step_end_ti, arrival, arrival_last,
-      receiver->feedback_data.ISRF_H2_line_absorption, 1.f, 0.f,
+      feedback_part_tracks_LW_dissociating(&receiver->feedback_data), 1.f, 0.f,
       1. / radiation_h2_shielding_factor_at_zero());
 }
 
@@ -812,19 +825,21 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  *
  * The share first gains the velocity shift of the hop. If the sum exceeds the
  * limit of the receiver, the share starts again from no column and a
- * transmission of 1. The column then grows by the H2 on the path, and the
- * transmission falls by the ratio of the shielding factors of the column after
- * and before it, in the fit of the receiver. The first half of the path holds
- * the gas of the sender and the second half that of the receiver; a share that
- * starts again keeps only the receiver's half. A path without H2 leaves the
- * share as it is; a receiver without a line width also counts it as clear
- * light in @p q_out.
+ * transmission of 1, or of its dissociation factor with the population factor
+ * on (#radiation_h2_shielding_shift_keep_factor). The column then grows by the
+ * H2 on the path, and the transmission falls by the ratio of the shielding
+ * factors of the column after and before it, in the fit of the receiver. The
+ * first half of the path holds the gas of the sender and the second half that
+ * of the receiver; a share that starts again keeps only the receiver's half. A
+ * path without H2 leaves the share as it is; a receiver without a line width
+ * also counts it as clear light in @p q_out.
  *
  * @param receiver The receiver.
  * @param sender_column_per_length H2 column per unit of internal length of the
  * sender's gas, in cm^-2. A star passes that of the receiver, so the whole
  * path holds the receiver's gas.
- * @param transmission Line transmission of the share before the hop.
+ * @param transmission Line transmission of the share before the hop, times its
+ * dissociation factor.
  * @param column Column in cm^-2 of the share before the hop.
  * @param shift Velocity shift of the share before the hop.
  * @param shift_hop Shift gained over the hop, signed.
@@ -843,8 +858,14 @@ __attribute__((always_inline)) INLINE static void radiation_packet_line_hop(
   double t = transmission;
   double N = column;
   double dv = shift;
-  const int restarted = radiation_h2_shielding_shift(&t, &N, &dv, shift_hop,
-                                                     fd->H2_velocity_limit);
+  const int restarted =
+      radiation_packet_lw_population_track
+          ? radiation_h2_shielding_shift_keep_factor(
+                &t, &N, &dv, shift_hop, fd->H2_velocity_limit,
+                fd->H2_shielding_exponent, fd->H2_line_width_km_s,
+                (double)radiation_packet_lw_dissociating_factor_max)
+          : radiation_h2_shielding_shift(&t, &N, &dv, shift_hop,
+                                         fd->H2_velocity_limit);
   const double n_sender = restarted ? 0. : (double)sender_column_per_length;
   const double f = radiation_h2_shielding_hop_factor(
       &t, &N, 0.5 * (n_sender + (double)fd->H2_column_per_length) * path_phys,
@@ -890,7 +911,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
 
   radiation_packet_check_occupied(sender_packet, sender->id);
 
-  const int with_lines = receiver->feedback_data.ISRF_H2_line_absorption;
+  const int with_lines = feedback_part_has_H2_lines(&receiver->feedback_data);
+  const int with_dissociating =
+      feedback_part_tracks_LW_dissociating(&receiver->feedback_data);
 
   for (radiation_packet_work_mask_t m = sender_packet->occupied_slots; m != 0;
        m &= m - 1) {
@@ -969,6 +992,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     float line_shift = 0.f;
     double line_energy_over_factor =
         1. / radiation_h2_shielding_factor_at_zero();
+    /* Without the lines the share keeps the transmission of its slot. */
+    if (!with_lines) {
+      line_transmission = sl->H2_transmission;
+      line_energy_over_factor =
+          (double)line_transmission / radiation_h2_shielding_factor_at_zero();
+    }
     if (with_lines && sl->band[ISRF_OPERATOR_LW].energy > 0.f) {
       const double closing_speed =
           ((double)receiver->v[0] - sender->v[0]) * sl->direction[0] +
@@ -985,7 +1014,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     radiation_packet_deliver_with_lines(
         receiver, constants, energy, photons, offset, a * path, H,
         sender->time_bin > receiver->time_bin, source_end_ti, arrival,
-        arrival_last, with_lines, line_transmission, line_shift,
+        arrival_last, with_dissociating, line_transmission, line_shift,
         line_energy_over_factor);
   }
 }
@@ -1029,7 +1058,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_gather_field(
   struct feedback_isrf_packet_data *pk = &pi->feedback_data.isrf_packet;
   pk->ngb_field_weight_sum += w;
 
-  if (pi->feedback_data.ISRF_H2_line_absorption)
+  if (feedback_part_tracks_LW_dissociating(&pi->feedback_data))
     pk->ngb_mean_field_dissociating_energy +=
         (double)w *
         (double)pj->feedback_data.isrf_packet.field_dissociating_energy;
@@ -1198,13 +1227,18 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const float r = (float)sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
   const double delay = radiation_packet_arrival_delay(a * r, H, constants);
 
-  const int with_lines = pj->feedback_data.ISRF_H2_line_absorption;
-  float line_transmission = 1.f;
+  const int with_lines = feedback_part_has_H2_lines(&pj->feedback_data);
+  const int with_dissociating =
+      feedback_part_tracks_LW_dissociating(&pj->feedback_data);
+  /* Exactly 1 without the population factor. */
+  const float f_star = si->feedback_data.radiation.LW_dissociating_factor;
+  float line_transmission = f_star;
   float line_shift = 0.f;
-  double line_energy_over_factor = 1. / radiation_h2_shielding_factor_at_zero();
+  double line_energy_over_factor =
+      (double)f_star / radiation_h2_shielding_factor_at_zero();
   if (with_lines && energy[ISRF_OPERATOR_LW] > 0.)
-    radiation_packet_line_hop(pj, pj->feedback_data.H2_column_per_length, 1.f,
-                              0.f, 0.f, 0., a * r, &line_transmission,
+    radiation_packet_line_hop(pj, pj->feedback_data.H2_column_per_length,
+                              f_star, 0.f, 0.f, 0., a * r, &line_transmission,
                               &line_shift, &line_energy_over_factor);
 
   /* Without a limit the reservoir spreads the light over the star's next
@@ -1213,8 +1247,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
       pj, constants, energy, photons, offset, a * r, H,
       si->time_bin > pj->time_bin, ti_current + ti_step,
       radiation_packet_time_later((double)(ti_current - ti_step) + delay),
-      radiation_packet_time_later((double)ti_current + delay), with_lines,
-      line_transmission, line_shift, line_energy_over_factor);
+      radiation_packet_time_later((double)ti_current + delay),
+      with_dissociating, line_transmission, line_shift,
+      line_energy_over_factor);
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);

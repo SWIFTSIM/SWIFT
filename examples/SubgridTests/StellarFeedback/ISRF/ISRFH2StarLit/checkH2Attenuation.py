@@ -568,17 +568,21 @@ def light_hops(first: dict, last: dict) -> int:
     return int(n)
 
 
-def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
+def own_transmission(
+    last: dict, population_factor: float = 1.0
+) -> Tuple[np.ndarray, np.ndarray]:
     """Return the own LW field of each particle and its line transmission.
 
     The own field is the light that crosses the particle itself, before the kernel
     mean. The kernel mean of LWLineTransmissions is a mean of the neighbours' own
     ratios weighted by their LW energy, so it differs from f(n_H2 r) by the averaging;
     the bars on the own ratio do not carry that offset.
+    With GEARFeedback:ISRF_LW_population_dissociation the dissociating energy also carries
+    the dissociation factor of the star, which the ratio is divided by.
     """
     own = last["LWOwnSpecificEnergies"]
     ratio = last["LWOwnDissociatingSpecificEnergies"] / np.where(own > 0, own, 1.0)
-    return own, ratio
+    return own, ratio / population_factor
 
 
 def h2_range_premise(
@@ -1040,7 +1044,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
     column = n_h2 * r
     read = probe_premises(first, last, mask, column, rep, frozen_h2=False)
     n_range = h2_range_premise(first, last, mask, rep)
-    own, meas = own_transmission(last)
+    own, meas = own_transmission(last, args.population_factor)
     lit = read & (own > 0.0)
     rep.info(
         "probes",
@@ -1095,6 +1099,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
     )
     lw = last["LWSpecificEnergies"]
     mean_ratio = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
+    mean_ratio /= args.population_factor
     lit_mean = read & (lw > 0.0)
     if lit_mean.any():
         rep.reading(
@@ -1773,7 +1778,7 @@ def gate_velocity(args: argparse.Namespace) -> int:
     face, outer = (v * cm for v in fix["cloud_radius_kpc"])
     in_cloud = mask & (r > face) & (r < outer)
     read = probe_premises(first, last, in_cloud, np.full(len(mask), np.inf), rep)
-    lw, meas = own_transmission(last)
+    lw, meas = own_transmission(last, args.population_factor)
     lit = read & (lw > 0.0)
     if not lit.any():
         raise GateExit(EXIT_VOID, "void run, no lit probe inside the cloud")
@@ -2024,6 +2029,14 @@ def build_parser() -> argparse.ArgumentParser:
             "--startup-log",
             default=None,
             help="swift log with the library start-up lines (output.log)",
+        )
+        sp.add_argument(
+            "--population-factor",
+            type=float,
+            default=1.0,
+            help="dissociation factor f of the star (1 with "
+            "GEARFeedback:ISRF_LW_population_dissociation: 0); the prediction is "
+            "f times the line transmission",
         )
         if counters:
             sp.add_argument("--counters", default=None)
