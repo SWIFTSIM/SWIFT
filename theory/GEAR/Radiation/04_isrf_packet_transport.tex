@@ -3273,14 +3273,14 @@ through \code{cooling\_get\_isrf\_habing\_subgrid} and
 returns zero for the build modes \code{grackle\_0} and \code{grackle\_1}
 (\code{COOLING\_GRACKLE\_MODE} below 2, set by \code{--with-cooling}), whose
 chemical network has no H$_2$. Both are called in
-\code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:903-939}). \code{dust\_chemistry},
+\code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:893-923}). \code{dust\_chemistry},
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
-\code{cooling.c:1851-1855}. The H$_2$ self-shielding option of
+\code{cooling.c:1832-1837}. The H$_2$ self-shielding option of
 Sec.~\ref{sec:packet-absorb-summary} is \code{GrackleCooling:H2\_self\_shielding}
-(\code{src/cooling/grackle/cooling\_io.h:391-405}). Its values, not to be
+(\code{src/cooling/grackle/cooling\_io.h:400-413}). Its values, not to be
 confused with the build modes, are 0 (off, the default), 2 (the kernel-support
 length) and 3 (the Jeans length). The length for the value 2 is set at
-\code{cooling.c:945-952}. The option is read in every
+\code{cooling.c:925-937}. The option is read in every
 build mode, but it acts on $k_{\rm diss}$, which is zero below
 \code{grackle\_2}, so it has an effect only in \code{grackle\_2} and
 \code{grackle\_3}. The LW photon
