@@ -490,43 +490,28 @@ __attribute__((always_inline)) INLINE static void runner_hii_buffer_insert(
     struct hii_neighbor *buffer, int max_size, int *count_found, float r2,
     struct part *p, struct xpart *xp, struct cell *c, int pixel) {
 
-  /* Case A: Buffer is not yet full */
-  if (*count_found < max_size) {
-    int i = *count_found - 1;
-    /* Shift elements to make room (standard insertion) */
-    while (i >= 0 &&
-           runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
-      buffer[i + 1] = buffer[i];
-      i--;
-    }
-    buffer[i + 1].r2 = r2;
-    buffer[i + 1].p = p;
-    buffer[i + 1].xp = xp;
-    buffer[i + 1].pixel = pixel;
-#ifdef SWIFT_DEBUG_CHECKS
-    buffer[i + 1].c = c;
-#endif
-    (*count_found)++;
+  /* A full buffer drops its furthest element, and only if the new one sorts
+     before it. */
+  const int is_full = *count_found >= max_size;
+  if (is_full && !runner_hii_r2_id_before(r2, p->id, buffer[max_size - 1].r2,
+                                          buffer[max_size - 1].p->id))
+    return;
+
+  /* Shift elements to make room (standard insertion). */
+  int i = is_full ? max_size - 2 : *count_found - 1;
+  while (i >= 0 &&
+         runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
+    buffer[i + 1] = buffer[i];
+    i--;
   }
-  /* Case B: Buffer is full, check if new particle sorts before the furthest
-   */
-  else if (runner_hii_r2_id_before(r2, p->id, buffer[max_size - 1].r2,
-                                   buffer[max_size - 1].p->id)) {
-    int i = max_size - 2;
-    /* Shift elements to replace the furthest */
-    while (i >= 0 &&
-           runner_hii_r2_id_before(r2, p->id, buffer[i].r2, buffer[i].p->id)) {
-      buffer[i + 1] = buffer[i];
-      i--;
-    }
-    buffer[i + 1].r2 = r2;
-    buffer[i + 1].p = p;
-    buffer[i + 1].xp = xp;
-    buffer[i + 1].pixel = pixel;
+  buffer[i + 1].r2 = r2;
+  buffer[i + 1].p = p;
+  buffer[i + 1].xp = xp;
+  buffer[i + 1].pixel = pixel;
 #ifdef SWIFT_DEBUG_CHECKS
-    buffer[i + 1].c = c;
+  buffer[i + 1].c = c;
 #endif
-  }
+  if (!is_full) (*count_found)++;
 }
 
 /**
