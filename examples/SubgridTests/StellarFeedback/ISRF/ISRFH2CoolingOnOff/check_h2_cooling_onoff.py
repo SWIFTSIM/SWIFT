@@ -68,12 +68,13 @@ negative or non-finite formation rate, is counted and fails the snapshot.
 A bin is decided only with at least N_MIN particles and a bar of at most
 MAX_BAR. Otherwise it is INDETERMINATE and decides nothing.
 
-Exit status per snapshot: 0 every decided bin agrees and at least one bin is
-decided, 1 failure (non-finite value, bad formation rate, or a decided bin
-beyond its bar), 2 inconclusive or indeterminate (noise floor unknown, lag
-unknown, cheap solver, or no decided bin), 3 nothing left after the masks. The
-run exits 1 on any 1 or when every snapshot is 3, 0 only if every snapshot is 0,
-else 2.
+Status per snapshot: PASS (every decided bin agrees and at least one bin is
+decided), FAIL (non-finite value, bad formation rate, or a decided bin beyond
+its bar), INDETERMINATE or INCONCLUSIVE (noise floor unknown, lag unknown, cheap
+solver, or no decided bin), NOT EVALUATED (nothing left after the masks).
+Exit status of the run: 0 every snapshot passes; 1 any failure, or every
+snapshot not evaluated; 2 bad arguments or missing files; 3 otherwise
+(inconclusive).
 """
 
 from __future__ import annotations
@@ -772,7 +773,11 @@ def temperature_lead(
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
+    ap = argparse.ArgumentParser(
+        description="Compare the H2 abundance of the switch-on and switch-off runs of "
+        "the H2 cooling example. Exit status: 0 pass, 1 fail, 2 bad arguments, "
+        "3 inconclusive. The method is in the docstring of this file."
+    )
     ap.add_argument(
         "--on", type=Path, required=True, help="snapshot directory of the on leg"
     )
@@ -829,6 +834,20 @@ def main() -> int:
     )
     ap.add_argument("--plot", type=Path, default=None)
     a = ap.parse_args()
+    legs_to_read = [a.on, a.off] + ([a.repeat] if a.repeat is not None else [])
+    for d in legs_to_read:
+        missing = [
+            n
+            for n in range(a.first - 1, a.last + 1)
+            if not (d / f"snapshot_{n:04d}.hdf5").exists()
+        ]
+        if missing:
+            print(
+                f"Missing snapshot files in {d}: {missing} (the check also needs the "
+                f"snapshot before the first one)",
+                file=sys.stderr,
+            )
+            return 2
     global HM_SIGN
     if a.plant_hm_sign:
         HM_SIGN = -1.0
@@ -861,7 +880,7 @@ def main() -> int:
         ):
             codes.append(2)
             print(
-                f"snapshot {s}: exit 2 INDETERMINATE: legs differ or do not record the solver"
+                f"snapshot {s}: INDETERMINATE: legs differ or do not record the solver"
             )
             continue
         accurate = next(iter(names.values())) == "accurate (BDF)"
@@ -895,7 +914,7 @@ def main() -> int:
         code, why = verdict(r, a.noise, rep is not None, accurate)
         codes.append(code)
         rows.append((s, r))
-        print(f"snapshot {s}: exit {code} {why}")
+        print(f"snapshot {s}: {why}")
         if not r["finite"]:
             print(
                 f"  non-finite values: {r['n_nonfinite']} in fields {r['nonfinite_fields']}"
@@ -929,7 +948,7 @@ def main() -> int:
         plot([(s, r) for s, r in rows if r["finite"] and r.get("bins")], a.plot)
     if 1 in codes or all(c == 3 for c in codes):
         return 1
-    return 0 if all(c == 0 for c in codes) else 2
+    return 0 if all(c == 0 for c in codes) else 3
 
 
 if __name__ == "__main__":

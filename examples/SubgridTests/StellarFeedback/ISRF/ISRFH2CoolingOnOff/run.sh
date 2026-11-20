@@ -16,7 +16,13 @@ gas_mass=${gas_mass:=0.8}   # Gas particle mass in Msun (box side about 30 pc)
 h2_ratio=${h2_ratio:=1e-4}   # Initial nH2 / nH
 solver=${solver:=1}   # GeajayCooling:solver: 1 accurate (BDF, required by the check), 0 cheap
 run_name=${run_name:=$leg}
+force=${force:=0}   # 1: remove an existing snap/ and restart/ directory before the run
 ic_file=ICs_isrf_h2_cooling.hdf5
+
+if [ "$force" != 1 ] && { [ -e snap ] || [ -e restart ]; }; then
+    echo "snap/ or restart/ exists: move it away, or run with force=1 to remove it." >&2
+    exit 1
+fi
 
 glass_file="glassCube_$((2**level)).hdf5"
 if [ ! -e "$glass_file" ]; then
@@ -33,7 +39,7 @@ rm -f "$ic_file"
 python3 "$starlit"/makeIC.py --level $level --rho $gas_density --mass $gas_mass \
     --h2_ratio $h2_ratio -o "$ic_file"
 
-rm -rf snap
+rm -rf snap restart
 mkdir snap
 ../../../../../swift --hydro --stars --external-gravity --feedback --cooling \
     --sync --limiter --verbose=0 --threads=$n_threads \

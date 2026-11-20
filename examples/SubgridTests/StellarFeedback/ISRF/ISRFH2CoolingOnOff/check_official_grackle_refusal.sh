@@ -5,9 +5,21 @@
 #
 # Usage: check_official_grackle_refusal.sh <swift> <ICs.hdf5> <cloudy.h5> <yields.hdf5> <workdir>
 # Exit status: 0 if the switch-1 run exits non-zero with the refusal text and
-# the switch-0 run does not print it and gets past start-up, 1 otherwise.
+# the switch-0 run does not print it and gets past start-up, 1 otherwise,
+# 2 for bad arguments.
 
 set -u
+usage="Usage: $0 <swift> <ICs.hdf5> <cloudy.h5> <yields.hdf5> <workdir>
+  swift: a SWIFT built with official Grackle (grackle_2 or grackle_3) and the ISRF
+  ICs.hdf5: ICs_homogeneous_box.hdf5 of examples/SinkParticles/HomogeneousBox
+  cloudy.h5, yields.hdf5: the Cloudy table and the radiation table (PopII_parsec_spectral.hdf5)
+  workdir: an empty scratch directory"
+if [ $# -ne 5 ]; then
+  echo "$usage" >&2; exit 2
+fi
+for f in "$1" "$2" "$3" "$4"; do
+  if [ ! -f "$f" ]; then echo "File not found: $f" >&2; echo "$usage" >&2; exit 2; fi
+done
 swift=$(realpath "$1"); ics=$(realpath "$2"); cloudy=$(realpath "$3")
 yields=$(realpath "$4"); work=$5
 here=$(dirname "$(realpath "$0")")
