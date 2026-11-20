@@ -45,7 +45,7 @@ Statistics:
 
 InitialConditions:
   file_name:          ICs_isrf_h2_waiting_light.hdf5
-  periodic:                 1
+  periodic:                 0                  # Isolated box: no light of periodic images of the star
   shift:              [0.0, 0.0, 0.0]
 
 SPH:

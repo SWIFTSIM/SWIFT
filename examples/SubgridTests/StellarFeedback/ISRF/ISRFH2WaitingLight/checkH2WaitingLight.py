@@ -25,11 +25,15 @@ The control run must not wait. The limited run must lag the control run (its fro
 behind) at the first compared snapshot, which shows that light waits in the limited run.
 
 No snapshot index is chosen by the user: every snapshot that both runs hold is read, in
-time order, from the first at which at least MIN_COMPARE particles are lit in both. The
-control run must itself obey the range of its own shares (the premise of the shares); the
-comparison ends at the first snapshot where it does not, because the carried column of
-the control run then no longer follows the shares. The comparison must reach at least one
-snapshot, else the run is void.
+time order, from the first at which at least MIN_COMPARE particles are lit in both. Both
+runs must be non-periodic: the light of the periodic images of the star reaches a particle
+through neighbours that are not shares. The control run must itself obey the range of its own
+shares on all its lit domain particles (the premise of the shares); the comparison ends at the
+first snapshot where it does not, because the carried column of the control run then no longer
+follows the shares. It also ends where the H2 of more than half the compared particles has
+changed. The check prints the first and last snapshot read and why the window ends. Values of
+both runs are tested for finiteness before any comparison. The comparison must reach at least
+one snapshot, else the run is void.
 
 Exit codes: 0 passed, 1 a bar failed, 2 a file or field is missing, 3 a value is not
 finite, 4 the run is void (a premise or a positive control is not met).
@@ -190,6 +194,13 @@ def check_light_speed(args: argparse.Namespace) -> dict:
             raise G.GateExit(
                 G.EXIT_VOID, f"void run, the {name} has {key} = '{got}', not {ok}"
             )
+        periodic = str(p.get("InitialConditions:periodic", "")).strip()
+        if periodic != "0":
+            raise G.GateExit(
+                G.EXIT_VOID,
+                f"void run, the {name} has InitialConditions:periodic = '{periodic}': "
+                "light of the periodic images of the star is not in the shares",
+            )
     return params
 
 
@@ -231,25 +242,39 @@ def gate(args: argparse.Namespace) -> int:
                 f"void run, snapshot {number} has the time {lim['time']:.9e} in the limited "
                 f"run and {ctl['time']:.9e} in the control run",
             )
+        for label, run in (("limited", lim), ("control", ctl)):
+            seen = domain & run["lit"]
+            G.require_finite(
+                f"{label} run, snapshot {number}", t=run["t"][seen], N=run["N"][seen]
+            )
         both = domain & lim["lit"] & ctl["lit"]
         if int(both.sum()) < MIN_COMPARE:
             continue
-        neighbours = upstream_neighbours(lim, star, domain, dist)
-        b_lim = share_bounds(lim_run, number, neighbours, dist)
+        neighbours = upstream_neighbours(ctl, star, domain, dist)
         b_ctl = share_bounds(ctl_run, number, neighbours, dist)
+        steady = domain & ctl["lit"] & np.isfinite(b_ctl[0])
+        G.require_finite(
+            f"control run, snapshot {number}, share bounds",
+            lo=b_ctl[0][steady],
+            hi=b_ctl[1][steady],
+        )
+        broken = outside(
+            ctl["t"][steady], b_ctl[0][steady], b_ctl[1][steady]
+        ) | outside(ctl["N"][steady], b_ctl[2][steady], b_ctl[3][steady])
+        if broken.any():
+            ended = (
+                f"at snapshot {number} the control run has {int(broken.sum())} of "
+                f"{int(steady.sum())} lit domain particles outside the range of its own shares: "
+                "this and later snapshots are not read"
+            )
+            break
+        b_lim = share_bounds(lim_run, number, neighbours, dist)
         with_shares = np.isfinite(b_lim[0]) & np.isfinite(b_ctl[0])
         G.require_finite(
             "share bounds",
             lo=np.minimum(b_lim[0], b_ctl[0])[both & with_shares],
             hi=np.maximum(b_lim[1], b_ctl[1])[both & with_shares],
         )
-        steady = both & np.isfinite(b_ctl[0])
-        broken = outside(
-            ctl["t"][steady], b_ctl[0][steady], b_ctl[1][steady]
-        ) | outside(ctl["N"][steady], b_ctl[2][steady], b_ctl[3][steady])
-        if broken.any():
-            ended = (number, int(broken.sum()), int(steady.sum()))
-            break
         lo_t, hi_t = np.fmin(b_lim[0], b_ctl[0]), np.fmax(b_lim[1], b_ctl[1])
         lo_n, hi_n = np.fmin(b_lim[2], b_ctl[2]), np.fmax(b_lim[3], b_ctl[3])
         frozen = (np.abs(lim["n_h2"] / n_first - 1.0) <= H2_FROZEN) & (
@@ -258,6 +283,12 @@ def gate(args: argparse.Namespace) -> int:
         use = both & with_shares
         n_before = int(use.sum())
         use &= frozen
+        if use.sum() < 0.5 * n_before and compared:
+            ended = (
+                f"at snapshot {number} the H2 of {n_before - int(use.sum())} of {n_before} "
+                f"particles changed by more than {H2_FROZEN:g}: this and later snapshots are not read"
+            )
+            break
         if use.sum() < 0.5 * n_before:
             raise G.GateExit(
                 G.EXIT_VOID,
@@ -322,17 +353,25 @@ def gate(args: argparse.Namespace) -> int:
             np.log(lim["t"][use] / b_lim[1][use]), np.log(b_lim[0][use] / lim["t"][use])
         )
     if ended is not None:
+        rep.info("end of comparison", ended)
+    elif compared:
         rep.info(
             "end of comparison",
-            f"at snapshot {ended[0]} the control run has {ended[1]} of {ended[2]} lit particles "
-            "outside the range of its own shares: later snapshots are not compared",
+            f"the last snapshot both runs hold ({numbers[-1]}) is reached; the control run "
+            "stays inside the range of its own shares and the H2 stays frozen",
         )
     if not compared:
         raise G.GateExit(
             G.EXIT_VOID,
-            f"void run, no snapshot has {MIN_COMPARE} particles lit in both runs with a steady control run",
+            f"void run, no snapshot has {MIN_COMPARE} particles lit in both runs"
+            + (f" before the window ends ({ended})" if ended else ""),
         )
-    rep.info("snapshots compared", ", ".join(str(n) for n in compared))
+    rep.info(
+        "window",
+        f"snapshots {compared[0]} to {compared[-1]} ({len(compared)} read); "
+        "the snapshots before it have fewer than "
+        f"{MIN_COMPARE} particles lit in both runs",
+    )
     if args.save:
         np.savez(args.save, snapshots=np.array(compared), **saved)
     return rep.exit_code()

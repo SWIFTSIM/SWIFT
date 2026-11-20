@@ -1,4 +1,4 @@
-"""Initial conditions of one star in a periodic box of molecular gas with dense clumps.
+"""Initial conditions of one star in a box of molecular gas with dense clumps.
 
 Each clump has a Gaussian density profile of peak contrast `--contrast` over the clear
 gas and a 1/e radius of `--radius` box sizes. The clumps sit between `--r_min` and

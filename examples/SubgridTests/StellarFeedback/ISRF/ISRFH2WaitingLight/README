@@ -1,5 +1,5 @@
 # Intro
-One 29.7 Msun star at the centre of a periodic box of cold (50 K), zero-metallicity molecular
+One 29.7 Msun star at the centre of an isolated box (no periodic images) of cold (50 K), zero-metallicity molecular
 gas with 8 dense Gaussian clumps (peak density 100 times the clear gas, clumps 0.12 to 0.32 box
 sizes from the star). The ISRF transport is on (`ISRF_propagation: 1`) with the H2 line absorption
 of the transport on (`ISRF_H2_line_absorption: 1`), so the Lyman-Werner (LW) light of the star is
@@ -32,10 +32,22 @@ zero, and the time step is set by the light speed (64 steps of 1.47e-10 internal
 # Checking
 `python3 checkH2WaitingLight.py --limited limited --control control`
 
+The box is not periodic in both runs (`InitialConditions:periodic: 0`). In a periodic box the
+light of the periodic images of the star reaches a particle through neighbours that are farther from
+the star than the particle. Those neighbours are not shares, so the control run would leave the range
+of its own shares once the image light arrives (about 0.55 to 0.95 box sizes divided by the speed of
+the front). The check stops with exit class 4 if either run is periodic.
+
 The check reads every snapshot that both runs hold, in time order, from the first one at which
 at least 200 particles are lit in both runs. Particles are read between 2 smoothing lengths and
 half a box minus 2 smoothing lengths from the star, and only if their H2 density has changed by
 at most 5 per cent since the first snapshot.
+
+The window of snapshots ends at the first snapshot where either of two things happens, and the
+check prints the window and the reason: the control run has a lit particle outside the range of its
+own shares (the quantity the comparison relies on), or the H2 of more than half the compared particles
+has changed by more than 5 per cent. A snapshot at the end of the window and later snapshots are not
+read. If neither happens, the window ends at the last snapshot that both runs hold.
 
 A particle receives light as shares from the neighbours that are closer to the star. A share has
 the H2 column carried by its sender plus the column of the hop. The released light is a weighted
@@ -48,10 +60,16 @@ have been sent, and left waiting, a few steps earlier.
   transmissions of both runs.
 - `hull_N`: the carried column of both runs lies between the smallest and the largest share column.
 - `own range`: the limited run alone lies inside the range of its own shares (transmission and column).
-- The control run must obey the range of its own shares. The comparison ends at the first
-  snapshot where it does not, and the check prints that snapshot.
+- The control run must obey the range of its own shares, tested on all its lit particles in the
+  read region.
 - The two snapshots compared must have the same time. The limited run must have lit fewer
   particles than the control run at the first compared snapshot, else no light waits and the run is void.
+
+The shares are built from carried columns of the same run, so light that is older than the
+snapshot (waiting, or delayed by the front) is read with the column it had when it was sent. The
+check does not compare a column with the straight line from the star. It does not test whether the
+front of the `cap` mode is slower than 0.99 c (light older than light at 0.99 c): both runs use their
+own shares.
 
 The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field, 3 for a
 non-finite value and 4 for a void run (a premise or the positive control is not met).
