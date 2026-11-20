@@ -27,9 +27,14 @@ int main(int argc, char *argv[]) {
   struct swift_params params;
   struct boundary_conditions bc;
 
-  assert(fabs(boundary_conditions_wrap_periodic(-0.1, 1.) - 0.9) < 1e-15);
-  assert(boundary_conditions_wrap_periodic(1.25, 1.) == 0.25);
-  assert(boundary_conditions_wrap_periodic(1., 1.) == 0.);
+  assert(fabs(boundary_conditions_wrap(-0.1, 1., 1) - 0.9) < 1e-15);
+  assert(boundary_conditions_wrap(1.25, 1., 1) == 0.25);
+  assert(boundary_conditions_wrap(1., 1., 1) == 0.);
+
+  /* Without periodicity nothing wraps: the upper face stays at the top */
+  assert(boundary_conditions_wrap(0.5, 1., 0) == 0.5);
+  assert(boundary_conditions_wrap(0., 1., 0) == 0.);
+  assert(boundary_conditions_wrap(1., 1., 0) == nextafter(1., 0.));
 
   bzero(&params, sizeof(params));
   parser_set_param(&params, "InitialConditions:periodic:1");

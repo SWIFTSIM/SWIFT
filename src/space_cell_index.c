@@ -108,9 +108,9 @@ void space_parts_get_cell_index_mapper(void *map_data, int nr_parts,
 #endif
 
     /* Normalize positions at cell construction, after all drift tasks. */
-    const double pos_x = boundary_conditions_wrap_periodic(old_pos_x, dim_x);
-    const double pos_y = boundary_conditions_wrap_periodic(old_pos_y, dim_y);
-    const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
+    const double pos_x = boundary_conditions_wrap(old_pos_x, dim_x, s->periodic);
+    const double pos_y = boundary_conditions_wrap(old_pos_y, dim_y, s->periodic);
+    const double pos_z = boundary_conditions_wrap(old_pos_z, dim_z, s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -221,9 +221,9 @@ void space_gparts_get_cell_index_mapper(void *map_data, int nr_gparts,
     }
 #endif
 
-    const double pos_x = boundary_conditions_wrap_periodic(old_pos_x, dim_x);
-    const double pos_y = boundary_conditions_wrap_periodic(old_pos_y, dim_y);
-    const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
+    const double pos_x = boundary_conditions_wrap(old_pos_x, dim_x, s->periodic);
+    const double pos_y = boundary_conditions_wrap(old_pos_y, dim_y, s->periodic);
+    const double pos_z = boundary_conditions_wrap(old_pos_z, dim_z, s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -340,9 +340,9 @@ void space_sparts_get_cell_index_mapper(void *map_data, int nr_sparts,
     }
 #endif
 
-    const double pos_x = boundary_conditions_wrap_periodic(old_pos_x, dim_x);
-    const double pos_y = boundary_conditions_wrap_periodic(old_pos_y, dim_y);
-    const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
+    const double pos_x = boundary_conditions_wrap(old_pos_x, dim_x, s->periodic);
+    const double pos_y = boundary_conditions_wrap(old_pos_y, dim_y, s->periodic);
+    const double pos_z = boundary_conditions_wrap(old_pos_z, dim_z, s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -455,9 +455,9 @@ void space_bparts_get_cell_index_mapper(void *map_data, int nr_bparts,
     }
 #endif
 
-    const double pos_x = boundary_conditions_wrap_periodic(old_pos_x, dim_x);
-    const double pos_y = boundary_conditions_wrap_periodic(old_pos_y, dim_y);
-    const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
+    const double pos_x = boundary_conditions_wrap(old_pos_x, dim_x, s->periodic);
+    const double pos_y = boundary_conditions_wrap(old_pos_y, dim_y, s->periodic);
+    const double pos_z = boundary_conditions_wrap(old_pos_z, dim_z, s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);
@@ -570,9 +570,9 @@ void space_sinks_get_cell_index_mapper(void *map_data, int nr_sinks,
     }
 #endif
 
-    const double pos_x = boundary_conditions_wrap_periodic(old_pos_x, dim_x);
-    const double pos_y = boundary_conditions_wrap_periodic(old_pos_y, dim_y);
-    const double pos_z = boundary_conditions_wrap_periodic(old_pos_z, dim_z);
+    const double pos_x = boundary_conditions_wrap(old_pos_x, dim_x, s->periodic);
+    const double pos_y = boundary_conditions_wrap(old_pos_y, dim_y, s->periodic);
+    const double pos_z = boundary_conditions_wrap(old_pos_z, dim_z, s->periodic);
 
     /* Get its cell index */
     const int index = cell_getid_from_pos(s, pos_x, pos_y, pos_z);

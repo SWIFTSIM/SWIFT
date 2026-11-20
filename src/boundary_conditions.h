@@ -19,7 +19,10 @@
 #ifndef SWIFT_BOUNDARY_CONDITIONS_H
 #define SWIFT_BOUNDARY_CONDITIONS_H
 
+#include "minmax.h"
 #include "periodic.h"
+
+#include <math.h>
 
 struct swift_params;
 
@@ -61,9 +64,16 @@ struct boundary_conditions {
 void boundary_conditions_init(struct boundary_conditions *bc,
                               struct swift_params *params);
 
-/** Normalize a coordinate when the particle is assigned a new cell. */
-static inline double boundary_conditions_wrap_periodic(const double x,
-                                                       const double dim) {
+/**
+ * @brief Normalize a coordinate when the particle is assigned a new cell.
+ *
+ * Periodic boxes wrap. Other boxes never do: the boundary phase has already
+ * reflected or removed anything outside, so only a particle exactly on the
+ * upper face is left, and it is moved just inside.
+ */
+static inline double boundary_conditions_wrap(const double x, const double dim,
+                                              const int periodic) {
+  if (!periodic) return min(max(x, 0.), nextafter(dim, 0.));
   const double wrapped = box_wrap(x, 0., dim);
   /* A rounded value on the upper face belongs to the lower one. */
   return wrapped == dim ? 0. : wrapped;

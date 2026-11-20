@@ -289,11 +289,8 @@ struct redist_mapper_data {
       error("Failed to allocate counts thread-specific buffer");               \
     for (int k = 0; k < num_elements; k++) {                                   \
       for (int j = 0; j < 3; j++) {                                            \
-        if (parts[k].x[j] < 0.0)                                               \
-          parts[k].x[j] += s->dim[j];                                          \
-        else if (parts[k].x[j] >= s->dim[j])                                   \
-          parts[k].x[j] -= s->dim[j];                                          \
-        if (parts[k].x[j] == s->dim[j]) parts[k].x[j] = 0.0;                   \
+        parts[k].x[j] =                                                        \
+            boundary_conditions_wrap(parts[k].x[j], s->dim[j], s->periodic);   \
       }                                                                        \
       const int cid =                                                          \
           cell_getid_from_pos(s, parts[k].x[0], parts[k].x[1], parts[k].x[2]); \

@@ -500,17 +500,18 @@ static void engine_do_boundary_condition_all_mapper(void *map_data,
 /** Apply the boundary phase outside the task network and sync linked gparts. */
 void engine_boundary_condition_all(struct engine *e) {
   if (!e->s->periodic) {
-    if (e->restarting)
+    if (e->restarting) {
       threadpool_map(&e->threadpool, engine_do_boundary_condition_all_mapper,
                      e->s->cells_top, e->s->nr_cells, sizeof(struct cell),
                      threadpool_auto_chunk_size, e);
-    else
+    } else {
       threadpool_map(&e->threadpool, engine_do_boundary_condition_all_mapper,
                      e->s->local_cells_top, e->s->nr_local_cells, sizeof(int),
                      threadpool_auto_chunk_size, e);
-  }
+    }
 
-  space_synchronize_particle_positions(e->s);
+    space_synchronize_particle_positions(e->s);
+  }
 }
 
 /**

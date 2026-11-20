@@ -302,72 +302,61 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
 
   double cell_width[3] = {width[0], width[1], width[2]};
 
-  /* The mirror cells padding the grid outside mirror walls hold no particles
-   * and are left out: the tables cover the cells of the box only, on the grid
-   * of the box (the padded grid keeps their order). */
-  int nr_real = 0;
-  for (int i = 0; i < nr_cells; ++i) {
-    if (cells_top[i].subtype != cell_subtype_mirror) nr_real++;
-  }
-  const int real_cdim[3] = {(int)rint(dim[0] / width[0]),
-                            (int)rint(dim[1] / width[1]),
-                            (int)rint(dim[2] / width[2])};
-
   /* Temporary memory for the cell-by-cell information */
   double *centres = NULL;
-  centres = (double *)malloc(3 * nr_real * sizeof(double));
+  centres = (double *)malloc(3 * nr_cells * sizeof(double));
 
   /* Temporary memory for the cell files ID */
   int *files = NULL;
-  files = (int *)malloc(nr_real * sizeof(int));
+  files = (int *)malloc(nr_cells * sizeof(int));
 
   /* Temporary memory for the min position of particles in the cells */
   double *min_part_pos = NULL, *min_gpart_pos = NULL,
          *min_gpart_background_pos = NULL, *min_spart_pos = NULL,
          *min_bpart_pos = NULL, *min_sink_pos = NULL, *min_nupart_pos = NULL;
-  min_part_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  min_gpart_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  min_gpart_background_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  min_spart_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  min_bpart_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  min_sink_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  min_nupart_pos = (double *)calloc(3 * nr_real, sizeof(double));
+  min_part_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_gpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_gpart_background_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_spart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_bpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_sink_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  min_nupart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
 
   /* Temporary memory for the max position of particles in the cells */
   double *max_part_pos = NULL, *max_gpart_pos = NULL,
          *max_gpart_background_pos = NULL, *max_spart_pos = NULL,
          *max_bpart_pos = NULL, *max_sink_pos = NULL, *max_nupart_pos = NULL;
-  max_part_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  max_gpart_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  max_gpart_background_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  max_spart_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  max_bpart_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  max_sink_pos = (double *)calloc(3 * nr_real, sizeof(double));
-  max_nupart_pos = (double *)calloc(3 * nr_real, sizeof(double));
+  max_part_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_gpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_gpart_background_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_spart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_bpart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_sink_pos = (double *)calloc(3 * nr_cells, sizeof(double));
+  max_nupart_pos = (double *)calloc(3 * nr_cells, sizeof(double));
 
   /* Count of particles in each cell */
   long long *count_part = NULL, *count_gpart = NULL,
             *count_background_gpart = NULL, *count_spart = NULL,
             *count_bpart = NULL, *count_sink = NULL, *count_nupart = NULL;
-  count_part = (long long *)malloc(nr_real * sizeof(long long));
-  count_gpart = (long long *)malloc(nr_real * sizeof(long long));
-  count_background_gpart = (long long *)malloc(nr_real * sizeof(long long));
-  count_spart = (long long *)malloc(nr_real * sizeof(long long));
-  count_bpart = (long long *)malloc(nr_real * sizeof(long long));
-  count_sink = (long long *)malloc(nr_real * sizeof(long long));
-  count_nupart = (long long *)malloc(nr_real * sizeof(long long));
+  count_part = (long long *)malloc(nr_cells * sizeof(long long));
+  count_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_background_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_spart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_bpart = (long long *)malloc(nr_cells * sizeof(long long));
+  count_sink = (long long *)malloc(nr_cells * sizeof(long long));
+  count_nupart = (long long *)malloc(nr_cells * sizeof(long long));
 
   /* Global offsets of particles in each cell */
   long long *offset_part = NULL, *offset_gpart = NULL,
             *offset_background_gpart = NULL, *offset_spart = NULL,
             *offset_bpart = NULL, *offset_sink = NULL, *offset_nupart = NULL;
-  offset_part = (long long *)malloc(nr_real * sizeof(long long));
-  offset_gpart = (long long *)malloc(nr_real * sizeof(long long));
-  offset_background_gpart = (long long *)malloc(nr_real * sizeof(long long));
-  offset_spart = (long long *)malloc(nr_real * sizeof(long long));
-  offset_bpart = (long long *)malloc(nr_real * sizeof(long long));
-  offset_sink = (long long *)malloc(nr_real * sizeof(long long));
-  offset_nupart = (long long *)malloc(nr_real * sizeof(long long));
+  offset_part = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_background_gpart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_spart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_bpart = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_sink = (long long *)malloc(nr_cells * sizeof(long long));
+  offset_nupart = (long long *)malloc(nr_cells * sizeof(long long));
 
   /* Offsets of the 0^th element */
   offset_part[0] = 0;
@@ -386,186 +375,183 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
   long long local_offset_bpart = 0;
   long long local_offset_sink = 0;
   long long local_offset_nupart = 0;
-  for (int i = 0, j = 0; i < nr_cells; ++i) {
-
-    if (cells_top[i].subtype == cell_subtype_mirror) continue;
+  for (int i = 0; i < nr_cells; ++i) {
 
     /* Store in which file this cell will be found */
     if (distributed) {
-      files[j] = cells_top[i].nodeID;
+      files[i] = cells_top[i].nodeID;
     } else {
-      files[j] = 0;
+      files[i] = 0;
     }
 
     /* Is the cell on this node (i.e. we have full information */
     if (cells_top[i].nodeID == nodeID) {
 
       /* Centre of each cell */
-      centres[j * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
-      centres[j * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
-      centres[j * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
+      centres[i * 3 + 0] = cells_top[i].loc[0] + cell_width[0] * 0.5;
+      centres[i * 3 + 1] = cells_top[i].loc[1] + cell_width[1] * 0.5;
+      centres[i * 3 + 2] = cells_top[i].loc[2] + cell_width[2] * 0.5;
 
       /* Finish by box wrapping to match what is done to the particles */
-      centres[j * 3 + 0] = box_wrap(centres[j * 3 + 0], 0.0, dim[0]);
-      centres[j * 3 + 1] = box_wrap(centres[j * 3 + 1], 0.0, dim[1]);
-      centres[j * 3 + 2] = box_wrap(centres[j * 3 + 2], 0.0, dim[2]);
+      centres[i * 3 + 0] = box_wrap(centres[i * 3 + 0], 0.0, dim[0]);
+      centres[i * 3 + 1] = box_wrap(centres[i * 3 + 1], 0.0, dim[1]);
+      centres[i * 3 + 2] = box_wrap(centres[i * 3 + 2], 0.0, dim[2]);
 
       /* Count real particles that will be written and collect the min/max
        * positions */
-      count_part[j] = cell_count_non_inhibited_part(
+      count_part[i] = cell_count_non_inhibited_part(
           &cells_top[i], subsample[swift_type_gas],
-          subsample_fraction[swift_type_gas], snap_num, &min_part_pos[j * 3],
-          &max_part_pos[j * 3]);
+          subsample_fraction[swift_type_gas], snap_num, &min_part_pos[i * 3],
+          &max_part_pos[i * 3]);
 
-      count_gpart[j] = cell_count_non_inhibited_dark_matter(
+      count_gpart[i] = cell_count_non_inhibited_dark_matter(
           &cells_top[i], subsample[swift_type_dark_matter],
           subsample_fraction[swift_type_dark_matter], snap_num,
-          &min_gpart_pos[j * 3], &max_gpart_pos[j * 3]);
+          &min_gpart_pos[i * 3], &max_gpart_pos[i * 3]);
 
-      count_background_gpart[j] =
+      count_background_gpart[i] =
           cell_count_non_inhibited_background_dark_matter(
               &cells_top[i], subsample[swift_type_dark_matter_background],
               subsample_fraction[swift_type_dark_matter_background], snap_num,
-              &min_gpart_background_pos[j * 3],
-              &max_gpart_background_pos[j * 3]);
+              &min_gpart_background_pos[i * 3],
+              &max_gpart_background_pos[i * 3]);
 
-      count_spart[j] = cell_count_non_inhibited_spart(
+      count_spart[i] = cell_count_non_inhibited_spart(
           &cells_top[i], subsample[swift_type_stars],
-          subsample_fraction[swift_type_stars], snap_num, &min_spart_pos[j * 3],
-          &max_spart_pos[j * 3]);
+          subsample_fraction[swift_type_stars], snap_num, &min_spart_pos[i * 3],
+          &max_spart_pos[i * 3]);
 
-      count_bpart[j] = cell_count_non_inhibited_bpart(
+      count_bpart[i] = cell_count_non_inhibited_bpart(
           &cells_top[i], subsample[swift_type_black_hole],
           subsample_fraction[swift_type_black_hole], snap_num,
-          &min_bpart_pos[j * 3], &max_bpart_pos[j * 3]);
+          &min_bpart_pos[i * 3], &max_bpart_pos[i * 3]);
 
-      count_sink[j] = cell_count_non_inhibited_sink(
+      count_sink[i] = cell_count_non_inhibited_sink(
           &cells_top[i], subsample[swift_type_sink],
-          subsample_fraction[swift_type_sink], snap_num, &min_sink_pos[j * 3],
-          &max_sink_pos[j * 3]);
+          subsample_fraction[swift_type_sink], snap_num, &min_sink_pos[i * 3],
+          &max_sink_pos[i * 3]);
 
-      count_nupart[j] = cell_count_non_inhibited_neutrinos(
+      count_nupart[i] = cell_count_non_inhibited_neutrinos(
           &cells_top[i], subsample[swift_type_neutrino],
           subsample_fraction[swift_type_neutrino], snap_num,
-          &min_nupart_pos[j * 3], &max_nupart_pos[j * 3]);
+          &min_nupart_pos[i * 3], &max_nupart_pos[i * 3]);
 
       /* Offsets including the global offset of all particles on this MPI rank
        * Note that in the distributed case, the global offsets are 0 such that
        * we actually compute the offset in the file written by this rank. */
-      offset_part[j] = local_offset_part + global_offsets[swift_type_gas];
-      offset_gpart[j] =
+      offset_part[i] = local_offset_part + global_offsets[swift_type_gas];
+      offset_gpart[i] =
           local_offset_gpart + global_offsets[swift_type_dark_matter];
-      offset_background_gpart[j] =
+      offset_background_gpart[i] =
           local_offset_background_gpart +
           global_offsets[swift_type_dark_matter_background];
-      offset_spart[j] = local_offset_spart + global_offsets[swift_type_stars];
-      offset_bpart[j] =
+      offset_spart[i] = local_offset_spart + global_offsets[swift_type_stars];
+      offset_bpart[i] =
           local_offset_bpart + global_offsets[swift_type_black_hole];
-      offset_sink[j] = local_offset_sink + global_offsets[swift_type_sink];
-      offset_nupart[j] =
+      offset_sink[i] = local_offset_sink + global_offsets[swift_type_sink];
+      offset_nupart[i] =
           local_offset_nupart + global_offsets[swift_type_neutrino];
 
-      local_offset_part += count_part[j];
-      local_offset_gpart += count_gpart[j];
-      local_offset_background_gpart += count_background_gpart[j];
-      local_offset_spart += count_spart[j];
-      local_offset_bpart += count_bpart[j];
-      local_offset_sink += count_sink[j];
-      local_offset_nupart += count_nupart[j];
+      local_offset_part += count_part[i];
+      local_offset_gpart += count_gpart[i];
+      local_offset_background_gpart += count_background_gpart[i];
+      local_offset_spart += count_spart[i];
+      local_offset_bpart += count_bpart[i];
+      local_offset_sink += count_sink[i];
+      local_offset_nupart += count_nupart[i];
 
     } else {
 
       /* Just zero everything for the foregin cells */
 
-      centres[j * 3 + 0] = 0.;
-      centres[j * 3 + 1] = 0.;
-      centres[j * 3 + 2] = 0.;
+      centres[i * 3 + 0] = 0.;
+      centres[i * 3 + 1] = 0.;
+      centres[i * 3 + 2] = 0.;
 
-      count_part[j] = 0;
-      count_gpart[j] = 0;
-      count_background_gpart[j] = 0;
-      count_spart[j] = 0;
-      count_bpart[j] = 0;
-      count_sink[j] = 0;
-      count_nupart[j] = 0;
+      count_part[i] = 0;
+      count_gpart[i] = 0;
+      count_background_gpart[i] = 0;
+      count_spart[i] = 0;
+      count_bpart[i] = 0;
+      count_sink[i] = 0;
+      count_nupart[i] = 0;
 
-      offset_part[j] = 0;
-      offset_gpart[j] = 0;
-      offset_background_gpart[j] = 0;
-      offset_spart[j] = 0;
-      offset_bpart[j] = 0;
-      offset_sink[j] = 0;
-      offset_nupart[j] = 0;
+      offset_part[i] = 0;
+      offset_gpart[i] = 0;
+      offset_background_gpart[i] = 0;
+      offset_spart[i] = 0;
+      offset_bpart[i] = 0;
+      offset_sink[i] = 0;
+      offset_nupart[i] = 0;
     }
-    j++;
   }
 
 #ifdef WITH_MPI
   /* Now, reduce all the arrays. Note that we use a bit-wise OR here. This
      is safe as we made sure only local cells have non-zero values. */
-  MPI_Allreduce(MPI_IN_PLACE, count_part, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, count_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_gpart, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, count_gpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_background_gpart, nr_real,
+  MPI_Allreduce(MPI_IN_PLACE, count_background_gpart, nr_cells,
                 MPI_LONG_LONG_INT, MPI_BOR, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_sink, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, count_sink, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_spart, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, count_spart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_bpart, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, count_bpart, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, count_nupart, nr_real, MPI_LONG_LONG_INT,
+  MPI_Allreduce(MPI_IN_PLACE, count_nupart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
 
-  MPI_Allreduce(MPI_IN_PLACE, offset_part, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, offset_part, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_gpart, nr_real, MPI_LONG_LONG_INT,
+  MPI_Allreduce(MPI_IN_PLACE, offset_gpart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_background_gpart, nr_real,
+  MPI_Allreduce(MPI_IN_PLACE, offset_background_gpart, nr_cells,
                 MPI_LONG_LONG_INT, MPI_BOR, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_sink, nr_real, MPI_LONG_LONG_INT, MPI_BOR,
+  MPI_Allreduce(MPI_IN_PLACE, offset_sink, nr_cells, MPI_LONG_LONG_INT, MPI_BOR,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_real, MPI_LONG_LONG_INT,
+  MPI_Allreduce(MPI_IN_PLACE, offset_spart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_bpart, nr_real, MPI_LONG_LONG_INT,
+  MPI_Allreduce(MPI_IN_PLACE, offset_bpart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, offset_nupart, nr_real, MPI_LONG_LONG_INT,
+  MPI_Allreduce(MPI_IN_PLACE, offset_nupart, nr_cells, MPI_LONG_LONG_INT,
                 MPI_BOR, MPI_COMM_WORLD);
 
   /* For the centres we use a sum as MPI does not like bit-wise operations
      on floating point numbers */
-  MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, centres, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  MPI_Allreduce(MPI_IN_PLACE, min_part_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, min_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_gpart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, min_gpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_gpart_background_pos, 3 * nr_real,
+  MPI_Allreduce(MPI_IN_PLACE, min_gpart_background_pos, 3 * nr_cells,
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_spart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, min_spart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_bpart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, min_bpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_sink_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, min_sink_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, min_nupart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, min_nupart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 
-  MPI_Allreduce(MPI_IN_PLACE, max_part_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, max_part_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_gpart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, max_gpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_gpart_background_pos, 3 * nr_real,
+  MPI_Allreduce(MPI_IN_PLACE, max_gpart_background_pos, 3 * nr_cells,
                 MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_spart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, max_spart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_bpart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, max_bpart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_sink_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, max_sink_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
-  MPI_Allreduce(MPI_IN_PLACE, max_nupart_pos, 3 * nr_real, MPI_DOUBLE, MPI_SUM,
+  MPI_Allreduce(MPI_IN_PLACE, max_nupart_pos, 3 * nr_cells, MPI_DOUBLE, MPI_SUM,
                 MPI_COMM_WORLD);
 #endif
 
@@ -578,14 +564,14 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (factor != 1.) {
 
       /* Convert the cell centres */
-      for (int i = 0; i < nr_real; ++i) {
+      for (int i = 0; i < nr_cells; ++i) {
         centres[i * 3 + 0] *= factor;
         centres[i * 3 + 1] *= factor;
         centres[i * 3 + 2] *= factor;
       }
 
       /* Convert the particle envelopes */
-      for (int i = 0; i < nr_real; ++i) {
+      for (int i = 0; i < nr_cells; ++i) {
         for (int k = 0; k < 3; ++k) {
           min_part_pos[i * 3 + k] *= factor;
           max_part_pos[i * 3 + k] *= factor;
@@ -614,13 +600,13 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     hid_t h_subgrp =
         H5Gcreate(h_grp, "Meta-data", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (h_subgrp < 0) error("Error while creating meta-data sub-group");
-    io_write_attribute(h_subgrp, "nr_real", INT, &nr_real, 1);
+    io_write_attribute(h_subgrp, "nr_cells", INT, &nr_cells, 1);
     io_write_attribute(h_subgrp, "size", DOUBLE, cell_width, 3);
-    io_write_attribute(h_subgrp, "dimension", INT, real_cdim, 3);
+    io_write_attribute(h_subgrp, "dimension", INT, cdim, 3);
     H5Gclose(h_subgrp);
 
     /* Write the centres to the group */
-    io_write_array(h_grp, nr_real, /*dim=*/3, centres, DOUBLE, "Centres",
+    io_write_array(h_grp, nr_cells, /*dim=*/3, centres, DOUBLE, "Centres",
                    "Cell centres");
 
     /* Group containing the offsets and counts for each particle type */
@@ -639,97 +625,97 @@ void io_write_cell_offsets(hid_t h_grp, const int cdim[3], const double dim[3],
     if (h_grp_counts < 0) error("Error while creating counts sub-group");
 
     if (to_write[swift_type_gas] > 0 && num_fields[swift_type_gas] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType0",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType0",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1, offset_part, LONGLONG,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_part, LONGLONG,
                      "PartType0", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_part, LONGLONG,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_part, LONGLONG,
                      "PartType0", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3, min_part_pos, DOUBLE,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_part_pos, DOUBLE,
                      "PartType0", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3, max_part_pos, DOUBLE,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_part_pos, DOUBLE,
                      "PartType0", "max_pos");
     }
 
     if (to_write[swift_type_dark_matter] > 0 &&
         num_fields[swift_type_dark_matter] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType1",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType1",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1, offset_gpart, LONGLONG,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_gpart, LONGLONG,
                      "PartType1", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_gpart, LONGLONG,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_gpart, LONGLONG,
                      "PartType1", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3, min_gpart_pos, DOUBLE,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_gpart_pos, DOUBLE,
                      "PartType1", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3, max_gpart_pos, DOUBLE,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_gpart_pos, DOUBLE,
                      "PartType1", "max_pos");
     }
 
     if (to_write[swift_type_dark_matter_background] > 0 &&
         num_fields[swift_type_dark_matter_background] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType2",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType2",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1,
                      offset_background_gpart, LONGLONG, "PartType2", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_background_gpart,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_background_gpart,
                      LONGLONG, "PartType2", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3,
                      min_gpart_background_pos, DOUBLE, "PartType2", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3,
                      max_gpart_background_pos, DOUBLE, "PartType2", "max_pos");
     }
 
     if (to_write[swift_type_sink] > 0 && num_fields[swift_type_sink] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType3",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType3",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1, offset_sink, LONGLONG,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_sink, LONGLONG,
                      "PartType3", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_sink, LONGLONG,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_sink, LONGLONG,
                      "PartType3", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3, min_sink_pos, DOUBLE,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_sink_pos, DOUBLE,
                      "PartType3", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3, max_sink_pos, DOUBLE,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_sink_pos, DOUBLE,
                      "PartType3", "max_pos");
     }
 
     if (to_write[swift_type_stars] > 0 && num_fields[swift_type_stars] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType4",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType4",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1, offset_spart, LONGLONG,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_spart, LONGLONG,
                      "PartType4", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_spart, LONGLONG,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_spart, LONGLONG,
                      "PartType4", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3, min_spart_pos, DOUBLE,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_spart_pos, DOUBLE,
                      "PartType4", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3, max_spart_pos, DOUBLE,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_spart_pos, DOUBLE,
                      "PartType4", "max_pos");
     }
 
     if (to_write[swift_type_black_hole] > 0 &&
         num_fields[swift_type_black_hole] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType5",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType5",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1, offset_bpart, LONGLONG,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_bpart, LONGLONG,
                      "PartType5", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_bpart, LONGLONG,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_bpart, LONGLONG,
                      "PartType5", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3, min_bpart_pos, DOUBLE,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_bpart_pos, DOUBLE,
                      "PartType5", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3, max_bpart_pos, DOUBLE,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_bpart_pos, DOUBLE,
                      "PartType5", "max_pos");
     }
 
     if (to_write[swift_type_neutrino] > 0 &&
         num_fields[swift_type_neutrino] > 0) {
-      io_write_array(h_grp_files, nr_real, /*dim=*/1, files, INT, "PartType6",
+      io_write_array(h_grp_files, nr_cells, /*dim=*/1, files, INT, "PartType6",
                      "files");
-      io_write_array(h_grp_offsets, nr_real, /*dim=*/1, offset_nupart,
+      io_write_array(h_grp_offsets, nr_cells, /*dim=*/1, offset_nupart,
                      LONGLONG, "PartType6", "offsets");
-      io_write_array(h_grp_counts, nr_real, /*dim=*/1, count_nupart, LONGLONG,
+      io_write_array(h_grp_counts, nr_cells, /*dim=*/1, count_nupart, LONGLONG,
                      "PartType6", "counts");
-      io_write_array(h_grp_min_pos, nr_real, /*dim=*/3, min_nupart_pos, DOUBLE,
+      io_write_array(h_grp_min_pos, nr_cells, /*dim=*/3, min_nupart_pos, DOUBLE,
                      "PartType6", "min_pos");
-      io_write_array(h_grp_max_pos, nr_real, /*dim=*/3, max_nupart_pos, DOUBLE,
+      io_write_array(h_grp_max_pos, nr_cells, /*dim=*/3, max_nupart_pos, DOUBLE,
                      "PartType6", "max_pos");
     }
 
