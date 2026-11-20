@@ -3802,9 +3802,10 @@ division are \code{radiation\_packet\_end\_force}
 (\code{radiation\_packet.c:4249-4278}), called at \code{radiation\_isrf.c:314}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
 (\code{radiation\_packet.c:4290-4310}, called at \code{radiation\_isrf.c:315}).
-The kernel mean of the dissociating energy is capped at the kernel mean of the LW
-energy (:4187-4192), so that a float LW sum flushed to 0 never lies below the
-double dissociating sum.
+The kernel mean of the dissociating energy is capped at $f_{\rm max}$ times the
+kernel mean of the LW energy (\code{radiation\_packet.c:4302-4309}; $f_{\rm max}=1$
+without the population factor), so that a float LW sum flushed to 0 never lies
+below the double dissociating sum.
 
 \paragraph{The frame of the light (Sec.~\ref{sec:packet-frame}).} The merged
 origin is set in \code{radiation\_packet\_set\_origin}
