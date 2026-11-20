@@ -12,17 +12,38 @@ formation channels of the leg: on dust, h2dust(T, T_dust) d2g n_HI n_H
 (rates.c h2dust_rate, element_blocks.h HI_to_H2I); through H-,
 k8 n_H- n_HI with n_H- solved from the leg's own electrons (k7, k8, k14, k15,
 k16, k17, k19); through H2+, k10 n_H2+ n_HI; three-body, k22 n_HI^3. T_dust is
-the root of the library grain balance (dust.c gr_balance) of the leg. At
-metallicity 1e-6 about 90 per cent of the H2 forms through H-; at 0.08 solar
-it forms on dust. The two solves are independent of SWIFT code but use its
-rate coefficients, so a PASS proves that the measured change of the H2 by the
-line-absorption switch equals the change that the line transmission written
-by the on leg predicts, given the library's formation rates. It does not test
-the formation channels or the shielding fit of the library, and it cannot
-see errors in T_line or in the column smaller than the local slope s allows
-(a column error of 5 per cent shifts x by about s/(1-s) 0.05). Earlier
-versions of this check used dust formation only at a fixed 10 K dust
-temperature and an equal-gas assumption; both were wrong for low metallicity.
+the root of the library grain balance (dust.c gr_balance) of the leg. At low
+metallicity H2 forms mostly through H-, at high metallicity on dust. The
+solve calls no SWIFT or library code, but it uses the library rate
+coefficients and shielding fit.
+
+What a PASS proves: in each decided bin, the median change of x between the
+switch-on and switch-off runs, particle by particle, equals the change
+predicted by photodissociation equilibrium from the T_line written by the on
+leg, the library shielding fit at the off-leg Jeans column, and the ratio of the
+two legs' own library formation rates and rho u_LW, within the bar. What it
+does not prove: that T_line, the library formation rates, the shielding fit or
+the LW energy are right. It cannot see a fault that lowers u_LW together with
+the dissociation rate (the two cancel in the ratio), an error in the absolute
+size or sign of a formation channel (only F_off / F_on enters), or an error in
+T_line or in the column smaller than the bar, which is set by the run-to-run
+noise and by the local slope s of the shielding fit.
+
+Statistic and bar of a density bin. The discrepancy is the median over the bin
+of the per-particle residual, the measured minus the derived ln(x_on / x_off).
+The legs share their particles, so the error of this median is the bootstrap
+standard error of the residual itself (se, particles resampled together). The
+bar is 2 se + noise + lag. The noise is |median ln(x_on / x_repeat)| plus twice
+its bootstrap standard error, from --repeat, a second run of the on leg. The lag
+is the one-step lead of the library temperature: the cooling step integrates
+from the state at the start of the step, so the temperature that sets x can
+differ from the snapshot temperature by up to the change of one step (library
+cooling.c: the energy starts at u + dt du/dt). The gate takes the change of
+temperature per step of each particle in each leg from the previous snapshot
+(change divided by the number of steps in timesteps.txt, an average) and uses
+the median shift of the derived value when both legs use T minus that change.
+Without the previous snapshots or timesteps.txt the lag is unknown and the bin
+is INDETERMINATE.
 
 The reference legs MUST use the accurate (BDF) solver, GeajayCooling:solver 1.
 The cheap solver holds the library self-shielding factor f_loc of the
@@ -35,25 +56,21 @@ therefore reported INDETERMINATE with this reason, never FAIL against the bar.
 The solver is read from the Parameters group of every snapshot, printed, and
 the gate refuses to decide if the legs differ.
 
-The noise floor is measured with --repeat, a second run of the on leg: per
-density bin it is |median ln(n_H2,on / n_H2,repeat)| plus twice the bootstrap
-standard error of that median, on the particles kept for the comparison. A bin
-is decided (PASS or FAIL) only where its bar exceeds that noise; otherwise it
-is INCONCLUSIVE. The bar is never widened.
-
 The root search of each particle stops at n_H2 = n_H / 2. A particle is masked
-only if it has no light, no root, more than one root in that range, or is not in
-photodissociation equilibrium; the counts are printed by reason. Any non-finite
-input is counted and fails the snapshot.
+only if it has no light, has no formation (F = 0 in a leg), has no root, has
+more than one root in that range, or is not in photodissociation equilibrium;
+the counts are printed by reason. Any non-finite input of any particle, and any
+negative or non-finite formation rate, is counted and fails the snapshot.
 
-A bin is decided only with at least N_MIN particles, a bar of at most MAX_BAR
-and a bar above its noise. Otherwise it is INDETERMINATE and decides nothing.
+A bin is decided only with at least N_MIN particles and a bar of at most
+MAX_BAR. Otherwise it is INDETERMINATE and decides nothing.
 
 Exit status per snapshot: 0 every decided bin agrees and at least one bin is
-decided, 1 failure (non-finite value, or a decided bin beyond its bar),
-2 inconclusive or indeterminate (noise floor unknown, or no decided bin),
-3 nothing left after the masks. The run exits 1 on any 1, 0 only if every
-snapshot is 0, else 2.
+decided, 1 failure (non-finite value, bad formation rate, or a decided bin
+beyond its bar), 2 inconclusive or indeterminate (noise floor unknown, lag
+unknown, cheap solver, or no decided bin), 3 nothing left after the masks. The
+run exits 1 on any 1 or when every snapshot is 3, 0 only if every snapshot is 0,
+else 2.
 """
 
 from __future__ import annotations
@@ -95,7 +112,8 @@ SPECIES_A = {
     "HDI": 3.0,
 }
 # Constants of the geajay build (rates.c, dust.c, dust_coupling.h, radiation.h).
-FGR = 0.009387  # GEAJAY_FGR and local_dust_to_gas_ratio default
+FGR = 0.009387  # GEAJAY_FGR, rates.c
+LOCAL_D2G = 0.009387  # local_dust_to_gas_ratio default (the run log prints 0.00939)
 Z_SOLAR = 0.01295  # SolarMetalFractionByMass default
 HABING_FLUX = 1.6e-3  # RADIATION_HABING_FLUX_CGS [erg s^-1 cm^-2]
 SIGMA_SB = 5.670374419e-5
@@ -150,11 +168,17 @@ def dust_temperature(temp: Arr, n_h_lib: Arr, g0: Arr) -> Arr:
 
     Gamma_ISRF + 4 sigma kappa (T_rad^4 - T_d^4) + gasgr n_H (T - T_d) = 0, with
     Gamma_ISRF = G0 3.9e-24 / (m_H f_gr) [erg g^-1 s^-1] and the gas-grain
-    coupling gasgr = f_gr_local 1.2e-31 1000^-0.5 / f_gr sqrt(T) (1 - 0.8 exp(-75/T)) / m_H
-    [erg cm^3 g^-1 s^-1 K^-1]. Bisection between T_rad and T.
+    coupling gasgr = d2g_local gasGrain_rate(T) / m_H [erg cm^3 g^-1 s^-1 K^-1]
+    with gasGrain_rate = 1.2e-31 1000^-0.5 / f_gr sqrt(T) (1 - 0.8 exp(-75/T))
+    (dust_coupling.h:186-187, rates.c:1466-1470). Bisection between T_rad and T.
     """
     gasgr = (
-        1.2e-31 * 1e3**-0.5 / FGR * np.sqrt(temp) * (1.0 - 0.8 * np.exp(-75.0 / temp))
+        LOCAL_D2G
+        * 1.2e-31
+        * 1e3**-0.5
+        / FGR
+        * np.sqrt(temp)
+        * (1.0 - 0.8 * np.exp(-75.0 / temp))
     ) / MH
     gamma = g0 * 3.9e-24 / MH / FGR
     lo = np.full_like(temp, T_CMB)
@@ -227,16 +251,19 @@ def k15_rate(t: Arr) -> Arr:
     )
 
 
-def formation_rate(leg: dict[str, Arr], st: dict[str, Arr], t_fac: float) -> Arr:
+HM_SIGN = 1.0  # harness only: --plant-hm-sign sets -1
+
+
+def formation_rate(leg: dict[str, Arr], st: dict[str, Arr], temp: Arr) -> Arr:
     """Return the H2 formation rate per H atom F [s^-1] of one leg.
 
     The sum of the formation channels of the library from the leg's own species,
-    density and temperature (temperature times t_fac). Per volume,
+    density and the temperature temp. Per volume,
     dn_H2/dt = h2dust d2g n_HI n_H + k8 n_H- n_HI + k10 n_H2+ n_HI + k22 n_HI^3,
     with n_H the hydrogen of geajay_rhoH (HI, HII, H2, H2+) and n_H- at its
     steady state from the leg's electrons. F is that rate over n_H = X_H rho / m_H.
     """
-    rho, temp = leg["rho"], st["temp"] * t_fac
+    rho = leg["rho"]
     n_hi = leg["HI"] * rho / MH
     n_hii = leg["HII"] * rho / MH
     n_h2p = leg["H2II"] * rho / (2.0 * MH)
@@ -260,7 +287,7 @@ def formation_rate(leg: dict[str, Arr], st: dict[str, Arr], t_fac: float) -> Arr
         / HABING_FLUX
     )
     t_dust = dust_temperature(temp, n_h_lib, g0)
-    d2g = FGR * leg["z_smooth"] / Z_SOLAR
+    d2g = LOCAL_D2G * leg["z_smooth"] / Z_SOLAR
     dust = h2dust_rate(temp, t_dust) * d2g * n_hi * n_h_lib
     k16 = 2.4e-6 * (1.0 + temp / 2e4) / np.sqrt(temp)
     k17 = np.where(
@@ -288,7 +315,10 @@ def formation_rate(leg: dict[str, Arr], st: dict[str, Arr], t_fac: float) -> Arr
         1.3e-32 * (temp / 300.0) ** -1.0,
     )
     volume_rate = (
-        dust + k8_rate(temp) * n_hm * n_hi + 6.0e-10 * n_h2p * n_hi + k22 * n_hi**3
+        dust
+        + HM_SIGN * k8_rate(temp) * n_hm * n_hi
+        + 6.0e-10 * n_h2p * n_hi
+        + k22 * n_hi**3
     )
     return volume_rate / st["n_h"]
 
@@ -357,6 +387,7 @@ def read_leg(path: Path, line_fields: bool) -> dict[str, Arr]:
         births = f["PartType4/BirthTimes"][:] * ut if "PartType4" in f else np.array([])
         out["since_star"] = np.array([t0 - births.min() if births.size else np.nan])
         out["time"] = np.array([t0])
+        out["time_raw"] = np.array([float(f["Header"].attrs["Time"][0])])
         raw = f["Parameters"].attrs.get("GeajayCooling:solver", None)
         out["solver"] = np.array([float(raw) if raw is not None else np.nan])
     return out
@@ -400,17 +431,33 @@ def boot_se(v: Arr, rng: np.random.Generator, n: int = 400) -> float:
     return float(np.std(m))
 
 
+def finite_counts(legs: dict[str, dict[str, Arr] | None], n: int) -> dict[str, int]:
+    """Return the non-finite count of every per-particle field of every leg."""
+    out: dict[str, int] = {}
+    for name, leg in legs.items():
+        if leg is None:
+            continue
+        for k, v in leg.items():
+            if v.size == n and np.issubdtype(v.dtype, np.floating):
+                bad = int((~np.isfinite(v)).sum())
+                if bad:
+                    out[f"{name}.{k}"] = bad
+    return out
+
+
 def evaluate(
     on: dict[str, Arr],
     off: dict[str, Arr],
     rep: dict[str, Arr] | None,
     synthetic: bool,
     x_on_scale: float,
-    nan_plant: bool,
     t_line_power: float,
     column_scale: float = 1.0,
+    lead_on: Arr | None = None,
+    lead_off: Arr | None = None,
+    noise_floor: float | None = None,
 ) -> dict:
-    """Return the per-bin measured and derived medians and the mask counts.
+    """Return the per-bin discrepancy, bar terms and the mask counts.
 
     Parameters
     ----------
@@ -420,26 +467,23 @@ def evaluate(
         Harness check: take the off-leg H2 from the solver.
     x_on_scale
         Planted scale of the on-leg H2 in the measured ratio only.
-    nan_plant
-        Plant NaN in the on-leg H2.
     t_line_power
         Planted power of the written T_line in the solve only (1 for none).
     column_scale
         Planted scale of the Jeans column in the solve only (1 for none).
+    lead_on, lead_off
+        Change of temperature per step [K] of every particle in each leg, or None.
+    noise_floor
+        Harness only: global noise in ln units used instead of the repeat run.
     """
     son, soff = state(on), state(off)
     y_on = son["n_h2"]
-    if nan_plant:
-        y_on = y_on.copy()
-        y_on[:5] = np.nan
     x_on = y_on / son["n_h"]
     t_line = on["t_line"] ** t_line_power
     res: dict = {"n_all": y_on.size}
-    fields = [y_on, t_line, on["u_lw"], off["u_lw"], son["temp"], son["n_tot"]]
-    fields += [soff["n_h2"], soff["temp"], soff["n_tot"]]
-    if rep is not None:
-        fields.append(state(rep)["n_h2"])
-    res["n_nonfinite"] = int(sum((~np.isfinite(f)).sum() for f in fields))
+    bad = finite_counts({"on": on, "off": off, "repeat": rep}, y_on.size)
+    res["nonfinite_fields"] = bad
+    res["n_nonfinite"] = int(sum(bad.values()))
     res["finite"] = res["n_nonfinite"] == 0
     if not res["finite"]:
         return res
@@ -457,12 +501,24 @@ def evaluate(
     def sub_state(st: dict[str, Arr], mask: NDArray[np.bool_]) -> dict[str, Arr]:
         return {k: v[mask] for k, v in st.items()}
 
-    def derive(mask: NDArray[np.bool_], t_fac: float) -> tuple[Arr, NDArray[np.int64]]:
+    f_on = np.full(y_on.shape, np.nan)
+    f_off = np.full(y_on.shape, np.nan)
+    f_on[lit] = formation_rate(sub(on, lit), sub_state(son, lit), son["temp"][lit])
+    f_off[lit] = formation_rate(sub(off, lit), sub_state(soff, lit), soff["temp"][lit])
+    bad_f = lit & ~(
+        (np.isfinite(f_on) & (f_on >= 0.0)) & (np.isfinite(f_off) & (f_off >= 0.0))
+    )
+    res["n_bad_formation"] = int(bad_f.sum())
+    res["n_no_formation"] = int((lit & ~bad_f & ((f_on == 0.0) | (f_off == 0.0))).sum())
+    lit = lit & ~bad_f & (f_on > 0.0) & (f_off > 0.0)
+
+    def derive(
+        mask: NDArray[np.bool_], t_on: Arr, t_off: Arr
+    ) -> tuple[Arr, NDArray[np.int64]]:
         """Solve x_off S(x_off n_H,off L_off) = x_on T_line F_off/F_on k_on/k_off."""
-        t_on, t_off = son["temp"][mask] * t_fac, soff["temp"][mask] * t_fac
         length = jeans_length(t_off, off["rho"][mask], soff["mu"][mask]) * column_scale
-        f_ratio = formation_rate(sub(off, mask), sub_state(soff, mask), t_fac) / (
-            formation_rate(sub(on, mask), sub_state(son, mask), t_fac)
+        f_ratio = formation_rate(sub(off, mask), sub_state(soff, mask), t_off) / (
+            formation_rate(sub(on, mask), sub_state(son, mask), t_on)
         )
         k_ratio = k_on[mask] / k_off[mask]
         y_eff = x_on[mask] * f_ratio * k_ratio * soff["n_h"][mask]
@@ -477,7 +533,7 @@ def evaluate(
 
     y_pred = np.full(y_on.shape, np.nan)
     count = np.zeros(y_on.shape, dtype=np.int64)
-    y_pred[lit], count[lit] = derive(lit, 1.0)
+    y_pred[lit], count[lit] = derive(lit, son["temp"][lit], soff["temp"][lit])
     unique = lit & (count == 1)
     res["n_multi"] = int((lit & (count >= 2)).sum())
     res["n_noroot"] = int((lit & (count == 0)).sum())
@@ -485,11 +541,11 @@ def evaluate(
     col_pred = np.where(unique, y_pred * length_off, 1.0)
     s_root = slope(col_pred, soff["temp"], soff["n_tot"])
     res["n_slope_ge1_kept"] = int((unique & (s_root >= 1.0)).sum())
-    f_off = wg_factor(col_pred, soff["temp"], soff["n_tot"])
+    f_loc = wg_factor(col_pred, soff["temp"], soff["n_tot"])
     window = on["since_star"][0]
     with np.errstate(divide="ignore", invalid="ignore"):
         t_rel_on = 1.0 / (k_on * t_line)
-        t_rel_off = 1.0 / (k_off * f_off)
+        t_rel_off = 1.0 / (k_off * f_loc)
     eq = unique & (t_rel_on <= window) & (t_rel_off <= window)
     res["n_unique"] = int(unique.sum())
     res["n_not_equilibrated"] = int((unique & ~eq).sum())
@@ -517,14 +573,19 @@ def evaluate(
     meas = np.log(x_on_scale * x_on / x_meas_off)
     rep_ln = np.log(x_on / x_rep)
     pred = np.log(x_on / x_pred)
-    # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu) of both legs.
-    sens = {}
-    res["n_sens_dropped"] = 0
-    for key, t_fac in (("hot", 1.1), ("cold", 1 / 1.1)):
+    resid = meas - pred
+    # One-step lead of the library temperature: both legs at T minus the change of one step.
+    res["lag_known"] = lead_on is not None and lead_off is not None
+    lag_shift = np.full(y_on.shape, np.nan)
+    res["n_lag_dropped"] = 0
+    if res["lag_known"]:
+        t_on_lib = np.maximum(son["temp"] - lead_on, 0.5 * son["temp"])
+        t_off_lib = np.maximum(soff["temp"] - lead_off, 0.5 * soff["temp"])
+        ok_t = keep & np.isfinite(t_on_lib) & np.isfinite(t_off_lib)
         yp = np.full(y_on.shape, np.nan)
-        yp[keep], _ = derive(keep, t_fac)
-        sens[key] = np.log(x_on / (yp / soff["n_h"]))[keep]
-        res["n_sens_dropped"] += int((~np.isfinite(sens[key])).sum())
+        yp[ok_t], _ = derive(ok_t, t_on_lib[ok_t], t_off_lib[ok_t])
+        lag_shift = np.log(x_on / (yp / soff["n_h"])) - pred
+        res["n_lag_dropped"] = int((keep & ~np.isfinite(lag_shift)).sum())
     rng = np.random.default_rng(1)
     bins = {}
     for b, (lo, hi) in BINS.items():
@@ -532,31 +593,25 @@ def evaluate(
         if m.sum() == 0:
             bins[b] = {"n": 0}
             continue
-        idx_in_keep = np.nonzero(m[keep])[0]
-
-        def half_range(a: str, b: str) -> float:
-            ok = np.isfinite(sens[a][idx_in_keep]) & np.isfinite(sens[b][idx_in_keep])
-            if not ok.any():
-                return float("nan")
-            return 0.5 * abs(
-                np.median(sens[a][idx_in_keep][ok])
-                - np.median(sens[b][idx_in_keep][ok])
-            )
-
-        sys_t = half_range("hot", "cold")
-        se = np.hypot(boot_se(meas[m], rng), boot_se(pred[m], rng))
+        se = boot_se(resid[m], rng)
         noise = float("nan")
         if rep is not None:
             r = rep_ln[m]
             noise = float(abs(np.median(r)) + 2.0 * boot_se(r, rng))
+        elif noise_floor is not None:
+            noise = noise_floor
+        lag = float("nan")
+        if res["lag_known"] and np.isfinite(lag_shift[m]).any():
+            lag = float(abs(np.median(lag_shift[m][np.isfinite(lag_shift[m])])))
         bins[b] = {
             "noise": noise,
             "n": int(m.sum()),
             "meas": float(np.median(meas[m])),
             "pred": float(np.median(pred[m])),
+            "disc": float(np.median(resid[m])),
             "se": float(se),
-            "sys_T": float(sys_t),
-            "bar": float(2.0 * se + sys_t),
+            "lag": lag,
+            "bar": float(2.0 * se + noise + lag),
         }
     res["bins"] = bins
     return res
@@ -568,19 +623,25 @@ def verdict(
     """Return the exit code and the reason.
 
     noise is a global harness-only floor in ln units; with a repeat run each
-    bin carries its own measured noise. A bin is decided only with at least
-    N_MIN particles, a bar of at most MAX_BAR and a bar above its noise.
+    bin carries its own measured noise, which is part of its bar. A bin is
+    decided only with at least N_MIN particles and a bar of at most MAX_BAR.
     With accurate False (cheap-solver legs) no bin is decided: the cheap solver
     lags its equilibrium while the H2 falls, which the bar does not hold.
     """
     if not res["finite"]:
-        return 1, f"FAIL: {res['n_nonfinite']} non-finite values in the inputs"
+        fields = ", ".join(f"{k} {v}" for k, v in res["nonfinite_fields"].items())
+        return (
+            1,
+            f"FAIL: {res['n_nonfinite']} non-finite values in the inputs ({fields})",
+        )
+    if res["n_bad_formation"]:
+        return (
+            1,
+            f"FAIL: {res['n_bad_formation']} particles with a negative or non-finite formation rate",
+        )
     good = {b: v for b, v in res["bins"].items() if "meas" in v}
     if res["n_kept"] == 0 or not good:
         return 3, "NOT EVALUATED: no particle or no bin left after the masks"
-    for b, v in good.items():
-        if not np.isfinite([v["meas"], v["pred"], v["bar"]]).all():
-            return 1, f"FAIL: non-finite result in {b}"
     if not accurate:
         return (
             2,
@@ -590,20 +651,21 @@ def verdict(
         )
     if noise is None and not repeat:
         return 2, "INCONCLUSIVE: noise floor between two runs is UNKNOWN"
-    floor = {b: (v["noise"] if repeat else noise) for b, v in good.items()}
-    if not all(np.isfinite(list(floor.values()))):
-        return 1, "FAIL: non-finite noise floor"
-    decided = {
-        b: v
-        for b, v in good.items()
-        if v["n"] >= N_MIN and v["bar"] <= MAX_BAR and v["bar"] > floor[b]
-    }
+    if not res["lag_known"]:
+        return (
+            2,
+            "INDETERMINATE: the one-step temperature lag is unknown (no previous snapshot or timesteps.txt)",
+        )
+    for b, v in good.items():
+        if not np.isfinite([v["disc"], v["bar"]]).all():
+            return 1, f"FAIL: non-finite result in {b}"
+    decided = {b: v for b, v in good.items() if v["n"] >= N_MIN and v["bar"] <= MAX_BAR}
     if not decided:
         return (
             2,
-            "INDETERMINATE: no bin with enough particles, a bar below the maximum and above the noise",
+            "INDETERMINATE: no bin with enough particles and a bar below the maximum",
         )
-    worst = max(abs(v["meas"] - v["pred"]) / v["bar"] for v in decided.values())
+    worst = max(abs(v["disc"]) / v["bar"] for v in decided.values())
     skipped = len(good) - len(decided)
     if worst > 1.0:
         return 1, f"FAIL: discrepancy {worst:.2f} times the bar in a decided bin"
@@ -674,6 +736,30 @@ def plot(rows: list[tuple[int, dict]], path: Path) -> None:
     fig.savefig(path, dpi=110, pil_kwargs={"quality": 70})
 
 
+def temperature_lead(snap_dir: Path, s: int, cur: dict[str, Arr]) -> Arr | None:
+    """Return the change of T per step [K] of each particle of cur, or None.
+
+    The change is that between snapshot s - 1 and s of the same leg divided by the
+    number of steps of timesteps.txt (next to the snapshot directory) in between:
+    an average over the interval.
+    """
+    prev_path = snap_dir / f"snapshot_{s - 1:04d}.hdf5"
+    steps = snap_dir.parent / "timesteps.txt"
+    if not prev_path.exists() or not steps.exists():
+        return None
+    prev = read_leg(prev_path, False)
+    t_now, t_prev = cur["time_raw"][0], prev["time_raw"][0]
+    times = np.loadtxt(steps, comments="#", usecols=(1,), ndmin=1)
+    n_steps = int(((times > t_prev * (1 + 1e-9)) & (times <= t_now * (1 + 1e-9))).sum())
+    if n_steps < 1:
+        return None
+    pos = np.searchsorted(prev["id"], cur["id"])
+    pos = np.clip(pos, 0, prev["id"].size - 1)
+    found = prev["id"][pos] == cur["id"]
+    temp_prev = np.where(found, state(prev)["temp"][pos], np.nan)
+    return (state(cur)["temp"] - temp_prev) / n_steps
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -720,10 +806,21 @@ def main() -> int:
         help="planted scale of the Jeans column in the solve only (harness)",
     )
     ap.add_argument(
-        "--plant-nan", action="store_true", help="plant NaN in the on-leg H2"
+        "--plant-nan-field",
+        default=None,
+        metavar="LEG:FIELD",
+        help="harness: plant NaN in 5 particles of a field, e.g. on:H2I, off:z_smooth, off:u_pe",
+    )
+    ap.add_argument(
+        "--plant-hm-sign",
+        action="store_true",
+        help="harness: flip the sign of the H- channel in the formation rate",
     )
     ap.add_argument("--plot", type=Path, default=None)
     a = ap.parse_args()
+    global HM_SIGN
+    if a.plant_hm_sign:
+        HM_SIGN = -1.0
     rows = []
     codes = []
     for s in range(a.first, a.last + 1):
@@ -762,15 +859,24 @@ def main() -> int:
             common = np.intersect1d(common, rep["id"])
         on, off = (pair(d, common) for d in (on, off))
         rep = pair(rep, common) if rep is not None else None
+        lead_on = temperature_lead(a.on, s, on)
+        lead_off = temperature_lead(a.off, s, off)
+        if a.plant_nan_field is not None:
+            leg_name, field = a.plant_nan_field.split(":")
+            target = {"on": on, "off": off, "repeat": rep}[leg_name]
+            target[field] = target[field].copy()
+            target[field][:5] = np.nan
         r = evaluate(
             on,
             off,
             rep,
             a.synthetic,
             a.x_on_scale,
-            a.plant_nan,
             a.t_line_power,
             a.column_scale,
+            lead_on,
+            lead_off,
+            a.noise,
         )
         code, why = verdict(r, a.noise, rep is not None, accurate)
         codes.append(code)
@@ -778,14 +884,15 @@ def main() -> int:
         print(f"snapshot {s}: exit {code} {why}")
         if not r["finite"]:
             print(
-                f"  non-finite values: {r['n_nonfinite']} of {r['n_all']} particles' inputs"
+                f"  non-finite values: {r['n_nonfinite']} in fields {r['nonfinite_fields']}"
             )
         if r["finite"]:
             print(
-                f"  of {r['n_all']}: no light {r['n_unlit']}, no root {r['n_noroot']}, "
+                f"  of {r['n_all']}: no light {r['n_unlit']}, no formation {r['n_no_formation']}, "
+                f"bad formation rate {r['n_bad_formation']}, no root {r['n_noroot']}, "
                 f"more than one root up to n_H/2 {r['n_multi']}, not equilibrated {r['n_not_equilibrated']}, "
                 f"zero H2 {r['n_zero_h2']}, kept {r['n_kept']} "
-                f"(T-variation dropped {r['n_sens_dropped']}), "
+                f"(lag dropped {r['n_lag_dropped']}), "
                 f"kept with s>=1 {r['n_slope_ge1_kept']}, median |dln n| {r['dlnn']:.3g}, median |dln T| {r['dlnT']:.3g}"
             )
             for b, v in r["bins"].items():
@@ -794,21 +901,13 @@ def main() -> int:
                         "informational (cheap solver)"
                         if not accurate
                         else "decided"
-                        if (
-                            v["n"] >= N_MIN
-                            and v["bar"] <= MAX_BAR
-                            and v["bar"]
-                            > (
-                                v["noise"]
-                                if rep is not None
-                                else (a.noise or float("inf"))
-                            )
-                        )
+                        if (v["n"] >= N_MIN and v["bar"] <= MAX_BAR)
                         else "INDETERMINATE"
                     )
                     print(
                         f"  {b} {tag}: n {v['n']}, measured {v['meas']:+.3f}, derived {v['pred']:+.3f}, "
-                        f"discrepancy/bar {abs(v['meas'] - v['pred']) / v['bar']:.2f}, bar {v['bar']:.2g} (se {v['se']:.3f}, T-model {v['sys_T']:.3f}), noise {v['noise']:.2g}"
+                        f"median residual {v['disc']:+.2e}, discrepancy/bar {abs(v['disc']) / v['bar']:.2f}, "
+                        f"bar {v['bar']:.3g} = 2 se {2 * v['se']:.3g} + noise {v['noise']:.3g} + lag {v['lag']:.3g}"
                     )
                 else:
                     print(f"  {b}: no particle")

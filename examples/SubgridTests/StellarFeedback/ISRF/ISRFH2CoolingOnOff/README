@@ -46,22 +46,35 @@ python3 check_h2_cooling_onoff.py --on on/snap --off off/snap --repeat repeat/sn
 The check reads snapshots 3 to 6 by default (`--first`, `--last`).
 
 # Checking
-`check_h2_cooling_onoff.py` needs the three snapshot directories.
+`check_h2_cooling_onoff.py` needs the three snapshot directories, the snapshot before the
+first one checked, and the `timesteps.txt` next to each snapshot directory (`run.sh` copies it).
 
 - Each particle's root search stops at `n_H2 = n_H / 2`. A particle is left out only if it
-  has no light, no root, more than one root in that range, or is not in photodissociation
-  equilibrium. The counts are printed by reason.
-- The bar of a density bin is twice the bootstrap standard error of the difference of the
-  two medians, plus half the change of the derived median under a 10 per cent change of the
-  temperature.
-- The noise of a bin is the absolute median of `ln(n_H2,on / n_H2,repeat)` plus twice its
-  bootstrap standard error.
-- A bin is decided only with at least 30 particles, a bar of at most ln 2, and a bar above its
-  noise. A decided bin passes if the measured and derived medians differ by less than the bar.
-  Any other bin is printed as INDETERMINATE.
-- A non-finite input is counted and fails the snapshot.
+  has no light, no formation (zero rate in a leg), no root, more than one root in that range,
+  or is not in photodissociation equilibrium. The counts are printed by reason.
+- The discrepancy of a density bin is the median over the bin of the per-particle residual,
+  the measured minus the derived `ln(x_on / x_off)`. The bar is twice its bootstrap standard
+  error (particles resampled together, the legs share them), plus the noise, plus the lag.
+- The noise of a bin is the absolute median of `ln(x_on / x_repeat)` plus twice its bootstrap
+  standard error.
+- The lag is the median shift of the derived value when both legs use the temperature of the
+  start of the last step (the cooling step starts from the state before the step), from the
+  change of temperature between the two snapshots divided by the number of steps.
+- A bin is decided only with at least 30 particles and a bar of at most ln 2. A decided bin
+  passes if the discrepancy is below the bar. Any other bin is printed as INDETERMINATE.
+- A non-finite input of any particle, or a negative or non-finite formation rate, is counted
+  and fails the snapshot.
 
-Exit status: 0 every snapshot passes, 1 a failure, 2 at least one snapshot has no decided bin.
-`--x-on-scale`, `--t-line-power`, `--column-scale`, `--plant-nan` and `--synthetic` plant a known error or
-replace the off leg by the solver, to confirm that the check fails when it should.
-`check_official_grackle_refusal.sh` checks that official Grackle refuses the switch.
+A PASS means that the change of the H2 abundance between the two runs equals the change
+that the written line transmission predicts, with the library formation rates, within the
+bar. It does not test the transmission itself, the formation rates or the shielding fit of the
+library. It cannot see an error in the line transmission or in the column smaller than the
+bar, a switch fault that lowers the LW energy together with the dissociation rate, or an
+error in the absolute size or sign of a formation channel.
+
+Exit status: 0 every snapshot passes, 1 a failure (or every snapshot is not evaluated),
+2 otherwise (at least one snapshot is inconclusive or has no decided bin).
+`--x-on-scale`, `--t-line-power`, `--column-scale`, `--plant-nan-field`, `--plant-hm-sign` and
+`--synthetic` plant a known error or replace the off leg by the solver, to confirm that the
+check fails when it should. `check_official_grackle_refusal.sh` checks that official Grackle
+refuses the switch.
