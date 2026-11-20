@@ -632,14 +632,11 @@ radiation_packet_add_saturated(const float sum, const double x) {
  * is split in double: a float product near 1e-38 flushes to zero under
  * -ffast-math and would leave an energy without its photon number.
  *
- * The arrival time is fixed at the booking. For a receiver that moves away
- * from the sender at the speed `u` at that time, the delay is the separation
- * over `v - u` (#radiation_packet_arrival_delay_receding), at most
- * #RADIATION_PACKET_RECEDING_MAX_FACTOR times the separation over `v`. The
- * limit holds in the frame of the gas: a sender that moves towards the receiver
- * between its merge and its booking, or a receiver that speeds up after it, can
- * make the front move at up to `v + u` in the frame of the box. That is
- * harmless for `v` near `c`; for a limit of a few km/s in moving gas it is not.
+ * The arrival time is fixed at the booking, from the delay of
+ * #radiation_packet_arrival_delay_receding. Its limit holds in the frame of the
+ * gas, not of the box: see theory/GEAR/Radiation/04_isrf_packet_transport.tex
+ * (the paragraph on the arrival time, and the speed of the light and the time
+ * step).
  *
  * @param receiver The receiver.
  * @param constants The #radiation_packet_constants.

@@ -2416,15 +2416,16 @@ static void radiation_packet_add_to_bin(
  * the photon cutoff) keeps the interval of its own light: the carried light
  * arrived before it, so it leaves no earlier than it has arrived.
  *
- * Once the particle has a known step, the cell keeps the shape of its light
- * over #RADIATION_PACKET_FAR_SUBSTEPS sub-steps
- * (#radiation_packet_far_shape_add), and each part leaves at the end of its
- * sub-step. Light beyond the end of the last cell turns the cell into one
- * pulse at its latest arrival time (#radiation_packet_join_below_end), unless
- * it is faint (@p is_faint): then it counts in the last sub-step, which holds
- * back the shape of the cell, and so the light of other bands, by its share of
- * the light of its band. A faint band with no other light in the cell sets
- * the shared shape to zero, and the cell leaves whole at its end.
+ * With a known step the cell keeps the shape of its light over
+ * #RADIATION_PACKET_FAR_SUBSTEPS sub-steps (#radiation_packet_far_shape_add).
+ * Light beyond the end of the last cell turns the cell into one pulse at its
+ * latest arrival time (#radiation_packet_join_below_end), unless it is faint
+ * (@p is_faint).
+ *
+ * The widening of the far cells, the faint-light rule and the limit of the far
+ * light are in theory/GEAR/Radiation/04_isrf_packet_transport.tex (the
+ * paragraph on arrival bins and cells, and the limit on the far light at a slow
+ * speed).
  *
  * @param sl The slot.
  * @param c The cell.
@@ -2936,15 +2937,15 @@ INLINE static void radiation_packet_diag_placed(
  *
  * The near bins hold the light that arrives by the end of the bin: bin 0 the
  * light that arrives by its end `E`, bin `j` the light in `(E + (j - 1) w, E +
- * j w]`, `w` the step. The receiver releases a bin whole at its first merge
- * at or after the end of the bin, so nothing leaves before it has arrived. The
- * far cells hold the light beyond the last bin. A share arrives evenly between
- * @p first and @p last. A pulse goes whole into its bin or cell. A longer
- * share is split by its overlap with the bins and cells, in double: each piece
- * is the difference of two cumulative values, so no piece is negative, and the
- * sum of the pieces is the share. A piece below the photon cutoff in a band
- * joins the next later piece, never an earlier one. Light beyond the last far
- * cell goes to it and counts as overflow.
+ * j w]`, `w` the step. The far cells hold the light beyond the last bin. A
+ * share arrives evenly between @p first and @p last. A pulse goes whole into
+ * its bin or cell. A longer share is split by its overlap with the bins and
+ * cells (#radiation_packet_split_next). Light beyond the last far cell goes to
+ * it and counts as overflow.
+ *
+ * When a bin or a cell leaves is in
+ * theory/GEAR/Radiation/04_isrf_packet_transport.tex (the paragraph on arrival
+ * bins and cells).
  *
  * @param sl The slot.
  * @param ub The ends of the near bins and the far cells of the receiver
@@ -3272,28 +3273,15 @@ static void radiation_packet_regrid(struct feedback_isrf_packet_data *pk,
  * @brief Put a share into the arrival bins and cells of a slot.
  *
  * If the last light of the share is beyond the last far cell, the far cells
- * become wider until it fits (#radiation_packet_regrid), up to a limit. With a
- * known step they are `2^RADIATION_PACKET_FAR_SCALE` steps wide as long as the
- * light fits. A share below `FLT_EPSILON` of the waiting energy does not
- * widen them and, beyond the last cell, counts in the last sub-step of that
- * cell. Other light that still arrives beyond the last
- * cell (after the end of the time line, or at the scale limit) keeps its
- * latest arrival time there, so it holds the light of that cell for as long.
- * Light that widens the cells delays all the light beyond the near bins by up
- * to one widened cell. The near bins never widen, so light that arrives soon is
- * released as it would be without the far light. See #radiation_packet_place
- * for the placing.
+ * become wider until it fits (#radiation_packet_regrid), up to a limit. The
+ * near bins never widen. The placing is #radiation_packet_place. Light does
+ * not leave before it has arrived, except faint light
+ * (#radiation_packet_faint_energy).
  *
- * Limit of the far light. A far cell of a particle with a known step keeps its
- * light over #RADIATION_PACKET_FAR_SUBSTEPS sub-steps, as fractions rounded
- * down at each add, so each part leaves at the end of its sub-step or later,
- * never early except for two kinds of faint light. Light below the float
- * rounding of the cell takes the time of the other light of the cell. Faint
- * overflow light, a share below `FLT_EPSILON` of all the light of the
- * particle (#radiation_packet_faint_energy), counts in the last sub-step, so
- * it leaves at the end of the last cell, before it arrives. That test is on
- * the whole particle, not on the cell, so this light can be a large part of
- * one cell. The rounding moves light later as adds pile up in one cell.
+ * The widening of the far cells, the faint-light rule and the limit of the far
+ * light are in theory/GEAR/Radiation/04_isrf_packet_transport.tex (the
+ * paragraph on arrival bins and cells, and the limit on the far light at a slow
+ * speed).
  *
  * @param pk The packet of the receiver.
  * @param sl The slot.
