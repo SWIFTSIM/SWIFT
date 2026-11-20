@@ -101,12 +101,12 @@ def kernel_matrix(pos, h, box, variant):
     return mat
 
 
-def kernel_fields(pos, h, box, own_e, own_d, variant="code"):
-    """Return (E_mean, D_mean, T) as the force loop closes them from the own fields."""
+def kernel_fields(pos, h, box, own_e, own_d, variant="code", fmax=1.0):
+    """Return (E_mean, D_mean, T) as the force loop closes them, D capped at fmax E."""
     mat = kernel_matrix(pos, h, box, variant)
     norm = np.asarray(mat.sum(axis=1)).ravel()
     e_mean = (mat @ own_e) / norm
-    d_mean = np.minimum((mat @ own_d) / norm, e_mean)
+    d_mean = np.minimum((mat @ own_d) / norm, fmax * e_mean)
     t = np.where(e_mean > 0.0, d_mean / np.where(e_mean > 0.0, e_mean, 1.0), 1.0)
     return e_mean, d_mean, t
 
@@ -303,7 +303,9 @@ def starlit_cases(work):
         p = os.path.join(d, name)
         kw["column"] = kw.get("column", n_h2 * r) * U_L**2  # stored in U_L^-2
         own = kw.pop("lw", lw)
-        mean = kernel_fields(pos, h, box, own, own * ratio, variant)
+        mean = kernel_fields(
+            pos, h, box, own, own * ratio, variant, kw.pop("fmax", 1.0)
+        )
         if mean_fn is not None:
             mean = mean_fn(mean, own, kernel_matrix(pos, h, box, variant))
         write_snap(
@@ -328,11 +330,34 @@ def starlit_cases(work):
         "S1 good run", 0, args(snap_with("good.hdf5", good)), "PASS  own transmission"
     )
     f_pop = 1.2876
-    pop = snap_with("pop.hdf5", f_pop * good)
+    f_max = 1.40299
+    pop_log = _write(
+        d,
+        "start_up_pop.log",
+        "h2_transported_lw_rate_shielding = 1\n"
+        "ISRF LW population dissociation factor (tables)            = ON\n"
+        f"ISRF LW dissociation factor bound                          = {f_max:.6g}\n",
+        text=True,
+    )
+
+    def pop_args(last, f):
+        return args(
+            last,
+            extra=(
+                "--counters",
+                counters,
+                "--startup-log",
+                pop_log,
+                "--population-factor",
+                str(f),
+            ),
+        )
+
+    pop = snap_with("pop.hdf5", f_pop * good, fmax=f_max)
     record(
         "F1 population factor f, given to the check",
         0,
-        args(pop, extra=("--counters", counters, "--population-factor", str(f_pop))),
+        pop_args(pop, f_pop),
         "PASS  own transmission",
     )
     record(
@@ -340,6 +365,34 @@ def starlit_cases(work):
         1,
         args(pop),
         "FAIL  own transmission",
+    )
+    record(
+        "F3 population factor f, the log does not report the factor on",
+        2,
+        args(pop, extra=("--counters", counters, "--population-factor", str(f_pop))),
+        "",
+    )
+    record(
+        "F4 population factor f above the bound in the log",
+        4,
+        pop_args(pop, 1.5),
+        "",
+    )
+    # Own ratios above F_MAX: every kernel mean reaches the cap of the code.
+    capped = np.full_like(good, 1.6)
+    tier_row(
+        "F5 kernel means at the F_MAX cap of the code: tiers 1 and 3 pass",
+        pop_args(snap_with("pop_cap.hdf5", capped, fmax=f_max), f_max),
+        "PASS",
+        "FAIL",
+        "PASS",
+    )
+    tier_row(
+        "F6 kernel means capped at 1, not at F_MAX: tiers 1 and 3 fail",
+        pop_args(snap_with("pop_cap1.hdf5", capped, fmax=1.0), f_max),
+        "FAIL",
+        None,
+        "FAIL",
     )
     h_cm = h * 3.0856775814913673e21
     mask = (r > 0.0) & (r < 0.5 * box * 3.0856775814913673e21 - 2.0 * h_cm)

@@ -65,7 +65,9 @@ The parameter files set `GEARFeedback:ISRF_LW_population_dissociation: 0`, so th
 dissociating light of the star is its LW light times the line transmission. With 1 and a
 table that carries `L_LW_dissociating`, it is also multiplied by the dissociation factor
 `f` of the star (`L_LW_dissociating / L_LW` from the table); pass that value to the
-`starlit` and `velocity` checks with `--population-factor f`.
+`starlit` and `velocity` checks with `--population-factor f`. SWIFT caps the kernel mean of
+the dissociating energy at the largest factor of the table times the LW energy; `starlit`
+reads that bound from the line `ISRF LW dissociation factor bound` of the start-up log.
 
 `python3 checkH2Attenuation.py starlit --first snap/snapshot_0001.hdf5 --last snap/snapshot_0009.hdf5 --startup-log output.log --timesteps timesteps.txt`
 
