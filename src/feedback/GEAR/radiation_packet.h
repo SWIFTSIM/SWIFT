@@ -1116,6 +1116,28 @@ __attribute__((always_inline)) INLINE static double radiation_packet_cone_floor(
 }
 
 /**
+ * @brief Emission cone and weight of a gas neighbour of a star, at the start
+ * of the star's step. The density loop and the feedback loop of the star both
+ * call it.
+ *
+ * @param si The star.
+ * @param pj The gas neighbour.
+ * @param dx Comoving vector from the gas to the star (si - pj).
+ * @param ti_current Current integer time.
+ * @param d (return) Comoving vector from the gas to the star, in double.
+ * @param q (return) Distance over the star's kernel support.
+ * @param weight (return) Tent weight, 0 when the gas is not a receiver.
+ * @return The emission cone.
+ */
+__attribute__((always_inline)) INLINE static int radiation_packet_star_gas_cone(
+    const struct spart *si, const struct part *pj, const float dx[3],
+    const integertime_t ti_current, double d[3], double *q, double *weight) {
+  const integertime_t ti_begin =
+      get_integer_time_begin(ti_current, si->time_bin);
+  return radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, q, weight);
+}
+
+/**
  * @brief Star density loop: add a gas neighbour's weight to the weight sum of
  * its emission cone, if it is a receiver.
  *
@@ -1127,14 +1149,11 @@ __attribute__((always_inline)) INLINE static double radiation_packet_cone_floor(
 __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
     struct spart *si, const struct part *pj, const float dx[3],
     const integertime_t ti_current) {
-  const integertime_t ti_begin =
-      get_integer_time_begin(ti_current, si->time_bin);
-
   double d[3];
   double q;
   double weight;
   const int c =
-      radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+      radiation_packet_star_gas_cone(si, pj, dx, ti_current, d, &q, &weight);
 
   if (weight > 0.0) si->feedback_data.radiation.packet.cone_weight[c] += weight;
 
@@ -1177,14 +1196,12 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
     const struct radiation_packet_constants *constants) {
 
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
-  const integertime_t ti_begin =
-      get_integer_time_begin(ti_current, si->time_bin);
 
   double d[3];
   double q;
   double weight;
   const int c =
-      radiation_packet_star_gas_weight(si, pj, dx, ti_begin, d, &q, &weight);
+      radiation_packet_star_gas_cone(si, pj, dx, ti_current, d, &q, &weight);
   if (!(weight > 0.0)) return;
 
   const double S = si->feedback_data.radiation.packet.cone_weight[c];

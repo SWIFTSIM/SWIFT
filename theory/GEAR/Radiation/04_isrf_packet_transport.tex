@@ -3461,10 +3461,10 @@ merge returns before any change of origin when the slot received no energy
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
-(\code{radiation\_packet.h:1127-1149}, called at
+(\code{radiation\_packet.h:1149-1168}, called at
 \code{src/feedback/GEAR\_thermal/feedback\_iact.h:75}), which adds the weight
-to \code{cone\_weight[c]} (\code{radiation\_packet.h:1139}). The feedback loop
-calls \code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:1173-1241},
+to \code{cone\_weight[c]} (\code{radiation\_packet.h:1158}). The feedback loop
+calls \code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:1192-1258},
 called at \code{src/feedback/GEAR/radiation\_iact.h:277}). Both loops take $c$,
 $q$ and $w_j$ from \code{radiation\_packet\_star\_gas\_weight}
 (\code{radiation\_packet.c:1677-1698}). The cell is
@@ -3480,9 +3480,9 @@ Eq.~\eqref{eq:packet-emit-share} is \code{star\_gas\_global\_share}
 \code{star\_gas\_escape\_fraction} (:102-108), the sum over the cells of
 Eq.~\eqref{eq:packet-escape}, \code{star\_gas\_cone\_escape} (:87-91). It is
 called in \code{radiation\_packet\_star\_emit}
-(\code{radiation\_packet.h:1206-1208}) with the 12 cell sums and the floor
+(\code{radiation\_packet.h:1223-1225}) with the 12 cell sums and the floor
 (\code{radiation\_packet\_cone\_floor}, :1112-1116). The energy and the photon
-number follow from the fraction (:1214-1217), then the delivery (:1235-1237). The
+number follow from the fraction (:1231-1234), then the delivery (:1252-1254). The
 star zeroes its cone sums before the density loop
 (\code{radiation\_packet\_init\_star\_cones}, \code{radiation\_packet.h:1086-1104},
 called at \code{src/feedback/GEAR\_thermal/feedback.c:544}).
@@ -3498,7 +3498,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{redshifted\_energy} and \code{redshifted\_photons}
 (\code{radiation\_packet.h:733-735}; fields at \code{feedback\_struct.h:319-326}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:1009}
-for a hop, :1222 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
+for a hop, :1239 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:157-161}, :195-209) and from
 \code{radiation\_iact.h:277}.
 
@@ -3518,7 +3518,7 @@ That function runs at each drift of the particle, through
 called at \code{src/cell\_drift.c:377}).
 The hop path, Eq.~\eqref{eq:packet-path} first line, is at
 \code{radiation\_packet.h:949}, with $a$ applied at the call, :1009; the star
-path is :1220-1221 (call at :1235-1237).
+path is :1237-1238 (call at :1252-1254).
 
 \paragraph{H$_2$ line absorption (Secs.~\ref{sec:packet-h2}, \ref{sec:packet-h2-limits}).}
 The switch is \code{GEARFeedback:ISRF\_H2\_line\_absorption}. Its start-up
@@ -3578,7 +3578,7 @@ The hop of a share is \code{radiation\_packet\_line\_hop}
 $\mathcal T'/\mathcal S_r(\Sigma')$ (:883). A gas sender calls it in
 \code{radiation\_packet\_book\_share} (:1002, with the shift of
 Eq.~\eqref{eq:h2-shift} at :996-1001). A star share calls it in
-\code{radiation\_packet\_star\_emit} (:1229), from $\mathcal T=1$, $\Sigma=0$ and
+\code{radiation\_packet\_star\_emit} (:1246), from $\mathcal T=1$, $\Sigma=0$ and
 $\Delta v=0$, with no velocity step. The sums of Eq.~\eqref{eq:h2-sums} are
 formed in \code{radiation\_packet\_deliver\_with\_lines} (:755-762).
 $\mathcal B_k$ is a float that saturates at the largest float
@@ -3640,11 +3640,11 @@ The choice between the inbox and the reservoir is the argument
 \code{to\_reservoir} of \code{radiation\_packet\_deliver}
 (\code{radiation\_packet.h:696-802}). For a hop it is
 \code{s->time\_bin > r->time\_bin} at :1010. For a star it is
-\code{si->time\_bin > pj->time\_bin} at :1237. \code{source\_step\_end\_ti}
+\code{si->time\_bin > pj->time\_bin} at :1254. \code{source\_step\_end\_ti}
 (:703) is the end of the step of the sender. For a particle it is
 \code{step\_end\_ti}, set as \code{ti\_current + ti\_step} at
 \code{radiation\_packet.c:4041} and :4090. For a star it is
-\code{ti\_current + ti\_step} at \code{radiation\_packet.h:1237}.
+\code{ti\_current + ti\_step} at \code{radiation\_packet.h:1254}.
 Eq.~\eqref{eq:packet-release} is \code{radiation\_packet\_merge\_slot\_unlimited}
 (\code{radiation\_packet.c:3668-3749}). The release fraction is at :3674-3688,
 the cutoff rule at :3690-3698, and the release of the energy, the photon number
