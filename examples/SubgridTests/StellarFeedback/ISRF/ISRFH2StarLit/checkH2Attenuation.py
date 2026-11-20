@@ -1021,6 +1021,114 @@ def check_kernel_mean(
 
 
 def gate_starlit(args: argparse.Namespace) -> int:
+    """Check the transmission at depth of the star-lit box against the shielding function.
+
+    Premises. The run holds H2 and the temperature frozen: photoionization, stellar winds
+    and supernovae are off and the light speed is unlimited, with short steps so that the
+    H2 stays frozen while the light arrives. The check refuses a run in which any of these
+    is not set, in which the H2 density of a domain particle leaves the range of the
+    reference snapshot, or in which the temperature of a thin particle (column below
+    1e17 cm^-2) changes by more than 5 per cent. It refuses a snapshot with a coordinate
+    within 1e-6 L of a box face. Only particles at r < L/2 - 2h are read, so that the
+    nearest periodic image of the star is the right one. SWIFT does not write the LW
+    shielding option to used_parameters.yml: the check reads it from the start-up line
+    h2_transported_lw_rate_shielding = 1 and calls the run void if the line is absent or
+    reads 0. The reference is snapshot_0001, the first snapshot written after the first
+    step and before any probe is lit; snapshot_0000 holds the initial species fractions,
+    which the first step changes in every particle.
+
+    Bar. |ln(ratio / f)| at most the larger of |ln f(n_max r) / f(n r)| and
+    |ln f(n_min r) / f(n r)|, with n_min and n_max the extreme H2 densities of the domain
+    particles at the reference and the last snapshot: the carried column is a sum of the
+    mean n_H2 of the two ends of each hop times the path of the hop, with paths that add up
+    to r. Dissociation only lowers H2, so the two ends bound every state between them. The
+    run is void if the n_H2 of a domain particle at the last snapshot lies outside the
+    reference range by more than 1e-3. Taking the range over both snapshots makes the bar
+    wider than the range of the last snapshot alone (about 0.2 per cent in the median on
+    the default run); the check prints the widening.
+
+    Kernel mean. The cooling reads the kernel mean of the own fields, not the own ratio.
+    The snapshot field LWLineTransmissions is the mean of the neighbours' own ratios
+    weighted by m_j W(r_ij / h_i) E_j, with E_j the own LW energy of neighbour j and the
+    self term included. Neighbours nearer the star are brighter and more transparent, so
+    the mean exceeds f at the particle by a few per cent. That is a property of the
+    averaging, so the check compares the field with the kernel mean of the prediction,
+    not with f. All tiers take E_j and the own dissociating energy from the snapshot, so
+    E_j itself is not tested.
+
+    Tier 1, identity: |ln(T / T_offline)| at most (n_ngb + 2) 2^-24 plus the kernel-edge
+    term (tier 3) for every particle (n_ngb the neighbours in its kernel), with T_offline
+    the weighted mean above computed from the own fields of the snapshot (dissociating
+    mean clamped to the LW mean). The float LW sum of the code flushes a product
+    m_j W E_j below the smallest normal float to zero, depending on the order of the sum;
+    the dissociating sum, in double, does not. So the offline T is a window: its lower end
+    keeps every product, its upper end drops the products below the smallest normal float,
+    and the bar is measured from the window. The check prints how many particles can lose
+    more than the float term to this. A particle whose products are all below the smallest
+    normal float must hold no LW and no dissociating energy. A particle with no lit
+    neighbour must hold no LW energy. This tier catches a missing self term, a kernel in
+    h_j in place of h_i, and any change of T of 0.5 per cent or more. The weight sum of
+    the mean (its normalisation) cancels in T: tier 3 tests it.
+
+    Tier 2, physics: |ln(T / K)| at most the largest own bar over the lit neighbours plus
+    the float term of tier 1, with K the same weighted mean of f(n_H2 r) of each
+    neighbour. T / K is a convex combination of the ratios t_j / f_j, so the bound holds
+    for a correct mean. This tier catches the prediction or the own ratio used in place of
+    the mean. A change of 0.5 per cent and the h_j kernel are below its resolution: tier 1
+    catches them. Tier 2 skips the particles that can lose more than the float term to
+    the flush.
+
+    Tier 3, means: E_mean (LWSpecificEnergies) and D_mean (LWDissociatingSpecificEnergies),
+    which the cooling reads, against the offline sum w E / sum w and
+    min(sum w D, sum w E) / sum w, with the self term, so the weight sum is tested. The
+    bar is the float sums, (2 n_ngb + 4) 2^-24 for E_mean and that plus (n_ngb + 3) 2^-24
+    for D_mean, plus the kernel-edge term sum_j |b_j - a_j| rel_j. Here b_j is the share of
+    neighbour j in the numerator, a_j its share of the weight sum and rel_j the relative
+    float error of its weight: the Horner rounding of the kernel polynomial, the rounding
+    of t = u - origin and the rounding of u = r / h. The force loops cast x - loc to float
+    for each particle, with loc the corner of the cell, so the position error scales with
+    the cell width C, not with r. Per component of dx it is at most 3 C 2^-24 (a pair of
+    adjacent cells), 3 sqrt(3) C 2^-24 for the vector, and the rest of the arithmetic adds
+    6 times 2^-24 in u. The width C is the top-level cell size of the snapshot
+    (Cells/Meta-data/size), an upper bound for every cell of the tree. Near the edge of
+    the support W falls as (gamma - u)^4, so rel_j is large there and one lit neighbour
+    can set the mean. A change of 0.5 per cent or more of E_mean or D_mean, of the weight
+    sum, of the weights or of the fields, fails wherever the bar is below that; the check
+    prints how many particles have such a bar, and the run is void if there are none. A
+    neighbour that the code counts or drops within a few 2^-24 of the support edge has a
+    weight below 1e-26 of W(0) and is not accounted for. The LW and dissociating sums are
+    held to the same flush window as T.
+
+    Premises read from the run: the snapshot kernel must be Wendland C2, the kernel whose
+    polynomial the check holds. The step that ends at the snapshot must have updated every
+    gas particle (--timesteps timesteps.txt), and the positions must have moved by less
+    than one float rounding of h in it. Otherwise the run is void.
+
+    Not covered: the own LW energy E_j, and a gather that weights a neighbour by the mass
+    of the updated particle in place of its own. All gas particles of this fixture have the
+    same mass, so that defect gives the same means.
+
+    Lit set. The light moves one hop per step, so the lit probes fill a ball. With n the
+    number of steps (the ratio of the snapshot times, an integer of at least 2; it counts
+    one hop per step only if all gas sits on one time bin, as in the default run, and the
+    check does not test that), every probe at r < (n - 1) h_min must be lit, and no probe
+    may be lit beyond n gamma h_max (gamma the kernel support in units of h). The check
+    fails on a lit count outside these bounds and on any unlit probe inside the first
+    radius.
+
+    Count and minimum. They read the lit probes only; an unlit probe carries no
+    transmission. The number of lit particles with a transmission below 0.99 must be above
+    0 and must lie between the numbers of lit particles beyond r_0.99 + l_hop and beyond
+    r_0.99 - l_hop, with l_hop the smoothing length of the probe. A counters file from an
+    instrumented build (--counters, key mean_hop_path_cm, which the code does not write)
+    replaces it by the mean path of the booked shares.
+
+    Column. The carried column LWLineH2ColumnDensities of every lit probe must lie between
+    n_min r (1 - e) and n_max r (1 + e), with n_min and n_max as in the first bar and e the
+    float rounding term of the transmission bar. The band is about 2 per cent wide on the
+    default run, so it catches a column that is off by a few per cent. The check prints how
+    many particles can detect a doubled H2 column; if that is 0, the run is void.
+    """
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
@@ -1399,6 +1507,17 @@ def gate_twosource(args: argparse.Namespace) -> int:
        dissociating energy is a running mean and the column is weighted by the
        instantaneous energies.
 
+    Limits. A column 1.5 times too large must fall outside the bar of check 3 at some
+    particle, else the run is void. The face term of that bar is set from the smoothing
+    reach gamma h_max; it is not a proven bound for a ray that crosses a face at a slant.
+    The reference sums the nominal H2 densities along the ray and does not call the
+    shielding function, so it detects no error in the shielding function that all four
+    runs share; the star-lit check covers that. The check also prints, without gating,
+    the largest change of the ratio D / E at the particles lit by both stars and the
+    largest change of H2I between the runs; the dissociation of H2 by the other star is
+    not part of the round-off bar. The H2 of every gas particle at the last snapshot must
+    lie inside the range of snapshot 1 (slab gas and clear gas separately) up to 1e-3.
+
     Raises
     ------
     GateExit
@@ -1755,6 +1874,31 @@ def velocity_bar(
 
 
 def gate_velocity(args: argparse.Namespace) -> int:
+    """Check the reset of the carried column by a velocity shift.
+
+    The cloud moves radially away from the star. Light that crosses gas moving by more
+    than three line widths (3 b, b = sqrt(2 k T / m_H2)) relative to the column it carries
+    sees fresh absorption: the transport resets the carried column. The check reads the
+    particles inside the cloud and compares their line transmission with the bar of the
+    reset (the column of the cloud alone) or of no reset (the column of all the gas from
+    the star). The expected case follows the speed written in fixture.json: more than 3
+    widths gives the reset. The run lasts 16 steps of dt_max (keep time_end a power of two
+    times dt_max), so that the light crosses the cloud face by several hops.
+
+    Bar. Per particle in the cloud at r < L/2 - 2h, with d the path from the cloud face to
+    the particle and R = gamma h_max the largest hop of the transport (gamma = 1.936 for
+    the Wendland C2 kernel), the own ratio lies between f(n_max (d + R/2)) and
+    f(n_min (d - min(d, R)/2)) for the reset, and between f(n_max r) and f(n_min r) for no
+    reset, with f the shielding function and n_min, n_max the extreme H2 densities of the
+    gas in the snapshot. A hop books the mean H2 density of its two ends, and the hop that
+    resets books only the receiver's half of its path, so the face is placed within half a
+    hop. The speed of 1 width is the control: a run that shows a reset there fails.
+
+    Resolution. Deeper than about one hop (R) behind the face, the reset bar accepts a
+    column up to R/2 (about 0.97 h) too small. A reset that comes late by a quarter of R is
+    caught only by probes shallower than h. A reset that comes late by one h is caught with
+    a margin of about 0.03 h.
+    """
     rep = Report()
     fix = load_json(args.fixture, "geometry file")
     first = load_snapshot(args.first, REQUIRED_GAS)
@@ -1857,6 +2001,19 @@ def gate_parity(args: argparse.Namespace) -> int:
     front: its light came through weights near the kernel edge, where the
     relative change of a weight is not bounded, so it is held to the same bar
     times the largest value in its kernel, which is weaker.
+
+    restart also needs some particle dark at --stop that is lit at the compared snapshot,
+    else the run is void. The same binary, rank count and one thread make the run repeat
+    exactly; other fields are printed only.
+
+    The code does not count the booked shares of other ranks, the probes on another rank
+    or the slots that wait at a restart. Without a counters file the check therefore
+    prints REDUCED and exits with class 5 when the comparison passes: the values agree, but
+    the run is not shown to have exercised the transport between ranks or the restore of
+    the held light. A counters file (--counters, JSON) from an instrumented build restores
+    the full check: it must give probes_on_other_rank and foreign_bookings for ranks,
+    held_lw_slots_at_restart and refits_after_restart for restart, each above 0, and may
+    give steps in place of --first.
     """
     rep = Report()
     gated = ("LWSpecificEnergies", "LWDissociatingSpecificEnergies", PARITY_COLUMN)

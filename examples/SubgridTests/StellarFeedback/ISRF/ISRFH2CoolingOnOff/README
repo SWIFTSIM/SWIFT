@@ -21,8 +21,8 @@ with the measured one.
 ./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
 make -j
 ```
-The geajay library must have the chemistry option `h2_transported_lw_rate_shielding` (geajay
-commit `fefbdc86e` has it). `configure` detects it. Without it SWIFT stops at start-up with
+The geajay library must have the chemistry option `h2_transported_lw_rate_shielding`.
+`configure` detects it. Without it SWIFT stops at start-up with
 "ISRF_H2_line_absorption: 1 is not supported". No build flag is needed otherwise. The packet
 transport reads a radiation table with the `Data/Radiation` group, which `run.sh` fetches.
 Resolution, density and particle mass are the `level`, `gas_density`, `gas_mass` and
@@ -46,14 +46,10 @@ cheap-solver legs as INDETERMINATE.
 
 # Checking
 The check reads snapshots 3 to 6 (`--first`, `--last`), and the snapshot before the first one.
-A PASS means that the change of the H2 abundance between the two runs equals the change that
-the written line transmission predicts, with the library formation rates, within a bar made of
-the statistical error, the run-to-run noise and a temperature lag (see the docstring of
-`check_h2_cooling_onoff.py` for the definitions). It does not test the transmission itself,
-the formation rates or the shielding fit of the library. It cannot see an error smaller than
-its bar, a fault that lowers the LW energy together with the dissociation rate, or an error in
-the absolute size or sign of a formation channel. A density bin with too few particles or a
-bar above ln 2 is printed as INDETERMINATE.
+The check compares, in bins of gas density, the median change of `x` between the two runs
+with the change that the written line transmission predicts, with the library formation
+rates. A density bin with too few particles, or with a noise bar above ln 2, is printed as
+INDETERMINATE and decides nothing.
 
 Exit status: 0 every snapshot passes, 1 a failure (or no snapshot could be evaluated),
 2 bad arguments, 3 inconclusive: some snapshot has no decided bin, or the noise or the
