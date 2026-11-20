@@ -868,33 +868,29 @@ __attribute__((always_inline)) INLINE static void radiation_packet_line_hop(
 }
 
 /**
- * @brief Force loop: book the shares of each non-empty slot of the sender for
- * one receiver.
+ * @brief #radiation_packet_book_share for one value of the population factor
+ * switch.
  *
- * A share is absorbed over the increase of the distance to the slot's origin,
- * so the paths telescope along a chain of hops.
- *
- * @param dx Comoving vector from the sender to the receiver. It gives the
- * path and the arrival delay and selects the periodic image of the
- * transmission weight, which is computed from the positions
- * (#radiation_packet_weight_vector).
+ * @param dx Comoving vector from the sender to the receiver.
  * @param h_sender Comoving smoothing length of the sender.
  * @param h_receiver Comoving smoothing length of the receiver.
  * @param is_receiver_active Is the receiver active in this step?
- * @param want The part of the reach to book (#RADIATION_PACKET_REACH_INNER and
- * so on).
+ * @param want The part of the reach to book.
  * @param sender The sender.
  * @param receiver The receiver.
  * @param a Current scale factor.
  * @param H Current Hubble rate. 0 in a static box.
  * @param constants The #radiation_packet_constants.
+ * @param population #radiation_packet_constants.LW_population_track, as a
+ * literal.
  */
-__attribute__((always_inline)) INLINE static void radiation_packet_book_share(
+__attribute__((always_inline)) INLINE static void
+radiation_packet_book_share_body(
     const float dx[3], const float h_sender, const float h_receiver,
     const int is_receiver_active, const int want,
     const struct part *restrict sender, struct part *restrict receiver,
     const float a, const float H,
-    const struct radiation_packet_constants *constants) {
+    const struct radiation_packet_constants *constants, const int population) {
 
   const struct feedback_isrf_packet_data *sender_packet =
       &sender->feedback_data.isrf_packet;
@@ -985,7 +981,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     double line_energy_over_factor =
         1. / radiation_h2_shielding_factor_at_zero();
     /* Without the lines the share keeps the transmission of its slot. */
-    if (!with_lines) {
+    if (population && !with_lines) {
       line_transmission = sl->H2_transmission;
       line_energy_over_factor =
           (double)line_transmission / radiation_h2_shielding_factor_at_zero();
@@ -1009,6 +1005,49 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
         arrival_last, with_dissociating, line_transmission, line_shift,
         line_energy_over_factor);
   }
+}
+
+/**
+ * @brief Force loop: book the shares of each non-empty slot of the sender for
+ * one receiver.
+ *
+ * A share is absorbed over the increase of the distance to the slot's origin,
+ * so the paths telescope along a chain of hops.
+ *
+ * Each value of the population factor switch has its own copy of the body
+ * with the switch as a literal. Under -ffast-math the compiler then fuses the
+ * float operations of the copy without the factor as in the code without it,
+ * so a run with the switch off is bitwise unchanged.
+ *
+ * @param dx Comoving vector from the sender to the receiver. It gives the
+ * path and the arrival delay and selects the periodic image of the
+ * transmission weight, which is computed from the positions
+ * (#radiation_packet_weight_vector).
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the receiver.
+ * @param is_receiver_active Is the receiver active in this step?
+ * @param want The part of the reach to book (#RADIATION_PACKET_REACH_INNER and
+ * so on).
+ * @param sender The sender.
+ * @param receiver The receiver.
+ * @param a Current scale factor.
+ * @param H Current Hubble rate. 0 in a static box.
+ * @param constants The #radiation_packet_constants.
+ */
+__attribute__((always_inline)) INLINE static void radiation_packet_book_share(
+    const float dx[3], const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want,
+    const struct part *restrict sender, struct part *restrict receiver,
+    const float a, const float H,
+    const struct radiation_packet_constants *constants) {
+  if (constants->LW_population_track)
+    radiation_packet_book_share_body(dx, h_sender, h_receiver,
+                                     is_receiver_active, want, sender, receiver,
+                                     a, H, constants, 1);
+  else
+    radiation_packet_book_share_body(dx, h_sender, h_receiver,
+                                     is_receiver_active, want, sender, receiver,
+                                     a, H, constants, 0);
 }
 
 /**
@@ -1147,32 +1186,26 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_density(
 }
 
 /**
- * @brief Feedback loop: give a gas neighbour its share of the star's light.
- *
- * Each cone holds an equal share of `L dt`. A cone with a weight sum below the
- * cone floor lets the rest of its share escape. Receivers share the rest
- * by weight.
+ * @brief #radiation_packet_star_emit for one value of the population factor
+ * switch.
  *
  * @param si The star.
  * @param pj The gas neighbour.
  * @param dx Comoving vector from the gas to the star (si - pj).
- * @param Delta_t The star's feedback step. It is the step that has just
- * ended: the feedback of a step is applied at its end, and #compute_time gives
- * the begin of the step that finished at @p ti_current
- * (#feedback_prepare_radiation_feedback caches that step). The light was
- * emitted over `[ti_current - ti_step, ti_current]`, so it reaches a receiver
- * at the distance `r` evenly between `ti_current - ti_step + delay` and
- * `ti_current + delay`, with `delay` the light time of `r`.
+ * @param Delta_t The star's feedback step.
  * @param a Current scale factor.
  * @param H Current Hubble rate. 0 in a static box.
  * @param ti_current Current integer time.
  * @param constants The #radiation_packet_constants.
+ * @param population #radiation_packet_constants.LW_population_track, as a
+ * literal.
  */
-__attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
+__attribute__((always_inline)) INLINE static void
+radiation_packet_star_emit_body(
     const struct spart *si, struct part *pj, const float dx[3],
     const float Delta_t, const float a, const float H,
     const integertime_t ti_current,
-    const struct radiation_packet_constants *constants) {
+    const struct radiation_packet_constants *constants, const int population) {
 
   const integertime_t ti_step = get_integer_timestep(si->time_bin);
   const integertime_t ti_begin =
@@ -1222,8 +1255,8 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   const int with_lines = feedback_part_has_H2_lines(&pj->feedback_data);
   const int with_dissociating =
       feedback_part_tracks_LW_dissociating(&pj->feedback_data);
-  /* Exactly 1 without the population factor. */
-  const float f_star = si->feedback_data.radiation.LW_dissociating_factor;
+  const float f_star =
+      population ? si->feedback_data.radiation.LW_dissociating_factor : 1.f;
   float line_transmission = f_star;
   float line_shift = 0.f;
   double line_energy_over_factor =
@@ -1242,6 +1275,42 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
       radiation_packet_time_later((double)ti_current + delay),
       with_dissociating, line_transmission, line_shift,
       line_energy_over_factor);
+}
+
+/**
+ * @brief Feedback loop: give a gas neighbour its share of the star's light.
+ *
+ * Each cone holds an equal share of `L dt`. A cone with a weight sum below the
+ * cone floor lets the rest of its share escape. Receivers share the rest
+ * by weight. The body has one copy per value of the population factor switch,
+ * as in #radiation_packet_book_share.
+ *
+ * @param si The star.
+ * @param pj The gas neighbour.
+ * @param dx Comoving vector from the gas to the star (si - pj).
+ * @param Delta_t The star's feedback step. It is the step that has just
+ * ended: the feedback of a step is applied at its end, and #compute_time gives
+ * the begin of the step that finished at @p ti_current
+ * (#feedback_prepare_radiation_feedback caches that step). The light was
+ * emitted over `[ti_current - ti_step, ti_current]`, so it reaches a receiver
+ * at the distance `r` evenly between `ti_current - ti_step + delay` and
+ * `ti_current + delay`, with `delay` the light time of `r`.
+ * @param a Current scale factor.
+ * @param H Current Hubble rate. 0 in a static box.
+ * @param ti_current Current integer time.
+ * @param constants The #radiation_packet_constants.
+ */
+__attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
+    const struct spart *si, struct part *pj, const float dx[3],
+    const float Delta_t, const float a, const float H,
+    const integertime_t ti_current,
+    const struct radiation_packet_constants *constants) {
+  if (constants->LW_population_track)
+    radiation_packet_star_emit_body(si, pj, dx, Delta_t, a, H, ti_current,
+                                    constants, 1);
+  else
+    radiation_packet_star_emit_body(si, pj, dx, Delta_t, a, H, ti_current,
+                                    constants, 0);
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);

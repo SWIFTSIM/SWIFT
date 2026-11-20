@@ -3447,7 +3447,7 @@ border distance of the debug check is
 slot count of the build against the nearest of $K$ generator directions.
 Every gas particle holds the $K$ slots (\code{feedback\_struct.h:480}), so
 its size grows by 304 bytes per slot (paragraph on memory below). The gradient and the force loops visit
-every non-empty slot of the sender (\code{radiation\_packet.h:505}, :910), so
+every non-empty slot of the sender (\code{radiation\_packet.h:505}, :906), so
 the work of a hop grows with the number of lit slots, at most $K$. More slots
 narrow the limit of Sec.~\ref{sec:packet-superposition}: two directions share a
 slot only if they are at most the largest angle inside a cell apart, $90^\circ$
@@ -3478,9 +3478,9 @@ $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
 \code{radiation\_packet.c:4170}.
 
 The share $\phi_{ij,k}$ is \code{fraction} in
-\code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:892-1012},
-\code{fraction} at :932), and Eq.~\eqref{eq:packet-offset} is its
-\code{offset} (:935-937). The receiving slot is chosen in
+\code{radiation\_packet\_book\_share} (\code{radiation\_packet.h:887-1008},
+\code{fraction} at :928), and Eq.~\eqref{eq:packet-offset} is its
+\code{offset} (:931-933). The receiving slot is chosen in
 \code{radiation\_packet\_deliver} from the vector \code{from\_origin}
 (\code{radiation\_packet.h:670-776}, \code{from\_origin} at :686). The force
 loop calls \code{radiation\_packet\_book\_share} from
@@ -3493,7 +3493,7 @@ set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 \code{radiation\_packet.c:4224-4253}). The escape of a slot with $S_{i,k}=0$ is
 at \code{radiation\_packet.c:4190-4197}. The parameter $p$ is
 \code{radiation\_packet\_constants.cone\_power} (read at \code{radiation\_packet.h:514},
-:922), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:908-910}
+:918), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:908-910}
 and checked at :970-972.
 
 \paragraph{The reach (Sec.~\ref{sec:isrf-reach}).} The membership test is
@@ -3526,10 +3526,10 @@ merge returns before any change of origin when the slot received no energy
 
 \paragraph{Emission by a star (Sec.~\ref{sec:packet-emission}).} The density
 loop of the star calls \code{radiation\_packet\_star\_density}
-(\code{radiation\_packet.h:1125-1147}, called at
+(\code{radiation\_packet.h:1164-1186}, called at
 \code{src/feedback/GEAR\_thermal/feedback\_iact.h:75}), which adds the weight
-to \code{cone\_weight[c]} (\code{radiation\_packet.h:1137}). The feedback loop
-calls \code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:1171-1245},
+to \code{cone\_weight[c]} (\code{radiation\_packet.h:1176}). The feedback loop
+calls \code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:1203-1278},
 called at \code{src/feedback/GEAR/radiation\_iact.h:277}). Both loops take $c$,
 $q$ and $w_j$ from \code{radiation\_packet\_star\_gas\_weight}
 (\code{radiation\_packet.c:1648-1676}). The cell is
@@ -3545,11 +3545,11 @@ Eq.~\eqref{eq:packet-emit-share} is \code{star\_gas\_global\_share}
 \code{star\_gas\_escape\_fraction} (:102-108), the sum over the cells of
 Eq.~\eqref{eq:packet-escape}, \code{star\_gas\_cone\_escape} (:87-91). It is
 called in \code{radiation\_packet\_star\_emit}
-(\code{radiation\_packet.h:1204-1206}) with the 12 cell sums and the floor
-(\code{radiation\_packet\_cone\_floor}, :1110-1114). The energy and the photon
-number follow from the fraction (:1212-1215), then the delivery (:1238-1240). The
+(\code{radiation\_packet.h:1237-1239}) with the 12 cell sums and the floor
+(\code{radiation\_packet\_cone\_floor}, :1149-1153). The energy and the photon
+number follow from the fraction (:1245-1248), then the delivery (:1271-1273). The
 star zeroes its cone sums before the density loop
-(\code{radiation\_packet\_init\_star\_cones}, \code{radiation\_packet.h:1084-1102},
+(\code{radiation\_packet\_init\_star\_cones}, \code{radiation\_packet.h:1123-1141},
 called at \code{src/feedback/GEAR\_thermal/feedback.c:544}).
 
 \paragraph{Redshift and band-edge transfer (Sec.~\ref{sec:packet-transfer}).}
@@ -3562,8 +3562,8 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
 (\code{radiation\_packet.h:707-709}; fields at \code{feedback\_struct.h:319-326}).
-The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:1007}
-for a hop, :1220 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
+The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:1003}
+for a hop, :1253 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:157-161}, :195-209) and from
 \code{radiation\_iact.h:277}.
 
@@ -3582,8 +3582,8 @@ That function runs at each drift of the particle, through
 \code{feedback\_reset\_part} (\code{src/feedback/GEAR\_thermal/feedback.c:426-430},
 called at \code{src/cell\_drift.c:377}).
 The hop path, Eq.~\eqref{eq:packet-path} first line, is at
-\code{radiation\_packet.h:941}, with $a$ applied at the call, :1007; the star
-path is :1218-1219 (call at :1238-1240).
+\code{radiation\_packet.h:937}, with $a$ applied at the call, :1003; the star
+path is :1251-1252 (call at :1271-1273).
 
 \paragraph{Population dissociation factor (Sec.~\ref{sec:isrf-lw-population}).}
 The switch is \code{GEARFeedback:ISRF\_LW\_population\_dissociation}, read in
@@ -3660,9 +3660,9 @@ changed, it moves the waiting sums with \code{radiation\_packet\_line\_refit}
 The hop of a share is \code{radiation\_packet\_line\_hop}
 (\code{radiation\_packet.h:843-868}). The value returned in \code{q\_out} is
 $\mathcal T'/\mathcal S_r(\Sigma')$ (:867). A gas sender calls it in
-\code{radiation\_packet\_book\_share} (:1000, with the shift of
-Eq.~\eqref{eq:h2-shift} at :994-999). A star share calls it in
-\code{radiation\_packet\_star\_emit} (:1232), from $\mathcal T=1$, $\Sigma=0$ and
+\code{radiation\_packet\_book\_share} (:996, with the shift of
+Eq.~\eqref{eq:h2-shift} at :990-995). A star share calls it in
+\code{radiation\_packet\_star\_emit} (:1265), from $\mathcal T=1$, $\Sigma=0$ and
 $\Delta v=0$, with no velocity step. The sums of Eq.~\eqref{eq:h2-sums} are
 formed in \code{radiation\_packet\_deliver\_with\_lines} (:729-736).
 $\mathcal B_k$ is a float that saturates at the largest float
@@ -3723,12 +3723,12 @@ Only the snapshot reads it.
 The choice between the inbox and the reservoir is the argument
 \code{to\_reservoir} of \code{radiation\_packet\_deliver}
 (\code{radiation\_packet.h:670-776}). For a hop it is
-\code{s->time\_bin > r->time\_bin} at :1008. For a star it is
-\code{si->time\_bin > pj->time\_bin} at :1240. \code{source\_step\_end\_ti}
+\code{s->time\_bin > r->time\_bin} at :1004. For a star it is
+\code{si->time\_bin > pj->time\_bin} at :1273. \code{source\_step\_end\_ti}
 (:677) is the end of the step of the sender. For a particle it is
 \code{step\_end\_ti}, set as \code{ti\_current + ti\_step} at
 \code{radiation\_packet.c:4022} and :4071. For a star it is
-\code{ti\_current + ti\_step} at \code{radiation\_packet.h:1240}.
+\code{ti\_current + ti\_step} at \code{radiation\_packet.h:1273}.
 Eq.~\eqref{eq:packet-release} is \code{radiation\_packet\_merge\_slot\_unlimited}
 (\code{radiation\_packet.c:3648-3729}). The release fraction is at :3654-3668,
 the cutoff rule at :3670-3678, and the release of the energy, the photon number
@@ -3756,7 +3756,7 @@ The delay is
 (\code{radiation\_packet.c:489-531}), set up by
 \code{radiation\_packet\_set\_light\_speed} (:463-470). The arrival time of a
 hop is formed in \code{radiation\_packet\_book\_share}
-(\code{radiation\_packet.h:957-979}). The near bins and far cells are
+(\code{radiation\_packet.h:953-975}). The near bins and far cells are
 \code{radiation\_packet\_deposit} (\code{radiation\_packet.c:3266}),
 \code{radiation\_packet\_place} (:2920), \code{radiation\_packet\_regrid}
 (:3110), \code{radiation\_packet\_release\_far\_cell} (:3749) and
@@ -3796,7 +3796,7 @@ applied at \code{radiation\_packet.c:4203-4207}; $\tau_{\rm m}$ is
 \code{GEARFeedback:ISRF\_packet\_read\_mean\_time\_Myr}
 (\code{feedback\_properties.h:876-883}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
-(\code{radiation\_packet.h:1039-1064}, called at
+(\code{radiation\_packet.h:1078-1103}, called at
 \code{radiation\_propagation\_iact.h:162-163}, :196). The self term and the
 division are \code{radiation\_packet\_end\_force}
 (\code{radiation\_packet.c:4224-4253}), called at \code{radiation\_isrf.c:314}.
@@ -3812,9 +3812,9 @@ origin is set in \code{radiation\_packet\_set\_origin}
 (\code{radiation\_packet.c:3339-3371}), called by the merge at the drift,
 \code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:182-268}).
 The hop reads it in \code{radiation\_packet\_book\_share}
-(\code{radiation\_packet.h:939-948}). An empty slot keeps its old origin
+(\code{radiation\_packet.h:935-944}). An empty slot keeps its old origin
 (\code{radiation\_packet.c:3727}), but the gradient and the hop skip empty
-slots (\code{radiation\_packet.h:505, :910}). The inbox and reservoir sums are
+slots (\code{radiation\_packet.h:505, :906}). The inbox and reservoir sums are
 booked at \code{radiation\_packet.h:750-770}.
 
 \paragraph{Ledgers (Sec.~\ref{sec:packet-ledger}).} The ledgers are compiled
