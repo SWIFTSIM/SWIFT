@@ -3427,8 +3427,8 @@ passed to it points from sender to receiver. The held energy of the sender is
 set to zero at the end of the force loop (\code{radiation\_packet\_end\_force},
 \code{radiation\_packet.c:4242-4271}). The escape of a slot with $S_{i,k}=0$ is
 at \code{radiation\_packet.c:4208-4215}. The parameter $p$ is
-\code{radiation\_packet\_constants.cone\_power} (read at \code{radiation\_packet.h:513},
-:907), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:873-875}
+\code{radiation\_packet\_constants.cone\_power} (read at \code{radiation\_packet.h:502}, in
+\code{radiation\_packet\_slot\_weight}, which the gradient and the force loop share), and \code{GEARFeedback:ISRF\_packet\_cone\_power} is parsed at \code{src/feedback/GEAR\_thermal/feedback\_properties.h:873-875}
 and checked at :935-937.
 
 \paragraph{The reach (Sec.~\ref{sec:isrf-reach}).} The membership test is
