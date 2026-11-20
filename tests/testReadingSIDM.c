@@ -28,6 +28,12 @@
 
 int main(int argc, char *argv[]) {
 
+#ifdef SIDM_NONE
+  message("SIDM disabled: skipping unit test.");
+  message("Test automatically passes.");
+  return 0;
+#endif
+
   size_t Ngas = 0, Ngpart = 0, Ngpart_background = 0, Nspart = 0, Nbpart = 0,
          Nsink = 0, Nnupart = 0, Nsipart = 0;
   int flag_entropy_ICs = -1;
@@ -46,9 +52,12 @@ int main(int argc, char *argv[]) {
   struct unit_system us;
   units_init_cgs(&us);
 
-  /* Properties of the ICs */
+  /* Properties of the ICs (see makeInputSIDM.py) */
   const double boxSize = 1.;
   const size_t L = 4;
+  const double density = 2.;
+  const float mass = boxSize * boxSize * boxSize * density / (L * L * L);
+  const float h = 0.125f;
 
   /* Read data */
   read_ic_single("input_SIDM.hdf5", &us, dim, &parts, &gparts, &sinks, &sparts,
@@ -81,9 +90,13 @@ int main(int argc, char *argv[]) {
     assert(index < Nsipart);
 
     /* Check velocity */
-    assert(siparts[n].v[0] == 0.);
-    assert(siparts[n].v[1] == 0.);
-    assert(siparts[n].v[2] == 0.);
+    assert(siparts[n].v[0] == 0.125f * index);
+    assert(siparts[n].v[1] == -0.25f * index);
+    assert(siparts[n].v[2] == 1.f);
+
+    /* Check mass and smoothing length */
+    assert(siparts[n].mass == mass);
+    assert(siparts[n].h == h);
 
     /* Check positions */
     k = index % 4;
@@ -98,6 +111,8 @@ int main(int argc, char *argv[]) {
   }
 
   /* Clean-up */
+  free(parts);
+  free(gparts);
   free(siparts);
 
   return 0;

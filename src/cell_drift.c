@@ -1263,7 +1263,7 @@ void cell_drift_sipart(struct cell *c, const struct engine *e, int force,
 
         /* Update */
         dx_max = max(dx_max, cp->sidm.dx_max_part);
-        dx_max_sort = max(dx_max_sort, cp->hydro.dx_max_sort);
+        dx_max_sort = max(dx_max_sort, cp->sidm.dx_max_sort);
         cell_h_max = max(cell_h_max, cp->sidm.h_max);
         cell_h_max_active = max(cell_h_max_active, cp->sidm.h_max_active);
       }

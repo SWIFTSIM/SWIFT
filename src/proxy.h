@@ -33,8 +33,10 @@
    sinks and siparts to exchange, hence 6 types. */
 #define PROXY_EXCHANGE_NUMBER_PARTICLE_TYPES 6
 
-/* Proxy tag arithmetic. */
-#define proxy_tag_shift 9
+/* Proxy tag arithmetic. The tags are nodeID * proxy_tag_shift + one of the
+ * values below (0 to 8). The shift is one larger than needed so that the
+ * un-shifted proxy_tag_tags cannot match any node's shifted tag. */
+#define proxy_tag_shift 10
 #define proxy_tag_count 0
 #define proxy_tag_parts 1
 #define proxy_tag_xparts 2

@@ -4296,7 +4296,7 @@ void engine_addtasks_send_mapper(void *map_data, int num_elements,
                                  /*t_sink_gas_swallow=*/NULL,
                                  /*t_sink_formation_count=*/NULL);
 
-    /* Add the send tasks for the cells in the proxy that have a black holes
+    /* Add the send tasks for the cells in the proxy that have a SIDM
      * connection. */
     if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_sidm))
       engine_addtasks_send_sidm(e, ci, cj, /*t_xv=*/NULL, /*t_rho=*/NULL);
@@ -4413,7 +4413,7 @@ void engine_addtasks_recv_mapper(void *map_data, int num_elements,
                                  /*t_sink_gas_swallow=*/NULL,
                                  /*t_sink_formation_counts=*/NULL, tend);
 
-    /* Add the recv tasks for the cells in the proxy that have a black holes
+    /* Add the recv tasks for the cells in the proxy that have a SIDM
      * connection. */
     if ((e->policy & engine_policy_sidm) && (type & proxy_cell_type_sidm))
       engine_addtasks_recv_sidm(e, ci, /*t_xv=*/NULL,
@@ -4622,13 +4622,15 @@ void engine_maketasks(struct engine *e) {
 
   /* Add the SIDM tasks. */
   if (e->policy & engine_policy_sidm) {
+    tic2 = getticks();
+
     threadpool_map(&e->threadpool, engine_make_sidmloop_tasks_mapper, NULL,
                    s->nr_cells, 1, threadpool_auto_chunk_size, e);
-  }
 
-  if (e->verbose)
-    message("Making SIDM tasks took %.3f %s.",
-            clocks_from_ticks(getticks() - tic2), clocks_getunit());
+    if (e->verbose)
+      message("Making SIDM tasks took %.3f %s.",
+              clocks_from_ticks(getticks() - tic2), clocks_getunit());
+  }
 
   if (e->sched.nr_tasks == 0 && (s->nr_gparts > 0 || s->nr_parts > 0))
     error("We have particles but no hydro or gravity tasks were created.");

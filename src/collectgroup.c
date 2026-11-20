@@ -37,8 +37,9 @@
 
 /* Local collections for MPI reduces. */
 struct mpicollectgroup1 {
-  long long updated, g_updated, s_updated, sink_updated, b_updated;
-  long long inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited;
+  long long updated, g_updated, s_updated, sink_updated, b_updated, si_updated;
+  long long inhibited, g_inhibited, s_inhibited, sink_inhibited, b_inhibited,
+      si_inhibited;
 
   integertime_t ti_hydro_end_min;
   integertime_t ti_rt_end_min;
@@ -293,12 +294,14 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   mpigrp11.s_updated = grp1->s_updated;
   mpigrp11.sink_updated = grp1->sink_updated;
   mpigrp11.b_updated = grp1->b_updated;
+  mpigrp11.si_updated = grp1->si_updated;
 
   mpigrp11.inhibited = grp1->inhibited;
   mpigrp11.g_inhibited = grp1->g_inhibited;
   mpigrp11.s_inhibited = grp1->s_inhibited;
   mpigrp11.sink_inhibited = grp1->sink_inhibited;
   mpigrp11.b_inhibited = grp1->b_inhibited;
+  mpigrp11.si_inhibited = grp1->si_inhibited;
 
   mpigrp11.ti_hydro_end_min = grp1->ti_hydro_end_min;
   mpigrp11.ti_rt_end_min = grp1->ti_rt_end_min;
@@ -344,12 +347,14 @@ void collectgroup1_reduce(struct collectgroup1 *grp1) {
   grp1->sink_updated = mpigrp12.sink_updated;
   grp1->s_updated = mpigrp12.s_updated;
   grp1->b_updated = mpigrp12.b_updated;
+  grp1->si_updated = mpigrp12.si_updated;
 
   grp1->inhibited = mpigrp12.inhibited;
   grp1->g_inhibited = mpigrp12.g_inhibited;
   grp1->s_inhibited = mpigrp12.s_inhibited;
   grp1->sink_inhibited = mpigrp12.sink_inhibited;
   grp1->b_inhibited = mpigrp12.b_inhibited;
+  grp1->si_inhibited = mpigrp12.si_inhibited;
 
   grp1->ti_hydro_end_min = mpigrp12.ti_hydro_end_min;
   grp1->ti_rt_end_min = mpigrp12.ti_rt_end_min;
@@ -404,6 +409,7 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   mpigrp11->s_updated += mpigrp12->s_updated;
   mpigrp11->sink_updated += mpigrp12->sink_updated;
   mpigrp11->b_updated += mpigrp12->b_updated;
+  mpigrp11->si_updated += mpigrp12->si_updated;
 
   /* Sum of inhibited */
   mpigrp11->inhibited += mpigrp12->inhibited;
@@ -411,6 +417,7 @@ static void doreduce1(struct mpicollectgroup1 *mpigrp11,
   mpigrp11->s_inhibited += mpigrp12->s_inhibited;
   mpigrp11->sink_inhibited += mpigrp12->sink_inhibited;
   mpigrp11->b_inhibited += mpigrp12->b_inhibited;
+  mpigrp11->si_inhibited += mpigrp12->si_inhibited;
 
   /* Minimum end time. */
   mpigrp11->ti_hydro_end_min =

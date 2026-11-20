@@ -32,6 +32,7 @@ TASKTYPES = [
     "drift_bpart",
     "drift_gpart",
     "drift_gpart_out",
+    "drift_sipart",
     "hydro_end_force",
     "kick1",
     "kick2",
@@ -92,6 +93,9 @@ TASKTYPES = [
     "rt_advance_cell_time",
     "rt_sort",
     "rt_collect_times",
+    "sidm_sort",
+    "sidm_density_ghost",
+    "sidm_end_force",
     #  "count",
 ]
 
@@ -132,6 +136,10 @@ SUBTYPES = [
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "sidm_comm_xv",
+    "sidm_comm_rho",
+    "sidm_density",
+    "sidm_force",
     #  "count",
 ]
 
@@ -199,6 +207,14 @@ FULLTYPES = [
     "pair/sink_do_swallow",
     "self/sink_do_gas_swallow",
     "pair/sink_do_gas_swallow",
+    "self/sidm_density",
+    "pair/sidm_density",
+    "self/sidm_force",
+    "pair/sidm_force",
+    "recv/sidm_comm_xv",
+    "send/sidm_comm_xv",
+    "recv/sidm_comm_rho",
+    "send/sidm_comm_rho",
 ]
 
 #  A number of colours for the various types. Recycled when there are

@@ -242,8 +242,8 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
           fprintf(file, "%6llu %10f %10f %10f %13e %13e %13e %13e\n",
                   cj->sidm.parts[sipjd].id, cj->sidm.parts[sipjd].x[0],
                   cj->sidm.parts[sipjd].x[1], cj->sidm.parts[sipjd].x[2],
-                  sidm_get_comoving_density(&main_cell->sidm.parts[sipjd]),
-                  main_cell->sidm.parts[sipjd].density.rho_dh,
+                  sidm_get_comoving_density(&cj->sidm.parts[sipjd]),
+                  cj->sidm.parts[sipjd].density.rho_dh,
                   cj->sidm.parts[sipjd].density.wcount,
                   cj->sidm.parts[sipjd].density.wcount_dh);
         }

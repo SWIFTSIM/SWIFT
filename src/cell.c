@@ -56,6 +56,7 @@
 
 /* Global variables. */
 int cell_next_tag = 0;
+int cell_max_tag = cell_max_tag_default;
 
 /** List of cell pairs for sub-cell recursion. For any sid, the entries in
  * this array contain the number of sub-cell pairs and the indices and sid
@@ -750,10 +751,15 @@ int cell_count_siparts_for_tasks(const struct cell *c) {
  * Each cell with <1000 part will be processed. We limit h to be the size of
  * the cell and replace 0s with a good estimate.
  *
+ * The gas/stars and the SIDM particles are treated independently since
+ * their counts differ.
+ *
  * @param c The cell.
- * @param treated Has the cell already been sanitized at this level ?
+ * @param treated Have the gas and stars already been sanitized at this level?
+ * @param sidm_treated Have the SIDM particles already been sanitized at this
+ * level?
  */
-void cell_sanitize(struct cell *c, int treated) {
+void cell_sanitize(struct cell *c, int treated, int sidm_treated) {
   const int count = c->hydro.count;
   const int scount = c->stars.count;
   const int sicount = c->sidm.count;
@@ -792,8 +798,10 @@ void cell_sanitize(struct cell *c, int treated) {
     const float upper_h_max = c->dmin / (1.2f * sidm_kernel_gamma);
 
     for (int i = 0; i < sicount; ++i) {
-      if (siparts[i].h == 0.f || siparts[i].h > upper_h_max)
+      if (siparts[i].h == 0.f || siparts[i].h > upper_h_max) {
         siparts[i].h = upper_h_max;
+        siparts[i].depth_h = c->depth;
+      }
     }
   }
 
@@ -802,7 +810,7 @@ void cell_sanitize(struct cell *c, int treated) {
     for (int k = 0; k < 8; ++k) {
       if (c->progeny[k] != NULL) {
         /* Recurse */
-        cell_sanitize(c->progeny[k], (count < 1000));
+        cell_sanitize(c->progeny[k], (count < 1000), (sicount < 1000));
 
         /* And collect */
         h_max = max(h_max, c->progeny[k]->hydro.h_max);

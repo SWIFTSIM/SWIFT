@@ -58,15 +58,17 @@ struct scheduler;
 struct replication_list;
 
 /* Max tag size set to 2^29 to take into account some MPI implementations
- * that use 2^31 as the upper bound on MPI tags and the fact that
- * cell_next_tag is multiplied by 2 when passed to an MPI function.
- * The maximum was lowered by a further factor of 2 to be on the safe side.*/
-#define cell_max_tag (1 << 29)
+ * that use 2^31 as the upper bound on MPI tags, lowered by a factor of 4
+ * to be on the safe side.
+ * This is only a starting point: engine_config() lowers cell_max_tag to
+ * MPI_TAG_UB when the MPI implementation reports it. */
+#define cell_max_tag_default (1 << 29)
 
 #define cell_align 128
 
 /* Global variables. */
 extern int cell_next_tag;
+extern int cell_max_tag;
 
 /*! Counter for cell IDs (when exceeding max values for uniqueness) */
 #if defined(SWIFT_DEBUG_CHECKS) || defined(SWIFT_CELL_GRAPH)
@@ -203,16 +205,16 @@ struct pcell {
   /*! SIDM variables */
   struct {
 
-    /*! Number of #spart in this cell. */
+    /*! Number of #sipart in this cell. */
     int count;
 
     /*! Maximal smoothing length. */
     float h_max;
 
-    /*! Minimal integer end-of-timestep in this cell for black hole tasks */
+    /*! Minimal integer end-of-timestep in this cell for SIDM tasks */
     integertime_t ti_end_min;
 
-    /*! Integer time of the last drift of the #spart in this cell */
+    /*! Integer time of the last drift of the #sipart in this cell */
     integertime_t ti_old_part;
 
   } sidm;
@@ -308,7 +310,7 @@ struct pcell_step {
     /*! Minimal integer end-of-timestep in this cell (sidm) */
     integertime_t ti_end_min;
 
-    /*! Maximal distance any #part has travelled since last rebuild */
+    /*! Maximal distance any #sipart has travelled since last rebuild */
     float dx_max_part;
   } sidm;
 
@@ -573,7 +575,7 @@ void cell_split(struct cell *c, ptrdiff_t parts_offset, ptrdiff_t sparts_offset,
                 struct cell_buff *sbuff, struct cell_buff *bbuff,
                 struct cell_buff *gbuff, struct cell_buff *sinkbuff,
                 struct cell_buff *sibuff);
-void cell_sanitize(struct cell *c, int treated);
+void cell_sanitize(struct cell *c, int treated, int sidm_treated);
 int cell_locktree(struct cell *c);
 void cell_unlocktree(struct cell *c);
 int cell_glocktree(struct cell *c);

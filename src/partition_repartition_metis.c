@@ -157,8 +157,8 @@ static void partition_gather_weights(void *map_data, int num_elements,
         int cjd = cj - cells;
 
         /* Local cells add weight to vertices. */
-        if (vweights && ci->nodeID == nodeID) {
-          atomic_add_d(&weights_v[cid], 0.5 * w);
+        if (vweights) {
+          if (ci->nodeID == nodeID) atomic_add_d(&weights_v[cid], 0.5 * w);
           if (cj->nodeID == nodeID) atomic_add_d(&weights_v[cjd], 0.5 * w);
         }
 

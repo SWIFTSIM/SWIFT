@@ -20,12 +20,12 @@ Default:
   SmoothedMetalMassFractions_Gas: FMantissa9
   Temperatures_Gas: FMantissa9
   ElectronNumberDensities_Gas: DMantissa9
-  ComptonYParameters_Gas: FMantissa9
+  ComptonYParameters_Gas: DMantissa9
   LastAGNFeedbackScaleFactors_Gas: HalfFloat
   StarFormationRates_Gas: FMantissa9
   XrayLuminosities_Gas: DMantissa9
   XrayPhotonLuminosities_Gas: DMantissa9
-  MaximalTemperatures_Gas: DMantissa9
+  MaximalTemperatures_Gas: FMantissa9
   MaximalTemperatureScaleFactors_Gas: on
 
   # Particle Type DM
@@ -42,7 +42,7 @@ Default:
   ParticleIDs_Stars: Nbit40
   SmoothingLengths_Stars: on
   InitialMasses_Stars: FMantissa9
-  BirthScaleFactors_Stars: HalfFloat
+  BirthScaleFactors_Stars: DMantissa13
   FeedbackEnergyFractions_Stars: off
   NumberOfFeedbackEvents_Stars: off
   BirthDensities_Stars: BFloat16

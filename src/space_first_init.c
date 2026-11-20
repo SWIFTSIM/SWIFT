@@ -556,7 +556,7 @@ void space_first_init_siparts_mapper(void *restrict map_data, int count,
     if (with_gravity) {
       const struct gpart *gp = sip[k].gpart;
       const float softening = gravity_get_softening(gp, grav_props);
-      sip->h = max(sip->h, softening * sidm_h_min_ratio);
+      sip[k].h = max(sip[k].h, softening * sidm_h_min_ratio);
     }
   }
 

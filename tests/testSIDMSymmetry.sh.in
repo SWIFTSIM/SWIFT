@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# crash if anything in this script fails
+set -euo pipefail
+
+./testSIDMSymmetry @srcdir@/testSIDM.yml
