@@ -1,75 +1,88 @@
 # Intro
-One 29.7 Msun star at the centre of an isolated box (no periodic images) of cold (50 K), zero-metallicity molecular
-gas with 8 dense Gaussian clumps (peak density 100 times the clear gas, clumps 0.12 to 0.32 box
-sizes from the star). The ISRF transport is on (`ISRF_propagation: 1`) with the H2 line absorption
-of the transport on (`ISRF_H2_line_absorption: 1`), so the Lyman-Werner (LW) light of the star is
-absorbed by the H2 lines along its path.
+One 29.7 Msun star at the centre of an isolated box (no periodic images) of cold (50 K),
+zero-metallicity molecular gas with 8 dense Gaussian clumps (peak density 100 times the clear gas,
+clumps 0.12 to 0.32 box sizes from the star). The ISRF transport is on (`ISRF_propagation: 1`) with
+the H2 line absorption of the transport on (`ISRF_H2_line_absorption: 1`), so the Lyman-Werner (LW)
+light of the star is absorbed by the H2 lines along its path.
 
 At a limited light speed (`ISRF_packet_light_speed: fixed` or `cap`) the light that has not yet
-reached a gas particle waits in a reception slot of that particle. When part of the waiting light
-is released, the released light receives the mean H2 shielding of the whole pool. This example
+reached a gas particle waits in a reception slot of that particle. A slot is the part of the
+particle's reception that holds the light from one direction. When part of the waiting light is
+released, the released light receives the mean H2 shielding of the whole waiting pool. This example
 runs the cloud twice from the same initial conditions, with a limited and with an unlimited light
 speed (no light waits), and checks the first against the second.
 
-Read the README of `ISRFH2StarLit` for the radiation table and the exit classes. This run needs
-geajay, as that example does.
+The speed of the limited arm is `ISRF_packet_light_speed_fraction_of_c` (0.99 in `params.yml`); the
+`fixed` mode uses it directly and `cap` caps the speed at it.
 
 # Configure
-Use the build of `ISRFH2StarLit`.
+This example needs geajay; official Grackle refuses `ISRF_H2_line_absorption: 1` at start-up.
+The cooling solver is the geajay default (`GeajayCooling:solver` is not set in `params.yml`).
+No extra build flag is needed.
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The packet transport needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`; `run.sh` fetches and checks it.
 
 # Run
 ```
 ./run.sh
-light_speed=cap ./run.sh      # limited arm with the cap mode instead of 0.99 c
+light_speed=cap ./run.sh      # limited arm with the cap mode instead of the fixed speed
 ```
-`run.sh` fetches the glass file and the tables, writes the initial conditions, runs the
-unlimited arm (directory `control`), then the limited arm (directory `limited`), then the check.
-Both arms write snapshots at the same times. `level`, `gas_density`, `gas_mass`, `h2_ratio`
-(initial `nH2/nH`, default 3e-5) and `n_threads` override the defaults. The run keeps the gas
-cold and the H2 nearly frozen: photoionization, winds and supernovae are off, the metallicity is
-zero, and the time step is set by the light speed (64 steps of 1.47e-10 internal units).
+`run.sh` fetches the glass file and the tables, writes the initial conditions, runs the unlimited
+arm (directory `control`), then the limited arm (directory `limited`), then the check. It deletes
+`snap` and `restart` in the current directory first. Both arms write snapshots at the same times.
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`, default 3e-5) and `n_threads`
+override the defaults. The run keeps the gas cold and the H2 nearly frozen: photoionization, winds
+and supernovae are off, the metallicity is zero, and the time step is set by the light speed
+(64 steps of 1.47e-10 internal units). Both arms are non-periodic, so no light of periodic images
+of the star reaches the gas.
 
 # Checking
 `python3 checkH2WaitingLight.py --limited limited --control control`
 
-The box is not periodic in both runs (`InitialConditions:periodic: 0`). In a periodic box the
-light of the periodic images of the star reaches a particle through neighbours that are farther from
-the star than the particle. Those neighbours are not shares, so the control run would leave the range
-of its own shares once the image light arrives (about 0.55 to 0.95 box sizes divided by the speed of
-the front). The check stops with exit class 4 if either run is periodic.
+Words used by the check:
+- share: the light that one neighbour, closer to the star, hands to a particle. It carries the
+  neighbour's H2 column and transmission plus the hop between the two.
+- pool: the shares that wait together in the slots of one particle.
+- hull: the range from the smallest to the largest share value of a particle.
 
-The check reads every snapshot that both runs hold, in time order, from the first one at which
-at least 200 particles are lit in both runs. Particles are read between 2 smoothing lengths and
-half a box minus 2 smoothing lengths from the star, and only if their H2 density has changed by
-at most 5 per cent since the first snapshot.
+A particle releases a weighted mean of its pool, so its transmission and column must lie inside
+the hull of its shares. A share has the H2 column carried by its sender plus the column of the hop,
+and the transmission carried by its sender times `f(N + dN) / f(N)`, with `f` the shielding function
+at the temperature and density of the receiver, `N` the column of the sender and `dN` the column of
+the hop. The hop uses the H2 of the snapshot before the one that holds the sender value. The shares
+are built from the carried values of the senders of the same run in all snapshots up to the compared
+one, because a share may have waited a few steps.
 
-The window of snapshots ends at the first snapshot where either of two things happens, and the
-check prints the window and the reason: the control run has a lit particle outside the range of its
-own shares (the quantity the comparison relies on), or the H2 of more than half the compared particles
-has changed by more than 5 per cent. A snapshot at the end of the window and later snapshots are not
-read. If neither happens, the window ends at the last snapshot that both runs hold.
+The check reads every snapshot that both runs hold, from the first at which at least 200 particles
+are lit in both runs. Particles are read between 2 smoothing lengths and half a box minus 2
+smoothing lengths from the star, and only if their H2 density changed by at most 5 per cent since
+the first snapshot. Per snapshot it tests that:
+- the limited run lies inside the hull of its own shares (transmission and column);
+- the two runs differ by at most the width of the hull of both runs' shares, and both lie inside it;
+- the control run lies inside the hull of its own shares.
+The comparison ends at the first snapshot where the control leaves its hull, or where the H2 of more
+than half the compared particles changed. The check prints the first and last snapshot read and why
+the window ends. The two snapshots compared must have the same time, the limited run must have lit
+fewer particles than the control at the first compared snapshot (else no light waits), and both runs
+must be non-periodic.
 
-A particle receives light as shares from the neighbours that are closer to the star. A share has
-the H2 column carried by its sender plus the column of the hop. The released light is a weighted
-mean of the shares of the pool, so the transmission and the column of a particle lie between the
-smallest and the largest share value. The shares are built from the carried columns of the
-senders of the same run in all snapshots up to the compared one, because a share may
-have been sent, and left waiting, a few steps earlier.
+What a PASS proves: with waiting light, each particle agrees with the shares of its own senders, and
+the two runs agree inside that range. It catches a particle whose transmission or column departs from
+what its senders hand to it by more than 1 per cent. What it does not prove: the absolute value of
+the transmission. A change that acts on every particle alike moves senders and receivers together
+and passes. It does not prove that the released light has the exact value of a per-share sum, nor
+that a star on coarse steps is handled correctly. It does not compare a column with the straight
+line from the star, so it cannot tell whether the `cap` front is older than light at the speed limit.
 
-- `hull_t`: `|ln(t_limited / t_control)|` is at most `ln(largest / smallest)` of the share
-  transmissions of both runs.
-- `hull_N`: the carried column of both runs lies between the smallest and the largest share column.
-- `own range`: the limited run alone lies inside the range of its own shares (transmission and column).
-- The control run must obey the range of its own shares, tested on all its lit particles in the
-  read region.
-- The two snapshots compared must have the same time. The limited run must have lit fewer
-  particles than the control run at the first compared snapshot, else no light waits and the run is void.
+The snapshots hold the mean of the slot columns of a particle, not the column of the slot that a share
+leaves from, and no slot origin. The check cannot bound that difference. The H2 of a hop is known
+only at snapshot times, so the send time is placed within one snapshot interval. A value that sits on
+the edge of its hull because it has a single share can therefore lie outside the hull by the size of
+these two terms, and the check then fails.
 
-The shares are built from carried columns of the same run, so light that is older than the
-snapshot (waiting, or delayed by the front) is read with the column it had when it was sent. The
-check does not compare a column with the straight line from the star. It does not test whether the
-front of the `cap` mode is slower than 0.99 c (light older than light at 0.99 c): both runs use their
-own shares.
-
-The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field, 3 for a
-non-finite value and 4 for a void run (a premise or the positive control is not met).
+The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field (run `./run.sh`
+first), 3 for a non-finite value and 4 for a void run (a premise or the positive control is not met).
