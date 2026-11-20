@@ -1,0 +1,106 @@
+# Define the system of units to use internally.
+InternalUnitSystem:
+  UnitMass_in_cgs:     1.988409870698051e+43   # 10^10 solar masses
+  UnitLength_in_cgs:   3.0856775814913673e+21  # 1 kpc
+  UnitVelocity_in_cgs: 1e5                     # km/s
+  UnitCurrent_in_cgs:  1                       # Amperes
+  UnitTemp_in_cgs:     1                       # Kelvin
+
+Restarts:
+  enable: 0
+
+# No Potential: block, so --external-gravity (run.sh) applies no force.
+Gravity:
+  MAC:                           adaptive
+  epsilon_fmm:                   0.001
+  theta_cr:                      0.7
+  eta:          0.025
+  max_physical_baryon_softening: 0.005
+  mesh_side_length:        32
+
+TimeIntegration:
+  time_begin:        0.
+  time_end:          1.2e-3                     # 1.17 Myr
+  dt_min:            1e-14
+  dt_max:            1e-5
+
+Snapshots:
+  subdir: snap
+  basename:   snapshot
+  time_first: 0.0
+  delta_time: 2e-4
+  recording_triggers_sink:   [-1, -1, -1]
+  compression: 9
+
+Scheduler:
+  cell_extra_gparts: 10
+  cell_extra_sinks:  10
+  cell_extra_sparts: 10
+  max_top_level_cells: 3
+  tasks_per_cell: 150
+
+Statistics:
+  delta_time:           2e-4
+  time_first:             0.
+
+InitialConditions:
+  file_name:          ICs_isrf_h2_cooling.hdf5
+  periodic:                 1
+  shift:              [0.0, 0.0, 0.0]
+
+SPH:
+  resolution_eta:        1.2348
+  CFL_condition:         0.1
+  minimal_temperature:   1
+  initial_temperature:   300
+
+GEARChemistry:
+  initial_metallicity: 0.08                    # In solar units (scale_initial_metallicity): dust forms the H2
+  scale_initial_metallicity: 1
+  diffusion_coefficient: 1e-3
+
+GeajayCooling:
+  dust_to_gas_model: linear                    # Dust-to-gas ratio model (required)
+  cloudy_table_file: CloudyData_UVB=HM2012.h5  # Name of the Cloudy table
+  primordial_chemistry_network: H_He_H2        # H2 is tracked
+  with_uv_background: 0                        # No metagalactic background: the star is the only LW source
+  redshift: -1                                 # Time based redshift
+  with_metal_cooling: 1                        # Required by the dust chemistry of the ISRF
+  thermal_time_myr: 0                          # No adiabatic-cooling time after a feedback event
+  h2_shielding_length_method: Jeans            # The library shields the star light of the switch-off leg at the Jeans length
+  initial_h2i_to_h_ratio: 1e-4           # Initial nH2 / nH
+  initial_hii_to_h_ratio: 1e-8                 # Residual ionization keeps H2 formation through H- negligible
+
+GEARFeedback:
+  yields_table: PopII_parsec_spectral.hdf5                  # Stellar yields table, with the Data/Radiation group
+  yields_table_first_stars: PopII_parsec_spectral.hdf5      # First-star table, the same file
+  imf_transition_metallicity: -5                            # Pop III/II IMF cutoff, [Fe/H] (default)
+  discrete_yields: 1                                        # Use discrete stellar yields
+  elements: [Fe, Mg, O, C, Al, Ca, Ba, Zn, Eu]              # Chemical elements read from yields table
+  discrete_star_minimal_gravity_mass_Msun: 0.1
+  supernovae_Ia_energy_erg: 1e51
+  supernovae_efficiency: 0                                  # No supernova energy
+  with_stellar_wind_feedback: 0                             # No stellar winds
+  with_photoionization: 0                                   # No HII region: it would change X_H2 and T
+  HII_couple_ionization_rate: 0                             # No ionization rate to the cooling
+  with_interstellar_radiation_field: 1                      # ISRF feedback master switch
+  ISRF_propagation: 1                                       # Transport the ISRF from the stars
+  ISRF_H2_line_absorption: 1                         # 1: the H2 lines absorb the LW band along the packet path
+  ISRF_packet_light_speed: unlimited                          # One hop per step: the run holds more than 100 steps
+
+Stars:
+  timestep_age_threshold_unlimited_Myr: 11.
+  timestep_age_threshold_Myr:           7.
+  max_timestep_young_Myr:               0.01
+  max_timestep_old_Myr:                 1
+  min_star_timestep_Myr:                1e-11
+  HII_max_search_radius: 0.0002             # Inert with photoionization off, must stay under the box half-width
+  HII_max_retry_full_buffer: 30
+  HII_max_radius_expansion_tries: 5
+  HII_radius_expansion_factor: 1.1
+  overwrite_birth_time: 0
+  birth_time: -1
+  overwrite_birth_density: 0
+  birth_density: -1
+  overwrite_birth_temperature: 0
+  birth_temperature: -1

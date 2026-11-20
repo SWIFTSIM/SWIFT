@@ -1,0 +1,72 @@
+# Intro
+Compares the H2 abundance of two runs of the same box: one with the H2 line absorption of the
+light transport switched on (`GEARFeedback:ISRF_H2_line_absorption: 1`) and one with it off. One
+29.7 Msun star sits in a uniform, periodic box of 30 pc side, filled with gas of hydrogen
+density 30 cm^-3 and 0.08 solar metallicity, so that H2 forms on dust. The star's
+Lyman-Werner (LW) light dissociates the H2. Cooling is geajay with
+`h2_shielding_length_method: Jeans`; official Grackle refuses `ISRF_H2_line_absorption: 1`.
+
+With the switch on, the star's dissociation rate is multiplied by the line transmission
+`T_line` of the path (written as `LWLineTransmissions`). With the switch off, the library
+multiplies it by its own H2 self-shielding factor at the Jeans length of the particle. In
+photodissociation equilibrium the formation rate over the star rate equals `x T_line` with the
+switch on and `x S(x n_H L_J)` with it off, where `x = n_H2 / n_H`, `S` is the shielding
+function of Wolcott-Green and Haiman (2019) and `L_J` the Jeans length. For every gas particle
+the check solves the off-leg equation from the on-leg state, with each leg's own density,
+temperature and formation rates, and compares the median change of `x` per density bin
+with the measured one.
+
+# Configure
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The geajay library must have the chemistry option `h2_transported_lw_rate_shielding` (geajay
+commit `fefbdc86e` has it). `configure` detects it. Without it SWIFT stops at start-up with
+"ISRF_H2_line_absorption: 1 is not supported". No build flag is needed otherwise. The packet
+transport reads a radiation table with the `Data/Radiation` group, which `run.sh` fetches.
+Resolution, density and particle mass are the `level`, `gas_density`, `gas_mass` and
+`h2_ratio` variables of `run.sh`; `params.yml` holds the parameters.
+
+# Run
+Three runs of the same box are needed, about 15 minutes and 50 MB each on 8 threads. `run.sh`
+uses the IC maker and the glass file of `../ISRFH2StarLit`. The `repeat` run repeats the `on`
+run unchanged: it measures how much the H2 differs between two runs with the same switch.
+`run.sh` stops if `snap/` or `restart/` exists (`force=1` removes them).
+```
+leg=on ./run.sh
+leg=off ./run.sh
+leg=repeat ./run.sh
+python3 check_h2_cooling_onoff.py --on on/snap --off off/snap --repeat repeat/snap
+```
+`run.sh` uses the accurate (BDF) solver of geajay (`solver=1`). The cheap solver holds the
+shielding factor of the switch-off leg fixed over each sub-step, so that leg lags its
+equilibrium while the H2 falls: the check reads the solver from the snapshots and reports
+cheap-solver legs as INDETERMINATE.
+
+# Checking
+The check reads snapshots 3 to 6 (`--first`, `--last`), and the snapshot before the first one.
+A PASS means that the change of the H2 abundance between the two runs equals the change that
+the written line transmission predicts, with the library formation rates, within a bar made of
+the statistical error, the run-to-run noise and a temperature lag (see the docstring of
+`check_h2_cooling_onoff.py` for the definitions). It does not test the transmission itself,
+the formation rates or the shielding fit of the library. It cannot see an error smaller than
+its bar, a fault that lowers the LW energy together with the dissociation rate, or an error in
+the absolute size or sign of a formation channel. A density bin with too few particles or a
+bar above ln 2 is printed as INDETERMINATE.
+
+Exit status: 0 every snapshot passes, 1 a failure (or no snapshot could be evaluated),
+2 bad arguments, 3 inconclusive: some snapshot has no decided bin, or the noise or the
+temperature lag is unknown. `--x-on-scale`, `--t-line-power`, `--column-scale`,
+`--plant-nan-field`, `--plant-hm-sign` and `--synthetic` plant a known error, to confirm that the
+check fails when it should.
+
+# Refusal test
+`check_official_grackle_refusal.sh <swift> <ICs.hdf5> <cloudy.h5> <yields.hdf5> <workdir>`
+checks that a SWIFT built with official Grackle (`--with-cooling=grackle_3`, same configure line
+with `--with-grackle=path/to/grackle` in place of `--with-geajay`) stops at start-up with the
+switch 1 and starts with the switch 0. `<swift>` is that binary. `<ICs.hdf5>` is
+`ICs_homogeneous_box.hdf5` made by `makeIC.py` of `SinkParticles/HomogeneousBox`, whose
+`params.yml` the script reuses. `<cloudy.h5>` is the Cloudy table
+(`getGrackleCoolingTable.sh` of `GEAR_ICs_and_SCRIPTS`), `<yields.hdf5>` the radiation table
+`PopII_parsec_spectral.hdf5`, `<workdir>` an empty scratch directory.
