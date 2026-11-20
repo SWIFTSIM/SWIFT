@@ -17,8 +17,10 @@
 # MeanPhotonEnergyPE and Integrated_MeanPhotonEnergyPE, which SWIFT refuses
 # to start without when GEARFeedback:ISRF_propagation is 1
 # (src/feedback/GEAR_thermal/feedback_properties.h).
+# The photoionization datasets (Q_H, Integrated_Q_H, Luminosity, DotEExcess)
+# must hold only finite values, whatever the options; zeros are legitimate.
 # The tables served by the public hosts (see getChemistryTable.sh) predate
-# the radiation tables and carry neither, so this check stops the example
+# the radiation tables and do not carry this data, so this check stops the example
 # before it spends time on the glass file, the Cloudy tables and the
 # initial conditions.
 #
@@ -86,6 +88,9 @@ with_isrf = sys.argv[2] == "1"
 require_1d = sys.argv[3] == "1"
 isrf_fields = ("L_PE", "L_LW", "Integrated_L_PE", "Integrated_L_LW")
 required_fields = ("MeanPhotonEnergyLW", "Integrated_MeanPhotonEnergyLW")
+# Photoionization datasets: checked for finiteness only. Zeros are legitimate
+# (SWIFT floors them before taking log10); the builder writes no -inf.
+ionization_fields = ("Q_H", "Integrated_Q_H", "Luminosity", "DotEExcess")
 # Band-edge datasets, required fatally by SWIFT under the ISRF. The lower
 # edge energies in eV must equal RADIATION_PE_BAND_LOWER_EDGE_EV and
 # RADIATION_LW_BAND_LOWER_EDGE_EV (src/feedback/GEAR/radiation.h).
@@ -94,7 +99,8 @@ edge_fields = {
     "SpectralPhotonRateAtLWEdge": 11.2,
 }
 integrated_edge_fields = tuple("Integrated_" + d for d in edge_fields)
-# Read only if both are present; the ISRF packet transport needs them.
+# Required under --with-isrf by this script, although SWIFT demands them only
+# when GEARFeedback:ISRF_propagation is 1.
 mean_energy_pe_fields = ("MeanPhotonEnergyPE", "Integrated_MeanPhotonEnergyPE")
 
 # Attributes that identify the table itself. GEARFeedback:yields_table only
@@ -126,6 +132,7 @@ identity = None
 dimensionality = None
 edge_problems = []
 nonfinite = []
+unreadable = []
 
 # A file that is not HDF5 at all reaches here: getRadiationTable.sh copies
 # whatever GEAR_RADIATION_TABLE names, and takes an existing file in the
@@ -183,7 +190,7 @@ with handle as f:
                         % (name, edge_ev, expected_ev)
                     )
         # A NaN or inf compares false against every bar downstream.
-        checked = list(required_fields)
+        checked = list(required_fields) + list(ionization_fields)
         if with_isrf:
             checked += (
                 list(isrf_fields)
@@ -192,7 +199,12 @@ with handle as f:
                 + list(mean_energy_pe_fields)
             )
         for name in checked:
-            if name in group and not np.all(np.isfinite(group[name][()])):
+            if name not in group:
+                continue
+            node = group[name]
+            if not isinstance(node, h5py.Dataset) or node.dtype.kind not in "fiu":
+                unreadable.append(name)
+            elif not np.all(np.isfinite(node[()])):
                 nonfinite.append(name)
         missing = None
         if absent:
@@ -260,6 +272,16 @@ if nonfinite:
         "\n"
         "Regenerate the table with pychem's pychem_generate_hdf5_parameters.\n"
         "\n" % (table, ", ".join("'Data/Radiation/%s'" % d for d in nonfinite))
+    )
+
+if unreadable:
+    failed = True
+    sys.stderr.write(
+        "\n"
+        "ERROR: '%s' holds something other than a numeric dataset under %s.\n"
+        "\n"
+        "Regenerate the table with pychem's pychem_generate_hdf5_parameters.\n"
+        "\n" % (table, ", ".join("'Data/Radiation/%s'" % d for d in unreadable))
     )
 
 if dimensionality_fails:
