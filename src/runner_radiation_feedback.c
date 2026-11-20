@@ -1271,7 +1271,6 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 
   struct engine *e = r->e;
   const struct feedback_props *feedback_props = e->feedback_props;
-  const integertime_t ti_current = e->ti_current;
 
   struct spart *restrict sparts = c->stars.parts;
   const int scount = c->stars.count;
@@ -1303,7 +1302,7 @@ void runner_dosub_stars_hii_ionization_feedback(struct runner *r,
 #endif
 #ifdef SWIFT_DEBUG_CHECKS
     /* Check that particles have been drifted to the current time */
-    if (si->ti_drift != ti_current)
+    if (si->ti_drift != e->ti_current)
       error(
           "Particle si (%lld) not drifted to current time c = %lld, "
           "c->super = %lld",
