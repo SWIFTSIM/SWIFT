@@ -445,7 +445,7 @@ __attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
 }
 
 /**
- * @brief Tag the #part as ionized to be ionized in feedback_update_part().
+ * @brief Tag the #part as ionized. The cooling task applies the tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle, or NULL for a foreign gas
@@ -454,7 +454,7 @@ __attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
  * above are always written, since @p p is never NULL.
  * @param star_id The id of the star that ionized this particle.
  * @param end_time The simulation time until which the particle stays tagged
- * (the star's next HII rebuild).
+ * (RADIATION_TAG_LIFETIME_INTERVALS rebuild intervals after the claim).
  * @param excess_photon_energy_HI Mean photon energy above the 13.6 eV HI
  * threshold, erg; 0 unless GEARFeedback:HII_couple_ionization_rate is on.
  * @param photoionization_rate_HI Gamma_HI at the particle, internal 1/time; 0
