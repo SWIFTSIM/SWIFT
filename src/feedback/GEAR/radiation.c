@@ -384,12 +384,11 @@ void radiation_restore(struct radiation *rad, FILE *stream,
 
 /* The tables that exist in both a raw and an integrated version, in 1D and 2D
    (the two share a union). Add a new table here when radiation_table_io.c
-   starts reading it. */
+   starts reading it. Teff has a raw table only and is freed apart. */
 #define RADIATION_TABLE_FIELDS(X) \
   X(luminosities)                 \
   X(dot_N_ion)                    \
   X(dot_E_excess)                 \
-  X(teff)                         \
   X(l_pe)                         \
   X(l_lw)                         \
   X(l_edge_pe)                    \
@@ -416,8 +415,10 @@ void radiation_clean(struct radiation *rad) {
      matching interpolate_*d_free(). */
   if (rad->is_2d) {
     RADIATION_TABLE_FIELDS(RADIATION_FREE_2D)
+    interpolate_2d_free(&rad->raw.teff_2d);
   } else {
     RADIATION_TABLE_FIELDS(RADIATION_FREE_1D)
+    interpolate_1d_free(&rad->raw.teff);
   }
 
   /* No 1D counterpart: always freed. */
