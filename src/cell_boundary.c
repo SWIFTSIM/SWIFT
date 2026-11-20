@@ -345,8 +345,8 @@ void cell_mirror_refresh(struct cell *c, const struct space *s,
         continue;
       }
       p.v[k] = -p.v[k];
-      hydro_mirror_part(&p, k, G_newton * gp.a_grav[k],
-                        (float)(p.x[k] - parts[i].x[k]));
+      hydro_mirror_part(
+          &p, k, G_newton * gp.a_grav[k] * (float)(p.x[k] - parts[i].x[k]));
     }
     mirrors[i] = p;
   }

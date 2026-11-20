@@ -1252,11 +1252,11 @@ hydro_set_init_internal_energy(struct part *p, float u_init) {
  *
  * @param p The particle.
  * @param k The axis normal to the wall.
- * @param a The external acceleration along the axis.
- * @param dx The distance from the particle to its image along the axis.
+ * @param g_dx The external acceleration along the axis times the distance
+ * from the particle to its image, for the hydrostatic pressure of the image.
  */
 __attribute__((always_inline)) INLINE static void hydro_mirror_part(
-    struct part *p, const int k, const float a, const float dx) {
+    struct part *p, const int k, const float g_dx) {
 
   error("Mirror walls are not implemented for this hydro scheme.");
 }
