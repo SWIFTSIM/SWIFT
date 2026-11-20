@@ -30,7 +30,6 @@
 /* Local headers. */
 #include "error.h"
 #include "feedback.h"
-#include "feedback/GEAR/radiation_hii.h"
 #include "hydro.h"
 #include "minmax.h"
 #include "random.h"
@@ -40,6 +39,9 @@
 struct runner;
 struct cell;
 struct engine;
+
+/* Physics of the HII regions, also used by the feedback scheme. */
+#include "feedback/GEAR/radiation_hii.h"
 
 /* radiation_search_radius_factor lives in cell_stars.h: cell.h's rebuild
  * and split predicates need the same value and cannot depend on this
