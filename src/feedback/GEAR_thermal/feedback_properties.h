@@ -20,7 +20,6 @@
 #define SWIFT_GEAR_FEEDBACK_PROPERTIES_H
 
 #include "../GEAR/radiation_isrf.h"
-#include "../GEAR/radiation_packet.h"
 #include "../GEAR/radiation_selection.h"
 #include "../GEAR/stellar_evolution.h"
 #include "../GEAR/stellar_evolution_struct.h"

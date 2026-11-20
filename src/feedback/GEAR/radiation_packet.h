@@ -48,8 +48,6 @@
 #include "atomic.h"
 #endif
 
-struct swift_params;
-
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /*! Cosine below which the transmission weight is exactly zero. */
@@ -186,12 +184,6 @@ int radiation_packet_star_gas_weight(const struct spart *si,
                                      const struct part *pj, const float dx[3],
                                      const integertime_t ti_begin, double d[3],
                                      double *q, double *weight);
-void radiation_packet_build_octant_frame(const float angles_deg[3],
-                                         const int seed_offset, float frame[9]);
-int radiation_packet_read_test_beams(
-    struct swift_params *params,
-    float beams[RADIATION_PACKET_TEST_BEAMS]
-               [RADIATION_PACKET_TEST_BEAM_FIELDS]);
 void radiation_packet_startup(const struct engine *e);
 void radiation_packet_far_share_report(const struct engine *e);
 void radiation_packet_far_share_final(const struct engine *e);
@@ -1334,18 +1326,6 @@ radiation_packet_left_box_restore(FILE *stream) {}
 __attribute__((always_inline)) INLINE static void
 radiation_packet_check_star_cones(const struct spart *sp,
                                   const integertime_t ti_current) {}
-
-__attribute__((always_inline)) INLINE static void
-radiation_packet_build_octant_frame(const float angles_deg[3],
-                                    const int seed_offset, float frame[9]) {}
-
-__attribute__((always_inline)) INLINE static int
-radiation_packet_read_test_beams(
-    struct swift_params *params,
-    float beams[RADIATION_PACKET_TEST_BEAMS]
-               [RADIATION_PACKET_TEST_BEAM_FIELDS]) {
-  return 0;
-}
 
 __attribute__((always_inline)) INLINE static void radiation_packet_startup(
     const struct engine *e) {}
