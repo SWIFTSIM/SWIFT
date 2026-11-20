@@ -13,7 +13,8 @@ The light speed is set by `GEARFeedback:ISRF_packet_light_speed`:
 
 - `cap`: a share of light arrives no earlier than the separation divided by the
   limit speed, `ISRF_packet_light_speed_fraction_of_c` times c, in the frame of the
-  gas.
+  gas. The light still moves at most one kernel per gas step, so the gas step
+  sets its speed, which is far below c in production runs.
 - `fixed`: as `cap`, and the time step of each gas particle is also bounded so that
   the light moves at the limit speed.
   `ISRF_packet_light_speed_time_step_margin` sets the bound.
