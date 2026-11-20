@@ -215,4 +215,5 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              testGeajayPhotoelectricKey.sh testGeajayKeys.sh testGeajayCosmicRays.sh testGeajayKeys.cases \
              testGeajayCosmicRaysFire2Cosmology.sh testGeajayDustToGasRatios.sh \
              testGeajayCosmicRayRecipe.c testGeajayCosmicRayRecipe.sh \
+             testGeajayRadiativeCoolingKey.sh \
              testGeajayKeys.yml
