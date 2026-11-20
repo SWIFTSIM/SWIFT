@@ -2299,8 +2299,9 @@ struct radiation_packet_cell {
  *
  * @param sl The slot.
  * @param c The cell.
- * @param held The light of the cell before the piece (the times are unused).
- * @param piece The piece, with its first and last arrival times.
+ * @param held_light The light of the cell before the piece (the times are
+ * unused).
+ * @param piece_light The piece, with its first and last arrival times.
  * @param cell The end and the width of the cell.
  * @param empty Did the cell hold no light before the piece?
  */
