@@ -9,6 +9,17 @@ the on-leg state and compares the median of ln(n_H2,on / n_H2,off) per
 density bin with the measured one. The solve is independent of the SWIFT
 code: it uses the Wolcott-Green and Haiman (2019) fit written out below.
 
+The reference legs MUST use the accurate (BDF) solver, GeajayCooling:solver 1.
+The cheap solver holds the library self-shielding factor f_loc of the
+switch-off leg fixed over each sub-step (geajay primordial_chemistry.c:1033-1035
+and :1297-1300). While the H2 falls, that leg lags its equilibrium by
+s/(1-s) times the change of ln x over its last sub-step, which is at most
+dt/2 (primordial_chemistry.c:1174-1176); the gate has no per-step rate of the
+off leg, so it cannot evaluate this one-sided bound. Cheap-solver legs are
+therefore reported INDETERMINATE with this reason, never FAIL against the bar.
+The solver is read from the Parameters group of every snapshot, printed, and
+the gate refuses to decide if the legs differ.
+
 The noise floor is measured with --repeat, a second run of the on leg: per
 density bin it is |median ln(n_H2,on / n_H2,repeat)| plus twice the bootstrap
 standard error of that median, on the particles kept for the comparison. A bin
@@ -128,6 +139,11 @@ def slope(col: Arr, temp: Arr, n_tot: Arr, eps: float = 1e-3) -> Arr:
     return -(hi - lo) / (np.log1p(eps) - np.log1p(-eps))
 
 
+# GeajayCooling:solver as printed by cooling_print_backend of the geajay build used
+# (leg_on/output.log:202 prints "solver = 0" for the parameter value -1).
+SOLVER_NAMES = {-1: "cheap", 0: "cheap", 1: "accurate (BDF)"}
+
+
 def read_leg(path: Path, line_fields: bool) -> dict[str, Arr]:
     """Read the gas fields of one snapshot in cgs, sorted by particle ID."""
     with h5py.File(path, "r") as f:
@@ -150,6 +166,8 @@ def read_leg(path: Path, line_fields: bool) -> dict[str, Arr]:
         births = f["PartType4/BirthTimes"][:] * ut if "PartType4" in f else np.array([])
         out["since_star"] = np.array([t0 - births.min() if births.size else np.nan])
         out["time"] = np.array([t0])
+        raw = f["Parameters"].attrs.get("GeajayCooling:solver", None)
+        out["solver"] = np.array([float(raw) if raw is not None else np.nan])
     return out
 
 
@@ -199,6 +217,7 @@ def evaluate(
     x_on_scale: float,
     nan_plant: bool,
     t_line_power: float,
+    column_scale: float = 1.0,
 ) -> dict:
     """Return the per-bin measured and derived medians and the mask counts.
 
@@ -214,6 +233,8 @@ def evaluate(
         Plant NaN in the on-leg H2.
     t_line_power
         Planted power of the written T_line in the solve only (1 for none).
+    column_scale
+        Planted scale of the Jeans column in the solve only (1 for none).
     """
     son, soff = state(on), state(off)
     y_on = son["n_h2"]
@@ -230,7 +251,7 @@ def evaluate(
     res["finite"] = res["n_nonfinite"] == 0
     if not res["finite"]:
         return res
-    length = jeans_length(son["temp"], on["rho"], son["mu"])
+    length = jeans_length(son["temp"], on["rho"], son["mu"]) * column_scale
     y_max = 0.5 * son["n_h"]
     lit = (t_line > 0.0) & (on["u_lw"] > 0.0) & (y_on > 0.0)
     res["n_unlit"] = int((~lit).sum())
@@ -284,7 +305,7 @@ def evaluate(
     res["n_sens_dropped"] = 0
     for fac in (1.1, 1 / 1.1):
         tt = son["temp"] * fac
-        ll = jeans_length(tt, on["rho"], son["mu"])
+        ll = jeans_length(tt, on["rho"], son["mu"]) * column_scale
         yp, _ = solve_off(
             y_on[keep],
             t_line[keep],
@@ -333,12 +354,16 @@ def evaluate(
     return res
 
 
-def verdict(res: dict, noise: float | None, repeat: bool) -> tuple[int, str]:
+def verdict(
+    res: dict, noise: float | None, repeat: bool, accurate: bool = True
+) -> tuple[int, str]:
     """Return the exit code and the reason.
 
     noise is a global harness-only floor in ln units; with a repeat run each
     bin carries its own measured noise. A bin is decided only with at least
     N_MIN particles, a bar of at most MAX_BAR and a bar above its noise.
+    With accurate False (cheap-solver legs) no bin is decided: the cheap solver
+    lags its equilibrium while the H2 falls, which the bar does not hold.
     """
     if not res["finite"]:
         return 1, f"FAIL: {res['n_nonfinite']} non-finite values in the inputs"
@@ -348,6 +373,13 @@ def verdict(res: dict, noise: float | None, repeat: bool) -> tuple[int, str]:
     for b, v in good.items():
         if not np.isfinite([v["meas"], v["pred"], v["bar"]]).all():
             return 1, f"FAIL: non-finite result in {b}"
+    if not accurate:
+        return (
+            2,
+            "INDETERMINATE: cheap-solver legs lag their equilibrium while the H2 falls "
+            "(s/(1-s) times the last sub-step change of ln x, at most dt/2); "
+            "rerun both legs with GeajayCooling:solver 1",
+        )
     if noise is None and not repeat:
         return 2, "INCONCLUSIVE: noise floor between two runs is UNKNOWN"
     floor = {b: (v["noise"] if repeat else noise) for b, v in good.items()}
@@ -474,6 +506,12 @@ def main() -> int:
         help="planted power of the written T_line in the solve only (harness)",
     )
     ap.add_argument(
+        "--column-scale",
+        type=float,
+        default=1.0,
+        help="planted scale of the Jeans column in the solve only (harness)",
+    )
+    ap.add_argument(
         "--plant-nan", action="store_true", help="plant NaN in the on-leg H2"
     )
     ap.add_argument("--plot", type=Path, default=None)
@@ -488,15 +526,45 @@ def main() -> int:
             if a.repeat is not None
             else None
         )
+        legs = {"on": on, "off": off, "repeat": rep}
+        names = {
+            k: SOLVER_NAMES.get(int(v["solver"][0]), "unknown")
+            for k, v in legs.items()
+            if v is not None and np.isfinite(v["solver"][0])
+        }
+        print(
+            "snapshot %d solver: " % s
+            + ", ".join(
+                f"{k} {names.get(k, 'not recorded')}"
+                for k, v in legs.items()
+                if v is not None
+            )
+        )
+        if len(set(names.values())) != 1 or len(names) != sum(
+            v is not None for v in legs.values()
+        ):
+            codes.append(2)
+            print(
+                f"snapshot {s}: exit 2 INDETERMINATE: legs differ or do not record the solver"
+            )
+            continue
+        accurate = next(iter(names.values())) == "accurate (BDF)"
         common = np.intersect1d(on["id"], off["id"])
         if rep is not None:
             common = np.intersect1d(common, rep["id"])
         on, off = (pair(d, common) for d in (on, off))
         rep = pair(rep, common) if rep is not None else None
         r = evaluate(
-            on, off, rep, a.synthetic, a.x_on_scale, a.plant_nan, a.t_line_power
+            on,
+            off,
+            rep,
+            a.synthetic,
+            a.x_on_scale,
+            a.plant_nan,
+            a.t_line_power,
+            a.column_scale,
         )
-        code, why = verdict(r, a.noise, rep is not None)
+        code, why = verdict(r, a.noise, rep is not None, accurate)
         codes.append(code)
         rows.append((s, r))
         print(f"snapshot {s}: exit {code} {why}")
@@ -515,7 +583,9 @@ def main() -> int:
             for b, v in r["bins"].items():
                 if "meas" in v:
                     tag = (
-                        "decided"
+                        "informational (cheap solver)"
+                        if not accurate
+                        else "decided"
                         if (
                             v["n"] >= N_MIN
                             and v["bar"] <= MAX_BAR

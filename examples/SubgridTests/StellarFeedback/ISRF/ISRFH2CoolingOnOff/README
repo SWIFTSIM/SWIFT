@@ -27,7 +27,11 @@ resolution, density and particle mass are set by the `level`, `gas_density`, `ga
 and `h2_ratio` variables of `run.sh`.
 
 # Run
-Three runs of the same box are needed. The `repeat` run repeats the `on` run unchanged; it
+Three runs of the same box are needed. `run.sh` runs them with the accurate (BDF) solver of
+geajay (`solver=1`, the default of the script). The cheap solver holds the self-shielding
+factor of the switch-off leg fixed over each sub-step, so that leg lags its equilibrium while
+the H2 falls; the check reads the solver from the snapshots and reports cheap-solver legs
+as INDETERMINATE, with the reason, instead of PASS or FAIL. The `repeat` run repeats the `on` run unchanged; it
 measures how much the H2 differs between two runs with the same switch.
 ```
 leg=on ./run.sh
@@ -54,6 +58,6 @@ The check reads snapshots 3 to 6 by default (`--first`, `--last`).
 - A non-finite input is counted and fails the snapshot.
 
 Exit status: 0 every snapshot passes, 1 a failure, 2 at least one snapshot has no decided bin.
-`--x-on-scale`, `--t-line-power`, `--plant-nan` and `--synthetic` plant a known error or
+`--x-on-scale`, `--t-line-power`, `--column-scale`, `--plant-nan` and `--synthetic` plant a known error or
 replace the off leg by the solver, to confirm that the check fails when it should.
 `check_official_grackle_refusal.sh` checks that official Grackle refuses the switch.
