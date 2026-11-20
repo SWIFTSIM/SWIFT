@@ -1280,6 +1280,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
 
   p->force.pressure = pressure_including_floor;
   p->force.soundspeed = soundspeed;
+
+  /* The dissipation coefficients start at the run-time floors
+   * (hydro_first_init_part() only has the compile-time defaults) */
+  p->alpha_visc = hydro_props->viscosity.alpha_min;
+  p->alpha_diff = hydro_props->diffusion.alpha_min;
+  p->alpha_visc_max_ngb = p->alpha_visc;
 }
 
 /**
@@ -1308,9 +1314,8 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
    * Starting at alpha_max would make the first ~10 H / c_s of every run
    * fully viscous and switch the artificial conduction off everywhere
    * (through the cap in hydro_prepare_force()) until alpha has decayed.
-   * The compile-time defaults are used here (no access to the run-time
-   * floors); hydro_prepare_force() floors both coefficients at the run-time
-   * values on the first step. */
+   * Only the compile-time defaults are available here; the run-time floors
+   * are set in hydro_convert_quantities() before the first step. */
   p->alpha_visc = hydro_props_default_viscosity_alpha_min;
   p->alpha_diff = hydro_props_default_diffusion_alpha_min;
   p->alpha_visc_max_ngb = p->alpha_visc;
