@@ -314,10 +314,10 @@ ionized}$).
 
 \paragraph{Implementation.} \code{cooling\_ionize\_part\_subgrid}
 (\code{src/cooling/grackle/cooling\_gear\_subgrid.h:62-124}) returns $u_{\rm new}$ to
-\code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1265-1276}, which calls \code{cooling\_new\_energy\_or\_keep\_previous}, \code{cooling.c:1053-1242}), which
+\code{cooling\_new\_energy} (\code{src/cooling/grackle/cooling.c:1263-1274}, which calls \code{cooling\_new\_energy\_or\_keep\_previous}, \code{cooling.c:1053-1240}), which
 skips Grackle's \code{local\_solve\_chemistry} on a tagged particle. The
 cooling step that applies Eq.~\ref{eq:cool-dudt} and records the radiated
-energy is \code{cooling\_cool\_part} (\code{src/cooling/grackle/cooling.c:1483-1595}).
+energy is \code{cooling\_cool\_part} (\code{src/cooling/grackle/cooling.c:1481-1593}).
 The fit of
 Eq.~\ref{eq:tcollisional} is \code{radiation\_get\_T\_collisional\_K}
 (\code{src/feedback/GEAR/radiation\_gas.c:172-190}), with the

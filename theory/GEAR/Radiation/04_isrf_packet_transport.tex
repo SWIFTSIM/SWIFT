@@ -3275,7 +3275,7 @@ returns zero for the build modes \code{grackle\_0} and \code{grackle\_1}
 chemical network has no H$_2$. Both are called in
 \code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:893-923}). \code{dust\_chemistry},
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
-\code{cooling.c:1832-1837}. The H$_2$ self-shielding option of
+\code{cooling.c:1830-1835}. The H$_2$ self-shielding option of
 Sec.~\ref{sec:packet-absorb-summary} is \code{GrackleCooling:H2\_self\_shielding}
 (\code{src/cooling/grackle/cooling\_io.h:400-413}). Its values, not to be
 confused with the build modes, are 0 (off, the default), 2 (the kernel-support
@@ -3297,8 +3297,10 @@ datasets \code{L\_PE}, \code{L\_LW}, \code{MeanPhotonEnergyPE} and
 \code{Integrated\_L\_PE}, \code{Integrated\_L\_LW} and the
 \code{Integrated\_MeanPhotonEnergy*} datasets, up to the mass
 \code{m\_sup\_capped} (:1635 for a table with a metallicity axis). The tables
-are read in \code{src/feedback/GEAR/radiation\_table\_io.c} (:990, :1012,
-:1112, :1138).
+are read by \code{radiation\_read\_data}
+(\code{src/feedback/GEAR/radiation\_table\_io.c:1356-1551}), which walks the
+descriptor table \code{radiation\_table\_datasets} (:1050-1094), one entry per
+dataset.
 
 \paragraph{Without transport (Sec.~\ref{sec:isrf-problem}).} The local
 deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}

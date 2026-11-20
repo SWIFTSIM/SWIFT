@@ -69,12 +69,9 @@ INLINE static double rates_to_chemistry_get_LW_dissociation_rate(
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
- * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
- * @param dt The time-step of this particle.
- * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
  * @param u_out (return) The internal energy the particle is held at while
  *        ionized, only set if this returns 1. The caller must land this
@@ -93,9 +90,8 @@ INLINE static double rates_to_chemistry_get_LW_dissociation_rate(
 INLINE static int cooling_ionize_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
+    struct xpart *xp, double time, float *u_out) {
 #ifndef IONIZATION_FEEDBACK_DEBUG_NO_COOLING
   if (!radiation_is_part_tagged_as_ionized(p, xp)) {
     return 0;
@@ -164,12 +160,9 @@ INLINE static int cooling_ionize_part_subgrid(
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
- * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
- * @param dt The time-step of this particle.
- * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
  * @param u_out (return) The internal energy the particle is held at, only
  *        set if this returns 1. See #cooling_ionize_part_subgrid.
@@ -179,14 +172,12 @@ INLINE static int cooling_ionize_part_subgrid(
 INLINE static int cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
+    struct xpart *xp, double time, float *u_out) {
 
   /* Apply ionization */
   const int ionized_this_step = cooling_ionize_part_subgrid(
-      phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
-      dt_therm, time, u_out);
+      phys_const, us, cosmo, hydro_props, cooling, p, xp, time, u_out);
 
   /* TODO: apply a space-time varying UV background. */
 
@@ -207,7 +198,6 @@ INLINE static int cooling_update_part_subgrid(
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
- * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -223,7 +213,6 @@ INLINE static int cooling_update_part_subgrid(
 INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp, float *u_out) {
 #ifdef IONIZATION_FEEDBACK_DEBUG_FIXED_NEUTRAL_TEMPERATURE_K
@@ -537,12 +526,9 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
- * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the particle extra data
- * @param dt The time-step of this particle.
- * @param dt_therm The time-step operator used for thermal quantities.
  * @param time The current simulation time.
  * @param u_out (return) The forced internal energy. Unused.
  * @return Always 0: this subgrid model never floors a particle's energy.
@@ -550,9 +536,8 @@ INLINE static void cooling_cache_eligibility_temperature_subgrid(
 INLINE static int cooling_update_part_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
-    struct xpart *xp, double dt, double dt_therm, double time, float *u_out) {
+    struct xpart *xp, double time, float *u_out) {
   return 0;
 }
 
@@ -636,7 +621,6 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
  * @param us The internal system of units.
  * @param cosmo The #cosmology.
  * @param hydro_props The #hydro_props.
- * @param pressure_floor Properties of the pressure floor.
  * @param cooling The #cooling_function_data used in the run.
  * @param p Pointer to the particle data.
  * @param xp Pointer to the extended particle data.
@@ -646,7 +630,6 @@ INLINE static double cooling_get_LW_dissociation_rate_subgrid(
 INLINE static int cooling_debug_fix_neutral_temperature_subgrid(
     const struct phys_const *phys_const, const struct unit_system *us,
     const struct cosmology *cosmo, const struct hydro_props *hydro_props,
-    const struct pressure_floor_props *pressure_floor,
     const struct cooling_function_data *cooling, struct part *p,
     struct xpart *xp, float *u_out) {
   return 0;

@@ -700,44 +700,6 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
                          const struct unit_system *us,
                          const struct phys_const *phys_const,
                          const int restart);
-void radiation_read_luminosities_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_ionization_rate_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_mean_excess_photon_energy_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us);
-void radiation_read_luminosity_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_mean_photon_energy_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
-void radiation_read_mean_photon_energy_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm);
-void radiation_read_luminosity_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_luminosity_edge_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
-void radiation_read_luminosity_edge_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us);
 void radiation_read_main_sequence_lifetime_array(
     struct radiation *rad, hid_t group_id,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,

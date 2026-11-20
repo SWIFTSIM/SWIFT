@@ -618,6 +618,125 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
   return data;
 }
 
+/*! Marks an unused member offset in a #radiation_table_dataset. */
+#define RADIATION_NO_OFFSET ((size_t)-1)
+
+/**
+ * @brief Conversion from the table's CGS values to internal units.
+ */
+enum radiation_table_conversion {
+
+  /*! Erg per second. */
+  radiation_conversion_power,
+
+  /*! Rate-only factor, also for a dataset stored in erg/s: the scaling then
+      cancels in #radiation_get_mean_excess_photon_energy_HI_from_integral,
+      which returns cgs erg. */
+  radiation_conversion_photons_per_time,
+
+  /*! Kelvin. */
+  radiation_conversion_temperature,
+
+  /*! Spectral photon rate at the PE band lower edge, times its squared edge
+      energy: comparable to the PE band emission rate. */
+  radiation_conversion_power_pe_edge,
+
+  /*! Same as #radiation_conversion_power_pe_edge for the LW band. */
+  radiation_conversion_power_lw_edge,
+
+  /*! The dataset is kept in its own (cgs or Myr) units. */
+  radiation_conversion_none,
+};
+
+/**
+ * @brief Which condition makes a dataset part of the read.
+ */
+enum radiation_table_condition {
+
+  /*! Every table. */
+  radiation_table_always,
+
+  /*! Only if the group carries a Teff dataset (#radiation.has_teff). */
+  radiation_table_if_teff,
+
+  /*! Only with the ISRF (#radiation.with_ISRF). */
+  radiation_table_if_ISRF,
+
+  /*! Only if the group carries the PE photon energy datasets
+      (#radiation.has_mean_photon_energy_pe). */
+  radiation_table_if_mean_photon_energy_pe,
+};
+
+/**
+ * @brief How to read one Data/Radiation dataset into the #radiation tables.
+ */
+struct radiation_table_dataset {
+
+  /*! Name of the dataset in the table. */
+  const char *name;
+
+  /*! Conversion to internal units. */
+  enum radiation_table_conversion conversion;
+
+  /*! Additional divisor (#RADIATION_DOT_N_ION_TABLE_SCALING for the photon
+      rates, 1 otherwise). */
+  double extra_scaling;
+
+  /*! Asserted against the dataset's "units" attribute. */
+  const char *units;
+
+  /*! Offset in #radiation of the raw table (1D and 2D share a union). */
+  size_t raw_offset;
+
+  /*! Offset in #radiation of the IMF-integrated table, or
+      #RADIATION_NO_OFFSET when the dataset has no "Integrated_<name>"
+      companion. */
+  size_t integrated_offset;
+
+  /*! Offset in #radiation_grid_metadata of the mass-axis edge policy, or
+      #RADIATION_NO_OFFSET to clamp. */
+  size_t edge_policy_offset;
+
+  /*! Lower band edge in eV the dataset's provenance must declare, or 0 for
+      no such check. */
+  double provenance_lower_edge_ev;
+
+  /*! When the dataset is read. */
+  enum radiation_table_condition condition;
+};
+
+/**
+ * @brief Conversion factor from CGS to internal units.
+ *
+ * @param conversion The #radiation_table_conversion.
+ * @param us The unit system.
+ */
+static double radiation_table_conversion_factor(
+    const enum radiation_table_conversion conversion,
+    const struct unit_system *us) {
+
+  switch (conversion) {
+    case radiation_conversion_power:
+      return units_cgs_conversion_factor(us, UNIT_CONV_POWER);
+    case radiation_conversion_photons_per_time:
+      return units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME);
+    case radiation_conversion_temperature:
+      return units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+    case radiation_conversion_power_pe_edge:
+      return units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
+             (RADIATION_PE_BAND_LOWER_EDGE_CGS *
+              RADIATION_PE_BAND_LOWER_EDGE_CGS);
+    case radiation_conversion_power_lw_edge:
+      return units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
+             (RADIATION_LW_BAND_LOWER_EDGE_CGS *
+              RADIATION_LW_BAND_LOWER_EDGE_CGS);
+    case radiation_conversion_none:
+      return 1.;
+  }
+  error("Unknown radiation table conversion %d.", (int)conversion);
+  return 1.;
+}
+
 /**
  * @brief Build the raw and IMF-integrated interpolation tables of one
  * Data/Radiation quantity, for a 1D or 2D table.
@@ -625,42 +744,54 @@ static float *radiation_read_cgs_array(hid_t group_id, const char *dataset_name,
  * The raw table holds log10(value) so that the linear interpolators act as
  * log-log ones: every raw getter must exponentiate the result. The
  * integrated table stays in linear space. It is read from the table's
- * "Integrated_<dataset_name>" dataset (number-weighted, cumulative from
- * Mmin) and shares the output-grid bounds of @p raw_2d, so a two-point
- * subtraction query never sees a Z-axis mismatch. The 2D metallicity axis
- * uses the "Metallicity" nodes and is linear in log10(Z).
+ * "Integrated_<dataset name>" dataset (number-weighted, cumulative from
+ * Mmin) and shares the output-grid bounds of the raw 2D table, so a
+ * two-point subtraction query never sees a Z-axis mismatch. The 2D
+ * metallicity axis uses the "Metallicity" nodes and is linear in log10(Z).
+ * The raw table holds log10(value in internal units), pychem-floored. The
+ * mass-axis boundary condition of the 2D raw table comes from the dataset's
+ * edge policy (a 1D table, the integrated tables and the metallicity axis
+ * always clamp).
  *
  * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param dataset_name Name of the dataset to read.
+ * @param dataset The #radiation_table_dataset to build.
  * @param grid The group's own grid metadata (see
  * radiation_read_grid_metadata()).
  * @param sm The #stellar_model (for the output mass-grid bounds).
- * @param interpolation_size_mass Number of points in the mass
- * interpolation output grid.
- * @param conversion_factor See radiation_read_cgs_array().
- * @param extra_scaling See radiation_read_cgs_array().
- * @param expected_units See radiation_read_cgs_array().
- * @param raw_1d (output) Raw 1D interpolation table (1D tables only),
- * holding log10(value in internal units), pychem-floored.
- * @param integrated_1d (output, optional) IMF-integrated 1D table (linear
- * values). NULL for a dataset with no IMF-integrated concept.
- * @param raw_2d (output) Raw 2D interpolation table (2D tables only),
- * holding log10(value in internal units), pychem-floored.
- * @param integrated_2d (output, optional) IMF-integrated 2D table (linear
- * values). NULL for a dataset with no IMF-integrated concept
- * (MainSequenceLifetime).
- * @param boundary_condition_mass Mass-axis boundary condition of @p raw_2d
- * (ignored for a 1D table, which clamps). The integrated tables and the
- * metallicity axis always clamp.
+ * @param us The unit system.
+ * @param rad The #radiation model whose tables are filled.
  */
 static void radiation_build_tables(
-    hid_t group_id, const char *dataset_name,
+    hid_t group_id, const struct radiation_table_dataset *dataset,
     const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    int interpolation_size_mass, double conversion_factor, double extra_scaling,
-    const char *expected_units, struct interpolation_1d *raw_1d,
-    struct interpolation_1d *integrated_1d, struct interpolation_2d *raw_2d,
-    struct interpolation_2d *integrated_2d,
-    enum interpolate_boundary_condition boundary_condition_mass) {
+    const struct unit_system *us, struct radiation *rad) {
+
+  const char *dataset_name = dataset->name;
+  const double conversion_factor =
+      radiation_table_conversion_factor(dataset->conversion, us);
+  const double extra_scaling = dataset->extra_scaling;
+  const char *expected_units = dataset->units;
+  const int interpolation_size_mass = rad->interpolation_size;
+
+  /* The 1D and 2D tables of a quantity share a union, so one offset serves
+     both. */
+  char *raw = (char *)rad + dataset->raw_offset;
+  char *integrated = dataset->integrated_offset == RADIATION_NO_OFFSET
+                         ? NULL
+                         : (char *)rad + dataset->integrated_offset;
+  struct interpolation_1d *raw_1d =
+      grid->is_2d ? NULL : (struct interpolation_1d *)raw;
+  struct interpolation_1d *integrated_1d =
+      grid->is_2d ? NULL : (struct interpolation_1d *)integrated;
+  struct interpolation_2d *raw_2d =
+      grid->is_2d ? (struct interpolation_2d *)raw : NULL;
+  struct interpolation_2d *integrated_2d =
+      grid->is_2d ? (struct interpolation_2d *)integrated : NULL;
+  const enum interpolate_boundary_condition boundary_condition_mass =
+      dataset->edge_policy_offset == RADIATION_NO_OFFSET
+          ? boundary_condition_const
+          : *(const enum interpolate_boundary_condition
+                  *)((const char *)grid + dataset->edge_policy_offset);
 
   const float log_mass_min_out = log10f(sm->imf.mass_min);
   const float log_mass_max_out = log10f(sm->imf.mass_max);
@@ -825,102 +956,6 @@ static void radiation_build_tables(
 }
 
 /**
- * @brief Read an array of luminosities data from the table.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_luminosities_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
-
-  radiation_build_tables(
-      group_id, "Luminosity", grid, sm, rad->interpolation_size,
-      units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1., "erg/s",
-      &rad->raw.luminosities, &rad->integrated.luminosities,
-      &rad->raw.luminosities_2d, &rad->integrated.luminosities_2d,
-      grid->edge_policy_luminosity);
-}
-
-/**
- * @brief Read an array of ionizing emission rates data from the table.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_ionization_rate_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
-
-  radiation_build_tables(
-      group_id, "Q_H", grid, sm, rad->interpolation_size,
-      units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
-      RADIATION_DOT_N_ION_TABLE_SCALING, "1/s", &rad->raw.dot_N_ion,
-      &rad->integrated.dot_N_ion, &rad->raw.dot_N_ion_2d,
-      &rad->integrated.dot_N_ion_2d, grid->edge_policy_q_h);
-}
-
-/**
- * @brief Read an array of excess-photon-energy emission rate data from the
- * table: DotEExcess(m) = Q_H(m) * MeanExcessPhotonEnergyHI(m).
- *
- * Converted with the rate-only #UNIT_CONV_PHOTONS_PER_TIME factor, as for
- * Q_H, although the table stores erg/s. The scaling then cancels in
- * #radiation_get_mean_excess_photon_energy_HI_from_integral, which returns
- * cgs erg. The units check still asserts "erg/s".
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_mean_excess_photon_energy_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
-
-  radiation_build_tables(
-      group_id, "DotEExcess", grid, sm, rad->interpolation_size,
-      units_cgs_conversion_factor(us, UNIT_CONV_PHOTONS_PER_TIME),
-      RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s", &rad->raw.dot_E_excess,
-      &rad->integrated.dot_E_excess, &rad->raw.dot_E_excess_2d,
-      &rad->integrated.dot_E_excess_2d, grid->edge_policy_dot_e_excess);
-}
-
-/**
- * @brief Read the Teff (photospheric effective temperature) array from the
- * table.
- *
- * Only called when the group carries a "Teff" dataset (#radiation.has_teff).
- * Raw-only: there is no "Integrated_Teff" dataset.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_teff_array(struct radiation *rad, hid_t group_id,
-                               const struct radiation_grid_metadata *grid,
-                               const struct stellar_model *sm,
-                               const struct unit_system *us) {
-
-  radiation_build_tables(group_id, "Teff", grid, sm, rad->interpolation_size,
-                         units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE),
-                         1., "K", &rad->raw.teff, NULL, &rad->raw.teff_2d, NULL,
-                         grid->edge_policy_teff);
-}
-
-/**
  * @brief Check the provenance of a band-edge spectral-rate dataset.
  *
  * Its "lower_edge_energy" must match the band edge SWIFT assumes, and
@@ -975,182 +1010,88 @@ static void radiation_check_band_edge_provenance(
   }
 }
 
-/**
- * @brief Read the L_PE (non-ionizing PE band emission rate) array from the
- * table.
- *
- * Only called when #radiation.with_ISRF is set.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_luminosity_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
+#define RADIATION_TABLE_DATASET(name, conversion, scaling, units, member, \
+                                policy, edge_ev, condition)               \
+  {name,                                                                  \
+   conversion,                                                            \
+   scaling,                                                               \
+   units,                                                                 \
+   offsetof(struct radiation, raw.member),                                \
+   offsetof(struct radiation, integrated.member),                         \
+   offsetof(struct radiation_grid_metadata, policy),                      \
+   edge_ev,                                                               \
+   condition}
 
-  radiation_build_tables(group_id, "L_PE", grid, sm, rad->interpolation_size,
-                         units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
-                         "erg/s", &rad->raw.l_pe, &rad->integrated.l_pe,
-                         &rad->raw.l_pe_2d, &rad->integrated.l_pe_2d,
-                         grid->edge_policy_l_pe);
-}
+/* A dataset with no "Integrated_" companion keeps its integrated offset unused;
+   the Integrated_MeanPhotonEnergy* datasets are read as independent raw tables
+   into #radiation.integrated. */
+#define RADIATION_TABLE_DATASET_RAW_ONLY(name, conversion, units, raw_table, \
+                                         policy, condition)                  \
+  {name,                                                                     \
+   conversion,                                                               \
+   1.,                                                                       \
+   units,                                                                    \
+   offsetof(struct radiation, raw_table),                                    \
+   RADIATION_NO_OFFSET,                                                      \
+   policy,                                                                   \
+   0.,                                                                       \
+   condition}
 
-/**
- * @brief Read the L_LW (Lyman-Werner band emission rate) array from the
- * table. Same as #radiation_read_luminosity_pe_array.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_luminosity_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
+/*! The datasets read by radiation_read_data(), in reading order.
 
-  radiation_build_tables(group_id, "L_LW", grid, sm, rad->interpolation_size,
-                         units_cgs_conversion_factor(us, UNIT_CONV_POWER), 1.,
-                         "erg/s", &rad->raw.l_lw, &rad->integrated.l_lw,
-                         &rad->raw.l_lw_2d, &rad->integrated.l_lw_2d,
-                         grid->edge_policy_l_lw);
-}
-
-/**
- * @brief Read the SpectralPhotonRateAtPEEdge (PE band lower-edge spectral
- * photon rate dQ/dE) array from the table.
- *
- * Only called when #radiation.with_ISRF is set.
- *
- * The built table is E_lo(PE)^2 * dQ/dE in internal power units, comparable
- * to #radiation.raw.l_pe. The conversion factor includes
- * #RADIATION_PE_BAND_LOWER_EDGE_CGS^2. The expected units stay the dataset's
- * own "1/s/erg".
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_luminosity_edge_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
-
-  radiation_check_band_edge_provenance(group_id, "SpectralPhotonRateAtPEEdge",
-                                       RADIATION_PE_BAND_LOWER_EDGE_EV);
-
-  const double conversion_factor =
-      units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
-      (RADIATION_PE_BAND_LOWER_EDGE_CGS * RADIATION_PE_BAND_LOWER_EDGE_CGS);
-
-  radiation_build_tables(group_id, "SpectralPhotonRateAtPEEdge", grid, sm,
-                         rad->interpolation_size, conversion_factor, 1.,
-                         "1/s/erg", &rad->raw.l_edge_pe,
-                         &rad->integrated.l_edge_pe, &rad->raw.l_edge_pe_2d,
-                         &rad->integrated.l_edge_pe_2d, grid->edge_policy_l_pe);
-}
-
-/**
- * @brief Read the SpectralPhotonRateAtLWEdge array (LW band lower-edge spectral
- * photon rate dQ/dE) from the table.
- *
- * Same as #radiation_read_luminosity_edge_pe_array.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- * @param us The unit system.
- */
-void radiation_read_luminosity_edge_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid, const struct stellar_model *sm,
-    const struct unit_system *us) {
-
-  radiation_check_band_edge_provenance(group_id, "SpectralPhotonRateAtLWEdge",
-                                       RADIATION_LW_BAND_LOWER_EDGE_EV);
-
-  const double conversion_factor =
-      units_cgs_conversion_factor(us, UNIT_CONV_POWER) /
-      (RADIATION_LW_BAND_LOWER_EDGE_CGS * RADIATION_LW_BAND_LOWER_EDGE_CGS);
-
-  radiation_build_tables(group_id, "SpectralPhotonRateAtLWEdge", grid, sm,
-                         rad->interpolation_size, conversion_factor, 1.,
-                         "1/s/erg", &rad->raw.l_edge_lw,
-                         &rad->integrated.l_edge_lw, &rad->raw.l_edge_lw_2d,
-                         &rad->integrated.l_edge_lw_2d, grid->edge_policy_l_lw);
-}
-
-/**
- * @brief Read the MeanPhotonEnergyLW / Integrated_MeanPhotonEnergyLW arrays
- * (photon-number-weighted mean LW photon energy, L_LW/Q_LW) from the table.
- *
- * Both datasets are kept in cgs erg (no unit conversion or scaling), like
- * #radiation_get_mean_excess_photon_energy_HI_from_integral and
- * radiation_set_lw_photon_energy_cgs().
- *
- * Unlike every other Integrated_* dataset, Integrated_MeanPhotonEnergyLW
- * is not per Msun and not a cumulative integral: it is the ratio
- * Integrated_L_LW/Integrated_Q_LW. Both datasets are therefore read as
- * independent raw tables, in log10 space.
- *
- * Both axes clamp: the fallback below the LW mass floor is the 12.4 eV band
- * midpoint, so L_LW's "zero below" policy would give a zero photon energy.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- */
-void radiation_read_mean_photon_energy_lw_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid,
-    const struct stellar_model *sm) {
-
-  radiation_build_tables(
-      group_id, "MeanPhotonEnergyLW", grid, sm, rad->interpolation_size, 1., 1.,
-      "erg", &rad->raw.mean_photon_energy_lw, NULL,
-      &rad->raw.mean_photon_energy_lw_2d, NULL, boundary_condition_const);
-
-  radiation_build_tables(group_id, "Integrated_MeanPhotonEnergyLW", grid, sm,
-                         rad->interpolation_size, 1., 1., "erg",
-                         &rad->integrated.mean_photon_energy_lw, NULL,
-                         &rad->integrated.mean_photon_energy_lw_2d, NULL,
-                         boundary_condition_const);
-}
-
-/**
- * @brief Read the MeanPhotonEnergyPE / Integrated_MeanPhotonEnergyPE arrays,
- * the PE twin of #radiation_read_mean_photon_energy_lw_array, in cgs erg.
- *
- * @param rad The #radiation model.
- * @param group_id Open HDF5 "Data/Radiation" group id.
- * @param grid The group's own grid metadata.
- * @param sm The #stellar_model.
- */
-void radiation_read_mean_photon_energy_pe_array(
-    struct radiation *rad, hid_t group_id,
-    const struct radiation_grid_metadata *grid,
-    const struct stellar_model *sm) {
-
-  radiation_build_tables(
-      group_id, "MeanPhotonEnergyPE", grid, sm, rad->interpolation_size, 1., 1.,
-      "erg", &rad->raw.mean_photon_energy_pe, NULL,
-      &rad->raw.mean_photon_energy_pe_2d, NULL, boundary_condition_const);
-
-  radiation_build_tables(group_id, "Integrated_MeanPhotonEnergyPE", grid, sm,
-                         rad->interpolation_size, 1., 1., "erg",
-                         &rad->integrated.mean_photon_energy_pe, NULL,
-                         &rad->integrated.mean_photon_energy_pe_2d, NULL,
-                         boundary_condition_const);
-}
+    Q_H and DotEExcess use the rate-only conversion (DotEExcess is stored in
+    erg/s). The band-edge datasets are E_lo^2 * dQ/dE in internal power units,
+    comparable to the band emission rates, and their provenance is checked.
+    The mean photon energies stay in cgs erg: Integrated_MeanPhotonEnergy* is
+    the ratio of the integrated band rates, not a cumulative integral, so both
+    datasets are raw tables, and both axes clamp (the fallback below the mass
+    floor is the band midpoint, which L's "zero below" policy would not give).
+    Teff has no Integrated_ dataset. */
+static const struct radiation_table_dataset radiation_table_datasets[] = {
+    RADIATION_TABLE_DATASET("Luminosity", radiation_conversion_power, 1.,
+                            "erg/s", luminosities, edge_policy_luminosity, 0.,
+                            radiation_table_always),
+    RADIATION_TABLE_DATASET("Q_H", radiation_conversion_photons_per_time,
+                            RADIATION_DOT_N_ION_TABLE_SCALING, "1/s", dot_N_ion,
+                            edge_policy_q_h, 0., radiation_table_always),
+    RADIATION_TABLE_DATASET("DotEExcess", radiation_conversion_photons_per_time,
+                            RADIATION_DOT_N_ION_TABLE_SCALING, "erg/s",
+                            dot_E_excess, edge_policy_dot_e_excess, 0.,
+                            radiation_table_always),
+    RADIATION_TABLE_DATASET_RAW_ONLY(
+        "Teff", radiation_conversion_temperature, "K", raw.teff,
+        offsetof(struct radiation_grid_metadata, edge_policy_teff),
+        radiation_table_if_teff),
+    RADIATION_TABLE_DATASET("L_PE", radiation_conversion_power, 1., "erg/s",
+                            l_pe, edge_policy_l_pe, 0.,
+                            radiation_table_if_ISRF),
+    RADIATION_TABLE_DATASET("L_LW", radiation_conversion_power, 1., "erg/s",
+                            l_lw, edge_policy_l_lw, 0.,
+                            radiation_table_if_ISRF),
+    RADIATION_TABLE_DATASET(
+        "SpectralPhotonRateAtPEEdge", radiation_conversion_power_pe_edge, 1.,
+        "1/s/erg", l_edge_pe, edge_policy_l_pe, RADIATION_PE_BAND_LOWER_EDGE_EV,
+        radiation_table_if_ISRF),
+    RADIATION_TABLE_DATASET(
+        "SpectralPhotonRateAtLWEdge", radiation_conversion_power_lw_edge, 1.,
+        "1/s/erg", l_edge_lw, edge_policy_l_lw, RADIATION_LW_BAND_LOWER_EDGE_EV,
+        radiation_table_if_ISRF),
+    RADIATION_TABLE_DATASET_RAW_ONLY(
+        "MeanPhotonEnergyLW", radiation_conversion_none, "erg",
+        raw.mean_photon_energy_lw, RADIATION_NO_OFFSET, radiation_table_always),
+    RADIATION_TABLE_DATASET_RAW_ONLY(
+        "Integrated_MeanPhotonEnergyLW", radiation_conversion_none, "erg",
+        integrated.mean_photon_energy_lw, RADIATION_NO_OFFSET,
+        radiation_table_always),
+    RADIATION_TABLE_DATASET_RAW_ONLY(
+        "MeanPhotonEnergyPE", radiation_conversion_none, "erg",
+        raw.mean_photon_energy_pe, RADIATION_NO_OFFSET,
+        radiation_table_if_mean_photon_energy_pe),
+    RADIATION_TABLE_DATASET_RAW_ONLY(
+        "Integrated_MeanPhotonEnergyPE", radiation_conversion_none, "erg",
+        integrated.mean_photon_energy_pe, RADIATION_NO_OFFSET,
+        radiation_table_if_mean_photon_energy_pe),
+};
 
 /**
  * @brief Read the main-sequence lifetime table (2D "M,Z" tables only).
@@ -1192,10 +1133,17 @@ void radiation_read_main_sequence_lifetime_array(
         "PopIII model) at the regenerated file.");
   }
 
-  radiation_build_tables(group_id, "MainSequenceLifetime", grid, sm,
-                         rad->interpolation_size, 1., 1., "Myr", NULL, NULL,
-                         &rad->raw.main_sequence_lifetime_2d, NULL,
-                         boundary_condition_const);
+  const struct radiation_table_dataset main_sequence_lifetime = {
+      "MainSequenceLifetime",
+      radiation_conversion_none,
+      1.,
+      "Myr",
+      offsetof(struct radiation, raw.main_sequence_lifetime_2d),
+      RADIATION_NO_OFFSET,
+      RADIATION_NO_OFFSET,
+      0.,
+      radiation_table_always};
+  radiation_build_tables(group_id, &main_sequence_lifetime, grid, sm, us, rad);
 }
 
 /**
@@ -1550,37 +1498,43 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
         sm->yields_table);
   }
 
-  /* Read the luminosities */
-  radiation_read_luminosities_array(rad, group_id, &grid, sm, us);
-
-  /* Read the ionization emission rates */
-  radiation_read_ionization_rate_array(rad, group_id, &grid, sm, us);
-
-  /* Read the excess-photon-energy emission rates */
-  radiation_read_mean_excess_photon_energy_array(rad, group_id, &grid, sm, us);
-
   /* Optional: without Teff every star reports 0. */
   rad->has_teff = (char)(H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0);
-  if (rad->has_teff) radiation_read_teff_array(rad, group_id, &grid, sm, us);
-
-  /* Validated above to exist. */
-  if (rad->with_ISRF) {
-    radiation_read_luminosity_pe_array(rad, group_id, &grid, sm, us);
-    radiation_read_luminosity_lw_array(rad, group_id, &grid, sm, us);
-    radiation_read_luminosity_edge_pe_array(rad, group_id, &grid, sm, us);
-    radiation_read_luminosity_edge_lw_array(rad, group_id, &grid, sm, us);
-  }
-
-  /* Validated above to exist. */
-  radiation_read_mean_photon_energy_lw_array(rad, group_id, &grid, sm);
 
   /* Optional: only the ISRF packet transport needs it, and checks for it. */
   rad->has_mean_photon_energy_pe =
       (char)(H5Lexists(group_id, "MeanPhotonEnergyPE", H5P_DEFAULT) > 0 &&
              H5Lexists(group_id, "Integrated_MeanPhotonEnergyPE", H5P_DEFAULT) >
                  0);
-  if (rad->has_mean_photon_energy_pe)
-    radiation_read_mean_photon_energy_pe_array(rad, group_id, &grid, sm);
+
+  /* The ISRF and the mean photon energy LW datasets were validated above to
+     exist. */
+  const int n_datasets =
+      sizeof(radiation_table_datasets) / sizeof(radiation_table_datasets[0]);
+  for (int i = 0; i < n_datasets; i++) {
+    const struct radiation_table_dataset *dataset =
+        &radiation_table_datasets[i];
+
+    switch (dataset->condition) {
+      case radiation_table_always:
+        break;
+      case radiation_table_if_teff:
+        if (!rad->has_teff) continue;
+        break;
+      case radiation_table_if_ISRF:
+        if (!rad->with_ISRF) continue;
+        break;
+      case radiation_table_if_mean_photon_energy_pe:
+        if (!rad->has_mean_photon_energy_pe) continue;
+        break;
+    }
+
+    if (dataset->provenance_lower_edge_ev > 0.)
+      radiation_check_band_edge_provenance(group_id, dataset->name,
+                                           dataset->provenance_lower_edge_ev);
+
+    radiation_build_tables(group_id, dataset, &grid, sm, us, rad);
+  }
 
   /* These datasets exist only for 2D tables. */
   if (grid.is_2d) {

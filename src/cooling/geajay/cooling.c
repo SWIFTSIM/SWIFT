@@ -1156,9 +1156,8 @@ static geajay_float cooling_new_energy_or_keep_previous(
      the solver does not know the forcing and would cool the floored energy
      back down within the same step. The floor sets the species itself. */
   float u_ionized;
-  if (cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props,
-                                  pressure_floor, cooling, p, xp, dt, dt_therm,
-                                  time, &u_ionized)) {
+  if (cooling_update_part_subgrid(phys_const, us, cosmo, hydro_props, cooling,
+                                  p, xp, time, &u_ionized)) {
     cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
     cooling_cache_eligibility_temperature_subgrid(
         phys_const, us, cosmo, hydro_props, cooling, p, xp, u_ionized);
@@ -1170,8 +1169,7 @@ static geajay_float cooling_new_energy_or_keep_previous(
   {
     float u_o;
     if (cooling_debug_fix_neutral_temperature_subgrid(
-            phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
-            &u_o)) {
+            phys_const, us, cosmo, hydro_props, cooling, p, xp, &u_o)) {
       cooling_cache_neutral_H_fraction_subgrid(cooling, p, xp);
       cooling_cache_eligibility_temperature_subgrid(
           phys_const, us, cosmo, hydro_props, cooling, p, xp, u_o);

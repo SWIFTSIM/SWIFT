@@ -382,6 +382,28 @@ void radiation_restore(struct radiation *rad, FILE *stream,
   message("Restoring GEAR radiation struct...");
 }
 
+/* The tables that exist in both a raw and an integrated version, in 1D and 2D
+   (the two share a union). Add a new table here when radiation_table_io.c
+   starts reading it. Teff has a raw table only and is freed apart. */
+#define RADIATION_TABLE_FIELDS(X) \
+  X(luminosities)                 \
+  X(dot_N_ion)                    \
+  X(dot_E_excess)                 \
+  X(l_pe)                         \
+  X(l_lw)                         \
+  X(l_edge_pe)                    \
+  X(l_edge_lw)                    \
+  X(mean_photon_energy_lw)        \
+  X(mean_photon_energy_pe)
+
+#define RADIATION_FREE_1D(name)        \
+  interpolate_1d_free(&rad->raw.name); \
+  interpolate_1d_free(&rad->integrated.name);
+
+#define RADIATION_FREE_2D(name)             \
+  interpolate_2d_free(&rad->raw.name##_2d); \
+  interpolate_2d_free(&rad->integrated.name##_2d);
+
 /**
  * @brief Free the interpolation tables.
  *
@@ -392,45 +414,11 @@ void radiation_clean(struct radiation *rad) {
   /* is_2d selects the live union member, which must be freed with the
      matching interpolate_*d_free(). */
   if (rad->is_2d) {
-    interpolate_2d_free(&rad->raw.luminosities_2d);
-    interpolate_2d_free(&rad->raw.dot_N_ion_2d);
-    interpolate_2d_free(&rad->raw.dot_E_excess_2d);
+    RADIATION_TABLE_FIELDS(RADIATION_FREE_2D)
     interpolate_2d_free(&rad->raw.teff_2d);
-    interpolate_2d_free(&rad->raw.l_pe_2d);
-    interpolate_2d_free(&rad->raw.l_lw_2d);
-    interpolate_2d_free(&rad->raw.l_edge_pe_2d);
-    interpolate_2d_free(&rad->raw.l_edge_lw_2d);
-    interpolate_2d_free(&rad->raw.mean_photon_energy_lw_2d);
-    interpolate_2d_free(&rad->raw.mean_photon_energy_pe_2d);
-    interpolate_2d_free(&rad->integrated.luminosities_2d);
-    interpolate_2d_free(&rad->integrated.dot_N_ion_2d);
-    interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
-    interpolate_2d_free(&rad->integrated.l_pe_2d);
-    interpolate_2d_free(&rad->integrated.l_lw_2d);
-    interpolate_2d_free(&rad->integrated.l_edge_pe_2d);
-    interpolate_2d_free(&rad->integrated.l_edge_lw_2d);
-    interpolate_2d_free(&rad->integrated.mean_photon_energy_lw_2d);
-    interpolate_2d_free(&rad->integrated.mean_photon_energy_pe_2d);
   } else {
-    interpolate_1d_free(&rad->raw.luminosities);
-    interpolate_1d_free(&rad->raw.dot_N_ion);
-    interpolate_1d_free(&rad->raw.dot_E_excess);
+    RADIATION_TABLE_FIELDS(RADIATION_FREE_1D)
     interpolate_1d_free(&rad->raw.teff);
-    interpolate_1d_free(&rad->raw.l_pe);
-    interpolate_1d_free(&rad->raw.l_lw);
-    interpolate_1d_free(&rad->raw.l_edge_pe);
-    interpolate_1d_free(&rad->raw.l_edge_lw);
-    interpolate_1d_free(&rad->raw.mean_photon_energy_lw);
-    interpolate_1d_free(&rad->raw.mean_photon_energy_pe);
-    interpolate_1d_free(&rad->integrated.luminosities);
-    interpolate_1d_free(&rad->integrated.dot_N_ion);
-    interpolate_1d_free(&rad->integrated.dot_E_excess);
-    interpolate_1d_free(&rad->integrated.l_pe);
-    interpolate_1d_free(&rad->integrated.l_lw);
-    interpolate_1d_free(&rad->integrated.l_edge_pe);
-    interpolate_1d_free(&rad->integrated.l_edge_lw);
-    interpolate_1d_free(&rad->integrated.mean_photon_energy_lw);
-    interpolate_1d_free(&rad->integrated.mean_photon_energy_pe);
   }
 
   /* No 1D counterpart: always freed. */
