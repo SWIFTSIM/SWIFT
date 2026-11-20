@@ -40,7 +40,17 @@ mechanism and no fitted number:
 The equilibrium bar adds a float32 stall ceiling, (ulp(u)/u) tau/dt, an upper limit and
 not a prediction. It holds for the step that run.sh sets. The check fails above
 tau/dt = 1400, the end of the tested range. The output prints the detection window of the
-bar. The README gives both.
+bar.
+
+Scope and limits: with the constant heating efficiency and no cosmic rays used here, the box does not reproduce the
+numbers of Kim, Gong, Kim and Ostriker (2023); it is compared with the one-zone integration only. In a one-zone
+integration the dt_max of run.sh gave the same equilibrium as much shorter steps at every density from 0.1 to
+1000 H/cm^3; a step much longer than the relaxation time can make the gas oscillate around the equilibrium. The
+runs at 0.01 and 0.03 H/cm^3 do not settle. The stall ceiling u can stay up to (ulp(u)/u) tau/dt away from the
+equilibrium, with dt the step of the run read from timesteps.txt (accepted only if every step of the last 20 per
+cent updated all particles) and tau the one-zone relaxation time. It holds for steps down to a quarter of the
+run.sh step. A real error of u smaller than bar + g (lowering u) or bar - g (raising u) passes, with g the signed
+gap of the run; the output prints these limits.
 
 The output also gives the per-particle spread of the specific energy at the end. A ratio
 of the 95th to the 5th percentile above 1.5 means the box split into two populations.

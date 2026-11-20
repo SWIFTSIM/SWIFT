@@ -31,10 +31,7 @@ time-step hierarchy. `arm` selects the run:
 Both arms write a snapshot every 8 base steps (9.375e-6 internal units each).
 `beamSpeed.py` takes the energy centroid of the light in flight along the beam
 between the snapshots at 16 and 40 base steps, divides the advance by the time
-difference and by the set speed, and gives the ratio of the two arms. A
-smoothing-length hop per step makes the pulse slower than the set speed, so
-the speeds are fractions of it; the ratio of the two arms is what tells whether
-the time bins change the speed.
+difference and by the set speed, and gives the ratio of the two arms.
 
 `params.yml` fixes the base time step at 9.375e-6 (internal units). Cooling is
 off (`GrackleCooling:disable_cooling_for_debugging: 1`), so that the light is
@@ -79,6 +76,5 @@ python3 beamSpeed.py run_one run_two
 ```
 It prints the speed of each run over the set speed and the ratio of the second
 run to the first. It exits with status 1 if that ratio differs from 1 by more
-than `--bar`. The default, 0.05, is a tolerance on the speed ratio, not a bar
-derived from the mechanism. `--fraction` gives the set speed if you changed
+than `--bar` (default 0.05). `--fraction` gives the set speed if you changed
 `speed_fraction`; `--first` and `--last` choose the snapshots of the window.

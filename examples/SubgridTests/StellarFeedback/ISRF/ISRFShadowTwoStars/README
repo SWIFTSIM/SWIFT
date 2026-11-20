@@ -91,28 +91,15 @@ summed over a zone with the clump, over the same sum without it. `expected` is
 the same ratio for an exact shadow: the analytic transmission of the clump along
 the line of sight to each star, weighted by the field of each star in the run
 without the clump. An exact shadow keeps a depth of 1. The check passes when
-every zone keeps 0.90 or more, and a deeper shadow passes. It fails when a value
-is not finite, when a zone holds fewer than 100 particles, or when the field has
-not settled in a zone (the light front has not arrived). The no-clump field is
-compared with the exact free-streaming field of the two stars, which has the
-ambient extinction and no image; the ratio is close to 1 once the light front
-has passed. The check prints a warning when it is outside [0.95, 1.05].
-
-About 81 per cent of the light in a single-star zone comes from the other star,
-which the clump does not shadow there. The shadow is then only 19 per cent of the
-field, so a relative error in the light of the other star changes the kept depth
-about four times more, and the sum cannot tell which star is wrong. In a
-single-star zone a kept depth above 1 means that the light of the other star is
-lost in the clump run, and the bar does not test that. The `overlap` zone, where
-both stars are shadowed, is free of this ambiguity. The ratio of the no-clump
-field to free streaming is 1 only for an exact transport, so the `overlap` zone
-can read outside [0.95, 1.05]; the check then prints a warning, which does not
-affect the verdict.
+every zone keeps 0.90 or more. It fails when a value is not finite, when a zone
+holds fewer than 100 particles, or when the field has not settled in a zone (the
+light front has not arrived). The check also prints the ratio of the no-clump field
+to the exact free-streaming field of the two stars, with a warning outside
+[0.95, 1.05]; the warning does not affect the verdict.
 
 `python3 testCheckShadow.py <run_dir>` runs the check on synthetic fields built
-from the gas of `<run_dir>/ICs_isrf_shadow.hdf5`: an exact shadow passes, and a
-shallow shadow, no shadow, a NaN, a field that has not settled, a zone of 50
-particles and a shallow shadow with dimmed grazing rays all fail.
+from the gas of `<run_dir>/ICs_isrf_shadow.hdf5` and exits 0 when the check gives
+the expected verdict on each.
 
 # Plot
 `run.sh` calls `plotShadow.py` from the run directory. It reads

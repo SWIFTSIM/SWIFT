@@ -7,6 +7,8 @@ RUN_DIR holds ICs_isrf_shadow.hdf5 and geometry.json (any run directory after ma
 The synthetic field with the clump is the exact free-streaming field times the analytic
 transmission of the clump, with a planted error in every case but the first. Each case
 states the verdict that the check must give, per zone where it matters. The exit code is 0 when all of them do.
+An exact shadow passes; a shallow shadow, no shadow, a NaN, a field that has not settled, a zone of 50 particles
+and a shallow shadow with dimmed grazing rays all fail.
 """
 
 import contextlib

@@ -28,6 +28,14 @@ extinction and no image of any star. The no-clump run is compared with it: the r
 is 1 once the light front has passed and the field is steady. A ratio outside
 [0.95, 1.05] prints a warning. It is not a gate.
 
+Scope and limits: about 81 per cent of the light in a single-star zone comes from the other star, which the clump
+does not shadow there. The shadow is then only 19 per cent of the field, so a relative error in the light of the
+other star changes the kept depth about four times more, and the sum cannot tell which star is wrong. In a
+single-star zone a kept depth above 1 means that the light of the other star is lost in the clump run, and the bar
+does not test that. The overlap zone, where both stars are shadowed, is free of this ambiguity. The ratio of the
+no-clump field to free streaming is 1 only for an exact transport, so the overlap zone can read outside
+[0.95, 1.05]; the warning does not affect the verdict.
+
 The check fails (exit code 2) when a value is not finite, when a zone holds fewer than
 100 particles, when the field of a zone has not settled (the no-clump field is below
 0.6 of free streaming: the light front has not arrived) or when a kept depth is below

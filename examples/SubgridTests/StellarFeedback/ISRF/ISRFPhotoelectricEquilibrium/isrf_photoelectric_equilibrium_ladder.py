@@ -30,6 +30,9 @@ taken from a paper:
   maximum     along the hot-start branch the pressure has a first local maximum, and the
               cold-start branch a local minimum after it, as in a two-phase medium
 
+The hysteresis gate asks for a factor of at least 1.5 between the two branches; the maximum gate asks for a
+maximum of P(n) followed by a minimum.
+
 Only runs whose check.txt holds no FAIL line and no SPLIT mark count; the others are listed
 as excluded. A SPLIT run (p95/p5 of the specific energy above 1.5) mixes two phases, so its
 median is no equilibrium, and the hot/cold pair of that density leaves both gates.
