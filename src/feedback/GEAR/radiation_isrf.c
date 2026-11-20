@@ -112,7 +112,7 @@ static void radiation_set_part_transport(struct part *p,
   fd->ISRF_H2_line_absorption =
       (e->feedback_props->ISRF_H2_line_absorption ? RADIATION_ISRF_H2_LINES
                                                   : 0) |
-      (e->feedback_props->ISRF_LW_population_track
+      (e->feedback_props->ISRF_packet_constants.LW_population_track
            ? RADIATION_ISRF_LW_POPULATION
            : 0);
 }
@@ -312,7 +312,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   if (!e->feedback_props->ISRF_propagation) return;
 
   radiation_packet_end_force(p);
-  radiation_packet_couple_field(p);
+  radiation_packet_couple_field(p, &e->feedback_props->ISRF_packet_constants);
 }
 
 /**

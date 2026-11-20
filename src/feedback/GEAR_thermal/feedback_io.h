@@ -498,7 +498,7 @@ __attribute__((always_inline)) INLINE static int feedback_write_particles(
       "mass-specific and not band-prefixed. DOUBLE: see LWSpecificEnergies.");
 
   if (feedback_props == NULL || feedback_props->ISRF_H2_line_absorption ||
-      feedback_props->ISRF_LW_population_track) {
+      feedback_props->ISRF_packet_constants.LW_population_track) {
     list[num++] = io_make_output_field_convert_part(
         "LWDissociatingSpecificEnergies", DOUBLE, 1,
         UNIT_CONV_ENERGY_PER_UNIT_MASS, 0.f, parts, xparts,

@@ -106,15 +106,6 @@
 #define RADIATION_PACKET_HASH_MIX_2 0xc2b2ae35u
 #define RADIATION_PACKET_HASH_SALT 0x85ebca77u
 
-/*! #feedback_props.ISRF_LW_dissociating_factor_max, the bound of the
-    dissociating over the LW energy of any light. Set by
-    #radiation_packet_set_LW_population. */
-extern float radiation_packet_lw_dissociating_factor_max;
-
-/*! #feedback_props.ISRF_LW_population_track. Set by
-    #radiation_packet_set_LW_population. */
-extern int radiation_packet_lw_population_track;
-
 /**
  * @brief Add to the cumulative absorbed ledger of a band. Does nothing without
  * SWIFT_DEBUG_CHECKS_ISRF.
@@ -200,8 +191,6 @@ void radiation_packet_set_redshift(const double speed_of_light,
                                    const double weight_pe,
                                    const double weight_lw,
                                    const double photon_weight_lw);
-void radiation_packet_set_LW_population(const int track,
-                                        const float factor_max);
 void radiation_packet_set_light_speed(const double limit_speed,
                                       const double time_base,
                                       const int cosmological);
@@ -265,7 +254,8 @@ int radiation_packet_octant(const float frame[9], const float direction[3]);
 int radiation_packet_slot(const float frame[9], const float direction[3]);
 double radiation_packet_slot_border_distance(const float frame[9],
                                              const float direction[3]);
-void radiation_packet_couple_field(struct part *p);
+void radiation_packet_couple_field(
+    struct part *p, const struct radiation_packet_constants *constants);
 void radiation_packet_inject_test_beams(
     struct part *p,
     const float beams[RADIATION_PACKET_TEST_BEAMS]
@@ -835,6 +825,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * also counts it as clear light in @p q_out.
  *
  * @param receiver The receiver.
+ * @param constants The #radiation_packet_constants.
  * @param sender_column_per_length H2 column per unit of internal length of the
  * sender's gas, in cm^-2. A star passes that of the receiver, so the whole
  * path holds the receiver's gas.
@@ -850,20 +841,21 @@ __attribute__((always_inline)) INLINE static void radiation_packet_deliver(
  * factor of the column after it, in the fit of the receiver.
  */
 __attribute__((always_inline)) INLINE static void radiation_packet_line_hop(
-    const struct part *restrict receiver, const float sender_column_per_length,
-    const float transmission, const float column, const float shift,
-    const double shift_hop, const float path_phys, float *t_out,
-    float *shift_out, double *q_out) {
+    const struct part *restrict receiver,
+    const struct radiation_packet_constants *constants,
+    const float sender_column_per_length, const float transmission,
+    const float column, const float shift, const double shift_hop,
+    const float path_phys, float *t_out, float *shift_out, double *q_out) {
   const struct feedback_part_data *fd = &receiver->feedback_data;
   double t = transmission;
   double N = column;
   double dv = shift;
   const int restarted =
-      radiation_packet_lw_population_track
+      constants->LW_population_track
           ? radiation_h2_shielding_shift_keep_factor(
                 &t, &N, &dv, shift_hop, fd->H2_velocity_limit,
                 fd->H2_shielding_exponent, fd->H2_line_width_km_s,
-                (double)radiation_packet_lw_dissociating_factor_max)
+                (double)constants->LW_dissociating_factor_max)
           : radiation_h2_shielding_shift(&t, &N, &dv, shift_hop,
                                          fd->H2_velocity_limit);
   const double n_sender = restarted ? 0. : (double)sender_column_per_length;
@@ -1006,7 +998,7 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
       const double shift_hop =
           closing_speed / a + (double)H * (double)(a * path);
       radiation_packet_line_hop(
-          receiver, sender->feedback_data.H2_column_per_length,
+          receiver, constants, sender->feedback_data.H2_column_per_length,
           sl->H2_transmission, sl->H2_column, sl->H2_velocity_shift, shift_hop,
           a * path, &line_transmission, &line_shift, &line_energy_over_factor);
     }
@@ -1237,9 +1229,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
   double line_energy_over_factor =
       (double)f_star / radiation_h2_shielding_factor_at_zero();
   if (with_lines && energy[ISRF_OPERATOR_LW] > 0.)
-    radiation_packet_line_hop(pj, pj->feedback_data.H2_column_per_length,
-                              f_star, 0.f, 0.f, 0., a * r, &line_transmission,
-                              &line_shift, &line_energy_over_factor);
+    radiation_packet_line_hop(
+        pj, constants, pj->feedback_data.H2_column_per_length, f_star, 0.f, 0.f,
+        0., a * r, &line_transmission, &line_shift, &line_energy_over_factor);
 
   /* Without a limit the reservoir spreads the light over the star's next
      step; with one, the arrival times below are used. */

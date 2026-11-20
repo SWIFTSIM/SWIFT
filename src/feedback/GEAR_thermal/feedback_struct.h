@@ -145,6 +145,16 @@ struct radiation_packet_constants {
 
   /*! Is the speed of the light of a share limited? */
   int light_speed_limited;
+
+  /*! Do the stars give their LW light their own H2 dissociation factor? Set
+      when GEARFeedback:ISRF_LW_population_dissociation is on and a yields
+      table carries L_LW_dissociating. */
+  int LW_population_track;
+
+  /*! Upper bound of the dissociation factor of every star, over both stellar
+      models: the bound of the dissociating over the LW energy of any light.
+      Exactly 1 without #LW_population_track. */
+  float LW_dissociating_factor_max;
 };
 
 /*! Reception slots of the packet of a gas particle: one per cell of an
@@ -721,7 +731,8 @@ struct feedback_part_data {
 
   /*! Bits of the LW dissociation transport, set at the drift:
       #RADIATION_ISRF_H2_LINES (#feedback_props.ISRF_H2_line_absorption) and
-      #RADIATION_ISRF_LW_POPULATION (#feedback_props.ISRF_LW_population_track).
+      #RADIATION_ISRF_LW_POPULATION
+      (#radiation_packet_constants.LW_population_track).
       Any bit set turns on the dissociating energy bookkeeping. Read through
       #feedback_part_has_H2_lines and #feedback_part_tracks_LW_dissociating. */
   char ISRF_H2_line_absorption;

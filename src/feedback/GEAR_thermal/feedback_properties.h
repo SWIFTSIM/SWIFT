@@ -181,15 +181,6 @@ struct feedback_props {
    * from the dissociating part of the light. Needs ISRF_propagation. */
   char ISRF_H2_line_absorption;
 
-  /*! Do the stars give their LW light their own H2 dissociation factor? Set
-   * when GEARFeedback:ISRF_LW_population_dissociation is on and a yields table
-   * carries L_LW_dissociating. */
-  char ISRF_LW_population_track;
-
-  /*! Upper bound of the dissociation factor of every star, over both stellar
-   * models. Exactly 1 without #ISRF_LW_population_track. */
-  float ISRF_LW_dissociating_factor_max;
-
   /*! Band-edge weights lambda_E(PE), lambda_E(LW), lambda_N(LW). Never 0 or
    * 1. */
   double band_edge_weight_pe;
@@ -222,8 +213,8 @@ struct feedback_props {
    * is off. */
   float ISRF_packet_read_mean_time;
 
-  /*! Octant frame, cone power and light speed switch of the packet
-   * transport. */
+  /*! Octant frame, cone power, light speed switch and LW population factor of
+   * the packet transport. */
   struct radiation_packet_constants ISRF_packet_constants;
 
   /*! Test beams, see #radiation_packet_inject_test_beams. */
@@ -402,9 +393,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_print(
     message("ISRF propagation                                           = %s",
             feedback_props->ISRF_propagation ? "ON" : "OFF (injection only)");
     message("ISRF LW population dissociation factor (tables)            = %s",
-            feedback_props->ISRF_LW_population_track ? "ON" : "OFF");
+            feedback_props->ISRF_packet_constants.LW_population_track ? "ON"
+                                                                      : "OFF");
     message("ISRF LW dissociation factor bound                          = %.6g",
-            feedback_props->ISRF_LW_dissociating_factor_max);
+            feedback_props->ISRF_packet_constants.LW_dissociating_factor_max);
     if (feedback_props->ISRF_propagation) {
       message(
           "ISRF transport                                             = packet "
@@ -829,8 +821,10 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
         extinction_path);
   }
 
-  fp->ISRF_LW_population_track = 0;
-  fp->ISRF_LW_dissociating_factor_max = 1.f;
+  struct radiation_packet_constants *packet_constants =
+      &fp->ISRF_packet_constants;
+  packet_constants->LW_population_track = 0;
+  packet_constants->LW_dissociating_factor_max = 1.f;
 
   if (with_interstellar_radiation_field) {
     fp->radiation_policy |= radiation_policy_isrf;
@@ -842,19 +836,26 @@ __attribute__((always_inline)) INLINE static void feedback_props_init(
        factor 1 for its stars. */
     const struct radiation *rad_main = &fp->stellar_model.rad;
     if (rad_main->has_l_lw_dissociating) {
-      fp->ISRF_LW_population_track = 1;
-      fp->ISRF_LW_dissociating_factor_max =
+      packet_constants->LW_population_track = 1;
+      packet_constants->LW_dissociating_factor_max =
           rad_main->lw_dissociating_factor_max;
     }
     if (fp->metallicity_max_first_stars != -1) {
       const struct radiation *rad_first = &fp->stellar_model_first_stars.rad;
       if (rad_first->has_l_lw_dissociating) {
-        fp->ISRF_LW_population_track = 1;
-        fp->ISRF_LW_dissociating_factor_max =
-            max(fp->ISRF_LW_dissociating_factor_max,
+        packet_constants->LW_population_track = 1;
+        packet_constants->LW_dissociating_factor_max =
+            max(packet_constants->LW_dissociating_factor_max,
                 rad_first->lw_dissociating_factor_max);
       }
     }
+    if (!(packet_constants->LW_dissociating_factor_max >= 1.f))
+      error("The LW dissociation factor bound is %g, below 1.",
+            packet_constants->LW_dissociating_factor_max);
+    if (!packet_constants->LW_population_track &&
+        packet_constants->LW_dissociating_factor_max != 1.f)
+      error("The LW dissociation factor bound is %g without the factor.",
+            packet_constants->LW_dissociating_factor_max);
 
     const int H2_line_absorption = parser_get_opt_param_int(
         params, "GEARFeedback:ISRF_H2_line_absorption", 0);
