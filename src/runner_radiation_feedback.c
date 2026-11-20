@@ -228,6 +228,39 @@ runner_hii_part_passes_gather_filter(const struct part *pj,
 }
 
 /**
+ * @brief Window along a sorting axis that a star can reach.
+ *
+ * The star is shifted by -shift whatever the scan direction: shift brings the
+ * neighbour cell next to the star's cell, so a gas particle at its absolute
+ * position sits at pj->x + shift. The cell-level prune and the sorted scan
+ * MUST share this window, and so share this function.
+ *
+ * @param si The #spart.
+ * @param shift The periodic wrapping shift vector applied to the neighbour.
+ * @param sid The sorting axis index between the pair.
+ * @param search_radius The maximum search distance around the star.
+ * @param dx_max Bound on how far the particles moved since the sort.
+ * @param pix (return) The star position in the neighbour's absolute frame.
+ * @param di_min (return) Lower end of the window along the axis.
+ * @param di_max (return) Upper end of the window along the axis.
+ */
+__attribute__((always_inline)) INLINE static void runner_hii_axis_window(
+    const struct spart *si, const double shift[3], const int sid,
+    const float search_radius, const float dx_max, double pix[3],
+    double *di_min, double *di_max) {
+
+  for (int k = 0; k < 3; k++) pix[k] = si->x[k] - shift[k];
+
+  double di_star = 0.0;
+  for (int k = 0; k < 3; k++) {
+    di_star += pix[k] * runner_shift[sid][k];
+  }
+
+  *di_min = di_star - search_radius - dx_max;
+  *di_max = di_star + search_radius + dx_max;
+}
+
+/**
  * @brief Start-up of the subgrid radiation: hand the box to the ISRF packet
  * emission, and print warnings about the HII search-radius / box-size
  * relationship.
@@ -1357,25 +1390,12 @@ void runner_dopair_stars_hii_ionization_feedback(
   const struct sort_entry *restrict sort_j = cell_get_hydro_sorts(cj, sid);
   const float dx_max = cj->hydro.dx_max_sort + ci->stars.dx_max_sort;
 
-  /* Project the star onto the sorting axis.
-   * The gas particle projections (sort_j[].d) and the r2 distances below both
-   * use ABSOLUTE gas positions (pj->x), so the star must be expressed in that
-   * same absolute frame: the periodic shift brings cj adjacent to ci, hence a
-   * gas particle at pj->x sits at effective position pj->x + shift, and the
-   * correct minimum-image separation is (si->x - shift) - pj->x. The star is
-   * therefore ALWAYS shifted by -shift, independent of `flipped` (which only
-   * selects the sorted-scan direction below). */
-  const double pix[3] = {si->x[0] - shift[0], si->x[1] - shift[1],
-                         si->x[2] - shift[2]};
-
-  double di_star = 0.0;
-  for (int k = 0; k < 3; k++) {
-    di_star += pix[k] * runner_shift[sid][k];
-  }
-
-  /* Compute bounds along the sorting axis */
-  const double di_min = di_star - search_radius - dx_max;
-  const double di_max = di_star + search_radius + dx_max;
+  /* The gas particle projections (sort_j[].d) and the r2 distances below both
+   * use ABSOLUTE gas positions (pj->x), so the star is expressed in that frame
+   * by runner_hii_axis_window(). `flipped` only selects the scan direction. */
+  double pix[3], di_min, di_max;
+  runner_hii_axis_window(si, shift, sid, search_radius, dx_max, pix, &di_min,
+                         &di_max);
 
   const double dj_min = sort_j[0].d;
   const double dj_max = sort_j[count_j - 1].d;
@@ -1487,25 +1507,13 @@ __attribute__((always_inline)) INLINE int runner_hii_check_cell_can_be_reached(
       max(cj->hydro.dx_max_sort, cj->hydro.dx_outside_max * axis_sum) +
       ci->stars.dx_max_sort;
 
-  /* Project the star onto the sorting axis. The cell extent below (dj_min/
-   * dj_max) is built from cj's ABSOLUTE geometry (cj->loc), so the star must
-   * be expressed in that same absolute frame: shift brings cj adjacent to ci,
-   * hence the star is ALWAYS shifted by -shift, independent of `flipped`.
-   * (Must match the identical convention in
-   * runner_dopair_stars_hii_ionization_feedback; a flipped-dependent sign here
-   * offsets the reach window by 2*shift and wrongly skips wrapped neighbours.)
-   */
-  const double pix[3] = {si->x[0] - shift[0], si->x[1] - shift[1],
-                         si->x[2] - shift[2]};
-
-  double di_star = 0.0;
-  for (int k = 0; k < 3; k++) {
-    di_star += pix[k] * runner_shift[sid][k];
-  }
-
-  /* Star reach window along the axis direction */
-  const double di_min = di_star - search_radius - dx_max;
-  const double di_max = di_star + search_radius + dx_max;
+  /* The cell extent below (dj_min/dj_max) is built from cj's ABSOLUTE geometry
+   * (cj->loc), which is the frame of runner_hii_axis_window(), also used by
+   * the sorted scan. A flipped-dependent sign here would offset the reach
+   * window by 2*shift and wrongly skip wrapped neighbours. */
+  double pix[3], di_min, di_max;
+  runner_hii_axis_window(si, shift, sid, search_radius, dx_max, pix, &di_min,
+                         &di_max);
 
   /* Calculate cell boundaries directly from geometry to remain safe if unsorted
    */
