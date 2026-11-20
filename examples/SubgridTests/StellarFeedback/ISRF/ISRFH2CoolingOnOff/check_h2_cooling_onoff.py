@@ -2,11 +2,17 @@
 """Compare the H2 abundance of two legs, line absorption on and off.
 
 The on leg writes the line transmission T_line of every gas particle. In
-photodissociation equilibrium the formation rate over the star rate is
-x_on T_line with the switch on and x_off S(n_H2,off L_J) with the switch off.
-The script solves the second equation for the off-leg H2 number density from
-the on-leg state and compares the median of ln(n_H2,on / n_H2,off) per
-density bin with the measured one. The solve is independent of the SWIFT
+photodissociation equilibrium, with x = n_H2 / n_H, the formation rate per H
+atom over the star rate is x_on T_line with the switch on and x_off S(n_H2,off L_J)
+with the switch off. The two legs hold different gas: the formation rate per H
+atom is F = h2dust(T) n_H (geajay rates.c h2dust_rate, element_blocks.h:191, rhoH)
+and the star rate k_* is proportional to rho u_LW, so
+x_off S(x_off n_H,off L_off) = x_on T_line (F_off / F_on) (k_on / k_off)
+with each leg's own density, temperature, mean molecular weight and Jeans length
+L_off. The script solves this for x_off of every gas particle and compares the
+median of ln(x_on / x_off) per density bin with the measured one. The old check
+compared n_H2 and solved with the on-leg density, temperature and column for
+the off leg, which is exact only for two legs with equal gas. The solve is independent of the SWIFT
 code: it uses the Wolcott-Green and Haiman (2019) fit written out below.
 
 The reference legs MUST use the accurate (BDF) solver, GeajayCooling:solver 1.
@@ -79,6 +85,11 @@ SPECIES_A = {
     "DII": 2.0,
     "HDI": 3.0,
 }
+# Dust temperature of the H2 formation rate. It is not in the snapshots. For T_dust
+# below about 40 K the Omukai (2000) term in T_dust is 1; the bar carries the change
+# between T_DUST_LOW and T_DUST_HIGH.
+T_DUST = 10.0
+T_DUST_LOW, T_DUST_HIGH = 3.0, 50.0
 Y_GRID = 10.0 ** np.arange(-16.0, 3.0001, 0.01)
 Arr = NDArray[np.float64]
 
@@ -100,6 +111,18 @@ def wg_factor(col: Arr, temp: Arr, n_tot: Arr) -> Arr:
         -8.5e-4 * np.sqrt(1.0 + x)
     ) / np.sqrt(1.0 + x)
     return np.minimum(s, 1.0)
+
+
+def h2dust_shape(temp: Arr, t_dust: float) -> Arr:
+    """Return the H2-on-dust rate coefficient of Omukai (2000) up to a constant.
+
+    geajay rates.c h2dust_rate for h2_dust_rate 1 (the library default).
+    """
+    term1 = 1.0 / (1.0 + np.exp(7.5e2 * (1.0 / 75.0 - 1.0 / t_dust)))
+    term2 = 1.0 / (
+        1.0 + 4.0e-2 * np.sqrt(temp + t_dust) + 2.0e-3 * temp + 8.0e-6 * temp**2
+    )
+    return np.sqrt(temp / 300.0) * term1 * term2
 
 
 def jeans_length(temp: Arr, rho: Arr, mu: Arr) -> Arr:
@@ -157,11 +180,9 @@ def read_leg(path: Path, line_fields: bool) -> dict[str, Arr]:
         out["u"] = g["InternalEnergies"][:][order].astype(float) * (ul / ut) ** 2
         for k in SPECIES_A:
             out[k] = g[k][:][order].astype(float)
+        out["u_lw"] = g["LWSpecificEnergies"][:][order].astype(float) * (ul / ut) ** 2
         if line_fields:
             out["t_line"] = g["LWLineTransmissions"][:][order].astype(float)
-            out["u_lw"] = (
-                g["LWSpecificEnergies"][:][order].astype(float) * (ul / ut) ** 2
-            )
         t0 = float(f["Header"].attrs["Time"][0]) * ut
         births = f["PartType4/BirthTimes"][:] * ut if "PartType4" in f else np.array([])
         out["since_star"] = np.array([t0 - births.min() if births.size else np.nan])
@@ -241,49 +262,71 @@ def evaluate(
     if nan_plant:
         y_on = y_on.copy()
         y_on[:5] = np.nan
+    x_on = y_on / son["n_h"]
     t_line = on["t_line"] ** t_line_power
     res: dict = {"n_all": y_on.size}
-    fields = [y_on, t_line, on["u_lw"], son["temp"], son["n_tot"]]
-    fields += [soff["n_h2"], soff["temp"]]
+    fields = [y_on, t_line, on["u_lw"], off["u_lw"], son["temp"], son["n_tot"]]
+    fields += [soff["n_h2"], soff["temp"], soff["n_tot"]]
     if rep is not None:
         fields.append(state(rep)["n_h2"])
     res["n_nonfinite"] = int(sum((~np.isfinite(f)).sum() for f in fields))
     res["finite"] = res["n_nonfinite"] == 0
     if not res["finite"]:
         return res
-    length = jeans_length(son["temp"], on["rho"], son["mu"]) * column_scale
-    y_max = 0.5 * son["n_h"]
-    lit = (t_line > 0.0) & (on["u_lw"] > 0.0) & (y_on > 0.0)
+    y_max = 0.5 * soff["n_h"]
+    lit = (t_line > 0.0) & (on["u_lw"] > 0.0) & (off["u_lw"] > 0.0) & (y_on > 0.0)
     res["n_unlit"] = int((~lit).sum())
     res["n_lit"] = int(lit.sum())
+    k_unit = KDISS_DRAINE * C_LIGHT / FLUX_DRAINE
+    k_on = k_unit * on["rho"] * on["u_lw"]
+    k_off = k_unit * off["rho"] * off["u_lw"]
+
+    def derive(
+        mask: NDArray[np.bool_], t_fac: float, t_dust: float
+    ) -> tuple[Arr, NDArray[np.int64]]:
+        """Solve x_off S(x_off n_H,off L_off) = x_on T_line F_off/F_on k_on/k_off."""
+        t_on, t_off = son["temp"][mask] * t_fac, soff["temp"][mask] * t_fac
+        length = (
+            jeans_length(t_off, off["rho"][mask], soff["mu"][mask]) * column_scale
+        )
+        f_ratio = (soff["n_h"][mask] / son["n_h"][mask]) * (
+            h2dust_shape(t_off, t_dust) / h2dust_shape(t_on, t_dust)
+        )
+        k_ratio = k_on[mask] / k_off[mask]
+        y_eff = x_on[mask] * f_ratio * k_ratio * soff["n_h"][mask]
+        return solve_off(
+            y_eff,
+            t_line[mask],
+            t_off,
+            soff["n_tot"][mask],
+            length,
+            y_max[mask],
+        )
+
     y_pred = np.full(y_on.shape, np.nan)
     count = np.zeros(y_on.shape, dtype=np.int64)
-    y_pred[lit], count[lit] = solve_off(
-        y_on[lit],
-        t_line[lit],
-        son["temp"][lit],
-        son["n_tot"][lit],
-        length[lit],
-        y_max[lit],
-    )
+    y_pred[lit], count[lit] = derive(lit, 1.0, T_DUST)
     unique = lit & (count == 1)
     res["n_multi"] = int((lit & (count >= 2)).sum())
     res["n_noroot"] = int((lit & (count == 0)).sum())
-    col_pred = np.where(unique, y_pred * length, 1.0)
-    s_root = slope(col_pred, son["temp"], son["n_tot"])
+    length_off = jeans_length(soff["temp"], off["rho"], soff["mu"]) * column_scale
+    col_pred = np.where(unique, y_pred * length_off, 1.0)
+    s_root = slope(col_pred, soff["temp"], soff["n_tot"])
     res["n_slope_ge1_kept"] = int((unique & (s_root >= 1.0)).sum())
-    k_star = (KDISS_DRAINE * C_LIGHT / FLUX_DRAINE) * on["rho"] * on["u_lw"]
-    f_off = wg_factor(col_pred, son["temp"], son["n_tot"])
+    f_off = wg_factor(col_pred, soff["temp"], soff["n_tot"])
     window = on["since_star"][0]
     with np.errstate(divide="ignore", invalid="ignore"):
-        t_on = 1.0 / (k_star * t_line)
-        t_off = 1.0 / (k_star * f_off)
-    eq = unique & (t_on <= window) & (t_off <= window)
+        t_rel_on = 1.0 / (k_on * t_line)
+        t_rel_off = 1.0 / (k_off * f_off)
+    eq = unique & (t_rel_on <= window) & (t_rel_off <= window)
     res["n_unique"] = int(unique.sum())
     res["n_not_equilibrated"] = int((unique & ~eq).sum())
-    y_meas_off = y_pred if synthetic else soff["n_h2"]
-    y_rep = state(rep)["n_h2"] if rep is not None else np.ones_like(y_on)
-    ok_h2 = (y_meas_off > 0.0) & (y_on > 0.0) & (y_rep > 0.0)
+    x_pred = y_pred / soff["n_h"]
+    x_meas_off = x_pred if synthetic else soff["n_h2"] / soff["n_h"]
+    x_rep = (
+        state(rep)["n_h2"] / state(rep)["n_h"] if rep is not None else np.ones_like(y_on)
+    )
+    ok_h2 = (x_meas_off > 0.0) & (y_on > 0.0) & (x_rep > 0.0)
     res["n_zero_h2"] = int((eq & ~ok_h2).sum())
     keep = eq & ok_h2
     res["n_kept"] = int(keep.sum())
@@ -297,25 +340,23 @@ def evaluate(
         if keep.any()
         else float("nan")
     )
-    meas = np.log(x_on_scale * y_on / y_meas_off)
-    rep_ln = np.log(y_on / y_rep)
-    pred = np.log(y_on / y_pred)
-    # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu).
+    meas = np.log(x_on_scale * x_on / x_meas_off)
+    rep_ln = np.log(x_on / x_rep)
+    pred = np.log(x_on / x_pred)
+    # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu) of
+    # both legs, and to the unknown dust temperature of the formation rate.
     sens = {}
     res["n_sens_dropped"] = 0
-    for fac in (1.1, 1 / 1.1):
-        tt = son["temp"] * fac
-        ll = jeans_length(tt, on["rho"], son["mu"]) * column_scale
-        yp, _ = solve_off(
-            y_on[keep],
-            t_line[keep],
-            tt[keep],
-            son["n_tot"][keep],
-            ll[keep],
-            y_max[keep],
-        )
-        sens[fac] = np.log(y_on[keep] / yp)
-        res["n_sens_dropped"] += int((~np.isfinite(sens[fac])).sum())
+    for key, t_fac, t_dust in (
+        ("hot", 1.1, T_DUST),
+        ("cold", 1 / 1.1, T_DUST),
+        ("td_low", 1.0, T_DUST_LOW),
+        ("td_high", 1.0, T_DUST_HIGH),
+    ):
+        yp = np.full(y_on.shape, np.nan)
+        yp[keep], _ = derive(keep, t_fac, t_dust)
+        sens[key] = np.log(x_on / (yp / soff["n_h"]))[keep]
+        res["n_sens_dropped"] += int((~np.isfinite(sens[key])).sum())
     rng = np.random.default_rng(1)
     bins = {}
     for b, (lo, hi) in BINS.items():
@@ -324,18 +365,17 @@ def evaluate(
             bins[b] = {"n": 0}
             continue
         idx_in_keep = np.nonzero(m[keep])[0]
-        both = np.isfinite(sens[1.1][idx_in_keep]) & np.isfinite(
-            sens[1 / 1.1][idx_in_keep]
-        )
-        sys_t = (
-            0.5
-            * abs(
-                np.median(sens[1.1][idx_in_keep][both])
-                - np.median(sens[1 / 1.1][idx_in_keep][both])
+
+
+        def half_range(a: str, b: str) -> float:
+            ok = np.isfinite(sens[a][idx_in_keep]) & np.isfinite(sens[b][idx_in_keep])
+            if not ok.any():
+                return float("nan")
+            return 0.5 * abs(
+                np.median(sens[a][idx_in_keep][ok]) - np.median(sens[b][idx_in_keep][ok])
             )
-            if both.any()
-            else float("nan")
-        )
+
+        sys_t = half_range("hot", "cold") + half_range("td_low", "td_high")
         se = np.hypot(boot_se(meas[m], rng), boot_se(pred[m], rng))
         noise = float("nan")
         if rep is not None:
@@ -453,7 +493,7 @@ def plot(rows: list[tuple[int, dict]], path: Path) -> None:
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels([f"{lo:g} to {hi:g}" for lo, hi in BINS.values()])
     ax.set_xlabel("n_H of the on-leg gas [cm^-3]")
-    ax.set_ylabel("median ln(n_H2 on / n_H2 off)")
+    ax.set_ylabel("median ln(x on / x off), x = n_H2 / n_H")
     ax.axhline(0.0, color="k", lw=0.5)
     ax.legend(fontsize=8)
     ax.set_title(
