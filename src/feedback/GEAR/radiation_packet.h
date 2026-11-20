@@ -184,6 +184,10 @@ int radiation_packet_star_gas_weight(const struct spart *si,
                                      const struct part *pj, const float dx[3],
                                      const integertime_t ti_begin, double d[3],
                                      double *q, double *weight);
+void radiation_packet_startup(const struct engine *e);
+void radiation_packet_far_share_report(const struct engine *e);
+void radiation_packet_far_share_final(const struct engine *e);
+void radiation_packet_far_diagnostics(const struct engine *e);
 void radiation_packet_set_box(const double dim[3], const int periodic);
 void radiation_packet_set_frame_width(const double width);
 void radiation_packet_refresh_frame_width(const struct engine *e);
@@ -628,14 +632,11 @@ radiation_packet_add_saturated(const float sum, const double x) {
  * is split in double: a float product near 1e-38 flushes to zero under
  * -ffast-math and would leave an energy without its photon number.
  *
- * The arrival time is fixed at the booking. For a receiver that moves away
- * from the sender at the speed `u` at that time, the delay is the separation
- * over `v - u` (#radiation_packet_arrival_delay_receding), at most
- * #RADIATION_PACKET_RECEDING_MAX_FACTOR times the separation over `v`. The
- * limit holds in the frame of the gas: a sender that moves towards the receiver
- * between its merge and its booking, or a receiver that speeds up after it, can
- * make the front move at up to `v + u` in the frame of the box. That is
- * harmless for `v` near `c`; for a limit of a few km/s in moving gas it is not.
+ * The arrival time is fixed at the booking, from the delay of
+ * #radiation_packet_arrival_delay_receding. Its limit holds in the frame of the
+ * gas, not of the box: see theory/GEAR/Radiation/04_isrf_packet_transport.tex
+ * (the paragraph on the arrival time, and the speed of the light and the time
+ * step).
  *
  * @param receiver The receiver.
  * @param constants The #radiation_packet_constants.
@@ -1218,9 +1219,16 @@ __attribute__((always_inline)) INLINE static void radiation_packet_star_emit(
 }
 
 void radiation_packet_star_book_emission(struct spart *sp, const float Delta_t);
-#ifdef SWIFT_DEBUG_CHECKS
+
+/* On several ranks the deliveries to foreign gas land on a copy of the star on
+   the gas's rank and never return, so the counts cannot be compared. */
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_MPI)
 void radiation_packet_check_star_cones(const struct spart *sp,
                                        const integertime_t ti_current);
+#else
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_star_cones(const struct spart *sp,
+                                  const integertime_t ti_current) {}
 #endif
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
@@ -1288,6 +1296,12 @@ __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_sink(struct sink *sink) {}
 
 __attribute__((always_inline)) INLINE static void
+radiation_packet_step_diagnostics(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_reduce_left_box(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
 radiation_packet_book_gas_left_box(const struct part *p) {}
 
 __attribute__((always_inline)) INLINE static void
@@ -1308,6 +1322,25 @@ radiation_packet_left_box_restore(FILE *stream) {}
 #endif /* GEAR_SUBGRID_RADIATION_ISRF && SWIFT_DEBUG_CHECKS_ISRF */
 
 #ifndef GEAR_SUBGRID_RADIATION_ISRF
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_check_star_cones(const struct spart *sp,
+                                  const integertime_t ti_current) {}
+
+__attribute__((always_inline)) INLINE static void radiation_packet_startup(
+    const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_refresh_frame_width(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_share_report(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_share_final(const struct engine *e) {}
+
+__attribute__((always_inline)) INLINE static void
+radiation_packet_far_diagnostics(const struct engine *e) {}
 
 __attribute__((always_inline)) INLINE static void
 radiation_packet_first_init_star(struct spart *sp) {}
