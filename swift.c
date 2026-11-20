@@ -1240,6 +1240,9 @@ int main(int argc, char *argv[]) {
     if (with_sidm) {
       sidm_props_init(&sidm_properties, &prog_const, &us, params,
                       &hydro_properties, &cosmo);
+      if (myrank == 0)
+        message("SIDM kernel: %s, overlap kernel: %s.", sidm_kernel_name,
+                sidm_overlap_kernel_name);
     } else
       bzero(&sidm_properties, sizeof(struct sidm_props));
 

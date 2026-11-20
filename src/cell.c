@@ -794,8 +794,8 @@ void cell_sanitize(struct cell *c, int treated, int sidm_treated) {
   }
 
   /* Treat cells will <1000 SIDM particles */
-  if (sicount < 1000 && !sidm_treated) {
-    const float upper_h_max = c->dmin / (1.2f * kernel_gamma);
+  if (sicount < 1000 && !treated) {
+    const float upper_h_max = c->dmin / (1.2f * sidm_kernel_gamma);
 
     for (int i = 0; i < sicount; ++i) {
       if (siparts[i].h == 0.f || siparts[i].h > upper_h_max) {
@@ -1144,13 +1144,15 @@ void cell_check_sipart_drift_point(struct cell *c, void *data) {
   for (int i = 0; i < c->sidm.count; ++i) {
     const struct sipart *sip = &c->sidm.parts[i];
     if (sip->depth_h == c->depth) {
-      if (!(sip->h >= c->h_min_allowed && sip->h < c->h_max_allowed) &&
+      if (!(sip->h >= cell_sidm_h_min_allowed(c) &&
+            sip->h < cell_sidm_h_max_allowed(c)) &&
           c->split) {
         error(
             "depth_h set incorrectly! c->depth=%d sip->depth_h=%d h=%e "
             "h_min=%e "
             "h_max=%e",
-            c->depth, sip->depth_h, sip->h, c->h_min_allowed, c->h_max_allowed);
+            c->depth, sip->depth_h, sip->h, cell_sidm_h_min_allowed(c),
+            cell_sidm_h_max_allowed(c));
       }
     }
   }
@@ -1462,6 +1464,9 @@ void cell_clean(struct cell *c) {
 
   /* Stars */
   cell_free_stars_sorts(c);
+
+  /* SIDM */
+  cell_free_sidm_sorts(c);
 
   /* Grid */
   cell_free_grid(c);

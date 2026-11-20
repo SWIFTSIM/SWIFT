@@ -343,6 +343,7 @@ void space_map_clearsort(struct cell *c, void *data) {
 
   cell_free_hydro_sorts(c);
   cell_free_stars_sorts(c);
+  cell_free_sidm_sorts(c);
 }
 
 /**
@@ -553,6 +554,7 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
   for (int j = 0; j < nr_cells; j++) {
     cell_free_hydro_sorts(cells[j]);
     cell_free_stars_sorts(cells[j]);
+    cell_free_sidm_sorts(cells[j]);
 
     struct gravity_tensors *temp = cells[j]->grav.multipole;
     bzero(cells[j], sizeof(struct cell));
@@ -582,9 +584,11 @@ void space_getcells(struct space *s, int nr_cells, struct cell **cells,
  */
 void space_free_buff_sort_indices(struct space *s) {
 
-  /* Early exit if we have no hydro or star particles, as we won't have
+  /* Early exit if we have no hydro, star or SIDM particles, as we won't have
    * allocated any sort arrays. */
-  if (s->e->total_nr_parts == 0 && s->e->total_nr_sparts == 0) return;
+  if (s->e->total_nr_parts == 0 && s->e->total_nr_sparts == 0 &&
+      s->e->total_nr_siparts == 0)
+    return;
 
   const ticks tic = getticks();
 
@@ -593,6 +597,7 @@ void space_free_buff_sort_indices(struct space *s) {
          finger = finger->next) {
       cell_free_hydro_sorts(finger);
       cell_free_stars_sorts(finger);
+      cell_free_sidm_sorts(finger);
     }
   }
 

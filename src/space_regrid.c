@@ -49,6 +49,12 @@ void space_regrid(struct space *s, int verbose) {
   /* Run through the cells and get the current h_max. */
   // tic = getticks();
   float h_max = s->cell_min / kernel_gamma / space_stretch;
+
+  /* SIDM uses its own kernel: convert its h to the hydro-equivalent h that
+   * has the same search radius, i.e. sidm_kernel_gamma * h_sidm =
+   * kernel_gamma * h. */
+  const float sidm_h_to_hydro_h = sidm_kernel_gamma / kernel_gamma;
+
   if (nr_parts > 0 || nr_siparts > 0) {
 
     /* Can we use the list of local non-empty top-level cells? */
@@ -68,8 +74,8 @@ void space_regrid(struct space *s, int verbose) {
         if (c->sinks.h_max > h_max) {
           h_max = c->sinks.h_max;
         }
-        if (c->sidm.h_max > h_max) {
-          h_max = c->sidm.h_max;
+        if (c->sidm.h_max * sidm_h_to_hydro_h > h_max) {
+          h_max = c->sidm.h_max * sidm_h_to_hydro_h;
         }
       }
 
@@ -89,8 +95,9 @@ void space_regrid(struct space *s, int verbose) {
         if (c->nodeID == engine_rank && c->sinks.h_max > h_max) {
           h_max = c->sinks.h_max;
         }
-        if (c->nodeID == engine_rank && c->sidm.h_max > h_max) {
-          h_max = c->sidm.h_max;
+        if (c->nodeID == engine_rank &&
+            c->sidm.h_max * sidm_h_to_hydro_h > h_max) {
+          h_max = c->sidm.h_max * sidm_h_to_hydro_h;
         }
       }
 
@@ -109,7 +116,8 @@ void space_regrid(struct space *s, int verbose) {
         if (s->sinks[k].h > h_max) h_max = s->sinks[k].h;
       }
       for (size_t k = 0; k < nr_siparts; k++) {
-        if (s->siparts[k].h > h_max) h_max = s->siparts[k].h;
+        if (s->siparts[k].h * sidm_h_to_hydro_h > h_max)
+          h_max = s->siparts[k].h * sidm_h_to_hydro_h;
       }
     }
   }

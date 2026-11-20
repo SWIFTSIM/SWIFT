@@ -71,7 +71,7 @@ void sidm_exact_density_compute_mapper(void *map_data, int nr_siparts,
       const double pix[3] = {sipi->x[0], sipi->x[1], sipi->x[2]};
       const double hi = sipi->h;
       const float hi_inv = 1.f / hi;
-      const float hig2 = hi * hi * kernel_gamma2;
+      const float hig2 = hi * hi * sidm_kernel_gamma2;
 
       /* Be ready for the calculation */
       int N_density_exact = 0;
@@ -107,7 +107,7 @@ void sidm_exact_density_compute_mapper(void *map_data, int nr_siparts,
           /* Kernel function */
           const float r = sqrtf(r2);
           const float ui = r * hi_inv;
-          kernel_deval(ui, &wi, &wi_dx);
+          sidm_kernel_deval(ui, &wi, &wi_dx);
 
           /* Flag that we found an inhibited neighbour */
           if (sipart_is_inhibited(sipj, e)) {
@@ -193,7 +193,7 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
 
   const double eta = e->sidm_properties->eta_neighbours;
   const double N_ngb_target =
-      (4. / 3.) * M_PI * pow_dimension(kernel_gamma * eta);
+      (4. / 3.) * M_PI * pow_dimension(sidm_kernel_gamma * eta);
   const double N_ngb_max =
       N_ngb_target + 2. * e->sidm_properties->delta_neighbours;
   const double N_ngb_min =
@@ -223,8 +223,9 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
     const struct sipart *sipi = &siparts[i];
     const long long id = sipi->id;
 
-    const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * sipi->h * sipi->h * sipi->h * sipi->n;
+    const double N_ngb = (4. / 3.) * M_PI * sidm_kernel_gamma *
+                         sidm_kernel_gamma * sidm_kernel_gamma * sipi->h *
+                         sipi->h * sipi->h * sipi->n;
 
     if (id % SWIFT_SIDM_DENSITY_CHECKS == 0 && sipart_is_starting(sipi, e)) {
 
@@ -271,9 +272,9 @@ void sidm_exact_density_check(struct space *s, const struct engine *e,
     const long long id = sipi->id;
     const int found_inhibited = sipi->inhibited_exact;
 
-    const double N_ngb = (4. / 3.) * M_PI * kernel_gamma * kernel_gamma *
-                         kernel_gamma * sipi->h * sipi->h * sipi->h *
-                         sipi->n_exact;
+    const double N_ngb = (4. / 3.) * M_PI * sidm_kernel_gamma *
+                         sidm_kernel_gamma * sidm_kernel_gamma * sipi->h *
+                         sipi->h * sipi->h * sipi->n_exact;
 
     if (id % SWIFT_SIDM_DENSITY_CHECKS == 0 && sipart_is_starting(sipi, e)) {
 
