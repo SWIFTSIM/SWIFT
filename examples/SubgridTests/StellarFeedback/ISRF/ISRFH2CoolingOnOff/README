@@ -12,8 +12,10 @@ multiplies it by its own H2 self-shielding factor at the Jeans length of the par
 photodissociation equilibrium the formation rate over the star rate equals `x T_line` with the
 switch on and `x S(x n_H L_J)` with it off, where `x = n_H2 / n_H`, `S` is the shielding
 function of Wolcott-Green and Haiman (2019) and `L_J` the Jeans length. The two legs hold
-different gas, so the formation rate per H atom (proportional to `n_H h2dust(T)`) and the star
-rate (proportional to `rho u_LW`) of each leg enter with that leg's own density and temperature.
+different gas, so the formation rate per H atom (the sum of the library channels: dust, H-,
+H2+, three-body) and the star rate (proportional to `rho u_LW`) of each leg enter with that leg's
+own species, density and temperature. The channels come from the library, so a PASS tests the
+transmission switch, not the formation channels.
 The check solves the off-leg equation for `x` of every gas particle from the on-leg state and
 compares the median of `ln(x_on / x_off)` per density bin with the measured one.
 

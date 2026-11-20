@@ -3,17 +3,26 @@
 
 The on leg writes the line transmission T_line of every gas particle. In
 photodissociation equilibrium, with x = n_H2 / n_H, the formation rate per H
-atom over the star rate is x_on T_line with the switch on and x_off S(n_H2,off L_J)
-with the switch off. The two legs hold different gas: the formation rate per H
-atom is F = h2dust(T) n_H (geajay rates.c h2dust_rate, element_blocks.h:191, rhoH)
-and the star rate k_* is proportional to rho u_LW, so
-x_off S(x_off n_H,off L_off) = x_on T_line (F_off / F_on) (k_on / k_off)
-with each leg's own density, temperature, mean molecular weight and Jeans length
-L_off. The script solves this for x_off of every gas particle and compares the
-median of ln(x_on / x_off) per density bin with the measured one. The old check
-compared n_H2 and solved with the on-leg density, temperature and column for
-the off leg, which is exact only for two legs with equal gas. The solve is independent of the SWIFT
-code: it uses the Wolcott-Green and Haiman (2019) fit written out below.
+atom F over the star rate k_* is x_on T_line with the switch on and
+x_off S(n_H2,off L_J) with the switch off. The two legs hold different gas, so
+each leg enters with its own state:
+x_off S(x_off n_H,off L_off) = x_on T_line (F_off / F_on) (k_on / k_off).
+k_* is proportional to rho u_LW (radiation_gas.c). F is the sum of the library
+formation channels of the leg: on dust, h2dust(T, T_dust) d2g n_HI n_H
+(rates.c h2dust_rate, element_blocks.h HI_to_H2I); through H-,
+k8 n_H- n_HI with n_H- solved from the leg's own electrons (k7, k8, k14, k15,
+k16, k17, k19); through H2+, k10 n_H2+ n_HI; three-body, k22 n_HI^3. T_dust is
+the root of the library grain balance (dust.c gr_balance) of the leg. At
+metallicity 1e-6 about 90 per cent of the H2 forms through H-; at 0.08 solar
+it forms on dust. The two solves are independent of SWIFT code but use its
+rate coefficients, so a PASS proves that the measured change of the H2 by the
+line-absorption switch equals the change that the line transmission written
+by the on leg predicts, given the library's formation rates. It does not test
+the formation channels or the shielding fit of the library, and it cannot
+see errors in T_line or in the column smaller than the local slope s allows
+(a column error of 5 per cent shifts x by about s/(1-s) 0.05). Earlier
+versions of this check used dust formation only at a fixed 10 K dust
+temperature and an equal-gas assumption; both were wrong for low metallicity.
 
 The reference legs MUST use the accurate (BDF) solver, GeajayCooling:solver 1.
 The cheap solver holds the library self-shielding factor f_loc of the
@@ -85,11 +94,13 @@ SPECIES_A = {
     "DII": 2.0,
     "HDI": 3.0,
 }
-# Dust temperature of the H2 formation rate. It is not in the snapshots. For T_dust
-# below about 40 K the Omukai (2000) term in T_dust is 1; the bar carries the change
-# between T_DUST_LOW and T_DUST_HIGH.
-T_DUST = 10.0
-T_DUST_LOW, T_DUST_HIGH = 3.0, 50.0
+# Constants of the geajay build (rates.c, dust.c, dust_coupling.h, radiation.h).
+FGR = 0.009387  # GEAJAY_FGR and local_dust_to_gas_ratio default
+Z_SOLAR = 0.01295  # SolarMetalFractionByMass default
+HABING_FLUX = 1.6e-3  # RADIATION_HABING_FLUX_CGS [erg s^-1 cm^-2]
+SIGMA_SB = 5.670374419e-5
+T_CMB = 2.725  # dust T_rad floor: geajay_tcmb at redshift 0
+T_EV_K = 11604.5
 Y_GRID = 10.0 ** np.arange(-16.0, 3.0001, 0.01)
 Arr = NDArray[np.float64]
 
@@ -113,16 +124,173 @@ def wg_factor(col: Arr, temp: Arr, n_tot: Arr) -> Arr:
     return np.minimum(s, 1.0)
 
 
-def h2dust_shape(temp: Arr, t_dust: float) -> Arr:
-    """Return the H2-on-dust rate coefficient of Omukai (2000) up to a constant.
+def h2dust_rate(temp: Arr, t_dust: Arr) -> Arr:
+    """Return the H2-on-dust coefficient [cm^3 s^-1], Omukai (2000), rates.c h2dust_rate.
 
-    geajay rates.c h2dust_rate for h2_dust_rate 1 (the library default).
+    Excludes the dust-to-gas ratio.
     """
     term1 = 1.0 / (1.0 + np.exp(7.5e2 * (1.0 / 75.0 - 1.0 / t_dust)))
     term2 = 1.0 / (
         1.0 + 4.0e-2 * np.sqrt(temp + t_dust) + 2.0e-3 * temp + 8.0e-6 * temp**2
     )
-    return np.sqrt(temp / 300.0) * term1 * term2
+    return 6.0e-17 / FGR * np.sqrt(temp / 300.0) * term1 * term2
+
+
+def kappa_grain(t_dust: Arr) -> Arr:
+    """Return the grain opacity [cm^2 g^-1] of dust.c geajay_kappa_gr."""
+    return np.where(
+        t_dust < 200.0,
+        4.0e-4 * t_dust**2,
+        np.where(t_dust <= 1500.0, 16.0, 16.0 * (t_dust / 1500.0) ** -12),
+    )
+
+
+def dust_temperature(temp: Arr, n_h_lib: Arr, g0: Arr) -> Arr:
+    """Return the root of the grain balance of dust.c gr_balance [K].
+
+    Gamma_ISRF + 4 sigma kappa (T_rad^4 - T_d^4) + gasgr n_H (T - T_d) = 0, with
+    Gamma_ISRF = G0 3.9e-24 / (m_H f_gr) [erg g^-1 s^-1] and the gas-grain
+    coupling gasgr = f_gr_local 1.2e-31 1000^-0.5 / f_gr sqrt(T) (1 - 0.8 exp(-75/T)) / m_H
+    [erg cm^3 g^-1 s^-1 K^-1]. Bisection between T_rad and T.
+    """
+    gasgr = (
+        1.2e-31 * 1e3**-0.5 / FGR * np.sqrt(temp) * (1.0 - 0.8 * np.exp(-75.0 / temp))
+    ) / MH
+    gamma = g0 * 3.9e-24 / MH / FGR
+    lo = np.full_like(temp, T_CMB)
+    hi = np.maximum(temp, T_CMB)
+    for _ in range(80):
+        mid = 0.5 * (lo + hi)
+        bal = (
+            gamma
+            + 4.0 * SIGMA_SB * kappa_grain(mid) * (T_CMB**4 - mid**4)
+            + gasgr * n_h_lib * (temp - mid)
+        )
+        lo = np.where(bal > 0.0, mid, lo)
+        hi = np.where(bal > 0.0, hi, mid)
+    return 0.5 * (lo + hi)
+
+
+def k8_rate(t: Arr) -> Arr:
+    """Return k8, HM + HI -> H2 + e- [cm^3 s^-1] (rates.c k8_rate)."""
+    return (
+        1.35e-9
+        * (t**9.8493e-2 + 3.2852e-1 * t**5.5610e-1 + 2.771e-7 * t**2.1826)
+        / (
+            1.0
+            + 6.191e-3 * t**1.0461
+            + 8.9712e-11 * t**3.0424
+            + 3.2576e-14 * t**3.7741
+        )
+    )
+
+
+def k14_rate(t: Arr) -> Arr:
+    """Return k14, HM + e- -> HI + 2e- [cm^3 s^-1] (zero below 0.04 eV, the floor)."""
+    ln = np.log(np.maximum(t / T_EV_K, 1e-30))
+    c = [
+        -18.01849334273,
+        2.360852208681,
+        -0.2827443061704,
+        0.01623316639567,
+        -0.03365012031362999,
+        0.01178329782711,
+        -0.001656194699504,
+        0.0001068275202678,
+        -2.631285809207e-6,
+    ]
+    return np.where(
+        t / T_EV_K <= 0.04, 0.0, np.exp(sum(ci * ln**i for i, ci in enumerate(c)))
+    )
+
+
+def k15_rate(t: Arr) -> Arr:
+    """Return k15, HM + HI -> 2HI + e- [cm^3 s^-1] (rates.c k15_rate)."""
+    te = t / T_EV_K
+    ln = np.log(np.maximum(te, 1e-30))
+    c = [
+        -20.37260896533324,
+        1.139449335841631,
+        -0.1421013521554148,
+        0.00846445538663,
+        -0.0014327641212992,
+        0.0002012250284791,
+        0.0000866396324309,
+        -0.00002585009680264,
+        2.4555011970392e-6,
+        -8.06838246118e-8,
+    ]
+    return np.where(
+        te <= 0.1,
+        2.56e-9 * te**1.78186,
+        np.exp(sum(ci * ln**i for i, ci in enumerate(c))),
+    )
+
+
+def formation_rate(leg: dict[str, Arr], st: dict[str, Arr], t_fac: float) -> Arr:
+    """Return the H2 formation rate per H atom F [s^-1] of one leg.
+
+    The sum of the formation channels of the library from the leg's own species,
+    density and temperature (temperature times t_fac). Per volume,
+    dn_H2/dt = h2dust d2g n_HI n_H + k8 n_H- n_HI + k10 n_H2+ n_HI + k22 n_HI^3,
+    with n_H the hydrogen of geajay_rhoH (HI, HII, H2, H2+) and n_H- at its
+    steady state from the leg's electrons. F is that rate over n_H = X_H rho / m_H.
+    """
+    rho, temp = leg["rho"], st["temp"] * t_fac
+    n_hi = leg["HI"] * rho / MH
+    n_hii = leg["HII"] * rho / MH
+    n_h2p = leg["H2II"] * rho / (2.0 * MH)
+    n_e = np.maximum(
+        (
+            leg["HII"]
+            - leg["HM"]
+            + (leg["HeII"] + 2.0 * leg["HeIII"]) / 4.0
+            + leg["H2II"] / 2.0
+            + leg["DII"] / 2.0
+        )
+        * rho
+        / MH,
+        0.0,
+    )
+    n_h_lib = (leg["HI"] + leg["HII"] + leg["H2I"] + leg["H2II"]) * rho / MH
+    g0 = (
+        C_LIGHT
+        * rho
+        * (np.maximum(leg["u_pe"], 0.0) + np.maximum(leg["u_lw"], 0.0))
+        / HABING_FLUX
+    )
+    t_dust = dust_temperature(temp, n_h_lib, g0)
+    d2g = FGR * leg["z_smooth"] / Z_SOLAR
+    dust = h2dust_rate(temp, t_dust) * d2g * n_hi * n_h_lib
+    k16 = 2.4e-6 * (1.0 + temp / 2e4) / np.sqrt(temp)
+    k17 = np.where(
+        temp > 1e4,
+        4.0e-4 * temp**-1.4 * np.exp(-15100.0 / temp),
+        1.0e-8 * temp**-0.4,
+    )
+    k19 = 5.0e-7 * np.sqrt(100.0 / temp)
+    k7 = 3.0e-16 * (temp / 300.0) ** 0.95 * np.exp(-temp / 9.32e3)
+    n_hm = (
+        k7
+        * n_e
+        * n_hi
+        / (
+            k8_rate(temp) * n_hi
+            + k14_rate(temp) * n_e
+            + k15_rate(temp) * n_hi
+            + (k16 + k17) * n_hii
+            + k19 * n_h2p
+        )
+    )
+    k22 = np.where(
+        temp <= 300.0,
+        1.3e-32 * (temp / 300.0) ** -0.38,
+        1.3e-32 * (temp / 300.0) ** -1.0,
+    )
+    volume_rate = (
+        dust + k8_rate(temp) * n_hm * n_hi + 6.0e-10 * n_h2p * n_hi + k22 * n_hi**3
+    )
+    return volume_rate / st["n_h"]
 
 
 def jeans_length(temp: Arr, rho: Arr, mu: Arr) -> Arr:
@@ -181,6 +349,8 @@ def read_leg(path: Path, line_fields: bool) -> dict[str, Arr]:
         for k in SPECIES_A:
             out[k] = g[k][:][order].astype(float)
         out["u_lw"] = g["LWSpecificEnergies"][:][order].astype(float) * (ul / ut) ** 2
+        out["u_pe"] = g["PESpecificEnergies"][:][order].astype(float) * (ul / ut) ** 2
+        out["z_smooth"] = g["SmoothedMetalMassFractions"][:][order][:, -1].astype(float)
         if line_fields:
             out["t_line"] = g["LWLineTransmissions"][:][order].astype(float)
         t0 = float(f["Header"].attrs["Time"][0]) * ut
@@ -281,16 +451,18 @@ def evaluate(
     k_on = k_unit * on["rho"] * on["u_lw"]
     k_off = k_unit * off["rho"] * off["u_lw"]
 
-    def derive(
-        mask: NDArray[np.bool_], t_fac: float, t_dust: float
-    ) -> tuple[Arr, NDArray[np.int64]]:
+    def sub(leg: dict[str, Arr], mask: NDArray[np.bool_]) -> dict[str, Arr]:
+        return {k: v[mask] for k, v in leg.items() if v.size == mask.size}
+
+    def sub_state(st: dict[str, Arr], mask: NDArray[np.bool_]) -> dict[str, Arr]:
+        return {k: v[mask] for k, v in st.items()}
+
+    def derive(mask: NDArray[np.bool_], t_fac: float) -> tuple[Arr, NDArray[np.int64]]:
         """Solve x_off S(x_off n_H,off L_off) = x_on T_line F_off/F_on k_on/k_off."""
         t_on, t_off = son["temp"][mask] * t_fac, soff["temp"][mask] * t_fac
-        length = (
-            jeans_length(t_off, off["rho"][mask], soff["mu"][mask]) * column_scale
-        )
-        f_ratio = (soff["n_h"][mask] / son["n_h"][mask]) * (
-            h2dust_shape(t_off, t_dust) / h2dust_shape(t_on, t_dust)
+        length = jeans_length(t_off, off["rho"][mask], soff["mu"][mask]) * column_scale
+        f_ratio = formation_rate(sub(off, mask), sub_state(soff, mask), t_fac) / (
+            formation_rate(sub(on, mask), sub_state(son, mask), t_fac)
         )
         k_ratio = k_on[mask] / k_off[mask]
         y_eff = x_on[mask] * f_ratio * k_ratio * soff["n_h"][mask]
@@ -305,7 +477,7 @@ def evaluate(
 
     y_pred = np.full(y_on.shape, np.nan)
     count = np.zeros(y_on.shape, dtype=np.int64)
-    y_pred[lit], count[lit] = derive(lit, 1.0, T_DUST)
+    y_pred[lit], count[lit] = derive(lit, 1.0)
     unique = lit & (count == 1)
     res["n_multi"] = int((lit & (count >= 2)).sum())
     res["n_noroot"] = int((lit & (count == 0)).sum())
@@ -324,7 +496,9 @@ def evaluate(
     x_pred = y_pred / soff["n_h"]
     x_meas_off = x_pred if synthetic else soff["n_h2"] / soff["n_h"]
     x_rep = (
-        state(rep)["n_h2"] / state(rep)["n_h"] if rep is not None else np.ones_like(y_on)
+        state(rep)["n_h2"] / state(rep)["n_h"]
+        if rep is not None
+        else np.ones_like(y_on)
     )
     ok_h2 = (x_meas_off > 0.0) & (y_on > 0.0) & (x_rep > 0.0)
     res["n_zero_h2"] = int((eq & ~ok_h2).sum())
@@ -343,18 +517,12 @@ def evaluate(
     meas = np.log(x_on_scale * x_on / x_meas_off)
     rep_ln = np.log(x_on / x_rep)
     pred = np.log(x_on / x_pred)
-    # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu) of
-    # both legs, and to the unknown dust temperature of the formation rate.
+    # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu) of both legs.
     sens = {}
     res["n_sens_dropped"] = 0
-    for key, t_fac, t_dust in (
-        ("hot", 1.1, T_DUST),
-        ("cold", 1 / 1.1, T_DUST),
-        ("td_low", 1.0, T_DUST_LOW),
-        ("td_high", 1.0, T_DUST_HIGH),
-    ):
+    for key, t_fac in (("hot", 1.1), ("cold", 1 / 1.1)):
         yp = np.full(y_on.shape, np.nan)
-        yp[keep], _ = derive(keep, t_fac, t_dust)
+        yp[keep], _ = derive(keep, t_fac)
         sens[key] = np.log(x_on / (yp / soff["n_h"]))[keep]
         res["n_sens_dropped"] += int((~np.isfinite(sens[key])).sum())
     rng = np.random.default_rng(1)
@@ -366,16 +534,16 @@ def evaluate(
             continue
         idx_in_keep = np.nonzero(m[keep])[0]
 
-
         def half_range(a: str, b: str) -> float:
             ok = np.isfinite(sens[a][idx_in_keep]) & np.isfinite(sens[b][idx_in_keep])
             if not ok.any():
                 return float("nan")
             return 0.5 * abs(
-                np.median(sens[a][idx_in_keep][ok]) - np.median(sens[b][idx_in_keep][ok])
+                np.median(sens[a][idx_in_keep][ok])
+                - np.median(sens[b][idx_in_keep][ok])
             )
 
-        sys_t = half_range("hot", "cold") + half_range("td_low", "td_high")
+        sys_t = half_range("hot", "cold")
         se = np.hypot(boot_se(meas[m], rng), boot_se(pred[m], rng))
         noise = float("nan")
         if rep is not None:
