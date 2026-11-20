@@ -2155,7 +2155,7 @@ static uint64_t radiation_packet_far_rank(
  * A shaped cell has the sign bit of `far_first_below` set and the top four
  * bits of its exponent zero, a pattern that no stamp takes. Its two stamps then
  * hold the shape as bits and are never read as floats. The packed rank must
- * also be valid, which rejects a box with two stamps of -0.0.
+ * also be valid, which rejects an interval with two stamps of -0.0.
  *
  * @param sl The slot.
  * @param c The cell.
@@ -2169,13 +2169,14 @@ static int radiation_packet_far_has_shape(
 }
 
 /**
- * @brief Does a far cell hold the box of one share of a particle without a
- * known step (a stamp of zero or more in `far_first_below`)?
+ * @brief Does a far cell hold one uniform interval of light: the share of a
+ * particle without a known step, which arrives evenly between two times (a
+ * stamp of zero or more in `far_first_below`)?
  *
  * @param sl The slot.
  * @param c The cell.
  */
-static int radiation_packet_far_is_box(
+static int radiation_packet_far_has_interval(
     const struct feedback_isrf_packet_slot_data *sl, const int c) {
   return (radiation_packet_float_bits(sl->far_first_below[c]) >> 31) == 0u;
 }
@@ -2409,12 +2410,11 @@ static void radiation_packet_add_to_bin(
  *
  * The first piece in a cell keeps its interval: its light arrives evenly
  * between @p lo and @p hi. A second piece makes the cell hold several shares,
- * of which the cell keeps one box (the later first time, the later last time)
- * if both are boxes inside the cell, and otherwise only the latest arrival
- * time. A piece that carries light of
- * earlier pieces (below the photon cutoff) keeps the interval of its own
- * light: the carried light arrived before it, so it leaves no earlier than it
- * has arrived.
+ * of which the cell keeps one uniform interval (the later first time, the
+ * later last time) if both are intervals inside the cell, and otherwise only
+ * the latest arrival time. A piece that carries light of earlier pieces (below
+ * the photon cutoff) keeps the interval of its own light: the carried light
+ * arrived before it, so it leaves no earlier than it has arrived.
  *
  * Once the particle has a known step, the cell keeps the shape of its light
  * over #RADIATION_PACKET_FAR_SUBSTEPS sub-steps
@@ -2480,20 +2480,21 @@ static void radiation_packet_add_to_far(
       sl->far_first_below[c] = -1.f;
     }
   } else if (held > 0.f) {
-    /* Two boxes make one box from the later of the first times to the later
-       of the last times: the light of each share arrives, along its line,
-       at or above that box line, so the cell never releases more than has
-       arrived. A cell that holds light beyond its end keeps only the latest
-       arrival time. */
-    const int box = radiation_packet_far_is_box(sl, c) && hi <= end;
-    sl->far_first_below[c] = box ? fminf(sl->far_first_below[c],
+    /* Two uniform intervals make one from the later of the first times to the
+       later of the last times: the light of each share arrives, along its
+       line, at or above the line of the merged interval, so the cell never
+       releases more than has arrived. A cell that holds light beyond its end
+       keeps only the latest arrival time. */
+    const int interval = radiation_packet_far_has_interval(sl, c) && hi <= end;
+    sl->far_first_below[c] = interval
+                                 ? fminf(sl->far_first_below[c],
                                          radiation_packet_round_down(end - lo))
                                  : -1.f;
     sl->far_last_below[c] =
         fminf(radiation_packet_far_last_below(sl, c), last_below);
   } else {
-    /* Light that arrives beyond the end of the cell cannot be kept as a box
-       inside it. */
+    /* Light that arrives beyond the end of the cell cannot be kept as an
+       interval inside it. */
     sl->far_first_below[c] =
         hi <= end ? radiation_packet_round_down(end - lo) : -1.f;
     sl->far_last_below[c] = last_below;
@@ -2827,9 +2828,9 @@ static void radiation_packet_move_far(struct feedback_isrf_packet_slot_data *sl,
 }
 
 /**
- * @brief Take the light of a far cell out of a slot: a box if the cell holds
- * one share of a particle with an unknown step, a pulse at the end of each
- * sub-step if the cell is shaped, a pulse at its latest arrival time
+ * @brief Take the light of a far cell out of a slot: a uniform interval if the
+ * cell holds one share of a particle with an unknown step, a pulse at the end
+ * of each sub-step if the cell is shaped, a pulse at its latest arrival time
  * otherwise.
  *
  * @param sl The slot.
@@ -3799,7 +3800,7 @@ static void radiation_packet_release_far_cell(
   const double end = (double)far_end;
   const float last_below = radiation_packet_far_last_below(sl, c);
   const double last = radiation_packet_time_below_end(end, last_below);
-  const int single = radiation_packet_far_is_box(sl, c);
+  const int single = radiation_packet_far_has_interval(sl, c);
   const double first =
       single ? radiation_packet_time_below_end(end, sl->far_first_below[c])
              : last;
