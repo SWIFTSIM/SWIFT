@@ -43,46 +43,19 @@ of the star reaches the gas.
 # Checking
 `python3 checkH2WaitingLight.py --limited limited --control control`
 
-Words used by the check:
-- share: the light that one neighbour, closer to the star, hands to a particle. It carries the
-  neighbour's H2 column and transmission plus the hop between the two.
-- pool: the shares that wait together in the slots of one particle.
-- hull: the range from the smallest to the largest share value of a particle.
+A particle releases a weighted mean of the light that waits for it, so its H2
+transmission and column must lie between the smallest and the largest value that its
+neighbours closer to the star hand to it (its shares). The check reads the particles
+between 2 smoothing lengths and half a box minus 2 smoothing lengths from the star whose
+H2 density is nearly constant, at every snapshot that both runs hold, and tests that:
+- the limited run lies inside the range of its own shares;
+- the two runs differ by at most the width of the range of the shares of both runs;
+- the control run lies inside the range of its own shares.
 
-A particle releases a weighted mean of its pool, so its transmission and column must lie inside
-the hull of its shares. A share has the H2 column carried by its sender plus the column of the hop,
-and the transmission carried by its sender times `f(N + dN) / f(N)`, with `f` the shielding function
-at the temperature and density of the receiver, `N` the column of the sender and `dN` the column of
-the hop. The hop uses the H2 of the snapshot before the one that holds the sender value. The shares
-are built from the carried values of the senders of the same run in all snapshots up to the compared
-one, because a share may have waited a few steps.
+The check prints the first and last snapshot it read and why the comparison ends. It
+needs both runs to be non-periodic and the limited run to have lit fewer particles than
+the control at the first compared snapshot (else no light waits).
 
-The check reads every snapshot that both runs hold, from the first at which at least 200 particles
-are lit in both runs. Particles are read between 2 smoothing lengths and half a box minus 2
-smoothing lengths from the star, and only if their H2 density changed by at most 5 per cent since
-the first snapshot. Per snapshot it tests that:
-- the limited run lies inside the hull of its own shares (transmission and column);
-- the two runs differ by at most the width of the hull of both runs' shares, and both lie inside it;
-- the control run lies inside the hull of its own shares.
-The comparison ends at the first snapshot where the control leaves its hull, or where the H2 of more
-than half the compared particles changed. The check prints the first and last snapshot read and why
-the window ends. The two snapshots compared must have the same time, the limited run must have lit
-fewer particles than the control at the first compared snapshot (else no light waits), and both runs
-must be non-periodic.
-
-What a PASS proves: with waiting light, each particle agrees with the shares of its own senders, and
-the two runs agree inside that range. It catches a particle whose transmission or column departs from
-what its senders hand to it by more than 1 per cent. What it does not prove: the absolute value of
-the transmission. A change that acts on every particle alike moves senders and receivers together
-and passes. It does not prove that the released light has the exact value of a per-share sum, nor
-that a star on coarse steps is handled correctly. It does not compare a column with the straight
-line from the star, so it cannot tell whether the `cap` front is older than light at the speed limit.
-
-The snapshots hold the mean of the slot columns of a particle, not the column of the slot that a share
-leaves from, and no slot origin. The check cannot bound that difference. The H2 of a hop is known
-only at snapshot times, so the send time is placed within one snapshot interval. A value that sits on
-the edge of its hull because it has a single share can therefore lie outside the hull by the size of
-these two terms, and the check then fails.
-
-The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field (run `./run.sh`
-first), 3 for a non-finite value and 4 for a void run (a premise or the positive control is not met).
+The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field (run
+`./run.sh` first), 3 for a non-finite value and 4 for a void run (a premise or the
+positive control is not met).

@@ -37,6 +37,33 @@ one snapshot, else the run is void.
 
 Exit codes: 0 passed, 1 a bar failed, 2 a file or field is missing, 3 a value is not
 finite, 4 the run is void (a premise or a positive control is not met).
+
+Definitions. A share is the light that one neighbour, closer to the star, hands to a
+particle: the neighbour's H2 column and transmission plus the hop between the two. The pool
+is the shares that wait together in the slots of one particle. The hull is the range from
+the smallest to the largest share value of a particle. A share has the H2 column carried by
+its sender plus the column of the hop, and the transmission carried by its sender times
+f(N + dN) / f(N), with f the shielding function at the temperature and density of the
+receiver, N the column of the sender and dN the column of the hop. The hop uses the H2 of the
+snapshot before the one that holds the sender value. The shares are built from the carried
+values of the senders of the same run in all snapshots up to the compared one, because a
+share may have waited a few steps.
+
+Scope and limits.
+What a pass shows: with waiting light, each particle agrees with the shares of its own
+senders, and the two runs agree inside that range. A particle whose transmission or column
+departs from what its senders hand to it by more than 1 per cent fails.
+What it does not show: the absolute value of the transmission. A change that acts on every
+particle alike moves senders and receivers together and passes. It does not show that the
+released light has the exact value of a per-share sum, nor that a star on coarse steps is
+handled correctly. It does not compare a column with the straight line from the star, so it
+cannot tell whether the cap front is older than light at the speed limit.
+Resolution: the snapshots hold the mean of the slot columns of a particle, not the column of
+the slot that a share leaves from, and no slot origin; the check cannot bound that
+difference. The H2 of a hop is known only at snapshot times, so the send time is placed
+within one snapshot interval. A value that sits on the edge of its hull because it has a
+single share can therefore lie outside the hull by the size of these two terms, and the
+check then fails.
 """
 
 import argparse
