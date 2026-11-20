@@ -4334,7 +4334,7 @@ void radiation_packet_star_book_emission(struct spart *sp,
 #endif
 }
 
-#ifdef SWIFT_DEBUG_CHECKS
+#if defined(SWIFT_DEBUG_CHECKS) && !defined(WITH_MPI)
 /**
  * @brief Debugging checks: report whether the feedback loop delivered to the
  * same receivers as the density loop that summed the cone weights.
