@@ -3409,7 +3409,7 @@ numerator of Eq.~\eqref{eq:packet-advance} in
 \code{radiation\_packet\_gradient\_accumulate}
 (\code{radiation\_packet.h:492-528}). It is called from
 \code{runner\_iact\_isrf\_gradient} and its non-symmetric twin
-(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:88-90}, :120-127); the
+(\code{src/feedback/GEAR/radiation\_propagation\_iact.h:89-91}, :121-128); the
 twin also adds the part of the reach of an active receiver. The division by
 $S_{i,k}$ in Eq.~\eqref{eq:packet-advance} is at
 \code{radiation\_packet.c:4178}.
@@ -3422,7 +3422,7 @@ The share $\phi_{ij,k}$ is \code{fraction} in
 (\code{radiation\_packet.h:668-774}, \code{from\_origin} at :684). The force
 loop calls \code{radiation\_packet\_book\_share} from
 \code{runner\_iact\_isrf\_packet\_hop} and its non-symmetric twin
-(\code{radiation\_propagation\_iact.h:159-162}, :197-211); the twin also books,
+(\code{radiation\_propagation\_iact.h:161-164}, :199-213); the twin also books,
 in the visit of the receiver, the outer part of the reach of each active
 sender, local or foreign. The vector \code{dx\_ij}
 passed to it points from sender to receiver. The held energy of the sender is
@@ -3501,7 +3501,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 (\code{radiation\_packet.h:705-707}; fields at \code{feedback\_struct.h:319-326}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:987}
 for a hop, :1200 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
-(\code{radiation\_propagation\_iact.h:159-163}, :197-211) and from
+(\code{radiation\_propagation\_iact.h:161-165}, :199-213) and from
 \code{radiation\_iact.h:277}.
 
 \paragraph{Dust absorption (Secs.~\ref{sec:packet-absorption}, \ref{sec:packet-absorb-summary}).} All of it is
@@ -3715,7 +3715,7 @@ applied at \code{radiation\_packet.c:4211-4215}; $\tau_{\rm m}$ is
 (\code{feedback\_properties.h:876-883}). The sums of
 Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1019-1044}, called at
-\code{radiation\_propagation\_iact.h:164-165}, :198). The self term and the
+\code{radiation\_propagation\_iact.h:166-167}, :200). The self term and the
 division are \code{radiation\_packet\_end\_force}
 (\code{radiation\_packet.c:4232-4261}), called at \code{radiation\_isrf.c:308}.
 The write into the band values is \code{radiation\_packet\_couple\_field}

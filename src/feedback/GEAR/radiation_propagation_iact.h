@@ -81,7 +81,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const struct radiation_packet_constants *constants) {
 
-  /* The flag is the run-wide switch (radiation_isrf.c), the same for pj. */
+  /* The flag copies the run-wide switch (radiation_set_part_transport), so it
+   * is the same for pj. */
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
@@ -151,7 +152,8 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
     const float H, const struct radiation_packet_constants *constants,
     const int book_i_to_j, const int book_j_to_i) {
 
-  /* The flag is the run-wide switch (radiation_isrf.c), the same for pj. */
+  /* The flag copies the run-wide switch (radiation_set_part_transport), so it
+   * is the same for pj. */
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
