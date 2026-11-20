@@ -46,7 +46,8 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_drif
                       p->rho_evol, p->u,
                       strength_get_damage(p),
                       p->strength_data.deviatoric_stress_tensor,
-                      p->strength_data.strain_rate_tensor, mp);
+                      p->strength_data.strain_rate_tensor, p->phase,
+                      p->is_h_max, mp);
   strength_state_set_method_fields(s, p, mp);
 }
 
@@ -66,7 +67,8 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick
                       xp->rho_evol_full, xp->u_full,
                       strength_get_damage_full(xp),
                       xp->strength_data.deviatoric_stress_tensor_full,
-                      p->strength_data.strain_rate_tensor, mp);
+                      p->strength_data.strain_rate_tensor, p->phase,
+                      p->is_h_max, mp);
   strength_state_set_method_fields(s, p, mp);
 }
 /**
@@ -223,22 +225,14 @@ hydro_end_gradient_strength(struct part *restrict p) {}
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param density The density
- * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
-                                   const float density, const float u) {
+hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp) {
 
   /* Strength state from the drifted values. */
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
-  strength_state_init(&s, p->mat_id, p->mass,
-                      density, u,
-                      strength_get_damage(p),
-                      p->strength_data.deviatoric_stress_tensor,
-                      p->strength_data.strain_rate_tensor, mp);
-  strength_state_set_method_fields(&s, p, mp);
+  hydro_strength_state_init_drift(&s, p, mp);
 
   /* Store the quantities derived from the state. */
   hydro_strength_state_store_drift(p, &s, mp);

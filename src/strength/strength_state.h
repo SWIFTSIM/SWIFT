@@ -117,6 +117,9 @@ struct strength_state {
   /*! Strain rate tensor */
   struct sym_matrix strain_rate_tensor;
 
+  /*! Whether the smoothing length is at h_max */
+  int is_h_max;
+
 #ifdef STRENGTH_DAMAGE_SHEAR_COLLINS
   /*! Whether the yield stress limited the deviatoric stress tensor in the
    * last drift */

@@ -48,6 +48,22 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
 }
 
 /**
+ * @brief Returns whether a particle reverts to fluid.
+ *
+ * @param s The strength state of the particle.
+ */
+__attribute__((always_inline)) INLINE static int strength_reverts_to_fluid(
+    const struct strength_state *s) {
+
+  /* Smoothing length at h_max */
+  if (s->is_h_max) {
+    return 1;
+  }
+
+  return 0;
+}
+
+/**
  * @brief Initialises the strength state of a particle.
  *
  * @param s The strength state to be initialised.
@@ -58,6 +74,8 @@ __attribute__((always_inline)) INLINE static void strength_state_set_method_fiel
  * @param damage The damage.
  * @param deviatoric_stress_tensor The deviatoric stress tensor.
  * @param strain_rate_tensor The strain rate tensor.
+ * @param phase The current phase of the particle.
+ * @param is_h_max Whether the smoothing length is at h_max.
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static void strength_state_init(
@@ -65,7 +83,8 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
     const float mass, const float density, const float u,
     const struct strength_damage damage,
     const struct sym_matrix deviatoric_stress_tensor,
-    const struct sym_matrix strain_rate_tensor, const struct mat_params *mp) {
+    const struct sym_matrix strain_rate_tensor, const enum mat_phase phase,
+    const int is_h_max, const struct mat_params *mp) {
 
   /* Properties of the particle. */
   s->mat_id = mat_id;
@@ -75,9 +94,16 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
   s->damage = damage;
   s->deviatoric_stress_tensor = deviatoric_stress_tensor;
   s->strain_rate_tensor = strain_rate_tensor;
+  s->is_h_max = is_h_max;
 
   /* Quantities derived from the above are computed when first needed. */
   s->cache = (struct strength_state_cache){0};
+
+  /* Prevent fluid particles from changing phase */
+  if ((phase == mat_phase_fluid) || strength_reverts_to_fluid(s)) {
+    s->cache.phase = mat_phase_fluid;
+    s->cache.phase_computed = true;
+  }
 }
 
 /**

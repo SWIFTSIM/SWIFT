@@ -46,7 +46,8 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_drif
                       p->strength_data.rho_evol, p->u,
                       strength_get_damage(p),
                       p->strength_data.deviatoric_stress_tensor,
-                      p->strength_data.strain_rate_tensor, mp);
+                      p->strength_data.strain_rate_tensor, p->phase,
+                      p->is_h_max, mp);
   strength_state_set_method_fields(s, p, mp);
 }
 
@@ -66,7 +67,8 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick
                       xp->strength_data.rho_evol_full, xp->u_full,
                       strength_get_damage_full(xp),
                       xp->strength_data.deviatoric_stress_tensor_full,
-                      p->strength_data.strain_rate_tensor, mp);
+                      p->strength_data.strain_rate_tensor, p->phase,
+                      p->is_h_max, mp);
   strength_state_set_method_fields(s, p, mp);
 }
 /**
@@ -178,12 +180,9 @@ hydro_end_density_strength(struct part *restrict p) {}
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param density The density
- * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
-                                   const float density, const float u) {
+hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp) {
 
   /* Set the density to be used in the force loop to be the evolved density. */
   p->rho = p->strength_data.rho_evol;

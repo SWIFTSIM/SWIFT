@@ -246,8 +246,9 @@ enum mat_state_type {
  * @brief Phase state of a particle.
  */
 enum mat_phase {
-  mat_phase_fluid = 0,
-  mat_phase_solid = 1,
+  mat_phase_unset = 0,
+  mat_phase_fluid = 1,
+  mat_phase_solid = 2,
 };
 
 #ifdef MATERIAL_STRENGTH

@@ -221,6 +221,9 @@ struct part {
   /*! Phase flag */
   enum mat_phase phase;
 
+  /*! Flag for h=h_max */
+  char is_h_max;
+
   /*! Additional Radiative Transfer Data */
   struct rt_part_data rt_data;
 

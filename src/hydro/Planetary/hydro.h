@@ -708,7 +708,14 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   xp->u_full = p->u;
 #endif
 
-  hydro_prepare_force_strength(p, xp, p->rho, p->u);
+  /* Set p->is_h_max = 1 if smoothing length is h_max */
+  if (p->h > 0.999f * hydro_props->h_max) {
+    p->is_h_max = 1;
+  } else {
+    p->is_h_max = 0;
+  }
+
+  hydro_prepare_force_strength(p, xp);
 
   const float fac_Balsara_eps = cosmo->a_factor_Balsara_eps;
 
@@ -738,7 +745,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
 
   float grad_h_term;
   /* Ignore changing-kernel effects when h ~= h_max */
-  if (p->h > 0.999f * hydro_props->h_max) {
+  if (p->is_h_max) {
     grad_h_term = 0.f;
     /* no warning for this scheme, since this happens quite often */
   } else {

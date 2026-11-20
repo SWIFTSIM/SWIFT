@@ -133,12 +133,9 @@ hydro_end_gradient_strength(struct part *restrict p) {}
  *
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
- * @param density The density
- * @param u The specific internal energy
  */
 __attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp,
-                                   const float density, const float u) {}
+hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp) {}
 
 /**
  * @brief Resets strength time derivative fields in preparation
