@@ -200,6 +200,7 @@ tests/testFormat.sh
 tests/testCooling
 tests/testCoolingSplit
 tests/testGeajayKeys
+tests/testGeajayCosmicRayRecipe
 tests/testComovingCooling
 tests/testHashmap
 tests/testNeutrinoCosmology

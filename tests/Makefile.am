@@ -167,10 +167,16 @@ testFeedback_SOURCES = testFeedback.c
 # Key arrival test of the geajay cooling module, run by testGeajayKeys.sh. Built
 # on request, not by "make check": it needs the option lists of the geajay
 # sources and Cloudy tables. Use make testGeajayKeys GEAJAY_SRC=<geajay source>.
-EXTRA_PROGRAMS = testGeajayKeys
+EXTRA_PROGRAMS = testGeajayKeys testGeajayCosmicRayRecipe
 testGeajayKeys_SOURCES = testGeajayKeys.c
 testGeajayKeys_CFLAGS = $(AM_CFLAGS) $(GEAJAY_INCS) -I$(GEAJAY_SRC)/src
 testGeajayKeys_LDADD = $(GEAJAY_LIBS)
+
+# Depletion recipe under fast math, run by testGeajayCosmicRayRecipe.sh. The
+# program does not compile without -ffast-math.
+testGeajayCosmicRayRecipe_SOURCES = testGeajayCosmicRayRecipe.c
+testGeajayCosmicRayRecipe_CFLAGS = $(AM_CFLAGS) $(GEAJAY_INCS) -I$(GEAJAY_SRC)/src -ffast-math
+testGeajayCosmicRayRecipe_LDADD = $(GEAJAY_LIBS)
 
 testHashmap_SOURCES = testHashmap.c
 
@@ -207,5 +213,6 @@ EXTRA_DIST = testReading.sh makeInput.py testActivePair.sh \
              star_tolerance_27_perturbed.dat star_tolerance_27_perturbed_h.dat star_tolerance_27_perturbed_h2.dat \
              testNeutrinoCosmology.dat testNeutrinoCosmology.sh testCustomMPI.sh \
              testGeajayPhotoelectricKey.sh testGeajayKeys.sh testGeajayCosmicRays.sh testGeajayKeys.cases \
-             testGeajayCosmicRaysFire2Cosmology.sh \
+             testGeajayCosmicRaysFire2Cosmology.sh testGeajayDustToGasRatios.sh \
+             testGeajayCosmicRayRecipe.c testGeajayCosmicRayRecipe.sh \
              testGeajayKeys.yml
