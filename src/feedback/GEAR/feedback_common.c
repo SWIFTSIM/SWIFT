@@ -274,12 +274,7 @@ void feedback_will_do_feedback(
     const integertime_t ti_current, const double time_base,
     const timebin_t old_time_bin) {
 
-#if defined(SWIFT_DEBUG_CHECKS) && defined(GEAR_SUBGRID_RADIATION_ISRF) && \
-    !defined(WITH_MPI)
-  /* On several ranks the deliveries to foreign gas land on a copy of the star
-     on the gas's rank and never return, so the counts cannot be compared. */
   radiation_packet_check_star_cones(sp, ti_current);
-#endif
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -942,9 +937,10 @@ feedback_iact_HII_maintain_ionized_part(
 
   if (feedback_get_star_ionization_budget(si, pixel) <= 0.0) return 0.0;
 
+  const struct radiation_gas_context gas = {phys_const, hydro_props, us, cosmo,
+                                            cooling};
   const double cost =
-      dt_back * radiation_get_part_rate_to_fully_ionize(
-                    phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+      dt_back * radiation_get_part_rate_to_fully_ionize(&gas, pj, xpj);
   const double charged = radiation_consume_ionizing_photons(si, pixel, cost);
 
   /* A part-paid upkeep renews with probability paid / owed. The gas that
@@ -1046,11 +1042,12 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
      dS = (Q-S)*dt/(t_rec+dt)), and so unconditionally stable at the
      dt >> t_rec the default HII_rebuild_time_Myr produces. Dropping it would
      give explicit Euler, which overshoots and then churns. */
-  const double N_HI = radiation_get_part_number_neutral_hydrogen_atoms(
-      phys_const, hydro_props, us, cosmo, cooling, pj, xpj);
+  const struct radiation_gas_context gas = {phys_const, hydro_props, us, cosmo,
+                                            cooling};
+  const double N_HI =
+      radiation_get_part_number_neutral_hydrogen_atoms(&gas, pj, xpj);
   const double Delta_dot_N_ion_maintenance_rate =
-      radiation_get_part_rate_to_fully_ionize(phys_const, hydro_props, us,
-                                              cosmo, cooling, pj, xpj);
+      radiation_get_part_rate_to_fully_ionize(&gas, pj, xpj);
   const double cost = N_HI + dt_back * Delta_dot_N_ion_maintenance_rate;
 
   const double budget = feedback_get_star_ionization_budget(si, pixel);

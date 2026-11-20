@@ -2,7 +2,7 @@
 
 When radiation_level coarsening has not (yet) happened, each leaf is its own
 radiation_level region, so the wired stencil is only the leaf's up-to-26
-immediate neighbours (runner_radiation_feedback.c:266-274). A cell two
+immediate neighbours (runner_radiation_feedback.c:496-504). A cell two
 regions away is structurally absent from radiation_in (not filtered by the
 bounds check, simply never an edge in the graph), even if the search radius
 geometrically reaches into it. Three guards bound how bad this gets, and a

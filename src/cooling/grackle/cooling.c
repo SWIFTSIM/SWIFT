@@ -1083,8 +1083,7 @@ static gr_float cooling_new_energy_or_keep_previous(
   /* Do subgrid physics before feeding grackle with the gas properties. */
   float u_ionized;
   const int ionized_this_step = cooling_update_part_subgrid(
-      phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp, dt,
-      dt_therm, time, &u_ionized);
+      phys_const, us, cosmo, hydro_props, cooling, p, xp, time, &u_ionized);
 
   /* A particle held at the subgrid-ionized floor this step must not also
      go through Grackle's own chemistry/cooling solve: Grackle's ODE
@@ -1109,8 +1108,7 @@ static gr_float cooling_new_energy_or_keep_previous(
   {
     float u_o;
     if (cooling_debug_fix_neutral_temperature_subgrid(
-            phys_const, us, cosmo, hydro_props, pressure_floor, cooling, p, xp,
-            &u_o)) {
+            phys_const, us, cosmo, hydro_props, cooling, p, xp, &u_o)) {
       /* Species are untouched here, only u changes, but this path replaces
          Grackle's solve for every non-ionized particle: both caches are
          written here or they are never written at all in this

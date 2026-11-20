@@ -588,4 +588,60 @@ feedback_book_removed_gas_swallowed_by_black_hole(const struct part *p) {}
 __attribute__((always_inline)) INLINE static void feedback_first_init_sink(
     struct sink *s) {}
 
+/**
+ * @brief No-op: this model has no radiation transport to start.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_startup(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport to regrid.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_regrid(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport statistics.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_statistics(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport counters.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_diagnostics(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport step report.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_step_report(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport run report.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_end_of_run(const struct engine *e) {}
+
+/**
+ * @brief No-op: this model has no radiation transport ledger to reduce.
+ *
+ * @param e The #engine.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_radiation_transport_snapshot_reduce(const struct engine *e) {}
+
 #endif /* SWIFT_FEEDBACK_EAGLE_THERMAL_H */

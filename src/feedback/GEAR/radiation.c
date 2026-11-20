@@ -71,28 +71,15 @@ void radiation_set_band_edge_coefficients(struct feedback_props *fb_props,
                  : 0.f;
 
   const double l_edge_pe =
-      rad->is_2d
-          ? radiation_get_luminosity_edge_pe_from_integral_2d(rad, log_z,
-                                                              log_m1, log_m2)
-          : radiation_get_luminosity_edge_pe_from_integral(rad, log_m1, log_m2);
-  const double l_pe = rad->is_2d ? radiation_get_luminosity_pe_from_integral_2d(
-                                       rad, log_z, log_m1, log_m2)
-                                 : radiation_get_luminosity_pe_from_integral(
-                                       rad, log_m1, log_m2);
+      radiation_get_population_luminosity_edge_pe(rad, log_z, log_m1, log_m2);
+  const double l_pe =
+      radiation_get_population_luminosity_pe(rad, log_z, log_m1, log_m2);
   const double l_edge_lw =
-      rad->is_2d
-          ? radiation_get_luminosity_edge_lw_from_integral_2d(rad, log_z,
-                                                              log_m1, log_m2)
-          : radiation_get_luminosity_edge_lw_from_integral(rad, log_m1, log_m2);
-  const double l_lw = rad->is_2d ? radiation_get_luminosity_lw_from_integral_2d(
-                                       rad, log_z, log_m1, log_m2)
-                                 : radiation_get_luminosity_lw_from_integral(
-                                       rad, log_m1, log_m2);
+      radiation_get_population_luminosity_edge_lw(rad, log_z, log_m1, log_m2);
+  const double l_lw =
+      radiation_get_population_luminosity_lw(rad, log_z, log_m1, log_m2);
   const double mean_e_lw_cgs =
-      rad->is_2d
-          ? radiation_get_mean_photon_energy_lw_from_integral_2d(rad, log_z,
-                                                                 log_m2)
-          : radiation_get_mean_photon_energy_lw_from_integral(rad, log_m2);
+      radiation_get_population_mean_photon_energy_lw(rad, log_z, log_m2);
 
   /* Denominator guard: an IMF entirely below the table's mass floor gives
    * L_PE = L_LW = 0. Exact comparison, so a legitimately zero numerator is
@@ -217,14 +204,11 @@ void radiation_set_lw_photon_energy_cgs(const struct radiation *rad,
 
   /* Mean over the IMF from mass_min up to mass_max. */
   const float log_m = log10f(sm->imf.mass_max);
-  const double E_LW_cgs =
-      rad->is_2d
-          ? radiation_get_mean_photon_energy_lw_from_integral_2d(
-                rad,
-                radiation_get_log_metallicity(
-                    RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY),
-                log_m)
-          : radiation_get_mean_photon_energy_lw_from_integral(rad, log_m);
+  const double E_LW_cgs = radiation_get_population_mean_photon_energy_lw(
+      rad,
+      radiation_get_log_metallicity(
+          RADIATION_LW_PHOTON_ENERGY_REFERENCE_METALLICITY),
+      log_m);
 
   if (E_LW_cgs <= 0.) return;
 
@@ -393,6 +377,29 @@ void radiation_restore(struct radiation *rad, FILE *stream,
   message("Restoring GEAR radiation struct...");
 }
 
+/* The tables that exist in both a raw and an integrated version, in 1D and 2D
+   (the two share a union). Add a new table here when radiation_table_io.c
+   starts reading it. Teff has a raw table only and is freed apart. */
+#define RADIATION_TABLE_FIELDS(X) \
+  X(luminosities)                 \
+  X(dot_N_ion)                    \
+  X(dot_E_excess)                 \
+  X(l_pe)                         \
+  X(l_lw)                         \
+  X(l_lw_dissociating)            \
+  X(l_edge_pe)                    \
+  X(l_edge_lw)                    \
+  X(mean_photon_energy_lw)        \
+  X(mean_photon_energy_pe)
+
+#define RADIATION_FREE_1D(name)        \
+  interpolate_1d_free(&rad->raw.name); \
+  interpolate_1d_free(&rad->integrated.name);
+
+#define RADIATION_FREE_2D(name)             \
+  interpolate_2d_free(&rad->raw.name##_2d); \
+  interpolate_2d_free(&rad->integrated.name##_2d);
+
 /**
  * @brief Free the interpolation tables.
  *
@@ -403,49 +410,11 @@ void radiation_clean(struct radiation *rad) {
   /* is_2d selects the live union member, which must be freed with the
      matching interpolate_*d_free(). */
   if (rad->is_2d) {
-    interpolate_2d_free(&rad->raw.luminosities_2d);
-    interpolate_2d_free(&rad->raw.dot_N_ion_2d);
-    interpolate_2d_free(&rad->raw.dot_E_excess_2d);
+    RADIATION_TABLE_FIELDS(RADIATION_FREE_2D)
     interpolate_2d_free(&rad->raw.teff_2d);
-    interpolate_2d_free(&rad->raw.l_pe_2d);
-    interpolate_2d_free(&rad->raw.l_lw_2d);
-    interpolate_2d_free(&rad->raw.l_lw_dissociating_2d);
-    interpolate_2d_free(&rad->raw.l_edge_pe_2d);
-    interpolate_2d_free(&rad->raw.l_edge_lw_2d);
-    interpolate_2d_free(&rad->raw.mean_photon_energy_lw_2d);
-    interpolate_2d_free(&rad->raw.mean_photon_energy_pe_2d);
-    interpolate_2d_free(&rad->integrated.luminosities_2d);
-    interpolate_2d_free(&rad->integrated.dot_N_ion_2d);
-    interpolate_2d_free(&rad->integrated.dot_E_excess_2d);
-    interpolate_2d_free(&rad->integrated.l_pe_2d);
-    interpolate_2d_free(&rad->integrated.l_lw_2d);
-    interpolate_2d_free(&rad->integrated.l_lw_dissociating_2d);
-    interpolate_2d_free(&rad->integrated.l_edge_pe_2d);
-    interpolate_2d_free(&rad->integrated.l_edge_lw_2d);
-    interpolate_2d_free(&rad->integrated.mean_photon_energy_lw_2d);
-    interpolate_2d_free(&rad->integrated.mean_photon_energy_pe_2d);
   } else {
-    interpolate_1d_free(&rad->raw.luminosities);
-    interpolate_1d_free(&rad->raw.dot_N_ion);
-    interpolate_1d_free(&rad->raw.dot_E_excess);
+    RADIATION_TABLE_FIELDS(RADIATION_FREE_1D)
     interpolate_1d_free(&rad->raw.teff);
-    interpolate_1d_free(&rad->raw.l_pe);
-    interpolate_1d_free(&rad->raw.l_lw);
-    interpolate_1d_free(&rad->raw.l_lw_dissociating);
-    interpolate_1d_free(&rad->raw.l_edge_pe);
-    interpolate_1d_free(&rad->raw.l_edge_lw);
-    interpolate_1d_free(&rad->raw.mean_photon_energy_lw);
-    interpolate_1d_free(&rad->raw.mean_photon_energy_pe);
-    interpolate_1d_free(&rad->integrated.luminosities);
-    interpolate_1d_free(&rad->integrated.dot_N_ion);
-    interpolate_1d_free(&rad->integrated.dot_E_excess);
-    interpolate_1d_free(&rad->integrated.l_pe);
-    interpolate_1d_free(&rad->integrated.l_lw);
-    interpolate_1d_free(&rad->integrated.l_lw_dissociating);
-    interpolate_1d_free(&rad->integrated.l_edge_pe);
-    interpolate_1d_free(&rad->integrated.l_edge_lw);
-    interpolate_1d_free(&rad->integrated.mean_photon_energy_lw);
-    interpolate_1d_free(&rad->integrated.mean_photon_energy_pe);
   }
 
   /* No 1D counterpart: always freed. */

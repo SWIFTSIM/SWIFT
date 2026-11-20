@@ -69,26 +69,19 @@ radiation_get_part_total_hydrogen_mass_fraction(
 /**
  * @brief Get the gas number of hydrogen atoms.
  *
- * @param phys_const Physical constants.
- * @param hydro_props The #hydro_props.
- * @param us Unit system.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
+ * @param gas The #radiation_gas_context of the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
  * @return Number of hydrogen atoms.
  */
-__attribute__((always_inline)) INLINE double
-radiation_get_part_number_hydrogen_atoms(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+double radiation_get_part_number_hydrogen_atoms(
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
 
   const float m = hydro_get_mass(p);
-  const double m_p = phys_const->const_proton_mass;
+  const double m_p = gas->phys_const->const_proton_mass;
   const double X_H =
-      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
+      radiation_get_part_total_hydrogen_mass_fraction(gas->cooling, p);
 
   /* Number of hydrogen atoms in b (Hu et al. 2017; Smith et al. 2021). */
   const double N_H = (X_H * m) / m_p;
@@ -105,33 +98,25 @@ radiation_get_part_number_hydrogen_atoms(
  * total. A cooling network that tracks no species counts every hydrogen atom
  * neutral, so this equals the total N_H there.
  *
- * @param phys_const Physical constants.
- * @param hydro_props The #hydro_props.
- * @param us Unit system.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
+ * @param gas The #radiation_gas_context of the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
  * @return Number of neutral hydrogen atoms.
  */
-__attribute__((always_inline)) INLINE double
-radiation_get_part_number_neutral_hydrogen_atoms(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+double radiation_get_part_number_neutral_hydrogen_atoms(
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
 
   const double X_H =
-      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
+      radiation_get_part_total_hydrogen_mass_fraction(gas->cooling, p);
   const double X_HI = cooling_get_neutral_hydrogen_fraction_subgrid(p, xp, X_H);
 
   const float m = hydro_get_mass(p);
-  const double m_p = phys_const->const_proton_mass;
+  const double m_p = gas->phys_const->const_proton_mass;
   const double N_HI = (X_HI * m) / m_p;
 
   /* Capped at the composition total: species can transiently exceed it. */
-  const double N_H = radiation_get_part_number_hydrogen_atoms(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const double N_H = radiation_get_part_number_hydrogen_atoms(gas, p, xp);
 
   return min(N_HI, N_H);
 }
@@ -174,20 +159,13 @@ __attribute__((always_inline)) INLINE double radiation_get_T_collisional_K(
  * as it stands: the internal energy on the xv/rho channel is an earlier
  * snapshot, so inverting the cached temperature against it would mix epochs.
  *
- * @param phys_const Physical constants.
- * @param hydro_props The #hydro_props.
- * @param us Unit system.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
+ * @param gas The #radiation_gas_context of the run.
  * @param p The particle.
  * @param xp The extended data of the particle, or NULL for a foreign copy.
  * @return Mean molecular weight.
  */
-__attribute__((always_inline)) INLINE double
-radiation_get_part_mean_molecular_weight(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+double radiation_get_part_mean_molecular_weight(
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
 
 #ifdef WITH_MPI
@@ -205,8 +183,9 @@ radiation_get_part_mean_molecular_weight(
   }
 #endif
 
-  return cooling_get_mean_molecular_weight(phys_const, us, cosmo, hydro_props,
-                                           cooling, p, xp);
+  return cooling_get_mean_molecular_weight(gas->phys_const, gas->us, gas->cosmo,
+                                           gas->hydro_props, gas->cooling, p,
+                                           xp);
 }
 
 /**
@@ -216,38 +195,29 @@ radiation_get_part_mean_molecular_weight(
  * Shared by cooling_ionize_part_subgrid() and
  * radiation_get_part_rate_to_fully_ionize().
  *
- * @param phys_const Physical constants.
- * @param hydro_props The #hydro_props.
- * @param us Unit system.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
+ * @param gas The #radiation_gas_context of the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
  * @return Specific internal energy (physical, code units).
  */
-__attribute__((always_inline)) INLINE double
-radiation_get_part_ionized_internal_energy(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+double radiation_get_part_ionized_internal_energy(
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
 
-  const double m_p = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
+  const double m_p = gas->phys_const->const_proton_mass;
+  const double k_B = gas->phys_const->const_boltzmann_k;
 
-  const double N_H = radiation_get_part_number_hydrogen_atoms(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
-  const double E_ion =
-      2.17872e-11 / units_cgs_conversion_factor(us, UNIT_CONV_ENERGY);
+  const double N_H = radiation_get_part_number_hydrogen_atoms(gas, p, xp);
+  const double E_ion = RADIATION_HI_IONIZATION_ENERGY_CGS /
+                       units_cgs_conversion_factor(gas->us, UNIT_CONV_ENERGY);
   const double Delta_u_ionized = N_H * E_ion / hydro_get_mass(p);
 
   const double Z = chemistry_get_total_metal_mass_fraction_for_feedback(p);
-  const double mu = radiation_get_part_mean_molecular_weight(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const double mu = radiation_get_part_mean_molecular_weight(gas, p, xp);
 
   const double T_collisional =
       radiation_get_T_collisional_K(Z) /
-      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+      units_cgs_conversion_factor(gas->us, UNIT_CONV_TEMPERATURE);
   const double u_collisional =
       cooling_internal_energy_from_T(T_collisional, mu, k_B, m_p);
 
@@ -272,31 +242,23 @@ radiation_get_case_b_recombination_coefficient_cgs(const double T) {
 /**
  * @brief Get the gas ionizing rate needed to fully ionize the #part.
  *
- * @param phys_const Physical constants.
- * @param hydro_props The #hydro_props.
- * @param us Unit system.
- * @param cosmo The current cosmological model.
- * @param cooling The #cooling_function_data used in the run.
+ * @param gas The #radiation_gas_context of the run.
  * @param p The particle.
  * @param xp The extended data of the particle.
  * @return Ionizing photon rate to ionize this #part (physical units).
  */
-__attribute__((always_inline)) INLINE double
-radiation_get_part_rate_to_fully_ionize(
-    const struct phys_const *phys_const, const struct hydro_props *hydro_props,
-    const struct unit_system *us, const struct cosmology *cosmo,
-    const struct cooling_function_data *cooling, const struct part *p,
+double radiation_get_part_rate_to_fully_ionize(
+    const struct radiation_gas_context *gas, const struct part *p,
     const struct xpart *xp) {
 
-  const float rho = hydro_get_physical_density(p, cosmo);
-  const double m_p = phys_const->const_proton_mass;
-  const double k_B = phys_const->const_boltzmann_k;
+  const float rho = hydro_get_physical_density(p, gas->cosmo);
+  const double m_p = gas->phys_const->const_proton_mass;
+  const double k_B = gas->phys_const->const_boltzmann_k;
   const double X_H =
-      radiation_get_part_total_hydrogen_mass_fraction(cooling, p);
+      radiation_get_part_total_hydrogen_mass_fraction(gas->cooling, p);
 
   /* Number of hydrogen atoms in b */
-  const double N_H = radiation_get_part_number_hydrogen_atoms(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const double N_H = radiation_get_part_number_hydrogen_atoms(gas, p, xp);
 
   /* Z >= HydrogenFractionByMass gives N_H = 0: nothing to ionize, and T=0
      would give a NaN in the recombination fit. */
@@ -306,20 +268,19 @@ radiation_get_part_rate_to_fully_ionize(
   const double n_e = (X_H * rho) / m_p;
 
   /* Case-B coefficient at the temperature the gas is held at once ionized. */
-  const double u_ionized = radiation_get_part_ionized_internal_energy(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
-  const double mu = radiation_get_part_mean_molecular_weight(
-      phys_const, hydro_props, us, cosmo, cooling, p, xp);
+  const double u_ionized =
+      radiation_get_part_ionized_internal_energy(gas, p, xp);
+  const double mu = radiation_get_part_mean_molecular_weight(gas, p, xp);
 
   const double T_ionized_K =
       cooling_temperature_from_internal_energy(u_ionized, mu, k_B, m_p) *
-      units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
+      units_cgs_conversion_factor(gas->us, UNIT_CONV_TEMPERATURE);
 
   const double beta_cgs =
       radiation_get_case_b_recombination_coefficient_cgs(T_ionized_K);
   const float dimension_alphaB[5] = {0, 3, -1, 0, 0}; /* [cm^3 s^-1] */
   const double beta =
-      beta_cgs / units_general_cgs_conversion_factor(us, dimension_alphaB);
+      beta_cgs / units_general_cgs_conversion_factor(gas->us, dimension_alphaB);
 
   /* Required ionizing rate in [photons / internal time unit] */
   const double Delta_N_dot = N_H * beta * n_e;
@@ -445,7 +406,7 @@ __attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
 }
 
 /**
- * @brief Tag the #part as ionized to be ionized in feedback_update_part().
+ * @brief Tag the #part as ionized. The cooling task applies the tag.
  *
  * @param p The particle.
  * @param xp The extended data of the particle, or NULL for a foreign gas
@@ -454,7 +415,7 @@ __attribute__((always_inline)) INLINE double radiation_consume_ionizing_photons(
  * above are always written, since @p p is never NULL.
  * @param star_id The id of the star that ionized this particle.
  * @param end_time The simulation time until which the particle stays tagged
- * (the star's next HII rebuild).
+ * (RADIATION_TAG_LIFETIME_INTERVALS rebuild intervals after the claim).
  * @param excess_photon_energy_HI Mean photon energy above the 13.6 eV HI
  * threshold, erg; 0 unless GEARFeedback:HII_couple_ionization_rate is on.
  * @param photoionization_rate_HI Gamma_HI at the particle, internal 1/time; 0

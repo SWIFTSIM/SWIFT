@@ -1244,8 +1244,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
          and so can sit below the top level: those tasks are created at
          every level in between and belong in n2. The depth is data
          dependent, so this is a deliberate over-estimate -- an
-         under-estimate costs a run-time pool reallocation, an
-         over-estimate only a little memory.
+         under-estimate overflows the task list (a fatal error in
+         scheduler_addtask), an over-estimate only a little memory.
 
          Radiation splitting now actually reaches this level (previously a
          dead gate kept every radiation task pinned to the top level, so
@@ -1568,7 +1568,7 @@ void engine_rebuild(struct engine *e, const int repartitioned,
   }
 
   /* The packet reach margin follows the cell width, which a regrid changes. */
-  radiation_packet_refresh_frame_width(e);
+  feedback_radiation_transport_regrid(e);
 
   /* Re-build the tasks. */
   engine_maketasks(e);
@@ -1852,7 +1852,7 @@ void engine_print_stats(struct engine *e) {
                         e->cosmology->z, e->step);
 
   /* Collective: the far light of the packet transport. */
-  radiation_packet_far_diagnostics(e);
+  feedback_radiation_transport_statistics(e);
 
   /* Flag that we dumped some statistics */
   e->step_props |= engine_step_prop_statistics;
@@ -2775,8 +2775,8 @@ int engine_step(struct engine *e) {
   e->tic_step = getticks();
 
   /* Collective: every rank reports its counters and resets them. */
-  radiation_packet_step_diagnostics(e);
-  radiation_packet_far_share_report(e);
+  feedback_radiation_transport_step_diagnostics(e);
+  feedback_radiation_transport_step_report(e);
 
   if (e->nodeID == 0) {
 
@@ -4202,7 +4202,7 @@ void engine_recompute_displacement_constraint(struct engine *e) {
  */
 void engine_clean(struct engine *e, const int fof, const int restart) {
   /* Collective: the far share of the whole run. */
-  if (!fof) radiation_packet_far_share_final(e);
+  if (!fof) feedback_radiation_transport_end_of_run(e);
 
   /* Start by telling the runners to stop. */
   e->step_props = engine_step_prop_done;
