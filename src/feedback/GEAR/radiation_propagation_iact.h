@@ -28,6 +28,18 @@
 #include "radiation.h"
 #include "radiation_packet.h"
 
+/**
+ * @brief The constants of the packet transport, for the pair loops.
+ *
+ * @param fp The #feedback_props, or NULL.
+ * @return The constants of the packet transport, or NULL.
+ */
+__attribute__((
+    always_inline)) INLINE static const struct radiation_packet_constants *
+feedback_get_radiation_packet_constants(const struct feedback_props *fp) {
+  return fp == NULL ? NULL : &fp->ISRF_packet_constants;
+}
+
 #ifdef GEAR_SUBGRID_RADIATION_ISRF
 
 /* The reach of a sender is its own kernel support (inner part) and, for an
@@ -62,19 +74,20 @@
  * @param pj Second particle.
  * @param a Current scale factor (unused, kept for interface conformance).
  * @param H Current Hubble parameter (unused, same reason).
+ * @param constants The #radiation_packet_constants.
  */
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {
+    const float H, const struct radiation_packet_constants *constants) {
 
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
-  radiation_packet_gradient_accumulate(dx_ij, hi, hj, 1,
-                                       RADIATION_PACKET_REACH_ALL, pi, pj);
-  radiation_packet_gradient_accumulate(dx, hj, hi, 1,
-                                       RADIATION_PACKET_REACH_ALL, pj, pi);
+  radiation_packet_gradient_accumulate(
+      dx_ij, hi, hj, 1, RADIATION_PACKET_REACH_ALL, pi, pj, constants);
+  radiation_packet_gradient_accumulate(
+      dx, hj, hi, 1, RADIATION_PACKET_REACH_ALL, pj, pi, constants);
 }
 
 /**
@@ -91,26 +104,27 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
  * @param pj Second particle (only its outer part is added, if active).
  * @param a Current scale factor (unused, kept for interface conformance).
  * @param H Current Hubble parameter (unused, same reason).
+ * @param constants The #radiation_packet_constants.
  * @param pj_active Is j active in this step?
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
-                                 const float hi, const float hj,
-                                 struct part *restrict pi,
-                                 struct part *restrict pj, const float a,
-                                 const float H, const int pj_active) {
+runner_iact_nonsym_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct radiation_packet_constants *constants,
+    const int pj_active) {
 
   if (pi->feedback_data.ISRF_packet_transport) {
     const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
     radiation_packet_gradient_accumulate(
         dx_ij, hi, hj, RADIATION_PACKET_RECEIVER_ACTIVE(pj_active),
-        RADIATION_PACKET_GRADIENT_WANT, pi, pj);
+        RADIATION_PACKET_GRADIENT_WANT, pi, pj, constants);
   }
 
 #ifndef EXTRA_HYDRO_LOOP_TYPE2
   if (pj_active && pj->feedback_data.ISRF_packet_transport)
-    radiation_packet_gradient_accumulate(dx, hj, hi, 1,
-                                         RADIATION_PACKET_REACH_OUTER, pj, pi);
+    radiation_packet_gradient_accumulate(
+        dx, hj, hi, 1, RADIATION_PACKET_REACH_OUTER, pj, pi, constants);
 #endif
 }
 
@@ -126,23 +140,25 @@ runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
  * @param pj Second particle.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param constants The #radiation_packet_constants.
  * @param book_i_to_j Book the share of i into j (j is local).
  * @param book_j_to_i Book the share of j into i (i is local).
  */
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const int book_i_to_j, const int book_j_to_i) {
+    const float H, const struct radiation_packet_constants *constants,
+    const int book_i_to_j, const int book_j_to_i) {
 
   if (!pi->feedback_data.ISRF_packet_transport) return;
 
   const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
   if (book_i_to_j)
     radiation_packet_book_share(dx_ij, hi, hj, 1, RADIATION_PACKET_REACH_ALL,
-                                pi, pj, a, H);
+                                pi, pj, a, H, constants);
   if (book_j_to_i)
     radiation_packet_book_share(dx, hj, hi, 1, RADIATION_PACKET_REACH_ALL, pj,
-                                pi, a, H);
+                                pi, a, H, constants);
   radiation_packet_gather_field(r2, hi, pi, pj);
   radiation_packet_gather_field(r2, hj, pj, pi);
 }
@@ -164,31 +180,32 @@ __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
  * @param pj Receiver, active or not.
  * @param a Current scale factor.
  * @param H Current Hubble parameter.
+ * @param constants The #radiation_packet_constants.
  * @param book Book the share (j is local and this is its booking visit).
  * @param reverse Book the outer part of the share of j into i: i is local and
  * j is active.
  */
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
-                                   const float hi, const float hj,
-                                   struct part *restrict pi,
-                                   struct part *restrict pj, const float a,
-                                   const float H, const int book,
-                                   const int reverse) {
+runner_iact_nonsym_isrf_packet_hop(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct radiation_packet_constants *constants,
+    const int book, const int reverse) {
 
   if (pi->feedback_data.ISRF_packet_transport) {
     radiation_packet_gather_field(r2, hi, pi, pj);
     if (book) {
       const float dx_ij[3] = {-dx[0], -dx[1], -dx[2]};
       radiation_packet_book_share(dx_ij, hi, hj, 1,
-                                  RADIATION_PACKET_GRADIENT_WANT, pi, pj, a, H);
+                                  RADIATION_PACKET_GRADIENT_WANT, pi, pj, a, H,
+                                  constants);
     }
   }
 
 #ifndef EXTRA_HYDRO_LOOP_TYPE2
   if (reverse && pj->feedback_data.ISRF_packet_transport)
     radiation_packet_book_share(dx, hj, hi, 1, RADIATION_PACKET_REACH_OUTER, pj,
-                                pi, a, H);
+                                pi, a, H, constants);
 #endif
 }
 
@@ -199,27 +216,27 @@ runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_gradient(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H) {}
+    const float H, const struct radiation_packet_constants *constants) {}
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_gradient(const float r2, const float dx[3],
-                                 const float hi, const float hj,
-                                 struct part *restrict pi,
-                                 struct part *restrict pj, const float a,
-                                 const float H, const int pj_active) {}
+runner_iact_nonsym_isrf_gradient(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct radiation_packet_constants *constants,
+    const int pj_active) {}
 
 __attribute__((always_inline)) INLINE static void runner_iact_isrf_packet_hop(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const int book_i_to_j, const int book_j_to_i) {}
+    const float H, const struct radiation_packet_constants *constants,
+    const int book_i_to_j, const int book_j_to_i) {}
 
 __attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_isrf_packet_hop(const float r2, const float dx[3],
-                                   const float hi, const float hj,
-                                   struct part *restrict pi,
-                                   struct part *restrict pj, const float a,
-                                   const float H, const int book,
-                                   const int reverse) {}
+runner_iact_nonsym_isrf_packet_hop(
+    const float r2, const float dx[3], const float hi, const float hj,
+    struct part *restrict pi, struct part *restrict pj, const float a,
+    const float H, const struct radiation_packet_constants *constants,
+    const int book, const int reverse) {}
 
 #endif /* GEAR_SUBGRID_RADIATION_ISRF */
 

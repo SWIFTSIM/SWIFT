@@ -228,22 +228,26 @@ void radiation_snapshot_part_propagation(struct part *p, const struct xpart *xp,
   }
   p->feedback_data.dt_prev = dt_phys;
 
+  const struct radiation_packet_constants *packet_constants =
+      &e->feedback_props->ISRF_packet_constants;
+
   /* The drift runs for inactive particles too. Give them the step lattice
    * now, so that light arriving before their first merge is placed once, on
    * the final lattice. */
   if (!part_is_active(p, e) && p->time_bin > 0)
     radiation_packet_set_first_step(
         p, e->ti_current, ti_step,
-        get_integer_time_end(e->ti_current, p->time_bin));
+        get_integer_time_end(e->ti_current, p->time_bin), packet_constants);
 
   if (part_is_active(p, e)) {
     if (!p->feedback_data.isrf_packet.has_merged_step)
       radiation_packet_inject_test_beams(
           p, e->feedback_props->ISRF_packet_test_beam,
           e->feedback_props->ISRF_packet_test_beam_origin_distance_h,
-          e->ti_current);
+          e->ti_current, packet_constants);
     radiation_packet_merge(p, e->ti_current, ti_step, e->time_base,
-                           with_cosmology ? e->cosmology : NULL);
+                           with_cosmology ? e->cosmology : NULL,
+                           packet_constants);
     radiation_packet_reset_field_mean(p);
 
     if (with_lines && !first_fit) {
@@ -323,7 +327,8 @@ void radiation_end_gradient_propagation(struct part *p,
   radiation_packet_end_gradient(
       p, (float)e->cosmology->a,
       (float)e->physical_constants->const_speed_light_c, fd->dt_prev,
-      e->feedback_props->ISRF_packet_read_mean_time);
+      e->feedback_props->ISRF_packet_read_mean_time,
+      &e->feedback_props->ISRF_packet_constants);
 }
 
 /**

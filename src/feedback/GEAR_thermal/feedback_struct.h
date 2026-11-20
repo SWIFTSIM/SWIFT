@@ -129,9 +129,27 @@ struct feedback_isrf_operator_data {
 #define RADIATION_PACKET_TEST_BEAM_ENERGY_PE 9
 #define RADIATION_PACKET_TEST_BEAM_ENERGY_LW 10
 
+/**
+ * @brief Constants of the packet transport, the same for every particle and
+ * set once at start-up. A member of #feedback_props, passed to the pair-loop
+ * functions of the transport.
+ */
+struct radiation_packet_constants {
+
+  /*! Row-major rotation matrix from the box to the frame of the reception
+      slots. */
+  float octant_frame[9];
+
+  /*! Power `p` of the transmission cone `W max(0, mu)^p`. */
+  float cone_power;
+
+  /*! Is the speed of the light of a share limited? */
+  int light_speed_limited;
+};
+
 /*! Reception slots of the packet of a gas particle: one per cell of an
     equal-solid-angle partition of the directions, fixed in the frame
-    #feedback_props.ISRF_packet_octant_frame (#radiation_packet_slot). Set by
+    #radiation_packet_constants.octant_frame (#radiation_packet_slot). Set by
     `--with-isrf-packet-slots`: 12 (the default), 8 (the octants of the
     frame), 16 (octants halved by the plane `|x| = |y|`), 24 (the faces of a
     tetrakis hexahedron) or 48 (the faces of a disdyakis dodecahedron). Each
@@ -327,7 +345,8 @@ struct feedback_isrf_packet_slot_band_data {
   /*! Photon number in the near arrival bins, as `N E_lo`. */
   float bin_photons[RADIATION_PACKET_BINS];
 
-  /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
+  /*! The speed of the light is limited
+      (#radiation_packet_constants.light_speed_limited)
       or not, for the whole run, so the two sets of fields below share their
       bytes. */
   union {
@@ -405,7 +424,8 @@ struct feedback_isrf_packet_slot_data {
       velocity shift. A double for the same reason. */
   double H2_waiting_velocity_sum;
 
-  /*! The speed of the light is limited (#radiation_packet_light_speed_limited)
+  /*! The speed of the light is limited
+      (#radiation_packet_constants.light_speed_limited)
       or not, for the whole run, so the two sets of fields below share their
       bytes. */
   union {
