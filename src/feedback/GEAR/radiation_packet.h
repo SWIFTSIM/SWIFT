@@ -469,6 +469,41 @@ __attribute__((always_inline)) INLINE static int radiation_packet_is_empty(
 }
 
 /**
+ * @brief Transmission weight of a slot of the sender towards a neighbour, with
+ * the weight vector formed on first use and kept in @p dxw for the next slot
+ * (#radiation_packet_weight_vector, #radiation_packet_transmission_weight).
+ *
+ * @param sender The sender.
+ * @param receiver The neighbour.
+ * @param dx Comoving vector from the sender to the neighbour.
+ * @param dxw (in/out) The weight vector, valid once @p have_dxw is set.
+ * @param have_dxw (in/out) Is @p dxw set?
+ * @param h_sender Comoving smoothing length of the sender.
+ * @param h_receiver Comoving smoothing length of the neighbour.
+ * @param is_receiver_active Is the neighbour active in this step?
+ * @param want The part of the reach (#RADIATION_PACKET_REACH_INNER and so on).
+ * @param sl The slot of the sender.
+ * @param constants The #radiation_packet_constants.
+ * @return The weight.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_slot_weight(
+    const struct part *sender, const struct part *receiver, const float dx[3],
+    float dxw[3], int *have_dxw, const float h_sender, const float h_receiver,
+    const int is_receiver_active, const int want,
+    const struct feedback_isrf_packet_slot_data *sl,
+    const struct radiation_packet_constants *constants) {
+  if (!*have_dxw) {
+    radiation_packet_weight_vector(sender, receiver, dx, dxw);
+    *have_dxw = 1;
+  }
+
+  return radiation_packet_transmission_weight(
+      dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
+      constants->cone_power, hydro_get_mass(receiver),
+      receiver->feedback_data.rho_prev);
+}
+
+/**
  * @brief Gradient loop: add one downstream neighbour to the weight sum and the
  * forward advance of each non-empty slot of the sender.
  *
@@ -503,15 +538,9 @@ radiation_packet_gradient_accumulate(
     struct feedback_isrf_packet_slot_data *sl = &pk->slot[k];
     if (!((pk->occupied_slots >> k) & 1u)) continue;
 
-    if (!have_dxw) {
-      radiation_packet_weight_vector(sender, receiver, dx, dxw);
-      have_dxw = 1;
-    }
-
-    const float w = radiation_packet_transmission_weight(
-        dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
-        constants->cone_power, hydro_get_mass(receiver),
-        receiver->feedback_data.rho_prev);
+    const float w = radiation_packet_slot_weight(
+        sender, receiver, dx, dxw, &have_dxw, h_sender, h_receiver,
+        is_receiver_active, want, sl, constants);
     if (w == 0.f) continue;
 
     sl->weight_sum = radiation_packet_add_stochastic(
@@ -897,15 +926,9 @@ __attribute__((always_inline)) INLINE static void radiation_packet_book_share(
     const int k = radiation_packet_lowest_slot(m);
     const struct feedback_isrf_packet_slot_data *sl = &sender_packet->slot[k];
 
-    if (!have_dxw) {
-      radiation_packet_weight_vector(sender, receiver, dx, dxw);
-      have_dxw = 1;
-    }
-
-    const float w = radiation_packet_transmission_weight(
-        dxw, h_sender, h_receiver, is_receiver_active, want, sl->direction,
-        constants->cone_power, hydro_get_mass(receiver),
-        receiver->feedback_data.rho_prev);
+    const float w = radiation_packet_slot_weight(
+        sender, receiver, dx, dxw, &have_dxw, h_sender, h_receiver,
+        is_receiver_active, want, sl, constants);
     if (w == 0.f) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
