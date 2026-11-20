@@ -287,10 +287,10 @@ momentum is applied only to flagged particles.
 
 \paragraph{Implementation.} Equation~(\ref{eq:rp-per-particle}) is in
 \code{radiation\_iact\_nonsym\_feedback\_apply}
-(\code{src/feedback/GEAR/radiation\_iact.h:208-325}). The two
-momentum fields are \code{src/feedback/GEAR\_thermal/feedback\_struct.h:730}
-(supernova and wind) and \code{:760} (radiation). The radiation kick is applied
-in \code{feedback\_update\_part\_radiation} (\code{radiation\_iact.h:347-362}). The
+(\code{src/feedback/GEAR/radiation\_iact.h:208-330}). The two
+momentum fields are \code{src/feedback/GEAR\_thermal/feedback\_struct.h:734}
+(supernova and wind) and \code{:794} (radiation). The radiation kick is applied
+in \code{feedback\_update\_part\_radiation} (\code{radiation\_iact.h:352-367}). The
 flag \code{hit\_by\_radiation} is set at \code{radiation\_iact.h:271}.
 
 \subsection{Tier 2: dynamical shell-expansion validation}
