@@ -32,10 +32,13 @@
 #include "feedback_properties.h"
 #include "minmax.h"
 #include "radiation.h"
-#include "radiation_isrf_extinction.h"
 #include "radiation_packet.h"
 #include "timestep_sync_part.h"
 #include "tracers.h"
+
+#ifdef GEAR_SUBGRID_RADIATION_ISRF
+#include "radiation_isrf_extinction.h"
+#endif
 
 /**
  * @brief Radiation density interaction between two particles (non-symmetric).
