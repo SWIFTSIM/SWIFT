@@ -17,7 +17,7 @@ document; written up here for the first time.
 
 \paragraph{Implementation.} The channel is the policy bit
 \code{radiation\_policy\_radiation\_pressure}
-(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:58}), set at
+(\code{src/feedback/GEAR\_thermal/feedback\_properties.h:59}), set at
 \code{feedback\_properties.h:773} and tested in the apply loop at
 \code{src/feedback/GEAR/radiation\_iact.h:252}.
 
@@ -189,7 +189,7 @@ Equation~(\ref{eq:rp-tauIR}) is \code{radiation\_get\_physical\_optical\_depth}
 (\code{radiation\_pressure.c:94-103}) with \code{radiation\_get\_physical\_opacity}
 (\code{radiation\_pressure.c:72-81}). The efficiency scales $L_{\rm bol}$ in
 \code{feedback\_will\_do\_feedback}
-(\code{src/feedback/GEAR/feedback\_common.c:270-412}, lines 394-397). $Z_\star$ is
+(\code{src/feedback/GEAR/feedback\_common.c:270-407}, lines 389-392). $Z_\star$ is
 accumulated in \code{radiation\_iact\_nonsym\_feedback\_density}
 (\code{src/feedback/GEAR/radiation\_iact.h:59-100}, lines 97-99) and normalized in
 \code{feedback\_prepare\_radiation\_feedback} (\code{radiation\_iact.h:157-182},
