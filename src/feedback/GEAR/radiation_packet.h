@@ -552,6 +552,21 @@ radiation_packet_gradient_accumulate(
   }
 }
 
+/**
+ * @brief Squared norm of the octant frame, which is 3 for a rotation matrix.
+ * An unset frame (norm 0) is far outside
+ * #RADIATION_PACKET_FRAME_NORM_TOLERANCE.
+ *
+ * @param frame Rotation matrix (row-major) from the box to the frame.
+ * @return The squared norm.
+ */
+__attribute__((always_inline)) INLINE static float radiation_packet_frame_norm2(
+    const float frame[9]) {
+  float frame_norm = 0.f;
+  for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
+  return frame_norm;
+}
+
 #ifdef SWIFT_DEBUG_CHECKS
 /**
  * @brief Stop if a share is booked into a removed particle or with an unset
@@ -567,8 +582,7 @@ radiation_packet_check_deliver(const struct part *restrict receiver,
     error("Packet share booked into the removed gas particle %lld.",
           receiver->id);
 
-  float frame_norm = 0.f;
-  for (int k = 0; k < 9; k++) frame_norm += frame[k] * frame[k];
+  const float frame_norm = radiation_packet_frame_norm2(frame);
 
   if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
     error("Packet share booked with an unset octant frame (norm %e).",

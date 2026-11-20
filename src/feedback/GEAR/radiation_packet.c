@@ -4162,9 +4162,8 @@ void radiation_packet_end_gradient(
 
   /* An unset frame would send every share to one slot. Checked once per
    * particle and step. */
-  float frame_norm = 0.f;
-  for (int k = 0; k < 9; k++)
-    frame_norm += constants->octant_frame[k] * constants->octant_frame[k];
+  const float frame_norm =
+      radiation_packet_frame_norm2(constants->octant_frame);
 
   if (!(fabsf(frame_norm - 3.f) < RADIATION_PACKET_FRAME_NORM_TOLERANCE))
     error("The octant frame is unset (norm %e) at the step of particle %lld.",
