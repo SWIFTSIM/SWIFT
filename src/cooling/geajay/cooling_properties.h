@@ -111,6 +111,12 @@ struct cooling_function_data {
   /*! Set the three-body reaction rate fit (see geajay_options) */
   int H2_three_body_rate;
 
+  /*! Radiative cooling and heating update the energy
+   * (GeajayCooling:with_radiative_cooling,
+   * chemistry_data.with_radiative_cooling). 0: the chemistry evolves, the
+   * energy does not change. */
+  int with_radiative_cooling;
+
   /*! Enable/disable H2 collision-induced emission cooling from Ripamonti & Abel
    * (2004) */
   int H2_cie_cooling;

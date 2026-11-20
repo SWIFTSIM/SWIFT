@@ -376,7 +376,8 @@ int main(int argc, char **argv) {
   M_DBL(h2_shielding_path_in_kernel_radii) M_INT(uv_shielding_length_method)
   M_DBL(uv_shielding_length_factor) M_DBL(uv_shielding_path_in_kernel_radii)
   M_STR(uv_shielding_table_file) M_INT(max_substeps) M_INT(subcycle_on_failure)
-  M_DBL(energy_change_limit) M_INT(cheap_energy_update) M_INT(solver)
+  M_DBL(energy_change_limit) M_INT(with_radiative_cooling)
+  M_INT(cheap_energy_update) M_INT(solver)
   M_DBL(accurate_relative_tolerance) M_DBL(accurate_absolute_tolerance)
   M_DBL(thermal_time) M_INT(table_density_edge) M_DBL(maximal_density)
   printf("MOD cosmic_ray_context=%d\n", c.cosmic_ray_context != NULL);

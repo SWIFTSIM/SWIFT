@@ -1488,6 +1488,14 @@ __attribute__((always_inline)) INLINE static void cooling_read_parameters(
   cooling->cheap_energy_update = parser_get_opt_param_int(
       parameter_file, "GeajayCooling:cheap_energy_update", -1);
 
+  /* 0 evolves the chemistry and leaves the energy to the other modules */
+  cooling->with_radiative_cooling = parser_get_opt_param_int(
+      parameter_file, "GeajayCooling:with_radiative_cooling", 1);
+  if (cooling->with_radiative_cooling != 0 &&
+      cooling->with_radiative_cooling != 1)
+    error("GeajayCooling:with_radiative_cooling must be 0 or 1, got %d.",
+          cooling->with_radiative_cooling);
+
   /* Solver choice and accurate-solver tolerances; geajay checks the values */
   cooling->solver =
       parser_get_opt_param_int(parameter_file, "GeajayCooling:solver", -1);

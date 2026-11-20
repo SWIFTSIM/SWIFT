@@ -823,6 +823,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->energy_change_limit);
   message("geajay cheap energy update = %d (0 explicit, 1 second order)",
           cooling->chemistry_data.cheap_energy_update);
+  message("geajay radiative cooling = %d (0: the energy is not updated)",
+          cooling->with_radiative_cooling);
   message("geajay solver = %d (0 cheap, 1 accurate)",
           cooling->chemistry_data.solver);
   message("geajay accurate tolerances: relative %g, absolute %g",
@@ -2043,7 +2045,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
 
   // Set parameter values for chemistry.
   chemistry->use_grackle = 1;
-  chemistry->with_radiative_cooling = 1;
+  chemistry->with_radiative_cooling = cooling->with_radiative_cooling;
 
   /* molecular network with H, He, D
    From Cloudy table */
@@ -2326,8 +2328,9 @@ void cooling_clean(struct cooling_function_data *cooling) {
 
 /*! Version of the restart layout record of the cooling. Restart files
  * written before the record existed (network H_He_H2_D_ions) are refused. 2:
- * the cosmic-ray source mode and its fixed energy density are in the struct. */
-#define COOLING_GEAJAY_RESTART_FORMAT 2
+ * the cosmic-ray source mode and its fixed energy density are in the struct.
+ * 3: with_radiative_cooling is in the struct. */
+#define COOLING_GEAJAY_RESTART_FORMAT 3
 
 /*! Record written before the cooling struct in a restart file. */
 struct cooling_restart_layout {

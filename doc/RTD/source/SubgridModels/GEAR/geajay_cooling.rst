@@ -106,6 +106,10 @@ Solver
    * - ``cheap_energy_update``
      - (optional) Energy update of the cheap solver: 0 explicit (as Grackle) or 1 second order
        (default: the geajay default, 1).
+   * - ``with_radiative_cooling``
+     - (optional) 1 or 0. With 0 the chemistry network still evolves, but the library does not change
+       the energy: the cheap solver skips its energy update and the accurate solver zeroes the energy
+       rate. Other values stop the run (default: 1).
    * - ``accurate_relative_tolerance``
      - (optional) Relative tolerance of the accurate solver, in [1e-12, 1e-2] (default: the geajay
        default, 1e-6).
