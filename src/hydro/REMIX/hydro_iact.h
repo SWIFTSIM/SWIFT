@@ -444,13 +444,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                   pj->force.vac_switch *
                                   (pj->m0 * rhoj - rhoj) * mod_G * mean_rho_inv;
 
-  if (pi->phase != mat_phase_fluid) {
-    drho_dt_norm_and_difn_i = 0.f;
-  }
-  if (pj->phase != mat_phase_fluid) {
-    drho_dt_norm_and_difn_j = 0.f;
-  }
-
   /* Only include diffusion for same-material particle pair */
   if (hydro_difn_include_pair(pi, pj)) {
     /* Diffusion parameters */
@@ -664,10 +657,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   float drho_dt_norm_and_difn_i = alpha_norm * mj * v_sig_norm *
                                   pi->force.vac_switch *
                                   (pi->m0 * rhoi - rhoi) * mod_G * mean_rho_inv;
-
-  if (pi->phase != mat_phase_fluid) {
-    drho_dt_norm_and_difn_i = 0.f;
-  }
 
   /* Only include diffusion for same-material particle pair */
   if (hydro_difn_include_pair(pi, pj)) {
