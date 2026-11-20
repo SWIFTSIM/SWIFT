@@ -253,6 +253,8 @@ __attribute__((always_inline)) INLINE static void radiation_pressure_apply(
  * @param Delta_t Time over which the star radiates.
  * @param si The (star) particle (not updated).
  * @param pj The gas particle.
+ * @param xpj The extended data of the gas particle, or NULL for a foreign
+ * copy.
  * @param cosmo The cosmological model.
  * @param hydro_props The properties of the hydro scheme.
  * @param fb_props Properties of the feedback scheme.

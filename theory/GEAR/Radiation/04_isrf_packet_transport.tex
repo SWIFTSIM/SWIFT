@@ -3259,11 +3259,11 @@ transport needs the HEALPix C library (\code{--with-chealpix}).
 
 \paragraph{Coupling to Grackle (Sec.~\ref{sec:isrf-problem}).} $G_0$,
 Eq.~\eqref{eq:isrf-G0}, is \code{radiation\_get\_part\_isrf\_habing}
-(\code{src/feedback/GEAR/radiation\_gas.c:768-787}), and $k_{\rm diss}$,
+(\code{src/feedback/GEAR/radiation\_gas.c:725-744}), and $k_{\rm diss}$,
 Eq.~\eqref{eq:isrf-kdiss}, is
-\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:805-826). Each
+\code{radiation\_get\_part\_LW\_dissociation\_rate\_internal} (:762-783). Each
 band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
-(:741-751). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
+(:693-708). The constants $F_{\rm H}$ and $\sigma_{\rm H_2}/\bar E_{\rm LW}$ are
 \code{RADIATION\_HABING\_FLUX\_CGS} and
 \code{RADIATION\_SIGMA\_H2\_OVER\_E\_LW\_CGS}
 (\code{src/feedback/GEAR/radiation.h:104}, :113). Grackle reads the two rates
@@ -3302,10 +3302,10 @@ are read in \code{src/feedback/GEAR/radiation\_table\_io.c} (:990, :1012,
 
 \paragraph{Without transport (Sec.~\ref{sec:isrf-problem}).} The local
 deposit with $e^{-\kappa_b\ell}$ is in \code{radiation\_iact.h}
-(\code{src/feedback/GEAR/radiation\_iact.h:279-323}), with the path
+(\code{src/feedback/GEAR/radiation\_iact.h:283-327}), with the path
 \code{radiation\_get\_comoving\_extinction\_path} and the factors
 \code{radiation\_get\_part\_ISRF\_extinction\_factors}
-(\code{src/feedback/GEAR/radiation\_isrf.c:354-398}, :467-487). The switch
+(\code{src/feedback/GEAR/radiation\_isrf\_extinction.h:68-111}, :206-222). The switch
 \code{GEARFeedback:ISRF\_propagation} (0 off, 1 the transport) is parsed at
 \code{src/feedback/GEAR\_thermal/feedback\_properties.h:822-823}, and the
 choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
@@ -3313,19 +3313,19 @@ choice of the length $\ell$, \code{GEARFeedback:ISRF\_extinction\_path}, at
 
 \paragraph{Dust absorption rate (Sec.~\ref{sec:isrf-rte-static}).}
 Eq.~\eqref{eq:isrf-kappa} is \code{radiation\_get\_part\_linear\_absorption\_rate}
-(\code{radiation\_isrf.c:497-506}), through
-\code{radiation\_get\_dust\_mass\_opacity} (:447-458) and
-\code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW} (:426-433). The
+(\code{radiation\_isrf\_extinction.h:181-188}), through
+\code{radiation\_get\_dust\_mass\_opacity} (:140-146) and
+\code{radiation\_get\_dust\_to\_gas\_ratio\_relative\_to\_MW} (\code{radiation.h:95-101}). The
 constants are at \code{radiation.h:68-81}.
 
 \paragraph{Band-edge weights (Sec.~\ref{sec:isrf-rte-comoving}).}
 $\lambda_E({\rm PE})$, $\lambda_E({\rm LW})$ and $\lambda_N({\rm LW})$ are
 computed from the integrated table by
 \code{radiation\_set\_band\_edge\_coefficients}
-(\code{src/feedback/GEAR/radiation.c:55-193}). They fall back to \code{RADIATION\_BAND\_EDGE\_WEIGHT\_PE\_DEFAULT} (2.154),
+(\code{src/feedback/GEAR/radiation.c:55-180}). They fall back to \code{RADIATION\_BAND\_EDGE\_WEIGHT\_PE\_DEFAULT} (2.154),
 \code{RADIATION\_BAND\_EDGE\_WEIGHT\_LW\_DEFAULT} (6.508) and
 \code{RADIATION\_BAND\_EDGE\_PHOTON\_WEIGHT\_LW\_DEFAULT} (6.0)
-(\code{radiation.h:161-163}) when radiation is inactive or a luminosity
+(\code{radiation.h:167-169}) when radiation is inactive or a luminosity
 vanishes. They are stored as \code{band\_edge\_weight\_pe},
 \code{band\_edge\_weight\_lw} and \code{band\_edge\_photon\_weight\_lw}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:186-188}).
@@ -3342,7 +3342,7 @@ Eq.~\eqref{eq:packet-meanE} is the definition in the comment of
 \code{feedback\_isrf\_packet\_band\_data} (\code{feedback\_struct.h:282-289}).
 Eq.~\eqref{eq:packet-photonfrac} is
 \code{radiation\_set\_star\_packet\_photon\_fraction}
-(\code{src/feedback/GEAR/radiation.h:415-436}, the ratio at :435). The
+(\code{src/feedback/GEAR/radiation.h:430-451}, the ratio at :451). The
 transport stops at start-up if a yields table lacks \code{MeanPhotonEnergyPE}
 or \code{Integrated\_MeanPhotonEnergyPE}
 (\code{src/feedback/GEAR\_thermal/feedback\_properties.h:938-946}).
@@ -3444,7 +3444,7 @@ without a speed limit is \code{radiation\_packet\_merge\_slot\_unlimited}
 (\code{radiation\_packet.c:3646-3727}). It is called for every slot by
 \code{radiation\_packet\_merge} (:4000-4074), which
 \code{radiation\_snapshot\_part\_propagation} calls for active particles
-(\code{radiation\_isrf.c:176-262}, the call at :248).
+(\code{radiation\_isrf.c:177-263}, the call at :249).
 Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3694-3702}. The
 sums of Eq.~\eqref{eq:packet-merge-origin} are formed in
 \code{radiation\_packet\_deliver} as \code{inbox\_origin\_offset}
@@ -3465,7 +3465,7 @@ loop of the star calls \code{radiation\_packet\_star\_density}
 \code{src/feedback/GEAR\_thermal/feedback\_iact.h:75}), which adds the weight
 to \code{cone\_weight[c]} (\code{radiation\_packet.h:1116}). The feedback loop
 calls \code{radiation\_packet\_star\_emit} (\code{radiation\_packet.h:1150-1218},
-called at \code{src/feedback/GEAR/radiation\_iact.h:277}). Both loops take $c$,
+called at \code{src/feedback/GEAR/radiation\_iact.h:281}). Both loops take $c$,
 $q$ and $w_j$ from \code{radiation\_packet\_star\_gas\_weight}
 (\code{radiation\_packet.c:1648-1676}). The cell is
 \code{radiation\_packet\_emission\_cone} (\code{radiation\_packet.c:1587-1628}).
@@ -3500,7 +3500,7 @@ Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:986}
 for a hop, :1199 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_hop}
 (\code{radiation\_propagation\_iact.h:157-161}, :195-209) and from
-\code{radiation\_iact.h:277}.
+\code{radiation\_iact.h:281}.
 
 \paragraph{Dust absorption (Secs.~\ref{sec:packet-absorption}, \ref{sec:packet-absorb-summary}).} All of it is
 in \code{radiation\_packet\_deliver} (\code{radiation\_packet.h:667-773}), with
@@ -3512,7 +3512,7 @@ exponential is \code{expm1}, in double. The photon cutoff is at :589
 (\code{RADIATION\_PACKET\_MIN\_PHOTONS}, :70), and the ledger at :599. The rate
 $\kappa_b$ is \code{isrf\_operator[b].kappa} of the receiver
 (\code{feedback\_struct.h:113-116}), set by
-\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:199-213}).
+\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:200-214}).
 That function runs at each drift of the particle, through
 \code{feedback\_reset\_part} (\code{src/feedback/GEAR\_thermal/feedback.c:426-430},
 called at \code{src/cell\_drift.c:377}).
@@ -3563,15 +3563,15 @@ is at :277, the exponent at :281, $b_5$ at :286 and the velocity limit at
 :287-288.
 
 The fit of a particle is cached by \code{radiation\_cache\_H2\_line\_absorption}
-(\code{radiation\_isrf.c:127-163}). The column per length is written at every
-drift (:158). The fit is written only if \code{set\_fit} is true (:159-162).
+(\code{radiation\_isrf.c:128-164}). The column per length is written at every
+drift (:159). The fit is written only if \code{set\_fit} is true (:160-163).
 Only then is the cooling library asked for the temperature and the mean
-molecular weight (:135-142). The function
-\code{radiation\_snapshot\_part\_propagation} (:176-262) sets the fit before the merge only for a particle with no line width yet
-(\code{first\_fit}, :210-212). It then merges (:248). For an active particle
-that is not in its first fit, it sets the new fit (:256). If $\alpha$ or $b_5$
+molecular weight (:136-143). The function
+\code{radiation\_snapshot\_part\_propagation} (:177-263) sets the fit before the merge only for a particle with no line width yet
+(\code{first\_fit}, :211-213). It then merges (:249). For an active particle
+that is not in its first fit, it sets the new fit (:257). If $\alpha$ or $b_5$
 changed, it moves the waiting sums with \code{radiation\_packet\_line\_refit}
-(:257-259).
+(:258-260).
 
 The hop of a share is \code{radiation\_packet\_line\_hop}
 (\code{radiation\_packet.h:837-855}). The value returned in \code{q\_out} is
@@ -3705,7 +3705,7 @@ of the whole run is printed by \code{radiation\_packet\_far\_share\_final}
 Eq.~\eqref{eq:packet-field} is \code{radiation\_packet\_end\_gradient}
 (\code{radiation\_packet.c:4134-4212}, the sum over slots at :4163-4197, the
 factor at :4170). It is called from \code{radiation\_end\_gradient\_propagation}
-(\code{radiation\_isrf.c:320-333}, the call at :328), which passes the true
+(\code{radiation\_isrf.c:320-333}, the call at :329), which passes the true
 speed of light. Eq.~\eqref{eq:packet-runmean} is
 \code{radiation\_packet\_read\_mean} (\code{radiation\_packet.h:380-385}),
 applied at \code{radiation\_packet.c:4199-4203}; $\tau_{\rm m}$ is
@@ -3715,9 +3715,9 @@ Eq.~\eqref{eq:packet-kernelmean} are \code{radiation\_packet\_gather\_field}
 (\code{radiation\_packet.h:1018-1043}, called at
 \code{radiation\_propagation\_iact.h:162-163}, :196). The self term and the
 division are \code{radiation\_packet\_end\_force}
-(\code{radiation\_packet.c:4220-4249}), called at \code{radiation\_isrf.c:308}.
+(\code{radiation\_packet.c:4220-4249}), called at \code{radiation\_isrf.c:309}.
 The write into the band values is \code{radiation\_packet\_couple\_field}
-(\code{radiation\_packet.c:4261-4278}, called at \code{radiation\_isrf.c:309}).
+(\code{radiation\_packet.c:4261-4278}, called at \code{radiation\_isrf.c:310}).
 The kernel mean of the dissociating energy is capped at the kernel mean of the LW
 energy (:4187-4192), so that a float LW sum flushed to 0 never lies below the
 double dissociating sum.
@@ -3725,7 +3725,7 @@ double dissociating sum.
 \paragraph{The frame of the light (Sec.~\ref{sec:packet-frame}).} The merged
 origin is set in \code{radiation\_packet\_set\_origin}
 (\code{radiation\_packet.c:3339-3371}), called by the merge at the drift,
-\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:176-262}).
+\code{radiation\_snapshot\_part\_propagation} (\code{radiation\_isrf.c:177-263}).
 The hop reads it in \code{radiation\_packet\_book\_share}
 (\code{radiation\_packet.h:924-933}). An empty slot keeps its old origin
 (\code{radiation\_packet.c:3725}), but the gradient and the hop skip empty
@@ -3753,10 +3753,10 @@ the inherited sum with the redshift ledger at :1773-1776). It is reached from
 \code{feedback\_book\_removed\_gas\_to\_spart},
 \code{feedback\_book\_removed\_gas\_to\_sink} and
 \code{feedback\_book\_sink\_merger}
-(\code{src/feedback/GEAR/feedback\_common.c:1478-1503}). Gas that leaves a
+(\code{src/feedback/GEAR/feedback\_common.c:1476-1509}). Gas that leaves a
 non-periodic box is booked by \code{radiation\_packet\_book\_gas\_left\_box}
 (\code{radiation\_packet.c:1811-1813}) through
-\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1511-1513},
+\code{feedback\_book\_removed\_gas\_left\_box} (\code{feedback\_common.c:1511-1519},
 called at \code{src/cell\_drift.c:337}). The sum over the ranks is
 \code{radiation\_packet\_reduce\_left\_box} (\code{radiation\_packet.c:1869-1893}),
 and \code{feedback\_write\_flavour}
