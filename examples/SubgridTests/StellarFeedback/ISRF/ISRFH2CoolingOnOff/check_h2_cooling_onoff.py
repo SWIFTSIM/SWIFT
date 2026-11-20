@@ -15,10 +15,18 @@ standard error of that median, on the particles kept for the comparison. A bin
 is decided (PASS or FAIL) only where its bar exceeds that noise; otherwise it
 is INCONCLUSIVE. The bar is never widened.
 
+The root search of each particle stops at n_H2 = n_H / 2. A particle is masked
+only if it has no light, no root, more than one root in that range, or is not in
+photodissociation equilibrium; the counts are printed by reason. Any non-finite
+input is counted and fails the snapshot.
+
+A bin is decided only with at least N_MIN particles, a bar of at most MAX_BAR
+and a bar above its noise. Otherwise it is INDETERMINATE and decides nothing.
+
 Exit status per snapshot: 0 every decided bin agrees and at least one bin is
 decided, 1 failure (non-finite value, or a decided bin beyond its bar),
-2 inconclusive (noise floor unknown, or no bin with a bar above the noise),
-3 nothing left after the masks. The run exits 1 on any 1, else 0 if any
+2 inconclusive or indeterminate (noise floor unknown, or no decided bin),
+3 nothing left after the masks. The run exits 1 on any 1, 0 only if every
 snapshot is 0, else 2.
 """
 
@@ -41,6 +49,12 @@ FLUX_DRAINE = 4.053e-4
 C_LIGHT = 2.99792458e10
 BINS = {"B1": (1e1, 1e2), "B2": (1e2, 1e3), "B3": (1e3, 1e4)}
 X_H = 0.76
+# Smallest bin the gate decides. At 30 particles the bootstrap standard error of
+# the median is unbiased (0.00514 against 0.00517 measured over 400 subsamples of
+# the second fixture, snapshot 6) and scatters by 28 percent; at 10 it scatters by 68 percent.
+N_MIN = 30
+# A bin whose bar exceeds ln 2 cannot see a factor 2 in the H2 abundance.
+MAX_BAR = float(np.log(2.0))
 SPECIES_A = {
     "HI": 1.0,
     "HII": 1.0,
@@ -83,10 +97,11 @@ def jeans_length(temp: Arr, rho: Arr, mu: Arr) -> Arr:
 
 
 def solve_off(
-    y_on: Arr, t_line: Arr, temp: Arr, n_tot: Arr, length: Arr
+    y_on: Arr, t_line: Arr, temp: Arr, n_tot: Arr, length: Arr, y_max: Arr
 ) -> tuple[Arr, NDArray[np.int64]]:
     """Solve y f(y L) = y_on T_line for y, the H2 number density in cm^-3.
 
+    The search stops at y_max, the physical bound n_H / 2 of each particle.
     Returns the root, NaN unless the root is unique, and the root count.
     """
     target = np.log(y_on * t_line)
@@ -94,8 +109,9 @@ def solve_off(
     count = np.zeros(y_on.shape, dtype=np.int64)
     ly = np.log(Y_GRID)
     for i in range(y_on.size):
-        s = wg_factor(Y_GRID * length[i], temp[i], n_tot[i])
-        d = ly + np.log(s) - target[i]
+        n = int(np.searchsorted(Y_GRID, y_max[i], side="right"))
+        s = wg_factor(Y_GRID[:n] * length[i], temp[i], n_tot[i])
+        d = ly[:n] + np.log(s) - target[i]
         idx = np.nonzero(np.sign(d[:-1]) * np.sign(d[1:]) <= 0.0)[0]
         count[i] = idx.size
         if idx.size == 1:
@@ -182,37 +198,52 @@ def evaluate(
     synthetic: bool,
     x_on_scale: float,
     nan_plant: bool,
-    snap_dt: float,
+    t_line_power: float,
 ) -> dict:
-    """Return the per-bin measured and derived medians and the mask counts."""
+    """Return the per-bin measured and derived medians and the mask counts.
+
+    Parameters
+    ----------
+    on, off, rep
+        Gas fields of the on leg, the off leg and the optional repeat of the on leg.
+    synthetic
+        Harness check: take the off-leg H2 from the solver.
+    x_on_scale
+        Planted scale of the on-leg H2 in the measured ratio only.
+    nan_plant
+        Plant NaN in the on-leg H2.
+    t_line_power
+        Planted power of the written T_line in the solve only (1 for none).
+    """
     son, soff = state(on), state(off)
     y_on = son["n_h2"]
     if nan_plant:
         y_on = y_on.copy()
         y_on[:5] = np.nan
-    t_line = on["t_line"]
+    t_line = on["t_line"] ** t_line_power
     res: dict = {"n_all": y_on.size}
-    need = np.concatenate(
-        [
-            y_on,
-            t_line,
-            on["u_lw"],
-            son["temp"],
-            son["n_tot"],
-            soff["n_h2"],
-            soff["temp"],
-        ]
-    )
-    res["finite"] = bool(np.isfinite(need).all())
+    fields = [y_on, t_line, on["u_lw"], son["temp"], son["n_tot"]]
+    fields += [soff["n_h2"], soff["temp"]]
+    if rep is not None:
+        fields.append(state(rep)["n_h2"])
+    res["n_nonfinite"] = int(sum((~np.isfinite(f)).sum() for f in fields))
+    res["finite"] = res["n_nonfinite"] == 0
     if not res["finite"]:
         return res
     length = jeans_length(son["temp"], on["rho"], son["mu"])
+    y_max = 0.5 * son["n_h"]
     lit = (t_line > 0.0) & (on["u_lw"] > 0.0) & (y_on > 0.0)
+    res["n_unlit"] = int((~lit).sum())
     res["n_lit"] = int(lit.sum())
     y_pred = np.full(y_on.shape, np.nan)
     count = np.zeros(y_on.shape, dtype=np.int64)
     y_pred[lit], count[lit] = solve_off(
-        y_on[lit], t_line[lit], son["temp"][lit], son["n_tot"][lit], length[lit]
+        y_on[lit],
+        t_line[lit],
+        son["temp"][lit],
+        son["n_tot"][lit],
+        length[lit],
+        y_max[lit],
     )
     unique = lit & (count == 1)
     res["n_multi"] = int((lit & (count >= 2)).sum())
@@ -230,7 +261,10 @@ def evaluate(
     res["n_unique"] = int(unique.sum())
     res["n_not_equilibrated"] = int((unique & ~eq).sum())
     y_meas_off = y_pred if synthetic else soff["n_h2"]
-    keep = eq & (y_meas_off > 0.0) & (y_on > 0.0)
+    y_rep = state(rep)["n_h2"] if rep is not None else np.ones_like(y_on)
+    ok_h2 = (y_meas_off > 0.0) & (y_on > 0.0) & (y_rep > 0.0)
+    res["n_zero_h2"] = int((eq & ~ok_h2).sum())
+    keep = eq & ok_h2
     res["n_kept"] = int(keep.sum())
     res["dlnn"] = (
         float(np.median(np.abs(np.log(soff["n_tot"][keep] / son["n_tot"][keep]))))
@@ -243,45 +277,49 @@ def evaluate(
         else float("nan")
     )
     meas = np.log(x_on_scale * y_on / y_meas_off)
-    if rep is not None:
-        y_rep = state(rep)["n_h2"]
-        res["finite"] = res["finite"] and bool(np.isfinite(y_rep).all())
-        if not res["finite"]:
-            return res
-        with np.errstate(divide="ignore", invalid="ignore"):
-            rep_ln = np.log(y_on / y_rep)
+    rep_ln = np.log(y_on / y_rep)
     pred = np.log(y_on / y_pred)
     # Sensitivity of the derived value to a 10 per cent error in T (gamma, mu).
     sens = {}
+    res["n_sens_dropped"] = 0
     for fac in (1.1, 1 / 1.1):
         tt = son["temp"] * fac
         ll = jeans_length(tt, on["rho"], son["mu"])
-        yp, ct = solve_off(
-            y_on[keep], t_line[keep], tt[keep], son["n_tot"][keep], ll[keep]
+        yp, _ = solve_off(
+            y_on[keep],
+            t_line[keep],
+            tt[keep],
+            son["n_tot"][keep],
+            ll[keep],
+            y_max[keep],
         )
         sens[fac] = np.log(y_on[keep] / yp)
+        res["n_sens_dropped"] += int((~np.isfinite(sens[fac])).sum())
     rng = np.random.default_rng(1)
     bins = {}
     for b, (lo, hi) in BINS.items():
         m = keep & (son["n_h"] >= lo) & (son["n_h"] < hi)
-        if m.sum() < 10:
-            bins[b] = {"n": int(m.sum())}
+        if m.sum() == 0:
+            bins[b] = {"n": 0}
             continue
         idx_in_keep = np.nonzero(m[keep])[0]
-        sys_t = 0.5 * abs(
-            np.nanmedian(sens[1.1][idx_in_keep])
-            - np.nanmedian(sens[1 / 1.1][idx_in_keep])
+        both = np.isfinite(sens[1.1][idx_in_keep]) & np.isfinite(
+            sens[1 / 1.1][idx_in_keep]
+        )
+        sys_t = (
+            0.5
+            * abs(
+                np.median(sens[1.1][idx_in_keep][both])
+                - np.median(sens[1 / 1.1][idx_in_keep][both])
+            )
+            if both.any()
+            else float("nan")
         )
         se = np.hypot(boot_se(meas[m], rng), boot_se(pred[m], rng))
         noise = float("nan")
         if rep is not None:
             r = rep_ln[m]
-            r = r[np.isfinite(r)]
-            noise = (
-                float(abs(np.median(r)) + 2.0 * boot_se(r, rng))
-                if r.size > 1
-                else float("nan")
-            )
+            noise = float(abs(np.median(r)) + 2.0 * boot_se(r, rng))
         bins[b] = {
             "noise": noise,
             "n": int(m.sum()),
@@ -299,10 +337,11 @@ def verdict(res: dict, noise: float | None, repeat: bool) -> tuple[int, str]:
     """Return the exit code and the reason.
 
     noise is a global harness-only floor in ln units; with a repeat run each
-    bin carries its own measured noise.
+    bin carries its own measured noise. A bin is decided only with at least
+    N_MIN particles, a bar of at most MAX_BAR and a bar above its noise.
     """
     if not res["finite"]:
-        return 1, "FAIL: a non-finite value in the inputs"
+        return 1, f"FAIL: {res['n_nonfinite']} non-finite values in the inputs"
     good = {b: v for b, v in res["bins"].items() if "meas" in v}
     if res["n_kept"] == 0 or not good:
         return 3, "NOT EVALUATED: no particle or no bin left after the masks"
@@ -314,16 +353,23 @@ def verdict(res: dict, noise: float | None, repeat: bool) -> tuple[int, str]:
     floor = {b: (v["noise"] if repeat else noise) for b, v in good.items()}
     if not all(np.isfinite(list(floor.values()))):
         return 1, "FAIL: non-finite noise floor"
-    decided = {b: v for b, v in good.items() if v["bar"] > floor[b]}
+    decided = {
+        b: v
+        for b, v in good.items()
+        if v["n"] >= N_MIN and v["bar"] <= MAX_BAR and v["bar"] > floor[b]
+    }
     if not decided:
-        return 2, "INCONCLUSIVE: no bin has a bar above the noise floor"
+        return (
+            2,
+            "INDETERMINATE: no bin with enough particles, a bar below the maximum and above the noise",
+        )
     worst = max(abs(v["meas"] - v["pred"]) / v["bar"] for v in decided.values())
     skipped = len(good) - len(decided)
     if worst > 1.0:
         return 1, f"FAIL: discrepancy {worst:.2f} times the bar in a decided bin"
     return (
         0,
-        f"PASS: largest discrepancy {worst:.2f} of the bar in {len(decided)} decided bins ({skipped} inconclusive)",
+        f"PASS: largest discrepancy {worst:.2f} of the bar in {len(decided)} decided bins ({skipped} indeterminate)",
     )
 
 
@@ -402,8 +448,8 @@ def main() -> int:
         default=None,
         help="snapshot directory of a second run of the on leg, for the noise floor",
     )
-    ap.add_argument("--first", type=int, default=43)
-    ap.add_argument("--last", type=int, default=50)
+    ap.add_argument("--first", type=int, default=3)
+    ap.add_argument("--last", type=int, default=6)
     ap.add_argument(
         "--noise",
         type=float,
@@ -420,6 +466,12 @@ def main() -> int:
         type=float,
         default=1.0,
         help="planted scale of the on-leg H2 in the measured ratio only",
+    )
+    ap.add_argument(
+        "--t-line-power",
+        type=float,
+        default=1.0,
+        help="planted power of the written T_line in the solve only (harness)",
     )
     ap.add_argument(
         "--plant-nan", action="store_true", help="plant NaN in the on-leg H2"
@@ -441,30 +493,52 @@ def main() -> int:
             common = np.intersect1d(common, rep["id"])
         on, off = (pair(d, common) for d in (on, off))
         rep = pair(rep, common) if rep is not None else None
-        r = evaluate(on, off, rep, a.synthetic, a.x_on_scale, a.plant_nan, 0.0)
+        r = evaluate(
+            on, off, rep, a.synthetic, a.x_on_scale, a.plant_nan, a.t_line_power
+        )
         code, why = verdict(r, a.noise, rep is not None)
         codes.append(code)
         rows.append((s, r))
         print(f"snapshot {s}: exit {code} {why}")
+        if not r["finite"]:
+            print(
+                f"  non-finite values: {r['n_nonfinite']} of {r['n_all']} particles' inputs"
+            )
         if r["finite"]:
             print(
-                f"  lit {r['n_lit']}, multi-root masked {r['n_multi']}, no-root masked {r['n_noroot']}, "
-                f"not equilibrated {r['n_not_equilibrated']}, kept {r['n_kept']} of {r['n_all']}, "
+                f"  of {r['n_all']}: no light {r['n_unlit']}, no root {r['n_noroot']}, "
+                f"more than one root up to n_H/2 {r['n_multi']}, not equilibrated {r['n_not_equilibrated']}, "
+                f"zero H2 {r['n_zero_h2']}, kept {r['n_kept']} "
+                f"(T-variation dropped {r['n_sens_dropped']}), "
                 f"kept with s>=1 {r['n_slope_ge1_kept']}, median |dln n| {r['dlnn']:.3g}, median |dln T| {r['dlnT']:.3g}"
             )
             for b, v in r["bins"].items():
                 if "meas" in v:
+                    tag = (
+                        "decided"
+                        if (
+                            v["n"] >= N_MIN
+                            and v["bar"] <= MAX_BAR
+                            and v["bar"]
+                            > (
+                                v["noise"]
+                                if rep is not None
+                                else (a.noise or float("inf"))
+                            )
+                        )
+                        else "INDETERMINATE"
+                    )
                     print(
-                        f"  {b}: n {v['n']}, measured {v['meas']:+.3f}, derived {v['pred']:+.3f}, "
+                        f"  {b} {tag}: n {v['n']}, measured {v['meas']:+.3f}, derived {v['pred']:+.3f}, "
                         f"discrepancy/bar {abs(v['meas'] - v['pred']) / v['bar']:.2f}, bar {v['bar']:.2g} (se {v['se']:.3f}, T-model {v['sys_T']:.3f}), noise {v['noise']:.2g}"
                     )
                 else:
-                    print(f"  {b}: n {v['n']} (fewer than 10, not evaluated)")
+                    print(f"  {b}: no particle")
     if a.plot is not None:
         plot([(s, r) for s, r in rows if r["finite"] and r.get("bins")], a.plot)
     if 1 in codes or all(c == 3 for c in codes):
         return 1
-    return 0 if 0 in codes else 2
+    return 0 if all(c == 0 for c in codes) else 2
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ starlit=../ISRFH2StarLit
 # swift's exit status is piped into tee: without pipefail a refused or crashed run looks complete.
 set -eo pipefail
 
-leg=${leg:="on"}   # on: line absorption on, off: line absorption off, repeat: a second run of the same switch
+leg=${leg:="on"}   # on: line absorption on, off: line absorption off, repeat: a second run of the on leg (noise floor)
 switch=${switch:=$([ "$leg" = "off" ] && echo 0 || echo 1)}
 n_threads=${n_threads:=8}   # Number of threads
 level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
@@ -42,5 +42,5 @@ mkdir -p "$run_name"
 cp used_parameters.yml output.log timesteps.txt fixture.json "$run_name"/
 mv snap "$run_name"/
 
-echo "Run the legs on and off, then compare them:"
-echo "python3 check_h2_cooling_onoff.py --on on/snap --off off/snap --first 3 --last 6 --noise <value>"
+echo "Run leg=on, leg=off and leg=repeat, then compare them:"
+echo "python3 check_h2_cooling_onoff.py --on on/snap --off off/snap --repeat repeat/snap"
