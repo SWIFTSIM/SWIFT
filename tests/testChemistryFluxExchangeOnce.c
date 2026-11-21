@@ -260,9 +260,18 @@ static void reset_counts(struct cell *c) {
     c->hydro.parts[k].chemistry_data.flux_exchange_count[1] = 0;
   }
 }
+
 /* Number of particle pairs whose in-kernel test depends on the frame or on
    the precision of the distance. */
 static int n_ambiguous_pairs = 0;
+
+/* The naive pair loop visits every pair from both sides, so it has no
+   foreign gap. */
+#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+static const int foreign_gap_exists = 0;
+#else
+static const int foreign_gap_exists = 1;
+#endif
 
 /**
  * @brief Origin of the progeny cell holding the particle of index k, or of
@@ -493,7 +502,7 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
     miss_i[rank] = calloc(ci->hydro.count, sizeof(int));
     miss_j[rank] = cj ? calloc(cj->hydro.count, sizeof(int)) : NULL;
   }
-  if (cj && foreign) {
+  if (cj && foreign && foreign_gap_exists) {
     struct cell *first = ci, *second = cj;
     double shift[3];
     space_getsid_and_swap_cells(e->s, &first, &second, shift);
@@ -631,7 +640,8 @@ int main(int argc, char *argv[]) {
       const int split = (variant >= 2);
       const int foreign = (variant == 1);
       const int top_band_active = (variant == 2);
-      const int expect_misses = foreign || (variant == 3);
+      const int expect_misses =
+          (foreign && foreign_gap_exists) || (variant == 3);
 
       struct cell *ci =
           make_cell(loc_i, split, 0, 0.5, top_band_active, &engine);
