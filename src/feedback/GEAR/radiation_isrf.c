@@ -89,7 +89,8 @@ void radiation_first_init_part(struct part *restrict p) {
   fd->dt_prev = 0.f;
   fd->ISRF_packet_transport = 0;
   fd->ISRF_H2_line_absorption = 0;
-  fd->LW_dissociating_u = 0.;
+  /* An LW field of the ICs has no source: it dissociates at the constant. */
+  fd->LW_dissociating_u = fd->isrf_moment[ISRF_MOMENT_LW].u;
   fd->H2_column_per_length = 0.f;
   fd->H2_shielding_exponent = 0.f;
   fd->H2_line_width_km_s = 0.f;
@@ -109,7 +110,12 @@ static void radiation_set_part_transport(struct part *p,
                                          const struct engine *e) {
   struct feedback_part_data *fd = &p->feedback_data;
   fd->ISRF_packet_transport = e->feedback_props->ISRF_propagation;
-  fd->ISRF_H2_line_absorption = e->feedback_props->ISRF_H2_line_absorption;
+  fd->ISRF_H2_line_absorption =
+      (e->feedback_props->ISRF_H2_line_absorption ? RADIATION_ISRF_H2_LINES
+                                                  : 0) |
+      (e->feedback_props->ISRF_packet_constants.LW_population_track
+           ? RADIATION_ISRF_LW_POPULATION
+           : 0);
 }
 
 /**
@@ -307,7 +313,7 @@ void radiation_end_force_propagation(struct part *p, const struct engine *e) {
   if (!e->feedback_props->ISRF_propagation) return;
 
   radiation_packet_end_force(p);
-  radiation_packet_couple_field(p);
+  radiation_packet_couple_field(p, &e->feedback_props->ISRF_packet_constants);
 }
 
 /**

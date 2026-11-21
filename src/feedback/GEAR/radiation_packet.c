@@ -3580,7 +3580,8 @@ static void radiation_packet_line_begin(
  * its shift whether the merge releases it or drops it below the photon cutoff:
  * its three sums leave in the share of the LW energy that leaves. The held
  * light takes the dissociating energy of what was released, so its
- * transmission is the dissociating over the LW energy, at most 1. Its column
+ * transmission is the dissociating over the LW energy, at most
+ * #radiation_packet_constants.LW_dissociating_factor_max. Its column
  * is the one whose factor is the harmonic mean of the factors of the merged
  * light, weighted by the dissociating energy
  * (#radiation_packet_line_harmonic_column). A saturated sum gives the column
@@ -3634,7 +3635,8 @@ static void radiation_packet_line_end(
   if (energy > 0.) {
     t = released_dissociating / energy;
     if (!(t > 0.)) t = 0.;
-    if (t > 1.) t = 1.;
+    if (t > (double)constants->LW_dissociating_factor_max)
+      t = (double)constants->LW_dissociating_factor_max;
     if (!(released_dissociating > 0.)) {
       N = RADIATION_H2_SHIELDING_COLUMN_CAP_CM2;
     } else {
@@ -4072,7 +4074,8 @@ void radiation_packet_merge(
 
   if (ti_step > 0) pk->has_merged_step = 1;
 
-  const int with_lines = p->feedback_data.ISRF_H2_line_absorption;
+  const int with_dissociating =
+      feedback_part_tracks_LW_dissociating(&p->feedback_data);
 
   if (!constants->light_speed_limited) {
     pk->step_end_ti = ti_current + ti_step;
@@ -4080,7 +4083,7 @@ void radiation_packet_merge(
 
     for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
       struct radiation_packet_line_state line;
-      if (with_lines)
+      if (with_dissociating)
         radiation_packet_line_begin(&pk->slot[s], &p->feedback_data, constants,
                                     &line);
 
@@ -4090,7 +4093,7 @@ void radiation_packet_merge(
       radiation_packet_check_slot_direction(&pk->slot[s], s,
                                             constants->octant_frame);
 
-      if (with_lines)
+      if (with_dissociating)
         radiation_packet_line_end(&pk->slot[s], &p->feedback_data, constants,
                                   &line);
     }
@@ -4105,7 +4108,7 @@ void radiation_packet_merge(
 
   for (int s = 0; s < RADIATION_PACKET_SLOTS; s++) {
     struct radiation_packet_line_state line;
-    if (with_lines)
+    if (with_dissociating)
       radiation_packet_line_begin(&pk->slot[s], &p->feedback_data, constants,
                                   &line);
 
@@ -4115,7 +4118,7 @@ void radiation_packet_merge(
     radiation_packet_check_slot_direction(&pk->slot[s], s,
                                           constants->octant_frame);
 
-    if (with_lines)
+    if (with_dissociating)
       radiation_packet_line_end(&pk->slot[s], &p->feedback_data, constants,
                                 &line);
   }
@@ -4201,7 +4204,8 @@ void radiation_packet_end_gradient(
   double field_photons[ISRF_OPERATOR_COUNT];
   double field_dissociating = 0.;
   double field_column_sum = 0.;
-  const int with_lines = p->feedback_data.ISRF_H2_line_absorption;
+  const int with_dissociating =
+      feedback_part_tracks_LW_dissociating(&p->feedback_data);
   for (int b = 0; b < ISRF_OPERATOR_COUNT; b++) {
     field_energy[b] = 0.;
     field_photons[b] = 0.;
@@ -4220,7 +4224,7 @@ void radiation_packet_end_gradient(
         field_energy[b] += (double)(sl->band[b].energy * factor);
         field_photons[b] += (double)(sl->band[b].photons * factor);
       }
-      if (with_lines) {
+      if (with_dissociating) {
         const double dissociating = (double)sl->band[ISRF_OPERATOR_LW].energy *
                                     (double)sl->H2_transmission *
                                     (double)factor;
@@ -4249,7 +4253,7 @@ void radiation_packet_end_gradient(
     pk->band[b].field_photons = radiation_packet_read_mean(
         pk->band[b].field_photons, (float)field_photons[b], dt, tau);
   }
-  if (with_lines) {
+  if (with_dissociating) {
     pk->field_dissociating_energy = radiation_packet_read_mean(
         pk->field_dissociating_energy, (float)field_dissociating, dt, tau);
     p->feedback_data.LW_line_H2_column =
@@ -4305,8 +4309,10 @@ void radiation_packet_end_force(struct part *p) {
  * after #radiation_packet_end_force.
  *
  * @param p The particle.
+ * @param constants The #radiation_packet_constants.
  */
-void radiation_packet_couple_field(struct part *p) {
+void radiation_packet_couple_field(
+    struct part *p, const struct radiation_packet_constants *constants) {
 
   const struct feedback_isrf_packet_data *pk = &p->feedback_data.isrf_packet;
 
@@ -4318,10 +4324,13 @@ void radiation_packet_couple_field(struct part *p) {
       (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_photons;
 
   /* The LW sum is in float and can flush to 0 where the double sum does not:
-     the lines remove light, they never add it. */
+     the lines remove light, they never add it, and no star has a factor above
+     the bound. */
   const double lw = (double)pk->band[ISRF_OPERATOR_LW].ngb_mean_field_energy;
+  const double dissociating_max =
+      (double)constants->LW_dissociating_factor_max * lw;
   double dissociating = pk->ngb_mean_field_dissociating_energy;
-  if (dissociating > lw) dissociating = lw;
+  if (dissociating > dissociating_max) dissociating = dissociating_max;
   p->feedback_data.LW_dissociating_u = dissociating;
 }
 

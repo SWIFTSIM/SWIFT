@@ -1397,6 +1397,9 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
       radiation_set_star_band_luminosity(
           sp, ISRF_MOMENT_LW,
           radiation_get_star_luminosity_lw(&sm->rad, log_m, log_z));
+      radiation_set_star_LW_dissociating_factor(
+          sp, radiation_get_single_star_LW_dissociating_factor(&sm->rad, log_m,
+                                                               log_z));
       /* Direct assignment, no multiply: the mean photon energy is forced to
          the reference energy at this stage, so a computed ratio of 1 is not
          trusted to compile to exactly 1.0f under -ffast-math. */
@@ -1661,8 +1664,8 @@ void stellar_evolution_compute_preSN_feedback_spart(
        not. */
     if (sm->rad.with_ISRF) {
       float L_PE_per_msun, L_LW_per_msun;
+      const float log_z = radiation_get_log_metallicity(metallicity);
       if (sm->rad.is_2d) {
-        const float log_z = radiation_get_log_metallicity(metallicity);
         L_PE_per_msun = radiation_get_luminosity_pe_from_integral_2d(
             &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
         L_LW_per_msun = radiation_get_luminosity_lw_from_integral_2d(
@@ -1682,6 +1685,9 @@ void stellar_evolution_compute_preSN_feedback_spart(
                                          L_PE_per_msun * m_init);
       radiation_set_star_band_luminosity(sp, ISRF_MOMENT_LW,
                                          L_LW_per_msun * m_init);
+      radiation_set_star_LW_dissociating_factor(
+          sp, radiation_get_population_LW_dissociating_factor(
+                  &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped)));
       /* Direct assignment from the just-set LW entry, not a recomputed
          L_LW_per_msun * m_init: same reasoning as the discrete path above. */
       radiation_set_star_band_luminosity(
@@ -1691,7 +1697,6 @@ void stellar_evolution_compute_preSN_feedback_spart(
       /* The window starts at the IMF's mass_min, so the tabulated ratio of
          cumulative integrals at its upper bound is the window's mean. */
       if (sm->rad.has_mean_photon_energy_pe) {
-        const float log_z = radiation_get_log_metallicity(metallicity);
         const float log_m_cap = log10f(m_sup_capped);
         radiation_set_star_packet_photon_fraction(
             sp, ISRF_OPERATOR_PE,

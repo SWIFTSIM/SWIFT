@@ -924,6 +924,90 @@ float radiation_get_luminosity_lw_from_integral_2d(const struct radiation *rad,
 }
 
 /**
+ * @brief Factor of the H2 dissociation rate per unit LW energy of a source
+ * over the constant RADIATION_SIGMA_H2_OVER_E_LW_CGS, from its two energies.
+ *
+ * @param l_dissociating The H2-dissociating LW energy (rate).
+ * @param l_lw The LW energy (rate).
+ * @param f_max The bound of the factor, #radiation.lw_dissociating_factor_max.
+ * @return The factor in (0, f_max], 1 if @p l_lw or the ratio is not positive.
+ */
+float radiation_get_LW_dissociating_factor(const double l_dissociating,
+                                           const double l_lw,
+                                           const float f_max) {
+  if (!(l_lw > 0.)) return 1.f;
+  const double f = l_dissociating / l_lw;
+  if (!(f > 0.)) return 1.f;
+  if (f > (double)f_max) return f_max;
+  return (float)f;
+}
+
+/**
+ * @brief Dissociating factor of a single star at a given mass, see
+ * #radiation_get_LW_dissociating_factor. Exactly 1 without
+ * #radiation.has_l_lw_dissociating.
+ *
+ * @param rad The #radiation model.
+ * @param log_m The mass in log.
+ * @param log_z The metallicity in log10, used only for a 2D table.
+ * @return The factor.
+ */
+float radiation_get_single_star_LW_dissociating_factor(
+    const struct radiation *rad, float log_m, float log_z) {
+  if (!rad->has_l_lw_dissociating) return 1.f;
+  double log_l_lw, log_l_dissociating;
+  if (rad->is_2d) {
+    log_l_lw = interpolate_2d(&rad->raw.l_lw_2d, log_z, log_m);
+    log_l_dissociating =
+        interpolate_2d(&rad->raw.l_lw_dissociating_2d, log_z, log_m);
+  } else {
+    log_l_lw = interpolate_1d(&rad->raw.l_lw, log_m);
+    log_l_dissociating = interpolate_1d(&rad->raw.l_lw_dissociating, log_m);
+  }
+  return radiation_get_LW_dissociating_factor(
+      exp10(log_l_dissociating - log_l_lw), 1.,
+      rad->lw_dissociating_factor_max);
+}
+
+/**
+ * @brief Dissociating factor of a population over the mass window
+ * [m1, m2], the ratio of the windows of the two cumulative tables. See
+ * #radiation_get_LW_dissociating_factor. Exactly 1 without
+ * #radiation.has_l_lw_dissociating.
+ *
+ * @param rad The #radiation model.
+ * @param log_z The metallicity in log10, used only for a 2D table.
+ * @param log_m1 The lower mass in log.
+ * @param log_m2 The upper mass in log.
+ * @return The factor.
+ */
+float radiation_get_population_LW_dissociating_factor(
+    const struct radiation *rad, float log_z, float log_m1, float log_m2) {
+  if (!rad->has_l_lw_dissociating) return 1.f;
+  double l_lw, l_dissociating;
+  if (rad->is_2d) {
+    l_lw = radiation_get_luminosity_lw_from_integral_2d(rad, log_z, log_m1,
+                                                        log_m2);
+    const struct interpolation_2d *interp =
+        &rad->integrated.l_lw_dissociating_2d;
+    const float l_1 = interpolate_2d(
+        interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m1));
+    const float l_2 = interpolate_2d(
+        interp, log_z, radiation_nudge_mass_edge_2d(interp, log_m2));
+    l_dissociating = (double)(l_2 - l_1);
+  } else {
+    l_lw = radiation_get_luminosity_lw_from_integral(rad, log_m1, log_m2);
+    const float l_1 =
+        interpolate_1d(&rad->integrated.l_lw_dissociating, log_m1);
+    const float l_2 =
+        interpolate_1d(&rad->integrated.l_lw_dissociating, log_m2);
+    l_dissociating = (double)(l_2 - l_1);
+  }
+  return radiation_get_LW_dissociating_factor(l_dissociating, l_lw,
+                                              rad->lw_dissociating_factor_max);
+}
+
+/**
  * @brief Get the IMF-averaged PE band lower-edge spectral photon rate (scaled
  * by E_lo^2 and unit-converted like #l_pe), from a 1D table.
  *

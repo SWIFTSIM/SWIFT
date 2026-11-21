@@ -1447,6 +1447,7 @@ void feedback_init_after_star_formation(
 
   feedback_init_spart(sp);
   radiation_packet_first_init_star(sp);
+  radiation_set_star_LW_dissociating_factor(sp, 1.f);
 
   /* Zero the energy of supernovae */
   sp->feedback_data.supernovae.energy_ejected = 0;
@@ -1568,6 +1569,7 @@ void feedback_first_init_spart(struct spart *sp,
   /* Initialize the feedback struct for the first time */
   feedback_init_spart(sp);
   radiation_packet_first_init_star(sp);
+  radiation_set_star_LW_dissociating_factor(sp, 1.f);
 
   /* Zero energies and masses */
   sp->feedback_data.supernovae.energy_ejected = 0.0;

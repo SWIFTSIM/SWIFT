@@ -305,6 +305,7 @@ __attribute__((always_inline)) INLINE static void radiation_isrf_inject(
     if (pj->feedback_data.ISRF_last_touch_ti != ti_current) {
       for (int m = 0; m < ISRF_MOMENT_COUNT; m++)
         pj->feedback_data.isrf_moment[m].u = 0.f;
+      pj->feedback_data.LW_dissociating_u = 0.;
       pj->feedback_data.ISRF_last_touch_ti = ti_current;
     }
 
@@ -312,6 +313,10 @@ __attribute__((always_inline)) INLINE static void radiation_isrf_inject(
     for (int m = 0; m < ISRF_MOMENT_COUNT; m++) {
       pj->feedback_data.isrf_moment[m].u += u_inject[m] / (double)mj;
     }
+    if (feedback_part_tracks_LW_dissociating(&pj->feedback_data))
+      pj->feedback_data.LW_dissociating_u +=
+          (double)radiation_get_star_LW_dissociating_factor(si) *
+          u_inject[ISRF_MOMENT_LW] / (double)mj;
 
     /* Renew the window on every touch. The expiry check runs once per step
        in feedback_reset_part(). */

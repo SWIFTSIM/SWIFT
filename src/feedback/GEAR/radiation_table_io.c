@@ -665,6 +665,10 @@ enum radiation_table_condition {
   /*! Only if the group carries the PE photon energy datasets
       (#radiation.has_mean_photon_energy_pe). */
   radiation_table_if_mean_photon_energy_pe,
+
+  /*! Only with the population dissociation factor and its datasets
+      (#radiation.has_l_lw_dissociating). */
+  radiation_table_if_lw_dissociating,
 };
 
 /**
@@ -1068,6 +1072,9 @@ static const struct radiation_table_dataset radiation_table_datasets[] = {
     RADIATION_TABLE_DATASET("L_LW", radiation_conversion_power, 1., "erg/s",
                             l_lw, edge_policy_l_lw, 0.,
                             radiation_table_if_ISRF),
+    RADIATION_TABLE_DATASET("L_LW_dissociating", radiation_conversion_power, 1.,
+                            "erg/s", l_lw_dissociating, edge_policy_l_lw, 0.,
+                            radiation_table_if_lw_dissociating),
     RADIATION_TABLE_DATASET(
         "SpectralPhotonRateAtPEEdge", radiation_conversion_power_pe_edge, 1.,
         "1/s/erg", l_edge_pe, edge_policy_l_pe, RADIATION_PE_BAND_LOWER_EDGE_EV,
@@ -1092,6 +1099,111 @@ static const struct radiation_table_dataset radiation_table_datasets[] = {
         integrated.mean_photon_energy_pe, RADIATION_NO_OFFSET,
         radiation_table_if_mean_photon_energy_pe),
 };
+
+/**
+ * @brief Upper bound of L_LW_dissociating / L_LW over the built tables.
+ *
+ * A single star reads the exp of a (bi)linear mix of the node log ratios, so
+ * the node maximum bounds it. A population window is a positive mix of mass
+ * cell increments of the cumulative tables, so the largest cell ratio bounds
+ * it.
+ *
+ * @param rad The #radiation model, with both LW tables built.
+ * @return The bound, at least 1.
+ */
+static float radiation_compute_lw_dissociating_factor_max(
+    const struct radiation *rad) {
+
+  double f_max = 1.;
+  const float *raw_lw, *raw_diss, *int_lw, *int_diss;
+  int n_rows, n_mass;
+  if (rad->is_2d) {
+    raw_lw = rad->raw.l_lw_2d.data;
+    raw_diss = rad->raw.l_lw_dissociating_2d.data;
+    int_lw = rad->integrated.l_lw_2d.data;
+    int_diss = rad->integrated.l_lw_dissociating_2d.data;
+    n_rows = rad->integrated.l_lw_2d.Nx;
+    n_mass = rad->integrated.l_lw_2d.Ny;
+  } else {
+    raw_lw = rad->raw.l_lw.data;
+    raw_diss = rad->raw.l_lw_dissociating.data;
+    int_lw = rad->integrated.l_lw.data;
+    int_diss = rad->integrated.l_lw_dissociating.data;
+    n_rows = 1;
+    n_mass = rad->integrated.l_lw.N;
+  }
+
+  for (int k = 0; k < n_rows * n_mass; k++)
+    f_max = fmax(f_max, exp10((double)raw_diss[k] - (double)raw_lw[k]));
+
+  for (int i = 0; i < n_rows; i++) {
+    for (int j = 0; j + 1 < n_mass; j++) {
+      const int k = i * n_mass + j;
+      const double d_lw = (double)int_lw[k + 1] - (double)int_lw[k];
+      const double d_diss = (double)int_diss[k + 1] - (double)int_diss[k];
+      if (d_lw > 0. && d_diss > 0.) f_max = fmax(f_max, d_diss / d_lw);
+    }
+  }
+  return (float)f_max;
+}
+
+/*! Relative tolerance of the table's h2_dissociation_reference against the
+    code constant #RADIATION_SIGMA_H2_OVER_E_LW_CGS. */
+#define RADIATION_H2_REFERENCE_RELATIVE_TOLERANCE 1e-6
+
+/*! Bound of L_LW_dissociating / L_LW above which the table is suspect: a
+    stellar LW spectrum gives at most about 1.4. */
+#define RADIATION_LW_DISSOCIATING_FACTOR_WARNING_LIMIT 3.f
+
+/**
+ * @brief Check that L_LW_dissociating is defined against the H2 dissociation
+ * rate per unit LW energy that the code multiplies it by.
+ *
+ * @param group_id Open HDF5 "Data/Radiation" group id.
+ * @param sm The #stellar_model.
+ */
+static void radiation_check_lw_dissociating_reference(
+    hid_t group_id, const struct stellar_model *sm) {
+
+  if (H5Aexists(group_id, "h2_dissociation_reference") <= 0)
+    error(
+        "'%s': Data/Radiation carries L_LW_dissociating but no "
+        "'h2_dissociation_reference' attribute.",
+        sm->yields_table);
+  double reference = 0.;
+  io_read_attribute(group_id, "h2_dissociation_reference", DOUBLE, &reference);
+  if (!(fabs(reference - RADIATION_SIGMA_H2_OVER_E_LW_CGS) <=
+        RADIATION_H2_REFERENCE_RELATIVE_TOLERANCE *
+            RADIATION_SIGMA_H2_OVER_E_LW_CGS))
+    error(
+        "'%s': L_LW_dissociating is defined against "
+        "h2_dissociation_reference = %.10g cm^2/erg, but the code multiplies "
+        "it by %.10g cm^2/erg.",
+        sm->yields_table, reference, RADIATION_SIGMA_H2_OVER_E_LW_CGS);
+}
+
+/**
+ * @brief Set #radiation.lw_dissociating_factor_max from the built
+ * L_LW_dissociating and L_LW tables, and warn about a bound above 3.
+ *
+ * @param rad The #radiation model, with both LW tables built.
+ * @param sm The #stellar_model.
+ */
+static void radiation_set_lw_dissociating_factor_max(
+    struct radiation *rad, const struct stellar_model *sm) {
+
+  rad->lw_dissociating_factor_max =
+      radiation_compute_lw_dissociating_factor_max(rad);
+
+  /* A larger bound weakens the clamps on the line transmission. */
+  if (rad->lw_dissociating_factor_max >
+          RADIATION_LW_DISSOCIATING_FACTOR_WARNING_LIMIT &&
+      engine_rank == 0)
+    warning(
+        "'%s': L_LW_dissociating / L_LW reaches %.6g. Check the table: a "
+        "stellar LW spectrum gives at most about 1.4.",
+        sm->yields_table, (double)rad->lw_dissociating_factor_max);
+}
 
 /**
  * @brief Read the main-sequence lifetime table (2D "M,Z" tables only).
@@ -1376,6 +1488,12 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   const int n_HII_pixels_before = rad->n_HII_pixels;
   /* with_ISRF is saved for the same reason. */
   const char with_ISRF_before = rad->with_ISRF;
+  const char with_LW_population_dissociation_before =
+      rad->with_LW_population_dissociation;
+  /* On restart, the values of the dumped run, which #feedback_props keeps. */
+  const char has_l_lw_dissociating_before = rad->has_l_lw_dissociating;
+  const float lw_dissociating_factor_max_before =
+      rad->lw_dissociating_factor_max;
 
   /* Zero every table so that radiation_clean() is safe whichever of the 1D
      and 2D variants is built. */
@@ -1384,6 +1502,7 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   rad->interpolation_size = interpolation_size_before;
   rad->n_HII_pixels = n_HII_pixels_before;
   rad->with_ISRF = with_ISRF_before;
+  rad->with_LW_population_dissociation = with_LW_population_dissociation_before;
 
   hid_t file_id, group_id;
   radiation_open_data_group(sm->yields_table, &file_id, &group_id);
@@ -1501,6 +1620,23 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
   /* Optional: without Teff every star reports 0. */
   rad->has_teff = (char)(H5Lexists(group_id, "Teff", H5P_DEFAULT) > 0);
 
+  /* Optional: without it every star keeps the factor 1. */
+  if (rad->with_ISRF && rad->with_LW_population_dissociation) {
+    rad->has_l_lw_dissociating =
+        (char)(H5Lexists(group_id, "L_LW_dissociating", H5P_DEFAULT) > 0 &&
+               H5Lexists(group_id, "Integrated_L_LW_dissociating",
+                         H5P_DEFAULT) > 0);
+    if (rad->has_l_lw_dissociating)
+      radiation_check_lw_dissociating_reference(group_id, sm);
+    else if (engine_rank == 0)
+      warning(
+          "'%s' has no L_LW_dissociating and Integrated_L_LW_dissociating: "
+          "GEARFeedback:ISRF_LW_population_dissociation is on, but the stars "
+          "of this table dissociate H2 at the constant rate per unit LW "
+          "energy.",
+          sm->yields_table);
+  }
+
   /* Optional: only the ISRF packet transport needs it, and checks for it. */
   rad->has_mean_photon_energy_pe =
       (char)(H5Lexists(group_id, "MeanPhotonEnergyPE", H5P_DEFAULT) > 0 &&
@@ -1527,6 +1663,9 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
       case radiation_table_if_mean_photon_energy_pe:
         if (!rad->has_mean_photon_energy_pe) continue;
         break;
+      case radiation_table_if_lw_dissociating:
+        if (!rad->has_l_lw_dissociating) continue;
+        break;
     }
 
     if (dataset->provenance_lower_edge_ev > 0.)
@@ -1535,6 +1674,21 @@ void radiation_read_data(struct radiation *rad, struct swift_params *params,
 
     radiation_build_tables(group_id, dataset, &grid, sm, us, rad);
   }
+
+  if (rad->has_l_lw_dissociating)
+    radiation_set_lw_dissociating_factor_max(rad, sm);
+
+  if (restart &&
+      (rad->has_l_lw_dissociating != has_l_lw_dissociating_before ||
+       rad->lw_dissociating_factor_max != lw_dissociating_factor_max_before))
+    error(
+        "'%s' changed since the restart files were written: "
+        "L_LW_dissociating present %d -> %d, dissociation factor bound %.9g "
+        "-> %.9g. Restart with the same table, or rerun from the ICs.",
+        sm->yields_table, (int)has_l_lw_dissociating_before,
+        (int)rad->has_l_lw_dissociating,
+        (double)lw_dissociating_factor_max_before,
+        (double)rad->lw_dissociating_factor_max);
 
   /* These datasets exist only for 2D tables. */
   if (grid.is_2d) {

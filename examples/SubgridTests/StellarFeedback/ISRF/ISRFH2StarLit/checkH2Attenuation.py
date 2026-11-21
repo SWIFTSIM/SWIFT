@@ -442,6 +442,48 @@ def check_premise_parameters(
     )
 
 
+def factor_bound(
+    startup_log: str, population_factor: float, rep: Report
+) -> Tuple[float, float]:
+    """Return the range of F_MAX, the bound of the dissociation factor, from the start-up log.
+
+    SWIFT caps the dissociating energy of the kernel mean at F_MAX times the LW energy, and
+    F_MAX is exactly 1 with the population factor off. With it on, the log prints F_MAX
+    with 6 significant digits (%.6g), so the range is that value plus or minus half a unit
+    of its sixth digit. A log without the population lines (a build without the factor)
+    gives exactly 1.
+
+    Raises
+    ------
+    GateExit
+        With EXIT_MISSING if the factor of the star is not 1 and the log does not report the
+        population factor on with its bound; with EXIT_VOID if the factor of the star is
+        above the bound.
+    """
+    text = open(startup_log).read()
+    on = re.search(r"ISRF LW population dissociation factor \(tables\)\s*=\s*ON", text)
+    found = re.search(r"ISRF LW dissociation factor bound\s*=\s*(\S+)", text)
+    if on is None or found is None:
+        if population_factor != 1.0:
+            raise GateExit(
+                EXIT_MISSING,
+                f"--population-factor {population_factor} needs the start-up lines that report "
+                "the population factor ON and its bound, which the log lacks",
+            )
+        return 1.0, 1.0
+    value = float(found.group(1))
+    half = 0.5 * 10.0 ** (math.floor(math.log10(value)) - 5)
+    lo, hi = value - half, value + half
+    if population_factor > hi:
+        raise GateExit(
+            EXIT_VOID,
+            f"--population-factor {population_factor} is above the bound {found.group(1)} "
+            "that SWIFT printed",
+        )
+    rep.info("dissociation factor bound", f"F_MAX in [{lo:.9g}, {hi:.9g}] from the log")
+    return lo, hi
+
+
 def probe_geometry(
     snap: dict, star_kpc: np.ndarray, h_cm_floor: float = 0.0
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -568,17 +610,21 @@ def light_hops(first: dict, last: dict) -> int:
     return int(n)
 
 
-def own_transmission(last: dict) -> Tuple[np.ndarray, np.ndarray]:
+def own_transmission(
+    last: dict, population_factor: float = 1.0
+) -> Tuple[np.ndarray, np.ndarray]:
     """Return the own LW field of each particle and its line transmission.
 
     The own field is the light that crosses the particle itself, before the kernel
     mean. The kernel mean of LWLineTransmissions is a mean of the neighbours' own
     ratios weighted by their LW energy, so it differs from f(n_H2 r) by the averaging;
     the bars on the own ratio do not carry that offset.
+    With GEARFeedback:ISRF_LW_population_dissociation the dissociating energy also carries
+    the dissociation factor of the star, which the ratio is divided by.
     """
     own = last["LWOwnSpecificEnergies"]
     ratio = last["LWOwnDissociatingSpecificEnergies"] / np.where(own > 0, own, 1.0)
-    return own, ratio
+    return own, ratio / population_factor
 
 
 def h2_range_premise(
@@ -815,6 +861,8 @@ def check_kernel_mean(
     probes: np.ndarray,
     exp: np.ndarray,
     bar_own: np.ndarray,
+    population_factor: float = 1.0,
+    factor_max: Tuple[float, float] = (1.0, 1.0),
 ) -> None:
     """Check the snapshot kernel means of the LW fields in three tiers.
 
@@ -834,7 +882,8 @@ def check_kernel_mean(
 
     Tier 1 (identity): T_offline is the code's kernel mean, sum_j m_j W(r_ij / h_i) D_j
     over sum_j m_j W(r_ij / h_i) E_j with the self term, of the own fields in the
-    snapshot (D_j clamped to E_j). It must agree with the snapshot to (n_ngb + 2) eps32.
+    snapshot (clamped at F_MAX, the bound of the dissociation factor that SWIFT prints at
+    start-up, 1 without the population factor). It must agree with the snapshot to (n_ngb + 2) eps32.
     A particle with no lit neighbour must have no LW energy. Each bar adds the kernel-edge
     term sum_j max |b_j - a_j| rel_j, with b_j the share of
     neighbour j in the numerator, a_j its share of the weight sum (the largest value over the
@@ -844,14 +893,15 @@ def check_kernel_mean(
     the mean. The weight sum of the mean cancels in T and is tested by tier 3.
 
     Tier 3 (means): E_mean and D_mean, which the cooling reads, against the offline sum
-    w E / sum w and min(sum w D, sum w E) / sum w with the self term. The bar is the float
+    w E / sum w and min(sum w D, F_MAX sum w E) / sum w with the self term. The bar is the float
     sums, (2 n_ngb + 4) eps32 for E_mean (numerator, weight sum, division) and the same
     plus (n_ngb + 3) eps32 for D_mean, plus the kernel-edge term. A change of the weight
     sum, the weights or the fields of 0.5 per cent or more of E_mean or D_mean fails
     wherever the bar is below that. The run is void if no particle has such a bar.
 
     Tier 2 (physics): T_snapshot against K[f], the same weighted mean of the prediction
-    f(n_H2 r) of each neighbour. T / K is a convex combination of the ratios t_j / f_j,
+    f(n_H2 r) of each neighbour, times the dissociation factor of the star. T / K is a
+    convex combination of the ratios t_j / f_j,
     so the bar is the largest own bar over the lit neighbours plus (n_ngb + 2) eps32.
     It skips the particles that lose more than the float term to the flush, because the
     convex combination does not hold for them.
@@ -910,9 +960,13 @@ def check_kernel_mean(
         d_terms = w * dissoc[j]
         d_total = d_terms.sum()
         e_win[:, i] = np.array([kept, total]) / weight_sum
-        d_win[:, i] = np.minimum(d_total, [kept, total]) / weight_sum
+        d_win[:, i] = (
+            np.minimum(d_total, np.array(factor_max) * np.array([kept, total]))
+            / weight_sum
+        )
         t_win[:, i] = np.minimum(
-            1.0, d_total / np.array([total, kept if kept > 0.0 else np.inf])
+            np.array(factor_max),
+            d_total / np.array([total, kept if kept > 0.0 else np.inf]),
         )
         share_w = w / weight_sum
         share_d = d_terms / d_total if d_total > 0.0 else np.zeros_like(w)
@@ -931,7 +985,7 @@ def check_kernel_mean(
         edge_e[i] = float(np.sum(worst_gap(share_w) * rel))
         edge_d[i] = float(np.sum(np.abs(share_d - share_w) * rel))
         if probes[i]:
-            kmean[i] = float(terms @ exp[j]) / total
+            kmean[i] = population_factor * float(terms @ exp[j]) / total
             bar2[i] = bar_own[j][energy[j] > 0.0].max()
     float_term = (n_ngb + 2.0) * FLOAT32_EPS
     bar_t = float_term + edge_t
@@ -1141,6 +1195,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
     params = read_params(args.params)
     calibrate_temperatures(first, last, params, rep)
     check_premise_parameters(params, rep, args.startup_log)
+    bound = factor_bound(args.startup_log, args.population_factor, rep)
     counters = load_json(args.counters, "counters file") if args.counters else {}
 
     r, h, mask = probe_geometry(last, np.array(fix["star_kpc"]))
@@ -1148,7 +1203,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
     column = n_h2 * r
     read = probe_premises(first, last, mask, column, rep, frozen_h2=False)
     n_range = h2_range_premise(first, last, mask, rep)
-    own, meas = own_transmission(last)
+    own, meas = own_transmission(last, args.population_factor)
     lit = read & (own > 0.0)
     rep.info(
         "probes",
@@ -1203,6 +1258,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
     )
     lw = last["LWSpecificEnergies"]
     mean_ratio = last["LWDissociatingSpecificEnergies"] / np.where(lw > 0, lw, 1.0)
+    mean_ratio /= args.population_factor
     lit_mean = read & (lw > 0.0)
     if lit_mean.any():
         rep.reading(
@@ -1280,7 +1336,7 @@ def gate_starlit(args: argparse.Namespace) -> int:
 
     step_premises(args.timesteps, last, rep)
     probes = read & (last["LWSpecificEnergies"] > 0.0)
-    check_kernel_mean(last, rep, probes, exp, bar)
+    check_kernel_mean(last, rep, probes, exp, bar, args.population_factor, bound)
     return rep.exit_code()
 
 
@@ -1917,7 +1973,7 @@ def gate_velocity(args: argparse.Namespace) -> int:
     face, outer = (v * cm for v in fix["cloud_radius_kpc"])
     in_cloud = mask & (r > face) & (r < outer)
     read = probe_premises(first, last, in_cloud, np.full(len(mask), np.inf), rep)
-    lw, meas = own_transmission(last)
+    lw, meas = own_transmission(last, args.population_factor)
     lit = read & (lw > 0.0)
     if not lit.any():
         raise GateExit(EXIT_VOID, "void run, no lit probe inside the cloud")
@@ -2181,6 +2237,14 @@ def build_parser() -> argparse.ArgumentParser:
             "--startup-log",
             default=None,
             help="swift log with the library start-up lines (output.log)",
+        )
+        sp.add_argument(
+            "--population-factor",
+            type=float,
+            default=1.0,
+            help="dissociation factor f of the star (1 with "
+            "GEARFeedback:ISRF_LW_population_dissociation: 0); the prediction is "
+            "f times the line transmission",
         )
         if counters:
             sp.add_argument("--counters", default=None)
