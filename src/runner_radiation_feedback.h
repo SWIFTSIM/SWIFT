@@ -71,10 +71,9 @@ feedback_radiation_subgrid_needed(int with_stars, int with_feedback) {
  * (radiation_in/radiation_out self and pair tasks)?
  *
  * True only when GEAR ionization feedback is compiled in and both the
- * hydro and stars policies are active. Unlike
- * #feedback_radiation_subgrid_needed, the feedback policy is not required:
- * the geometric gather task graph is built from hydro + stars alone, with
- * the ionization task itself gated separately.
+ * hydro and stars policies are active. The feedback policy is not tested
+ * here: the start-up check #feedback_radiation_needs_feedback_option refuses
+ * a run with hydro and stars but no feedback, so it is always set.
  *
  * @param with_hydro Is engine_policy_hydro set?
  * @param with_stars Is engine_policy_stars set?
@@ -90,6 +89,25 @@ feedback_radiation_gather_tasks_needed(int with_hydro, int with_stars) {
   return 0;
 }
 #endif
+
+/**
+ * @brief Do these run-time options create the radiation gather tasks without
+ * the ionization task and super pointer they act on?
+ *
+ * The gather tasks dereference the super pointer when they are activated, so
+ * a run with gas and stars but no feedback cannot start. Always false when
+ * GEAR ionization feedback is compiled out.
+ *
+ * @param with_hydro Is the run using hydrodynamics?
+ * @param with_stars Is the run using stars?
+ * @param with_feedback Is the run using stellar feedback?
+ */
+__attribute__((always_inline)) INLINE static int
+feedback_radiation_needs_feedback_option(int with_hydro, int with_stars,
+                                         int with_feedback) {
+  return feedback_radiation_gather_tasks_needed(with_hydro, with_stars) &&
+         !feedback_radiation_subgrid_needed(with_stars, with_feedback);
+}
 
 /**
  * @brief Limit that ends the radius growth of an HII pass.
