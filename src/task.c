@@ -1204,7 +1204,7 @@ void task_get_group_name(int type, int subtype, char *cluster) {
       }
       break;
     case task_subtype_chemistry_flux_prep:
-      strcpy(cluster, "ChemistryFCTPrep");
+      strcpy(cluster, "ChemistryFluxPrep");
       break;
     case task_subtype_sink_density:
       strcpy(cluster, "SinkDensity");
