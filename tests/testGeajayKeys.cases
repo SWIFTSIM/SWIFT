@@ -14,12 +14,12 @@ maximal_density|maximal_density_nucleon_per_cm3||maximal_density_nucleon_per_cm3
 metal_cooling_cmb_floor|metal_cooling_cmb_floor||metal_cooling_cmb_floor: 0|LIB metal_cooling_cmb_floor=0|lib
 agora_cmb_temperature_floor|agora_cmb_temperature_floor||agora_cmb_temperature_floor: 1|MOD agora_cmb_temperature_floor=1|swift
 hydrogen_mass_fraction|hydrogen_mass_fraction||hydrogen_mass_fraction: 0.7|LIB hydrogen_mass_fraction=0.7|lib
-dust_model|dust_model||dust_model: basic|LIB dust_model=1|lib
-dust_to_gas_model|dust_to_gas_model|dust_model: basic|dust_to_gas_model: remy_ruyer_2014|LIB dust_to_gas_model=1|lib
-h2_formation_on_dust|h2_formation_on_dust||h2_formation_on_dust: enabled|LIB h2_formation_on_dust=1|lib
-photoelectric_heating_model|photoelectric_heating_model||photoelectric_heating_model: constant_efficiency|LIB photoelectric_heating_model=2|lib
-photoelectric_heating_rate|photoelectric_heating_rate|photoelectric_heating_model: fixed_rate|photoelectric_heating_rate: 1.7e-25|LIB photoelectric_heating_rate=1.7e-25|lib
-dust_recombination_cooling|dust_recombination_cooling||dust_recombination_cooling: enabled|LIB dust_recombination_cooling=1|lib
+dust_model|dust_model|isrf_habing: 1.7|dust_model: basic|LIB dust_model=1|lib
+dust_to_gas_model|dust_to_gas_model|dust_model: basic;isrf_habing: 1.7|dust_to_gas_model: remy_ruyer_2014|LIB dust_to_gas_model=1|lib
+h2_formation_on_dust|h2_formation_on_dust|isrf_habing: 1.7|h2_formation_on_dust: enabled|LIB h2_formation_on_dust=1|lib
+photoelectric_heating_model|photoelectric_heating_model|isrf_habing: 1.7|photoelectric_heating_model: constant_efficiency|LIB photoelectric_heating_model=2|lib
+photoelectric_heating_rate|photoelectric_heating_rate|photoelectric_heating_model: fixed_rate;isrf_habing: 1.7|photoelectric_heating_rate: 1.7e-25|LIB photoelectric_heating_rate=1.7e-25|lib
+dust_recombination_cooling|dust_recombination_cooling|isrf_habing: 1.7|dust_recombination_cooling: enabled|LIB dust_recombination_cooling=1|lib
 h2_photodissociation_heating|h2_photodissociation_heating||h2_photodissociation_heating: 1|LIB h2_photodissociation_heating=1|lib
 reference_dust_to_gas_ratio|reference_dust_to_gas_ratio||reference_dust_to_gas_ratio: 0.01|LIB reference_dust_to_gas_ratio=0.01|lib
 h2_three_body_fit|h2_three_body_fit||h2_three_body_fit: 1|LIB h2_three_body_fit=1|lib
@@ -31,7 +31,15 @@ solver|solver||solver: 1|LIB solver=1|lib
 accurate_relative_tolerance|accurate_relative_tolerance|solver: 1|accurate_relative_tolerance: 1e-5|LIB accurate_relative_tolerance=1e-05|lib
 accurate_absolute_tolerance|accurate_absolute_tolerance|solver: 1|accurate_absolute_tolerance: 1e-15|LIB accurate_absolute_tolerance=1e-15|lib
 lw_background_j21|lw_background_j21||lw_background_j21: 0.5|LIB lw_background_j21=0.5|lib
-isrf_from_field|isrf_from_field||isrf_from_field: 1|LIB isrf_from_field=1|lib
+isrf_from_field|isrf_from_field refused with background_mode grackle||isrf_from_field: 1|!the module does not fill a per-particle field yet|refuse
+isrf_habing|isrf_habing||isrf_habing: 1.7|LIB isrf_habing=1.7|lib
+isrf_habing_zero|isrf_habing 0 is allowed with a G_0 reader|dust_model: basic;isrf_habing: 1.7|isrf_habing: 0|LIB isrf_habing=0|lib
+isrf_habing_unset_reader|isrf_habing unset with a G_0 reader is refused|dust_model: basic;isrf_habing: 1.7|-isrf_habing|!geajay has no default far-UV field|refuse
+isrf_habing_unset_no_reader|isrf_habing unset without a G_0 reader starts|isrf_habing: 1.7|-isrf_habing|=LIB isrf_habing=0|lib
+isrf_habing_negative|isrf_habing below 0 is refused||isrf_habing: -1|!GeajayCooling:isrf_habing must be finite and >= 0, got -1|refuse
+isrf_habing_inf|isrf_habing not finite is refused||isrf_habing: inf|!GeajayCooling:isrf_habing must be finite and >= 0|refuse
+isrf_habing_per_band|isrf_habing with background_mode per_band is refused|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1|isrf_habing: 1.7|!GeajayCooling:isrf_habing is set, but it is not read|refuse
+isrf_habing_pe_fixed_rate|photoelectric option 1 reads G_0: unset is refused|photoelectric_heating_model: fixed_rate;isrf_habing: 1.7|-isrf_habing|!geajay has no default far-UV field|refuse
 rt_use_fields|rt_use_fields||rt_use_fields: 1|LIB rt_rates_from_fields=1|lib
 rt_heating_rate_cgs|rt_heating_rate_cgs|rt_use_fields: 1|rt_heating_rate_cgs: 3e-25|~MOD rt_heating_rate|swift
 rt_hi_ionisation_rate_per_s|rt_hi_ionisation_rate_per_s|rt_use_fields: 1|rt_hi_ionisation_rate_per_s: 1e-12|~MOD rt_hi_ionisation_rate|swift
@@ -128,3 +136,7 @@ with_radiative_cooling_off|with_radiative_cooling||with_radiative_cooling: 0|LIB
 with_radiative_cooling_on|with_radiative_cooling||with_radiative_cooling: 1|=LIB radiative_cooling=1&&=MOD with_radiative_cooling=1|lib
 with_radiative_cooling_absent|with_radiative_cooling (default 1)||redshift: 0|=LIB radiative_cooling=1&&=MOD with_radiative_cooling=1|lib
 with_radiative_cooling_two|with_radiative_cooling 2 is refused||with_radiative_cooling: 2|!GeajayCooling:with_radiative_cooling must be 0 or 1, got 2|swift
+per_band_g0_constant_dust|per_band constant G_0 with dust on and no isrf_habing starts|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1.7;dust_model: basic|isrf_background_habing: 2|LIB isrf_background_habing=2|lib
+per_band_g0_uv_table_dust|per_band uv_table G_0 with dust on and no isrf_habing starts|background_mode: per_band;h2_shielding_length_method: given_length;with_uv_background: 1;isrf_background_model: uv_table;isrf_rates_file: g0file.h5;dust_model: basic|isrf_rates_file: g0file2.h5|LIB isrf_rates_file=g0file2.h5|lib
+per_band_g0_none_dust|per_band G_0 none with dust on and no isrf_habing starts|background_mode: per_band;h2_shielding_length_method: given_length;isrf_background_model: constant;isrf_background_habing: 1;dust_model: basic|isrf_background_model: none;-isrf_background_habing|LIB isrf_background_model=0|lib
+per_band_g0_unset_dust|per_band with the G_0 model unset and dust on is still refused|background_mode: per_band;h2_shielding_length_method: given_length;dust_model: basic;isrf_background_model: constant;isrf_background_habing: 1.7|-isrf_background_model;-isrf_background_habing|!isrf_background_model is unset|refuse

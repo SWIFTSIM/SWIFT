@@ -843,6 +843,11 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
                   GEAJAY_DUST_BACKGROUND_ATTENUATION_PER_BAND
               ? "per_band"
               : "none");
+  if (cooling->isrf_habing >= 0.)
+    message("G_0 of every particle (isrf_habing) = %g Habing",
+            cooling->isrf_habing);
+  else
+    message("G_0 of every particle (isrf_habing) = unset");
   if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
     message(
         "Background models (-1: default): ionising %d, LW %d, G_0 %d (G_0 = "
@@ -982,6 +987,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
           cooling->chemistry_data.dust_recombination_cooling);
   message("chemistry_data.photoelectric_heating_rate = %.3g",
           cooling->chemistry_data.photoelectric_heating_rate);
+  message("chemistry_data.interstellar_radiation_field = %g",
+          cooling->chemistry_data.interstellar_radiation_field);
   message("chemistry_data.local_dust_to_gas_ratio = %.3g",
           cooling->chemistry_data.local_dust_to_gas_ratio);
 }
@@ -2152,6 +2159,12 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (cooling->uv_background_redshift_off > COOLING_GEAJAY_REDSHIFT_UNSET)
     chemistry->UVbackground_redshift_off = cooling->uv_background_redshift_off;
   if (cooling->isrf_from_field) chemistry->use_isrf_field = 1;
+  if (cooling->isrf_habing >= 0.)
+    chemistry->interstellar_radiation_field = cooling->isrf_habing;
+  else if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+    /* Under per_band the background settings give G_0 and the library refuses
+       an unset isrf_background_model; the field itself starts at 0 */
+    chemistry->interstellar_radiation_field = 0.;
 
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of
      a state integrated over only part of the time-step. */
@@ -2329,8 +2342,9 @@ void cooling_clean(struct cooling_function_data *cooling) {
 /*! Version of the restart layout record of the cooling. Restart files
  * written before the record existed (network H_He_H2_D_ions) are refused. 2:
  * the cosmic-ray source mode and its fixed energy density are in the struct.
- * 3: with_radiative_cooling is in the struct. */
-#define COOLING_GEAJAY_RESTART_FORMAT 3
+ * 3: with_radiative_cooling is in the struct. 4: isrf_habing is in the
+ * struct. */
+#define COOLING_GEAJAY_RESTART_FORMAT 4
 
 /*! Record written before the cooling struct in a restart file. */
 struct cooling_restart_layout {

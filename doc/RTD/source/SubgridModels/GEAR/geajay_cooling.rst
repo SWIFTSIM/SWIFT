@@ -167,9 +167,16 @@ Self-shielding
 Backgrounds
 -----------
 
-With ``background_mode`` ``grackle`` the cooling passes the library value of
-``interstellar_radiation_field`` (1.7 Habing) for every particle. With ``per_band`` it passes 0, the
-local field only, to which the background G\ :sub:`0` is added.
+There is no default far-UV field G\ :sub:`0`. With ``background_mode`` ``grackle`` the key
+``isrf_habing`` gives one constant G\ :sub:`0` [Habing] for every particle. If it is unset and a term
+reads G\ :sub:`0` (``photoelectric_heating_model`` above ``none``, ``dust_recombination_cooling``,
+``dust_model`` ``basic`` or ``h2_formation_on_dust``), the run stops at start-up. Set 1.7 for the
+solar neighbourhood, or 0 for no field. Unset with no such term is 0. With ``per_band`` the cooling
+passes 0, the local field only, to which the background G\ :sub:`0` is added, and ``isrf_habing`` must
+stay unset.
+
+A constant G\ :sub:`0` and a constant Lyman-Werner background (``lw_background_j21``) are independent
+settings: the cooling does not tie one to the other, so choose consistent values.
 
 .. list-table::
    :header-rows: 1
@@ -208,8 +215,14 @@ local field only, to which the background G\ :sub:`0` is added.
    * - ``isrf_background_habing``
      - (optional) Read only with ``background_mode`` ``per_band``. Background G\ :sub:`0` of the model
        ``constant`` [Habing] (default: -1, unset).
+   * - ``isrf_habing``
+     - (optional) Constant G\ :sub:`0` of every particle [Habing], 0 or above. Unset (default): the run
+       stops at start-up if a term reads G\ :sub:`0`, else G\ :sub:`0` is 0. Not read with
+       ``background_mode`` ``per_band`` (setting it there stops the run).
    * - ``isrf_from_field``
-     - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``) (default: 0).
+     - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``). The module does
+       not fill that field yet: with ``background_mode`` ``grackle`` the value 1 stops the run, use
+       ``isrf_habing`` (default: 0).
    * - ``uv_rates_file``
      - (optional) Read only with ``background_mode`` ``per_band``. HDF5 file whose ``/UVBRates`` is the
        UV background, for example an FG20 file; the metal table always comes from ``cloudy_table_file``.
@@ -346,7 +359,7 @@ Molecules and dust
    * - ``photoelectric_heating_model``
      - (optional) Photoelectric heating of the dust: ``default`` (-1, ``constant_efficiency`` with
        ``dust_model`` ``basic``, else ``none``), ``none`` (0), ``fixed_rate`` (1, the constant
-       ``photoelectric_heating_rate``), ``constant_efficiency`` (2, 0.05 G\ :sub:`0` x 1e-24 erg/s per
+       ``photoelectric_heating_rate``, scaled by G\ :sub:`0` / 1.7), ``constant_efficiency`` (2, 0.05 G\ :sub:`0` x 1e-24 erg/s per
        H atom, Wolfire et al. 1995 eq. 1), ``grain_charge_epsilon`` (3, an efficiency set by the grain
        charge, Bakes and Tielens 1994 eq. 43 with the coefficients of Wolfire et al. 2003 eq. 24) or
        ``density_epsilon`` (4, an efficiency that depends on the density only, Smith 2026 eqs. A1 and
@@ -355,7 +368,7 @@ Molecules and dust
        ``none``, because SWIFT passes the metal mass fraction of every particle (default: ``default``).
    * - ``photoelectric_heating_rate``
      - (optional) Heating rate of the model ``fixed_rate`` per H atom at the reference dust-to-gas
-       ratio [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
+       ratio and G\ :sub:`0` = 1.7 [erg/s]. Read only with ``fixed_rate``. Zero or above, or -1 for the library value,
        8.5e-26 (default: -1).
    * - ``dust_recombination_cooling``
      - (optional) Recombination cooling on grains: ``default`` (-1, on with ``dust_model`` ``basic``,

@@ -22,6 +22,7 @@ unset LD_LIBRARY_PATH
 failures=0
 metallicity=""
 no_dtg_key=0
+no_g0_key=0
 
 # run <name> <extra GeajayCooling lines>: leaves the exit code in $status
 run() {
@@ -34,8 +35,14 @@ run() {
   # The new lines go right under the GeajayCooling: header. The key
   # dust_to_gas_model is required with a dust switch on: the fixture value is
   # replaced by the one of the case, or by linear when the case sets none. A
-  # case with $no_dtg_key set to 1 leaves the key out.
+  # case with $no_dtg_key set to 1 leaves the key out. The same holds for
+  # isrf_habing (G_0 has no default): grackle cases get 1.7 unless they set it
+  # or $no_g0_key is 1; a per_band case takes G_0 from its background.
   local extra="$*"
+  if [ "$no_g0_key" != 1 ] && [[ "$extra" != *isrf_habing* ]] &&
+    [[ "$extra" != *background_mode:\ per_band* ]]; then
+    extra="isrf_habing: 1.7${extra:+;}$extra"
+  fi
   if [ "$no_dtg_key" != 1 ] && [[ "$extra" != *dust_to_gas_model* ]]; then
     extra="dust_to_gas_model: linear${extra:+;}$extra"
   fi
@@ -88,6 +95,16 @@ expect_ok density_epsilon photoelectric_heating=4 "$basic;photoelectric_heating_
 expect_ok number_4 photoelectric_heating=4 "$basic;photoelectric_heating_model: 4"
 expect_ok default_name photoelectric_heating=2 "$basic;photoelectric_heating_model: default"
 expect_ok no_dust_none photoelectric_heating=0 "photoelectric_heating_model: none"
+
+no_g0_key=1
+expect_refused g0_unset_dust "geajay has no default far-UV field" "$basic"
+expect_refused g0_unset_fixed_rate "geajay has no default far-UV field" "photoelectric_heating_model: fixed_rate"
+expect_ok g0_unset_no_reader interstellar_radiation_field=0 ""
+expect_ok g0_zero_dust interstellar_radiation_field=0 "$basic;isrf_habing: 0"
+no_g0_key=0
+expect_ok g0_set interstellar_radiation_field=1.7 "$basic"
+expect_ok g0_value interstellar_radiation_field=5 "$basic;isrf_habing: 5"
+expect_refused g0_negative "isrf_habing must be finite and >= 0" "$basic;isrf_habing: -1"
 
 expect_refused bad_name "photoelectric_heating_model" "$basic;photoelectric_heating_model: bogus"
 expect_refused bad_high "must be default (-1), none (0)" "$basic;photoelectric_heating_model: 5"

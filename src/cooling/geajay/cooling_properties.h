@@ -254,8 +254,15 @@ struct cooling_function_data {
    * chemistry_data.LWbackground_sawtooth_suppression). */
   int lw_background_sawtooth_suppression;
 
-  /*! G_0 is read from the particle field (Grackle use_isrf_field). */
+  /*! G_0 is read from the particle field (Grackle use_isrf_field). The module
+   * does not fill that field yet: with background_mode grackle the key is
+   * refused when set to 1; per_band adds an empty field (0) to the background. */
   int isrf_from_field;
+
+  /*! Constant G_0 of every particle [Habing] (GeajayCooling:isrf_habing,
+   * chemistry_data.interstellar_radiation_field). Negative: unset, which the
+   * library refuses when a term reads G_0. */
+  double isrf_habing;
 
   /*! Dust cross-sections per H nucleon of the LW (11.2-13.6 eV) and PE
    * (6-11.2 eV) bands [cm^2]. */

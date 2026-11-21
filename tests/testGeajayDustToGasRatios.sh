@@ -76,7 +76,7 @@ agree() {
   awk -v a="$1" -v b="$2" 'BEGIN { d = (a - b) / b; exit !(b > 0 && d < 1e-6 && d > -1e-6) }'
 }
 
-DUST="dust_model: basic"
+DUST="dust_model: basic;isrf_habing: 1.7"
 run probe "$DUST;dust_to_gas_model: linear" 0.01
 fgr=$(sed -n 's/^MOD local_dust_to_gas_ratio=//p' probe.out)
 zs=$(sed -n 's/^MOD SolarMetalFractionByMass=//p' probe.out)
