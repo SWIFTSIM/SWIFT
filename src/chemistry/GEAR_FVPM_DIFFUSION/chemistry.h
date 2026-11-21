@@ -350,11 +350,11 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
 #ifdef WITH_MPI
   int nr_ranks = 1;
   MPI_Comm_size(MPI_COMM_WORLD, &nr_ranks);
-  if (data->use_positivity_limiter && nr_ranks > 1)
+  if (nr_ranks > 1)
     error(
-        "The positivity limiter of the GEAR FVPM chemistry does not support "
-        "MPI runs yet. Set GEARChemistry:use_positivity_limiter to 0 to run "
-        "on several ranks.");
+        "The GEAR FVPM chemistry does not support runs on more than one MPI "
+        "rank yet: a local inactive particle gets no flux from a foreign "
+        "active neighbour, so the metal mass is not conserved.");
 #endif
 
   /***************************************************************************/

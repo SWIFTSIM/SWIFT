@@ -82,12 +82,18 @@ MPI support
 ~~~~~~~~~~~~
 
 .. warning::
-   The global FCT positivity limiter does **not yet support** runs on more
-   than one MPI rank, for either the parabolic or the hyperbolic FVPM
-   diffusion scheme. With ``GEARChemistry:use_positivity_limiter: 1`` (the
-   default), such a run stops at start-up with an error that names the
-   parameter. Set it to ``0`` to run on several ranks, without the
-   positivity limiter.
+   Running with more than one MPI rank is **not currently supported** for
+   either the parabolic or the hyperbolic FVPM diffusion scheme, and this
+   is enforced by an explicit, unconditional error at start-up, whatever
+   the value of ``GEARChemistry:use_positivity_limiter``. The reason is a
+   known defect of the exchange across ranks: a local inactive particle
+   gets no flux from an active neighbour on another rank, so the metal
+   mass is not conserved.
+
+   In short: **configure and run single-node/single-rank** (e.g. with
+   ``--disable-mpi``, or by launching ``swift`` rather than ``swift_mpi``,
+   or ``swift_mpi`` on a single rank) when using either FVPM diffusion
+   scheme.
 
 Worked examples
 ~~~~~~~~~~~~~~~~

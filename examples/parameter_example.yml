@@ -749,7 +749,7 @@ GEARChemistry:
   flux_limiter_safety: 0.5            # (Optional) Safety factor of the per-pair metal mass flux limiter. Default: 0.5
   flux_limiter_sink_stability: 0.25   # (Optional) Maximal fractional change of a receiver metal mass from one neighbour. Default: 0.25
   flux_limiter_startup: 0.1           # (Optional) Maximal fraction of the donor metal mass that may flow to a metal-free neighbour. Default: 0.1
-  use_positivity_limiter: 1           # (Optional) Scale each particle's total outflow so that its metal mass stays positive. Not supported on several MPI ranks: set 0 to run there. Default: 1
+  use_positivity_limiter: 1           # (Optional) Scale each particle's total outflow so that its metal mass stays positive. Default: 1
 
   # MFVP hyperbolic diffusion only
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.
