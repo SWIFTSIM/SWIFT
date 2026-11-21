@@ -3336,9 +3336,9 @@ band is clamped to zero by \code{radiation\_get\_band\_u\_nonnegative}
 (\code{src/feedback/GEAR/radiation.h:104}, :113). Grackle reads the two rates
 through \code{cooling\_get\_isrf\_habing\_subgrid} and
 \code{cooling\_get\_LW\_dissociation\_rate\_subgrid}
-(\code{src/cooling/grackle/cooling\_gear\_subgrid.h:267-299}). The second
+(\code{src/cooling/radiation\_rates\_to\_chemistry.h:289-339}). The second
 returns zero for the build modes \code{grackle\_0} and \code{grackle\_1}
-(\code{COOLING\_GRACKLE\_MODE} below 2, set by \code{--with-cooling}), whose
+(\code{COOLING\_NETWORK} below 2, set by \code{--with-cooling}), whose
 chemical network has no H$_2$. Both are called in
 \code{cooling\_copy\_to\_grackle} (\code{src/cooling/grackle/cooling.c:893-923}). \code{dust\_chemistry},
 \code{photoelectric\_heating} and \code{use\_isrf\_field} are switched on at
@@ -3559,7 +3559,7 @@ called at \code{src/feedback/GEAR\_thermal/feedback.c:538}).
 \paragraph{Redshift and band-edge transfer (Sec.~\ref{sec:packet-transfer}).}
 The constants are set at start-up by \code{radiation\_packet\_startup}
 (\code{radiation\_packet.c:1054-1075}, called through \code{feedback\_radiation\_transport\_startup}
-at \code{src/runner\_radiation\_feedback.c:313}) through
+at \code{src/engine\_config.c:665}) through
 \code{radiation\_packet\_set\_redshift} (\code{radiation\_packet.c:304-313}).
 Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:1096-1145}).

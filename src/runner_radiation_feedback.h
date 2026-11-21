@@ -328,21 +328,17 @@ runner_do_stars_hii_ionization_feedback(struct runner *r, struct cell *c,
 #endif
 
 /**
- * @brief Start-up of the subgrid radiation, called unconditionally from
- * engine_config(): hands the box to the ISRF packet emission and prints
- * warnings about the HII search-radius / box-size relationship.
+ * @brief Start-up of the subgrid radiation, called from engine_config() in a
+ * stars run: prints warnings about the HII search-radius / box-size
+ * relationship.
  *
- * A no-op when neither the HII loop nor the ISRF part is compiled.
+ * A no-op when the HII loop is not compiled. The packet transport start-up
+ * is a separate call in engine_config(), made with or without stars.
  *
  * @param e The #engine.
  */
 #ifdef IONIZATION_FEEDBACK_LOOP
 void feedback_radiation_startup_diagnostics(const struct engine *e);
-#elif defined(GEAR_SUBGRID_RADIATION_ISRF)
-__attribute__((always_inline)) INLINE static void
-feedback_radiation_startup_diagnostics(const struct engine *e) {
-  feedback_radiation_transport_startup(e);
-}
 #else
 __attribute__((always_inline)) INLINE static void
 feedback_radiation_startup_diagnostics(const struct engine *e) {}

@@ -301,17 +301,12 @@ __attribute__((always_inline)) INLINE static void runner_hii_offer_candidate(
 }
 
 /**
- * @brief Start-up of the subgrid radiation: hand the box to the ISRF packet
- * emission, and print warnings about the HII search-radius / box-size
- * relationship.
+ * @brief Start-up of the subgrid radiation: print warnings about the HII
+ * search-radius / box-size relationship.
  *
  * @param e The #engine.
  */
 void feedback_radiation_startup_diagnostics(const struct engine *e) {
-
-#ifdef GEAR_SUBGRID_RADIATION_ISRF
-  feedback_radiation_transport_startup(e);
-#endif
 
   /* Both warnings concern the HII search only */
   if (!(e->feedback_props->radiation_policy & radiation_policy_photoionization))
