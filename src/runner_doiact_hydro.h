@@ -150,6 +150,13 @@
 #define DO_DRIFT_DEBUG_CHECKS 1
 #endif
 
+/* Does the non-symmetric interaction of this loop also write an inactive pj? */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#define LOOP_UPDATES_INACTIVE_NEIGHBOURS hydro_force_updates_inactive_neighbours
+#else
+#define LOOP_UPDATES_INACTIVE_NEIGHBOURS 0
+#endif
+
 #define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec, f)
 #define IACT_NONSYM_VEC _IACT_NONSYM_VEC(FUNCTION)
 

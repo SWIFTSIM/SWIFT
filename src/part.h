@@ -45,29 +45,38 @@ struct threadpool;
 #define bpart_align 128
 #define sink_align 128
 
-/* Import the right hydro particle definition */
+/* Import the right hydro particle definition.
+ * hydro_force_updates_inactive_neighbours: does the non-symmetric force
+ * interaction also write an inactive pj? */
 #if defined(NONE_SPH)
 #include "./hydro/None/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(MINIMAL_SPH)
 #include "./hydro/Minimal/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(GADGET2_SPH)
 #include "./hydro/Gadget2/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(HOPKINS_PE_SPH)
 #include "./hydro/PressureEntropy/hydro_part.h"
 #define hydro_need_extra_init_loop 1
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(HOPKINS_PU_SPH)
 #include "./hydro/PressureEnergy/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(HOPKINS_PU_SPH_MONAGHAN)
 #include "./hydro/PressureEnergyMorrisMonaghanAV/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(PHANTOM_SPH)
 #include "./hydro/Phantom/hydro_part.h"
 #define EXTRA_HYDRO_LOOP
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(GIZMO_MFV_SPH) || defined(GIZMO_MFM_SPH)
 #include "./hydro/Gizmo/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -77,34 +86,35 @@ struct threadpool;
 #elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(PLANETARY_SPH)
 #include "./hydro/Planetary/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #elif defined(REMIX_SPH)
 #include "./hydro/REMIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #define EXTRA_HYDRO_LOOP
 #define EXTRA_HYDRO_LOOP_TYPE2
 #elif defined(SPHENIX_SPH)
 #include "./hydro/SPHENIX/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(GASOLINE_SPH)
 #include "./hydro/Gasoline/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #define EXTRA_HYDRO_LOOP
 #elif defined(ANARCHY_PU_SPH)
 #include "./hydro/AnarchyPU/hydro_part.h"
 #define hydro_need_extra_init_loop 0
+#define hydro_force_updates_inactive_neighbours 0
 #define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of SPH variant"
-#endif
-
-/* Does the force loop also update the inactive neighbours of a particle? */
-#ifndef hydro_force_updates_inactive_neighbours
-#define hydro_force_updates_inactive_neighbours 0
 #endif
 
 /* Import the right gravity particle definition */

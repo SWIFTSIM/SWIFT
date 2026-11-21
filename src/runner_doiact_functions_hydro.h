@@ -1689,36 +1689,14 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float piy = pi->x[1] - shift_i[1];
     const float piz = pi->x[2] - shift_i[2];
 
-    const int update_i = PART_IS_ACTIVE(pi, e) && local_i;
+    /* A foreign active pi loops over all of cj if the loop writes inactive
+       neighbours: an inactive local pj gets the pair term on this rank only */
+    const int update_i =
+        PART_IS_ACTIVE(pi, e) && (local_i || LOOP_UPDATES_INACTIVE_NEIGHBOURS);
 
     /* Do we need to only check active parts in cj
        (i.e. pi does not need updating) ? */
     if (!update_i) {
-
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
-      /* A foreign active pi also updates the inactive local pj in its range */
-      if (hydro_force_updates_inactive_neighbours && !local_i && local_j &&
-          PART_IS_ACTIVE(pi, e)) {
-        for (int pjd = 0; pjd < count_j && sort_j[pjd].d < di; pjd++) {
-          struct part *pj = &parts_j[sort_j[pjd].i];
-          if (part_is_inhibited(pj, e) || PART_IS_ACTIVE(pj, e)) continue;
-
-          const float hj = pj->h;
-          if (hj < hj_lo || hj >= h_hi) continue;
-
-          const float pjx = pj->x[0] - shift_j[0];
-          const float pjy = pj->x[1] - shift_j[1];
-          const float pjz = pj->x[2] - shift_j[2];
-          const float dx[3] = {pix - pjx, piy - pjy, piz - pjz};
-          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-          if (r2 < hig2) {
-            IACT_NONSYM(r2, dx, hi, hj, pi, pj, a, H);
-            IACT_NONSYM_MHD(r2, dx, hi, hj, pi, pj, mu_0, a, H);
-          }
-        }
-      }
-#endif
 
       /* Loop over the *active* parts in cj within range of pi */
       for (int pjd = 0; pjd < count_active_j && sort_active_j[pjd].d < di;
@@ -1969,36 +1947,13 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
     const float pjy = pj->x[1] - shift_j[1];
     const float pjz = pj->x[2] - shift_j[2];
 
-    const int update_j = PART_IS_ACTIVE(pj, e) && local_j;
+    /* Same for a foreign active pj and an inactive local pi */
+    const int update_j =
+        PART_IS_ACTIVE(pj, e) && (local_j || LOOP_UPDATES_INACTIVE_NEIGHBOURS);
 
     /* Do we need to only check active parts in ci
        (i.e. pj does not need updating) ? */
     if (!update_j) {
-
-#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
-      /* Same for a foreign active pj and the local pi out of their own range */
-      if (hydro_force_updates_inactive_neighbours && !local_j && local_i &&
-          PART_IS_ACTIVE(pj, e)) {
-        for (int pid = count_i - 1; pid >= 0 && sort_i[pid].d - rshift > dj;
-             pid--) {
-          struct part *pi = &parts_i[sort_i[pid].i];
-          if (part_is_inhibited(pi, e) || PART_IS_ACTIVE(pi, e)) continue;
-
-          const float hi = pi->h;
-          const float hig2 = hi * hi * kernel_gamma2;
-          const float pix = pi->x[0] - shift_i[0];
-          const float piy = pi->x[1] - shift_i[1];
-          const float piz = pi->x[2] - shift_i[2];
-          const float dx[3] = {pjx - pix, pjy - piy, pjz - piz};
-          const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-
-          if (r2 < hjg2 && r2 >= hig2) {
-            IACT_NONSYM(r2, dx, hj, hi, pj, pi, a, H);
-            IACT_NONSYM_MHD(r2, dx, hj, hi, pj, pi, mu_0, a, H);
-          }
-        }
-      }
-#endif
 
       /* Loop over the *active* parts in ci. */
       for (int pid = count_active_i - 1;
