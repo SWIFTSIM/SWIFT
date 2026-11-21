@@ -318,6 +318,7 @@ static void build_chem_data(struct chemistry_global_data *chem_data,
   chem_data->flux_limiter_safety = 0.5;
   chem_data->flux_limiter_sink_stability = 0.25;
   chem_data->flux_limiter_startup = 0.1;
+  chem_data->use_positivity_limiter = 1;
 }
 
 /**

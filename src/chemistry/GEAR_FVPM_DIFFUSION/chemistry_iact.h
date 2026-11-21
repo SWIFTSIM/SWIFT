@@ -383,10 +383,12 @@ runner_iact_chemistry_fluxes_common(
       continue;
     }
 
-    if (totflux[m][0] > 0.0) {
-      totflux[m][0] *= chi->fct_theta[m];
-    } else if (totflux[m][0] < 0.0) {
-      totflux[m][0] *= chj->fct_theta[m];
+    if (chem_data->use_positivity_limiter) {
+      if (totflux[m][0] > 0.0) {
+        totflux[m][0] *= chi->fct_theta[m];
+      } else if (totflux[m][0] < 0.0) {
+        totflux[m][0] *= chj->fct_theta[m];
+      }
     }
 
     /* Update V*U ****************************************/

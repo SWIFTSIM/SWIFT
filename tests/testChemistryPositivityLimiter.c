@@ -107,6 +107,80 @@ static void exchange_all(struct part *donor, struct part *ngb, const int prep,
   }
 }
 
+/**
+ * @brief Run prep, theta and apply on the fixture.
+ *
+ * @param positive (return) Is the donor mass non-negative for all elements?
+ * @return Is the metal mass conserved for all elements?
+ */
+static int run_fixture(const struct chemistry_global_data *cd,
+                       const struct cosmology *cosmo, int *positive) {
+
+  /* Icosahedron vertices at distance 0.5 from the donor. */
+  const double phi = 0.5 * (1. + sqrt(5.));
+  const double v[N_NEIGHBOURS][3] = {
+      {0, 1, phi}, {0, -1, phi}, {0, 1, -phi}, {0, -1, -phi},
+      {1, phi, 0}, {-1, phi, 0}, {1, -phi, 0}, {-1, -phi, 0},
+      {phi, 0, 1}, {-phi, 0, 1}, {phi, 0, -1}, {-phi, 0, -1}};
+  const double scale = 0.5 / sqrt(1. + phi * phi);
+
+  struct part donor;
+  struct part ngb[N_NEIGHBOURS];
+  const double origin[3] = {0., 0., 0.};
+  init_part(&donor, 1, origin, 1e-6);
+  for (int n = 0; n < N_NEIGHBOURS; n++) {
+    const double x[3] = {scale * v[n][0], scale * v[n][1], scale * v[n][2]};
+    init_part(&ngb[n], n + 2, x, 0.);
+
+    /* Metal density falling away from the donor drives an outward flux. */
+    for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++)
+      for (int k = 0; k < 3; k++)
+        ngb[n].chemistry_data.gradients.rhoZ[m][k] = -4e-6 * x[k];
+  }
+
+  exchange_all(&donor, ngb, /*prep=*/1, cosmo, cd);
+
+  const double available = donor.chemistry_data.metal_mass[0];
+  const double sum_out = donor.chemistry_data.fct_sum_out[0];
+  message("Donor metal mass %e, prospective outflow %e", available, sum_out);
+  if (!(sum_out > available))
+    error("The fixture does not over-drain the donor: sum_out=%e <= %e",
+          sum_out, available);
+
+  chemistry_end_fct_prep(&donor);
+  for (int n = 0; n < N_NEIGHBOURS; n++) chemistry_end_fct_prep(&ngb[n]);
+
+  exchange_all(&donor, ngb, /*prep=*/0, cosmo, cd);
+
+  int conserved_all = 1;
+  *positive = 1;
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    const double donor_final = donor.chemistry_data.metal_mass[m] +
+                               donor.chemistry_data.flux.metal_mass[m];
+    double net = donor.chemistry_data.flux.metal_mass[m];
+    double traffic = fabs(net);
+    for (int n = 0; n < N_NEIGHBOURS; n++) {
+      net += ngb[n].chemistry_data.flux.metal_mass[m];
+      traffic += fabs(ngb[n].chemistry_data.flux.metal_mass[m]);
+    }
+
+    /* Each pair adds +F and -F, so only the summation rounding remains. */
+    const double conservation_bar = 2. * (N_NEIGHBOURS + 1) * DBL_EPSILON;
+    const int finite = (donor_final == donor_final) && (net == net);
+    const int positive_m = finite && donor_final >= 0.;
+    const int conserved =
+        finite && fabs(net) <= conservation_bar * fmax(traffic, DBL_MIN);
+    if (m == 0 || !conserved)
+      message(
+          "element %d: donor final mass %e (theta %e), net flux %e, "
+          "traffic %e",
+          m, donor_final, donor.chemistry_data.fct_theta[m], net, traffic);
+    *positive &= positive_m;
+    conserved_all &= conserved;
+  }
+  return conserved_all;
+}
+
 int main(int argc, char *argv[]) {
 
   unsigned long long cpufreq = 0;
@@ -131,69 +205,18 @@ int main(int argc, char *argv[]) {
   cd.flux_limiter_sink_stability = 0.25;
   cd.flux_limiter_startup = 0.1;
 
-  /* Icosahedron vertices at distance 0.5 from the donor. */
-  const double phi = 0.5 * (1. + sqrt(5.));
-  const double v[N_NEIGHBOURS][3] = {
-      {0, 1, phi},  {0, -1, phi},  {0, 1, -phi},  {0, -1, -phi},
-      {1, phi, 0},  {-1, phi, 0},  {1, -phi, 0},  {-1, -phi, 0},
-      {phi, 0, 1},  {-phi, 0, 1},  {phi, 0, -1},  {-phi, 0, -1}};
-  const double scale = 0.5 / sqrt(1. + phi * phi);
+  int positive_on, positive_off;
+  cd.use_positivity_limiter = 1;
+  const int conserved_on = run_fixture(&cd, &cosmo, &positive_on);
+  message("Limiter on:  positive=%d conserved=%d", positive_on, conserved_on);
 
-  struct part donor;
-  struct part ngb[N_NEIGHBOURS];
-  const double origin[3] = {0., 0., 0.};
-  init_part(&donor, 1, origin, 1e-6);
-  for (int n = 0; n < N_NEIGHBOURS; n++) {
-    const double x[3] = {scale * v[n][0], scale * v[n][1], scale * v[n][2]};
-    init_part(&ngb[n], n + 2, x, 0.);
+  /* The fixture must drive the donor negative when the limiter is off. */
+  cd.use_positivity_limiter = 0;
+  const int conserved_off = run_fixture(&cd, &cosmo, &positive_off);
+  message("Limiter off: positive=%d conserved=%d", positive_off, conserved_off);
 
-    /* Metal density falling away from the donor drives an outward flux. */
-    for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++)
-      for (int k = 0; k < 3; k++)
-        ngb[n].chemistry_data.gradients.rhoZ[m][k] = -4e-6 * x[k];
-  }
-
-  exchange_all(&donor, ngb, /*prep=*/1, &cosmo, &cd);
-
-  const double available = donor.chemistry_data.metal_mass[0];
-  const double sum_out = donor.chemistry_data.fct_sum_out[0];
-  message("Donor metal mass %e, prospective outflow %e", available, sum_out);
-  if (!(sum_out > available))
-    error("The fixture does not over-drain the donor: sum_out=%e <= %e",
-          sum_out, available);
-
-  chemistry_end_fct_prep(&donor);
-  for (int n = 0; n < N_NEIGHBOURS; n++) chemistry_end_fct_prep(&ngb[n]);
-
-  exchange_all(&donor, ngb, /*prep=*/0, &cosmo, &cd);
-
-  int pass = 1;
-  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
-    const double donor_final = donor.chemistry_data.metal_mass[m] +
-                               donor.chemistry_data.flux.metal_mass[m];
-    double net = donor.chemistry_data.flux.metal_mass[m];
-    double traffic = fabs(net);
-    for (int n = 0; n < N_NEIGHBOURS; n++) {
-      net += ngb[n].chemistry_data.flux.metal_mass[m];
-      traffic += fabs(ngb[n].chemistry_data.flux.metal_mass[m]);
-    }
-
-    /* Each pair adds +F and -F, so only the summation rounding remains. */
-    const double conservation_bar = 2. * (N_NEIGHBOURS + 1) * DBL_EPSILON;
-    const int finite = (donor_final == donor_final) && (net == net);
-    const int positive = finite && donor_final >= 0.;
-    const int conserved =
-        finite && fabs(net) <= conservation_bar * fmax(traffic, DBL_MIN);
-    if (m == 0 || !positive || !conserved)
-      message(
-          "element %d: donor final mass %e (theta %e), net flux %e, "
-          "traffic %e: %s",
-          m, donor_final, donor.chemistry_data.fct_theta[m], net, traffic,
-          (positive && conserved) ? "PASS" : "FAIL");
-    pass &= positive && conserved;
-  }
-
-  if (!pass) error("testChemistryPositivityLimiter: FAILED");
+  if (!positive_on || !conserved_on || positive_off)
+    error("testChemistryPositivityLimiter: FAILED");
   message("testChemistryPositivityLimiter: PASSED");
   return 0;
 }

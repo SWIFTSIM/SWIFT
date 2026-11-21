@@ -172,6 +172,9 @@ struct chemistry_global_data {
   /*! Startup fraction: max fraction of the source's mass that may flow to
       a pristine (Z=0) neighbour, to seed diffusion into the vacuum. */
   double flux_limiter_startup;
+
+  /*! Run the positivity limiter (prep loop, theta and the scaled fluxes)? */
+  int use_positivity_limiter;
 };
 
 #endif /* SWIFT_CHEMISTRY_PROPERTIES_GEAR_FVPM_DIFFUSION_H */

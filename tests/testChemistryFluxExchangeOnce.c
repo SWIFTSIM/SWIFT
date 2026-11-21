@@ -45,7 +45,7 @@
  *    from a foreign active neighbour.
  */
 
-#if (defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||          \
+#if (defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||             \
      defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)) && \
     defined(SWIFT_CHEMISTRY_DEBUG_CHECKS)
 
@@ -323,8 +323,7 @@ static int may_be_dropped(const struct part *p, const enum expected_result x,
  */
 static int count_mismatches(const struct cell *c, const int *ref,
                             const int pass, const enum expected_result x,
-                            const struct engine *e, int *doubles,
-                            int *drops) {
+                            const struct engine *e, int *doubles, int *drops) {
   int bad = 0;
   for (int k = 0; k < c->hydro.count; k++) {
     const struct part *p = &c->hydro.parts[k];
@@ -440,6 +439,7 @@ int main(int argc, char *argv[]) {
   chem_data.flux_limiter_safety = 0.5;
   chem_data.flux_limiter_sink_stability = 0.25;
   chem_data.flux_limiter_startup = 0.1;
+  chem_data.use_positivity_limiter = 1;
 
   struct engine engine;
   bzero(&engine, sizeof(struct engine));
@@ -481,7 +481,8 @@ int main(int argc, char *argv[]) {
       if (foreign) x = expect_foreign_gap;
       if (variant == 3) x = expect_split_pair_gap;
 
-      struct cell *ci = make_cell(loc_i, split, 0, 0.5, top_band_active, &engine);
+      struct cell *ci =
+          make_cell(loc_i, split, 0, 0.5, top_band_active, &engine);
       struct cell *cj =
           make_cell(offsets[o], split, foreign, 0.5, top_band_active, &engine);
       sprintf(label, "pair %s, %s%s%s", pair_names[o],

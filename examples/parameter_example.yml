@@ -745,6 +745,11 @@ GEARChemistry:
   hll_riemann_solver_psi:  0.1        # (Optional, parabolic solver only; still shapes the parabolic part blended into hyperbolic runs) Artificial-diffusion tolerance (> 0), eq (7) in Hopkins 2017. (Default: 0.1)
   hll_riemann_solver_epsilon: 0.1     # (Optional) Tolerance parameter for the Hopkins 2017 HLL, eq (14). It must respect 0 <= epsilon <= 1. Default: 0.0
   C_CFL_chemistry: 0.9                # Courant-Friedrich-Levy parameter for the CFL time integration of the diffusion equations.
+  flux_limiter_noise_gate: 1e-15      # (Optional) Pair fluxes below this fraction of the donor metal mass are set to zero. Default: 1e-15
+  flux_limiter_safety: 0.5            # (Optional) Safety factor of the per-pair metal mass flux limiter. Default: 0.5
+  flux_limiter_sink_stability: 0.25   # (Optional) Maximal fractional change of a receiver metal mass from one neighbour. Default: 0.25
+  flux_limiter_startup: 0.1           # (Optional) Maximal fraction of the donor metal mass that may flow to a metal-free neighbour. Default: 0.1
+  use_positivity_limiter: 1           # (Optional) Scale each particle's total outflow so that its metal mass stays positive. Not supported on several MPI ranks: set 0 to run there. Default: 1
 
   # MFVP hyperbolic diffusion only
   relaxation_time_mode:  Constant     # (Hyperbolic diffusion only) Relaxation time mode. Constant = constant relaxation time ; Turbulent = relaxation time based on gas shear tensor norm.

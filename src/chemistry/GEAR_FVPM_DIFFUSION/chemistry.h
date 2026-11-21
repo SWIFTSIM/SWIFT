@@ -52,6 +52,17 @@
 #define GEAR_FVPM_DIFFUSION_EPSILON_RIEMANN_SOLVER_DEFAULT 0.0
 
 /**
+ * @brief Does this chemistry scheme need the flux prep loop before the
+ * force loop?
+ *
+ * @param cd The global chemistry information.
+ */
+static INLINE int chemistry_need_flux_prep_loop(
+    const struct chemistry_global_data *cd) {
+  return cd->use_positivity_limiter;
+}
+
+/**
  * @brief Prints the properties of the chemistry model to stdout.
  *
  * @brief The #chemistry_global_data containing information about the current
@@ -329,6 +340,19 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
       parameter_file, "GEARChemistry:flux_limiter_startup",
       GEAR_FVPM_DIFF_LIMITER_STARTUP_DEFAULT);
 
+  data->use_positivity_limiter = parser_get_opt_param_int(
+      parameter_file, "GEARChemistry:use_positivity_limiter", 1);
+
+#ifdef WITH_MPI
+  int nr_ranks = 1;
+  MPI_Comm_size(MPI_COMM_WORLD, &nr_ranks);
+  if (data->use_positivity_limiter && nr_ranks > 1)
+    error(
+        "The positivity limiter of the GEAR FVPM chemistry does not support "
+        "MPI runs yet. Set GEARChemistry:use_positivity_limiter to 0 to run "
+        "on several ranks.");
+#endif
+
   /***************************************************************************/
   /* Make it mandatory for parabolic diffusion */
   data->C_CFL_chemistry =
@@ -388,6 +412,7 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("Flux limiter sink stability: %e",
             data->flux_limiter_sink_stability);
     message("Flux limiter startup:       %e", data->flux_limiter_startup);
+    message("Positivity limiter:         %d", data->use_positivity_limiter);
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     message("Relaxation time mode:       %u", data->relaxation_time_mode);
     message("Relaxation time (constant_mode): %e", data->tau);
