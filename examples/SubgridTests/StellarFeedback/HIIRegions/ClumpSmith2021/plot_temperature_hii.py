@@ -26,6 +26,10 @@ threshold, regardless of tag status). Previously-tagged gas can stay hot
 well past its tag's expiry without being re-tagged, so r_physics can
 exceed r_HII.
 
+Scope and limits: the ionized-gas temperature floor of this code is metallicity-dependent (about 47,500 K at
+Z=0), not the flat 1e4 K of Smith et al. (2021), so r_HII runs systematically larger than the numbers of the paper
+unless the build flag of the README fixes T_i.
+
 Usage:
     python3 plot_temperature_hii.py                    # last snapshot in snap/
     python3 plot_temperature_hii.py -s snap/snapshot -i 20

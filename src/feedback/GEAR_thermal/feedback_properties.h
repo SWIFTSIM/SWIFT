@@ -73,10 +73,12 @@ enum isrf_packet_light_speed {
   isrf_packet_light_speed_unlimited = 0,
   /*! A share arrives no earlier than its path divided by the limit speed,
    * in the frame of the gas: gas that moves away from the sender faster than
-   * 0.99 of the limit speed gets its light early. Default. */
+   * 0.99 of the limit speed gets its light early. The step is not bounded:
+   * the light moves at most one kernel per gas step, so the gas step sets its
+   * speed, typically far below the limit. Default. */
   isrf_packet_light_speed_cap = 1,
-  /*! As the cap, and the time step is bounded so that the light moves at the
-   * limit speed. */
+  /*! As the cap, and the time step is bounded so that the light can move at
+   * the limit speed, at the cost of many more steps. */
   isrf_packet_light_speed_fixed = 2,
 };
 

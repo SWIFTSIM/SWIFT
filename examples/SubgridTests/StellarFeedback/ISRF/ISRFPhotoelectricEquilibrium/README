@@ -3,12 +3,11 @@ A star-free periodic box of gas at solar metallicity, bathed in a uniform far-UV
 field, evolved to thermal equilibrium. Photoelectric heating from dust balances
 the metal and H/He cooling. The final temperature and pressure at each density give
 curves of the kind shown in Kim, Gong, Kim and Ostriker 2023 (ApJS 264, 10,
-Sections 7.1.1 and 8.2). With the constant heating efficiency and no cosmic rays
-used here, the box does not reproduce that paper's numbers. It is checked against a
-one-zone integration with the same cooling library (see Check). A scan over the density
-gives T(n) and P(n). In a density range the final state depends on the starting temperature: heating and
-cooling balance at more than one stable temperature there, so a hot start and a cold
-start end on different branches (hysteresis).
+Sections 7.1.1 and 8.2). The box is checked against a one-zone integration with
+the same cooling library (see Check). A scan over the density gives T(n) and P(n).
+In a density range heating and cooling balance at more than one stable
+temperature, so a hot start and a cold start end on different branches
+(hysteresis).
 
 The field is not produced by stars. `makeIC.py` writes it into the initial
 conditions as the two optional gas fields `PESpecificEnergy` and
@@ -40,13 +39,10 @@ Settings in `run.sh`, each overridable on the command line:
 | `metallicity` | 0.6475 | `GEARChemistry:initial_metallicity`; 0.6475 is a metal mass fraction of 0.01295, the solar value of both libraries |
 | `field` | seeded | `seeded`, `none` (control, no field) or `background` (geajay only: constant G0 from the library, ISRF module off) |
 | `pe_model` | library default | heating model: `constant`, `wolfire1995` for Grackle; `constant_efficiency`, `grain_charge_epsilon`, `density_epsilon` for geajay |
-| `duration_myr` | 50 / `gas_density` from 100 H/cm^3, else 5 / `gas_density` | run length in Myr; 0.01 and 0.03 H/cm^3 do not settle |
+| `duration_myr` | 50 / `gas_density` from 100 H/cm^3, else 5 / `gas_density` | run length in Myr |
 | `level` | 5 | 32768 particles |
 
-`run.sh` sets `dt_max` to 1e-5 / `gas_density` (internal units), which is 0.00978 / n Myr. In a
-one-zone integration this step gave the same equilibrium as much shorter steps at every
-density from 0.1 to 1000 H/cm^3. A step much longer than the relaxation time can make
-the gas oscillate around the equilibrium.
+`run.sh` sets `dt_max` to 1e-5 / `gas_density` (internal units), which is 0.00978 / n Myr.
 The photoelectric heating of `wolfire1995` and `grain_charge_epsilon` scales with
 the free electron density. Neutral gas has almost none, so these models heat
 almost nothing here without cosmic-ray ionisation, which this setup does not include.
@@ -77,20 +73,11 @@ it equals the one-zone value, that value is settled (the run is long enough to c
 an equilibrium), the seeded field is nonzero and unchanged, and the run without field is at
 least ten times colder. It also prints the spread of the specific energy over the
 particles: a 95th to 5th percentile ratio above 1.5 means the box split into two phases.
-The equilibrium bar includes a float32 stall ceiling: the integrator rounds each half-kick of
-the energy update in float32, so u can stay up to (ulp(u) / u) tau / dt away from the
-equilibrium (dt is the step of the run, read from `timesteps.txt` and accepted only if every
-step of the last 20 per cent updated all particles; tau is the one-zone relaxation time). It
-is an upper limit, not a prediction, and holds for the step that `run.sh` sets and for steps
-down to a quarter of it; the check fails above tau/dt = 1400. A real error of u
-smaller than bar + g (lowering u) or bar - g (raising u) passes, with g the signed gap of the run; the
-output prints these limits. `--self-test` adds inputs that must fail.
-Use
+The equilibrium bar includes a float32 stall ceiling of the integrator; the
+script docstring derives it. `--self-test` adds inputs that must fail. Use
 `--constant-g0 <G0>` for a run with `field=background`.
 
 For a density scan, name the run directories `n<density>_hot` and `n<density>_cold`
 and write each run's check output to `<run>/check.txt`. Then run
 `isrf_photoelectric_equilibrium_ladder.py <directory>`. It leaves out runs whose check has a
-FAIL line or marks the run SPLIT (two phases in one box), prints the equilibrium specific energy and P(n) of the others, and checks that the hot
-and cold branches differ by a factor of 1.5 or more somewhere between 0.16 and 0.20 H/cm^3 and
-that P(n) has a maximum followed by a minimum.
+FAIL line or marks the run SPLIT (two phases in one box), prints the equilibrium specific energy and P(n) of the others, and checks the hysteresis and the shape of P(n) (see the script docstring).

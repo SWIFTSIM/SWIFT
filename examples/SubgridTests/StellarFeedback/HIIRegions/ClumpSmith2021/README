@@ -10,8 +10,7 @@ Q_H ~ 1e49 s^-1.
 `initial_metallicity=0` (pure hydrogen, matching the paper) is the
 default. This code's own ionized-gas temperature floor is
 metallicity-dependent, reaching ~47,500 K at Z=0, not the paper's flat
-1e4 K. So `r_HII` runs systematically larger than the paper's own
-numbers.
+1e4 K.
 
 Combine `initial_metallicity=0` with the
 `IONIZATION_FEEDBACK_DEBUG_FIXED_IONIZED_TEMPERATURE_K=1e4` build flag

@@ -80,10 +80,10 @@ The transport needs a yields table with the datasets ``MeanPhotonEnergyPE`` and 
 Light held by a gas particle with no downstream neighbour escapes and leaves the transport. A star counts the light that its emission cones send to no gas as escaped too. Light held by a gas particle that becomes a star, or that a sink swallows, leaves with it and is booked to that star or sink as removed. ``./configure --enable-isrf-debugging-checks`` keeps these energy ledgers and writes them to the snapshot (see :ref:`gear_radiation`).
 
 ``GEARFeedback:ISRF_packet_light_speed`` (default ``cap``)
-  Speed limit of the light. ``cap``: a share arrives no earlier than the separation divided by the limit speed, in the frame of the gas. ``fixed``: as ``cap``, and the time step of each gas particle is bounded by :math:`f_{\Delta t}\,a\,h / v`, so that the light moves at the limit speed. ``unlimited``: a share arrives at the next step of its receiver, and the light can move faster than :math:`c` (debugging only, SWIFT warns at start-up).
+  Speed limit of the light. ``cap``: a share arrives no earlier than the separation divided by the limit speed, in the frame of the gas. The light still moves at most one kernel per gas step, so in a production run its speed is set by the gas time step and is typically far below :math:`c`; the limit speed is only a ceiling. ``fixed``: as ``cap``, and the time step of each gas particle is bounded by :math:`f_{\Delta t}\,a\,h / v`, so that the light can move at the limit speed, at the cost of many more steps. ``unlimited``: a share arrives at the next step of its receiver, and the light can move faster than :math:`c` (debugging only, SWIFT warns at start-up).
 
 ``GEARFeedback:ISRF_packet_light_speed_fraction_of_c`` (default ``0.99``)
-  Limit speed :math:`v` as a fraction of :math:`c`, in :math:`(0, 1]`. Read by ``cap`` and ``fixed``. Raise it only to approach :math:`c`; lower it to slow the light on purpose.
+  Limit speed :math:`v` as a fraction of :math:`c`, in :math:`(0, 1]`. Read by ``cap`` and ``fixed``. With ``cap`` it only limits the arrival delay and does not set the speed of the light (see above). Raise it only to approach :math:`c` with ``fixed``; lower it to slow the light on purpose.
 
 ``GEARFeedback:ISRF_packet_light_speed_time_step_margin`` (default ``0.5``)
   Margin :math:`f_{\Delta t}` of the time step bound of ``fixed``, in :math:`(0, 1.69]`. Above about :math:`0.8` the bulk of the light lags behind the limit speed while its front keeps it.

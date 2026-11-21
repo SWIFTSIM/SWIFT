@@ -15,7 +15,7 @@ the light only. The light is deliberately slow: its speed is set by the time
 step, not by c. A packet (the light that a particle hands on to its
 neighbours) makes one hop of about one smoothing length per step, which is
 about 20 km/s here. `GEARFeedback:ISRF_packet_light_speed` keeps its default
-(`cap`, 0.99 c). The run lasts a few tens of steps.
+(`cap`: 0.99 c is only a ceiling, the gas step sets the speed). The run lasts a few tens of steps.
 
 # Configure
 ```
