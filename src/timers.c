@@ -153,7 +153,7 @@ const char *timers_names[timer_count] = {
     "dopair_chemistry_flux_prep",
     "dosub_self_chemistry_flux_prep",
     "dosub_pair_chemistry_flux_prep",
-    "do_chemistry_fct_ghost",
+    "do_chemistry_flux_ghost",
 };
 
 /* File to store the timers */

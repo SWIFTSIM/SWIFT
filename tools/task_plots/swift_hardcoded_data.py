@@ -92,6 +92,7 @@ TASKTYPES = [
     "rt_advance_cell_time",
     "rt_sort",
     "rt_collect_times",
+    "chemistry_flux_ghost",
     #  "count",
 ]
 
@@ -132,6 +133,7 @@ SUBTYPES = [
     "sink_do_gas_swallow",
     "rt_gradient",
     "rt_transport",
+    "chemistry_flux_prep",
     #  "count",
 ]
 

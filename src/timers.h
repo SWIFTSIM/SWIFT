@@ -153,7 +153,7 @@ enum {
   timer_dopair_chemistry_flux_prep,
   timer_dosub_self_chemistry_flux_prep,
   timer_dosub_pair_chemistry_flux_prep,
-  timer_do_chemistry_fct_ghost,
+  timer_do_chemistry_flux_ghost,
   timer_count,
 };
 

@@ -552,7 +552,7 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
 /**
  * @brief Computes the FCT positivity limiter factor theta of a particle.
  *
- * Called by the chemistry_fct_ghost task, after the chemistry_fct_prep loop
+ * Called by the chemistry_flux_ghost task, after the chemistry_flux_prep loop
  * accumulated the prospective outflow of the current flux exchange and before
  * the force loop applies the (theta-scaled) fluxes. Must be called for every
  * particle touched by the prep loop, including inactive donors, so theta is

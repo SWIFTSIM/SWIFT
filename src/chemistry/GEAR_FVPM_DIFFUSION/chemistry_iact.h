@@ -361,7 +361,7 @@ runner_iact_chemistry_fluxes_common(
      * evaluation where the donor's flux field would be updated below, to avoid
      * double counting in the nonsym double evaluation of a pair. The apply
      * pass scales the flux by the donor's theta (frozen since the
-     * chemistry_fct_ghost task), so both evaluations of a pair apply the
+     * chemistry_flux_ghost task), so both evaluations of a pair apply the
      * identical scaled flux and the exchange stays conservative. */
     if (pass == chemistry_flux_pass_prep) {
       /* NOTE: the write to the (possibly inactive) neighbour chj below is

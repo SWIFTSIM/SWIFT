@@ -2004,7 +2004,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {
       scheduler_activate(s, l->t);
     }
-    for (struct link *l = c->hydro.chemistry_fct_prep; l != NULL; l = l->next) {
+    for (struct link *l = c->hydro.chemistry_flux_prep; l != NULL;
+         l = l->next) {
       scheduler_activate(s, l->t);
 
       /* The chemistry FCT ghosts of BOTH sides must run, even for an
@@ -2012,10 +2013,10 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
          need a current-step theta before the force loop applies fluxes. */
       struct cell *ci = l->t->ci;
       struct cell *cj = l->t->cj;
-      if (ci->hydro.super->hydro.chemistry_fct_ghost != NULL)
-        scheduler_activate(s, ci->hydro.super->hydro.chemistry_fct_ghost);
-      if (cj != NULL && cj->hydro.super->hydro.chemistry_fct_ghost != NULL)
-        scheduler_activate(s, cj->hydro.super->hydro.chemistry_fct_ghost);
+      if (ci->hydro.super->hydro.chemistry_flux_ghost != NULL)
+        scheduler_activate(s, ci->hydro.super->hydro.chemistry_flux_ghost);
+      if (cj != NULL && cj->hydro.super->hydro.chemistry_flux_ghost != NULL)
+        scheduler_activate(s, cj->hydro.super->hydro.chemistry_flux_ghost);
     }
 
     for (struct link *l = c->hydro.limiter; l != NULL; l = l->next)
@@ -2046,8 +2047,8 @@ int cell_unskip_hydro_tasks(struct cell *c, struct scheduler *s) {
   else if (c->nodeID != nodeID && c_active) {
 #if defined(MPI_SYMMETRIC_FORCE_INTERACTION) && defined(WITH_MPI)
     /* TODO(MPI): when the GEAR FVPM chemistry FCT limiter gains MPI support,
-       the force pairs activated here also need their chemistry_fct_prep
-       counterparts and both supers' chemistry_fct_ghost activated (plus a
+       the force pairs activated here also need their chemistry_flux_prep
+       counterparts and both supers' chemistry_flux_ghost activated (plus a
        theta/sum_out exchange). Currently unreachable: chemistry_init()
        refuses such runs. */
     for (struct link *l = c->hydro.force; l != NULL; l = l->next) {

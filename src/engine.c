@@ -1836,8 +1836,8 @@ void engine_skip_force_and_kick(struct engine *e) {
         t->type == task_type_rt_ghost2 || t->type == task_type_rt_tchem ||
         t->type == task_type_rt_advance_cell_time ||
         t->type == task_type_neutrino_weight || t->type == task_type_csds ||
-        t->type == task_type_chemistry_fct_ghost ||
-        t->subtype == task_subtype_chemistry_fct_prep ||
+        t->type == task_type_chemistry_flux_ghost ||
+        t->subtype == task_subtype_chemistry_flux_prep ||
         t->subtype == task_subtype_force ||
         t->subtype == task_subtype_limiter ||
         t->subtype == task_subtype_gradient ||

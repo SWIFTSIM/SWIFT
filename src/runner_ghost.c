@@ -1019,8 +1019,8 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
  * @param c The cell.
  * @param timer Are we timing this ?
  */
-void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
-                                   int timer) {
+void runner_do_chemistry_flux_ghost(struct runner *r, struct cell *c,
+                                    int timer) {
 
   const struct chemistry_global_data *chemistry = r->e->chemistry;
   struct part *restrict parts = c->hydro.parts;
@@ -1032,7 +1032,7 @@ void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
   if (c->split) {
     for (int k = 0; k < 8; k++)
       if (c->progeny[k] != NULL)
-        runner_do_chemistry_fct_ghost(r, c->progeny[k], 0);
+        runner_do_chemistry_flux_ghost(r, c->progeny[k], 0);
   } else {
 
     /* Loop over ALL the parts in this cell (see note above). */
@@ -1041,7 +1041,7 @@ void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
     }
   }
 
-  if (timer) TIMER_TOC(timer_do_chemistry_fct_ghost);
+  if (timer) TIMER_TOC(timer_do_chemistry_flux_ghost);
 }
 
 /**

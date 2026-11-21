@@ -232,6 +232,8 @@ def task_is_hydro(name):
         return True
     if "xv" in name and "bpart" not in name:
         return True
+    if "chemistry_flux" in name:
+        return True
 
     task_name = [
         "sort",

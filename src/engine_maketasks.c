@@ -1843,10 +1843,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
 
       /* Ghost of the chemistry FCT positivity limiter: computes theta between
-         the fct_prep loop and the (flux-applying) force loop. */
+         the flux prep loop and the (flux-applying) force loop. */
       if (chemistry_need_flux_prep_loop(e->chemistry))
-        c->hydro.chemistry_fct_ghost = scheduler_addtask(
-            s, task_type_chemistry_fct_ghost, task_subtype_none, 0, 0, c, NULL);
+        c->hydro.chemistry_flux_ghost =
+            scheduler_addtask(s, task_type_chemistry_flux_ghost,
+                              task_subtype_none, 0, 0, c, NULL);
 #endif
 
       /* Stars */
@@ -2624,8 +2625,8 @@ static inline void engine_make_chemistry_flux_prep_dependencies(
     struct cell *c) {
 
   scheduler_addunlock(sched, c->hydro.super->hydro.extra_ghost, prep);
-  scheduler_addunlock(sched, prep, c->hydro.super->hydro.chemistry_fct_ghost);
-  scheduler_addunlock(sched, c->hydro.super->hydro.chemistry_fct_ghost, force);
+  scheduler_addunlock(sched, prep, c->hydro.super->hydro.chemistry_flux_ghost);
+  scheduler_addunlock(sched, c->hydro.super->hydro.chemistry_flux_ghost, force);
 }
 
 /**
@@ -2654,16 +2655,17 @@ static inline void engine_make_chemistry_flux_prep_task(struct engine *e,
   if (cj == NULL) {
     struct task *prep =
         scheduler_addtask(sched, task_type_self,
-                          task_subtype_chemistry_fct_prep, flags, 0, ci, NULL);
-    engine_addlink(e, &ci->hydro.chemistry_fct_prep, prep);
+                          task_subtype_chemistry_flux_prep, flags, 0, ci, NULL);
+    engine_addlink(e, &ci->hydro.chemistry_flux_prep, prep);
     engine_make_chemistry_flux_prep_dependencies(sched, prep, force, ci);
     return;
   }
 
-  struct task *prep = scheduler_addtask(
-      sched, task_type_pair, task_subtype_chemistry_fct_prep, flags, 0, ci, cj);
-  engine_addlink(e, &ci->hydro.chemistry_fct_prep, prep);
-  engine_addlink(e, &cj->hydro.chemistry_fct_prep, prep);
+  struct task *prep =
+      scheduler_addtask(sched, task_type_pair, task_subtype_chemistry_flux_prep,
+                        flags, 0, ci, cj);
+  engine_addlink(e, &ci->hydro.chemistry_flux_prep, prep);
+  engine_addlink(e, &cj->hydro.chemistry_flux_prep, prep);
   if (ci->nodeID == nodeID)
     engine_make_chemistry_flux_prep_dependencies(sched, prep, force, ci);
   if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super))

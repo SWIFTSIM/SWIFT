@@ -240,7 +240,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_self2_force(r, ci, /*below_h_max=*/0, 1);
 #ifdef EXTRA_CHEMISTRY_LOOP
-          else if (t->subtype == task_subtype_chemistry_fct_prep)
+          else if (t->subtype == task_subtype_chemistry_flux_prep)
             runner_dosub_self2_chemistry_flux_prep(r, ci, /*below_h_max=*/0, 1);
 #endif
           else if (t->subtype == task_subtype_limiter)
@@ -303,7 +303,7 @@ void *runner_main(void *data) {
           else if (t->subtype == task_subtype_force)
             runner_dosub_pair2_force(r, ci, cj, /*below_h_max=*/0, 1);
 #ifdef EXTRA_CHEMISTRY_LOOP
-          else if (t->subtype == task_subtype_chemistry_fct_prep)
+          else if (t->subtype == task_subtype_chemistry_flux_prep)
             runner_dosub_pair2_chemistry_flux_prep(r, ci, cj,
                                                    /*below_h_max=*/0, 1);
 #endif
@@ -391,8 +391,8 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-        case task_type_chemistry_fct_ghost:
-          runner_do_chemistry_fct_ghost(r, ci, 1);
+        case task_type_chemistry_flux_ghost:
+          runner_do_chemistry_flux_ghost(r, ci, 1);
           break;
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);

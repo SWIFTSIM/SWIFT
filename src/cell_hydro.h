@@ -71,7 +71,7 @@ struct cell_hydro {
     struct link *limiter;
 
     /*! Linked list of the chemistry FCT positivity-limiter prep tasks. */
-    struct link *chemistry_fct_prep;
+    struct link *chemistry_flux_prep;
 
     /*! Dependency implicit task for the ghost  (in->ghost->out)*/
     struct task *ghost_in;
@@ -90,7 +90,7 @@ struct cell_hydro {
 
     /*! The chemistry FCT ghost task (theta computation between the prep and
      * the flux loops) */
-    struct task *chemistry_fct_ghost;
+    struct task *chemistry_flux_ghost;
 
     /*! The task to end the force calculation */
     struct task *end_force;
