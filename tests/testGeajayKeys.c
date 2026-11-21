@@ -224,6 +224,24 @@ static void print_fields(const char *when, struct unit_system *us,
   printf("FIELD %s count=%d\n", when, n);
 }
 
+/* The species mass fractions that the module sets at the start. */
+static void print_species(const char *when, const struct xpart *xp) {
+  const struct cooling_xpart_data *d = &xp->cooling_data;
+#define SP(n) printf("SPECIES %s %s=%.9g\n", when, #n, (double)d->n);
+  SP(HI_frac) SP(HII_frac) SP(HeI_frac) SP(HeII_frac) SP(HeIII_frac)
+  SP(e_frac)
+#if COOLING_GEAJAY_MODE >= 2
+  SP(HM_frac) SP(H2I_frac) SP(H2II_frac)
+#endif
+#if COOLING_GEAJAY_MODE >= 3
+  SP(DI_frac) SP(DII_frac) SP(HDI_frac)
+#endif
+#if COOLING_GEAJAY_MODE >= 4
+  SP(DM_frac) SP(HDII_frac) SP(HeHII_frac)
+#endif
+#undef SP
+}
+
 /* A gas particle at the given density and energy, solved through the module:
  * what the module passes to the library is printed by the entry points above.
  * With CR_SET the energy density is first written through the documented
@@ -280,6 +298,7 @@ static void run_particle(struct swift_params *params, struct unit_system *us,
          (double)chemistry_get_total_metal_mass_fraction_for_cooling(&p));
   printf("PART stored_value_after_first_init=%.17g\n",
          (double)xp.cooling_data.cosmic_ray_value);
+  print_species("after_first_init", &xp);
   print_fields("after_first_init", us, phys_const, c, &p, &xp);
 
 #ifndef NO_CR_MODES

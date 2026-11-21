@@ -406,6 +406,9 @@ it is -1 (default: -1). The keys are ``initial_hii_to_h_ratio``, ``initial_hei_t
 ``initial_h2ii_to_h_ratio``, ``initial_hdi_to_h_ratio``, ``initial_dm_to_h_ratio``,
 ``initial_hdii_to_h_ratio`` and ``initial_hehii_to_h_ratio``. The last three need the network
 ``H_He_H2_D_ions``. A species without a ratio starts at the mass fraction 1e-20.
+Each ratio is a number of that species per H nucleus of the gas, so H\ :sub:`2` holds two of them. HI takes the
+H nuclei that HII, H\ :sub:`-`, H\ :sub:`2`, H\ :sub:`2+`, HD, HD\ :sub:`+` and HeH\ :sub:`+` do not hold:
+that is 1 - (HII + HM + 2 H2I + 2 H2II + HDI + HDII + HeHII) of the ratios. The run stops at start-up if that is below 0.
 
 Restart files
 -------------

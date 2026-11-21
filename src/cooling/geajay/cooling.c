@@ -472,6 +472,65 @@ int cooling_converged(const struct xpart *restrict xp,
 }
 
 /**
+ * @brief Number of H nuclei per H nucleus of the gas that the initial ratios
+ * place in the species other than HI and HII.
+ *
+ * The initial ratios are number ratios to the H nuclei: H2 and H2+ hold two,
+ * H-, HD, HD+ and HeH+ one each.
+ *
+ * @param cooling The cooling properties.
+ */
+static double cooling_initial_h_in_other_species(
+    const struct cooling_function_data *cooling) {
+
+  double h = 0.;
+#if COOLING_GEAJAY_MODE >= 2
+  if (cooling->initial_hm_to_h_ratio >= 0.f)
+    h += cooling->initial_hm_to_h_ratio;
+  if (cooling->initial_h2i_to_h_ratio >= 0.f)
+    h += 2. * cooling->initial_h2i_to_h_ratio;
+  if (cooling->initial_h2ii_to_h_ratio >= 0.f)
+    h += 2. * cooling->initial_h2ii_to_h_ratio;
+#endif
+#if COOLING_GEAJAY_MODE >= 3
+  if (cooling->initial_hdi_to_h_ratio >= 0.f)
+    h += cooling->initial_hdi_to_h_ratio;
+#endif
+#if COOLING_GEAJAY_MODE >= 4
+  if (cooling->initial_hdii_to_h_ratio >= 0.f)
+    h += cooling->initial_hdii_to_h_ratio;
+  if (cooling->initial_hehii_to_h_ratio >= 0.f)
+    h += cooling->initial_hehii_to_h_ratio;
+#endif
+  return h;
+}
+
+/**
+ * @brief Stop if the initial species hold more H nuclei than the gas has.
+ *
+ * @param cooling The cooling properties.
+ */
+static void cooling_check_initial_hydrogen(
+    const struct cooling_function_data *cooling) {
+
+  const double h_in_hii = cooling->initial_hii_to_h_ratio >= 0.f
+                              ? cooling->initial_hii_to_h_ratio
+                              : 0.;
+  const double h_in_other = cooling_initial_h_in_other_species(cooling);
+  if (h_in_hii + h_in_other <= 1. + 1e-6) return;
+
+  error(
+      "The initial species ratios hold more hydrogen than the gas has. The "
+      "ratios are numbers per H nucleus: HII holds %.9g of the H nuclei, and "
+      "H-, H2 (counted twice), H2+, HD, HD+ and HeH+ together %.9g, which is "
+      "%.9g > 1. Lower initial_hii_to_h_ratio, initial_hm_to_h_ratio, "
+      "initial_h2i_to_h_ratio, initial_h2ii_to_h_ratio, "
+      "initial_hdi_to_h_ratio, "
+      "initial_hdii_to_h_ratio or initial_hehii_to_h_ratio (GeajayCooling:).",
+      h_in_hii, h_in_other, h_in_hii + h_in_other);
+}
+
+/**
  * @brief Compute equilibrium fraction
  *
  * @param phys_const The #phys_const.
@@ -542,11 +601,17 @@ void cooling_first_init_part(const struct phys_const *phys_const,
 
   /* primordial chemistry >= 1 */
 
-  /* Hydrogen I */
-  if (cooling->initial_hii_to_h_ratio >= 0.f)
-    xp->cooling_data.HI_frac = nH * (1.f - cooling->initial_hii_to_h_ratio);
-  else
-    xp->cooling_data.HI_frac = nH;
+  /* Hydrogen I: the hydrogen that HII and the other species do not hold */
+  double HI_frac = cooling->initial_hii_to_h_ratio >= 0.f
+                       ? nH * (1.f - cooling->initial_hii_to_h_ratio)
+                       : nH;
+  const double h_in_other_species = cooling_initial_h_in_other_species(cooling);
+  if (h_in_other_species > 0.) {
+    HI_frac -= nH * h_in_other_species;
+    /* Round-off only: cooling_check_initial_hydrogen refuses a negative HI */
+    if (HI_frac < 0.) HI_frac = 0.;
+  }
+  xp->cooling_data.HI_frac = HI_frac;
 
   Xtot += xp->cooling_data.HI_frac;
 
@@ -2120,6 +2185,7 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
         cooling->deuterium_to_hydrogen_mass_ratio;
   if (cooling->primordial_chemistry >= 3)
     cooling_check_initial_deuterium(cooling);
+  cooling_check_initial_hydrogen(cooling);
 
   chemistry->CaseBRecombination = cooling->case_b_recombination;
 

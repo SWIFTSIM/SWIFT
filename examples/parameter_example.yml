@@ -777,6 +777,7 @@ GeajayCooling:
                                                # Compton_xray_heating, whose term is 1e4 to 1e6 times too large at T = 1e4 K, z = 0 to 3 (default: 0)
   case_b_recombination: B                      # (optional) Recombination case of the H and He recombination rates: A (0) or B (1). The library default is A (default: B)
   reference_dust_to_gas_ratio: -1              # (optional) Ratio of dust mass to gas mass in the local Universe, above 0 (-1 for the library default, 0.009387; a value of 0 or below other than -1 stops the run)
+  # The initial ratios are numbers per H nucleus: H2 holds two, and HI takes the H nuclei that the other species do not hold (the run stops if they hold more than the gas has)
   initial_hii_to_h_ratio: -1                   # (optional) Initial nHII to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_hei_to_h_ratio: -1                   # (optional) Initial nHeI to nH ratio (number density ratio). Ignored if -1 (default: -1)
   initial_heii_to_h_ratio: -1                  # (optional) Initial nHeII to nH ratio (number density ratio). Ignored if -1 (default: -1)
