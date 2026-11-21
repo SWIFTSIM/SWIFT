@@ -3559,7 +3559,7 @@ called at \code{src/feedback/GEAR\_thermal/feedback.c:538}).
 \paragraph{Redshift and band-edge transfer (Sec.~\ref{sec:packet-transfer}).}
 The constants are set at start-up by \code{radiation\_packet\_startup}
 (\code{radiation\_packet.c:1054-1075}, called through \code{feedback\_radiation\_transport\_startup}
-at \code{src/runner\_radiation\_feedback.c:313}) through
+at \code{src/engine\_config.c:665}) through
 \code{radiation\_packet\_set\_redshift} (\code{radiation\_packet.c:304-313}).
 Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:1096-1145}).
