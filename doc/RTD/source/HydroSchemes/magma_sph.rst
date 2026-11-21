@@ -280,8 +280,9 @@ mean of the two particles' coefficients :math:`\alpha^D_a`
 :math:`H \nabla^2 u / \sqrt{u}` where :math:`u` has a local minimum, decay
 towards ``SPH:diffusion_alpha_min`` over a signal crossing time of the
 support, and are capped by :math:`1 - (\alpha^{\rm ngb}_{\max} -
-\alpha_{\min}) / (\alpha_{\max} - \alpha_{\min})`, the SPHENIX limiter on
-the largest neighbour coefficient :math:`\alpha_a`. With the default floor of 1
+\alpha_{\min}) / (\alpha_{\max} - \alpha_{\min})`, the SPHENIX limiter, with
+:math:`\alpha^{\rm ngb}_{\max}` the largest viscosity coefficient of the
+particle (its current value) and its neighbours. With the default floor of 1
 the coefficient is this cap alone: the paper's full conduction wherever the
 gas is not viscous, none in shocks and around a particle that a feedback
 event has just heated (the feedback hook raises its :math:`\alpha_a` to the

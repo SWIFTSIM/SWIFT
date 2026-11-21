@@ -677,7 +677,7 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
 
   zero_sym_matrix(&p->gradient.c_matrix_inv);
   p->c_max_ngb = 0.f;
-  p->alpha_visc_max_ngb = p->alpha_visc;
+  p->alpha_visc_max_ngb = 0.f;
   p->laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
@@ -993,8 +993,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * crossing time of the kernel support (implicit, stable for any time
    * step), and is capped by how viscous the neighbourhood is, so that it is
    * off in a shock and around a feedback particle (whose viscosity the hook
-   * raises to alpha_max). The viscosity coefficient is read relative to its
-   * floor so that the cap is 1 in quiescent gas whatever the floor. The
+   * raises to alpha_max). The shock measure is the largest of the particle's
+   * own coefficient, as just updated, and its neighbours' from their last
+   * update (gradient loop), read relative to the floor so that the cap is 1
+   * in quiescent gas whatever the floor. The
    * signal speed is the sum of the particle's and its hottest neighbour's
    * sound speeds. With the default floor of 1 the source and the decay are
    * inert and the coefficient is the cap alone. */
@@ -1016,7 +1018,8 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * information: no cap. */
   const float visc_frac =
       visc_range > 0.f
-          ? (p->alpha_visc_max_ngb - hydro_props->viscosity.alpha_min) /
+          ? (fmaxf(p->alpha_visc, p->alpha_visc_max_ngb) -
+             hydro_props->viscosity.alpha_min) /
                 visc_range
           : 0.f;
   alpha = fminf(alpha, 1.f - fminf(1.f, fmaxf(0.f, visc_frac)));
@@ -1288,7 +1291,6 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
    * (hydro_first_init_part() only has the compile-time defaults) */
   p->alpha_visc = hydro_props->viscosity.alpha_min;
   p->alpha_diff = hydro_props->diffusion.alpha_min;
-  p->alpha_visc_max_ngb = p->alpha_visc;
 }
 
 /**
@@ -1321,7 +1323,7 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
    * are set in hydro_convert_quantities() before the first step. */
   p->alpha_visc = hydro_props_default_viscosity_alpha_min;
   p->alpha_diff = hydro_props_default_diffusion_alpha_min;
-  p->alpha_visc_max_ngb = p->alpha_visc;
+  p->alpha_visc_max_ngb = 0.f;
   p->c_max_ngb = 0.f;
   p->laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient_u_prev[i] = 0.f;

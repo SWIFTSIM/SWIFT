@@ -214,7 +214,8 @@
 
 /*! Floor of the per-particle conduction coefficient. The coefficient decays
  * towards this value over the signal crossing time of the kernel support and
- * is capped where the neighbours' viscosity coefficient is up (shocks, and
+ * is capped where the particle's or its neighbours' viscosity coefficient is
+ * up (shocks, and
  * the surroundings of a particle a feedback event has just heated). With the
  * floor at 1 (default, 2026-10 feedback study) the conduction is the paper's
  * full term wherever the gas is not viscous, which keeps the suite's contact

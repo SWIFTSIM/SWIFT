@@ -326,9 +326,10 @@ struct part {
    * mean of the two particles' coefficients. */
   float alpha_diff;
 
-  /*! Largest viscosity coefficient among the neighbours and the particle
-   * itself (gradient loop): caps the conduction coefficient in shocks and
-   * around a particle a feedback event has heated */
+  /*! Largest viscosity coefficient among the neighbours (gradient loop, so
+   * their values of the previous step): with the particle's own, caps the
+   * conduction coefficient in shocks and around a particle a feedback event
+   * has heated */
   float alpha_visc_max_ngb;
 
   /*! SPH estimate of the Laplacian of the internal energy, accumulated in
