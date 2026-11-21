@@ -73,6 +73,7 @@ struct threadpool;
 #define hydro_need_extra_init_loop 0
 #define EXTRA_HYDRO_LOOP
 #define MPI_SYMMETRIC_FORCE_INTERACTION
+#define hydro_force_updates_inactive_neighbours 1
 #elif defined(SHADOWSWIFT)
 #include "./hydro/Shadowswift/hydro_part.h"
 #define hydro_need_extra_init_loop 0
@@ -99,6 +100,11 @@ struct threadpool;
 #define EXTRA_HYDRO_LOOP
 #else
 #error "Invalid choice of SPH variant"
+#endif
+
+/* Does the force loop also update the inactive neighbours of a particle? */
+#ifndef hydro_force_updates_inactive_neighbours
+#define hydro_force_updates_inactive_neighbours 0
 #endif
 
 /* Import the right gravity particle definition */
