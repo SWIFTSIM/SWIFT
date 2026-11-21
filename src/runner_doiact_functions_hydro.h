@@ -313,11 +313,8 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
       const int doj = pj_active && (depth_j >= min_depth) &&
                       (depth_j <= max_depth) && ((r2 < hjg2) || (r2 < hig2));
 
-      /* Keep the original (pi - pj) vector: the doj block below negates dx
-         in place, and the chemistry flux-exchange extension (added after
-         both blocks so it never double-fires when doi && doj) needs the
-         un-negated form. Additive only: the doi/doj blocks and their
-         existing runner_iact_(nonsym_)diffusion calls are untouched. */
+      /* The doj block below negates dx in place, and the chemistry flux
+         exchange after both blocks needs the (pi - pj) vector. */
 #if CHEMISTRY_FLUX_LOOP
       const float dx0[3] = {dx[0], dx[1], dx[2]};
 #endif
@@ -379,11 +376,9 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
       }
 
 #if CHEMISTRY_FLUX_LOOP
-      /* Chemistry flux-exchange extension (additive, alongside the original
-         diffusion hooks above): exclusive dispatch so a both-active pair
-         (doi && doj) gets its ONE symmetric evaluation, never two (unlike
-         the hydro/MHD/timebin/diffusion calls above, which are one-sided
-         per-particle updates meant to fire from both blocks). */
+      /* Exclusive dispatch: a pair with doi && doj gets one symmetric flux
+         exchange, not two. The one-sided updates above fire from both
+         blocks. */
       if (doi && doj) {
         runner_iact_chemistry_flux_exchange(
             r2, dx0, hi, hj, pi, pj, /*both_updatable_here=*/1,

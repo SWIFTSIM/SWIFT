@@ -207,11 +207,9 @@ struct residual_result {
  *
  * Calls runner_iact_chemistry_flux_exchange(pi, pj, both_updatable_here=1)
  * and separately (pj, pi, -dx, both_updatable_here=1). Both calls take the
- * symmetric, no-reordering arm (see the dispatcher's decision
- * table), so this measures the same thing the pre-fix gate test did: how
- * much the flux computation's floating-point result depends on which
- * physical particle a caller happens to bind to the function's first
- * parameter.
+ * symmetric arm, which does not reorder its arguments, so this measures how
+ * much the floating-point result of the flux computation depends on which
+ * particle is bound to the first parameter.
  */
 static struct residual_result measure_gate_residual(
     struct part *pi_template, struct part *pj_template, const float dx[3],
