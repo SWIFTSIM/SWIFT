@@ -42,7 +42,7 @@ Scheduler:
   cell_extra_sinks:  10   # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   cell_extra_sparts: 10   # (Optional) Number of spare sparts per top-level allocated at rebuild time for on-the-fly creation.
   max_top_level_cells: 4  # Cell width = boxsize/4 = 0.04 kpc. makeIC_pair.py places the two stars at
-                          # the centers of two CONSECUTIVE cells (not on any boundary) so their
+                          # two CONSECUTIVE cells (close to their centers, not on a face) so their
                           # radiation_level regions are genuine task-graph neighbours -- keep this in
                           # sync with makeIC_pair.py's --n_cells (also 4) if you change either.
   tasks_per_cell: 100
