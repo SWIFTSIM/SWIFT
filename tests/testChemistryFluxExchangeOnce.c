@@ -19,6 +19,7 @@
 #include <config.h>
 
 /* Local headers. */
+#include "space_getsid.h"
 #include "swift.h"
 
 /* System headers. */
@@ -37,12 +38,10 @@
  * in two depth bands, so that the recursion of the sub-cell tasks and the
  * ownership rule of mixed-band pairs are exercised.
  *
- * Two configurations miss exchanges in the pair enumeration itself, and are
- * checked against the predicted class of the short-counted particles:
- *  - split pairs with an inactive top-band particle: its partners in progeny
- *    that do not touch the other cell are never visited;
- *  - pairs with a foreign cell: a local inactive particle gets no exchange
- *    from a foreign active neighbour.
+ * Two configurations miss exchanges in the pair enumeration itself. There,
+ * each particle's count must equal the reference minus the exact number of
+ * misses predicted for it (predict_split_pair_gap(), predict_foreign_gap()).
+ * The prep and apply counts of every particle must be equal.
  */
 
 #if (defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||             \
@@ -261,10 +260,66 @@ static void reset_counts(struct cell *c) {
     c->hydro.parts[k].chemistry_data.flux_exchange_count[1] = 0;
   }
 }
+/* Number of particle pairs whose in-kernel test depends on the frame or on
+   the precision of the distance. */
+static int n_ambiguous_pairs = 0;
+
+/**
+ * @brief Origin of the progeny cell holding the particle of index k, or of
+ * the cell itself if it is not split.
+ */
+static const double *octant_loc(const struct cell *c, const int k) {
+  return c->split ? c->progeny[k / PARTS_PER_OCTANT]->loc : c->loc;
+}
+
+/**
+ * @brief Is pj within the kernel support of radius h around pi, tested in
+ * float as the interaction loops do?
+ *
+ * The loops compute the distance from positions relative to the origin of
+ * one of the two cells at the level of the visit. The test is evaluated in
+ * all candidate frames and in double; a disagreement is counted in
+ * #n_ambiguous_pairs. The verdict in the first frame is returned.
+ */
+static int within_kernel(const struct part *pi, const struct part *pj,
+                         const float h, const double *frames[4]) {
+  const float hg2 = h * h * kernel_gamma2;
+  int verdict = -1, ambiguous = 0;
+  for (int f = 0; f < 4; f++) {
+    float dx[3];
+    for (int k = 0; k < 3; k++) {
+      const float xi = pi->x[k] - frames[f][k];
+      const float xj = pj->x[k] - frames[f][k];
+      dx[k] = xj - xi;
+    }
+    const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+    const int v = r2 < hg2;
+    if (verdict < 0) verdict = v;
+    if (v != verdict) ambiguous = 1;
+  }
+  double r2d = 0.;
+  for (int k = 0; k < 3; k++)
+    r2d += (pi->x[k] - pj->x[k]) * (pi->x[k] - pj->x[k]);
+  if ((r2d < (double)h * h * kernel_gamma2) != verdict) ambiguous = 1;
+  n_ambiguous_pairs += ambiguous;
+  return verdict;
+}
+
+/**
+ * @brief Fill the candidate frames of the pair (a[i], b[j]).
+ */
+static void pair_frames(const struct cell *a, const int i, const struct cell *b,
+                        const int j, const double *frames[4]) {
+  frames[0] = b->loc;
+  frames[1] = a->loc;
+  frames[2] = octant_loc(b, j);
+  frames[3] = octant_loc(a, i);
+}
 
 /**
  * @brief Add the brute-force number of interacting pairs of the particles of
- * a to the reference counts.
+ * a to the reference counts: one per pair with r < gamma max(hi, hj) and at
+ * least one active particle.
  *
  * @return The number of pairs with both particles active in different depth
  * bands, which only the ownership rule settles.
@@ -277,13 +332,12 @@ static int brute_force_count(const struct cell *a, const struct cell *b,
     const int j_start = (a == b) ? i + 1 : 0;
     for (int j = j_start; j < b->hydro.count; j++) {
       const struct part *pj = &b->hydro.parts[j];
-      double r2 = 0.;
-      for (int k = 0; k < 3; k++)
-        r2 += (pi->x[k] - pj->x[k]) * (pi->x[k] - pj->x[k]);
-      const double h = max(pi->h, pj->h);
+      const double *frames[4];
+      pair_frames(a, i, b, j, frames);
       const int active_i = part_is_active(pi, e);
       const int active_j = part_is_active(pj, e);
-      if (r2 < kernel_gamma2 * h * h && (active_i || active_j)) {
+      if (within_kernel(pi, pj, max(pi->h, pj->h), frames) &&
+          (active_i || active_j)) {
         ref_a[i]++;
         ref_b[j]++;
         if (active_i && active_j && pi->depth_h != pj->depth_h)
@@ -294,77 +348,169 @@ static int brute_force_count(const struct cell *a, const struct cell *b,
   return mixed_band_pairs;
 }
 
-enum expected_result {
-  expect_exact,
-  expect_split_pair_gap,
-  expect_foreign_gap,
-};
+/**
+ * @brief Do the progeny holding a[i] and b[j] share a face, an edge or a
+ * corner?
+ */
+static int octants_touch(const struct cell *a, const int i,
+                         const struct cell *b, const int j) {
+  const struct cell *pa = a->progeny[i / PARTS_PER_OCTANT];
+  const struct cell *pb = b->progeny[j / PARTS_PER_OCTANT];
+  for (int k = 0; k < 3; k++) {
+    if (pa->loc[k] > pb->loc[k] + pb->width[k] + 1e-9) return 0;
+    if (pb->loc[k] > pa->loc[k] + pa->width[k] + 1e-9) return 0;
+  }
+  return 1;
+}
 
 /**
- * @brief Can the pair enumeration short-count this particle?
+ * @brief Predict the missed exchanges of a pair of split local cells.
+ *
+ * The sub-cell recursion only visits pairs of progeny that touch. A pair of
+ * particles in progeny that do not touch is visited only at the top level,
+ * where only the particles in the top depth band are taken. An inactive
+ * top-band particle and an active progeny-band partner within its kernel
+ * therefore never exchange: both miss one count.
  */
-static int may_be_dropped(const struct part *p, const enum expected_result x,
-                          const struct engine *e) {
-  const int active = part_is_active(p, e);
-  switch (x) {
-    case expect_split_pair_gap:
-      return (!active && p->depth_h == 0) || (active && p->depth_h == 1);
-    case expect_foreign_gap:
-      return !active;
-    default:
-      return 0;
+static void predict_split_pair_gap(const struct cell *ci, const struct cell *cj,
+                                   int *miss_i, int *miss_j,
+                                   const struct engine *e) {
+  for (int i = 0; i < ci->hydro.count; i++) {
+    const struct part *pi = &ci->hydro.parts[i];
+    for (int j = 0; j < cj->hydro.count; j++) {
+      const struct part *pj = &cj->hydro.parts[j];
+      if (octants_touch(ci, i, cj, j)) continue;
+      const int active_i = part_is_active(pi, e);
+      const int active_j = part_is_active(pj, e);
+      const int top_i = (pi->depth_h == 0) && (pj->depth_h == 1);
+      const int top_j = (pj->depth_h == 0) && (pi->depth_h == 1);
+      if (!(top_i && !active_i && active_j) &&
+          !(top_j && !active_j && active_i))
+        continue;
+      const double *frames[4];
+      pair_frames(ci, i, cj, j, frames);
+      if (within_kernel(pi, pj, max(pi->h, pj->h), frames)) {
+        miss_i[i]++;
+        miss_j[j]++;
+      }
+    }
   }
 }
 
 /**
- * @brief Compare the exchange counters of the given pass with the reference.
+ * @brief Predict the missed exchanges of the local cell of a pair with a
+ * foreign cell.
  *
- * @return The number of particles that violate the expected result.
+ * A local inactive particle is reached only from its own side, which loops
+ * over its neighbours within its own kernel, and only if the cell is the
+ * first of the pair after the canonical swap. It therefore misses every
+ * foreign active neighbour whose kernel reaches it, except those within its
+ * own kernel when its cell is first.
+ */
+static void predict_foreign_gap(const struct cell *local,
+                                const struct cell *foreign,
+                                const int local_first, int *miss,
+                                const struct engine *e) {
+  for (int i = 0; i < local->hydro.count; i++) {
+    const struct part *pi = &local->hydro.parts[i];
+    if (part_is_active(pi, e)) continue;
+    for (int j = 0; j < foreign->hydro.count; j++) {
+      const struct part *pj = &foreign->hydro.parts[j];
+      if (!part_is_active(pj, e)) continue;
+      const double *frames[4];
+      pair_frames(local, i, foreign, j, frames);
+      if (!within_kernel(pi, pj, pj->h, frames)) continue;
+      if (local_first && within_kernel(pi, pj, pi->h, frames)) continue;
+      miss[i]++;
+    }
+  }
+}
+
+/**
+ * @brief Compare the exchange counters of a local cell with the reference
+ * minus the predicted misses, in both passes.
+ *
+ * @return The number of (particle, pass) cases that violate it.
  */
 static int count_mismatches(const struct cell *c, const int *ref,
-                            const int pass, const enum expected_result x,
-                            const struct engine *e, int *doubles, int *drops) {
+                            const int *miss, int *doubles, int *drops) {
   int bad = 0;
   for (int k = 0; k < c->hydro.count; k++) {
-    const struct part *p = &c->hydro.parts[k];
-    const int n = p->chemistry_data.flux_exchange_count[pass];
-    if (n > ref[k]) {
-      (*doubles)++;
-      bad++;
-    } else if (n < ref[k]) {
-      (*drops)++;
-      if (!may_be_dropped(p, x, e)) bad++;
+    for (int pass = 0; pass < 2; pass++) {
+      const int n = c->hydro.parts[k].chemistry_data.flux_exchange_count[pass];
+      if (n > ref[k]) (*doubles)++;
+      if (n < ref[k] - miss[k]) (*drops)++;
+      if (n != ref[k] - miss[k]) bad++;
     }
   }
   return bad;
 }
 
 /**
+ * @brief Count the particles whose prep and apply counters differ.
+ */
+static int count_unequal_passes(const struct cell *c) {
+  int unequal = 0;
+  for (int k = 0; k < c->hydro.count; k++) {
+    const int *n = c->hydro.parts[k].chemistry_data.flux_exchange_count;
+    if (n[0] != n[1]) unequal++;
+  }
+  return unequal;
+}
+
+/**
  * @brief Run the force and the prep loop on a cell pair (or a single cell
  * if cj is NULL) and compare the counters with the reference.
  *
- * With a foreign cj, the pair is run once with each cell local, and each
- * run checks only the particles of its local cell.
+ * With a foreign cj, the pair is run once with each cell local. Each run
+ * checks the counts of its local cell, and the equality of the prep and
+ * apply counts of every particle.
  *
+ * @param expect_misses Must the prediction hold missed exchanges?
  * @return 1 on success.
  */
 static int run_case(const char *label, struct runner *r, struct engine *e,
                     struct cell *ci, struct cell *cj, const int foreign,
-                    const enum expected_result x) {
+                    const int expect_misses) {
 
   runner_do_hydro_sort(r, ci, 0x1FFF, 0, 0, 0, 0);
   if (cj != NULL) runner_do_hydro_sort(r, cj, 0x1FFF, 0, 0, 0, 0);
 
+  const int ambiguous_before = n_ambiguous_pairs;
   int *ref_i = calloc(ci->hydro.count, sizeof(int));
   int *ref_j = cj ? calloc(cj->hydro.count, sizeof(int)) : NULL;
   const int mixed = cj ? brute_force_count(ci, cj, ref_i, ref_j, e)
                        : brute_force_count(ci, ci, ref_i, ref_i, e);
 
-  int bad = 0, doubles = 0, drops = 0, ref_total = 0;
+  int ref_total = 0;
   for (int k = 0; k < ci->hydro.count; k++) ref_total += ref_i[k];
   if (cj)
     for (int k = 0; k < cj->hydro.count; k++) ref_total += ref_j[k];
 
+  /* Predicted misses, per rank for a foreign pair. */
+  int *miss_i[2], *miss_j[2];
+  for (int rank = 0; rank < 2; rank++) {
+    miss_i[rank] = calloc(ci->hydro.count, sizeof(int));
+    miss_j[rank] = cj ? calloc(cj->hydro.count, sizeof(int)) : NULL;
+  }
+  if (cj && foreign) {
+    struct cell *first = ci, *second = cj;
+    double shift[3];
+    space_getsid_and_swap_cells(e->s, &first, &second, shift);
+    predict_foreign_gap(ci, cj, first == ci, miss_i[0], e);
+    predict_foreign_gap(cj, ci, first == cj, miss_j[1], e);
+  } else if (cj && ci->split && cj->split) {
+    predict_split_pair_gap(ci, cj, miss_i[0], miss_j[0], e);
+  }
+
+  int predicted = 0;
+  for (int rank = 0; rank < 2; rank++) {
+    for (int k = 0; k < ci->hydro.count; k++) predicted += miss_i[rank][k];
+    if (cj)
+      for (int k = 0; k < cj->hydro.count; k++) predicted += miss_j[rank][k];
+  }
+
+  int bad = 0, unequal = 0, doubles = 0, drops = 0;
   const int n_ranks = foreign ? 2 : 1;
   for (int rank = 0; rank < n_ranks; rank++) {
     e->nodeID = rank;
@@ -379,23 +525,31 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
       runner_dosub_self2_force(r, ci, 0, 0);
     }
 
-    for (int pass = 0; pass < 2; pass++) {
-      if (ci->nodeID == rank)
-        bad += count_mismatches(ci, ref_i, pass, x, e, &doubles, &drops);
-      if (cj && cj->nodeID == rank)
-        bad += count_mismatches(cj, ref_j, pass, x, e, &doubles, &drops);
-    }
+    unequal += count_unequal_passes(ci);
+    if (cj) unequal += count_unequal_passes(cj);
+    if (ci->nodeID == rank)
+      bad += count_mismatches(ci, ref_i, miss_i[rank], &doubles, &drops);
+    if (cj && cj->nodeID == rank)
+      bad += count_mismatches(cj, ref_j, miss_j[rank], &doubles, &drops);
   }
   e->nodeID = 0;
 
+  const int ambiguous = n_ambiguous_pairs - ambiguous_before;
+  const int reach_ok = expect_misses ? (predicted > 0) : (predicted == 0);
   message(
-      "%-42s reference exchanges=%6d mixed-band pairs=%5d doubles=%d "
-      "drops=%d unexpected=%d",
-      label, ref_total, mixed, doubles, drops, bad);
+      "%-42s reference exchanges=%6d mixed-band pairs=%5d predicted "
+      "misses=%4d doubles=%d unpredicted drops=%d mismatches=%d "
+      "unequal passes=%d ambiguous pairs=%d",
+      label, ref_total, mixed, predicted, doubles, drops, bad, unequal,
+      ambiguous);
 
+  for (int rank = 0; rank < 2; rank++) {
+    free(miss_i[rank]);
+    free(miss_j[rank]);
+  }
   free(ref_i);
   free(ref_j);
-  return bad == 0;
+  return bad == 0 && unequal == 0 && ambiguous == 0 && reach_ok;
 }
 
 int main(int argc, char *argv[]) {
@@ -468,7 +622,7 @@ int main(int argc, char *argv[]) {
   for (int split = 0; split < 2; split++) {
     struct cell *c = make_cell(loc_i, split, 0, 0.5, 0, &engine);
     sprintf(label, "self, %s", split ? "split" : "unsplit");
-    pass &= run_case(label, &runner, &engine, c, NULL, 0, expect_exact);
+    pass &= run_case(label, &runner, &engine, c, NULL, 0, 0);
     free_cell(c);
   }
 
@@ -477,9 +631,7 @@ int main(int argc, char *argv[]) {
       const int split = (variant >= 2);
       const int foreign = (variant == 1);
       const int top_band_active = (variant == 2);
-      enum expected_result x = expect_exact;
-      if (foreign) x = expect_foreign_gap;
-      if (variant == 3) x = expect_split_pair_gap;
+      const int expect_misses = foreign || (variant == 3);
 
       struct cell *ci =
           make_cell(loc_i, split, 0, 0.5, top_band_active, &engine);
@@ -488,7 +640,7 @@ int main(int argc, char *argv[]) {
       sprintf(label, "pair %s, %s%s%s", pair_names[o],
               split ? "split" : "unsplit", foreign ? ", foreign" : "",
               top_band_active ? ", top band active" : "");
-      pass &= run_case(label, &runner, &engine, ci, cj, foreign, x);
+      pass &= run_case(label, &runner, &engine, ci, cj, foreign, expect_misses);
       free_cell(ci);
       free_cell(cj);
     }
