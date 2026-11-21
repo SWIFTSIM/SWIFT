@@ -782,18 +782,18 @@ INLINE static void cooling_read_background_parameters(
   if (cooling->isrf_from_field != 0 &&
       cooling->background_mode != GEAJAY_BACKGROUND_MODE_PER_BAND)
     error(
-        "GeajayCooling:isrf_from_field is %d: the module does not fill a "
-        "per-particle field yet; use isrf_habing.",
+        "GeajayCooling:isrf_from_field is %d: with background_mode grackle the "
+        "module does not fill a per-particle field yet; use isrf_habing.",
         cooling->isrf_from_field);
 
   /* Unset is -1 in the library; any key value below 0 is refused here */
   cooling->isrf_habing = -1.;
   if (parser_does_param_exist(parameter_file, "GeajayCooling:isrf_habing")) {
     if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
-      error(
-          "GeajayCooling:isrf_habing is set, but it is not read: "
+      cooling_refuse_unread_key(
+          parameter_file, "GeajayCooling:isrf_habing",
           "GeajayCooling:background_mode is per_band (G_0 comes from "
-          "isrf_background_model and isrf_background_habing).");
+          "isrf_background_model and isrf_background_habing)");
     const double g0 =
         parser_get_param_double(parameter_file, "GeajayCooling:isrf_habing");
     if (!cooling_double_is_finite(&g0) || g0 < 0.)

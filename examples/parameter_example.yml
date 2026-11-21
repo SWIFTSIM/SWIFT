@@ -812,7 +812,7 @@ GeajayCooling:
   uv_background_redshift_drop: -99999          # (optional) Redshift where the UV background starts to drop. -99999 is unset: the first redshift of the Cloudy table (default: unset)
   uv_background_redshift_off: -99999           # (optional) Redshift where the UV background switches off. -99999 is unset: the first redshift of the Cloudy table (default: unset)
   isrf_habing: 1.7                             # (optional) Constant G_0 of every particle [Habing], 0 or above. There is no default: unset, the run stops if a term reads G_0 (dust_model: basic, h2_formation_on_dust, dust_recombination_cooling, photoelectric_heating_model above none), else G_0 is 0. Not read with per_band (default: unset)
-  isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field). The module does not fill it yet: 1 stops the run with background_mode: grackle, use isrf_habing (default: 0)
+  isrf_from_field: 0                           # (optional) Read G_0 from the particle field (Grackle use_isrf_field). The module does not fill it (it stays 0): 1 stops the run with background_mode: grackle, use isrf_habing. With per_band, dust_background_attenuation: per_band and a G_0 background it must be 1, else the library refuses (default: 0)
   # A constant G_0 and a constant Lyman-Werner background (lw_background_j21) are independent settings: choose consistent values.
   # With per_band the cooling passes 0, the local field only, to which the background G_0 is added.
   # A radiation module would write the local field.

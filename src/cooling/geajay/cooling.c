@@ -846,6 +846,8 @@ void cooling_print_backend(const struct cooling_function_data *cooling) {
   if (cooling->isrf_habing >= 0.)
     message("G_0 of every particle (isrf_habing) = %g Habing",
             cooling->isrf_habing);
+  else if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
+    message("G_0 of every particle (isrf_habing) = not read (per_band)");
   else
     message("G_0 of every particle (isrf_habing) = unset");
   if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
@@ -2050,6 +2052,14 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
     error("Error in geajay_global_set_default_chemistry_parameters.");
   }
 
+  /* -1 is the library value for an unset G_0 */
+  if (chemistry->interstellar_radiation_field != -1.)
+    error(
+        "The geajay library is too old: it still has a default G_0 "
+        "(interstellar_radiation_field = %g instead of -1, unset). Rebuild "
+        "with the geajay library branch that removes the default.",
+        chemistry->interstellar_radiation_field);
+
   // Set parameter values for chemistry.
   chemistry->use_grackle = 1;
   chemistry->with_radiative_cooling = cooling->with_radiative_cooling;
@@ -2162,8 +2172,8 @@ void cooling_init_geajay(struct cooling_function_data *cooling) {
   if (cooling->isrf_habing >= 0.)
     chemistry->interstellar_radiation_field = cooling->isrf_habing;
   else if (cooling->background_mode == GEAJAY_BACKGROUND_MODE_PER_BAND)
-    /* Under per_band the background settings give G_0 and the library refuses
-       an unset isrf_background_model; the field itself starts at 0 */
+    /* The init refuses -1 when a term reads G_0; under per_band the background
+       is added to this local field later by the library */
     chemistry->interstellar_radiation_field = 0.;
 
   /* Sub-cycle limit. Exceeding it is a failure that geajay retries, instead of

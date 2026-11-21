@@ -221,8 +221,10 @@ settings: the cooling does not tie one to the other, so choose consistent values
        ``background_mode`` ``per_band`` (setting it there stops the run).
    * - ``isrf_from_field``
      - (optional) Read G\ :sub:`0` from the particle field (Grackle ``use_isrf_field``). The module does
-       not fill that field yet: with ``background_mode`` ``grackle`` the value 1 stops the run, use
-       ``isrf_habing`` (default: 0).
+       not fill that field yet (it stays 0): with ``background_mode`` ``grackle`` the value 1 stops the
+       run, use ``isrf_habing``. With ``per_band``, ``dust_background_attenuation`` ``per_band`` and a
+       G\ :sub:`0` background, the value must be 1: the library applies the dust attenuation of the
+       photoelectric heating only on the field path, and refuses 0 (default: 0).
    * - ``uv_rates_file``
      - (optional) Read only with ``background_mode`` ``per_band``. HDF5 file whose ``/UVBRates`` is the
        UV background, for example an FG20 file; the metal table always comes from ``cloudy_table_file``.
