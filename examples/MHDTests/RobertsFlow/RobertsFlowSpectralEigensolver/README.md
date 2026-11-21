@@ -54,6 +54,14 @@ I–IV), `Status`; only rows with `Status == done` are used), runs all of them i
 
 Rows are appended to `results.csv` as they finish, so an interrupted run keeps its completed results.
 
+**Fixed truncation per run.**  If the parameter file has a column `s`, a run with a positive integer
+there is computed at exactly that truncation: the kz scan and the final mode both use this s, with
+no convergence in s (`tol`, `smax`, `s_coarse` are not used for it).  Runs with an empty `s` cell
+choose s automatically as before; invalid entries are reported and treated as empty.  The resolution
+diagnostic z(s) is still written, so you can see how well a fixed s resolves the mode (error ≈ z²).
+From Python, the same is `growth(flow, eta, s_fixed=40)`, or a job tuple
+`(run_id, flow, eta, {'s_fixed': 40})` in `run_jobs`.
+
 ### From Python
 
 ```python
@@ -76,10 +84,14 @@ if __name__ == "__main__":                                     # required on mac
 | `w0` | 1.0 | vertical flow amplitude (w₀ = v₀ in Figure 2; w₀ = √2 v₀ gives v_rms = 1 for flows I–III) |
 | `Lz` | 4π | box height (2π for a cubic box) |
 | `kzmax` | 10 | hard limit of the kz scan |
+| `kz_span` | 3.0 | the kz scan continues until a whole span Δkz = `kz_span` beyond the best kz contains nothing within `kz_margin` of it; λ(kz) can have several separate peaks (flow III at η = 10⁻³: kz = 1.5, 3, 4.5, 6, the fastest at 3) |
 | `c_coarse`, `s_coarse` | 2.5, – | resolution of the kz scan, s = c_coarse/√η unless `s_coarse` is given |
 | `kz_margin`, `n_kz`, `n_branch` | 0.02, 4, 2 | which coarse candidates are refined |
 | `smax` | 200 | largest truncation |
 | `k1` | kz | wavenumber normalising J_rms |
+
+For fixed-s runs, s must also be high enough to rank the kz correctly: at η = 10⁻³ (flow III) s = 44
+puts a spurious kz = 2 mode first, while s ≥ 60 gives the right order.
 
 Recommendation: `tol=1e-4` or smaller wherever λ is small (near onset, flow II's dynamo window);
 `tol=1e-3` is a 20 % error when λ ≈ 0.005.
@@ -92,14 +104,23 @@ Recommendation: `tol=1e-4` or smaller wherever λ is small (near onset, flow II'
 | `omega_mod` | 2|ω|, the B_rms modulation frequency when a ±ω pair interferes (§ 2.4) |
 | `kz` | vertical wavenumber of the fastest mode |
 | `kz_scanned` | largest kz examined; should be well above `kz` |
-| `s`, `z` | final truncation and edge diagnostic; eigenvalue error ≈ z² |
-| `converged` | False if `smax` was reached before `tol` was met |
+| `s`, `z` | truncation used and edge diagnostic; eigenvalue error ≈ z² |
+| `s_fixed` | True if the run used the fixed s from the parameter file |
+| `converged` | False if `smax` was reached before `tol` was met; empty for fixed-s runs |
 | `Rm` | v_rms/(η k₀) |
 | Table-6 columns | `Bmean_rms/Brms`, `Jrms/(k1 Brms)`, `<J.B>/(Jrms Brms)`, `<(J.B)^2>^1/2/(Jrms Brms)`, `<(JxB)^2>^1/2/(Jrms Brms)`, `-W_L/(urms Jrms Brms)` with W_L = ⟨u·(J×B)⟩, `<J^2 B^2>/(Jrms^2 Brms^2)`, `-<A.B>/Brms^2` (Coulomb gauge); volume averages, μ₀ = 1 |
 
 ### Run time and parallelisation
 
-Each η runs in its own process (one BLAS thread each), smallest η first.  Indicative single-core times:
+Each η runs in its own process (one BLAS thread each), smallest η first.  Worker processes are
+started with `spawn` on every platform: with Linux's default `fork`, every worker would inherit
+one BLAS thread per core (20 workers × 20 threads on a 10-core/20-thread CPU), which slows the run
+down by orders of magnitude.  Use `workers` ≈ the number of **physical** cores (e.g. `workers=10` on an
+i9-10900X; hyper-threads do not help here), and keep the `if __name__ == "__main__":` guard in any
+script that calls `run_jobs` or `scan`, on Linux as well as macOS.  Memory is modest (under 1 GB per
+worker at s = 80).  To check, watch the worker processes in `top`/`htop`: each should use about
+100 % CPU.  If they use more, install `threadpoolctl` (`pip install threadpoolctl`), which the workers
+use as a second safeguard.  Indicative single-core times:
 η = 0.05: seconds; η = 0.01: about 1 min; η = 2.6×10⁻³: about 20 min; η = 10⁻³: about an hour (estimated).
 
 ## `eigen_patterns.py`
@@ -164,7 +185,7 @@ our x, y) gives four predefined flows; his j is our `kz` and his λ is our `eta`
 
 | Flow name | Roberts 1972 | u in this code |
 |---|---|---|
-| `R72_I` | motion I (5.1): (cos y − cos z, sin z, sin y) | (sin y, sin x, cos x − cos y) |
+| `R72` | motion I (5.1): (cos y − cos z, sin z, sin y) | (sin y, sin x, cos x − cos y) |
 | `R72_II` | motion II (6.1): (cos y + cos z, sin z, sin y) | (sin y, sin x, cos x + cos y) |
 | `R72_III` | motion III (6.2): (2 cos y cos z, sin z, sin y) | (sin y, sin x, 2 cos x cos y) |
 | `R72_IV` | motion IV (6.3): (sin(y + z), sin 2z, sin 2y) | (sin 2y, sin 2x, sin(x + y)) |
@@ -174,11 +195,11 @@ Roberts' domain is infinite in the invariant direction, so any j is allowed.  Fo
 
 ```python
 from solver import converge
-r = converge('R72_I', eta=1/8, kz=0.5, tol=1e-9)
+r = converge('R72', eta=1/8, kz=0.5, tol=1e-9)
 print(r['p'])            # growth rate (Roberts' Re p) + i * frequency, converged in s
 ```
 
-To find the fastest j, scan `kz` yourself, or use `growth('R72_I', eta, Lz=...)` with a box tall enough
+To find the fastest j, scan `kz` yourself, or use `growth('R72', eta, Lz=...)` with a box tall enough
 that the allowed kz = 2πj/Lz resolve the maximum (e.g. `Lz=40*np.pi` gives kz steps of 0.05).
 
 **Comparison with Roberts' Table 4** (same λ, j and truncation s as in his table):
@@ -204,10 +225,10 @@ values here differ from his (e.g. motion IV, λ = 1/64, j = 1/16: 0.000168 here,
 against 0.0001987 at his s = 25).  These are worth checking against the printed paper before relying on
 those rows.
 
-**Relation to the paper's flows.**  `R72_I` is the paper's flow I with w₀ = √2 v₀, rotated by 45° in
+**Relation to the paper's flows.**  `R72` is the paper's flow I with w₀ = √2 v₀, rotated by 45° in
 the xy plane and with lengths and velocities scaled by √2.  Growth rates map as
 λ_I(η, kz) = λ_R72(2η, kz/√2); for example `converge('I', 1/16, 0.5*np.sqrt(2), w0=np.sqrt(2))` and
-`converge('R72_I', 1/8, 0.5)` both give 0.16917096627.  The same rotation relates the paper's flows II
+`converge('R72', 1/8, 0.5)` both give 0.16917096627.  The same rotation relates the paper's flows II
 and III to `R72_II` and `R72_III`, and every eigenvalue of `R72_II` / `R72_III` also appears in the
 spectrum of the paper's flow.  However, the paper's 2π × 2π box contains two of Roberts' cells and
 therefore allows additional field patterns, and for flows II and III these grow fastest (e.g. at
@@ -239,4 +260,4 @@ The paper's flow IV (vz = sin x) is a different flow from Roberts' motion IV.
 
 Method: G. O. Roberts (1972), *Phil. Trans. R. Soc. Lond. A* 271, 411–454.
 Initial version developed with the assistance of Claude (Opus 5.5, Anthropic), November 2026;
-reviewed and validated by N. Shchutskyi.
+reviewed and validated by M. Schaller and N. Shchutskyi.
