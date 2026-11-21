@@ -50,7 +50,7 @@ struct chemistry_part_data {
   int positivity_limiter_engagements;
 
   /*! Number of flux exchanges that updated this particle, per limiter pass
-      (CHEMISTRY_FCT_PASS_PREP, CHEMISTRY_FCT_PASS_APPLY). */
+      (enum chemistry_flux_pass). */
   int flux_exchange_count[2];
 #endif
 

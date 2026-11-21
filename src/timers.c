@@ -149,10 +149,10 @@ const char *timers_names[timer_count] = {
     "rt_collect_times",
     "do_sync",
     "neutrino_weighting",
-    "doself_chemistry_fct_prep",
-    "dopair_chemistry_fct_prep",
-    "dosub_self_chemistry_fct_prep",
-    "dosub_pair_chemistry_fct_prep",
+    "doself_chemistry_flux_prep",
+    "dopair_chemistry_flux_prep",
+    "dosub_self_chemistry_flux_prep",
+    "dosub_pair_chemistry_flux_prep",
     "do_chemistry_fct_ghost",
 };
 

@@ -92,18 +92,13 @@ static void exchange_all(struct part *donor, struct part *ngb, const int prep,
     float dx[3];
     for (int k = 0; k < 3; k++) dx[k] = donor->x[k] - ngb[n].x[k];
     const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-    if (prep)
-      runner_iact_chemistry_flux_exchange_fct_prep(
-          r2, dx, donor->h, ngb[n].h, donor, &ngb[n],
-          /*both_updatable_here=*/1, /*local_first=*/1, /*local_second=*/1,
-          /*a=*/1.f, /*H=*/0.f, /*time_base=*/1e-5, /*t_current=*/1, cosmo,
-          /*with_cosmology=*/0, cd);
-    else
-      runner_iact_chemistry_flux_exchange(
-          r2, dx, donor->h, ngb[n].h, donor, &ngb[n],
-          /*both_updatable_here=*/1, /*local_first=*/1, /*local_second=*/1,
-          /*a=*/1.f, /*H=*/0.f, /*time_base=*/1e-5, /*t_current=*/1, cosmo,
-          /*with_cosmology=*/0, cd);
+    runner_iact_chemistry_flux_exchange(
+        r2, dx, donor->h, ngb[n].h, donor, &ngb[n],
+        /*both_updatable_here=*/1, /*local_first=*/1, /*local_second=*/1,
+        /*a=*/1.f, /*H=*/0.f, /*time_base=*/1e-5, /*t_current=*/1, cosmo,
+        /*with_cosmology=*/0, cd,
+        prep ? chemistry_flux_pass_prep : chemistry_flux_pass_apply,
+        /*max_active_bin=*/num_time_bins);
   }
 }
 

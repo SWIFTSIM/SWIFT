@@ -42,6 +42,10 @@
 #include "kernel_hydro.h"
 #include "parser.h"
 #include "part.h"
+
+#ifndef EXTRA_HYDRO_LOOP
+#error "The GEAR FVPM chemistry needs a hydro scheme with a gradient loop."
+#endif
 #include "physical_constants.h"
 #include "units.h"
 

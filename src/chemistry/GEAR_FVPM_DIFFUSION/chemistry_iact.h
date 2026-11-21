@@ -28,13 +28,6 @@
 
 #define GIZMO_VOLUME_CORRECTION
 
-/* Passes of the two-pass FCT positivity limiter: the prep pass computes the
-   prospective fluxes and accumulates the donor-side outflow sums, the apply
-   pass computes the same fluxes, scales them by the donor's theta and applies
-   them. */
-#define CHEMISTRY_FCT_PASS_PREP 0
-#define CHEMISTRY_FCT_PASS_APPLY 1
-
 /* Status codes of chemistry_compute_pair_fluxes(), ordered by how
    far the computation got before an early exit. */
 #define CHEMISTRY_PAIR_FLUX_NONE 0     /* no interaction at all */
@@ -295,8 +288,8 @@ runner_iact_nonsym_gradient_diffusion(const float r2, const float dx[3],
  * receiving the flux update (see runner_iact_nonsym_diffusion()).
  * @param accum_ts_right Whether pj accumulates this pair's timestep
  * variables. See accum_ts_left.
- * @param fct_pass CHEMISTRY_FCT_PASS_PREP to only accumulate the donor-side
- * outflow sums, CHEMISTRY_FCT_PASS_APPLY to scale by the donor's theta and
+ * @param fct_pass chemistry_flux_pass_prep to only accumulate the donor-side
+ * outflow sums, chemistry_flux_pass_apply to scale by the donor's theta and
  * apply the fluxes.
  */
 __attribute__((always_inline)) INLINE static void
@@ -305,7 +298,8 @@ runner_iact_chemistry_fluxes_common(
     struct part *restrict pi, struct part *restrict pj,
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, int update_left, int update_right,
-    int accum_ts_left, int accum_ts_right, int fct_pass) {
+    int accum_ts_left, int accum_ts_right,
+    const enum chemistry_flux_pass fct_pass) {
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   if (update_left) pi->chemistry_data.flux_exchange_count[fct_pass]++;
@@ -337,7 +331,7 @@ runner_iact_chemistry_fluxes_common(
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
   /* Store the signal velocity (only in the pass that applies fluxes, to
      leave the time-step estimate identical to the single-pass scheme) */
-  if (fct_pass == CHEMISTRY_FCT_PASS_APPLY) {
+  if (fct_pass == chemistry_flux_pass_apply) {
     if (accum_ts_left)
       chi->timestepvars.vmax = max(chi->timestepvars.vmax, vmax);
     if (accum_ts_right)
@@ -351,7 +345,7 @@ runner_iact_chemistry_fluxes_common(
 
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   /* Lanson & Vila (2008), denominator of equation (58) */
-  if (fct_pass == CHEMISTRY_FCT_PASS_APPLY) {
+  if (fct_pass == chemistry_flux_pass_apply) {
     if (accum_ts_left) chi->timestepvars.delxbar += delxbar_i;
     if (accum_ts_right) chj->timestepvars.delxbar += delxbar_j;
   }
@@ -369,7 +363,7 @@ runner_iact_chemistry_fluxes_common(
      * pass scales the flux by the donor's theta (frozen since the
      * chemistry_fct_ghost task), so both evaluations of a pair apply the
      * identical scaled flux and the exchange stays conservative. */
-    if (fct_pass == CHEMISTRY_FCT_PASS_PREP) {
+    if (fct_pass == chemistry_flux_pass_prep) {
       /* NOTE: the write to the (possibly inactive) neighbour chj below is
          race-safe only because self/pair hydro tasks lock BOTH cells
          (task_lock default hydro branch). Do not relax the prep task's
@@ -413,6 +407,20 @@ runner_iact_chemistry_fluxes_common(
    prep and apply passes, giving it the same stability as position. */
 
 /**
+ * @brief Is this particle inactive for the flux exchange of this step?
+ *
+ * Inactive particles carry a negative flux time-step.
+ *
+ * @param p The #part.
+ * @param max_active_bin The highest active time-bin.
+ */
+__attribute__((always_inline)) INLINE static int
+chemistry_part_is_flux_inactive(const struct part *p,
+                                const timebin_t max_active_bin) {
+  return p->chemistry_data.flux.dt < 0.f;
+}
+
+/**
  * @brief Shared decision table for the chemistry diffusion flux exchange,
  * used by both the flux-applying force loop and (via fct_pass) the FCT prep
  * pass.
@@ -449,7 +457,8 @@ runner_iact_chemistry_fluxes_common(
  *      local particle; a tie skips (degenerate face) rather than picking
  *      an arbitrary side.
  *
- * @param fct_pass CHEMISTRY_FCT_PASS_PREP or CHEMISTRY_FCT_PASS_APPLY.
+ * @param fct_pass The pass of the positivity limiter.
+ * @param max_active_bin The highest active time-bin.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_flux_exchange_decide(
@@ -457,7 +466,8 @@ runner_iact_chemistry_flux_exchange_decide(
     struct part *restrict pi, struct part *restrict pj,
     const int both_updatable_here, const int local_first,
     const int local_second, const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo, const int fct_pass) {
+    const struct cosmology *cosmo, const enum chemistry_flux_pass fct_pass,
+    const timebin_t max_active_bin) {
 
   if (both_updatable_here) {
     /* Today's sym path: both particles already guaranteed active, local and
@@ -471,7 +481,7 @@ runner_iact_chemistry_flux_exchange_decide(
     return;
   }
 
-  const int pj_inactive = (pj->chemistry_data.flux.dt < 0.f);
+  const int pj_inactive = chemistry_part_is_flux_inactive(pj, max_active_bin);
   if (pj_inactive) {
     /* Today's nonsym path: pj still receives the flux so the exchange stays
        symmetric, but this pair is visited exactly once this step (from
@@ -573,6 +583,8 @@ runner_iact_chemistry_flux_exchange_decide(
  * @param cosmo The #cosmology.
  * @param with_cosmology Are we running with cosmology?
  * @param chem_data The global properties of the chemistry scheme.
+ * @param pass The pass of the positivity limiter.
+ * @param max_active_bin The highest active time-bin.
  */
 __attribute__((always_inline)) INLINE static void
 runner_iact_chemistry_flux_exchange(
@@ -581,29 +593,12 @@ runner_iact_chemistry_flux_exchange(
     const int both_updatable_here, const int local_first,
     const int local_second, const float a, const float H, const float time_base,
     const integertime_t t_current, const struct cosmology *cosmo,
-    const int with_cosmology, const struct chemistry_global_data *chem_data) {
+    const int with_cosmology, const struct chemistry_global_data *chem_data,
+    const enum chemistry_flux_pass pass, const timebin_t max_active_bin) {
 
   runner_iact_chemistry_flux_exchange_decide(
       r2, dx, hi, hj, pi, pj, both_updatable_here, local_first, local_second,
-      chem_data, cosmo, CHEMISTRY_FCT_PASS_APPLY);
-}
-
-/* FCT prep pass: same signature and decision table as
-   runner_iact_chemistry_flux_exchange() (aliased to it via
-   runner_doiact_hydro.c's object-macro redirect) so both passes visit the
-   identical pairs in the identical order. */
-__attribute__((always_inline)) INLINE static void
-runner_iact_chemistry_flux_exchange_fct_prep(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj,
-    const int both_updatable_here, const int local_first,
-    const int local_second, const float a, const float H, const float time_base,
-    const integertime_t t_current, const struct cosmology *cosmo,
-    const int with_cosmology, const struct chemistry_global_data *chem_data) {
-
-  runner_iact_chemistry_flux_exchange_decide(
-      r2, dx, hi, hj, pi, pj, both_updatable_here, local_first, local_second,
-      chem_data, cosmo, CHEMISTRY_FCT_PASS_PREP);
+      chem_data, cosmo, pass, max_active_bin);
 }
 
 /* The template's original diffusion hooks: kept (not removed) so private
@@ -618,22 +613,6 @@ __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const struct chemistry_global_data *chem_data) {}
 
 __attribute__((always_inline)) INLINE static void runner_iact_nonsym_diffusion(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chem_data) {}
-
-__attribute__((always_inline)) INLINE static void
-runner_iact_diffusion_fct_prep(
-    const float r2, const float dx[3], const float hi, const float hj,
-    struct part *restrict pi, struct part *restrict pj, const float a,
-    const float H, const float time_base, const integertime_t t_current,
-    const struct cosmology *cosmo, const int with_cosmology,
-    const struct chemistry_global_data *chem_data) {}
-
-__attribute__((always_inline)) INLINE static void
-runner_iact_nonsym_diffusion_fct_prep(
     const float r2, const float dx[3], const float hi, const float hj,
     struct part *restrict pi, struct part *restrict pj, const float a,
     const float H, const float time_base, const integertime_t t_current,

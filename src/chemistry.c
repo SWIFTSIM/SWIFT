@@ -39,6 +39,13 @@ void chemistry_init(struct swift_params *parameter_file,
                     struct chemistry_global_data *data) {
 
   chemistry_init_backend(parameter_file, us, phys_const, data);
+
+#ifndef EXTRA_CHEMISTRY_LOOP
+  if (chemistry_need_flux_prep_loop(data))
+    error(
+        "The chemistry scheme needs the flux prep loop, but "
+        "EXTRA_CHEMISTRY_LOOP is not defined.");
+#endif
 }
 
 /**

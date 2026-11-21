@@ -230,7 +230,8 @@ static struct residual_result measure_gate_residual(
   runner_iact_chemistry_flux_exchange(
       r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/1,
       /*local_first=*/1, /*local_second=*/1, /*a=*/1.f,
-      /*H=*/0.f, time_base, ti_current, cosmo, with_cosmology, chem_data);
+      /*H=*/0.f, time_base, ti_current, cosmo, with_cosmology, chem_data,
+      chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
   const double Fi = pi.chemistry_data.flux.metal_mass[TEST_METAL];
 
   memcpy(&pi, pi_template, sizeof(struct part));
@@ -241,7 +242,8 @@ static struct residual_result measure_gate_residual(
   runner_iact_chemistry_flux_exchange(
       r2, mdx, pj.h, pi.h, &pj, &pi, /*both_updatable_here=*/1,
       /*local_first=*/1, /*local_second=*/1, /*a=*/1.f,
-      /*H=*/0.f, time_base, ti_current, cosmo, with_cosmology, chem_data);
+      /*H=*/0.f, time_base, ti_current, cosmo, with_cosmology, chem_data,
+      chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
   const double Fj = pj.chemistry_data.flux.metal_mass[TEST_METAL];
 
   struct residual_result res;
@@ -534,7 +536,8 @@ static int check_h_primary_designation(
     runner_iact_chemistry_flux_exchange(
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data);
+        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
+        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
     const int pi_acted = pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     const int pj_acted = pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     /* pi is entitled at this call site; it must act iff it has the larger
@@ -576,7 +579,8 @@ static int check_local_tiebreak(const struct cosmology *cosmo,
     runner_iact_chemistry_flux_exchange(
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data);
+        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
+        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
     const int fwd_acted =
         (pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0) ||
         (pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0);
@@ -589,7 +593,8 @@ static int check_local_tiebreak(const struct cosmology *cosmo,
     runner_iact_chemistry_flux_exchange(
         r2, mdx, pj2.h, pi2.h, &pj2, &pi2, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data);
+        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
+        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
     const int bwd_acted =
         (pi2.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0) ||
         (pj2.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0);
@@ -647,7 +652,8 @@ static int check_cross_rank(const struct cosmology *cosmo,
     runner_iact_chemistry_flux_exchange(
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/0, /*a=*/1.f, /*H=*/0.f, time_base,
-        ti_current, cosmo, /*with_cosmology=*/0, chem_data);
+        ti_current, cosmo, /*with_cosmology=*/0, chem_data,
+        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
 
     const double Fi = pi.chemistry_data.flux.metal_mass[TEST_METAL];
     const double Fj_foreign = pj.chemistry_data.flux.metal_mass[TEST_METAL];
