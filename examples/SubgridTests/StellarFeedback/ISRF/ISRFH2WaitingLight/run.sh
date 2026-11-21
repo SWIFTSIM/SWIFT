@@ -11,7 +11,6 @@ level=${level:=5}   # Resolution level: N = (2**level)**3 gas particles
 gas_density=${gas_density:=1e3}   # Gas density in atom/cm^3
 gas_mass=${gas_mass:=0.1}   # Gas particle mass in Msun
 h2_ratio=${h2_ratio:=3e-5}   # Initial nH2 / nH
-light_speed=${light_speed:=fixed}   # Light speed of the limited arm: fixed or cap
 ic_file=ICs_isrf_h2_waiting_light.hdf5
 
 glass_file="glassCube_$((2**level)).hdf5"
@@ -52,6 +51,6 @@ run_arm() {
 }
 
 run_arm control -P GEARFeedback:ISRF_packet_light_speed:unlimited -P TimeIntegration:dt_max:2.34375e-10
-run_arm limited -P GEARFeedback:ISRF_packet_light_speed:$light_speed
+run_arm limited -P GEARFeedback:ISRF_packet_light_speed:fixed
 
 python3 checkH2WaitingLight.py --limited limited --control control

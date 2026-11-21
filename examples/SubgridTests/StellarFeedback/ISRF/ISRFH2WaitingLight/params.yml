@@ -68,7 +68,7 @@ GeajayCooling:
   with_metal_cooling: 1                        # Required by the dust chemistry of the ISRF
   thermal_time_myr: 0                          # No adiabatic-cooling time after a feedback event
   h2_shielding_length_method: none             # The library does not shield the background: no background here
-  initial_h2i_to_h_ratio: 3e-5           # Initial nH2 / nH, sets the H2 column
+  initial_h2i_to_h_ratio: 3e-5                 # Initial nH2 / nH, sets the H2 column
   initial_hii_to_h_ratio: 1e-8                 # Residual ionization keeps H2 formation through H- negligible
 
 GEARFeedback:
@@ -85,9 +85,9 @@ GEARFeedback:
   HII_couple_ionization_rate: 0                             # No ionization rate to the cooling
   with_interstellar_radiation_field: 1                      # ISRF feedback master switch
   ISRF_propagation: 1                                       # Transport the ISRF from the stars
-  ISRF_H2_line_absorption: 1                         # 1: the H2 lines absorb the LW band along the packet path
-  ISRF_packet_light_speed: fixed                          # Limited speed: light waits in the reception slots when the run stops
-  ISRF_packet_light_speed_fraction_of_c: 0.99                # Limit speed as a fraction of c
+  ISRF_H2_line_absorption: 1                                # The H2 lines absorb the LW band along the packet path
+  ISRF_packet_light_speed: fixed                            # Finite light speed: light that has not arrived waits in a slot
+  ISRF_packet_light_speed_fraction_of_c: 0.99               # Light speed as a fraction of c
 
 Stars:
   timestep_age_threshold_unlimited_Myr: 11.
