@@ -269,28 +269,33 @@ static double measure_mindt_residual(
   memcpy(&pi, pi_template, sizeof(struct part));
   memcpy(&pj, pj_template, sizeof(struct part));
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
+  const float time_base = 1e-5;
+  const integertime_t ti_current = 1;
+  const int with_cosmology = 0;
 
   double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4];
   float mindt_fwd = 0.f, vmax = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   float delxbar_i = 0.f, delxbar_j = 0.f;
   chemistry_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj, chem_data, cosmo,
-                                totflux, &mindt_fwd, &vmax, &delxbar_i,
-                                &delxbar_j);
+                                ti_current, time_base, with_cosmology, totflux,
+                                &mindt_fwd, &vmax, &delxbar_i, &delxbar_j);
 #else
   chemistry_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj, chem_data, cosmo,
-                                totflux, &mindt_fwd, &vmax);
+                                ti_current, time_base, with_cosmology, totflux,
+                                &mindt_fwd, &vmax);
 #endif
 
   const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
   float mindt_bwd = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   chemistry_compute_pair_fluxes(r2, mdx, pj.h, pi.h, &pj, &pi, chem_data, cosmo,
-                                totflux, &mindt_bwd, &vmax, &delxbar_i,
-                                &delxbar_j);
+                                ti_current, time_base, with_cosmology, totflux,
+                                &mindt_bwd, &vmax, &delxbar_i, &delxbar_j);
 #else
   chemistry_compute_pair_fluxes(r2, mdx, pj.h, pi.h, &pj, &pi, chem_data, cosmo,
-                                totflux, &mindt_bwd, &vmax);
+                                ti_current, time_base, with_cosmology, totflux,
+                                &mindt_bwd, &vmax);
 #endif
 
   const double denom = max(fabs(mindt_fwd), fabs(mindt_bwd));

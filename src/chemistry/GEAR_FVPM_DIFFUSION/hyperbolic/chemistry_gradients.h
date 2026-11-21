@@ -218,8 +218,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* MUSCL-Hancock half-step predictor, folded in before the face limiter
      below so it bounds the full extrapolation, not just the spatial part.
-     Order-independent mindt (see chemistry.c's
-     chemistry_compute_pair_fluxes() for why the naive chj-gated form
+     Order-independent mindt (see chemistry_get_pair_flux_dt() in
+     chemistry.c for why the naive chj-gated form
      is unsafe after canonicalisation). */
   const float dt_L = chi->flux.dt;
   const float dt_R = chj->flux.dt;

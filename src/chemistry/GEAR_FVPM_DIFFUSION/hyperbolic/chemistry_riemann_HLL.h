@@ -149,7 +149,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
        always rescaled while components 1-3 follow hyperbolic_limiter_scope,
        since unconditionally suppressing their dissipation would preserve
        rather than decay an already-stale flux. dt_ij uses the same
-       order-independent mindt as chemistry.c's chemistry_compute_pair_fluxes()
+       order-independent mindt as chemistry_get_pair_flux_dt() in chemistry.c
        and the MUSCL predictor (chemistry_gradients.h): the smallest positive
        flux.dt among the two particles, whichever slot it ends up in after
        canonicalisation. */

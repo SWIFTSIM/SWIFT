@@ -26,15 +26,55 @@
 #include "chemistry_iact.h"
 
 /**
+ * @brief Get the time interval over which a pair exchanges its flux.
+ *
+ * An inactive particle carries a negative flux.dt, so the interval is the
+ * smaller positive flux.dt of the two. The test does not assume which slot
+ * holds the active particle, because the cross-rank exchange can swap them.
+ *
+ * It takes the particles rather than their chemistry data: under fast-math,
+ * an extra pointer in chemistry_compute_pair_fluxes() changes the order of
+ * the reassociated arithmetic, and so the rounding of the fluxes.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param t_current The current time (in integer).
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param cosmo The #cosmology.
+ * @param with_cosmology Are we running with cosmology?
+ * @return The interval, or 0 if neither particle is active.
+ */
+__attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
+    const struct part *pi, const struct part *pj, const integertime_t t_current,
+    const float time_base, const struct cosmology *cosmo,
+    const int with_cosmology) {
+
+  const float dt_L = pi->chemistry_data.flux.dt;
+  const float dt_R = pj->chemistry_data.flux.dt;
+  float flux_dt;
+  if (dt_L > 0.f && dt_R > 0.f) {
+    flux_dt = fminf(dt_L, dt_R);
+  } else if (dt_L > 0.f) {
+    flux_dt = dt_L;
+  } else if (dt_R > 0.f) {
+    flux_dt = dt_R;
+  } else {
+    /* The dispatch never sends a pair with no active particle. */
+    flux_dt = 0.f;
+  }
+  return flux_dt;
+}
+
+/**
  * @brief Computes the diffusion pair fluxes of all elements (no side
  * effects).
  *
- * Shared by the FCT prep pass and the flux-applying force loop
- * (runner_iact_chemistry_fluxes_common()). Kept out-of-line, never inlined,
- * and externally linked so both callers always compile to one shared
- * function body, whatever translation unit either ends up in: required
- * for the FCT donor-side cap, which needs the prep and apply passes to
- * agree bit-for-bit.
+ * Shared by the prep pass of the positivity limiter and the force loop
+ * (chemistry_exchange_pair_flux()). It is out-of-line, never inlined and
+ * externally linked, so both callers run one function body, whatever
+ * translation unit they are in. The limiter needs the two passes to agree
+ * bit for bit.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -
@@ -45,8 +85,12 @@
  * @param pj Particle j (not modified).
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
+ * @param t_current The current time (in integer).
+ * @param time_base The time base used in order to convert integer to float
+ * time.
+ * @param with_cosmology Are we running with cosmology?
  * @param totflux (return) Per-element fluxes across the interface.
- * @param mindt_out (return) Time step of the flux exchange.
+ * @param flux_dt_out (return) Time interval of the flux exchange.
  * @param vmax_out (return) Maximal signal velocity of the pair (hyperbolic
  * scheme; 0 otherwise).
  * @return a CHEMISTRY_PAIR_FLUX_* status describing which outputs are valid.
@@ -55,8 +99,9 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
     const float r2, const float dx[3], const float hi, const float hj,
     const struct part *restrict pi, const struct part *restrict pj,
     const struct chemistry_global_data *chem_data,
-    const struct cosmology *cosmo,
-    double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *mindt_out,
+    const struct cosmology *cosmo, const integertime_t t_current,
+    const float time_base, const int with_cosmology,
+    double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4], float *flux_dt_out,
     float *vmax_out
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
     ,
@@ -64,7 +109,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
 #endif
 ) {
 
-  *mindt_out = 0.f;
+  *flux_dt_out = 0.f;
   *vmax_out = 0.f;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   *delxbar_i_out = 0.f;
@@ -76,9 +121,6 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
       (pi->chemistry_data.kappa == 0.0 && pj->chemistry_data.kappa == 0.0)) {
     return CHEMISTRY_PAIR_FLUX_NONE;
   }
-
-  const struct chemistry_part_data *chi = &pi->chemistry_data;
-  const struct chemistry_part_data *chj = &pj->chemistry_data;
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);
@@ -209,31 +251,12 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
   const float xfac = -hi / (hi + hj);
   const float xij_i[3] = {xfac * dx[0], xfac * dx[1], xfac * dx[2]};
 
-  /* Get the time step for the flux exchange: the smallest positive time step
-   * among the two particles, order-independently. The naive
-   * "(chj->flux.dt > 0.f) ? fminf(chi, chj) : chi" form silently assumes chi
-   * is always the active one; after canonicalisation the "left" slot can
-   * hold either particle, and that assumption would give
-   * fminf(-1.f, dt) = -1.f: a negative timestep multiplying every flux. */
-  const float dt_L = chi->flux.dt;
-  const float dt_R = chj->flux.dt;
-  float mindt;
-  if (dt_L > 0.f && dt_R > 0.f) {
-    mindt = fminf(dt_L, dt_R);
-  } else if (dt_L > 0.f) {
-    mindt = dt_L;
-  } else if (dt_R > 0.f) {
-    mindt = dt_R;
-  } else {
-    /* Neither side is active: nothing to exchange. Should not happen given
-     * the nonsym/sym dispatch contracts, but stay safe rather than divide
-     * into a negative timestep. */
-    mindt = 0.f;
-  }
-  *mindt_out = mindt;
+  const float flux_dt = chemistry_get_pair_flux_dt(pi, pj, t_current, time_base,
+                                                   cosmo, with_cosmology);
+  *flux_dt_out = flux_dt;
 
   /* Nothing to do */
-  if (mindt == 0.f) {
+  if (flux_dt == 0.f) {
     return CHEMISTRY_PAIR_FLUX_GEOMETRY;
   }
 
@@ -307,7 +330,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
        a lot, we will create a lot of metal mass. */
     /* Note: the limiter only reads interaction_mode for a debug message, so
        passing 0 here keeps the computation mode-independent. */
-    chemistry_limit_metal_mass_flux(pi, pj, m, totflux[m], mindt,
+    chemistry_limit_metal_mass_flux(pi, pj, m, totflux[m], flux_dt,
                                     /*interaction_mode=*/0, chem_data);
   }
 
