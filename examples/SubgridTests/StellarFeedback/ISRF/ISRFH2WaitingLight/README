@@ -1,0 +1,74 @@
+# Intro
+One 29.7 Msun star at the centre of an isolated box (no periodic images) of cold (50 K),
+zero-metallicity molecular gas with 8 dense Gaussian clumps (peak density 100 times the clear gas,
+clumps 0.12 to 0.32 box sizes from the star). The ISRF transport is on (`ISRF_propagation: 1`) with
+the H2 line absorption of the transport on (`ISRF_H2_line_absorption: 1`), so the Lyman-Werner (LW)
+light of the star is absorbed by the H2 lines along its path.
+
+At a limited light speed (`ISRF_packet_light_speed: fixed`) the light that has not yet
+reached a gas particle waits in a reception slot of that particle. A slot is the part of the
+particle's reception that holds the light from one direction. When part of the waiting light is
+released, the released light receives the mean H2 shielding of the whole waiting pool. This example
+runs the cloud twice from the same initial conditions, with a limited and with an unlimited light
+speed (no light waits), and checks that each run lies inside the range of the shares of its
+own neighbours.
+
+The speed of the limited arm is `ISRF_packet_light_speed_fraction_of_c` (0.99 in `params.yml`).
+
+# Configure
+This example needs geajay; official Grackle refuses `ISRF_H2_line_absorption: 1` at start-up.
+The cooling solver is the geajay default (`GeajayCooling:solver` is not set in `params.yml`).
+No extra build flag is needed.
+```
+./configure --with-chemistry=GEAR_10 --with-feedback=GEAR --with-cooling=geajay_3 --with-stars=GEAR --with-sink=GEAR --with-star-formation=GEAR --with-tracers=GEAR --with-kernel=wendland-C2 --with-geajay=path/to/geajay --with-chealpix=path/to/chealpix
+make -j
+```
+The packet transport needs a radiation table whose `Data/Radiation` group carries
+`MeanPhotonEnergyPE` and `Integrated_MeanPhotonEnergyPE`; `run.sh` fetches and checks it.
+
+# Run
+```
+./run.sh
+```
+`run.sh` fetches the glass file and the tables, writes the initial conditions, runs the unlimited
+arm (directory `control`), then the limited arm (directory `limited`), then the check. It deletes
+`snap` and `restart` in the current directory first. Both arms write snapshots at the same times.
+`level`, `gas_density`, `gas_mass`, `h2_ratio` (initial `nH2/nH`, default 3e-5) and `n_threads`
+override the defaults. The run keeps the gas cold and the H2 nearly frozen: photoionization, winds
+and supernovae are off, the metallicity is zero, and the time step is set by the light speed
+(64 steps of 1.47e-10 internal units). Both arms are non-periodic, so no light of periodic images
+of the star reaches the gas.
+
+# Checking
+`python3 checkH2WaitingLight.py --limited limited --control control`
+
+A particle releases a weighted mean of the light that waits for it, so its H2
+transmission and column must lie between the smallest and the largest value that its
+neighbours closer to the star hand to it (its shares). The check reads the particles
+between 2 smoothing lengths and half a box minus 2 smoothing lengths from the star whose
+H2 density is nearly constant, at every snapshot that both runs hold, and tests that:
+- the limited run lies inside the range of its own shares;
+- the control run lies inside the range of its own shares;
+- the two runs differ by at most the width of the range of the shares of both runs (this follows
+  from the two tests above and is not a separate test).
+
+The check prints the first and last snapshot it read and why the comparison ends. A control run
+outside the range of its own shares fails the check. The check needs both runs to be
+non-periodic and the limited run to have lit fewer particles than the control at the first
+compared snapshot (else no light waits). It refuses `ISRF_packet_light_speed: cap` (exit class 4).
+It tests the transmission and the column of every lit particle of every snapshot it reads, and
+stops with exit class 3 if one is not finite. On one core the check takes about 45 minutes for
+the default resolution (41 snapshots per run).
+
+A PASS proves that, at every snapshot read, the H2 transmission and column of each compared
+particle lie, to 1e-5, between the smallest and the largest share that the check rebuilds from
+the carried values of its upstream neighbours, taken at any snapshot up to the compared one. It
+does not prove the absolute value of the transmission: an error that is the same on every
+particle passes, in either sign. It does not see a pooling error that keeps a weighted mean of
+the shares (a lost or a double-counted share, wrong weights, light released twice). It catches
+an error that pushes a particle outside that range, for example an H2 shielding that is too
+strong or too weak on each hop.
+
+The exit class is 0 for a pass, 1 for a failed bar, 2 for a missing file or field (run
+`./run.sh` first), 3 for a non-finite value and 4 for a void run (a premise or the
+positive control is not met).
