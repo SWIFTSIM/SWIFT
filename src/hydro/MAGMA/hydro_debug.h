@@ -40,6 +40,13 @@ __attribute__((always_inline)) INLINE static void hydro_debug_particle(
       p->force.mu_tilde, p->h, p->force.h_dt, p->density.wcount, p->rho,
       p->density.rho_dh, p->fallback_flags, p->time_bin,
       p->limiter_data.wakeup);
+  warning(
+      "[PID%lld] MAGMA: alpha_visc=%.3g, alpha_diff=%.3g, "
+      "alpha_visc_max_ngb=%.3g, c_max_ngb=%.3g, div_v=%.3g, "
+      "div_v_previous=%.3g, laplace_u=%.3g, grad_u_prev=[%.3g, %.3g, %.3g]",
+      p->id, p->alpha_visc, p->alpha_diff, p->alpha_visc_max_ngb,
+      p->c_max_ngb, p->div_v, p->div_v_previous, p->laplace_u,
+      p->gradient_u_prev[0], p->gradient_u_prev[1], p->gradient_u_prev[2]);
   if (xp != NULL) {
     warning("[PID%lld] xpart:", p->id);
     warning("[PID%lld] v_full=[%.3g, %.3g, %.3g]", p->id, xp->v_full[0],

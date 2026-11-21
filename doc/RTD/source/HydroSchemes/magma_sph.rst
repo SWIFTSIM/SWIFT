@@ -159,7 +159,8 @@ the kernel support to :math:`h`; these are the paper's values translated to
 SWIFT's :math:`h` convention (the paper's :math:`h` is half the kernel
 support). The cut-off is scaled by the convergence fraction of the flow,
 :math:`(\nabla \cdot \mathbf{v})^2 / ((\nabla \cdot \mathbf{v})^2 +
-|\mathsf{S}|^2)` with :math:`\mathsf{S}` the traceless strain, so that close
+|\mathsf{S}|^2)` with :math:`\mathsf{S}` the traceless strain (the larger
+of the two particles' values for a pair), so that close
 pairs in pure shear (differential rotation) keep their reconstruction and
 the viscosity does not act on the shear. The velocity, internal energy and
 pressure each have their own limiter; the internal-energy reconstruction is
@@ -195,8 +196,9 @@ disordered flow with mixed signs :math:`R_a` scatters about zero by its
 particle noise, the particle's own term :math:`m_a W(0)/\rho_a` plus about
 :math:`1/\sqrt{N_{\rm ngb}}` (0.44 with the quintic spline at
 :math:`\eta = 1.5` in 2D, 0.21 in 3D). The factor therefore reads
-:math:`R_a` through a dead zone of 1.1 times that noise, computed per
-particle from its mass, density and smoothing length: :math:`|R_a|` below
+:math:`R_a` through a dead zone of 1.1 times that noise (capped at 0.9),
+computed per particle from its mass, density and smoothing length:
+:math:`|R_a|` below
 it is mapped to 0 (the factor 2) and the rest rescaled so that
 :math:`R_a = \mp 1` keep the factors 32 and 0. Without the dead zone the
 converging half of the particles of a cold Keplerian disc get a factor of up
@@ -248,7 +250,11 @@ remaining lever on the contacts: it trades the last 40 per cent of the
 smooth-flow gain for half of the contact noise and a third of the Evrard
 loss. ``SPH:viscosity_alpha_min: 1`` restores the paper's constant
 viscosity (and switches the conduction cap off, since the coefficient then
-carries no shock information).
+carries no shock information). That also removes the protection of freshly
+heated feedback particles, whose conduction is held off by the cap alone
+(the feedback hook's reset of the conduction coefficient is undone by the
+coefficient's floor at the next step), so it is not a setting for runs
+with feedback.
 
 Artificial conduction
 ---------------------
@@ -274,8 +280,8 @@ mean of the two particles' coefficients :math:`\alpha^D_a`
 :math:`H \nabla^2 u / \sqrt{u}` where :math:`u` has a local minimum, decay
 towards ``SPH:diffusion_alpha_min`` over a signal crossing time of the
 support, and are capped by :math:`1 - (\alpha^{\rm ngb}_{\max} -
-\alpha_{\min}) / (\alpha - \alpha_{\min})`, the SPHENIX limiter on the
-largest neighbour coefficient :math:`\alpha_a`. With the default floor of 1
+\alpha_{\min}) / (\alpha_{\max} - \alpha_{\min})`, the SPHENIX limiter on
+the largest neighbour coefficient :math:`\alpha_a`. With the default floor of 1
 the coefficient is this cap alone: the paper's full conduction wherever the
 gas is not viscous, none in shocks and around a particle that a feedback
 event has just heated (the feedback hook raises its :math:`\alpha_a` to the
@@ -398,7 +404,8 @@ Parameters
 ----------
 
 Most of the scheme's constants are fixed at compile time in
-``src/hydro/MAGMA/hydro_parameters.h`` at the values settled by the
+``src/hydro/MAGMA/hydro_parameters.h`` (changing one means editing that
+file and recompiling) at the values settled by the
 2026-10 tuning study on the test suite (:math:`\alpha_{\max} = 1`,
 :math:`\beta = 2`, :math:`\epsilon = 0.1`, the cut-off width, the shear
 limiter and its Mach threshold 0.5 and dead zone, the angle limit 0.5 rad,
@@ -460,9 +467,12 @@ The scheme implements the pressure floor and the entropy floor, the
 minimal internal energy, the time-step limiter, the velocity-kick signal
 velocity correction of kinetic feedback (the Courant signal speed is raised
 by :math:`\beta\,\Delta v`, as in the other schemes) and the diffusive
-feedback reset (per-particle viscosity coefficient to its maximum,
-conduction coefficient to zero, so that the conduction around a heated
-particle stays off until the injected energy has done work). The velocity
+feedback reset (per-particle viscosity coefficient to its maximum and
+conduction coefficient to zero; the latter is restored by the coefficient's
+floor at the next step, so it is the raised viscosity coefficient, through
+the conduction cap, that keeps the conduction around a heated particle off
+until its viscosity has decayed, about ten sound-crossing times of the
+kernel support). The velocity
 divergence used by the GEAR star formation and sink models is the trace of
 the matrix velocity gradient recorded at the last force preparation (zero
 for particles that fell back to standard SPH). Cosmological runs are

@@ -241,7 +241,7 @@ struct viscosity_global_data {
    * of the viscosity in pure shear (default 0: none) */
   float limiter_floor;
 
-  /*! Floor of the time-dependent alpha (default 0.1) */
+  /*! Floor of the time-dependent alpha (default 0.5) */
   float alpha_min;
 
   /*! Decay rate of the time-dependent alpha, Cullen & Dehnen's l: the decay

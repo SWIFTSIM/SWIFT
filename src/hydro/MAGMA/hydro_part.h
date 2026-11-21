@@ -65,11 +65,11 @@
  */
 enum magma_fallback_reasons {
   magma_fallback_none = 0,
-  magma_fallback_condition_number = (1 << 0),
+  magma_fallback_inversion = (1 << 0),
   magma_fallback_h_max = (1 << 1),
   magma_fallback_regularised = (1 << 2),
   magma_fallback_base_sph_mask =
-      magma_fallback_condition_number | magma_fallback_h_max,
+      magma_fallback_inversion | magma_fallback_h_max,
 };
 
 /**

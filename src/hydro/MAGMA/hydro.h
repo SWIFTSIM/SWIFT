@@ -538,8 +538,9 @@ __attribute__((always_inline)) INLINE static float hydro_get_signal_velocity(
  * The trace of the (matrix-inversion) gradient of the peculiar velocity, in
  * comoving coordinates and without the Hubble-flow term, as recorded by the
  * last hydro_prepare_force() (the persistent copy, valid in every phase of
- * the step; the force union is not). Zero for particles that fell back to
- * standard SPH gradients (their gradient is not computed).
+ * the step; the force union is not). Zero for particles whose C-matrix could
+ * not be inverted (no gradient is computed for them); particles at h_max
+ * interact with standard SPH gradients but still carry their divergence.
  *
  * @param p The particle.
  */
@@ -723,12 +724,14 @@ __attribute__((always_inline)) INLINE static void hydro_end_gradient(
   p->laplace_u *= 2.f * h_inv_dim * h_inv;
 
   /* Finish the shock-presence sum sum_j sign(div v_j) m_j W_ij (Cullen &
-   * Dehnen 2010, eq. 17): the particle's own term, with its divergence from
-   * its last gradient evaluation as for the neighbours (none if it had no
-   * valid gradient), and the factors of h of W, so that the sum compares
-   * with the density. */
+   * Dehnen 2010, eq. 17): the particle's own term, with the sign of its
+   * physical divergence (Hubble flow included) from its last gradient
+   * evaluation, as the neighbours' terms (none if it had no valid gradient,
+   * i.e. a comoving divergence of exactly zero), and the factors of h of W,
+   * so that the sum compares with the density. */
   if (p->div_v != 0.f)
-    p->gradient.shock_indicator += copysignf(p->mass * kernel_root, p->div_v);
+    p->gradient.shock_indicator +=
+        copysignf(p->mass * kernel_root, p->div_v_previous);
   p->gradient.shock_indicator *= h_inv_dim;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
@@ -825,7 +828,7 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * sums) --> Revert to base SPH, no reconstruction to the interface. */
   if (res) {
     sym_matrix_identity(&c_matrix);
-    p->fallback_flags |= magma_fallback_condition_number;
+    p->fallback_flags |= magma_fallback_inversion;
   }
 
   /* The particle has h close to h_max
