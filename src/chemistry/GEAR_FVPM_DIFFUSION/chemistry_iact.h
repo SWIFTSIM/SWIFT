@@ -428,18 +428,16 @@ chemistry_part_is_flux_inactive(const struct part *p,
  * The contract at every call site: @p pi is the particle this call is
  * entitled to update (the pre-existing nonsym convention); @p pj is its
  * neighbour. @p both_updatable_here is the call site's own doi&&doj-style
- * gate -- when true, both particles are guaranteed active, local and in the
- * same depth band, and this is the pair's ONE symmetric evaluation for the
- * step (established structural fact, see the plan). @p local_first and
- * @p local_second report whether the cell that @p pi (resp. @p pj) belongs
- * to at THIS call site is local to this rank -- named by argument position,
- * not by any fixed "cell i / cell j" identity, since several call sites
- * place the cell-j particle first.
+ * gate: when true, both particles are active, local and in the same depth
+ * band, and this is the pair's one symmetric evaluation for the step.
+ * @p local_first and @p local_second report whether the cell that @p pi
+ * (resp. @p pj) belongs to at this call site is local to this rank. They are
+ * named by argument position, since several call sites place the cell-j
+ * particle first.
  *
  * Decision table (order matters):
- *   1. both_updatable_here      -> symmetric update, today's sym path,
- *                                  no reordering.
- *   2. pj inactive (flux.dt<0)  -> nonsym + sentinel, today's path
+ *   1. both_updatable_here      -> symmetric update, no reordering.
+ *   2. pj inactive (flux.dt<0)  -> nonsym update of both particles
  *                                  (pj still receives the flux so the
  *                                  exchange stays symmetric; the pair is
  *                                  visited exactly once this step).
@@ -448,9 +446,9 @@ chemistry_part_is_flux_inactive(const struct part *p,
  *      pj->x) decides which of the two independent tasks visiting this
  *      pair performs the one symmetric update (the larger-h side, whose
  *      own visit to this pair is guaranteed by the hydro enumeration
- *      invariant -- see flux_exchange_is_owner() in flux_exchange.h); the
- *      loser skips entirely (an h-and-position tie -- coincident
- *      particles -- also skips, on both sides, consistently).
+ *      invariant, see flux_exchange_is_owner() in flux_exchange.h). The
+ *      loser skips entirely. An h-and-position tie (coincident particles)
+ *      also skips, on both sides.
  *   4. otherwise (cross-rank: pj is a foreign/proxy copy) -> compute the
  *      flux in position-canonical input order (so both ranks evaluate the
  *      identical floating-point sequence) but apply the result only to the
@@ -470,9 +468,8 @@ runner_iact_chemistry_flux_exchange_decide(
     const timebin_t max_active_bin) {
 
   if (both_updatable_here) {
-    /* Today's sym path: both particles already guaranteed active, local and
-       in-band by the caller's own gate. No reordering -- see the plan for
-       why reordering here would only add rounding noise for no benefit. */
+    /* Both particles are active, local and in-band by the caller's gate.
+       Reordering here would only add rounding noise. */
     runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
                                         cosmo, /*update_left=*/1,
                                         /*update_right=*/1,
@@ -483,7 +480,7 @@ runner_iact_chemistry_flux_exchange_decide(
 
   const int pj_inactive = chemistry_part_is_flux_inactive(pj, max_active_bin);
   if (pj_inactive) {
-    /* Today's nonsym path: pj still receives the flux so the exchange stays
+    /* Nonsym path: pj still receives the flux so the exchange stays
        symmetric, but this pair is visited exactly once this step (from
        pi's active side), so it gets none of the timestep-variable credit. */
     runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
@@ -497,7 +494,7 @@ runner_iact_chemistry_flux_exchange_decide(
   if (local_first && local_second) {
     /* Both particles active and local, but this call site alone does not
        cover the pair symmetrically (mixed depth band): exactly one of the
-       two independent tasks that visit this pair must act -- the larger-h
+       two independent tasks that visit this pair must act: the larger-h
        side (see flux_exchange_is_owner() in flux_exchange.h), whose own
        visit is guaranteed. */
     if (flux_exchange_is_owner(hi, hj, pi->x, pj->x)) {
@@ -509,7 +506,7 @@ runner_iact_chemistry_flux_exchange_decide(
           pi->x[2] == pj->x[2])
         warning(
             "Coincident distinct particles (ids %lld/%lld) at pos "
-            "[%g %g %g] in the local mixed-band chemistry flux exchange -- "
+            "[%g %g %g] in the local mixed-band chemistry flux exchange: "
             "skipping degenerate face.",
             pi->id, pj->id, pi->x[0], pi->x[1], pi->x[2]);
 #endif
@@ -521,7 +518,7 @@ runner_iact_chemistry_flux_exchange_decide(
 
   /* Cross-rank: local_second is false here (the local_first && local_second
      case was handled above), and every call site's first argument is by
-     construction the one this call is entitled to update -- so pi is local
+     construction the one this call is entitled to update, so pi is local
      and pj is a foreign/proxy copy that must never be written. Compute the
      flux in position-canonical input order so both ranks evaluate the
      identical floating-point sequence, then apply the result only to
@@ -539,7 +536,7 @@ runner_iact_chemistry_flux_exchange_decide(
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
     warning(
         "Coincident distinct particles (ids %lld/%lld) at pos [%g %g %g] "
-        "in the cross-rank chemistry flux exchange -- skipping degenerate "
+        "in the cross-rank chemistry flux exchange: skipping degenerate "
         "face.",
         pi->id, pj->id, pi->x[0], pi->x[1], pi->x[2]);
 #endif
@@ -603,9 +600,7 @@ runner_iact_chemistry_flux_exchange(
       chem_data, cosmo, pass, max_active_bin);
 }
 
-/* The template's original diffusion hooks: kept (not removed) so private
-   out-of-tree schemes sharing this template's call sites are unaffected,
-   but empty here -- this scheme's logic now lives entirely in
+/* The template's diffusion hooks are empty here: this scheme uses
    runner_iact_chemistry_flux_exchange() above. */
 __attribute__((always_inline)) INLINE static void runner_iact_diffusion(
     const float r2, const float dx[3], const float hi, const float hj,

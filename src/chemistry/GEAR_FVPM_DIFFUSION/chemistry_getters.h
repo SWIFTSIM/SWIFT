@@ -235,7 +235,7 @@ chemistry_get_physical_matrix_K(const struct part *restrict p,
  *
  * The diffusion driver q used in Fick's law (and in the hyperbolic flux
  * law) is q=rho*Z for isotropic_constant (mu=1, no conversion) and q=Z
- * for the other modes (mu=1/rho) -- see chemistry_compute_flux() and
+ * for the other modes (mu=1/rho): see chemistry_compute_flux() and
  * chemistry_riemann_compute_hyperbolic_blending_factor(), which both
  * branch on this same diffusion_mode check. mu converts K (defined
  * w.r.t. q) into the effective diffusivity D=mu*K (defined w.r.t. the

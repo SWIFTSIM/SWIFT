@@ -43,7 +43,7 @@
  *    sites place the cell-j particle first).
  *  - MINDT ORDER-INDEPENDENCE: one particle active, one inactive. Directly
  *    exercises chemistry_compute_pair_fluxes()'s mindt computation
- *    (the three sites fixed this session) for the two argument bindings of
+ *    for the two argument bindings of
  *    the same physical pair, independent of the dispatcher's arm selection.
  *  - LOCAL MIXED-BAND TIE-BREAK (both_updatable_here=0, both local): the
  *    dispatcher's own two-sided visitation is simulated by calling it once
@@ -107,7 +107,7 @@ static const char *limiter_name(enum test_limiter_regime l) {
  * cell slope-limiter bounds are wide open. run_config() drives a genuine
  * jump in metal_mass between pi and pj (the mixed-depth bug's trigger) plus
  * a modest metal-density gradient (gradients.rhoZ, required for the
- * parabolic build to produce any flux at all -- see run_config()).
+ * parabolic build to produce any flux at all, see run_config()).
  */
 static void init_part(struct part *p, long long id, float h, float mass,
                       float rho, double metal_mass_frac) {
@@ -169,7 +169,7 @@ static void set_geometry(struct part *p, enum test_geometry g) {
      * (p->geometry.wcorr > const_gizmo_min_wcorr); forcing it below that
      * threshold on either particle routes chemistry.c's area computation
      * through the SPH-face-area fallback, which is the branch that
-     * actually fires in dense fragmented regions (see the plan, step 1). */
+     * actually fires in dense fragmented regions. */
     p->geometry.wcorr = 0.0f;
   }
 }
@@ -206,8 +206,8 @@ struct residual_result {
  * arm for a single configured pair.
  *
  * Calls runner_iact_chemistry_flux_exchange(pi, pj, both_updatable_here=1)
- * and separately (pj, pi, -dx, both_updatable_here=1) -- both calls take the
- * "today's sym path, no reordering" arm (see the dispatcher's decision
+ * and separately (pj, pi, -dx, both_updatable_here=1). Both calls take the
+ * symmetric, no-reordering arm (see the dispatcher's decision
  * table), so this measures the same thing the pre-fix gate test did: how
  * much the flux computation's floating-point result depends on which
  * physical particle a caller happens to bind to the function's first
@@ -258,7 +258,7 @@ static struct residual_result measure_gate_residual(
  * @brief Evaluate order-independence of
  * chemistry_compute_pair_fluxes()'s mindt for a mixed-activity
  * pair (pi active, pj inactive): calls it with (pi, pj, dx) and separately
- * with (pj, pi, -dx) and compares mindt. Bypasses the dispatcher entirely --
+ * with (pj, pi, -dx) and compares mindt. Bypasses the dispatcher entirely:
  * a real call site never presents an inactive particle as the "first"
  * (entitled) argument, so this targets the three mindt sites directly
  * rather than the dispatcher's arm selection.
@@ -541,11 +541,11 @@ static int check_h_primary_designation(
     const int pi_acted = pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     const int pj_acted = pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     /* pi is entitled at this call site; it must act iff it has the larger
-       h -- position was deliberately set to say the opposite. */
+       h; the position was deliberately set to say the opposite. */
     const int ok = (pi_acted == hi_larger) && (pi_acted == pj_acted);
     message(
         "  h-primary designation hi_larger=%d (position reversed): "
-        "pi_acted=%d pj_acted=%d -- %s",
+        "pi_acted=%d pj_acted=%d: %s",
         hi_larger, pi_acted, pj_acted, ok ? "PASS" : "FAIL");
     all_ok = all_ok && ok;
   }
@@ -614,8 +614,8 @@ static int check_local_tiebreak(const struct cosmology *cosmo,
       if (fabs(Fi + Fj) > 1e-12 * max(fabs(Fi), fabs(Fj))) ok = 0;
     }
     message(
-        "  local tie-break order_sign=% .0f: fwd_acted=%d bwd_acted=%d (%s) "
-        "-- %s",
+        "  local tie-break order_sign=% .0f: fwd_acted=%d bwd_acted=%d (%s)"
+        ": %s",
         test_order_signs[t], fwd_acted, bwd_acted, expect,
         ok ? "PASS" : "FAIL");
     all_ok = all_ok && ok;
@@ -667,7 +667,7 @@ static int check_cross_rank(const struct cosmology *cosmo,
       ok = (Fj_foreign == 0.0) && (Fi != 0.0);
     }
     message(
-        "  cross-rank order_sign=% .0f: Fi(local)=% .3e Fj(foreign)=% .3e -- "
+        "  cross-rank order_sign=% .0f: Fi(local)=% .3e Fj(foreign)=% .3e: "
         "%s",
         test_order_signs[t], Fi, Fj_foreign, ok ? "PASS" : "FAIL");
     all_ok = all_ok && ok;

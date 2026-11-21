@@ -39,25 +39,25 @@ chemistry_get_physical_hyperbolic_soundspeed(
     const struct part *restrict p,
     const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo) {
-  /* c_hyp = sqrt(lambda_max(D)/tau) -- the general result (theory
+  /* c_hyp = sqrt(lambda_max(D)/tau): the general result (theory
      document, Proposition 1) for any diffusion_mode and any
      relaxation_time_mode, no case split needed here:
        - D = K*(q/U) (chemistry_get_physical_matrix_D) is the effective
          diffusivity; lambda_max(D) is the tight bound on n^T D n over
          every interface direction n (exact for isotropic D, a safe
-         overestimate otherwise -- see chemistry_get_matrix_max_eigenvalue).
+         overestimate otherwise: see chemistry_get_matrix_max_eigenvalue).
        - p->chemistry_data.tau is already the correct value for whichever
          relaxation_time_mode is active: chemistry_prepare_force() calls
          chemistry_compute_physical_tau() and caches the result. Verified
          this genuinely runs before this getter is ever called: it is
          invoked from runner_ghost.c's density-ghost task, alongside
          hydro_prepare_force(), under the comment "Compute variables
-         required for the force loop" -- and this getter's two call
+         required for the force loop": and this getter's two call
          sites (chemistry_iact.h's flux loop, and the Riemann solver)
          both run during the force loop itself, strictly after the
          density-ghost task in the scheduler's dependency graph. For an
          inactive neighbour, tau is a cached value from its last active
-         step -- the same lagged-quantity treatment already relied on
+         step: the same lagged-quantity treatment already relied on
          for kappa (chemistry_get_physical_matrix_K), not a new risk. */
   double D[3][3];
   chemistry_get_physical_matrix_D(p, chem_data, cosmo, D);
@@ -84,7 +84,7 @@ chemistry_compute_physical_tau(const struct part *restrict p,
     /* Note that 1/|S| ~ time --> we define this as our turbulent relaxation
        time. Divide by C_diff so that tau tracks the same 1/(C_diff*|S|)
        scaling as the physical turbulent-mixing timescale (Romano, Nagamine
-       & Hirashita 2022, arXiv:2202.05243, eq. 13) -- otherwise tau
+       & Hirashita 2022, arXiv:2202.05243, eq. 13): otherwise tau
        decouples from the diffusivity's own normalisation as soon as
        C_diff changes. We deliberately use the full (unregularized) shear
        tensor here, not S_plus (chemistry_regularize_shear_tensor): S_plus

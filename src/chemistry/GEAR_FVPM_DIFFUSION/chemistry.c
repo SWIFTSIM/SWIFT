@@ -32,7 +32,7 @@
  * Shared by the FCT prep pass and the flux-applying force loop
  * (runner_iact_chemistry_fluxes_common()). Kept out-of-line, never inlined,
  * and externally linked so both callers always compile to one shared
- * function body, whatever translation unit either ends up in -- required
+ * function body, whatever translation unit either ends up in: required
  * for the FCT donor-side cap, which needs the prep and apply passes to
  * agree bit-for-bit.
  *
@@ -214,7 +214,7 @@ __attribute__((noinline)) int chemistry_compute_pair_fluxes(
    * "(chj->flux.dt > 0.f) ? fminf(chi, chj) : chi" form silently assumes chi
    * is always the active one; after canonicalisation the "left" slot can
    * hold either particle, and that assumption would give
-   * fminf(-1.f, dt) = -1.f -- a negative timestep multiplying every flux. */
+   * fminf(-1.f, dt) = -1.f: a negative timestep multiplying every flux. */
   const float dt_L = chi->flux.dt;
   const float dt_R = chj->flux.dt;
   float mindt;

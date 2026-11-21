@@ -78,7 +78,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
 
   /* Degenerate/near-degenerate wave speeds: 1/(lambda_plus - lambda_minus)
      below would divide by ~0. Guard exactly like the parabolic solver
-     (parabolic/chemistry_riemann_HLL.h) and return immediately -- falling
+     (parabolic/chemistry_riemann_HLL.h) and return immediately: falling
      through into the general HLL branch here would overwrite these zeros
      with NaN (0/0 from lprod * one_over_dl). */
   if (fabs(lambda_plus - lambda_minus) <
@@ -139,7 +139,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
                         lprod * (UR[3] - UL[3]) * one_over_dl};
 
     /* Causal bound: rescale F_diss by zeta = min(1, c_hyp*dt_ij/length), so
-       its transport rate can never exceed c_hyp -- see the theory document,
+       its transport rate can never exceed c_hyp: see the theory document,
        "A Causal Bound on the Dissipation". The length scale is the smaller of
        the two particles' physical sizes, which sets the von Neumann /
        Lax-Wendroff stability floor for this term. zeta is floored at a small

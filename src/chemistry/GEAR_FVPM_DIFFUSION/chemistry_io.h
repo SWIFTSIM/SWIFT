@@ -82,7 +82,7 @@ INLINE static void convert_chemistry_diffusion_matrix(const struct engine *e,
                                                       double *ret) {
   /* Output D = K*(q/U), not the raw K: K's own physical units depend on
      diffusion_mode (ordinary diffusivity for isotropic_constant, mass
-     diffusivity otherwise -- see chemistry_get_physical_matrix_D()), so a
+     diffusivity otherwise: see chemistry_get_physical_matrix_D()), so a
      single fixed UNIT_CONV_* tag cannot describe raw K consistently
      across modes. D always has ordinary diffusivity units. */
   double D[3][3];
