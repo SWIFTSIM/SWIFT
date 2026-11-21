@@ -32,7 +32,7 @@
 
 #define default_HII_min_density_Hpcm3 1.0
 #define default_HII_max_age_Myr 50.0
-#define default_HII_rebuild_time_Myr 0.5
+#define default_HII_rebuild_time_Myr 0.1
 #define default_HII_deterministic_boundary_ionization 0
 #define default_HII_random_cone_frame_per_star 1
 #define default_HII_cone_frame_redraw_period 0

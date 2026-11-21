@@ -18,7 +18,8 @@ star's own timestep.
 
 ## Cadence
 `HII_rebuild_time_Myr=0.01` (fixed cadence) is a numerical parameter, not
-a physical one. Keep it at or below this value.
+a physical one: very long intervals under-fill the region between rebuilds,
+and the shipped default is 0.1 Myr. Keep it at or below this value.
 
 # Configure
 Configuration matching STARBENCH's own `T_i=1e4 K` convention:

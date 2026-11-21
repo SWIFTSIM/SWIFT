@@ -35,7 +35,7 @@ Model parameters
 * ``with_photoionization``: master switch. 1 turns the channel on, 0 (default) leaves it off.
 * ``HII_min_density_Hpcm3``: minimum physical gas density (nucleons/cm^3: the density divided by the proton mass) for a particle to be eligible for ionization. Default: 1. The default is tuned for cosmological runs, where it keeps diffuse gas that is not part of a neutral cloud out of the budget; a lower-density idealised box (a uniform test box, for instance) needs a lower value, or nothing is ever ionized. The shipped ``StromgrenSphere``, ``TaskGraphPair`` and ``TaskGraphCluster`` examples set it to 0.01.
 * ``HII_max_age_Myr``: age above which a star stops doing photoionization. Default: 50.
-* ``HII_rebuild_time_Myr``: interval between HII budget rebuilds. A negative value rebuilds every step instead of on a fixed schedule. Default: 0.5.
+* ``HII_rebuild_time_Myr``: interval between HII budget rebuilds. A negative value rebuilds every step instead of on a fixed schedule. Default: 0.1. A long interval under-fills the region between two rebuilds, so the front comes out too small.
 * ``HII_rebuild_floor_Myr``: the interval the photon budget of a star's first pass is integrated over, and the star timestep when ``HII_rebuild_time_Myr`` is negative. Must be positive. Default: 1e-4.
 * ``HII_angular_nside``: HEALPix splitting of the ionizing budget. 0 (default) is spherical, one shared budget; N >= 1 gives :math:`12 N^2` angular pixels. N > 0 requires building with ``--with-chealpix``, and the resulting pixel count must fit the build's ``--with-number-of-hii-angular-pixels`` (default 12, i.e. N <= 1).
 * ``HII_random_cone_frame_per_star``: 1 (default) turns the angular pixels of each star by a random rotation fixed by its ID, 0 keeps them on the box axes. This removes the alignment of the pixels between stars; the shape of a single region changes little. Ignored for ``HII_angular_nside`` 0.
@@ -56,7 +56,7 @@ Four further parameters, in the ``Stars`` section, control the search geometry a
      with_photoionization: 0                       # Master switch of the HII photoionization channel
      HII_min_density_Hpcm3: 1                       # Minimal density to consider a particle eligible for ionization (nucleons/cm^3). Lower this for a low-density idealised box, or nothing is ever ionized
      HII_max_age_Myr: 50                            # Age (Myr) at which stars stop doing photoionization
-     HII_rebuild_time_Myr: 0.5                      # Time (Myr) between HII budget rebuilds; negative rebuilds every step
+     HII_rebuild_time_Myr: 0.1                      # Time (Myr) between HII budget rebuilds; negative rebuilds every step
      HII_rebuild_floor_Myr: 1e-4                    # Budget interval (Myr) of a star's first pass; star timestep when HII_rebuild_time_Myr < 0
      HII_angular_nside: 0                           # HEALPix splitting of the ionizing budget: 0 = spherical, N>=1 = 12*N^2 pixels
      HII_random_cone_frame_per_star: 1              # 1 = random rotation of each star's pixels, 0 = pixels on the box axes

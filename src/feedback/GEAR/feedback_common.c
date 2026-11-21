@@ -1040,7 +1040,7 @@ __attribute__((always_inline)) INLINE int feedback_iact_HII_ionization(
      feedback_iact_HII_maintain_ionized_part, not here). That reserve is what
      makes region growth implicit (dS/dt = (Q-S)/t_rec integrates as
      dS = (Q-S)*dt/(t_rec+dt)), and so unconditionally stable at the
-     dt >> t_rec the default HII_rebuild_time_Myr produces. Dropping it would
+     dt >> t_rec that a long HII_rebuild_time_Myr produces. Dropping it would
      give explicit Euler, which overshoots and then churns. */
   const struct radiation_gas_context gas = {phys_const, hydro_props, us, cosmo,
                                             cooling};
