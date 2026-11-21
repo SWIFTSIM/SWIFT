@@ -46,6 +46,7 @@
 
 /* Local headers. */
 #include "argparse.h"
+#include "runner_radiation_feedback.h"
 #include "swift.h"
 
 /* Engine policy flags. */
@@ -664,6 +665,19 @@ int main(int argc, char *argv[]) {
       pretime_message(
           "Error: Cannot process feedback without gas, --hydro must be "
           "chosen.");
+    }
+    return 1;
+  }
+
+  if (feedback_radiation_needs_feedback_option(with_hydro, with_stars,
+                                               with_feedback)) {
+    if (myrank == 0) {
+      argparse_usage(&argparse);
+      pretime_message(
+          "Error: Cannot process gas and stars without feedback when the HII "
+          "ionization of the GEAR subgrid radiation is compiled in, "
+          "--feedback must be chosen (or configure with a "
+          "--with-subgrid-radiation list that leaves out hii).");
     }
     return 1;
   }
