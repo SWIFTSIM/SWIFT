@@ -73,13 +73,10 @@ ones that affect the physics or numerics a user might notice:
   default): can be turned on for extra per-interaction diagnostic
   printouts.
 
-Two further, commented-out ``#define`` toggles in
-``chemistry_properties.h`` exist purely for development use:
-``GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE`` forces one-sided
-pair updates for serial/thread symmetry testing (not MPI-compatible),
-and ``GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT`` counts how often a
-mixed-band interaction's tie-break logic takes each branch, printed at
-exit.
+With ``CFLAGS=-DSWIFT_CHEMISTRY_DEBUG_CHECKS``, the snapshots also hold
+``PositivityLimiterEngagementCounts``: for each particle, the number of
+(step, element) cases in which the positivity limiter scaled down its
+outflow.
 
 MPI support
 ~~~~~~~~~~~~

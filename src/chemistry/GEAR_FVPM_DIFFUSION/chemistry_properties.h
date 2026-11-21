@@ -54,10 +54,6 @@
  * 0: Silent, 1+: Detailed per-interaction reports (high I/O overhead). */
 #define GEAR_FVPM_DIFF_FLUX_LIMITER_VERBOSITY 0
 
-/** @brief Toggle for logging FCT positivity-limiter engagements (theta<1).
- * 0: Silent, 1+: One line per engaged (particle, element) per step. */
-#define GEAR_FVPM_DIFF_FCT_VERBOSITY 0
-
 /** @brief Default for the flux limiter's "Noise Gate" threshold (see
  * GEARChemistry:flux_limiter_noise_gate). */
 #define GEAR_FVPM_DIFF_NOISE_GATE_DEFAULT 1e-15
@@ -80,14 +76,6 @@
  * Number of consecutive timesteps a particle stays negative before
  * triggering a console warning. High values (200+) are for production. */
 #define GEAR_FVPM_DIFF_NEGATIVITY_COUNTER_PRINT_LIMIT 200
-
-/** @note DEBUG ONLY: Enforces one-sided updates for active pairs.
- * NOT MPI-compatible. Use only for serial/thread-testing of symmetry. */
-/* #define GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
-
-/** @note DEBUG ONLY: counts how often the local mixed-band tie-break arm
- * acts versus skips (see chemistry_iact.h); printed at exit. */
-/* #define GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT */
 
 /**
  * @brief The diffusion mode
@@ -114,16 +102,6 @@ enum chemistry_hyperbolic_limiter_scope {
   limiter_density_only,  /* Rescale only the mass-density dissipation */
   limiter_all_components /* Rescale the flux-component dissipation too */
 };
-
-#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
-/** @brief Which arm of the flux-exchange dispatcher visited a pair
- * (chemistry_debug.h's per-pair log). */
-enum chemistry_fvpm_visit_arm {
-  CHEMISTRY_FVPM_VISIT_SYM = 0,  /* both_updatable_here */
-  CHEMISTRY_FVPM_VISIT_ACT = 1,  /* mixed-band: owner acts */
-  CHEMISTRY_FVPM_VISIT_SKIP = 2, /* mixed-band: non-owner skips */
-};
-#endif
 
 /**
  * @brief Global chemical abundance information.

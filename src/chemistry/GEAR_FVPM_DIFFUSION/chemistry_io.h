@@ -210,6 +210,13 @@ INLINE static int chemistry_write_particles(const struct part *parts,
 
   num += 1;
 #endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
+
+  list[num] = io_make_output_field(
+      "PositivityLimiterEngagementCounts", INT, 1, UNIT_CONV_NO_UNITS, 0.f,
+      parts, chemistry_data.positivity_limiter_engagements,
+      "Number of (step, element) cases in which the positivity limiter "
+      "scaled down the outflow of the particles");
+  num += 1;
 #endif /* SWIFT_CHEMISTRY_DEBUG_CHECKS */
 
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)

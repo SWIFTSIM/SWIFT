@@ -19,7 +19,6 @@
 #ifndef SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_IACT_H
 #define SWIFT_CHEMISTRY_GEAR_FVPM_DIFFUSION_IACT_H
 
-#include "atomic.h"
 #include "chemistry_debug.h"
 #include "chemistry_flux.h"
 #include "chemistry_getters.h"
@@ -443,12 +442,6 @@ runner_iact_chemistry_fluxes_common(
  *      local particle; a tie skips (degenerate face) rather than picking
  *      an arbitrary side.
  *
- * A separate, purely diagnostic bypass
- * (GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE) reproduces the id-keyed
- * one-sided update used to establish the exact-zero conservation reference this
- * session's fix targets; it is NOT MPI-safe (see chemistry_properties.h) and
- * plays no part in the decision table above.
- *
  * @param fct_pass CHEMISTRY_FCT_PASS_PREP or CHEMISTRY_FCT_PASS_APPLY.
  */
 __attribute__((always_inline)) INLINE static void
@@ -463,12 +456,6 @@ runner_iact_chemistry_flux_exchange_decide(
     /* Today's sym path: both particles already guaranteed active, local and
        in-band by the caller's own gate. No reordering -- see the plan for
        why reordering here would only add rounding noise for no benefit. */
-#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
-    /* Logged only on the APPLY pass so each pair contributes one record per
-       step (PREP visits the same pairs and would otherwise double them). */
-    if (fct_pass == CHEMISTRY_FCT_PASS_APPLY)
-      chemistry_fvpm_visit_log_record(pi, pj, CHEMISTRY_FVPM_VISIT_SYM);
-#endif
     runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
                                         cosmo, /*update_left=*/1,
                                         /*update_right=*/1,
@@ -476,30 +463,6 @@ runner_iact_chemistry_flux_exchange_decide(
                                         /*accum_ts_right=*/1, fct_pass);
     return;
   }
-
-#if defined(GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE)
-  /* Reference-only bypass: id-keyed one-sided update, kept verbatim
-     (including its id dependence) for the exact-zero conservation
-     comparison run. Not part of the production decision table. */
-  {
-    const int pi_is_active = pi->chemistry_data.flux.dt > 0.f;
-    const int pj_is_active = pj->chemistry_data.flux.dt > 0.f;
-    if (pi_is_active && pj_is_active) {
-      if (pi->id < pj->id) {
-        runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
-                                            cosmo, 1, 1, 1, 1, fct_pass);
-      }
-      /* else: the mirror call (from pj's own active dispatch) performs the
-         full symmetric update; nothing to do here. */
-    } else {
-      const int pj_inactive = (pj->chemistry_data.flux.dt < 0.f);
-      runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
-                                          cosmo, 1, pj_inactive, 1, 0,
-                                          fct_pass);
-    }
-  }
-  return;
-#else
 
   const int pj_inactive = (pj->chemistry_data.flux.dt < 0.f);
   if (pj_inactive) {
@@ -521,19 +484,9 @@ runner_iact_chemistry_flux_exchange_decide(
        side (see flux_exchange_is_owner() in flux_exchange.h), whose own
        visit is guaranteed. */
     if (flux_exchange_is_owner(hi, hj, pi->x, pj->x)) {
-#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
-      atomic_add(&chemistry_fvpm_visit_acted, 1);
-      if (fct_pass == CHEMISTRY_FCT_PASS_APPLY)
-        chemistry_fvpm_visit_log_record(pi, pj, CHEMISTRY_FVPM_VISIT_ACT);
-#endif
       runner_iact_chemistry_fluxes_common(r2, dx, hi, hj, pi, pj, chem_data,
                                           cosmo, 1, 1, 1, 1, fct_pass);
     } else {
-#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
-      atomic_add(&chemistry_fvpm_visit_skipped, 1);
-      if (fct_pass == CHEMISTRY_FCT_PASS_APPLY)
-        chemistry_fvpm_visit_log_record(pi, pj, CHEMISTRY_FVPM_VISIT_SKIP);
-#endif
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
       if (hi == hj && pi->x[0] == pj->x[0] && pi->x[1] == pj->x[1] &&
           pi->x[2] == pj->x[2])
@@ -589,7 +542,6 @@ runner_iact_chemistry_flux_exchange_decide(
                                         /*accum_ts_left=*/0,
                                         /*accum_ts_right=*/1, fct_pass);
   }
-#endif /* !GEAR_FVPM_DIFF_DEBUG_FORCE_LOOP_ONESIDED_UPDATE */
 }
 
 /**

@@ -394,13 +394,6 @@ static INLINE void chemistry_init_backend(struct swift_params *parameter_file,
     message("Hyperbolic limiter scope:   %u", data->hyperbolic_limiter_scope);
 #endif
   }
-
-#ifdef GEAR_FVPM_DIFF_DEBUG_PAIR_VISIT_COUNT
-  /* Step-1 instrumentation (see chemistry_iact.h): print the mixed-band
-     tie-break arm's ACTED/SKIPPED totals once, at process exit, so a short
-     diagnostic run reports them without touching swift.c. */
-  atexit(chemistry_fvpm_print_visit_counts);
-#endif
 }
 
 /**
@@ -566,10 +559,9 @@ __attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
          ~1e-10 of avail. Only binds on a particle draining completely. */
       const double cap = avail * (1.0 - 1e-6);
       chd->fct_theta[i] = (sum_out > cap) ? cap / sum_out : 1.0;
-      if (GEAR_FVPM_DIFF_FCT_VERBOSITY > 0 && chd->fct_theta[i] < 1.0) {
-        message("[%lld, %d] FCT engaged, theta = %e, sum_out = %e, avail = %e",
-                p->id, i, chd->fct_theta[i], sum_out, avail);
-      }
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+      if (chd->fct_theta[i] < 1.0) chd->positivity_limiter_engagements++;
+#endif
     } else {
       chd->fct_theta[i] = 1.0;
     }
@@ -725,6 +717,10 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
     p->chemistry_data.fct_sum_out[i] = 0.0;
     p->chemistry_data.fct_theta[i] = 1.0;
   }
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  p->chemistry_data.positivity_limiter_engagements = 0;
+#endif
 
   /* Init the part chemistry data */
   chemistry_init_part(p, cd);

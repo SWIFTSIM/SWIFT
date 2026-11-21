@@ -44,6 +44,10 @@ struct chemistry_part_data {
       is used for debugging to disantagle diffusion effects from feedback
       enrichement. */
   double diffused_metal_mass[GEAR_CHEMISTRY_ELEMENT_COUNT];
+
+  /*! Number of (step, element) cases in which the positivity limiter scaled
+      down this particle's outflow (theta < 1). */
+  int positivity_limiter_engagements;
 #endif
 
   /* Fluxes. */
