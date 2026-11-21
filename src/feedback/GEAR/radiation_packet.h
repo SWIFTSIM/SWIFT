@@ -1054,8 +1054,12 @@ radiation_packet_book_share_body(
  *
  * Each value of the population factor switch has its own copy of the body
  * with the switch as a literal. Under -ffast-math the compiler then fuses the
- * float operations of the copy without the factor as in the code without it,
- * so a run with the switch off is bitwise unchanged.
+ * float operations of the copy without the factor as in the code without it.
+ * Measured for one build only (clang, fast maths, one thread): the runs with
+ * the switch off were bitwise equal to the code without the factor, except
+ * where a run differed by rounding alone. A later edit nearby can move the
+ * fused operations again. #radiation_packet_line_hop still reads the switch
+ * at run time.
  *
  * @param dx Comoving vector from the sender to the receiver. It gives the
  * path and the arrival delay and selects the periodic image of the
@@ -1338,7 +1342,8 @@ radiation_packet_star_emit_body(
  * Each cone holds an equal share of `L dt`. A cone with a weight sum below the
  * cone floor lets the rest of its share escape. Receivers share the rest
  * by weight. The body has one copy per value of the population factor switch,
- * as in #radiation_packet_book_share.
+ * as in #radiation_packet_book_share, with the same limit on what the copies
+ * guarantee.
  *
  * @param si The star.
  * @param pj The gas neighbour.

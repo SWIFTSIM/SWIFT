@@ -1147,6 +1147,14 @@ static float radiation_compute_lw_dissociating_factor_max(
   return (float)f_max;
 }
 
+/*! Relative tolerance of the table's h2_dissociation_reference against the
+    code constant #RADIATION_SIGMA_H2_OVER_E_LW_CGS. */
+#define RADIATION_H2_REFERENCE_RELATIVE_TOLERANCE 1e-6
+
+/*! Bound of L_LW_dissociating / L_LW above which the table is suspect: a
+    stellar LW spectrum gives at most about 1.4. */
+#define RADIATION_LW_DISSOCIATING_FACTOR_WARNING_LIMIT 3.f
+
 /**
  * @brief Check that L_LW_dissociating is defined against the H2 dissociation
  * rate per unit LW energy that the code multiplies it by.
@@ -1165,7 +1173,8 @@ static void radiation_check_lw_dissociating_reference(
   double reference = 0.;
   io_read_attribute(group_id, "h2_dissociation_reference", DOUBLE, &reference);
   if (!(fabs(reference - RADIATION_SIGMA_H2_OVER_E_LW_CGS) <=
-        1e-6 * RADIATION_SIGMA_H2_OVER_E_LW_CGS))
+        RADIATION_H2_REFERENCE_RELATIVE_TOLERANCE *
+            RADIATION_SIGMA_H2_OVER_E_LW_CGS))
     error(
         "'%s': L_LW_dissociating is defined against "
         "h2_dissociation_reference = %.10g cm^2/erg, but the code multiplies "
@@ -1187,7 +1196,9 @@ static void radiation_set_lw_dissociating_factor_max(
       radiation_compute_lw_dissociating_factor_max(rad);
 
   /* A larger bound weakens the clamps on the line transmission. */
-  if (rad->lw_dissociating_factor_max > 3.f && engine_rank == 0)
+  if (rad->lw_dissociating_factor_max >
+          RADIATION_LW_DISSOCIATING_FACTOR_WARNING_LIMIT &&
+      engine_rank == 0)
     warning(
         "'%s': L_LW_dissociating / L_LW reaches %.6g. Check the table: a "
         "stellar LW spectrum gives at most about 1.4.",
