@@ -656,8 +656,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  /* Split foreign pairs are not run: the cross-rank arm then gets a foreign
-     first argument and stops on its debug check. */
+  /* Split foreign pairs are not run: see the TODO(MPI) in
+     engine_maketasks.c. */
 
   if (!pass) error("testChemistryFluxExchangeOnce: FAILED");
   message("testChemistryFluxExchangeOnce: PASSED");

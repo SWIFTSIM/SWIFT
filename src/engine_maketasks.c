@@ -1842,8 +1842,8 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.extra_ghost = scheduler_addtask(
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
 
-      /* Ghost of the chemistry FCT positivity limiter: computes theta between
-         the flux prep loop and the (flux-applying) force loop. */
+      /* The chemistry flux ghost finalises the per-particle state of the
+         prep loop before the force loop. */
       if (chemistry_need_flux_prep_loop(e->chemistry))
         c->hydro.chemistry_flux_ghost =
             scheduler_addtask(s, task_type_chemistry_flux_ghost,
@@ -2634,8 +2634,8 @@ static inline void engine_make_chemistry_flux_prep_dependencies(
  * force task, links it to the cells and builds its dependencies.
  *
  * The pair task feeds the chemistry ghosts of both supers, and the force
- * pair waits for both, so an inactive neighbour's theta is current when the
- * flux exchange runs.
+ * pair waits for both, so the prep-loop state of an inactive neighbour is
+ * final when the force loop reads it.
  *
  * @param e The #engine.
  * @param ci The first cell.
@@ -3261,9 +3261,12 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              with_timestep_limiter);
       }
 
-      /* TODO(MPI): a foreign ci/cj side needs send/recv wiring for the
-         donor-side outflow sums and theta before this limiter can run
-         multi-node. The chemistry init refuses runs on several ranks. */
+      /* TODO(MPI): the prep loop on several ranks needs a send and a recv
+         of the prep-loop state of foreign cells. Also, with split cells and
+         a foreign neighbour, some call sites of the template pass the
+         foreign particle first, which the chemistry flux exchange does not
+         support. The chemistry modules that use the prep loop refuse runs
+         on several ranks. */
       if (with_chemistry_flux_prep)
         engine_make_chemistry_flux_prep_task(e, ci, cj, flags, t_force);
 #else

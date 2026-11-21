@@ -99,7 +99,8 @@ Riemann-solver flux, before the global FCT positivity limiter:
 * ``use_positivity_limiter`` (optional, default :math:`1`): turns the
   global FCT positivity limiter on or off. When on, each particle's total
   outflow in a step is scaled down so that its metal mass stays
-  non-negative.
+  non-negative. A restart keeps the value of the first run and ignores
+  the value in the parameter file.
 
 Timestep parameter
 ~~~~~~~~~~~~~~~~~~~

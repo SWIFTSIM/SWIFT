@@ -418,9 +418,9 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
   if (update_right) pj->chemistry_data.flux_exchange_count[pass]++;
 #endif
 
-  /* The prep and apply passes are compiled in different translation units.
-     One out-of-line copy of the flux computation keeps fast-math and LTO
-     from rounding the two passes differently. */
+  /* The flux computation is out of line, so that the prep and the apply
+     loops run the same compiled code. Two inlined copies in different loop
+     bodies can round differently under fast-math. */
   double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4];
   float flux_dt = 0.f, vmax = 0.f;
   float delxbar_i = 0.f, delxbar_j = 0.f;

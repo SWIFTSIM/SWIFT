@@ -1006,13 +1006,13 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 }
 
 /**
- * @brief Intermediate task between the chemistry FCT prep loop and the flux
- * (force) loop: computes the donor-side positivity limiter factor theta from
- * the prospective outflow sums.
+ * @brief Intermediate task between the chemistry flux prep loop and the force
+ * loop: the chemistry module finalises the per-particle state of the prep
+ * loop.
  *
  * Note that this task processes ALL particles of the cell, active or not: an
- * inactive particle can be a flux donor towards its active neighbours and its
- * theta must be current-step too. The cell itself can also be inactive (only
+ * inactive particle takes part in the flux exchange of its active neighbours,
+ * so its state must be final too. The cell itself can also be inactive (only
  * reached through a pair prep task of an active neighbouring cell).
  *
  * @param r The runner thread.

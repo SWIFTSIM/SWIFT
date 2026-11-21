@@ -32,16 +32,12 @@
  * smaller positive flux.dt of the two. The test does not assume which slot
  * holds the active particle, because the cross-rank exchange can swap them.
  *
- * It takes the particles rather than their chemistry data: under fast-math,
- * an extra pointer in chemistry_compute_pair_fluxes() changes the order of
- * the reassociated arithmetic, and so the rounding of the fluxes.
- *
  * @param pi Particle i.
  * @param pj Particle j.
- * @param t_current The current time (in integer).
- * @param time_base The time base used in order to convert integer to float
- * time.
- * @param cosmo The #cosmology.
+ * @param t_current The current integer time, an input of the interval.
+ * @param time_base The time base that converts integer time to physical
+ * time, an input of the interval.
+ * @param cosmo The #cosmology, an input of the interval with cosmology.
  * @param with_cosmology Are we running with cosmology?
  * @return The interval, or 0 if neither particle is active.
  */
@@ -71,10 +67,11 @@ __attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
  * effects).
  *
  * Shared by the prep pass of the positivity limiter and the force loop
- * (chemistry_exchange_pair_flux()). It is out-of-line, never inlined and
- * externally linked, so both callers run one function body, whatever
- * translation unit they are in. The limiter needs the two passes to agree
- * bit for bit.
+ * (chemistry_exchange_pair_flux()). Both loops are instantiated in
+ * runner_doiact_hydro.c. The function is never inlined, so both loops run
+ * the same compiled code: two inlined copies in different loop bodies can
+ * round differently under fast-math. The limiter needs the two passes to
+ * agree bit for bit.
  *
  * @param r2 Comoving squared distance between particle i and particle j.
  * @param dx Comoving distance vector between the particles (dx = pi->x -

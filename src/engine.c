@@ -1194,7 +1194,7 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 2;
 #endif
-    /* chemistry FCT prep: 1 self + 26/2 pairs, 1 fct ghost | 15 */
+    /* chemistry flux prep: 1 self + 26/2 pairs, 1 flux ghost | 15 */
     if (chemistry_need_flux_prep_loop(e->chemistry)) n1 += 15;
 #endif
   }
