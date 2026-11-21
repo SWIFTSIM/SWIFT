@@ -307,6 +307,11 @@ runner_iact_chemistry_fluxes_common(
     const struct cosmology *cosmo, int update_left, int update_right,
     int accum_ts_left, int accum_ts_right, int fct_pass) {
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (update_left) pi->chemistry_data.flux_exchange_count[fct_pass]++;
+  if (update_right) pj->chemistry_data.flux_exchange_count[fct_pass]++;
+#endif
+
   /* Compute the pair fluxes in the shared, non-inlined helper (see
      chemistry.c). The prep and apply passes live in different translation
      units, so a single out-of-line copy is what makes them provably execute

@@ -46,6 +46,10 @@ struct chemistry_part_data {
   /*! Number of (step, element) cases in which the positivity limiter scaled
       down this particle's outflow (theta < 1). */
   int positivity_limiter_engagements;
+
+  /*! Number of flux exchanges that updated this particle, per limiter pass
+      (CHEMISTRY_FCT_PASS_PREP, CHEMISTRY_FCT_PASS_APPLY). */
+  int flux_exchange_count[2];
 #endif
 
   /* Fluxes. */

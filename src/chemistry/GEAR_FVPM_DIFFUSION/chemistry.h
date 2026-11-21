@@ -720,6 +720,8 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
 
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   p->chemistry_data.positivity_limiter_engagements = 0;
+  p->chemistry_data.flux_exchange_count[0] = 0;
+  p->chemistry_data.flux_exchange_count[1] = 0;
 #endif
 
   /* Init the part chemistry data */

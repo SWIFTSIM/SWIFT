@@ -40,7 +40,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
 	    testLog testDistance testTimeline \
-	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry # testMatrixInversion
+	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry \
+	    testChemistryFluxExchangeOnce testChemistryPositivityLimiter # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -56,7 +57,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
 		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
-		 testChemistryFluxAntisymmetry
+		 testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
+		 testChemistryPositivityLimiter
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -94,6 +96,10 @@ testSymmetry_SOURCES = testSymmetry.c
 testSymmetry_CFLAGS = $(AM_CFLAGS) -fno-builtin-memcmp
 
 testChemistryFluxAntisymmetry_SOURCES = testChemistryFluxAntisymmetry.c
+
+testChemistryFluxExchangeOnce_SOURCES = testChemistryFluxExchangeOnce.c
+
+testChemistryPositivityLimiter_SOURCES = testChemistryPositivityLimiter.c
 
 testNeutrinoCosmology_SOURCES = testNeutrinoCosmology.c
 
