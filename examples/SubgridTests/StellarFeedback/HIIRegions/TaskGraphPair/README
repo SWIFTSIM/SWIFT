@@ -5,7 +5,7 @@ This example tests the GEAR subgrid ionization algorithm across two concurrently
 
 **Role: software-correctness test.** This checks task-graph locking/concurrency, not agreement with any published result. See `../Starbench/`, `../Hu2017/`, and `../ClumpSmith2021/` for the actual validation targets.
 
-`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one, and may be changed freely.
+`GEARFeedback:HII_rebuild_time_Myr` (fixed cadence) is a numerical parameter, not a physical one: very long intervals under-fill the region between rebuilds, and the shipped default is 0.1 Myr.
 
 `gas_mass` defaults to 0.3 Msun.
 
