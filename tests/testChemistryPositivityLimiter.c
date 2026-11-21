@@ -205,12 +205,13 @@ int main(int argc, char *argv[]) {
   const int conserved_on = run_fixture(&cd, &cosmo, &positive_on);
   message("Limiter on:  positive=%d conserved=%d", positive_on, conserved_on);
 
-  /* The fixture must drive the donor negative when the limiter is off. */
+  /* With the limiter off, the donor must go negative and the mass stay
+     conserved. */
   cd.use_positivity_limiter = 0;
   const int conserved_off = run_fixture(&cd, &cosmo, &positive_off);
   message("Limiter off: positive=%d conserved=%d", positive_off, conserved_off);
 
-  if (!positive_on || !conserved_on || positive_off)
+  if (!positive_on || !conserved_on || positive_off || !conserved_off)
     error("testChemistryPositivityLimiter: FAILED");
   message("testChemistryPositivityLimiter: PASSED");
   return 0;
