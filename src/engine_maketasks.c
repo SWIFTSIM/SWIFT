@@ -3253,7 +3253,7 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
       }
       /* TODO(MPI): a foreign ci/cj side needs send/recv wiring for the
          donor-side outflow sums and theta before this limiter can run
-         multi-node. chemistry_init() refuses such runs today. */
+         multi-node. The chemistry init refuses runs on several ranks. */
 #endif
 #else
 

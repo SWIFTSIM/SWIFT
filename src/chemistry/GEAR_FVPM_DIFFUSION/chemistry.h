@@ -42,12 +42,12 @@
 #include "kernel_hydro.h"
 #include "parser.h"
 #include "part.h"
+#include "physical_constants.h"
+#include "units.h"
 
 #ifndef EXTRA_HYDRO_LOOP
 #error "The GEAR FVPM chemistry needs a hydro scheme with a gradient loop."
 #endif
-#include "physical_constants.h"
-#include "units.h"
 
 /* Some constants */
 #define GEAR_FVPM_DIFFUSION_FILTERING_SMOOTHING_FACTOR 0.8

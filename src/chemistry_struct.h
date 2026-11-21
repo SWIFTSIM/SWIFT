@@ -28,11 +28,12 @@
 #include <config.h>
 
 /**
- * @brief The two passes of a chemistry flux computed before the force loop.
+ * @brief The two passes of a chemistry flux: the prep pass runs in the
+ * chemistry flux prep loop, the apply pass in the force loop.
  */
 enum chemistry_flux_pass {
-  chemistry_flux_pass_prep, /* Prep loop: prepare the fluxes */
-  chemistry_flux_pass_apply /* Force loop: apply the fluxes */
+  chemistry_flux_pass_prep,
+  chemistry_flux_pass_apply
 };
 
 /* Import the right chemistry definition */
