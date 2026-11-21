@@ -1194,11 +1194,8 @@ int engine_estimate_nr_tasks(const struct engine *e) {
 #ifdef WITH_MPI
     n1 += 2;
 #endif
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
     /* chemistry FCT prep: 1 self + 26/2 pairs, 1 fct ghost | 15 */
     if (chemistry_need_flux_prep_loop(e->chemistry)) n1 += 15;
-#endif
 #endif
   }
   if (e->policy & engine_policy_timestep_limiter) {

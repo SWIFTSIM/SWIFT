@@ -391,12 +391,9 @@ void *runner_main(void *data) {
           runner_do_extra_ghost(r, ci, 1);
           break;
 #endif
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
         case task_type_chemistry_fct_ghost:
           runner_do_chemistry_fct_ghost(r, ci, 1);
           break;
-#endif
         case task_type_stars_ghost:
           runner_do_stars_ghost(r, ci, t->flags, STARS_GHOST_NTASK, 1);
           break;

@@ -573,9 +573,10 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  * far larger traffic could still land marginally negative.
  *
  * @param p The particle to act upon.
+ * @param cd The global chemistry information.
  */
-__attribute__((always_inline)) INLINE static void chemistry_end_fct_prep(
-    struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
+    struct part *restrict p, const struct chemistry_global_data *cd) {
 
   struct chemistry_part_data *chd = &p->chemistry_data;
 

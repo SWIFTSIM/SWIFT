@@ -1842,14 +1842,11 @@ void engine_make_hierarchical_tasks_hydro(struct engine *e, struct cell *c,
       c->hydro.extra_ghost = scheduler_addtask(
           s, task_type_extra_ghost, task_subtype_none, 0, 0, c, NULL);
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
       /* Ghost of the chemistry FCT positivity limiter: computes theta between
          the fct_prep loop and the (flux-applying) force loop. */
       if (chemistry_need_flux_prep_loop(e->chemistry))
         c->hydro.chemistry_fct_ghost = scheduler_addtask(
             s, task_type_chemistry_fct_ghost, task_subtype_none, 0, 0, c, NULL);
-#endif
 #endif
 
       /* Stars */
@@ -2613,6 +2610,66 @@ static inline void engine_make_hydro_loops_dependencies(
   scheduler_addunlock(sched, c->hydro.super->hydro.extra_ghost, force);
 }
 
+/**
+ * @brief Creates the dependencies of a chemistry flux prep task for a given
+ * cell: extra_ghost --> flux prep --> chemistry ghost --> force loop.
+ *
+ * @param sched The #scheduler.
+ * @param prep The chemistry flux prep task.
+ * @param force The force task.
+ * @param c The cell.
+ */
+static inline void engine_make_chemistry_flux_prep_dependencies(
+    struct scheduler *sched, struct task *prep, struct task *force,
+    struct cell *c) {
+
+  scheduler_addunlock(sched, c->hydro.super->hydro.extra_ghost, prep);
+  scheduler_addunlock(sched, prep, c->hydro.super->hydro.chemistry_fct_ghost);
+  scheduler_addunlock(sched, c->hydro.super->hydro.chemistry_fct_ghost, force);
+}
+
+/**
+ * @brief Creates the chemistry flux prep task of a self (cj NULL) or pair
+ * force task, links it to the cells and builds its dependencies.
+ *
+ * The pair task feeds the chemistry ghosts of both supers, and the force
+ * pair waits for both, so an inactive neighbour's theta is current when the
+ * flux exchange runs.
+ *
+ * @param e The #engine.
+ * @param ci The first cell.
+ * @param cj The second cell, or NULL for a self task.
+ * @param flags The flags of the force task.
+ * @param force The force task.
+ */
+static inline void engine_make_chemistry_flux_prep_task(struct engine *e,
+                                                        struct cell *ci,
+                                                        struct cell *cj,
+                                                        const long long flags,
+                                                        struct task *force) {
+
+  struct scheduler *sched = &e->sched;
+  const int nodeID = e->nodeID;
+
+  if (cj == NULL) {
+    struct task *prep =
+        scheduler_addtask(sched, task_type_self,
+                          task_subtype_chemistry_fct_prep, flags, 0, ci, NULL);
+    engine_addlink(e, &ci->hydro.chemistry_fct_prep, prep);
+    engine_make_chemistry_flux_prep_dependencies(sched, prep, force, ci);
+    return;
+  }
+
+  struct task *prep = scheduler_addtask(
+      sched, task_type_pair, task_subtype_chemistry_fct_prep, flags, 0, ci, cj);
+  engine_addlink(e, &ci->hydro.chemistry_fct_prep, prep);
+  engine_addlink(e, &cj->hydro.chemistry_fct_prep, prep);
+  if (ci->nodeID == nodeID)
+    engine_make_chemistry_flux_prep_dependencies(sched, prep, force, ci);
+  if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super))
+    engine_make_chemistry_flux_prep_dependencies(sched, prep, force, cj);
+}
+
 #else
 
 /**
@@ -2663,12 +2720,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
   const int with_sink = (e->policy & engine_policy_sinks);
 #ifdef EXTRA_HYDRO_LOOP
   struct task *t_gradient = NULL;
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-  struct task *t_chemistry_fct_prep = NULL;
   const int with_chemistry_flux_prep =
       chemistry_need_flux_prep_loop(e->chemistry);
-#endif
 #endif
 #ifdef EXTRA_STAR_LOOPS
   struct task *t_star_prep1 = NULL;
@@ -2852,23 +2905,8 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                            t_limiter, ci, with_cooling,
                                            with_timestep_limiter);
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-      /* Chemistry FCT positivity limiter prep loop:
-         extra_ghost --> fct_prep --> fct_ghost --> force loop */
-      if (with_chemistry_flux_prep) {
-        t_chemistry_fct_prep = scheduler_addtask(
-            sched, task_type_self, task_subtype_chemistry_fct_prep, flags, 0,
-            ci, NULL);
-        engine_addlink(e, &ci->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
-                            t_chemistry_fct_prep);
-        scheduler_addunlock(sched, t_chemistry_fct_prep,
-                            ci->hydro.super->hydro.chemistry_fct_ghost);
-        scheduler_addunlock(sched, ci->hydro.super->hydro.chemistry_fct_ghost,
-                            t_force);
-      }
-#endif
+      if (with_chemistry_flux_prep)
+        engine_make_chemistry_flux_prep_task(e, ci, NULL, flags, t_force);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */
@@ -3221,40 +3259,11 @@ void engine_make_extra_hydroloop_tasks_mapper(void *map_data, int num_elements,
                                              with_timestep_limiter);
       }
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-      /* Chemistry FCT positivity limiter prep loop:
-         extra_ghost --> fct_prep --> fct_ghost --> force loop.
-         The prep pair task feeds the fct_ghost of BOTH supers, and the force
-         pair waits for both fct_ghosts, so an inactive neighbour's theta is
-         also current-step when the flux exchange runs. */
-      if (with_chemistry_flux_prep) {
-        t_chemistry_fct_prep = scheduler_addtask(
-            sched, task_type_pair, task_subtype_chemistry_fct_prep, flags, 0,
-            ci, cj);
-        engine_addlink(e, &ci->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
-        engine_addlink(e, &cj->hydro.chemistry_fct_prep, t_chemistry_fct_prep);
-        if (ci->nodeID == nodeID) {
-          scheduler_addunlock(sched, ci->hydro.super->hydro.extra_ghost,
-                              t_chemistry_fct_prep);
-          scheduler_addunlock(sched, t_chemistry_fct_prep,
-                              ci->hydro.super->hydro.chemistry_fct_ghost);
-          scheduler_addunlock(sched, ci->hydro.super->hydro.chemistry_fct_ghost,
-                              t_force);
-        }
-        if ((cj->nodeID == nodeID) && (ci->hydro.super != cj->hydro.super)) {
-          scheduler_addunlock(sched, cj->hydro.super->hydro.extra_ghost,
-                              t_chemistry_fct_prep);
-          scheduler_addunlock(sched, t_chemistry_fct_prep,
-                              cj->hydro.super->hydro.chemistry_fct_ghost);
-          scheduler_addunlock(sched, cj->hydro.super->hydro.chemistry_fct_ghost,
-                              t_force);
-        }
-      }
       /* TODO(MPI): a foreign ci/cj side needs send/recv wiring for the
          donor-side outflow sums and theta before this limiter can run
          multi-node. The chemistry init refuses runs on several ranks. */
-#endif
+      if (with_chemistry_flux_prep)
+        engine_make_chemistry_flux_prep_task(e, ci, cj, flags, t_force);
 #else
 
       /* Now, build all the dependencies for the hydro for the cells */

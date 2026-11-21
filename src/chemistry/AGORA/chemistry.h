@@ -167,6 +167,15 @@ static INLINE int chemistry_need_flux_prep_loop(
 }
 
 /**
+ * @brief Finish the flux prep loop for a particle.
+ *
+ * @param p The #part.
+ * @param cd The global chemistry information.
+ */
+__attribute__((always_inline)) INLINE static void chemistry_end_flux_prep(
+    struct part *restrict p, const struct chemistry_global_data *cd) {}
+
+/**
  * @brief Prints the properties of the chemistry model to stdout.
  *
  * @brief The #chemistry_global_data containing information about the current

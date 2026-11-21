@@ -1022,9 +1022,7 @@ void runner_do_black_holes_swallow_ghost(struct runner *r, struct cell *c,
 void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
                                    int timer) {
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-
+  const struct chemistry_global_data *chemistry = r->e->chemistry;
   struct part *restrict parts = c->hydro.parts;
   const int count = c->hydro.count;
 
@@ -1039,15 +1037,11 @@ void runner_do_chemistry_fct_ghost(struct runner *r, struct cell *c,
 
     /* Loop over ALL the parts in this cell (see note above). */
     for (int i = 0; i < count; i++) {
-      chemistry_end_fct_prep(&parts[i]);
+      chemistry_end_flux_prep(&parts[i], chemistry);
     }
   }
 
   if (timer) TIMER_TOC(timer_do_chemistry_fct_ghost);
-
-#else
-  error("SWIFT was not compiled with the GEAR FVPM diffusion chemistry.");
-#endif
 }
 
 /**

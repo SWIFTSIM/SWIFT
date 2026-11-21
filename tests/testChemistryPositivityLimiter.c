@@ -142,8 +142,8 @@ static int run_fixture(const struct chemistry_global_data *cd,
     error("The fixture does not over-drain the donor: sum_out=%e <= %e",
           sum_out, available);
 
-  chemistry_end_fct_prep(&donor);
-  for (int n = 0; n < N_NEIGHBOURS; n++) chemistry_end_fct_prep(&ngb[n]);
+  chemistry_end_flux_prep(&donor, cd);
+  for (int n = 0; n < N_NEIGHBOURS; n++) chemistry_end_flux_prep(&ngb[n], cd);
 
   exchange_all(&donor, ngb, /*prep=*/0, cosmo, cd);
 
