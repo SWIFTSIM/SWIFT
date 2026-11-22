@@ -141,7 +141,7 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   /* Tensile damage is limited by the fraction of activated to total flaws. */
   damage_rates->tensile_max = (float)number_of_activated_flaws / (float)number_of_flaws;
 
-    /* No accumulation once the damage has reached that limit. */
+  /* No accumulation once the damage has reached that limit. */
   if (s->damage.tensile >= damage_rates->tensile_max) {
     return;
   }
@@ -179,7 +179,6 @@ __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
 
   /* Tensile damage is limited by the fraction of activated to total flaws. */
   /* See B&A99 and also Schafer16 for correction of cbrt placement here */
-  const float max_cbrtD = cbrtf(damage_rates->tensile_max);
   const float max_Delta_cbrtD =
       cbrtf(damage_rates->tensile_max) - cbrtf(d->tensile);
 

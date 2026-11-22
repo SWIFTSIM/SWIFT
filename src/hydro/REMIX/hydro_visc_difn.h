@@ -266,8 +266,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   const float epsilon = const_remix_visc_epsilon;
   const float eta_crit = 0.5f * (pi->force.eta_crit + pj->force.eta_crit);
   const float slope_limiter_exp_denom = const_remix_slope_limiter_exp_denom;
-  /* Slip condition where velocities are not reconstructed, e.g. between solid
-   * and inviscid fluid */
+  /* Slip condition at solid interfaces, e.g. between solid and inviscid fluid:
+   * viscosity only in compression (Balsara-weighted), and velocities are
+   * reconstructed from same-phase gradients only */
   const int no_reconstruction = hydro_visc_no_reconstruction(pi, pj);
   const float a_visc = no_reconstruction ? 0.f : const_remix_visc_a;
   const float b_visc = no_reconstruction ? 1.f : const_remix_visc_b;
@@ -363,7 +364,9 @@ __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
   *Qj = (a_visc + b_visc * pj->force.balsara) * 0.5f * pj->rho *
         (-alpha * cj * mu_j + beta * mu_j * mu_j);
 
-  *beta_mu_ij = beta * fminf(mu_i, mu_j);
+  /* Account for alpha being outside brackets in timestep code */
+  const float viscosity_parameter_factor = (alpha == 0.f) ? 0.f : beta / alpha;
+  *beta_mu_ij = 2.f * viscosity_parameter_factor * fminf(mu_i, mu_j);
 
   /* Signal velocity used for the artificial diffusion (Sandnes+2025 Eqns. 42
    * and 43) */
