@@ -676,9 +676,13 @@ radiation_packet_add_saturated(const float sum, const double x) {
  * `[first, last]` becomes `[E, E + (last - first)]`, with `E` the end of that
  * bin: the part in `[E, last]` keeps its times and the early part follows it at
  * the same rate. With a steady star the windows of successive steps then tile
- * with no gap and no overlap, and the light arrives at a steady rate. Without
- * a speed limit the reservoir does the same by releasing the light over the
- * next step of the star.
+ * with no gap and no overlap, and the light arrives at a steady rate, for a
+ * star step up to about 16 steps of the receiver and a fixed receiver step.
+ * Beyond that the moved window reaches past the near bins and the two base far
+ * cells, so the far cells of the receiver stay widened to about the star step
+ * while the star shines, and the far-share warning can fire. Without a speed
+ * limit the reservoir does the same by releasing the light over the next step
+ * of the star.
  *
  * Nothing changes for a receiver that has no step yet, nor when the light
  * arrives after `E` or all at once.
@@ -865,7 +869,27 @@ radiation_packet_deliver_share(
  * @brief Deliver one share that is not the light of a star step: the delivery
  * of #radiation_packet_deliver_share without the move of the past part.
  *
- * Same arguments as #radiation_packet_deliver_share, without @p spread_past.
+ * @param receiver The receiver.
+ * @param constants The #radiation_packet_constants.
+ * @param energy Energy of the share per band, before absorption.
+ * @param photons Photon number of the share per band, as `N E_lo`.
+ * @param offset Comoving offset from the receiver to the share's origin.
+ * @param path_phys Physical path length over which the share is absorbed.
+ * @param H Current Hubble rate. 0 or less for a static box.
+ * @param to_reservoir Is the source's step coarser than the receiver's?
+ * @param source_step_end_ti End of the source's step.
+ * @param arrival Integer time at which the first light of the share reaches
+ * the receiver.
+ * @param arrival_last Integer time at which the last light of the share
+ * reaches the receiver.
+ * @param with_lines Is the dissociating energy tracked?
+ * @param line_transmission Fraction of the LW light that the H2 lines let
+ * through. Read only when @p with_lines is set.
+ * @param line_shift Velocity shift of the share after the hop. Read only with
+ * H2 line absorption.
+ * @param line_energy_over_factor @p line_transmission over the shielding
+ * factor of the column of the share after the hop. Read only with H2 line
+ * absorption.
  */
 __attribute__((always_inline)) INLINE static void
 radiation_packet_deliver_with_lines(
