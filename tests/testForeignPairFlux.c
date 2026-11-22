@@ -52,12 +52,16 @@
  * pair term gives the size of the term, so a term near the kernel edge can
  * stay below the bar.
  *
+ * The RT loops also run the GEAR RT gradient loop, which updates the active
+ * particles only. All the gas is hydro-inactive there, as on an RT sub-cycle,
+ * so the search of the RT loops cannot rely on the hydro h_max_active.
+ *
  * The bare configure skips this test (exit 77). It runs with Gizmo hydro:
  *   ./configure --with-hydro=gizmo-mfm --with-riemann-solver=hllc
  *   ./configure --with-hydro=gizmo-mfv --with-riemann-solver=hllc
  *     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-stars=GEAR
  *     --with-feedback=none --with-grackle=<path>
- * The second line also checks the RT transport loop.
+ * The second line also checks the RT gradient and transport loops.
  */
 
 #if hydro_force_updates_inactive_neighbours
@@ -68,6 +72,9 @@ void runner_dosub_pair2_force(struct runner *r, struct cell *ci,
 void runner_dosub_pair2_rt_transport(struct runner *r, struct cell *ci,
                                      struct cell *cj, const float h_hi,
                                      const int gettimer);
+void runner_dosub_pair1_rt_gradient(struct runner *r, struct cell *ci,
+                                    struct cell *cj, const float h_hi,
+                                    const int gettimer);
 
 #define TI_CURRENT 8
 #define ACTIVE_BIN 1
@@ -78,15 +85,16 @@ void runner_dosub_pair2_rt_transport(struct runner *r, struct cell *ci,
 #define N_LEAF 27
 #define MAX_DEPTH 2
 
-/* Number of flux components compared: mass, momentum and energy, or the
- * radiation energy and flux of the first photon group. */
+/* Number of flux components compared: mass, momentum and energy, the
+ * radiation energy and flux of the first photon group, or the gradient of its
+ * energy density and of the x component of its flux. */
 #define N_FLUX 5
 
 #define REL_TOL 1e-4
 
-enum loop_type { loop_force, loop_rt_transport };
+enum loop_type { loop_force, loop_rt_transport, loop_rt_gradient };
 
-static const char *loop_name[2] = {"force", "rt_transport"};
+static const char *loop_name[3] = {"force", "rt_transport", "rt_gradient"};
 
 /* A flux of one particle and the sum of its absolute pair terms. */
 struct flux {
@@ -127,10 +135,16 @@ static void get_flux(const struct part *p, const enum loop_type loop,
 #endif
     for (int k = 0; k < 3; k++) f[1 + k] = p->flux.momentum[k];
     f[4] = p->flux.energy;
-  } else {
+  } else if (loop == loop_rt_transport) {
 #if rt_transport_updates_inactive_neighbours
     f[0] = p->rt_data.flux[0].energy;
     for (int k = 0; k < 3; k++) f[1 + k] = p->rt_data.flux[0].flux[k];
+#endif
+  } else {
+#if rt_transport_updates_inactive_neighbours
+    for (int k = 0; k < 3; k++) f[k] = p->rt_data.gradient[0].energy_density[k];
+    f[3] = p->rt_data.gradient[0].flux[0][0];
+    f[4] = p->rt_data.gradient[0].flux[0][1];
 #endif
   }
 }
@@ -146,6 +160,7 @@ static void reset_flux(struct part *p) {
     p->rt_data.flux[g].energy = 0.f;
     for (int k = 0; k < 3; k++) p->rt_data.flux[g].flux[k] = 0.f;
   }
+  rt_gradients_init(p);
 #endif
 }
 
@@ -158,6 +173,10 @@ static void interact(const enum loop_type loop, const int symmetric,
       runner_iact_force(r2, dx, hi, hj, pi, pj, a, H);
     else
       runner_iact_nonsym_force(r2, dx, hi, hj, pi, pj, a, H);
+  } else if (loop == loop_rt_gradient) {
+#if rt_transport_updates_inactive_neighbours
+    runner_iact_nonsym_rt_gradient(r2, dx, hi, hj, pi, pj, a, H);
+#endif
   } else {
 #if rt_transport_updates_inactive_neighbours
     if (symmetric)
@@ -214,7 +233,7 @@ static void init_particle(struct part *p, struct xpart *xp, const double m,
 static void set_cell_properties(struct cell *c, const struct engine *e) {
   c->hydro.h_max = 0.f;
   c->hydro.h_max_active = 0.f;
-  int any_active = 0;
+  int any_active = 0, any_rt_active = 0;
   for (int k = 0; k < c->hydro.count; k++) {
     const struct part *p = &c->hydro.parts[k];
     c->hydro.h_max = max(c->hydro.h_max, p->h);
@@ -222,9 +241,10 @@ static void set_cell_properties(struct cell *c, const struct engine *e) {
       any_active = 1;
       c->hydro.h_max_active = max(c->hydro.h_max_active, p->h);
     }
+    if (part_is_rt_active(p, e)) any_rt_active = 1;
   }
   c->hydro.ti_end_min = any_active ? TI_CURRENT : 2 * TI_CURRENT;
-  c->rt.ti_rt_end_min = any_active ? TI_CURRENT : 2 * TI_CURRENT;
+  c->rt.ti_rt_end_min = any_rt_active ? TI_CURRENT : 2 * TI_CURRENT;
   c->hydro.ti_old_part = TI_CURRENT;
 }
 
@@ -369,6 +389,21 @@ static void set_node(struct cell *c, const int node_id) {
 }
 
 /**
+ * @brief Make all the gas of a tree hydro-inactive, as on an RT sub-cycle.
+ */
+static void set_hydro_inactive(struct cell *c, const struct engine *e) {
+  if (c->split) {
+    for (int k = 0; k < 8; k++) set_hydro_inactive(c->progeny[k], e);
+  } else {
+    for (int k = 0; k < c->hydro.count; k++) {
+      c->hydro.parts[k].time_bin = INACTIVE_BIN;
+      c->hydro.parts[k].flux.dt = -1.f;
+    }
+  }
+  set_cell_properties(c, e);
+}
+
+/**
  * @brief Add the flux of each pair term that a particle of a receives from
  * the particles of b, by brute force over all the pairs.
  */
@@ -386,13 +421,14 @@ static void brute_force(const struct cell *a, const struct cell *b,
       const int k_active = is_active(k, e, loop);
       const int q_active = is_active(q, e, loop);
       if (!k_active && !q_active) continue;
+      if (loop == loop_rt_gradient && !k_active) continue;
       float dx[3];
       for (int d = 0; d < 3; d++) {
         const double dx_d = k->x[d] - q->x[d];
         dx[d] = s->periodic ? nearest(dx_d, s->dim[d]) : dx_d;
       }
       const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
-      const float h = max(k->h, q->h);
+      const float h = loop == loop_rt_gradient ? k->h : max(k->h, q->h);
       if (r2 >= h * h * kernel_gamma2) continue;
 
       memcpy(&pk, k, sizeof(struct part));
@@ -430,9 +466,12 @@ static void run_pair(struct runner *r, struct cell *ci, struct cell *cj,
   ci->split = cj->split = split;
   if (loop == loop_force)
     runner_dosub_pair2_force(r, ci, cj, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
-  else
+  else if (loop == loop_rt_transport)
     runner_dosub_pair2_rt_transport(r, ci, cj, /*h_hi=*/FLT_MAX,
                                     /*gettimer=*/0);
+  else
+    runner_dosub_pair1_rt_gradient(r, ci, cj, /*h_hi=*/FLT_MAX,
+                                   /*gettimer=*/0);
   for (int k = 0; k < count_i; k++) get_flux(&ci->hydro.parts[k], loop, fi[k]);
   for (int k = 0; k < count_j; k++) get_flux(&cj->hydro.parts[k], loop, fj[k]);
 }
@@ -523,6 +562,10 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
   struct cell *ci = make_cell(origin, pc->depth, pc->p_level, pc->active_i, e);
   struct cell *cj =
       make_cell(pc->offset, pc->depth, pc->p_level, pc->active_j, e);
+  if (loop != loop_force) {
+    set_hydro_inactive(ci, e);
+    set_hydro_inactive(cj, e);
+  }
   runner_do_hydro_sort(r, ci, 0x1FFF, 0, 0, 0, 0);
   runner_do_hydro_sort(r, cj, 0x1FFF, 0, 0, 0, 0);
 
@@ -602,11 +645,13 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
       }
     set_node(ci, 0);
 
-    /* The first four components are conserved when the two ranks add up (the
-     * last one is the internal energy flux of the force loop). */
+    /* The first four components of a flux are conserved when the two ranks
+     * add up (the last one is the internal energy flux of the force loop). A
+     * gradient is not conserved. */
     double sum_rel = 0.;
     int bad_sum = 0;
-    for (int d = 0; d < 4; d++) {
+    const int n_conserved = loop == loop_rt_gradient ? 0 : 4;
+    for (int d = 0; d < n_conserved; d++) {
       if (!is_finite(sum[d])) bad_sum = 1;
       if (sum_abs[d] == 0.) continue;
       sum_rel = max(sum_rel, fabs(sum[d]) / sum_abs[d]);
@@ -718,6 +763,8 @@ int main(int argc, char *argv[]) {
 #if rt_transport_updates_inactive_neighbours
   for (int c = 0; c < n_cases; c++)
     n_fail += do_case(&cases[c], loop_rt_transport, &runner, &engine);
+  for (int c = 0; c < n_cases; c++)
+    n_fail += do_case(&cases[c], loop_rt_gradient, &runner, &engine);
 #endif
 
   if (n_fail) {

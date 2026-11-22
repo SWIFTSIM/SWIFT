@@ -1235,8 +1235,8 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
 
   /* Get some other useful values. */
   const double hi_max =
-      min(h_hi, ci->hydro.h_max_active) * kernel_gamma - rshift;
-  const double hj_max = min(h_hi, cj->hydro.h_max_active) * kernel_gamma;
+      min(h_hi, CELL_H_MAX_ACTIVE(ci)) * kernel_gamma - rshift;
+  const double hj_max = min(h_hi, CELL_H_MAX_ACTIVE(cj)) * kernel_gamma;
   const int count_i = ci->hydro.count;
   const int count_j = cj->hydro.count;
   struct part *restrict parts_i = ci->hydro.parts;
@@ -1265,7 +1265,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (!PART_IS_ACTIVE(pi, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hi > ci->hydro.h_max_active)
+      if (hi > CELL_H_MAX_ACTIVE(ci))
         error("Particle has h larger than h_max_active");
 #endif
 
@@ -1381,7 +1381,7 @@ void DOPAIR1(struct runner *r, const struct cell *restrict ci,
       if (!PART_IS_ACTIVE(pj, e)) continue;
 
 #ifdef SWIFT_DEBUG_CHECKS
-      if (hj > cj->hydro.h_max_active)
+      if (hj > CELL_H_MAX_ACTIVE(cj))
         error("Particle has h larger than h_max_active");
 #endif
 
@@ -2930,8 +2930,8 @@ void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
     const float h_lo = cell_pair_hydro_h_split(ci, cj);
 
     if (h_lo < h_hi &&
-        ((CELL_IS_ACTIVE(ci, e) && ci->hydro.h_max_active >= h_lo) ||
-         (CELL_IS_ACTIVE(cj, e) && cj->hydro.h_max_active >= h_lo))) {
+        ((CELL_IS_ACTIVE(ci, e) && CELL_H_MAX_ACTIVE(ci) >= h_lo) ||
+         (CELL_IS_ACTIVE(cj, e) && CELL_H_MAX_ACTIVE(cj) >= h_lo))) {
 
       runner_count_sort_state_hydro(ci, sid, runner_sort_site_pair_leaf);
       runner_count_sort_state_hydro(cj, sid, runner_sort_site_pair_leaf);
@@ -2999,7 +2999,7 @@ void DOSUB_SELF1(struct runner *r, struct cell *c, const float h_hi,
     /* The particles with h >= h_lo are handled at this level. */
     const float h_lo = min(h_hi, cell_self_h_split(c));
 
-    if (h_lo < h_hi && c->hydro.h_max_active >= h_lo)
+    if (h_lo < h_hi && CELL_H_MAX_ACTIVE(c) >= h_lo)
       DOSELF1_BRANCH(r, c, h_lo, h_hi);
 
     /* Recurse to the lower levels. */
