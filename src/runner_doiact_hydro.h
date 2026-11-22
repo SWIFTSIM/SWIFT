@@ -155,8 +155,18 @@
 
 /* Does the non-symmetric interaction of this loop also write an inactive pj? */
 #if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE)
+#if hydro_force_updates_inactive_neighbours && \
+    !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+#error \
+    "The hydro force loop writes inactive neighbours but MPI_SYMMETRIC_FORCE_INTERACTION is not defined: the rank of the inactive cell would never run the pair."
+#endif
 #define LOOP_UPDATES_INACTIVE_NEIGHBOURS hydro_force_updates_inactive_neighbours
 #elif (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+#if rt_transport_updates_inactive_neighbours && \
+    !defined(MPI_SYMMETRIC_FORCE_INTERACTION_RT)
+#error \
+    "The RT transport loop writes inactive neighbours but MPI_SYMMETRIC_FORCE_INTERACTION_RT is not defined: the rank of the inactive cell would never run the pair."
+#endif
 #define LOOP_UPDATES_INACTIVE_NEIGHBOURS \
   rt_transport_updates_inactive_neighbours
 #else
