@@ -44,14 +44,17 @@
 /**
  * @brief Is x finite?
  *
- * Reads the exponent bits, because -ffast-math lets the compiler assume
- * that a comparison never sees a NaN.
+ * -ffast-math lets the compiler assume that x is finite and fold the test,
+ * even a test of its bits. A load from a volatile copy carries no such
+ * assumption.
  *
  * @param x The value.
  */
 static int is_finite_double(const double x) {
+  const volatile double stored = x;
+  const double loaded = stored;
   uint64_t bits;
-  memcpy(&bits, &x, sizeof(bits));
+  memcpy(&bits, &loaded, sizeof(bits));
   return ((bits >> 52) & 0x7ff) != 0x7ff;
 }
 
@@ -168,14 +171,19 @@ static int run_fixture(const struct chemistry_global_data *cd,
                                donor.chemistry_data.flux.metal_mass[m];
     double net = donor.chemistry_data.flux.metal_mass[m];
     double traffic = fabs(net);
+
+    /* Test the stored values, not the sums: under -ffast-math a sum can
+       lose a NaN. */
+    int finite = is_finite_double(donor.chemistry_data.metal_mass[m]) &&
+                 is_finite_double(donor.chemistry_data.flux.metal_mass[m]);
     for (int n = 0; n < N_NEIGHBOURS; n++) {
       net += ngb[n].chemistry_data.flux.metal_mass[m];
       traffic += fabs(ngb[n].chemistry_data.flux.metal_mass[m]);
+      finite &= is_finite_double(ngb[n].chemistry_data.flux.metal_mass[m]);
     }
 
     /* Each pair adds +F and -F, so only the summation rounding remains. */
     const double conservation_bar = 2. * (N_NEIGHBOURS + 1) * DBL_EPSILON;
-    const int finite = is_finite_double(donor_final) && is_finite_double(net);
     const int positive_m = finite && donor_final >= 0.;
     const int conserved =
         finite && fabs(net) <= conservation_bar * fmax(traffic, DBL_MIN);
