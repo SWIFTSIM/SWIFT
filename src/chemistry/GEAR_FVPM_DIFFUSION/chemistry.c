@@ -61,7 +61,7 @@ __attribute__((always_inline)) INLINE static float chemistry_get_pair_flux_dt(
   else
     dt_therm = (t_current - ti_start) * time_base;
 
-  /* Round as the ghost passes a particle's time-step to the chemistry. */
+  /* Round to float before the a^2 factor, as for the hydro time-step. */
   const float dt_therm_float = dt_therm;
   return dt_therm_float * cosmo->a * cosmo->a;
 }

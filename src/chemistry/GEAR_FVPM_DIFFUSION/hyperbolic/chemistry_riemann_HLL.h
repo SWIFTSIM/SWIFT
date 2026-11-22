@@ -153,14 +153,14 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
        rather than decay an already-stale flux. dt_ij is the interval of the
        pair exchange. */
     const double c_max = max(c_diff_L, c_diff_R);
-    const double dt_min = flux_dt;
+    const double dt_ij = flux_dt;
     const double psize_i = chemistry_get_physical_particle_size(pi, cosmo);
     const double psize_j = chemistry_get_physical_particle_size(pj, cosmo);
     const double length_scale = min(psize_i, psize_j);
     const double causal_floor = 0.01;
     double causal_factor = 1.0;
-    if (dt_min > 0. && length_scale > 0.) {
-      const double zeta = min(1.0, c_max * dt_min / length_scale);
+    if (dt_ij > 0. && length_scale > 0.) {
+      const double zeta = min(1.0, c_max * dt_ij / length_scale);
       causal_factor = max(causal_floor, zeta);
     }
     F_diss[0] *= causal_factor;

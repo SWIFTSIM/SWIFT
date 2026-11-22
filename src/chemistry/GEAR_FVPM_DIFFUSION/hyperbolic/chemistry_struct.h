@@ -56,7 +56,8 @@ struct chemistry_part_data {
   int flux_exchange_count[2];
 
   /*! Integer time covered by the flux exchanges that updated this particle,
-      summed over its pairs. */
+      summed over its pairs. Debug only: it wraps around beyond about 128
+      pair partners, each adding up to 2^57 ticks over a run. */
   unsigned long long flux_coverage_ticks;
 
   /*! Number of flux exchanges that updated this particle over an interval

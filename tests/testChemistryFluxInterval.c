@@ -486,6 +486,8 @@ int main(int argc, char *argv[]) {
     const int ok =
         run_schedule((enum schedule)s, &runner, &engine, cover, &residual);
     int good = ok && residual <= 1e-9;
+    /* A wrong interval is off by at least one whole tick, far above this
+       tolerance, which only absorbs the rounding of the fit. */
     for (int q = 0; q < 3; q++)
       good &= fabs(cover[q] - TI_END) <= 1e-5 * TI_END;
     message(

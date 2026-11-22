@@ -220,7 +220,7 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
 
   /* MUSCL-Hancock half-step predictor, folded in before the face limiter
      below so it bounds the full extrapolation, not just the spatial part. */
-  const float half_mindt = 0.5 * flux_dt;
+  const float half_flux_dt = 0.5 * flux_dt;
   const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
   const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
 
@@ -239,13 +239,13 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const double a3_inv = cosmo->a_inv * cosmo->a_inv * cosmo->a_inv;
   double dUi[4], dUj[4];
   dUi[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_i, xij_i) * a3_inv +
-           drhoZ_dt_i * half_mindt;
+           drhoZ_dt_i * half_flux_dt;
   dUi[1] = chemistry_gradients_extrapolate_double(dFx_i, xij_i);
   dUi[2] = chemistry_gradients_extrapolate_double(dFy_i, xij_i);
   dUi[3] = chemistry_gradients_extrapolate_double(dFz_i, xij_i);
 
   dUj[0] = chemistry_gradients_extrapolate_double(grad_rhoZ_j, xij_j) * a3_inv +
-           drhoZ_dt_j * half_mindt;
+           drhoZ_dt_j * half_flux_dt;
   dUj[1] = chemistry_gradients_extrapolate_double(dFx_j, xij_j);
   dUj[2] = chemistry_gradients_extrapolate_double(dFy_j, xij_j);
   dUj[3] = chemistry_gradients_extrapolate_double(dFz_j, xij_j);
@@ -255,14 +255,14 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   const double flux_source_i[3] = {Ui[1] + dUi[1], Ui[2] + dUi[2],
                                    Ui[3] + dUi[3]};
   double flux_integrated_i[3] = {0.0};
-  chemistry_part_integrate_flux_source_term(pi, metal, half_mindt,
+  chemistry_part_integrate_flux_source_term(pi, metal, half_flux_dt,
                                             flux_source_i, chem_data, cosmo,
                                             flux_integrated_i);
 
   const double flux_source_j[3] = {Uj[1] + dUj[1], Uj[2] + dUj[2],
                                    Uj[3] + dUj[3]};
   double flux_integrated_j[3] = {0.0};
-  chemistry_part_integrate_flux_source_term(pj, metal, half_mindt,
+  chemistry_part_integrate_flux_source_term(pj, metal, half_flux_dt,
                                             flux_source_j, chem_data, cosmo,
                                             flux_integrated_j);
 
