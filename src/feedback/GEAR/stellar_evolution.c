@@ -1155,14 +1155,14 @@ void stellar_evolution_compute_SN_feedback_spart(
 
   /* Compute masses range */
   const float log_m_beg_step =
-      star_age_beg_step == 0.
+      star_age_beg_step == 0.0
           ? FLT_MAX
           : lifetime_get_log_mass_from_lifetime(
                 &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
   const float log_m_end_step = lifetime_get_log_mass_from_lifetime(
       &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
 
-  float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
+  float m_beg_step = star_age_beg_step == 0.0 ? FLT_MAX : exp10(log_m_beg_step);
   float m_end_step = exp10(log_m_end_step);
 
   /* Limit the mass interval to the IMF boundaries */
@@ -1539,15 +1539,9 @@ static float stellar_evolution_get_population_main_sequence_mass_sup(
   const float m_min = sm->imf.mass_min;
   const float log_z = radiation_get_log_metallicity(metallicity);
 
-  /* Population-level MS-lifetime cap for Q_H/DotEExcess only: which
-     mass is leaving PARSEC's own main sequence at this step's END-of-
-     step age, matching the reference time m_end_step (and hence m_sup,
-     under the default mass_sup_scheme_end_step) is itself derived from
-     via GEAR's own Poirier lifetime: both caps then describe
-     the same point in time. Floored at m_min like every other mass
-     bound; the table's own age_max_myr/min()-gate can
-     only push m_ms_end_step down to m_min, never below it, but the
-     floor is kept explicit rather than relied upon implicitly. */
+  /* Only stars still on PARSEC's main sequence at the end of the step emit.
+     The table can push the mass down to m_min at most, so the floor is
+     kept explicit. */
   const float m_ms_end_step =
       radiation_get_main_sequence_lifetime_inverse_mass_2d(
           &sm->rad, log_z, star_age_end_step_myr, m_min);
@@ -1854,7 +1848,7 @@ void stellar_evolution_compute_radiation_at_birth(
 
   if (sp->star_type == single_star) {
     stellar_evolution_compute_radiation_individual_star(
-        sp, sm, us, phys_const, metallicity, /*star_age_beg_step_myr=*/0.);
+        sp, sm, us, phys_const, metallicity, /*star_age_beg_step_myr=*/0.0);
     return;
   }
 
