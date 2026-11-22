@@ -990,8 +990,10 @@ two last applications (\code{chemistry\_get\_pair\_flux\_dt},
   \dt_{ij} = a^2(t) \int_{\max(t_i^{\rm last},\, t_j^{\rm last})}^{t}
              \frac{{\rm d}t'}{a^2(t')} ,
 \end{equation}
-the convention of the thermal kick factor of the hydrodynamics. Without
-cosmology, $\dt_{ij}$ is the difference of the integer times times the
+the convention of the thermal kick factor of the hydrodynamics. The kernel
+$1/a^2$ is the thermal kick factor for an adiabatic index $\gamma=5/3$
+only; for another $\gamma$ the exponent is $3(\gamma-1)$ in place of $2$.
+Without cosmology, $\dt_{ij}$ is the difference of the integer times times the
 time base. If no time-step is limited or synchronised, $\dt_{ij}$ is the
 shorter current step of the active particles of the pair. The time-step
 limiter and the synchronisation shorten the step of an inactive particle
@@ -1000,11 +1002,26 @@ then covers all the time since that pair last exchanged. Each pair
 therefore integrates its flux over the whole time line, without gap or
 overlap, while its two particles stay neighbours.
 
-\paragraph{Pairs that just entered the kernel.} A pair that has just
+\paragraph{Catch-up exchanges.} A catch-up is a pair exchange that covers
+time lost because the limiter or the synchronisation shortened a step. It
+uses the current state of the two particles (diffusivity, gradients and
+metals) over the whole missed time. Stellar feedback applies its metals
+and energy to the gas in the drift task, before the force loop of that
+step, and the drift does not move $t^{\rm last}$. The first catch-up after
+an injection therefore integrates the post-injection state over the time
+since the last exchange of the pair, up to the old step of the particle.
+The error of this is not bounded by the stability limit of the current
+step. With a constant diffusivity it is bounded by the stability limit at
+the old step. With a diffusivity that grows, it can exceed that limit by
+the ratio of the new to the old diffusivity.
+
+\paragraph{Pairs that enter or leave the kernel.} A pair that has just
 come within range integrates from the later of its two $t^{\rm last}$,
 which can be earlier than the time it came within range. Its flux is then
-applied over a longer time than the pair existed. This is a first-order
-error in the time-step, of the same order as the forward Euler update.
+applied over a longer time than the pair existed. A pair that leaves the
+kernel is not visited again, so it loses the interval between its last
+exchange and the time it left. Both are first-order errors in the
+time-step, of the same order as the forward Euler update.
 
 \section{Robustness: Unphysical-State Detection and Correction}
 \label{sec:unphysical}

@@ -1308,7 +1308,12 @@ interval of Section~\ref{sec:time-integration}. For a pair that has just
 entered the kernel, $\dt_{ij}$ can be longer than the time the pair has
 existed; the predictor and the causal bound then use this longer
 interval, the first-order error stated in
-Section~\ref{sec:time-integration}. The two extrapolations
+Section~\ref{sec:time-integration}. The same holds for a catch-up exchange
+after a shortened step. For a long interval the causal factor of
+Section~\ref{sec:causal-bound} saturates at 1, so the dissipation of a
+catch-up is not reduced, and the error of a catch-up is not bounded by the
+stability limit of the current step (Section~\ref{sec:time-integration}).
+The two extrapolations
 differ in kind. $U_0$'s evolution equation, $\partial_tU_0=-\div\Fdiff$,
 carries no source term, so the code uses the ordinary first-order
 MUSCL-Hancock form, additive in space and time:
