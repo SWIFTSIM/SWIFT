@@ -340,9 +340,6 @@ struct mat_params {
  */
 struct strength_props {
 
-  /*! Time-step factor for the limit from the strain rate */
-  float strain_rate_timestep_factor;
-
   /*! Maximum growth in cbrt(tensile damage) per time-step */
   float damage_tensile_timestep_factor;
 

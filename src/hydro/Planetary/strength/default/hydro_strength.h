@@ -129,14 +129,6 @@ hydro_get_comoving_pressure_strength(const struct part *restrict p,
 __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
     float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {
 
-  /* Strength state from the drifted values. */
-  const struct mat_params *mp = material_params(p->mat_id);
-  struct strength_state s;
-  hydro_strength_state_init_drift(&s, p, mp);
-
-  /* Update dt_cfl with elastic contribution. */
-  strength_compute_timestep_stress_tensor(dt_cfl, &s, mp, strength_get_props());
-
   /* Update dt_cfl with damage contribution. */
   strength_compute_timestep_damage(dt_cfl, p, strength_get_props());
 }

@@ -44,6 +44,5 @@ EoS:
 
 # Parameters related to material strength
 Strength:
-    strain_rate_timestep_factor:    0.1    # Time-step limit from the strain rate: dt <= factor / sqrt(J_2 of the strain rate tensor).
     damage_tensile_timestep_factor: 0.1    # Maximum growth in cbrt(tensile damage) per time-step (only used with tensile damage).
     damage_shear_timestep_factor:   0.1    # Maximum growth in shear damage per time-step (only used with shear damage).

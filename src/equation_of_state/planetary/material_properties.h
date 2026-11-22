@@ -436,16 +436,12 @@ INLINE static void set_material_params(struct mat_params *all_mat_params,
 INLINE static void set_strength_props(struct strength_props *sp,
                                       struct swift_params *params) {
 
-  sp->strain_rate_timestep_factor = parser_get_opt_param_float(
-      params, "Strength:strain_rate_timestep_factor", 0.1f);
   sp->damage_tensile_timestep_factor = parser_get_opt_param_float(
       params, "Strength:damage_tensile_timestep_factor", 0.1f);
   sp->damage_shear_timestep_factor = parser_get_opt_param_float(
       params, "Strength:damage_shear_timestep_factor", 0.1f);
   sp->eta_neighbours = parser_get_param_float(params, "SPH:resolution_eta");
 
-  if (sp->strain_rate_timestep_factor <= 0.f)
-    error("Strength:strain_rate_timestep_factor must be > 0");
   if (sp->damage_tensile_timestep_factor <= 0.f)
     error("Strength:damage_tensile_timestep_factor must be > 0");
   if (sp->damage_shear_timestep_factor <= 0.f)

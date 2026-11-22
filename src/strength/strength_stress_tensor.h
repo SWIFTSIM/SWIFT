@@ -29,40 +29,6 @@
 #include "math.h"
 
 /**
- * @brief Computes the stress tensor time-step of a given particle.
- *
- * Limits the time-step based on an invariant measure of the strain rate tensor.
- * Stress accumulates based on the strain rate tensor, so this limits how much
- * the stress can change in one time-step.
- *
- * @param dt_cfl The hydro (+ strength) time-step.
- * @param s The strength state of the particle.
- * @param mp The material parameters.
- * @param strength_props The material strength parameters.
- */
-__attribute__((always_inline)) INLINE static void strength_compute_timestep_stress_tensor(
-    float *dt_cfl, struct strength_state *s, const struct mat_params *mp,
-    const struct strength_props *strength_props) {
-
-  /* Only solid particles accumulate deviatoric stress. */
-  if (strength_state_get_phase(s, mp) != mat_phase_solid) {
-    return;
-  }
-
-  /* Measure of strain rate. */
-  const float strain_rate_invariant =
-      sqrtf(strength_state_get_strain_rate_J_2(s, mp));
-
-  if (strain_rate_invariant > 0.f) {
-    const float dt_strain =
-        strength_props->strain_rate_timestep_factor / strain_rate_invariant;
-    if (dt_strain < *dt_cfl) {
-      *dt_cfl = dt_strain;
-    }
-  }
-}
-
-/**
  * @brief Updates the max wave speed of solids with the longitudinal wave speed.
  *
  * @param wave_speed The wave speed to be updated.
