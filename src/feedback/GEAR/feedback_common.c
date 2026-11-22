@@ -248,6 +248,21 @@ void feedback_compute_spart_timestep(
 }
 
 /**
+ * @brief Scale the bolometric luminosity of a star by the radiation pressure
+ * efficiency.
+ *
+ * @param sp The particle to act upon
+ * @param feedback_props The #feedback_props structure.
+ */
+__attribute__((always_inline)) INLINE static void
+feedback_apply_radiation_pressure_efficiency(
+    struct spart *sp, const struct feedback_props *feedback_props) {
+  radiation_set_star_bolometric_luminosity(
+      sp, radiation_get_star_bolometric_luminosity(sp) *
+              feedback_props->radiation_pressure_efficiency);
+}
+
+/**
  * @brief Will this star particle want to do feedback during the next time-step?
  *
  * This is called in the time step task.
@@ -323,9 +338,12 @@ void feedback_will_do_feedback(
   compute_time(sp, with_cosmology, cosmo, &star_age_beg_step, &dt_enrichment,
                &ti_begin, ti_current, time_base, time, old_time_bin);
 
-  /* There is no feedback to do for newborn stars */
+  /* A newborn star ejects nothing, but it shines during its first step */
   const double star_age_end_step = star_age_beg_step + dt_enrichment;
   if (star_age_end_step == 0.0) {
+    stellar_evolution_compute_radiation_at_birth(sp, model, us, phys_const);
+    feedback_apply_radiation_pressure_efficiency(sp, feedback_props);
+
     /* See the comment in feedback_init_after_star_formation(). But you will
        need to go through the feedback loops in the next timestep to compute
        all required quantities for the stellar evolution. */
@@ -386,10 +404,7 @@ void feedback_will_do_feedback(
                                   sp->feedback_data.winds.energy_ejected,
                                   sp->feedback_data.enrichment_weight);
 
-  /* Apply the radiation pressure efficiency factor */
-  radiation_set_star_bolometric_luminosity(
-      sp, radiation_get_star_bolometric_luminosity(sp) *
-              feedback_props->radiation_pressure_efficiency);
+  feedback_apply_radiation_pressure_efficiency(sp, feedback_props);
 
   /* Set the particle as doing some feedback. The ejected mass is a gate in
      its own right and not implied by the energy: the efficiency factors

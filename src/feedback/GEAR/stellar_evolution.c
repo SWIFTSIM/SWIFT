@@ -1309,45 +1309,21 @@ void stellar_evolution_compute_SN_feedback_spart(
 }
 
 /**
- * @brief Compute the pre-supernova feedback for an individual #spart.
- *
- * Note: This function treats the case of single/individual stars.
+ * @brief Set the radiation of an individual #spart: luminosities, ionizing
+ * photon rate and the quantities derived from them.
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
- * @param cosmo The current cosmological model.
  * @param us The unit system.
  * @param phys_const The physical constants in the internal unit system.
- * @param with_stellar_winds Enable stellar winds?
- * @param ti_begin The #integertime_t at the begining of the step.
- * @param star_age_beg_step The age of the star at the star of the time-step in
- * internal units.
- * @param dt The time-step size of this star in internal units.
+ * @param metallicity The star's total metal mass fraction.
+ * @param star_age_beg_step_myr The age of the star at the start of the
+ * time-step in Myr.
  */
-void stellar_evolution_compute_preSN_feedback_individual_star(
+static void stellar_evolution_compute_radiation_individual_star(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_winds,
-    const integertime_t ti_begin, const double star_age_beg_step,
-    const double dt) {
-
-  /* Check that this function is called for individual stars */
-  if (sp->star_type != single_star) {
-    error("This function can only be called for single/individual stars!");
-  }
-
-  /*****************************************/
-  /* Subgrid radiation */
-
-  /* Needed by the 2D radiation getters below and by the stellar-winds block
-     further down; hoisted here since it is a pure read of sp's own state,
-     independent of anything computed in between. */
-  const float metallicity =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-
-  /* Needed by both the radiation and stellar-winds blocks below. */
-  const double conversion_to_myr = phys_const->const_year * 1e6;
-  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+    const struct unit_system *us, const struct phys_const *phys_const,
+    const float metallicity, const double star_age_beg_step_myr) {
 
   if (sm->rad.is_active) {
     const float mass_msun = sp->mass / phys_const->const_solar_mass;
@@ -1452,6 +1428,47 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
   } else {
     radiation_zero_spart_output(sp);
   }
+}
+
+/**
+ * @brief Compute the pre-supernova feedback for an individual #spart.
+ *
+ * Note: This function treats the case of single/individual stars.
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
+ * @param ti_begin The #integertime_t at the begining of the step.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ */
+void stellar_evolution_compute_preSN_feedback_individual_star(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
+
+  /* Check that this function is called for individual stars */
+  if (sp->star_type != single_star) {
+    error("This function can only be called for single/individual stars!");
+  }
+
+  /* Needed by both the radiation and stellar-winds blocks below. */
+  const float metallicity =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+
+  /*****************************************/
+  /* Subgrid radiation */
+
+  stellar_evolution_compute_radiation_individual_star(
+      sp, sm, us, phys_const, metallicity, star_age_beg_step_myr);
 
   /*****************************************/
   /* Stellar winds */
@@ -1499,117 +1516,71 @@ void stellar_evolution_compute_preSN_feedback_individual_star(
 }
 
 /**
- * @brief Compute the pre-supernova feedback for a SSP/continuous-IMF #spart.
+ * @brief Cap the upper mass bound of a SSP/continuous-IMF #spart at the stars
+ * still on the main sequence at the end of the step.
  *
- * Note: This function treats the case of particles representing the whole IMF
- * (star_type = star_population) and the particles representing only the
- * continuous part of the IMF (star_type = star_population_continuous_IMF).
+ * The capped bound limits L_PE/L_LW and Q_H: a star past its own
+ * main-sequence lifetime emits nothing, ionizing or not. Only a 2D table has
+ * a main-sequence lifetime, so a 1D table keeps the uncapped bound.
+ *
+ * @param sm The #stellar_model structure.
+ * @param metallicity The star's total metal mass fraction.
+ * @param m_sup The upper mass bound of the stars still alive, in solMass.
+ * @param star_age_end_step_myr The age of the star at the end of the step in
+ * Myr.
+ * @return The capped bound in solMass.
+ */
+static float stellar_evolution_get_population_main_sequence_mass_sup(
+    const struct stellar_model *sm, const float metallicity, const float m_sup,
+    const float star_age_end_step_myr) {
+
+  if (!sm->rad.is_active || !sm->rad.is_2d) return m_sup;
+
+  const float m_min = sm->imf.mass_min;
+  const float log_z = radiation_get_log_metallicity(metallicity);
+
+  /* Population-level MS-lifetime cap for Q_H/DotEExcess only: which
+     mass is leaving PARSEC's own main sequence at this step's END-of-
+     step age, matching the reference time m_end_step (and hence m_sup,
+     under the default mass_sup_scheme_end_step) is itself derived from
+     via GEAR's own Poirier lifetime: both caps then describe
+     the same point in time. Floored at m_min like every other mass
+     bound; the table's own age_max_myr/min()-gate can
+     only push m_ms_end_step down to m_min, never below it, but the
+     floor is kept explicit rather than relied upon implicitly. */
+  const float m_ms_end_step =
+      radiation_get_main_sequence_lifetime_inverse_mass_2d(
+          &sm->rad, log_z, star_age_end_step_myr, m_min);
+  const float m_sup_or_ms_end_step = min(m_sup, m_ms_end_step);
+  return max(m_min, m_sup_or_ms_end_step);
+}
+
+/**
+ * @brief Set the radiation of a SSP/continuous-IMF #spart: luminosities,
+ * ionizing photon rate and the quantities derived from them.
  *
  * @param sp The particle to act upon
  * @param sm The #stellar_model structure.
- * @param cosmo The current cosmological model.
  * @param us The unit system.
- * @param phys_const The physical constants in the internal unit system.
- * @param with_stellar_winds Enable stellar winds?
- * @param ti_begin The #integertime_t at the begining of the step.
- * @param star_age_beg_step The age of the star at the star of the time-step in
- * internal units.
- * @param dt The time-step size of this star in internal units.
+ * @param metallicity The star's total metal mass fraction.
+ * @param m_init The initial mass of the particle in solMass.
+ * @param m_sup The upper mass bound of the stars still alive, in solMass.
+ * @param m_sup_capped The same bound, capped at the stars still on the main
+ * sequence (see stellar_evolution_get_population_main_sequence_mass_sup()).
  */
-void stellar_evolution_compute_preSN_feedback_spart(
+static void stellar_evolution_compute_radiation_spart(
     struct spart *restrict sp, const struct stellar_model *sm,
-    const struct cosmology *cosmo, const struct unit_system *us,
-    const struct phys_const *phys_const, const char with_stellar_winds,
-    const integertime_t ti_begin, const double star_age_beg_step,
-    const double dt) {
-
-  /* Check that this function is called for populations of stars and not
-     individual stars. */
-  if (sp->star_type == single_star) {
-    error(
-        "This function can only be called for sparts representing stars "
-        "populations!");
-  }
-
-  /* What masses do contribute as feedback? All stars that did not explode,
-     i.e. all masses [M_min_IMF, M_not_exploded_yet]. Note that after a star
-     explode as a SN, it is considered as dead and do not produce any feedback
-     at all. This includes failed SN (that end up as black holes or neutron
-     stars). So, the mass range is [M_min_IMF, M_not_dead_yet]. */
+    const struct unit_system *us, const float metallicity, const float m_init,
+    const float m_sup, const float m_sup_capped) {
 
   /* The minimal mass fixed for SSP and continuous stars, in Msun (matching
-     m_end_step's own convention below, not internal mass units). */
+     m_sup's own convention, not internal mass units). */
   const float m_min = sm->imf.mass_min;
 
-  /* Convert the inputs */
-  const double conversion_to_myr = phys_const->const_year * 1e6;
-  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
-  const double dt_myr = dt / conversion_to_myr;
-
-  /* Get the metallicity */
-  const float metallicity =
-      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
-
-  /* Compute masses range */
-  const float log_m_beg_step =
-      star_age_beg_step == 0.
-          ? FLT_MAX
-          : lifetime_get_log_mass_from_lifetime(
-                &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
-  const float log_m_end_step = lifetime_get_log_mass_from_lifetime(
-      &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
-
-  float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
-  float m_end_step = exp10(log_m_end_step);
-
-  /* Limit the mass interval to the IMF boundaries */
-  m_end_step = max(m_end_step, sm->imf.mass_min);
-  m_end_step = min(m_end_step, sm->imf.mass_max);
-  m_beg_step = min(m_beg_step, sm->imf.mass_max);
-
-  /* considering only the "alive" part of the IMF, i.e., we stop only if we are
-   * currently below the IMF */
-  if (m_beg_step < sm->imf.mass_min) return;
-
-  /* Star particles representing only the continuous part of the IMF need a
-  special treatment. They do not contain stars above the mass that separate the
-  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
-  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
-  feedback for the discrete part. m_end_step needs the same clamp: radiation
-  is a continuous emission (unlike SN's discrete death events), so a young
-  population where even m_end_step exceeds minimal_discrete_mass_Msun is not
-  "nothing to do yet": every star this particle can contain, up to
-  minimal_discrete_mass_Msun, is still alive and still emitting, so the
-  integral must reach exactly that far, not stop early or reach past it. */
-  if (sp->star_type == star_population_continuous_IMF) {
-    m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
-    m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);
-  }
-
-  /*****************************************/
-  /* Radiation */
-  const float m_init =
-      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
-
   if (sm->rad.is_active) {
-    /* Upper mass bound for this continuous-emission channel this step; see
-       stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen for the
-       overestimate/underestimate tradeoff. */
-    const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
-        sm, m_end_step, m_beg_step,
-        STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
-
     float L_bol;
     double dot_N_ion;
     float mean_excess_photon_energy_HI;
-    /* Upper mass bound for the L_PE/L_LW table-direct read below: the
-       same MS-lifetime-capped value dot_N_ion uses for a 2D
-       table (a star past its own main-sequence lifetime emits nothing,
-       ionizing or not, so L_PE/L_LW stop the same way Q_H already does),
-       or the uncapped m_sup for a 1D table,
-       which has no MS-lifetime concept at all (matching dot_N_ion's own
-       uncapped 1D read below). */
-    float m_sup_capped = m_sup;
 
     if (sm->rad.is_2d) {
       const float log_z = radiation_get_log_metallicity(metallicity);
@@ -1619,23 +1590,6 @@ void stellar_evolution_compute_preSN_feedback_spart(
          doxygen). */
       L_bol = radiation_get_luminosities_from_integral_2d(
           &sm->rad, log_z, log10f(m_min), log10f(m_sup));
-
-      /* Population-level MS-lifetime cap for Q_H/DotEExcess only: which
-         mass is leaving PARSEC's own main sequence at this step's END-of-
-         step age, matching the reference time m_end_step (and hence m_sup,
-         under the default mass_sup_scheme_end_step) is itself derived from
-         via GEAR's own Poirier lifetime above: both caps then describe
-         the same point in time. Floored at m_min like every other mass
-         bound in this function; the table's own age_max_myr/min()-gate can
-         only push m_ms_end_step down to m_min, never below it, but the
-         floor is kept explicit rather than relied upon implicitly. */
-      const float star_age_end_step_myr =
-          (float)(star_age_beg_step_myr + dt_myr);
-      const float m_ms_end_step =
-          radiation_get_main_sequence_lifetime_inverse_mass_2d(
-              &sm->rad, log_z, star_age_end_step_myr, m_min);
-      const float m_sup_or_ms_end_step = min(m_sup, m_ms_end_step);
-      m_sup_capped = max(m_min, m_sup_or_ms_end_step);
 
       dot_N_ion = radiation_get_ionization_rate_from_integral_2d(
           &sm->rad, log_z, log10f(m_min), log10f(m_sup_capped));
@@ -1754,6 +1708,109 @@ void stellar_evolution_compute_preSN_feedback_spart(
   } else {
     radiation_zero_spart_output(sp);
   }
+}
+
+/**
+ * @brief Compute the pre-supernova feedback for a SSP/continuous-IMF #spart.
+ *
+ * Note: This function treats the case of particles representing the whole IMF
+ * (star_type = star_population) and the particles representing only the
+ * continuous part of the IMF (star_type = star_population_continuous_IMF).
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param cosmo The current cosmological model.
+ * @param us The unit system.
+ * @param phys_const The physical constants in the internal unit system.
+ * @param with_stellar_winds Enable stellar winds?
+ * @param ti_begin The #integertime_t at the begining of the step.
+ * @param star_age_beg_step The age of the star at the star of the time-step in
+ * internal units.
+ * @param dt The time-step size of this star in internal units.
+ */
+void stellar_evolution_compute_preSN_feedback_spart(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct cosmology *cosmo, const struct unit_system *us,
+    const struct phys_const *phys_const, const char with_stellar_winds,
+    const integertime_t ti_begin, const double star_age_beg_step,
+    const double dt) {
+
+  /* Check that this function is called for populations of stars and not
+     individual stars. */
+  if (sp->star_type == single_star) {
+    error(
+        "This function can only be called for sparts representing stars "
+        "populations!");
+  }
+
+  /* What masses do contribute as feedback? All stars that did not explode,
+     i.e. all masses [M_min_IMF, M_not_exploded_yet]. Note that after a star
+     explode as a SN, it is considered as dead and do not produce any feedback
+     at all. This includes failed SN (that end up as black holes or neutron
+     stars). So, the mass range is [M_min_IMF, M_not_dead_yet]. */
+
+  /* Convert the inputs */
+  const double conversion_to_myr = phys_const->const_year * 1e6;
+  const double star_age_beg_step_myr = star_age_beg_step / conversion_to_myr;
+  const double dt_myr = dt / conversion_to_myr;
+
+  /* Get the metallicity */
+  const float metallicity =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  /* Compute masses range */
+  const float log_m_beg_step =
+      star_age_beg_step == 0.
+          ? FLT_MAX
+          : lifetime_get_log_mass_from_lifetime(
+                &sm->lifetime, log10(star_age_beg_step_myr), metallicity);
+  const float log_m_end_step = lifetime_get_log_mass_from_lifetime(
+      &sm->lifetime, log10(star_age_beg_step_myr + dt_myr), metallicity);
+
+  float m_beg_step = star_age_beg_step == 0. ? FLT_MAX : exp10(log_m_beg_step);
+  float m_end_step = exp10(log_m_end_step);
+
+  /* Limit the mass interval to the IMF boundaries */
+  m_end_step = max(m_end_step, sm->imf.mass_min);
+  m_end_step = min(m_end_step, sm->imf.mass_max);
+  m_beg_step = min(m_beg_step, sm->imf.mass_max);
+
+  /* considering only the "alive" part of the IMF, i.e., we stop only if we are
+   * currently below the IMF */
+  if (m_beg_step < sm->imf.mass_min) return;
+
+  /* Star particles representing only the continuous part of the IMF need a
+  special treatment. They do not contain stars above the mass that separate the
+  IMF into two parts (variable called minimal_discrete_mass_Msun in the sink
+  module). So, if m_beg_step > minimal_discrete_mass_Msun, you don't do
+  feedback for the discrete part. m_end_step needs the same clamp: radiation
+  is a continuous emission (unlike SN's discrete death events), so a young
+  population where even m_end_step exceeds minimal_discrete_mass_Msun is not
+  "nothing to do yet": every star this particle can contain, up to
+  minimal_discrete_mass_Msun, is still alive and still emitting, so the
+  integral must reach exactly that far, not stop early or reach past it. */
+  if (sp->star_type == star_population_continuous_IMF) {
+    m_beg_step = min(m_beg_step, sm->imf.minimal_discrete_mass_Msun);
+    m_end_step = min(m_end_step, sm->imf.minimal_discrete_mass_Msun);
+  }
+
+  /*****************************************/
+  /* Radiation */
+  const float m_init =
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+
+  /* Upper mass bound for this continuous-emission channel this step; see
+     stellar_evolution_get_continuous_feedback_mass_sup()'s doxygen for the
+     overestimate/underestimate tradeoff. */
+  const float m_sup = stellar_evolution_get_continuous_feedback_mass_sup(
+      sm, m_end_step, m_beg_step, STELLAR_EVOLUTION_CONTINUOUS_MASS_SUP_SCHEME);
+  const float star_age_end_step_myr = (float)(star_age_beg_step_myr + dt_myr);
+  const float m_sup_capped =
+      stellar_evolution_get_population_main_sequence_mass_sup(
+          sm, metallicity, m_sup, star_age_end_step_myr);
+
+  stellar_evolution_compute_radiation_spart(sp, sm, us, metallicity, m_init,
+                                            m_sup, m_sup_capped);
 
   /*****************************************/
   /* Stellar winds */
@@ -1774,6 +1831,43 @@ void stellar_evolution_compute_preSN_feedback_spart(
 
   /* Apply the mass-loss */
   stellar_evolution_preSN_apply_ejected_mass(sp, sm);
+}
+
+/**
+ * @brief Set the radiation of a #spart at its birth, with no ejection.
+ *
+ * The stellar evolution of a step is used during the next one, so a newborn
+ * star would be dark during its first step. A star shines from age 0, while
+ * it ejects nothing over a zero-length step.
+ *
+ * @param sp The particle to act upon
+ * @param sm The #stellar_model structure.
+ * @param us The unit system.
+ * @param phys_const The physical constants in the internal unit system.
+ */
+void stellar_evolution_compute_radiation_at_birth(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct unit_system *us, const struct phys_const *phys_const) {
+
+  const float metallicity =
+      chemistry_get_star_total_metal_mass_fraction_for_feedback(sp);
+
+  if (sp->star_type == single_star) {
+    stellar_evolution_compute_radiation_individual_star(
+        sp, sm, us, phys_const, metallicity, /*star_age_beg_step_myr=*/0.);
+    return;
+  }
+
+  /* At age 0 every star of the IMF is alive and on the main sequence. The
+     ages are not fed to the lifetime functions, which take their log. */
+  float m_sup = sm->imf.mass_max;
+  if (sp->star_type == star_population_continuous_IMF)
+    m_sup = min(m_sup, sm->imf.minimal_discrete_mass_Msun);
+
+  const float m_init =
+      stellar_evolution_compute_initial_mass(sp, sm, phys_const);
+  stellar_evolution_compute_radiation_spart(sp, sm, us, metallicity, m_init,
+                                            m_sup, m_sup);
 }
 
 /**
