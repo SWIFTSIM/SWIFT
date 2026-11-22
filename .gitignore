@@ -237,6 +237,7 @@ tests/testCosmologyAccuracy
 tests/testOutputList
 tests/testCbrt
 tests/testBoxWrapCellIndex
+tests/testCellDxOutsideCheck
 tests/testFormat.sh
 tests/testCooling
 tests/testCoolingSplit
