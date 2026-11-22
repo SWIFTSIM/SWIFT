@@ -156,12 +156,13 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param ti_current The current integer time.
  * @param chem_data The global properties of the chemistry scheme.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
     const int with_cosmology, const double time, const double dt,
-    const struct chemistry_global_data *cd) {}
+    const integertime_t ti_current, const struct chemistry_global_data *cd) {}
 
 /**
  * @brief Computes the chemistry-related time-step constraint.

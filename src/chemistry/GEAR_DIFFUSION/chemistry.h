@@ -318,10 +318,12 @@ __attribute__((always_inline)) INLINE static void chemistry_end_density(
  * @param with_cosmology Are we running with the cosmology?
  * @param time Current time of the simulation.
  * @param dt Time step (in physical units).
+ * @param ti_current The current integer time.
  */
 __attribute__((always_inline)) INLINE static void chemistry_end_force(
     struct part *restrict p, const struct cosmology *cosmo,
-    const int with_cosmology, const double time, const double dt) {
+    const int with_cosmology, const double time, const double dt,
+    const integertime_t ti_current) {
   if (dt == 0) {
     return;
   }
