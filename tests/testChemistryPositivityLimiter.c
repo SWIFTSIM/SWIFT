@@ -92,7 +92,9 @@ static void init_part(struct part *p, const long long id, const double x[3],
     ch->limiter.Z[m][0] = -1e10;
     ch->limiter.Z[m][1] = 1e10;
     ch->fct_theta[m] = 1.0;
-    ch->metal_mass[m] = hydro_get_mass(p) * metal_mass_fraction;
+    /* A different mass per element, so that an element index mixed up in the
+       limiter changes the result. */
+    ch->metal_mass[m] = hydro_get_mass(p) * metal_mass_fraction * (1. + m);
   }
 
   /* A long flux time-step makes the donor's outflow exceed its mass. */
@@ -123,10 +125,13 @@ static void exchange_all(struct part *donor, struct part *ngb, const int prep,
  * @brief Run prep, theta and apply on the fixture.
  *
  * @param positive (return) Is the donor mass non-negative for all elements?
+ * @param theta_ok (return) Does the theta of the donor match the formula of
+ * the limiter for all elements?
  * @return Is the metal mass conserved for all elements?
  */
 static int run_fixture(const struct chemistry_global_data *cd,
-                       const struct cosmology *cosmo, int *positive) {
+                       const struct cosmology *cosmo, int *positive,
+                       int *theta_ok) {
 
   /* Icosahedron vertices at distance 0.5 from the donor. */
   const double phi = 0.5 * (1. + sqrt(5.));
@@ -144,23 +149,50 @@ static int run_fixture(const struct chemistry_global_data *cd,
     const double x[3] = {scale * v[n][0], scale * v[n][1], scale * v[n][2]};
     init_part(&ngb[n], n + 2, x, 0.);
 
-    /* Metal density falling away from the donor drives an outward flux. */
-    for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++)
+    /* Metal density falling away from the donor drives an outward flux. The
+       neighbours' metal mass and gradient differ per element, so the outflow
+       per unit of donor mass, and thus theta, differs per element. */
+    for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+      ngb[n].chemistry_data.metal_mass[m] =
+          donor.chemistry_data.metal_mass[m] * (0.4 + 0.05 * m);
       for (int k = 0; k < 3; k++)
-        ngb[n].chemistry_data.gradients.rhoZ[m][k] = -4e-6 * x[k];
+        ngb[n].chemistry_data.gradients.rhoZ[m][k] =
+            -4e-6 * x[k] * (1. + 2. * m);
+    }
   }
 
   exchange_all(&donor, ngb, /*prep=*/1, cosmo, cd);
 
-  const double available = donor.chemistry_data.metal_mass[0];
-  const double sum_out = donor.chemistry_data.fct_sum_out[0];
-  message("Donor metal mass %e, prospective outflow %e", available, sum_out);
-  if (!(sum_out > available))
-    error("The fixture does not over-drain the donor: sum_out=%e <= %e",
-          sum_out, available);
+  double expected_theta[GEAR_CHEMISTRY_ELEMENT_COUNT];
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    const double available = donor.chemistry_data.metal_mass[m];
+    const double sum_out = donor.chemistry_data.fct_sum_out[m];
+    message("Element %d: donor metal mass %e, prospective outflow %e", m,
+            available, sum_out);
+    if (!(sum_out > available))
+      error("The fixture does not over-drain the donor: sum_out=%e <= %e",
+            sum_out, available);
+
+    /* The donor keeps 1e-6 of its mass, as in chemistry_end_flux_prep(). */
+    expected_theta[m] = available * (1.0 - 1e-6) / sum_out;
+  }
 
   chemistry_end_flux_prep(&donor, cd);
   for (int n = 0; n < N_NEIGHBOURS; n++) chemistry_end_flux_prep(&ngb[n], cd);
+
+  /* Three roundings (the factor, the product, the quotient) of at most
+     DBL_EPSILON / 2 each, so 4 * DBL_EPSILON bounds the difference. */
+  *theta_ok = 1;
+  for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++) {
+    const double theta = donor.chemistry_data.fct_theta[m];
+    const int ok =
+        is_finite_double(theta) &&
+        fabs(theta - expected_theta[m]) <= 4. * DBL_EPSILON * expected_theta[m];
+    if (!ok)
+      message("element %d: theta %.17e, expected %.17e", m, theta,
+              expected_theta[m]);
+    *theta_ok &= ok;
+  }
 
   exchange_all(&donor, ngb, /*prep=*/0, cosmo, cd);
 
@@ -222,18 +254,21 @@ int main(int argc, char *argv[]) {
   cd.flux_limiter_sink_stability = 0.25;
   cd.flux_limiter_startup = 0.1;
 
-  int positive_on, positive_off;
+  int positive_on, positive_off, theta_on, theta_off;
   cd.use_positivity_limiter = 1;
-  const int conserved_on = run_fixture(&cd, &cosmo, &positive_on);
-  message("Limiter on:  positive=%d conserved=%d", positive_on, conserved_on);
+  const int conserved_on = run_fixture(&cd, &cosmo, &positive_on, &theta_on);
+  message("Limiter on:  positive=%d conserved=%d theta=%d", positive_on,
+          conserved_on, theta_on);
 
   /* With the limiter off, the donor must go negative and the mass stay
      conserved. */
   cd.use_positivity_limiter = 0;
-  const int conserved_off = run_fixture(&cd, &cosmo, &positive_off);
+  const int conserved_off = run_fixture(&cd, &cosmo, &positive_off, &theta_off);
   message("Limiter off: positive=%d conserved=%d", positive_off, conserved_off);
 
-  if (!positive_on || !conserved_on || positive_off || !conserved_off)
+  /* The donor stays positive with theta = 0 too, so the theta is required. */
+  if (!positive_on || !conserved_on || !theta_on || positive_off ||
+      !conserved_off)
     error("testChemistryPositivityLimiter: FAILED");
   message("testChemistryPositivityLimiter: PASSED");
   return 0;
