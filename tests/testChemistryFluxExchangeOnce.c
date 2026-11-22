@@ -38,10 +38,11 @@
  * in two depth bands, so that the recursion of the sub-cell tasks and the
  * ownership rule of mixed-band pairs are exercised.
  *
- * Two configurations miss exchanges in the pair enumeration itself. There,
- * each particle's count must equal the reference minus the exact number of
- * misses predicted for it (predict_split_pair_gap(), predict_foreign_gap()).
- * The prep and apply counts of every particle must be equal.
+ * A pair with a foreign cell misses exchanges in the pair enumeration itself
+ * when the force loop does not update inactive neighbours (SPH). There, each
+ * particle's count must equal the reference minus the exact number of misses
+ * predicted for it (predict_foreign_gap()). The prep and apply counts of
+ * every particle must be equal.
  */
 
 #if (defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) ||             \
@@ -279,9 +280,11 @@ static void reset_counts(struct cell *c) {
    the precision of the distance. */
 static int n_ambiguous_pairs = 0;
 
-/* The naive pair loop visits every pair from both sides, so it has no
-   foreign gap. */
-#ifdef SWIFT_USE_NAIVE_INTERACTIONS
+/* The naive pair loop visits every pair from both sides, and a force loop
+   that updates inactive neighbours lets a foreign active particle reach
+   them: neither has a foreign gap. */
+#if defined(SWIFT_USE_NAIVE_INTERACTIONS) || \
+    hydro_force_updates_inactive_neighbours
 static const int foreign_gap_exists = 0;
 #else
 static const int foreign_gap_exists = 1;
@@ -369,55 +372,6 @@ static int brute_force_count(const struct cell *a, const struct cell *b,
     }
   }
   return mixed_band_pairs;
-}
-
-/**
- * @brief Do the progeny holding a[i] and b[j] share a face, an edge or a
- * corner?
- */
-static int octants_touch(const struct cell *a, const int i,
-                         const struct cell *b, const int j) {
-  const struct cell *pa = a->progeny[i / PARTS_PER_OCTANT];
-  const struct cell *pb = b->progeny[j / PARTS_PER_OCTANT];
-  for (int k = 0; k < 3; k++) {
-    if (pa->loc[k] > pb->loc[k] + pb->width[k] + 1e-9) return 0;
-    if (pb->loc[k] > pa->loc[k] + pa->width[k] + 1e-9) return 0;
-  }
-  return 1;
-}
-
-/**
- * @brief Predict the missed exchanges of a pair of split local cells.
- *
- * The sub-cell recursion only visits pairs of progeny that touch. A pair of
- * particles in progeny that do not touch is visited only at the top level,
- * where only the particles in the top depth band are taken. An inactive
- * top-band particle and an active progeny-band partner within its kernel
- * therefore never exchange: both miss one count.
- */
-static void predict_split_pair_gap(const struct cell *ci, const struct cell *cj,
-                                   int *miss_i, int *miss_j,
-                                   const struct engine *e) {
-  for (int i = 0; i < ci->hydro.count; i++) {
-    const struct part *pi = &ci->hydro.parts[i];
-    for (int j = 0; j < cj->hydro.count; j++) {
-      const struct part *pj = &cj->hydro.parts[j];
-      if (octants_touch(ci, i, cj, j)) continue;
-      const int active_i = part_is_active(pi, e);
-      const int active_j = part_is_active(pj, e);
-      const int top_i = (pi->depth_h == 0) && (pj->depth_h == 1);
-      const int top_j = (pj->depth_h == 0) && (pi->depth_h == 1);
-      if (!(top_i && !active_i && active_j) &&
-          !(top_j && !active_j && active_i))
-        continue;
-      const double *frames[4];
-      pair_frames(ci, i, cj, j, frames);
-      if (within_kernel(pi, pj, max(pi->h, pj->h), frames)) {
-        miss_i[i]++;
-        miss_j[j]++;
-      }
-    }
-  }
 }
 
 /**
@@ -526,8 +480,6 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
     space_getsid_and_swap_cells(e->s, &first, &second, shift);
     predict_foreign_gap(ci, cj, first == ci, miss_i[0], e);
     predict_foreign_gap(cj, ci, first == cj, miss_j[1], e);
-  } else if (cj && ci->split && cj->split) {
-    predict_split_pair_gap(ci, cj, miss_i[0], miss_j[0], e);
   }
 
   int predicted = 0;
@@ -663,8 +615,7 @@ int main(int argc, char *argv[]) {
       const int split = (variant >= 2);
       const int foreign = (variant == 1);
       const int top_band_active = (variant == 2);
-      const int expect_misses =
-          (foreign && foreign_gap_exists) || (variant == 3);
+      const int expect_misses = foreign && foreign_gap_exists;
 
       struct cell *ci =
           make_cell(loc_i, split, 0, 0.5, top_band_active, &engine);
