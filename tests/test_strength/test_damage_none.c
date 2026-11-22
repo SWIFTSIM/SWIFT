@@ -11,7 +11,7 @@ struct p_strength_data {
   float shear_damage;
   float damage_accumulation_timescale;
   int number_of_flaws;
-  float activation_thresholds[40]; //### hardcoded length
+  float activation_thresholds[40];  // ### hardcoded length
 };
 
 struct xp_strength_data {
@@ -31,8 +31,12 @@ struct xpart {
 /* Dummy sym_matrix */
 struct sym_matrix {
   union {
-    struct { float elements[6]; };
-    struct { float xx, yy, zz, xy, xz, yz; };
+    struct {
+      float elements[6];
+    };
+    struct {
+      float xx, yy, zz, xy, xz, yz;
+    };
   };
 };
 
@@ -78,14 +82,19 @@ static void test_timestep_damage(void) {
 /* Stress tensor computation does nothing */
 static void test_stress_tensor(void) {
   struct sym_matrix damaged_deviatoric_stress_tensor;
-  damaged_deviatoric_stress_tensor.xx =  1.f; damaged_deviatoric_stress_tensor.yy = 2.f; damaged_deviatoric_stress_tensor.zz = 3.f;
-  damaged_deviatoric_stress_tensor.xy =  4.f; damaged_deviatoric_stress_tensor.xz = 5.f; damaged_deviatoric_stress_tensor.yz = 6.f;
+  damaged_deviatoric_stress_tensor.xx = 1.f;
+  damaged_deviatoric_stress_tensor.yy = 2.f;
+  damaged_deviatoric_stress_tensor.zz = 3.f;
+  damaged_deviatoric_stress_tensor.xy = 4.f;
+  damaged_deviatoric_stress_tensor.xz = 5.f;
+  damaged_deviatoric_stress_tensor.yz = 6.f;
   struct sym_matrix stress_tensor = {0};
 
   const float pressure = 10.f;
   const float damage = 0.5f;
 
-  damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor, pressure, damage);
+  damage_compute_stress_tensor(&stress_tensor, damaged_deviatoric_stress_tensor,
+                               pressure, damage);
 
   /* Should remain unchanged */
   const float tol = 1e-6f;

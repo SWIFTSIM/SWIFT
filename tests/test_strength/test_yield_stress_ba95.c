@@ -5,8 +5,8 @@
 #define INLINE inline
 
 /* Dummy constants. */
-#define mat_phase_solid  1
-#define mat_phase_fluid  0
+#define mat_phase_solid 1
+#define mat_phase_fluid 0
 
 /* Dummy material parameters. */
 static float material_Y_0(const int mat_id) { return 200e6f; }
@@ -14,8 +14,9 @@ static float material_Y_0(const int mat_id) { return 200e6f; }
 /* Dummy weakening. */
 static int density_weakening_calls = 0;
 static int temperature_weakening_calls = 0;
-static void yield_weakening_apply_density_to_yield_stress(
-    float *yield_stress, const int mat_id, const float density) {
+static void yield_weakening_apply_density_to_yield_stress(float *yield_stress,
+                                                          const int mat_id,
+                                                          const float density) {
   density_weakening_calls++;
 }
 
@@ -27,16 +28,20 @@ static void yield_weakening_apply_temperature_to_yield_stress(
 /* Dummy sym_matrix. */
 struct sym_matrix {
   union {
-    struct { float elements[6]; };
-    struct { float xx, yy, zz, xy, xz, yz; };
+    struct {
+      float elements[6];
+    };
+    struct {
+      float xx, yy, zz, xy, xz, yz;
+    };
   };
 };
 
 /* Dummy J_2 calculation. */
 static float __attribute__((unused)) strength_compute_deviatoric_sym_matrix_J_2(
     struct sym_matrix M) {
-  return 0.5f * (M.xx*M.xx + M.yy*M.yy + M.zz*M.zz)
-       + M.xy*M.xy + M.xz*M.xz + M.yz*M.yz;
+  return 0.5f * (M.xx * M.xx + M.yy * M.yy + M.zz * M.zz) + M.xy * M.xy +
+         M.xz * M.xz + M.yz * M.yz;
 }
 
 #define INLINE inline
@@ -48,13 +53,18 @@ static float __attribute__((unused)) strength_compute_deviatoric_sym_matrix_J_2(
  * by (1 - damage). */
 static void test_damaged_deviatoric_stress_tensor(void) {
   struct sym_matrix S;
-  S.xx =  3.f; S.yy = -1.f; S.zz = -2.f;
-  S.xy =  1.f; S.xz =  0.5f; S.yz = -0.5f;
+  S.xx = 3.f;
+  S.yy = -1.f;
+  S.zz = -2.f;
+  S.xy = 1.f;
+  S.xz = 0.5f;
+  S.yz = -0.5f;
 
   const float damage = 0.4f;
   const float scale = 1.f - damage;
 
-  struct sym_matrix S_damaged = yield_compute_damaged_deviatoric_stress_tensor(S, damage);
+  struct sym_matrix S_damaged =
+      yield_compute_damaged_deviatoric_stress_tensor(S, damage);
 
   const float tol = 1e-6f;
   assert(fabsf(S_damaged.xx - scale * S.xx) <= tol);
@@ -65,7 +75,8 @@ static void test_damaged_deviatoric_stress_tensor(void) {
   assert(fabsf(S_damaged.yz - scale * S.yz) <= tol);
 
   /* Test 0 damage case. */
-  struct sym_matrix S_d0 = yield_compute_damaged_deviatoric_stress_tensor(S, 0.f);
+  struct sym_matrix S_d0 =
+      yield_compute_damaged_deviatoric_stress_tensor(S, 0.f);
   assert(fabsf(S_d0.xx - S.xx) <= tol);
   assert(fabsf(S_d0.yy - S.yy) <= tol);
   assert(fabsf(S_d0.zz - S.zz) <= tol);
@@ -74,15 +85,19 @@ static void test_damaged_deviatoric_stress_tensor(void) {
   assert(fabsf(S_d0.yz - S.yz) <= tol);
 }
 
-
 /* Test that fully damaged material (damage=1) gives a zero deviatoric stress
  * tensor, i.e. acts as a fluid. */
 static void test_damaged_deviatoric_stress_tensor_fully_damaged(void) {
   struct sym_matrix S;
-  S.xx =  3.f; S.yy = -1.f; S.zz = -2.f;
-  S.xy =  1.f; S.xz =  0.5f; S.yz = -0.5f;
+  S.xx = 3.f;
+  S.yy = -1.f;
+  S.zz = -2.f;
+  S.xy = 1.f;
+  S.xz = 0.5f;
+  S.yz = -0.5f;
 
-  struct sym_matrix S_damaged = yield_compute_damaged_deviatoric_stress_tensor(S, 1.f);
+  struct sym_matrix S_damaged =
+      yield_compute_damaged_deviatoric_stress_tensor(S, 1.f);
 
   const float tol = 1e-6f;
   assert(fabsf(S_damaged.xx) <= tol);
@@ -93,19 +108,20 @@ static void test_damaged_deviatoric_stress_tensor_fully_damaged(void) {
   assert(fabsf(S_damaged.yz) <= tol);
 }
 
-
 /* Test that damage does not affect the yield stress: damaged yield stress
  * equals fully intact yield stress regardless of damage value. */
 static void test_damaged_yield_stress_ignores_damage(void) {
-  const float Y_intact  = 1e6f;
+  const float Y_intact = 1e6f;
   const float Y_damaged = 0.f;
 
   const float tol = 1e-6f;
-  assert(fabsf(yield_compute_damaged_yield_stress(Y_intact, Y_damaged, 0.f) - Y_intact) <= tol);
-  assert(fabsf(yield_compute_damaged_yield_stress(Y_intact, Y_damaged, 0.5f) - Y_intact) <= tol);
-  assert(fabsf(yield_compute_damaged_yield_stress(Y_intact, Y_damaged, 1.f) - Y_intact) <= tol);
+  assert(fabsf(yield_compute_damaged_yield_stress(Y_intact, Y_damaged, 0.f) -
+               Y_intact) <= tol);
+  assert(fabsf(yield_compute_damaged_yield_stress(Y_intact, Y_damaged, 0.5f) -
+               Y_intact) <= tol);
+  assert(fabsf(yield_compute_damaged_yield_stress(Y_intact, Y_damaged, 1.f) -
+               Y_intact) <= tol);
 }
-
 
 /* Test that yield stress for solid equals Y_0 and for non-solid equals zero. */
 static void test_yield_stress_fully_intact(void) {
@@ -114,17 +130,17 @@ static void test_yield_stress_fully_intact(void) {
   const float pressure = 1e5f;
   const float tol = 1e-6f;
 
-  assert(fabsf(
-    yield_compute_yield_stress_fully_intact(mat_id, mat_phase_solid, pressure) -
-    Y_0) <= tol);
+  assert(fabsf(yield_compute_yield_stress_fully_intact(mat_id, mat_phase_solid,
+                                                       pressure) -
+               Y_0) <= tol);
 
-  assert(fabsf(
-    yield_compute_yield_stress_fully_intact(mat_id, mat_phase_fluid, pressure)) <= tol);
+  assert(fabsf(yield_compute_yield_stress_fully_intact(mat_id, mat_phase_fluid,
+                                                       pressure)) <= tol);
 
   /* Negative pressure should still return Y_0 for solid. */
-  assert(fabsf(
-    yield_compute_yield_stress_fully_intact(mat_id, mat_phase_solid, -1e6f) -
-    Y_0) <= tol);
+  assert(fabsf(yield_compute_yield_stress_fully_intact(mat_id, mat_phase_solid,
+                                                       -1e6f) -
+               Y_0) <= tol);
 }
 
 /* Test that yield stress for solid equals Y_0 and for non-solid equals zero. */
@@ -139,9 +155,8 @@ static void test_yield_compute_yield_stress(void) {
   const float Y0 = material_Y_0(mat_id);
 
   /* Solid should return intact yield stress regardless of damage. */
-  const float Y_solid =
-    yield_compute_yield_stress(mat_id, mat_phase_solid,
-                               pressure, density, u, damage);
+  const float Y_solid = yield_compute_yield_stress(
+      mat_id, mat_phase_solid, pressure, density, u, damage);
 
   assert(fabsf(Y_solid - Y0) <= tol);
 
@@ -150,9 +165,8 @@ static void test_yield_compute_yield_stress(void) {
   assert(temperature_weakening_calls == 1);
 
   /* Fluid should return zero. */
-  const float Y_fluid =
-    yield_compute_yield_stress(mat_id, mat_phase_fluid,
-                               pressure, density, u, damage);
+  const float Y_fluid = yield_compute_yield_stress(
+      mat_id, mat_phase_fluid, pressure, density, u, damage);
 
   assert(fabsf(Y_fluid) <= tol);
 
@@ -167,13 +181,18 @@ static void test_apply_yield_stress(void) {
 
   /* Case 1: stress exceeds yield => f < 1, M should be scaled down. */
   struct sym_matrix S;
-  S.xx = 4.f; S.yy = -1.f; S.zz = -3.f;
-  S.xy = 0.f; S.xz =  0.f; S.yz =  0.f;
+  S.xx = 4.f;
+  S.yy = -1.f;
+  S.zz = -3.f;
+  S.xy = 0.f;
+  S.xz = 0.f;
+  S.yz = 0.f;
 
   /* J_2 = 0.5*(16 + 1 + 9) = 13. */
   const float J_2 = 13.f;
   const float yield_stress = 1.f;
-  const float expected_f = fminf((yield_stress * yield_stress) / (3.f * J_2), 1.f);
+  const float expected_f =
+      fminf((yield_stress * yield_stress) / (3.f * J_2), 1.f);
 
   struct sym_matrix M = S;
   yield_apply_yield_stress_to_sym_matrix(&M, S, 0.f, 0.f, yield_stress);
@@ -187,8 +206,12 @@ static void test_apply_yield_stress(void) {
 
   /* Case 2: stress within yield => f = 1, M unchanged. */
   struct sym_matrix S2;
-  S2.xx = 0.001f; S2.yy = -0.0005f; S2.zz = -0.0005f;
-  S2.xy = 0.f; S2.xz = 0.f; S2.yz = 0.f;
+  S2.xx = 0.001f;
+  S2.yy = -0.0005f;
+  S2.zz = -0.0005f;
+  S2.xy = 0.f;
+  S2.xz = 0.f;
+  S2.yz = 0.f;
 
   struct sym_matrix M2 = S2;
   yield_apply_yield_stress_to_sym_matrix(&M2, S2, 0.f, 0.f, yield_stress);
@@ -212,9 +235,9 @@ static void test_apply_yield_stress(void) {
 
   /* Check that 3 * J2_new <= Y^2 */
   const float J2_new = strength_compute_deviatoric_sym_matrix_J_2(M);
-  assert(3.f * J2_new - yield_stress * yield_stress <= tol * yield_stress * yield_stress);
+  assert(3.f * J2_new - yield_stress * yield_stress <=
+         tol * yield_stress * yield_stress);
 }
-
 
 int main(void) {
   test_damaged_deviatoric_stress_tensor();

@@ -15,15 +15,18 @@ struct part {
 };
 
 struct sym_matrix {
-    union {
-        struct { float elements[6]; };
-        struct { float xx, yy, zz, xy, xz, yz; };
+  union {
+    struct {
+      float elements[6];
     };
+    struct {
+      float xx, yy, zz, xy, xz, yz;
+    };
+  };
 };
 
 #define STRENGTH_ARTIFICIAL_STRESS_BASIS_INDP
 #include "../../src/strength/strength_artificial_stress.h"
-
 
 /* Initialise a 3x3 matrix to zero. */
 static void zero_tensor(float T[3][3]) {
@@ -38,7 +41,6 @@ static void zero_tensor(float T[3][3]) {
 static void copy_tensor(float dst[3][3], const float src[3][3]) {
   memcpy(dst, src, 3 * 3 * sizeof(float));
 }
-
 
 /* Test no artificial stress when particle separation is large. */
 static void test_no_stress_large_separation(void) {
@@ -56,12 +58,14 @@ static void test_no_stress_large_separation(void) {
   pj.strength_data.principal_stress_eigen[2] = 3.f;
 
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  float pairwise_stress_tensor_i_before[3][3], pairwise_stress_tensor_j_before[3][3];
+  float pairwise_stress_tensor_i_before[3][3],
+      pairwise_stress_tensor_j_before[3][3];
 
   /* Arbitrary stress tensors. */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1); // Arbitrary non-zero values
+      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] =
+          (float)(i + j + 1);  // Arbitrary non-zero values
     }
   }
 
@@ -71,20 +75,23 @@ static void test_no_stress_large_separation(void) {
   /* Large separation: r/h large compared with eta_crit. */
   const float r = 10.f;
 
-  artif_stress_apply_artif_stress_to_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
+  artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
+      pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
 
   const float tol = 1e-6f;
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      assert(fabsf(pairwise_stress_tensor_i[i][j] - pairwise_stress_tensor_i_before[i][j]) <= tol);
-      assert(fabsf(pairwise_stress_tensor_j[i][j] - pairwise_stress_tensor_j_before[i][j]) <= tol);
+      assert(fabsf(pairwise_stress_tensor_i[i][j] -
+                   pairwise_stress_tensor_i_before[i][j]) <= tol);
+      assert(fabsf(pairwise_stress_tensor_j[i][j] -
+                   pairwise_stress_tensor_j_before[i][j]) <= tol);
     }
   }
 }
 
-
-/* Test no artificial stress is applied when all principal stresses are non-positive. */
+/* Test no artificial stress is applied when all principal stresses are
+ * non-positive. */
 static void test_no_stress_no_pos_eigen(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
@@ -93,17 +100,19 @@ static void test_no_stress_no_pos_eigen(void) {
   /* All non-positive principal stresses. */
   pi.strength_data.principal_stress_eigen[0] = -3.f;
   pi.strength_data.principal_stress_eigen[1] = -1.f;
-  pi.strength_data.principal_stress_eigen[2] =  0.f;
+  pi.strength_data.principal_stress_eigen[2] = 0.f;
   pj.strength_data.principal_stress_eigen[0] = -5.f;
   pj.strength_data.principal_stress_eigen[1] = -2.f;
-  pj.strength_data.principal_stress_eigen[2] =  0.f;
+  pj.strength_data.principal_stress_eigen[2] = 0.f;
 
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  float pairwise_stress_tensor_i_before[3][3], pairwise_stress_tensor_j_before[3][3];
+  float pairwise_stress_tensor_i_before[3][3],
+      pairwise_stress_tensor_j_before[3][3];
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1); // Arbitrary non-zero values
+      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] =
+          (float)(i + j + 1);  // Arbitrary non-zero values
     }
   }
 
@@ -113,20 +122,24 @@ static void test_no_stress_no_pos_eigen(void) {
   /* Close separation so factor would be non-zero. */
   const float r = 0.f;
 
-  artif_stress_apply_artif_stress_to_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
+  artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
+      pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
 
   const float tol = 1e-6f;
 
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      assert(fabsf(pairwise_stress_tensor_i[i][j] - pairwise_stress_tensor_i_before[i][j]) <= tol);
-      assert(fabsf(pairwise_stress_tensor_j[i][j] - pairwise_stress_tensor_j_before[i][j]) <= tol);
+      assert(fabsf(pairwise_stress_tensor_i[i][j] -
+                   pairwise_stress_tensor_i_before[i][j]) <= tol);
+      assert(fabsf(pairwise_stress_tensor_j[i][j] -
+                   pairwise_stress_tensor_j_before[i][j]) <= tol);
     }
   }
 }
 
 /* Test diagonal correction properties: off-diagonals are unchanged, all three
- * diagonal corrections are equal, and correction equals the maximum principal stress at r=0. */
+ * diagonal corrections are equal, and correction equals the maximum principal
+ * stress at r=0. */
 static void test_correction(void) {
   struct part pi = {0}, pj = {0};
   pi.h = 1.f;
@@ -152,7 +165,7 @@ static void test_correction(void) {
   pi.strength_data.principal_stress_eigen[2] = 1.f;
   const float max_eigen = 6.f;
 
-   /* pj inactive */
+  /* pj inactive */
   pj.strength_data.principal_stress_eigen[0] = -1.f;
   pj.strength_data.principal_stress_eigen[1] = -1.f;
   pj.strength_data.principal_stress_eigen[2] = -1.f;
@@ -177,7 +190,9 @@ static void test_correction(void) {
 
   /* All diagonal corrections must equal max_eigen. */
   for (int i = 0; i < 3; i++) {
-    assert(fabsf((pairwise_stress_tensor_i_before[i][i] - pairwise_stress_tensor_i[i][i]) - max_eigen) <= tol);
+    assert(fabsf((pairwise_stress_tensor_i_before[i][i] -
+                  pairwise_stress_tensor_i[i][i]) -
+                 max_eigen) <= tol);
   }
 
   /* Diagonals should now be non-positive */
@@ -214,14 +229,16 @@ static void test_particles_treated_independently(void) {
 
   const float r = 0.f;
 
-  artif_stress_apply_artif_stress_to_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
+  artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
+      pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
 
   const float tol = 1e-6f;
 
   /* pairwise_stress_tensor_j should be completely unchanged. */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      assert(fabsf(pairwise_stress_tensor_j[i][j] - pairwise_stress_tensor_j_before[i][j]) <= tol);
+      assert(fabsf(pairwise_stress_tensor_j[i][j] -
+                   pairwise_stress_tensor_j_before[i][j]) <= tol);
     }
   }
 

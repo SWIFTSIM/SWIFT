@@ -25,9 +25,9 @@
  * @brief Setting up the strength state of a particle.
  */
 
-#include <float.h>
-
 #include "equation_of_state.h"
+
+#include <float.h>
 
 /**
  * @brief Sets the method-specific properties of the strength state from the
@@ -37,9 +37,10 @@
  * @param p The particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void strength_state_set_method_fields(
-    struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void
+strength_state_set_method_fields(struct strength_state *s,
+                                 const struct part *restrict p,
+                                 const struct mat_params *mp) {
 
   yield_weakening_set_state(s, p, mp);
   yield_set_state(s, p, mp);
@@ -117,7 +118,8 @@ __attribute__((always_inline)) INLINE static void strength_state_init(
  * @param mp The material parameters.
  */
 __attribute__((always_inline)) INLINE static enum mat_phase
-strength_state_get_phase(struct strength_state *s, const struct mat_params *mp) {
+strength_state_get_phase(struct strength_state *s,
+                         const struct mat_params *mp) {
 
   if (!s->cache.phase_computed) {
     switch (mp->state_type) {
@@ -167,8 +169,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float strength_state_get_temperature(
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float
+strength_state_get_temperature(struct strength_state *s,
+                               const struct mat_params *mp) {
 
   if (!s->cache.temperature_computed) {
     s->cache.temperature =
@@ -267,7 +270,8 @@ __attribute__((always_inline)) INLINE static float strength_state_get_P_min(
         break;
 
       case P_min_scheme_yield_envelope:
-        s->cache.P_min = material_P_min_yield_envelope(mp, s->damage.total, s->mat_id);
+        s->cache.P_min =
+            material_P_min_yield_envelope(mp, s->damage.total, s->mat_id);
         break;
 
       default:
@@ -349,8 +353,9 @@ strength_state_get_principal_stresses(struct strength_state *s,
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float strength_state_get_strain_rate_J_2(
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float
+strength_state_get_strain_rate_J_2(struct strength_state *s,
+                                   const struct mat_params *mp) {
 
   if (!s->cache.strain_rate_J_2_computed) {
     s->cache.strain_rate_J_2 =
@@ -367,8 +372,9 @@ __attribute__((always_inline)) INLINE static float strength_state_get_strain_rat
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float
+strength_state_get_yield_stress(struct strength_state *s,
+                                const struct mat_params *mp) {
 
   if (!s->cache.yield_stress_computed) {
     s->cache.yield_stress = yield_compute_yield_stress(s, mp);

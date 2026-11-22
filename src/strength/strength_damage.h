@@ -25,6 +25,9 @@
  * @brief Selects damage models based on configuration options.
  */
 
+/* The damage models use the yield stress damage factor */
+#include "strength_yield_stress.h"
+
 #if defined(STRENGTH_DAMAGE)
 
 #if defined(STRENGTH_DAMAGE_SHEAR_COLLINS)

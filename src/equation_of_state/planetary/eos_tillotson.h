@@ -311,7 +311,8 @@ INLINE static float Til_internal_energy_from_entropy(
 }
 
 // gas_pressure_from_entropy
-INLINE static float Til_pressure_from_entropy(const float density, const float entropy,
+INLINE static float Til_pressure_from_entropy(const float density,
+                                              const float entropy,
                                               const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -320,7 +321,8 @@ INLINE static float Til_pressure_from_entropy(const float density, const float e
 }
 
 // gas_entropy_from_pressure
-INLINE static float Til_entropy_from_pressure(const float density, const float pressure,
+INLINE static float Til_entropy_from_pressure(const float density,
+                                              const float pressure,
                                               const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -329,7 +331,8 @@ INLINE static float Til_entropy_from_pressure(const float density, const float p
 }
 
 // gas_soundspeed_from_entropy
-INLINE static float Til_soundspeed_from_entropy(const float density, const float entropy,
+INLINE static float Til_soundspeed_from_entropy(const float density,
+                                                const float entropy,
                                                 const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -463,7 +466,8 @@ INLINE static float Til_soundspeed_from_internal_energy(
 }
 
 // gas_soundspeed_from_pressure
-INLINE static float Til_soundspeed_from_pressure(const float density, const float P,
+INLINE static float Til_soundspeed_from_pressure(const float density,
+                                                 const float P,
                                                  const struct Til_params *Til) {
 
   error("This EOS function is not yet implemented!");
@@ -472,8 +476,9 @@ INLINE static float Til_soundspeed_from_pressure(const float density, const floa
 }
 
 // Compute u cold
-INLINE static float compute_u_cold(const float density, const struct Til_params *Til,
-                                   const enum eos_planetary_material_id mat_id) {
+INLINE static float compute_u_cold(
+    const float density, const struct Til_params *Til,
+    const enum eos_planetary_material_id mat_id) {
   float rho_0, x, u_cold, drho;
   int N = 10000;
 

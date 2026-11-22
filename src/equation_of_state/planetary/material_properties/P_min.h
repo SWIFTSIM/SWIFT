@@ -25,13 +25,13 @@
  * @brief Schemes for the minimum pressure of a material.
  */
 
-#include <float.h>
-#include <math.h>
-
 #include "../eos_setup.h"
 #include "error.h"
 #include "parser.h"
 #include "units.h"
+
+#include <float.h>
+#include <math.h>
 
 #ifdef MATERIAL_STRENGTH
 
@@ -54,9 +54,9 @@ __attribute__((always_inline)) INLINE static float material_P_min_constant(
  * @param damage The total damage.
  * @param mat_id The material ID.
  */
-__attribute__((always_inline)) INLINE static float material_P_min_yield_envelope(
-    const struct mat_params *mp, const float damage,
-    const enum eos_planetary_material_id mat_id) {
+__attribute__((always_inline)) INLINE static float
+material_P_min_yield_envelope(const struct mat_params *mp, const float damage,
+                              const enum eos_planetary_material_id mat_id) {
 
 #if defined(STRENGTH_YIELD_STRESS_COLLINS)
   const float Y_0i = mp->yield_stress_collins_Y_0i;
@@ -92,8 +92,10 @@ __attribute__((always_inline)) INLINE static float material_P_min_yield_envelope
   const float P_zero_intact = -Y_0i * (Y_Mi - Y_0i) / (mu_i * Y_Mi);
   return fmaxf(P_zero, P_zero_intact);
 #else
-  error("Material %d: P_min_scheme yield_envelope needs the Collins yield "
-        "stress", mat_id);
+  error(
+      "Material %d: P_min_scheme yield_envelope needs the Collins yield "
+      "stress",
+      mat_id);
   return 0.f;
 #endif
 }
@@ -132,14 +134,16 @@ INLINE static void material_P_min_read(struct mat_params *mp,
       break;
 
     case P_min_scheme_constant:
-      mp->P_min_constant = parser_get_param_float(file_params, "Material:P_min_constant");
+      mp->P_min_constant =
+          parser_get_param_float(file_params, "Material:P_min_constant");
       break;
 
     case P_min_scheme_yield_envelope:
       break;
 
     default:
-      error("%s: unknown Material:P_min_scheme %d", param_file, mp->P_min_scheme);
+      error("%s: unknown Material:P_min_scheme %d", param_file,
+            mp->P_min_scheme);
   }
 }
 

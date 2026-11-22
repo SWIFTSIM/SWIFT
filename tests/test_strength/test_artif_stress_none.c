@@ -22,12 +22,15 @@ static void test_artificial_stress_none(void) {
   struct part pi = {0}, pj = {0};
 
   float pairwise_stress_tensor_i[3][3], pairwise_stress_tensor_j[3][3];
-  float pairwise_stress_tensor_i_before[3][3], pairwise_stress_tensor_j_before[3][3];
+  float pairwise_stress_tensor_i_before[3][3],
+      pairwise_stress_tensor_j_before[3][3];
 
   /* Fill tensors with arbitrary non-zero values */
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
-      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] = (float)(i + j + 1); // Arbitrary non-zero values to check they are unchanged.
+      pairwise_stress_tensor_i[i][j] = pairwise_stress_tensor_j[i][j] =
+          (float)(i + j +
+                  1);  // Arbitrary non-zero values to check they are unchanged.
     }
   }
 
@@ -47,19 +50,18 @@ static void test_artificial_stress_none(void) {
     const float r = r_values[k];
 
     artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
-        pairwise_stress_tensor_i,
-        pairwise_stress_tensor_j,
-        &pi, &pj, r);
+        pairwise_stress_tensor_i, pairwise_stress_tensor_j, &pi, &pj, r);
 
     for (int i = 0; i < 3; i++) {
       for (int j = 0; j < 3; j++) {
-        assert(fabsf(pairwise_stress_tensor_i[i][j] - pairwise_stress_tensor_i_before[i][j]) <= tol);
-        assert(fabsf(pairwise_stress_tensor_j[i][j] - pairwise_stress_tensor_j_before[i][j]) <= tol);
+        assert(fabsf(pairwise_stress_tensor_i[i][j] -
+                     pairwise_stress_tensor_i_before[i][j]) <= tol);
+        assert(fabsf(pairwise_stress_tensor_j[i][j] -
+                     pairwise_stress_tensor_j_before[i][j]) <= tol);
       }
     }
   }
 }
-
 
 int main(void) {
   test_artificial_stress_none();

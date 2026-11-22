@@ -29,7 +29,8 @@
 #include "math.h"
 
 /**
- * @brief Sets the shear damage properties of the strength state from the particle.
+ * @brief Sets the shear damage properties of the strength state from the
+ * particle.
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
@@ -40,7 +41,8 @@ __attribute__((always_inline)) INLINE static void damage_shear_set_state(
     const struct mat_params *mp) {
 
   /* Whether the yield stress limited S in the last drift. Only set in the
-   * drift, like the damage rates, which are computed from the drifted values. */
+   * drift, like the damage rates, which are computed from the drifted values.
+   */
   s->is_yielding = p->strength_data.is_yielding;
 }
 
@@ -67,7 +69,8 @@ damage_shear_compute_plastic_strain_at_failure(struct strength_state *s,
       mp->damage_shear_collins_brittle_to_ductile_pressure;
   const float brittle_to_plastic_pressure =
       mp->damage_shear_collins_brittle_to_plastic_pressure;
-  const float *plastic_strain_at_failure = mp->damage_shear_collins_plastic_strain_at_failure;
+  const float *plastic_strain_at_failure =
+      mp->damage_shear_collins_plastic_strain_at_failure;
   const float pressure = strength_state_get_pressure(s, mp);
 
   float slope, intercept;
@@ -76,20 +79,27 @@ damage_shear_compute_plastic_strain_at_failure(struct strength_state *s,
     intercept = plastic_strain_at_failure[0];
 
   } else if (pressure < brittle_to_ductile_pressure) {
-    /* Transitions between plastic_strain_at_failure[0] and plastic_strain_at_failure[1] in brittle regime. */
-    slope = (plastic_strain_at_failure[1] - plastic_strain_at_failure[0]) / brittle_to_ductile_pressure;
+    /* Transitions between plastic_strain_at_failure[0] and
+     * plastic_strain_at_failure[1] in brittle regime. */
+    slope = (plastic_strain_at_failure[1] - plastic_strain_at_failure[0]) /
+            brittle_to_ductile_pressure;
     intercept = plastic_strain_at_failure[0];
 
   } else if (pressure < brittle_to_plastic_pressure) {
-    /* Transitions between plastic_strain_at_failure[1] and plastic_strain_at_failure[2] in semi-brittle regime. */
+    /* Transitions between plastic_strain_at_failure[1] and
+     * plastic_strain_at_failure[2] in semi-brittle regime. */
     slope = (plastic_strain_at_failure[2] - plastic_strain_at_failure[1]) /
             (brittle_to_plastic_pressure - brittle_to_ductile_pressure);
-    intercept = plastic_strain_at_failure[1] - slope * brittle_to_ductile_pressure;
+    intercept =
+        plastic_strain_at_failure[1] - slope * brittle_to_ductile_pressure;
 
   } else {
-    /* Transitions between plastic_strain_at_failure[2] and plastic_strain_at_failure[3] in plastic regime. */
-    slope = (plastic_strain_at_failure[3] - plastic_strain_at_failure[2]) / brittle_to_plastic_pressure;
-    intercept = plastic_strain_at_failure[2] - slope * brittle_to_plastic_pressure;
+    /* Transitions between plastic_strain_at_failure[2] and
+     * plastic_strain_at_failure[3] in plastic regime. */
+    slope = (plastic_strain_at_failure[3] - plastic_strain_at_failure[2]) /
+            brittle_to_plastic_pressure;
+    intercept =
+        plastic_strain_at_failure[2] - slope * brittle_to_plastic_pressure;
   }
 
   return slope * pressure + intercept;
@@ -147,7 +157,8 @@ __attribute__((always_inline)) INLINE static float damage_shear_evolve(
   }
 
   /* Update shear damage. */
-  d->shear = fminf(fmaxf(d->shear + damage_rates->shear_dD_dt * dt_therm, 0.f), 1.f);
+  d->shear =
+      fminf(fmaxf(d->shear + damage_rates->shear_dD_dt * dt_therm, 0.f), 1.f);
 
   return d->shear;
 }

@@ -7,8 +7,12 @@
 /* Dummy sym_matrix. */
 struct sym_matrix {
   union {
-    struct { float elements[6]; };
-    struct { float xx, yy, zz, xy, xz, yz; };
+    struct {
+      float elements[6];
+    };
+    struct {
+      float xx, yy, zz, xy, xz, yz;
+    };
   };
 };
 
@@ -19,24 +23,22 @@ static void test_J2_deviatoric(void) {
   struct sym_matrix M = {0};
 
   /* Arbitrary components with zero trace */
-  M.xx =  4.f;
+  M.xx = 4.f;
   M.yy = -1.f;
   M.zz = -3.f;
-  M.xy =  2.f;
+  M.xy = 2.f;
   M.xz = -1.f;
-  M.yz =  0.5f;
+  M.yz = 0.5f;
 
   /* Manual computation of J2 */
-  const float expected =
-      0.5f * (M.xx*M.xx + M.yy*M.yy + M.zz*M.zz)
-    + (M.xy*M.xy + M.xz*M.xz + M.yz*M.yz);
+  const float expected = 0.5f * (M.xx * M.xx + M.yy * M.yy + M.zz * M.zz) +
+                         (M.xy * M.xy + M.xz * M.xz + M.yz * M.yz);
 
   const float J2 = strength_compute_deviatoric_sym_matrix_J_2(M);
 
   const float tol = 1e-6f;
   assert(fabsf(J2 - expected) <= tol);
 }
-
 
 /* Test J2 invariant for hydrostatic tensor equals zero. */
 static void test_J2_hydrostatic(void) {
@@ -49,22 +51,21 @@ static void test_J2_hydrostatic(void) {
 
   const float J2 = strength_compute_sym_matrix_J_2(M);
 
-  const float tol = 1e-6f ;
+  const float tol = 1e-6f;
   assert(fabsf(J2) <= tol);
 }
-
 
 /* Test consistency between J2 from full tensor and J2 from deviatoric. */
 static void test_J2_consistency(void) {
   struct sym_matrix M = {0};
 
   /* Arbitrary symmetric tensor with non-zero trace */
-  M.xx =  4.f;
+  M.xx = 4.f;
   M.yy = -1.f;
-  M.zz =  2.f;
-  M.xy =  1.f;
+  M.zz = 2.f;
+  M.xy = 1.f;
   M.xz = -0.5f;
-  M.yz =  0.25f;
+  M.yz = 0.25f;
 
   /* Compute J2 from full tensor */
   const float J2_full = strength_compute_sym_matrix_J_2(M);
@@ -83,14 +84,9 @@ static void test_J2_consistency(void) {
   assert(fabsf(J2_full - J2_dev) <= tol);
 }
 
-
 /* Test strain-rate tensor. */
 static void test_strain_rate_tensor(void) {
-  float dv[3][3] = {
-    {1.f, 2.f, 4.f},
-    {4.f, 2.f, 6.f},
-    {2.f, 8.f, 3.f}
-  };
+  float dv[3][3] = {{1.f, 2.f, 4.f}, {4.f, 2.f, 6.f}, {2.f, 8.f, 3.f}};
 
   float strain_rate_tensor[3][3];
   strength_compute_strain_rate_tensor(strain_rate_tensor, dv);
@@ -113,14 +109,9 @@ static void test_strain_rate_tensor(void) {
   assert(fabsf(strain_rate_tensor[1][2] - 0.5f * (dv[1][2] + dv[2][1])) <= tol);
 }
 
-
 /* Test rotation-rate tensor. */
 static void test_rotation_rate_tensor(void) {
-  float dv[3][3] = {
-    {1.f, 2.f, 4.f},
-    {4.f, 2.f, 6.f},
-    {2.f, 8.f, 3.f}
-  };
+  float dv[3][3] = {{1.f, 2.f, 4.f}, {4.f, 2.f, 6.f}, {2.f, 8.f, 3.f}};
 
   float rotation_rate_tensor[3][3];
   strength_compute_rotation_rate_tensor(rotation_rate_tensor, dv);
@@ -138,19 +129,17 @@ static void test_rotation_rate_tensor(void) {
   assert(fabsf(rotation_rate_tensor[1][2] + rotation_rate_tensor[2][1]) <= tol);
 
   /* Correct off-diagonal values */
-  assert(fabsf(rotation_rate_tensor[0][1] - 0.5f * (dv[1][0] - dv[0][1])) <= tol);
-  assert(fabsf(rotation_rate_tensor[0][2] - 0.5f * (dv[2][0] - dv[0][2])) <= tol);
-  assert(fabsf(rotation_rate_tensor[1][2] - 0.5f * (dv[2][1] - dv[1][2])) <= tol);
+  assert(fabsf(rotation_rate_tensor[0][1] - 0.5f * (dv[1][0] - dv[0][1])) <=
+         tol);
+  assert(fabsf(rotation_rate_tensor[0][2] - 0.5f * (dv[2][0] - dv[0][2])) <=
+         tol);
+  assert(fabsf(rotation_rate_tensor[1][2] - 0.5f * (dv[2][1] - dv[1][2])) <=
+         tol);
 }
-
 
 /* Test rotation-rate tensor vanishes for symmetric dv. */
 static void test_rotation_rate_tensor_symmetric_input(void) {
-  float dv[3][3] = {
-    {1.f, 2.f, 3.f},
-    {2.f, 4.f, 5.f},
-    {3.f, 5.f, 6.f}
-  };
+  float dv[3][3] = {{1.f, 2.f, 3.f}, {2.f, 4.f, 5.f}, {3.f, 5.f, 6.f}};
 
   float rotation_rate_tensor[3][3];
   strength_compute_rotation_rate_tensor(rotation_rate_tensor, dv);
@@ -164,14 +153,9 @@ static void test_rotation_rate_tensor_symmetric_input(void) {
   }
 }
 
-
 /* Test rotation term R*M - M*R for identity M gives zero. */
 static void test_rotation_term_identity_M(void) {
-  float R[3][3] = {
-    { 0.f, -1.f,  0.f},
-    { 1.f,  0.f,  0.f},
-    { 0.f,  0.f,  0.f}
-  };
+  float R[3][3] = {{0.f, -1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, 0.f}};
   float M[3][3] = {0};
   float rotation_term[3][3];
 
@@ -194,8 +178,9 @@ static void test_rotation_term_identity_M(void) {
 static void test_spinning_solid(void) {
   const float omega = 0.1f;
 
-  /* Velocities of the particle at the origin and of neighbours a unit distance along
-   * x and y, all spinning anticlockwise about z: v = (-omega * y, omega * x, 0) */
+  /* Velocities of the particle at the origin and of neighbours a unit distance
+   * along x and y, all spinning anticlockwise about z: v = (-omega * y, omega *
+   * x, 0) */
   const float v_origin[3] = {0.f, 0.f, 0.f};
   const float v_x_neighbour[3] = {0.f, omega, 0.f};
   const float v_y_neighbour[3] = {-omega, 0.f, 0.f};
@@ -207,27 +192,23 @@ static void test_spinning_solid(void) {
   const float G_y_neighbour[3] = {0.f, 1.f, 0.f};
 
   float dv[3][3] = {{0.f}};
-  strength_add_velocity_gradient_contribution(dv, v_origin, v_x_neighbour, G_x_neighbour, 1.f);
-  strength_add_velocity_gradient_contribution(dv, v_origin, v_y_neighbour, G_y_neighbour, 1.f);
+  strength_add_velocity_gradient_contribution(dv, v_origin, v_x_neighbour,
+                                              G_x_neighbour, 1.f);
+  strength_add_velocity_gradient_contribution(dv, v_origin, v_y_neighbour,
+                                              G_y_neighbour, 1.f);
 
   /* Deviatoric stress stretched along x and squashed along y */
-  float S[3][3] = {
-    {1.f,  0.f, 0.f},
-    {0.f, -1.f, 0.f},
-    {0.f,  0.f, 0.f}
-  };
+  float S[3][3] = {{1.f, 0.f, 0.f}, {0.f, -1.f, 0.f}, {0.f, 0.f, 0.f}};
 
   float strain_rate[3][3], rotation_rate[3][3], rotation_term[3][3];
   strength_compute_strain_rate_tensor(strain_rate, dv);
   strength_compute_rotation_rate_tensor(rotation_rate, dv);
   strength_compute_rotation_term(rotation_term, rotation_rate, S);
 
-  /* No strain, and rotation_term = omega * (S_xx - S_yy) in the xy components */
+  /* No strain, and rotation_term = omega * (S_xx - S_yy) in the xy components
+   */
   const float expected[3][3] = {
-    {0.f,         2.f * omega, 0.f},
-    {2.f * omega, 0.f,         0.f},
-    {0.f,         0.f,         0.f}
-  };
+      {0.f, 2.f * omega, 0.f}, {2.f * omega, 0.f, 0.f}, {0.f, 0.f, 0.f}};
   const float tol = 1e-6f;
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
@@ -239,20 +220,12 @@ static void test_spinning_solid(void) {
 
 /* Test that rotating stress by 2*pi returns to the original. */
 static void test_stress_rotation_full_circle(void) {
-  float S[3][3] = {
-    {2.f, 1.f, 0.f},
-    {1.f, 0.f, 0.f},
-    {0.f, 0.f, 0.5f}
-  };
+  float S[3][3] = {{2.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, 0.5f}};
   float S_init[3][3];
   memcpy(S_init, S, sizeof(S));
 
   const float omega = 0.5f;
-  float dv[3][3] = {
-    { 0.f, -omega, 0.f},
-    { omega,  0.f, 0.f},
-    { 0.f,    0.f, 0.f}
-  };
+  float dv[3][3] = {{0.f, -omega, 0.f}, {omega, 0.f, 0.f}, {0.f, 0.f, 0.f}};
 
   const int nsteps = 1000000;
   const float dt_total = (2.f * (float)M_PI) / omega;
@@ -279,7 +252,6 @@ static void test_stress_rotation_full_circle(void) {
     }
   }
 }
-
 
 int main(void) {
   test_J2_deviatoric();

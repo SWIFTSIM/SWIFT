@@ -21,14 +21,16 @@
 #define SWIFT_YIELD_STRESS_WEAKENING_DENSITY_POWER_LAW_H
 
 /**
- * @file strength/yield_stress_weakening/yield_stress_weakening_density/yield_stress_weakening_density_power_law.h
+ * @file
+ * strength/yield_stress_weakening/yield_stress_weakening_density/yield_stress_weakening_density_power_law.h
  * @brief Power-law density weakening of the yield stress.
  */
 
 #include "math.h"
 
 /**
- * @brief Sets the density weakening properties of the strength state from the particle.
+ * @brief Sets the density weakening properties of the strength state from the
+ * particle.
  *
  * Nothing extra is needed in the state for this method.
  *
@@ -36,9 +38,10 @@
  * @param p The particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void yield_weakening_density_set_state(
-    struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {}
+__attribute__((always_inline)) INLINE static void
+yield_weakening_density_set_state(struct strength_state *s,
+                                  const struct part *restrict p,
+                                  const struct mat_params *mp) {}
 
 /**
  * @brief Apply density weakening to the yield stress.

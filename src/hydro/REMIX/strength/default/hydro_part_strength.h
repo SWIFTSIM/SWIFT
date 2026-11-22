@@ -33,7 +33,8 @@
 #include "symmetric_matrix.h"
 
 /**
- * @brief Particle strength fields not needed during the SPH loops over neighbours.
+ * @brief Particle strength fields not needed during the SPH loops over
+ * neighbours.
  *
  * This structure contains the particle fields that are not used in the
  * density or force loops. Quantities should be used in the kick, drift and
@@ -71,7 +72,8 @@ struct strength_part_data {
   // Deviatoric stress tensor
   struct sym_matrix deviatoric_stress_tensor;
 
-  // Whether the yield stress limited the deviatoric stress tensor in the last drift
+  // Whether the yield stress limited the deviatoric stress tensor in the last
+  // drift
   int is_yielding;
 
   // Time derivative of deviatoric stress tensor

@@ -32,8 +32,8 @@
  *
  * @param M The deviatoric symmetric matrix.
  */
-__attribute__((always_inline)) INLINE static float strength_compute_deviatoric_sym_matrix_J_2(
-    const struct sym_matrix M) {
+__attribute__((always_inline)) INLINE static float
+strength_compute_deviatoric_sym_matrix_J_2(const struct sym_matrix M) {
 
   /* Compute J_2 invariant. */
   return 0.5f * M.xx * M.xx + 0.5f * M.yy * M.yy + 0.5f * M.zz * M.zz +
@@ -45,8 +45,8 @@ __attribute__((always_inline)) INLINE static float strength_compute_deviatoric_s
  *
  * @param M The symmetric matrix.
  */
-__attribute__((always_inline)) INLINE static float strength_compute_sym_matrix_J_2(
-    const struct sym_matrix M) {
+__attribute__((always_inline)) INLINE static float
+strength_compute_sym_matrix_J_2(const struct sym_matrix M) {
 
   /* Calculate deviatoric tensor. */
   struct sym_matrix M_dev = M;
@@ -59,7 +59,8 @@ __attribute__((always_inline)) INLINE static float strength_compute_sym_matrix_J
 }
 
 /**
- * @brief Adds the contribution of a neighbour to a particle's velocity gradient.
+ * @brief Adds the contribution of a neighbour to a particle's velocity
+ * gradient.
  *
  * Used in the force loop to build dv_force_loop, with dv[i][j] = dv_j/dx_i.
  *
@@ -71,8 +72,8 @@ __attribute__((always_inline)) INLINE static float strength_compute_sym_matrix_J
  */
 __attribute__((always_inline)) INLINE static void
 strength_add_velocity_gradient_contribution(float dv[3][3], const float vi[3],
-                                    const float vj[3], const float G[3],
-                                    const float volume_j) {
+                                            const float vj[3], const float G[3],
+                                            const float volume_j) {
 
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -88,7 +89,8 @@ strength_add_velocity_gradient_contribution(float dv[3][3], const float vi[3],
  * @param dv The velocity gradient dv/dr.
  */
 __attribute__((always_inline)) INLINE static void
-strength_compute_strain_rate_tensor(float strain_rate_tensor[3][3], const float dv[3][3]) {
+strength_compute_strain_rate_tensor(float strain_rate_tensor[3][3],
+                                    const float dv[3][3]) {
 
   /* Compute strain rate tensor elements. */
   strain_rate_tensor[0][0] = dv[0][0];
@@ -111,7 +113,8 @@ strength_compute_strain_rate_tensor(float strain_rate_tensor[3][3], const float 
  * @param dv The velocity gradient dv/dr, with dv[i][j] = dv_j/dx_i
  */
 __attribute__((always_inline)) INLINE static void
-strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3], const float dv[3][3]) {
+strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3],
+                                      const float dv[3][3]) {
 
   /* Compute rotation rate tensor elements. */
   rotation_rate_tensor[0][0] = 0.f;
@@ -126,12 +129,13 @@ strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3], const fl
 }
 
 /**
- * @brief Computes the rotation contribution for transforming a tensor into the co-rotating frame.
+ * @brief Computes the rotation contribution for transforming a tensor into the
+ * co-rotating frame.
  *
- * This function calculates the term R*M - M*R, where R is the rotation rate tensor,
- * R_ij = 0.5 * (dv_i/dx_j - dv_j/dx_i), and M is the tensor being rotated. This
- * term accounts for the apparent change of the tensor due to rotation of the
- * reference frame.
+ * This function calculates the term R*M - M*R, where R is the rotation rate
+ * tensor, R_ij = 0.5 * (dv_i/dx_j - dv_j/dx_i), and M is the tensor being
+ * rotated. This term accounts for the apparent change of the tensor due to
+ * rotation of the reference frame.
  *
  * Note: Papers often make errors in the signs in this equation. For the correct
  *       equation, see Dienes 1979 for a detailed derivation, which leads to
@@ -141,8 +145,10 @@ strength_compute_rotation_rate_tensor(float rotation_rate_tensor[3][3], const fl
  * @param rotation_rate_tensor The rotation rate tensor.
  * @param M The tensor to rotate.
  */
-__attribute__((always_inline)) INLINE static void strength_compute_rotation_term(float rotation_term[3][3],
-const float rotation_rate_tensor[3][3], const float M[3][3]) {
+__attribute__((always_inline)) INLINE static void
+strength_compute_rotation_term(float rotation_term[3][3],
+                               const float rotation_rate_tensor[3][3],
+                               const float M[3][3]) {
 
   /* Compute rotation term elements. */
   for (int i = 0; i < 3; i++) {

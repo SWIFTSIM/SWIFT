@@ -375,8 +375,9 @@ hydro_set_physical_internal_energy(struct part *p, struct xpart *xp,
  * @param soundspeed The sound speed.
  * @param density The density.
  */
-__attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
+__attribute__((always_inline)) INLINE static void hydro_compute_max_wave_speed(
+    float *wave_speed, const struct part *restrict p, const float soundspeed,
+    const float density) {
 
   /* Wave speed is initialised as sound speed. */
   *wave_speed = soundspeed;
@@ -456,7 +457,7 @@ __attribute__((always_inline)) INLINE static float hydro_compute_timestep(
 
   /* CFL condition */
   float dt_cfl = 2.f * kernel_gamma * CFL_condition * cosmo->a * p->h /
-                       (cosmo->a_factor_sound_speed * p->force.v_sig);
+                 (cosmo->a_factor_sound_speed * p->force.v_sig);
 
   hydro_compute_timestep_strength(&dt_cfl, p, hydro_properties);
 

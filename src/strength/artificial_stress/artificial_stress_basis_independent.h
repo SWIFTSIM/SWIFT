@@ -59,8 +59,10 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * ArtificialStressBasisIndependent:
  *     transition_factor: Steepness of the switch-on (default 5).
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its
+ * interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its
+ * interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -68,14 +70,14 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * @param mp_j The material parameters of the second particle.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
+__attribute__((always_inline)) INLINE static void
+artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
-    const float r,
-    const struct mat_params *mp_i, const struct mat_params *mp_j,
+    const float r, const struct mat_params *mp_i, const struct mat_params *mp_j,
     const struct strength_props *strength_props) {
 
- /* Calculate quantities needed for separation factor. */
+  /* Calculate quantities needed for separation factor. */
   const float eta_crit = 1.f / strength_props->eta_neighbours;
   const float eta_ab = fminf(r / pi->h, r / pj->h);
 
@@ -86,15 +88,23 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   }
 
   /* Calculate separation factors, artif_stress_f. */
-  const float artif_stress_f_i = fmaxf(0.f, fminf(1.f, mp_i->artif_stress_basis_independent_transition_factor * (1.f - eta_ab / eta_crit)));
-  const float artif_stress_f_j = fmaxf(0.f, fminf(1.f, mp_j->artif_stress_basis_independent_transition_factor * (1.f - eta_ab / eta_crit)));
+  const float artif_stress_f_i = fmaxf(
+      0.f, fminf(1.f, mp_i->artif_stress_basis_independent_transition_factor *
+                          (1.f - eta_ab / eta_crit)));
+  const float artif_stress_f_j = fmaxf(
+      0.f, fminf(1.f, mp_j->artif_stress_basis_independent_transition_factor *
+                          (1.f - eta_ab / eta_crit)));
 
   /* Get max principal stresses for particles i and j. */
-  const float max_principal_stress_i = fmaxf(pi->strength_data.principal_stress_eigen[0],
-                                         fmaxf(pi->strength_data.principal_stress_eigen[1], pi->strength_data.principal_stress_eigen[2]));
+  const float max_principal_stress_i =
+      fmaxf(pi->strength_data.principal_stress_eigen[0],
+            fmaxf(pi->strength_data.principal_stress_eigen[1],
+                  pi->strength_data.principal_stress_eigen[2]));
 
-  const float max_principal_stress_j = fmaxf(pj->strength_data.principal_stress_eigen[0],
-                                         fmaxf(pj->strength_data.principal_stress_eigen[1], pj->strength_data.principal_stress_eigen[2]));
+  const float max_principal_stress_j =
+      fmaxf(pj->strength_data.principal_stress_eigen[0],
+            fmaxf(pj->strength_data.principal_stress_eigen[1],
+                  pj->strength_data.principal_stress_eigen[2]));
 
   /* Apply artificial stress. */
   if (max_principal_stress_i > 0.f) {

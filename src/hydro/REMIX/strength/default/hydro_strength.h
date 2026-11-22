@@ -38,16 +38,15 @@
  * @param p The particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void hydro_strength_state_init_drift(
-    struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void
+hydro_strength_state_init_drift(struct strength_state *s,
+                                const struct part *restrict p,
+                                const struct mat_params *mp) {
 
-  strength_state_init(s, p->mat_id, p->mass,
-                      p->rho_evol, p->u,
-                      strength_get_damage(p),
-                      p->strength_data.deviatoric_stress_tensor,
-                      p->strength_data.strain_rate_tensor, p->phase,
-                      p->is_h_max, mp);
+  strength_state_init(
+      s, p->mat_id, p->mass, p->rho_evol, p->u, strength_get_damage(p),
+      p->strength_data.deviatoric_stress_tensor,
+      p->strength_data.strain_rate_tensor, p->phase, p->is_h_max, mp);
   strength_state_set_method_fields(s, p, mp);
 }
 
@@ -59,12 +58,13 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_drif
  * @param xp The extended data of the particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick(
-    struct strength_state *s, const struct part *restrict p,
-    const struct xpart *restrict xp, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void
+hydro_strength_state_init_kick(struct strength_state *s,
+                               const struct part *restrict p,
+                               const struct xpart *restrict xp,
+                               const struct mat_params *mp) {
 
-  strength_state_init(s, p->mat_id, p->mass,
-                      xp->rho_evol_full, xp->u_full,
+  strength_state_init(s, p->mat_id, p->mass, xp->rho_evol_full, xp->u_full,
                       strength_get_damage_full(xp),
                       xp->strength_data.deviatoric_stress_tensor_full,
                       p->strength_data.strain_rate_tensor, p->phase,
@@ -81,20 +81,21 @@ __attribute__((always_inline)) INLINE static void hydro_strength_state_init_kick
  * @param s The strength state of the particle, from its drifted values.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void hydro_strength_state_store_drift(
-    struct part *restrict p, struct strength_state *s,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void
+hydro_strength_state_store_drift(struct part *restrict p,
+                                 struct strength_state *s,
+                                 const struct mat_params *mp) {
 
   p->phase = strength_state_get_phase(s, mp);
   p->strength_data.P_min = strength_state_get_P_min(s, mp);
   p->strength_data.stress_tensor = strength_state_get_stress_tensor(s, mp);
 
-  const float *principal_stresses = strength_state_get_principal_stresses(s, mp);
+  const float *principal_stresses =
+      strength_state_get_principal_stresses(s, mp);
   p->strength_data.principal_stress_eigen[0] = principal_stresses[0];
   p->strength_data.principal_stress_eigen[1] = principal_stresses[1];
   p->strength_data.principal_stress_eigen[2] = principal_stresses[2];
 }
-
 
 /**
  * @brief Limits the tension of a pressure from the EoS, by the minimum pressure
@@ -126,8 +127,10 @@ hydro_get_comoving_pressure_strength(const struct part *restrict p,
  * @param p The particle of interest.
  * @param hydro_properties The hydro properties.
  */
-__attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
-    float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {
+__attribute__((always_inline)) INLINE static void
+hydro_compute_timestep_strength(
+    float *dt_cfl, const struct part *restrict p,
+    const struct hydro_props *restrict hydro_properties) {
 
   /* Update dt_cfl with damage contribution. */
   strength_compute_timestep_damage(dt_cfl, p, strength_get_props());
@@ -142,11 +145,15 @@ __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strengt
  * @param density The density.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {
+hydro_compute_max_wave_speed_strength(float *wave_speed,
+                                      const struct part *restrict p,
+                                      const float soundspeed,
+                                      const float density) {
 
   const struct mat_params *mp = material_params(p->mat_id);
 
-  strength_compute_max_wave_speed_stress_tensor(wave_speed, p, soundspeed, density, mp);
+  strength_compute_max_wave_speed_stress_tensor(wave_speed, p, soundspeed,
+                                                density, mp);
 }
 
 /**
@@ -183,16 +190,16 @@ hydro_difn_exclude_pair_strength(const struct part *restrict pi,
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_init_part_strength(struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void hydro_init_part_strength(
+    struct part *restrict p) {}
 
 /**
  * @brief Finishes extra strength parts of the density calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_end_density_strength(struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void hydro_end_density_strength(
+    struct part *restrict p) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the gradient
@@ -208,8 +215,8 @@ hydro_prepare_gradient_strength(struct part *restrict p) {}
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_end_gradient_strength(struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void hydro_end_gradient_strength(
+    struct part *restrict p) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the force
@@ -218,8 +225,8 @@ hydro_end_gradient_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static void hydro_prepare_force_strength(
+    struct part *restrict p, struct xpart *restrict xp) {
 
   /* Strength state from the drifted values. */
   const struct mat_params *mp = material_params(p->mat_id);
@@ -232,7 +239,7 @@ hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp)
 
 /**
  * @brief Resets strength time derivative fields in preparation
-  * for the sums taking  place in the various force tasks.
+ * for the sums taking  place in the various force tasks.
  *
  * @param p The particle to act upon
  */
@@ -243,20 +250,22 @@ hydro_reset_acceleration_strength(struct part *restrict p) {
   zero_sym_matrix(&p->strength_data.dS_dt);
 }
 
-
 /**
  * @brief Finishes extra strength parts of the force calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_end_force_strength(struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void hydro_end_force_strength(
+    struct part *restrict p) {
 
   /* Compute strain rate and rotation rate. */
   float strain_rate_tensor[3][3], rotation_rate_tensor[3][3];
-  strength_compute_strain_rate_tensor(strain_rate_tensor, p->strength_data.dv_force_loop);
-  strength_compute_rotation_rate_tensor(rotation_rate_tensor, p->strength_data.dv_force_loop);
-  get_sym_matrix_from_matrix(&p->strength_data.strain_rate_tensor, strain_rate_tensor);
+  strength_compute_strain_rate_tensor(strain_rate_tensor,
+                                      p->strength_data.dv_force_loop);
+  strength_compute_rotation_rate_tensor(rotation_rate_tensor,
+                                        p->strength_data.dv_force_loop);
+  get_sym_matrix_from_matrix(&p->strength_data.strain_rate_tensor,
+                             strain_rate_tensor);
 
   /* Strength state from the drifted values. */
   const struct mat_params *mp = material_params(p->mat_id);
@@ -264,7 +273,8 @@ hydro_end_force_strength(struct part *restrict p) {
   hydro_strength_state_init_drift(&s, p, mp);
 
   /* Update dS/dt for timestep. */
-  stress_tensor_compute_dS_dt(&p->strength_data.dS_dt, rotation_rate_tensor, &s, mp);
+  stress_tensor_compute_dS_dt(&p->strength_data.dS_dt, rotation_rate_tensor, &s,
+                              mp);
 
   /* Rates of damage accumulation, for the drift, kicks and time-step. */
   damage_compute_rates(p, &s, mp);
@@ -277,8 +287,9 @@ hydro_end_force_strength(struct part *restrict p) {
  * @param p The particle.
  * @param xp The extended data of this particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_strength(
-    struct part *restrict p, const struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static void
+hydro_reset_predicted_values_strength(struct part *restrict p,
+                                      const struct xpart *restrict xp) {
 
   strength_reset_predicted_values_stress_tensor(p, xp);
   strength_reset_predicted_values_damage(p, xp);
@@ -292,15 +303,18 @@ __attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_s
 
 /**
  * @brief Predict additional particle strength properties forward in time when
- * drifting. At beginning of hydro function, before hydro quantities have been drifted.
+ * drifting. At beginning of hydro function, before hydro quantities have been
+ * drifted.
  *
  * @param p The particle to act upon
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_strength_beginning(
-    struct part *restrict p, const float dt_therm) {
+__attribute__((always_inline)) INLINE static void
+hydro_predict_strength_beginning(struct part *restrict p,
+                                 const float dt_therm) {
 
-  /* S and damage are evolved like u, with the rates from the last force loop. */
+  /* S and damage are evolved like u, with the rates from the last force loop.
+   */
 
   /* Strength state from the drifted values, before they are evolved. */
   const struct mat_params *mp = material_params(p->mat_id);
@@ -311,15 +325,16 @@ __attribute__((always_inline)) INLINE static void hydro_predict_strength_beginni
   damage_predict_evolve(p, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
-  stress_tensor_evolve_deviatoric_stress_tensor(&p->strength_data.deviatoric_stress_tensor,
-                                                p->strength_data.dS_dt, &s, mp, dt_therm);
+  stress_tensor_evolve_deviatoric_stress_tensor(
+      &p->strength_data.deviatoric_stress_tensor, p->strength_data.dS_dt, &s,
+      mp, dt_therm);
 
   /* Apply yield stress to the stepped deviatoric stress tensor. The yield
    * stress comes from the state, at the start of the step like the rates, but
    * J_2 must be of the stepped tensor, since that is what gets limited. */
-  p->strength_data.is_yielding =
-      yield_apply_yield_stress_to_sym_matrix(&p->strength_data.deviatoric_stress_tensor,
-                                             p->strength_data.deviatoric_stress_tensor, &s, mp);
+  p->strength_data.is_yielding = yield_apply_yield_stress_to_sym_matrix(
+      &p->strength_data.deviatoric_stress_tensor,
+      p->strength_data.deviatoric_stress_tensor, &s, mp);
 }
 
 /**
@@ -364,14 +379,16 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_beginning(
   damage_kick_evolve(p, xp, dt_therm);
 
   /* Evolve deviatoric stress tensor. */
-  stress_tensor_evolve_deviatoric_stress_tensor(&xp->strength_data.deviatoric_stress_tensor_full,
-                                                p->strength_data.dS_dt, &s, mp, dt_therm);
+  stress_tensor_evolve_deviatoric_stress_tensor(
+      &xp->strength_data.deviatoric_stress_tensor_full, p->strength_data.dS_dt,
+      &s, mp, dt_therm);
 
   /* Apply yield stress to the stepped deviatoric stress tensor. The yield
    * stress comes from the state, at the start of the step like the rates, but
    * J_2 must be of the stepped tensor, since that is what gets limited. */
-  yield_apply_yield_stress_to_sym_matrix(&xp->strength_data.deviatoric_stress_tensor_full,
-                                         xp->strength_data.deviatoric_stress_tensor_full, &s, mp);
+  yield_apply_yield_stress_to_sym_matrix(
+      &xp->strength_data.deviatoric_stress_tensor_full,
+      xp->strength_data.deviatoric_stress_tensor_full, &s, mp);
 }
 
 /**
@@ -398,8 +415,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_first_init_part_strength(
-    struct part *restrict p, struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static void
+hydro_first_init_part_strength(struct part *restrict p,
+                               struct xpart *restrict xp) {
 
   strength_first_init_part_stress_tensor(p, xp);
   strength_first_init_part_damage(p, xp);

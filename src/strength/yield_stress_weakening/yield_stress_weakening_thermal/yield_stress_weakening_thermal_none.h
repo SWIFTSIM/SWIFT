@@ -21,14 +21,16 @@
 #define SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H
 
 /**
- * @file strength/yield_stress_weakening/yield_stress_weakening_thermal/yield_stress_weakening_thermal_none.h
+ * @file
+ * strength/yield_stress_weakening/yield_stress_weakening_thermal/yield_stress_weakening_thermal_none.h
  * @brief No thermal weakening of the yield stress.
  */
 
 #include "math.h"
 
 /**
- * @brief Sets the thermal weakening properties of the strength state from the particle.
+ * @brief Sets the thermal weakening properties of the strength state from the
+ * particle.
  *
  * Nothing extra is needed in the state for this method.
  *
@@ -36,9 +38,10 @@
  * @param p The particle of interest.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_state(
-    struct strength_state *s, const struct part *restrict p,
-    const struct mat_params *mp) {}
+__attribute__((always_inline)) INLINE static void
+yield_weakening_thermal_set_state(struct strength_state *s,
+                                  const struct part *restrict p,
+                                  const struct mat_params *mp) {}
 
 /**
  * @brief Apply thermal weakening to the yield stress.
@@ -52,6 +55,7 @@ __attribute__((always_inline)) INLINE static void yield_weakening_thermal_set_st
 __attribute__((always_inline)) INLINE static void
 yield_weakening_apply_temperature_to_yield_stress(float *Y,
                                                   struct strength_state *s,
-                                                  const struct mat_params *mp) {}
+                                                  const struct mat_params *mp) {
+}
 
 #endif /* SWIFT_YIELD_STRESS_WEAKENING_THERMAL_NONE_H */

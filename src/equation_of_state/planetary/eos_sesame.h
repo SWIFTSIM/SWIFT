@@ -380,7 +380,8 @@ INLINE static void convert_units_SESAME(struct SESAME_params *SESAME,
 
 // gas_internal_energy_from_entropy
 INLINE static float SESAME_internal_energy_from_entropy(
-    const float density, const float entropy, const struct SESAME_params *SESAME) {
+    const float density, const float entropy,
+    const struct SESAME_params *SESAME) {
 
   float u, log_u_1, log_u_2, log_u_3, log_u_4;
 
@@ -479,7 +480,8 @@ INLINE static float SESAME_internal_energy_from_entropy(
 
 // gas_pressure_from_entropy
 INLINE static float SESAME_pressure_from_entropy(
-    const float density, const float entropy, const struct SESAME_params *SESAME) {
+    const float density, const float entropy,
+    const struct SESAME_params *SESAME) {
 
   error("This EOS function is not yet implemented!");
 
@@ -488,7 +490,8 @@ INLINE static float SESAME_pressure_from_entropy(
 
 // gas_entropy_from_pressure
 INLINE static float SESAME_entropy_from_pressure(
-    const float density, const float pressure, const struct SESAME_params *SESAME) {
+    const float density, const float pressure,
+    const struct SESAME_params *SESAME) {
 
   error("This EOS function is not yet implemented!");
 
@@ -497,7 +500,8 @@ INLINE static float SESAME_entropy_from_pressure(
 
 // gas_soundspeed_from_entropy
 INLINE static float SESAME_soundspeed_from_entropy(
-    const float density, const float entropy, const struct SESAME_params *SESAME) {
+    const float density, const float entropy,
+    const struct SESAME_params *SESAME) {
 
   error("This EOS function is not yet implemented!");
 

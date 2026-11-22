@@ -33,7 +33,8 @@
 #include "symmetric_matrix.h"
 
 /**
- * @brief Particle strength fields not needed during the SPH loops over neighbours.
+ * @brief Particle strength fields not needed during the SPH loops over
+ * neighbours.
  *
  * This structure contains the particle fields that are not used in the
  * density or force loops. Quantities should be used in the kick, drift and
@@ -47,11 +48,10 @@ struct strength_xpart_data {
   // Deviatoric stress tensor at the last full step
   struct sym_matrix deviatoric_stress_tensor_full;
 
-  #ifdef STRENGTH_DAMAGE
-    // Accumulated damage at the last full step
-    struct strength_damage damage_full;
-  #endif
-
+#ifdef STRENGTH_DAMAGE
+  // Accumulated damage at the last full step
+  struct strength_damage damage_full;
+#endif
 };
 
 /**
@@ -81,7 +81,8 @@ struct strength_part_data {
   // Deviatoric stress tensor
   struct sym_matrix deviatoric_stress_tensor;
 
-  // Whether the yield stress limited the deviatoric stress tensor in the last drift
+  // Whether the yield stress limited the deviatoric stress tensor in the last
+  // drift
   int is_yielding;
 
   // Time derivative of deviatoric stress tensor
@@ -90,7 +91,8 @@ struct strength_part_data {
   // Strain rate tensor
   struct sym_matrix strain_rate_tensor;
 
-  // Gradient of velocity, calculated using the kernel gradient in the force loop.
+  // Gradient of velocity, calculated using the kernel gradient in the force
+  // loop.
   float dv_force_loop[3][3];
 
 #ifdef STRENGTH_DAMAGE

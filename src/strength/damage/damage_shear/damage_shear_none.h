@@ -29,7 +29,8 @@
 #include "math.h"
 
 /**
- * @brief Sets the shear damage properties of the strength state from the particle.
+ * @brief Sets the shear damage properties of the strength state from the
+ * particle.
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.

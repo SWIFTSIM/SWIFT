@@ -33,7 +33,8 @@
  *
  * @param p The particle of interest.
  */
-__attribute__((always_inline)) INLINE static struct strength_damage strength_get_damage(const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static struct strength_damage
+strength_get_damage(const struct part *restrict p) {
 
   return (struct strength_damage){0};
 }
@@ -43,7 +44,8 @@ __attribute__((always_inline)) INLINE static struct strength_damage strength_get
  *
  * @param xp The extended data of the particle of interest.
  */
-__attribute__((always_inline)) INLINE static struct strength_damage strength_get_damage_full(const struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static struct strength_damage
+strength_get_damage_full(const struct xpart *restrict xp) {
 
   return (struct strength_damage){0};
 }
@@ -70,9 +72,9 @@ __attribute__((always_inline)) INLINE static void damage_set_state(
  * @param p The particle of interest.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
-    float *dt_cfl, const struct part *restrict p,
-    const struct strength_props *strength_props) {}
+__attribute__((always_inline)) INLINE static void
+strength_compute_timestep_damage(float *dt_cfl, const struct part *restrict p,
+                                 const struct strength_props *strength_props) {}
 
 /**
  * @brief Sets the values of additional particle damage properties at a
@@ -81,8 +83,9 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
  * @param p The particle of interest.
  * @param xp The extended data of this particle.
  */
-__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_damage(
-    struct part *restrict p, const struct xpart *restrict xp) {}
+__attribute__((always_inline)) INLINE static void
+strength_reset_predicted_values_damage(struct part *restrict p,
+                                       const struct xpart *restrict xp) {}
 
 /**
  * @brief Evolves particle damage in the drift
@@ -125,8 +128,8 @@ __attribute__((always_inline)) INLINE static void damage_compute_rates(
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  */
-__attribute__((always_inline)) INLINE static void strength_first_init_part_damage(
-    struct part *restrict p, struct xpart *restrict xp) {}
-
+__attribute__((always_inline)) INLINE static void
+strength_first_init_part_damage(struct part *restrict p,
+                                struct xpart *restrict xp) {}
 
 #endif /* SWIFT_DAMAGE_NONE_H */

@@ -68,8 +68,10 @@ __attribute__((always_inline)) INLINE static float material_rho_0_from_eos(
       return eos.all_linear[unit_id].rho_0;
 
     default:
-      error("Material %d: rho_0_scheme from_eos is not compatible with EoS type %d",
-            mat_id, type);
+      error(
+          "Material %d: rho_0_scheme from_eos is not compatible with EoS type "
+          "%d",
+          mat_id, type);
       return 0.f;
   }
 }
@@ -108,7 +110,8 @@ INLINE static void material_rho_0_read(struct mat_params *mp,
       break;
 
     case rho_0_scheme_constant:
-      mp->rho_0_constant = parser_get_param_float(file_params, "Material:rho_0_constant");
+      mp->rho_0_constant =
+          parser_get_param_float(file_params, "Material:rho_0_constant");
       if (mp->rho_0_constant <= 0.f)
         error("%s: Material:rho_0_constant must be > 0", param_file);
       break;
@@ -117,7 +120,8 @@ INLINE static void material_rho_0_read(struct mat_params *mp,
       break;
 
     default:
-      error("%s: unknown Material:rho_0_scheme %d", param_file, mp->rho_0_scheme);
+      error("%s: unknown Material:rho_0_scheme %d", param_file,
+            mp->rho_0_scheme);
   }
 }
 

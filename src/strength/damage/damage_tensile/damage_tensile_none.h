@@ -29,7 +29,8 @@
 #include "math.h"
 
 /**
- * @brief Sets the tensile damage properties of the strength state from the particle.
+ * @brief Sets the tensile damage properties of the strength state from the
+ * particle.
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
@@ -44,8 +45,8 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
  *
  * @param p The particle of interest.
  */
-__attribute__((always_inline)) INLINE static void damage_tensile_first_init_part(
-    const struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void
+damage_tensile_first_init_part(const struct part *restrict p) {}
 
 /**
  * @brief Calculates the rate of cbrt(damage) accumulation due to tension.
@@ -54,9 +55,10 @@ __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
-    struct strength_damage_rates *damage_rates, struct strength_state *s,
-    const struct mat_params *mp) {}
+__attribute__((always_inline)) INLINE static void
+damage_tensile_compute_cbrtD_dt(struct strength_damage_rates *damage_rates,
+                                struct strength_state *s,
+                                const struct mat_params *mp) {}
 
 /**
  * @brief Evolves tensile damage.
@@ -81,7 +83,8 @@ __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
  * @param damage_rates The rates of damage accumulation.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void damage_tensile_compute_timestep(
+__attribute__((always_inline)) INLINE static void
+damage_tensile_compute_timestep(
     float *dt_cfl, const struct strength_damage_rates *damage_rates,
     const struct strength_props *strength_props) {}
 

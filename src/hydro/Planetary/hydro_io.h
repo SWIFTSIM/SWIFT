@@ -80,15 +80,14 @@ INLINE static void hydro_read_particles(struct part *parts,
   list[8] = io_make_input_field("MaterialIDs", INT, 1, COMPULSORY,
                                 UNIT_CONV_NO_UNITS, parts, mat_id);
 #ifdef PLANETARY_FIXED_ENTROPY
-  list[*num_fields] = io_make_input_field("Entropies", FLOAT, 1, COMPULSORY,
-                                UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts,
-                                s_fixed);
+  list[*num_fields] = io_make_input_field(
+      "Entropies", FLOAT, 1, COMPULSORY,
+      UNIT_CONV_PHYSICAL_ENTROPY_PER_UNIT_MASS, parts, s_fixed);
 
   *num_fields += 1;
 #endif
 
   hydro_read_particles_strength(parts, list, num_fields);
-
 }
 
 INLINE static void convert_S(const struct engine *e, const struct part *p,
@@ -233,7 +232,6 @@ INLINE static void hydro_write_particles(const struct part *parts,
   list[10] = io_make_output_field_convert_part(
       "Potentials", FLOAT, 1, UNIT_CONV_POTENTIAL, 0.f, parts, xparts,
       convert_part_potential, "Gravitational potentials of the particles");
-
 
   hydro_write_particles_strength(parts, xparts, list, num_fields);
 }

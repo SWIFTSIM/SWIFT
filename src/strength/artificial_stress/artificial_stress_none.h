@@ -47,8 +47,10 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  *
  * Empty function when configuring without artificial stress.
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its
+ * interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its
+ * interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -56,11 +58,11 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * @param mp_j The material parameters of the second particle.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
+__attribute__((always_inline)) INLINE static void
+artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
-    const float r,
-    const struct mat_params *mp_i, const struct mat_params *mp_j,
+    const float r, const struct mat_params *mp_i, const struct mat_params *mp_j,
     const struct strength_props *strength_props) {}
 
 #endif /* SWIFT_ARTIFICIAL_STRESS_NONE_H */

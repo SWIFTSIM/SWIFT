@@ -49,17 +49,19 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * factors consist of the corresponding element of the stress tensor multiplied
  * by a factor that increases with reduced particle separation, scaling by the
  * kernel function to a given power. This method is presented by Monaghan2000
- * and is used by e.g. Schäfer+2016. Note that the expression for delta_p differs
- * from the one used in other papers, so that it can be computed more easily,
- * so direct comparisons can't be made.
+ * and is used by e.g. Schäfer+2016. Note that the expression for delta_p
+ * differs from the one used in other papers, so that it can be computed more
+ * easily, so direct comparisons can't be made.
  *
  * Method parameters needed in material parameter file:
  * ArtificialStressCartesianComponents:
  *     n: Kernel exponent in particle separation factor (default 4).
  *     epsilon: Artificial stress multiplication factor (default 0.2).
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its
+ * interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its
+ * interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -67,18 +69,20 @@ __attribute__((always_inline)) INLINE static void artif_stress_set_state(
  * @param mp_j The material parameters of the second particle.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
+__attribute__((always_inline)) INLINE static void
+artif_stress_apply_artif_stress_to_pairwise_stress_tensors(
     float pairwise_stress_tensor_i[3][3], float pairwise_stress_tensor_j[3][3],
     const struct part *restrict pi, const struct part *restrict pj,
-    const float r,
-    const struct mat_params *mp_i, const struct mat_params *mp_j,
+    const float r, const struct mat_params *mp_i, const struct mat_params *mp_j,
     const struct strength_props *strength_props) {
 
   /* Material parameters of each particle. */
   const float artif_stress_n_i = mp_i->artif_stress_cartesian_components_n;
   const float artif_stress_n_j = mp_j->artif_stress_cartesian_components_n;
-  const float artif_stress_epsilon_i = mp_i->artif_stress_cartesian_components_epsilon;
-  const float artif_stress_epsilon_j = mp_j->artif_stress_cartesian_components_epsilon;
+  const float artif_stress_epsilon_i =
+      mp_i->artif_stress_cartesian_components_epsilon;
+  const float artif_stress_epsilon_j =
+      mp_j->artif_stress_cartesian_components_epsilon;
 
   /* Calculate the expected separation of closest neighbour, delta_p.
    * Note that the expression for delta_p differs from the one used in other
@@ -97,10 +101,14 @@ __attribute__((always_inline)) INLINE static void artif_stress_apply_artif_stres
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 3; j++) {
       if (pairwise_stress_tensor_i[i][j] > 0.f) {
-        pairwise_stress_tensor_i[i][j] -= artif_stress_f_i * artif_stress_epsilon_i * pairwise_stress_tensor_i[i][j];
+        pairwise_stress_tensor_i[i][j] -= artif_stress_f_i *
+                                          artif_stress_epsilon_i *
+                                          pairwise_stress_tensor_i[i][j];
       }
       if (pairwise_stress_tensor_j[i][j] > 0.f) {
-        pairwise_stress_tensor_j[i][j] -= artif_stress_f_j * artif_stress_epsilon_j * pairwise_stress_tensor_j[i][j];
+        pairwise_stress_tensor_j[i][j] -= artif_stress_f_j *
+                                          artif_stress_epsilon_j *
+                                          pairwise_stress_tensor_j[i][j];
       }
     }
   }

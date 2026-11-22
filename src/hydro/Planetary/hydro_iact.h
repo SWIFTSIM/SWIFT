@@ -73,7 +73,6 @@ hydro_set_pairwise_stress_tensors(float pairwise_stress_tensor_i[3][3],
       pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r);
 }
 
-
 /**
  * @brief Density interaction between two particles.
  *
@@ -387,16 +386,20 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   /* Construct acceleration terms */
   float visc_acc_term[3], sph_acc_term[3], adapt_soft_acc_term[3];
   for (int i = 0; i < 3; i++) {
-     sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -  stress_tensor_term_j[i] / (rhoj * rhoj);
-     visc_acc_term[i] = -visc * G_mean[i];
-     adapt_soft_acc_term[i] =
-         -adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv) * dx[i];
+    sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -
+                      stress_tensor_term_j[i] / (rhoj * rhoj);
+    visc_acc_term[i] = -visc * G_mean[i];
+    adapt_soft_acc_term[i] = -adaptive_softening_get_acc_term(
+                                 pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv) *
+                             dx[i];
   }
 
   /* Use the force Luke ! */
   for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] += mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
-    pj->a_hydro[i] -= mi * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
+    pi->a_hydro[i] +=
+        mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
+    pj->a_hydro[i] -=
+        mi * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
   }
 
   float dv_dot_stress_term_i = 0.f, dv_dot_stress_term_j = 0.f;
@@ -551,15 +554,18 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   /* Construct acceleration terms */
   float visc_acc_term[3], sph_acc_term[3], adapt_soft_acc_term[3];
   for (int i = 0; i < 3; i++) {
-     sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -  stress_tensor_term_j[i] / (rhoj * rhoj);
-     visc_acc_term[i] = -visc * G_mean[i];
-     adapt_soft_acc_term[i] =
-         -adaptive_softening_get_acc_term(pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv) * dx[i];
+    sph_acc_term[i] = stress_tensor_term_i[i] / (rhoi * rhoi) -
+                      stress_tensor_term_j[i] / (rhoj * rhoj);
+    visc_acc_term[i] = -visc * G_mean[i];
+    adapt_soft_acc_term[i] = -adaptive_softening_get_acc_term(
+                                 pi, pj, wi_dr, wj_dr, f_ij, f_ji, r_inv) *
+                             dx[i];
   }
 
   /* Use the force Luke ! */
   for (int i = 0; i < 3; i++) {
-    pi->a_hydro[i] += mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
+    pi->a_hydro[i] +=
+        mj * (sph_acc_term[i] + visc_acc_term[i] + adapt_soft_acc_term[i]);
   }
 
   float dv_dot_stress_term_i = 0.f;

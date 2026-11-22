@@ -40,7 +40,7 @@ __attribute__((always_inline)) INLINE static void hydro_init_part_extra_kernel(
     struct part *restrict p) {
 
   p->m0 = 0.f;
-  
+
   p->grad_m0[0] = 0.f;
   p->grad_m0[1] = 0.f;
   p->grad_m0[2] = 0.f;
@@ -544,9 +544,9 @@ hydro_prepare_force_extra_kernel(struct part *restrict p) {
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
     float Gi[3], float Gj[3], float Gi_linear[3], float Gj_linear[3],
-    const struct part *restrict pi,
-    const struct part *restrict pj, const float dx[3], const float wi,
-    const float wj, const float wi_dx, const float wj_dx) {
+    const struct part *restrict pi, const struct part *restrict pj,
+    const float dx[3], const float wi, const float wj, const float wi_dx,
+    const float wj_dx) {
 
   /* Get r and 1/r. */
   const float r = sqrtf(dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2]);
@@ -640,7 +640,8 @@ __attribute__((always_inline)) INLINE static void hydro_set_Gi_Gj_forceloop(
                          hj_inv_dim_plus_one * pj->dh_norm_kernel[i];
   }
 
-  /* Store the linear-order reproducing kernel gradients before vacuum switch. */
+  /* Store the linear-order reproducing kernel gradients before vacuum switch.
+   */
   memcpy(Gi_linear, Gi, 3 * sizeof(float));
   memcpy(Gj_linear, Gj, 3 * sizeof(float));
 

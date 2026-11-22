@@ -30,6 +30,7 @@
 #include "adiabatic_index.h"
 #include "hydro.h"
 #include "hydro_parameters.h"
+#include "hydro_strength.h"
 #include "io_properties.h"
 #include "kernel_hydro.h"
 
@@ -40,21 +41,23 @@
  * @param list The list of i/o properties to read.
  * @param num_fields The number of i/o fields to read.
  */
-INLINE static void hydro_read_particles_strength(struct part* parts,
-                                                 struct io_props* list,
-                                                 int* num_fields) {
+INLINE static void hydro_read_particles_strength(struct part *parts,
+                                                 struct io_props *list,
+                                                 int *num_fields) {
 #ifdef STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG
-  list[*num_fields] = io_make_input_field("NumFlaws", INT, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, strength_data.number_of_flaws);
-  list[*num_fields+1] = io_make_input_field("FirstFlawIndices", LONGLONG, 1, COMPULSORY,
-                                UNIT_CONV_NO_UNITS, parts, strength_data.first_flaw_index);
+  list[*num_fields] =
+      io_make_input_field("NumFlaws", INT, 1, COMPULSORY, UNIT_CONV_NO_UNITS,
+                          parts, strength_data.number_of_flaws);
+  list[*num_fields + 1] = io_make_input_field(
+      "FirstFlawIndices", LONGLONG, 1, COMPULSORY, UNIT_CONV_NO_UNITS, parts,
+      strength_data.first_flaw_index);
 
   *num_fields += 2;
 #endif
 #ifdef STRENGTH_OBJECT_IDS
-  list[*num_fields] = io_make_input_field("ObjectIDs", INT, 1, COMPULSORY,
-                                          UNIT_CONV_NO_UNITS, parts,
-                                          strength_data.object_id);
+  list[*num_fields] =
+      io_make_input_field("ObjectIDs", INT, 1, COMPULSORY, UNIT_CONV_NO_UNITS,
+                          parts, strength_data.object_id);
   *num_fields += 1;
 #endif
 }
@@ -68,9 +71,9 @@ INLINE static void hydro_read_particles_strength(struct part* parts,
  * @param xp The extended particle.
  * @param ret The yield stress.
  */
-INLINE static void convert_yield_stress(const struct engine* e,
-                                        const struct part* p,
-                                        const struct xpart* xp, float* ret) {
+INLINE static void convert_yield_stress(const struct engine *e,
+                                        const struct part *p,
+                                        const struct xpart *xp, float *ret) {
 
   const struct mat_params *mp = material_params(p->mat_id);
   struct strength_state s;
@@ -88,14 +91,14 @@ INLINE static void convert_yield_stress(const struct engine* e,
  * @param list The list of i/o properties to write.
  * @param num_fields The number of i/o fields to write.
  */
-INLINE static void hydro_write_particles_strength(const struct part* parts,
-                                         const struct xpart* xparts,
-                                         struct io_props* list,
-                                         int* num_fields) {
+INLINE static void hydro_write_particles_strength(const struct part *parts,
+                                                  const struct xpart *xparts,
+                                                  struct io_props *list,
+                                                  int *num_fields) {
 
   list[*num_fields] = io_make_output_field(
-      "DeviatoricStressTensors", FLOAT, 6, UNIT_CONV_PRESSURE, -3.f * hydro_gamma,
-      parts, strength_data.deviatoric_stress_tensor,
+      "DeviatoricStressTensors", FLOAT, 6, UNIT_CONV_PRESSURE,
+      -3.f * hydro_gamma, parts, strength_data.deviatoric_stress_tensor,
       "Deviatoric stress tensors of the particles (xx, yy, zz, xy, xz, yz)");
   *num_fields += 1;
 
@@ -107,11 +110,13 @@ INLINE static void hydro_write_particles_strength(const struct part* parts,
 #endif
 #ifdef STRENGTH_DAMAGE
   list[*num_fields] = io_make_output_field(
-      "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, strength_data.damage.total, "Damage of the particles");
+      "Damage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+      strength_data.damage.total, "Damage of the particles");
   *num_fields += 1;
 #endif
 /* The damage from each source, only needed if both contribute to the total. */
-#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) && defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
+#if defined(STRENGTH_DAMAGE_TENSILE_BENZ_ASPHAUG) && \
+    defined(STRENGTH_DAMAGE_SHEAR_COLLINS)
   list[*num_fields] = io_make_output_field(
       "TensileDamage", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
       strength_data.damage.tensile, "Damage of the particles due to tension");
@@ -121,9 +126,10 @@ INLINE static void hydro_write_particles_strength(const struct part* parts,
   *num_fields += 2;
 #endif
 #ifdef STRENGTH_OBJECT_IDS
-  list[*num_fields] = io_make_output_field(
-      "ObjectIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
-      strength_data.object_id, "IDs of the objects that the particles belong to");
+  list[*num_fields] =
+      io_make_output_field("ObjectIDs", INT, 1, UNIT_CONV_NO_UNITS, 0.f, parts,
+                           strength_data.object_id,
+                           "IDs of the objects that the particles belong to");
   *num_fields += 1;
 #endif
 }

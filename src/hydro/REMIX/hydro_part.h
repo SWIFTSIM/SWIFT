@@ -31,12 +31,12 @@
 #include "cooling_struct.h"
 #include "equation_of_state.h" /* For enum material_id */
 #include "feedback_struct.h"
+#include "hydro_part_strength.h"
 #include "mhd_struct.h"
 #include "particle_splitting_struct.h"
 #include "rt_struct.h"
 #include "sink_struct.h"
 #include "star_formation_struct.h"
-#include "hydro_part_strength.h"
 #include "symmetric_matrix.h"
 #include "timestep_limiter_struct.h"
 #include "tracers_struct.h"
@@ -139,7 +139,8 @@ struct part {
   /*! Gradient of velocity, calculated using normalised kernel. */
   float dv_norm_kernel[3][3];
 
-  /*! Gradient of velocity of same-phase particles, calculated using normalised kernel. */
+  /*! Gradient of velocity of same-phase particles, calculated using normalised
+   * kernel. */
   float dv_norm_kernel_same_phase[3][3];
 
   /*! Gradient of internal energy, calculated using normalised kernel. */

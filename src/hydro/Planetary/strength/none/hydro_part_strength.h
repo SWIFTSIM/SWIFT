@@ -32,7 +32,8 @@
 #include "symmetric_matrix.h"
 
 /**
- * @brief Particle strength fields not needed during the SPH loops over neighbours.
+ * @brief Particle strength fields not needed during the SPH loops over
+ * neighbours.
  *
  * This structure contains the particle fields that are not used in the
  * density or force loops. Quantities should be used in the kick, drift and

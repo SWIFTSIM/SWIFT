@@ -29,7 +29,8 @@
 #include "math.h"
 
 /**
- * @brief Sets the yield stress properties of the strength state from the particle.
+ * @brief Sets the yield stress properties of the strength state from the
+ * particle.
  *
  * Nothing extra is needed in the state for this method.
  *
@@ -42,7 +43,8 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
     const struct mat_params *mp) {}
 
 /**
- * @brief Returns the damage factor by which damage scales the stress and pressure.
+ * @brief Returns the damage factor by which damage scales the stress and
+ * pressure.
  *
  * Damage does not scale the stress. It is instead applied to the yield stress,
  * and tension is limited by the minimum pressure.
@@ -63,7 +65,8 @@ __attribute__((always_inline)) INLINE static float yield_damage_factor(
  * the yield stress between the fully intact and fully damaged yield stresses.
  *
  * @param yield_stress_fully_intact The yield stress for fully intact material.
- * @param yield_stress_fully_damaged The yield stress for fully damaged material.
+ * @param yield_stress_fully_damaged The yield stress for fully damaged
+ * material.
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
@@ -73,7 +76,8 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
                                    struct strength_state *s,
                                    const struct mat_params *mp) {
 
-  return (1.f - s->damage.total) * yield_stress_fully_intact + s->damage.total * yield_stress_fully_damaged;
+  return (1.f - s->damage.total) * yield_stress_fully_intact +
+         s->damage.total * yield_stress_fully_damaged;
 }
 
 /**
@@ -91,8 +95,9 @@ yield_compute_damaged_yield_stress(const float yield_stress_fully_intact,
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_intact(
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float
+yield_compute_yield_stress_fully_intact(struct strength_state *s,
+                                        const struct mat_params *mp) {
 
   /* Return 0.f if the material is not solid. */
   if (strength_state_get_phase(s, mp) != mat_phase_solid) {
@@ -137,8 +142,9 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fu
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static float yield_compute_yield_stress_fully_damaged(
-    struct strength_state *s, const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static float
+yield_compute_yield_stress_fully_damaged(struct strength_state *s,
+                                         const struct mat_params *mp) {
 
   /* Method parameters. */
   const float mu_d = mp->yield_stress_collins_mu_d;
@@ -177,10 +183,10 @@ __attribute__((always_inline)) INLINE static float yield_compute_yield_stress(
       yield_compute_yield_stress_fully_damaged(s, mp);
 
   /* Combine yield stresses based on how damaged the material is. */
-  float yield_stress = fmaxf(
-      yield_compute_damaged_yield_stress(yield_stress_fully_intact,
-                                         yield_stress_fully_damaged, s, mp),
-      0.f);
+  float yield_stress =
+      fmaxf(yield_compute_damaged_yield_stress(
+                yield_stress_fully_intact, yield_stress_fully_damaged, s, mp),
+            0.f);
 
   /* Apply weakening to yield stress. */
   yield_weakening_apply_to_yield_stress(&yield_stress, s, mp);
@@ -212,9 +218,10 @@ yield_apply_yield_stress_to_sym_matrix(
 
   /* Yield criterion sqrt(J_2) >= Y. */
   float f = 1.f;
-  const float J_2 = strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
+  const float J_2 =
+      strength_compute_deviatoric_sym_matrix_J_2(deviatoric_stress_tensor);
   if (J_2 > 0.f) {
-      f = fminf(yield_stress / sqrtf(J_2), 1.f);
+    f = fminf(yield_stress / sqrtf(J_2), 1.f);
   }
 
   /* If the yield stress is not limiting, early return 0. */

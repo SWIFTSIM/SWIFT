@@ -39,8 +39,10 @@
  * factor in the phases of the two particles as well as the contribution of
  * artificial stress for the pairwise interaction.
  *
- * @param pairwise_stress_tensor_i Stress tensor of particle i for its interaction with j.
- * @param pairwise_stress_tensor_j Stress tensor of particle j for its interaction with i.
+ * @param pairwise_stress_tensor_i Stress tensor of particle i for its
+ * interaction with j.
+ * @param pairwise_stress_tensor_j Stress tensor of particle j for its
+ * interaction with i.
  * @param pi First particle.
  * @param pj Second particle.
  * @param r The particle separation.
@@ -56,10 +58,10 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
   const struct mat_params *mp_j = material_params(pj->mat_id);
   const struct strength_props *strength_props = strength_get_props();
 
-  strength_set_pairwise_stress_tensors(pairwise_stress_tensor_i, pairwise_stress_tensor_j, pi, pj, r,
+  strength_set_pairwise_stress_tensors(pairwise_stress_tensor_i,
+                                       pairwise_stress_tensor_j, pi, pj, r,
                                        mp_i, mp_j, strength_props);
 }
-
 
 /**
  * @brief Extra strength density interaction between two particles
@@ -74,10 +76,9 @@ hydro_set_pairwise_stress_tensors_strength(float pairwise_stress_tensor_i[3][3],
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_density_strength(struct part *restrict pi,
-                                         struct part *restrict pj,
-                                         const float dx[3], const float wi,
-                                         const float wj, const float wi_dx,
-                                         const float wj_dx) {}
+                                   struct part *restrict pj, const float dx[3],
+                                   const float wi, const float wj,
+                                   const float wi_dx, const float wj_dx) {}
 
 /**
  * @brief Extra strength density interaction between two particles
@@ -91,10 +92,9 @@ hydro_runner_iact_density_strength(struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_density_strength(struct part *restrict pi,
-                                                const struct part *restrict pj,
-                                                const float dx[3],
-                                                const float wi,
-                                                const float wi_dx) {}
+                                          const struct part *restrict pj,
+                                          const float dx[3], const float wi,
+                                          const float wi_dx) {}
 
 /**
  * @brief Extra strength force interaction between two particles
@@ -104,15 +104,17 @@ hydro_runner_iact_nonsym_density_strength(struct part *restrict pi,
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param Gi Kernel gradient for first particle.
  * @param Gj Kernel gradient for second particle.
- * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi - vj).
- * @param dv_dot_G_j Dot product of kernel gradient for second particle and (vi - vj).
+ * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi -
+ * vj).
+ * @param dv_dot_G_j Dot product of kernel gradient for second particle and (vi
+ * - vj).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_force_strength(struct part *restrict pi,
-                                       struct part *restrict pj,
-                                       const float dx[3], const float Gi[3],
-                                       const float Gj[3], const float dv_dot_G_i,
-                                       const float dv_dot_G_j) {
+                                 struct part *restrict pj, const float dx[3],
+                                 const float Gi[3], const float Gj[3],
+                                 const float dv_dot_G_i,
+                                 const float dv_dot_G_j) {
 
   /* Add contribution to drho/dt. */
   pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
@@ -120,10 +122,12 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
 
   /* Add contribution to dv/dr for interactions with strength. */
   if (!strength_is_strengthless_interaction(pi, pj)) {
-    strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
-                                        pj->v, Gi, pj->mass / pj->strength_data.rho_evol);
-    strength_add_velocity_gradient_contribution(pj->strength_data.dv_force_loop, pj->v,
-                                        pi->v, Gj, pi->mass / pi->strength_data.rho_evol);
+    strength_add_velocity_gradient_contribution(
+        pi->strength_data.dv_force_loop, pi->v, pj->v, Gi,
+        pj->mass / pj->strength_data.rho_evol);
+    strength_add_velocity_gradient_contribution(
+        pj->strength_data.dv_force_loop, pj->v, pi->v, Gj,
+        pi->mass / pi->strength_data.rho_evol);
   }
 }
 
@@ -134,21 +138,23 @@ hydro_runner_iact_force_strength(struct part *restrict pi,
  * @param pj Second particle.
  * @param dx Comoving vector separating both particles (pi - pj).
  * @param Gi Kernel gradient for first particle.
- * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi - vj).
+ * @param dv_dot_G_i Dot product of kernel gradient for first particle and (vi -
+ * vj).
  */
 __attribute__((always_inline)) INLINE static void
 hydro_runner_iact_nonsym_force_strength(struct part *restrict pi,
-                                              const struct part *restrict pj,
-                                              const float dx[3],
-                                              const float Gi[3], const float dv_dot_G_i) {
+                                        const struct part *restrict pj,
+                                        const float dx[3], const float Gi[3],
+                                        const float dv_dot_G_i) {
 
   /* Add contribution to drho/dt. */
   pi->strength_data.drho_dt += pj->mass * dv_dot_G_i;
 
   /* Add contribution to dv/dr for interactions with strength. */
   if (!strength_is_strengthless_interaction(pi, pj)) {
-    strength_add_velocity_gradient_contribution(pi->strength_data.dv_force_loop, pi->v,
-                                        pj->v, Gi, pj->mass / pj->strength_data.rho_evol);
+    strength_add_velocity_gradient_contribution(
+        pi->strength_data.dv_force_loop, pi->v, pj->v, Gi,
+        pj->mass / pj->strength_data.rho_evol);
   }
 }
 

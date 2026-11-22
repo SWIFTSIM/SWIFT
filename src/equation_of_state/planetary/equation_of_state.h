@@ -45,7 +45,6 @@
 #include "restart.h"
 #include "units.h"
 
-
 /**
  * @brief Returns the internal energy given density and entropy
  *
@@ -115,7 +114,8 @@ gas_internal_energy_from_entropy(const float density, const float entropy,
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
-    const float density, const float entropy, const enum eos_planetary_material_id mat_id) {
+    const float density, const float entropy,
+    const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
@@ -175,7 +175,8 @@ __attribute__((always_inline)) INLINE static float gas_pressure_from_entropy(
  * @return The entropy \f$A\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
-    const float density, const float P, const enum eos_planetary_material_id mat_id) {
+    const float density, const float P,
+    const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
@@ -229,7 +230,8 @@ __attribute__((always_inline)) INLINE static float gas_entropy_from_pressure(
  * @param entropy The entropy \f$S\f$.
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_entropy(
-    const float density, const float entropy, const enum eos_planetary_material_id mat_id) {
+    const float density, const float entropy,
+    const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
@@ -562,8 +564,9 @@ gas_internal_energy_from_pressure(const float density, const float P,
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_soundspeed_from_internal_energy(const float density, const float u,
-                                    const enum eos_planetary_material_id mat_id) {
+gas_soundspeed_from_internal_energy(
+    const float density, const float u,
+    const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
@@ -624,7 +627,8 @@ gas_soundspeed_from_internal_energy(const float density, const float u,
  * @param P The pressure \f$P\f$
  */
 __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
-    const float density, const float P, const enum eos_planetary_material_id mat_id) {
+    const float density, const float P,
+    const enum eos_planetary_material_id mat_id) {
 
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
@@ -682,8 +686,9 @@ __attribute__((always_inline)) INLINE static float gas_soundspeed_from_pressure(
  * @param u The internal energy \f$u\f$
  */
 __attribute__((always_inline)) INLINE static float
-gas_temperature_from_internal_energy(const float density, const float u,
-                                     const enum eos_planetary_material_id mat_id) {
+gas_temperature_from_internal_energy(
+    const float density, const float u,
+    const enum eos_planetary_material_id mat_id) {
   const enum eos_planetary_type_id type =
       (enum eos_planetary_type_id)(mat_id / eos_type_factor);
   const int unit_id = mat_id % eos_type_factor;
@@ -881,7 +886,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:idg_def_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_idg_def, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_idg_def, mat_params_file,
+                        us);
   }
 
   // Tillotson
@@ -892,7 +898,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_iron_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_iron, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_Til_iron, mat_params_file,
+                        us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_granite", 0)) {
     set_Til_granite(&e->all_Til[eos_unit_id_Til_granite],
@@ -903,7 +910,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_granite_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_granite, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_Til_granite,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_water", 0)) {
     set_Til_water(&e->all_Til[eos_unit_id_Til_water], eos_mat_id_Til_water);
@@ -912,7 +920,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_water_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_water, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_Til_water,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_basalt", 0)) {
     set_Til_basalt(&e->all_Til[eos_unit_id_Til_basalt], eos_mat_id_Til_basalt);
@@ -921,7 +930,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_basalt_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_basalt, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_Til_basalt,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_Til_ice", 0)) {
     set_Til_ice(&e->all_Til[eos_unit_id_Til_ice], eos_mat_id_Til_ice);
@@ -930,7 +940,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:Til_ice_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_Til_ice, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_Til_ice, mat_params_file,
+                        us);
   }
 
   // Custom user-provided Tillotson
@@ -966,7 +977,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:HM80_HHe_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_HM80_HHe, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_HM80_HHe, mat_params_file,
+                        us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_ice", 0)) {
     set_HM80_ice(&e->all_HM80[eos_unit_id_HM80_ice], eos_mat_id_HM80_ice);
@@ -978,7 +990,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:HM80_ice_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_HM80_ice, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_HM80_ice, mat_params_file,
+                        us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_HM80_rock", 0)) {
     set_HM80_rock(&e->all_HM80[eos_unit_id_HM80_rock], eos_mat_id_HM80_rock);
@@ -990,7 +1003,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:HM80_rock_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_HM80_rock, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_HM80_rock,
+                        mat_params_file, us);
   }
 
   // SESAME
@@ -1005,7 +1019,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SESAME_iron_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SESAME_iron, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_SESAME_iron,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_basalt", 0)) {
     set_SESAME_basalt(&e->all_SESAME[eos_unit_id_SESAME_basalt],
@@ -1018,7 +1033,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SESAME_basalt_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SESAME_basalt, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_SESAME_basalt,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SESAME_water", 0)) {
     set_SESAME_water(&e->all_SESAME[eos_unit_id_SESAME_water],
@@ -1031,7 +1047,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SESAME_water_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SESAME_water, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_SESAME_water,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_SS08_water", 0)) {
     set_SS08_water(&e->all_SESAME[eos_unit_id_SS08_water],
@@ -1044,7 +1061,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:SS08_water_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_SS08_water, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_SS08_water,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_AQUA", 0)) {
     set_AQUA(&e->all_SESAME[eos_unit_id_AQUA], eos_mat_id_AQUA);
@@ -1055,7 +1073,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:AQUA_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_AQUA, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_AQUA, mat_params_file,
+                        us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_H", 0)) {
     set_CMS19_H(&e->all_SESAME[eos_unit_id_CMS19_H], eos_mat_id_CMS19_H);
@@ -1067,7 +1086,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:CMS19_H_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_CMS19_H, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_CMS19_H, mat_params_file,
+                        us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CMS19_He", 0)) {
     set_CMS19_He(&e->all_SESAME[eos_unit_id_CMS19_He], eos_mat_id_CMS19_He);
@@ -1079,7 +1099,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:CMS19_He_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_CMS19_He, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_CMS19_He, mat_params_file,
+                        us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_CD21_HHe", 0)) {
     set_CD21_HHe(&e->all_SESAME[eos_unit_id_CD21_HHe], eos_mat_id_CD21_HHe);
@@ -1091,7 +1112,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:CD21_HHe_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_CD21_HHe, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_CD21_HHe, mat_params_file,
+                        us);
   }
 
   // ANEOS -- using SESAME-style tables
@@ -1107,7 +1129,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:ANEOS_forsterite_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_forsterite, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_forsterite,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_iron", 0)) {
     set_ANEOS_iron(&e->all_ANEOS[eos_unit_id_ANEOS_iron],
@@ -1120,7 +1143,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:ANEOS_iron_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_iron, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_iron,
+                        mat_params_file, us);
   }
   if (parser_get_opt_param_int(params, "EoS:planetary_use_ANEOS_Fe85Si15", 0)) {
     set_ANEOS_Fe85Si15(&e->all_ANEOS[eos_unit_id_ANEOS_Fe85Si15],
@@ -1133,7 +1157,8 @@ __attribute__((always_inline)) INLINE static void eos_init(
 
     sprintf(param_name, "EoS:ANEOS_Fe85Si15_mat_params_file");
     parser_get_opt_param_string(params, param_name, mat_params_file, "NoFile");
-    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_Fe85Si15, mat_params_file, us);
+    set_material_params(e->all_mat_params, eos_mat_id_ANEOS_Fe85Si15,
+                        mat_params_file, us);
   }
 
   // Linear EoS -- user-provided parameters

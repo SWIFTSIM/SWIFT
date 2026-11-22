@@ -51,11 +51,13 @@ hydro_get_comoving_pressure_strength(const struct part *restrict p,
  * @param dt_cfl The hydro (+ strength) time-step.
  * @param p The particle of interest.
  */
-__attribute__((always_inline)) INLINE static void hydro_compute_timestep_strength(
-    float *dt_cfl, const struct part *restrict p, const struct hydro_props *restrict hydro_properties) {}
+__attribute__((always_inline)) INLINE static void
+hydro_compute_timestep_strength(
+    float *dt_cfl, const struct part *restrict p,
+    const struct hydro_props *restrict hydro_properties) {}
 
 /**
-* @brief Updates the max wave speed based on strength methods.
+ * @brief Updates the max wave speed based on strength methods.
  *
  * @param wave_speed The wave speed to be updated.
  * @param p The particle of interest.
@@ -63,7 +65,10 @@ __attribute__((always_inline)) INLINE static void hydro_compute_timestep_strengt
  * @param density The density.
  */
 __attribute__((always_inline)) INLINE static void
-hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *restrict p, const float soundspeed, const float density) {}
+hydro_compute_max_wave_speed_strength(float *wave_speed,
+                                      const struct part *restrict p,
+                                      const float soundspeed,
+                                      const float density) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the density
@@ -71,16 +76,16 @@ hydro_compute_max_wave_speed_strength(float *wave_speed, const struct part *rest
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_init_part_strength(struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void hydro_init_part_strength(
+    struct part *restrict p) {}
 
 /**
  * @brief Finishes extra strength parts of the density calculation.
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_end_density_strength(struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void hydro_end_density_strength(
+    struct part *restrict p) {}
 
 /**
  * @brief Prepares extra strength parameters for a particle for the force
@@ -89,12 +94,12 @@ hydro_end_density_strength(struct part *restrict p) {}
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_prepare_force_strength(struct part *restrict p, struct xpart *restrict xp) {}
+__attribute__((always_inline)) INLINE static void hydro_prepare_force_strength(
+    struct part *restrict p, struct xpart *restrict xp) {}
 
 /**
  * @brief Resets strength time derivative fields in preparation
-  * for the sums taking  place in the various force tasks.
+ * for the sums taking  place in the various force tasks.
  *
  * @param p The particle to act upon
  */
@@ -106,8 +111,8 @@ hydro_reset_acceleration_strength(struct part *restrict p) {}
  *
  * @param p The particle to act upon
  */
-__attribute__((always_inline)) INLINE static void
-hydro_end_force_strength(struct part *restrict p) {}
+__attribute__((always_inline)) INLINE static void hydro_end_force_strength(
+    struct part *restrict p) {}
 
 /**
  * @brief Sets the values of additional particle strength properties at a
@@ -116,18 +121,21 @@ hydro_end_force_strength(struct part *restrict p) {}
  * @param p The particle.
  * @param xp The extended data of this particle.
  */
-__attribute__((always_inline)) INLINE static void hydro_reset_predicted_values_strength(
-    struct part *restrict p, const struct xpart *restrict xp) {}
+__attribute__((always_inline)) INLINE static void
+hydro_reset_predicted_values_strength(struct part *restrict p,
+                                      const struct xpart *restrict xp) {}
 
 /**
  * @brief Predict additional particle strength properties forward in time when
- * drifting. At beginning of hydro function, before hydro quantities have been drifted.
+ * drifting. At beginning of hydro function, before hydro quantities have been
+ * drifted.
  *
  * @param p The particle to act upon
  * @param dt_therm The time-step used to evolve hydrodynamical quantities.
  */
-__attribute__((always_inline)) INLINE static void hydro_predict_strength_beginning(
-    struct part *restrict p, const float dt_therm) {}
+__attribute__((always_inline)) INLINE static void
+hydro_predict_strength_beginning(struct part *restrict p,
+                                 const float dt_therm) {}
 
 /**
  * @brief Predict additional particle strength properties forward in time when
@@ -177,8 +185,9 @@ __attribute__((always_inline)) INLINE static void hydro_kick_strength_end(
  * @param p The particle to act upon
  * @param xp The extended particle data to act upon
  */
-__attribute__((always_inline)) INLINE static void hydro_first_init_part_strength(
-    struct part *restrict p, struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static void
+hydro_first_init_part_strength(struct part *restrict p,
+                               struct xpart *restrict xp) {
 
   /* Without strength, all material is fluid. */
   p->phase = mat_phase_fluid;

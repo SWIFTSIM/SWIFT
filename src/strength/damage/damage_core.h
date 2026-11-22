@@ -26,15 +26,17 @@
  */
 
 #include "const.h"
-#include <float.h>
 #include "math.h"
+
+#include <float.h>
 
 /**
  * @brief Get damage of particle at last drift time.
  *
  * @param p The particle of interest.
  */
-__attribute__((always_inline)) INLINE static struct strength_damage strength_get_damage(const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static struct strength_damage
+strength_get_damage(const struct part *restrict p) {
 
   return p->strength_data.damage;
 }
@@ -44,7 +46,8 @@ __attribute__((always_inline)) INLINE static struct strength_damage strength_get
  *
  * @param xp The extended data of the particle of interest.
  */
-__attribute__((always_inline)) INLINE static struct strength_damage strength_get_damage_full(const struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static struct strength_damage
+strength_get_damage_full(const struct xpart *restrict xp) {
 
   return xp->strength_data.damage_full;
 }
@@ -71,11 +74,12 @@ __attribute__((always_inline)) INLINE static void damage_set_state(
  * @param p The particle of interest.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void strength_compute_timestep_damage(
-    float *dt_cfl, const struct part *restrict p,
-    const struct strength_props *strength_props) {
+__attribute__((always_inline)) INLINE static void
+strength_compute_timestep_damage(float *dt_cfl, const struct part *restrict p,
+                                 const struct strength_props *strength_props) {
 
-  const struct strength_damage_rates *damage_rates = &p->strength_data.damage_rates;
+  const struct strength_damage_rates *damage_rates =
+      &p->strength_data.damage_rates;
 
   damage_tensile_compute_timestep(dt_cfl, damage_rates, strength_props);
   damage_shear_compute_timestep(dt_cfl, damage_rates, strength_props);
@@ -88,8 +92,9 @@ __attribute__((always_inline)) INLINE static void strength_compute_timestep_dama
  * @param p The particle of interest.
  * @param xp The extended data of this particle.
  */
-__attribute__((always_inline)) INLINE static void strength_reset_predicted_values_damage(
-    struct part *restrict p, const struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static void
+strength_reset_predicted_values_damage(struct part *restrict p,
+                                       const struct xpart *restrict xp) {
 
   p->strength_data.damage = xp->strength_data.damage_full;
 }
@@ -179,8 +184,9 @@ __attribute__((always_inline)) INLINE static void damage_compute_rates(
  * @param p The particle of interest.
  * @param xp The extended data of the particle of interest.
  */
-__attribute__((always_inline)) INLINE static void strength_first_init_part_damage(
-    struct part *restrict p, struct xpart *restrict xp) {
+__attribute__((always_inline)) INLINE static void
+strength_first_init_part_damage(struct part *restrict p,
+                                struct xpart *restrict xp) {
 
   p->strength_data.damage = (struct strength_damage){0};
   xp->strength_data.damage_full = (struct strength_damage){0};

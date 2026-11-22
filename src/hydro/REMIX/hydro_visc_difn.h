@@ -58,7 +58,8 @@ __attribute__((always_inline)) INLINE static int hydro_visc_no_reconstruction(
 __attribute__((always_inline)) INLINE static int hydro_difn_include_pair(
     const struct part *restrict pi, const struct part *restrict pj) {
 
-  return (pi->mat_id == pj->mat_id) && !hydro_difn_exclude_pair_strength(pi, pj);
+  return (pi->mat_id == pj->mat_id) &&
+         !hydro_difn_exclude_pair_strength(pi, pj);
 }
 
 /**
@@ -246,9 +247,9 @@ hydro_end_gradient_extra_visc_difn(struct part *restrict p) {}
  * @param dx Comoving vector separating both particles (pi - pj).
  */
 __attribute__((always_inline)) INLINE static void hydro_set_Qi_Qj(
-    float *Qi, float *Qj, float *beta_mu_ij,
-    float *difn_signal_velocity, const struct part *restrict pi,
-    const struct part *restrict pj, const float dx[3]) {
+    float *Qi, float *Qj, float *beta_mu_ij, float *difn_signal_velocity,
+    const struct part *restrict pi, const struct part *restrict pj,
+    const float dx[3]) {
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const float r = sqrtf(r2);

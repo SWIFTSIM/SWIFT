@@ -257,8 +257,8 @@ INLINE static float HM80_pressure_from_internal_energy(
   const float intp_rho =
       (log_rho - hm80->log_rho_min - idx_rho * hm80->log_rho_step) *
       hm80->inv_log_rho_step;
-  const float intp_u =
-      (log_u - hm80->log_u_min - idx_u * hm80->log_u_step) * hm80->inv_log_u_step;
+  const float intp_u = (log_u - hm80->log_u_min - idx_u * hm80->log_u_step) *
+                       hm80->inv_log_u_step;
 
   // Table values
   const float log_P_1 = hm80->table_log_P_rho_u[idx_rho * hm80->num_u + idx_u];

@@ -326,28 +326,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
   stress_tensor_i_term[0] = (pairwise_stress_tensor_i[0][0] * G_mean[0] +
                              pairwise_stress_tensor_i[0][1] * G_mean[1] +
                              pairwise_stress_tensor_i[0][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_i_term[1] = (pairwise_stress_tensor_i[1][0] * G_mean[0] +
                              pairwise_stress_tensor_i[1][1] * G_mean[1] +
                              pairwise_stress_tensor_i[1][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_i_term[2] = (pairwise_stress_tensor_i[2][0] * G_mean[0] +
                              pairwise_stress_tensor_i[2][1] * G_mean[1] +
                              pairwise_stress_tensor_i[2][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
 
   stress_tensor_j_term[0] = (pairwise_stress_tensor_j[0][0] * G_mean[0] +
                              pairwise_stress_tensor_j[0][1] * G_mean[1] +
                              pairwise_stress_tensor_j[0][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_j_term[1] = (pairwise_stress_tensor_j[1][0] * G_mean[0] +
                              pairwise_stress_tensor_j[1][1] * G_mean[1] +
                              pairwise_stress_tensor_j[1][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_j_term[2] = (pairwise_stress_tensor_j[2][0] * G_mean[0] +
                              pairwise_stress_tensor_j[2][1] * G_mean[1] +
                              pairwise_stress_tensor_j[2][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
 
   /* Artificial visc terms to be used in evolution equations */
   float Q_i_term[3], Q_j_term[3];
@@ -382,12 +382,14 @@ __attribute__((always_inline)) INLINE static void runner_iact_force(
                                 (pi->v[1] - pj->v[1]) * Q_j_term[1] +
                                 (pi->v[2] - pj->v[2]) * Q_j_term[2];
 
-  const float dv_dot_stress_term_i = (pi->v[0] - pj->v[0]) * stress_tensor_i_term[0] +
-                                     (pi->v[1] - pj->v[1]) * stress_tensor_i_term[1] +
-                                     (pi->v[2] - pj->v[2]) * stress_tensor_i_term[2];
-  const float dv_dot_stress_term_j = (pi->v[0] - pj->v[0]) * stress_tensor_j_term[0] +
-                                     (pi->v[1] - pj->v[1]) * stress_tensor_j_term[1] +
-                                     (pi->v[2] - pj->v[2]) * stress_tensor_j_term[2];
+  const float dv_dot_stress_term_i =
+      (pi->v[0] - pj->v[0]) * stress_tensor_i_term[0] +
+      (pi->v[1] - pj->v[1]) * stress_tensor_i_term[1] +
+      (pi->v[2] - pj->v[2]) * stress_tensor_i_term[2];
+  const float dv_dot_stress_term_j =
+      (pi->v[0] - pj->v[0]) * stress_tensor_j_term[0] +
+      (pi->v[1] - pj->v[1]) * stress_tensor_j_term[1] +
+      (pi->v[2] - pj->v[2]) * stress_tensor_j_term[2];
 
   const float dv_dot_G = (pi->v[0] - pj->v[0]) * G_mean[0] +
                          (pi->v[1] - pj->v[1]) * G_mean[1] +
@@ -559,28 +561,28 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
   stress_tensor_i_term[0] = (pairwise_stress_tensor_i[0][0] * G_mean[0] +
                              pairwise_stress_tensor_i[0][1] * G_mean[1] +
                              pairwise_stress_tensor_i[0][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_i_term[1] = (pairwise_stress_tensor_i[1][0] * G_mean[0] +
                              pairwise_stress_tensor_i[1][1] * G_mean[1] +
                              pairwise_stress_tensor_i[1][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_i_term[2] = (pairwise_stress_tensor_i[2][0] * G_mean[0] +
                              pairwise_stress_tensor_i[2][1] * G_mean[1] +
                              pairwise_stress_tensor_i[2][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
 
   stress_tensor_j_term[0] = (pairwise_stress_tensor_j[0][0] * G_mean[0] +
                              pairwise_stress_tensor_j[0][1] * G_mean[1] +
                              pairwise_stress_tensor_j[0][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_j_term[1] = (pairwise_stress_tensor_j[1][0] * G_mean[0] +
                              pairwise_stress_tensor_j[1][1] * G_mean[1] +
                              pairwise_stress_tensor_j[1][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
   stress_tensor_j_term[2] = (pairwise_stress_tensor_j[2][0] * G_mean[0] +
                              pairwise_stress_tensor_j[2][1] * G_mean[1] +
                              pairwise_stress_tensor_j[2][2] * G_mean[2]) *
-                             rhoi_inv * rhoj_inv;
+                            rhoi_inv * rhoj_inv;
 
   /* Artificial visc terms to be used in evolution equations */
   float Q_i_term[3], Q_j_term[3];
@@ -605,9 +607,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_force(
                                 (pi->v[1] - pj->v[1]) * Q_i_term[1] +
                                 (pi->v[2] - pj->v[2]) * Q_i_term[2];
 
-  const float dv_dot_stress_term_i = (pi->v[0] - pj->v[0]) * stress_tensor_i_term[0] +
-                                     (pi->v[1] - pj->v[1]) * stress_tensor_i_term[1] +
-                                     (pi->v[2] - pj->v[2]) * stress_tensor_i_term[2];
+  const float dv_dot_stress_term_i =
+      (pi->v[0] - pj->v[0]) * stress_tensor_i_term[0] +
+      (pi->v[1] - pj->v[1]) * stress_tensor_i_term[1] +
+      (pi->v[2] - pj->v[2]) * stress_tensor_i_term[2];
 
   const float dv_dot_G = (pi->v[0] - pj->v[0]) * G_mean[0] +
                          (pi->v[1] - pj->v[1]) * G_mean[1] +

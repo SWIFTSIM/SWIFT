@@ -25,6 +25,9 @@
  * @brief Selects yield stress model based on configuration options.
  */
 
+/* The yield stress models apply the yield stress weakening */
+#include "strength_yield_stress_weakening.h"
+
 #if defined(STRENGTH_YIELD_STRESS_BENZ_ASPHAUG)
 #include "yield_stress/yield_stress_benz_asphaug.h"
 #elif defined(STRENGTH_YIELD_STRESS_COLLINS)

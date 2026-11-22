@@ -25,10 +25,10 @@
  * @brief The state of a particle, as passed to the material strength methods.
  */
 
-#include <stdbool.h>
-
-#include "symmetric_matrix.h"
 #include "strength/damage/damage_data.h"
+#include "symmetric_matrix.h"
+
+#include <stdbool.h>
 
 /**
  * @brief Quantities derived from the strength state.
@@ -150,8 +150,9 @@ strength_state_get_phase(struct strength_state *s, const struct mat_params *mp);
 __attribute__((always_inline)) INLINE static float strength_state_get_pressure(
     struct strength_state *s, const struct mat_params *mp);
 
-__attribute__((always_inline)) INLINE static float strength_state_get_temperature(
-    struct strength_state *s, const struct mat_params *mp);
+__attribute__((always_inline)) INLINE static float
+strength_state_get_temperature(struct strength_state *s,
+                               const struct mat_params *mp);
 
 __attribute__((always_inline)) INLINE static float strength_state_get_T_melt(
     struct strength_state *s, const struct mat_params *mp);
@@ -173,12 +174,14 @@ __attribute__((always_inline)) INLINE static const float *
 strength_state_get_principal_stresses(struct strength_state *s,
                                       const struct mat_params *mp);
 
-__attribute__((always_inline)) INLINE static float strength_state_get_strain_rate_J_2(
-    struct strength_state *s, const struct mat_params *mp);
+__attribute__((always_inline)) INLINE static float
+strength_state_get_strain_rate_J_2(struct strength_state *s,
+                                   const struct mat_params *mp);
 
 #ifdef STRENGTH_YIELD_STRESS
-__attribute__((always_inline)) INLINE static float strength_state_get_yield_stress(
-    struct strength_state *s, const struct mat_params *mp);
+__attribute__((always_inline)) INLINE static float
+strength_state_get_yield_stress(struct strength_state *s,
+                                const struct mat_params *mp);
 #endif
 
 #endif /* SWIFT_STRENGTH_STATE_H */

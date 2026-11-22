@@ -30,7 +30,8 @@
 #include "math.h"
 
 /**
- * @brief Sets the yield stress properties of the strength state from the particle.
+ * @brief Sets the yield stress properties of the strength state from the
+ * particle.
  *
  * Nothing extra is needed in the state for this method.
  *
@@ -43,7 +44,8 @@ __attribute__((always_inline)) INLINE static void yield_set_state(
     const struct mat_params *mp) {}
 
 /**
- * @brief Returns the damage factor by which damage scales the stress and pressure.
+ * @brief Returns the damage factor by which damage scales the stress and
+ * pressure.
  *
  * Damage scales the deviatoric stress tensor and negative pressures by (1 - D),
  * so that fully damaged material acts as a fluid. See Benz&Asphaug95 Eqn. 13.

@@ -55,7 +55,8 @@ INLINE static void material_T_melt_set_default(struct mat_params *mp) {
 }
 
 /**
- * @brief Read the melting temperature parameters from a material parameter file.
+ * @brief Read the melting temperature parameters from a material parameter
+ * file.
  *
  * Only the parameters of the chosen scheme are read, and they are compulsory.
  *
@@ -77,13 +78,15 @@ INLINE static void material_T_melt_read(struct mat_params *mp,
       break;
 
     case T_melt_scheme_constant:
-      mp->T_melt_constant = parser_get_param_float(file_params, "Material:T_melt_constant");
+      mp->T_melt_constant =
+          parser_get_param_float(file_params, "Material:T_melt_constant");
       if (mp->T_melt_constant <= 0.f)
         error("%s: Material:T_melt_constant must be > 0", param_file);
       break;
 
     default:
-      error("%s: unknown Material:T_melt_scheme %d", param_file, mp->T_melt_scheme);
+      error("%s: unknown Material:T_melt_scheme %d", param_file,
+            mp->T_melt_scheme);
   }
 }
 
@@ -99,7 +102,8 @@ INLINE static void material_T_melt_convert_units(struct mat_params *mp,
   struct unit_system si;
   units_init_si(&si);
 
-  mp->T_melt_constant *= units_cgs_conversion_factor(&si, UNIT_CONV_TEMPERATURE);
+  mp->T_melt_constant *=
+      units_cgs_conversion_factor(&si, UNIT_CONV_TEMPERATURE);
   mp->T_melt_constant /= units_cgs_conversion_factor(us, UNIT_CONV_TEMPERATURE);
 }
 

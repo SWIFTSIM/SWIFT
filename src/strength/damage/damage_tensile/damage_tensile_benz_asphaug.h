@@ -29,7 +29,8 @@
 #include "math.h"
 
 /**
- * @brief Sets the tensile damage properties of the strength state from the particle.
+ * @brief Sets the tensile damage properties of the strength state from the
+ * particle.
  *
  * @param s The strength state of the particle.
  * @param p The particle of interest.
@@ -52,17 +53,18 @@ __attribute__((always_inline)) INLINE static void damage_tensile_set_state(
  *
  * @param p The particle of interest.
  */
-__attribute__((always_inline)) INLINE static void damage_tensile_first_init_part(
-    const struct part *restrict p) {
+__attribute__((always_inline)) INLINE static void
+damage_tensile_first_init_part(const struct part *restrict p) {
 
   const long long first = p->strength_data.first_flaw_index;
   const int number = p->strength_data.number_of_flaws;
   const long long total = strength_get_flaws()->total_number_of_flaws;
 
   if ((number < 0) || (first < 0) || (first + number > total))
-    error("Particle %lld has %d flaws starting at index %lld, but the ICs "
-          "only have %lld flaws.",
-          p->id, number, first, total);
+    error(
+        "Particle %lld has %d flaws starting at index %lld, but the ICs "
+        "only have %lld flaws.",
+        p->id, number, first, total);
 }
 
 /**
@@ -71,8 +73,8 @@ __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part
  * Benz&Asphaug95 tensile fracture model. Each particle is initialised with a
  * number of flaws, each with a corresponding activation threshold. A flaw is
  * activated if the local strain exceeds its activation threshold. Tensile
- * damage accumulates in a particle based on the number of currently-active flaws
- * and an estimate of the crack velocity.
+ * damage accumulates in a particle based on the number of currently-active
+ * flaws and an estimate of the crack velocity.
  *
  * Method parameters needed in material parameter file:
  * Material:
@@ -86,9 +88,10 @@ __attribute__((always_inline)) INLINE static void damage_tensile_first_init_part
  * @param s The strength state of the particle.
  * @param mp The material parameters.
  */
-__attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_dt(
-    struct strength_damage_rates *damage_rates, struct strength_state *s,
-    const struct mat_params *mp) {
+__attribute__((always_inline)) INLINE static void
+damage_tensile_compute_cbrtD_dt(struct strength_damage_rates *damage_rates,
+                                struct strength_state *s,
+                                const struct mat_params *mp) {
 
   /* Particle properties. */
   const float mass = s->mass;
@@ -109,9 +112,11 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   }
 
   /* Calculate maximum principal stress. */
-  const float *principal_stress_eigen = strength_state_get_principal_stresses(s, mp);
-  const float max_principal_stress = fmaxf(principal_stress_eigen[0],
-                                      fmaxf(principal_stress_eigen[1], principal_stress_eigen[2]));
+  const float *principal_stress_eigen =
+      strength_state_get_principal_stresses(s, mp);
+  const float max_principal_stress =
+      fmaxf(principal_stress_eigen[0],
+            fmaxf(principal_stress_eigen[1], principal_stress_eigen[2]));
 
   /* Tensile damage will only accumulate if particle is in tension. */
   if (max_principal_stress <= 0.f) {
@@ -139,7 +144,8 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
   }
 
   /* Tensile damage is limited by the fraction of activated to total flaws. */
-  damage_rates->tensile_max = (float)number_of_activated_flaws / (float)number_of_flaws;
+  damage_rates->tensile_max =
+      (float)number_of_activated_flaws / (float)number_of_flaws;
 
   /* No accumulation once the damage has reached that limit. */
   if (s->damage.tensile >= damage_rates->tensile_max) {
@@ -148,12 +154,16 @@ __attribute__((always_inline)) INLINE static void damage_tensile_compute_cbrtD_d
 
   /* Estimate the crack velocity based on the longitudinal wave speed,
    * Schäfer+2016 Eqn. 24. */
-  const float longitudinal_wave_speed = sqrtf((bulk_mod + (4.f / 3.f) * (1.f - s->damage.total) * shear_mod) / density);
-  const float crack_velocity = mp->damage_tensile_benz_asphaug_crack_velocity_factor * longitudinal_wave_speed;
+  const float longitudinal_wave_speed = sqrtf(
+      (bulk_mod + (4.f / 3.f) * (1.f - s->damage.total) * shear_mod) / density);
+  const float crack_velocity =
+      mp->damage_tensile_benz_asphaug_crack_velocity_factor *
+      longitudinal_wave_speed;
 
   /* Compute the rate of cbrt(damage) accumulation due to tension,
    * Benz&Asphaug95 Eqn. 15. */
-  damage_rates->tensile_cbrtD_dt = (float)number_of_activated_flaws * crack_velocity * cbrtf(density / mass);
+  damage_rates->tensile_cbrtD_dt =
+      (float)number_of_activated_flaws * crack_velocity * cbrtf(density / mass);
 }
 
 /**
@@ -207,7 +217,8 @@ __attribute__((always_inline)) INLINE static float damage_tensile_evolve(
  * @param damage_rates The rates of damage accumulation.
  * @param strength_props The material strength parameters.
  */
-__attribute__((always_inline)) INLINE static void damage_tensile_compute_timestep(
+__attribute__((always_inline)) INLINE static void
+damage_tensile_compute_timestep(
     float *dt_cfl, const struct strength_damage_rates *damage_rates,
     const struct strength_props *strength_props) {
 

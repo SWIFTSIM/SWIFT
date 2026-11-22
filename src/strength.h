@@ -25,37 +25,28 @@
 
 /* Strength functions */
 #ifdef MATERIAL_STRENGTH
-// Utilities
-#include "./strength/strength_utilities.h"
-#include "./strength/strength_interaction.h"
-
-// State of a particle
-#include "./strength/strength_state.h"
-
-// Strength models
 #include "./strength/strength_artificial_stress.h"
-#include "./strength/strength_yield_stress_weakening.h"
-#include "./strength/strength_yield_stress.h"
 #include "./strength/strength_damage.h"
-
-// Stress tensor, combining strength models
-#include "./strength/strength_stress_tensor.h"
-
-// Setting up the strength state, which uses the strength models
+#include "./strength/strength_interaction.h"
+#include "./strength/strength_state.h"
 #include "./strength/strength_state_setup.h"
+#include "./strength/strength_stress_tensor.h"
+#include "./strength/strength_utilities.h"
+#include "./strength/strength_yield_stress.h"
+#include "./strength/strength_yield_stress_weakening.h"
 #endif /* MATERIAL_STRENGTH */
 
 /* Hydro functions */
 #ifdef MATERIAL_STRENGTH
 
 #if defined(PLANETARY_SPH)
-#include "./hydro/Planetary/strength/default/hydro_strength.h"
 #include "./hydro/Planetary/strength/default/hydro_iact_strength.h"
 #include "./hydro/Planetary/strength/default/hydro_io_strength.h"
+#include "./hydro/Planetary/strength/default/hydro_strength.h"
 #elif defined(REMIX_SPH)
-#include "./hydro/REMIX/strength/default/hydro_strength.h"
 #include "./hydro/REMIX/strength/default/hydro_iact_strength.h"
 #include "./hydro/REMIX/strength/default/hydro_io_strength.h"
+#include "./hydro/REMIX/strength/default/hydro_strength.h"
 #else
 #error "Choice of SPH variant not valid for material strength"
 #endif
@@ -63,13 +54,13 @@
 #else /* !MATERIAL_STRENGTH */
 
 #if defined(PLANETARY_SPH)
-#include "./hydro/Planetary/strength/none/hydro_strength.h"
 #include "./hydro/Planetary/strength/none/hydro_iact_strength.h"
 #include "./hydro/Planetary/strength/none/hydro_io_strength.h"
+#include "./hydro/Planetary/strength/none/hydro_strength.h"
 #elif defined(REMIX_SPH)
-#include "./hydro/REMIX/strength/none/hydro_strength.h"
 #include "./hydro/REMIX/strength/none/hydro_iact_strength.h"
 #include "./hydro/REMIX/strength/none/hydro_io_strength.h"
+#include "./hydro/REMIX/strength/none/hydro_strength.h"
 #endif
 
 #endif /* MATERIAL_STRENGTH */
