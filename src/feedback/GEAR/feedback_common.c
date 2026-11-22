@@ -1216,8 +1216,8 @@ double feedback_get_star_HII_photons_issued_age(const struct spart *sp) {
  * interval one scheduled pass is expected to cover.
  *
  * Used to bound the elapsed interval the photon budget is integrated over
- * (#HII_DT_BACK_MAX_INTERVALS), so passes skipped by a gas-free cell cannot
- * bank photons that escaped instead of being stored.
+ * (#HII_DT_BACK_MAX_INTERVALS), a backstop for a star pinned below its own
+ * cadence. The issued age already stops gas-free passes from banking photons.
  *
  * @param feedback_props The #feedback_props.
  * @param dt_enrichment This star's current enrichment timestep, the stand-in
