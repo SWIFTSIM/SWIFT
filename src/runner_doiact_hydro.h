@@ -136,6 +136,15 @@
   ((FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || \
    (FUNCTION_TASK_LOOP == TASK_LOOP_CHEMISTRY_FLUX_PREP))
 
+/* The chemistry flux exchange of a pair. The other arguments are the loop
+   constants that every caller declares. */
+#define IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, both_updatable_here,           \
+                            local_first, local_second)                         \
+  runner_iact_chemistry_flux_exchange(                                         \
+      r2, dx, hi, hj, pi, pj, both_updatable_here, local_first, local_second,  \
+      a, H, time_base, t_current, cosmo, with_cosmology, chemistry_properties, \
+      CHEMISTRY_FLUX_PASS, e->max_active_bin)
+
 #if ((FUNCTION_TASK_LOOP == TASK_LOOP_DENSITY) ||  \
      (FUNCTION_TASK_LOOP == TASK_LOOP_GRADIENT) || \
      (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE))

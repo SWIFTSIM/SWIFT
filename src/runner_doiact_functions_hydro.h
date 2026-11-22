@@ -380,24 +380,15 @@ void DOPAIR2_NAIVE(struct runner *r, const struct cell *restrict ci,
          exchange, not two. The one-sided updates above fire from both
          blocks. */
       if (doi && doj) {
-        runner_iact_chemistry_flux_exchange(
-            r2, dx0, hi, hj, pi, pj, /*both_updatable_here=*/1,
-            /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
-            t_current, cosmo, with_cosmology, chemistry_properties,
-            CHEMISTRY_FLUX_PASS, e->max_active_bin);
+        IACT_CHEMISTRY_FLUX(dx0, hi, hj, pi, pj, /*both_updatable_here=*/1,
+                            /*local_first=*/local_i, /*local_second=*/local_j);
       } else if (doi) {
-        runner_iact_chemistry_flux_exchange(
-            r2, dx0, hi, hj, pi, pj, /*both_updatable_here=*/0,
-            /*local_first=*/local_i, /*local_second=*/local_j, a, H, time_base,
-            t_current, cosmo, with_cosmology, chemistry_properties,
-            CHEMISTRY_FLUX_PASS, e->max_active_bin);
+        IACT_CHEMISTRY_FLUX(dx0, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                            /*local_first=*/local_i, /*local_second=*/local_j);
       } else if (doj) {
         const float mdx0[3] = {-dx0[0], -dx0[1], -dx0[2]};
-        runner_iact_chemistry_flux_exchange(
-            r2, mdx0, hj, hi, pj, pi, /*both_updatable_here=*/0,
-            /*local_first=*/local_j, /*local_second=*/local_i, a, H, time_base,
-            t_current, cosmo, with_cosmology, chemistry_properties,
-            CHEMISTRY_FLUX_PASS, e->max_active_bin);
+        IACT_CHEMISTRY_FLUX(mdx0, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                            /*local_first=*/local_j, /*local_second=*/local_i);
       }
 #endif
     } /* loop over the parts in cj. */
@@ -710,11 +701,8 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                               chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-        runner_iact_chemistry_flux_exchange(
-            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
-            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
-            cosmo, with_cosmology, chemistry_properties, CHEMISTRY_FLUX_PASS,
-            e->max_active_bin);
+        IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+                            /*local_first=*/1, /*local_second=*/1);
 #endif
       } else if (doi) {
 
@@ -741,11 +729,8 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                                      chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-        runner_iact_chemistry_flux_exchange(
-            r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
-            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
-            cosmo, with_cosmology, chemistry_properties, CHEMISTRY_FLUX_PASS,
-            e->max_active_bin);
+        IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                            /*local_first=*/1, /*local_second=*/1);
 #endif
       } else if (doj) {
 
@@ -776,11 +761,8 @@ void DOSELF2_NAIVE(struct runner *r, const struct cell *c,
                                      chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-        runner_iact_chemistry_flux_exchange(
-            r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
-            /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
-            cosmo, with_cosmology, chemistry_properties, CHEMISTRY_FLUX_PASS,
-            e->max_active_bin);
+        IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                            /*local_first=*/1, /*local_second=*/1);
 #endif
       }
     } /* loop over the parts in cj. */
@@ -1909,11 +1891,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                        chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-          runner_iact_chemistry_flux_exchange(
-              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
-              /*local_first=*/local_j, /*local_second=*/local_i, a, H,
-              time_base, t_current, cosmo, with_cosmology, chemistry_properties,
-              CHEMISTRY_FLUX_PASS, e->max_active_bin);
+          IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                              /*local_first=*/local_j,
+                              /*local_second=*/local_i);
 #endif
         }
       } /* loop over the active parts in cj. */
@@ -2016,11 +1996,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-            runner_iact_chemistry_flux_exchange(
-                r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
-                /*local_first=*/local_i, /*local_second=*/local_j, a, H,
-                time_base, t_current, cosmo, with_cosmology,
-                chemistry_properties, CHEMISTRY_FLUX_PASS, e->max_active_bin);
+            IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+                                /*local_first=*/local_i,
+                                /*local_second=*/local_j);
 #endif
           } else {
 
@@ -2047,11 +2025,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                          with_cosmology, chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-            runner_iact_chemistry_flux_exchange(
-                r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
-                /*local_first=*/local_i, /*local_second=*/local_j, a, H,
-                time_base, t_current, cosmo, with_cosmology,
-                chemistry_properties, CHEMISTRY_FLUX_PASS, e->max_active_bin);
+            IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                                /*local_first=*/local_i,
+                                /*local_second=*/local_j);
 #endif
           }
         }
@@ -2182,11 +2158,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                        chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-          runner_iact_chemistry_flux_exchange(
-              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
-              /*local_first=*/local_i, /*local_second=*/local_j, a, H,
-              time_base, t_current, cosmo, with_cosmology, chemistry_properties,
-              CHEMISTRY_FLUX_PASS, e->max_active_bin);
+          IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                              /*local_first=*/local_i,
+                              /*local_second=*/local_j);
 #endif
         }
       } /* loop over the active parts in ci. */
@@ -2289,11 +2263,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                   chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-            runner_iact_chemistry_flux_exchange(
-                r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/1,
-                /*local_first=*/local_j, /*local_second=*/local_i, a, H,
-                time_base, t_current, cosmo, with_cosmology,
-                chemistry_properties, CHEMISTRY_FLUX_PASS, e->max_active_bin);
+            IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/1,
+                                /*local_first=*/local_j,
+                                /*local_second=*/local_i);
 #endif
           } else {
 
@@ -2321,11 +2293,9 @@ void DOPAIR2(struct runner *r, const struct cell *restrict ci,
                                          with_cosmology, chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-            runner_iact_chemistry_flux_exchange(
-                r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
-                /*local_first=*/local_j, /*local_second=*/local_i, a, H,
-                time_base, t_current, cosmo, with_cosmology,
-                chemistry_properties, CHEMISTRY_FLUX_PASS, e->max_active_bin);
+            IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                                /*local_first=*/local_j,
+                                /*local_second=*/local_i);
 #endif
           }
         }
@@ -2849,11 +2819,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                        chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-          runner_iact_chemistry_flux_exchange(
-              r2, dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
-              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
-              cosmo, with_cosmology, chemistry_properties, CHEMISTRY_FLUX_PASS,
-              e->max_active_bin);
+          IACT_CHEMISTRY_FLUX(dx, hj, hi, pj, pi, /*both_updatable_here=*/0,
+                              /*local_first=*/1, /*local_second=*/1);
 #endif
         }
       } /* loop over all other particles. */
@@ -2941,11 +2908,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                 chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-          runner_iact_chemistry_flux_exchange(
-              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
-              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
-              cosmo, with_cosmology, chemistry_properties, CHEMISTRY_FLUX_PASS,
-              e->max_active_bin);
+          IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/1,
+                              /*local_first=*/1, /*local_second=*/1);
 #endif
         } else if (doi) {
 
@@ -2975,11 +2939,8 @@ void DOSELF2(struct runner *r, const struct cell *c, const int limit_min_h,
                                        chemistry_properties);
 #endif
 #if CHEMISTRY_FLUX_LOOP
-          runner_iact_chemistry_flux_exchange(
-              r2, dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
-              /*local_first=*/1, /*local_second=*/1, a, H, time_base, t_current,
-              cosmo, with_cosmology, chemistry_properties, CHEMISTRY_FLUX_PASS,
-              e->max_active_bin);
+          IACT_CHEMISTRY_FLUX(dx, hi, hj, pi, pj, /*both_updatable_here=*/0,
+                              /*local_first=*/1, /*local_second=*/1);
 #endif
         } else if (doj) {
 
