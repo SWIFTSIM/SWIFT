@@ -1944,7 +1944,9 @@ period of the star step. The window is then moved to run from $t_0$ to
 $t_0+\Delta t$: the light after $t_0$ keeps its times and the early part follows
 it at the same rate. The windows of the successive steps of a star tile with no
 gap and no overlap, so a steady star gives a steady arrival rate. The light that
-arrives by $t_0$ is delayed by at most one star step. A star step not longer than
+arrives by $t_0$ is delayed by at most one star step plus one step of the receiver. If the
+star step spans more steps of the receiver than the near bins hold, the moved light lies
+partly in the far cells. A star step not longer than
 that of the receiver, a window that starts after $t_0$, and a receiver with no
 step yet keep the window as it is. A
 receiver keeps the waiting light of each slot in $N_{\rm n}$ near bins and two far
@@ -3526,7 +3528,7 @@ without a speed limit is \code{radiation\_packet\_merge\_slot\_unlimited}
 (\code{radiation\_isrf.c:183-269}, the call at :255).
 Eq.~\eqref{eq:packet-merge-E} is at \code{radiation\_packet.c:3761-3769}. The
 sums of Eq.~\eqref{eq:packet-merge-origin} are formed in
-\code{radiation\_packet\_deliver} as \code{inbox\_origin\_offset}
+\code{radiation\_packet\_deliver\_share} as \code{inbox\_origin\_offset}
 (\code{radiation\_packet.h:833} and :856). Their weight is
 \code{delivered\_energy}, summed over the bands inside
 \code{radiation\_packet\_absorb\_in\_dust} (:614-652). The division by
@@ -3573,7 +3575,7 @@ at \code{src/engine\_config.c:665}) through
 \code{radiation\_packet\_set\_redshift} (\code{radiation\_packet.c:304-313}).
 Eqs.~\eqref{eq:packet-zeta}--\eqref{eq:packet-redshift-N} are
 \code{radiation\_packet\_redshift\_share} (\code{radiation\_packet.c:1096-1145}).
-\code{radiation\_packet\_deliver} calls it when $H>0$ and adds the terms to
+\code{radiation\_packet\_deliver\_share} calls it when $H>0$ and adds the terms to
 \code{redshifted\_energy} and \code{redshifted\_photons}
 (\code{radiation\_packet.h:789-791}; fields at \code{feedback\_struct.h:319-326}).
 The path is multiplied by $a$ by the callers (\code{radiation\_packet.h:1106}
@@ -3582,7 +3584,7 @@ for a hop, :1397 for a star). $H$ comes from \code{runner\_iact\_isrf\_packet\_h
 \code{radiation\_iact.h:281}.
 
 \paragraph{Dust absorption (Secs.~\ref{sec:packet-absorption}, \ref{sec:packet-absorb-summary}).} All of it is
-in \code{radiation\_packet\_deliver} (\code{radiation\_packet.h:752-862}), with
+in \code{radiation\_packet\_deliver\_share} (\code{radiation\_packet.h:752-862}), with
 the redshift at :789-791, before the dust. The dust is
 \code{radiation\_packet\_absorb\_in\_dust} (:614-652, called at :804).
 Eq.~\eqref{eq:packet-tau} is at :627 and Eq.~\eqref{eq:packet-alpha} at
@@ -3680,7 +3682,7 @@ $\mathcal T'/\mathcal S_r(\Sigma')$ (:976). A gas sender calls it in
 Eq.~\eqref{eq:h2-shift} at :1093-1098). A star share calls it in
 \code{radiation\_packet\_star\_emit} (:1389), from $\mathcal T=1$, $\Sigma=0$ and
 $\Delta v=0$, with no velocity step. The sums of Eq.~\eqref{eq:h2-sums} are
-formed in \code{radiation\_packet\_deliver\_with\_lines} (:811-818).
+formed in \code{radiation\_packet\_deliver\_share} (:811-818).
 $\mathcal B_k$ is a float that saturates at the largest float
 (\code{radiation\_packet\_add\_saturated}, :663-666). $\mathcal A_k$ and
 $\mathcal V_k$ are doubles. The slot fields are \code{H2\_transmission},
@@ -3737,10 +3739,12 @@ Only the snapshot reads it.
 
 \paragraph{Time bins without a speed limit (Sec.~\ref{sec:packet-reservoir}).}
 The choice between the inbox and the reservoir is the argument
-\code{to\_reservoir} of \code{radiation\_packet\_deliver}
+\code{to\_reservoir} of \code{radiation\_packet\_deliver\_share}
 (\code{radiation\_packet.h:752-862}). For a hop it is
 \code{s->time\_bin > r->time\_bin} at :1107. For a star it is
-\code{si->time\_bin > pj->time\_bin} at :1398. \code{source\_step\_end\_ti}
+\code{si->time\_bin > pj->time\_bin} at :1398. With a speed limit the same
+test, together with the star flag of the call at :1393-1402, gates the move of the
+arrival window (Section~\ref{sec:packet-lightspeed}). \code{source\_step\_end\_ti}
 (:759) is the end of the step of the sender. For a particle it is
 \code{step\_end\_ti}, set as \code{ti\_current + ti\_step} at
 \code{radiation\_packet.c:4081} and :4126. For a star it is
