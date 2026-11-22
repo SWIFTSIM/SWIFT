@@ -54,14 +54,20 @@
  *
  * The RT loops also run the GEAR RT gradient loop, which updates the active
  * particles only. All the gas is hydro-inactive there, as on an RT sub-cycle,
- * so the search of the RT loops cannot rely on the hydro h_max_active.
+ * so the search of the RT loops cannot rely on the hydro h_max_active. The
+ * gradient loop also runs as a self task on one split cell.
  *
- * The bare configure skips this test (exit 77). It runs with Gizmo hydro:
+ * A bare configure skips this test (exit 77), and so does a hydro scheme that
+ * does not update inactive neighbours. Run it by hand in a debug build, with
+ * the seed as the first argument (./testForeignPairFlux 1234), after one of:
  *   ./configure --with-hydro=gizmo-mfm --with-riemann-solver=hllc
+ *     --enable-debug --enable-debugging-checks --disable-optimization
+ *     --disable-hand-vec
  *   ./configure --with-hydro=gizmo-mfv --with-riemann-solver=hllc
  *     --with-rt=GEAR_1 --with-rt-riemann-solver=GLF --with-stars=GEAR
- *     --with-feedback=none --with-grackle=<path>
- * The second line also checks the RT gradient and transport loops.
+ *     --with-feedback=none --with-grackle=<path> --enable-debug
+ *     --enable-debugging-checks --disable-optimization --disable-hand-vec
+ * Only the second line checks the RT transport and gradient loops.
  */
 
 #if hydro_force_updates_inactive_neighbours
@@ -75,6 +81,8 @@ void runner_dosub_pair2_rt_transport(struct runner *r, struct cell *ci,
 void runner_dosub_pair1_rt_gradient(struct runner *r, struct cell *ci,
                                     struct cell *cj, const float h_hi,
                                     const int gettimer);
+void runner_dosub_self1_rt_gradient(struct runner *r, struct cell *c,
+                                    const float h_hi, const int gettimer);
 
 #define TI_CURRENT 8
 #define ACTIVE_BIN 1
@@ -212,8 +220,9 @@ static void init_particle(struct part *p, struct xpart *xp, const double m,
   p->ti_kick = TI_CURRENT;
 #endif
 
-#if rt_transport_updates_inactive_neighbours
   p->rt_time_data.time_bin = active ? ACTIVE_BIN : INACTIVE_BIN;
+
+#if rt_transport_updates_inactive_neighbours
   p->rt_data.flux_dt = active ? 1e-3f : -1.f;
   for (int g = 0; g < RT_NGROUPS; g++) {
     const float E = random_uniform(0.5, 1.5);
@@ -420,6 +429,7 @@ static void brute_force(const struct cell *a, const struct cell *b,
       const struct part *q = &b->hydro.parts[j];
       const int k_active = is_active(k, e, loop);
       const int q_active = is_active(q, e, loop);
+      if (k == q) continue;
       if (!k_active && !q_active) continue;
       if (loop == loop_rt_gradient && !k_active) continue;
       float dx[3];
@@ -529,7 +539,7 @@ static int count_reached(const struct cell *a, const struct cell *b,
         const double dx = s->periodic ? nearest(dx_d, s->dim[d]) : dx_d;
         r2 += dx * dx;
       }
-      const double h = max(k->h, q->h);
+      const double h = loop == loop_rt_gradient ? q->h : max(k->h, q->h);
       if (r2 < h * h * kernel_gamma2) {
         n++;
         break;
@@ -684,6 +694,62 @@ static int do_case(const struct pair_case *pc, const enum loop_type loop,
   return n_fail;
 }
 
+#if rt_transport_updates_inactive_neighbours
+/**
+ * @brief Run the RT gradient self task on one cell with all the gas
+ * hydro-inactive and check the gradients against a brute-force sum.
+ *
+ * Half of the particles are in the top h band, which the self task handles at
+ * the level of the cell, where the search of an RT-active particle must not
+ * rely on h_max_active.
+ *
+ * @return The number of failed checks.
+ */
+static int do_self_case(const int depth, const double *p_level,
+                        struct runner *r, struct engine *e) {
+
+  e->s->periodic = 0;
+  const double origin[3] = {0., 0., 0.};
+  struct cell *c = make_cell(origin, depth, p_level, 0.5, e);
+  set_hydro_inactive(c, e);
+  set_node(c, 0);
+  runner_do_hydro_sort(r, c, 0x1FFF, 0, 0, 0, 0);
+
+  const int n = c->hydro.count;
+  struct part *s0 = checked_malloc(n * sizeof(struct part));
+  memcpy(s0, c->hydro.parts, n * sizeof(struct part));
+
+  struct flux *bf = checked_calloc(n, sizeof(struct flux));
+  brute_force(c, c, bf, loop_rt_gradient, e);
+  double (*ref)[N_FLUX] = checked_malloc(n * sizeof(*ref));
+  double (*f)[N_FLUX] = checked_malloc(n * sizeof(*f));
+  for (int k = 0; k < n; k++)
+    for (int d = 0; d < N_FLUX; d++) ref[k][d] = bf[k].f[d];
+
+  int n_fail = 0;
+  for (int split = 0; split < 2; split++) {
+    memcpy(c->hydro.parts, s0, n * sizeof(struct part));
+    c->split = split;
+    runner_dosub_self1_rt_gradient(r, c, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
+    for (int k = 0; k < n; k++)
+      get_flux(&c->hydro.parts[k], loop_rt_gradient, f[k]);
+    double max_rel = 0.;
+    const int n_bad = compare(n, f, ref, bf, &max_rel);
+    message(
+        "rt_gradient self, depth %d, %-7s vs brute force: %d bad (max %.1e)",
+        depth, split ? "split" : "unsplit", n_bad, max_rel);
+    n_fail += n_bad > 0;
+  }
+
+  free(s0);
+  free(bf);
+  free(ref);
+  free(f);
+  free_cell(c);
+  return n_fail;
+}
+#endif
+
 int main(int argc, char *argv[]) {
 
   /* Initialize CPU frequency, this also starts time. */
@@ -765,6 +831,10 @@ int main(int argc, char *argv[]) {
     n_fail += do_case(&cases[c], loop_rt_transport, &runner, &engine);
   for (int c = 0; c < n_cases; c++)
     n_fail += do_case(&cases[c], loop_rt_gradient, &runner, &engine);
+  const double p_self[MAX_DEPTH + 1] = {0.5, 0.5};
+  n_fail += do_self_case(1, p_self, &runner, &engine);
+  const double p_self2[MAX_DEPTH + 1] = {0.3, 0.3, 0.4};
+  n_fail += do_self_case(2, p_self2, &runner, &engine);
 #endif
 
   if (n_fail) {
