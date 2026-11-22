@@ -441,13 +441,16 @@ __attribute__((always_inline)) INLINE static void hydro_set_viscosity_alpha(
 __attribute__((always_inline)) INLINE static void
 hydro_diffusive_feedback_reset(struct part *p) {
 
-  /* As in SPHENIX: the viscosity coefficient to its maximum and the
-   * conduction coefficient to zero. The raised viscosity coefficient lasts
-   * ~10 H / c_s: it gives the heated particle the full viscosity of a shock
-   * and, through the cap of hydro_prepare_force(), keeps the conduction of
-   * the particle and of its neighbours off until it has decayed, by which
-   * time the injected energy has done work on the gas around it. */
+  /* As in SPHENIX: the viscosity coefficient to its maximum (the heated
+   * particle gets the full viscosity of a shock) and the conduction
+   * coefficient to zero (for the force loops before its next force
+   * preparation, which floors it again). The raised coefficient decays over
+   * ~10 H / c_s and, through the cap of hydro_prepare_force(), keeps the
+   * conduction of the particle and of its neighbours off until then, by
+   * which time the injected energy has done work on the gas around it;
+   * the cap reads alpha_shock, which the viscosity floor does not reach. */
   p->alpha_visc = const_viscosity_alpha;
+  p->alpha_shock = const_viscosity_alpha;
   p->alpha_diff = 0.f;
 }
 
@@ -588,7 +591,6 @@ __attribute__((always_inline)) INLINE static void hydro_init_part(
   p->density.wcount_dh = 0.f;
   p->rho = 0.f;
   p->density.rho_dh = 0.f;
-  p->fallback_flags = magma_fallback_none;
 
 #ifdef SWIFT_HYDRO_DENSITY_CHECKS
   p->N_density = 1; /* Self contribution */
@@ -676,8 +678,8 @@ __attribute__((always_inline)) INLINE static void hydro_reset_gradient(
     struct part *p) {
 
   zero_sym_matrix(&p->gradient.c_matrix_inv);
-  p->c_max_ngb = 0.f;
-  p->alpha_visc_max_ngb = 0.f;
+  p->gradient.c_max_ngb = 0.f;
+  p->gradient.alpha_shock_max_ngb = 0.f;
   p->laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vx[i] = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient.gradient_vy[i] = 0.f;
@@ -802,6 +804,13 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
   /* Compute the sound speed */
   const float soundspeed =
       gas_soundspeed_from_pressure(p->rho, pressure_including_floor);
+
+  /* Whether the last force preparation had a valid C-matrix (the trigger
+   * of the viscosity coefficient needs a divergence to differentiate from),
+   * then start this one's record of the fallbacks from scratch. */
+  const int previous_gradient_valid =
+      !(p->fallback_flags & magma_fallback_inversion);
+  p->fallback_flags = magma_fallback_none;
 
   /* Local variables to allow for gradient -> force transition. */
   struct sym_matrix c_matrix;
@@ -956,34 +965,45 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * converging flow (xi the shock-boosted limiter, H the kernel support)
    * sets alpha_loc = alpha_max A / (A + c_s^2), which is ~(k H)^2 times
    * the amplitude for a linear sound wave and ~1 in a shock. alpha jumps
-   * up to alpha_loc and decays back towards it over H / (2 length c_s);
-   * floored at alpha_min. Divergence and sound speed are physical. */
-  /* The coefficient enters the particle's viscous pressure (force loop)
-   * and, through the neighbours' maximum, the conduction cap below; see
+   * up to alpha_loc and decays back towards it over H / (2 length c_s).
+   * Divergence and sound speed are physical. */
+  /* The evolved coefficient is kept as alpha_shock, floored at the smaller
+   * of the run's floor and the default one: it is the shock measure of the
+   * conduction cap below (own value and neighbours' maximum), so that the
+   * cap does not weaken when the floor is raised (at a floor of alpha_max
+   * the force loop's coefficient is constant, the cap is not). The force
+   * loop's alpha_visc is alpha_shock floored at the run's floor; see
    * hydro_parameters.h for the choice of the floor. */
   const float H = kernel_gamma * p->h * cosmo->a;
   const float c_phys = soundspeed * cosmo->a_factor_sound_speed;
   const float div_v_phys = div_v_tot * cosmo->a2_inv;
-  const float div_v_dt =
-      dt_alpha > 0.f ? (div_v_phys - p->div_v_previous) / dt_alpha : 0.f;
+  /* No derivative after a spell without a valid C-matrix (the stored
+   * divergence is then zero, not a measurement): the first valid step
+   * seeds it. */
+  const float div_v_dt = (dt_alpha > 0.f && previous_gradient_valid)
+                             ? (div_v_phys - p->div_v_previous) / dt_alpha
+                             : 0.f;
   const float A = div_v_phys < 0.f
                       ? viscosity_limiter * H * H * fmaxf(0.f, -div_v_dt)
                       : 0.f;
   const float A_plus_c2 = A + c_phys * c_phys;
   const float alpha_loc =
       A_plus_c2 > 0.f ? const_viscosity_alpha * A / A_plus_c2 : 0.f;
-  float alpha_v = p->alpha_visc;
+  /* Decay towards alpha_loc (Cullen & Dehnen 2010, eq. 16) over their
+   * tau = h / (2 l v_sig), where their h is the kernel support radius
+   * (their footnote 2: W = 0 beyond h), i.e. our H, and with v_sig -> c_s:
+   * H / (2 l c_s). Exact for any time step. */
+  const float decay =
+      expf(-dt_alpha * 2.f * hydro_props->viscosity.length * c_phys / H);
+  float alpha_v = p->alpha_shock;
   if (alpha_loc > alpha_v) {
     alpha_v = alpha_loc;
   } else {
-    /* Exponential decay towards alpha_loc (Cullen & Dehnen 2010, eq. 16)
-     * over their tau = h / (2 l v_sig), where their h is the kernel support
-     * radius (their footnote 2: W = 0 beyond h), i.e. our H, and with
-     * v_sig -> c_s: H / (2 l c_s). Exact for any time step. */
-    const float dt_over_tau =
-        dt_alpha * 2.f * hydro_props->viscosity.length * c_phys / H;
-    alpha_v = alpha_loc + (alpha_v - alpha_loc) * expf(-dt_over_tau);
+    alpha_v = alpha_loc + (alpha_v - alpha_loc) * decay;
   }
+  const float cap_floor = fminf(hydro_props->viscosity.alpha_min,
+                                hydro_props_default_viscosity_alpha_min);
+  p->alpha_shock = fmaxf(alpha_v, cap_floor);
   p->alpha_visc = fmaxf(alpha_v, hydro_props->viscosity.alpha_min);
   p->div_v_previous = div_v_phys;
 
@@ -992,17 +1012,19 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
    * 1/a^2 of the Laplacian), decays towards alpha_min over the signal
    * crossing time of the kernel support (implicit, stable for any time
    * step), and is capped by how viscous the neighbourhood is, so that it is
-   * off in a shock and around a feedback particle (whose viscosity the hook
-   * raises to alpha_max). The shock measure is the largest of the particle's
-   * own coefficient, as just updated, and its neighbours' from their last
-   * update (gradient loop), read relative to the floor so that the cap is 1
-   * in quiescent gas whatever the floor. The
-   * signal speed is the sum of the particle's and its hottest neighbour's
-   * sound speeds. With the default floor of 1 the source and the decay are
-   * inert and the coefficient is the cap alone. */
+   * off in a shock and around a feedback particle (whose coefficient the
+   * hook raises to alpha_max). The shock measure is the largest of the
+   * particle's own alpha_shock, as just updated, and its neighbours' from
+   * their last update (gradient loop), read relative to alpha_shock's floor
+   * so that the cap is 1 in quiescent gas. The signal speed is the sum of
+   * the particle's and its hottest neighbour's sound speeds, both without
+   * the pressure floor (the conduction terms use the pressure without the
+   * floor throughout). With the default floor of 1 the source and the decay
+   * are inert and the coefficient is the cap alone. */
   const float H_D = kernel_gamma * p->h * cosmo->a;
-  const float v_sig_phys =
-      (soundspeed + p->c_max_ngb) * cosmo->a_factor_sound_speed;
+  const float v_sig_phys = (gas_soundspeed_from_pressure(p->rho, pressure) +
+                            p->gradient.c_max_ngb) *
+                           cosmo->a_factor_sound_speed;
   const float source =
       p->u > 0.f ? hydro_props->diffusion.beta * H_D * p->laplace_u *
                        cosmo->a_factor_sound_speed * cosmo->a2_inv / sqrtf(p->u)
@@ -1012,17 +1034,10 @@ __attribute__((always_inline)) INLINE static void hydro_prepare_force(
                  ratio * hydro_props->diffusion.alpha_min) /
                 (1.f + ratio);
   alpha = fmaxf(alpha, hydro_props->diffusion.alpha_min);
-  const float visc_range =
-      const_viscosity_alpha - hydro_props->viscosity.alpha_min;
-  /* With the floor at alpha_max the coefficient carries no shock
-   * information: no cap. */
-  const float visc_frac =
-      visc_range > 0.f
-          ? (fmaxf(p->alpha_visc, p->alpha_visc_max_ngb) -
-             hydro_props->viscosity.alpha_min) /
-                visc_range
-          : 0.f;
-  alpha = fminf(alpha, 1.f - fminf(1.f, fmaxf(0.f, visc_frac)));
+  const float shock_frac =
+      (fmaxf(p->alpha_shock, p->gradient.alpha_shock_max_ngb) - cap_floor) /
+      (const_viscosity_alpha - cap_floor);
+  alpha = fminf(alpha, 1.f - fminf(1.f, fmaxf(0.f, shock_frac)));
   p->alpha_diff = fminf(1.f, alpha);
 
   /* Finally, update the 'force' sub-structure' */
@@ -1288,7 +1303,12 @@ __attribute__((always_inline)) INLINE static void hydro_convert_quantities(
   p->force.soundspeed = soundspeed;
 
   /* The dissipation coefficients start at the run-time floors
-   * (hydro_first_init_part() only has the compile-time defaults) */
+   * (hydro_first_init_part() only has the compile-time defaults). Initial
+   * conditions flagged as holding entropies skip this function
+   * (engine_init_particles()); the scheme evolves the internal energy and
+   * has no conversion for them, so they are not supported. */
+  p->alpha_shock = fminf(hydro_props->viscosity.alpha_min,
+                         hydro_props_default_viscosity_alpha_min);
   p->alpha_visc = hydro_props->viscosity.alpha_min;
   p->alpha_diff = hydro_props->diffusion.alpha_min;
 }
@@ -1321,10 +1341,10 @@ __attribute__((always_inline)) INLINE static void hydro_first_init_part(
    * (through the cap in hydro_prepare_force()) until alpha has decayed.
    * Only the compile-time defaults are available here; the run-time floors
    * are set in hydro_convert_quantities() before the first step. */
+  p->alpha_shock = hydro_props_default_viscosity_alpha_min;
   p->alpha_visc = hydro_props_default_viscosity_alpha_min;
   p->alpha_diff = hydro_props_default_diffusion_alpha_min;
-  p->alpha_visc_max_ngb = 0.f;
-  p->c_max_ngb = 0.f;
+  p->fallback_flags = magma_fallback_none;
   p->laplace_u = 0.f;
   for (int i = 0; i < 3; ++i) p->gradient_u_prev[i] = 0.f;
 

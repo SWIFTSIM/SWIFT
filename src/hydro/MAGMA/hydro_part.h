@@ -213,6 +213,17 @@ struct part {
        * their last gradient evaluation (viscosity limiter) */
       float shock_indicator;
 
+      /*! Largest sound speed among the neighbours: the signal speed of the
+       * decay of the conduction coefficient is the sum of the particle's
+       * and its hottest neighbour's sound speeds */
+      float c_max_ngb;
+
+      /*! Largest alpha_shock among the neighbours (their values of the
+       * previous step): with the particle's own, caps the conduction
+       * coefficient in shocks and around a particle a feedback event has
+       * heated */
+      float alpha_shock_max_ngb;
+
     } gradient;
 
     /**
@@ -314,23 +325,24 @@ struct part {
    * derivative driving the per-particle alpha */
   float div_v_previous;
 
-  /*! Per-particle coefficient alpha of the Cullen & Dehnen (2010) form,
-   * the shock measure of the conduction cap (not used by the viscosity) */
+  /*! Viscosity coefficient of the force loop: alpha_shock floored at
+   * viscosity_alpha_min */
   float alpha_visc;
 
   /*! Coefficient of the conduction terms of this particle (SPHENIX's
    * evolved coefficient): grows at beta H laplace(u) / sqrt(u) where u has a
    * local minimum, decays towards diffusion_alpha_min over the signal
-   * crossing time of the kernel support, capped where the neighbours'
-   * viscosity coefficient is up. The pair term uses the pressure-weighted
-   * mean of the two particles' coefficients. */
+   * crossing time of the kernel support, capped where alpha_shock of the
+   * particle or its neighbours is up. The pair term uses the
+   * pressure-weighted mean of the two particles' coefficients. */
   float alpha_diff;
 
-  /*! Largest viscosity coefficient among the neighbours (gradient loop, so
-   * their values of the previous step): with the particle's own, caps the
-   * conduction coefficient in shocks and around a particle a feedback event
-   * has heated */
-  float alpha_visc_max_ngb;
+  /*! Per-particle coefficient of the Cullen & Dehnen (2010) form as evolved
+   * (trigger, decay, feedback reset), floored at the smaller of
+   * viscosity_alpha_min and its default: the shock measure of the conduction
+   * cap, which therefore does not weaken when the floor is raised (at a
+   * floor of 1 the force loop's coefficient is constant, the cap is not). */
+  float alpha_shock;
 
   /*! SPH estimate of the Laplacian of the internal energy, accumulated in
    * the gradient loop (source of the conduction coefficient). Outside the
@@ -344,13 +356,9 @@ struct part {
    * force sub-structure does not survive the density and gradient loops. */
   float gradient_u_prev[3];
 
-  /*! Largest sound speed among the neighbours (gradient loop): the signal
-   * speed of the decay of the conduction coefficient is the sum of the
-   * particle's and its hottest neighbour's sound speeds */
-  float c_max_ngb;
-
   /*! Why this particle interacts using base SPH (magma_fallback_none if it
-   * does not, otherwise a combination of the #magma_fallback_reasons) */
+   * does not, otherwise a combination of the #magma_fallback_reasons), from
+   * its last force preparation (reset there) */
   char fallback_flags;
 
   /*! Tree-depth at which size / 2 <= h * gamma < size */

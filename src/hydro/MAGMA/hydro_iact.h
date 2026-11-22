@@ -172,9 +172,10 @@ __attribute__((always_inline)) INLINE static void runner_iact_nonsym_gradient(
    * and most viscous neighbour (its cap). The sound speed comes from the
    * equation of state: the force sub-structure shares its storage with the
    * density and gradient ones and does not survive their loops. */
-  pi->c_max_ngb =
-      fmaxf(pi->c_max_ngb, gas_soundspeed_from_internal_energy(pj->rho, pj->u));
-  pi->alpha_visc_max_ngb = fmaxf(pi->alpha_visc_max_ngb, pj->alpha_visc);
+  pi->gradient.c_max_ngb = fmaxf(pi->gradient.c_max_ngb,
+                                 gas_soundspeed_from_internal_energy(pj->rho, pj->u));
+  pi->gradient.alpha_shock_max_ngb =
+      fmaxf(pi->gradient.alpha_shock_max_ngb, pj->alpha_shock);
 
   /* Get r. */
   const float r = sqrtf(r2);
@@ -288,10 +289,12 @@ __attribute__((always_inline)) INLINE static void runner_iact_gradient(
    * density and gradient ones and does not survive their loops. */
   const float ci = gas_soundspeed_from_internal_energy(pi->rho, pi->u);
   const float cj = gas_soundspeed_from_internal_energy(pj->rho, pj->u);
-  pi->c_max_ngb = fmaxf(pi->c_max_ngb, cj);
-  pj->c_max_ngb = fmaxf(pj->c_max_ngb, ci);
-  pi->alpha_visc_max_ngb = fmaxf(pi->alpha_visc_max_ngb, pj->alpha_visc);
-  pj->alpha_visc_max_ngb = fmaxf(pj->alpha_visc_max_ngb, pi->alpha_visc);
+  pi->gradient.c_max_ngb = fmaxf(pi->gradient.c_max_ngb, cj);
+  pj->gradient.c_max_ngb = fmaxf(pj->gradient.c_max_ngb, ci);
+  pi->gradient.alpha_shock_max_ngb =
+      fmaxf(pi->gradient.alpha_shock_max_ngb, pj->alpha_shock);
+  pj->gradient.alpha_shock_max_ngb =
+      fmaxf(pj->gradient.alpha_shock_max_ngb, pi->alpha_shock);
 
   /* Get r and 1/r. */
   const float r = sqrtf(r2);

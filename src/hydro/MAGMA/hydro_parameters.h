@@ -214,9 +214,9 @@
 
 /*! Floor of the per-particle conduction coefficient. The coefficient decays
  * towards this value over the signal crossing time of the kernel support and
- * is capped where the particle's or its neighbours' viscosity coefficient is
- * up (shocks, and
- * the surroundings of a particle a feedback event has just heated). With the
+ * is capped where the particle's or its neighbours' viscosity coefficient
+ * (before the viscosity floor, see alpha_min below) is up: shocks, and the
+ * surroundings of a particle a feedback event has just heated. With the
  * floor at 1 (default, 2026-10 feedback study) the conduction is the paper's
  * full term wherever the gas is not viscous, which keeps the suite's contact
  * results, and the cap alone protects feedback energy: the cooling Sedov
@@ -242,7 +242,10 @@ struct viscosity_global_data {
    * of the viscosity in pure shear (default 0: none) */
   float limiter_floor;
 
-  /*! Floor of the time-dependent alpha (default 0.5) */
+  /*! Floor of the time-dependent alpha (default 0.5). The conduction cap
+   * reads the coefficient floored at the smaller of this and the default,
+   * so that raising the floor (1 is the paper's constant viscosity) does
+   * not weaken the cap in shocks and around feedback particles. */
   float alpha_min;
 
   /*! Decay rate of the time-dependent alpha, Cullen & Dehnen's l: the decay

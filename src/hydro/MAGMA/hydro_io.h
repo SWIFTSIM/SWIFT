@@ -294,17 +294,18 @@ INLINE static void hydro_write_particles(const struct part *parts,
       "Per-particle coefficient of the artificial conduction terms: grows "
       "where the internal energy has a local minimum, decays towards "
       "diffusion_alpha_min over a kernel-support signal crossing time, and "
-      "is capped where the particle's or its neighbours' viscosity "
-      "coefficient is up (shocks, and the surroundings of a particle a "
-      "feedback event has heated)");
+      "is capped where the particle's or its neighbours' Cullen & Dehnen "
+      "coefficient (before the viscosity floor) is up (shocks, and the "
+      "surroundings of a particle a feedback event has heated)");
 
   list[20] = io_make_output_field(
       "ViscosityAlpha", FLOAT, 1, UNIT_CONV_NO_UNITS, 0.f, parts, alpha_visc,
       "Per-particle coefficient alpha of the viscous pressure, of the "
       "Cullen & Dehnen (2010) form: raised towards the maximum where the "
       "flow converges faster and faster, decaying towards "
-      "viscosity_alpha_min otherwise. The maximum over the particle and its "
-      "neighbours caps the conduction coefficient.");
+      "viscosity_alpha_min otherwise. The coefficient before that floor "
+      "(floored at the smaller of viscosity_alpha_min and 0.5), maximised "
+      "over the particle and its neighbours, caps the conduction coefficient.");
 }
 
 /**

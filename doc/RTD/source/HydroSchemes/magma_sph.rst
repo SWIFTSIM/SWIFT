@@ -249,12 +249,8 @@ found the conduction constants at their optimum and the floor the only
 remaining lever on the contacts: it trades the last 40 per cent of the
 smooth-flow gain for half of the contact noise and a third of the Evrard
 loss. ``SPH:viscosity_alpha_min: 1`` restores the paper's constant
-viscosity (and switches the conduction cap off, since the coefficient then
-carries no shock information). That also removes the protection of freshly
-heated feedback particles, whose conduction is held off by the cap alone
-(the feedback hook's reset of the conduction coefficient is undone by the
-coefficient's floor at the next step), so it is not a setting for runs
-with feedback.
+viscosity in the force loop; the conduction cap (below) reads the
+coefficient before the floor and is unchanged.
 
 Artificial conduction
 ---------------------
@@ -282,12 +278,20 @@ towards ``SPH:diffusion_alpha_min`` over a signal crossing time of the
 support, and are capped by :math:`1 - (\alpha^{\rm ngb}_{\max} -
 \alpha_{\min}) / (\alpha_{\max} - \alpha_{\min})`, the SPHENIX limiter, with
 :math:`\alpha^{\rm ngb}_{\max}` the largest viscosity coefficient of the
-particle (its current value) and its neighbours. With the default floor of 1
-the coefficient is this cap alone: the paper's full conduction wherever the
-gas is not viscous, none in shocks and around a particle that a feedback
-event has just heated (the feedback hook raises its :math:`\alpha_a` to the
-maximum). Setting ``SPH:diffusion_alpha_min: 0`` gives SPHENIX's behaviour,
-conduction only where the Laplacian source has switched it on.
+particle (its current value) and its neighbours. Here :math:`\alpha_{\min}`
+is the smaller of ``SPH:viscosity_alpha_min`` and its default of 0.5, and
+the coefficient is read before the floor of the force loop is applied, so
+that raising the floor does not weaken the cap: at a floor of 1 the force
+loop has the paper's constant viscosity while the cap still switches the
+conduction off in shocks and around heated particles, as at the default.
+With the default floor of 1 the coefficient is this cap alone: the paper's
+full conduction wherever the gas is not viscous, none in shocks and around a
+particle that a feedback event has just heated (the feedback hook raises its
+:math:`\alpha_a` to the maximum). Setting ``SPH:diffusion_alpha_min: 0``
+gives SPHENIX's behaviour, conduction only where the Laplacian source has
+switched it on. The decay's signal speed is the sum of the particle's and
+its hottest neighbour's sound speeds, both without the pressure floor, as
+the conduction terms themselves.
 
 Time step
 ---------
@@ -469,11 +473,11 @@ minimal internal energy, the time-step limiter, the velocity-kick signal
 velocity correction of kinetic feedback (the Courant signal speed is raised
 by :math:`\beta\,\Delta v`, as in the other schemes) and the diffusive
 feedback reset (per-particle viscosity coefficient to its maximum and
-conduction coefficient to zero; the latter is restored by the coefficient's
-floor at the next step, so it is the raised viscosity coefficient, through
-the conduction cap, that keeps the conduction around a heated particle off
-until its viscosity has decayed, about ten sound-crossing times of the
-kernel support). The velocity
+conduction coefficient to zero until the particle's next force preparation;
+the raised coefficient, through the conduction cap, keeps the conduction of
+the particle and its neighbours off until it has decayed, about ten
+sound-crossing times of the kernel support, whatever the viscosity floor).
+The velocity
 divergence used by the GEAR star formation and sink models is the trace of
 the matrix velocity gradient recorded at the last force preparation (zero
 for particles that fell back to standard SPH). Cosmological runs are
