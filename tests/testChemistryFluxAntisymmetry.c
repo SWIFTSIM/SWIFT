@@ -96,6 +96,10 @@ static const char *limiter_name(enum test_limiter_regime l) {
  * residual computed below. */
 #define TEST_METAL 0
 
+/* The current integer time and its highest active time-bin. */
+#define TI_CURRENT (1LL << 20)
+#define MAX_ACTIVE_BIN 19
+
 /**
  * @brief Fill a #part with a self-consistent, non-degenerate baseline state.
  *
@@ -221,7 +225,7 @@ static struct residual_result measure_gate_residual(
 
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const double time_base = 1e-5;
-  const integertime_t ti_current = 1;
+  const integertime_t ti_current = TI_CURRENT;
 
   reset_flux_accumulators(&pi);
   reset_flux_accumulators(&pj);
@@ -229,7 +233,7 @@ static struct residual_result measure_gate_residual(
       r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/1,
       /*local_first=*/1, /*local_second=*/1, /*a=*/1.f,
       /*H=*/0.f, time_base, ti_current, cosmo, with_cosmology, chem_data,
-      chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
+      chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
   const double Fi = pi.chemistry_data.flux.metal_mass[TEST_METAL];
 
   memcpy(&pi, pi_template, sizeof(struct part));
@@ -241,7 +245,7 @@ static struct residual_result measure_gate_residual(
       r2, mdx, pj.h, pi.h, &pj, &pi, /*both_updatable_here=*/1,
       /*local_first=*/1, /*local_second=*/1, /*a=*/1.f,
       /*H=*/0.f, time_base, ti_current, cosmo, with_cosmology, chem_data,
-      chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
+      chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
   const double Fj = pj.chemistry_data.flux.metal_mass[TEST_METAL];
 
   struct residual_result res;
@@ -270,22 +274,31 @@ static double measure_mindt_residual(
   memcpy(&pj, pj_template, sizeof(struct part));
   const float r2 = dx[0] * dx[0] + dx[1] * dx[1] + dx[2] * dx[2];
   const double time_base = 1e-5;
-  const integertime_t ti_current = 1;
+  const integertime_t ti_current = TI_CURRENT;
   const int with_cosmology = 0;
 
   double totflux[GEAR_CHEMISTRY_ELEMENT_COUNT][4];
   float mindt_fwd = 0.f, vmax = 0.f;
+  int status;
 #ifdef GIZMO_LANSON_VILA_PARTICLE_SIZE
   float delxbar_i = 0.f, delxbar_j = 0.f;
-  chemistry_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj, time_base,
-                                ti_current, cosmo, with_cosmology, chem_data,
-                                totflux, &mindt_fwd, &vmax, &delxbar_i,
-                                &delxbar_j);
+  status = chemistry_compute_pair_fluxes(
+      r2, dx, pi.h, pj.h, &pi, &pj, time_base, ti_current, cosmo,
+      with_cosmology, chem_data, totflux, &mindt_fwd, &vmax, &delxbar_i,
+      &delxbar_j);
 #else
-  chemistry_compute_pair_fluxes(r2, dx, pi.h, pj.h, &pi, &pj, time_base,
-                                ti_current, cosmo, with_cosmology, chem_data,
-                                totflux, &mindt_fwd, &vmax);
+  status = chemistry_compute_pair_fluxes(
+      r2, dx, pi.h, pj.h, &pi, &pj, time_base, ti_current, cosmo,
+      with_cosmology, chem_data, totflux, &mindt_fwd, &vmax);
 #endif
+
+  /* The interval runs from the later of the two stamps. */
+  const integertime_t ti_start = max(pi.chemistry_data.flux.ti_flux_last,
+                                     pj.chemistry_data.flux.ti_flux_last);
+  const float mindt_expected = (ti_current - ti_start) * time_base;
+  if (status != CHEMISTRY_PAIR_FLUX_FLUXES || mindt_fwd != mindt_expected)
+    error("Pair flux interval: status %d, interval %e, expected %e.", status,
+          mindt_fwd, mindt_expected);
 
   const float mdx[3] = {-dx[0], -dx[1], -dx[2]};
   float mindt_bwd = 0.f;
@@ -333,9 +346,9 @@ static void build_chem_data(struct chemistry_global_data *chem_data,
  * the synthetic separation) and measure the GATE residual and the mindt
  * order-independence residual.
  *
- * @param mixed_activity if non-zero, pi is left active (flux.dt > 0) and pj
- * inactive (flux.dt < 0); the mindt check is only meaningful in this case
- * (the GATE arm doesn't touch flux.dt at all).
+ * @param mixed_activity if non-zero, pi is active and pj inactive, and pj
+ * applied its fluxes last before pi did; the mindt check is only meaningful
+ * in this case.
  */
 static void run_config(const char *label, enum test_geometry geom,
                        float h_ratio, enum test_limiter_regime limiter_regime,
@@ -426,11 +439,12 @@ static void run_config(const char *label, enum test_geometry geom,
 #endif
 
   if (mixed_activity) {
-    pi.chemistry_data.flux.dt = 1.0f;
-    pj.chemistry_data.flux.dt = -1.0f;
+    pi.chemistry_data.flux.ti_flux_last = TI_CURRENT - 100000;
+    pj.chemistry_data.flux.ti_flux_last = TI_CURRENT - 250000;
+    pj.time_bin = MAX_ACTIVE_BIN + 1;
   } else {
-    pi.chemistry_data.flux.dt = 0.7f;
-    pj.chemistry_data.flux.dt = 1.3f;
+    pi.chemistry_data.flux.ti_flux_last = TI_CURRENT - 70000;
+    pj.chemistry_data.flux.ti_flux_last = TI_CURRENT - 130000;
   }
 
   struct chemistry_global_data chem_data;
@@ -486,8 +500,8 @@ static void build_tiebreak_pair(struct part *pi, struct part *pj,
     pi->chemistry_data.gradients.rhoZ[m][0] = 0.05;
     pj->chemistry_data.gradients.rhoZ[m][0] = -0.03;
   }
-  pi->chemistry_data.flux.dt = 0.7f;
-  pj->chemistry_data.flux.dt = 1.3f;
+  pi->chemistry_data.flux.ti_flux_last = TI_CURRENT - 70000;
+  pj->chemistry_data.flux.ti_flux_last = TI_CURRENT - 130000;
 }
 
 /**
@@ -512,8 +526,8 @@ static void build_h_primary_pair(struct part *pi, struct part *pj,
     pi->chemistry_data.gradients.rhoZ[m][0] = 0.05;
     pj->chemistry_data.gradients.rhoZ[m][0] = -0.03;
   }
-  pi->chemistry_data.flux.dt = 0.7f;
-  pj->chemistry_data.flux.dt = 1.3f;
+  pi->chemistry_data.flux.ti_flux_last = TI_CURRENT - 70000;
+  pj->chemistry_data.flux.ti_flux_last = TI_CURRENT - 130000;
 }
 
 /**
@@ -527,7 +541,7 @@ static int check_h_primary_designation(
     const struct cosmology *cosmo,
     const struct chemistry_global_data *chem_data) {
   const double time_base = 1e-5;
-  const integertime_t ti_current = 1;
+  const integertime_t ti_current = TI_CURRENT;
   int all_ok = 1;
 
   for (int hi_larger = 0; hi_larger < 2; hi_larger++) {
@@ -542,7 +556,7 @@ static int check_h_primary_designation(
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
         ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
+        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
     const int pi_acted = pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     const int pj_acted = pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0;
     /* pi is entitled at this call site; it must act iff it has the larger
@@ -569,7 +583,7 @@ static int check_h_primary_designation(
 static int check_local_tiebreak(const struct cosmology *cosmo,
                                 const struct chemistry_global_data *chem_data) {
   const double time_base = 1e-5;
-  const integertime_t ti_current = 1;
+  const integertime_t ti_current = TI_CURRENT;
   int all_ok = 1;
 
   const float test_order_signs[3] = {1.f, -1.f, 0.f};
@@ -585,7 +599,7 @@ static int check_local_tiebreak(const struct cosmology *cosmo,
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
         ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
+        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
     const int fwd_acted =
         (pi.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0) ||
         (pj.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0);
@@ -599,7 +613,7 @@ static int check_local_tiebreak(const struct cosmology *cosmo,
         r2, mdx, pj2.h, pi2.h, &pj2, &pi2, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/1, /*a=*/1.f, /*H=*/0.f, time_base,
         ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
+        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
     const int bwd_acted =
         (pi2.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0) ||
         (pj2.chemistry_data.flux.metal_mass[TEST_METAL] != 0.0);
@@ -639,7 +653,7 @@ static int check_local_tiebreak(const struct cosmology *cosmo,
 static int check_cross_rank(const struct cosmology *cosmo,
                             const struct chemistry_global_data *chem_data) {
   const double time_base = 1e-5;
-  const integertime_t ti_current = 1;
+  const integertime_t ti_current = TI_CURRENT;
   int all_ok = 1;
 
   /* order_sign > 0 => pi is NOT position-canonical-left (pj is); order_sign
@@ -658,7 +672,7 @@ static int check_cross_rank(const struct cosmology *cosmo,
         r2, dx, pi.h, pj.h, &pi, &pj, /*both_updatable_here=*/0,
         /*local_first=*/1, /*local_second=*/0, /*a=*/1.f, /*H=*/0.f, time_base,
         ti_current, cosmo, /*with_cosmology=*/0, chem_data,
-        chemistry_flux_pass_apply, /*max_active_bin=*/num_time_bins);
+        chemistry_flux_pass_apply, /*max_active_bin=*/MAX_ACTIVE_BIN);
 
     const double Fi = pi.chemistry_data.flux.metal_mass[TEST_METAL];
     const double Fj_foreign = pj.chemistry_data.flux.metal_mass[TEST_METAL];

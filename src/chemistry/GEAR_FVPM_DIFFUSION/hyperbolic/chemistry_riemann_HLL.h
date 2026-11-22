@@ -48,6 +48,7 @@
  * physical units)
  * @param n_unit The unit vector perpendicular to the "intercell" surface.
  * @param m Index of metal specie to update.
+ * @param flux_dt The time interval of the pair exchange.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
  * @param fluxes (return) The resulting flux at the interface (in physical
@@ -58,7 +59,8 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
     const struct part *restrict pj, const double UL[4], const double UR[4],
     const float WL[5], const float WR[5], const double hyperFluxL[4][3],
     const double hyperFluxR[4][3], const float Anorm, const float n_unit[3],
-    const int m, const struct chemistry_global_data *chem_data,
+    const int m, const float flux_dt,
+    const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double fluxes[4]) {
 
   /***************************************************************************/
@@ -148,24 +150,10 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
        that still needs some dissipation to stay stable. Component 0 is
        always rescaled while components 1-3 follow hyperbolic_limiter_scope,
        since unconditionally suppressing their dissipation would preserve
-       rather than decay an already-stale flux. dt_ij uses the same
-       order-independent mindt as chemistry_get_pair_flux_dt() in chemistry.c
-       and the MUSCL predictor (chemistry_gradients.h): the smallest positive
-       flux.dt among the two particles, whichever slot it ends up in after
-       canonicalisation. */
+       rather than decay an already-stale flux. dt_ij is the interval of the
+       pair exchange. */
     const double c_max = max(c_diff_L, c_diff_R);
-    const float dt_i = pi->chemistry_data.flux.dt;
-    const float dt_j = pj->chemistry_data.flux.dt;
-    double dt_min;
-    if (dt_i > 0.f && dt_j > 0.f) {
-      dt_min = min(dt_i, dt_j);
-    } else if (dt_i > 0.f) {
-      dt_min = dt_i;
-    } else if (dt_j > 0.f) {
-      dt_min = dt_j;
-    } else {
-      dt_min = 0.f;
-    }
+    const double dt_min = flux_dt;
     const double psize_i = chemistry_get_physical_particle_size(pi, cosmo);
     const double psize_j = chemistry_get_physical_particle_size(pj, cosmo);
     const double length_scale = min(psize_i, psize_j);
@@ -263,6 +251,7 @@ __attribute__((always_inline)) INLINE static void chemistry_riemann_solver_HLL(
  * physical units)
  * @param n_unit The unit vector perpendicular to the "intercell" surface.
  * @param m Index of metal specie to update.
+ * @param flux_dt The time interval of the pair exchange.
  * @param chem_data The global properties of the chemistry scheme.
  * @param cosmo The #cosmology.
  * @param fluxes (return) The resulting flux at the interface.
@@ -273,7 +262,8 @@ chemistry_riemann_solve_for_flux(
     const struct part *restrict pj, const double UL[4], const double UR[4],
     const float WL[5], const float WR[5], const double hyperFluxL[4][3],
     const double hyperFluxR[4][3], const float Anorm, const float n_unit[3],
-    const int m, const struct chemistry_global_data *chem_data,
+    const int m, const float flux_dt,
+    const struct chemistry_global_data *chem_data,
     const struct cosmology *cosmo, double fluxes[4]) {
 
   chemistry_riemann_check_input(WL, WR, UL, UR, n_unit);
@@ -289,8 +279,8 @@ chemistry_riemann_solve_for_flux(
 
   /* No conversion to physical needed, everything is physical here */
   chemistry_riemann_solver_HLL(dx, pi, pj, UL, UR, WL, WR, hyperFluxL,
-                               hyperFluxR, Anorm, n_unit, m, chem_data, cosmo,
-                               fluxes);
+                               hyperFluxR, Anorm, n_unit, m, flux_dt, chem_data,
+                               cosmo, fluxes);
 
   chemistry_riemann_check_output(WL, WR, UL, UR, n_unit, fluxes);
 }

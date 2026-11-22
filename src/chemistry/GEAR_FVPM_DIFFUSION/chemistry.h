@@ -539,7 +539,6 @@ __attribute__((always_inline)) INLINE static void chemistry_prepare_force(
     struct part *restrict p, struct xpart *restrict xp,
     const struct cosmology *cosmo, const float dt_alpha, const float dt_therm,
     const struct chemistry_global_data *cd) {
-  p->chemistry_data.flux.dt = dt_therm * cosmo->a * cosmo->a;
 
   /* Update the diffusion coefficient for the new loop */
   p->chemistry_data.kappa = chemistry_get_diffusion_coefficient(p, cd, cosmo);
@@ -649,6 +648,10 @@ __attribute__((always_inline)) INLINE static void chemistry_end_force(
   /* Reset the metal mass fluxes now that they have been applied */
   chemistry_part_reset_fluxes(p);
 
+  /* The next flux exchange of each pair starts from here. This is the only
+     place that moves the stamp: the limiter and the sync must not. */
+  chd->flux.ti_flux_last = ti_current;
+
   /* Sanity check on the total metal mass */
   chemistry_check_unphysical_total_metal_mass(p, 2);
 }
@@ -753,7 +756,12 @@ __attribute__((always_inline)) INLINE static void chemistry_first_init_part(
   p->chemistry_data.positivity_limiter_engagements = 0;
   p->chemistry_data.flux_exchange_count[0] = 0;
   p->chemistry_data.flux_exchange_count[1] = 0;
+  p->chemistry_data.flux_coverage_ticks = 0;
+  p->chemistry_data.flux_catch_up_count = 0;
 #endif
+
+  /* Runs start at ti = 0. */
+  p->chemistry_data.flux.ti_flux_last = 0;
 
   /* Init the part chemistry data */
   chemistry_init_part(p, cd);

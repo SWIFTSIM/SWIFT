@@ -46,8 +46,10 @@
  * pairs, solved by least squares. Over [0, 32], each must be 32 ticks.
  */
 
-#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION) || \
-    defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+/* The hyperbolic flux depends on the interval through the predictor and the
+   causal bound, so the moved mass is linear in the interval only in the
+   parabolic scheme. */
+#if defined(CHEMISTRY_GEAR_FVPM_DIFFUSION)
 
 #define N_PARTS 3
 #define TI_END 32
@@ -198,10 +200,6 @@ static int run_schedule(const enum schedule sched, struct runner *r,
     p->conserved.mass = 1.f;
     p->conserved.energy = 1.f;
     hydro_first_init_part(p, xp);
-    for (int i = 0; i < 3; i++)
-      for (int j = 0; j < 3; j++) p->geometry.matrix_E[i][j] = (i == j);
-    p->geometry.volume = 1.f;
-    p->geometry.wcorr = 1.f;
     p->rho = 1.f;
     p->P = 1.f;
 #else
@@ -209,6 +207,10 @@ static int run_schedule(const enum schedule sched, struct runner *r,
     p->u = 1.f;
     p->rho = 1.f;
 #endif
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 3; j++) p->geometry.matrix_E[i][j] = (i == j);
+    p->geometry.volume = 1.f;
+    p->geometry.wcorr = 1.f;
     p->geometry.condition_number = 1.f;
     hydro_prepare_force(p, xp, e->cosmology, e->hydro_properties,
                         e->pressure_floor_props, 0., 0.);
@@ -452,11 +454,6 @@ int main(int argc, char *argv[]) {
   bzero(&chem_data, sizeof(struct chemistry_global_data));
   chem_data.diffusion_coefficient = 1.f;
   chem_data.diffusion_mode = isotropic_constant;
-#if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
-  chem_data.tau = 1.;
-  chem_data.relaxation_time_mode = constant_mode;
-  chem_data.hyperbolic_limiter_scope = limiter_all_components;
-#endif
   for (int m = 0; m < GEAR_CHEMISTRY_ELEMENT_COUNT; m++)
     chem_data.initial_metallicities[m] = 0.f;
   chem_data.hll_riemann_solver_psi = 0.1f;

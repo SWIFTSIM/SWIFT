@@ -376,6 +376,45 @@ __attribute__((always_inline)) INLINE static void chemistry_apply_pair_fluxes(
   }
 }
 
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+/**
+ * @brief Add the integer interval of a pair exchange to the particles it
+ * updates, and count it as a catch-up if it is longer than the current step
+ * of every active member of the pair.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ * @param t_current The current integer time.
+ * @param update_left Whether pi receives the flux.
+ * @param update_right Whether pj receives the flux.
+ */
+__attribute__((always_inline)) INLINE static void
+chemistry_debug_count_pair_interval(struct part *restrict pi,
+                                    struct part *restrict pj,
+                                    const integertime_t t_current,
+                                    const int update_left,
+                                    const int update_right) {
+
+  const integertime_t ticks =
+      t_current - chemistry_get_pair_ti_flux_start(pi, pj);
+  integertime_t step_min = max_nr_timesteps;
+  if (get_integer_time_end(t_current, pi->time_bin) == t_current)
+    step_min = min(step_min, get_integer_timestep(pi->time_bin));
+  if (get_integer_time_end(t_current, pj->time_bin) == t_current)
+    step_min = min(step_min, get_integer_timestep(pj->time_bin));
+  const int catch_up = ticks > step_min;
+
+  if (update_left) {
+    pi->chemistry_data.flux_coverage_ticks += ticks;
+    pi->chemistry_data.flux_catch_up_count += catch_up;
+  }
+  if (update_right) {
+    pj->chemistry_data.flux_coverage_ticks += ticks;
+    pj->chemistry_data.flux_catch_up_count += catch_up;
+  }
+}
+#endif
+
 /**
  * @brief Compute the metal diffusion flux of a pair once, and use it in the
  * current pass of the positivity limiter.
@@ -415,6 +454,9 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
   if (update_left) pi->chemistry_data.flux_exchange_count[pass]++;
   if (update_right) pj->chemistry_data.flux_exchange_count[pass]++;
+  if (pass == chemistry_flux_pass_apply)
+    chemistry_debug_count_pair_interval(pi, pj, t_current, update_left,
+                                        update_right);
 #endif
 
   /* The flux computation is out of line, so that the prep and the apply
@@ -456,7 +498,11 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
 /**
  * @brief Is this particle inactive for the flux exchange of this step?
  *
- * Inactive particles carry a negative flux time-step.
+ * This is the time-bin test of part_is_active_no_debug(), which the
+ * interaction loops use to pick the branch, so it holds for foreign copies
+ * and in the prep pass. active.h cannot be included here: it includes this
+ * file through engine.h. A particle woken by the limiter in this step is
+ * still inactive under its old bin.
  *
  * @param p The #part.
  * @param max_active_bin The highest active time-bin.
@@ -464,7 +510,7 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
 __attribute__((always_inline)) INLINE static int
 chemistry_part_is_flux_inactive(const struct part *p,
                                 const timebin_t max_active_bin) {
-  return p->chemistry_data.flux.dt < 0.f;
+  return p->time_bin > max_active_bin;
 }
 
 /**
@@ -629,6 +675,15 @@ runner_iact_chemistry_flux_exchange(
     const struct cosmology *cosmo, const int with_cosmology,
     const struct chemistry_global_data *chem_data,
     const enum chemistry_flux_pass pass, const timebin_t max_active_bin) {
+
+#ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
+  if (max_active_bin != get_max_active_bin(t_current))
+    error("max_active_bin=%d does not match t_current=%lld.", max_active_bin,
+          t_current);
+  if (chemistry_part_is_flux_inactive(pi, max_active_bin))
+    error("The first particle of the flux exchange (id %lld) is inactive.",
+          pi->id);
+#endif
 
   if (both_updatable_here) {
     chemistry_exchange_pair_flux(r2, dx, hi, hj, pi, pj, time_base, t_current,

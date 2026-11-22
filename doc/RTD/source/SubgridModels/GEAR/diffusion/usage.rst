@@ -76,7 +76,12 @@ ones that affect the physics or numerics a user might notice:
 With ``CFLAGS=-DSWIFT_CHEMISTRY_DEBUG_CHECKS``, the snapshots also hold
 ``PositivityLimiterEngagementCounts``: for each particle, the number of
 (step, element) cases in which the positivity limiter scaled down its
-outflow.
+outflow. They also hold ``DiffusionFluxCoverageTicks``, the integer time
+covered by the flux exchanges of each particle summed over its pairs, and
+``DiffusionFluxCatchUpCounts``, the number of its exchanges over an
+interval longer than the current step of the active particles of the
+pair. Such an exchange catches up the time since the pair last exchanged,
+after the time-step limiter or a synchronisation shortened a step.
 
 MPI support
 ~~~~~~~~~~~~

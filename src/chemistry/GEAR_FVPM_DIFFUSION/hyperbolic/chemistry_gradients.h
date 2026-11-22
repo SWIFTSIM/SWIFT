@@ -152,6 +152,8 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
  * pj->x).
  * @param r Comoving distance between particle i and particle j.
  * @param xij_i Position of the "interface" w.r.t. position of particle i.
+ * @param flux_dt The time interval of the pair exchange (half of it is the
+ * time of the predictor step).
  * @param cosmo The #cosmology.
  * @param chem_data The global properties of the chemistry scheme.
  * @param Ui (return) Resulting predicted and limited diffusion state of
@@ -161,7 +163,7 @@ chemistry_gradients_correct_unphysical_states(const struct part *restrict pi,
  */
 __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
     const struct part *restrict pi, const struct part *restrict pj, int metal,
-    const float dx[3], const float r, const float xij_i[3],
+    const float dx[3], const float r, const float xij_i[3], const float flux_dt,
     const struct cosmology *cosmo,
     const struct chemistry_global_data *chem_data, double Ui[4], double Uj[4]) {
 
@@ -217,22 +219,8 @@ __attribute__((always_inline)) INLINE static void chemistry_gradients_predict(
   chemistry_get_hyperbolic_flux_gradients(pj, metal, dFx_j, dFy_j, dFz_j);
 
   /* MUSCL-Hancock half-step predictor, folded in before the face limiter
-     below so it bounds the full extrapolation, not just the spatial part.
-     mindt follows the interval rule of chemistry_get_pair_flux_dt() in
-     chemistry.c. */
-  const float dt_L = chi->flux.dt;
-  const float dt_R = chj->flux.dt;
-  float mindt;
-  if (dt_L > 0.f && dt_R > 0.f) {
-    mindt = fminf(dt_L, dt_R);
-  } else if (dt_L > 0.f) {
-    mindt = dt_L;
-  } else if (dt_R > 0.f) {
-    mindt = dt_R;
-  } else {
-    mindt = 0.f;
-  }
-  const float half_mindt = 0.5 * mindt;
+     below so it bounds the full extrapolation, not just the spatial part. */
+  const float half_mindt = 0.5 * flux_dt;
   const double drhoZ_dt_i = -(dFx_i[0] + dFy_i[1] + dFz_i[2]);
   const double drhoZ_dt_j = -(dFx_j[0] + dFy_j[1] + dFz_j[2]);
 

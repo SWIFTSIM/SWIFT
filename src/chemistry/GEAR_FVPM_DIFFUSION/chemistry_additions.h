@@ -198,9 +198,8 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     const struct hydro_props *hydro_props,
     const struct chemistry_global_data *chem_data) {
 
-  struct chemistry_part_data *chd = &p->chemistry_data;
-
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
+  struct chemistry_part_data *chd = &p->chemistry_data;
   const float dt_therm_phys = dt_therm * cosmo->a * cosmo->a;
 
   /* Kick the source term for the timestep */
@@ -215,23 +214,6 @@ __attribute__((always_inline)) INLINE static void chemistry_kick_extra(
     chemistry_check_unphysical_diffusion_flux(chd->diffusion_flux[m]);
   }
 #endif /* CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION */
-
-  if (chd->flux.dt > 0.0) {
-    /* Invalidate the particle time-step. It is considered to be inactive until
-         dt is set again in chemistry_prepare_force() */
-    chd->flux.dt = -1.0f;
-
-  } else if (chd->flux.dt == 0.0f) {
-    /* something tricky happens at the beginning of the simulation: the flux
-       exchange is done for all particles, but using a time step of 0. This
-       in itself is not a problem. However, it causes some issues with the
-       initialisation of flux.dt for inactive particles, since this value will
-       remain 0 until the particle is active again, and its flux.dt is set to
-       the actual time step in chemistry_prepare_force(). We have to make sure
-       it is properly set to -1 here, so that inactive particles are indeed
-       found to be inactive during the flux loop. */
-    chd->flux.dt = -1.0f;
-  }
 
   /* Reset wcorr */
   p->geometry.wcorr = 1.0f;

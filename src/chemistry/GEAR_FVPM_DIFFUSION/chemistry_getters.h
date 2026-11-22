@@ -704,6 +704,20 @@ chemistry_get_bh_total_metal_mass_for_stats(const struct bpart *restrict bp) {
          bp->mass;
 }
 
+/**
+ * @brief Returns the integer time from which a pair exchanges its flux: the
+ * later of the last flux applications of its two particles.
+ *
+ * @param pi Particle i.
+ * @param pj Particle j.
+ */
+__attribute__((always_inline)) INLINE static integertime_t
+chemistry_get_pair_ti_flux_start(const struct part *restrict pi,
+                                 const struct part *restrict pj) {
+  return max(pi->chemistry_data.flux.ti_flux_last,
+             pj->chemistry_data.flux.ti_flux_last);
+}
+
 /* Import the right chemistry_part_data definition */
 #if defined(CHEMISTRY_GEAR_FVPM_HYPERBOLIC_DIFFUSION)
 #include "hyperbolic/chemistry_getters.h"

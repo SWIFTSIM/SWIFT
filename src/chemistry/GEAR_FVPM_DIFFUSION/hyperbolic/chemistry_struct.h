@@ -20,6 +20,8 @@
 #ifndef SWIFT_CHEMISTRY_STRUCT_GEAR_MF_HYPERBOLIC_DIFFUSION_H
 #define SWIFT_CHEMISTRY_STRUCT_GEAR_MF_HYPERBOLIC_DIFFUSION_H
 
+#include "timeline.h"
+
 /**
  * @brief Properties of the chemistry function for #part.
  */
@@ -52,6 +54,14 @@ struct chemistry_part_data {
   /*! Number of flux exchanges that updated this particle, per limiter pass
       (enum chemistry_flux_pass). */
   int flux_exchange_count[2];
+
+  /*! Integer time covered by the flux exchanges that updated this particle,
+      summed over its pairs. */
+  unsigned long long flux_coverage_ticks;
+
+  /*! Number of flux exchanges that updated this particle over an interval
+      longer than the current step of its active pair members. */
+  int flux_catch_up_count;
 #endif
 
   /* Fluxes. */
@@ -62,8 +72,8 @@ struct chemistry_part_data {
     /*! Flux of the diffusion flux, computed with the Riemann solver. */
     double flux[GEAR_CHEMISTRY_ELEMENT_COUNT][3];
 
-    /*! Particle chemistry time-step in physical units. */
-    float dt;
+    /*! Integer time at which the fluxes of this particle were last applied. */
+    integertime_t ti_flux_last;
 
   } flux;
 
