@@ -25,15 +25,24 @@
 
 /* Strength functions */
 #ifdef MATERIAL_STRENGTH
+// Utilities
+#include "./strength/strength_interaction.h"
+#include "./strength/strength_utilities.h"
+
+// State of a particle
+#include "./strength/strength_state.h"
+
+// Strength models
 #include "./strength/strength_artificial_stress.h"
 #include "./strength/strength_damage.h"
-#include "./strength/strength_interaction.h"
-#include "./strength/strength_state.h"
-#include "./strength/strength_state_setup.h"
-#include "./strength/strength_stress_tensor.h"
-#include "./strength/strength_utilities.h"
 #include "./strength/strength_yield_stress.h"
 #include "./strength/strength_yield_stress_weakening.h"
+
+// Stress tensor, combining strength models
+#include "./strength/strength_stress_tensor.h"
+
+// Setting up the strength state, which uses the strength models
+#include "./strength/strength_state_setup.h"
 #endif /* MATERIAL_STRENGTH */
 
 /* Hydro functions */
