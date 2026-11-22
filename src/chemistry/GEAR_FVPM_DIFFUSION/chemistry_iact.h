@@ -376,6 +376,24 @@ __attribute__((always_inline)) INLINE static void chemistry_apply_pair_fluxes(
   }
 }
 
+/**
+ * @brief Is this particle inactive for the flux exchange of this step?
+ *
+ * This is the time-bin test of part_is_active_no_debug(), which the
+ * interaction loops use to pick the branch, so it holds for foreign copies
+ * and in the prep pass. active.h cannot be included here: it includes this
+ * file through engine.h. A particle woken by the limiter in this step is
+ * still inactive under its old bin.
+ *
+ * @param p The #part.
+ * @param max_active_bin The highest active time-bin.
+ */
+__attribute__((always_inline)) INLINE static int
+chemistry_part_is_flux_inactive(const struct part *p,
+                                const timebin_t max_active_bin) {
+  return p->time_bin > max_active_bin;
+}
+
 #ifdef SWIFT_CHEMISTRY_DEBUG_CHECKS
 /**
  * @brief Add the integer interval of a pair exchange to the particles it
@@ -395,21 +413,22 @@ chemistry_debug_count_pair_interval(struct part *restrict pi,
                                     const int update_left,
                                     const int update_right) {
 
-  const integertime_t ticks =
+  const integertime_t interval =
       t_current - chemistry_get_pair_ti_flux_start(pi, pj);
+  const timebin_t max_active_bin = get_max_active_bin(t_current);
   integertime_t step_min = max_nr_timesteps;
-  if (get_integer_time_end(t_current, pi->time_bin) == t_current)
+  if (!chemistry_part_is_flux_inactive(pi, max_active_bin))
     step_min = min(step_min, get_integer_timestep(pi->time_bin));
-  if (get_integer_time_end(t_current, pj->time_bin) == t_current)
+  if (!chemistry_part_is_flux_inactive(pj, max_active_bin))
     step_min = min(step_min, get_integer_timestep(pj->time_bin));
-  const int catch_up = ticks > step_min;
+  const int catch_up = interval > step_min;
 
   if (update_left) {
-    pi->chemistry_data.flux_coverage_ticks += ticks;
+    pi->chemistry_data.flux_coverage_ticks += interval;
     pi->chemistry_data.flux_catch_up_count += catch_up;
   }
   if (update_right) {
-    pj->chemistry_data.flux_coverage_ticks += ticks;
+    pj->chemistry_data.flux_coverage_ticks += interval;
     pj->chemistry_data.flux_catch_up_count += catch_up;
   }
 }
@@ -493,24 +512,6 @@ __attribute__((always_inline)) INLINE static void chemistry_exchange_pair_flux(
   if (status == CHEMISTRY_PAIR_FLUX_FLUXES)
     chemistry_apply_pair_fluxes(pi, pj, totflux, flux_dt, update_left,
                                 update_right, chem_data);
-}
-
-/**
- * @brief Is this particle inactive for the flux exchange of this step?
- *
- * This is the time-bin test of part_is_active_no_debug(), which the
- * interaction loops use to pick the branch, so it holds for foreign copies
- * and in the prep pass. active.h cannot be included here: it includes this
- * file through engine.h. A particle woken by the limiter in this step is
- * still inactive under its old bin.
- *
- * @param p The #part.
- * @param max_active_bin The highest active time-bin.
- */
-__attribute__((always_inline)) INLINE static int
-chemistry_part_is_flux_inactive(const struct part *p,
-                                const timebin_t max_active_bin) {
-  return p->time_bin > max_active_bin;
 }
 
 /**
