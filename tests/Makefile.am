@@ -46,7 +46,8 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
         testCoolingSplit \
-        testLog testDistance testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck # testMatrixInversion
+        testLog testDistance testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
+        testForeignPairFlux  # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -66,7 +67,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 testRadiationHIIConeClaim testRadiationPacketSlotGeometry \
 		 testIOOptionalFieldDefaultWidth \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck
+		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion testBoxWrapCellIndex testCellDxOutsideCheck \
+		 testForeignPairFlux
 
 # Rebuild tests when SWIFT is updated.
 $(check_PROGRAMS): ../src/.libs/libswiftsim.a
@@ -214,6 +216,8 @@ testHashmap_SOURCES = testHashmap.c
 testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
+
+testForeignPairFlux_SOURCES = testForeignPairFlux.c
 
 testHydroMPIrules_SOURCES = testHydroMPIrules.c
 
