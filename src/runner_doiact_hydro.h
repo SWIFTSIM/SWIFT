@@ -177,15 +177,40 @@
 #define PART_IS_ACTIVE part_is_rt_active
 #define CELL_IS_ACTIVE cell_is_rt_active
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted_rt_sub_cycle
+/* h_max of all gas: h_max_active misses RT-active gas that is hydro-inactive */
+#define CELL_H_MAX_SEARCH(c) ((c)->hydro.h_max)
 #else
 /* default hydro behaviour. */
 #define PART_IS_ACTIVE part_is_active
 #define CELL_IS_ACTIVE cell_is_active_hydro
 #define CELL_ARE_PART_DRIFTED cell_are_part_drifted
+#define CELL_H_MAX_SEARCH(c) ((c)->hydro.h_max_active)
 /* when running with RT subcycling, we can have RT active
  * particles in a normal swift step that aren't drifted to
  * the current time, so we don't do those checks there. */
 #define DO_DRIFT_DEBUG_CHECKS 1
+#endif
+
+/* Does the non-symmetric interaction of this loop also write an inactive pj?
+   The chemistry flux prep loop must visit the same pairs as the force loop. */
+#if (FUNCTION_TASK_LOOP == TASK_LOOP_FORCE) || \
+    (FUNCTION_TASK_LOOP == TASK_LOOP_CHEMISTRY_FLUX_PREP)
+#if hydro_force_updates_inactive_neighbours && \
+    !defined(MPI_SYMMETRIC_FORCE_INTERACTION)
+#error \
+    "The hydro force loop writes inactive neighbours but MPI_SYMMETRIC_FORCE_INTERACTION is not defined: the rank of the inactive cell would never run the pair."
+#endif
+#define LOOP_UPDATES_INACTIVE_NEIGHBOURS hydro_force_updates_inactive_neighbours
+#elif (FUNCTION_TASK_LOOP == TASK_LOOP_RT_TRANSPORT)
+#if rt_transport_updates_inactive_neighbours && \
+    !defined(MPI_SYMMETRIC_FORCE_INTERACTION_RT)
+#error \
+    "The RT transport loop writes inactive neighbours but MPI_SYMMETRIC_FORCE_INTERACTION_RT is not defined: the rank of the inactive cell would never run the pair."
+#endif
+#define LOOP_UPDATES_INACTIVE_NEIGHBOURS \
+  rt_transport_updates_inactive_neighbours
+#else
+#define LOOP_UPDATES_INACTIVE_NEIGHBOURS 0
 #endif
 
 #define _IACT_NONSYM_VEC(f) PASTE(runner_iact_nonsym_vec, f)
@@ -212,25 +237,25 @@
 #define _TIMER_DOPAIR_SUBSET(f) PASTE(timer_dopair_subset, f)
 #define TIMER_DOPAIR_SUBSET _TIMER_DOPAIR_SUBSET(FUNCTION)
 
-void DOSELF1_BRANCH(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
-void DOSELF2_BRANCH(struct runner *r, const struct cell *c,
-                    const int limit_min_h, const int limit_max_h);
+void DOSELF1_BRANCH(struct runner *r, const struct cell *c, const float h_lo,
+                    const float h_hi);
+void DOSELF2_BRANCH(struct runner *r, const struct cell *c, const float h_lo,
+                    const float h_hi);
 
 void DOPAIR1_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
+                    const float h_lo, const float h_hi);
 void DOPAIR2_BRANCH(struct runner *r, struct cell *ci, struct cell *cj,
-                    const int limit_min_h, const int limit_max_h);
+                    const float h_lo, const float h_hi);
 
-void DOSUB_SELF1(struct runner *r, struct cell *c, int recurse_below_h_max,
+void DOSUB_SELF1(struct runner *r, struct cell *c, const float h_hi,
                  const int gettimer);
-void DOSUB_SELF2(struct runner *r, struct cell *c, int recurse_below_h_max,
+void DOSUB_SELF2(struct runner *r, struct cell *c, const float h_hi,
                  const int gettimer);
 
 void DOSUB_PAIR1(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
+                 const float h_hi, const int gettimer);
 void DOSUB_PAIR2(struct runner *r, struct cell *ci, struct cell *cj,
-                 int recurse_below_h_max, const int gettimer);
+                 const float h_hi, const int gettimer);
 
 void DOSELF_SUBSET_BRANCH(struct runner *r, const struct cell *ci,
                           struct part *restrict parts, const int *ind,
@@ -241,8 +266,9 @@ void DOPAIR_SUBSET_BRANCH(struct runner *r, const struct cell *restrict ci,
                           const int count, struct cell *restrict cj);
 
 void DOSUB_PAIR_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count, struct cell *cj,
-                       const int gettimer);
+                       const int *ind, const int count, const float h_max_redo,
+                       struct cell *cj, const int gettimer);
 
 void DOSUB_SELF_SUBSET(struct runner *r, struct cell *ci, struct part *parts,
-                       const int *ind, const int count, const int gettimer);
+                       const int *ind, const int count, const float h_max_redo,
+                       const int gettimer);

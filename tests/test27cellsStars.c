@@ -281,12 +281,12 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 /* Just a forward declaration... */
 void runner_dopair_branch_stars_density(struct runner *r, struct cell *ci,
                                         struct cell *cj, const int offset,
-                                        const int ntasks, const int limit_h_min,
-                                        const int limit_h_max);
+                                        const int ntasks, float h_lo_i,
+                                        float h_hi_i, float h_lo_j,
+                                        float h_hi_j);
 void runner_doself_branch_stars_density(struct runner *r, struct cell *c,
                                         const int offset, const int ntasks,
-                                        const int limit_h_min,
-                                        const int limit_h_max);
+                                        const float h_lo, const float h_hi);
 void runner_dopair_subset_branch_stars_density(struct runner *r,
                                                const struct cell *restrict ci,
                                                struct spart *restrict sparts_i,
@@ -481,9 +481,8 @@ int main(int argc, char *argv[]) {
                        cells[j]);
 #else
         DOPAIR1(&runner, main_cell, cells[j],
-                /*offset=*/0, /*ntasks=*/1,
-                /*limit_h_min=*/0,
-                /*limit_h_max=*/0);
+                /*offset=*/0, /*ntasks=*/1, /*h_lo_i=*/0.f, /*h_hi_i=*/FLT_MAX,
+                /*h_lo_j=*/0.f, /*h_hi_j=*/FLT_MAX);
 #endif
 
         timings[j] += getticks() - sub_tic;
@@ -497,9 +496,7 @@ int main(int argc, char *argv[]) {
     DOSELF1_SUBSET(&runner, main_cell, main_cell->stars.parts, pid, scount);
 #else
     DOSELF1(&runner, main_cell,
-            /*offset=*/0, /*ntasks=*/1,
-            /*limit_h_min=*/0,
-            /*limit_h_max=*/0);
+            /*offset=*/0, /*ntasks=*/1, /*h_lo=*/0.f, /*h_hi=*/FLT_MAX);
 #endif
 
     timings[13] += getticks() - self_tic;

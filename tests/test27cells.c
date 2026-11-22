@@ -354,10 +354,9 @@ void dump_particle_fields(char *fileName, struct cell *main_cell,
 
 /* Just a forward declaration... */
 void runner_dopair1_branch_density(struct runner *r, struct cell *ci,
-                                   struct cell *cj, int limit_h_min,
-                                   int limit_h_max);
-void runner_doself1_branch_density(struct runner *r, struct cell *c,
-                                   int limit_h_min, int limit_h_max);
+                                   struct cell *cj, float h_lo, float h_hi);
+void runner_doself1_branch_density(struct runner *r, struct cell *c, float h_lo,
+                                   float h_hi);
 void runner_dopair_subset_branch_density(struct runner *r,
                                          struct cell *restrict ci,
                                          struct part *restrict parts_i,
@@ -574,8 +573,7 @@ int main(int argc, char *argv[]) {
         DOPAIR1_SUBSET(&runner, main_cell, main_cell->hydro.parts, pid, count,
                        cells[j]);
 #else
-        DOPAIR1(&runner, main_cell, cells[j], /*limit_h_min=*/0,
-                /*limit_h_max=*/0);
+        DOPAIR1(&runner, main_cell, cells[j], /*h_lo=*/0.f, /*h_hi=*/FLT_MAX);
 #endif
 
         timings[j] += getticks() - sub_tic;
@@ -588,7 +586,7 @@ int main(int argc, char *argv[]) {
 #ifdef TEST_DOSELF_SUBSET
     DOSELF1_SUBSET(&runner, main_cell, main_cell->hydro.parts, pid, count);
 #else
-    DOSELF1(&runner, main_cell, /*limit_h_min=*/0, /*limit_h_max=*/0);
+    DOSELF1(&runner, main_cell, /*h_lo=*/0.f, /*h_hi=*/FLT_MAX);
 #endif
 
     timings[13] += getticks() - self_tic;

@@ -101,4 +101,5 @@ void DOPAIR1_SUBSET_BRANCH_BH(struct runner *r, struct cell *restrict ci,
                               struct cell *restrict cj);
 
 void DOSUB_SUBSET_BH(struct runner *r, struct cell *ci, struct bpart *bparts,
-                     int *ind, const int bcount, struct cell *cj, int gettimer);
+                     int *ind, const int bcount, const float h_max_redo,
+                     struct cell *cj, int gettimer);

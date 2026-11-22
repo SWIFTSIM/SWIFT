@@ -2450,8 +2450,10 @@ void engine_init_particles(struct engine *e, int flag_entropy_ICs,
 
   /* Run the 0th time-step */
   TIMER_TIC2;
+  runner_sort_counters_reset();
   engine_launch(e, "tasks");
   TIMER_TOC2(timer_runners);
+  runner_sort_counters_report(e);
 
   /* When running over MPI, synchronize top-level cells */
 #ifdef WITH_MPI
@@ -3014,8 +3016,10 @@ int engine_step(struct engine *e) {
 
   /* Start all the tasks. */
   TIMER_TIC;
+  runner_sort_counters_reset();
   engine_launch(e, "tasks");
   TIMER_TOC(timer_runners);
+  runner_sort_counters_report(e);
 
   /* When running over MPI, synchronize top-level cells */
 #ifdef WITH_MPI

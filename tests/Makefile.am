@@ -39,9 +39,10 @@ TESTS = testGreetings testMaths testReading.sh testKernel testKernelAccuracy \
         test27cellsStars.sh test27cellsStarsPerturbed.sh testHydroMPIrules \
         testAtomic testGravitySpeed testMeshGravityRebuildCheck testNeutrinoCosmology.sh \
         testNeutrinoFermiDirac \
-	    testLog testDistance testTimeline \
-	    testSymmetricMatrixDiagonalisation testChemistryFluxAntisymmetry \
-	    testChemistryFluxExchangeOnce testChemistryPositivityLimiter # testMatrixInversion
+	    testLog testDistance testTimeline testSubsetRecursion \
+	    testForeignPairFlux testSymmetricMatrixDiagonalisation \
+	    testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
+	    testChemistryPositivityLimiter # testMatrixInversion
 
 # List of test programs to compile
 check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGrav \
@@ -56,7 +57,8 @@ check_PROGRAMS = testGreetings testReading testTimeIntegration testKernelLongGra
 		 test27cellsStars test27cellsStars_subset testCooling testComovingCooling testFeedback \
 		 testHashmap testAtomic testHydroMPIrules testGravitySpeed testMeshGravityRebuildCheck \
 		 testNeutrinoCosmology \
-		 testNeutrinoFermiDirac testLog testTimeline testSymmetricMatrixDiagonalisation \
+		 testNeutrinoFermiDirac testLog testTimeline testSubsetRecursion \
+		 testForeignPairFlux testSymmetricMatrixDiagonalisation \
 		 testChemistryFluxAntisymmetry testChemistryFluxExchangeOnce \
 		 testChemistryPositivityLimiter
 
@@ -180,6 +182,10 @@ testHashmap_SOURCES = testHashmap.c
 testLog_SOURCES = testLog.c
 
 testTimeline_SOURCES = testTimeline.c
+
+testSubsetRecursion_SOURCES = testSubsetRecursion.c
+
+testForeignPairFlux_SOURCES = testForeignPairFlux.c
 
 testHydroMPIrules_SOURCES = testHydroMPIrules.c
 

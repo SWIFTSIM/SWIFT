@@ -55,16 +55,15 @@
 #define PARTS_PER_OCTANT 27
 
 void runner_dosub_self2_force(struct runner *r, struct cell *c,
-                              int recurse_below_h_max, const int gettimer);
+                              const float h_hi, const int gettimer);
 void runner_dosub_pair2_force(struct runner *r, struct cell *ci,
-                              struct cell *cj, int recurse_below_h_max,
+                              struct cell *cj, const float h_hi,
                               const int gettimer);
 void runner_dosub_self2_chemistry_flux_prep(struct runner *r, struct cell *c,
-                                            int recurse_below_h_max,
+                                            const float h_hi,
                                             const int gettimer);
 void runner_dosub_pair2_chemistry_flux_prep(struct runner *r, struct cell *ci,
-                                            struct cell *cj,
-                                            int recurse_below_h_max,
+                                            struct cell *cj, const float h_hi,
                                             const int gettimer);
 
 /**
@@ -546,11 +545,13 @@ static int run_case(const char *label, struct runner *r, struct engine *e,
     if (cj) reset_counts(cj);
 
     if (cj) {
-      runner_dosub_pair2_chemistry_flux_prep(r, ci, cj, 0, 0);
-      runner_dosub_pair2_force(r, ci, cj, 0, 0);
+      runner_dosub_pair2_chemistry_flux_prep(r, ci, cj, /*h_hi=*/FLT_MAX,
+                                             /*gettimer=*/0);
+      runner_dosub_pair2_force(r, ci, cj, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
     } else {
-      runner_dosub_self2_chemistry_flux_prep(r, ci, 0, 0);
-      runner_dosub_self2_force(r, ci, 0, 0);
+      runner_dosub_self2_chemistry_flux_prep(r, ci, /*h_hi=*/FLT_MAX,
+                                             /*gettimer=*/0);
+      runner_dosub_self2_force(r, ci, /*h_hi=*/FLT_MAX, /*gettimer=*/0);
     }
 
     unequal += count_unequal_passes(ci);
