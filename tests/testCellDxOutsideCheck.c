@@ -23,6 +23,7 @@
 #include "swift.h"
 
 /* Some standard headers. */
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/wait.h>
@@ -67,7 +68,7 @@ static int check_stops_run(const int type, const double offset_in_widths) {
 
   double x[3];
   for (int k = 0; k < 3; k++) x[k] = 0.06 - offset_in_widths * width;
-  if (offset_in_widths == 0. && !(c.loc[0] - x[0] > 0.))
+  if (offset_in_widths == 0.0 && !(c.loc[0] - x[0] > 0.0))
     error("The edge sum does not round outside the face: test is void.");
 
   bzero(&p, sizeof(p));
@@ -93,9 +94,21 @@ static int check_stops_run(const int type, const double offset_in_widths) {
     if (type == BH) cell_check_black_holes_dx_outside_max(&c);
     _exit(0);
   }
+  if (pid < 0) error("fork() failed.");
   int status = 0;
   waitpid(pid, &status, 0);
-  return !(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+
+  /* error() exits with 1, or aborts in SWIFT_DEVELOP_MODE. */
+  const int stopped = (WIFEXITED(status) && WEXITSTATUS(status) == 1) ||
+                      (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT);
+  const int passed = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+  if (!stopped && !passed)
+    error(
+        "Unexpected end of the child: WIFEXITED=%d WEXITSTATUS=%d "
+        "WIFSIGNALED=%d WTERMSIG=%d.",
+        WIFEXITED(status), WIFEXITED(status) ? WEXITSTATUS(status) : -1,
+        WIFSIGNALED(status), WIFSIGNALED(status) ? WTERMSIG(status) : -1);
+  return stopped;
 #else
   return 0;
 #endif
@@ -105,17 +118,18 @@ int main(int argc, char *argv[]) {
 
 #ifndef SWIFT_DEBUG_CHECKS
   printf("Skipped: the checks exist only with --enable-debugging-checks.\n");
-  return 0;
+  return 77;
 #endif
 
   for (int type = GAS; type <= BH; type++) {
 
 #ifdef BLACK_HOLES_NONE
-    /* All black hole members of a cell share their bytes in this model. */
+    /* The black hole parts and dx_outside_max share their bytes in this model.
+     */
     if (type == BH) continue;
 #endif
 
-    const int stops_on_face = check_stops_run(type, 0.);
+    const int stops_on_face = check_stops_run(type, 0.0);
     printf("%-10s on a face, edge rounded out by 1 ulp: %s\n", name[type],
            stops_on_face ? "STOPS (wrong)" : "accepted");
     if (stops_on_face) ++num_fail;

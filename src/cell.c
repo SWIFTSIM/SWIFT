@@ -782,9 +782,7 @@ void cell_clean_links(struct cell *c, void *data) {
  * @brief Check that no gas particle lies further outside the box of its leaf
  * cell than the dx_outside_max of the cells above it.
  *
- * The edge of a cell is a sum of sub-cell widths and can lie beyond a
- * particle placed on its face by a rounding error. A distance up to 1e-6 cell
- * widths is therefore accepted, as in the drift.
+ * A distance up to cell_face_tolerance() is accepted.
  *
  * @param c The #cell.
  */
@@ -803,7 +801,7 @@ void cell_check_hydro_dx_outside_max(const struct cell *c) {
       const struct part *p = &c->hydro.parts[k];
       if (p->time_bin == time_bin_inhibited) continue;
       const float d = cell_distance_outside_box(c, p->x);
-      if (d > c->hydro.dx_outside_max + 1e-6f * c->width[0])
+      if (d > c->hydro.dx_outside_max + cell_face_tolerance(c))
         error(
             "Particle further outside its cell than dx_outside_max: id=%lld "
             "d=%e dx_outside_max=%e nodeID=%d",
@@ -819,9 +817,7 @@ void cell_check_hydro_dx_outside_max(const struct cell *c) {
  * @brief Check that no star lies further outside the box of its leaf cell
  * than the dx_outside_max of the cells above it.
  *
- * The edge of a cell is a sum of sub-cell widths and can lie beyond a
- * particle placed on its face by a rounding error. A distance up to 1e-6 cell
- * widths is therefore accepted, as in the drift.
+ * A distance up to cell_face_tolerance() is accepted.
  *
  * @param c The #cell.
  */
@@ -840,7 +836,7 @@ void cell_check_stars_dx_outside_max(const struct cell *c) {
       const struct spart *sp = &c->stars.parts[k];
       if (sp->time_bin == time_bin_inhibited) continue;
       const float d = cell_distance_outside_box(c, sp->x);
-      if (d > c->stars.dx_outside_max + 1e-6f * c->width[0])
+      if (d > c->stars.dx_outside_max + cell_face_tolerance(c))
         error(
             "Star further outside its cell than dx_outside_max: id=%lld "
             "d=%e dx_outside_max=%e nodeID=%d",
@@ -856,9 +852,7 @@ void cell_check_stars_dx_outside_max(const struct cell *c) {
  * @brief Check that no black hole lies further outside the box of its leaf
  * cell than the dx_outside_max of the cells above it.
  *
- * The edge of a cell is a sum of sub-cell widths and can lie beyond a
- * particle placed on its face by a rounding error. A distance up to 1e-6 cell
- * widths is therefore accepted, as in the drift.
+ * A distance up to cell_face_tolerance() is accepted.
  *
  * @param c The #cell.
  */
@@ -877,7 +871,7 @@ void cell_check_black_holes_dx_outside_max(const struct cell *c) {
       const struct bpart *bp = &c->black_holes.parts[k];
       if (bp->time_bin == time_bin_inhibited) continue;
       const float d = cell_distance_outside_box(c, bp->x);
-      if (d > c->black_holes.dx_outside_max + 1e-6f * c->width[0])
+      if (d > c->black_holes.dx_outside_max + cell_face_tolerance(c))
         error(
             "Black hole further outside its cell than dx_outside_max: id=%lld "
             "d=%e dx_outside_max=%e nodeID=%d",
