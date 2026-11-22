@@ -152,6 +152,10 @@ void stellar_evolution_compute_preSN_feedback_spart(
     const integertime_t ti_begin, const double star_age_beg_step,
     const double dt);
 
+void stellar_evolution_compute_radiation_at_birth(
+    struct spart *restrict sp, const struct stellar_model *sm,
+    const struct unit_system *us, const struct phys_const *phys_const);
+
 void stellar_evolution_compute_preSN_properties(
     struct spart *restrict sp, const struct stellar_model *sm,
     const struct unit_system *us, const struct phys_const *phys_const,
